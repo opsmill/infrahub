@@ -80,7 +80,7 @@ async def set(self, key: str, value: str, expires: KVTTL | int | None = None) ->
 
 To branch on or read from a typed object, use `isinstance` so the type checker can narrow it; reaching for `getattr(obj, "attr", default)` defeats type analysis. When guarding a schema object, cover the whole family that carries the attribute — `isinstance(schema, (NodeSchema, ProfileSchema, TemplateSchema))` — since profiles and templates inherit node behavior and a `NodeSchema`-only check silently drops them.
 
-The same goes for named accessors: read a relationship manager with `node.get_relationship(name)`, not `getattr(node, name)` — the accessor is typed and greppable, and `getattr` hides the read from both. When the field is optional, use the raising accessor instead of coercing: `str(rel_schema.identifier)` turns a missing identifier into the literal string `"None"`, which then matches nothing downstream — `rel_schema.get_identifier()` raises at the fault instead.
+The same goes for named accessors: read a relationship manager with `node.get_relationship(name)` and an attribute with `node.get_attribute(name)`, not `getattr(node, name)` or dotted access — a `Node`'s attributes are attached dynamically, so `pool.start_range` only type-checks behind a `# type: ignore[attr-defined]`, while the accessor returns a typed `BaseAttribute` and is greppable. When the field is optional, use the raising accessor instead of coercing: `str(rel_schema.identifier)` turns a missing identifier into the literal string `"None"`, which then matches nothing downstream — `rel_schema.get_identifier()` raises at the fault instead.
 
 ## Narrow with a check that returns the value, never with `cast()`
 
@@ -117,6 +117,63 @@ Three signs that you are reaching for the escape hatch instead of the fix:
   [Imports](python.md#imports).
 - **The suppression needs a paragraph.** A `# type: ignore[code]` carries its reason on the same
   line; when justifying one takes a docstring, remove it instead of documenting it.
+
+Narrowing is the fix only while the union is the real contract. The `redis.Redis | InfrahubServices`
+connection above is not one: it exists because the component picks between two backends for the same
+role, so narrowing it — or splitting it into one optional parameter per backend — satisfies the
+checker while the component stays tied to each backend. That union is a missing interface
+([Interfaces for multiple implementations](component-design.md#interfaces-for-multiple-implementations));
+when adding one is more than the change can take, raise it rather than re-typing the union.
+
+## Don't widen to `Any` to make a wrong annotation type-check
+
+Clearing a suppression often exposes an annotation that was never true — a result wrapper declaring
+`list[Node | Relationship]` for columns that also carry paths, scalars, lists, maps and nulls. The
+tempting repair is the one the checker accepts fastest: `Sequence[Any]` on the field and `-> Any` on
+the accessor that reads it. That is a suppression by another name. `Any` is compatible with
+everything, so every downstream mismatch disappears with it, and nothing brings it back: ruff's
+`ANN401` (no `Any` in annotations) is ignored for `backend/infrahub/**` in the "refactor code and
+remove the ignore rule" block of `pyproject.toml`, an ignore that grandfathers the existing ones
+rather than licensing new ones.
+
+Declare the closed set the value can actually hold instead — a union, or a named alias when it is
+recursive — and narrow to one member where a caller needs it. The library's own annotation is not
+that contract: the neo4j driver types every `Record` column as `Any` because it cannot know the
+query, but the Cypher type system is closed, and the wrapper does know it.
+
+```python
+# ❌ Bad - the checker is satisfied because nothing is checked any more
+def _get(self, label: str) -> Any: ...
+
+# ✅ Good - the closed set the column can hold, narrowed where a caller needs one member
+CypherValue = Node | Relationship | Path | str | int | float | bool | None | list["CypherValue"] | dict[str, "CypherValue"]
+
+def _get(self, label: str) -> CypherValue: ...
+
+def get_node(self, label: str) -> Node:
+    value = self._get(label=label)
+    if isinstance(value, Node):
+        return value
+    raise ValueError(f"{label} is not a Node")
+```
+
+The honest type can cascade: an accessor that callers have been reading scalars through under a
+`Node | Relationship` annotation gains hundreds of errors the moment it tells the truth. That cascade
+is the debt the old annotation hid, not a reason to reach for `Any`. Measure it — run the checker with
+each candidate annotation and count the errors per option — and keep the scope explicit: leave the
+caller-facing annotation as it is, file the retyping as its own card, and say so in the PR. Widening
+the layer below to `Any` so the mismatch type-checks is the case
+[When a wrong-type bug slips through](#when-a-wrong-type-bug-slips-through) already rules out: never
+widen a type to silence the checker when the real contract is narrower.
+
+## A change that makes a type real retires its suppressions
+
+CI runs mypy without `--warn-unused-ignores`, so a `# type: ignore` that no longer suppresses
+anything passes silently — and later hides a real violation on the same line. When a change lets the
+checker see a type it could not before, such as a class-level annotation for an attribute that was
+only set dynamically, run `uv run mypy --warn-unused-ignores backend` and delete every
+ignore it reports as unused, in the same change. One new annotation can retire ignores in files the
+change did not otherwise touch.
 
 ## Don't write "one or many" unions — take the plural form and let callers wrap
 

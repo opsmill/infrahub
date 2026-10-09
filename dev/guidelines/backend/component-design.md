@@ -6,7 +6,7 @@ Applies when creating a new backend component or making significant changes to a
 
 ## Use modular components with dependency injection
 
-New logic lives in components that receive their collaborators through constructor injection rather than instantiating them internally, which keeps them composable, swappable, and testable without patching. A dataclass is data — inputs and outputs of functions; the moment it needs a collaborator to do work, it is a component: make it a plain class with the collaborator injected at construction. Every collaborator is a **required** parameter — not `collaborator: Collaborator | None = None` with an internal default, and not a defaulted factory (`cache_factory: CacheFactory = build_heartbeat_cache`) whose default reaches into settings: either shape hides that the dependency exists and lets a caller silently skip wiring it.
+New logic lives in components that receive their collaborators through constructor injection rather than instantiating them internally, which keeps them composable, swappable, and testable without patching. A dataclass is data — inputs and outputs of functions; the moment it needs a collaborator to do work, it is a component: make it a plain class with the collaborator injected at construction. Construction is the same boundary in disguise: a `from_*` classmethod that pairs, groups or filters its inputs to build the object is component logic, and it belongs in the component that retrieves those inputs and returns the data object — the dataclass keeps its fields and trivial derived properties. Every collaborator is a **required** parameter — not `collaborator: Collaborator | None = None` with an internal default, and not a defaulted factory (`cache_factory: CacheFactory = build_heartbeat_cache`) whose default reaches into settings: either shape hides that the dependency exists and lets a caller silently skip wiring it.
 
 The single exception is editing existing code where adding a required parameter would force a large change across many call sites. There, an optional parameter is a transitional compromise to keep the change small - not the target shape for new components.
 
@@ -45,6 +45,8 @@ The boundary is: long-lived collaborators go in the constructor; transient work 
 
 Each component should have one reason to change. If a class is doing two unrelated things, split it. Prefer composition of small components over large multi-purpose ones.
 
+Two phases of one workflow are still two responsibilities when the caller decides between them — a confirmation, a report, a dry run. Split a plan-then-act flow into a planner that returns a plan object and an actor whose entry method takes the whole plan; the caller composes them, and no combining class is needed when the caller is the only composition point.
+
 ## Reset means reset everything derived
 
 A component that is reused across calls via an `initialize()`/`reset()` method (rather than being constructed fresh each time) must clear every value it memoized from the previous input in that same method — not just the field the method obviously replaces. A cache or derived value left over from the prior input silently serves stale results on the component's next call, and nothing else in the reuse pattern catches it.
@@ -69,6 +71,32 @@ When more than one implementation of a component is required (e.g. real vs. in-m
 A single implementation does not need an interface yet; introduce one when the second implementation arrives. Note that the second implementation
 can be either a no-op version (such as in the case of an enterprise-only feature) or a testing version of a component (such as in the case of an
 in-memory version of a component typically backed by the database).
+
+A second backend is where this goes wrong most often. The first backend's client is already wired in, so the second gets attached to it rather than both going behind an interface: the component reads the configured driver and branches on it, takes a union of the backends' clients, and the new implementation imitates the first client's API (its method signatures and defaults) while the shared path still catches the first client's exceptions. The backend is never chosen at the wiring layer, and the component knows every backend by type:
+
+```python
+# ❌ Bad - written for Redis with NATS attached: the lock picks its backend itself
+class InfrahubLock:
+    def __init__(self, name: str, connection: redis.Redis | InfrahubServices | None = None) -> None:
+        if config.SETTINGS.cache.driver == config.CacheDriver.Redis:
+            self.remote = GlobalLock(redis=connection, name=name)
+        else:
+            self.remote = NATSLock(service=connection, name=name)
+
+# ✅ Good - the lock codes against an interface it owns, and the wiring layer picks the backend
+class LockBackend(ABC):
+    @abstractmethod
+    async def acquire(self, name: str, token: str) -> None: ...
+    @abstractmethod
+    async def release(self, name: str, token: str) -> None: ...
+
+class InfrahubLock:
+    def __init__(self, name: str, backend: LockBackend) -> None:
+        self.name = name
+        self.backend = backend
+```
+
+The cache and message-bus adapters already have this shape: an ABC in `services/adapters/<kind>/__init__.py`, one module per backend, and the driver setting resolved once where the service is built (`build_cache()` in `workers/dependencies.py`). `backend/infrahub/lock.py` still has the attached shape; do not copy it. When a type checker flags a component like this, the missing interface is the defect: narrowing the union, or splitting it into one optional parameter per backend, satisfies the checker and keeps the coupling. If adding the interface is more than the change at hand can take, raise that before re-typing the union (see [Existing code](#existing-code)).
 
 ## Interfaces to keep an out-of-domain dependency out
 

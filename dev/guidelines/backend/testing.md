@@ -16,6 +16,10 @@ Tests are organized by type:
 
 **Pick the cheapest tier the logic actually needs.** If the unit under test operates purely on in-memory inputs (a `SchemaBranch`, a dataclass, a pure function), write a unit test in `tests/unit/` without database fixtures — do not default to a component test just because nearby tests use one. Reach for the database (component) or a container (integration/integration_docker) only when the behavior genuinely depends on it. A `Query` subclass is the standing example: its Cypher and the rows it reads back are database behavior, so it is covered at the component layer against the real database — directly or through the resolver or manager that calls it — never by a unit test that hand-builds `QueryResult` rows.
 
+Within the component tier, each test function pays the schema-and-branch setup again — seconds per test in the GraphQL suites. When several cases share one schema, group them in a class on the class-scoped fixtures (`default_branch_scope_class`, `register_core_models_schema_scope_class`, a class-scoped schema load); mechanics in `dev/knowledge/backend/testing.md` § Schema Fixtures.
+
+The database-backed suites can run against Memgraph as well as Neo4j. A test that relies on a Neo4j-only feature — the `PROFILE` prefix, `CALL db.prepareForReplanning()`, APOC procedures — skips on anything else: `if db.db_type != DatabaseType.NEO4J: pytest.skip(...)`.
+
 ### Running integration_docker tests locally
 
 Repo-based `tests/integration_docker/` tests build throwaway git repositories with dulwich (`porcelain.commit`), which honors your global `commit.gpgsign` setting. If you sign commits and the `gpg` Python bindings (gpgme) are not installed — common on macOS — repository setup fails with a misleading `ModuleNotFoundError: No module named 'gpg'`. That takes down every repo-based test plus any test that depends on the repo, showing up as cascading, confusing assertion failures.
@@ -118,17 +122,13 @@ Code that opens a session of its own is safe to race: flows do, pinned by [`test
 
 ## Test Schemas
 
-Many tests require schemas to be loaded before they can run. Over time this has led to duplicated schema definitions scattered across test files. To reduce duplication and ease maintenance, shared helper schemas are available in [`tests/helpers/schema/`](../../../backend/tests/helpers/schema/).
-
-### Available helpers
-
-The module provides individual node/generic schemas (`CAR`, `DEVICE`, `TAG`, `PERSON`, etc.) as well as pre-composed `SchemaRoot` bundles (`CAR_SCHEMA`, `DEVICE_SCHEMA`, `LOCATION_SCHEMA`, `SNOW_TICKET_SCHEMA`, etc.). A `load_schema` helper function handles registering a schema in the branch registry during tests.
+Shared helper schemas live in [`tests/helpers/schema/`](../../../backend/tests/helpers/schema/): individual node/generic schemas (`CAR`, `DEVICE`, `TAG`, `PERSON`, …), pre-composed `SchemaRoot` bundles (`CAR_SCHEMA`, `DEVICE_SCHEMA`, …), and a `load_schema` helper that registers a schema in the branch registry.
 
 ### Guidelines
 
 1. **Check existing helpers first.** Before defining a new schema in a test file, look at the schemas already available in `tests/helpers/schema/`. An existing schema may already cover your needs.
 
-2. **Derive from helpers with `deepcopy`.** When you need a schema that is close to an existing helper but requires small additions or modifications, deep-copy the helper and apply your changes instead of writing a new schema from scratch:
+2. **Derive from helpers with `deepcopy`.** When you need a schema that is close to an existing helper but requires small additions or modifications, deep-copy the helper and apply your changes — never modify the shared helper itself, which every test using it would feel:
 
    ```python
    from copy import deepcopy
@@ -142,11 +142,9 @@ The module provides individual node/generic schemas (`CAR`, `DEVICE`, `TAG`, `PE
    )
    ```
 
-   This avoids modifying the shared helper (which would risk breaking other tests) while keeping the test schema close to the canonical definition.
-
 3. **Only create new helpers for broadly useful schemas.** If a schema is only needed by a single test file, keep it local to that file. Promote a local schema to `tests/helpers/schema/` only when multiple test modules would benefit from sharing it.
 
-4. **Never modify an existing helper schema to satisfy a single test.** Changes to shared schemas affect every test that uses them. If an existing helper almost fits but not quite, use `deepcopy` as shown above.
+4. **Give a branch a divergent schema in production order.** Register an edited schema the way the API path does: `schema_branch.process()`, then `registry.schema.set_schema_branch(...)`, `branch.update_schema_hash()` and `await branch.save(db=db)`. Hashing before processing persists a hash of a schema nothing serves, and skipping the save leaves the divergence in the registry only, invisible to anything that reads the stored hash.
 
 ## Pin settings the test depends on
 
@@ -351,6 +349,31 @@ async def test_clears_expired_entries() -> None:
 
 Even in these cases, prefer adapter patterns when the dependency is used widely.
 
+### Give a typed accessor the driver values it declares
+
+A hand-built `QueryResult` belongs in exactly one test: the unit test of `QueryResult` itself, where
+the accessors are the unit under test and no Cypher runs (a `Query` subclass stays covered against
+the real database — see [Test Organization](#test-organization)). Build the row from a real
+`neo4j.Record` and fill each column with the driver type the accessor under test declares,
+constructed directly: `neo4j.graph.Node` values for `get_node_collection()`, a `neo4j.graph.Path`
+for `get_path()`.
+
+A cheaper stand-in passes for the wrong reason. The collection accessors check the container's
+shape (`isinstance(entry, list)`), not its elements, so a list of uuid strings satisfies an accessor
+that promises `list[Neo4jNode]`. The test then pins the gap as the contract: it stays green until
+someone adds the element check, and breaks that fix instead of the caller that was wrong.
+
+```python
+# ❌ Bad - strings satisfy the shape check, so the assertion pins the accessor's gap, not its contract
+result = QueryResult(data=Record(zip(["peers"], [PEER_UUIDS])), labels=["peers"])
+assert result.get_node_collection(label="peers") == PEER_UUIDS
+
+# ✅ Good - real driver values of the declared type
+peers = [Node(Graph(), element_id=f"4:db:{uuid}", id_=0, n_labels=["Node"], properties={"uuid": uuid}) for uuid in PEER_UUIDS]
+result = QueryResult(data=Record(zip(["peers"], [peers])), labels=["peers"])
+assert result.get_node_collection(label="peers") == peers
+```
+
 ### Time: inject a clock, don't freeze one
 
 <!-- Extracted from specs/ifc-2886-priority-api-backpressure on 2026-07-26 -->
@@ -418,6 +441,11 @@ Hold the shape instead of the duration:
   comparisons; a counting double fails identically on every machine.
 - Keep the measurement out of the suite. The numbers that justified the change belong in the commit
   message or the pull request, where they are read once, not in an assertion CI re-runs forever.
+- A `PROFILE` db-hit count is the same trap without the clock: it encodes the Neo4j planner's choice
+  for the test database's statistics, not the code's behavior, so it flips when the planner replans.
+  Counting the work means counting what the code under test does — calls, queries, submissions — not
+  what the planner spends. Keep db-hit measurements in the pull request description, or in
+  `backend/tests/query_benchmark/` when they must be tracked over time.
 
 When the behavior under test genuinely is a schedule, inject the clock as above so the schedule
 becomes a value the test reads exactly, rather than a duration it races.
@@ -455,9 +483,12 @@ assert str(result.errors[0].message) == f"The template requested {{'id': '{TEMPL
 The exact-match principle above is not limited to error messages — it applies to every assertion. A loose assertion passes for the wrong reason and hides regressions.
 
 - **Assert the exact collection, not a subset or membership.** When a function returns a set/list/dict of results (deleted ids, affected targets, computed keys), assert full equality against the expected value. `assert x in result` / `assert expected.issubset(result)` pass even when the result grows or shrinks incorrectly. If the result is deterministic, `assert result == {…}` (or exact set equality) catches both missing and extra items.
-- **Don't stop at non-emptiness when a specific result is expected.** `assert result` (or `assert len(result) > 0`) is fine for an existence-only contract, but it does not verify *which* result came back — assert the specific expected value when that is part of the behavior under test. And avoid checks that don't even establish non-emptiness: `assert result != frozenset()` is `True` for an empty `list`/`dict`, so it passes when nothing was returned.
+- **Don't stop at non-emptiness when a specific result is expected.** `assert result` fits an existence-only contract only; otherwise assert the specific expected value. `assert result != frozenset()` is `True` for an empty `list`/`dict`, so it does not even establish non-emptiness.
+- **Compare unordered results by key, and assert the row count.** Build a dict keyed by id on both sides instead of sorting both lists, and assert `len(result)` first: a dict comprehension silently collapses duplicate rows.
+- **Pin a known, out-of-scope bug with `xfail(strict=True)` on a test that asserts the correct behavior.** A test asserting the current wrong behavior locks the bug in and passes silently once it is fixed.
 - **Assert a positive count where the number matters.** A test that only checks "no failures" can pass while measuring zero of the thing it claims to test — e.g. if a workflow/name string changes so nothing is counted. Assert that the expected count is `> 0` (or the exact number) so a silently-zero run fails.
 - **Make the scenario actually hold.** A "missing row" test must not create the row; a "no second object" test must prove the count is one. Verify the setup produces the state under test. The fixture must also let each clause fail on its own: a secondary sort key is only exercised by cases that tie on the primary one, and a chunked read only covers the partial final chunk when the fixture size is not an exact multiple of the chunk constant — derive the size from that constant rather than hard-coding a round number.
+- **Cover branch-scoped operations from a user branch too.** Running the operation only on the default branch cannot show cross-branch leakage. Add the user-branch case and assert the other branch is untouched — after a branch-side removal the default branch still resolves its value; after a default-branch change a pre-existing branch still sees its own.
 - **Make removal assertions branch-attributable.** A "data is gone" check must read on the branch that held the data, and assert the data resolved *before* the operation as well as after — a read on the wrong branch raises the same not-found either way, so the assertion passes whether or not the code ran.
 - **Denial tests must verify nothing changed.** When asserting an operation is rejected, also reload the target and assert its state is unchanged (or that no row was created/deleted). Asserting only that an error was returned does not prove the write was actually blocked.
 - **When a result is reachable via more than one code path, assert an intermediate signal too.** If "the lookup was never attempted" and "the lookup ran and found nothing" converge on the same final value (e.g. both produce an empty filter), asserting only that final value can't tell a working implementation from a regressed one that silently skipped the lookup. Also assert what was queried or which branch ran — a signal only the intended path produces.

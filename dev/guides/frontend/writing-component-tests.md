@@ -312,6 +312,8 @@ describe("TaskStatus", () => {
 
 ## Test Isolation
 
+Isolation is each file's own job: do not register a global `setupFiles` hook in `vitest.config.ts` to reset state for everyone — a test that needs an initial condition sets it up and restores it in its own file, as below.
+
 If a test mutates shared global state — a Jotai atom in `store` (e.g. `nodeSchemasAtom`), `window.history`/query params, or a module-level mock reused across `test` blocks in the same file — restore it so later tests (in this file, or run in the same worker) don't inherit leftover state:
 
 ```tsx
@@ -408,6 +410,23 @@ describe("List Component", () => {
     expect(items).toEqual([]);
   });
 });
+```
+
+## The suite runs as a dev build
+
+Vitest serves the app through Vite in dev mode, so `import.meta.env.DEV` is `true` in every
+component test — including tests of a production build's behaviour. Any code branching on it takes
+the dev branch here and cannot be exercised the other way from a component test. E2E is the layer
+that runs a real build (the docker stack), so that is where the production branch is observable.
+
+Put policy that depends on the environment in a pure function under `domain/rules/` and unit-test
+its branches directly; leave the component test to prove the wiring. When a component test can
+only reach one branch, say which one and why in the test, and state the precondition rather than
+assuming it:
+
+```ts
+// Vitest serves through Vite in dev mode, so the dev branch is the only one reachable here.
+expect(systemPrefersDark()).toBe(false); // stated, so a passing assertion cannot be a coincidence
 ```
 
 ## Troubleshooting
