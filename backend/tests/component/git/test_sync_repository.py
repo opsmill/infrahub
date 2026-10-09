@@ -2,6 +2,7 @@ import logging
 import shutil
 from collections.abc import AsyncGenerator, Generator
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -40,7 +41,8 @@ from infrahub.git.sync import (
     raise_if_branches_failed,
 )
 from infrahub.git.tasks import report_failed_branches, sync_remote_repositories, sync_repository_from_origin
-from infrahub.git.writeback.store import build_intent_store
+from infrahub.git.writeback.models import RevertedDelivery
+from infrahub.git.writeback.store import WritebackIntentStore, build_intent_store
 from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
 from infrahub.workers.dependencies import build_message_bus, clear_singletons
@@ -770,6 +772,8 @@ class FailedTrunkCase:
     broadcast_fails: bool
 
 
+REVERTED_AT = datetime(2026, 10, 9, 9, 0, tzinfo=UTC)
+
 FAILED_TRUNK_CASES = [
     FailedTrunkCase(name="broadcast_sent", broadcast_fails=False),
     FailedTrunkCase(name="broadcast_fails", broadcast_fails=True),
@@ -914,6 +918,55 @@ class TestSynchronisationCycleFailures(TestInfrahubApp):
             db=db, id=node.id, kind=CoreRepositoryNode, branch=registry.default_branch, raise_on_error=True
         )
         assert recorded.sync_status.value == RepositorySyncStatus.ERROR_IMPORT.value
+
+    async def test_a_rewrite_of_the_trunk_that_discards_the_pushed_commit_records_a_reverted_push(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        name = "reverted-push-repo"
+        remote, node = await self._connect(db=db, tmp_path=tmp_path, name=name)
+        repo = await InfrahubRepository.init(
+            id=node.id,
+            name=name,
+            location=str(remote.directory),
+            client=client,
+            infrahub_branch_name=registry.default_branch,
+        )
+        pushed = repo.get_commit_value(branch_name="main", remote=False)
+        stored = await NodeManager.get_one(
+            db=db, id=node.id, kind=CoreRepositoryNode, branch=registry.default_branch, raise_on_error=True
+        )
+        stored.delivery_last_delivered_commit.value = pushed
+        await stored.save(db=db)
+        rewritten = remote.commit(branch_name="main", files={"data.txt": "trunk rewritten\n"}, amend=True)
+        state = WritebackIntentStore(
+            db=db,
+            lock_registry=lock.registry,
+            default_branch=await registry.get_branch(db=db, branch=registry.default_branch),
+            clock=lambda: REVERTED_AT,
+        )
+        syncer = RepositorySyncer(
+            lock_registry=lock.registry,
+            importer=RepositoryFileImporter(),
+            recorder=build_in_memory_recorder(),
+            retarget_markers=RetargetMarkers(cache=MemoryCache()),
+            state=state,
+        )
+
+        @flow(name="test-sync-a-trunk-that-discards-a-pushed-commit")
+        async def _run_sync() -> SyncOutcome:
+            return await syncer.sync(repo, graph_commits={registry.default_branch: pushed})
+
+        outcome = await _run_sync()
+
+        assert (outcome.report.imported_branches, outcome.failed) == ((registry.default_branch,), ())
+        assert (await state.read(repository_id=node.id)).reverted == RevertedDelivery(
+            delivered_commit=pushed, new_head=rewritten, detected_at=REVERTED_AT
+        )
 
     async def test_a_failed_rewrite_record_of_the_default_branch_leaves_its_sync_status_in_sync(
         self,
