@@ -24,6 +24,7 @@ SCHEMA_POOL_SHORTHAND_REFUSED = (
     f"start_range or end_range can't be updated on schema defined pools, {SCHEMA_POOL_EDIT_HINT}"
 )
 SCHEMA_POOL_RANGES_REFUSED = f"ranges can't be updated on schema defined pools, {SCHEMA_POOL_EDIT_HINT}"
+SCOPE_UPDATE_REFUSED = "allocation_scope can't be changed after the pool is created"
 
 
 def refuse_schema_pool(pool: Node, message: str) -> None:

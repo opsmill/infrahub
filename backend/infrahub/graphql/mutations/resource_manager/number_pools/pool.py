@@ -17,11 +17,13 @@ from infrahub.pools.number_pool_range_validation import (
 )
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.registration import get_branches_with_schema_number_pool
+from infrahub.pools.scope import SCOPE_FIELD, AllocationScope, AllocationScopeResolver, AllocationScopeValidator
 
 from ...main import DeleteResult, InfrahubMutation
 from .common import (
     SCHEMA_POOL_RANGES_REFUSED,
     SCHEMA_POOL_SHORTHAND_REFUSED,
+    SCOPE_UPDATE_REFUSED,
     pool_lock,
     range_bounds,
     refuse_schema_pool,
@@ -62,6 +64,7 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
     ) -> Any:
         graphql_context: GraphqlContext = info.context
         attribute = cls._resolve_target_attribute(data=data)
+        cls._resolve_scope(data=data, kind=data["node"].value, attribute_name=attribute.name)
         ranges_supplied = "ranges" in data.keys()
         shorthand = cls._parse_shorthand(data=data, attribute=attribute, ranges_supplied=ranges_supplied)
 
@@ -113,6 +116,59 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
         if attribute.kind != "Number":
             raise ValidationError(input_value="The selected attribute is not of the kind Number")
         return attribute
+
+    @classmethod
+    def _resolve_scope(cls, data: InputObjectType, kind: str, attribute_name: str) -> None:
+        """Replace the payload's allocation scope with its stored form, once the default branch's schema accepts it.
+
+        The default branch's schema is the reference whatever branch the mutation runs on, because the pool is shared
+        by every branch while the kind's fields differ between branches.
+
+        Raises:
+            ValidationError: When the scope is not a list of entries, an entry names no field of the kind, an element
+                cannot divide the pool, the tracked attribute is unique, or the default branch's schema does not
+                define the pool's kind.
+
+        """
+        scope_input = data.get(SCOPE_FIELD)
+        if not scope_input:
+            return
+        entries = scope_input.get("value")
+        if entries is None:
+            return
+        default_schema_branch = registry.schema.get_schema_branch(name=registry.default_branch)
+        scope = AllocationScopeResolver(schema_branch=default_schema_branch).resolve(kind=kind, entries=entries)
+        AllocationScopeValidator(schema_branch=default_schema_branch).validate(
+            kind=kind, tracked_attribute=attribute_name, scope=scope
+        )
+        scope_input["value"] = None if scope.is_empty else scope.to_stored()
+
+    @classmethod
+    def _refuse_scope_change(cls, data: InputObjectType, pool: Node) -> None:
+        """Refuse an allocation scope that differs from the stored one, and keep the stored value for one that matches.
+
+        A matching scope is accepted so that a pool re-sent whole, as an upsert does, still saves; the sent entries
+        match when they name, on the default branch's schema, the stored element ids in the stored order. The elements
+        are not checked again, because the scope is never set a second time.
+
+        Raises:
+            ValidationError: When the scope is not a list of entries, an entry names no field of the pool's kind, the
+                scope differs from the stored one, or the stored scope is not a list of `{id, name}` elements.
+
+        """
+        scope_input = data.get(SCOPE_FIELD)
+        if not scope_input or "value" not in scope_input:
+            return
+
+        stored_value = pool.get_attribute(SCOPE_FIELD).value
+        stored_scope = AllocationScope.from_stored(value=stored_value, pool=str(pool.get_attribute("name").value))
+        resolver = AllocationScopeResolver(
+            schema_branch=registry.schema.get_schema_branch(name=registry.default_branch)
+        )
+        sent_scope = resolver.resolve(kind=str(pool.get_attribute("node").value), entries=scope_input["value"])
+        if [element.id for element in sent_scope.elements] != [element.id for element in stored_scope.elements]:
+            raise ValidationError(input_value=SCOPE_UPDATE_REFUSED)
+        scope_input["value"] = stored_value
 
     @classmethod
     def _parse_shorthand(
@@ -191,6 +247,7 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
         obj: Node,
         skip_uniqueness_check: bool = False,
     ) -> tuple[Node, Self]:
+        cls._refuse_scope_change(data=data, pool=obj)
         shorthand_supplied = "start_range" in data.keys() or "end_range" in data.keys()
         ranges_supplied = "ranges" in data.keys()
         if not shorthand_supplied and not ranges_supplied:
