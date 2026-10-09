@@ -11,6 +11,9 @@ import { generatePermission } from "../../../../../../tests/fake/permission";
 import { generateAttributeSchema, generateNodeSchema } from "../../../../../../tests/fake/schema";
 
 vi.mock("@/entities/repository/domain/use-cases/get-repository-branch-status");
+vi.mock("@/entities/repository/ui/repository-delivery-section", () => ({
+  RepositoryDeliverySection: () => <p>Push to remote</p>,
+}));
 
 const branchStatusMock = vi.mocked(getRepositoryBranchStatus);
 
@@ -105,5 +108,32 @@ describe("ObjectDetails repository kind gate", () => {
     await expect
       .element(component.getByRole("region", { name: "On this branch test-branch" }))
       .toBeVisible();
+  });
+});
+
+describe("ObjectDetails push section", () => {
+  it("shows the push section on a repository", async () => {
+    const component = await render(
+      <ObjectDetails
+        objectSchema={repositorySchema}
+        objectData={{ ...objectData, __typename: "CoreRepository" }}
+        permission={permission}
+      />
+    );
+
+    await expect.element(component.getByText("Push to remote")).toBeVisible();
+  });
+
+  it("never shows the push section on a read-only repository", async () => {
+    const component = await render(
+      <ObjectDetails
+        objectSchema={readOnlyRepositorySchema}
+        objectData={{ ...objectData, __typename: "CoreReadOnlyRepository" }}
+        permission={permission}
+      />
+    );
+
+    await expect.element(component.getByRole("region", { name: "Details" })).toBeVisible();
+    await expect.element(component.getByText("Push to remote")).not.toBeInTheDocument();
   });
 });
