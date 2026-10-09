@@ -1,5 +1,4 @@
-import { CombinedError } from "@urql/core";
-
+import { isGraphQLRequestError } from "@/shared/api/graphql/client";
 import type { BranchContextParams } from "@/shared/api/types";
 
 import { createNumberPoolRangeFromApi } from "@/entities/resource-manager/api/create-number-pool-range-from-api";
@@ -24,7 +23,7 @@ export type ApplyNumberPoolRangeChanges = (
 ) => Promise<ApplyNumberPoolRangeChangesResult>;
 
 function toErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.cause instanceof CombinedError) {
+  if (isGraphQLRequestError(error)) {
     return error.message;
   }
 
@@ -42,7 +41,7 @@ export const applyNumberPoolRangeChanges: ApplyNumberPoolRangeChanges = async ({
 }) => {
   const calls: Array<() => Promise<unknown>> = [
     ...changes.deletes.map((id) => () => deleteNumberPoolRangeFromApi({ branchName, id })),
-    ...[...changes.smaller, ...changes.larger].map(
+    ...[...changes.shrinks, ...changes.grows].map(
       (range) => () => updateNumberPoolRangeFromApi({ branchName, range })
     ),
     ...changes.creates.map(

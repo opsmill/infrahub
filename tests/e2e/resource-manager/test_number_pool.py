@@ -127,7 +127,7 @@ class TestNumberPool:
         await expect(admin_page.get_by_role("cell", name="1", exact=True)).to_be_visible()
         await expect(admin_page.get_by_role("cell", name="10", exact=True)).to_be_visible()
 
-    async def test_update_form_should_not_include_node_and_attribute_selects(
+    async def test_edit_form_shows_node_and_attribute_as_read_only(
         self, admin_page: Page, number_pool_branch: str, generic_pool: str
     ) -> None:
         await admin_page.goto(f"/resource-manager?branch={number_pool_branch}")

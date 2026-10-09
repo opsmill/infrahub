@@ -4,7 +4,7 @@ import { Header, ListBoxSection } from "react-aria-components";
 
 import type { ScopeCandidate } from "@/entities/resource-manager/domain/model/scope-candidate";
 
-interface CandidatePickerProps {
+interface ScopeCandidatePickerProps {
   candidates: ScopeCandidate[];
   onAdd: (name: string) => void;
   isOpen: boolean;
@@ -12,13 +12,13 @@ interface CandidatePickerProps {
   trigger: ReactNode;
 }
 
-export function CandidatePicker({
+export function ScopeCandidatePicker({
   candidates,
   onAdd,
   isOpen,
   onOpenChange,
   trigger,
-}: CandidatePickerProps) {
+}: ScopeCandidatePickerProps) {
   const sections = [
     {
       id: "relationship",

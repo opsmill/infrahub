@@ -19,8 +19,11 @@ Frontend types only. Server entities are defined in `backend/infrahub/core/schem
 - `StoredRange`: `{ id: string; start: number; end: number; weight: number | null }`.
 - `RangeUpdate`: `{ id: string; start: number; end: number; weight: number | null }`.
 - `RangeInput`: `{ start: number; end: number; weight: number | null }`.
-- `RangeChanges`: `{ deletes: string[]; smaller: RangeUpdate[]; larger: RangeUpdate[]; creates: RangeInput[] }`.
+- `RangeChanges`: `{ deletes: string[]; shrinks: RangeUpdate[]; grows: RangeUpdate[]; creates: RangeInput[] }`.
 - `RangeRowErrors`: `{ start?: string; end?: string; weight?: string; row?: string }`.
+
+## Domain types (`domain/model/number-pool.ts`)
+
 - `NumberPoolForEditing`: `{ id; name; description; node; nodeAttribute; allocationScope: string[]; poolType: "User" | "Schema"; ranges: StoredRange[] }`.
 
 ## Domain types (`domain/model/scope-candidate.ts`)
@@ -48,11 +51,11 @@ Weight descending, `null` weight last, then start ascending. Applied only when t
 ### `diffRanges(stored, rows) → RangeChanges` (FR-008)
 
 - A stored range whose id is not on any row: delete.
-- A row with `rangeId` whose values differ from the stored range: update; **smaller** when `newStart >= oldStart && newEnd <= oldEnd` (includes weight-only changes), otherwise **larger**.
+- A row with `rangeId` whose values differ from the stored range: update; **shrinks** when `newStart >= oldStart && newEnd <= oldEnd` (includes weight-only changes), otherwise **grows**.
 - A row without `rangeId`: create.
 - Unchanged rows produce nothing. Empty weight becomes `null`.
 
-### `matchRowsToStored(rows, stored) → RangeRow[]` (FR-009, FR-015)
+### `linkRowsToStoredRanges(rows, stored) → RangeRow[]` (FR-009, FR-015)
 
 After a refusal: a row without `rangeId` whose bounds equal a stored range not already linked gets that range's id. All other row values stay as typed.
 

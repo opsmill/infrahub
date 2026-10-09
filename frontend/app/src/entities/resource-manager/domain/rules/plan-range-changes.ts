@@ -48,7 +48,7 @@ function overlaps(a: RangeInput, b: RangeInput): boolean {
  * Orders updates so that one is sent after every other update whose old bounds it takes, because the
  * backend checks each call against the stored ranges; updates that take each other's bounds keep their order.
  */
-function orderLargerUpdates(
+function orderGrowingUpdates(
   updates: RangeUpdate[],
   storedById: Map<string, StoredRange>
 ): RangeUpdate[] {
@@ -65,10 +65,7 @@ function orderLargerUpdates(
   return ordered;
 }
 
-/**
- * Expects rows without validation errors. Deletes only the known ranges that no row links to, so a range
- * added elsewhere after the rows were loaded is kept.
- */
+/** Deletes only the known ranges that no row links to, so a range added elsewhere after the rows were loaded is kept. */
 export function diffRanges(
   stored: StoredRange[],
   rows: RangeRow[],
@@ -80,8 +77,8 @@ export function diffRanges(
     deletes: stored
       .filter((range) => knownRangeIds.has(range.id) && !linkedIds.has(range.id))
       .map((range) => range.id),
-    smaller: [],
-    larger: [],
+    shrinks: [],
+    grows: [],
     creates: [],
   };
 
@@ -102,13 +99,13 @@ export function diffRanges(
 
     const update = { id: previous.id, ...input };
     if (input.start >= previous.start && input.end <= previous.end) {
-      changes.smaller.push(update);
+      changes.shrinks.push(update);
     } else {
-      changes.larger.push(update);
+      changes.grows.push(update);
     }
   }
 
-  changes.larger = orderLargerUpdates(changes.larger, storedById);
+  changes.grows = orderGrowingUpdates(changes.grows, storedById);
   return changes;
 }
 
@@ -116,7 +113,7 @@ export function getLinkedRangeIds(rows: RangeRow[]): string[] {
   return rows.flatMap((row) => (row.rangeId ? [row.rangeId] : []));
 }
 
-export function matchRowsToStored(rows: RangeRow[], stored: StoredRange[]): RangeRow[] {
+export function linkRowsToStoredRanges(rows: RangeRow[], stored: StoredRange[]): RangeRow[] {
   const linkedIds = new Set(getLinkedRangeIds(rows));
 
   return rows.map((row) => {

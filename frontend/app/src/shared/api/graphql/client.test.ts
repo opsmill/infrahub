@@ -12,7 +12,7 @@ import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/entities/authentication/a
 import { __navigation } from "@/entities/authentication/domain/use-cases/redirect-to-login";
 
 import { shedResponse } from "../../../../tests/fake/shed-response";
-import { graphqlClient } from "./client";
+import { graphqlClient, isGraphQLRequestError } from "./client";
 import { handleGraphQLErrors } from "./error-handling";
 
 function combinedError(code: string, message = "boom") {
@@ -417,5 +417,19 @@ describe("graphqlClient — token refresh integration", () => {
 
     // THEN
     await expect(mutating).rejects.toThrow("Cannot delete Device 'x'.");
+  });
+});
+
+describe("isGraphQLRequestError", () => {
+  it("accepts an error thrown for a GraphQL error response", () => {
+    expect(isGraphQLRequestError(new Error("boom", { cause: combinedError("SOME_CODE") }))).toBe(
+      true
+    );
+  });
+
+  it("rejects an error that has no GraphQL cause", () => {
+    expect(isGraphQLRequestError(new Error("boom"))).toBe(false);
+    expect(isGraphQLRequestError(new Error("boom", { cause: new Error("network") }))).toBe(false);
+    expect(isGraphQLRequestError("boom")).toBe(false);
   });
 });

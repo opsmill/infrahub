@@ -14,11 +14,11 @@ import {
   NUMBER_POOL_NODE_FIELD,
 } from "@/entities/resource-manager/domain/model/pool";
 import { getScopeCandidates } from "@/entities/resource-manager/domain/rules/get-scope-candidates";
-import { CandidatePicker } from "@/entities/resource-manager/ui/number-pool-form/scope-candidate-picker";
+import { ScopeCandidatePicker } from "@/entities/resource-manager/ui/number-pool-form/scope-candidate-picker";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
-const EMPTY_TOOLTIP =
+const UNSCOPED_TOOLTIP =
   "Every object shares one sequence. Click to give each related object or value its own sequence.";
 
 function EmptyScopeButton({ isDisabled }: { isDisabled?: boolean }) {
@@ -95,13 +95,13 @@ function ScopeInput({ schema, nodeAttribute, scope, onChange }: ScopeInputProps)
 
   if (scope.length === 0) {
     return (
-      <CandidatePicker
+      <ScopeCandidatePicker
         candidates={remaining}
         onAdd={add}
         isOpen={isOpen}
         onOpenChange={setIsOpen}
         trigger={
-          <Tooltip message={EMPTY_TOOLTIP}>
+          <Tooltip message={UNSCOPED_TOOLTIP}>
             <EmptyScopeButton />
           </Tooltip>
         }
@@ -129,7 +129,7 @@ function ScopeInput({ schema, nodeAttribute, scope, onChange }: ScopeInputProps)
           </Badge>
         </Fragment>
       ))}
-      <CandidatePicker
+      <ScopeCandidatePicker
         candidates={remaining}
         onAdd={add}
         isOpen={isOpen}

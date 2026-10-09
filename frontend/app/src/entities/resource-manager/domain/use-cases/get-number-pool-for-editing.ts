@@ -3,7 +3,7 @@ import {
   getNumberPoolForEditingFromApi,
 } from "@/entities/resource-manager/api/get-number-pool-for-editing-from-api";
 import { toNumberPoolForEditing } from "@/entities/resource-manager/api/number-pool.mappers";
-import type { NumberPoolForEditing } from "@/entities/resource-manager/domain/model/number-pool-range";
+import type { NumberPoolForEditing } from "@/entities/resource-manager/domain/model/number-pool";
 
 export type GetNumberPoolForEditingParams = GetNumberPoolForEditingFromApiParams;
 

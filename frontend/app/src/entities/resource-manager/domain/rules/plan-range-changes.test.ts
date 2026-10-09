@@ -8,7 +8,7 @@ import type {
 import {
   diffRanges,
   hasRangeChanges,
-  matchRowsToStored,
+  linkRowsToStoredRanges,
   sortStoredRanges,
   toRangeRows,
 } from "./plan-range-changes";
@@ -100,7 +100,7 @@ describe("diffRanges", () => {
     const changes = diffRanges(ranges, rows, idsOf(ranges));
 
     // THEN
-    expect(changes).toEqual({ deletes: [], smaller: [], larger: [], creates: [] });
+    expect(changes).toEqual({ deletes: [], shrinks: [], grows: [], creates: [] });
   });
 
   it("deletes stored ranges that are no longer on a row", () => {
@@ -112,7 +112,7 @@ describe("diffRanges", () => {
     const changes = diffRanges(ranges, rows, idsOf(ranges));
 
     // THEN
-    expect(changes).toEqual({ deletes: ["b"], smaller: [], larger: [], creates: [] });
+    expect(changes).toEqual({ deletes: ["b"], shrinks: [], grows: [], creates: [] });
   });
 
   it("keeps a stored range that is not among the known ranges", () => {
@@ -124,7 +124,7 @@ describe("diffRanges", () => {
     const changes = diffRanges(ranges, rows, new Set(["a"]));
 
     // THEN
-    expect(changes).toEqual({ deletes: [], smaller: [], larger: [], creates: [] });
+    expect(changes).toEqual({ deletes: [], shrinks: [], grows: [], creates: [] });
   });
 
   it("creates rows without a stored range, with an empty weight as null", () => {
@@ -137,8 +137,8 @@ describe("diffRanges", () => {
     // THEN
     expect(changes).toEqual({
       deletes: [],
-      smaller: [],
-      larger: [],
+      shrinks: [],
+      grows: [],
       creates: [
         { start: 1n, end: 10n, weight: null },
         { start: 20n, end: 30n, weight: 3 },
@@ -146,7 +146,7 @@ describe("diffRanges", () => {
     });
   });
 
-  it("treats a weight-only change as smaller", () => {
+  it("treats a weight-only change as a shrink", () => {
     // GIVEN
     const ranges = [stored("a", 1, 10, 5)];
     const rows = [row("1", "10", "", "a")];
@@ -157,13 +157,13 @@ describe("diffRanges", () => {
     // THEN
     expect(changes).toEqual({
       deletes: [],
-      smaller: [{ id: "a", start: 1n, end: 10n, weight: null }],
-      larger: [],
+      shrinks: [{ id: "a", start: 1n, end: 10n, weight: null }],
+      grows: [],
       creates: [],
     });
   });
 
-  it("splits 1–10 and 11–20 becoming 1–15 and 16–20 into larger and smaller", () => {
+  it("splits 1–10 and 11–20 becoming 1–15 and 16–20 into a grow and a shrink", () => {
     // GIVEN
     const ranges = [stored("a", 1, 10), stored("b", 11, 20)];
     const rows = [row("1", "15", "", "a"), row("16", "20", "", "b")];
@@ -174,13 +174,13 @@ describe("diffRanges", () => {
     // THEN
     expect(changes).toEqual({
       deletes: [],
-      smaller: [{ id: "b", start: 16n, end: 20n, weight: null }],
-      larger: [{ id: "a", start: 1n, end: 15n, weight: null }],
+      shrinks: [{ id: "b", start: 16n, end: 20n, weight: null }],
+      grows: [{ id: "a", start: 1n, end: 15n, weight: null }],
       creates: [],
     });
   });
 
-  it("treats a range moved outside its old bounds as larger", () => {
+  it("treats a range moved outside its old bounds as a grow", () => {
     // GIVEN
     const ranges = [stored("a", 10, 20, 2)];
     const rows = [row("5", "15", "2", "a")];
@@ -189,10 +189,10 @@ describe("diffRanges", () => {
     const changes = diffRanges(ranges, rows, idsOf(ranges));
 
     // THEN
-    expect(changes.larger).toEqual([{ id: "a", start: 5n, end: 15n, weight: 2 }]);
+    expect(changes.grows).toEqual([{ id: "a", start: 5n, end: 15n, weight: 2 }]);
   });
 
-  it("sends a larger update after the larger update that frees its new bounds", () => {
+  it("sends a growing update after the growing update that frees its new bounds", () => {
     // GIVEN
     const ranges = [stored("a", 1, 10), stored("b", 11, 20)];
     const rows = [row("11", "20", "", "a"), row("21", "30", "", "b")];
@@ -201,13 +201,13 @@ describe("diffRanges", () => {
     const changes = diffRanges(ranges, rows, idsOf(ranges));
 
     // THEN
-    expect(changes.larger).toEqual([
+    expect(changes.grows).toEqual([
       { id: "b", start: 21n, end: 30n, weight: null },
       { id: "a", start: 11n, end: 20n, weight: null },
     ]);
   });
 
-  it("keeps the row order of larger updates that free each other's bounds", () => {
+  it("keeps the row order of growing updates that free each other's bounds", () => {
     // GIVEN
     const ranges = [stored("a", 1, 10), stored("b", 11, 20)];
     const rows = [row("11", "20", "", "a"), row("1", "10", "", "b")];
@@ -216,7 +216,7 @@ describe("diffRanges", () => {
     const changes = diffRanges(ranges, rows, idsOf(ranges));
 
     // THEN
-    expect(changes.larger.map((update) => update.id)).toEqual(["a", "b"]);
+    expect(changes.grows.map((update) => update.id)).toEqual(["a", "b"]);
   });
 
   it("creates a row whose stored range no longer exists", () => {
@@ -251,10 +251,10 @@ describe("diffRanges", () => {
     const changes = diffRanges(ranges, rows, idsOf(ranges));
 
     // THEN
-    expect(changes.larger).toEqual([{ id: "a", start: 1n, end: 9007199254740993n, weight: null }]);
+    expect(changes.grows).toEqual([{ id: "a", start: 1n, end: 9007199254740993n, weight: null }]);
   });
 
-  it("groups deletes, smaller, larger and creates together", () => {
+  it("groups deletes, shrinks, grows and creates together", () => {
     // GIVEN
     const ranges = [stored("a", 1, 100), stored("b", 200, 300), stored("c", 400, 500)];
     const rows = [row("10", "90", "", "a"), row("150", "300", "", "b"), row("600", "700")];
@@ -265,21 +265,21 @@ describe("diffRanges", () => {
     // THEN
     expect(changes).toEqual({
       deletes: ["c"],
-      smaller: [{ id: "a", start: 10n, end: 90n, weight: null }],
-      larger: [{ id: "b", start: 150n, end: 300n, weight: null }],
+      shrinks: [{ id: "a", start: 10n, end: 90n, weight: null }],
+      grows: [{ id: "b", start: 150n, end: 300n, weight: null }],
       creates: [{ start: 600n, end: 700n, weight: null }],
     });
   });
 });
 
-describe("matchRowsToStored", () => {
+describe("linkRowsToStoredRanges", () => {
   it("links unlinked rows to stored ranges with equal bounds", () => {
     // GIVEN
     const ranges = [stored("a", 1, 10, 4)];
     const rows = [row("1", "10", "7")];
 
     // WHEN
-    const matched = matchRowsToStored(rows, ranges);
+    const matched = linkRowsToStoredRanges(rows, ranges);
 
     // THEN
     expect(matched).toEqual([row("1", "10", "7", "a")]);
@@ -291,7 +291,7 @@ describe("matchRowsToStored", () => {
     const rows = [row("1", "9007199254740993")];
 
     // WHEN
-    const matched = matchRowsToStored(rows, ranges);
+    const matched = linkRowsToStoredRanges(rows, ranges);
 
     // THEN
     expect(matched).toEqual([row("1", "9007199254740993", "", "b")]);
@@ -303,7 +303,7 @@ describe("matchRowsToStored", () => {
     const rows = [row("1", "10", "", "a"), row("1", "10")];
 
     // WHEN
-    const matched = matchRowsToStored(rows, ranges);
+    const matched = linkRowsToStoredRanges(rows, ranges);
 
     // THEN
     expect(matched).toEqual([row("1", "10", "", "a"), row("1", "10")]);
@@ -315,7 +315,7 @@ describe("matchRowsToStored", () => {
     const rows = [row("1", "10"), row("1", "10")];
 
     // WHEN
-    const matched = matchRowsToStored(rows, ranges);
+    const matched = linkRowsToStoredRanges(rows, ranges);
 
     // THEN
     expect(matched).toEqual([row("1", "10", "", "a"), row("1", "10")]);
@@ -327,7 +327,7 @@ describe("matchRowsToStored", () => {
     const rows = [row("1", "11"), row("abc", "")];
 
     // WHEN
-    const matched = matchRowsToStored(rows, ranges);
+    const matched = linkRowsToStoredRanges(rows, ranges);
 
     // THEN
     expect(matched).toEqual(rows);

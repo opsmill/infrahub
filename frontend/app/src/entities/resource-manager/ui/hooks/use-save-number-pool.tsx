@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { createElement, useState } from "react";
+import { useState } from "react";
 import type { FieldValues } from "react-hook-form";
 import { toast } from "react-toastify";
 
@@ -12,21 +12,21 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
+import type { NumberPoolForEditing } from "@/entities/resource-manager/domain/model/number-pool";
 import type {
-  NumberPoolForEditing,
   RangeRow,
   StoredRange,
 } from "@/entities/resource-manager/domain/model/number-pool-range";
 import {
   NUMBER_POOL_ALLOCATION_SCOPE_FIELD,
   NUMBER_POOL_KIND,
-  RANGES_FIELD,
+  NUMBER_POOL_RANGES_FIELD,
 } from "@/entities/resource-manager/domain/model/pool";
 import {
   diffRanges,
   getLinkedRangeIds,
   hasRangeChanges,
-  matchRowsToStored,
+  linkRowsToStoredRanges,
 } from "@/entities/resource-manager/domain/rules/plan-range-changes";
 import { useApplyNumberPoolRangeChangesMutation } from "@/entities/resource-manager/ui/queries/apply-number-pool-range-changes.mutation";
 import { getNumberPoolForEditingQueryOptions } from "@/entities/resource-manager/ui/queries/get-number-pool-for-editing.query";
@@ -71,14 +71,14 @@ export function useSaveNumberPool({ initialPool, onSuccess }: UseSaveNumberPoolP
     rows: RangeRow[],
     successMessage: string
   ): Promise<RangeRow[] | null> {
-    const changes = diffRanges(stored, matchRowsToStored(rows, stored), knownRangeIds);
+    const changes = diffRanges(stored, linkRowsToStoredRanges(rows, stored), knownRangeIds);
     const { errorMessage } =
       !isSchemaPool && hasRangeChanges(changes)
         ? await applyRangeChanges.mutateAsync({ poolId: pool.id, changes })
         : { errorMessage: null };
 
     if (errorMessage === null) {
-      toast(createElement(Alert, { type: ALERT_TYPES.SUCCESS, message: successMessage }), {
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={successMessage} />, {
         toastId: "alert-success-number-pool-save",
       });
       await onSuccess?.(pool);
@@ -88,14 +88,14 @@ export function useSaveNumberPool({ initialPool, onSuccess }: UseSaveNumberPoolP
     setSaveError(errorMessage);
     // Rows left unlinked here are linked on the next save, which reads the stored ranges again.
     const refreshed = await fetchStoredPool(pool.id).catch(() => null);
-    const keptRows = refreshed ? matchRowsToStored(rows, refreshed.ranges) : rows;
+    const keptRows = refreshed ? linkRowsToStoredRanges(rows, refreshed.ranges) : rows;
     setKnownRangeIds((known) => new Set([...known, ...getLinkedRangeIds(keptRows)]));
     return keptRows;
   }
 
   async function createPool(data: FieldValues): Promise<RangeRow[] | null> {
     const {
-      [RANGES_FIELD]: rows,
+      [NUMBER_POOL_RANGES_FIELD]: rows,
       [NUMBER_POOL_ALLOCATION_SCOPE_FIELD]: scope = [],
       ...poolFields
     } = data;
@@ -118,7 +118,7 @@ export function useSaveNumberPool({ initialPool, onSuccess }: UseSaveNumberPoolP
   }
 
   async function updatePool(id: string, data: FieldValues): Promise<RangeRow[] | null> {
-    const { [RANGES_FIELD]: rows, name, description } = data;
+    const { [NUMBER_POOL_RANGES_FIELD]: rows, name, description } = data;
     const stored = await fetchStoredPool(id).catch(() => null);
     if (!stored) {
       setSaveError(POOL_UNREADABLE_MESSAGE);
@@ -152,7 +152,7 @@ export function useSaveNumberPool({ initialPool, onSuccess }: UseSaveNumberPoolP
   async function save(data: FieldValues): Promise<FormSubmitResult | undefined> {
     setSaveError(null);
     const keptRows = poolId ? await updatePool(poolId, data) : await createPool(data);
-    return keptRows ? { resetTo: { ...data, [RANGES_FIELD]: keptRows } } : undefined;
+    return keptRows ? { resetTo: { ...data, [NUMBER_POOL_RANGES_FIELD]: keptRows } } : undefined;
   }
 
   return { poolId, saveError, save };

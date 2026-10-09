@@ -1,8 +1,6 @@
 import type { NumberPoolForEditingNode } from "@/entities/resource-manager/api/get-number-pool-for-editing-from-api";
-import type {
-  NumberPoolForEditing,
-  StoredRange,
-} from "@/entities/resource-manager/domain/model/number-pool-range";
+import type { NumberPoolForEditing } from "@/entities/resource-manager/domain/model/number-pool";
+import type { StoredRange } from "@/entities/resource-manager/domain/model/number-pool-range";
 
 type RangeNode = NonNullable<NumberPoolForEditingNode["ranges"]["edges"][number]["node"]>;
 

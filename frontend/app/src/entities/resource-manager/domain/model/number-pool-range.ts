@@ -22,8 +22,8 @@ export type RangeInput = Omit<StoredRange, "id">;
 
 export interface RangeChanges {
   deletes: string[];
-  smaller: RangeUpdate[];
-  larger: RangeUpdate[];
+  shrinks: RangeUpdate[];
+  grows: RangeUpdate[];
   creates: RangeInput[];
 }
 
@@ -32,15 +32,4 @@ export interface RangeRowErrors {
   end?: string;
   weight?: string;
   row?: string;
-}
-
-export interface NumberPoolForEditing {
-  id: string;
-  name: string;
-  description: string;
-  node: string;
-  nodeAttribute: string;
-  allocationScope: string[];
-  poolType: "User" | "Schema";
-  ranges: StoredRange[];
 }

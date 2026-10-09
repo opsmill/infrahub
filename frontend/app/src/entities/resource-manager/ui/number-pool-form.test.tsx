@@ -5,7 +5,7 @@ import { store } from "@/shared/stores";
 
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
-import type { NumberPoolForEditing } from "@/entities/resource-manager/domain/model/number-pool-range";
+import type { NumberPoolForEditing } from "@/entities/resource-manager/domain/model/number-pool";
 import { getNumberPoolForEditing } from "@/entities/resource-manager/domain/use-cases/get-number-pool-for-editing";
 import { NumberPoolForm } from "@/entities/resource-manager/ui/number-pool-form";
 import { useApplyNumberPoolRangeChangesMutation } from "@/entities/resource-manager/ui/queries/apply-number-pool-range-changes.mutation";
@@ -149,8 +149,8 @@ describe("NumberPoolForm", () => {
       poolId: "pool-1",
       changes: {
         deletes: [],
-        smaller: [],
-        larger: [],
+        shrinks: [],
+        grows: [],
         creates: [
           { start: 100n, end: 199n, weight: 10 },
           { start: 300n, end: 399n, weight: null },
@@ -284,8 +284,8 @@ describe("NumberPoolForm", () => {
       poolId: "pool-1",
       changes: {
         deletes: [],
-        smaller: [],
-        larger: [],
+        shrinks: [],
+        grows: [],
         creates: [{ start: 300n, end: 399n, weight: null }],
       },
     });
@@ -350,8 +350,8 @@ describe("NumberPoolForm", () => {
       poolId: "pool-1",
       changes: {
         deletes: [],
-        smaller: [],
-        larger: [],
+        shrinks: [],
+        grows: [],
         creates: [{ start: 300n, end: 399n, weight: null }],
       },
     });
@@ -575,7 +575,7 @@ describe("NumberPoolForm", () => {
       expect(applyRangeChanges).not.toHaveBeenCalled();
     });
 
-    test("sends only the changed ranges, grouped as removals, smaller, larger and additions", async () => {
+    test("sends only the changed ranges, grouped as removals, shrinks, grows and additions", async () => {
       // GIVEN
       const component = await renderEditForm();
       const ends = component.getByRole("textbox", { name: "End" });
@@ -596,8 +596,8 @@ describe("NumberPoolForm", () => {
         poolId: "pool-1",
         changes: {
           deletes: ["range-3"],
-          smaller: [{ id: "range-1", start: 100n, end: 150n, weight: 10 }],
-          larger: [{ id: "range-2", start: 300n, end: 450n, weight: null }],
+          shrinks: [{ id: "range-1", start: 100n, end: 150n, weight: 10 }],
+          grows: [{ id: "range-2", start: 300n, end: 450n, weight: null }],
           creates: [{ start: 800n, end: 899n, weight: null }],
         },
       });
@@ -622,8 +622,8 @@ describe("NumberPoolForm", () => {
         poolId: "pool-1",
         changes: {
           deletes: [],
-          smaller: [{ id: "range-1", start: 100n, end: 199n, weight: 10 }],
-          larger: [],
+          shrinks: [{ id: "range-1", start: 100n, end: 199n, weight: 10 }],
+          grows: [],
           creates: [],
         },
       });
@@ -693,8 +693,8 @@ describe("NumberPoolForm", () => {
         poolId: "pool-1",
         changes: {
           deletes: [],
-          smaller: [],
-          larger: [],
+          shrinks: [],
+          grows: [],
           creates: [{ start: 800n, end: 899n, weight: null }],
         },
       });
@@ -711,7 +711,7 @@ describe("NumberPoolForm", () => {
       await expect.element(component.getByText(RANGE_MISSING)).toBeVisible();
       expect(applyRangeChanges).toHaveBeenCalledWith({
         poolId: "pool-1",
-        changes: { deletes: ["range-3"], smaller: [], larger: [], creates: [] },
+        changes: { deletes: ["range-3"], shrinks: [], grows: [], creates: [] },
       });
     });
 

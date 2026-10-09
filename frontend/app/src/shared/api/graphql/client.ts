@@ -1,7 +1,7 @@
 import {
   type AnyVariables,
   Client,
-  type CombinedError,
+  CombinedError,
   type DocumentInput,
   fetchExchange,
   formatDocument,
@@ -75,6 +75,10 @@ function createGraphqlClient(branch?: string | null, date?: Date | null): Client
     },
     exchanges: [addTypenameExchange, authenticationExchange, fetchExchange],
   });
+}
+
+export function isGraphQLRequestError(error: unknown): error is Error & { cause: CombinedError } {
+  return error instanceof Error && error.cause instanceof CombinedError;
 }
 
 // Map urql result to the preserved `{ data, errors }` shape and run error routing.

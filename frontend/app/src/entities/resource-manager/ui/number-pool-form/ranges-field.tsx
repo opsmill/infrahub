@@ -14,7 +14,7 @@ import {
   type RangeRow,
   type StoredRange,
 } from "@/entities/resource-manager/domain/model/number-pool-range";
-import { RANGES_FIELD } from "@/entities/resource-manager/domain/model/pool";
+import { NUMBER_POOL_RANGES_FIELD } from "@/entities/resource-manager/domain/model/pool";
 import { sortStoredRanges } from "@/entities/resource-manager/domain/rules/plan-range-changes";
 import {
   formatRange,
@@ -24,8 +24,8 @@ import {
 } from "@/entities/resource-manager/domain/rules/validate-range-rows";
 
 type RangeKey = "start" | "end" | "weight";
-type RangeFieldName = `${typeof RANGES_FIELD}.${number}.${RangeKey}`;
-type RangesFormValues = { [RANGES_FIELD]: RangeRow[] };
+type RangeFieldName = `${typeof NUMBER_POOL_RANGES_FIELD}.${number}.${RangeKey}`;
+type RangesFormValues = { [NUMBER_POOL_RANGES_FIELD]: RangeRow[] };
 
 const WEIGHT_ORDER_NOTE =
   "The highest weight is used first. An empty weight counts as 0, and equal weights start with the lowest range.";
@@ -51,20 +51,23 @@ interface RangesFieldProps {
 export function RangesField({ limits }: RangesFieldProps) {
   const { control, register, getValues, getFieldState, trigger } =
     useFormContext<RangesFormValues>();
-  const { fields, append, remove } = useFieldArray({ control, name: RANGES_FIELD });
-  const rows = useWatch({ control, name: RANGES_FIELD }) ?? [];
-  const formState = useFormState({ control, name: RANGES_FIELD });
+  const { fields, append, remove } = useFieldArray({ control, name: NUMBER_POOL_RANGES_FIELD });
+  const rows = useWatch({ control, name: NUMBER_POOL_RANGES_FIELD }) ?? [];
+  const formState = useFormState({ control, name: NUMBER_POOL_RANGES_FIELD });
   const [isRemovalPending, setIsRemovalPending] = useState(false);
 
   function revalidate(changedField?: RangeFieldName) {
-    const current = getValues(RANGES_FIELD);
-    const overlapping = validateRangeRows(current);
+    const current = getValues(NUMBER_POOL_RANGES_FIELD);
+    const rowErrors = validateRangeRows(current);
     const fieldNames = current.flatMap((_, index) =>
-      RANGE_KEYS.map((key) => ({ key, name: `${RANGES_FIELD}.${index}.${key}` as const })).filter(
+      RANGE_KEYS.map((key) => ({
+        key,
+        name: `${NUMBER_POOL_RANGES_FIELD}.${index}.${key}` as const,
+      })).filter(
         ({ key, name }) =>
           name === changedField ||
           getFieldState(name).invalid ||
-          (key !== "weight" && !!overlapping[index]?.row)
+          (key !== "weight" && !!rowErrors[index]?.row)
       )
     );
     trigger(fieldNames.map(({ name }) => name));
@@ -95,7 +98,8 @@ export function RangesField({ limits }: RangesFieldProps) {
       {fields.map((field, index) => {
         // RHF mutates its errors object in place, so errors are read through the per-render form state to stay fresh under the React Compiler.
         const fieldErrors = RANGE_KEYS.map(
-          (key) => getFieldState(`${RANGES_FIELD}.${index}.${key}`, formState).error?.message
+          (key) =>
+            getFieldState(`${NUMBER_POOL_RANGES_FIELD}.${index}.${key}`, formState).error?.message
         );
         const message = fieldErrors.find(Boolean);
         const clipHint = getRangeClipHint(rows[index] ?? field, limits);
@@ -105,7 +109,7 @@ export function RangesField({ limits }: RangesFieldProps) {
           <Col key={field.id} className="gap-1">
             <Row>
               {RANGE_KEYS.map((key, keyIndex) => {
-                const name: RangeFieldName = `${RANGES_FIELD}.${index}.${key}`;
+                const name: RangeFieldName = `${NUMBER_POOL_RANGES_FIELD}.${index}.${key}`;
                 const hasError = !!fieldErrors[keyIndex];
 
                 return (
@@ -122,7 +126,8 @@ export function RangesField({ limits }: RangesFieldProps) {
                       hasError && inputErrorStyle
                     )}
                     {...register(name, {
-                      validate: (_value, values) => getRangeError(values[RANGES_FIELD], index, key),
+                      validate: (_value, values) =>
+                        getRangeError(values[NUMBER_POOL_RANGES_FIELD], index, key),
                       onBlur: () => revalidate(name),
                       onChange: () => {
                         if (formState.isSubmitted || getFieldState(name).isTouched)

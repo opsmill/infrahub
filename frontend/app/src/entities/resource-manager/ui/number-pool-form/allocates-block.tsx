@@ -36,7 +36,7 @@ type AllocatesBlockProps = { variant: "input" } | ({ variant: "read-only" } & Al
 export function AllocatesBlock(props: AllocatesBlockProps) {
   if (props.variant === "read-only") {
     return (
-      <AllocatesLayout note="The kind and attribute are set when the pool is created.">
+      <AllocatesLayout note="The node, attribute and scope are set when the pool is created.">
         <ReadOnlyAllocates node={props.node} attribute={props.attribute} scope={props.scope} />
       </AllocatesLayout>
     );

@@ -11,14 +11,12 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 
-import {
-  EMPTY_RANGE_ROW,
-  type NumberPoolForEditing,
-} from "@/entities/resource-manager/domain/model/number-pool-range";
+import type { NumberPoolForEditing } from "@/entities/resource-manager/domain/model/number-pool";
+import { EMPTY_RANGE_ROW } from "@/entities/resource-manager/domain/model/number-pool-range";
 import {
   NUMBER_POOL_NODE_ATTRIBUTE_FIELD,
   NUMBER_POOL_NODE_FIELD,
-  RANGES_FIELD,
+  NUMBER_POOL_RANGES_FIELD,
 } from "@/entities/resource-manager/domain/model/pool";
 import { toRangeRows } from "@/entities/resource-manager/domain/rules/plan-range-changes";
 import type { RangeLimits } from "@/entities/resource-manager/domain/rules/validate-range-rows";
@@ -91,7 +89,9 @@ const NumberPoolFormContent = ({
     defaultValues: {
       name: initialPool ? toFieldValue(initialPool.name) : DEFAULT_FORM_FIELD_VALUE,
       description: initialPool ? toFieldValue(initialPool.description) : DEFAULT_FORM_FIELD_VALUE,
-      [RANGES_FIELD]: initialPool ? toRangeRows(initialPool.ranges) : [{ ...EMPTY_RANGE_ROW }],
+      [NUMBER_POOL_RANGES_FIELD]: initialPool
+        ? toRangeRows(initialPool.ranges)
+        : [{ ...EMPTY_RANGE_ROW }],
     },
   });
   const [selectedNode, selectedAttribute]: Array<FormAttributeValue | undefined> = useWatch({

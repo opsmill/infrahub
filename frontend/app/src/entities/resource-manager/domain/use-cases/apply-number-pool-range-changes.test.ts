@@ -24,8 +24,8 @@ const serverRefusal = (message: string) =>
 
 const changes: RangeChanges = {
   deletes: ["r-old"],
-  smaller: [{ id: "r-1", start: 1n, end: 15n, weight: null }],
-  larger: [{ id: "r-2", start: 16n, end: 30n, weight: 5 }],
+  shrinks: [{ id: "r-1", start: 1n, end: 15n, weight: null }],
+  grows: [{ id: "r-2", start: 16n, end: 30n, weight: 5 }],
   creates: [{ start: 100n, end: 200n, weight: null }],
 };
 
@@ -49,7 +49,7 @@ describe("applyNumberPoolRangeChanges", () => {
     });
   });
 
-  it("sends deletes, then smaller updates, then larger updates, then creates", async () => {
+  it("sends deletes, then shrinks, then grows, then creates", async () => {
     // GIVEN one change of each group
 
     // WHEN the changes are applied
@@ -76,7 +76,7 @@ describe("applyNumberPoolRangeChanges", () => {
 
   it("sends nothing when there are no changes", async () => {
     // GIVEN no changes
-    const empty: RangeChanges = { deletes: [], smaller: [], larger: [], creates: [] };
+    const empty: RangeChanges = { deletes: [], shrinks: [], grows: [], creates: [] };
 
     // WHEN applied
     const result = await applyNumberPoolRangeChanges({
@@ -91,7 +91,7 @@ describe("applyNumberPoolRangeChanges", () => {
   });
 
   it("stops at the first server refusal and returns its message", async () => {
-    // GIVEN the larger update is refused for an overlap
+    // GIVEN the growing update is refused for an overlap
     updateMock.mockImplementation(async ({ range }) => {
       calls.push(`update ${range.id}`);
       if (range.id === "r-2") throw serverRefusal("Range 16-30 overlaps 25-40 (r-9)");

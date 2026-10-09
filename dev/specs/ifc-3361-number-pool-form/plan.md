@@ -67,11 +67,12 @@ dev/specs/ifc-3361-number-pool-form/
 frontend/app/src/entities/resource-manager/
 ├── domain/
 │   ├── model/
-│   │   ├── number-pool-range.ts        # RangeRow, StoredRange, RangeChanges, NumberPoolForEditing (new)
+│   │   ├── number-pool.ts              # NumberPoolForEditing (modified)
+│   │   ├── number-pool-range.ts        # RangeRow, StoredRange, RangeChanges (new)
 │   │   └── scope-candidate.ts          # ScopeCandidate (new)
 │   ├── rules/
 │   │   ├── validate-range-rows.ts      # validateRangeRows, getRangeClipHint (+ .test.ts) (new)
-│   │   ├── plan-range-changes.ts       # sortStoredRanges, diffRanges, matchRowsToStored (+ .test.ts) (new)
+│   │   ├── plan-range-changes.ts       # sortStoredRanges, diffRanges, linkRowsToStoredRanges (+ .test.ts) (new)
 │   │   └── get-scope-candidates.ts     # (+ .test.ts) (new)
 │   └── use-cases/
 │       ├── get-number-pool-for-editing.ts            (new)
@@ -107,8 +108,8 @@ docs/                                                 # refreshed guide screensh
 ## Design summary
 
 - **Pool write**: create and update through the existing generic object mutation hooks (unchanged global error toast). `ranges` is removed from the form data before the generic mutation builder runs; the current early return when no pool field changed is removed so a ranges-only save proceeds.
-- **Range write**: `applyNumberPoolRangeChanges` runs deletes, then smaller updates, then larger updates, then creates (FR-008, rule in [data-model.md](data-model.md)), and stops at the first refusal. Range api functions suppress the global toast so the message appears once, inline (FR-009).
-- **Refused save** (create and edit): stop, refetch the pool, keep every row as typed, link rows already created to their stored range by bounds (`matchRowsToStored`), show one alert above the ranges. The next save diffs the refetched ranges against the rows.
+- **Range write**: `applyNumberPoolRangeChanges` runs deletes, then shrinks, then grows, then creates (FR-008, rule in [data-model.md](data-model.md)), and stops at the first refusal. Range api functions suppress the global toast so the message appears once, inline (FR-009).
+- **Refused save** (create and edit): stop, refetch the pool, keep every row as typed, link rows already created to their stored range by bounds (`linkRowsToStoredRanges`), show one alert above the ranges. The next save diffs the refetched ranges against the rows.
 - **FR-015**: the form holds `createdPoolId` in component state; `poolId = currentObject?.id ?? createdPoolId` selects the edit path and the query.
 - **Rows**: plain strings `{ rangeId?, start, end, weight }`, not `{ source, value }`, because ranges are peer nodes, not attributes of the pool. `useFieldArray` keeps its own `id` as the row key.
 - **Scope picker**: candidates from `getScopeCandidates(schema, nodeAttribute)`, where `schema` is the node or generic schema of the selected kind (`ModelSchema`); composed from `@infrahub/ui` parts as in the prototype. Every scope rule lives in `get-scope-candidates.ts` only, so the server rule from IFC-3348 can later replace that one file.
