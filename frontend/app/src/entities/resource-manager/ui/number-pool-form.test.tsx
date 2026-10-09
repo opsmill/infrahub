@@ -159,6 +159,20 @@ describe("NumberPoolForm", () => {
     });
   });
 
+  test("saving again after a create that left the form open does not create a second pool", async () => {
+    // GIVEN
+    const component = await renderFilledCreateForm();
+    await component.getByRole("button", { name: "Save" }).click();
+    await expect.poll(() => onSuccess).toHaveBeenCalledTimes(1);
+
+    // WHEN
+    await component.getByRole("button", { name: "Save" }).click();
+
+    // THEN
+    await expect.poll(() => onSuccess).toHaveBeenCalledTimes(2);
+    expect(createPool).toHaveBeenCalledTimes(1);
+  });
+
   test("creates the pool with the chosen scope as bare field names", async () => {
     // GIVEN
     const component = await renderFilledCreateForm();

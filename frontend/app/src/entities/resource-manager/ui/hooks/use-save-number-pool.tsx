@@ -112,9 +112,8 @@ export function useSaveNumberPool({ initialPool, onSuccess }: UseSaveNumberPoolP
       .catch(() => null);
     if (!pool) return null;
 
-    const keptRows = await saveRanges(pool, [], rows, "Number pool created");
-    if (keptRows) setCreatedPoolId(pool.id);
-    return keptRows;
+    setCreatedPoolId(pool.id);
+    return saveRanges(pool, [], rows, "Number pool created");
   }
 
   async function updatePool(id: string, data: FieldValues): Promise<RangeRow[] | null> {
