@@ -104,5 +104,5 @@ def _describe(*, error: BaseException, stage: DeliveryStage) -> str:
 
 
 def _repeats_its_cause(*, error: Error) -> bool:
-    # An error built from the output of a Git command repeats it, and that output can name paths on the worker.
+    # Git output can name worker paths; this catches only an error raised from it with that output as its message.
     return error.__cause__ is not None and error.message in str(error.__cause__)
