@@ -461,8 +461,9 @@ deployment rule.** T070 to T073 are not.
       release all three: the artifact trigger, the generator request and the Python submission.
 - [X] T069 [US3] Wire the releaser into `build_writeback_service` in
       `backend/infrahub/git/writeback/factory.py`, so a delivery releases (R4 step 16).
-- [X] T070 [US3] Keep the repository id per attribute in `GatheredPythonReadSets` and expose `owner_of` in
-      `backend/infrahub/core/merge/python_target_sources.py`.
+- [X] T070 [US3] Keep the repository id per attribute in `GatheredPythonReadSets`, in
+      `backend/infrahub/core/merge/python_target_sources.py`, and expose `owner_of` on the Python target
+      resolver, in `backend/infrahub/core/merge/python_target_resolution.py`.
 - [X] T071 [US3] Consult the barrier in `_resolve_python_targets` in
       `backend/infrahub/core/merge/recompute_coalescing.py`, for `MergeRecomputeCoordinator` and
       `RecomputeChainSubmitter`, which gain a required `barrier` parameter. Wire it in
