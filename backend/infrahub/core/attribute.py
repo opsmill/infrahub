@@ -50,7 +50,6 @@ if TYPE_CHECKING:
     from infrahub.core.node import Node
     from infrahub.core.schema import AttributeSchema, MainSchemaTypes
     from infrahub.database import InfrahubDatabase
-    from infrahub.pools.attribute_pool_applier import AttributePoolApplierInterface
 
 
 log = get_logger()
@@ -665,14 +664,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
         return value
 
-    async def from_graphql(
-        self,
-        data: dict,
-        pool_applier: AttributePoolApplierInterface,
-        process_pools: bool = True,
-        user_id: str = SYSTEM_USER_ID,
-    ) -> bool:
-        """Update attr from GraphQL payload, drawing from or releasing to a number pool as `user_id`."""
+    async def from_graphql(self, data: dict) -> bool:
+        """Update attr from GraphQL payload; records `from_pool` without drawing from it."""
         changed = False
         self.value_presence = PayloadPresence.of(data=data, key="value")
         self.from_pool_presence = PayloadPresence.of(data=data, key="from_pool")
@@ -689,8 +682,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 changed = True
         if "from_pool" in data:
             self.from_pool = data["from_pool"]
-            if process_pools:
-                await pool_applier.apply(node=self.node, attribute=self, allocate=True, user_id=user_id)
             changed = True
 
         if changed and self.is_from_profile:

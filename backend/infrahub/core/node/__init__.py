@@ -548,11 +548,24 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         # -------------------------------------------
         # Generate Attribute and Relationship and assign them
         # -------------------------------------------
+        pooled_attributes: list[BaseAttribute] = []
         errors.extend(await self._process_fields_relationships(fields=fields, db=db))
         errors.extend(
             await self._process_fields_attributes(
                 fields=fields,
                 db=db,
+                process_pools=process_pools,
+                pooled_attributes=pooled_attributes,
+                template_pools=template_pools,
+            )
+        )
+
+        if errors:
+            raise ValidationError(errors)
+
+        errors.extend(
+            await self._apply_pools(
+                attributes=pooled_attributes,
                 pool_applier=pool_applier,
                 process_pools=process_pools,
                 template_pools=template_pools,
@@ -634,11 +647,15 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         self,
         fields: dict,
         db: InfrahubDatabase,
-        pool_applier: AttributePoolApplierInterface,
         process_pools: bool,
+        pooled_attributes: list[BaseAttribute],
         template_pools: TemplatePoolFields | None = None,
-        user_id: str = SYSTEM_USER_ID,
     ) -> list[ValidationError]:
+        """Set each attribute from the fields, leaving any number pool to be applied afterwards.
+
+        A new node's attributes that name a pool are added to `pooled_attributes`, for the pool to be applied once
+        every field is set.
+        """
         errors: list[ValidationError] = []
 
         for attr_schema in self._schema.attributes:
@@ -668,15 +685,11 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                         # The template drew the number already; naming the pool here records which
                         # one accounts for it, it does not ask for a second number.
                         attribute.from_pool = {"id": allocated_pool_id}
-                    else:
-                        await pool_applier.apply(
-                            node=self, attribute=attribute, allocate=process_pools, user_id=user_id
-                        )
-
-                    if attr_schema.name in self._profile_provided_attrs:
+                    elif attribute.from_pool is not None or attribute.schema.kind == "NumberPool":
+                        pooled_attributes.append(attribute)
                         continue
 
-                    if template_pools and attr_schema.name in template_pools.pending:
+                    if self._skips_validation(attribute=attribute, template_pools=template_pools):
                         continue
 
                     if process_pools or attribute.from_pool is None:
@@ -685,6 +698,34 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 errors.append(exc)
 
         return errors
+
+    async def _apply_pools(
+        self,
+        attributes: list[BaseAttribute],
+        pool_applier: AttributePoolApplierInterface,
+        process_pools: bool,
+        template_pools: TemplatePoolFields | None,
+        user_id: str,
+    ) -> list[ValidationError]:
+        """Apply the pool each attribute names, now that every field of the node is set, then validate its value.
+
+        The division of a scoped pool is read from the other fields, which is why this waits for all of them.
+        """
+        errors: list[ValidationError] = []
+        for attribute in attributes:
+            try:
+                await pool_applier.apply(node=self, attribute=attribute, allocate=process_pools, user_id=user_id)
+                if process_pools and not self._skips_validation(attribute=attribute, template_pools=template_pools):
+                    attribute.validate(value=attribute.value, name=attribute.name, schema=attribute.schema)
+            except ValidationError as exc:
+                errors.append(exc)
+        return errors
+
+    def _skips_validation(self, attribute: BaseAttribute, template_pools: TemplatePoolFields | None) -> bool:
+        """Whether the attribute's value is left unvalidated because a profile or a template pool provides it later."""
+        return attribute.name in self._profile_provided_attrs or bool(
+            template_pools and attribute.name in template_pools.pending
+        )
 
     def _has_pending_pool_dependency(self, schema_branch: SchemaBranch, jinja_template: InfrahubJinja2Template) -> bool:
         """Whether the template reads a local pool-sourced attribute whose value is not allocated yet.
@@ -1383,19 +1424,28 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         process_pools: bool = True,
         user_id: str = SYSTEM_USER_ID,
     ) -> bool:
-        """Update object from a GraphQL payload, drawing from or releasing to number pools as `user_id`."""
+        """Update object from a GraphQL payload, drawing from or releasing to number pools as `user_id`.
+
+        The pools are applied once every key of the payload is applied, since the division of a scoped pool is read
+        from the node's other fields; without `process_pools` nothing is drawn: each pool is resolved, and the key of
+        the node's division of a scoped pool is stored beside the pool id.
+        """
         changed = False
+        pooled_attributes: list[BaseAttribute] = []
 
         for key, value in data.items():
             if key in self._attributes and isinstance(value, dict):
-                attribute = getattr(self, key)
-                changed |= await attribute.from_graphql(
-                    data=value, process_pools=process_pools, pool_applier=pool_applier, user_id=user_id
-                )
+                attribute: BaseAttribute = getattr(self, key)
+                changed |= await attribute.from_graphql(data=value)
+                if "from_pool" in value:
+                    pooled_attributes.append(attribute)
 
             if key in self._relationships:
                 rel: RelationshipManager = getattr(self, key)
                 changed |= await rel.update(db=db, data=value, process_delete=process_pools)
+
+        for attribute in pooled_attributes:
+            await pool_applier.apply(node=self, attribute=attribute, allocate=process_pools, user_id=user_id)
 
         return changed
 
