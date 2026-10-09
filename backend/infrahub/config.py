@@ -1967,6 +1967,14 @@ class LicenseSettings(BaseSettings):
         description="License for Infrahub Enterprise, as a signed token. Infrahub Community ignores it.",
     )
 
+    @field_validator("key", mode="before")
+    @classmethod
+    def treat_blank_key_as_unset(cls, value: str | None) -> str | None:
+        # Deployment templates render an unset variable as an empty string, which is no license at all.
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
 
 @dataclass
 class Override:

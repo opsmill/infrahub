@@ -10,7 +10,8 @@ from infrahub.constants.environment import INSTALLATION_TYPE
 from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase, get_db
 from infrahub.ldap_auth.service import LDAPAuthService, LDAPAuthServiceCommunity
-from infrahub.license.service import LicenseService, LicenseServiceCommunity
+from infrahub.license.service import LicenseService, LicenseServiceCommunity, LicenseServiceUnavailable
+from infrahub.log import get_logger
 from infrahub.log_forwarding.service import LogForwardingService, LogForwardingServiceCommunity
 from infrahub.services.adapters.cache import InfrahubCache
 from infrahub.services.adapters.event import InfrahubEventService
@@ -22,6 +23,8 @@ from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 from infrahub.services.component import InfrahubComponent
 from infrahub.tls.registry import TlsContextRegistry
+
+log = get_logger()
 
 _singletons: dict[str, Any] = {}
 
@@ -217,7 +220,23 @@ def build_license_service() -> LicenseService:
 
 
 @inject
-def get_license_service(
+def _resolve_license_service(
     license_service: LicenseService = Depends(build_license_service),  # noqa: B008
 ) -> LicenseService:
     return license_service
+
+
+def get_license_service() -> LicenseService:
+    """Return the license service, or a stand-in reporting an invalid license when it cannot be built; never raises."""
+    if (unavailable := _singletons.get("license_service_unavailable")) is not None:
+        return unavailable
+    try:
+        return _resolve_license_service()
+    # Top-level boundary: a defect while building a replaceable license service must not fail a startup or a request.
+    except Exception:
+        log.exception(
+            "The license service could not be built; reporting the license as invalid with reason internal_error"
+        )
+        unavailable = LicenseServiceUnavailable()
+        _singletons["license_service_unavailable"] = unavailable
+        return unavailable

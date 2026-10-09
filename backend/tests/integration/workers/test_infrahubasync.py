@@ -1,4 +1,6 @@
 import asyncio
+import logging
+from collections.abc import Generator
 from typing import TYPE_CHECKING
 
 import pytest
@@ -10,6 +12,7 @@ from prefect.deployments import run_deployment
 from pydantic import ValidationError
 
 from infrahub import __version__ as infrahub_version
+from infrahub import config
 from infrahub.core.branch import Branch
 from infrahub.database import InfrahubDatabase
 from infrahub.tasks.dummy import DUMMY_FLOW, DUMMY_FLOW_BROKEN, DummyInput, DummyOutput
@@ -137,3 +140,28 @@ class TestWorker(TestWorkerInfrahubAsync):
 
         user_email = await self._run_git_command("config", "--global", "--get", "user.email")
         assert user_email == "infrahub@opsmill.com"
+
+    @pytest.fixture(scope="class", autouse=True)
+    def license_key_unset(self) -> Generator[None]:
+        original_key = config.SETTINGS.license.key
+        config.SETTINGS.license.key = None
+        yield
+        config.SETTINGS.license.key = original_key
+
+    async def test_worker_logs_its_license_state_once_at_setup(
+        self, prefect_worker: InfrahubWorkerAsync, worker_setup_records: list[logging.LogRecord]
+    ) -> None:
+        license_lines = [
+            {name: value for name, value in record.msg.items() if name != "timestamp"}
+            for record in worker_setup_records
+            if isinstance(record.msg, dict) and "license_state" in record.msg
+        ]
+
+        assert license_lines == [
+            {
+                "event": "No license is required for this deployment",
+                "level": "info",
+                "logger": "infrahub",
+                "license_state": "not_required",
+            }
+        ]
