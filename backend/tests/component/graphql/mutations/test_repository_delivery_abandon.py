@@ -211,6 +211,19 @@ MISSING_PERMISSION_CASES: list[MissingPermissionCase] = [
         message="You do not have the following permission: object:Core:Repository:update:allow_default",
     ),
     MissingPermissionCase(
+        name="update_on_repository_on_other_branches_only",
+        object_permissions=[
+            ObjectPermission(
+                namespace="Core",
+                name="Repository",
+                action=PermissionAction.UPDATE.value,
+                decision=PermissionDecision.ALLOW_OTHER.value,
+            )
+        ],
+        global_permissions=[MANAGE_REPOSITORIES, EDIT_DEFAULT_BRANCH],
+        message="You do not have the following permission: object:Core:Repository:update:allow_default",
+    ),
+    MissingPermissionCase(
         name="manage_repositories",
         object_permissions=[UPDATE_REPOSITORY],
         global_permissions=[EDIT_DEFAULT_BRANCH],
