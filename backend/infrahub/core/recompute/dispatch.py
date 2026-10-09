@@ -2,18 +2,22 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING
 
+from infrahub.branch.status_checker import BranchStatusChecker
 from infrahub.core.merge.recompute_coalescing import (
     CoalescedRecomputeBuilder,
     CoalescedRecomputeSubmitter,
     RecomputeChainSubmitter,
 )
+from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.recompute.bulk_write import BulkRecomputeWriter
+from infrahub.core.recompute.merge_gate import MERGE_WAIT_POLL_INTERVAL_SECONDS, MergeSourceWriteGate
 from infrahub.core.registry import registry
 from infrahub.events.constants import NodeMutationOrigin
 from infrahub.exceptions import BranchNotFoundError
-from infrahub.workers.dependencies import get_database, get_event_service, get_workflow
+from infrahub.workers.dependencies import get_cache, get_database, get_event_service, get_workflow
 
 if TYPE_CHECKING:
     from infrahub.core.recompute.bulk_write import AttributeValueWrite
@@ -70,7 +74,13 @@ class BulkRecomputeDispatcher:
 async def build_bulk_recompute_dispatcher(schema_branch: SchemaBranch) -> BulkRecomputeDispatcher:
     """Wire a bulk recompute dispatcher from the flow-level dependencies."""
     db = await get_database()
-    writer = BulkRecomputeWriter(db=db, event_service=await get_event_service())
+    merge_gate = MergeSourceWriteGate(
+        db=db,
+        status_checker=BranchStatusChecker(db=db, merge_write_blocker=MergeWriteBlocker(cache=await get_cache())),
+        sleep=asyncio.sleep,
+        poll_interval_seconds=MERGE_WAIT_POLL_INTERVAL_SECONDS,
+    )
+    writer = BulkRecomputeWriter(db=db, event_service=await get_event_service(), merge_gate=merge_gate)
     chain = RecomputeChainSubmitter(
         builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
         submitter=CoalescedRecomputeSubmitter(workflow=get_workflow()),
