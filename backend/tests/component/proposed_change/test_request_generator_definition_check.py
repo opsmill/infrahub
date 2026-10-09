@@ -367,6 +367,27 @@ class TestRequestGeneratorDefinitionCheck(TestInfrahubAppWithoutLocalWorkflow):
         )
         await gendef_new_node.save(db=db)
 
+        # --- Separate definition + group for the orphaned-instance scenario ---
+        orphan_group = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
+        await orphan_group.new(db=db, name="generator-targets-orphan", members=[dev1])
+        await orphan_group.save(db=db)
+
+        gendef_orphan_node = await Node.init(db=db, schema=InfrahubKind.GENERATORDEFINITION)
+        await gendef_orphan_node.new(
+            db=db,
+            name="device-generator-orphan",
+            query=query_unique,
+            repository=repo,
+            targets=orphan_group,
+            file_path="generators/device.py",
+            class_name="DeviceGenerator",
+            parameters={"value": {"name": "name__value"}},
+            convert_query_response=False,
+            execute_in_proposed_change=True,
+            execute_after_merge=True,
+        )
+        await gendef_orphan_node.save(db=db)
+
         # --- Source branch is created after all AWARE nodes exist on main ---
         source_branch_obj = await create_branch(branch_name=SOURCE_BRANCH, db=db)
         await load_schema(db=db, schema=GENERATOR_SCHEMA, branch_name=SOURCE_BRANCH, update_db=False)
@@ -397,6 +418,33 @@ class TestRequestGeneratorDefinitionCheck(TestInfrahubAppWithoutLocalWorkflow):
             )
             await query_group.save(db=db)
 
+        # --- Instance whose target is deleted without the delete cascade ---
+        orphan_instances = {}
+        dev_deleted = await Node.init(db=db, schema="TestNetworkDevice", branch=source_branch_obj)
+        await dev_deleted.new(db=db, name="dev-deleted", color="white", description="Deleted device")
+        await dev_deleted.save(db=db)
+        for name, device in (("live", dev1), ("orphan", dev_deleted)):
+            instance = await Node.init(db=db, schema=InfrahubKind.GENERATORINSTANCE, branch=source_branch_obj)
+            await instance.new(
+                db=db,
+                name=f"orphan-def-instance-{name}",
+                status=GeneratorInstanceStatus.READY.value,
+                object=device,
+                definition=gendef_orphan_node,
+            )
+            await instance.save(db=db)
+            orphan_instances[name] = instance
+        await dev_deleted.delete(db=db)
+        live_query_group = await Node.init(db=db, schema="CoreGraphQLQueryGroup", branch=source_branch_obj)
+        await live_query_group.new(
+            db=db,
+            name="qg-orphan-def-live",
+            query=str(query_unique.id),
+            members=[dev1],
+            subscribers=[orphan_instances["live"]],
+        )
+        await live_query_group.save(db=db)
+
         pc = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
         await pc.new(
             db=db,
@@ -417,11 +465,17 @@ class TestRequestGeneratorDefinitionCheck(TestInfrahubAppWithoutLocalWorkflow):
             destination_commit="dest-commit-sha",
         )
 
+        definition_ids_by_group = {
+            targets_group.id: gendef_node.id,
+            new_group.id: gendef_new_node.id,
+            orphan_group.id: gendef_orphan_node.id,
+        }
+
         def build_definition(
             query_name: str, query_id: str, query_payload: str, group_id: str
         ) -> ProposedChangeGeneratorDefinition:
             return ProposedChangeGeneratorDefinition(
-                definition_id=gendef_node.id if group_id == targets_group.id else gendef_new_node.id,
+                definition_id=definition_ids_by_group[group_id],
                 definition_name="device-generator",
                 query_name=query_name,
                 query_id=query_id,
@@ -456,6 +510,10 @@ class TestRequestGeneratorDefinitionCheck(TestInfrahubAppWithoutLocalWorkflow):
                 "GetDeviceWithTags", query_tags.id, QUERY_UNIQUE_WITH_TAGS, targets_group.id
             ),
             "gendef_new": build_definition("GetNetworkDevice", query_unique.id, QUERY_UNIQUE_TARGETS, new_group.id),
+            "gendef_orphan": build_definition(
+                "GetNetworkDevice", query_unique.id, QUERY_UNIQUE_TARGETS, orphan_group.id
+            ),
+            "orphan_instance_id": orphan_instances["orphan"].id,
         }
 
     def _make_context(self, account: CoreAccount, default_branch: Branch) -> InfrahubContext:
@@ -590,3 +648,31 @@ class TestRequestGeneratorDefinitionCheck(TestInfrahubAppWithoutLocalWorkflow):
         ]
         assert warnings == case.expected_warnings
         assert self._dispatched_target_ids(workflow_recorder) == {generator_dataset[key] for key in case.expected_keys}
+
+    async def test_instance_whose_target_was_deleted_is_skipped(
+        self,
+        generator_dataset: dict[str, Any],
+        memory_cache: MemoryCache,
+        workflow_recorder: WorkflowRecorder,
+        default_branch: Branch,
+        admin_account: CoreAccount,
+        client: InfrahubClient,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        diff_summary = [make_node_diff(generator_dataset["dev1_id"], "TestNetworkDevice", SOURCE_BRANCH, ["name"])]
+        with caplog.at_level(logging.WARNING, logger=FLOW_RUN_LOGGER):
+            await self._run(
+                generator_dataset["gendef_orphan"],
+                generator_dataset,
+                self._make_context(admin_account, default_branch),
+                diff_summary,
+                memory_cache,
+                default_branch,
+            )
+
+        warnings = [record.getMessage() for record in caplog.records if record.levelno == logging.WARNING]
+        assert warnings == [
+            f"Skipping orphan subscriber {generator_dataset['orphan_instance_id']} for definition device-generator: "
+            "object peer unresolvable"
+        ]
+        assert self._dispatched_target_ids(workflow_recorder) == {generator_dataset["dev1_id"]}

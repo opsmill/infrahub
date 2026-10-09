@@ -6,7 +6,7 @@ A `Generator` is a generic plugin that queries data and creates new nodes and re
 
 :::success Examples
 
-- Within your [schema](../schema/overview) you could create an abstract service object that through a Generator creates other nodes.
+- Within your [schema](../schema/overview) you could create an abstract service object that through a Generator creates other objects.
 - Want to read how Generators can be used to create a service catalog? See our blog post on [How to Turn Your Source of Truth into a Service Factory](https://www.opsmill.com/how-to-turn-your-source-of-truth-into-a-service-factory/).
 :::
 
@@ -20,7 +20,7 @@ Generators are defined as a **Generator definition** within an [.infrahub.yml](.
 
 ![Generator overview diagram](../media/topics/generator/generator_overview.excalidraw.svg)
 
-Running a Generator definition will create new nodes as defined by the Generator, or remove old ones that are no longer required. The removal of obsolete objects is handled using the [SDK tracking feature]($(base_url)python-sdk/topics/tracking)
+Running a Generator definition will create new objects as defined by the Generator, or remove old ones that are no longer required. The removal of obsolete objects is handled using the [SDK tracking feature]($(base_url)python-sdk/topics/tracking)
 
 The targets point to a [group](../groups/overview) that will consist of objects that are impacted by the Generator. The members of this group can be any type of object within your schema, service objects, devices, contracts or anything you want the Generator to act upon. Generator groups (`CoreGeneratorGroup`) serve as target collections that define which objects trigger Generator execution, while the actual tracking of generated objects is handled by individual Generator instances.
 
@@ -159,7 +159,7 @@ Generator instances enable:
 
 - **Per-target status tracking**: you can see which targets succeeded and which failed, without needing to inspect logs.
 - **Selective re-runs**: you can re-run the Generator for a single target object without affecting others. Only the instance for that target gets updated.
-- **Object lifecycle management**: the instance links the Generator to the objects it created, enabling cleanup when a target is removed.
+- **Instance removal with its target**: when you delete a target object, Infrahub deletes the Generator instance for that target. The objects the Generator created for that target and its Generator group stay in Infrahub. See [What Infrahub deletes when a target or definition is removed](#what-infrahub-deletes-when-a-target-or-definition-is-removed).
 
 You can view Generator instances in the Infrahub UI under the Generator Definition detail page.
 
@@ -207,17 +207,35 @@ Adding or removing group members changes what gets targeted on the next Generato
 
 - **Add an object to the group**: it becomes a target and gets its own Generator run next time the definition executes
 - **Remove an object from the group**: it is no longer targeted (existing generated objects are not automatically cleaned up — see [known limitation #3289](https://github.com/opsmill/infrahub/issues/3289))
+- **Delete an object that is a target**: Infrahub deletes its Generator instance. The objects the Generator created for it and its Generator group are not deleted.
 
 ### Standard groups vs. Generator groups
 
-These two group types serve different purposes and are often confused:
+These group types serve different purposes and are often confused:
 
 | Group type            | Purpose                                                                                            | You manage it |
 |-----------------------|----------------------------------------------------------------------------------------------------|---------------|
 | `CoreStandardGroup`   | Defines which objects are **targeted by** a Generator. Listed in the `targets` field of the Generator definition. | Yes — you create it and control membership |
-| `CoreGeneratorGroup`  | Tracks which objects were **created by** a Generator instance. Managed automatically by the SDK tracking feature. | No — Infrahub manages this automatically |
+| `CoreGeneratorGroup`  | Tracks which objects were **created by** a Generator run. The SDK tracking feature uses this kind when the definition sets `execute_after_merge: true` (the default). The group is branch-local. | No — the SDK creates and updates it |
+| `CoreGeneratorAwareGroup` | Tracks which objects were **created by** a Generator run. The SDK tracking feature uses this kind when the definition sets `execute_after_merge: false`. The group is branch-aware. | No — the SDK creates and updates it |
 
-The target group (`CoreStandardGroup`) is an input to the Generator — "run against these objects." The Generator group (`CoreGeneratorGroup`) is an output — "these objects were created by this Generator."
+The target group (`CoreStandardGroup`) is an input to the Generator — "run against these objects." The Generator group (`CoreGeneratorGroup` or `CoreGeneratorAwareGroup`) is an output — "these objects were created by this Generator."
+
+The SDK names each Generator group `<generator definition name>-<parameters hash>`, where the hash is the MD5 hash of the query parameters of the run. Runs with different parameters, such as one run per target device, therefore write to different Generator groups. When a run has no parameters, the name is the definition name alone.
+
+## What Infrahub deletes when a target or definition is removed
+
+A Generator run leaves four kinds of data in Infrahub: the Generator instance, the objects the Generator created, the Generator group that tracks those objects, and the `CoreGraphQLQueryGroup` that Infrahub creates for the Generator's GraphQL query. The query group is named `<query name>__<parameters hash>`. Removing a target or a definition deletes only some of them:
+
+| Event | Generator instance | Objects the Generator created | Generator group | GraphQL query group |
+|---|---|---|---|---|
+| You remove the target object from the target group | Not deleted | Not deleted ([#3289](https://github.com/opsmill/infrahub/issues/3289)) | Not deleted | Not deleted |
+| You delete the target object | Deleted | Not deleted | Not deleted | Not deleted. The deleted object is no longer a member. |
+| You remove the Generator definition | Deleted | Not deleted | Not deleted | Not deleted, unless you also remove the query from `.infrahub.yml`. Deleting a query deletes its query groups. |
+
+Infrahub does not delete Generator groups automatically. A GraphQL query group is deleted only when its query is deleted. To remove both with a retired Generator, see [Remove a generator](./remove).
+
+Generator groups appear in the list of groups in the web interface. GraphQL query groups are internal groups, which the list hides by default; remove the internal groups filter to view them. See [the visibility model](../groups/overview#the-visibility-model).
 
 ## Query response modes
 

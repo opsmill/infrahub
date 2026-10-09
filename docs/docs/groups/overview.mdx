@@ -35,8 +35,10 @@ Infrahub provides three group types, each for a different use case:
 | Type | Class | Membership managed by | Use when |
 |---|---|---|---|
 | **Standard** | `CoreStandardGroup` | You | You want to hand-pick members based on business logic |
-| **Generator** | `CoreGeneratorGroup` | The Generator that owns it | Objects are produced by a Generator and should track back to their origin |
+| **Generator** | `CoreGeneratorGroup` or `CoreGeneratorAwareGroup` | The Generator that owns it | Objects are produced by a Generator and should track back to their origin |
 | **Query** | `CoreGraphQLQueryGroup` | A live GraphQL query | Membership should change dynamically as the underlying data changes |
+
+Infrahub does not delete Generator groups automatically, including when you remove the Generator or the target object. A Query group is deleted only when its GraphQL query is deleted. See [What Infrahub deletes when a target or definition is removed](../generators/overview#what-infrahub-deletes-when-a-target-or-definition-is-removed).
 
 **Choosing between types:**
 
@@ -49,7 +51,7 @@ Infrahub provides three group types, each for a different use case:
 Infrahub distinguishes between two visibility levels for groups:
 
 - **Default groups** are user-managed and appear in the standard interface. They represent the organizational structure you actively maintain and reference in daily operations.
-- **Internal groups** are system-managed and operate behind the scenes, supporting Infrahub's internal processes. You can toggle visibility when needed for debugging or advanced operations.
+- **Internal groups** are system-managed and operate behind the scenes, supporting Infrahub's internal processes. You can toggle visibility when needed for debugging or advanced operations. Query groups are internal groups. Generator groups are default groups, so they appear in the list of groups.
 
 Hiding internal groups by default reduces visual complexity while keeping the underlying power available.
 
