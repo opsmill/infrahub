@@ -403,13 +403,24 @@ class WritebackIntent:
     last_abandonment: AbandonmentRecord | None = None
     reverted: RevertedDelivery | None = None
 
-    def with_entry(self, *, entry: PendingMerge, widen: bool, now: datetime) -> WritebackIntent | None:
+    def with_entry(
+        self, *, entry: PendingMerge, widen: bool, destination_git_branch: str, now: datetime
+    ) -> WritebackIntent | None:
         """Append the merge and set the status to pending, or return None when the queue refuses its id.
 
         Args:
             widen: Hold a regeneration of every definition of the repository under the next sequence too.
+            destination_git_branch: The remote branch that the delivery pushes to.
+
+        Raises:
+            ValueError: The merge comes from the remote branch that the delivery pushes to.
 
         """
+        if entry.source_git_branch == destination_git_branch:
+            raise ValueError(
+                f"Repository {self.repository_id} cannot queue merge {entry.entry_id}: its source branch "
+                f"{destination_git_branch} is the branch that the delivery pushes to"
+            )
         queue = self.queue.with_entry(entry=entry, last_abandonment=self.last_abandonment)
         if queue is None:
             return None

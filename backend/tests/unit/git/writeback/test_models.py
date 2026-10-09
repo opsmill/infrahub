@@ -87,6 +87,19 @@ def _lease(lease_id: str, held: HeldRegeneration) -> ReleaseLease:
     return next(lease for lease in held.release_leases if lease.lease_id == lease_id)
 
 
+def test_merge_from_the_destination_branch_is_refused() -> None:
+    with pytest.raises(
+        ValueError,
+        match=(
+            r"^Repository repository-1 cannot queue merge e1: its source branch main is the branch that the "
+            r"delivery pushes to$"
+        ),
+    ):
+        _intent(queue=DeliveryQueue()).with_entry(
+            entry=_entry("e1", source_git_branch="main"), widen=False, destination_git_branch="main", now=NOW
+        )
+
+
 def test_append_of_a_queued_id_changes_nothing() -> None:
     queue = _queued(_entry("e1"))
 

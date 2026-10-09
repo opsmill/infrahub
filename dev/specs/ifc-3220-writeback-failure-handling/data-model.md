@@ -160,7 +160,8 @@ stored shape follows these rules:
 | `delete_source_git_branch` | `bool` | Set by the deletion guard. The delivery deletes the branch (FR-011). |
 
 Validation: `source_commit` is a full 40-character hexadecimal SHA. `source_git_branch` is never the
-destination branch.
+destination branch: `WritebackIntent.with_entry` raises `ValueError` for such an entry, and the store
+passes the repository's `default_branch` as the destination.
 
 ### `HeldRegeneration`
 
