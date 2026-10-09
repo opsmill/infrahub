@@ -11833,7 +11833,7 @@ One tracked number as held on one branch. A number held on several branches give
 type NumberPoolAllocation {
   """The branch on which the holding object's attribute holds this value."""
   branch: String!
-  """The node whose attribute holds the value, read on the row's branch."""
+  """The object whose attribute holds the value, read on the row's branch."""
   holder: NumberPoolHolder!
   """The identifier given when the number was allocated, if any."""
   identifier: String

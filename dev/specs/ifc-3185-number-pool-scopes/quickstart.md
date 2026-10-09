@@ -59,7 +59,7 @@ Scenarios that prove the feature end to end, with the commands that run them. Co
 1. On branch `b1`, move device D1 from site A to site C. Expected: on `b1`, `InfrahubNumberPoolDivisions` lists site C with D1's number and site A without it; on the default branch, site A still counts D1's number and site C is absent.
 2. On branch `b2`, create a device in site A with `from_pool`. Expected: it receives the lowest number free in site A as read on `b2`.
 3. Merge `b1`. Expected: D1's number is counted under site C only, on every branch.
-4. Known limitation to assert (decision 7, research R5): create R1 on branch `b2` in site A, then R2 on branch `b1` in site A. Expected: both receive the same number, because R1 is invisible from `b1`; after both branches merge, two holders in site A hold that number, and the pool reports it once under site A.
+4. Known limitation to assert (decision 7, research R5): create R1 on branch `b2` in site A, then R2 on branch `b1` in site A. Expected: both receive the same number, because R1 is invisible from `b1`; after both branches merge, two holding objects in site A hold that number, and the pool reports it once under site A.
 5. Create branch `b3`, then add a required relationship `pod` to `InfraDevice` on the default branch and create a pool scoped by `pod`. Allocate from that pool on `b3`. Expected: refused, the error names `pod` and `b3`. Rebase `b3` and allocate again. Expected: accepted.
 
 ## Measurements
@@ -73,7 +73,7 @@ Run on the live stack, with the database reset to the same baseline before each 
 | Pool scoped by one relationship and two attributes | Same figures |
 | Twenty writers, two sites, in parallel | Throughput compared with one site |
 
-Record the figures as ratios against the unscoped variant in `dev/specs/ifc-3185-number-pool-scopes/measurements.md`. If the holder-anchored Cypher order (research R5) is faster by a clear margin, keep it and update the plan.
+Record the figures as ratios against the unscoped variant in `dev/specs/ifc-3185-number-pool-scopes/measurements.md`. If the Cypher order anchored on the holding objects (research R5) is faster by a clear margin, keep it and update the plan.
 
 ## Expected outcome
 

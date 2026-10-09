@@ -145,7 +145,7 @@ type NumberPoolAllocation {
   value: BigInt!
   """The branch on which the holding object's attribute holds this value."""
   branch: String!
-  """The node whose attribute holds the value, read on the row's branch."""
+  """The object whose attribute holds the value, read on the row's branch."""
   holder: NumberPoolHolder!
   """The identifier given when the number was allocated, if any."""
   identifier: String
@@ -155,7 +155,7 @@ type NumberPoolAllocation {
   range: NumberPoolRangeRef!
 }
 
-"""The node holding a tracked number."""
+"""The object holding a tracked number."""
 type NumberPoolHolder {
   id: String!
   """The holding object's human-friendly id. Null when its kind declares none."""

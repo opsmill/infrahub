@@ -23885,7 +23885,7 @@ export type NumberPoolAllocation = {
   __typename: 'NumberPoolAllocation';
   /** The branch on which the holding object's attribute holds this value. */
   branch: Scalars['String']['output'];
-  /** The node whose attribute holds the value, read on the row's branch. */
+  /** The object whose attribute holds the value, read on the row's branch. */
   holder: NumberPoolHolder;
   /** The identifier given when the number was allocated, if any. */
   identifier: Maybe<Scalars['String']['output']>;

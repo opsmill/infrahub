@@ -41,12 +41,12 @@ Order inside the list is the scope order; division tuples follow it.
 |-------|------|-------|
 | `values` | ordered list | One value per scope element, in scope order |
 
-Value of an element for a holder node, read on the branch of the request with the normal branch filter:
+Value of an element for a holding object, read on the branch of the request with the normal branch filter:
 
-- relationship element: the peer's id, or an empty string when the holder has no peer on that branch;
-- attribute element: the scalar attribute value as stored, compared with no normalisation, or an empty string when the holder has no value.
+- relationship element: the peer's id, or an empty string when the holding object has no peer on that branch;
+- attribute element: the scalar attribute value as stored, compared with no normalisation, or an empty string when the holding object has no value.
 
-A holder that does not exist on the request branch has no division there and is not counted.
+A holding object that does not exist on the request branch has no division there and is not counted.
 
 `key`: a stable hash of the JSON form of `values`, used in lock names (`<pool id>.<key>`).
 
@@ -56,7 +56,7 @@ Equality: two divisions are equal when their values are equal element by element
 
 ### Tracked number record (`IS_RESERVED` edge, existing)
 
-Unchanged: pool to holder attribute, on the global branch, with `identifier` and `provenance` (`allocated` or `provided`). The division of a record is the division of its holder on the branch considered.
+Unchanged: pool to the holding object's attribute, on the global branch, with `identifier` and `provenance` (`allocated` or `provided`). The division of a record is the division of its holding object on the branch considered.
 
 ### Number-pool attribute parameters (`NumberPoolParameters`, existing)
 
@@ -73,7 +73,7 @@ For one space (the pool, one range, or one division over the pool or over a rang
 | Figure | Definition |
 |--------|------------|
 | `size` | Number of values the space holds: the effective space (ranges clipped to the attribute's bounds, minus its excluded values), or the part of it one range contributes. 0 when the pool has no range |
-| `used` | Distinct values of the space held on any live branch by a holder whose division, read on the request branch, is the one measured |
+| `used` | Distinct values of the space held on any live branch by a holding object whose division, read on the request branch, is the one measured |
 | `used_default_branch` | Those values held on the default branch |
 | `used_branches` | Those values held on other branches and not on the default branch |
 | `utilization`, `utilization_default_branch`, `utilization_branches` | The three counts as a percentage of `size`; 0 when `size` is 0 |

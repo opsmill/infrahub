@@ -258,7 +258,7 @@ class NumberPoolAllocation(ObjectType):
     holder = Field(
         NumberPoolHolder,
         required=True,
-        description="The node whose attribute holds the value, read on the row's branch.",
+        description="The object whose attribute holds the value, read on the row's branch.",
     )
     identifier = Field(String, description="The identifier given when the number was allocated, if any.")
     provenance = Field(
