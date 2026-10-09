@@ -1,0 +1,84 @@
+---
+title: Change generics
+description: Which changes on a generic apply to the nodes that inherit from it, how to remove an override, and how to change node-level properties.
+---
+
+# Change generics
+
+When you change an attribute or relationship on a [generic](./generics-and-inheritance) and load the schema, Infrahub applies the change to every node that inherits that attribute or relationship. In two cases, you make the change on each node instead:
+
+- A node that [overrides](./generics-and-inheritance#override) the attribute or relationship keeps its own definition.
+- A node keeps the node-level properties it received when it was first loaded, such as `human_friendly_id` or `icon`.
+
+## Change an attribute or relationship on a generic
+
+Edit the attribute or relationship on the generic and load the schema. For each node that inherits from the generic, the result depends on whether the node inherits or overrides it:
+
+- **The node inherits it**: Infrahub applies the change to the node. For example, setting `optional: false` on the generic makes the attribute mandatory on the node. Infrahub checks the change against the existing objects of every inheriting node, and refuses the load if one object fails the new rule. See [Make an attribute mandatory or unique](./change-nodes-and-attributes#make-an-attribute-mandatory-or-unique).
+- **The node overrides it**: the node keeps its own definition, and the change does not apply to it. To apply the change, make the same change on the node, or [remove the override](#remove-an-override) so the node inherits the generic's definition.
+
+A node can inherit some attributes and relationships of a generic and override others. To find out which applies, open **Object Management > Schemas**, select the node, and select the attribute or relationship. The **Inherited** row shows `true` when the node inherits it and `false` when the node overrides it. An inherited attribute or relationship also has no **ID** on the node, because its `id` belongs to the generic.
+
+## Remove an override
+
+To make a node inherit an attribute or relationship from its generic again, remove the node's own definition of it. The objects keep their values and their relationships.
+
+1. **Find the `id` of the node's attribute or relationship.** Open **Object Management > Schemas**, select the node, select the attribute or relationship, and copy the value of the **ID** row.
+2. **Mark the node's definition as removed.** In your schema file, add the `id` to the node's attribute or relationship and set `state: absent`. Keep the other properties as they are: Infrahub checks a removed element like any other element in the file.
+3. **Load the schema.** Infrahub removes the node's own definition, and the node inherits the attribute or relationship from the generic.
+
+In this example, `InfraSwitch` overrides the `name` attribute of `InfraGenericDevice`:
+
+```yaml
+generics:
+  - name: GenericDevice
+    namespace: Infra
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+nodes:
+  - name: Switch
+    namespace: Infra
+    inherit_from: [InfraGenericDevice]
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+        id: 18dc8071-7eea-2b24-3883-c51fd0b01804  # the id of the node's attribute, from your instance
+        state: absent
+```
+
+After the load, every `InfraSwitch` object keeps its `name` value. `InfraSwitch` uses the generic's definition of `name`, so a later change to `name` on `InfraGenericDevice` applies to `InfraSwitch`.
+
+Then delete the attribute from the node in your schema file. The `id` is valid only on the instance you copied it from. See [The id belongs to one instance](./renaming-schema-element#the-id-belongs-to-one-instance).
+
+## Change node-level properties on a generic
+
+A node receives these properties from its generics only when the node does not set them itself:
+
+- `human_friendly_id`
+- `display_label`
+- `default_filter`
+- `uniqueness_constraints`
+- `order_by`
+- `icon`
+- `menu_placement`
+
+A node receives them when it is first loaded, and keeps them afterwards. Changing one of these properties on the generic does not change it on a node that inherits from that generic. To change it on those nodes, set the new value on each node in your schema file. See [Node-level properties](./generics-and-inheritance#inherited-properties).
+
+## Remove a dropdown choice on a generic
+
+:::warning
+
+You cannot remove a choice from a `Dropdown` attribute through a schema file, and the web interface refuses the removal when the attribute is defined on a generic.
+
+:::
+
+Remove the choice with the `SchemaDropdownRemove` GraphQL mutation, called with the generic's kind, then delete it from your schema file. See [Remove a dropdown choice](./removing-schema-element#remove-a-dropdown-choice).
+
+## Next
+
+- [Change nodes and attributes](./change-nodes-and-attributes) — Add attributes, make them mandatory or unique, and move them onto a generic
+- [Rename schema elements](./renaming-schema-element) — Rename a node, attribute or relationship and keep its data
+- [Generics & inheritance](./generics-and-inheritance) — Define generics, override their attributes, and limit how nodes use them

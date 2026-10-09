@@ -1,0 +1,143 @@
+---
+title: Troubleshooting schema updates
+description: Recover from a rename that created a second element, a change on a generic that does not apply to some nodes, a schema load that seems to hang, a refused load, a failed merge, and YAML values read as booleans.
+---
+
+# Troubleshooting schema updates
+
+## Two elements after a rename
+
+**What you see:** after you renamed a node or an attribute in your schema file, both names exist. The element with the new name is empty: a node with no objects, or an attribute with no values. The element with the old name still holds all the data.
+
+**Why:** the file did not include the element's `id`, so Infrahub created a new element and left the original one unchanged. See [Rename schema elements](./renaming-schema-element#why-a-rename-needs-the-elements-id).
+
+**What to do**, in two separate loads:
+
+1. **Remove the new element.** Keep it in the file under the new name, mark it `state: absent`, and load the file. If objects already have values for the new element, removing it deletes those values.
+
+   ```yaml
+   attributes:
+     - name: rack_name
+       kind: Text
+       state: absent
+   ```
+
+2. **Rename the original element with its `id`.** Find the `id` of the element with the old name in **Object Management > Schemas**, put it next to the new name, and load the file again.
+
+   ```yaml
+   attributes:
+     - id: 18dc3660-1bc9-da23-36a6-c51fc5edb56e  # the id of the original element
+       name: rack_name
+       kind: Text
+   ```
+
+Run `infrahubctl schema check` before each load. After the second load, the element with the new name holds the original data.
+
+:::danger
+
+Do not combine the two steps in one file. If you remove the new element and rename the original one in the same load, Infrahub accepts the file, but the values of the original element are lost.
+
+:::
+
+## A change on a generic does not apply to some nodes
+
+**What you see:** you changed an attribute, a relationship or a node-level property such as `icon` on a generic and loaded the schema. Some nodes that inherit from the generic have the new definition, and others still have the old one.
+
+**Why:** one of two cases applies to each node that still has the old definition:
+
+- The node [overrides](./generics-and-inheritance#override) the attribute or relationship: its own schema defines it, so it keeps its own definition. In **Object Management > Schemas**, the **Inherited** row of that attribute or relationship on the node shows `false`.
+- The property is a [node-level property](./generics-and-inheritance#inherited-properties), such as `human_friendly_id`, `order_by` or `icon`. A node receives these from the generic when it is first loaded and keeps them afterwards.
+
+**What to do:**
+
+- For an attribute or relationship, [remove the override](./change-generics#remove-an-override) so the node inherits the generic's definition, or make the same change on the node.
+- For a node-level property, set the new value on each node in your schema file.
+
+## A load that seems to hang
+
+**What you see:** `infrahubctl schema load` shows no output for several minutes, ends with a timeout, or returns HTTP 504. Merges, rebases and other schema loads also wait until it finishes.
+
+**Why:** Infrahub runs one schema load at a time, across all branches, and a load on an instance with many objects checks and migrates every object the change affects. `infrahubctl` stops waiting after 120 seconds, or after `INFRAHUB_TIMEOUT` if it is set higher, and a proxy can return HTTP 504 sooner, while the load continues on the server.
+
+**What to do:** wait for the load to finish before you run it again. A second load does not replace the first one: it waits until the first one finishes, and merges and rebases wait behind both. To see whether the load was applied, run `infrahubctl schema check` with the same file. If it reports no changes, the load is complete. For a large change, increase `INFRAHUB_TIMEOUT` before you run the load.
+
+## A load refused because of existing objects
+
+**What you see:** the load fails with `Unable to load the schema:` and one line per object, such as:
+
+```text
+Attribute-level 'optional' constraint violation on schema 'InfraDevice'. Node (InfraDevice(ID: 18dc3640-af1a-c8ea-36a2-c516b4afaa59)) is not compliant.
+```
+
+**Why:** the change adds a rule that these objects do not satisfy, and Infrahub refuses the whole load rather than change them. The first part of the message names the rule:
+
+- `Attribute-level 'optional'`: the attribute is now mandatory and the object has no value. Check that the attribute in your file still has `optional: true` if you did not mean to change it. See [Write each changed element in full](./operations#write-each-changed-element-in-full).
+- `Node-level 'attribute'`: you added a mandatory attribute without a `default_value`.
+- `Attribute-level 'unique'`, `'kind'`, `'choices'` or `'regex'`: the object's value is a duplicate, or is not valid for the new kind, choices or pattern.
+
+Each line names the object by its display label or its ID, and can end with the field and the value that fail, for example `The error relates to field serial_number='SN-01'.`
+
+**What to do:** open each object the message names, correct its value on the branch where you load the schema, and load the schema again. To add a mandatory attribute, add a `default_value`. See [Change nodes and attributes](./change-nodes-and-attributes).
+
+## A load refused because of a reference to a kind
+
+**What you see:**
+
+```text
+Unable to load the schema:
+  InfraDevice: Relationship 'rack' is referring an invalid peer 'InfraRack'
+```
+
+**Why:** you remove or rename a node in the file, and a relationship on another node or generic still has that node as its `peer`.
+
+**What to do:** to remove the node, remove or change the relationships that point to it in one load, then remove the node in a second load. See [Remove a node that other elements refer to](./removing-schema-element#remove-a-node-that-other-elements-refer-to). To rename the node, change the `peer` of those relationships in the same file as the rename. See [Rename schema elements](./renaming-schema-element#node-including-a-change-of-namespace).
+
+## A merge that failed partway
+
+**What you see:** Infrahub refuses changes to the default branch with `MERGE_RECOVERY_REQUIRED`. This happens after a merge stops before it finishes, including a merge that contains schema changes.
+
+**What to do:** an administrator runs `infrahub recover merge`, which rolls back the partial merge and reopens the branch. See [When a merge fails](../branches/merge#when-a-merge-fails).
+
+## Input should be a valid string
+
+**What you see:** `infrahubctl schema check` or `infrahubctl schema load` refuses the file before it sends it to Infrahub:
+
+```text
+Schema not valid, found '4' error(s) in <file>
+  nodes[0].attributes[0].Dropdown.choices[0].name: Input should be a valid string (received: True)
+  nodes[0].attributes[0].Dropdown.choices[0].label: Input should be a valid string (received: True)
+  nodes[0].attributes[0].Dropdown.choices[1].name: Input should be a valid string (received: False)
+  nodes[0].attributes[0].Dropdown.choices[1].label: Input should be a valid string (received: False)
+```
+
+**Why:** YAML converts the unquoted values `on`, `off`, `yes`, `no`, `true` and `false` to booleans. When one of them is in a field that expects a string, such as a dropdown choice name or an attribute name, the load fails.
+
+```yaml
+attributes:
+  - name: status
+    kind: Dropdown
+    choices:
+      - name: on   # read as the boolean true
+        label: On
+      - name: off  # read as the boolean false
+        label: Off
+```
+
+**What to do:** quote these values.
+
+```yaml
+attributes:
+  - name: status
+    kind: Dropdown
+    choices:
+      - name: "on"
+        label: "On"
+      - name: "off"
+        label: "Off"
+```
+
+## Next
+
+- [Schema operations](./operations) — How Infrahub applies a schema file to an instance that holds objects
+- [Rename schema elements](./renaming-schema-element) — Rename a node, attribute or relationship and keep its data
+- [Remove schema elements](./removing-schema-element) — Remove a node, attribute, relationship or dropdown choice

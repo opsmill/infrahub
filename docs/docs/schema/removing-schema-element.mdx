@@ -1,0 +1,160 @@
+---
+title: Remove schema elements
+description: Remove a node, generic, attribute, relationship or dropdown choice from the schema of an instance that holds objects, and clear a property's value.
+---
+
+# Remove schema elements
+
+To remove a node, a generic, an attribute or a relationship, keep it in your schema file and add `state: absent` to it. Infrahub then removes the element and deletes its data on the branch where you load the change. Deleting the element from the file does not remove anything: Infrahub leaves the element unchanged, together with its data.
+
+```yaml {3}
+  - name: Rack
+    namespace: Infra
+    state: absent
+    attributes:
+      - name: name
+        kind: Text
+```
+
+The default value is `state: present`, so you do not have to write it on the other elements.
+
+## Why deleting an element from the file does not remove it
+
+Loading a schema file adds the elements in the file to the loaded schema and updates the ones that already exist. It does not replace the loaded schema, so an element that is loaded but is not in the file is left unchanged. See [How a load works](./operations#how-a-load-works).
+
+The schema of an instance is often defined in several places: several schema files, several Git repositories, and [schema extensions](./extensions) that add attributes and relationships to nodes defined in another file. One load contains only part of that schema. If an element missing from the file meant "remove", loading one file would remove every element defined in the others, together with their objects.
+
+So you state each removal on the element itself, with `state: absent`. `infrahubctl schema check` lists every element you remove under `removed`, so you can confirm the removal before Infrahub deletes anything.
+
+## Remove an element
+
+1. **Mark the element `state: absent`.** Keep its complete definition in the file. See [Write the removed element in full](#write-the-removed-element-in-full).
+2. **Check the change.** Run `infrahubctl schema check <file> --branch <branch>`. The element is listed under `removed`. If it is not, `state: absent` is missing, or the element is not loaded on this branch.
+3. **Load the change on a branch**, and merge it through a Proposed Change. The **Schema** tab of the Proposed Change lists the removal.
+4. **Delete the element from the file once the removal is merged.** This step is optional. An element marked `state: absent` that is no longer loaded has no effect on later loads.
+
+## What a removal deletes
+
+:::danger
+
+Removing an element deletes the data stored for it on the branch where you load the change. Removing a node deletes all its objects. When you load the change on a branch other than the default branch, the default branch keeps the element and its data until you merge.
+
+:::
+
+### Attribute
+
+Infrahub removes the attribute from the node and its value from every object of the node.
+
+Other properties of the node can refer to the attribute by name: `human_friendly_id`, `uniqueness_constraints`, `order_by` and `default_filter`. If one of them still names the attribute in your file, the schema is not valid and Infrahub refuses the load. Remove the attribute from these properties in the same file. If the attribute was the whole `human_friendly_id` of the node, give the node a new `human_friendly_id`, or clear it with an empty list (`[]`).
+
+Removing a `NumberPool` attribute also removes the number pool that Infrahub created for it. See [Number pools](./number-pool).
+
+### Attribute or relationship on a generic
+
+Removing an attribute or a relationship from a generic removes it from every node that inherits it, together with its values. A node that overrides it keeps its own attribute or relationship and its values. See [Change generics](./change-generics).
+
+### Relationship
+
+Infrahub stores the links between objects under the relationship's `identifier`. The two sides of a bidirectional relationship use the same `identifier`, so Infrahub stores their links once. For example, you read the same links between devices and racks through `rack` on `InfraDevice` and through `devices` on `InfraRack`.
+
+Infrahub deletes the links only when no node still has a relationship with that `identifier`. If you remove `devices` from `InfraRack` and keep `rack` on `InfraDevice`, Infrahub keeps the links, and you still view the rack of each device. To delete the links, mark both sides `state: absent`.
+
+### Node
+
+Infrahub removes the node and deletes all its objects. It also deletes the links between these objects and objects of other nodes.
+
+Infrahub refuses to remove a node while another node has a relationship to it. See [Remove a node that other elements refer to](#remove-a-node-that-other-elements-refer-to).
+
+### Generic
+
+Infrahub refuses to remove a generic while a node inherits from it, and you cannot remove a generic from a node's `inherit_from`. To remove a generic, first remove every node that inherits from it, together with their objects.
+
+### Element that Infrahub has never loaded
+
+Infrahub ignores an element marked `state: absent` that is not loaded on the branch, because there is no data to delete. This is also why step 4 of [Remove an element](#remove-an-element) is optional.
+
+### Branch-agnostic attribute or relationship
+
+When you remove a branch-agnostic attribute or relationship, Infrahub releases its stored value without deleting any object, once the field cannot be read from any branch. See [Branch-agnostic data](../branches/branch-agnostic-data.mdx).
+
+## View the data of a removed element
+
+Infrahub keeps the history of the schema and of the data. It records a removal at the time of the load, and keeps the earlier versions of the schema and of the values. To view a removed attribute and the values it contained, query the data at a time before the removal, in the web interface or in a GraphQL query. See [Query data at a specific time](../immutable-history/query-historical-data#query-data-at-a-specific-time).
+
+Loading the element again does not restore its data. Infrahub creates a new element: a new attribute has its `default_value`, or no value, on every object, and a new node has no objects. To restore attribute values, query them at a time before the removal and write them to the new attribute.
+
+## Write the removed element in full
+
+Infrahub checks every element in the file against the rules for its kind before it compares the file with the loaded schema. An element marked `state: absent` is checked like any other, so it must include the properties its kind requires. A `Dropdown` attribute without `choices`, for example, is refused:
+
+```text
+Value error, The property 'choices' is required for kind=Dropdown
+```
+
+Keep the element as it is in your file, and add `state: absent`.
+
+## Remove a node that other elements refer to
+
+Infrahub cannot resolve a relationship whose `peer` is a kind that no longer exists. So it refuses to remove a node while a relationship on another node or generic has the node as its `peer`:
+
+```text
+Unable to load the schema:
+  InfraDevice: Relationship 'rack' is referring an invalid peer 'InfraRack'
+```
+
+Remove the references first, then the node, in two loads:
+
+1. **Remove the relationships that point to the node.** Mark each relationship whose `peer` is the node with `state: absent`, or change its `peer`, and load the file.
+2. **Remove the node.** Mark the node with `state: absent` and load the file again.
+
+## Remove a dropdown choice
+
+:::warning
+
+You cannot remove a dropdown choice through a schema file. Infrahub keeps a choice that is missing from the file, and ignores `state: absent` on a choice with this warning:
+
+```text
+deprecation: 'choices.state' is a read-only field, the submitted value is ignored [InfraDevice.status]
+```
+
+:::
+
+When you load a file, Infrahub merges its list of choices by name, as it merges the list of attributes of a node, so a choice that is missing from the file is kept. A choice has no `state` property.
+
+Remove the choice from the running schema first, on the branch where you make the change:
+
+- **Attribute defined on a node**: in the web interface, open the form of an object of that node, open the list of the dropdown field, select the delete button next to the choice, and confirm. You can also call the `SchemaDropdownRemove` GraphQL mutation with the node's kind.
+- **Attribute defined on a generic**: the web interface refuses the removal. Call the `SchemaDropdownRemove` GraphQL mutation with the generic's kind:
+
+  ```graphql
+  mutation {
+    SchemaDropdownRemove(data: { kind: "InfraGenericDevice", attribute: "status", dropdown: "provisioning" }) {
+      ok
+    }
+  }
+  ```
+
+  The choice is removed from every node that inherits the attribute.
+
+Then delete the choice from your schema file. Otherwise the next load adds it back, because a load adds every choice in the file that does not exist yet.
+
+Infrahub refuses the removal in two cases:
+
+- **One or more objects still use the choice.** Those objects would have a value that is no longer a choice. Change them first.
+- **It is the last choice of the attribute.** A `Dropdown` attribute needs at least one choice.
+
+Removing a choice through a schema file is requested in [issue #10938](https://github.com/opsmill/infrahub/issues/10938).
+
+## Clear a property
+
+A property that has no default value and is missing from the file keeps its current value. So to clear a property, write it with an empty value and load the schema again:
+
+- **Text property**, such as `description` or `label`: set it to an empty string.
+- **List property**, such as `human_friendly_id`, `display_labels` or `order_by`: set it to an empty list (`[]`).
+
+## Next
+
+- [Rename schema elements](./renaming-schema-element) — Rename a node, attribute or relationship and keep its data
+- [Change generics](./change-generics) — Which changes on a generic apply to the nodes that inherit from it, and how to remove an override
+- [Schema operations](./operations) — How Infrahub applies a schema file, and how to plan a change to an instance that holds objects
+- [Troubleshooting schema updates](./troubleshooting) — Recover from a rename that created a second element, a change on a generic that does not apply to some nodes, a load that seems to hang, and a refused load
