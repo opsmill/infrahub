@@ -5,12 +5,13 @@ from typing import TYPE_CHECKING, Any
 from typing_extensions import Self
 
 from infrahub.core import protocols, registry
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, PermissionAction
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters, NumberPoolRangeParameters
 from infrahub.database import retry_db_transaction, within_transaction
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
-from infrahub.pools.number_pool_range_reconciler import NumberPoolRangeReconciler
+from infrahub.permissions.types import define_object_permission_from_branch
+from infrahub.pools.number_pool_range_reconciler import NumberPoolRangeReconciler, RangeReconciliation
 from infrahub.pools.number_pool_range_validation import (
     NumberRangeBounds,
     validate_number_pool_ranges,
@@ -37,6 +38,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
+    from infrahub.core.protocols import CoreNumberPoolRange
     from infrahub.core.schema import AttributeSchema
     from infrahub.database import InfrahubDatabase
 
@@ -88,6 +90,7 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
                     reconciliation = await reconciler.reconcile(
                         pool=number_pool, declared=declared_ranges, user_id=graphql_context.assigned_user_id
                     )
+                    cls._raise_for_range_permissions(graphql_context=graphql_context, reconciliation=reconciliation)
                 else:
                     reconciliation = await reconciler.rewrite_single_range(
                         pool=number_pool, declared=declared_ranges[0], user_id=graphql_context.assigned_user_id
@@ -127,6 +130,35 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
             ]
         )
         return declared
+
+    @classmethod
+    def _raise_for_range_permissions(
+        cls, graphql_context: GraphqlContext, reconciliation: RangeReconciliation[CoreNumberPoolRange]
+    ) -> None:
+        """Refuse range writes the account may not make through the range mutations themselves.
+
+        Raises:
+            PermissionDeniedError: When the account lacks the create, update or delete permission on ranges that
+                one of the writes needs.
+
+        """
+        if not graphql_context.account_session:
+            return
+        branch_name = graphql_context.branch.name
+        range_schema = graphql_context.db.schema.get_node_schema(
+            name=InfrahubKind.NUMBERPOOLRANGE, branch=branch_name, duplicate=False
+        )
+        for action, pool_ranges in (
+            (PermissionAction.CREATE, reconciliation.created),
+            (PermissionAction.UPDATE, reconciliation.updated),
+            (PermissionAction.DELETE, reconciliation.deleted),
+        ):
+            if pool_ranges:
+                graphql_context.active_permissions.raise_for_permission(
+                    permission=define_object_permission_from_branch(
+                        schema=range_schema, action=action, branch_name=branch_name
+                    )
+                )
 
     @classmethod
     def _without_ranges(cls, data: InputObjectType) -> InputObjectType:
@@ -276,6 +308,7 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
                 reconciliation = await reconciler.reconcile(
                     pool=number_pool, declared=declared_ranges, user_id=graphql_context.assigned_user_id
                 )
+                cls._raise_for_range_permissions(graphql_context=graphql_context, reconciliation=reconciliation)
             stored_pool = await sync_shorthand(
                 db=dbt, pool_id=pool_id, ranges=reconciliation.ranges, user_id=graphql_context.assigned_user_id
             )
