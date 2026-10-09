@@ -177,6 +177,10 @@ tab is active with the pool and number shown. Save without changes and confirm n
 - **FR-013**: A field whose value has not changed since the form opened MUST NOT be sent.
 - **FR-014**: In the pool tab, a number without a pool MUST block saving with a message on the
   field asking for a pool.
+- **FR-014a**: Picking a pool MUST pre-fill the number input with the number the node holds on an
+  edit form, so the held number is kept unless the user empties the input. On a create form, and
+  when the current value comes from the schema default, a profile or a template, the input MUST
+  start empty.
 - **FR-015**: An error the backend returns for the field (uniqueness, refusal, pool not attached
   to this kind and attribute) MUST be shown to the user.
 - **FR-016**: A field the user may not edit MUST NOT allow either tab to be used.
