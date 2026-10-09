@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from typing_extensions import Self
 
-from infrahub.core import protocols, registry
+from infrahub.core import protocols
 from infrahub.core.constants import InfrahubKind, PermissionAction
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters, NumberPoolRangeParameters
@@ -25,7 +25,9 @@ from .common import (
     SCHEMA_POOL_RANGES_REFUSED,
     SCHEMA_POOL_SHORTHAND_REFUSED,
     pool_lock,
+    pool_target_attribute,
     range_bounds,
+    refuse_ranges_outside_attribute,
     refuse_schema_pool,
     sync_shorthand,
 )
@@ -67,7 +69,7 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
         database: InfrahubDatabase | None = None,  # noqa: ARG003
     ) -> Any:
         graphql_context: GraphqlContext = info.context
-        attribute = cls._resolve_target_attribute(data=data)
+        attribute = cls._resolve_target_attribute(db=graphql_context.db, data=data, branch=branch)
         shorthand = cls._parse_shorthand(data=data, attribute=attribute, ranges_supplied="ranges" in data.keys())
         declared_ranges = cls._parse_ranges(data=data)
         if shorthand is not None:
@@ -75,6 +77,7 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
 
         if declared_ranges is None:
             return await super().mutate_create(info=info, data=data, branch=branch)
+        refuse_ranges_outside_attribute(attribute=attribute, ranges=declared_ranges)
 
         async with graphql_context.db.start_transaction() as dbt:
             number_pool, _ = await super().mutate_create(
@@ -166,7 +169,7 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
         return type(data)({key: value for key, value in data.items() if key != "ranges"})
 
     @classmethod
-    def _resolve_target_attribute(cls, data: InputObjectType) -> AttributeSchema:
+    def _resolve_target_attribute(cls, db: InfrahubDatabase, data: InputObjectType, branch: Branch) -> AttributeSchema:
         """Return the Number attribute the pool allocates for.
 
         Raises:
@@ -175,7 +178,7 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
 
         """
         try:
-            schema_node = registry.schema.get(name=data["node"].value)
+            schema_node = db.schema.get(name=data["node"].value, branch=branch, duplicate=False)
             if not schema_node.is_generic_schema and not schema_node.is_node_schema:
                 raise ValidationError(input_value="The selected model is not a Node or a Generic")
         except SchemaNotFoundError as exc:
@@ -296,8 +299,10 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
 
             repository = NumberPoolRepository(db=dbt)
             reconciler = NumberPoolRangeReconciler(range_store=repository)
+            attribute = pool_target_attribute(db=dbt, pool=number_pool, branch=branch)
             if declared_ranges is None:
                 shorthand_range = await cls._shorthand_range(repository=repository, number_pool=number_pool)
+                refuse_ranges_outside_attribute(attribute=attribute, ranges=[shorthand_range])
                 reconciliation = await reconciler.rewrite_single_range(
                     pool=number_pool, declared=shorthand_range, user_id=graphql_context.assigned_user_id
                 )
@@ -305,6 +310,7 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
                 declared_ranges = await cls._keep_stored_weights(
                     repository=repository, pool_id=pool_id, declared=declared_ranges, data=data
                 )
+                refuse_ranges_outside_attribute(attribute=attribute, ranges=declared_ranges)
                 reconciliation = await reconciler.reconcile(
                     pool=number_pool, declared=declared_ranges, user_id=graphql_context.assigned_user_id
                 )

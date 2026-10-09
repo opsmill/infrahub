@@ -60,6 +60,26 @@ def validate_number_pool_ranges(ranges: Collection[NumberRangeBounds]) -> None:
         validate_number_pool_range(candidate=candidate, others=ranges)
 
 
+def validate_ranges_within_attribute(
+    ranges: Collection[NumberRangeBounds], min_value: int | None, max_value: int | None
+) -> None:
+    """Refuse a range reaching below the min_value or above the max_value of the attribute the pool allocates for.
+
+    Raises:
+        ValidationError: For the lowest offending range.
+
+    """
+    for candidate in sorted(ranges, key=lambda pool_range: (pool_range.start, pool_range.end)):
+        if min_value is not None and candidate.start < min_value:
+            raise ValidationError(
+                input_value=f"Range {candidate.label} starts below the attribute's min_value ({min_value})"
+            )
+        if max_value is not None and candidate.end > max_value:
+            raise ValidationError(
+                input_value=f"Range {candidate.label} ends above the attribute's max_value ({max_value})"
+            )
+
+
 def validate_shorthand_target(ranges: Collection[NumberRangeBounds]) -> None:
     """Refuse the single-range start/end shorthand on a pool holding more than one range.
 
