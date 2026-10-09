@@ -58,7 +58,7 @@ Equality: two divisions are equal when their element paths and their values are 
 
 ### Tracked number record (`IS_RESERVED` edge, existing)
 
-Unchanged: pool to the holding object's attribute, on the global branch, with `identifier` and `provenance` (`allocated` or `provided`). The division of a record is the division of its holding object on the branch considered.
+Unchanged: pool to the holding object's attribute, on the global branch, with `identifier` and `allocated_values`, the list of the values the pool allocated; a value the record accounts for and does not list was provided by a user (provenance `provided`), and a record without the list reads as `allocated` for every value. The division of a record is the division of its holding object on the branch considered.
 
 ### Number-pool attribute parameters (`NumberPoolParameters`, existing)
 

@@ -113,7 +113,8 @@ backend/tests/
 ├── unit/core/test_resource_manager_query.py          # NEW: unscoped rendering of the shared fragment
 ├── helpers/number_pool.py                            # PR #10932: SCOPED_POOL_SCHEMA, extended here
 ├── component/core/resource_manager/conftest.py       # existing: scoped pool fixture added
-├── component/core/resource_manager/test_number_pool_scope.py        # NEW: scoped free, used, divisions, allocated queries
+├── component/core/resource_manager/test_number_pool_scope.py        # NEW: scoped free and used queries
+├── component/core/resource_manager/test_number_pool_divisions.py    # NEW: divisions and allocated queries
 ├── component/core/resource_manager/test_number_pool_scope_allocation.py  # NEW: allocation per division, locks, identifier
 ├── component/graphql/resource_manager/number_pools/test_pool_allocation_scope.py  # existing: rewritten to the {id, name} shape and the refusals
 ├── component/graphql/queries/test_number_pool_surface.py    # PR #10932: real-data cases replace the fixed dataset
@@ -154,7 +155,7 @@ docs/docs/resource-manager/
 
 - PR #10932 is rebased onto `feature-number-pools-1.12` and updated to the contract first: `backend/infrahub/graphql/queries/number_pool.py` gains the `NumberPoolScopeElement` type and the `id` field of `NumberPoolDivisionEntry`; `backend/infrahub/pools/number_pool_mock.py` carries `{id, name}` scope elements and counts each holding object under every division it occupies on any live branch; the mock's tests follow. The frontend team builds on that shape.
 - `NumberPoolGetDivisions` (new query in `backend/infrahub/core/query/resource_manager.py`) groups the tracked values by division tuple, counting each value under every division its holding object occupies on any live branch, and returns, per division, the distinct values on any live branch, on the default branch, and on other branches only. `NumberPoolRepository.get_divisions` runs it. The resolver turns relationship values into display labels with one batched node lookup.
-- `NumberPoolGetAllocated` gains the filters `division` (subset of elements allowed), range bounds, branch name and provenance, projects `coalesce(ir.provenance, "allocated")`, and keeps its default rendering for the existing callers (`NumberUtilizationGetter`, `resolve_number_pool_allocation`). The resolver resolves holding objects in batches per branch.
+- `NumberPoolGetAllocated` gains the filters `division` (subset of elements allowed), range bounds, branch name and provenance (derived, as today, from the `allocated_values` list of the record), and keeps its default rendering for the existing callers (`NumberUtilizationGetter`, `resolve_number_pool_allocation`). The resolver resolves holding objects in batches per branch.
 - The component tests of the divisions and allocations resolvers assert the number of database queries with `backend/tests/helpers/db_query_counter.py`, so that a per-row lookup cannot slip in.
 - `NumberUtilizationGetter` (`backend/infrahub/pools/number.py`) takes an optional division and keeps measuring the `EffectiveSpace` of `backend/infrahub/pools/number_ranges.py`; the per-range figures come from `range_figures` as today.
 - The three resolvers of `backend/infrahub/graphql/queries/number_pool.py` read the database per `contracts/graphql-number-pool-queries.md`, and `backend/infrahub/pools/number_pool_mock.py` is deleted.
