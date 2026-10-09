@@ -327,10 +327,10 @@ SC-002, SC-007.
       `entry` of `deliver_pending_merges`, or build it from the source branch's graph commit when it
       is `None`, after the content test of R3. Step 0 of `deliver` enqueues it with `widen=True`, so
       the save that appends the entry also holds a `widen` marker of scope `all`, with the reason
-      `UNHELD_FOLLOW_UP` (R3, FR-005a). The marker has no effect until T069 wires the releaser. A
-      failed enqueue is retried with the task. If every attempt fails, the run ends `Failed` with an
-      error-level log line that names the repository, the source branch and the source commit
-      (R3). When the flag is `True`, pass `entry=None`, so it never enqueues (R3, FR-005b).
+      `UNHELD_FOLLOW_UP` (R3, FR-005a). The marker has no effect until T069 wires the releaser. If
+      the enqueue fails, the run ends `Failed` with an error-level log line that names the
+      repository, the source branch and the source commit (R3). The retry of a failed enqueue with
+      the task moved to T077, because the task has no retries before it (T038). When the flag is `True`, pass `entry=None`, so it never enqueues (R3, FR-005b).
       Keep the read-only and the staging paths unchanged. Add no path that merges and records
       locally: a clone with no `origin` fails the attempt at the fetch and keeps the queue (R3). Tag
       the run with the repository node and the default branch, log one line per transition, and set
@@ -356,7 +356,10 @@ SC-002, SC-007.
 
 - [X] T042 [P] [US1] Add a fixture to `backend/tests/integration/git/test_git_live_remote.py` that builds a
       git-synced Infrahub branch whose repository file differs from the default branch, on
-      `protected_branch_dataset`. Reuse `rejected_push_to_main`.
+      `protected_branch_dataset`. Reuse `rejected_push_to_main`. Done with a fixture that builds its
+      own remote and repository for each test instead of `protected_branch_dataset`, because each
+      test changes the remote and the delivery state of its repository. `rejected_push_to_main` calls
+      the factory `reject_pushes_to_main`, which the new tests reuse.
 - [X] T043 [US1] Add `test_delivery_visible` to `backend/tests/integration/git/test_git_live_remote.py`
       (US1 #1 to #3): one entry, `action-required`, cause `permission`, the hook's `remote:` line
       verbatim, the commit unchanged.
@@ -370,11 +373,12 @@ SC-002, SC-007.
       `ENQUEUE_RETRY_DELAYS_SECONDS`, through a `sleep` that records the delays; an enqueue whose
       every try raises logs at error level and sets the flag to `False`, and the flow then appends
       the entry and a `widen` marker of scope `all`, with the reason `UNHELD_FOLLOW_UP`, in one
-      save; a flow whose own enqueue fails once and then returns delivers the entry, through a task
-      with short retry delays; a flow whose own enqueue fails at every attempt ends `Failed`, queues
+      save; a flow whose own enqueue fails at every attempt ends `Failed`, queues
       nothing, and logs at error level the repository, the source branch and the source commit; a
       flow whose `enqueue` refuses the id holds no marker; a merge with no content submits no merge
-      workflow; and a run with no `pending_merge` and no content queues nothing.
+      workflow; and a run with no `pending_merge` and no content queues nothing. The case of a flow
+      whose own enqueue fails once and then delivers moved to T077, because it needs the retries of
+      the task.
 - [ ] T046 [P] [US1] Write `backend/tests/component/git/writeback/test_import_deferral.py`: the sync skips
       the default branch and a named source branch, as new and as updated, while pending; the seed
       import skips the default branch; and `ProcessRepository` refuses on two branches.
@@ -535,7 +539,11 @@ T081 to T084 are not.
 
 - [ ] T077 [US4] Give `deliver_pending_merges` in `backend/infrahub/git/tasks.py` its `retries`,
       `retry_delay_seconds` and `retry_condition_fn`, and compute `final_attempt` from
-      `task_run.run_count`. Record `retry_due_at` before each wait.
+      `task_run.run_count`. Record `retry_due_at` before each wait. The retries also retry a failed
+      enqueue of step 0, the part that moved here from T037. Add to
+      `backend/tests/component/git/writeback/test_enqueue.py` the case that moved here from T045: a
+      flow whose own enqueue fails once and then returns delivers the entry, through a task with
+      short retry delays.
 - [ ] T078 [US4] Make `RepositoryWritebackService.deliver` return `deferred` when `manual` is `False` and a
       retry of another chain is due in the future, in `backend/infrahub/git/writeback/service.py`.
 - [ ] T079 [US4] Write `DeliveryRecoveryCheck` in `backend/infrahub/git/writeback/recovery.py` and run it
