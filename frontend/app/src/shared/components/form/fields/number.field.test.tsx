@@ -120,6 +120,47 @@ describe("NumberField", () => {
     await expect.poll(() => component.getByTestId("pool-kind-select").query()).toBeNull();
   });
 
+  test("offers a number input only once a pool is picked", async () => {
+    const component = await render(
+      <TestForm>
+        <NumberField {...poolProps} />
+      </TestForm>
+    );
+
+    await component.getByRole("tab", { name: "From pool" }).click();
+    await expect.element(component.getByTestId("select-open-pool-option-button")).toBeVisible();
+    await expect.poll(() => component.getByTestId("pool-number-input").query()).toBeNull();
+
+    await component.getByTestId("select-open-pool-option-button").click();
+    await component.getByRole("option", { name: "VLAN ids pool" }).click();
+
+    await expect.element(component.getByRole("spinbutton", { name: "Number" })).toBeVisible();
+    await expect.element(component.getByTestId("pool-number-input")).toHaveValue(null);
+  });
+
+  test("offers no number input for a pool that comes from a template", async () => {
+    const component = await render(
+      <TestForm>
+        <NumberField
+          {...poolProps}
+          pool={{
+            kind: "CoreNumberPool",
+            defaultAllocatedObjectKind: "TestDevice",
+            options: [numberPoolNode],
+            fromPoolRelationshipName: "vlan_id_from_resource_pool",
+          }}
+        />
+      </TestForm>
+    );
+
+    await component.getByRole("tab", { name: "From pool" }).click();
+    await component.getByTestId("select-open-pool-option-button").click();
+    await component.getByRole("option", { name: "VLAN ids pool" }).click();
+
+    await expect.element(component.getByTestId("select-value")).toHaveTextContent("VLAN ids pool");
+    await expect.poll(() => component.getByTestId("pool-number-input").query()).toBeNull();
+  });
+
   test("opens on the value tab when the value came from a pool, badged with that pool", async () => {
     const component = await render(
       <TestForm defaultValues={{ vlan_id: allocatedValue }}>
