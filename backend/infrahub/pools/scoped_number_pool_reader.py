@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class ScopedNumberPool:
-    """A number pool whose space is divided by an allocation scope."""
+    """A number pool and the allocation scope that divides its space, empty when the pool is unscoped."""
 
     id: str
     name: str
@@ -38,23 +38,35 @@ class UnreadableScopeNumberPool:
 
 
 @dataclass(frozen=True)
-class KindNumberPools:
-    """The scoped pools attached to some kinds, and the pools of those kinds whose stored scope cannot be read."""
+class NumberPoolScopes:
+    """Pools read with their allocation scope, apart from the pools whose stored scope cannot be read."""
 
-    scoped: list[ScopedNumberPool]
+    readable: list[ScopedNumberPool]
     unreadable: list[UnreadableScopeNumberPool]
 
 
 class ScopedNumberPoolReader:
-    """Reads the number pools attached to some kinds that carry an allocation scope."""
+    """Reads number pools with the allocation scope that divides their space."""
 
     def __init__(self, db: InfrahubDatabase) -> None:
         self.db = db
 
-    async def get_for_kinds(self, kinds: Iterable[str]) -> KindNumberPools:
+    async def get_for_kinds(self, kinds: Iterable[str]) -> NumberPoolScopes:
         """Return the scoped pools attached to any of the kinds, apart from the pools whose stored scope cannot be read."""
         pools = await NodeManager.query(db=self.db, schema=CoreNumberPool, filters={"node__values": sorted(set(kinds))})
-        scoped_pools: list[ScopedNumberPool] = []
+        read = self._read(pools=pools)
+        return NumberPoolScopes(
+            readable=[pool for pool in read.readable if not pool.scope.is_empty], unreadable=read.unreadable
+        )
+
+    async def get_by_ids(self, ids: Iterable[str]) -> NumberPoolScopes:
+        """Return the pools with these ids, unscoped ones included, apart from the pools whose stored scope cannot be read."""
+        pools = await NodeManager.query(db=self.db, schema=CoreNumberPool, filters={"ids": sorted(set(ids))})
+        return self._read(pools=pools)
+
+    @staticmethod
+    def _read(pools: list[CoreNumberPool]) -> NumberPoolScopes:
+        readable_pools: list[ScopedNumberPool] = []
         unreadable_pools: list[UnreadableScopeNumberPool] = []
         for pool in pools:
             stored_scope = pool.allocation_scope.value
@@ -72,9 +84,7 @@ class ScopedNumberPoolReader:
                     )
                 )
                 continue
-            if scope.is_empty:
-                continue
-            scoped_pools.append(
+            readable_pools.append(
                 ScopedNumberPool(
                     id=pool.get_id(),
                     name=pool.name.value,
@@ -83,4 +93,4 @@ class ScopedNumberPoolReader:
                     scope=scope,
                 )
             )
-        return KindNumberPools(scoped=scoped_pools, unreadable=unreadable_pools)
+        return NumberPoolScopes(readable=readable_pools, unreadable=unreadable_pools)

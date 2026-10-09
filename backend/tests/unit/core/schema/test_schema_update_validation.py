@@ -123,3 +123,49 @@ async def test_number_pool_ranges_change_emits_a_supported_constraint() -> None:
     assert result.errors == []
     assert [c.constraint_name for c in result.constraints] == ["attribute.parameters.ranges.update"]
     assert result.constraints[0].path.property_name == "parameters.ranges"
+
+
+async def test_number_pool_allocation_scope_reordered_emits_its_constraint() -> None:
+    """The order of a declared allocation scope orders the values of each division, so reordering it is a change."""
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(
+        schema=SchemaRoot(
+            version="1.0",
+            nodes=[
+                {
+                    "name": "Widget",
+                    "namespace": "Test",
+                    "attributes": [
+                        {"name": "role", "kind": "Text"},
+                        {"name": "site", "kind": "Text"},
+                        {
+                            "name": "number",
+                            "kind": "NumberPool",
+                            "read_only": True,
+                            "parameters": {
+                                "ranges": [{"start": 1, "end": 100}],
+                                "allocation_scope": ["site", "role"],
+                                "number_pool_id": "widget-number-pool",
+                            },
+                        },
+                    ],
+                }
+            ],
+        )
+    )
+    schema.process(validate_schema=False)
+
+    candidate = schema.duplicate()
+    widget = candidate.get_node(name="TestWidget", duplicate=True)
+    parameters = widget.get_attribute(name="number").parameters
+    assert isinstance(parameters, NumberPoolParameters)
+    parameters.allocation_scope = ["role", "site"]
+    candidate.set(name="TestWidget", schema=widget)
+
+    diff = schema.diff(other=candidate)
+    result = schema.validate_update(other=candidate, diff=diff)
+
+    assert result.errors == []
+    assert [(c.constraint_name, c.path.field_name, c.path.property_name) for c in result.constraints] == [
+        ("attribute.parameters.allocation_scope.update", "number", "parameters.allocation_scope")
+    ]

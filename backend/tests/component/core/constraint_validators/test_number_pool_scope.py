@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -8,13 +9,27 @@ import pytest
 from infrahub.api.schema import evaluate_candidate_schemas
 from infrahub.core import registry
 from infrahub.core.constants import HashableModelState, InfrahubKind, RelationshipCardinality
+from infrahub.core.manager import NodeManager
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
-from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
+from infrahub.core.protocols import CoreNumberPool as CoreNumberPoolProtocol
+from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.validators.aggregated_checker import AggregatedConstraintChecker
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.dependencies.registry import get_component_registry
+from infrahub.pools.number_pool_repository import NumberPoolRepository
+from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
+from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from infrahub.pools.scope import AllocationScopeResolver
-from tests.helpers.number_pool import SCOPED_DEVICE, SCOPED_HOLDER, SCOPED_POD_HOLDER, SCOPED_POOL_SCHEMA
+from tests.helpers.number_pool import (
+    SCOPED_DEVICE,
+    SCOPED_HOLDER,
+    SCOPED_LINK,
+    SCOPED_POD_HOLDER,
+    SCOPED_POOL_SCHEMA,
+    SCOPED_RACK,
+    SCOPED_SITE,
+)
 from tests.helpers.schema import load_schema
 
 if TYPE_CHECKING:
@@ -77,6 +92,12 @@ def _site_removed(schema_branch: SchemaBranch) -> SchemaRoot:
 def _site_renamed(schema_branch: SchemaBranch) -> SchemaRoot:
     device = _device(schema_branch)
     device.get_relationship(name="site").name = "location"
+    return SchemaRoot(nodes=[device])
+
+
+def _tags_renamed(schema_branch: SchemaBranch) -> SchemaRoot:
+    device = _device(schema_branch)
+    device.get_attribute(name="tags").name = "labels"
     return SchemaRoot(nodes=[device])
 
 
@@ -270,6 +291,22 @@ class TestNumberPoolScopeSchemaChange:
     ) -> None:
         assert await self._violations(db=db, branch=default_branch_scope_class, change=case.change) == []
 
+    async def test_renaming_a_scope_element_reaches_the_checker_under_its_new_name(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, scoped_pools: dict[str, CoreNumberPool]
+    ) -> None:
+        branch_schema = registry.schema.get_schema_branch(name=default_branch_scope_class.name)
+
+        _, result = evaluate_candidate_schemas(
+            branch_schema=branch_schema, schemas_to_evaluate=[_site_renamed(branch_schema.duplicate())]
+        )
+
+        # Constraints on other fields cannot reach a scope, so only the renamed field's are pinned.
+        assert [
+            (constraint.constraint_name, constraint.path.field_name)
+            for constraint in result.constraints
+            if constraint.path.field_name in {"site", "location"}
+        ] == [("relationship.name.update", "location")]
+
 
 async def test_a_pool_whose_stored_scope_cannot_be_read_only_refuses_the_fields_it_names(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
@@ -313,5 +350,61 @@ async def test_a_pool_whose_stored_scope_cannot_be_read_only_refuses_the_fields_
             " (vlan-per-role-by-name) is not compliant. The error relates to field role='allocation_scope of pool"
             ' vlan-per-role-by-name: the stored entry "role" is not an element with an "id" and a "name"; recreate'
             " the pool to set its scope; the change to ScopeDevice.role cannot be checked against this pool'.",
+        )
+    ]
+
+
+async def test_a_schema_pool_whose_stored_scope_cannot_be_read_only_refuses_the_renames_it_names(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    device = copy.deepcopy(SCOPED_DEVICE)
+    device.attributes = [attribute for attribute in device.attributes if attribute.name != "vlan_id"]
+    device.attributes.append(
+        AttributeSchema(
+            name="vlan_id",
+            kind="NumberPool",
+            optional=False,
+            read_only=True,
+            parameters=NumberPoolParameters(start_range=1, end_range=100, allocation_scope=["site"]),
+        )
+    )
+    await load_schema(
+        db=db,
+        schema=SchemaRoot(
+            generics=[SCOPED_HOLDER], nodes=[SCOPED_SITE, SCOPED_RACK, SCOPED_LINK, device, SCOPED_POD_HOLDER]
+        ),
+        update_db=True,
+    )
+    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository)
+    await SchemaNumberPoolSynchronizer(
+        db=db, schema_manager=registry.schema, upserter=upserter, range_store_factory=NumberPoolRepository
+    ).run()
+    pools = await NodeManager.query(
+        db=db,
+        schema=CoreNumberPoolProtocol,
+        filters={"node__value": SCOPED_DEVICE.kind, "node_attribute__value": "vlan_id"},
+    )
+    assert len(pools) == 1
+    schema_pool = pools[0]
+    schema_pool.allocation_scope.value = ["site"]
+    await schema_pool.save(db=db)
+
+    tags_violations = await TestNumberPoolScopeSchemaChange._violations(
+        db=db, branch=default_branch, change=_tags_renamed
+    )
+    site_violations = await TestNumberPoolScopeSchemaChange._violations(
+        db=db, branch=default_branch, change=_site_renamed
+    )
+
+    pool_name = schema_pool.name.value
+    assert tags_violations == []
+    assert site_violations == [
+        (
+            schema_pool.id,
+            f"'number_pool.scope' constraint violation on schema '{InfrahubKind.NUMBERPOOL}'. Node ({pool_name}) is"
+            f" not compliant. The error relates to field location='ScopeDevice.vlan_id: allocation_scope of pool"
+            f' {pool_name}: the stored entry "site" is not an element with an "id" and a "name"; recreate the pool to'
+            " set its scope; the change to ScopeDevice.location cannot be checked against this pool'.",
         )
     ]

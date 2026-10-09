@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import copy
+import logging
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -210,10 +212,10 @@ async def test_declaration_on_another_branch_leaves_the_pool_untouched(
     assert await shorthand_of(db=db, pool_id=pool_id) == (1, 100)
 
 
-async def run_synchronizer(db: InfrahubDatabase) -> None:
+async def run_synchronizer(db: InfrahubDatabase, log: logging.Logger | None = None) -> None:
     upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository)
     await SchemaNumberPoolSynchronizer(
-        db=db, schema_manager=registry.schema, upserter=upserter, range_store_factory=NumberPoolRepository
+        db=db, schema_manager=registry.schema, upserter=upserter, range_store_factory=NumberPoolRepository, log=log
     ).run()
 
 
@@ -231,6 +233,22 @@ async def create_device_pool(db: InfrahubDatabase, name: str, scope: list[str]) 
         start_range=1,
         end_range=10,
         allocation_scope=None if allocation_scope.is_empty else allocation_scope.to_stored(),
+    )
+    await pool.save(db=db)
+    return pool.get_id()
+
+
+async def create_pool_with_stored_scope(db: InfrahubDatabase, name: str, kind: str, stored_scope: Any) -> str:
+    """Create a user pool over vlan_id holding `stored_scope` as written, and return its id."""
+    pool = await Node.init(db=db, schema=InfrahubKind.NUMBERPOOL)
+    await pool.new(
+        db=db,
+        name=name,
+        node=kind,
+        node_attribute="vlan_id",
+        start_range=1,
+        end_range=10,
+        allocation_scope=stored_scope,
     )
     await pool.save(db=db)
     return pool.get_id()
@@ -333,3 +351,140 @@ async def test_schema_created_pool_stale_scope_name_is_rewritten(
     await run_synchronizer(db=db)
 
     assert await stored_scope_of(db=db, pool_id=pool_id) == [{"id": name_id, "name": "name"}]
+
+
+async def test_declaration_the_default_branch_cannot_resolve_leaves_later_pools_created(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """A declared scope the default branch no longer resolves creates no pool, and the other declarations get theirs."""
+    await load_schema(db=db, schema=SCOPED_POOL_SCHEMA, update_db=True)
+    scoped_branch = await create_branch(db=db, branch_name="scope-gone")
+    device = copy.deepcopy(SCOPED_DEVICE)
+    device.attributes.append(
+        AttributeSchema(
+            name="vlan_index",
+            kind="NumberPool",
+            optional=False,
+            read_only=True,
+            parameters=NumberPoolParameters(start_range=1, end_range=10, allocation_scope=["site"]),
+        )
+    )
+    registry.schema.register_schema(schema=SchemaRoot(nodes=[device]), branch=scoped_branch.name)
+    default_schema = registry.schema.get_schema_branch(name=registry.default_branch)
+    default_device_without_site = default_schema.get_node(name=SCOPED_DEVICE.kind)
+    default_device_without_site.relationships = [
+        relationship for relationship in default_device_without_site.relationships if relationship.name != "site"
+    ]
+    default_schema.set(name=SCOPED_DEVICE.kind, schema=default_device_without_site)
+    counter_branch = await create_branch(db=db, branch_name="counter-pool")
+    registry.schema.register_schema(
+        schema=counter_schema(parameters=NumberPoolParameters(start_range=1, end_range=100)), branch=counter_branch.name
+    )
+
+    await run_synchronizer(db=db)
+
+    device_pools = await NodeManager.query(
+        db=db, schema=CoreNumberPool, filters={"node__value": SCOPED_DEVICE.kind}, branch_agnostic=True
+    )
+    counter_pools = await NodeManager.query(
+        db=db, schema=CoreNumberPool, filters={"node__value": COUNTER_KIND}, branch_agnostic=True
+    )
+    assert (len(device_pools), len(counter_pools)) == (0, 1)
+
+
+async def test_saving_a_branch_schema_holding_a_declaration_the_default_branch_cannot_resolve(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """The branch schema saved for another pool, and reloaded later, keeps a declaration the default branch lost."""
+    await load_schema(db=db, schema=SCOPED_POOL_SCHEMA, update_db=True)
+    scoped_branch = await create_branch(db=db, branch_name="scope-gone")
+    device = copy.deepcopy(SCOPED_DEVICE)
+    device.attributes.extend(
+        [
+            AttributeSchema(
+                name="vlan_index",
+                kind="NumberPool",
+                optional=False,
+                read_only=True,
+                parameters=NumberPoolParameters(start_range=1, end_range=10, allocation_scope=["site"]),
+            ),
+            AttributeSchema(
+                name="vlan_serial",
+                kind="NumberPool",
+                optional=False,
+                read_only=True,
+                parameters=NumberPoolParameters(start_range=1, end_range=10),
+            ),
+        ]
+    )
+    registry.schema.register_schema(schema=SchemaRoot(nodes=[device]), branch=scoped_branch.name)
+    default_schema = registry.schema.get_schema_branch(name=registry.default_branch)
+    default_device_without_site = default_schema.get_node(name=SCOPED_DEVICE.kind)
+    default_device_without_site.relationships = [
+        relationship for relationship in default_device_without_site.relationships if relationship.name != "site"
+    ]
+    default_schema.set(name=SCOPED_DEVICE.kind, schema=default_device_without_site)
+    counter_branch = await create_branch(db=db, branch_name="counter-pool")
+    registry.schema.register_schema(
+        schema=counter_schema(parameters=NumberPoolParameters(start_range=1, end_range=100)), branch=counter_branch.name
+    )
+
+    await run_synchronizer(db=db)
+    reloaded = await registry.schema.load_schema_from_db(db=db, branch=scoped_branch)
+
+    device_pools = await NodeManager.query(
+        db=db, schema=CoreNumberPool, filters={"node__value": SCOPED_DEVICE.kind}, branch_agnostic=True
+    )
+    counter_pools = await NodeManager.query(
+        db=db, schema=CoreNumberPool, filters={"node__value": COUNTER_KIND}, branch_agnostic=True
+    )
+    assert sorted(pool.node_attribute.value for pool in device_pools) == ["vlan_serial"]
+    assert len(counter_pools) == 1
+    reloaded_index = reloaded.get_node(name=SCOPED_DEVICE.kind).get_attribute(name="vlan_index")
+    assert isinstance(reloaded_index.parameters, NumberPoolParameters)
+    assert (reloaded_index.parameters.allocation_scope, reloaded_index.parameters.number_pool_id) == (["site"], None)
+
+
+async def test_pools_whose_scope_cannot_be_refreshed_keep_it_while_a_stale_name_is_rewritten(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A stored scope that cannot be read, or a kind the default branch does not define, does not stop a rename."""
+    await load_schema(db=db, schema=SCOPED_POOL_SCHEMA, update_db=True)
+    renamed_pool_id = await create_device_pool(db=db, name="vlan-per-site", scope=["site"])
+    unreadable_pool_id = await create_pool_with_stored_scope(
+        db=db, name="vlan-unreadable", kind=SCOPED_DEVICE.kind, stored_scope=["site"]
+    )
+    undefined_kind_pool_id = await create_pool_with_stored_scope(
+        db=db, name="vlan-undefined-kind", kind="ScopeGone", stored_scope=[{"id": "gone-site-id", "name": "site"}]
+    )
+    writes_before = {
+        pool_id: await scope_writes_of(db=db, pool_id=pool_id)
+        for pool_id in (unreadable_pool_id, undefined_kind_pool_id)
+    }
+    device = default_device()
+    site_id = device.get_relationship(name="site").id
+    device.get_relationship(name="site").name = "location"
+    await load_schema(db=db, schema=SchemaRoot(nodes=[device]), update_db=True)
+    log = logging.getLogger("tests.scope-refresh")
+
+    with caplog.at_level(logging.WARNING, logger=log.name):
+        await run_synchronizer(db=db, log=log)
+
+    assert await stored_scope_of(db=db, pool_id=renamed_pool_id) == [{"id": site_id, "name": "location"}]
+    assert await stored_scope_of(db=db, pool_id=unreadable_pool_id) == ["site"]
+    assert await stored_scope_of(db=db, pool_id=undefined_kind_pool_id) == [{"id": "gone-site-id", "name": "site"}]
+    assert {
+        pool_id: await scope_writes_of(db=db, pool_id=pool_id)
+        for pool_id in (unreadable_pool_id, undefined_kind_pool_id)
+    } == writes_before
+    assert [(record.levelno, record.getMessage()) for record in caplog.records if record.name == log.name] == [
+        (
+            logging.WARNING,
+            f"Keeping the stored allocation scope of NumberPool={unreadable_pool_id}: allocation_scope of pool"
+            ' vlan-unreadable: the stored entry "site" is not an element with an "id" and a "name"; recreate the pool'
+            " to set its scope",
+        )
+    ]

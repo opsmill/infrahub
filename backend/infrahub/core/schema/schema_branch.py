@@ -58,6 +58,7 @@ from infrahub.core.schema import (
 )
 from infrahub.core.schema.attribute_parameters import (
     ListAttributeParameters,
+    NumberPoolParameters,
     TextAttributeParameters,
 )
 from infrahub.core.schema.attribute_schema import get_attribute_schema_class_for_kind
@@ -67,6 +68,11 @@ from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
 from infrahub.core.validators.schema_branch.display_label_validator import DisplayLabelValidator
 from infrahub.core.validators.schema_branch.hierarchical_nodes_restricted_words_validator import (
     HierarchicalNodesRestrictedWords,
+)
+from infrahub.core.validators.schema_branch.number_pool_scope_validator import (
+    DeclaredScopeValidator,
+    registered_default_branch_schema,
+    scope_refusal_reason,
 )
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from infrahub.log import get_logger
@@ -732,10 +738,15 @@ class SchemaBranch:
             new_item.update(node_extension)
             self.set(name=node_extension.kind, schema=new_item)
 
-    def process(self, validate_schema: bool = True) -> None:
+    def process(self, validate_schema: bool = True, resolve_new_scopes_on_default_branch: bool = True) -> None:
+        """Prepare the schema and validate it unless told otherwise.
+
+        A schema read back from the database passes ``resolve_new_scopes_on_default_branch=False``: the default branch
+        may have changed since its declarations were loaded, and only a load or change of the schema must follow it.
+        """
         self.process_pre_validation()
         if validate_schema:
-            self.process_validate()
+            self.process_validate(resolve_new_scopes_on_default_branch=resolve_new_scopes_on_default_branch)
         self.process_post_validation()
 
     def process_pre_validation(self) -> None:
@@ -779,7 +790,7 @@ class SchemaBranch:
         self._reconcile_legacy_attribute_parameters()
         self.process_branch_support()
 
-    def process_validate(self) -> None:
+    def process_validate(self, resolve_new_scopes_on_default_branch: bool = True) -> None:
         for validator in self.validators:
             validator.check(schema_branch=self)
 
@@ -788,7 +799,7 @@ class SchemaBranch:
         self.validate_kinds()
         self.validate_restricted_namespaces_from_generic()
         self.validate_computed_attributes()
-        self.validate_attribute_parameters()
+        self.validate_attribute_parameters(resolve_new_scopes_on_default_branch=resolve_new_scopes_on_default_branch)
         self.validate_default_values()
         self.validate_count_against_cardinality()
         self.validate_identifiers()
@@ -1383,12 +1394,57 @@ class SchemaBranch:
                                 f"{node.kind}: Relationship {rel.name!r} set 'common_relatives' with invalid relationship from '{rel.peer}'"
                             ) from None
 
-    def validate_attribute_parameters(self) -> None:
+    def validate_attribute_parameters(self, resolve_new_scopes_on_default_branch: bool = True) -> None:
+        for name in self.generics.keys():
+            generic_schema = self.get_generic(name=name, duplicate=False)
+            for attribute in generic_schema.attributes:
+                if attribute.kind == "NumberPool":
+                    self._validate_number_pool_scope(
+                        kind_schema=generic_schema,
+                        attribute=attribute,
+                        resolve_new_scopes_on_default_branch=resolve_new_scopes_on_default_branch,
+                    )
+
         for name in self.nodes.keys():
             node_schema = self.get_node(name=name, duplicate=False)
             for attribute in node_schema.attributes:
                 if attribute.kind == "NumberPool":
                     self._validate_number_pool_parameters(node_schema=node_schema, attribute=attribute)
+                    if not attribute.inherited:
+                        self._validate_number_pool_scope(
+                            kind_schema=node_schema,
+                            attribute=attribute,
+                            resolve_new_scopes_on_default_branch=resolve_new_scopes_on_default_branch,
+                        )
+
+    def _validate_number_pool_scope(
+        self,
+        kind_schema: NodeSchema | GenericSchema,
+        attribute: AttributeSchema,
+        resolve_new_scopes_on_default_branch: bool,
+    ) -> None:
+        if not isinstance(attribute.parameters, NumberPoolParameters) or not attribute.parameters.allocation_scope:
+            return
+        # Without the default branch, a declaration whose pool does not exist yet resolves on this schema alone.
+        validator = DeclaredScopeValidator(
+            candidate=self,
+            default_branch_schema=(
+                (lambda: registered_default_branch_schema(candidate=self))
+                if resolve_new_scopes_on_default_branch
+                else (lambda: self)
+            ),
+        )
+        try:
+            validator.validate(
+                kind=kind_schema.kind,
+                tracked_attribute=attribute.name,
+                entries=attribute.parameters.allocation_scope,
+                pool_exists=attribute.parameters.number_pool_id is not None,
+            )
+        except ValidationError as exc:
+            raise ValidationError(
+                f"{kind_schema.kind}.{attribute.name}: allocation_scope: {scope_refusal_reason(error=exc)}"
+            ) from exc
 
     def _validate_number_pool_parameters(self, node_schema: NodeSchema, attribute: AttributeSchema) -> None:
         if attribute.optional:

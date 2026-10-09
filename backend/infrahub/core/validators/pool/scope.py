@@ -8,10 +8,19 @@ from typing import TYPE_CHECKING, Protocol
 from infrahub.core.constants import InfrahubKind, PathType, RelationshipCardinality
 from infrahub.core.path import DataPath, GroupedDataPaths
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.validators.enum import ConstraintIdentifier
+from infrahub.core.validators.schema_branch.number_pool_scope_validator import (
+    DeclaredScopeComparator,
+    DeclaredScopeValidator,
+    SchemaBranchSource,
+    registered_default_branch_schema,
+    registered_schema_branch,
+    scope_refusal_reason,
+)
 from infrahub.exceptions import ValidationError
 from infrahub.log import get_logger
-from infrahub.pools.scope import NON_SCALAR_ATTRIBUTE_KINDS, AllocationScopeResolver, ScopeElement
+from infrahub.pools.scope import NON_SCALAR_ATTRIBUTE_KINDS, SCOPE_FIELD, AllocationScopeResolver, ScopeElement
 
 from ..interface import ConstraintCheckerInterface
 
@@ -22,17 +31,15 @@ if TYPE_CHECKING:
 
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema.schema_branch import SchemaBranch
-    from infrahub.pools.scoped_number_pool_reader import KindNumberPools, ScopedNumberPool
+    from infrahub.pools.scoped_number_pool_reader import NumberPoolScopes, ScopedNumberPool
 
     from ..model import SchemaConstraintValidatorRequest
 
 
 class ScopedNumberPoolSource(Protocol):
-    async def get_for_kinds(self, kinds: Iterable[str]) -> KindNumberPools: ...
+    async def get_for_kinds(self, kinds: Iterable[str]) -> NumberPoolScopes: ...
 
-
-class SchemaBranchSource(Protocol):
-    def get_schema_branch(self, name: str) -> SchemaBranch: ...
+    async def get_by_ids(self, ids: Iterable[str]) -> NumberPoolScopes: ...
 
 
 class PoolDependency(StrEnum):
@@ -40,6 +47,16 @@ class PoolDependency(StrEnum):
 
     SCOPE_ELEMENT = "scope_element"
     TRACKED_ATTRIBUTE = "tracked_attribute"
+
+
+@dataclass(frozen=True)
+class DeclaringAttribute:
+    """A NumberPool attribute whose schema created a pool, on the kind that declares its allocation scope."""
+
+    kind: str
+    attribute_name: str
+    pool_id: str
+    entries: list[str] | None
 
 
 @dataclass(frozen=True)
@@ -67,9 +84,13 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
             "attribute.kind.update": self._made_non_scalar,
             "node.attribute.remove": self._removed,
             "node.relationship.remove": self._removed,
-            "attribute.name.update": self._accepted,
-            "relationship.name.update": self._accepted,
-            ConstraintIdentifier.ATTRIBUTE_PARAMETERS_ALLOCATION_SCOPE_UPDATE.value: self._accepted,
+        }
+        self._declaration_rules: dict[
+            str, Callable[[SchemaConstraintValidatorRequest, str], list[DeclaringAttribute]]
+        ] = {
+            "attribute.name.update": self._declarations_reaching_renamed_field,
+            "relationship.name.update": self._declarations_reaching_renamed_field,
+            ConstraintIdentifier.ATTRIBUTE_PARAMETERS_ALLOCATION_SCOPE_UPDATE.value: self._changed_declaration,
         }
 
     @property
@@ -77,18 +98,23 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         return "number_pool.scope"
 
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
-        return request.constraint_name in self._rules
+        return request.constraint_name in self._rules or request.constraint_name in self._declaration_rules
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
         field_name = request.schema_path.field_name
         if not field_name:
             raise ValueError("field_name is not defined")
 
+        if declaration_rule := self._declaration_rules.get(request.constraint_name):
+            return await self._check_declarations(
+                request=request, field_name=field_name, declarations=declaration_rule(request, field_name)
+            )
+
         breakage = self._rules[request.constraint_name](request, field_name)
         if breakage is None:
             return []
 
-        previous_schemas = self._previous_schemas(request=request)
+        previous_schemas = self._previous_schemas(request=request, field_name=field_name)
         kind = request.schema_path.schema_kind
         kind_schemas = [
             schema_branch.get(name=kind, duplicate=False)
@@ -105,7 +131,7 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         element_ids = {element.id for element in elements}
         if breakage.dependency == PoolDependency.SCOPE_ELEMENT:
             dependent_pools = [
-                pool for pool in pools.scoped if element_ids & {stored.id for stored in pool.scope.elements}
+                pool for pool in pools.readable if element_ids & {stored.id for stored in pool.scope.elements}
             ]
             unchecked_pools = [
                 pool
@@ -115,7 +141,7 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         else:
             # A pool stores its tracked attribute by name, which is the pre-change name when the same load renames it.
             tracked_names = {field_name} | {element.name for element in elements}
-            dependent_pools = [pool for pool in pools.scoped if pool.tracked_attribute in tracked_names]
+            dependent_pools = [pool for pool in pools.readable if pool.tracked_attribute in tracked_names]
             unchecked_pools = [pool for pool in pools.unreadable if pool.tracked_attribute in tracked_names]
 
         unchecked_ids = {unchecked_pool.id for unchecked_pool in unchecked_pools}
@@ -172,7 +198,7 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         # A field renamed by the same load keeps its id, while a field without an id is found by its name.
         kind = request.schema_path.schema_kind
         previous_fields: list[AttributeSchema | RelationshipSchema] = []
-        for schema_branch in self._previous_schemas(request=request):
+        for schema_branch in self._previous_schemas(request=request, field_name=field.name):
             if not schema_branch.has(name=kind):
                 continue
             kind_schema = schema_branch.get(name=kind, duplicate=False)
@@ -241,8 +267,163 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
             dependency=PoolDependency.SCOPE_ELEMENT, reason="a scope element cannot be removed while the pool exists"
         )
 
-    def _accepted(self, request: SchemaConstraintValidatorRequest, field_name: str) -> ScopeBreakage | None:  # noqa: ARG002
+    async def _check_declarations(
+        self, request: SchemaConstraintValidatorRequest, field_name: str, declarations: list[DeclaringAttribute]
+    ) -> list[GroupedDataPaths]:
+        if not declarations:
+            return []
+        read_pools = await self.pool_source.get_by_ids(ids={declaration.pool_id for declaration in declarations})
+        pools = {pool.id: pool for pool in read_pools.readable}
+        unreadable_pools = {pool.id: pool for pool in read_pools.unreadable}
+        renamed = request.constraint_name != ConstraintIdentifier.ATTRIBUTE_PARAMETERS_ALLOCATION_SCOPE_UPDATE.value
+        renamed_elements = (
+            self._scope_elements(
+                request=request,
+                schema_branches=self._previous_schemas(request=request, field_name=field_name),
+                field_name=field_name,
+            )
+            if renamed and read_pools.unreadable
+            else []
+        )
+        comparator = DeclaredScopeComparator(
+            schema_branch=request.schema_branch,
+            previous_schemas=self._previous_schemas(request=request, field_name=field_name),
+        )
+        validator = DeclaredScopeValidator(
+            candidate=request.schema_branch,
+            default_branch_schema=lambda: registered_default_branch_schema(
+                candidate=request.schema_branch, schema_source=self.schema_source
+            ),
+        )
+
+        grouped_data_paths = GroupedDataPaths()
+        for declaration in declarations:
+            pool = pools.get(declaration.pool_id)
+            reason: str | None
+            if unreadable_pool := unreadable_pools.get(declaration.pool_id):
+                # A rename is refused only when the unreadable scope may name the renamed field, while a changed
+                # declaration cannot be compared with it at all.
+                if renamed and not self._may_reference(
+                    stored_scope=unreadable_pool.stored_scope, elements=renamed_elements, field_name=field_name
+                ):
+                    log.warning(
+                        f"Not checking {request.schema_path.schema_kind}.{field_name} against"
+                        f" NumberPool={unreadable_pool.id}: {unreadable_pool.reason}"
+                    )
+                    continue
+                reason = (
+                    f"{unreadable_pool.reason}; the change to {request.schema_path.schema_kind}.{field_name}"
+                    " cannot be checked against this pool"
+                )
+            elif pool is None:
+                # The load accepted the names it could not resolve as a possible rename, which only a stored scope
+                # can confirm, so a declaration without its pool is checked as a new one.
+                reason = self._new_declaration_refusal(validator=validator, declaration=declaration)
+            else:
+                reason = comparator.refusal(kind=declaration.kind, entries=declaration.entries, stored=pool.scope)
+            if reason is None:
+                continue
+            grouped_data_paths.add_data_path(
+                DataPath(
+                    branch=request.branch.name,
+                    path_type=PathType.NODE,
+                    node_id=declaration.pool_id,
+                    kind=InfrahubKind.NUMBERPOOL,
+                    field_name=field_name,
+                    value=f"{declaration.kind}.{declaration.attribute_name}: {reason}",
+                )
+            )
+        return [grouped_data_paths]
+
+    def _previous_schemas(self, request: SchemaConstraintValidatorRequest, field_name: str) -> list[SchemaBranch]:
+        # A schema load builds the candidate on the branch's own schema, while a proposed change, a merge or a rebase
+        # builds it on the destination's schema, so a field the change removes or renames is found on one of them.
+        names = [request.branch.name]
+        if request.schema_branch.name != request.branch.name:
+            names.append(request.schema_branch.name)
+        return [
+            registered_schema_branch(
+                schema_source=self.schema_source,
+                name=name,
+                unloaded_message=f"The schema of branch {name} is not loaded; the change to"
+                f" {request.schema_path.schema_kind}.{field_name} cannot be checked against the number pools",
+            )
+            for name in names
+        ]
+
+    @staticmethod
+    def _new_declaration_refusal(validator: DeclaredScopeValidator, declaration: DeclaringAttribute) -> str | None:
+        try:
+            validator.validate(
+                kind=declaration.kind,
+                tracked_attribute=declaration.attribute_name,
+                entries=declaration.entries,
+                pool_exists=False,
+            )
+        except ValidationError as exc:
+            return f"{SCOPE_FIELD}: {scope_refusal_reason(error=exc)}"
         return None
+
+    def _changed_declaration(
+        self, request: SchemaConstraintValidatorRequest, field_name: str
+    ) -> list[DeclaringAttribute]:
+        kind = request.schema_path.schema_kind
+        if not request.schema_branch.has(name=kind):
+            return []
+        kind_schema = request.schema_branch.get(name=kind, duplicate=False)
+        attribute = kind_schema.get_attribute_or_none(name=field_name)
+        # An inherited declaration is compared on the generic that declares it, so the pool is reported once.
+        if attribute is None or attribute.inherited:
+            return []
+        return self._declaring(kind=kind, attribute=attribute)
+
+    def _declarations_reaching_renamed_field(
+        self, request: SchemaConstraintValidatorRequest, field_name: str
+    ) -> list[DeclaringAttribute]:
+        kind = request.schema_path.schema_kind
+        if not request.schema_branch.has(name=kind):
+            return []
+        previous_schemas = self._previous_schemas(request=request, field_name=field_name)
+        declarations: list[DeclaringAttribute] = []
+        for sharing_kind in sorted(
+            self._kinds_sharing_fields(kind_schema=request.schema_branch.get(name=kind, duplicate=False))
+        ):
+            if not request.schema_branch.has(name=sharing_kind):
+                continue
+            kind_schema = request.schema_branch.get(name=sharing_kind, duplicate=False)
+            for attribute in kind_schema.attributes:
+                # An inherited declaration is compared on the generic that declares it, and a declaration changed by
+                # the same load is compared under its own constraint, so the pool is reported once.
+                if attribute.inherited or any(
+                    self._declaration_changed(previous_schema=previous_schema, kind=sharing_kind, attribute=attribute)
+                    for previous_schema in previous_schemas
+                ):
+                    continue
+                declarations.extend(self._declaring(kind=sharing_kind, attribute=attribute))
+        return declarations
+
+    @staticmethod
+    def _declaring(kind: str, attribute: AttributeSchema) -> list[DeclaringAttribute]:
+        parameters = attribute.parameters
+        if not isinstance(parameters, NumberPoolParameters) or parameters.number_pool_id is None:
+            return []
+        return [
+            DeclaringAttribute(
+                kind=kind,
+                attribute_name=attribute.name,
+                pool_id=parameters.number_pool_id,
+                entries=parameters.allocation_scope,
+            )
+        ]
+
+    @staticmethod
+    def _declaration_changed(previous_schema: SchemaBranch, kind: str, attribute: AttributeSchema) -> bool:
+        if not isinstance(attribute.parameters, NumberPoolParameters) or not previous_schema.has(name=kind):
+            return False
+        previous = previous_schema.get(name=kind, duplicate=False).get_attribute_or_none(name=attribute.name)
+        if previous is None or not isinstance(previous.parameters, NumberPoolParameters):
+            return False
+        return previous.parameters.allocation_scope != attribute.parameters.allocation_scope
 
     def _kinds_sharing_fields(self, kind_schema: MainSchemaTypes) -> set[str]:
         # A pool on a generic reaches the fields of its implementing kinds, and an inherited field is changed on the
@@ -253,14 +434,6 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         elif isinstance(kind_schema, GenericSchema):
             kinds.update(kind_schema.used_by)
         return kinds
-
-    def _previous_schemas(self, request: SchemaConstraintValidatorRequest) -> list[SchemaBranch]:
-        # A schema load builds the candidate on the branch's own schema, while a proposed change, a merge or a rebase
-        # builds it on the destination's schema, so a field the change removes or renames is found on one of them.
-        names = [request.branch.name]
-        if request.schema_branch.name != request.branch.name:
-            names.append(request.schema_branch.name)
-        return [self.schema_source.get_schema_branch(name=name) for name in names]
 
     def _scope_elements(
         self, request: SchemaConstraintValidatorRequest, schema_branches: list[SchemaBranch], field_name: str

@@ -12,9 +12,12 @@ from infrahub.core.protocols import CoreNumberPool
 from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
+from infrahub.core.validators.schema_branch.number_pool_scope_validator import DeclaredScopeComparator
 from infrahub.database import within_transaction
+from infrahub.exceptions import ValidationError
 from infrahub.pools.models import NumberPoolLockDefinition
 from infrahub.pools.number_pool_shorthand import NumberPoolShorthandMirror
+from infrahub.pools.scope import AllocationScope, AllocationScopeResolver
 
 if TYPE_CHECKING:
     from infrahub.core.schema import MainSchemaTypes
@@ -112,7 +115,9 @@ class SchemaNumberPoolUpserter:
 
         Check for an existing pool.
         If found, retrieves the pool using registry.manager.get_one().
-        If not found, creates a new pool carrying the ranges the attribute declares.
+        If not found, creates a new pool carrying the ranges and the allocation scope the attribute declares, the scope
+        resolved against the schema of the default branch. A schema pool another branch created for the same kind and
+        attribute is returned only when it stores the scope the attribute declares.
 
         Args:
             schema_node: The schema containing the NumberPool attribute.
@@ -127,6 +132,8 @@ class SchemaNumberPoolUpserter:
 
         Raises:
             ValueError: If the attribute is not a NumberPool type.
+            ValidationError: If the declared scope does not resolve on the schema of the default branch, or differs
+                from the scope of the schema pool another branch created for the same kind and attribute.
 
         """
         if not isinstance(attribute.parameters, NumberPoolParameters):
@@ -163,10 +170,23 @@ class SchemaNumberPoolUpserter:
                 branch_agnostic=True,
             )
 
+            # A scope references the elements of the default branch, whichever branch declares the pool.
+            default_branch_schema = self.schema_manager.get_schema_branch(name=registry.default_branch)
             if existing_pools:
                 pool = existing_pools[0]
+                self._check_declared_scope(
+                    pool=pool,
+                    kind=pool_kind,
+                    attribute=attribute,
+                    parameters=attribute.parameters,
+                    default_branch_schema=default_branch_schema,
+                )
                 self._cache[pool.id] = pool
                 return pool
+
+            allocation_scope = AllocationScopeResolver(schema_branch=default_branch_schema).resolve(
+                kind=pool_kind, entries=attribute.parameters.allocation_scope
+            )
 
             # One transaction, so a pool missing a declared range is never handed back as existing on the next lookup.
             number_pool_id = str(uuid4())
@@ -179,6 +199,7 @@ class SchemaNumberPoolUpserter:
                     node=pool_kind,
                     node_attribute=attribute.name,
                     pool_type=NumberPoolType.SCHEMA.value,
+                    allocation_scope=None if allocation_scope.is_empty else allocation_scope.to_stored(),
                 )
                 await number_pool.save(db=dbt, at=at, user_id=user_id)
 
@@ -204,6 +225,24 @@ class SchemaNumberPoolUpserter:
 
             # Re-fetch using _get_by_id to get the proper CoreNumberPool instance with its methods
             return await self._get_by_id(number_pool_id)
+
+    @staticmethod
+    def _check_declared_scope(
+        pool: CoreNumberPool,
+        kind: str,
+        attribute: AttributeSchema,
+        parameters: NumberPoolParameters,
+        default_branch_schema: SchemaBranch,
+    ) -> None:
+        stored = AllocationScope.from_stored(value=pool.allocation_scope.value, pool=pool.name.value)
+        reason = DeclaredScopeComparator(schema_branch=default_branch_schema, previous_schemas=[]).refusal(
+            kind=kind, entries=parameters.allocation_scope, stored=stored
+        )
+        if reason is not None:
+            raise ValidationError(
+                f"{kind}.{attribute.name}: {reason}; the pool {pool.name.value} is scoped by"
+                f" {list(stored.element_names)}"
+            )
 
     def get_inherited_pool_info(
         self,

@@ -1120,7 +1120,7 @@ class SchemaManager(NodeManager):
                     schema=await self.convert_node_schema_to_schema(schema_node=schema_node, db=db),
                 )
 
-        schema.process(validate_schema=validate_schema)
+        schema.process(validate_schema=validate_schema, resolve_new_scopes_on_default_branch=False)
 
         return schema
 

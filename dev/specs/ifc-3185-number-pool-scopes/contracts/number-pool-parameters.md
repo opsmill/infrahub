@@ -27,7 +27,10 @@ nodes:
 
 - Names are resolved against the schema of the default branch. On the default branch, the candidate schema being loaded is the reference.
 - The rules of [pool-allocation-scope.md](pool-allocation-scope.md) apply unchanged. A refusal fails the schema load with a message of the form `<kind>.<attribute>: allocation_scope: <reason>`.
-- A schema loaded on a branch whose declared scope names an element absent from the default branch's schema is refused with `<kind>.<attribute>: allocation_scope: "<entry>" does not exist on <kind> on branch <default branch>`.
+- A schema loaded on a branch whose declared scope names an element absent from the default branch's schema is refused with the messages of [pool-allocation-scope.md](pool-allocation-scope.md), each prefixed with `<kind>.<attribute>:` and a space:
+  - `<kind>.<attribute>: allocation_scope: "<entry>" is not an attribute or a relationship of <kind> on branch <default branch>`
+  - `<kind>.<attribute>: allocation_scope: "<entry>" is not declared on the generic <kind>`, when the attribute is declared on a generic and only an implementing node declares the entry
+  - `<kind>.<attribute>: allocation_scope: <kind> is not defined on branch <default branch>`, when the default branch's schema does not define the kind
 
 ## Comparison with the pool the schema already created
 

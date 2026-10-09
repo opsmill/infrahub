@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from typing import Any, Self
+from typing import Any, Self, override
 
 from pydantic import ConfigDict, Field, model_validator
 
@@ -244,16 +244,26 @@ class NumberPoolParameters(AttributeParameters):
     allocation_scope: list[str] | None = Field(
         default=None,
         description=(
-            "Fields of the kind that divide the pool's space; "
+            "Names of the attributes and relationships of the kind that divide the pool's space; "
             "allocation returns the lowest free number within the writer's division. "
-            "Same notation as uniqueness constraints."
+            "The names are resolved against the schema of the default branch when the pool is created, "
+            "and compared by id to the pool's scope on every later schema load."
         ),
-        json_schema_extra={"update": UpdateSupport.NOT_SUPPORTED.value},
+        json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
     )
 
     @property
     def has_shorthand(self) -> bool:
         return self.start_range is not None or self.end_range is not None
+
+    @override
+    def _get_field_signature(self, field_name: str, value: Any) -> list[bytes]:
+        signatures = super()._get_field_signature(field_name=field_name, value=value)
+        # The scope order is the order of the values of each division, and a scope listed in sorted order keeps the
+        # signature that schemas already saved were hashed with.
+        if field_name == "allocation_scope" and isinstance(value, list) and value != sorted(value):
+            signatures.append("\x1f".join(["order", *value]).encode())
+        return signatures
 
     def update(self, other: HashableModel) -> Self:
         # A declaration carrying either spelling replaces the previous ranges wholesale, a field-wise merge would

@@ -10,12 +10,15 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, PathType, RelationshipCardinality, SchemaPathType
 from infrahub.core.path import SchemaPath
 from infrahub.core.registry import registry
-from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters
+from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.core.validators.pool.scope import NumberPoolScopeChecker
+from infrahub.exceptions import InitializationError
 from infrahub.pools.scope import AllocationScope, ScopeElement
-from infrahub.pools.scoped_number_pool_reader import KindNumberPools, ScopedNumberPool, UnreadableScopeNumberPool
+from infrahub.pools.scoped_number_pool_reader import NumberPoolScopes, ScopedNumberPool, UnreadableScopeNumberPool
 from tests.helpers.number_pool import (
     SCOPED_DEVICE,
     SCOPED_HOLDER,
@@ -75,8 +78,8 @@ def _saved_schema() -> SchemaRoot:
     )
 
 
-def _schema_branch(schema: SchemaRoot, name: str = BRANCH.name) -> SchemaBranch:
-    schema_branch = SchemaBranch(cache={}, name=name)
+def _schema_branch(schema: SchemaRoot) -> SchemaBranch:
+    schema_branch = SchemaBranch(cache={}, name=BRANCH.name)
     schema_branch.load_schema(schema=schema)
     schema_branch.process()
     return schema_branch
@@ -207,13 +210,22 @@ class RecordingPoolSource:
         self.pools = list(pools)
         self.unreadable_pools = list(unreadable_pools)
         self.requested_kinds: list[set[str]] = []
+        self.requested_ids: list[set[str]] = []
 
-    async def get_for_kinds(self, kinds: Iterable[str]) -> KindNumberPools:
+    async def get_for_kinds(self, kinds: Iterable[str]) -> NumberPoolScopes:
         requested = set(kinds)
         self.requested_kinds.append(requested)
-        return KindNumberPools(
-            scoped=[pool for pool in self.pools if pool.kind in requested],
+        return NumberPoolScopes(
+            readable=[pool for pool in self.pools if pool.kind in requested],
             unreadable=[pool for pool in self.unreadable_pools if pool.kind in requested],
+        )
+
+    async def get_by_ids(self, ids: Iterable[str]) -> NumberPoolScopes:
+        requested = set(ids)
+        self.requested_ids.append(requested)
+        return NumberPoolScopes(
+            readable=[pool for pool in self.pools if pool.id in requested],
+            unreadable=[pool for pool in self.unreadable_pools if pool.id in requested],
         )
 
 
@@ -221,6 +233,9 @@ class StaticSchemaSource:
     def __init__(self, schema_branch: SchemaBranch, default_branch_schema: SchemaBranch | None = None) -> None:
         self.schema_branch = schema_branch
         self.default_branch_schema = default_branch_schema
+
+    def has_schema_branch(self, name: str) -> bool:
+        return name == BRANCH.name or (name == registry.default_branch and self.default_branch_schema is not None)
 
     def get_schema_branch(self, name: str) -> SchemaBranch:
         if name == registry.default_branch and self.default_branch_schema is not None:
@@ -637,6 +652,571 @@ class TestNumberPoolScopeChecker:
         assert pool_source.requested_kinds == case.expected_kinds_read
 
 
+DEVICE_SCHEMA_POOL_ID = "device-schema-pool"
+HOLDER_SCHEMA_POOL_ID = "holder-schema-pool"
+POD_HOLDER_SCHEMA_POOL_ID = "pod-holder-schema-pool"
+
+
+def _with_pooled_attribute[SchemaT: (NodeSchema, GenericSchema)](
+    schema: SchemaT, scope: list[str], pool_id: str, name: str = "vlan_id"
+) -> SchemaT:
+    """Return a copy of the schema whose attribute is the NumberPool attribute of a pool the schema created."""
+    pooled: SchemaT = copy.deepcopy(schema)
+    pooled.attributes = [attribute for attribute in pooled.attributes if attribute.name != name]
+    pooled.attributes.append(
+        AttributeSchema(
+            name=name,
+            kind="NumberPool",
+            optional=False,
+            read_only=True,
+            parameters=NumberPoolParameters(
+                start_range=1, end_range=100, allocation_scope=scope, number_pool_id=pool_id
+            ),
+        )
+    )
+    return pooled
+
+
+def _declared_schema() -> SchemaRoot:
+    return SchemaRoot(
+        generics=[
+            _with_field_ids(_with_pooled_attribute(SCOPED_HOLDER, scope=["site"], pool_id=HOLDER_SCHEMA_POOL_ID))
+        ],
+        nodes=[
+            SCOPED_SITE,
+            SCOPED_RACK,
+            SCOPED_LINK,
+            _with_field_ids(
+                _with_pooled_attribute(SCOPED_DEVICE, scope=["site", "role"], pool_id=DEVICE_SCHEMA_POOL_ID)
+            ),
+            _with_field_ids(
+                _with_pooled_attribute(
+                    SCOPED_POD_HOLDER, scope=["site"], pool_id=POD_HOLDER_SCHEMA_POOL_ID, name="pod_number"
+                )
+            ),
+        ],
+    )
+
+
+def _unvalidated_schema_branch(schema: SchemaRoot, name: str = BRANCH.name) -> SchemaBranch:
+    """Return the schema as a load holds it before validation, which would need a default branch's schema."""
+    schema_branch = SchemaBranch(cache={}, name=name)
+    schema_branch.load_schema(schema=schema)
+    schema_branch.process(validate_schema=False)
+    return schema_branch
+
+
+def _declare_on_device(scope: list[str]) -> Callable[[SchemaRoot], None]:
+    def change(schema: SchemaRoot) -> None:
+        parameters = _device(schema).get_attribute(name="vlan_id").parameters
+        assert isinstance(parameters, NumberPoolParameters)
+        parameters.allocation_scope = scope
+
+    return change
+
+
+def _holder_declaration_cleared(schema: SchemaRoot) -> None:
+    parameters = _holder(schema).get_attribute(name="vlan_id").parameters
+    assert isinstance(parameters, NumberPoolParameters)
+    parameters.allocation_scope = []
+
+
+def _device_site_renamed_and_declared(schema: SchemaRoot) -> None:
+    _device_site_renamed(schema)
+    _declare_on_device(["location", "role"])(schema)
+
+
+def _device_tags_renamed(schema: SchemaRoot) -> None:
+    _device(schema).get_attribute(name="tags").name = "labels"
+
+
+def _holder_site_renamed(schema: SchemaRoot) -> None:
+    _holder(schema).get_relationship(name="site").name = "location"
+
+
+DEVICE_SCHEMA_POOL = _pool(pool_id=DEVICE_SCHEMA_POOL_ID, kind=DEVICE, elements=(DEVICE_SITE, DEVICE_ROLE))
+HOLDER_SCHEMA_POOL = _pool(pool_id=HOLDER_SCHEMA_POOL_ID, kind=HOLDER, elements=(HOLDER_SITE,))
+POD_HOLDER_SCHEMA_POOL = _pool(pool_id=POD_HOLDER_SCHEMA_POOL_ID, kind=POD_HOLDER, elements=(HOLDER_SITE,))
+UNSCOPED_DEVICE_SCHEMA_POOL = _pool(pool_id=DEVICE_SCHEMA_POOL_ID, kind=DEVICE, elements=())
+
+SCHEMA_POOLS = (DEVICE_SCHEMA_POOL, HOLDER_SCHEMA_POOL, POD_HOLDER_SCHEMA_POOL)
+
+UNREADABLE_DEVICE_SCHEMA_POOL = UnreadableScopeNumberPool(
+    id=DEVICE_SCHEMA_POOL_ID,
+    name=DEVICE_SCHEMA_POOL_ID,
+    kind=DEVICE,
+    tracked_attribute="vlan_id",
+    stored_scope=["site", "role"],
+    reason=f'allocation_scope of pool {DEVICE_SCHEMA_POOL_ID}: the stored entry "site" is not an element with an "id"'
+    ' and a "name"; recreate the pool to set its scope',
+)
+
+
+def _unreadable_device_schema_pool_violation(field_name: str) -> tuple[str, str]:
+    return (
+        DEVICE_SCHEMA_POOL_ID,
+        f'ScopeDevice.vlan_id: allocation_scope of pool {DEVICE_SCHEMA_POOL_ID}: the stored entry "site" is not an'
+        ' element with an "id" and a "name"; recreate the pool to set its scope; the change to'
+        f" ScopeDevice.{field_name} cannot be checked against this pool",
+    )
+
+
+CANNOT_CHANGE = "ScopeDevice.vlan_id: allocation_scope can't be changed after the pool is created"
+SCOPE_CONSTRAINT = "attribute.parameters.allocation_scope.update"
+
+
+@dataclass(frozen=True)
+class DeclarationCase:
+    name: str
+    constraint_name: str
+    kind: str
+    field_name: str
+    path_type: SchemaPathType
+    change: Callable[[SchemaRoot], None]
+    expected: list[tuple[str, str]]
+    expected_ids_read: list[set[str]]
+    pools: tuple[ScopedNumberPool, ...] = field(default=SCHEMA_POOLS)
+    unreadable_pools: tuple[UnreadableScopeNumberPool, ...] = ()
+
+
+def _declaration_change(name: str, scope: list[str], expected: list[tuple[str, str]]) -> DeclarationCase:
+    return DeclarationCase(
+        name=name,
+        constraint_name=SCOPE_CONSTRAINT,
+        kind=DEVICE,
+        field_name="vlan_id",
+        path_type=SchemaPathType.ATTRIBUTE,
+        change=_declare_on_device(scope),
+        expected=expected,
+        expected_ids_read=[{DEVICE_SCHEMA_POOL_ID}],
+    )
+
+
+DECLARATION_CASES = [
+    DeclarationCase(
+        name="declaration-changed-on-an-unreadable-scope",
+        constraint_name=SCOPE_CONSTRAINT,
+        kind=DEVICE,
+        field_name="vlan_id",
+        path_type=SchemaPathType.ATTRIBUTE,
+        change=_declare_on_device(["site"]),
+        expected=[_unreadable_device_schema_pool_violation(field_name="vlan_id")],
+        expected_ids_read=[{DEVICE_SCHEMA_POOL_ID}],
+        pools=(HOLDER_SCHEMA_POOL, POD_HOLDER_SCHEMA_POOL),
+        unreadable_pools=(UNREADABLE_DEVICE_SCHEMA_POOL,),
+    ),
+    DeclarationCase(
+        name="relationship-named-by-an-unreadable-scope-renamed",
+        constraint_name="relationship.name.update",
+        kind=DEVICE,
+        field_name="location",
+        path_type=SchemaPathType.RELATIONSHIP,
+        change=_device_site_renamed,
+        expected=[_unreadable_device_schema_pool_violation(field_name="location")],
+        expected_ids_read=[{DEVICE_SCHEMA_POOL_ID}],
+        pools=(HOLDER_SCHEMA_POOL, POD_HOLDER_SCHEMA_POOL),
+        unreadable_pools=(UNREADABLE_DEVICE_SCHEMA_POOL,),
+    ),
+    DeclarationCase(
+        name="attribute-outside-an-unreadable-scope-renamed",
+        constraint_name="attribute.name.update",
+        kind=DEVICE,
+        field_name="labels",
+        path_type=SchemaPathType.ATTRIBUTE,
+        change=_device_tags_renamed,
+        expected=[],
+        expected_ids_read=[{DEVICE_SCHEMA_POOL_ID}],
+        pools=(HOLDER_SCHEMA_POOL, POD_HOLDER_SCHEMA_POOL),
+        unreadable_pools=(UNREADABLE_DEVICE_SCHEMA_POOL,),
+    ),
+    _declaration_change(name="declaration-unchanged", scope=["site", "role"], expected=[]),
+    _declaration_change(
+        name="declaration-naming-another-element",
+        scope=["site", "name"],
+        expected=[(DEVICE_SCHEMA_POOL_ID, CANNOT_CHANGE)],
+    ),
+    _declaration_change(
+        name="declaration-dropping-an-element", scope=["site"], expected=[(DEVICE_SCHEMA_POOL_ID, CANNOT_CHANGE)]
+    ),
+    _declaration_change(
+        name="declaration-reordered", scope=["role", "site"], expected=[(DEVICE_SCHEMA_POOL_ID, CANNOT_CHANGE)]
+    ),
+    _declaration_change(name="declaration-cleared", scope=[], expected=[(DEVICE_SCHEMA_POOL_ID, CANNOT_CHANGE)]),
+    _declaration_change(
+        name="declaration-naming-no-element",
+        scope=["site", "function"],
+        expected=[(DEVICE_SCHEMA_POOL_ID, CANNOT_CHANGE)],
+    ),
+    DeclarationCase(
+        name="declaration-added-to-an-unscoped-pool",
+        constraint_name=SCOPE_CONSTRAINT,
+        kind=DEVICE,
+        field_name="vlan_id",
+        path_type=SchemaPathType.ATTRIBUTE,
+        change=_unchanged,
+        expected=[(DEVICE_SCHEMA_POOL_ID, CANNOT_CHANGE)],
+        expected_ids_read=[{DEVICE_SCHEMA_POOL_ID}],
+        pools=(UNSCOPED_DEVICE_SCHEMA_POOL, HOLDER_SCHEMA_POOL),
+    ),
+    DeclarationCase(
+        name="relationship-renamed-declaration-unchanged",
+        constraint_name="relationship.name.update",
+        kind=DEVICE,
+        field_name="location",
+        path_type=SchemaPathType.RELATIONSHIP,
+        change=_device_site_renamed,
+        expected=[
+            (
+                DEVICE_SCHEMA_POOL_ID,
+                'ScopeDevice.vlan_id: allocation_scope: "site" was renamed to "location";'
+                " update allocation_scope to the new name",
+            )
+        ],
+        expected_ids_read=[{DEVICE_SCHEMA_POOL_ID}],
+    ),
+    DeclarationCase(
+        name="attribute-renamed-declaration-unchanged",
+        constraint_name="attribute.name.update",
+        kind=DEVICE,
+        field_name="function",
+        path_type=SchemaPathType.ATTRIBUTE,
+        change=_device_role_renamed,
+        expected=[
+            (
+                DEVICE_SCHEMA_POOL_ID,
+                'ScopeDevice.vlan_id: allocation_scope: "role" was renamed to "function";'
+                " update allocation_scope to the new name",
+            )
+        ],
+        expected_ids_read=[{DEVICE_SCHEMA_POOL_ID}],
+    ),
+    DeclarationCase(
+        name="relationship-renamed-declaration-following-under-the-rename",
+        constraint_name="relationship.name.update",
+        kind=DEVICE,
+        field_name="location",
+        path_type=SchemaPathType.RELATIONSHIP,
+        change=_device_site_renamed_and_declared,
+        expected=[],
+        expected_ids_read=[],
+    ),
+    DeclarationCase(
+        name="relationship-renamed-declaration-following-under-the-declaration",
+        constraint_name=SCOPE_CONSTRAINT,
+        kind=DEVICE,
+        field_name="vlan_id",
+        path_type=SchemaPathType.ATTRIBUTE,
+        change=_device_site_renamed_and_declared,
+        expected=[],
+        expected_ids_read=[{DEVICE_SCHEMA_POOL_ID}],
+    ),
+    DeclarationCase(
+        name="attribute-outside-the-declaration-renamed",
+        constraint_name="attribute.name.update",
+        kind=DEVICE,
+        field_name="labels",
+        path_type=SchemaPathType.ATTRIBUTE,
+        change=_device_tags_renamed,
+        expected=[],
+        expected_ids_read=[{DEVICE_SCHEMA_POOL_ID}],
+    ),
+    DeclarationCase(
+        name="generic-relationship-renamed-declaration-unchanged",
+        constraint_name="relationship.name.update",
+        kind=HOLDER,
+        field_name="location",
+        path_type=SchemaPathType.RELATIONSHIP,
+        change=_holder_site_renamed,
+        expected=[
+            (
+                HOLDER_SCHEMA_POOL_ID,
+                'ScopeHolder.vlan_id: allocation_scope: "site" was renamed to "location";'
+                " update allocation_scope to the new name",
+            ),
+            (
+                POD_HOLDER_SCHEMA_POOL_ID,
+                'ScopePodHolder.pod_number: allocation_scope: "site" was renamed to "location";'
+                " update allocation_scope to the new name",
+            ),
+        ],
+        expected_ids_read=[{HOLDER_SCHEMA_POOL_ID, POD_HOLDER_SCHEMA_POOL_ID}],
+    ),
+    DeclarationCase(
+        name="declaration-whose-pool-is-not-found",
+        constraint_name=SCOPE_CONSTRAINT,
+        kind=DEVICE,
+        field_name="vlan_id",
+        path_type=SchemaPathType.ATTRIBUTE,
+        change=_declare_on_device(["site"]),
+        expected=[],
+        expected_ids_read=[{DEVICE_SCHEMA_POOL_ID}],
+        pools=(HOLDER_SCHEMA_POOL, POD_HOLDER_SCHEMA_POOL),
+    ),
+    DeclarationCase(
+        name="generic-declaration-changed",
+        constraint_name=SCOPE_CONSTRAINT,
+        kind=HOLDER,
+        field_name="vlan_id",
+        path_type=SchemaPathType.ATTRIBUTE,
+        change=_holder_declaration_cleared,
+        expected=[
+            (HOLDER_SCHEMA_POOL_ID, "ScopeHolder.vlan_id: allocation_scope can't be changed after the pool is created")
+        ],
+        expected_ids_read=[{HOLDER_SCHEMA_POOL_ID}],
+    ),
+    DeclarationCase(
+        name="generic-declaration-changed-seen-on-an-implementing-kind",
+        constraint_name=SCOPE_CONSTRAINT,
+        kind=POD_HOLDER,
+        field_name="vlan_id",
+        path_type=SchemaPathType.ATTRIBUTE,
+        change=_holder_declaration_cleared,
+        expected=[],
+        expected_ids_read=[],
+    ),
+    DeclarationCase(
+        name="declaration-whose-pool-is-not-found-naming-no-element",
+        constraint_name=SCOPE_CONSTRAINT,
+        kind=DEVICE,
+        field_name="vlan_id",
+        path_type=SchemaPathType.ATTRIBUTE,
+        change=_declare_on_device(["site", "function"]),
+        expected=[
+            (
+                DEVICE_SCHEMA_POOL_ID,
+                'ScopeDevice.vlan_id: allocation_scope: "function" is not an attribute or a relationship of'
+                " ScopeDevice on branch main",
+            )
+        ],
+        expected_ids_read=[{DEVICE_SCHEMA_POOL_ID}],
+        pools=(HOLDER_SCHEMA_POOL, POD_HOLDER_SCHEMA_POOL),
+    ),
+]
+
+
+class TestNumberPoolScopeCheckerDeclaredScope:
+    """Schema changes on kinds whose NumberPool attribute declares the scope of the pool the schema created."""
+
+    @pytest.mark.parametrize("case", DECLARATION_CASES, ids=[case.name for case in DECLARATION_CASES])
+    async def test_compares_the_declaration_with_the_stored_scope_by_id(self, case: DeclarationCase) -> None:
+        candidate_schema = _declared_schema()
+        case.change(candidate_schema)
+        pool_source = RecordingPoolSource(pools=case.pools, unreadable_pools=case.unreadable_pools)
+        checker = NumberPoolScopeChecker(
+            pool_source=pool_source,
+            schema_source=StaticSchemaSource(
+                schema_branch=_unvalidated_schema_branch(_declared_schema()),
+                default_branch_schema=_unvalidated_schema_branch(_declared_schema(), name=registry.default_branch),
+            ),
+        )
+        candidate = _unvalidated_schema_branch(candidate_schema)
+        node_schema = candidate.get(name=case.kind, duplicate=False)
+        assert isinstance(node_schema, NodeSchema | GenericSchema)
+        request = SchemaConstraintValidatorRequest(
+            branch=BRANCH,
+            constraint_name=case.constraint_name,
+            node_schema=node_schema,
+            schema_path=SchemaPath(path_type=case.path_type, schema_kind=case.kind, field_name=case.field_name),
+            schema_branch=candidate,
+        )
+
+        grouped_data_paths = await checker.check(request)
+
+        data_paths = [path for grouped in grouped_data_paths for path in grouped.get_all_data_paths()]
+        assert [(path.node_id, path.value) for path in data_paths] == case.expected
+        assert {(path.branch, path.path_type, path.kind, path.field_name) for path in data_paths} == (
+            {(BRANCH.name, PathType.NODE, InfrahubKind.NUMBERPOOL, case.field_name)} if case.expected else set()
+        )
+        assert pool_source.requested_ids == case.expected_ids_read
+        assert pool_source.requested_kinds == []
+
+
+def _without_device(schema: SchemaRoot) -> None:
+    schema.nodes = [node for node in schema.nodes if node.kind != DEVICE]
+
+
+@dataclass(frozen=True)
+class MissingSchemaCase:
+    name: str
+    constraint_name: str
+    field_name: str
+    path_type: SchemaPathType
+    current_change: Callable[[SchemaRoot], None]
+    candidate_change: Callable[[SchemaRoot], None]
+
+
+MISSING_SCHEMA_CASES = [
+    MissingSchemaCase(
+        name="kind-missing-from-the-current-schema",
+        constraint_name="relationship.optional.update",
+        field_name="site",
+        path_type=SchemaPathType.RELATIONSHIP,
+        current_change=_without_device,
+        candidate_change=_device_site_optional,
+    ),
+    MissingSchemaCase(
+        name="kind-missing-from-the-candidate-schema",
+        constraint_name="relationship.optional.update",
+        field_name="site",
+        path_type=SchemaPathType.RELATIONSHIP,
+        current_change=_unchanged,
+        candidate_change=_without_device,
+    ),
+    MissingSchemaCase(
+        name="attribute-missing-from-the-candidate-schema",
+        constraint_name="attribute.optional.update",
+        field_name="role",
+        path_type=SchemaPathType.ATTRIBUTE,
+        current_change=_unchanged,
+        candidate_change=_device_role_removed,
+    ),
+    MissingSchemaCase(
+        name="declaring-kind-missing-from-the-candidate-schema",
+        constraint_name=SCOPE_CONSTRAINT,
+        field_name="vlan_id",
+        path_type=SchemaPathType.ATTRIBUTE,
+        current_change=_unchanged,
+        candidate_change=_without_device,
+    ),
+    MissingSchemaCase(
+        name="declaring-attribute-missing-from-the-candidate-schema",
+        constraint_name=SCOPE_CONSTRAINT,
+        field_name="vlan_index",
+        path_type=SchemaPathType.ATTRIBUTE,
+        current_change=_unchanged,
+        candidate_change=_unchanged,
+    ),
+    MissingSchemaCase(
+        name="renamed-field-of-a-kind-missing-from-the-candidate-schema",
+        constraint_name="relationship.name.update",
+        field_name="location",
+        path_type=SchemaPathType.RELATIONSHIP,
+        current_change=_unchanged,
+        candidate_change=_without_device,
+    ),
+]
+
+
+class TestNumberPoolScopeCheckerMissingSchema:
+    """Changes whose kind or field one side of the load does not define, which no pool's scope can depend on."""
+
+    @pytest.mark.parametrize("case", MISSING_SCHEMA_CASES, ids=[case.name for case in MISSING_SCHEMA_CASES])
+    async def test_reports_no_violation_without_reading_pools(self, case: MissingSchemaCase) -> None:
+        current_schema = _declared_schema()
+        case.current_change(current_schema)
+        candidate_schema = _declared_schema()
+        case.candidate_change(candidate_schema)
+        pool_source = RecordingPoolSource(pools=SCHEMA_POOLS)
+        checker = NumberPoolScopeChecker(
+            pool_source=pool_source,
+            schema_source=StaticSchemaSource(
+                schema_branch=_unvalidated_schema_branch(current_schema),
+                default_branch_schema=_unvalidated_schema_branch(_declared_schema(), name=registry.default_branch),
+            ),
+        )
+        node_schema = _unvalidated_schema_branch(_declared_schema()).get(name=DEVICE, duplicate=False)
+        assert isinstance(node_schema, NodeSchema)
+        request = SchemaConstraintValidatorRequest(
+            branch=BRANCH,
+            constraint_name=case.constraint_name,
+            node_schema=node_schema,
+            schema_path=SchemaPath(path_type=case.path_type, schema_kind=DEVICE, field_name=case.field_name),
+            schema_branch=_unvalidated_schema_branch(candidate_schema),
+        )
+
+        assert await checker.check(request) == []
+        assert (pool_source.requested_kinds, pool_source.requested_ids) == ([], [])
+
+
+@dataclass(frozen=True)
+class UnloadedBranchCase:
+    name: str
+    constraint_name: str
+    field_name: str
+    path_type: SchemaPathType
+    change: Callable[[SchemaRoot], None]
+
+
+UNLOADED_BRANCH_CASES = [
+    UnloadedBranchCase(
+        name="relationship-made-optional",
+        constraint_name="relationship.optional.update",
+        field_name="site",
+        path_type=SchemaPathType.RELATIONSHIP,
+        change=_device_site_optional,
+    ),
+    UnloadedBranchCase(
+        name="relationship-renamed",
+        constraint_name="relationship.name.update",
+        field_name="location",
+        path_type=SchemaPathType.RELATIONSHIP,
+        change=_device_site_renamed,
+    ),
+]
+
+
+class TestNumberPoolScopeCheckerUnloadedBranch:
+    """A worker that has not loaded the schema of the request's branch cannot tell which pools a change breaks."""
+
+    @pytest.mark.parametrize("case", UNLOADED_BRANCH_CASES, ids=[case.name for case in UNLOADED_BRANCH_CASES])
+    async def test_refuses_to_check_without_registering_the_branch(self, case: UnloadedBranchCase) -> None:
+        candidate_schema = _declared_schema()
+        case.change(candidate_schema)
+        schema_manager = SchemaManager()
+        schema_manager.set_schema_branch(
+            name=registry.default_branch,
+            schema=_unvalidated_schema_branch(_declared_schema(), name=registry.default_branch),
+        )
+        pool_source = RecordingPoolSource(pools=(*SCHEMA_POOLS, DEVICE_POOL_BY_SITE))
+        checker = NumberPoolScopeChecker(pool_source=pool_source, schema_source=schema_manager)
+        candidate = _unvalidated_schema_branch(candidate_schema)
+        node_schema = candidate.get(name=DEVICE, duplicate=False)
+        assert isinstance(node_schema, NodeSchema)
+        request = SchemaConstraintValidatorRequest(
+            branch=BRANCH,
+            constraint_name=case.constraint_name,
+            node_schema=node_schema,
+            schema_path=SchemaPath(path_type=case.path_type, schema_kind=DEVICE, field_name=case.field_name),
+            schema_branch=candidate,
+        )
+
+        with pytest.raises(
+            InitializationError,
+            match=rf"^The schema of branch feature is not loaded; the change to ScopeDevice\.{case.field_name} cannot"
+            r" be checked against the number pools$",
+        ):
+            await checker.check(request)
+        assert not schema_manager.has_schema_branch(name=BRANCH.name)
+
+    async def test_refuses_to_check_a_new_declaration_without_registering_the_default_branch(self) -> None:
+        candidate_schema = _declared_schema()
+        _declare_on_device(["site"])(candidate_schema)
+        schema_manager = SchemaManager()
+        schema_manager.set_schema_branch(name=BRANCH.name, schema=_unvalidated_schema_branch(_declared_schema()))
+        checker = NumberPoolScopeChecker(
+            pool_source=RecordingPoolSource(pools=(HOLDER_SCHEMA_POOL, POD_HOLDER_SCHEMA_POOL)),
+            schema_source=schema_manager,
+        )
+        candidate = _unvalidated_schema_branch(candidate_schema)
+        node_schema = candidate.get(name=DEVICE, duplicate=False)
+        assert isinstance(node_schema, NodeSchema)
+        request = SchemaConstraintValidatorRequest(
+            branch=BRANCH,
+            constraint_name=SCOPE_CONSTRAINT,
+            node_schema=node_schema,
+            schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind=DEVICE, field_name="vlan_id"),
+            schema_branch=candidate,
+        )
+
+        with pytest.raises(
+            InitializationError,
+            match=r"^The schema of the default branch main is not loaded; an allocation scope declared on branch"
+            r" feature cannot be resolved$",
+        ):
+            await checker.check(request)
+        assert not schema_manager.has_schema_branch(name=registry.default_branch)
+
+
 class TestNumberPoolScopeCheckerCandidateOnDestination:
     """A proposed change or a merge builds the candidate on the destination's schema and checks it for the source."""
 
@@ -650,10 +1230,10 @@ class TestNumberPoolScopeCheckerCandidateOnDestination:
             pool_source=pool_source,
             schema_source=StaticSchemaSource(
                 schema_branch=_schema_branch(source_schema),
-                default_branch_schema=_schema_branch(_saved_schema(), name=registry.default_branch),
+                default_branch_schema=_unvalidated_schema_branch(_saved_schema(), name=registry.default_branch),
             ),
         )
-        candidate = _schema_branch(candidate_schema, name=registry.default_branch)
+        candidate = _unvalidated_schema_branch(candidate_schema, name=registry.default_branch)
         node_schema = candidate.get(name=DEVICE, duplicate=False)
         assert isinstance(node_schema, NodeSchema)
         request = SchemaConstraintValidatorRequest(
@@ -744,3 +1324,46 @@ class TestNumberPoolScopeCheckerUnchangedField:
 
         assert await checker.check(request) == []
         assert pool_source.requested_kinds == []
+
+
+class TestNumberPoolScopeCheckerRenameOnAnotherBranch:
+    """The stored names follow the default branch, while a branch forked earlier still names the element its own way."""
+
+    async def test_names_the_element_the_branch_renamed(self) -> None:
+        default_schema = _declared_schema()
+        _device_site_renamed(default_schema)
+        _declare_on_device(["location", "role"])(default_schema)
+        candidate_schema = _declared_schema()
+        _device(candidate_schema).get_relationship(name="site").name = "zone"
+        location = ScopeElement(id=DEVICE_SITE.id, name="location")
+        pool_source = RecordingPoolSource(
+            pools=(_pool(pool_id=DEVICE_SCHEMA_POOL_ID, kind=DEVICE, elements=(location, DEVICE_ROLE)),)
+        )
+        checker = NumberPoolScopeChecker(
+            pool_source=pool_source,
+            schema_source=StaticSchemaSource(
+                schema_branch=_unvalidated_schema_branch(_declared_schema()),
+                default_branch_schema=_unvalidated_schema_branch(default_schema, name=registry.default_branch),
+            ),
+        )
+        candidate = _unvalidated_schema_branch(candidate_schema)
+        node_schema = candidate.get(name=DEVICE, duplicate=False)
+        assert isinstance(node_schema, NodeSchema)
+        request = SchemaConstraintValidatorRequest(
+            branch=BRANCH,
+            constraint_name="relationship.name.update",
+            node_schema=node_schema,
+            schema_path=SchemaPath(path_type=SchemaPathType.RELATIONSHIP, schema_kind=DEVICE, field_name="zone"),
+            schema_branch=candidate,
+        )
+
+        grouped_data_paths = await checker.check(request)
+
+        data_paths = [path for grouped in grouped_data_paths for path in grouped.get_all_data_paths()]
+        assert [(path.node_id, path.value) for path in data_paths] == [
+            (
+                DEVICE_SCHEMA_POOL_ID,
+                'ScopeDevice.vlan_id: allocation_scope: "site" was renamed to "zone";'
+                " update allocation_scope to the new name",
+            )
+        ]
