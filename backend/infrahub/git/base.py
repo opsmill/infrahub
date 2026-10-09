@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import contextlib
+import math
+import os
 import re
 import shutil
 from abc import ABC, abstractmethod
@@ -40,6 +42,8 @@ from infrahub.log import get_logger
 from infrahub.workers.dependencies import get_client
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from infrahub_sdk.branch import BranchData
 
 log = get_logger("infrahub.git")
@@ -82,6 +86,26 @@ def operational_status_for_error(error: RepositoryError) -> RepositoryOperationa
             return RepositoryOperationalStatus.ERROR_CRED
         case _:
             return RepositoryOperationalStatus.ERROR
+
+
+@contextlib.contextmanager
+def stalled_transfer_limit(repo: Repo, timeout_seconds: float | None) -> Iterator[None]:
+    """Make Git end an HTTP(S) transfer of the repo that sends no data for ``timeout_seconds``; ``None`` sets no limit."""
+    if timeout_seconds is None:
+        yield
+        return
+    # GitPython 3.1 does not stop a hung fetch or push at kill_after_timeout, so Git must end a stalled transfer.
+    inherited_count = int(os.environ.get("GIT_CONFIG_COUNT", "0"))
+    with repo.git.custom_environment(
+        GIT_CONFIG_COUNT=str(inherited_count + 2),
+        **{
+            f"GIT_CONFIG_KEY_{inherited_count}": "http.lowSpeedLimit",
+            f"GIT_CONFIG_VALUE_{inherited_count}": "1",
+            f"GIT_CONFIG_KEY_{inherited_count + 1}": "http.lowSpeedTime",
+            f"GIT_CONFIG_VALUE_{inherited_count + 1}": str(max(1, math.ceil(timeout_seconds))),
+        },
+    ):
+        yield
 
 
 class RepoFileInformation(BaseModel):
@@ -625,13 +649,15 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         """Delete branch_name from origin.
 
         Args:
-            timeout_seconds: Passed to GitPython as ``kill_after_timeout``; ``None`` sets no limit.
+            timeout_seconds: Passed to GitPython as ``kill_after_timeout``, and ends an HTTP(S) transfer that
+                sends no data for that long; ``None`` sets no limit.
 
         """
         if not self.has_origin:
             return
         repo = self.get_git_repo_main()
-        repo.git.push("origin", "--delete", branch_name, kill_after_timeout=timeout_seconds)
+        with stalled_transfer_limit(repo=repo, timeout_seconds=timeout_seconds):
+            repo.git.push("origin", "--delete", branch_name, kill_after_timeout=timeout_seconds)
 
     async def delete_local_branch(self, branch_name: str) -> None:
         """Remove any worktrees and the local tracking ref for branch_name."""
@@ -879,7 +905,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         """Fetch the latest update from the remote repository and bring a copy locally.
 
         Args:
-            timeout_seconds: Passed to GitPython as ``kill_after_timeout``; ``None`` sets no limit.
+            timeout_seconds: Passed to GitPython as ``kill_after_timeout``, and ends an HTTP(S) transfer that
+                sends no data for that long; ``None`` sets no limit.
 
         """
         if not self.has_origin:
@@ -891,7 +918,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         repo = self.get_git_repo_main()
         try:
-            repo.remotes.origin.fetch(prune=True, tags=True, prune_tags=True, kill_after_timeout=timeout_seconds)
+            with stalled_transfer_limit(repo=repo, timeout_seconds=timeout_seconds):
+                repo.remotes.origin.fetch(prune=True, tags=True, prune_tags=True, kill_after_timeout=timeout_seconds)
         except GitCommandError as exc:
             await self._raise_enriched_error(error=exc)
 
@@ -1166,7 +1194,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             "The requested URL returned error: 5xx" (git http.c) plus
             "RPC failed; HTTP 5xx" (git remote-curl.c); and "does not appear to be a git".
           - time limit: "process killed because it timed out", the line GitPython adds to the error
-            lines of a fetch or a push when Git ran past its ``kill_after_timeout``.
+            lines of a fetch or a push when Git ran past its ``kill_after_timeout``; and "Operation too
+            slow" (libcurl), when an HTTP(S) transfer sent no data for ``http.lowSpeedTime``.
           - not found: "Repository not found", which a host sends in a ``remote:`` line, and Git's own
             line for an HTTP 404, "repository '<url>' not found" (``GIT_HTTP_REPOSITORY_NOT_FOUND``).
             For a fetch or a push, GitPython keeps only the lines that start with ``error:`` or
@@ -1213,7 +1242,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         ):
             raise RepositoryConnectionError(identifier=name) from error
 
-        if "process killed because it timed out" in error.stderr:
+        if "process killed because it timed out" in error.stderr or "Operation too slow" in error.stderr:
             raise RepositoryConnectionError(
                 identifier=name,
                 message=(

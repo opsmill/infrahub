@@ -210,4 +210,10 @@ class RegenerationReleasePort(Protocol):
 
 class DeliveryRunQuery(Protocol):
     async def has_queued_run(self, *, repository_id: str) -> bool:
-        """Return whether a delivery run of the repository waits to start; raises when the orchestrator fails."""
+        """Return whether a delivery run of the repository waits to start.
+
+        Raises:
+            httpx.HTTPError: The orchestrator answered with an error, or its connection failed.
+            OSError: The connection to the orchestrator failed.
+
+        """

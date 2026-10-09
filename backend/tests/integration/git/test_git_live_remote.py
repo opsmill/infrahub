@@ -5,12 +5,13 @@ from __future__ import annotations
 import logging
 import re
 import shutil
+import socket
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NoReturn
 
 import git
 import pytest
@@ -35,9 +36,10 @@ from infrahub.git.constants import WRITE_ACCESS_PROBE_REF
 from infrahub.git.convergence import WorktreeConverger
 from infrahub.git.remote_refs import ensure_write_access, list_remote_refs
 from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
-from infrahub.git.tasks import sync_remote_repositories
+from infrahub.git.tasks import deliver_pending_merges, sync_remote_repositories
+from infrahub.git.writeback.constants import STALE_AFTER_SECONDS
 from infrahub.git.writeback.factory import build_writeback_service
-from infrahub.git.writeback.models import DeliveryOutcome
+from infrahub.git.writeback.models import DeliveryOutcome, DeliveryStage
 from infrahub.git.writeback.store import WritebackIntentStore
 from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
@@ -58,7 +60,7 @@ from tests.integration.git.conftest import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Awaitable, Callable, Generator
+    from collections.abc import Awaitable, Callable, Generator, Iterator
 
     from infrahub_sdk import InfrahubClient
     from testcontainers.core.container import DockerContainer
@@ -162,6 +164,69 @@ async def _recorded_commit(db: InfrahubDatabase, repository_id: str) -> str | No
         db=db, id=repository_id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
     )
     return repository.commit.value
+
+
+class _OnLogLine(logging.Handler):
+    """Run the action each time the logger emits a line that starts with the prefix."""
+
+    def __init__(self, *, prefix: str, action: Callable[[], object]) -> None:
+        super().__init__()
+        self.prefix = prefix
+        self.action = action
+
+    def emit(self, record: logging.LogRecord) -> None:
+        if record.getMessage().startswith(self.prefix):
+            self.action()
+
+
+@contextmanager
+def _on_log_line(prefix: str, action: Callable[[], object]) -> Iterator[None]:
+    """Run the action inside each logging call of the run logger whose line matches, so an exception stops the caller."""
+    handler = _OnLogLine(prefix=prefix, action=action)
+    logger = logging.getLogger(SYNC_LOGGER)
+    logger.addHandler(handler)
+    try:
+        yield
+    finally:
+        logger.removeHandler(handler)
+
+
+class _KilledAttemptError(Exception):
+    """Ends a delivery attempt at a point where its worker can die."""
+
+
+def _delivery_log_lines(caplog: pytest.LogCaptureFixture, repository_name: str) -> list[str]:
+    """Return the start line of each delivery attempt of the repository, and every warning or error of the run logger."""
+    start = f"Delivery attempt of repository {repository_name} starts"
+    return [
+        record.getMessage()
+        for record in caplog.records
+        if record.name == SYNC_LOGGER and (record.levelno >= logging.WARNING or record.getMessage().startswith(start))
+    ]
+
+
+@dataclass(frozen=True)
+class TransientFaultCase:
+    name: str
+    stage: DeliveryStage
+    """The step of the first attempt that finds the remote closed."""
+    fault_from: str
+    """The start of the log line from which the clone points at a closed port, with a `{repository}` field."""
+
+
+TRANSIENT_FAULT_CASES: list[TransientFaultCase] = [
+    TransientFaultCase(
+        name="fault_at_fetch",
+        stage=DeliveryStage.FETCH,
+        fault_from="Delivery attempt of repository {repository} starts",
+    ),
+    # The attempt writes this line after its fetch, so only its push finds the remote closed.
+    TransientFaultCase(
+        name="fault_at_push",
+        stage=DeliveryStage.PUSH,
+        fault_from="The remote branch main of repository {repository} is at",
+    ),
+]
 
 
 @dataclass(frozen=True)
@@ -281,6 +346,13 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         yield reject
         for repo_name in rejected:
             _remove_remote_branch_rejection_hook(container=gogs_server.container, repo_name=repo_name)
+
+    @pytest.fixture
+    def immediate_delivery_retries(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Run the retries of the delivery task with no wait, so a retry shows at once and costs no real delay."""
+        monkeypatch.setattr(
+            "infrahub.git.tasks.deliver_pending_merges", deliver_pending_merges.with_options(retry_delay_seconds=0)
+        )
 
     @pytest.fixture
     def rejected_push_to_main(
@@ -1210,6 +1282,142 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         )
         assert gogs_repo_branch_commit(gogs_server.container, repository.name, "main") == rewritten
         assert await _recorded_commit(db=db, repository_id=repository.node_id) == repository.trunk_commit
+
+    @pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in TRANSIENT_FAULT_CASES])
+    async def test_transient_fault_heals(
+        self,
+        case: TransientFaultCase,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+        fast_forward_merges: None,
+        immediate_delivery_retries: None,
+        synced_branch_repository: Callable[[str], Awaitable[SyncedBranchRepository]],
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """A merge whose first attempt cannot reach the remote is delivered by the automatic retry, with no user action."""
+        repository = await synced_branch_repository(f"transient-fault-at-{case.stage}")
+        clone = (
+            await InfrahubRepository.init(
+                id=repository.node_id, name=repository.name, client=client, infrahub_branch_name=registry.default_branch
+            )
+        ).get_git_repo_main()
+        location = clone.remotes.origin.url
+        caplog.set_level(logging.INFO, logger=SYNC_LOGGER)
+
+        # A port that is bound but not listening refuses every connection, so the step fails at once.
+        with socket.socket() as closed_port:
+            closed_port.bind(("127.0.0.1", 0))
+            blocked_location = gogs_clone_url(f"http://127.0.0.1:{closed_port.getsockname()[1]}", repository.name)
+            first_attempt_location = iter([blocked_location])
+            # The merge flow points the clone at the location before its first attempt, so the switches wait for it.
+            with (
+                _on_log_line(
+                    prefix=f"Delivery attempt of repository {repository.name} starts",
+                    action=lambda: clone.remotes.origin.set_url(location),
+                ),
+                _on_log_line(
+                    prefix=case.fault_from.format(repository=repository.name),
+                    action=lambda: clone.remotes.origin.set_url(next(first_attempt_location, location)),
+                ),
+            ):
+                await client.branch.merge(branch_name=repository.branch_name)
+
+        state = await _delivery_state(db=db, repository_id=repository.node_id)
+        assert (state.status, state.cause, state.error, state.queue.entries, state.last_delivered_commit) == (
+            RepositoryDeliveryStatus.NONE,
+            None,
+            None,
+            (),
+            repository.source_commit,
+        )
+        assert await _recorded_commit(db=db, repository_id=repository.node_id) == repository.source_commit
+        assert gogs_repo_branch_commit(gogs_server.container, repository.name, "main") == repository.source_commit
+        assert _delivery_log_lines(caplog=caplog, repository_name=repository.name) == [
+            f"Delivery attempt of repository {repository.name} starts (final attempt: False, manual: False).",
+            f"The {case.stage} step of the delivery to repository {repository.name} failed, and a later attempt "
+            f"retries it: Unable to clone the repository {repository.name}, please check the address and the credential",
+            f"Delivery attempt of repository {repository.name} starts (final attempt: False, manual: False).",
+        ]
+
+    async def test_policy_failure_is_not_retried(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        immediate_delivery_retries: None,
+        synced_branch_repository: Callable[[str], Awaitable[SyncedBranchRepository]],
+        reject_pushes_to_main: Callable[[str], Callable[[], None]],
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """A push that the remote refuses on policy gets one attempt, and the delivery then waits for a user."""
+        repository = await synced_branch_repository("policy-failure")
+        reject_pushes_to_main(repository.name)
+        caplog.set_level(logging.INFO, logger=SYNC_LOGGER)
+
+        await client.branch.merge(branch_name=repository.branch_name)
+
+        state = await _delivery_state(db=db, repository_id=repository.node_id)
+        assert (state.status, state.cause) == (
+            RepositoryDeliveryStatus.ACTION_REQUIRED,
+            RepositoryDeliveryFailureCause.PERMISSION,
+        )
+        assert _delivery_log_lines(caplog=caplog, repository_name=repository.name) == [
+            f"Delivery attempt of repository {repository.name} starts (final attempt: False, manual: False).",
+            f"The push step of the delivery to repository {repository.name} failed: remote: branch main is protected\n"
+            f"Unable to push the branch main to the remote for repository {repository.name}: "
+            "the remote refused the update (for example missing push permission or branch protection): "
+            "[remote rejected] (pre-receive hook declined)",
+        ]
+
+    async def test_lost_attempt_recovers(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+        fast_forward_merges: None,
+        synced_branch_repository: Callable[[str], Awaitable[SyncedBranchRepository]],
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """A merge whose attempt died after its snapshot is delivered by the first synchronisation cycle after it is stale."""
+        repository = await synced_branch_repository("lost-attempt")
+        caplog.set_level(logging.INFO, logger=SYNC_LOGGER)
+
+        def kill() -> NoReturn:
+            raise _KilledAttemptError
+
+        # The kill unwinds through the repository lock and frees it, as the deadlock cleanup frees the lock of a dead worker.
+        with _on_log_line(prefix=f"Delivery attempt of repository {repository.name} works on the merges", action=kill):
+            await client.branch.merge(branch_name=repository.branch_name)
+        lost = await _delivery_state(db=db, repository_id=repository.node_id)
+        assert (lost.status, [entry.source_commit for entry in lost.queue.entries]) == (
+            RepositoryDeliveryStatus.PENDING,
+            [repository.source_commit],
+        )
+        stale_store = WritebackIntentStore(
+            db=db,
+            lock_registry=lock.registry,
+            default_branch=await registry.get_branch(db=db),
+            clock=lambda: datetime.now(UTC) - timedelta(seconds=STALE_AFTER_SECONDS + 60),
+        )
+        await stale_store.touch(repository_id=repository.node_id)
+
+        await sync_remote_repositories()
+
+        state = await _delivery_state(db=db, repository_id=repository.node_id)
+        assert (state.status, state.cause, state.error, state.queue.entries, state.last_delivered_commit) == (
+            RepositoryDeliveryStatus.NONE,
+            None,
+            None,
+            (),
+            repository.source_commit,
+        )
+        assert await _recorded_commit(db=db, repository_id=repository.node_id) == repository.source_commit
+        assert gogs_repo_branch_commit(gogs_server.container, repository.name, "main") == repository.source_commit
+        assert [
+            record.getMessage()
+            for record in caplog.records
+            if record.getMessage().startswith("Submitted a delivery run of repository ")
+        ] == [f"Submitted a delivery run of repository {repository.name}, whose delivery lost its attempt."]
 
 
 async def _tracked_graph_state(db: InfrahubDatabase, tracked: TrackedBranchRepository) -> tuple[str | None, str | None]:

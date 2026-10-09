@@ -70,3 +70,30 @@ class WorkflowRecorder(InfrahubWorkflow):
 
     def get_submit_calls_for(self, workflow: WorkflowDefinition) -> list[dict[str, Any]]:
         return [call for call in self.submit_calls if call["workflow"] == workflow]
+
+
+class ContextRecordingWorkflow(WorkflowRecorder):
+    """Records each submission as its parent does, and the context of each submission in `contexts`, in order.
+
+    An error that a test appends to `failures` is raised by the next submission, before it records anything.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.contexts: list[InfrahubContext | EventContext | None] = []
+        self.failures: list[Exception] = []
+
+    async def submit_workflow(
+        self,
+        workflow: WorkflowDefinition,
+        context: InfrahubContext | EventContext | None = None,
+        parameters: dict[str, Any] | None = None,
+        tags: list[str] | None = None,
+        priority: WorkflowPriority | None = None,
+    ) -> WorkflowInfo:
+        if self.failures:
+            raise self.failures.pop(0)
+        self.contexts.append(context)
+        return await super().submit_workflow(
+            workflow=workflow, context=context, parameters=parameters, tags=tags, priority=priority
+        )

@@ -169,19 +169,23 @@ says that the clone on this worker has no `origin`, with no path. The service cl
 either object is missing locally. It raises `RepositoryError` for every other failure, which the
 service classifies as `unclassified`. The same contract binds IFC-3210's gateway.
 
-Every port method that runs Git bounds each of its Git commands with GitPython's
-`kill_after_timeout` (`research.md` R6):
+Every port method that runs Git gives each of its Git commands a bound, as GitPython's
+`kill_after_timeout`. The bound stops a command only as this list says (`research.md` R6):
 
 - `fetch` by `FETCH_TIMEOUT_SECONDS`, and `push` and `delete_remote_branch` by
-  `PUSH_TIMEOUT_SECONDS`. A timeout of `fetch` or `push` raises `RepositoryConnectionError`, because
-  `_raise_enriched_error_static` maps GitPython's "process killed because it timed out" text to it
-  (section 10).
+  `PUSH_TIMEOUT_SECONDS`. GitPython does not stop a fetch or a push at the bound, so the three also
+  set Git's low-speed limit to the bound. Git then ends an HTTP(S) transfer that sends no data for
+  that long. An SSH transfer has no bound. A stalled `fetch` or `push` raises
+  `RepositoryConnectionError`, because `_raise_enriched_error_static` maps libcurl's "Operation too
+  slow" text and GitPython's "process killed because it timed out" text to it (section 10). A
+  stalled `delete_remote_branch` raises the `GitCommandError` of Git.
 - `remote_head`, `is_ancestor`, `replay`, `reset` and `record` by `LOCAL_GIT_TIMEOUT_SECONDS`, for
-  each local command. `remote_head` reads with `git rev-parse`, not through GitPython's object
-  database. A timeout raises `RepositoryError`, with a message that names the command and the bound
-  but not the arguments, which can name worker paths. After a killed local command, the adapter
-  removes a left-over `index.lock` of the worktree before it raises. `reset` never raises: a killed
-  reset is logged like any failed reset.
+  each local command. GitPython stops a local command at the bound only where `ps` exists, and the
+  backend image has no `ps`. `remote_head` reads with `git rev-parse`, not through GitPython's object
+  database. A stopped local command raises `RepositoryError`, with a message that names the command
+  and the bound but not the arguments, which can name worker paths. After a killed local command,
+  the adapter removes a left-over `index.lock` of the worktree before it raises. `reset` never
+  raises: a killed reset is logged like any failed reset.
 
 `import_at` has no bound (`research.md` R6). `delete_remote_branch` treats a branch that is already
 gone as deleted. The service logs a failed deletion at warning level and never fails the attempt
@@ -229,7 +233,13 @@ class RepositoryWritebackService:
     ) -> None: ...
 
     async def deliver(
-        self, *, final_attempt: bool, manual: bool, entry: PendingMerge | None
+        self,
+        *,
+        final_attempt: bool,
+        manual: bool,
+        entry: PendingMerge | None,
+        retry_delay: timedelta | None = None,
+        first_attempt: bool = True,
     ) -> DeliveryAttemptResult: ...
 ```
 
@@ -255,8 +265,11 @@ disagree.
   then covers every held item. The run of a failed release sets its lease's expiry to now, so that
   live lease belongs to a release that still runs. The one exception is an `expire_lease` call
   that failed (`research.md` R10, rule 4).
-- When `manual` is `False` and a retry of another chain is due in the future, it returns
-  `deferred` at once (one chain per repository).
+- When `first_attempt` is `True`, `manual` is `False` and a retry of another chain is due in the
+  future, it returns `deferred` at once (one chain per repository). It reads the state for this
+  check after step 0 and before the repository lock. Only a first attempt defers, because a
+  chain's own retry must never defer itself: after the wait, the wall clock can still read earlier
+  than the recorded due time.
 - It never raises for a classified failure that is final: it records it and returns `failed` or
   `unreplayable`. A retryable failure on a non-final attempt is recorded with `retry_due_at`, then
   re-raised as `RetryableDeliveryError`, so the task's `retry_condition_fn` retries it.
@@ -287,9 +300,13 @@ async def deliver_pending_merges(
 ) -> DeliveryOutcome: ...
 ```
 
-The task computes `final_attempt` from `task_run.run_count` and `DELIVERY_RETRIES`, and passes
-`entry` to `deliver` on every attempt. The enqueue is idempotent, so an attempt after one that
-enqueued finds the id and writes nothing. The flow sets
+The task computes the wait before its next retry from `task_run.run_count` and its own `retries`
+and `retry_delay_seconds`, which are `DELIVERY_RETRIES` and `DELIVERY_RETRY_DELAYS_SECONDS` unless a
+test changes them with `with_options`. It passes that wait to `deliver` as `retry_delay`, which sets
+`retry_due_at` at the time of the failure, and `final_attempt` is `True` when no retry follows.
+`first_attempt` is `True` when `task_run.run_count` is 1, or outside a task run. It passes `entry`
+to `deliver` on every attempt. The enqueue is idempotent, so an attempt after one that enqueued
+finds the id and writes nothing. The flow sets
 its own final state from the outcome (`research.md` R21). `DELIVERY_RETRIES = 3` and
 `DELIVERY_RETRY_DELAYS_SECONDS = [30, 120, 300]`. Tests pass shorter delays through
 `deliver_pending_merges.with_options(retry_delay_seconds=...)`.
@@ -341,6 +358,7 @@ class DeliveryRecoveryCheck:
         runs: DeliveryRunQuery,
         lock_registry: InfrahubLockRegistry,
         clock: Clock,
+        context: InfrahubContext,
     ) -> None: ...
 
     async def run(self, *, repository: RepositoryRef) -> bool: ...
@@ -352,20 +370,29 @@ bootstrap and whatever the outcome of the sync, under its own guard. It submits
 then calls `state.touch(...)`, when:
 
 - the delivery is stale (five conditions, `research.md` R20); or
-- held items that no live lease covers wait, `last_progress_at` is older than `STALE_AFTER`, and
-  no delivery run of the repository waits to start.
+- the queue is empty, held items that no live lease covers wait, `last_progress_at` is older than
+  `STALE_AFTER`, and no delivery run of the repository waits to start.
+
+The second trigger needs an empty queue. A queue with merges is the stale check's case: while it is
+`pending`, the first trigger covers it. While it is `action-required`, a submission every
+`STALE_AFTER` would retry a policy failure, which FR-004 forbids.
 
 The lock condition needs the lock registry, and the orchestrator condition needs `runs`. The check
-takes both in its constructor. It reads the state and the lock first, and calls
-`runs.has_queued_run(...)` only when every other condition of a trigger holds. It then passes the
-answer to `WritebackIntent.is_stale(now, lock_free, run_queued)`. A repository with no work to
-recover, or with recent progress, costs no orchestrator query. When `has_queued_run` raises, the
-check submits nothing, does not call `state.touch(...)`, logs the failure at warning level, and
-returns `False`. It returns whether it submitted. It never raises: a failure is logged and the next
-cycle checks again.
+takes both in its constructor. The retry flow requires a context, so the check also takes the
+system context that it submits with: the default branch and an anonymous account. It reads the
+state and the lock first, and evaluates the first trigger with
+`WritebackIntent.is_stale(now, lock_free, run_queued=False)` and the second with
+`WritebackIntent.release_waits(now)`. It calls `runs.has_queued_run(...)` last, only when one
+trigger holds, and submits only when no run waits. A repository with no work to recover, or with
+recent progress, costs no orchestrator query. When `has_queued_run` raises an `httpx.HTTPError` or
+an `OSError`, the check submits nothing, does not call `state.touch(...)`, logs the failure at
+warning level, and returns `False`. Another error gives the same result, but the guard of `run`
+logs it at error level, with its traceback. It returns whether it submitted. It never raises: a
+failure is logged and the next cycle checks again.
 
 `build_recovery_check` builds `PrefectDeliveryRunQuery` over
-`task_manager/flow_run/prefect_client.py::PrefectClientAdapter`.
+`task_manager/flow_run/prefect_client.py::PrefectClientAdapter`, and the system context with
+`InfrahubContext.init(branch=<default branch>, account=AnonymousSession())`.
 
 ---
 
@@ -519,7 +546,7 @@ Contract:
 | `git/base.py::InfrahubRepositoryBase.fetch` | Accepts a timeout and passes it as `kill_after_timeout`. |
 | `git/base.py::InfrahubRepositoryBase.create_commit_worktree`, `git/base.py::InfrahubRepositoryBase.delete_remote_branch` | Accept a timeout and pass it as `kill_after_timeout` to each Git command they run. Default unchanged. |
 | `git/repository.py::InfrahubRepository._reset_to_pre_merge_commit` | Accepts a timeout and passes it as `kill_after_timeout`. Still never raises. |
-| `git/base.py::InfrahubRepositoryBase._raise_enriched_error_static` | Raises `RepositoryTLSError` for the TLS markers, `RepositoryNotFoundError` for "Repository not found", and `RepositoryConnectionError` for GitPython's "process killed because it timed out". |
+| `git/base.py::InfrahubRepositoryBase._raise_enriched_error_static` | Raises `RepositoryTLSError` for the TLS markers, `RepositoryNotFoundError` for "Repository not found", and `RepositoryConnectionError` for GitPython's "process killed because it timed out" and libcurl's "Operation too slow". |
 | `git/base.py::InfrahubRepositoryBase._raise_enriched_error` | Resolves the status with `isinstance`, most specific first. |
 | `message_bus/operations/git/repository.py::connectivity` | Same `isinstance` resolution. |
 | `git/repository.py::InfrahubRepository.collect_pending_imports` | In the active loop, skips the default branch, and every new or updated remote branch that a pending entry names, while the state is not `none`. Takes the state port as a parameter from the sync flow. `_collect_staging_imports` is unchanged. |

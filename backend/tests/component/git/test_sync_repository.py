@@ -2,6 +2,7 @@ import logging
 import shutil
 from collections.abc import AsyncGenerator, Generator
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -15,6 +16,8 @@ from prefect.client.orchestration import PrefectClient, get_client
 from prefect.client.schemas.objects import State
 
 from infrahub import config, lock
+from infrahub.auth.session import AnonymousSession
+from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import (
     InfrahubKind,
     RepositoryInternalStatus,
@@ -30,6 +33,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import RepositoryError
 from infrahub.git import InfrahubRepository
 from infrahub.git.divergence.recorder import HistoryRewriteRecorder
+from infrahub.git.models import GitRepositoryDeliveryRetry
 from infrahub.git.sync import (
     RepositoryBranchesFailedError,
     RepositoryFileImporter,
@@ -39,12 +43,18 @@ from infrahub.git.sync import (
     raise_if_branches_failed,
 )
 from infrahub.git.tasks import report_failed_branches, sync_remote_repositories, sync_repository_from_origin
+from infrahub.git.writeback.constants import STALE_AFTER_SECONDS
+from infrahub.git.writeback.models import PendingMerge
+from infrahub.git.writeback.store import WritebackIntentStore
 from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
-from infrahub.workers.dependencies import build_message_bus, clear_singletons
+from infrahub.services.adapters.workflow import InfrahubWorkflow
+from infrahub.workers.dependencies import build_message_bus, build_workflow, clear_singletons
+from infrahub.workflows.catalogue import GIT_REPOSITORY_DELIVERY_RETRY
 from infrahub.workflows.constants import TAG_NAMESPACE, WorkflowTag
 from tests.adapters.message_bus import BusRecorder, BusSimulator, FailingBus, RepositoryFailingBus
 from tests.adapters.repository_record_store import FailingRepositoryRecordStore, build_in_memory_recorder
+from tests.adapters.workflow import ContextRecordingWorkflow
 from tests.conftest import TestHelper
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.git import LocalRemote, build_repository_client, clone_repository
@@ -61,6 +71,7 @@ from tests.helpers.repository_sync import (
     skipped_branch_warnings,
 )
 from tests.helpers.test_app import TestInfrahubApp
+from tests.helpers.workflow_override import override_workflow
 
 
 @dataclass
@@ -964,6 +975,10 @@ class TestSynchronisationCycleFailures(TestInfrahubApp):
         ]
 
 
+def unavailable_workflow() -> InfrahubWorkflow:
+    raise RuntimeError("The workflow adapter cannot be built")
+
+
 class TestSynchronisationCycleIsolation(TestInfrahubApp):
     """A synchronization cycle over repositories this worker holds no clone of yet.
 
@@ -1005,3 +1020,123 @@ class TestSynchronisationCycleIsolation(TestInfrahubApp):
             for record in caplog.records
             if record.name == FLOW_RUN_LOGGER and record.getMessage().startswith("Unable to synchronize repository")
         ] == ["Unable to synchronize repository unreachable-broadcast-repo, continuing with the other repositories"]
+
+    async def test_a_stale_delivery_gets_one_recovery_run_even_when_its_synchronization_fails(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        caplog: pytest.LogCaptureFixture,
+        dependency_provider: Provider,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        caplog.set_level(logging.ERROR, logger=FLOW_RUN_LOGGER)
+        nodes: dict[str, Node] = {}
+        for name in ("stale-delivery-repo", "idle-delivery-repo"):
+            remote = LocalRemote.create(directory=tmp_path / name, trunk="main", branches=[])
+            nodes[name] = await create_repository_node(
+                db=db,
+                name=name,
+                location=str(remote.directory),
+                default_branch="main",
+                operational_status=RepositoryOperationalStatus.ONLINE.value,
+            )
+        stale = nodes["stale-delivery-repo"]
+        queued_at = datetime.now(UTC) - timedelta(seconds=STALE_AFTER_SECONDS + 60)
+        default_branch = await registry.get_branch(db=db)
+        store = WritebackIntentStore(
+            db=db, lock_registry=lock.registry, default_branch=default_branch, clock=lambda: queued_at
+        )
+        await store.enqueue(
+            repository_id=stale.id,
+            entry=PendingMerge(
+                entry_id="merge-1",
+                source_branch="add-vlan",
+                source_git_branch="add-vlan",
+                source_commit="b" * 40,
+                merged_at=queued_at,
+            ),
+            widen=False,
+        )
+        bus = RepositoryFailingBus(failing_repository_id=stale.id)
+        cycle_started_at = datetime.now(UTC)
+
+        with (
+            override_dependency(build_message_bus, lambda: bus, dependency_provider=dependency_provider),
+            override_workflow(ContextRecordingWorkflow(), dependency_provider=dependency_provider) as workflow,
+        ):
+            await sync_remote_repositories()
+
+        assert workflow.contexts == [
+            InfrahubContext(branch=BranchContext(name="main", id=str(default_branch.uuid)), account=AnonymousSession())
+        ]
+        assert workflow.get_submit_calls_for(GIT_REPOSITORY_DELIVERY_RETRY) == [
+            {
+                "kind": "submit",
+                "workflow": GIT_REPOSITORY_DELIVERY_RETRY,
+                "parameters": {
+                    "model": GitRepositoryDeliveryRetry(
+                        repository_id=stale.id, repository_name="stale-delivery-repo", manual=False
+                    )
+                },
+                "tags": [f"infrahub.app/node/{stale.id}", "infrahub.app/repository-delivery"],
+            }
+        ]
+        last_progress_at = (await store.read(repository_id=stale.id)).progress.last_progress_at
+        assert last_progress_at is not None
+        assert cycle_started_at <= last_progress_at <= datetime.now(UTC)
+        assert [
+            record.getMessage()
+            for record in caplog.records
+            if record.name == FLOW_RUN_LOGGER and record.getMessage().startswith("Unable to synchronize repository")
+        ] == ["Unable to synchronize repository stale-delivery-repo, continuing with the other repositories"]
+
+    async def test_a_recovery_check_that_cannot_be_built_does_not_stop_the_synchronizations(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        caplog: pytest.LogCaptureFixture,
+        dependency_provider: Provider,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        caplog.set_level(logging.ERROR, logger=FLOW_RUN_LOGGER)
+        nodes: dict[str, Node] = {}
+        for name in ("first-unchecked-repo", "second-unchecked-repo"):
+            remote = LocalRemote.create(directory=tmp_path / name, trunk="main", branches=[])
+            nodes[name] = await create_repository_node(
+                db=db,
+                name=name,
+                location=str(remote.directory),
+                default_branch="main",
+                operational_status=RepositoryOperationalStatus.ONLINE.value,
+            )
+        bus = BusRecorder()
+
+        with (
+            override_dependency(build_message_bus, lambda: bus, dependency_provider=dependency_provider),
+            override_dependency(build_workflow, unavailable_workflow, dependency_provider=dependency_provider),
+        ):
+            await sync_remote_repositories()
+
+        assert sorted(
+            message.repository_id
+            for message in bus.messages
+            if isinstance(message, RefreshGitFetch) and message.repository_id in {node.id for node in nodes.values()}
+        ) == sorted(node.id for node in nodes.values())
+        stack_repositories = await NodeManager.query(db=db, schema=CoreRepositoryNode, branch=registry.default_branch)
+        assert sorted(
+            (record.levelno, record.getMessage(), repr(record.exc_info[1]) if record.exc_info else None)
+            for record in caplog.records
+            if record.name == FLOW_RUN_LOGGER and record.getMessage().startswith("Unable to ")
+        ) == sorted(
+            (
+                logging.ERROR,
+                f"Unable to check repository {repository.name.value} for a lost delivery, "
+                "continuing with its synchronization",
+                "RuntimeError('The workflow adapter cannot be built')",
+            )
+            for repository in stack_repositories
+        )

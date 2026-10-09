@@ -206,6 +206,29 @@ class InMemoryDeliveryState:
         return f"lease-{next(self._lease_numbers)}"
 
 
+@dataclass(frozen=True)
+class RecordedFailure:
+    failure: DeliveryFailure
+    final: bool
+    retry_due_at: datetime | None
+
+
+class RecordingDeliveryState(InMemoryDeliveryState):
+    """Records each failure in `recorded_failures`, in order, then records it as its parent does."""
+
+    def __init__(self, *, clock: Clock, repository_names: Mapping[str, str]) -> None:
+        super().__init__(clock=clock, repository_names=repository_names)
+        self.recorded_failures: list[RecordedFailure] = []
+
+    async def record_failure(
+        self, *, repository_id: str, failure: DeliveryFailure, final: bool, retry_due_at: datetime | None
+    ) -> None:
+        self.recorded_failures.append(RecordedFailure(failure=failure, final=final, retry_due_at=retry_due_at))
+        await super().record_failure(
+            repository_id=repository_id, failure=failure, final=final, retry_due_at=retry_due_at
+        )
+
+
 class InMemoryDeliveryGit:
     """A clone, its destination worktree and the remote branches as last fetched, in memory.
 
@@ -335,3 +358,33 @@ class RecordingRegenerationReleaser:
             raise self.failures.pop(0)
         await renew()
         self.releases.append(Release(repository_id=repository_id, held=held))
+
+
+class InMemoryDeliveryRunQuery:
+    """Answers that a delivery run waits for each repository id that a test adds to `queued`, and for no other.
+
+    Every repository id that it is asked about is recorded in `asked`, in order.
+    """
+
+    def __init__(self) -> None:
+        self.queued: set[str] = set()
+        self.asked: list[str] = []
+
+    async def has_queued_run(self, *, repository_id: str) -> bool:
+        self.asked.append(repository_id)
+        return repository_id in self.queued
+
+
+class FailingDeliveryRunQuery:
+    """Raises the error on every query, as when the orchestrator does not answer.
+
+    Every repository id that it is asked about is recorded in `asked`, in order, before it raises.
+    """
+
+    def __init__(self, *, error: Exception) -> None:
+        self.error = error
+        self.asked: list[str] = []
+
+    async def has_queued_run(self, *, repository_id: str) -> bool:
+        self.asked.append(repository_id)
+        raise self.error

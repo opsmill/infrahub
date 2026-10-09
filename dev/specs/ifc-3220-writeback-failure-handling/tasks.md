@@ -496,12 +496,14 @@ deployment rule.** T070 to T073 are not.
 **Maps to**: FR-004, FR-027, SC-003. **T077, T079 and T080 are in the deployment rule.** T078 and
 T081 to T084 are not.
 
-- [ ] T077 [US4] Give `deliver_pending_merges` in `backend/infrahub/git/tasks.py` its `retries`,
+- [X] T077 [US4] Give `deliver_pending_merges` in `backend/infrahub/git/tasks.py` its `retries`,
       `retry_delay_seconds` and `retry_condition_fn`, and compute `final_attempt` from
       `task_run.run_count`. Record `retry_due_at` before each wait.
-- [ ] T078 [US4] Make `RepositoryWritebackService.deliver` return `deferred` when `manual` is `False` and a
-      retry of another chain is due in the future, in `backend/infrahub/git/writeback/service.py`.
-- [ ] T079 [US4] Write `DeliveryRecoveryCheck` in `backend/infrahub/git/writeback/recovery.py` and run it
+- [X] T078 [US4] Make the first attempt only of `RepositoryWritebackService.deliver` return `deferred`,
+      in `backend/infrahub/git/writeback/service.py`: a chain's first automatic attempt
+      (`first_attempt` is `True`, `manual` is `False`) returns `deferred` when the retry of another
+      chain is due later. A later attempt of the chain never defers.
+- [X] T079 [US4] Write `DeliveryRecoveryCheck` in `backend/infrahub/git/writeback/recovery.py` and run it
       from the loop of `sync_remote_repositories` in `backend/infrahub/git/tasks.py`, for every
       repository, before the bootstrap and whatever the sync outcome, under its own guard. It submits
       with `tags=delivery_run_tags(repository.id)`. Write `PrefectDeliveryRunQuery` in
@@ -509,7 +511,7 @@ T081 to T084 are not.
       `read_flow_runs` call, and wire it in `build_recovery_check`. The check queries the
       orchestrator only when every other condition of a trigger holds, and submits nothing when the
       query raises (R20, contracts section 7).
-- [ ] T080 [US4] Write `backend/tests/unit/git/writeback/test_retry_and_recovery.py`, with a fake
+- [X] T080 [US4] Write `backend/tests/unit/git/writeback/test_retry_and_recovery.py`, with a fake
       `DeliveryRunQuery` in `backend/tests/unit/git/writeback/fakes.py`: the retry condition per cause,
       `final_attempt`, the deferred chain, the recovery check for a stale delivery (each of the five
       conditions, the free lock included) and for uncovered held work behind an empty queue, no
@@ -521,15 +523,16 @@ T081 to T084 are not.
       no query; every submission carries the delivery tags. Test `PrefectDeliveryRunQuery` against a
       fake `FlowRunQuerying` client: the filter holds both tags and the state types `SCHEDULED` and
       `PENDING`, with `limit=1`.
-- [ ] T081 [US4] Add `test_transient_fault_heals` to
+- [X] T081 [US4] Add `test_transient_fault_heals` to
       `backend/tests/integration/git/test_git_live_remote.py`: block the Gogs port for the first
-      attempt, open it, short delays through `with_options`.
-- [ ] T082 [US4] Add `test_lost_attempt_recovers` to the same module: kill the flow after the snapshot,
+      attempt, open it, short delays through `with_options`. One case blocks the port before the
+      fetch, the other after the fetch, so that the push fails.
+- [X] T082 [US4] Add `test_lost_attempt_recovers` to the same module: kill the flow after the snapshot,
       free the repository lock in the test, as the deadlock cleanup does for a dead worker (R20),
       age the state past the stale bound, run one sync cycle, and assert the delivery.
-- [ ] T083 [P] [US4] Add `test_policy_failure_is_not_retried` to the same module: one attempt only, then
+- [X] T083 [P] [US4] Add `test_policy_failure_is_not_retried` to the same module: one attempt only, then
       `action-required`.
-- [ ] T084 [P] [US4] Add two timeout cases to `backend/tests/unit/git/writeback/test_git_adapter.py`.
+- [X] T084 [P] [US4] Add two timeout cases to `backend/tests/unit/git/writeback/test_git_adapter.py`.
       A local TCP server that accepts and never answers makes the push fail as `remote-unreachable`
       within the bound. A `merge` of `replay` that stalls, through a `pre-merge-commit` hook of the
       temporary repository that `exec`s a long `sleep`, is killed within `LOCAL_GIT_TIMEOUT_SECONDS`,
