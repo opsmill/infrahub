@@ -88,7 +88,8 @@ A per-merge line records the path taken (selective, with generator/artifact coun
 | `core/merge/orchestrator.py` | Serialize the enriched diff and cache it after the point of no return |
 | `core/diff/summary_serializer.py` | `DiffSummarySerializer` — the `EnrichedDiffRoot -> list[NodeDiff]` converter |
 | `core/diff/summary_cache.py` | `DiffSummaryCache` — the merge-scoped cache |
-| `core/merge/regeneration_dispatcher.py` | `PostMergeRegenerationDispatcher`, the cascade, `submit_full_regeneration`, `FullRegenerationReason` |
+| `core/merge/regeneration_dispatcher.py` | `PostMergeRegenerationDispatcher`, the cascade, `submit_full_regeneration` |
+| `core/constants/__init__.py` | `FullRegenerationReason`, the reasons of a fallback to a full regeneration |
 | `core/merge/selective_regen/orchestrator.py` | `RegenerationSelector` / `MergeSelectiveRegeneration`, `build_merge_selective_regeneration` |
 | `core/merge/selective_regen/definition_selector/` | Shared select loop (`base.py`) and the artifact / generator selectors |
 | `core/merge/selective_regen/gate.py`, `impacted.py`, `fallbacks.py` | Definition gate, member impact, untrusted-closure widening |
