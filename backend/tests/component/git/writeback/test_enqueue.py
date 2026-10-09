@@ -44,7 +44,7 @@ from tests.helpers.git import LocalRemote, build_repository_client, clone_reposi
 from .conftest import HELD_REGENERATION, QUEUE, SOURCE_COMMIT, pending_merge, read_attribute_writes
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Callable
+    from collections.abc import AsyncIterator, Awaitable, Callable
     from pathlib import Path
 
     from fast_depends import Provider
@@ -74,6 +74,22 @@ class RecordingSleep:
 
     async def __call__(self, delay: float) -> None:
         self.delays.append(delay)
+
+
+class SleepUntilEveryRepositoryWaits:
+    """Holds each delay until the given number of repositories wait at the same time, then returns."""
+
+    def __init__(self, *, repositories: int) -> None:
+        self.delays: list[float] = []
+        self.repositories = repositories
+        self.every_repository_waits = asyncio.Event()
+
+    async def __call__(self, delay: float) -> None:
+        self.delays.append(delay)
+        if len(self.delays) == self.repositories:
+            self.every_repository_waits.set()
+        # Repositories queued one after the other never wait together, so the bound ends the dispatch.
+        await asyncio.wait_for(self.every_repository_waits.wait(), timeout=10)
 
 
 def state_lock_not_acquired(repository_id: str) -> Exception:
@@ -181,16 +197,22 @@ async def dispatch_merge(
     db: InfrahubDatabase,
     source_branch: Branch,
     default_branch: Branch,
-    state: WritebackIntentStore,
-    sleep: RecordingSleep,
+    sleep: Callable[[float], Awaitable[None]],
+    failing_tries: dict[str, float] | None = None,
+    error: Callable[[str], Exception] = state_lock_not_acquired,
 ) -> WorkflowRecorder:
+    """Run the repository part of a branch merge, where the first tries of each repository in `failing_tries` fail."""
     workflow = WorkflowRecorder()
+    # Every session of the dispatch counts down the same tries.
+    tries = failing_tries if failing_tries is not None else {}
     dispatcher = RepositoryMergeDispatcher(
         db=db,
         source_branch=source_branch,
         destination_branch=default_branch,
         workflow=workflow,
-        state=state,
+        state_for_session=lambda session: FailingEnqueueStore(
+            db=session, default_branch=default_branch, failing_tries=tries, error=error
+        ),
         sleep=sleep,
         logger=logging.getLogger(DISPATCHER_LOGGER),
     )
@@ -306,7 +328,7 @@ async def test_a_merge_with_no_content_queues_nothing_and_submits_no_merge_workf
     store = build_store(db=db, default_branch=default_branch)
 
     workflow = await dispatch_merge(
-        db=db, source_branch=source_branch, default_branch=default_branch, state=store, sleep=RecordingSleep()
+        db=db, source_branch=source_branch, default_branch=default_branch, sleep=RecordingSleep()
     )
 
     assert workflow.submit_calls == []
@@ -330,7 +352,7 @@ async def test_a_staging_repository_merges_with_no_queue_entry(
     store = build_store(db=db, default_branch=default_branch)
 
     workflow = await dispatch_merge(
-        db=db, source_branch=source_branch, default_branch=default_branch, state=store, sleep=RecordingSleep()
+        db=db, source_branch=source_branch, default_branch=default_branch, sleep=RecordingSleep()
     )
 
     assert submitted_merges(workflow) == [
@@ -361,14 +383,8 @@ async def test_a_failed_enqueue_of_one_repository_still_submits_the_merge_of_the
         db=db,
         source_branch=source_branch,
         default_branch=default_branch,
-        state=FailingEnqueueStore(
-            db=db,
-            default_branch=default_branch,
-            failing_tries={failing.id: math.inf},
-            error=lambda repository_id: RuntimeError(
-                f"The cache of the state lock of {repository_id} does not answer."
-            ),
-        ),
+        failing_tries={failing.id: math.inf},
+        error=lambda repository_id: RuntimeError(f"The cache of the state lock of {repository_id} does not answer."),
         sleep=RecordingSleep(),
     )
 
@@ -393,7 +409,7 @@ async def test_a_stored_value_that_is_not_a_commit_skips_only_its_own_repository
     store = build_store(db=db, default_branch=default_branch)
 
     workflow = await dispatch_merge(
-        db=db, source_branch=source_branch, default_branch=default_branch, state=store, sleep=RecordingSleep()
+        db=db, source_branch=source_branch, default_branch=default_branch, sleep=RecordingSleep()
     )
 
     [merge] = submitted_merges(workflow)
@@ -402,6 +418,31 @@ async def test_a_stored_value_that_is_not_a_commit_skips_only_its_own_repository
     assert merge.pending_merge.source_commit == SOURCE_COMMIT
     assert (await store.read(repository_id=broken.id)).queue == DeliveryQueue()
     assert (await store.read(repository_id=healthy.id)).queue.entries == (merge.pending_merge,)
+
+
+async def test_the_retries_of_every_repository_run_at_the_same_time(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    first = await create_repository_node(db=db, branch=default_branch, name="first-repository")
+    second = await create_repository_node(db=db, branch=default_branch, name="second-repository")
+    source_branch = await fork_source_branch(db=db)
+    for repository in (first, second):
+        await set_values(db=db, branch=source_branch, repository_id=repository.id, commit=SOURCE_COMMIT)
+    sleep = SleepUntilEveryRepositoryWaits(repositories=2)
+
+    workflow = await dispatch_merge(
+        db=db,
+        source_branch=source_branch,
+        default_branch=default_branch,
+        sleep=sleep,
+        failing_tries={first.id: 1, second.id: 1},
+    )
+
+    assert sleep.delays == [2, 2]
+    assert {model.repository_name: model.pending_merge_enqueued for model in submitted_merges(workflow)} == {
+        "first-repository": True,
+        "second-repository": True,
+    }
 
 
 async def test_a_failed_read_of_the_content_still_submits_the_merge_flow_of_every_active_repository(
@@ -422,7 +463,6 @@ async def test_a_failed_read_of_the_content_still_submits_the_merge_flow_of_ever
             # The content read needs the time of the fork, so a branch with no such time makes it raise.
             source_branch=source_branch.model_copy(update={"branched_from": None}),
             default_branch=default_branch,
-            state=store,
             sleep=RecordingSleep(),
         )
 
@@ -475,7 +515,7 @@ async def test_an_enqueue_that_fails_once_queues_the_merge_after_the_first_delay
             db=db,
             source_branch=source_branch,
             default_branch=default_branch,
-            state=FailingEnqueueStore(db=db, default_branch=default_branch, failing_tries={repository.id: 1}),
+            failing_tries={repository.id: 1},
             sleep=sleep,
         )
 
@@ -512,7 +552,7 @@ async def test_an_enqueue_that_fails_at_every_try_leaves_the_entry_and_a_full_re
             db=db,
             source_branch=source_branch,
             default_branch=default_branch,
-            state=FailingEnqueueStore(db=db, default_branch=default_branch, failing_tries={repository.id: math.inf}),
+            failing_tries={repository.id: math.inf},
             sleep=sleep,
         )
 

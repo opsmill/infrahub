@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING
 
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
@@ -40,15 +41,22 @@ class RepositoryMergeDispatcher:
         source_branch: Branch,
         destination_branch: Branch,
         workflow: InfrahubWorkflow,
-        state: DeliveryStatePort,
+        state_for_session: Callable[[InfrahubDatabase], DeliveryStatePort],
         sleep: Callable[[float], Awaitable[None]],
         logger: InfrahubLogger | None = None,
     ) -> None:
+        """Build the dispatcher.
+
+        Args:
+            state_for_session: Builds the delivery state on a database session, because the merges of all
+                repositories queue at once and one session serves one of them at a time.
+
+        """
         self.db = db
         self.source_branch = source_branch
         self.destination_branch = destination_branch
         self.workflow = workflow
-        self.state = state
+        self.state_for_session = state_for_session
         self.sleep = sleep
         self.log = logger or get_logger()
 
@@ -92,6 +100,10 @@ class RepositoryMergeDispatcher:
                 repo.id for repo in repos if repo.internal_status.value == RepositoryInternalStatus.ACTIVE.value
             ]
         )
+        queueable = pending_merges or {}
+        enqueued = await self._enqueue_all(
+            entries={repo.id: (repo.name.value, queueable[repo.id]) for repo in repos if repo.id in queueable}
+        )
 
         for repo in repos:
             model = GitRepositoryMerge(
@@ -117,10 +129,9 @@ class RepositoryMergeDispatcher:
                         f"{repo.name.value}, so nothing is pushed to its remote."
                     )
                     continue
-                enqueued = await self._enqueue(
-                    repository_id=repo.id, repository_name=repo.name.value, entry=pending_merge
+                model = model.model_copy(
+                    update={"pending_merge": pending_merge, "pending_merge_enqueued": enqueued[repo.id]}
                 )
-                model = model.model_copy(update={"pending_merge": pending_merge, "pending_merge_enqueued": enqueued})
             await self.workflow.submit_workflow(
                 workflow=GIT_REPOSITORIES_MERGE,
                 context=context,
@@ -145,12 +156,26 @@ class RepositoryMergeDispatcher:
             )
             return None
 
+    async def _enqueue_all(self, *, entries: dict[str, tuple[str, PendingMerge]]) -> dict[str, bool]:
+        """Queue the merge of every repository, and return by repository id whether a try succeeded.
+
+        The branch merge holds the global merge lock meanwhile, so the retries of all repositories run at once.
+        """
+        results = await asyncio.gather(
+            *(
+                self._enqueue(repository_id=repository_id, repository_name=repository_name, entry=entry)
+                for repository_id, (repository_name, entry) in entries.items()
+            )
+        )
+        return dict(zip(entries, results, strict=True))
+
     async def _enqueue(self, *, repository_id: str, repository_name: str, entry: PendingMerge) -> bool:
         """Queue the merge for its push to the remote, and return whether a try succeeded."""
         retry_delays = iter(ENQUEUE_RETRY_DELAYS_SECONDS[:ENQUEUE_RETRIES])
         while True:
             try:
-                await self.state.enqueue(repository_id=repository_id, entry=entry, widen=False)
+                async with self.db.start_session() as session:
+                    await self.state_for_session(session).enqueue(repository_id=repository_id, entry=entry, widen=False)
             except Exception:
                 # The graph merge is done, so no failure may stop the merge flow, which queues the entry again.
                 delay = next(retry_delays, None)
