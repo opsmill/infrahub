@@ -373,3 +373,56 @@ async def test_declaration_the_default_branch_cannot_resolve_leaves_later_pools_
         db=db, schema=CoreNumberPool, filters={"node__value": COUNTER_KIND}, branch_agnostic=True
     )
     assert (len(device_pools), len(counter_pools)) == (0, 1)
+
+
+async def test_saving_a_branch_schema_holding_a_declaration_the_default_branch_cannot_resolve(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """The branch schema saved for another pool, and reloaded later, keeps a declaration the default branch lost."""
+    await load_schema(db=db, schema=SCOPED_POOL_SCHEMA, update_db=True)
+    scoped_branch = await create_branch(db=db, branch_name="scope-gone")
+    device = copy.deepcopy(SCOPED_DEVICE)
+    device.attributes.extend(
+        [
+            AttributeSchema(
+                name="vlan_index",
+                kind="NumberPool",
+                optional=False,
+                read_only=True,
+                parameters=NumberPoolParameters(start_range=1, end_range=10, allocation_scope=["site"]),
+            ),
+            AttributeSchema(
+                name="vlan_serial",
+                kind="NumberPool",
+                optional=False,
+                read_only=True,
+                parameters=NumberPoolParameters(start_range=1, end_range=10),
+            ),
+        ]
+    )
+    registry.schema.register_schema(schema=SchemaRoot(nodes=[device]), branch=scoped_branch.name)
+    default_schema = registry.schema.get_schema_branch(name=registry.default_branch)
+    default_device_without_site = default_schema.get_node(name=SCOPED_DEVICE.kind)
+    default_device_without_site.relationships = [
+        relationship for relationship in default_device_without_site.relationships if relationship.name != "site"
+    ]
+    default_schema.set(name=SCOPED_DEVICE.kind, schema=default_device_without_site)
+    counter_branch = await create_branch(db=db, branch_name="counter-pool")
+    registry.schema.register_schema(
+        schema=counter_schema(parameters=NumberPoolParameters(start_range=1, end_range=100)), branch=counter_branch.name
+    )
+
+    await run_synchronizer(db=db)
+    reloaded = await registry.schema.load_schema_from_db(db=db, branch=scoped_branch)
+
+    device_pools = await NodeManager.query(
+        db=db, schema=CoreNumberPool, filters={"node__value": SCOPED_DEVICE.kind}, branch_agnostic=True
+    )
+    counter_pools = await NodeManager.query(
+        db=db, schema=CoreNumberPool, filters={"node__value": COUNTER_KIND}, branch_agnostic=True
+    )
+    assert sorted(pool.node_attribute.value for pool in device_pools) == ["vlan_serial"]
+    assert len(counter_pools) == 1
+    reloaded_index = reloaded.get_node(name=SCOPED_DEVICE.kind).get_attribute(name="vlan_index")
+    assert isinstance(reloaded_index.parameters, NumberPoolParameters)
+    assert (reloaded_index.parameters.allocation_scope, reloaded_index.parameters.number_pool_id) == (["site"], None)
