@@ -22,6 +22,7 @@ from infrahub.git.writeback.store import WritebackIntentStore
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.adapters.event import FailingInfrahubEvent, MemoryInfrahubEvent
 from tests.adapters.python_target_sources import RecordingPythonTargetResolver, ResolveCall
+from tests.helpers.regeneration_barrier import regeneration_barrier
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -40,21 +41,23 @@ def _build_dispatcher(
     python_resolver: PythonTargetResolver,
 ) -> PostMergeDispatcher:
     workflow = WorkflowLocalExecution()
+    state = WritebackIntentStore(
+        db=db, lock_registry=lock.registry, default_branch=destination_branch, clock=partial(datetime.now, UTC)
+    )
     return PostMergeDispatcher(
         repository_merge_dispatcher=RepositoryMergeDispatcher(
             db=db,
             source_branch=source_branch,
             destination_branch=destination_branch,
             workflow=workflow,
-            state=WritebackIntentStore(
-                db=db, lock_registry=lock.registry, default_branch=destination_branch, clock=partial(datetime.now, UTC)
-            ),
+            state=state,
             sleep=asyncio.sleep,
         ),
         workflow=workflow,
         event_service=event_service,
         default_branch=destination_branch,
         python_resolver=python_resolver,
+        barrier=regeneration_barrier(state=state, default_branch_name=destination_branch.name),
     )
 
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub.core.merge.builder import build_default_branch_barrier
 from infrahub.core.merge.python_target_sources import build_python_target_resolver
 from infrahub.core.merge.recompute_coalescing import (
     CoalescedRecomputeBuilder,
@@ -72,8 +73,8 @@ class BulkRecomputeDispatcher:
 async def build_bulk_recompute_dispatcher(*, schema_branch: SchemaBranch, coalesced: bool) -> BulkRecomputeDispatcher:
     """Wire a bulk recompute dispatcher from the flow-level dependencies.
 
-    Only a coalesced pass drives a next level, and only that chain needs an API client and the
-    read-set index behind it, so a live pass is not made to build either.
+    Only a coalesced pass drives a next level, and only that chain needs an API client, the
+    read-set index and the barrier behind it, so a live pass is not made to build any of them.
     """
     db = await get_database()
     writer = BulkRecomputeWriter(db=db, event_service=await get_event_service())
@@ -83,5 +84,6 @@ async def build_bulk_recompute_dispatcher(*, schema_branch: SchemaBranch, coales
             builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
             submitter=CoalescedRecomputeSubmitter(workflow=get_workflow()),
             python_resolver=await build_python_target_resolver(db=db),
+            barrier=await build_default_branch_barrier(db=db),
         )
     return BulkRecomputeDispatcher(db=db, writer=writer, chain=chain)

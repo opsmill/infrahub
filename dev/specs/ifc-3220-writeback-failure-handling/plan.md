@@ -158,7 +158,8 @@ backend/infrahub/
 │   │   ├── repository_merge_dispatcher.py # enqueue before submit, bounded retry,
 │   │   │                                  # per-repository guard, context, state port
 │   │   ├── recompute_coalescing.py        # barrier on the Python family
-│   │   ├── python_target_sources.py       # owner_of
+│   │   ├── python_target_sources.py       # repository id per attribute
+│   │   ├── python_target_resolution.py    # owner_of
 │   │   ├── builder.py                     # wiring
 │   │   └── selective_regen/definition_selector/artifact_selector.py   # repository_id
 │   ├── branch/tasks.py                    # wiring of post_process_branch_merge

@@ -12,6 +12,8 @@ from prefect.utilities.annotations import quote
 
 from infrahub import lock
 from infrahub.core.constants import ComputedAttributeKind, MutationAction
+from infrahub.core.merge.builder import build_default_branch_barrier
+from infrahub.core.merge.recompute_coalescing import owned_python_target, whole_kind_python_target
 from infrahub.core.query_group.subscribers import fetch_subscriber_refs
 from infrahub.core.recompute.bulk_write import AttributeValueWrite
 from infrahub.core.recompute.dispatch import build_bulk_recompute_dispatcher
@@ -738,6 +740,7 @@ async def computed_attribute_setup_python(
             await wait_for_schema_to_converge(branch_name=branch_name, component=component, db=db, log=log)
 
         try:
+            barrier = await build_default_branch_barrier(db=db)
             changed_element_set = _resolve_changed_elements(changed_elements)
 
             triggers_python, _ = await gather_trigger_computed_attribute_python(db=db)
@@ -751,6 +754,7 @@ async def computed_attribute_setup_python(
             # field the query reads.
             read_sets: dict[tuple[str, str, str], TransformReadSet] = {}
             read_sets_by_transform: dict[tuple[str, str], TransformReadSet] = {}
+            owners: dict[tuple[str, str, str], str] = {}
             for trigger in triggers_python:
                 definition = trigger.computed_attribute.computed_attribute
                 transform_key = (trigger.branch, trigger.computed_attribute.name)
@@ -762,6 +766,9 @@ async def computed_attribute_setup_python(
                 read_sets[trigger.branch, definition.kind, definition.attribute.name] = read_sets_by_transform[
                     transform_key
                 ]
+                owners[trigger.branch, definition.kind, definition.attribute.name] = (
+                    trigger.computed_attribute.repository_id
+                )
 
             # Since we can have multiple trigger per NodeKind
             # we need to extract the list of unique node that should be processed
@@ -800,14 +807,22 @@ async def computed_attribute_setup_python(
                     f"Skipping {skipped.ref.kind}.{skipped.ref.attribute_name} on {branch_name}: {skipped.reason}"
                 )
 
-            for ref in report.selected:
+            candidates = [
+                owned_python_target(
+                    target=whole_kind_python_target(kind=ref.kind, attribute_name=ref.attribute_name),
+                    repository_id=owners.get((ref.branch, ref.kind, ref.attribute_name)),
+                )
+                for ref in report.selected
+            ]
+            for candidate in await barrier.admit(branch=branch_name, candidates=candidates, releasing=None):
+                target = candidate.request.target
                 await get_workflow().submit_workflow(
                     workflow=TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
                     context=context,
                     parameters={
                         "branch_name": branch_name,
-                        "computed_attribute_name": ref.attribute_name,
-                        "computed_attribute_kind": ref.kind,
+                        "computed_attribute_name": target.attribute_name,
+                        "computed_attribute_kind": target.target_kind,
                     },
                 )
         finally:

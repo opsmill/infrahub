@@ -196,6 +196,24 @@ def build_chain_schema(levels: int = 3) -> SchemaRoot:
     return SchemaRoot(nodes=nodes)
 
 
+def build_chain_schema_with_a_python_attribute(levels: int = 3) -> SchemaRoot:
+    """The chain schema, plus the Python transform computed attribute ``digest`` on its first level."""
+    schema = build_chain_schema(levels=levels)
+    node = next(item for item in schema.nodes if item.kind == chain_kind(1))
+    node.attributes.append(
+        AttributeSchema(
+            name="digest",
+            kind="Text",
+            optional=True,
+            read_only=True,
+            computed_attribute=ComputedAttribute(
+                kind=ComputedAttributeKind.TRANSFORM_PYTHON, transform="transform_digest"
+            ),
+        )
+    )
+    return schema
+
+
 async def load_chain_schema(db: InfrahubDatabase, levels: int = 3, branch_name: str | None = None) -> None:
     await load_schema(db=db, schema=build_chain_schema(levels=levels), branch_name=branch_name, update_db=True)
 

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from prefect import flow, get_run_logger
@@ -37,8 +36,8 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.merge.builder import (
     build_branch_merge_orchestrator,
+    build_default_branch_barrier,
     build_post_merge_regeneration_dispatcher,
-    build_regeneration_barrier,
 )
 from infrahub.core.merge.merge_locker import MergeLocker
 from infrahub.core.merge.python_target_sources import (
@@ -73,7 +72,6 @@ from infrahub.events.constants import NodeMutationOrigin
 from infrahub.events.models import EventMeta, InfrahubEvent
 from infrahub.events.node_action import get_node_event
 from infrahub.exceptions import ValidationError
-from infrahub.git.writeback.store import WritebackIntentStore
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
 from infrahub.utils import log_exception_guard
 from infrahub.workers.dependencies import (
@@ -188,6 +186,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
     workflow = get_workflow()
     database = await get_database()
     merge_write_blocker = MergeWriteBlocker(cache=await get_cache())
+    barrier = await build_default_branch_barrier(db=database)
 
     medium_context = context.model_copy(update={"priority": WorkflowPriority.MEDIUM})
     low_context = context.model_copy(update={"priority": WorkflowPriority.LOW})
@@ -462,6 +461,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
                 builder=CoalescedRecomputeBuilder(schema_branch=schema_branch, refresh_updated_nodes=True),
                 submitter=CoalescedRecomputeSubmitter(workflow=get_workflow()),
                 python_resolver=python_resolver,
+                barrier=barrier,
             )
             await coordinator.run(changes=changes, branch=user_branch.name, context=event_context)
 
@@ -653,12 +653,7 @@ async def post_process_branch_merge(
         default_branch = registry.get_branch_from_registry()
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
 
-        barrier = await build_regeneration_barrier(
-            state=WritebackIntentStore(
-                db=db, lock_registry=lock.registry, default_branch=default_branch, clock=lambda: datetime.now(tz=UTC)
-            ),
-            default_branch_name=default_branch.name,
-        )
+        barrier = await build_default_branch_barrier(db=db)
         if config.SETTINGS.main.selective_execution_after_merge:
             target_branch_obj = await Branch.get_by_name(db=db, name=target_branch)
             dispatcher = await build_post_merge_regeneration_dispatcher(
