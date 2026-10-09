@@ -79,3 +79,22 @@
 - **Finding**: `PoolAllocationPanel` already hides overrides when `fromPoolRelationshipName` is
   set, because the template relationship carries only a pool reference.
 - **Decision**: `PoolNumberField` follows the same rule. Template payloads are unchanged.
+
+## R10. Backend acceptance of the payloads the form sends
+
+- **Finding**: `backend/infrahub/pools/intent.py::FromPoolIntentResolver` tells an explicit
+  `null` apart from an absent key (`Sent`), and `attribute_pool_applier.py` builds the request
+  from `value_presence` and `from_pool_presence`.
+  - `{ value: null, from_pool: { id } }` resolves to `ALLOCATE` whatever pool tracks the number
+    (`backend/tests/unit/pools/test_intent.py`: `null_value_with_pool_untracked_discards_and_allocates`,
+    `null_value_with_tracking_pool_discards_and_allocates`, `null_value_with_other_pool_re_pools_and_allocates`).
+    On a create form no pool tracks the number and no number is held, so this is backend row 6.
+  - `{ value: n, from_pool: null }` resolves to `DETACH` when a pool tracks the number and to
+    `NO_OP` otherwise (`null_pool_with_value_on_tracked_attribute_detaches`,
+    `null_pool_with_value_on_untracked_attribute_is_no_op`); `value` is then written as an
+    ordinary value write (backend row 13).
+  - Row 7 (`value: null` with the pool that already tracks the number) resolves to `ALLOCATE`; the
+    allocator returns the number the pool already reserved for the node, per
+    [`from-pool-intent.md`](../ifc-3184-pool-number-attach/contracts/from-pool-intent.md) row 7.
+- **Decision**: No gap. Every row of `contracts/form-submission.md` maps to a backend row the
+  resolver handles, so the frontend work proceeds with no backend change.

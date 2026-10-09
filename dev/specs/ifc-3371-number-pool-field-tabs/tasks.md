@@ -20,7 +20,7 @@ Row IDs (C1, E5, …) refer to [contracts/form-submission.md](contracts/form-sub
 
 ## Phase 1: Setup
 
-- [ ] T001 Confirm the backend on this branch accepts `{ value: null, from_pool: { id } }` on a
+- [X] T001 Confirm the backend on this branch accepts `{ value: null, from_pool: { id } }` on a
   create mutation and `{ value: n, from_pool: null }` on an update mutation, by reading
   `backend/infrahub/pools/intent.py::FromPoolIntentResolver` and its unit tests; record any gap in
   `dev/specs/ifc-3371-number-pool-field-tabs/research.md` before continuing
