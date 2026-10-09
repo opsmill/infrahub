@@ -103,8 +103,8 @@ async def build_branch_merge_orchestrator(
         source_branch=source_branch,
         destination_branch=destination_branch,
         workflow=workflow,
-        state=WritebackIntentStore(
-            db=db, lock_registry=lock.registry, default_branch=destination_branch, clock=partial(datetime.now, UTC)
+        state_for_session=lambda session: WritebackIntentStore(
+            db=session, lock_registry=lock.registry, default_branch=destination_branch, clock=partial(datetime.now, UTC)
         ),
         sleep=asyncio.sleep,
         logger=logger,

@@ -399,8 +399,11 @@ class TestCoalescedRecomputePython(CoalescedPythonTestBase):
                 source_branch=source_branch,
                 destination_branch=default_branch,
                 workflow=workflow_recorder,
-                state=WritebackIntentStore(
-                    db=db, lock_registry=lock.registry, default_branch=default_branch, clock=partial(datetime.now, UTC)
+                state_for_session=lambda session: WritebackIntentStore(
+                    db=session,
+                    lock_registry=lock.registry,
+                    default_branch=default_branch,
+                    clock=partial(datetime.now, UTC),
                 ),
                 sleep=asyncio.sleep,
             ),
