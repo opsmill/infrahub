@@ -1,4 +1,5 @@
 import asyncio
+from dataclasses import dataclass
 
 import pytest
 
@@ -81,6 +82,39 @@ mutation UpdateNumberPool($data: CoreNumberPoolUpdateInput!) {
   }
 }
 """
+
+
+@dataclass
+class RedeclaredWeightCase:
+    name: str
+    declared_ranges: list[dict[str, int | None]]
+    expected_ranges: list[tuple[int, int, int | None]]
+    keeps_the_stored_range: bool = True
+
+
+REDECLARED_WEIGHT_CASES: list[RedeclaredWeightCase] = [
+    RedeclaredWeightCase(
+        name="weight_left_out_keeps_it",
+        declared_ranges=[{"start": 10, "end": 20}, {"start": 30, "end": 40}],
+        expected_ranges=[(10, 20, 4), (30, 40, None)],
+    ),
+    RedeclaredWeightCase(
+        name="null_weight_clears_it",
+        declared_ranges=[{"start": 10, "end": 20, "allocation_weight": None}, {"start": 30, "end": 40}],
+        expected_ranges=[(10, 20, None), (30, 40, None)],
+    ),
+    RedeclaredWeightCase(
+        name="new_weight_replaces_it",
+        declared_ranges=[{"start": 10, "end": 20, "allocation_weight": 7}],
+        expected_ranges=[(10, 20, 7)],
+    ),
+    RedeclaredWeightCase(
+        name="weight_left_out_on_new_bounds_drops_it",
+        declared_ranges=[{"start": 15, "end": 25}],
+        expected_ranges=[(15, 25, None)],
+        keeps_the_stored_range=False,
+    ),
+]
 
 
 class TestNumberPoolUpdate:
@@ -361,6 +395,30 @@ class TestNumberPoolUpdate:
         assert stored[0] == (kept.get_id(), 10, 20, 4)
         assert stored[1][1:] == (30, 40, None)
         assert await shorthand(db=db, pool_id=pool_id) == (None, None)
+
+    @pytest.mark.parametrize("case", REDECLARED_WEIGHT_CASES, ids=lambda case: case.name)
+    async def test_update_with_ranges_sets_the_weight_of_a_redeclared_range(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None, case: RedeclaredWeightCase
+    ) -> None:
+        pool_id = await create_pool(
+            db=db,
+            branch=default_branch_scope_class,
+            name=f"redeclared-weight-pool-{case.name}",
+            bounds={"ranges": [{"start": 10, "end": 20, "allocation_weight": 4}]},
+        )
+        (stored_range,) = await NumberPoolRepository(db=db).get_ranges(pool_id=pool_id)
+
+        result = await execute(
+            db=db,
+            branch=default_branch_scope_class,
+            source=UPDATE_NUMBER_POOL_BOUND,
+            variables={"data": {"id": pool_id, "ranges": case.declared_ranges}},
+        )
+
+        assert not result.errors
+        stored = await range_details(db=db, pool_id=pool_id)
+        assert [details[1:] for details in stored] == case.expected_ranges
+        assert (stored[0][0] == stored_range.get_id()) is case.keeps_the_stored_range
 
     async def test_update_down_to_one_range_mirrors_it_into_the_shorthand(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None

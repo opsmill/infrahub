@@ -30,6 +30,8 @@ from .common import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from graphene import InputObjectType
     from graphql import GraphQLResolveInfo
 
@@ -268,6 +270,9 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
                     pool=number_pool, declared=shorthand_range, user_id=graphql_context.assigned_user_id
                 )
             else:
+                declared_ranges = await cls._keep_stored_weights(
+                    repository=repository, pool_id=pool_id, declared=declared_ranges, data=data
+                )
                 reconciliation = await reconciler.reconcile(
                     pool=number_pool, declared=declared_ranges, user_id=graphql_context.assigned_user_id
                 )
@@ -291,6 +296,32 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
         )
         if shorthand_supplied and ranges_supplied:
             raise ValidationError(input_value=SHORTHAND_WITH_RANGES)
+
+    @classmethod
+    async def _keep_stored_weights(
+        cls,
+        repository: NumberPoolRepository,
+        pool_id: str,
+        declared: Sequence[NumberPoolRangeParameters],
+        data: InputObjectType,
+    ) -> list[NumberPoolRangeParameters]:
+        """Give a range redeclared with its stored bounds and no `allocation_weight` the weight it holds."""
+        bounds_without_weight = {
+            (declared_range["start"], declared_range["end"])
+            for declared_range in data["ranges"]
+            if "allocation_weight" not in declared_range.keys()
+        }
+        stored_weights = {
+            (int(pool_range.start.value), int(pool_range.end.value)): pool_range.allocation_weight.value
+            for pool_range in await repository.get_ranges(pool_id=pool_id)
+        }
+        return [
+            NumberPoolRangeParameters(start=declared_range.start, end=declared_range.end, weight=stored_weights[bounds])
+            if (bounds := (declared_range.start, declared_range.end)) in bounds_without_weight
+            and bounds in stored_weights
+            else declared_range
+            for declared_range in declared
+        ]
 
     @classmethod
     async def _shorthand_range(cls, repository: NumberPoolRepository, number_pool: Node) -> NumberPoolRangeParameters:
