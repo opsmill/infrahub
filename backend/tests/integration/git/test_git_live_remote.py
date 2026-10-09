@@ -39,7 +39,7 @@ from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubReposito
 from infrahub.git.tasks import deliver_pending_merges, sync_remote_repositories
 from infrahub.git.writeback.constants import STALE_AFTER_SECONDS
 from infrahub.git.writeback.factory import build_writeback_service
-from infrahub.git.writeback.models import DeliveryOutcome
+from infrahub.git.writeback.models import DeliveryOutcome, DeliveryStage
 from infrahub.git.writeback.store import WritebackIntentStore
 from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
@@ -203,6 +203,30 @@ def _delivery_log_lines(caplog: pytest.LogCaptureFixture, repository_name: str) 
         for record in caplog.records
         if record.name == SYNC_LOGGER and (record.levelno >= logging.WARNING or record.getMessage().startswith(start))
     ]
+
+
+@dataclass(frozen=True)
+class TransientFaultCase:
+    name: str
+    stage: DeliveryStage
+    """The step of the first attempt that finds the remote closed."""
+    fault_from: str
+    """The start of the log line from which the clone points at a closed port, with a `{repository}` field."""
+
+
+TRANSIENT_FAULT_CASES: list[TransientFaultCase] = [
+    TransientFaultCase(
+        name="fault_at_fetch",
+        stage=DeliveryStage.FETCH,
+        fault_from="Delivery attempt of repository {repository} starts",
+    ),
+    # The attempt writes this line after its fetch, so only its push finds the remote closed.
+    TransientFaultCase(
+        name="fault_at_push",
+        stage=DeliveryStage.PUSH,
+        fault_from="The remote branch main of repository {repository} is at",
+    ),
+]
 
 
 @dataclass(frozen=True)
@@ -1259,8 +1283,10 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         assert gogs_repo_branch_commit(gogs_server.container, repository.name, "main") == rewritten
         assert await _recorded_commit(db=db, repository_id=repository.node_id) == repository.trunk_commit
 
+    @pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in TRANSIENT_FAULT_CASES])
     async def test_transient_fault_heals(
         self,
+        case: TransientFaultCase,
         db: InfrahubDatabase,
         client: InfrahubClient,
         gogs_server: GogsServer,
@@ -1270,7 +1296,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """A merge whose first attempt cannot reach the remote is delivered by the automatic retry, with no user action."""
-        repository = await synced_branch_repository("transient-fault")
+        repository = await synced_branch_repository(f"transient-fault-at-{case.stage}")
         clone = (
             await InfrahubRepository.init(
                 id=repository.node_id, name=repository.name, client=client, infrahub_branch_name=registry.default_branch
@@ -1279,15 +1305,21 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         location = clone.remotes.origin.url
         caplog.set_level(logging.INFO, logger=SYNC_LOGGER)
 
-        # A port that is bound but not listening refuses every connection, so the first attempt fails at once.
+        # A port that is bound but not listening refuses every connection, so the step fails at once.
         with socket.socket() as closed_port:
             closed_port.bind(("127.0.0.1", 0))
             blocked_location = gogs_clone_url(f"http://127.0.0.1:{closed_port.getsockname()[1]}", repository.name)
             first_attempt_location = iter([blocked_location])
-            # The merge flow points the clone at the location before its first attempt, so the switch waits for it.
-            with _on_log_line(
-                prefix=f"Delivery attempt of repository {repository.name} starts",
-                action=lambda: clone.remotes.origin.set_url(next(first_attempt_location, location)),
+            # The merge flow points the clone at the location before its first attempt, so the switches wait for it.
+            with (
+                _on_log_line(
+                    prefix=f"Delivery attempt of repository {repository.name} starts",
+                    action=lambda: clone.remotes.origin.set_url(location),
+                ),
+                _on_log_line(
+                    prefix=case.fault_from.format(repository=repository.name),
+                    action=lambda: clone.remotes.origin.set_url(next(first_attempt_location, location)),
+                ),
             ):
                 await client.branch.merge(branch_name=repository.branch_name)
 
@@ -1303,8 +1335,8 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         assert gogs_repo_branch_commit(gogs_server.container, repository.name, "main") == repository.source_commit
         assert _delivery_log_lines(caplog=caplog, repository_name=repository.name) == [
             f"Delivery attempt of repository {repository.name} starts (final attempt: False, manual: False).",
-            f"The fetch step of the delivery to repository {repository.name} failed, and a later attempt retries it: "
-            f"Unable to clone the repository {repository.name}, please check the address and the credential",
+            f"The {case.stage} step of the delivery to repository {repository.name} failed, and a later attempt "
+            f"retries it: Unable to clone the repository {repository.name}, please check the address and the credential",
             f"Delivery attempt of repository {repository.name} starts (final attempt: False, manual: False).",
         ]
 

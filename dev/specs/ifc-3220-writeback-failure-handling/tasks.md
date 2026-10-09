@@ -523,7 +523,8 @@ T081 to T084 are not.
       `PENDING`, with `limit=1`.
 - [X] T081 [US4] Add `test_transient_fault_heals` to
       `backend/tests/integration/git/test_git_live_remote.py`: block the Gogs port for the first
-      attempt, open it, short delays through `with_options`.
+      attempt, open it, short delays through `with_options`. One case blocks the port before the
+      fetch, the other after the fetch, so that the push fails.
 - [X] T082 [US4] Add `test_lost_attempt_recovers` to the same module: kill the flow after the snapshot,
       free the repository lock in the test, as the deadlock cleanup does for a dead worker (R20),
       age the state past the stale bound, run one sync cycle, and assert the delivery.
