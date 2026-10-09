@@ -241,9 +241,13 @@ and keeps the branch open:
   push queue of the repository, and the repository records the cause. The run fails, and its log
   says what the user can do.
 
-> **Volatile section.** The retry and abandon actions of the push queue land with the rest of
-> `dev/specs/ifc-3220-writeback-failure-handling/`. Until then, nothing runs a refused delivery again.
-> Update this section when they land.
+> **Volatile section.** A refusal keeps the merges in the queue, and each attempt checks the whole
+> queue. The next merge flow of the repository is therefore refused for the same cause, so one
+> refusal blocks every later merge of the repository until a user abandons the queue. The abandon and
+> retry actions land with the rest of `dev/specs/ifc-3220-writeback-failure-handling/`. Until the
+> branch-deletion guard of that spec lands too, the deletion of the remote source branch after a
+> merge (`git.delete_git_branch_after_merge`) can run before the delivery, which is then refused with
+> `source-discarded`. Update this section when they land.
 
 ## Repository state and branch support
 
