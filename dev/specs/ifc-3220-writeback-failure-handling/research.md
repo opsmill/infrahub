@@ -594,7 +594,10 @@ stderr line that is not a progress line in `other_lines`, and lines that start w
 
 **Decision**: `push` passes a `RemoteProgress` and joins the `remote:` lines, in order, into the
 typed error. The delivery stores, verbatim, those lines and the ref summary. For any other error it
-stores the typed message, never raw stderr, which can name worker paths. Every stored message passes
+stores the typed message, not raw stderr, which can name worker paths. The classifier detects raw
+stderr only as a message that repeats the error it was raised `from`, which every raise of the Git
+error enrichment does. A message that wraps Git output in a longer sentence, or an error raised
+without `from`, keeps its text. Every stored message passes
 through one scrubber that removes `user:password@` from URLs, since a location can embed a token
 (Constitution VI).
 
