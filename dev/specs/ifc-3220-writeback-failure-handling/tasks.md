@@ -263,8 +263,8 @@ SC-002, SC-007.
       implementing `DeliveryGitPort` over one `InfrahubRepository`, per contracts section 4.
       `is_ancestor` uses `git merge-base --is-ancestor`, returns `False` only for "no" or a missing
       object, and raises otherwise. `fetch` raises `RepositoryError` on a clone with no `origin`.
-      Every Git command it runs gets a time limit, per [research.md](research.md) R6 (the limit
-      does not stop a hung fetch or push; open point of R6): `FETCH_TIMEOUT_SECONDS` for the
+      Every Git command it runs gets a time limit, per [research.md](research.md) R6 (Git's
+      low-speed limit ends a stalled HTTP(S) fetch or push; SSH has no bound): `FETCH_TIMEOUT_SECONDS` for the
       fetch, `PUSH_TIMEOUT_SECONDS` for the push and `delete_remote_branch`, and
       `LOCAL_GIT_TIMEOUT_SECONDS` for each local
       command, `remote_head`'s `git rev-parse` included. A killed local command removes a left-over
@@ -546,8 +546,10 @@ T081 to T084 are not.
       `backend/tests/component/git/writeback/test_enqueue.py` the case that moved here from T045: a
       flow whose own enqueue fails once and then returns delivers the entry, through a task with
       short retry delays.
-- [X] T078 [US4] Make `RepositoryWritebackService.deliver` return `deferred` when `manual` is `False` and a
-      retry of another chain is due in the future, in `backend/infrahub/git/writeback/service.py`.
+- [X] T078 [US4] Make the first attempt only of `RepositoryWritebackService.deliver` return `deferred`,
+      in `backend/infrahub/git/writeback/service.py`: a chain's first automatic attempt
+      (`first_attempt` is `True`, `manual` is `False`) returns `deferred` when the retry of another
+      chain is due later. A later attempt of the chain never defers.
 - [X] T079 [US4] Write `DeliveryRecoveryCheck` in `backend/infrahub/git/writeback/recovery.py` and run it
       from the loop of `sync_remote_repositories` in `backend/infrahub/git/tasks.py`, for every
       repository, before the bootstrap and whatever the sync outcome, under its own guard. It submits

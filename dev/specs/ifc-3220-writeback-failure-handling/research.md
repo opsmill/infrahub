@@ -356,7 +356,7 @@ after the merge (`delete_branch_after_merge`), while the remote branch is protec
 ## R4. The delivery attempt
 
 **Decision**: one component, `RepositoryWritebackService`, built per repository at the top of each
-flow, with one entry point, `deliver(final_attempt, manual, entry, retry_delay)`.
+flow, with one entry point, `deliver(final_attempt, manual, entry, retry_delay, first_attempt)`.
 `merge_git_repository`, the retry flow and the recovery check (R20) all call it (FR-007). Its end
 has the same shape as the abandonment of R8: the entries leave the queue under the repository lock,
 and the release runs after the lock is released, under a lease.
@@ -570,7 +570,8 @@ failed, GitPython adds "process killed because it timed out" to the error lines
 (`git/cmd.py::handle_process_output`). `_raise_enriched_error_static` raises
 `RepositoryConnectionError` for that text, with a message of its own, so the attempt is retried.
 GitPython does not stop the command at the limit, so this classification comes only after Git ends
-(R6).
+(R6). Over HTTP(S), Git's low-speed limit ends a stalled transfer, and libcurl's "Operation too slow"
+text maps to the same error (R6).
 
 **A killed local Git command.** It is not a remote fault, so it must not become
 `remote-unreachable`. GitPython reports it with a different text, "Timeout: the command ... did not
@@ -974,9 +975,8 @@ delays, plus the fetch and push timeouts times the number of attempts, plus a 10
 the import and the settle. With the constants of R6 that is 450 + 4 × 420 + 600 = 2,730 seconds,
 about 45 minutes. A merge whose delivery succeeds within its automatic retry chain regenerates as
 precisely as today. A miss only widens. The derivation leaves out the local timeouts, because a local
-command normally ends in seconds. It counts the fetch and push timeouts as if they stopped the
-command, which they do not for a hung fetch or push (R6). A chain that runs longer than the cache,
-for example after retried record failures or a hung fetch or push, only widens its release.
+command normally ends in seconds. A chain that runs longer than the cache, for example after
+retried record failures or a stalled SSH transfer, which has no bound (R6), only widens its release.
 
 **Rejected: waiting for the first attempt before the follow-ups.** It would delay every git-synced
 merge by the Git round trip, and by minutes when the remote is down.
@@ -1394,10 +1394,10 @@ Conditions 3 and 4 judge a run that a worker took, so condition 5 leaves out the
 
 **Known limitations of the recovery.** These cases delay or stop it:
 
-- **A fetch or a push that hangs.** Its time limit does not stop it (R6). The attempt keeps the
+- **A fetch or a push over SSH that hangs.** It has no bound (R6). The attempt keeps the
   repository lock, so condition 4 fails, the recovery check submits nothing, and a manual retry
   waits for the lock too. The delivery stays `pending` until the connection ends. This is the open
-  point of R6, for a later story.
+  point of R6, for a later story. Over HTTP(S), Git's low-speed limit ends a stalled transfer.
 
 - **A repository lock that a dead worker held.** The repository lock has no time to live
   (`lock.py::InfrahubLockRegistry.get`, R2). A worker that dies while it holds the lock leaves it
