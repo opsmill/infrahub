@@ -190,7 +190,8 @@ class NumberPoolGetAllocated(Query):
     """Report each number the pool has allocated together with the branch that holds it.
 
     Reports any active value on any branch for the given NumberPool along with its parent object ID,
-    branch, and reservation identifier.
+    branch, and reservation identifier, ordered by value, then branch, then the holding object's id. `branch_name`
+    keeps the values held on that branch and `provenance` the values of that provenance.
     """
 
     name = "numberpool_get_allocated"
@@ -200,10 +201,14 @@ class NumberPoolGetAllocated(Query):
         self,
         pool: CoreNumberPool,
         ranges: list[list[int]],
+        branch_name: str | None = None,
+        provenance: PoolRecordProvenance | None = None,
         **kwargs: Unpack[QueryInitKwargs],
     ) -> None:
         self.pool = pool
         self.ranges = ranges
+        self.branch_name = branch_name
+        self.provenance = provenance
 
         super().__init__(**kwargs)
 
@@ -233,15 +238,27 @@ class NumberPoolGetAllocated(Query):
         }
         self.add_to_query(query)
 
+        # The rows are made distinct before the filters so that the count query counts the rows returned.
         # A record without a list predates the list and reads as allocated for every value it accounts for.
-        self.return_labels = [
-            "DISTINCT n.uuid as id",
-            "hv.branch as branch",
-            "av.value as value",
-            "ir.identifier as identifier",
-            "ir.allocated_values IS NOT NULL AND NOT toInteger(av.value) IN ir.allocated_values AS is_provided",
-        ]
-        self.order_by = ["av.value"]
+        self.add_to_query(
+            """
+        WITH DISTINCT n.uuid AS id, hv.branch AS branch, av.value AS value, ir.identifier AS identifier,
+            ir.allocated_values IS NOT NULL AND NOT toInteger(av.value) IN ir.allocated_values AS is_provided
+        """
+        )
+
+        filters: list[str] = []
+        if self.branch_name is not None:
+            self.params["branch_name"] = self.branch_name
+            filters.append("branch = $branch_name")
+        if self.provenance is not None:
+            self.params["is_provided"] = self.provenance == PoolRecordProvenance.PROVIDED
+            filters.append("is_provided = $is_provided")
+        if filters:
+            self.add_to_query("WHERE " + " AND ".join(filters))
+
+        self.return_labels = ["id", "branch", "value", "identifier", "is_provided"]
+        self.order_by = ["value", "branch", "id"]
 
     def get_data(self) -> list[NumberPoolAllocatedResult]:
         """Return results as typed dataclass instances.
