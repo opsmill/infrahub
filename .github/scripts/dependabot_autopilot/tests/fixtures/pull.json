@@ -1,0 +1,71 @@
+{
+  "url": "https://api.github.com/repos/opsmill/infrahub/pulls/10689",
+  "id": 4575082140,
+  "html_url": "https://github.com/opsmill/infrahub/pull/10689",
+  "number": 10689,
+  "state": "closed",
+  "locked": false,
+  "title": "chore(deps): bump the uv group across 2 directories with 2 updates",
+  "created_at": "2026-09-19T01:53:46Z",
+  "updated_at": "2026-09-20T08:09:08Z",
+  "closed_at": "2026-09-20T08:09:06Z",
+  "merged_at": "2026-09-20T08:09:06Z",
+  "draft": false,
+  "merged": true,
+  "merge_commit_sha": "380f6d15f06d0c25f5885c76598c063c63db06c0",
+  "mergeable_state": "unknown",
+  "author_association": "CONTRIBUTOR",
+  "user": {
+    "login": "dependabot[bot]",
+    "id": 49699333,
+    "type": "Bot"
+  },
+  "labels": [
+    {
+      "id": 12258582248,
+      "name": "dependencies",
+      "color": "0366d6"
+    },
+    {
+      "id": 12258582255,
+      "name": "python:uv",
+      "color": "2b67c6"
+    }
+  ],
+  "requested_reviewers": [],
+  "requested_teams": [],
+  "head": {
+    "label": "opsmill:dependabot/uv/uv-7d634dd58b",
+    "ref": "dependabot/uv/uv-7d634dd58b",
+    "sha": "d40beee736f648045309f538af278dc2e34cd3ca",
+    "user": {
+      "login": "opsmill",
+      "id": 118297816,
+      "type": "Organization"
+    },
+    "repo": {
+      "id": 528799794,
+      "name": "infrahub",
+      "full_name": "opsmill/infrahub",
+      "private": false,
+      "html_url": "https://github.com/opsmill/infrahub"
+    }
+  },
+  "base": {
+    "label": "opsmill:stable",
+    "ref": "stable",
+    "sha": "9f4f8e231d32b654a31015ca7c51c4cfda07b728",
+    "user": {
+      "login": "opsmill",
+      "id": 118297816,
+      "type": "Organization"
+    },
+    "repo": {
+      "id": 528799794,
+      "name": "infrahub",
+      "full_name": "opsmill/infrahub",
+      "private": false,
+      "html_url": "https://github.com/opsmill/infrahub"
+    }
+  }
+}

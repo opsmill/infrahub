@@ -1,0 +1,26 @@
+{
+  "total_count": 1,
+  "check_runs": [
+    {
+      "id": 1,
+      "name": "Chromatic",
+      "node_id": "CR_handcrafted",
+      "head_sha": "d40beee736f648045309f538af278dc2e34cd3ca",
+      "external_id": "",
+      "html_url": "https://github.com/opsmill/infrahub/runs/1",
+      "details_url": "https://www.chromatic.com/build",
+      "status": "in_progress",
+      "conclusion": null,
+      "started_at": "2026-09-19T08:20:26Z",
+      "completed_at": null,
+      "app": {
+        "id": 17290,
+        "slug": "chromatic-com",
+        "name": "Chromatic"
+      },
+      "check_suite": {
+        "id": 1
+      }
+    }
+  ]
+}
