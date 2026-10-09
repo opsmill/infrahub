@@ -16,9 +16,11 @@ from infrahub.exceptions import (
     PropagatedFromWorkerError,
     RepositoryFileNotFoundError,
     RepositoryInvalidBranchError,
+    RepositoryPushRejectedError,
     RPCError,
     SchemaNotFoundError,
 )
+from infrahub.git.models import PushRejectionReason
 
 
 def _round_trip(error: Error) -> Error:
@@ -81,6 +83,15 @@ ERROR_PICKLE_CASES = [
     ErrorPickleCase(
         name="merge_repository_import",
         error=MergeRepositoryImportError(failed_repositories=["repo-1"], incomplete_repositories=["repo-2"]),
+    ),
+    ErrorPickleCase(
+        name="push_rejection_with_its_reason_and_remote_lines",
+        error=RepositoryPushRejectedError(
+            identifier="repo-1",
+            reason=PushRejectionReason.POLICY,
+            remote_message="remote: error: GH006: Protected branch update failed for refs/heads/main.",
+            message="Unable to push the branch main to the remote for repository repo-1: [remote rejected]",
+        ),
     ),
 ]
 

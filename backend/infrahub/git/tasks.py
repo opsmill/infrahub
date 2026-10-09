@@ -50,7 +50,14 @@ from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.validators.tasks import start_validator
 from infrahub.worker import WORKER_IDENTITY
-from infrahub.workers.dependencies import get_client, get_database, get_event_service, get_message_bus, get_workflow
+from infrahub.workers.dependencies import (
+    get_cache,
+    get_client,
+    get_database,
+    get_event_service,
+    get_message_bus,
+    get_workflow,
+)
 
 from ..core.timestamp import Timestamp
 from ..core.validators.checks_runner import run_checks_and_update_validator
@@ -69,7 +76,8 @@ from .branch_status import accepts_commit_write
 from .constants import IMPORT_STATUS_CHECK_KIND, IMPORT_STATUS_CHECK_NAME, MERGE_CONFLICT_CHECK_KIND
 from .divergence.models import ReconciledBranch
 from .divergence.recorder import HistoryRewriteRecorder
-from .divergence.store import SdkRepositoryRecordStore
+from .divergence.store import SdkRepositoryRecordStore, SdkTrackedTargetReader
+from .divergence.suppression import RetargetMarkers
 from .models import (
     CheckRepositoryImportStatus,
     CheckRepositoryMergeConflicts,
@@ -197,6 +205,7 @@ async def add_git_repository(model: GitRepositoryAdd) -> None:
         lock_registry=lock.registry,
         importer=importer,
         recorder=HistoryRewriteRecorder(store=SdkRepositoryRecordStore(client=client)),
+        retarget_markers=RetargetMarkers(cache=await get_cache()),
     )
     added = await RepositoryAdder(lock_registry=lock.registry, importer=importer, client=client).add(model)
     repo = added.repository
@@ -348,6 +357,7 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
         lock_registry=lock.registry,
         importer=RepositoryFileImporter(),
         recorder=HistoryRewriteRecorder(store=SdkRepositoryRecordStore(client=client)),
+        retarget_markers=RetargetMarkers(cache=await get_cache()),
     )
     online = operational_status == RepositoryOperationalStatus.ONLINE.value
     try:
@@ -1151,7 +1161,12 @@ async def import_read_only_repository_last_commit(model: GitReadOnlyRepositoryIm
             infrahub_branch_name=model.infrahub_branch_name,
             ref=model.ref,
         )
-        await repo.update_latest_commit()
+        await repo.update_latest_commit(
+            tracked_targets=SdkTrackedTargetReader(client=client),
+            recorder=HistoryRewriteRecorder(store=SdkRepositoryRecordStore(client=client)),
+            # Two mutations submit this flow, and only the submitter knows whether it re-pointed the repository.
+            target_changed=model.target_changed,
+        )
 
 
 @flow(

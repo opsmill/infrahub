@@ -188,8 +188,9 @@ import path, and the rule above is live rather than unreachable.
 - The detector is given the graph commit. It never reads the worktree, and it never decides whether
   this worker needs to reset. That decision belongs to the `pull` contract in section 3.
 - **`target_changed` is supplied by the caller, and the caller is the only component that touches
-  the suppression marker.** It reads the marker, deletes it, and passes the result here. Neither
-  the detector nor the recorder reads the cache. See section 8.
+  the suppression marker.** It reads the marker without deleting it, passes the result here, and
+  clears it after the collection once the trunk records the remote head of the git branch the
+  marker names. Neither the detector nor the recorder reads the cache. See section 8.
 - **Reset and record are two different decisions.** `REWRITE` and `RETARGET` both reset: both
   describe a branch whose local history no longer leads to the remote's, and both must end with
   the worktree on the remote head. Only `REWRITE` records. `FAST_FORWARD`, `REMOTE_ABSENT` and
@@ -225,10 +226,10 @@ nothing needs resetting. `pull` cannot be relied on to close the gap: it returns
 `if commit_after == commit_before: return True`, **before** `update_commit_value`, so a worktree
 that did not move writes no commit and queues no import.
 
-Without that row the graph never catches up. A `default_branch` edit then consumes its marker on
-the first cycle and classifies `RETARGET`, and every cycle after that classifies `REWRITE`, writes
-a record and fires the trunk event again. The failure repeats once a minute for the life of the
-repository.
+Without that row the graph never catches up. A `default_branch` edit then classifies `RETARGET`
+while its marker lives, because the sweep never sees the trunk on the new head, and every cycle
+after the marker expires classifies `REWRITE`, writes a record and fires the trunk event again. The
+failure repeats once a minute for the life of the repository.
 
 A worker whose graph already matches the remote still resets when its own worktree does not. That
 is the `UNCHANGED` row of the first table meeting the last row of the second, and it is the whole
@@ -588,10 +589,10 @@ moved" signal from `_detect_movements`.
 ### Which mutation carries a rewrite, and it is not the update one
 
 A force-pushed branch changes neither `ref` nor `commit` on the node, and
-`InfrahubRepositoryMutation.mutate_update` submits its workflows **only** when one of those
-changes. So a genuine rewrite never reaches that path at all, and anything routed through it would
-always arrive with `target_changed` true — classifying every read-only rewrite as a `RETARGET` and
-recording nothing.
+`InfrahubRepositoryMutation._call_mutate_update`, which the update and every upsert path call,
+submits its workflows **only** when one of those changes. So a genuine rewrite never reaches that
+path at all, and anything routed through it would always arrive with `target_changed` true —
+classifying every read-only rewrite as a `RETARGET` and recording nothing.
 
 The path a rewrite takes is `import_read_only_repository_last_commit`, so that is where the
 detection belongs. **That flow does not tell you whether anything was re-pointed**, because two
@@ -600,16 +601,23 @@ different mutations submit it:
 | Submitted by | Meaning | `target_changed` |
 |---|---|---|
 | `ReadOnlyRepositoryImportLastCommit` | pick up whatever the tracked ref now resolves to | false |
-| `InfrahubRepositoryMutation.mutate_update`, `ref` changed | deliberate re-point | true |
-| `InfrahubRepositoryMutation.mutate_update`, `commit` changed | deliberate re-pin | true |
+| `InfrahubRepositoryMutation._call_mutate_update`, `ref` changed | deliberate re-point | true |
+| `InfrahubRepositoryMutation._call_mutate_update`, `commit` changed or cleared | deliberate re-pin, or a return to the head of `ref` | true |
 
-`mutate_update` submits `GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT` alongside
+`_call_mutate_update` submits `GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT` alongside
 `GIT_REPOSITORIES_PULL_READ_ONLY` on every `ref` or `commit` change. So the flow **must** read
 `target_changed` from its own model and must never infer it from the fact that it is running. The
 flag is set by whichever mutation submitted the work.
 
 That also fixes the phase order: the in-band flag ships **with** the classification, not after it.
 A classification that lands first would treat every re-point as a rewrite.
+
+The method submits after the update transaction commits, because a workflow submitted before the
+commit still runs when the transaction rolls back. That order holds when the method opens the
+transaction itself, as it does for every GraphQL request; a caller that hands in its own
+transaction commits after the submission. The method reads the old `ref` and `commit` from the
+database, not from the node it receives, because a retried update hands back the node an earlier
+attempt already changed.
 
 ### Which commit is the "imported" one here
 
@@ -628,9 +636,24 @@ for one rewrite.
 Reading inside the lock costs one query on a path that already holds the lock, and makes the
 read-then-increment of the count atomic with respect to another run.
 
-There is no race with the concurrent `pull_read_only` to avoid here. That flow is submitted by
-`mutate_update`, which is the re-point path and always arrives with `target_changed` true, so it
-never records.
+The two runs of a re-point need no order between them: `_call_mutate_update` submits both with
+`target_changed` true, so neither records. A commit that a flow writes goes through the same update
+mutation, so every change of the commit, the flows' own included, submits another pull and import
+with the flag set.
+
+An import of the latest commit that a user asks for carries the flag false, and it can meet a
+re-point:
+
+- **A run that resolves the old ref classifies nothing.** It reads the `ref` the graph records,
+  with the commit, under the lock, and skips the classification when that ref is not the one in its
+  model. Without this, a run submitted before a change of `ref` compares the head of the old ref
+  with a commit of the new one and records a rewrite.
+- **Two windows still record a false rewrite, and they are accepted.** A run that takes the lock
+  after a change of `ref` commits, and before the runs of that change, compares the old commit with
+  the head of the new ref. A run that takes the lock after a pull writes a pinned commit that the
+  ref does not hold, and before the import that this write submits, compares the pin with the head
+  of the ref. Each needs a user action during a re-point, and a read-only repository never emits
+  the trunk signal (rule 5), so the cost is a wrong record and count, and no event.
 
 ### Contract, either way
 
@@ -643,63 +666,84 @@ never records.
    already takes `lock.registry.get(name=..., namespace="repository")` around
    `update_latest_commit`, so the call belongs inside that block. If the attachment point is the
    refs checker of PR #10669 instead, its `_converge` already holds the same lock.
-4. Nothing is recorded when the tracked ref or the pinned commit changed (FR-002, SC-007). The
-   in-band `target_changed` flag on the workflow model carries that. Read-only repositories do not
-   use the cache marker at all.
+4. Nothing is recorded when the tracked ref or the pinned commit changed (FR-002, SC-007), outside
+   the two windows above. The in-band `target_changed` flag on the workflow model carries that.
+   Read-only repositories do not use the cache marker at all.
 5. A read-only repository never emits the trunk signal, because it has no configured default branch.
 
 ---
 
 ## 8. Re-target suppression marker
 
-New. Written by `backend/infrahub/graphql/mutations/repository.py::InfrahubRepositoryMutation.mutate_update`.
+New. Written by `backend/infrahub/graphql/mutations/repository.py::InfrahubRepositoryMutation.mutate_update_object`,
+which the update and every upsert path call.
 
 ### Contract
 
 | Trigger | Marker written for |
 |---|---|
-| `CoreRepository.default_branch` changes | Infrahub's default branch |
+| `CoreRepository.default_branch` changes | the repository and the new git branch, which feeds Infrahub's default branch |
 
 **That is the whole table.** Read-only repositories write no marker. A read-only re-point, whether
 it changes `ref` or `commit`, is carried in band on the workflow model instead. SC-007 covers "a
 different branch, tag **or commit**", and both of those reach the flow as an explicit
 `target_changed` flag rather than through the cache.
 
-1. The marker is written after the update succeeds, and before the mutation returns. Nothing else
-   in that mutation reads it, so the ordering only has to put the write before the first
-   synchronisation cycle that could classify the branch.
-2. It expires after one hour.
+1. The marker is written inside the update transaction, before it commits. A cycle that reads the
+   new `default_branch` therefore always finds the marker too. A write after the commit would leave
+   a gap in which a cycle reads the new target, finds no marker and records a false rewrite. A
+   rolled-back update leaves a marker for a target the repository does not track. It has a key of
+   its own, so it does not replace the marker of a change that committed, and rule 9 makes it
+   inert.
+2. It expires after seven days. The sweep of rule 8 is what bounds a marker; the time to live only
+   removes one that no cycle ever reconciles. A long one is safe because of rule 9: a marker whose
+   target the repository no longer tracks does nothing.
 3. **Exactly one component touches the marker: the detector's caller in the sync path**,
-   `collect_pending_imports`. It reads the marker, passes the result to `classify` as
-   `target_changed`, and **deletes it only after the commit write for that branch has succeeded**.
-   The detector never touches the cache, and neither does the recorder.
+   `collect_pending_imports`. It reads the marker before any classification, without deleting it,
+   and passes the result to `classify` as `target_changed`. After the collection it clears the
+   marker, and **only when the trunk records the remote head of the git branch the marker names**,
+   which comes after the commit write for that branch (rule 8). The detector never touches the
+   cache, and neither does the recorder.
 4. Deleting at classification time is wrong. The reset, the commit write and the import all come
    after it, and any of them can fail. The marker would already be gone, so the next cycle sees a
    re-target it has no record of, classifies `REWRITE`, writes a record and **fires the trunk
-   webhook**. Deleting after the commit write means a failed cycle simply retries with the marker
-   still in place.
+   webhook**. Clearing only once the trunk records the remote head means a failed cycle simply
+   retries with the marker still in place.
 5. A lost marker costs more than a wrong row. It produces a false rewrite record **and** a false
    trunk webhook to whatever a customer has subscribed. `research.md` R4 carries this as an
    accepted loss path.
-6. The cache has no atomic get-and-delete, so reading and deleting are two operations with a window
-   between them. Nothing guards that window except `GIT_REPOSITORIES_SYNC` running with
-   `concurrency_limit=1` and `CANCEL_NEW`, which keeps two cycles from overlapping. If that ever
-   changes, this needs a compare-and-delete.
+6. Reading never deletes, and the clear is one delete of the key of the target this cycle
+   synchronised. A marker that an edit writes for another target during the cycle has a key of its
+   own, so it survives for the next cycle. `GIT_REPOSITORIES_SYNC` runs with `concurrency_limit=1`
+   and `CANCEL_NEW`, so no second cycle reaches the marker at the same time.
 7. The marker is read within one cron cycle of being written, because the widened candidate
    selection above puts the re-targeted trunk in the classified set as soon as its graph commit
    stops matching the remote head. There is no per-repository sync to submit:
    `GIT_REPOSITORIES_SYNC` is a single cron flow with `concurrency_limit=1` and `CANCEL_NEW`.
-8. **A marker whose branch never becomes a candidate is still deleted at the end of the cycle.**
+8. **A marker no candidate reads is still swept, once the trunk records the head it names.**
    A re-point can leave the graph commit and the worktree both equal to the remote head, for
    example when the remote default branch is renamed without moving and `default_branch` is edited
-   to match. The branch then enters no candidate set, nothing reads the marker, and for the rest of
-   its hour it would turn a genuine trunk rewrite into a `RETARGET`: reset, no record, no trunk
+   to match. The branch then enters no candidate set, nothing reads the marker, and until it expires
+   it would turn a genuine trunk rewrite into a `RETARGET`: reset, no record, no trunk
    webhook. Sweeping the repository's remaining markers when the cycle finishes with it bounds
-   every marker to one cycle.
+   every marker to the first cycle that reconciles the re-point. The sweep deletes the marker only
+   when the trunk records the remote head of the git branch the marker names. A trunk that failed,
+   an inactive repository and a default branch the remote does not hold yet all leave the trunk on
+   another commit. They keep the marker for the cycle that synchronises the trunk, so the retry of
+   rule 4 still finds it.
+   The sweep runs only in a cycle whose read found a marker for the target it synchronises. A cycle
+   with no marker therefore costs one cache read and no walk of the remote refs, and a marker
+   written after the read waits for the next cycle, which reads it.
+9. **A marker applies only to a cycle that synchronises the target it names.** The cycle reads
+   `default_branch` when it builds the repository, before it reads or sweeps the marker. An edit
+   that lands between the two leaves a cycle that synchronises the old target while the marker
+   names the new one. That cycle neither uses the marker nor deletes it, so the next cycle, which
+   synchronises the new target, still finds it. Without this rule the sweep of rule 8 deletes the
+   marker, and the next cycle records a false rewrite and **fires the trunk webhook**.
 
 > The recorder must not be the reader. It writes nothing unless the classification is already
 > `REWRITE`, so on a `RETARGET` it would return before reaching the marker and leave it to survive
-> its full hour and suppress the next genuine rewrite of that branch.
+> until it expires and suppress the next genuine rewrite of that branch.
 
 ### How the read-write marker gets read
 
@@ -711,15 +755,14 @@ cancelled or re-run the whole fleet.
 The widened candidate selection is what makes the marker readable. The edit changes which remote
 branch feeds Infrahub's default branch, so the graph commit for that branch stops matching the
 remote head, and the next cron cycle picks it up. That is within a minute, well inside the marker's
-hour.
+time to live.
 
-### The read-write writer does not exist yet
+### Where the read-write writer compares
 
-`InfrahubRepositoryMutation.mutate_update` currently returns to `super().mutate_update` immediately
-for any kind other than `CoreReadOnlyRepository`, so there is **no** existing comparison of the old
-and new `default_branch`. Only the read-only comparison (`current_ref` against `new_ref`) is
-already there. The read-write marker therefore needs that comparison added before the early return.
-This is a change to the mutation, not a reuse of something already computed.
+An upsert never calls `InfrahubRepositoryMutation.mutate_update`. The comparison of the old
+and new `default_branch` therefore lives in `mutate_update_object`, which the update and every
+upsert path call inside the transaction. It reads the old value from the database rather than from
+the node, because a retried update hands back the node an earlier attempt already changed.
 
 ---
 

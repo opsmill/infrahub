@@ -236,7 +236,7 @@ Not persisted in the graph (FR-014). Written by the barrier at a hold, read by t
 |---|---|
 | Key | `repository-delivery:held:<repository id>:<hold_seq>:<identifier>` |
 | Value | The narrowed request model of the candidate, serialised: `RequestArtifactDefinitionGenerate`, `RequestGeneratorDefinitionRun`, or the coalesced Python submission. |
-| Time to live | `NARROWED_HOLD_TTL_SECONDS`, derived from the retry delays and the fetch and push timeouts: about 45 minutes (`research.md` R9). |
+| Time to live | `NARROWED_HOLD_TTL_SECONDS`, derived from the retry delays and the fetch and push timeouts: about 45 minutes (`research.md` R9). A chain with a hung fetch or push can outlast it, because the time limit does not stop those commands (`research.md` R6); the release then only widens. |
 | Size bound | 512 KiB. A larger value is not written, and the release then uses the identifier alone. |
 | Repeated hold | The new entry holds the union of the previous entry and the new request. When the previous entry is missing, expired or too large, no new entry is written. |
 | Miss | The release dispatches the identifier with no narrowing. A miss over-executes and never skips. |
@@ -329,7 +329,7 @@ unless stated otherwise.
 | `DeliveryAttemptResult` | frozen dataclass | `outcome`, `commit: str \| None`, `failure: DeliveryFailure \| None` | The service's return value. |
 | `Actor` | frozen dataclass | `account_id`, `account_name` | Who requested an abandonment. |
 | `HoldReceipt` | frozen dataclass | `hold_seq: int`, `previous_seqs: Mapping[str, int]` | What `hold` did: the new sequence, and the previous sequence of every refreshed item, for the cache union. |
-| `PushRejectionReason` | `StrEnum`, in `git/models.py` | `policy`, `non-fast-forward`, `unknown` | Carried on `RepositoryPushRejectedError`, from the `PushInfo` flags. |
+| `PushRejectionReason` | `StrEnum`, in `git/models.py` | `policy`, `non-fast-forward`, `ref-update-failed`, `unknown` | Carried on `RepositoryPushRejectedError`, from the `PushInfo` flags, and from the summary for Git's wording of a ref it cannot lock or update (`research.md` R5). |
 | `OwnedRegeneration` | frozen dataclass, in `core/merge/regeneration_barrier.py` | `repository_id: str \| None`, `held: HeldRegeneration`, `request: RequestT` | One barrier candidate: what to hold, who owns it, and the narrowed request to dispatch if admitted. |
 
 ### New exceptions
@@ -344,8 +344,9 @@ In `backend/infrahub/exceptions.py`:
 | `DeliveryQueueChangedError` | `ValidationError` | none | "The pending pushes of repository <name> changed since version <n>; reload and try again." |
 | `NothingPendingError` | `ValidationError` | none | "Repository <name> has nothing pending to push." |
 
-Both operational-status maps (`git/base.py::InfrahubRepositoryBase._raise_enriched_error` and
-`message_bus/operations/git/repository.py::connectivity`) resolve the status with `isinstance`, most
+One function, `git/base.py::operational_status_for_error`, resolves the operational status for both
+call sites (`git/base.py::InfrahubRepositoryBase._raise_enriched_error` and
+`message_bus/operations/git/repository.py::connectivity`). It matches with `isinstance`, most
 specific first, so the two connection subtypes keep `ERROR_CONNECTION`.
 
 ---

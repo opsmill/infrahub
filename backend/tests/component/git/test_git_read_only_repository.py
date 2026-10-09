@@ -176,7 +176,10 @@ async def test_import_read_only_repository_last_commit(
     upstream.index.commit("Change first file")
 
     mock_add_tags.return_value = None
-    mock_get_client.return_value = AsyncMock(InfrahubClient)
+    client = AsyncMock(InfrahubClient)
+    # The flow reads the commit the graph records before it imports the new one.
+    client.get.return_value.commit.value = initial_commit_id
+    mock_get_client.return_value = client
 
     model = GitReadOnlyRepositoryImportCommit(
         repository_id=str(repo.id),

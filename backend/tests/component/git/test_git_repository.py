@@ -40,6 +40,7 @@ from infrahub.git.base import (
     extract_repo_file_information,
 )
 from infrahub.git.constants import BRANCHES_DIRECTORY_NAME, COMMITS_DIRECTORY_NAME, TEMPORARY_DIRECTORY_NAME
+from infrahub.git.divergence.suppression import RetargetMarkers
 from infrahub.git.integrator import (
     ArtifactGenerateResult,
     CheckDefinitionInformation,
@@ -52,6 +53,7 @@ from infrahub.git.worktree import Worktree
 from infrahub.lock import InfrahubLockRegistry
 from infrahub.utils import find_first_file_in_directory
 from infrahub.workers.dependencies import build_client, build_event_service, build_message_bus
+from tests.adapters.cache import MemoryCache
 from tests.adapters.event import MemoryInfrahubEvent
 from tests.adapters.lock import LockTimeline, RecordingImporter
 from tests.adapters.repository_record_store import build_in_memory_recorder
@@ -738,6 +740,7 @@ async def _sync(repo: InfrahubRepository, staging_branch: str | None = None) -> 
         lock_registry=InfrahubLockRegistry(local_only=True),
         importer=RepositoryFileImporter(),
         recorder=build_in_memory_recorder(),
+        retarget_markers=RetargetMarkers(cache=MemoryCache()),
     )
     return await call_in_flow(lambda: syncer.sync(repo, staging_branch=staging_branch))
 
@@ -844,6 +847,7 @@ async def test_sync_returns_a_failed_branch_alongside_the_branches_it_advanced(
         lock_registry=InfrahubLockRegistry(local_only=True),
         importer=RecordingImporter(LockTimeline()),
         recorder=build_in_memory_recorder(),
+        retarget_markers=RetargetMarkers(cache=MemoryCache()),
     )
     outcome = await syncer.sync(repo)
 

@@ -2,7 +2,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from infrahub.exceptions import RepositoryError
-from infrahub.git.divergence.models import RewriteRecord
+from infrahub.git.divergence.models import RewriteRecord, TrackedTarget
 from infrahub.git.divergence.recorder import HistoryRewriteRecorder
 
 
@@ -52,3 +52,10 @@ class FailingRepositoryRecordStore:
 
 def build_in_memory_recorder() -> HistoryRewriteRecorder:
     return HistoryRewriteRecorder(store=InMemoryRepositoryRecordStore())
+
+
+class FailingTrackedTargetReader:
+    """TrackedTargetReader whose every read fails the way the Infrahub API fails."""
+
+    async def get_target(self, repository_id: str, infrahub_branch_name: str) -> TrackedTarget:
+        raise RepositoryError(identifier=repository_id, message=f"The API is unreachable from {infrahub_branch_name}")

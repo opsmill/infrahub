@@ -139,7 +139,9 @@ guarantees which of the two flows the scheduler reaches first.
 ```python
 # git/repository.py::InfrahubRepository.push
 remote_branch = self._get_mapped_remote_branch(branch_name=branch_name)
-push_infos = repo.remotes.origin.push(refspec=f"HEAD:refs/heads/{remote_branch}")
+push_infos = repo.remotes.origin.push(
+    refspec=f"HEAD:refs/heads/{remote_branch}", progress=progress, kill_after_timeout=timeout_seconds
+)
 ```
 
 A bare refspec would have no local source on a worker whose clone never checked out a local branch
@@ -179,14 +181,25 @@ re-derives the merge from `(source_branch, source_commit, dest_branch)` on any w
 > `dev/specs/ifc-3220-writeback-failure-handling/`. Update this section when that lands.
 
 Per-ref push rejections do **not** flow through the error classifier below. GitPython reports them on
-`push_info.summary`, not by raising `GitCommandError`, so `push()` inspects `push_info.flags` and
-raises `RepositoryError` itself. Anything that needs to distinguish a non-fast-forward rejection from
-a per-ref permissions denial has to parse that summary.
+the push result, not by raising `GitCommandError`, so `push()` raises `RepositoryPushRejectedError`
+itself. Its `reason` (`git/models.py::PushRejectionReason`) comes from the push result:
+
+| Push result | `reason` |
+|---|---|
+| `[rejected]`, a non-fast-forward that Git refuses before it sends anything | `non-fast-forward` |
+| `[remote rejected]` whose summary has Git's wording for a ref the remote cannot lock or update ("failed to lock", "failed to update ref", "reference already exists", "incorrect old value provided"), as when another push changed the ref first | `ref-update-failed` |
+| any other `[remote rejected]`, such as a hook or a branch protection | `policy` |
+| anything else | `unknown` |
+
+The error's `remote_message` holds the remote's own `remote:` lines, in order. A host explains a
+refusal only there, and GitPython keeps those lines out of `GitCommandError.stderr`. The message keeps
+the wording of `_describe_push_rejection`.
 
 A push that fails at the **transport** level (a 403 on the receive-pack advertisement, an expired
 token, a refused connection, a TLS failure) is different: GitPython finds no porcelain status line to
-parse and re-raises `GitCommandError`. `push()` catches that and routes it through the same enriched
-classifier a fetch uses, so it is converted to the typed error and recorded on `operational_status`.
+parse and re-raises `GitCommandError`. `push()` catches that and routes it through the classifier
+below, so it is converted to the typed error. A push never writes `operational_status`, while a
+failed fetch does.
 
 ### Two checks keep a merge on the commits the graph imported
 
@@ -321,20 +334,44 @@ reconfiguration step and should not be proposed as a remedy for a misconfigured 
 ## How git errors are classified
 
 `InfrahubRepositoryBase._raise_enriched_error_static` maps `GitCommandError.stderr` to typed
-exceptions: `RepositoryConnectionError` (unreachable host, gateway 5xx, TLS verification failure),
-`RepositoryCredentialsError`, `RepositoryPermissionError` (authenticated but not authorized to push -
-a 403 on the receive-pack advertisement, "Write access to repository not granted", "Permission to ...
-denied"), `RepositoryInvalidBranchError`, or a generic `RepositoryError`. `RepositoryPermissionError`
-maps to the same `ERROR_CRED` operational status as a credential failure; the distinction is carried
-in the message.
+exceptions:
+
+- `RepositoryNotFoundError`: "Repository not found", or Git's own line for an HTTP 404,
+  `fatal: repository '<url>' not found`. A fetch and a push hand the classifier only the lines that
+  start with `error:` or `fatal:`, so there only Git's own line can match.
+- `RepositoryTLSError`: a certificate that Git does not accept.
+- `RepositoryConnectionError`: an unreachable host, or a gateway 5xx.
+- `RepositoryCredentialsError`.
+- `RepositoryPermissionError`: authenticated but not authorized to push, such as a 403 on the
+  receive-pack advertisement, "Write access to repository not granted" or "Permission to ... denied".
+- `RepositoryInvalidBranchError`, or a generic `RepositoryError`.
+
+`RepositoryNotFoundError` and `RepositoryTLSError` are subclasses of `RepositoryConnectionError`, so
+every `except RepositoryConnectionError` catches them.
+
+Two rules cover a Git command past the time limit that its caller passes as `kill_after_timeout`:
+
+- A fetch or a push that ran past its limit gets "process killed because it timed out" in its error
+  lines, and raises `RepositoryConnectionError` with a message of its own. GitPython adds that line
+  only after Git ends: the limit does not stop a fetch or a push that hangs.
+- A direct Git call that GitPython's watchdog stops gets "Timeout: the command ... did not complete".
+  It raises a `RepositoryError` that names the Git command and the limit, never the arguments, which
+  can name worker paths. A write operation, such as the deletion of a remote branch, is a push to the
+  remote, so it raises `RepositoryConnectionError` instead. The watchdog finds the child processes of
+  Git with `ps`, which the runtime image does not have, so there it cannot stop a direct call.
+
+`git/base.py::operational_status_for_error` turns the typed error into the operational status, most
+specific class first: every `RepositoryConnectionError` gives `ERROR_CONNECTION`, a credential or
+permission error gives `ERROR_CRED`, and any other error gives `ERROR`. The permission and credential
+failures share `ERROR_CRED`; the message carries the distinction.
 
 It matches on **stderr text, not exit status**, because git exits 128 for virtually every fatal
 error and an HTTP failure surfaces only as text from the libcurl remote helper. The matched
 substrings are stable user-facing git and curl strings, but they are still strings: a wording change
 upstream silently reclassifies an error to the generic fallthrough.
 
-One gap to know about: **per-ref push rejections bypass it** (see above); they arrive on
-`push_info.summary`. Transport-level push failures do reach it, because those raise `GitCommandError`.
+**Per-ref push rejections bypass it** (see above): they arrive on the push result, and `push()` types
+them itself. Transport-level push failures do reach it, because those raise `GitCommandError`.
 
 A diverged history gets a message of its own, never a conflict. The merge guard raises
 `RepositoryDivergentHistoryError` itself. The classifier has no entry for git's "Need to specify how
@@ -348,10 +385,8 @@ to reconcile divergent branches", because only `git pull` writes that text and n
   reconciles branches already imported under the old mapping. The commit recorded against Infrahub's
   default branch changes to the new trunk's history, and a previously imported branch of that name is
   left orphaned. `get_initialized_repo` is also cached for 30s, so an edit is served stale for up to
-  that long; this is consistent with the lack of reconciliation rather than a separate bug. The sync
-  is never told that the tracking target changed, so it never classifies a branch as re-targeted. When
-  the old trunk commit is not an ancestor of the new trunk, it classifies the edit as a rewrite and
-  logs the trunk as reconciled.
+  that long; this is consistent with the lack of reconciliation rather than a separate bug. The edit
+  itself is not recorded as a rewrite ([Git Sync](git-sync.md#the-re-target-marker)).
 - **A skipped branch is re-evaluated every cycle.** A remote branch named like Infrahub's default, on
   a repository whose trunk is something else, is never created locally by the sync, so every sync
   usually skips it again and the process log repeats once a minute. The exception is a clone whose

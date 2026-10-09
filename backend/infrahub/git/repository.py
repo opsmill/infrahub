@@ -8,6 +8,7 @@ from uuid import UUID  # noqa: TC003
 from cachetools import TTLCache
 from cachetools.keys import hashkey
 from cachetools_async import cached
+from git import PushInfo, RemoteProgress
 from git.exc import BadName, GitCommandError
 from infrahub_sdk.exceptions import GraphQLError
 from infrahub_sdk.protocols import CoreReadOnlyRepository
@@ -30,6 +31,7 @@ from infrahub.exceptions import (
     CommitNotFoundError,
     RepositoryDivergentHistoryError,
     RepositoryError,
+    RepositoryPushRejectedError,
 )
 from infrahub.git.branch_status import accepts_commit_write
 from infrahub.git.commit_id import readable_commit
@@ -38,6 +40,7 @@ from infrahub.git.divergence.models import ReconciledBranch, RefClassification
 from infrahub.git.graph_settings import resolve_graph_settings
 from infrahub.git.import_errors import describe_import_error
 from infrahub.git.integrator import InfrahubRepositoryIntegrator
+from infrahub.git.models import PushRejectionReason
 from infrahub.log import get_run_logger
 
 if TYPE_CHECKING:
@@ -48,7 +51,9 @@ if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
 
     from infrahub.git.divergence.models import RefDivergence
+    from infrahub.git.divergence.protocols import TrackedTargetReader
     from infrahub.git.divergence.recorder import HistoryRewriteRecorder
+    from infrahub.git.divergence.suppression import RetargetMarkers
 
 log = get_run_logger()
 
@@ -65,6 +70,42 @@ def _describe_push_rejection(summary: str) -> str:
     if any(marker in lowered for marker in ("non-fast-forward", "fetch first")):
         return f"the remote branch has commits that are missing locally (non-fast-forward): {summary}"
     return summary
+
+
+# The reasons that the remote's Git, depending on its version, gives when it cannot lock or update the ref, as when
+# another push changed the ref first.
+GIT_REF_UPDATE_FAILURES = (
+    "failed to lock",
+    "failed to update ref",
+    "reference already exists",
+    "incorrect old value provided",
+)
+
+
+def _push_rejection_reason(push_info: PushInfo) -> PushRejectionReason:
+    # The remote itself refuses a ref with "[remote rejected]", while Git refuses a non-fast-forward with
+    # "[rejected]" before it sends anything.
+    if push_info.flags & PushInfo.REMOTE_REJECTED:
+        if any(failure in push_info.summary for failure in GIT_REF_UPDATE_FAILURES):
+            return PushRejectionReason.REF_UPDATE_FAILED
+        return PushRejectionReason.POLICY
+    if push_info.flags & PushInfo.REJECTED:
+        return PushRejectionReason.NON_FAST_FORWARD
+    return PushRejectionReason.UNKNOWN
+
+
+class _RemoteLineCollector(RemoteProgress):
+    """Keeps, in order, the ``remote:`` lines that are not known progress steps, those GitPython drops included."""
+
+    __slots__ = ("remote_lines",)
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.remote_lines: list[str] = []
+
+    def line_dropped(self, line: str) -> None:
+        if line.startswith("remote:"):
+            self.remote_lines.append(line)
 
 
 @dataclass
@@ -368,6 +409,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         staging_branch: str | None = None,
         graph_commits: Mapping[str, str | None] | None = None,
         recorder: HistoryRewriteRecorder | None = None,
+        retarget_markers: RetargetMarkers | None = None,
     ) -> CollectedImports:
         """Run the git and branch-setup side of a sync and return the imports it produced.
 
@@ -387,6 +429,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 already matches the remote is left alone even when the graph records another commit.
             recorder: Records each rewrite the classification finds, right after the branch's new
                 commit is written. Without it no rewrite is recorded.
+            retarget_markers: Tell a deliberate change of the default branch apart from a rewrite of
+                the trunk. A marker that applied to this cycle is cleared when the collection ends with
+                the trunk on the remote head of the default branch. Without them, every lineage break of
+                the trunk is a rewrite.
 
         Raises:
             RepositoryConnectionError: When the remote repository is unreachable.
@@ -394,6 +440,54 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             GraphQLError: When a branch or commit update against the database fails.
 
         """
+        trunk_retargeted = False
+        if graph_commits is not None and retarget_markers is not None:
+            trunk_retargeted = await retarget_markers.is_retargeted(
+                repository_id=str(self.id), target=self.default_branch
+            )
+
+        collected = await self._collect_pending_imports(
+            staging_branch=staging_branch,
+            graph_commits=graph_commits,
+            recorder=recorder,
+            trunk_retargeted=trunk_retargeted,
+        )
+
+        # A marker written after the read is left alone here, and the next cycle reads it.
+        if (
+            trunk_retargeted
+            and graph_commits is not None
+            and retarget_markers is not None
+            and self._trunk_is_on_remote_head(graph_commits=graph_commits, collected=collected)
+        ):
+            # This also sweeps a marker no branch needed, which would hide a genuine trunk rewrite until it expires.
+            await retarget_markers.clear(repository_id=str(self.id), target=self.default_branch)
+        return collected
+
+    def _trunk_is_on_remote_head(self, graph_commits: Mapping[str, str | None], collected: CollectedImports) -> bool:
+        """Whether the trunk records the remote head of the default branch once the collection ends.
+
+        A trunk that failed, an inactive repository, or a default branch the remote does not hold yet
+        leaves the trunk on another commit.
+        """
+        if not self.has_origin:
+            return False
+        remote_head = self._get_remote_tracking_commit(self.default_branch)
+        if remote_head is None:
+            return False
+        trunk_commit = graph_commits.get(registry.default_branch)
+        for reconciled in collected.reconciled:
+            if reconciled.infrahub_branch_name == registry.default_branch:
+                trunk_commit = reconciled.commit
+        return trunk_commit == remote_head
+
+    async def _collect_pending_imports(
+        self,
+        staging_branch: str | None,
+        graph_commits: Mapping[str, str | None] | None,
+        recorder: HistoryRewriteRecorder | None,
+        trunk_retargeted: bool,
+    ) -> CollectedImports:
         log.info("Starting the synchronization of %s.", self.name)
 
         # The remote-tracking ref still holds the previous fetch's head, which is what tells a skipped
@@ -450,6 +544,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                         remote_head=remote_heads.get(branch_name),
                         graph_commits=graph_commits,
                         recorder=recorder,
+                        trunk_retargeted=trunk_retargeted,
                     )
 
             for branch_name in updated_branches:
@@ -461,6 +556,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                         graph_commits=graph_commits,
                         graph_branches=graph_branches,
                         recorder=recorder,
+                        trunk_retargeted=trunk_retargeted,
                     )
 
         elif staging_branch:
@@ -471,6 +567,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 graph_commits=graph_commits,
                 graph_branches=graph_branches,
                 recorder=recorder,
+                trunk_retargeted=trunk_retargeted,
                 import_branch=staging_branch,
                 git_branch_name=self.default_branch,
             )
@@ -503,6 +600,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         remote_head: str | None,
         graph_commits: Mapping[str, str | None] | None,
         recorder: HistoryRewriteRecorder | None,
+        trunk_retargeted: bool,
     ) -> None:
         """Create a branch this worker does not hold yet and queue its import.
 
@@ -517,7 +615,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         try:
             # Another worker may have imported a history the remote has since discarded.
             divergence = self._classify_against_graph(
-                branch_name=branch_name, remote_head=remote_head, graph_commits=graph_commits
+                branch_name=branch_name,
+                remote_head=remote_head,
+                graph_commits=graph_commits,
+                trunk_retargeted=trunk_retargeted,
             )
         except RepositoryError as exc:
             # The classification only names a discarded history, so it must not keep the branch from being created.
@@ -581,6 +682,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         graph_commits: Mapping[str, str | None] | None,
         graph_branches: dict[str, BranchData],
         recorder: HistoryRewriteRecorder | None,
+        trunk_retargeted: bool,
         import_branch: str | None = None,
         git_branch_name: str | None = None,
     ) -> None:
@@ -603,6 +705,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 graph_commits=graph_commits,
                 graph_branches=graph_branches,
                 recorder=recorder,
+                trunk_retargeted=trunk_retargeted,
                 git_branch_name=git_branch_name,
             )
         # The graph can refuse the commit for a status the branch listing did not show yet, such as a merge.
@@ -632,6 +735,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         graph_commits: Mapping[str, str | None] | None,
         graph_branches: dict[str, BranchData],
         recorder: HistoryRewriteRecorder | None,
+        trunk_retargeted: bool,
         git_branch_name: str | None = None,
     ) -> None:
         """Bring the worktree of a branch onto the remote head and queue its import into ``import_branch``.
@@ -648,7 +752,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         branch_id = self._get_branch_id(infrahub_branch=advanced_branch, graph_branches=graph_branches)
         remote_head = remote_heads.get(branch_name)
         divergence = self._classify_against_graph(
-            branch_name=branch_name, remote_head=remote_head, graph_commits=graph_commits
+            branch_name=branch_name,
+            remote_head=remote_head,
+            graph_commits=graph_commits,
+            trunk_retargeted=trunk_retargeted,
         )
         commit = await self._advance_branch(branch_name=branch_name, remote_head=remote_head, divergence=divergence)
         if commit is not None:
@@ -741,7 +848,11 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         return behind
 
     def _classify_against_graph(
-        self, branch_name: str, remote_head: str | None, graph_commits: Mapping[str, str | None] | None
+        self,
+        branch_name: str,
+        remote_head: str | None,
+        graph_commits: Mapping[str, str | None] | None,
+        trunk_retargeted: bool,
     ) -> RefDivergence | None:
         if graph_commits is None:
             return None
@@ -751,7 +862,8 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             infrahub_branch_name=infrahub_branch,
             imported_commit=graph_commits.get(infrahub_branch),
             remote_head=remote_head,
-            target_changed=False,
+            # A change of the default branch is the only re-point, and it only moves what feeds the trunk.
+            target_changed=trunk_retargeted and infrahub_branch == registry.default_branch,
         )
 
     def _get_branch_id(self, infrahub_branch: str, graph_branches: dict[str, BranchData]) -> str:
@@ -879,12 +991,18 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             ],
         )
 
-    async def push(self, branch_name: str) -> bool:
-        """Push a given branch to the remote Origin repository.
+    async def push(self, branch_name: str, timeout_seconds: float | None = None) -> bool:
+        """Push a given branch to the remote Origin repository; a failure never writes the operational status.
+
+        Args:
+            timeout_seconds: Passed to GitPython as ``kill_after_timeout``; ``None`` sets no limit.
 
         Raises:
-            RepositoryError: When the remote rejects the push at the ref level.
-            RepositoryConnectionError: When the push fails to reach the remote.
+            RepositoryPushRejectedError: When the remote rejects the push at the ref level. It carries the
+                reason read from the flags of the ref's push result and the remote's own ``remote:`` lines.
+            RepositoryConnectionError: When the push fails to reach the remote, or Git ran past
+                ``timeout_seconds`` and then failed. The subclasses RepositoryNotFoundError and
+                RepositoryTLSError name a missing repository and a refused certificate.
             RepositoryCredentialsError: When authentication fails at push time.
             RepositoryPermissionError: When the credentials authenticate but lack write access.
 
@@ -900,11 +1018,15 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         repo = self.get_git_repo_worktree(identifier=branch_name)
         remote_branch = self._get_mapped_remote_branch(branch_name=branch_name)
+        # The server explains a refusal only in its "remote:" lines.
+        progress = _RemoteLineCollector()
         # Push the worktree HEAD, not the bare branch name: the local branch checked out in this
         # worktree may not be named after the remote branch (it differs when the repository's
         # default branch is not the Infrahub default), so a bare refspec would have no local source.
         try:
-            push_infos = repo.remotes.origin.push(refspec=f"HEAD:refs/heads/{remote_branch}")
+            push_infos = repo.remotes.origin.push(
+                refspec=f"HEAD:refs/heads/{remote_branch}", progress=progress, kill_after_timeout=timeout_seconds
+            )
         except GitCommandError as exc:
             # A transport-level failure raises here with no porcelain status line to classify from flags.
             self._raise_enriched_error_static(
@@ -912,8 +1034,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             )
         for push_info in push_infos:
             if push_info.flags & push_info.ERROR:
-                raise RepositoryError(
+                raise RepositoryPushRejectedError(
                     identifier=self.name,
+                    reason=_push_rejection_reason(push_info=push_info),
+                    remote_message="\n".join(progress.remote_lines),
                     message=(
                         f"Unable to push the branch {remote_branch} to the remote for repository {self.name}: "
                         f"{_describe_push_rejection(summary=push_info.summary.strip())}"
@@ -1170,14 +1294,17 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         return str(commit_after)
 
-    def _reset_to_pre_merge_commit(self, repo: Repo, dest_branch: str, commit_before: str) -> None:
+    def _reset_to_pre_merge_commit(
+        self, repo: Repo, dest_branch: str, commit_before: str, timeout_seconds: float | None = None
+    ) -> None:
         """Best-effort reset of a merge destination worktree while recovering from a failed merge.
 
         This never raises: the failure being recovered from is the one that explains why the merge
-        was not delivered, and it must propagate unmasked.
+        was not delivered, and it must propagate unmasked. A reset that GitPython kills at
+        ``timeout_seconds`` is logged like any other failed reset.
         """
         try:
-            repo.git.reset("--hard", commit_before)
+            repo.git.reset("--hard", commit_before, kill_after_timeout=timeout_seconds)
         except Exception:
             # Raising here would replace the failure being recovered from with a less useful one.
             log.exception(
@@ -1315,7 +1442,28 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
         await self._update_operational_status(status=RepositoryOperationalStatus.ONLINE)
         return True
 
-    async def update_latest_commit(self) -> None:
+    async def update_latest_commit(
+        self,
+        tracked_targets: TrackedTargetReader | None = None,
+        recorder: HistoryRewriteRecorder | None = None,
+        target_changed: bool = False,
+    ) -> None:
+        """Import the commit the tracked ref resolves to, and record it when the history of the ref was rewritten.
+
+        The caller holds the repository lock, so a run queued behind this one reads the commit this one writes.
+        The commit is imported whatever the classification finds, and the local clone is never reset.
+
+        Args:
+            tracked_targets: Reads the ref and the commit the graph records before the import. Without it nothing
+                is classified.
+            recorder: Records a rewrite once the new commit is written. Without it nothing is recorded.
+            target_changed: Whether the ref or the commit of the repository changed on purpose.
+
+        Raises:
+            ValueError: When the ref cannot be resolved on the remote.
+            RepositoryError: When the rewrite cannot be recorded. The new commit is already imported.
+
+        """
         git_repo = self.get_git_repo_main()
         git_repo.remotes.origin.fetch(prune=True, tags=True, prune_tags=True)
         try:
@@ -1327,9 +1475,47 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
                 log.error("No object found for ref %s on repository %s", self.ref, self.name)
                 raise ValueError(f"Ref {self.ref} not found.") from err
         latest_commit = str(git_repo.commit(latest_commit))
+        divergence = await self._classify_latest_commit(
+            latest_commit=latest_commit, tracked_targets=tracked_targets, target_changed=target_changed
+        )
         synced_from_remote = await self.sync_from_remote(commit=latest_commit)
         if not synced_from_remote:
             await self.update_commit_value(branch_name=self.infrahub_branch_name, commit=latest_commit)
+        if recorder is not None and divergence is not None:
+            await recorder.record(repository_id=str(self.id), divergence=divergence)
+
+    async def _classify_latest_commit(
+        self, latest_commit: str, tracked_targets: TrackedTargetReader | None, target_changed: bool
+    ) -> RefDivergence | None:
+        """Classify the commit the ref resolves to against the commit the graph records.
+
+        Returns None when either cannot be read, or when the repository no longer tracks this ref.
+        """
+        if tracked_targets is None or self.ref is None:
+            return None
+        try:
+            target = await tracked_targets.get_target(
+                repository_id=str(self.id), infrahub_branch_name=self.infrahub_branch_name
+            )
+            if target.ref != self.ref:
+                # A run submitted before a change of ref resolves the old ref, which the graph commit no longer follows.
+                log.info(
+                    "Not classifying ref %s of repository %s, which now tracks %s", self.ref, self.name, target.ref
+                )
+                return None
+            return RemoteDivergenceDetector(gateway=self._get_ancestry_gateway()).classify(
+                branch_name=self.ref,
+                infrahub_branch_name=self.infrahub_branch_name,
+                imported_commit=target.commit,
+                remote_head=latest_commit,
+                target_changed=target_changed,
+            )
+        except RepositoryError as exc:
+            # The classification only names a rewritten history, so it must not keep the commit from being imported.
+            log.warning(
+                "Unable to classify ref %s of repository %s against the graph: %s", self.ref, self.name, exc.message
+            )
+            return None
 
 
 @cached(

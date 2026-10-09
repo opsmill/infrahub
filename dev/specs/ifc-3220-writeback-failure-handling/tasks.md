@@ -68,53 +68,57 @@ the commit recorded before the merge until its next recompute.
 
 **Purpose**: prepare the worktree so the tests can run at all.
 
-- [ ] T001 Initialise the submodules and reinstall the server package, so `backend/tests/` can
+- [X] T001 Initialise the submodules and reinstall the server package, so `backend/tests/` can
       import `infrahub_sdk`: `git submodule update --init python_sdk frontend/packages/schema-visualizer`,
       then `uv sync --all-groups --reinstall-package infrahub-server`.
-- [ ] T002 Confirm the test environment is clean: unset every `INFRAHUB_*` variable inherited from
+- [X] T002 Confirm the test environment is clean: unset every `INFRAHUB_*` variable inherited from
       the dev shell, and keep testcontainers enabled. See [quickstart.md](quickstart.md).
-- [ ] T003 [P] Create the package `backend/infrahub/git/writeback/` with an empty `__init__.py`.
-- [ ] T004 [P] Create the test packages `backend/tests/unit/git/writeback/` and
+- [X] T003 [P] Create the package `backend/infrahub/git/writeback/` with an empty `__init__.py`.
+- [X] T004 [P] Create the test packages `backend/tests/unit/git/writeback/` and
       `backend/tests/component/git/writeback/`, each with an empty `__init__.py`.
 
 ---
 
 ## Phase 2: Foundational (blocking prerequisites)
 
-**Purpose**: typed failures, bounded Git commands, the state model, the schema and the store.
+**Purpose**: typed failures, time limits on Git commands, the state model, the schema and the store.
 Parts A and B of the plan.
 
 **Blocks**: every phase from 3 onwards.
 
-### Typed failures and bounded Git commands (plan part A)
+### Typed failures and time limits on Git commands (plan part A)
 
-- [ ] T005 [P] Add `RepositoryPushRejectedError`, `RepositoryTLSError`, `RepositoryNotFoundError`,
+- [X] T005 [P] Add `RepositoryPushRejectedError`, `RepositoryTLSError`, `RepositoryNotFoundError`,
       `DeliveryQueueChangedError` and `NothingPendingError` to `backend/infrahub/exceptions.py`, per
       [data-model.md](data-model.md), "New exceptions". The first three keep today's message wording
       byte for byte.
-- [ ] T006 [P] Add `PushRejectionReason` to `backend/infrahub/git/models.py`.
-- [ ] T007 Make `InfrahubRepositoryBase._raise_enriched_error_static` in
+- [X] T006 [P] Add `PushRejectionReason` to `backend/infrahub/git/models.py`.
+- [X] T007 Make `InfrahubRepositoryBase._raise_enriched_error_static` in
       `backend/infrahub/git/base.py` raise `RepositoryTLSError` for the TLS markers,
-      `RepositoryNotFoundError` for "Repository not found", and `RepositoryConnectionError` for
-      GitPython's "process killed because it timed out".
-- [ ] T008 Resolve the operational status with `isinstance`, most specific first, in
+      `RepositoryNotFoundError` for "Repository not found" and for Git's own HTTP 404 line,
+      `fatal: repository '<url>' not found` (`GIT_HTTP_REPOSITORY_NOT_FOUND`), and
+      `RepositoryConnectionError` for GitPython's "process killed because it timed out". Effect of
+      the 404 rule: a fetch of a missing repository records `error-connection` and the connection
+      message, not `error` and the raw Git line.
+- [X] T008 Resolve the operational status with `isinstance`, most specific first, in
       `InfrahubRepositoryBase._raise_enriched_error` in `backend/infrahub/git/base.py` and in
       `connectivity` in `backend/infrahub/message_bus/operations/git/repository.py`. Both subtypes
       keep `ERROR_CONNECTION`.
-- [ ] T009 Change `InfrahubRepository.push` in `backend/infrahub/git/repository.py`: pass a
-      `RemoteProgress` and a `timeout` argument as `kill_after_timeout`; derive the reason of a
-      per-ref rejection from `PushInfo.REMOTE_REJECTED` and `PushInfo.REJECTED`; raise
+- [X] T009 Change `InfrahubRepository.push` in `backend/infrahub/git/repository.py`: pass a
+      `RemoteProgress` and a `timeout_seconds` argument as `kill_after_timeout`; derive the reason of a
+      per-ref rejection from `PushInfo.REMOTE_REJECTED` and `PushInfo.REJECTED`, and from the summary
+      for Git's wording of a ref it cannot lock or update (`ref-update-failed`, research.md R5); raise
       `RepositoryPushRejectedError` carrying the reason and the joined `remote:` lines. Keep the
       message of `_describe_push_rejection`. Keep "push never writes `operational_status`".
-- [ ] T010 Give `InfrahubRepositoryBase.fetch` in `backend/infrahub/git/base.py` an optional
+- [X] T010 Give `InfrahubRepositoryBase.fetch` in `backend/infrahub/git/base.py` an optional
       timeout, passed as `kill_after_timeout`. Give the same optional timeout to
       `create_commit_worktree` and `delete_remote_branch` in the same module, and to
       `InfrahubRepository._reset_to_pre_merge_commit` in `backend/infrahub/git/repository.py`, passed
       to each Git command they run. Default unchanged for every existing caller.
-- [ ] T011 [P] Extend the case table of `backend/tests/unit/git/test_git_error_enrichment.py` with
+- [X] T011 [P] Extend the case table of `backend/tests/unit/git/test_git_error_enrichment.py` with
       the two subtypes and the killed-command text, and add a test that both status maps give
       `ERROR_CONNECTION` for the subtypes.
-- [ ] T012 [P] Add unit tests to `backend/tests/unit/git/test_git_repository.py` for the push
+- [X] T012 [P] Add unit tests to `backend/tests/unit/git/test_git_repository.py` for the push
       rejection reason from the flags, a GitHub ruleset summary, the joined `remote:` lines, and the
       unchanged message. Keep `test_push_classifies_transport_error` green.
 
@@ -154,9 +158,9 @@ Parts A and B of the plan.
 - [ ] T016 Write `backend/infrahub/git/writeback/classifier.py`: `classify_delivery_failure` per the
       table of [research.md](research.md) R5, and `scrub_credentials`.
 - [ ] T017 [P] Write `backend/tests/unit/git/writeback/test_classifier.py`: every row of R5, the
-      `enqueue`, `fetch` and `release` stages included, a killed fetch and a killed push, a message
-      that never carries raw stderr, and `scrub_credentials` on `user:token@`, `user@` and several
-      URLs in one text.
+      `enqueue`, `fetch` and `release` stages included, a fetch and a push past their time limit, a
+      message that never carries raw stderr, and `scrub_credentials` on `user:token@`, `user@` and
+      several URLs in one text.
 
 ### Schema and store (plan part B)
 
@@ -227,9 +231,10 @@ SC-002, SC-007.
       implementing `DeliveryGitPort` over one `InfrahubRepository`, per contracts section 4.
       `is_ancestor` uses `git merge-base --is-ancestor`, returns `False` only for "no" or a missing
       object, and raises otherwise. `fetch` raises `RepositoryError` on a clone with no `origin`.
-      Every Git command it runs is bounded, per
-      [research.md](research.md) R6: `FETCH_TIMEOUT_SECONDS` for the fetch, `PUSH_TIMEOUT_SECONDS`
-      for the push and `delete_remote_branch`, and `LOCAL_GIT_TIMEOUT_SECONDS` for each local
+      Every Git command it runs gets a time limit, per [research.md](research.md) R6 (the limit
+      does not stop a hung fetch or push; open point of R6): `FETCH_TIMEOUT_SECONDS` for the
+      fetch, `PUSH_TIMEOUT_SECONDS` for the push and `delete_remote_branch`, and
+      `LOCAL_GIT_TIMEOUT_SECONDS` for each local
       command, `remote_head`'s `git rev-parse` included. A killed local command removes a left-over
       `index.lock` of the worktree, then raises `RepositoryError` with a message that names the
       command and the bound, not its arguments. Agree the primitive with IFC-3210 first (**gate**).
@@ -530,8 +535,9 @@ T081 to T084 are not.
 - [ ] T083 [P] [US4] Add `test_policy_failure_is_not_retried` to the same module: one attempt only, then
       `action-required`.
 - [ ] T084 [P] [US4] Add two timeout cases to `backend/tests/unit/git/writeback/test_git_adapter.py`.
-      A local TCP server that accepts and never answers makes the push fail as `remote-unreachable`
-      within the bound. A `merge` of `replay` that stalls, through a `pre-merge-commit` hook of the
+      A push to a local TCP server that accepts and never answers fails as `remote-unreachable`
+      within the bound: this case waits for the open point of R6, because `kill_after_timeout` does
+      not stop that push. A `merge` of `replay` that stalls, through a `pre-merge-commit` hook of the
       temporary repository that `exec`s a long `sleep`, is killed within `LOCAL_GIT_TIMEOUT_SECONDS`,
       lowered for the test. It raises a `RepositoryError` that names the command, which the
       classifier gives `unclassified`, and no `index.lock` stays behind in the worktree. The hook uses

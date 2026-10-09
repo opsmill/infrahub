@@ -14,6 +14,7 @@ from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.node import Node
 from infrahub.git import InfrahubRepository
+from infrahub.git.divergence.suppression import RetargetMarkers
 from infrahub.git.sync import RepositoryFileImporter, RepositorySyncer
 from infrahub.lock import InfrahubLockRegistry
 from infrahub.message_bus.types import ProposedChangeBranchDiff
@@ -35,6 +36,7 @@ from infrahub.workflows.catalogue import (
     REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY,
     REQUEST_PROPOSED_CHANGE_USER_TESTS,
 )
+from tests.adapters.cache import MemoryCache
 from tests.adapters.log import FakeLogger
 from tests.adapters.message_bus import BusRecorder
 from tests.adapters.repository_record_store import build_in_memory_recorder
@@ -106,6 +108,7 @@ async def sync_repository(repo: InfrahubRepository) -> None:
         lock_registry=InfrahubLockRegistry(local_only=True),
         importer=RepositoryFileImporter(),
         recorder=build_in_memory_recorder(),
+        retarget_markers=RetargetMarkers(cache=MemoryCache()),
     )
     outcome = await syncer.sync(repo)
     assert outcome.failed == ()

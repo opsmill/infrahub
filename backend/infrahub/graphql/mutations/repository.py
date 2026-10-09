@@ -13,6 +13,7 @@ from infrahub.core.protocols import CoreReadOnlyRepository
 from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema
 from infrahub.exceptions import ValidationError
+from infrahub.git.divergence.suppression import RetargetMarkers
 from infrahub.git.models import (
     GitReadOnlyRepositoryImportCommit,
     GitRepositoryImportObjects,
@@ -103,70 +104,137 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         graphql_context: GraphqlContext = info.context
 
         cleanup_payload(data)
-        repo_node: CoreReadOnlyRepository | CoreRepository | Node | None = node
-        if not repo_node:
-            repo_node = await NodeManager.get_one_by_id_or_default_filter(
-                db=graphql_context.db,
-                kind=cls._meta.schema.kind,
-                id=data.get("id"),
-                branch=branch,
-                include_metadata=MetadataOptions.LINKED_NODES,
+        repo_node = node or await NodeManager.get_one_by_id_or_default_filter(
+            db=graphql_context.db,
+            kind=cls._meta.schema.kind,
+            id=data.get("id"),
+            branch=branch,
+            include_metadata=MetadataOptions.LINKED_NODES,
+        )
+        return await super().mutate_update(info, data, branch, database=graphql_context.db, node=repo_node)
+
+    @classmethod
+    async def _call_mutate_update(
+        cls,
+        info: GraphQLResolveInfo,
+        data: InputObjectType,
+        branch: Branch,
+        db: InfrahubDatabase,
+        obj: Node,
+        skip_uniqueness_check: bool = False,
+    ) -> tuple[Node, Self]:
+        """Update the repository, and pull and import the new target of a re-pointed read-only repository.
+
+        The workflows start only after the update commits, because a submitted workflow still runs when the
+        transaction rolls back. This holds only when the database handed in is not already a transaction.
+        """
+        if obj.get_kind() != InfrahubKind.READONLYREPOSITORY:
+            return await super()._call_mutate_update(
+                info=info, data=data, branch=branch, db=db, obj=obj, skip_uniqueness_check=skip_uniqueness_check
             )
-        if repo_node.get_kind() != InfrahubKind.READONLYREPOSITORY:
-            return await super().mutate_update(info, data, branch, database=graphql_context.db, node=repo_node)
 
-        repo_node = cast("CoreReadOnlyRepository", repo_node)
-        current_commit = repo_node.commit.value
-        current_ref = repo_node.ref.value
-        new_commit = None
-        if data.commit and data.commit.value:
-            new_commit = data.commit.value
-        new_ref = None
-        if data.ref and data.ref.value:
-            new_ref = data.ref.value
+        # Read from the database, because a retried update hands back the node an earlier attempt changed.
+        stored = await NodeManager.get_one(
+            db=db, id=obj.get_id(), kind=CoreReadOnlyRepository, branch=branch, raise_on_error=True
+        )
+        current_ref = stored.ref.value
+        current_commit = stored.commit.value
 
-        obj, result = await super().mutate_update(info, data, branch, database=graphql_context.db, node=repo_node)
-        obj = cast("CoreReadOnlyRepository", obj)
-
-        send_update_message = (new_commit and new_commit != current_commit) or (new_ref and new_ref != current_ref)
-        if not send_update_message:
-            return obj, result
-
-        log.info(
-            "update read-only repository commit",
-            name=obj.name.value,
-            commit=data.commit.value if data.commit else None,
-            ref=data.ref.value if data.ref else None,
+        obj, result = await super()._call_mutate_update(
+            info=info, data=data, branch=branch, db=db, obj=obj, skip_uniqueness_check=skip_uniqueness_check
         )
 
-        model = GitRepositoryPullReadOnly(
-            repository_id=obj.id,
-            repository_name=obj.name.value,
-            location=obj.location.value,
-            ref=obj.ref.value,
-            commit=new_commit,
-            infrahub_branch_name=branch.name,
-            infrahub_branch_id=str(branch.get_uuid()),
-        )
-        git_read_only_repo_import_commit_model = GitReadOnlyRepositoryImportCommit(
-            repository_id=obj.id,
-            repository_name=str(obj.name.value),
-            repository_kind=obj.get_kind(),
-            infrahub_branch_name=branch.name,
-            ref=str(obj.ref.value),
-        )
-        if graphql_context.service:
-            await graphql_context.service.workflow.submit_workflow(
-                workflow=GIT_REPOSITORIES_PULL_READ_ONLY,
-                context=graphql_context.get_context(),
-                parameters={"model": model},
+        new_ref = obj.get_attribute("ref").value
+        new_commit = data.commit.value if data.commit and data.commit.value else None
+        # A cleared commit is a change too, because the repository then follows the head of its ref.
+        if new_ref != current_ref or obj.get_attribute("commit").value != current_commit:
+            log.info(
+                "update read-only repository commit",
+                name=obj.get_attribute("name").value,
+                commit=new_commit,
+                ref=new_ref,
             )
-            await graphql_context.service.workflow.submit_workflow(
-                workflow=GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT,
-                context=graphql_context.get_context(),
-                parameters={"model": git_read_only_repo_import_commit_model},
-            )
+            await cls._pull_new_read_only_target(info=info, branch=branch, repository=obj, commit=new_commit)
         return obj, result
+
+    @classmethod
+    async def _pull_new_read_only_target(
+        cls, info: GraphQLResolveInfo, branch: Branch, repository: Node, commit: str | None
+    ) -> None:
+        graphql_context: GraphqlContext = info.context
+        if not graphql_context.service:
+            return
+
+        name = str(repository.get_attribute("name").value)
+        ref = str(repository.get_attribute("ref").value)
+        await graphql_context.service.workflow.submit_workflow(
+            workflow=GIT_REPOSITORIES_PULL_READ_ONLY,
+            context=graphql_context.get_context(),
+            parameters={
+                "model": GitRepositoryPullReadOnly(
+                    repository_id=repository.get_id(),
+                    repository_name=name,
+                    location=str(repository.get_attribute("location").value),
+                    ref=ref,
+                    commit=commit,
+                    infrahub_branch_name=branch.name,
+                    infrahub_branch_id=str(branch.get_uuid()),
+                    target_changed=True,
+                )
+            },
+        )
+        await graphql_context.service.workflow.submit_workflow(
+            workflow=GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT,
+            context=graphql_context.get_context(),
+            parameters={
+                "model": GitReadOnlyRepositoryImportCommit(
+                    repository_id=repository.get_id(),
+                    repository_name=name,
+                    repository_kind=repository.get_kind(),
+                    infrahub_branch_name=branch.name,
+                    ref=ref,
+                    target_changed=True,
+                )
+            },
+        )
+
+    @classmethod
+    async def mutate_update_object(
+        cls,
+        db: InfrahubDatabase,
+        info: GraphQLResolveInfo,
+        data: InputObjectType,
+        branch: Branch,
+        obj: Node,
+        skip_uniqueness_check: bool = False,
+    ) -> Node:
+        """Update the repository, and mark a change of the default branch of a read-write repository.
+
+        The marker is written before the transaction commits, so no sync reads the new default branch without
+        it. Without the marker, the next sync reports the switch to another git branch as a trunk rewrite.
+        """
+        if obj.get_kind() != InfrahubKind.REPOSITORY:
+            return await super().mutate_update_object(
+                db=db, info=info, data=data, branch=branch, obj=obj, skip_uniqueness_check=skip_uniqueness_check
+            )
+
+        # Read from the database, because a retried update hands back the node an earlier attempt changed.
+        stored = await NodeManager.get_one(
+            db=db, id=obj.get_id(), kind=InfrahubKind.REPOSITORY, branch=branch, raise_on_error=True
+        )
+        current_default_branch = stored.get_attribute("default_branch").value
+
+        obj = await super().mutate_update_object(
+            db=db, info=info, data=data, branch=branch, obj=obj, skip_uniqueness_check=skip_uniqueness_check
+        )
+
+        new_default_branch = obj.get_attribute("default_branch").value
+        if new_default_branch != current_default_branch:
+            graphql_context: GraphqlContext = info.context
+            await RetargetMarkers(cache=graphql_context.active_service.cache).mark(
+                repository_id=obj.get_id(), target=str(new_default_branch)
+            )
+        return obj
 
 
 def cleanup_payload(data: InputObjectType | dict[str, Any]) -> None:

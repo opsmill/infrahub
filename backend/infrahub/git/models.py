@@ -1,11 +1,22 @@
 from __future__ import annotations
 
+from enum import StrEnum
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from infrahub.context import InfrahubContext  # noqa: TC001
 from infrahub.core.node import Node  # noqa: TC001
 from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository  # noqa: TC001
 from infrahub.message_bus.types import ProposedChangeBranchDiff  # noqa: TC001
+
+
+class PushRejectionReason(StrEnum):
+    """Why a ref update was refused, as the flags and the summary of the push result report it."""
+
+    POLICY = "policy"
+    NON_FAST_FORWARD = "non-fast-forward"
+    REF_UPDATE_FAILED = "ref-update-failed"
+    UNKNOWN = "unknown"
 
 
 class GitRepoNode(BaseModel):
@@ -125,6 +136,9 @@ class GitRepositoryPullReadOnly(BaseModel):
     commit: str | None = Field(None, description="Specific commit to pull")
     infrahub_branch_name: str = Field(..., description="Infrahub branch on which to sync the remote repository")
     infrahub_branch_id: str = Field(..., description="Infrahub branch on which to sync the remote repository")
+    target_changed: bool = Field(
+        default=False, description="Whether the ref or the commit of the repository changed on purpose"
+    )
 
 
 class GitRepositoryMerge(BaseModel):
@@ -167,6 +181,9 @@ class GitReadOnlyRepositoryImportCommit(BaseModel):
     repository_kind: str = Field(..., description="The type of repository")
     infrahub_branch_name: str = Field(..., description="Infrahub branch on which to sync the remote repository")
     ref: str = Field(..., description="The ref of the repository")
+    target_changed: bool = Field(
+        default=False, description="Whether the ref or the commit of the repository changed on purpose"
+    )
 
 
 class GitDiffNamesOnly(BaseModel):

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import re
 import shutil
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -27,7 +28,9 @@ from infrahub.exceptions import (
     RepositoryFileNotFoundError,
     RepositoryInvalidBranchError,
     RepositoryInvalidFileSystemError,
+    RepositoryNotFoundError,
     RepositoryPermissionError,
+    RepositoryTLSError,
 )
 from infrahub.git.constants import BRANCHES_DIRECTORY_NAME, COMMITS_DIRECTORY_NAME, TEMPORARY_DIRECTORY_NAME
 from infrahub.git.directory import get_repositories_directory, initialize_repositories_directory
@@ -64,6 +67,27 @@ GIT_TLS_VERIFICATION_ERRORS = (
     "server verification failed",
     "certificate subject name",
 )
+
+# Git's own line for an HTTP 404, "fatal: repository '<url>' not found"; the quoted URL in the pattern keeps
+# any other "not found" text from matching.
+GIT_HTTP_REPOSITORY_NOT_FOUND = re.compile(r"repository '[^']+' not found")
+
+# GitPython's text when its watchdog stops a direct Git call; the quoted command can name worker paths.
+GIT_CALL_TIME_LIMIT = re.compile(
+    r'Timeout: the command "\S*git (?P<command>\S+)[^"]*" did not complete in (?P<seconds>\S+) secs'
+)
+
+
+def operational_status_for_error(error: RepositoryError) -> RepositoryOperationalStatus:
+    """Return the operational status that a repository records for a failed Git operation."""
+    # Class patterns match with isinstance in order, so a subclass that needs its own status goes above its parent.
+    match error:
+        case RepositoryConnectionError():
+            return RepositoryOperationalStatus.ERROR_CONNECTION
+        case RepositoryCredentialsError() | RepositoryPermissionError():
+            return RepositoryOperationalStatus.ERROR_CRED
+        case _:
+            return RepositoryOperationalStatus.ERROR
 
 
 class RepoFileInformation(BaseModel):
@@ -476,9 +500,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         return True
 
-    def has_worktree(self, identifier: str) -> bool:
+    def has_worktree(self, identifier: str, timeout_seconds: float | None = None) -> bool:
         """Return True if a worktree with a given identifier already exist."""
-        worktrees = self.get_worktrees()
+        worktrees = self.get_worktrees(timeout_seconds=timeout_seconds)
 
         for worktree in worktrees:
             if worktree.identifier == identifier:
@@ -512,10 +536,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         # We'll try to create one
         return self.create_commit_worktree(commit=commit)
 
-    def get_worktrees(self) -> list[Worktree]:
+    def get_worktrees(self, timeout_seconds: float | None = None) -> list[Worktree]:
         """Return the list of worktrees configured for this repository."""
         repo = self.get_git_repo_main()
-        responses = repo.git.worktree("list", "--porcelain").split("\n\n")
+        responses = repo.git.worktree("list", "--porcelain", kill_after_timeout=timeout_seconds).split("\n\n")
 
         return [Worktree.init(response) for response in responses]
 
@@ -597,12 +621,29 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         """Return True if branch_name exists as a remote branch on origin."""
         return branch_name in self.get_branches_from_remote()
 
-    async def delete_remote_branch(self, branch_name: str) -> None:
-        """Delete branch_name from origin."""
+    async def delete_remote_branch(self, branch_name: str, timeout_seconds: float | None = None) -> None:
+        """Delete branch_name from origin; a failure is typed as for a push and never writes the operational status.
+
+        Args:
+            timeout_seconds: Passed to GitPython as ``kill_after_timeout``; ``None`` sets no limit.
+
+        Raises:
+            RepositoryConnectionError: When the remote is unreachable, or the deletion did not complete within
+                ``timeout_seconds``.
+            RepositoryCredentialsError: When authentication fails.
+            RepositoryPermissionError: When the credentials authenticate but lack write access.
+            RepositoryError: For any other failure of the deletion.
+
+        """
         if not self.has_origin:
             return
         repo = self.get_git_repo_main()
-        repo.git.push("origin", "--delete", branch_name)
+        try:
+            repo.git.push("origin", "--delete", branch_name, kill_after_timeout=timeout_seconds)
+        except GitCommandError as exc:
+            self._raise_enriched_error_static(
+                error=exc, name=self.name, location=self.location, branch_name=branch_name, is_write_operation=True
+            )
 
     async def delete_local_branch(self, branch_name: str) -> None:
         """Remove any worktrees and the local tracking ref for branch_name."""
@@ -760,30 +801,48 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         )
         return True
 
-    def create_commit_worktree(self, commit: str) -> bool | Worktree:
+    def create_commit_worktree(self, commit: str, timeout_seconds: float | None = None) -> bool | Worktree:
         """Create a new worktree for a given commit.
+
+        Args:
+            timeout_seconds: Passed to GitPython as ``kill_after_timeout``; ``None`` sets no limit.
 
         Raises:
             CommitNotFoundError: When the commit does not exist in the local clone.
-            RepositoryError: When the worktree cannot be created for any other reason.
+            RepositoryError: When Git cannot list the worktrees or create this one, past its time limit
+                included.
 
         """
-        # Check of the worktree already exist
-        if self.has_worktree(identifier=commit):
-            return False
-
         directory = self.directory_commits / commit
         worktree = Worktree(identifier=commit, directory=str(directory), commit=commit)
 
         repo = self.get_git_repo_main()
         try:
-            repo.git.worktree("add", directory, commit)
-            log.debug(f"Commit worktree created {commit}", repository=self.name)
-            return worktree
+            if self.has_worktree(identifier=commit, timeout_seconds=timeout_seconds):
+                return False
+        except GitCommandError as exc:
+            self._raise_enriched_error_static(error=exc, name=self.name, location=self.location)
+        try:
+            repo.git.worktree("add", directory, commit, kill_after_timeout=timeout_seconds)
         except GitCommandError as exc:
             if "invalid reference" in exc.stderr:
                 raise CommitNotFoundError(identifier=self.name, commit=commit) from exc
-            raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
+            if GIT_CALL_TIME_LIMIT.search(exc.stderr):
+                self._remove_interrupted_worktree(repo=repo, directory=directory, timeout_seconds=timeout_seconds)
+            self._raise_enriched_error_static(error=exc, name=self.name, location=self.location)
+        log.debug(f"Commit worktree created {commit}", repository=self.name)
+        return worktree
+
+    def _remove_interrupted_worktree(self, repo: Repo, directory: Path, timeout_seconds: float | None) -> None:
+        # Git keeps an interrupted add locked as "initializing", and only a doubled force removes a locked worktree.
+        try:
+            repo.git.worktree("remove", "-f", "-f", str(directory), kill_after_timeout=timeout_seconds)
+        except GitCommandError:
+            log.exception(
+                "Unable to remove the worktree that an interrupted add left",
+                repository=self.name,
+                directory=str(directory),
+            )
 
     def create_branch_worktree(self, branch_name: str, branch_id: str) -> bool:
         """Create a new worktree for a given branch.
@@ -843,8 +902,13 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         git_repo = self.get_git_repo_main()
         return [str(entry.path) for entry in git_repo.commit(commit).tree.traverse() if isinstance(entry, Blob)]
 
-    async def fetch(self) -> bool:
-        """Fetch the latest update from the remote repository and bring a copy locally."""
+    async def fetch(self, timeout_seconds: float | None = None) -> bool:
+        """Fetch the latest update from the remote repository and bring a copy locally.
+
+        Args:
+            timeout_seconds: Passed to GitPython as ``kill_after_timeout``; ``None`` sets no limit.
+
+        """
         if not self.has_origin:
             return False
 
@@ -854,7 +918,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         repo = self.get_git_repo_main()
         try:
-            repo.remotes.origin.fetch(prune=True, tags=True, prune_tags=True)
+            repo.remotes.origin.fetch(prune=True, tags=True, prune_tags=True, kill_after_timeout=timeout_seconds)
         except GitCommandError as exc:
             await self._raise_enriched_error(error=exc)
 
@@ -1138,14 +1202,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 error=error, name=self.name, location=self.location, branch_name=branch_name
             )
         except RepositoryError as exc:
-            status_by_error: dict[type[RepositoryError], RepositoryOperationalStatus] = {
-                RepositoryConnectionError: RepositoryOperationalStatus.ERROR_CONNECTION,
-                RepositoryCredentialsError: RepositoryOperationalStatus.ERROR_CRED,
-                RepositoryPermissionError: RepositoryOperationalStatus.ERROR_CRED,
-            }
-            await self._update_operational_status(
-                status=status_by_error.get(type(exc), RepositoryOperationalStatus.ERROR)
-            )
+            await self._update_operational_status(status=operational_status_for_error(error=exc))
             raise
 
     @staticmethod
@@ -1168,8 +1225,17 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             "Couldn't connect to server", "Operation timed out" (libcurl); and for a
             gateway/proxy in front of the server returning a 5xx,
             "The requested URL returned error: 5xx" (git http.c) plus
-            "RPC failed; HTTP 5xx" (git remote-curl.c).
-          - not-a-repo / missing: "Repository not found", "does not appear to be a git".
+            "RPC failed; HTTP 5xx" (git remote-curl.c); and "does not appear to be a git".
+          - time limit: "process killed because it timed out", the line GitPython adds to the error
+            lines of a fetch or a push when Git ran past its ``kill_after_timeout``; and for a direct
+            Git call stopped at its limit, "Timeout: the command ... did not complete"
+            (``GIT_CALL_TIME_LIMIT``), whose message keeps the Git command and the limit but not the
+            arguments, which can name worker paths. A write operation is a push to the remote, so past
+            its limit it gets the connection error of a push.
+          - not found: "Repository not found", which a host sends in a ``remote:`` line, and Git's own
+            line for an HTTP 404, "repository '<url>' not found" (``GIT_HTTP_REPOSITORY_NOT_FOUND``).
+            For a fetch or a push, GitPython keeps only the lines that start with ``error:`` or
+            ``fatal:``, so there only Git's own line can match.
           - TLS: the fragments in ``GIT_TLS_VERIFICATION_ERRORS``, one per family of wordings
             libcurl emits for a certificate it will not accept ("SSL certificate" for OpenSSL and for
             GnuTLS from curl 8.15, "certificate verification failed" for GnuTLS up to curl 8.9,
@@ -1185,18 +1251,23 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         git or libcurl change their wording.
 
         Raises:
-            RepositoryConnectionError: When the remote is unreachable or a gateway/proxy in
-                front of it returns a 5xx.
+            RepositoryNotFoundError: When the remote reports the repository as not found.
+            RepositoryTLSError: When the certificate of the remote is not accepted.
+            RepositoryConnectionError: When the remote is unreachable, a gateway/proxy in
+                front of it returns a 5xx, or a fetch, a push or another write operation ran past its
+                time limit.
             RepositoryCredentialsError: When authentication fails or credentials cannot be resolved.
             RepositoryPermissionError: When the credentials authenticate but lack write access.
             RepositoryInvalidBranchError: When the requested branch or pathspec does not exist.
             RepositoryError: For any other git failure, including the generic fallthrough.
 
         """
+        if "Repository not found" in error.stderr or GIT_HTTP_REPOSITORY_NOT_FOUND.search(error.stderr):
+            raise RepositoryNotFoundError(identifier=name) from error
+
         if any(
             err in error.stderr
             for err in (
-                "Repository not found",
                 "does not appear to be a git",
                 "Failed to connect to",
                 "Could not resolve host",
@@ -1207,6 +1278,25 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             )
         ):
             raise RepositoryConnectionError(identifier=name) from error
+
+        time_limit = GIT_CALL_TIME_LIMIT.search(error.stderr)
+        if "process killed because it timed out" in error.stderr or (time_limit and is_write_operation):
+            raise RepositoryConnectionError(
+                identifier=name,
+                message=(
+                    f"The Git command for repository {name} did not complete within its time limit, "
+                    "please check that the remote is reachable."
+                ),
+            ) from error
+
+        if time_limit:
+            raise RepositoryError(
+                identifier=name,
+                message=(
+                    f"The command git {time_limit['command']} for repository {name} did not complete "
+                    f"within {time_limit['seconds']} seconds."
+                ),
+            ) from error
 
         if "error: pathspec" in error.stderr:
             if branch_name is None:
@@ -1226,9 +1316,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             ) from error
 
         if any(err in error.stderr for err in GIT_TLS_VERIFICATION_ERRORS):
-            raise RepositoryConnectionError(
-                identifier=name, message=f"SSL verification failed for {name}, please validate the certificate chain."
-            ) from error
+            raise RepositoryTLSError(identifier=name) from error
 
         if "authentication failed for" in error.stderr.lower():
             raise RepositoryCredentialsError(identifier=name) from error

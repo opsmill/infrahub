@@ -2,13 +2,18 @@ from __future__ import annotations
 
 import os
 import uuid
+from contextlib import contextmanager
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import ValidatorConclusion
 from infrahub.services.adapters.workflow import InfrahubWorkflow
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workflows.models import WorkflowDefinition, WorkflowInfo
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from infrahub.context import InfrahubContext
     from infrahub.events.models import EventContext
     from infrahub.workflows.constants import WorkflowPriority
@@ -70,3 +75,53 @@ class WorkflowRecorder(InfrahubWorkflow):
 
     def get_submit_calls_for(self, workflow: WorkflowDefinition) -> list[dict[str, Any]]:
         return [call for call in self.submit_calls if call["workflow"] == workflow]
+
+
+@dataclass(frozen=True)
+class HeldWorkflow:
+    workflow: WorkflowDefinition
+    context: InfrahubContext | EventContext | None
+    parameters: dict[str, Any]
+    priority: WorkflowPriority | None
+
+
+class HoldingWorkflowExecution(WorkflowLocalExecution):
+    """Runs workflows in process, but holds the ones submitted while a test asks it to.
+
+    A submitted workflow runs on whichever worker picks it up first, so a test runs the held ones in the
+    order its scenario needs.
+    """
+
+    def __init__(self) -> None:
+        self.held: list[HeldWorkflow] | None = None
+
+    @contextmanager
+    def hold(self) -> Iterator[list[HeldWorkflow]]:
+        held: list[HeldWorkflow] = []
+        self.held = held
+        try:
+            yield held
+        finally:
+            self.held = None
+
+    async def submit_workflow(
+        self,
+        workflow: WorkflowDefinition,
+        context: InfrahubContext | EventContext | None = None,
+        parameters: dict[str, Any] | None = None,
+        tags: list[str] | None = None,
+        priority: WorkflowPriority | None = None,
+    ) -> WorkflowInfo:
+        if self.held is None:
+            return await super().submit_workflow(
+                workflow=workflow, context=context, parameters=parameters, tags=tags, priority=priority
+            )
+        self.held.append(
+            HeldWorkflow(workflow=workflow, context=context, parameters=dict(parameters or {}), priority=priority)
+        )
+        return WorkflowInfo(id=uuid.uuid4())
+
+    async def run(self, held: HeldWorkflow) -> None:
+        await self.execute_workflow(
+            workflow=held.workflow, context=held.context, parameters=held.parameters, priority=held.priority
+        )
