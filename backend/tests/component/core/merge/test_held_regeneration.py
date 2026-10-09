@@ -30,8 +30,9 @@ from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.computed_attribute import ComputedAttribute, ComputedAttributeKind
 from infrahub.generators.constants import GeneratorDefinitionRunSource
 from infrahub.generators.models import RequestGeneratorDefinitionRun
+from infrahub.generators.tasks import run_generator_definition
 from infrahub.git.models import GitRepositoryMerge, RequestArtifactDefinitionGenerate
-from infrahub.git.tasks import merge_git_repository
+from infrahub.git.tasks import generate_artifact_definition, merge_git_repository
 from infrahub.git.writeback.models import HeldItem, HeldRegeneration, HeldWiden, PendingMerge
 from infrahub.git.writeback.store import WritebackIntentStore
 from infrahub.server import app
@@ -714,6 +715,43 @@ class TestHeldRegeneration(TestInfrahubAppWithoutLocalWorkflow):
         after = await harness.store.read(repository_id=pending.repository_id)
         assert after.queue.entries == ()
         assert after.held == HeldRegeneration(next_hold_seq=hold_seq + 1)
+
+    async def test_a_full_release_runs_no_definition_of_another_pending_repository(
+        self, harness: HeldRegenerationHarness
+    ) -> None:
+        pending, other = harness.pending, harness.dataset.other
+        await harness.store.enqueue(repository_id=other.repository_id, entry=harness.new_merge(), widen=False)
+        try:
+            state = await harness.deliver(entry=harness.new_merge(), enqueued=False)
+
+            assert state.message == harness.delivered_message
+            assert [describe(call) for call in harness.recorder.calls] == repository_regeneration(
+                repository_id=pending.repository_id, python_attribute="x_summary"
+            )
+            assert (await harness.store.read(repository_id=other.repository_id)).held.is_empty
+
+            # The release submits the blanket triggers, so run them as the worker would.
+            triggers = [
+                call["parameters"]
+                for call in harness.recorder.calls
+                if call["workflow"].name
+                in {TRIGGER_ARTIFACT_DEFINITION_GENERATE.name, TRIGGER_GENERATOR_DEFINITION_RUN.name}
+            ]
+            harness.recorder.reset()
+            await generate_artifact_definition(context=harness.context, **triggers[0])
+            await run_generator_definition(context=harness.context, **triggers[1])
+
+            assert sorted(describe(call)[:3] for call in harness.recorder.calls) == sorted(
+                [
+                    ("submit", ARTIFACT_GENERATE, pending.artifact_definition_id),
+                    ("submit", GENERATOR_RUN, pending.generator_definition_id),
+                ]
+            )
+        finally:
+            other_intent = await harness.store.read(repository_id=other.repository_id)
+            await harness.store.settle_delivery(
+                repository_id=other.repository_id, snapshot=other_intent, delivered_commit=None
+            )
 
     async def test_a_hold_during_a_release_survives_its_clear(self, harness: HeldRegenerationHarness) -> None:
         pending = harness.pending
