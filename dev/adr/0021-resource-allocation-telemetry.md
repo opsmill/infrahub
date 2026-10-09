@@ -4,7 +4,7 @@
 **Date:** 2026-10-08
 **Author:** @opsmill-team
 
-**Source:** `specs/archive/infp-631-resource-telemetry/research.md` (D2–D7, D11–D17)
+**Source:** `specs/infp-631-resource-telemetry/research.md` (D2–D7, D11–D17)
 
 ## Context
 
@@ -76,8 +76,13 @@ same until the receiving service confirms it accepts the new fields.
   inside the container. Neither can Kubernetes CPU requests, which reserve CPU but do not limit it.
 - The share assumes every copy of a component runs with the same settings. It reads high for a
   moment after a process starts, until that process has stored its first reading.
-- `processor_assigned` is `null` both when no limit is set and when it cannot be read. The pair of
-  CPU figures tells the two apart: no limit leaves `processor_available` set.
+- For the API server and task workers, `processor_assigned` is `null` both when no limit is set
+  and when it cannot be read. The pair of CPU figures tells the two apart: no limit leaves
+  `processor_available` set.
+- For the database, `processor_assigned` is `null` both when `server.cypher.parallel.worker_limit`
+  is left at its default and when it cannot be read, and `processor_available`, which comes from
+  Neo4j itself, is set either way. Only the warning that a failed read writes to the log tells the
+  two apart.
 - `psutil` becomes a runtime dependency.
 - The reading in the cache can be up to about 15 seconds old, or older while the main loop is busy
   with a long task. Limits rarely change, so this is acceptable.
