@@ -123,6 +123,8 @@ A blank or whitespace-only value is read as `None`, because deployment templates
 
 Field of `InfoAPI` returned by `GET /api/info`. See [contracts/api-info.md](contracts/api-info.md).
 
+`InfoAPI.license` is `null` for an anonymous caller, whatever the state. When present, the object always carries its details.
+
 ## TelemetryLicenseData (telemetry, Pydantic)
 
 Field `license` of `TelemetryData`, `None` when the state is `not_required`. See [contracts/telemetry-license-block.md](contracts/telemetry-license-block.md).
