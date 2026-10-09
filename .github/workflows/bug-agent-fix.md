@@ -188,10 +188,24 @@ Write your reasoning as a "Fix strategy" section in the PR body BEFORE implement
 Run the specific test the test-writer wrote using the same runner they used:
 - Backend: `uv run pytest path/to/test_file.py::TestClass::test_name -x -v`
 - Frontend unit/component: `cd frontend/app && pnpm run test path/to/test`
-- Frontend E2E (repo root; needs a locally built image: `uv run invoke dev.build`): `INFRAHUB_TESTING_IMAGE_VER=local INFRAHUB_TESTING_DOCKER_PULL=false uv run pytest -c tests/e2e/pytest.ini tests/e2e/path/to/test.py -x -v`
+- Frontend E2E: do NOT run it locally -- see the E2E carve-out below.
 - If the test still FAILS, revisit your fix. Do NOT proceed until it passes.
 - Before continuing, verify `git diff` shows no changes to the test file(s) from the
   test-writer's PR. If you accidentally modified a test file, revert those changes.
+
+**E2E carve-out -- do NOT run an e2e test locally.** For a reproduction test under
+`tests/e2e/`, GREEN verification is the `bug-agent-e2e-proof` job's GREEN phase, not a
+local run: after your push, the job re-runs exactly that test in CI and must report
+`green_confirmed`. The job reads the `<!-- AGENT_FIX_COMPLETE -->` marker in the PR body
+to select its phase, so the marker MUST be present BEFORE you push the fix commits --
+the existing order (Step 8 updates the PR body, Step 9 pushes last) guarantees this;
+do not reorder it. After pushing, wait for the check to finish
+(`gh pr checks <pr_number> --watch`): if it reports anything other than GREEN, revisit
+your fix. On `inconclusive` (setup error, timeout), do not loop pushing retries:
+a human or the reviewer re-runs the job, and after two consecutive `inconclusive` runs
+on the same commit you must escalate: post a comment explaining what was tried, add the
+label `state/needs-human-fix`, and **STOP**. Local verification still applies unchanged
+to every other tier.
 
 ### Step 6: Pre-CI checks
 
@@ -255,20 +269,52 @@ contract, post a comment on the issue explaining the scope, add the label
   repository and fill in every section using the context from this task.
   Do not skip or remove any section. For sections where you have nothing meaningful to add
   (e.g., Screenshots), write "N/A" rather than inventing content.
-- Make sure the literal text `AGENT_FIX_COMPLETE` appears somewhere in the PR body.
-  The downstream gate scans the PR body for this exact substring; if it is missing,
-  the pipeline halts.
+- Make sure the hidden marker `<!-- AGENT_FIX_COMPLETE -->` appears somewhere in the
+  PR body. The downstream gate scans the PR body for the `AGENT_FIX_COMPLETE`
+  substring; if it is missing, the pipeline halts. The `bug-agent-e2e-proof` job also
+  reads it to select its GREEN phase.
 
 ### Step 9: Push
 
 **Push your fix commits to the PR branch LAST** (after the PR body update so the reviewer
-sees the `AGENT_FIX_COMPLETE` marker before reviewing the code):
+sees the `AGENT_FIX_COMPLETE` marker before reviewing the code; for an e2e reproduction
+this order is also mandatory for CI -- the `bug-agent-e2e-proof` job reads the
+`AGENT_FIX_COMPLETE` marker to select its GREEN phase, and pushing before the marker
+makes CI re-run the RED phase and expect the test to fail):
 
 ```bash
 git push -u origin <branch>
 ```
 
 Post a comment on the issue linking to the updated PR.
+
+### Step 10: Demote or keep the e2e reproduction (E2E tier only)
+
+Skip this step unless the reproduction test lives under `tests/e2e/`.
+
+The e2e reproduction is proof evidence, not automatically a permanent test. Once the
+`bug-agent-e2e-proof` job has reported GREEN on your pushed fix -- never before -- decide
+which regression test the PR leaves behind. This is the ONE exception to the
+"do NOT change the test" rule in Step 4, and it opens only after the GREEN verdict.
+
+- **Demote (default):** rewrite the reproduction as a test at the cheapest tier that
+  still exercises the wiring the bug traversed (usually a component or unit test) and
+  remove the e2e file in the same PR. The demoted test must target the dispatch/wiring
+  seam the bug traversed, not the leaf component in isolation -- a leaf-only test
+  silently narrows coverage and the reviewer will reject it. Verify the demoted test
+  passes locally with its tier's runner (Step 5).
+- **Keep (exception):** only when no cheaper tier can express the regression
+  (backend-state, permission, branch, or cache wiring), move the file under
+  `tests/e2e/regressions/`, keep exactly one module-level shard marker
+  (`pytestmark = pytest.mark.shard_<name>`), and add a one-line justification to the
+  PR body stating why no cheaper tier can express it.
+
+Commit the decision and push. After the demote push the reproduction was added and
+removed within the same PR, so the PR's net diff no longer touches `tests/e2e/**` and
+the `bug-agent-e2e-proof` workflow does not trigger at all -- no new check appears on
+the final head. The pre-demotion GREEN verdict and both screenshots remain embedded in
+the PR description as the evidence of record. There is nothing to wait for or re-run
+after the demote push.
 
 ## Revision mode
 
