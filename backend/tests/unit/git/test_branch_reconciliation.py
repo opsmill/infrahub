@@ -1235,6 +1235,23 @@ async def test_a_pushed_commit_that_an_earlier_rewrite_discarded_is_not_recorded
     assert reverted_push(state, tracked) is None
 
 
+async def test_a_trunk_re_pointed_on_purpose_records_no_reverted_push(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The pushed commit stays on the branch that the trunk tracked before."""
+    re_pointed = await re_point_the_trunk(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    state = pushed_state(re_pointed.tracked, last_delivered_commit=re_pointed.discarded_commit)
+
+    collected = await re_pointed.tracked.repository.collect_pending_imports(
+        graph_commits=re_pointed.graph_commits(),
+        retarget_markers=await marked(re_pointed.tracked, target=TRACKED),
+        state=state,
+    )
+
+    assert collected.failed_imports == []
+    assert reverted_push(state, re_pointed.tracked) is None
+
+
 async def test_a_reverted_push_that_fails_to_record_fails_the_default_branch_and_keeps_its_import(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
