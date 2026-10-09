@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+from git.exc import GitCommandError
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
 
@@ -237,20 +238,40 @@ def test_a_merge_stopped_at_its_time_bound_frees_the_index_and_names_only_the_co
 @dataclass(frozen=True)
 class StalledTransferCase:
     name: str
-    stage: DeliveryStage
-    transfer: Callable[[InfrahubRepository], Awaitable[bool]]
+    transfer: Callable[[InfrahubRepository], Awaitable[object]]
+    error: type[Exception]
+    message: str
+    """The whole message of the error that ends the transfer."""
+    stage: DeliveryStage | None
+    """The stage that classifies the error; None for a branch deletion, whose failure a delivery only logs."""
 
 
 STALLED_TRANSFER_CASES: list[StalledTransferCase] = [
     StalledTransferCase(
         name="stalled_fetch",
-        stage=DeliveryStage.FETCH,
         transfer=lambda repository: repository.fetch(timeout_seconds=2),
+        error=RepositoryConnectionError,
+        message=TIME_LIMIT_MESSAGE,
+        stage=DeliveryStage.FETCH,
     ),
     StalledTransferCase(
         name="stalled_push",
-        stage=DeliveryStage.PUSH,
         transfer=lambda repository: repository.push(branch_name=DESTINATION, timeout_seconds=2),
+        error=RepositoryConnectionError,
+        message=TIME_LIMIT_MESSAGE,
+        stage=DeliveryStage.PUSH,
+    ),
+    # GitPython writes this message only where `ps` exists; without it, the error is the libcurl one.
+    StalledTransferCase(
+        name="stalled_remote_branch_deletion",
+        transfer=lambda repository: repository.delete_remote_branch(branch_name="feature", timeout_seconds=2),
+        error=GitCommandError,
+        message=(
+            "Cmd('git') failed due to: exit code(-9)\n"
+            "  cmdline: git push origin --delete feature\n"
+            """  stderr: 'Timeout: the command "git push origin --delete feature" did not complete in 2 secs.'"""
+        ),
+        stage=None,
     ),
 ]
 
@@ -258,17 +279,18 @@ STALLED_TRANSFER_CASES: list[StalledTransferCase] = [
 # A hung transfer blocks the main thread in a call that the signal method cannot interrupt.
 @pytest.mark.timeout(60, method="thread")
 @pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in STALLED_TRANSFER_CASES])
-async def test_a_transfer_to_a_remote_that_never_answers_stops_and_is_retried_as_unreachable(
+async def test_a_transfer_to_a_remote_that_never_answers_stops_at_its_bound(
     case: StalledTransferCase, clone: DeliveryClone, silent_remote: str
 ) -> None:
     clone.repository.get_git_repo_main().git.remote("set-url", "origin", silent_remote)
 
-    with pytest.raises(RepositoryConnectionError, match=rf"^{re.escape(TIME_LIMIT_MESSAGE)}$") as error:
+    with pytest.raises(case.error, match=rf"^{re.escape(case.message)}$") as error:
         await case.transfer(clone.repository)
 
-    assert classify_delivery_failure(error=error.value, stage=case.stage) == DeliveryFailure(
-        cause=RepositoryDeliveryFailureCause.REMOTE_UNREACHABLE, retryable=True, message=TIME_LIMIT_MESSAGE
-    )
+    if case.stage is not None:
+        assert classify_delivery_failure(error=error.value, stage=case.stage) == DeliveryFailure(
+            cause=RepositoryDeliveryFailureCause.REMOTE_UNREACHABLE, retryable=True, message=TIME_LIMIT_MESSAGE
+        )
 
 
 def test_reset_moves_the_worktree_to_the_commit(clone: DeliveryClone) -> None:
