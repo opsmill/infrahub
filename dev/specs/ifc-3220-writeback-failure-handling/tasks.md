@@ -232,7 +232,7 @@ Parts A and B of the plan.
 - [X] T028 [P] Write `backend/tests/unit/git/writeback/test_single_writer.py`: no module under
       `backend/infrahub/` other than `store.py`, the schema definition and the generated files names
       any of the nine attribute names.
-- [ ] T110 Guard the repository conversion in
+- [X] T110 Guard the repository conversion in
       `backend/infrahub/core/convert_object_type/repository_conversion.py`, per
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 10: refuse a
       mapping that sets a read-only attribute of the target kind, and refuse the conversion of a
