@@ -360,11 +360,11 @@ SC-002, SC-007.
       own remote and repository for each test instead of `protected_branch_dataset`, because each
       test changes the remote and the delivery state of its repository. `rejected_push_to_main` calls
       the factory `reject_pushes_to_main`, which the new tests reuse.
-- [X] T043 [US1] Add `test_delivery_visible` to `backend/tests/integration/git/test_git_live_remote.py`
-      (US1 #1 to #3): one entry, `action-required`, cause `permission`, the hook's `remote:` line
-      verbatim, the commit unchanged.
-- [X] T044 [US1] Add `test_first_attempt_delivers` to the same module (US1 #4): nothing pending, the commit
-      recorded, the remote updated, the broadcast sent.
+- [X] T043 [US1] Add `test_a_merge_that_the_remote_refuses_stays_queued_with_the_remote_message` to
+      `backend/tests/integration/git/test_git_live_remote.py` (US1 #1 to #3): one entry,
+      `action-required`, cause `permission`, the hook's `remote:` line verbatim, the commit unchanged.
+- [X] T044 [US1] Add `test_a_merge_is_pushed_recorded_and_broadcast_on_its_first_attempt` to the same
+      module (US1 #4): nothing pending, the commit recorded, the remote updated, the broadcast sent.
 - [X] T045 [P] [US1] Write `backend/tests/component/git/writeback/test_enqueue.py`: a data-only
       branch forked before the trunk moved queues nothing (US1 #7); a staging repository queues
       nothing; a clone with no `origin` fails the attempt, records no commit and keeps the queue; a
@@ -667,11 +667,11 @@ and is not re-imported; retry; the branch is gone.
 
 **Maps to**: FR-020, FR-021, FR-022, SC-007.
 
-- [X] T099 [US7] Add `test_source_discarded` to `backend/tests/integration/git/test_git_live_remote.py`:
-      force-push the source branch, retry, cause `source-discarded`, the remote never holds the
-      discarded commit.
-- [X] T100 [US7] Add `test_destination_rewritten` to the same module: force-push the remote default branch,
-      retry, cause `destination-rewritten`, nothing pushed.
+- [X] T099 [US7] Add `test_a_merge_whose_source_commit_the_remote_discarded_is_refused` to
+      `backend/tests/integration/git/test_git_live_remote.py`: force-push the source branch, retry,
+      cause `source-discarded`, the remote never holds the discarded commit.
+- [X] T100 [US7] Add `test_a_merge_onto_a_rewritten_trunk_is_refused` to the same module: force-push the
+      remote default branch, retry, cause `destination-rewritten`, nothing pushed.
 - [ ] T101 [US7] Call `record_reverted` from IFC-3210's reconciliation of the default branch, per
       [research.md](research.md) R13, and add a test beside the sibling's reconciliation tests.
       **Gate: IFC-3210 rewrite classification on `develop`.**
