@@ -3,6 +3,7 @@ import {
   getDeliveryStateFromApi,
 } from "@/entities/repository/api/get-delivery-state-from-api";
 import {
+  AbandonmentRecordSchema,
   DeliveryFailureCauseSchema,
   DeliveryQueueSchema,
   type DeliveryState,
@@ -24,6 +25,13 @@ export const getDeliveryState: GetDeliveryState = async (params) => {
     throw new Error("Cannot read the pending pushes of this repository.");
   }
 
+  const lastAbandonment = AbandonmentRecordSchema.nullish().safeParse(
+    repository?.delivery_last_abandonment?.value
+  );
+  if (!lastAbandonment.success) {
+    throw new Error("Cannot read the last abandonment of this repository.");
+  }
+
   // A value this page does not know still shows with the backend's label, and still asks the user to act.
   const status =
     DeliveryStatusSchema.nullish()
@@ -42,5 +50,7 @@ export const getDeliveryState: GetDeliveryState = async (params) => {
     causeLabel: repository?.delivery_failure_cause?.label ?? cause,
     error: repository?.delivery_error?.value ?? null,
     pendingMerges: queue.data?.entries ?? [],
+    queueVersion: queue.data?.version ?? 0,
+    lastAbandonment: lastAbandonment.data ?? null,
   };
 };

@@ -22,6 +22,9 @@ const REPOSITORY_DELIVERY_STATE = graphql(`
           delivery_queue {
             value
           }
+          delivery_last_abandonment {
+            value
+          }
         }
       }
     }

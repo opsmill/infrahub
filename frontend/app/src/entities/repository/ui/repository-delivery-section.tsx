@@ -1,31 +1,49 @@
-import { Card, CardHeader } from "@infrahub/ui";
+import { Button, Card, CardHeader } from "@infrahub/ui";
+import { toast } from "react-toastify";
 
+import { queryClient } from "@/shared/api/rest/client";
 import { ColorDisplay } from "@/shared/components/display/color-display";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { DetailRow } from "@/shared/components/display/detail-row";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
+import { useDefaultBranch } from "@/entities/branches/ui/hooks/use-default-branch";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
+import {
+  EDIT_DEFAULT_BRANCH,
+  type Permission,
+} from "@/entities/permission/domain/model/permission";
+import { useHasGlobalPermission } from "@/entities/permission/ui/queries/has-global-permission.query";
+import type { AbandonmentRecord } from "@/entities/repository/domain/model/delivery-state";
+import { PendingMergeList } from "@/entities/repository/ui/pending-merge-list";
 import { useGetDeliveryState } from "@/entities/repository/ui/queries/get-delivery-state.query";
+import { useImportCurrentCommitMutation } from "@/entities/repository/ui/queries/import-current-commit.mutation";
 import {
   DELIVERY_TEXTS,
   REQUIRED_ACTION_BY_CAUSE,
 } from "@/entities/repository/ui/repository-delivery-texts";
+import { toastTaskStarted } from "@/entities/repository/ui/toast-task-started";
 
 interface RepositoryDeliverySectionProps {
   repositoryId: string;
+  permission: Permission;
 }
 
-export function RepositoryDeliverySection({ repositoryId }: RepositoryDeliverySectionProps) {
+export function RepositoryDeliverySection({
+  repositoryId,
+  permission,
+}: RepositoryDeliverySectionProps) {
   return (
     <Card>
       <CardHeader>{DELIVERY_TEXTS.title}</CardHeader>
-      <RepositoryDeliveryState repositoryId={repositoryId} />
+      <RepositoryDeliveryState repositoryId={repositoryId} permission={permission} />
     </Card>
   );
 }
 
-function RepositoryDeliveryState({ repositoryId }: RepositoryDeliverySectionProps) {
+function RepositoryDeliveryState({ repositoryId, permission }: RepositoryDeliverySectionProps) {
   const { data: state, isPending, error } = useGetDeliveryState({ repositoryId });
 
   if (isPending) {
@@ -33,12 +51,30 @@ function RepositoryDeliveryState({ repositoryId }: RepositoryDeliverySectionProp
   }
 
   if (error) {
-    return <ErrorScreen message={error.message} />;
+    return (
+      <>
+        <ErrorScreen message={error.message} />
+        <p className="px-3 py-2 text-foreground-muted text-sm">
+          {DELIVERY_TEXTS.abandonNeedsState}
+        </p>
+      </>
+    );
   }
+
+  const lastAbandonment = state.lastAbandonment && (
+    <LastAbandonment
+      repositoryId={repositoryId}
+      record={state.lastAbandonment}
+      isUpdateAllowed={permission.update.isAllowed}
+    />
+  );
 
   if (state.status === "none") {
     return (
-      <p className="px-3 py-2 text-foreground-muted text-sm">{DELIVERY_TEXTS.nothingPending}</p>
+      <div className="divide-y">
+        <p className="px-3 py-2 text-foreground-muted text-sm">{DELIVERY_TEXTS.nothingPending}</p>
+        {lastAbandonment}
+      </div>
     );
   }
 
@@ -65,17 +101,76 @@ function RepositoryDeliveryState({ repositoryId }: RepositoryDeliverySectionProp
 
       {state.pendingMerges.length > 0 && (
         <DetailRow label={DELIVERY_TEXTS.pendingMerges}>
-          <ol className="flex flex-col gap-1">
-            {state.pendingMerges.map((merge) => (
-              <li key={merge.entry_id} className="flex items-center gap-2">
-                <span className="font-medium">{merge.source_branch}</span>
-                <code className="text-xs">{merge.source_commit.slice(0, 7)}</code>
-                <DateDisplay date={merge.merged_at} />
-              </li>
-            ))}
-          </ol>
+          <PendingMergeList merges={state.pendingMerges} />
         </DetailRow>
       )}
+
+      {lastAbandonment}
     </div>
+  );
+}
+
+interface LastAbandonmentProps {
+  repositoryId: string;
+  record: AbandonmentRecord;
+  isUpdateAllowed: boolean;
+}
+
+function LastAbandonment({ repositoryId, record, isUpdateAllowed }: LastAbandonmentProps) {
+  const defaultBranch = useDefaultBranch();
+  const { data: canEditDefaultBranch = false } = useHasGlobalPermission(EDIT_DEFAULT_BRANCH);
+
+  const { mutate: importCurrentCommit, isPending } = useImportCurrentCommitMutation({
+    onSuccess: async (result) => {
+      toastTaskStarted(DELIVERY_TEXTS.reimportStarted, result.taskId);
+      await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
+    },
+    onError: (error) => {
+      toast(
+        <Alert
+          type={ALERT_TYPES.ERROR}
+          message={`${DELIVERY_TEXTS.reimportFailed} ${error.message}`}
+        />
+      );
+    },
+  });
+
+  return (
+    <>
+      <DetailRow label={DELIVERY_TEXTS.lastAbandonment}>
+        <DateDisplay date={record.abandoned_at} />
+      </DetailRow>
+
+      <DetailRow label={DELIVERY_TEXTS.abandonedBy}>{record.account_name}</DetailRow>
+
+      <DetailRow label={DELIVERY_TEXTS.abandonedMerges}>
+        <PendingMergeList merges={record.entries} />
+      </DetailRow>
+
+      {record.recorded_commit && (
+        <DetailRow label={DELIVERY_TEXTS.recordedCommit}>
+          <code className="text-xs">{record.recorded_commit.slice(0, 7)}</code>
+        </DetailRow>
+      )}
+
+      <DetailRow label={DELIVERY_TEXTS.repositoryObjects}>
+        <p>{DELIVERY_TEXTS.objectsCanStay}</p>
+        {record.import_owed_commit && <p>{DELIVERY_TEXTS.objectsCanLack}</p>}
+        <div>
+          {/* The abandonment changed the default branch, so the reimport runs there whatever branch the user selected. */}
+          <Button
+            size="sm"
+            variant="outline"
+            isDisabled={!isUpdateAllowed || !canEditDefaultBranch || !defaultBranch}
+            isPending={isPending}
+            onPress={() =>
+              defaultBranch && importCurrentCommit({ repositoryId, branchName: defaultBranch.name })
+            }
+          >
+            {DELIVERY_TEXTS.reimport}
+          </Button>
+        </div>
+      </DetailRow>
+    </>
   );
 }

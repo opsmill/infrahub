@@ -22,8 +22,14 @@ export function useImportCurrentCommitMutation(
 
   return useMutation({
     mutationKey: IMPORT_CURRENT_COMMIT_MUTATION_KEY,
-    mutationFn: (params: Omit<ImportCurrentCommitParams, keyof BranchContextParams>) => {
-      return importCurrentCommit({ branchName: currentBranch.name, ...params });
+    mutationFn: (
+      params: Omit<ImportCurrentCommitParams, keyof BranchContextParams> &
+        Partial<BranchContextParams>
+    ) => {
+      return importCurrentCommit({
+        ...params,
+        branchName: params.branchName ?? currentBranch.name,
+      });
     },
     ...config,
   });

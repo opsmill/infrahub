@@ -394,13 +394,13 @@ SC-002, SC-007.
       `block_commit_worktree`: no second push, the queue clears by observation.
 - [ ] T058 [US2] Add `test_concurrent_attempts` to the same module: a first attempt and a manual retry run
       one after the other, and the second does nothing.
-- [ ] T059 [P] [US2] Write the retry mutation in the three-file pattern:
+- [X] T059 [P] [US2] Write the retry mutation in the three-file pattern:
       `frontend/app/src/entities/repository/api/retry-delivery-from-api.ts`,
       `frontend/app/src/entities/repository/domain/use-cases/retry-delivery.ts`,
       `frontend/app/src/entities/repository/ui/queries/retry-delivery.mutation.ts`, sent with the
       default branch as branch context, and the "Retry push" item in `frontend/app/src/entities/repository/ui/repository-menu-section.tsx`, gated on
       `permission.update` and the actions rule. Extend `repository-menu-section.test.tsx`.
-- [ ] T060 [US2] Write the retry journey in `tests/e2e/repository/test_repository_delivery.py`: a rejecting
+- [X] T060 [US2] Write the retry journey in `tests/e2e/repository/test_repository_delivery.py`: a rejecting
       `pre-receive` hook in the bare repository of the SDK `GitRepo` helper, a merge, the section
       viewed from another branch, the hook removed, "Retry push", "Nothing pending".
 
@@ -581,12 +581,12 @@ rule.** T094 is not.
       waits, then let it run. The entry does not come back and the remote is unchanged. A second
       case: a run with the flag `False`, whose entry was never queued, enqueues the entry and
       delivers it.
-- [ ] T093 [US5] Write the abandon mutation in the three-file pattern
+- [X] T093 [US5] Write the abandon mutation in the three-file pattern
       (`abandon-delivery-from-api.ts`, `abandon-delivery.ts`, `abandon-delivery.mutation.ts`), the
       "Abandon pending push" item, the confirmation modal
       `frontend/app/src/entities/repository/ui/abandon-delivery-modal.tsx` with its test, and the
       record and the reimport advice in `repository-delivery-section.tsx`.
-- [ ] T094 [US5] Add the abandonment journey to `tests/e2e/repository/test_repository_delivery.py`.
+- [X] T094 [US5] Add the abandonment journey to `tests/e2e/repository/test_repository_delivery.py`.
 
 ---
 

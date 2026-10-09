@@ -24,4 +24,15 @@ describe("getDeliveryActions", () => {
     // THEN
     expect(actions).toEqual({ canRetry: true, canAbandon: true });
   });
+
+  it("allows a retry but no abandonment when the state cannot be read", () => {
+    // GIVEN
+    const status = "unreadable";
+
+    // WHEN
+    const actions = getDeliveryActions(status);
+
+    // THEN
+    expect(actions).toEqual({ canRetry: true, canAbandon: false });
+  });
 });

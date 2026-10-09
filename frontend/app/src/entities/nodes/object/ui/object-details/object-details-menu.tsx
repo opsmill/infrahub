@@ -33,7 +33,9 @@ import ObjectEdit from "@/entities/nodes/object/ui/object-edit/object-item-edit-
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import type { Permission } from "@/entities/permission/domain/model/permission";
+import type { DeliveryState } from "@/entities/repository/domain/model/delivery-state";
 import { GENERIC_REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
+import { AbandonDeliveryModal } from "@/entities/repository/ui/abandon-delivery-modal";
 import { CheckConnectivityModal } from "@/entities/repository/ui/check-connectivity-modal";
 import { RepositoryMenuSection } from "@/entities/repository/ui/repository-menu-section";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
@@ -55,6 +57,8 @@ export function ObjectDetailsMenu({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isCheckConnectivityOpen, setIsCheckConnectivityOpen] = useState(false);
+  const [deliveryToAbandon, setDeliveryToAbandon] = useState<DeliveryState>();
+  const [isAbandonDeliveryOpen, setIsAbandonDeliveryOpen] = useState(false);
   const navigate = useNavigate();
 
   const nodeLabel = getNodeLabel(objectData);
@@ -151,6 +155,10 @@ export function ObjectDetailsMenu({
                 repositoryId={objectData.id}
                 objectSchema={objectSchema}
                 onCheckConnectivity={() => setIsCheckConnectivityOpen(true)}
+                onAbandonDelivery={(deliveryState) => {
+                  setDeliveryToAbandon(deliveryState);
+                  setIsAbandonDeliveryOpen(true);
+                }}
                 permission={permission}
               />
             )}
@@ -246,6 +254,15 @@ export function ObjectDetailsMenu({
           repositoryId={objectData.id}
           isOpen
           onOpenChange={() => setIsCheckConnectivityOpen(false)}
+        />
+      )}
+
+      {deliveryToAbandon && (
+        <AbandonDeliveryModal
+          repositoryId={objectData.id}
+          deliveryState={deliveryToAbandon}
+          isOpen={isAbandonDeliveryOpen}
+          onOpenChange={setIsAbandonDeliveryOpen}
         />
       )}
     </>
