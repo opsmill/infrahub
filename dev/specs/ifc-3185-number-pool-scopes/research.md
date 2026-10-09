@@ -27,15 +27,15 @@ Each entry records a decision, the reason, and the alternatives considered. Sour
 
 ## R3. What a scope element may reference
 
-**Decision**: A required attribute of any kind, `List` and `JSON` included, or a required cardinality-one relationship of the pool's kind, declared on that kind (on the generic itself when the pool's kind is a generic), given as the element id or the element name, not a path (no `__`), not the pool's own tracked attribute, not twice. A scope is refused on a pool whose tracked attribute is `unique: true`. The value of a `List` or `JSON` element is compared as stored, with no normalisation.
+**Decision**: A required attribute of a scalar kind (any kind except `List`, `JSON` and `Any`), or a required cardinality-one relationship of the pool's kind, declared on that kind (on the generic itself when the pool's kind is a generic), given as the element id or the element name, not a path (no `__`), not the pool's own tracked attribute, not twice. A scope is refused on a pool whose tracked attribute is `unique: true`.
 
-**Rationale**: PRD FR-015 gives the required and cardinality rules. Jira IFC-3348 adds the generic rule and the `unique: true` rule (a globally unique number cannot repeat per division). Decision 10 accepts `List` and `JSON` attributes, which Jira IFC-3348 refused; comparing their value as stored keeps the division read a plain equality in Cypher, so `["a", "b"]` and `["b", "a"]` are two divisions. The name resolves within the kind because `SchemaBranch` validates that attribute and relationship names are unique together on one kind. The existing `SchemaBranch.validate_schema_path` with `SchemaElementPathType.ATTR_NO_PROP | REL_ONE_MANDATORY_NO_ATTR` gives the required and cardinality rules for a name, and the resolver reuses it.
+**Rationale**: PRD FR-015 gives the required and cardinality rules. Jira IFC-3348 adds the generic rule and the `unique: true` rule (a globally unique number cannot repeat per division). Decision 10, revised on 2026-10-09, refuses `List`, `JSON` and `Any` attributes, as Jira IFC-3348 did: a division then holds only scalar values, so Python equality, the Cypher comparison of stored values and the lock key agree without any normalisation. The name resolves within the kind because `SchemaBranch` validates that attribute and relationship names are unique together on one kind. The existing `SchemaBranch.validate_schema_path` with `SchemaElementPathType.ATTR_NO_PROP | REL_ONE_MANDATORY_NO_ATTR` gives the required and cardinality rules for a name, and the resolver reuses it.
 
 **Alternatives considered**:
 
 - Allowing a path into a related node (`site__region`): the division of a node would then depend on another node's attribute, which can change without touching the holder; the PRD refuses it. Rejected.
 - Storing `role__value` as `role` (Jira IFC-3348): a property path is neither a name nor an id. Refused instead (decision 12).
-- Normalising `List` values (sorting) before comparison: would make two stored values one division without a rule the user can see. Rejected by decision 10.
+- Accepting `List` and `JSON` attributes and comparing their stored value: the database stores a document with its keys in write order, so a document written in two key orders would make two divisions in Cypher, while any normalisation in Python would make one. Rejected by the revision of decision 10.
 
 ## R4. Which schema the scope is resolved against
 
@@ -81,7 +81,7 @@ The lock names of the mutation are computed from a preview node before the node 
 
 **Decision**: `<pool id>` for an unscoped pool, `<pool id>.<division key>` for a scoped one, where the division key is a stable hash of the JSON form of the division tuple. Used by `CoreNumberPool.get_resource` (`backend/infrahub/core/node/resource_manager/number_pool.py`, today `lock.registry.get(name=self.get_id(), namespace=RESOURCE_POOL_LOCK_NAMESPACE)`) and by the mutation-level lock names of `lock_utils.get_lock_names_on_object_mutation` (today `resource_pool.<pool id>`).
 
-**Rationale**: PRD ("The allocator") and Jira IFC-3349: one scoped pool must not serialise every division that a pool per scope used to run in parallel. A hash keeps the lock name short whatever the values hold, `List` and `JSON` values included.
+**Rationale**: PRD ("The allocator") and Jira IFC-3349: one scoped pool must not serialise every division that a pool per scope used to run in parallel. A hash keeps the lock name short whatever the values hold.
 
 **Alternatives considered**:
 
@@ -122,7 +122,7 @@ The lock names of the mutation are computed from a preview node before the node 
 
 ## R11. The changes to the contract of PR #10932
 
-**Decision**: `allocation_scope` becomes `[NumberPoolScopeElement!]!` with `id: String!` and `name: String!` in `NumberPoolUtilization` and `NumberPoolDivisions`. `NumberPoolDivisionEntry` gains `id: String!` and keeps `path` (the element name). `NumberPoolDivisionEntryInput` keeps `path` and `value`. The descriptions and the refusal messages drop "in force on the request's branch" and name the branch only in the refusal of FR-016. Everything else is unchanged. PR #10932 is rebased onto `feature-number-pools-1.12` and its fixed dataset, SDL snapshot and tests are updated to this contract before the resolvers read the database, so that the frontend team builds on the final shape.
+**Decision**: `allocation_scope` becomes `[NumberPoolScopeElement!]!` with `id: String!` and `name: String!` in `NumberPoolUtilization` and `NumberPoolDivisions`. `NumberPoolDivisionEntry` gains `id: String!` and keeps `path` (the element name). `NumberPoolDivisionEntryInput` keeps `path` and `value`. The descriptions and the refusal messages drop "in force on the request's branch" and name the branch only in the refusal of FR-016. Everything else is unchanged. PR #10932 is rebased onto `feature-number-pools-1.12` and its fixed dataset and tests are updated to this contract before the resolvers read the database, so that the frontend team builds on the final shape.
 
 **Rationale**: Decision 5 allows only the change of decision 4 unless a reason is documented. Adding `id` to the division entry is the reason-documented addition: the entry describes one scope element, and the frontend needs the id to match it with the pool's scope. The input keeps `path` by name because the frontend builds the filter from the entries it displays and because a name is readable in a hand-written query; the name is unique within the kind and kept current by R2. The wording change follows decisions 1 and 7, which leave no partial scope per branch.
 
