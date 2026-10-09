@@ -110,7 +110,7 @@ async def sync_repository(repo: InfrahubRepository) -> None:
         importer=RepositoryFileImporter(),
         recorder=build_in_memory_recorder(),
         retarget_markers=RetargetMarkers(cache=MemoryCache()),
-        state=build_idle_delivery_state(),
+        state=build_idle_delivery_state(repository_id=str(repo.id)),
     )
     outcome = await syncer.sync(repo)
     assert outcome.failed == ()

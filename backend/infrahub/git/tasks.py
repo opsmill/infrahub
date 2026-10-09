@@ -31,6 +31,7 @@ from infrahub import config, lock
 from infrahub.context import InfrahubContext
 from infrahub.core.constants import (
     InfrahubKind,
+    RepositoryDeliveryStatus,
     RepositoryInternalStatus,
     RepositoryOperationalStatus,
     RepositorySyncStatus,
@@ -447,6 +448,11 @@ def resolve_initial_import_branch(repo: InfrahubRepository, init_failed: bool) -
     return None
 
 
+async def has_pending_pushes(state: DeliveryStatePort, repository_id: str) -> bool:
+    """Return whether merged changes of the repository wait for their push to the remote."""
+    return (await state.read(repository_id=repository_id)).status is not RepositoryDeliveryStatus.NONE
+
+
 async def bootstrap_local_repository(
     repo_name: str,
     repository: CoreRepository,
@@ -482,7 +488,7 @@ async def bootstrap_local_repository(
 
         delivery_pending = False
         if init_failed:
-            delivery_pending = repository.id in await state.pending_repository_ids()
+            delivery_pending = await has_pending_pushes(state=state, repository_id=repository.id)
             try:
                 repo = await InfrahubRepository.new(
                     id=repository.id,
@@ -497,7 +503,7 @@ async def bootstrap_local_repository(
                 log.info(exc.message)
                 return None
         elif repo.reinitialized:
-            delivery_pending = repository.id in await state.pending_repository_ids()
+            delivery_pending = await has_pending_pushes(state=state, repository_id=repository.id)
 
         default_import_git_branch = resolve_initial_import_branch(repo, init_failed=init_failed)
 

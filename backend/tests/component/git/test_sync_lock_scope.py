@@ -30,7 +30,7 @@ async def test_repository_lock_scopes_import_build_and_apply(
         importer=RecordingImporter(timeline),
         recorder=build_in_memory_recorder(),
         retarget_markers=RetargetMarkers(cache=MemoryCache()),
-        state=build_idle_delivery_state(),
+        state=build_idle_delivery_state(repository_id=str(git_repo_04.id)),
     )
 
     await syncer.sync(git_repo_04)
