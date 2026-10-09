@@ -7,9 +7,10 @@ from typing_extensions import Self
 from infrahub.core import protocols, registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
-from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
+from infrahub.core.schema.attribute_parameters import NumberAttributeParameters, NumberPoolRangeParameters
 from infrahub.database import retry_db_transaction, within_transaction
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
+from infrahub.pools.number_pool_range_reconciler import NumberPoolRangeReconciler
 from infrahub.pools.number_pool_range_validation import (
     NumberRangeBounds,
     validate_number_pool_ranges,
@@ -18,7 +19,7 @@ from infrahub.pools.number_pool_range_validation import (
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.registration import get_branches_with_schema_number_pool
 
-from ...main import DeleteResult, InfrahubMutation
+from ...main import DeleteResult, InfrahubMutation, build_graphql_response
 from .common import (
     SCHEMA_POOL_RANGES_REFUSED,
     SCHEMA_POOL_SHORTHAND_REFUSED,
@@ -44,6 +45,7 @@ BOUNDS_DESCRIBE_ONE_RANGE = "start_range and end_range are the two bounds of a s
 BOUNDS_REQUIRED = f"{BOUNDS_DESCRIBE_ONE_RANGE}, both are required"
 BOUNDS_NOT_CLEARABLE = f"{BOUNDS_DESCRIBE_ONE_RANGE}, neither can be cleared"
 SHORTHAND_WITH_RANGES = "start_range/end_range cannot be combined with ranges"
+RANGES_NOT_NULLABLE = "ranges cannot be null, send an empty list to remove every range"
 
 
 class InfrahubNumberPoolMutation(InfrahubMutation):
@@ -62,29 +64,72 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
     ) -> Any:
         graphql_context: GraphqlContext = info.context
         attribute = cls._resolve_target_attribute(data=data)
-        ranges_supplied = "ranges" in data.keys()
-        shorthand = cls._parse_shorthand(data=data, attribute=attribute, ranges_supplied=ranges_supplied)
+        shorthand = cls._parse_shorthand(data=data, attribute=attribute, ranges_supplied="ranges" in data.keys())
+        declared_ranges = cls._parse_ranges(data=data)
+        if shorthand is not None:
+            declared_ranges = [NumberPoolRangeParameters(start=shorthand.start, end=shorthand.end)]
 
-        if shorthand is None and not ranges_supplied:
+        if declared_ranges is None:
             return await super().mutate_create(info=info, data=data, branch=branch)
 
         async with graphql_context.db.start_transaction() as dbt:
-            number_pool, result = await super().mutate_create(info=info, data=data, branch=branch, database=dbt)
+            number_pool, _ = await super().mutate_create(
+                info=info,
+                data=cls._without_ranges(data=data),
+                branch=branch,
+                database=dbt,
+            )
             pool_id = number_pool.get_id()
             async with pool_lock(pool_id=pool_id):
-                repository = NumberPoolRepository(db=dbt)
-                if shorthand is not None:
-                    await repository.create_range(
-                        pool=number_pool,
-                        start=shorthand.start,
-                        end=shorthand.end,
-                        user_id=graphql_context.assigned_user_id,
+                reconciler = NumberPoolRangeReconciler(range_store=NumberPoolRepository(db=dbt))
+                if shorthand is None:
+                    reconciliation = await reconciler.reconcile(
+                        pool=number_pool, declared=declared_ranges, user_id=graphql_context.assigned_user_id
                     )
-                ranges = await repository.get_ranges(pool_id=pool_id)
-                validate_number_pool_ranges(ranges=range_bounds(ranges))
-                await sync_shorthand(db=dbt, pool_id=pool_id, ranges=ranges, user_id=graphql_context.assigned_user_id)
+                else:
+                    reconciliation = await reconciler.rewrite_single_range(
+                        pool=number_pool, declared=declared_ranges[0], user_id=graphql_context.assigned_user_id
+                    )
+                stored_pool = await sync_shorthand(
+                    db=dbt, pool_id=pool_id, ranges=reconciliation.ranges, user_id=graphql_context.assigned_user_id
+                )
+                result = cls(**await build_graphql_response(info=info, db=dbt, obj=stored_pool))
 
         return number_pool, result
+
+    @classmethod
+    def _parse_ranges(cls, data: InputObjectType) -> list[NumberPoolRangeParameters] | None:
+        """Return the ranges the payload declares, or None when it leaves `ranges` out.
+
+        Raises:
+            ValidationError: When `ranges` is null, or a declared range is backwards or overlaps another one.
+
+        """
+        if "ranges" not in data.keys():
+            return None
+        if data.get("ranges") is None:
+            raise ValidationError(input_value=RANGES_NOT_NULLABLE)
+
+        declared = [
+            NumberPoolRangeParameters(
+                start=declared_range["start"],
+                end=declared_range["end"],
+                weight=declared_range.get("allocation_weight"),
+            )
+            for declared_range in data["ranges"]
+        ]
+        validate_number_pool_ranges(
+            ranges=[
+                NumberRangeBounds(start=declared_range.start, end=declared_range.end, id=f"ranges[{index}]")
+                for index, declared_range in enumerate(declared)
+            ]
+        )
+        return declared
+
+    @classmethod
+    def _without_ranges(cls, data: InputObjectType) -> InputObjectType:
+        """Return the payload without `ranges`, which the generic node write would read as references to peers."""
+        return type(data)({key: value for key, value in data.items() if key != "ranges"})
 
     @classmethod
     def _resolve_target_attribute(cls, data: InputObjectType) -> AttributeSchema:
@@ -199,27 +244,37 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
             )
 
         cls._refuse_unsupported_writes(pool=obj, shorthand_supplied=shorthand_supplied, ranges_supplied=ranges_supplied)
+        declared_ranges = cls._parse_ranges(data=data)
 
         graphql_context: GraphqlContext = info.context
         pool_id = obj.get_id()
         async with pool_lock(pool_id=pool_id), within_transaction(db=db) as dbt:
             # Re-read under the lock so a bound left out of the payload keeps what a concurrent range write stored.
             obj = await NodeManager.get_one(db=dbt, id=pool_id, kind=obj.get_kind(), branch=branch, raise_on_error=True)
-            number_pool, result = await super()._call_mutate_update(
-                info=info, data=data, branch=branch, db=dbt, obj=obj, skip_uniqueness_check=skip_uniqueness_check
+            number_pool, _ = await super()._call_mutate_update(
+                info=info,
+                data=cls._without_ranges(data=data),
+                branch=branch,
+                db=dbt,
+                obj=obj,
+                skip_uniqueness_check=skip_uniqueness_check,
             )
 
             repository = NumberPoolRepository(db=dbt)
-            if shorthand_supplied:
-                await cls._write_shorthand_range(
-                    repository=repository, number_pool=number_pool, user_id=graphql_context.assigned_user_id
+            reconciler = NumberPoolRangeReconciler(range_store=repository)
+            if declared_ranges is None:
+                shorthand_range = await cls._shorthand_range(repository=repository, number_pool=number_pool)
+                reconciliation = await reconciler.rewrite_single_range(
+                    pool=number_pool, declared=shorthand_range, user_id=graphql_context.assigned_user_id
                 )
-
-            updated_ranges = await repository.get_ranges(pool_id=pool_id)
-            validate_number_pool_ranges(ranges=range_bounds(updated_ranges))
-            await sync_shorthand(
-                db=dbt, pool_id=pool_id, ranges=updated_ranges, user_id=graphql_context.assigned_user_id
+            else:
+                reconciliation = await reconciler.reconcile(
+                    pool=number_pool, declared=declared_ranges, user_id=graphql_context.assigned_user_id
+                )
+            stored_pool = await sync_shorthand(
+                db=dbt, pool_id=pool_id, ranges=reconciliation.ranges, user_id=graphql_context.assigned_user_id
             )
+            result = await cls.mutate_update_to_graphql(db=dbt, info=info, obj=stored_pool)
 
         return number_pool, result
 
@@ -238,8 +293,8 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
             raise ValidationError(input_value=SHORTHAND_WITH_RANGES)
 
     @classmethod
-    async def _write_shorthand_range(cls, repository: NumberPoolRepository, number_pool: Node, user_id: str) -> None:
-        """Write the pool's start_range / end_range to its single range, creating the range when the pool holds none.
+    async def _shorthand_range(cls, repository: NumberPoolRepository, number_pool: Node) -> NumberPoolRangeParameters:
+        """Return the single range the pool's start_range / end_range describe, keeping the weight it holds.
 
         Raises:
             ValidationError: When the pool holds more than one range, a bound is missing or cleared, or the
@@ -258,10 +313,8 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
         if start > end:
             raise ValidationError(input_value="start_range can't be larger than end_range")
 
-        if stored_range is None:
-            await repository.create_range(pool=number_pool, start=start, end=end, user_id=user_id)
-        else:
-            await repository.save_range_bounds(pool_range=stored_range, start=start, end=end, user_id=user_id)
+        weight = stored_range.allocation_weight.value if stored_range else None
+        return NumberPoolRangeParameters(start=start, end=end, weight=weight)
 
     @classmethod
     @retry_db_transaction(name="resource_manager_update")

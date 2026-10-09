@@ -3,6 +3,7 @@ from typing import Any
 
 from graphql import ExecutionResult
 
+from infrahub.auth.session import AccountSession
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
@@ -176,7 +177,7 @@ mutation UpdatePoolShorthand($pool_id: String!, $start: BigInt!, $end: BigInt!) 
 
 
 UPDATE_POOL_RANGES = """
-mutation UpdatePoolRanges($pool_id: String!, $ranges: [RelatedNodeInput]) {
+mutation UpdatePoolRanges($pool_id: String!, $ranges: [NumberPoolRangeInput!]) {
     CoreNumberPoolUpdate(data: { id: $pool_id, ranges: $ranges }) {
         ok
     }
@@ -188,6 +189,47 @@ mutation UpdatePoolRanges($pool_id: String!, $ranges: [RelatedNodeInput]) {
 class BoundsCase:
     name: str
     bounds: dict[str, Any]
+
+
+@dataclass
+class InvalidRangesCase:
+    name: str
+    ranges: list[dict[str, Any] | None]
+    expected_error: str
+
+
+INVALID_RANGES_CASES: list[InvalidRangesCase] = [
+    InvalidRangesCase(
+        name="overlapping",
+        ranges=[{"start": 5, "end": 15}, {"start": 1, "end": 10}],
+        expected_error="Range 1-10 overlaps 5-15 (ranges[0])",
+    ),
+    InvalidRangesCase(
+        name="null_entry",
+        ranges=[{"start": 1, "end": 10}, None],
+        expected_error="Variable '$data' got invalid value None at 'data.ranges[1]';"
+        " Expected non-nullable type 'NumberPoolRangeInput!' not to be None.",
+    ),
+    InvalidRangesCase(
+        name="backwards",
+        ranges=[{"start": 30, "end": 20}],
+        expected_error="Range end (20) cannot be lower than start (30)",
+    ),
+]
+
+
+@dataclass
+class RangesWithBoundsCase:
+    name: str
+    ranges: list[dict[str, Any]] | None
+
+
+RANGES_WITH_BOUNDS_CASES: list[RangesWithBoundsCase] = [
+    RangesWithBoundsCase(name="valid_ranges", ranges=[{"start": 10, "end": 20}]),
+    RangesWithBoundsCase(name="empty_ranges", ranges=[]),
+    RangesWithBoundsCase(name="overlapping_ranges", ranges=[{"start": 5, "end": 15}, {"start": 1, "end": 10}]),
+    RangesWithBoundsCase(name="null_ranges", ranges=None),
+]
 
 
 def bounds_input(start: int, end: int) -> dict[str, Any]:
@@ -202,8 +244,14 @@ def ticket_pool_input(name: str, bounds: dict[str, Any]) -> dict[str, Any]:
     } | bounds
 
 
-async def execute(db: InfrahubDatabase, branch: Branch, source: str, variables: dict[str, Any]) -> ExecutionResult:
-    gql_params = await prepare_graphql_params(db=db, branch=branch)
+async def execute(
+    db: InfrahubDatabase,
+    branch: Branch,
+    source: str,
+    variables: dict[str, Any],
+    account_session: AccountSession | None = None,
+) -> ExecutionResult:
+    gql_params = await prepare_graphql_params(db=db, branch=branch, account_session=account_session)
     return await graphql(
         schema=gql_params.schema,
         source=source,

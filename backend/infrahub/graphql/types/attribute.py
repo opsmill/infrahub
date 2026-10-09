@@ -56,6 +56,12 @@ class RelatedIPPrefixNodeInput(InputObjectType):
     _relation__source = String(required=False)
 
 
+class NumberPoolRangeInput(InputObjectType):
+    start = BigInt(required=True, description="The first number of the range, included")
+    end = BigInt(required=True, description="The last number of the range, included")
+    allocation_weight = BigInt(required=False, description="Ranges with a higher weight are allocated from first")
+
+
 class PermissionType(ObjectType):
     update_value = Field(BranchRelativePermissionDecision, required=False)
 

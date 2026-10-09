@@ -44,9 +44,11 @@ def range_bounds(ranges: Sequence[CoreNumberPoolRange]) -> list[NumberRangeBound
 
 async def sync_shorthand(
     db: InfrahubDatabase, pool_id: str, ranges: Sequence[CoreNumberPoolRange], user_id: str
-) -> None:
+) -> Node:
+    """Mirror the ranges into the pool's shorthand and return the pool as stored afterwards."""
     # Loaded here so the mirror's no-op check compares against the stored shorthand.
     pool = await NodeManager.get_one(db=db, id=pool_id, kind=InfrahubKind.NUMBERPOOL, raise_on_error=True)
     await NumberPoolShorthandMirror(repository=NumberPoolRepository(db=db)).sync(
         pool=pool, ranges=ranges, user_id=user_id
     )
+    return pool

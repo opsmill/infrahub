@@ -62,6 +62,7 @@ from .subscription import InfrahubBaseSubscription
 from .types import (
     InfrahubInterface,
     InfrahubObject,
+    NumberPoolRangeInput,
     PaginatedObjectPermission,
     RelatedIPAddressNodeInput,
     RelatedIPPrefixNodeInput,
@@ -326,8 +327,12 @@ class GraphQLSchemaManager:
             ATTRIBUTE_TYPES[base_enum_name] = data_type_class
 
     def _get_related_input_type(
-        self, relationship: RelationshipSchema
-    ) -> type[RelatedNodeInput | RelatedIPPrefixNodeInput | RelatedIPAddressNodeInput]:
+        self, schema: MainSchemaTypes, relationship: RelationshipSchema
+    ) -> type[RelatedNodeInput | RelatedIPPrefixNodeInput | RelatedIPAddressNodeInput | NumberPoolRangeInput]:
+        # A range can't exist without its pool, so the pool mutations write its ranges by value rather than reference.
+        if schema.kind == InfrahubKind.NUMBERPOOL and relationship.name == "ranges":
+            return NumberPoolRangeInput
+
         peer_schema = self.schema.get(name=relationship.peer, duplicate=False)
         if peer_schema.is_ip_prefix:
             return RelatedIPPrefixNodeInput
@@ -336,6 +341,17 @@ class GraphQLSchemaManager:
             return RelatedIPAddressNodeInput
 
         return RelatedNodeInput
+
+    @staticmethod
+    def _get_related_many_input_type(
+        input_type: type[
+            RelatedNodeInput | RelatedIPPrefixNodeInput | RelatedIPAddressNodeInput | NumberPoolRangeInput
+        ],
+    ) -> graphene.List:
+        # A null range declares nothing, so the list refuses it rather than reading it as a smaller range set.
+        if input_type is NumberPoolRangeInput:
+            return graphene.List(graphene.NonNull(input_type))
+        return graphene.List(input_type)
 
     def generate_object_types(self) -> None:
         """Generate all GraphQL objects for the schema and store them in the internal registry."""
@@ -817,7 +833,7 @@ class GraphQLSchemaManager:
             if rel.internal_peer or rel.read_only:
                 continue
 
-            input_type = self._get_related_input_type(relationship=rel)
+            input_type = self._get_related_input_type(schema=schema, relationship=rel)
 
             if rel.cardinality == RelationshipCardinality.ONE:
                 attrs[rel.name] = graphene.InputField(
@@ -826,7 +842,9 @@ class GraphQLSchemaManager:
 
             elif rel.cardinality == RelationshipCardinality.MANY:
                 attrs[rel.name] = graphene.InputField(
-                    graphene.List(input_type), description=rel.description, deprecation_reason=rel.deprecation
+                    self._get_related_many_input_type(input_type=input_type),
+                    description=rel.description,
+                    deprecation_reason=rel.deprecation,
                 )
 
         input_name = f"{schema.kind}CreateInput"
@@ -871,7 +889,7 @@ class GraphQLSchemaManager:
             if rel.internal_peer or rel.read_only:
                 continue
 
-            input_type = self._get_related_input_type(relationship=rel)
+            input_type = self._get_related_input_type(schema=schema, relationship=rel)
 
             if rel.cardinality == RelationshipCardinality.ONE:
                 attrs[rel.name] = graphene.InputField(
@@ -880,7 +898,7 @@ class GraphQLSchemaManager:
 
             elif rel.cardinality == RelationshipCardinality.MANY:
                 attrs[rel.name] = graphene.InputField(
-                    graphene.List(input_type),
+                    self._get_related_many_input_type(input_type=input_type),
                     required=False,
                     description=rel.description,
                     deprecation_reason=rel.deprecation,
@@ -932,7 +950,7 @@ class GraphQLSchemaManager:
             if rel.internal_peer or rel.read_only:
                 continue
 
-            input_type = self._get_related_input_type(relationship=rel)
+            input_type = self._get_related_input_type(schema=schema, relationship=rel)
 
             if rel.cardinality == RelationshipCardinality.ONE:
                 attrs[rel.name] = graphene.InputField(
@@ -941,7 +959,9 @@ class GraphQLSchemaManager:
 
             elif rel.cardinality == RelationshipCardinality.MANY:
                 attrs[rel.name] = graphene.InputField(
-                    graphene.List(input_type), description=rel.description, deprecation_reason=rel.deprecation
+                    self._get_related_many_input_type(input_type=input_type),
+                    description=rel.description,
+                    deprecation_reason=rel.deprecation,
                 )
 
         input_name = f"{schema.kind}UpsertInput"
