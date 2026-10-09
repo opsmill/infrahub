@@ -154,6 +154,32 @@ nodes:
         cardinality: one
 ```
 
+### Unique attributes and uniqueness constraints
+
+Setting `unique: true` on an attribute adds a single-field constraint, `["<attributename>__value"]`, to the node's `uniqueness_constraints`. Infrahub checks it separately from any composite constraint that includes the same attribute. The reverse also applies: a single-field constraint such as `["name__value"]` marks `name` as unique.
+
+To make a name unique only within its cluster, list the attribute in a composite constraint and leave `unique` unset:
+
+```yaml {4-5} showLineNumbers
+nodes:
+  - name: VirtualMachine
+    namespace: Example
+    uniqueness_constraints:
+      - ["cluster", "name__value"]
+    attributes:
+      - name: name
+        kind: Text
+    relationships:
+      - name: cluster
+        peer: ExampleCluster
+        optional: false
+        cardinality: one
+```
+
+If `name` also has `unique: true`, the node has two constraints: `["cluster", "name__value"]` and `["name__value"]`. The second one requires every virtual machine name to be unique across all clusters, so the composite constraint has no effect. Creating `vm01` in a second cluster then fails with `Violates uniqueness constraint 'name'`.
+
+Infrahub loads a schema with this combination without a warning. To see every constraint on a node, including the ones Infrahub added, open **Schemas** in the web UI, select the node, and check **Uniqueness constraints** on the **Properties** tab. Start there when a write fails on a constraint you did not define.
+
 ### Optimizing uniqueness constraints
 
 When defining uniqueness constraints, the order of the elements in each constraint array can significantly impact performance. The uniqueness checker processes constraints from left to right, so listing the most selective elements first can dramatically improve performance.
@@ -231,7 +257,7 @@ nodes:
 
 :::info
 
-If a `human_friendly_id` is defined on a node but no `uniqueness_constraints` are present, a uniqueness constraint matching the `human_friendly_id` will be automatically created.
+If a `human_friendly_id` is defined on a node, Infrahub adds a uniqueness constraint matching it, unless `uniqueness_constraints` already contains the same entry. A relationship path such as `cluster__name__value` becomes `cluster` in the constraint. The comparison includes the order of the fields, so a `human_friendly_id` of `["cluster__name__value", "name__value"]` matches `["cluster", "name__value"]` but not `["name__value", "cluster"]`. Writing it in the second order leaves the node with both constraints.
 
 If at least one attribute is marked as unique, and `human_friendly_id` hasn't been defined, `human_friendly_id` will be automatically created.
 
