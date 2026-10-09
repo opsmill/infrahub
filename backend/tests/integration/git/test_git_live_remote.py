@@ -1070,7 +1070,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
             service = await build_writeback_service(db=session, repository=repo)
             return await service.deliver(final_attempt=True, manual=True, entry=None)
 
-    async def test_delivery_visible(
+    async def test_a_merge_that_the_remote_refuses_stays_queued_with_the_remote_message(
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
@@ -1099,7 +1099,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         assert await _recorded_commit(db=db, repository_id=repository.node_id) == repository.trunk_commit
         assert gogs_repo_branch_commit(gogs_server.container, repository.name, "main") == repository.trunk_commit
 
-    async def test_first_attempt_delivers(
+    async def test_a_merge_is_pushed_recorded_and_broadcast_on_its_first_attempt(
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
@@ -1134,7 +1134,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
             if isinstance(message, RefreshGitFetch) and message.repository_id == repository.node_id
         ] == [(main.name, main.id, repository.source_commit)]
 
-    async def test_source_discarded(
+    async def test_a_merge_whose_source_commit_the_remote_discarded_is_refused(
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
@@ -1181,7 +1181,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
             gogs_server.container, repository.name, branch="main", commit=repository.source_commit
         )
 
-    async def test_destination_rewritten(
+    async def test_a_merge_onto_a_rewritten_trunk_is_refused(
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
