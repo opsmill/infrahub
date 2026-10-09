@@ -179,7 +179,7 @@ Parts A and B of the plan.
       forbids a rename of its stored member names, and
       `backend/infrahub/core/merge/regeneration_dispatcher.py` imports it from there, per
       [data-model.md](data-model.md), "New fallback reasons". `HeldWiden` in T014 needs it.
-- [ ] T019 Declare the nine attributes on `CoreRepository` in
+- [X] T019 Declare the nine attributes on `CoreRepository` in
       `backend/infrahub/core/schema/definitions/core/repository.py`, per
       [data-model.md](data-model.md): `LOCAL`, `read_only`, optional, no default, `display=extra`,
       `allow_override=NONE`, the labels, the descriptions (each within the 128-character limit of
@@ -189,9 +189,10 @@ Parts A and B of the plan.
       descriptions word for word. **Gate: schema sign-off.**
 - [ ] T020 Regenerate: `uv run invoke backend.generate`, `uv run invoke schema.generate-graphqlschema`,
       then `pnpm codegen` and `pnpm codegen:graphql` in `frontend/app`. The change to
-      `python_sdk/infrahub_sdk/protocols.py` goes into the shared SDK PR first (**gate**). Gate open:
-      the `python_sdk` pointer names a commit of the open SDK PR opsmill/infrahub-sdk-python#1400. It
-      moves to `infrahub-develop` after that PR merges.
+      `python_sdk/infrahub_sdk/protocols.py` goes into the shared SDK PR first (**gate**). Partial:
+      the generated files are committed, but the gate is open. The `python_sdk` pointer names a commit
+      of the open SDK PR opsmill/infrahub-sdk-python#1400. Tick this task when that PR merges and the
+      pointer moves to `infrahub-develop`.
 - [ ] T021 Write `backend/infrahub/git/writeback/ports.py`: `DeliveryStatePort`, `DeliveryGitPort`,
       `RegenerationReleasePort`, `DeliveryRunQuery`, `ReplayResult`, `RepositoryRef` and `Clock`, per
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) sections 2 and 4.
@@ -222,7 +223,7 @@ Parts A and B of the plan.
       and branch read of a branch-local attribute of `CoreRepository` are not tested again here:
       `backend/tests/component/git/test_repository_rewrite_branch_safety.py` and the core diff and
       merge tests cover them.
-- [ ] T026 [P] Write `backend/tests/component/git/writeback/test_schema_contract.py`: the nine
+- [X] T026 [P] Write `backend/tests/component/git/writeback/test_schema_contract.py`: the nine
       attributes are absent from `CoreRepositoryCreateInput`, `CoreRepositoryUpdateInput` and
       `CoreRepositoryUpsertInput`. No test checks that a store transition emits no node mutation
       event: the store has no event service, and only the GraphQL mutations emit node events, which
