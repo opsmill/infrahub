@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { FormAttributeValue, FormRelationshipValue } from "@/shared/components/form/type";
 import {
   updateAttributeFieldValue,
+  updateNumberPoolFieldValue,
   updateRelationshipFieldValue,
 } from "@/shared/components/form/utils/updateFormFieldValue";
 
@@ -390,5 +391,70 @@ describe("updateAttributeFieldValue - from-pool", () => {
       source: { type: "pool", id: "numbers", kind: "CoreNumberPool", label: "Numbers pool" },
       value: { from_pool: { id: "numbers" } },
     });
+  });
+});
+
+describe("updateNumberPoolFieldValue", () => {
+  const pickedPool = {
+    from_pool: { id: "loopback-ids", name: "Loopback ids pool", kind: "CoreNumberPool" },
+  };
+  const pickedPoolSource = {
+    type: "pool",
+    id: "loopback-ids",
+    kind: "CoreNumberPool",
+    label: "Loopback ids pool",
+  } as const;
+  const tracked: FormAttributeValue = {
+    source: { type: "pool", id: "vlan-ids", kind: "CoreNumberPool", label: "VLAN ids pool" },
+    value: { from_pool: { id: "vlan-ids", number: 42 } },
+  };
+
+  it("keeps the number staged in the pool tab", () => {
+    const staged: FormAttributeValue = {
+      source: { type: "pool", id: "vlan-ids", kind: "CoreNumberPool", label: "VLAN ids pool" },
+      value: { from_pool: { id: "vlan-ids", number: 7 } },
+    };
+
+    expect(updateNumberPoolFieldValue(pickedPool, staged, tracked)).toEqual({
+      source: pickedPoolSource,
+      value: { from_pool: { id: "loopback-ids", number: 7 } },
+    });
+  });
+
+  it("keeps the number the node holds when a pool records it", () => {
+    expect(updateNumberPoolFieldValue(pickedPool, tracked, tracked)).toEqual({
+      source: pickedPoolSource,
+      value: { from_pool: { id: "loopback-ids", number: 42 } },
+    });
+  });
+
+  it("keeps the number the node holds when the user set it", () => {
+    const userValue: FormAttributeValue = { source: { type: "user" }, value: 12 };
+
+    expect(updateNumberPoolFieldValue(pickedPool, userValue, userValue)).toEqual({
+      source: pickedPoolSource,
+      value: { from_pool: { id: "loopback-ids", number: 12 } },
+    });
+  });
+
+  it("leaves the number empty for a schema default", () => {
+    const schemaDefault: FormAttributeValue = { source: { type: "schema" }, value: 100 };
+
+    expect(updateNumberPoolFieldValue(pickedPool, schemaDefault, schemaDefault)).toEqual({
+      source: pickedPoolSource,
+      value: { from_pool: { id: "loopback-ids" } },
+    });
+  });
+
+  it("restores the node's value when its own pool is picked again", () => {
+    const staged: FormAttributeValue = {
+      source: pickedPoolSource,
+      value: { from_pool: { id: "loopback-ids", number: 7 } },
+    };
+    const vlanPool = {
+      from_pool: { id: "vlan-ids", name: "VLAN ids pool", kind: "CoreNumberPool" },
+    };
+
+    expect(updateNumberPoolFieldValue(vlanPool, staged, tracked)).toBe(tracked);
   });
 });

@@ -81,6 +81,46 @@ export const updateAttributeFieldValue = (
   return updateFormFieldValue(newValue, defaultValue) as FormAttributeValue;
 };
 
+/** The number a number pool value reserves, or null when it lets the pool pick one. */
+export const getPoolNumber = (value?: FormAttributeValue): number | null => {
+  if (value?.source?.type !== "pool") return null;
+  const poolValue = value.value;
+  if (!poolValue || typeof poolValue !== "object" || !("from_pool" in poolValue)) return null;
+  return typeof poolValue.from_pool.number === "number" ? poolValue.from_pool.number : null;
+};
+
+/**
+ * The number a newly picked number pool reserves: the one staged in the pool tab, else the one the
+ * node holds. A schema, profile or template default is not the node's own, so the pool picks.
+ */
+const getNumberToReserve = (
+  current: FormAttributeValue,
+  defaultValue?: FormAttributeValue
+): number | null => {
+  const staged = getPoolNumber(current);
+  if (staged !== null) return staged;
+
+  if (defaultValue?.source?.type === "user" && typeof defaultValue.value === "number") {
+    return defaultValue.value;
+  }
+  return getPoolNumber(defaultValue);
+};
+
+export const updateNumberPoolFieldValue = (
+  newValue: PoolValue | null,
+  current: FormAttributeValue,
+  defaultValue?: FormAttributeValue
+): FormAttributeValue => {
+  const next = updateAttributeFieldValue(newValue, defaultValue);
+  if (next === defaultValue || next.source?.type !== "pool") return next;
+
+  const number = getNumberToReserve(current, defaultValue);
+  if (number === null) return next;
+
+  const { from_pool } = (next as AttributeValueFromPool).value;
+  return { source: next.source, value: { from_pool: { ...from_pool, number } } };
+};
+
 export const updateRelationshipFieldValue = (
   newValue: { id: string } | { id: string }[] | PoolValue | null,
   defaultValue?: FormRelationshipValue

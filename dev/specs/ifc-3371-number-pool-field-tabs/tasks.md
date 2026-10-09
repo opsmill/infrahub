@@ -129,23 +129,23 @@ rows E2–E10, and detaches from the Value tab.
   number pools without `fromPoolRelationshipName`; (c) in the `user` branch, add
   `from_pool: null` to the attribute payload when the field is a Number attribute without
   `fromPoolRelationshipName` and `field.defaultValue?.source?.type === "pool"` (row E9)
-- [ ] T020 [US4] Add an `initialTab` prop (`"value" | "from-pool"`, default `"value"`) to
+- [X] T020 [US4] Add an `initialTab` prop (`"value" | "from-pool"`, default `"value"`) to
   `shared/components/form/pool-backed-field.tsx::PoolBackedField` and use it as the initial
   `activeTab`
-- [ ] T021 [US4] In `shared/components/form/fields/number.field.tsx::NumberField`: pass
+- [X] T021 [US4] In `shared/components/form/fields/number.field.tsx::NumberField`: pass
   `initialTab="from-pool"` when `defaultValue?.source?.type === "pool"` and its kind is
   `CoreNumberPool`; show the current number as the Value tab input placeholder when the field
   holds that pool default (plan D8)
-- [ ] T022 [US4] Pre-fill the number when a pool is picked (plan D6, FR-014): in
+- [X] T022 [US4] Pre-fill the number when a pool is picked (plan D6, FR-014): in
   `shared/components/form/fields/number.field.tsx::NumberField`'s `onPoolChange`, carry the staged
   `from_pool.number`, else the number the node holds when the default source is `user` or `pool`,
   into the new value; leave it empty for schema, profile or template defaults. Put the selection
   logic in `shared/components/form/utils/updateFormFieldValue.ts` if it needs a pure helper, and
   unit-test it in `updateFormFieldValue.test.ts`
-- [ ] T023 [US4] Change the pool badge text in
+- [X] T023 [US4] Change the pool badge text in
   `shared/components/form/fields/common.tsx::PoolSourceBadge` to "This number is recorded in the
   pool:" when the source kind is `CoreNumberPool` (plan D9)
-- [ ] T024 [P] [US4] Component tests in `shared/components/form/fields/number.field.test.tsx`:
+- [X] T024 [P] [US4] Component tests in `shared/components/form/fields/number.field.test.tsx`:
   tracked field opens on the "From pool" tab with pool and number shown; untracked field opens on
   "Value"; Value tab placeholder shows the current number; visiting Value and returning leaves the
   field equal to its default
