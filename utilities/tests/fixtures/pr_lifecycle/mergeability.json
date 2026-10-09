@@ -1,0 +1,95 @@
+{
+  "ready": {
+    "data": {
+      "repository": {
+        "pullRequest": {
+          "headRefOid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "mergeable": "MERGEABLE",
+          "mergeStateStatus": "CLEAN",
+          "reviewDecision": "APPROVED"
+        }
+      }
+    }
+  },
+  "no_review_rule": {
+    "data": {
+      "repository": {
+        "pullRequest": {
+          "headRefOid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "mergeable": "MERGEABLE",
+          "mergeStateStatus": "CLEAN",
+          "reviewDecision": null
+        }
+      }
+    }
+  },
+  "missing_requirement": {
+    "data": {
+      "repository": {
+        "pullRequest": {
+          "headRefOid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "mergeable": "MERGEABLE",
+          "mergeStateStatus": "BLOCKED",
+          "reviewDecision": "APPROVED"
+        }
+      }
+    }
+  },
+  "partial_approval": {
+    "data": {
+      "repository": {
+        "pullRequest": {
+          "headRefOid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "mergeable": "MERGEABLE",
+          "mergeStateStatus": "BLOCKED",
+          "reviewDecision": "REVIEW_REQUIRED"
+        }
+      }
+    }
+  },
+  "unknown": {
+    "data": {
+      "repository": {
+        "pullRequest": {
+          "headRefOid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "mergeable": "UNKNOWN",
+          "mergeStateStatus": "UNKNOWN",
+          "reviewDecision": null
+        }
+      }
+    }
+  },
+  "old_head": {
+    "data": {
+      "repository": {
+        "pullRequest": {
+          "headRefOid": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "mergeable": "MERGEABLE",
+          "mergeStateStatus": "CLEAN",
+          "reviewDecision": "APPROVED"
+        }
+      }
+    }
+  },
+  "missing_review_decision": {
+    "data": {
+      "repository": {
+        "pullRequest": {
+          "headRefOid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "mergeable": "MERGEABLE",
+          "mergeStateStatus": "CLEAN"
+        }
+      }
+    }
+  },
+  "graphql_error": {
+    "data": {
+      "repository": null
+    },
+    "errors": [
+      {
+        "message": "Fixture access denied"
+      }
+    ]
+  }
+}

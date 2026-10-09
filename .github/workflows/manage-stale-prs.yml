@@ -7,34 +7,218 @@ on:
     - cron: "0 2 * * *"
   workflow_dispatch:
 
+concurrency:
+  group: manage-stale-prs
+  cancel-in-progress: false
+
 permissions:
-  pull-requests: write
-  issues: write
+  contents: read
+  checks: read
+  pull-requests: read
+  issues: read
 
 jobs:
-  stale:
+  observe:
     if: github.repository == 'opsmill/infrahub'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - uses: actions/stale@4391f3da665fdf50b6810c1a66712fb9ba21aa93 # v11.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # Only manage PRs, not issues
+          ref: stable
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+      - name: Observe complete PR inventory
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          python utilities/pr_lifecycle.py observe
+          --repository opsmill/infrahub --mode observe --budget 5000
+          --report "$RUNNER_TEMP/pr-lifecycle-report.json"
+          --dashboard-preview "$RUNNER_TEMP/pr-lifecycle-dashboard.md"
+      - name: Report failed observation
+        if: failure()
+        run: >-
+          echo "Observation failed; inspect the preceding step. No lifecycle changes were authorized."
+          >> "$GITHUB_STEP_SUMMARY"
+
+  mutate:
+    # Activation requires a separate reviewed change after hosted validation.
+    if: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      checks: read
+      pull-requests: write
+      issues: write
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RUN_ID: ${{ github.run_id }}
+      RUN_ATTEMPT: ${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: stable
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+      - name: Reconcile notices and exemptions
+        run: >-
+          python utilities/pr_lifecycle.py reconcile
+          --repository opsmill/infrahub --mode apply
+          --run-id "$RUN_ID" --attempt "$RUN_ATTEMPT"
+          --ref "$GITHUB_REF" --state "$RUNNER_TEMP/pr-lifecycle-close.json"
+      - name: Refresh and gate closer pass 1
+        id: prepare1
+        run: >-
+          python utilities/pr_lifecycle.py prepare-close
+          --repository opsmill/infrahub --mode apply
+          --run-id "$RUN_ID" --attempt "$RUN_ATTEMPT" --pass-number 1
+          --ref "$GITHUB_REF" --state "$RUNNER_TEMP/pr-lifecycle-close.json"
+      - name: Execute gated closer pass 1
+        if: steps.prepare1.outputs.closure_ready == 'true'
+        uses: actions/stale@4391f3da665fdf50b6810c1a66712fb9ba21aa93 # v10.0.0
+        with:
+          repo-token: ${{ github.token }}
           days-before-issue-stale: -1
           days-before-issue-close: -1
-
-          # PR configuration
-          days-before-pr-stale: 14
-          days-before-pr-close: -1  # Never close
-
-          stale-pr-label: "stale"
-          stale-pr-message: |
-            This PR has been inactive for 2 weeks and has been marked as stale.
-
-            If you're still working on this, please:
-            - Push new commits, or
-            - Leave a comment to indicate this PR is still active
-
-            The stale label will be removed automatically when there's new activity.
-
-          # Remove stale label on activity
-          remove-stale-when-updated: true
+          days-before-pr-stale: -1
+          days-before-pr-close: 0
+          stale-pr-label: ${{ steps.prepare1.outputs.gate_label }}
+          only-pr-labels: ${{ steps.prepare1.outputs.gate_label }}
+          stale-pr-message: ""
+          close-pr-message: ""
+          exempt-pr-labels: keep-open,lifecycle-approved,lifecycle-bot
+          remove-pr-stale-when-updated: false
+          exempt-draft-pr: false
+          delete-branch: false
+          operations-per-run: 1000
+      - name: Verify closer pass 1 independently
+        id: verify1
+        if: steps.prepare1.outputs.closure_ready == 'true'
+        run: >-
+          python utilities/pr_lifecycle.py verify-close
+          --repository opsmill/infrahub --mode apply
+          --run-id "$RUN_ID" --attempt "$RUN_ATTEMPT" --pass-number 1
+          --ref "$GITHUB_REF" --state "$RUNNER_TEMP/pr-lifecycle-close.json"
+      - name: Refresh and gate closer pass 2
+        id: prepare2
+        if: steps.verify1.outputs.continue_scan == 'true'
+        run: >-
+          python utilities/pr_lifecycle.py prepare-close
+          --repository opsmill/infrahub --mode apply
+          --run-id "$RUN_ID" --attempt "$RUN_ATTEMPT" --pass-number 2
+          --ref "$GITHUB_REF" --state "$RUNNER_TEMP/pr-lifecycle-close.json"
+      - name: Execute gated closer pass 2
+        if: steps.prepare2.outputs.closure_ready == 'true'
+        uses: actions/stale@4391f3da665fdf50b6810c1a66712fb9ba21aa93 # v10.0.0
+        with:
+          repo-token: ${{ github.token }}
+          days-before-issue-stale: -1
+          days-before-issue-close: -1
+          days-before-pr-stale: -1
+          days-before-pr-close: 0
+          stale-pr-label: ${{ steps.prepare2.outputs.gate_label }}
+          only-pr-labels: ${{ steps.prepare2.outputs.gate_label }}
+          stale-pr-message: ""
+          close-pr-message: ""
+          exempt-pr-labels: keep-open,lifecycle-approved,lifecycle-bot
+          remove-pr-stale-when-updated: false
+          exempt-draft-pr: false
+          delete-branch: false
+          operations-per-run: 1000
+      - name: Verify closer pass 2 independently
+        id: verify2
+        if: steps.prepare2.outputs.closure_ready == 'true'
+        run: >-
+          python utilities/pr_lifecycle.py verify-close
+          --repository opsmill/infrahub --mode apply
+          --run-id "$RUN_ID" --attempt "$RUN_ATTEMPT" --pass-number 2
+          --ref "$GITHUB_REF" --state "$RUNNER_TEMP/pr-lifecycle-close.json"
+      - name: Refresh and gate closer pass 3
+        id: prepare3
+        if: steps.verify2.outputs.continue_scan == 'true'
+        run: >-
+          python utilities/pr_lifecycle.py prepare-close
+          --repository opsmill/infrahub --mode apply
+          --run-id "$RUN_ID" --attempt "$RUN_ATTEMPT" --pass-number 3
+          --ref "$GITHUB_REF" --state "$RUNNER_TEMP/pr-lifecycle-close.json"
+      - name: Execute gated closer pass 3
+        if: steps.prepare3.outputs.closure_ready == 'true'
+        uses: actions/stale@4391f3da665fdf50b6810c1a66712fb9ba21aa93 # v10.0.0
+        with:
+          repo-token: ${{ github.token }}
+          days-before-issue-stale: -1
+          days-before-issue-close: -1
+          days-before-pr-stale: -1
+          days-before-pr-close: 0
+          stale-pr-label: ${{ steps.prepare3.outputs.gate_label }}
+          only-pr-labels: ${{ steps.prepare3.outputs.gate_label }}
+          stale-pr-message: ""
+          close-pr-message: ""
+          exempt-pr-labels: keep-open,lifecycle-approved,lifecycle-bot
+          remove-pr-stale-when-updated: false
+          exempt-draft-pr: false
+          delete-branch: false
+          operations-per-run: 1000
+      - name: Verify closer pass 3 independently
+        id: verify3
+        if: steps.prepare3.outputs.closure_ready == 'true'
+        run: >-
+          python utilities/pr_lifecycle.py verify-close
+          --repository opsmill/infrahub --mode apply
+          --run-id "$RUN_ID" --attempt "$RUN_ATTEMPT" --pass-number 3
+          --ref "$GITHUB_REF" --state "$RUNNER_TEMP/pr-lifecycle-close.json"
+      - name: Refresh and gate closer pass 4
+        id: prepare4
+        if: steps.verify3.outputs.continue_scan == 'true'
+        run: >-
+          python utilities/pr_lifecycle.py prepare-close
+          --repository opsmill/infrahub --mode apply
+          --run-id "$RUN_ID" --attempt "$RUN_ATTEMPT" --pass-number 4
+          --ref "$GITHUB_REF" --state "$RUNNER_TEMP/pr-lifecycle-close.json"
+      - name: Execute gated closer pass 4
+        if: steps.prepare4.outputs.closure_ready == 'true'
+        uses: actions/stale@4391f3da665fdf50b6810c1a66712fb9ba21aa93 # v10.0.0
+        with:
+          repo-token: ${{ github.token }}
+          days-before-issue-stale: -1
+          days-before-issue-close: -1
+          days-before-pr-stale: -1
+          days-before-pr-close: 0
+          stale-pr-label: ${{ steps.prepare4.outputs.gate_label }}
+          only-pr-labels: ${{ steps.prepare4.outputs.gate_label }}
+          stale-pr-message: ""
+          close-pr-message: ""
+          exempt-pr-labels: keep-open,lifecycle-approved,lifecycle-bot
+          remove-pr-stale-when-updated: false
+          exempt-draft-pr: false
+          delete-branch: false
+          operations-per-run: 1000
+      - name: Verify closer pass 4 independently
+        id: verify4
+        if: steps.prepare4.outputs.closure_ready == 'true'
+        run: >-
+          python utilities/pr_lifecycle.py verify-close
+          --repository opsmill/infrahub --mode apply
+          --run-id "$RUN_ID" --attempt "$RUN_ATTEMPT" --pass-number 4
+          --ref "$GITHUB_REF" --state "$RUNNER_TEMP/pr-lifecycle-close.json"
+      - name: Remove gates and reconcile outcomes
+        if: always()
+        env:
+          PRIOR_STEPS_SUCCEEDED: ${{ job.status == 'success' }}
+        run: |
+          refresh_args=()
+          if [[ "$PRIOR_STEPS_SUCCEEDED" == "true" ]]; then
+            refresh_args+=(--refresh-dashboard)
+          fi
+          python utilities/pr_lifecycle.py finalize \
+            --repository opsmill/infrahub --mode apply \
+            --run-id "$RUN_ID" --attempt "$RUN_ATTEMPT" \
+            --ref "$GITHUB_REF" --state "$RUNNER_TEMP/pr-lifecycle-close.json" \
+            "${refresh_args[@]}"
