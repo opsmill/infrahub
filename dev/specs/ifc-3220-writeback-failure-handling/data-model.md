@@ -236,7 +236,7 @@ Not persisted in the graph (FR-014). Written by the barrier at a hold, read by t
 |---|---|
 | Key | `repository-delivery:held:<repository id>:<hold_seq>:<identifier>` |
 | Value | The narrowed request model of the candidate, serialised: `RequestArtifactDefinitionGenerate`, `RequestGeneratorDefinitionRun`, or the coalesced Python submission. |
-| Time to live | `NARROWED_HOLD_TTL_SECONDS`, derived from the retry delays and the fetch and push timeouts: about 45 minutes (`research.md` R9). |
+| Time to live | `NARROWED_HOLD_TTL_SECONDS`, derived from the retry delays and the fetch and push timeouts: about 45 minutes (`research.md` R9). The derivation holds when the fetch and the push stop at their bounds, which is true over HTTP(S). A stalled SSH transfer has no bound and can outlast the time to live. The release then finds no entry and dispatches with no narrowing. |
 | Size bound | 512 KiB. A larger value is not written, and the release then uses the identifier alone. |
 | Repeated hold | The new entry holds the union of the previous entry and the new request. When the previous entry is missing, expired or too large, no new entry is written. |
 | Miss | The release dispatches the identifier with no narrowing. A miss over-executes and never skips. |

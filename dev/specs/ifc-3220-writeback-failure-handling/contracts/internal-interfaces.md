@@ -169,20 +169,23 @@ says that the clone on this worker has no `origin`, with no path. The service cl
 either object is missing locally. It raises `RepositoryError` for every other failure, which the
 service classifies as `unclassified`. The same contract binds IFC-3210's gateway.
 
-Every port method that runs Git bounds each of its Git commands with GitPython's
-`kill_after_timeout` (`research.md` R6):
+Every port method that runs Git gives each of its Git commands a bound, as GitPython's
+`kill_after_timeout`. The bound stops a command only as this list says (`research.md` R6):
 
 - `fetch` by `FETCH_TIMEOUT_SECONDS`, and `push` and `delete_remote_branch` by
-  `PUSH_TIMEOUT_SECONDS`. The three also stop a stalled HTTP(S) transfer through Git's low-speed
-  limit, set to the bound; an SSH transfer has no such bound. A timeout of `fetch` or `push` raises
-  `RepositoryConnectionError`, because `_raise_enriched_error_static` maps GitPython's "process killed
-  because it timed out" text and libcurl's "Operation too slow" text to it (section 10).
+  `PUSH_TIMEOUT_SECONDS`. GitPython does not stop a fetch or a push at the bound, so the three also
+  set Git's low-speed limit to the bound. Git then ends an HTTP(S) transfer that sends no data for
+  that long. An SSH transfer has no bound. A stalled `fetch` or `push` raises
+  `RepositoryConnectionError`, because `_raise_enriched_error_static` maps libcurl's "Operation too
+  slow" text and GitPython's "process killed because it timed out" text to it (section 10). A
+  stalled `delete_remote_branch` raises the `GitCommandError` of Git.
 - `remote_head`, `is_ancestor`, `replay`, `reset` and `record` by `LOCAL_GIT_TIMEOUT_SECONDS`, for
-  each local command. `remote_head` reads with `git rev-parse`, not through GitPython's object
-  database. A timeout raises `RepositoryError`, with a message that names the command and the bound
-  but not the arguments, which can name worker paths. After a killed local command, the adapter
-  removes a left-over `index.lock` of the worktree before it raises. `reset` never raises: a killed
-  reset is logged like any failed reset.
+  each local command. GitPython stops a local command at the bound only where `ps` exists, and the
+  backend image has no `ps`. `remote_head` reads with `git rev-parse`, not through GitPython's object
+  database. A stopped local command raises `RepositoryError`, with a message that names the command
+  and the bound but not the arguments, which can name worker paths. After a killed local command,
+  the adapter removes a left-over `index.lock` of the worktree before it raises. `reset` never
+  raises: a killed reset is logged like any failed reset.
 
 `import_at` has no bound (`research.md` R6). `delete_remote_branch` treats a branch that is already
 gone as deleted. The service logs a failed deletion at warning level and never fails the attempt

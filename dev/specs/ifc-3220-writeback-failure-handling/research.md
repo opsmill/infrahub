@@ -340,7 +340,7 @@ after the merge (`delete_branch_after_merge`), while the remote branch is protec
 ## R4. The delivery attempt
 
 **Decision**: one component, `RepositoryWritebackService`, built per repository at the top of each
-flow, with one entry point, `deliver(final_attempt, manual, entry, retry_delay)`.
+flow, with one entry point, `deliver(final_attempt, manual, entry, retry_delay, first_attempt)`.
 `merge_git_repository`, the retry flow and the recovery check (R20) all call it (FR-007). Its end
 has the same shape as the abandonment of R8: the entries leave the queue under the repository lock,
 and the release runs after the lock is released, under a lease.
@@ -535,7 +535,9 @@ first, so both subtypes keep `ERROR_CONNECTION`.
 "process killed because it timed out" (`git/cmd.py::handle_process_output`). Today no rule of
 `_raise_enriched_error_static` matches that text, so it would become a plain `RepositoryError`. The
 text joins the connection markers, so a timeout of the fetch or the push raises
-`RepositoryConnectionError` and is retried.
+`RepositoryConnectionError` and is retried. GitPython does not stop a stalled fetch or push itself.
+Over HTTP(S), Git's low-speed limit ends it, and libcurl's "Operation too slow" text maps to the same
+error (R6).
 
 **A killed local Git command.** It is not a remote fault, so it must not become
 `remote-unreachable`. GitPython reports it with a different text, "Timeout: the command ... did not
@@ -583,7 +585,7 @@ server restart. The PRD assumes that real outages last days, so a longer automat
 nothing and holds a worker slot.
 
 **Bounded Git commands.** The adapter passes GitPython's `kill_after_timeout` to every Git command
-that it runs, so no command can hold the repository lock for ever:
+that it runs. The bound stops a command only in the cases that the list after the table gives:
 
 | Command | Bound |
 |---|---|
@@ -591,15 +593,24 @@ that it runs, so no command can hold the repository lock for ever:
 | The push, and the deletion of a source branch at R4 step 13, which is a push too | `PUSH_TIMEOUT_SECONDS`, 300 seconds |
 | Each local command: `rev-parse`, in `remote_head`; `merge-base --is-ancestor`; `reset --hard`, in `replay` and in `reset`; `merge` and `merge --abort`, in `replay`; `worktree list` and `worktree add`, in `create_commit_worktree` for `record` | `LOCAL_GIT_TIMEOUT_SECONDS`, 120 seconds |
 
-GitPython does not stop a hung fetch or push at `kill_after_timeout`. So the fetch, the push and the
-deletion also stop a stalled HTTP(S) transfer through Git's low-speed limit: `http.lowSpeedTime` is
-the bound, rounded up, set in the environment of that one command. An SSH transfer has no such bound.
-A fetch or a push to a remote that accepts the connection and never answers fails as
-`remote-unreachable`, and the chain retries it. A local command normally ends in seconds, so its
-bound stops only a command that is stuck. A killed local command raises a `RepositoryError` that
-names the command, and R5 classifies it. `reset` never raises: a killed reset is logged like any
-failed reset, and the failure of the attempt still propagates. The bounds live in
-`git/writeback/constants.py`.
+- **A transfer over HTTP(S).** GitPython does not stop a fetch or a push at `kill_after_timeout`. So
+  the fetch, the push and the deletion of a remote branch also set Git's low-speed limit, in the
+  environment of that one command: `http.lowSpeedLimit` is 1 byte per second, and
+  `http.lowSpeedTime` is the bound, rounded up. Git then ends a transfer that sends no data for the
+  bound. A fetch or a push to a remote that accepts the connection and never answers fails as
+  `remote-unreachable`, and the chain retries it. A deletion that stalls raises a `GitCommandError`.
+  The service logs it at warning level, and the attempt goes on.
+- **A transfer over SSH.** It has no bound. A fetch, a push or a deletion over SSH that stops
+  answering holds the repository lock until the connection ends.
+- **A local command.** GitPython stops it at its bound only where `ps` exists, because it runs
+  `ps --ppid` to find the children of Git before it kills Git. The backend image, built from the
+  `python:<version>-slim` image in `development/Dockerfile`, has no `ps`. There, a local command
+  that runs past its bound is not stopped. A local command normally ends in seconds, so its bound
+  matters only for a command that is stuck.
+
+Where GitPython stops a local command, it raises a `RepositoryError` that names the command, and R5
+classifies it. `reset` never raises: a killed reset is logged like any failed reset, and the failure
+of the attempt still propagates. The bounds live in `git/writeback/constants.py`.
 
 **A killed local command can leave a lock file.** GitPython kills with `SIGKILL`, so a killed
 `reset` or `merge` can leave `index.lock` in the destination worktree. Every later Git command in
@@ -912,7 +923,7 @@ the import and the settle. With the constants of R6 that is 450 + 4 × 420 + 600
 about 45 minutes. A merge whose delivery succeeds within its automatic retry chain regenerates as
 precisely as today. A miss only widens. The derivation leaves out the local timeouts, because a local
 command normally ends in seconds. A chain that runs longer than the cache, for example after
-retried record failures, only widens its release.
+retried record failures or a stalled SSH transfer, which has no bound (R6), only widens its release.
 
 **Rejected: waiting for the first attempt before the follow-ups.** It would delay every git-synced
 merge by the Git round trip, and by minutes when the remote is down.

@@ -499,8 +499,10 @@ T081 to T084 are not.
 - [X] T077 [US4] Give `deliver_pending_merges` in `backend/infrahub/git/tasks.py` its `retries`,
       `retry_delay_seconds` and `retry_condition_fn`, and compute `final_attempt` from
       `task_run.run_count`. Record `retry_due_at` before each wait.
-- [X] T078 [US4] Make `RepositoryWritebackService.deliver` return `deferred` when `manual` is `False` and a
-      retry of another chain is due in the future, in `backend/infrahub/git/writeback/service.py`.
+- [X] T078 [US4] Make the first attempt only of `RepositoryWritebackService.deliver` return `deferred`,
+      in `backend/infrahub/git/writeback/service.py`: a chain's first automatic attempt
+      (`first_attempt` is `True`, `manual` is `False`) returns `deferred` when the retry of another
+      chain is due later. A later attempt of the chain never defers.
 - [X] T079 [US4] Write `DeliveryRecoveryCheck` in `backend/infrahub/git/writeback/recovery.py` and run it
       from the loop of `sync_remote_repositories` in `backend/infrahub/git/tasks.py`, for every
       repository, before the bootstrap and whatever the sync outcome, under its own guard. It submits
