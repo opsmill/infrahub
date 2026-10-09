@@ -26,7 +26,7 @@
     "days_since_expiry": null,
     "notice_mode": "quiet",
     "enforcing_release": null,
-    "banner": { "audience": "super_admins", "dismissible": true }
+    "banner": { "audience": "super_admins", "dismissible": true, "shown_to_all_users_when_enforced": false }
   }
 }
 
@@ -40,7 +40,7 @@
     "product_tier": null, "support_tier": null, "starts_at": null, "ends_at": null,
     "days_remaining": null, "days_since_expiry": null,
     "notice_mode": "quiet", "enforcing_release": null,
-    "banner": { "audience": "none", "dismissible": false }
+    "banner": { "audience": "none", "dismissible": false, "shown_to_all_users_when_enforced": false }
   }
 }
 
@@ -57,6 +57,8 @@
 - License detail fields are `null` unless the status carries a license (states `not_yet_valid`, `expired`, `expiring`, `valid`).
 - `license` is `null` for an anonymous caller, in every state, so a visitor who is not signed in never gets the license details or the failure reason from this endpoint. In the enforcing release, the response header ([response-header.md](response-header.md)) is the one deliberate place where any caller, signed in or not, sees the state. The field is always present; a license object, when present, always carries its details.
 - `reason` is a short code and reveals nothing secret; the UI shows its explanation to super-admins only.
+- `banner.shown_to_all_users_when_enforced` is true when only super-admins see the banner now and every user sees it in the enforcing release: `notice_mode` is `quiet` and the enforce-mode audience for the status is `all_users`. The server decides it, so the UI holds no copy of the notice rules.
+- `invalid` with `internal_error` gets `banner: { "audience": "super_admins", "dismissible": true, "shown_to_all_users_when_enforced": false }` in both modes. An internal error is a defect in Infrahub, not in the customer's license, so it never reaches every user.
 - The key itself is never part of the response.
 - If computing the status raises, the endpoint still answers with `state: "invalid"`, `reason: "internal_error"`.
 - If building the license object raises (reading `notice_mode` or `enforcing_release` fails, or a status field does not fit the object), the endpoint answers with `state: "invalid"`, `reason: "internal_error"`, `notice_mode: "quiet"` and `enforcing_release: null` instead of failing with a 500. The traceback is logged on the first failure in each process only.

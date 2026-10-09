@@ -652,6 +652,11 @@ export interface components {
             audience: components["schemas"]["NoticeAudience"];
             /** Dismissible */
             dismissible: boolean;
+            /**
+             * Shown To All Users When Enforced
+             * @description True when only super-admins see the banner now and every user sees it in the enforcing release
+             */
+            shown_to_all_users_when_enforced: boolean;
         };
         /** Body_upload_file_api_storage_upload_file_post */
         Body_upload_file_api_storage_upload_file_post: {
