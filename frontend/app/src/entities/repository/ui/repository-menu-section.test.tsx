@@ -2,7 +2,12 @@ import { Menu } from "@infrahub/ui";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
-import type { Permission } from "@/entities/permission/domain/model/permission";
+import {
+  EDIT_DEFAULT_BRANCH,
+  MANAGE_REPOSITORIES,
+  type Permission,
+} from "@/entities/permission/domain/model/permission";
+import { useHasGlobalPermission } from "@/entities/permission/ui/queries/has-global-permission.query";
 import type { DeliveryState } from "@/entities/repository/domain/model/delivery-state";
 import { retryDelivery } from "@/entities/repository/domain/use-cases/retry-delivery";
 import { useGetDeliveryState } from "@/entities/repository/ui/queries/get-delivery-state.query";
@@ -20,6 +25,7 @@ vi.mock("@/entities/repository/ui/queries/import-current-commit.mutation");
 vi.mock("@/entities/repository/ui/queries/get-delivery-state.query");
 vi.mock("@/entities/repository/domain/use-cases/retry-delivery");
 vi.mock("@/entities/branches/ui/queries/get-branches.query");
+vi.mock("@/entities/permission/ui/queries/has-global-permission.query");
 
 const refusedPush: DeliveryState = {
   status: "action-required",
@@ -49,7 +55,25 @@ const mockDeliveryState = (state: DeliveryState | undefined) => {
   vi.mocked(useGetDeliveryState).mockReturnValue({
     data: state,
     isPending: state === undefined,
+    isError: false,
   } as unknown as ReturnType<typeof useGetDeliveryState>);
+};
+
+const mockUnreadableDeliveryState = () => {
+  vi.mocked(useGetDeliveryState).mockReturnValue({
+    data: undefined,
+    isPending: false,
+    isError: true,
+  } as unknown as ReturnType<typeof useGetDeliveryState>);
+};
+
+const ALL_GLOBAL_PERMISSIONS = [MANAGE_REPOSITORIES, EDIT_DEFAULT_BRANCH];
+
+const mockGlobalPermissions = (granted: string[]) => {
+  vi.mocked(useHasGlobalPermission).mockImplementation(
+    (action) =>
+      ({ data: granted.includes(action) }) as unknown as ReturnType<typeof useHasGlobalPermission>
+  );
 };
 
 describe("RepositoryMenuSection", () => {
@@ -80,6 +104,7 @@ describe("RepositoryMenuSection", () => {
     } as unknown as ReturnType<typeof useGetBranches>);
 
     mockDeliveryState(refusedPush);
+    mockGlobalPermissions(ALL_GLOBAL_PERMISSIONS);
     vi.mocked(retryDelivery).mockResolvedValue({ ok: true, taskId: "task-1" });
   });
 
@@ -323,23 +348,41 @@ describe("RepositoryMenuSection", () => {
         reason: "without update permission",
         state: refusedPush,
         permission: generatePermission({ update: false }),
+        globalPermissions: ALL_GLOBAL_PERMISSIONS,
+      },
+      {
+        itemName,
+        reason: "without the global permission to manage repositories",
+        state: refusedPush,
+        permission: generatePermission(),
+        globalPermissions: [EDIT_DEFAULT_BRANCH],
+      },
+      {
+        itemName,
+        reason: "without the global permission to edit the default branch",
+        state: refusedPush,
+        permission: generatePermission(),
+        globalPermissions: [MANAGE_REPOSITORIES],
       },
       {
         itemName,
         reason: "when nothing is pending",
         state: nothingPending,
         permission: generatePermission(),
+        globalPermissions: ALL_GLOBAL_PERMISSIONS,
       },
       {
         itemName,
         reason: "while the push state loads",
         state: undefined,
         permission: generatePermission(),
+        globalPermissions: ALL_GLOBAL_PERMISSIONS,
       },
     ])
-  )("disables $itemName $reason", async ({ itemName, state, permission }) => {
+  )("disables $itemName $reason", async ({ itemName, state, permission, globalPermissions }) => {
     // GIVEN
     mockDeliveryState(state);
+    mockGlobalPermissions(globalPermissions);
 
     // WHEN
     const component = await renderRepositoryMenu({ permission });
@@ -347,6 +390,34 @@ describe("RepositoryMenuSection", () => {
     // THEN
     await expect
       .element(component.getByRole("menuitem", { name: itemName }))
+      .toHaveAttribute("aria-disabled", "true");
+  });
+
+  test("keeps Retry push and disables Abandon pending push when the push state cannot be read", async () => {
+    // GIVEN
+    mockUnreadableDeliveryState();
+
+    // WHEN
+    const component = await renderRepositoryMenu();
+
+    // THEN
+    await expect
+      .element(component.getByRole("menuitem", { name: "Retry push" }))
+      .not.toHaveAttribute("aria-disabled", "true");
+    await expect
+      .element(component.getByRole("menuitem", { name: "Abandon pending push" }))
+      .toHaveAttribute("aria-disabled", "true");
+  });
+
+  test("disables Reimport current commit without update permission", async () => {
+    // WHEN
+    const component = await renderRepositoryMenu({
+      permission: generatePermission({ update: false }),
+    });
+
+    // THEN
+    await expect
+      .element(component.getByRole("menuitem", { name: /Reimport current commit/i }))
       .toHaveAttribute("aria-disabled", "true");
   });
 

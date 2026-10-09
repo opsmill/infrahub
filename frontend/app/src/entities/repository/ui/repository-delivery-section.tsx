@@ -11,7 +11,11 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import { useDefaultBranch } from "@/entities/branches/ui/hooks/use-default-branch";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import type { Permission } from "@/entities/permission/domain/model/permission";
+import {
+  EDIT_DEFAULT_BRANCH,
+  type Permission,
+} from "@/entities/permission/domain/model/permission";
+import { useHasGlobalPermission } from "@/entities/permission/ui/queries/has-global-permission.query";
 import type { AbandonmentRecord } from "@/entities/repository/domain/model/delivery-state";
 import { PendingMergeList } from "@/entities/repository/ui/pending-merge-list";
 import { useGetDeliveryState } from "@/entities/repository/ui/queries/get-delivery-state.query";
@@ -47,7 +51,14 @@ function RepositoryDeliveryState({ repositoryId, permission }: RepositoryDeliver
   }
 
   if (error) {
-    return <ErrorScreen message={error.message} />;
+    return (
+      <>
+        <ErrorScreen message={error.message} />
+        <p className="px-3 py-2 text-foreground-muted text-sm">
+          {DELIVERY_TEXTS.abandonNeedsState}
+        </p>
+      </>
+    );
   }
 
   const lastAbandonment = state.lastAbandonment && (
@@ -107,6 +118,7 @@ interface LastAbandonmentProps {
 
 function LastAbandonment({ repositoryId, record, isUpdateAllowed }: LastAbandonmentProps) {
   const defaultBranch = useDefaultBranch();
+  const { data: canEditDefaultBranch = false } = useHasGlobalPermission(EDIT_DEFAULT_BRANCH);
 
   const { mutate: importCurrentCommit, isPending } = useImportCurrentCommitMutation({
     onSuccess: async (result) => {
@@ -149,7 +161,7 @@ function LastAbandonment({ repositoryId, record, isUpdateAllowed }: LastAbandonm
           <Button
             size="sm"
             variant="outline"
-            isDisabled={!isUpdateAllowed || !defaultBranch}
+            isDisabled={!isUpdateAllowed || !canEditDefaultBranch || !defaultBranch}
             isPending={isPending}
             onPress={() =>
               defaultBranch && importCurrentCommit({ repositoryId, branchName: defaultBranch.name })

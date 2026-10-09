@@ -22,6 +22,8 @@ export const DELIVERY_TEXTS = {
   abandonConfirm: "Abandon",
   abandonStarted: "Abandonment of the pending pushes started.",
   abandonFailed: "Error abandoning the pending pushes:",
+  abandonNeedsState:
+    "Retry push stays available. Abandon pending push needs the pending pushes, so it is not available until they can be read.",
   lastAbandonment: "Last abandonment",
   abandonedBy: "Abandoned by",
   abandonedMerges: "Abandoned merges",

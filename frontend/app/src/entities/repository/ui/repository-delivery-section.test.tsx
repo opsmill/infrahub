@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
 import type { Permission } from "@/entities/permission/domain/model/permission";
+import { useHasGlobalPermission } from "@/entities/permission/ui/queries/has-global-permission.query";
 import type {
   AbandonmentRecord,
   DeliveryState,
@@ -17,6 +18,7 @@ import { RepositoryDeliverySection } from "./repository-delivery-section";
 vi.mock("@/entities/branches/ui/queries/get-branches.query");
 vi.mock("@/entities/repository/domain/use-cases/get-delivery-state");
 vi.mock("@/entities/repository/domain/use-cases/import-current-commit");
+vi.mock("@/entities/permission/ui/queries/has-global-permission.query");
 
 const IMPORTS_PAUSED =
   "Imports from the remote default branch are paused until the pending pushes clear.";
@@ -89,6 +91,9 @@ describe("RepositoryDeliverySection", () => {
         generateBranch({ name: "primary", is_default: true }),
       ],
     } as unknown as ReturnType<typeof useGetBranches>);
+    vi.mocked(useHasGlobalPermission).mockReturnValue({
+      data: true,
+    } as unknown as ReturnType<typeof useHasGlobalPermission>);
   });
 
   test("reads the push state from the default branch while another branch is selected", async () => {
@@ -190,6 +195,13 @@ describe("RepositoryDeliverySection", () => {
     await expect
       .element(component.getByText("Cannot read the pending pushes of this repository."))
       .toBeVisible();
+    await expect
+      .element(
+        component.getByText(
+          "Retry push stays available. Abandon pending push needs the pending pushes, so it is not available until they can be read."
+        )
+      )
+      .toBeVisible();
   });
 
   test("shows the last abandonment, its account, the abandoned merges and the recorded commit", async () => {
@@ -271,6 +283,22 @@ describe("RepositoryDeliverySection", () => {
 
     // WHEN
     const component = await renderSection(generatePermission({ update: false }));
+
+    // THEN
+    await expect
+      .element(component.getByRole("button", { name: "Reimport current commit" }))
+      .toBeDisabled();
+  });
+
+  test("disables Reimport current commit without the permission to edit the default branch", async () => {
+    // GIVEN
+    vi.mocked(getDeliveryState).mockResolvedValue(nothingPendingAfterAbandonment);
+    vi.mocked(useHasGlobalPermission).mockReturnValue({
+      data: false,
+    } as unknown as ReturnType<typeof useHasGlobalPermission>);
+
+    // WHEN
+    const component = await renderSection();
 
     // THEN
     await expect
