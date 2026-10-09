@@ -15,8 +15,10 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import AccountStatus, InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase
+from infrahub.license.reporting import license_block
+from infrahub.license.service import LicenseService, read_license_status
 from infrahub.services.component import InfrahubComponent
-from infrahub.workers.dependencies import get_component, get_database, get_http
+from infrahub.workers.dependencies import get_component, get_database, get_http, get_license_service
 
 from .constants import (
     TELEMETRY_KIND,
@@ -29,6 +31,7 @@ from .models import (
     TelemetryActivity24hData,
     TelemetryBranchData,
     TelemetryData,
+    TelemetryLicenseData,
     TelemetrySchemaData,
     TelemetryWorkerData,
 )
@@ -136,12 +139,17 @@ class AnonymousTelemetryGatherer:
         account_gatherer: GathererInterface[TelemetryAccountData],
         activity_gatherer: GathererInterface[TelemetryActivity24hData],
         active_branch_counter: GathererInterface[int],
+        license_service: LicenseService,
     ) -> None:
         self.database = database
         self.component = component
         self.account_gatherer = account_gatherer
         self.activity_gatherer = activity_gatherer
         self.active_branch_counter = active_branch_counter
+        self.license_service = license_service
+
+    async def _gather_license(self) -> TelemetryLicenseData | None:
+        return license_block(status=read_license_status(service=self.license_service))
 
     async def gather(self) -> TelemetryData:
         start_time = time.time()
@@ -151,6 +159,7 @@ class AnonymousTelemetryGatherer:
 
         accounts = await safe_metric(self.account_gatherer.gather())
         activity_24h = await safe_metric(self.activity_gatherer.gather())
+        license_data = await safe_metric(self._gather_license())
 
         data = TelemetryData(
             deployment_id=registry.id,
@@ -173,6 +182,7 @@ class AnonymousTelemetryGatherer:
             schema_info=await gather_schema_information(branch=default_branch),
             database=await gather_database_information(db=self.database),
             prefect=await gather_prefect_information(),
+            license=license_data,
         )
 
         data.execution_time = time.time() - start_time
@@ -190,6 +200,7 @@ async def build_anonymous_telemetry_gatherer() -> AnonymousTelemetryGatherer:
         account_gatherer=DefaultAccountGatherer(db=database),
         activity_gatherer=DefaultActivityGatherer(),
         active_branch_counter=DefaultActiveBranchCounter(db=database),
+        license_service=get_license_service(),
     )
 
 

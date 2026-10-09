@@ -145,6 +145,7 @@ dev/knowledge/backend/telemetry.md                      # license block
 - **Path eligibility for the header**: `/api`, `/api/…`, `/graphql`, `/graphql/…`; never `/api-static`.
 - **Telemetry format**: bump `TELEMETRY_VERSION`; if the resource-allocation telemetry PR (#10003) lands first, bump again on rebase.
 - **Release gate**: the format bump changes every deployment's snapshot, Community included. The feature may merge to `develop`, but the release containing it waits until the cloud telemetry processor accepts the new format. A task confirms it before the release branch is cut.
+- **Public telemetry documentation**: the FAQ (`docs/docs/faq/faq.mdx`) and the telemetry page (`docs/docs/deploy-manage/run-observe/telemetry.mdx`) call all telemetry anonymous. Before the first licensing release, update both to say that licensed Enterprise deployments also send the license ID, type, tiers, issuer and dates, never the customer name. See [contracts/telemetry-license-block.md](contracts/telemetry-license-block.md).
 - **Eager construction**: `log_license_state(...)` runs at startup in every API server and task worker and is the first caller of `get_license_service()`, so the Enterprise service verifies its key at startup, never inside a request.
 - **Ignored key**: the "license key ignored" INFO line is logged whenever the state is `not_required` and a key is set, so it also covers Enterprise with no service registered. It never includes the value.
 - **Tests beyond the unit level**:

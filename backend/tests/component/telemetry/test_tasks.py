@@ -2,11 +2,14 @@
 
 import hashlib
 import json
-from collections.abc import AsyncGenerator
+import logging
+from collections.abc import AsyncGenerator, Callable
 from datetime import UTC, datetime
-from typing import Generator
+from typing import Any, Generator
 
+import httpx
 import pytest
+from fast_depends import Provider
 from prefect.client.orchestration import get_client
 
 from infrahub import __version__, config
@@ -18,6 +21,8 @@ from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.events.account_action import AccountLoggedInEvent
+from infrahub.license.models import License, LicenseState, LicenseStatus
+from infrahub.license.service import LicenseService
 from infrahub.telemetry.constants import TELEMETRY_KIND, TELEMETRY_VERSION, RemoteSendStatus
 from infrahub.telemetry.models import TelemetryAccountData, TelemetryActivity24hData, TelemetryData
 from infrahub.telemetry.repository import TelemetrySnapshotRepository
@@ -36,16 +41,22 @@ from infrahub.telemetry.tasks import (
     build_anonymous_telemetry_gatherer,
     count_active_branches,
     gather_account_information,
+    send_telemetry_push,
 )
 from infrahub.workers.dependencies import (
     build_component,
+    build_http_service,
     clear_singletons,
     get_component,
     get_database,
+    get_license_service,
     set_component_type,
 )
 from tests.adapters.cache import MemoryCache
+from tests.adapters.http import MemoryHTTP
+from tests.adapters.license import RecordingLicenseService
 from tests.adapters.message_bus import BusSimulator
+from tests.helpers.dependency_override import override_dependency
 
 # A far-past day no test ever seeds into: proves genuine-empty -> 0 without shared server state.
 _EMPTY_WINDOW_START = datetime(2000, 1, 1, tzinfo=UTC)
@@ -162,6 +173,7 @@ async def _build_gatherer(
     account_gatherer: GathererInterface[TelemetryAccountData] | None = None,
     activity_gatherer: GathererInterface[TelemetryActivity24hData] | None = None,
     active_branch_counter: GathererInterface[int] | None = None,
+    license_service: LicenseService | None = None,
 ) -> AnonymousTelemetryGatherer:
     """Build the gatherer with real collaborators, overriding any one with an injected double."""
     database = await get_database()
@@ -172,6 +184,7 @@ async def _build_gatherer(
         account_gatherer=account_gatherer or DefaultAccountGatherer(db=database),
         activity_gatherer=activity_gatherer or DefaultActivityGatherer(),
         active_branch_counter=active_branch_counter or DefaultActiveBranchCounter(db=database),
+        license_service=license_service or get_license_service(),
     )
 
 
@@ -316,3 +329,125 @@ async def test_gather_branch_source_fails_only_branch_active_null(
     # branches.total is computed directly from the registry and is never nullable.
     assert isinstance(data.branches.total, int)
     assert data.accounts.active is not None
+
+
+TELEMETRY_ENDPOINT = "https://telemetry.example.com/snapshots"
+LICENSE_CLAIMS: dict[str, Any] = {
+    "license_id": "lic-0042",
+    "customer_name": "Example Networks",
+    "license_type": "commercial",
+    "product_tier": "enterprise",
+    "support_tier": "premium",
+    "starts_at": datetime(2026, 1, 1, tzinfo=UTC),
+    "ends_at": datetime(2027, 1, 1, tzinfo=UTC),
+    "issued_at": datetime(2025, 12, 15, tzinfo=UTC),
+    "issuer": "opsmill-test",
+}
+VALID = LicenseStatus(state=LicenseState.VALID, license=License(**LICENSE_CLAIMS), days_remaining=200)
+STORED_LICENSE_BLOCK = {
+    "state": "valid",
+    "license_id": "lic-0042",
+    "license_type": "commercial",
+    "product_tier": "enterprise",
+    "support_tier": "premium",
+    "starts_at": "2026-01-01T00:00:00Z",
+    "ends_at": "2027-01-01T00:00:00Z",
+    "issuer": "opsmill-test",
+}
+
+
+@pytest.fixture
+def telemetry_sent(monkeypatch: pytest.MonkeyPatch, dependency_provider: Provider) -> Generator[None, None, None]:
+    """Send telemetry to an in-memory endpoint that accepts every snapshot."""
+    http = MemoryHTTP()
+    http.add_post_response(
+        url=TELEMETRY_ENDPOINT,
+        response=httpx.Response(status_code=200, request=httpx.Request(method="POST", url=TELEMETRY_ENDPOINT)),
+    )
+    monkeypatch.setattr(config.SETTINGS.main, "telemetry_optout", False)
+    monkeypatch.setattr(config.SETTINGS.main, "telemetry_endpoint", TELEMETRY_ENDPOINT)
+    with override_dependency(build_http_service, lambda: http, dependency_provider=dependency_provider):
+        yield
+
+
+@pytest.fixture
+def telemetry_opted_out(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(config.SETTINGS.main, "telemetry_optout", True)
+
+
+async def _run_telemetry_flow(db: InfrahubDatabase) -> TelemetrySnapshot:
+    """Run the daily telemetry flow and return the one snapshot it stored."""
+    repository = TelemetrySnapshotRepository(db=db)
+    stored_before = await repository.count()
+
+    await send_telemetry_push()
+
+    assert await repository.count() == stored_before + 1
+    newest = await repository.get_list(limit=1)
+    return newest[0]
+
+
+async def test_stored_snapshot_carries_the_license_block_without_the_customer_name(
+    telemetry_environment: InfrahubDatabase,
+    telemetry_sent: None,
+    use_license_service: Callable[[LicenseService], None],
+) -> None:
+    use_license_service(RecordingLicenseService(status=VALID))
+
+    stored = await _run_telemetry_flow(db=telemetry_environment)
+
+    assert stored.remote_send_status == RemoteSendStatus.SENT
+    assert stored.payload_format == TELEMETRY_VERSION
+    assert stored.data["license"] == STORED_LICENSE_BLOCK
+    assert "Example Networks" not in json.dumps(stored.data)
+
+
+async def test_stored_snapshot_has_a_null_license_when_no_license_is_required(
+    telemetry_environment: InfrahubDatabase, telemetry_sent: None
+) -> None:
+    stored = await _run_telemetry_flow(db=telemetry_environment)
+
+    assert stored.remote_send_status == RemoteSendStatus.SENT
+    assert stored.data["license"] is None
+
+
+async def test_stored_snapshot_carries_the_license_block_when_sending_is_turned_off(
+    telemetry_environment: InfrahubDatabase,
+    telemetry_opted_out: None,
+    use_license_service: Callable[[LicenseService], None],
+) -> None:
+    use_license_service(RecordingLicenseService(status=VALID))
+
+    stored = await _run_telemetry_flow(db=telemetry_environment)
+
+    assert stored.remote_send_status == RemoteSendStatus.SKIPPED
+    assert stored.data["license"] == STORED_LICENSE_BLOCK
+
+
+async def test_gather_license_block_that_cannot_be_built_is_null_and_logged(
+    telemetry_environment: InfrahubDatabase, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A license the block cannot hold nulls only the license field and leaves the rest of the payload intact."""
+    malformed = License(**LICENSE_CLAIMS)
+    # The constructor rejects a number in a text field, so the defect is planted after construction.
+    vars(malformed)["product_tier"] = 3
+    gatherer = await _build_gatherer(
+        license_service=RecordingLicenseService(
+            status=LicenseStatus(state=LicenseState.VALID, license=malformed, days_remaining=200)
+        )
+    )
+
+    with caplog.at_level(logging.WARNING, logger="infrahub.tasks"):
+        data = await gatherer.gather()
+
+    assert data.license is None
+    assert data.accounts.active is not None
+    assert data.branches.active is not None
+    license_warnings = [
+        record.getMessage()
+        for record in caplog.records
+        if record.name == "infrahub.tasks" and "TelemetryLicenseData" in record.getMessage()
+    ]
+    assert len(license_warnings) == 1
+    assert license_warnings[0].startswith("Telemetry metric collection failed; reporting null for this field: ")
+    assert "product_tier" in license_warnings[0]
