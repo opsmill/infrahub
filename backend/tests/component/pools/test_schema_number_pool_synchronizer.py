@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 from typing import TYPE_CHECKING
 
 import pytest
@@ -333,3 +334,42 @@ async def test_schema_created_pool_stale_scope_name_is_rewritten(
     await run_synchronizer(db=db)
 
     assert await stored_scope_of(db=db, pool_id=pool_id) == [{"id": name_id, "name": "name"}]
+
+
+async def test_declaration_the_default_branch_cannot_resolve_leaves_later_pools_created(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """A declared scope the default branch no longer resolves creates no pool, and the other declarations get theirs."""
+    await load_schema(db=db, schema=SCOPED_POOL_SCHEMA, update_db=True)
+    scoped_branch = await create_branch(db=db, branch_name="scope-gone")
+    device = copy.deepcopy(SCOPED_DEVICE)
+    device.attributes.append(
+        AttributeSchema(
+            name="vlan_index",
+            kind="NumberPool",
+            optional=False,
+            read_only=True,
+            parameters=NumberPoolParameters(start_range=1, end_range=10, allocation_scope=["site"]),
+        )
+    )
+    registry.schema.register_schema(schema=SchemaRoot(nodes=[device]), branch=scoped_branch.name)
+    default_schema = registry.schema.get_schema_branch(name=registry.default_branch)
+    default_device_without_site = default_schema.get_node(name=SCOPED_DEVICE.kind)
+    default_device_without_site.relationships = [
+        relationship for relationship in default_device_without_site.relationships if relationship.name != "site"
+    ]
+    default_schema.set(name=SCOPED_DEVICE.kind, schema=default_device_without_site)
+    counter_branch = await create_branch(db=db, branch_name="counter-pool")
+    registry.schema.register_schema(
+        schema=counter_schema(parameters=NumberPoolParameters(start_range=1, end_range=100)), branch=counter_branch.name
+    )
+
+    await run_synchronizer(db=db)
+
+    device_pools = await NodeManager.query(
+        db=db, schema=CoreNumberPool, filters={"node__value": SCOPED_DEVICE.kind}, branch_agnostic=True
+    )
+    counter_pools = await NodeManager.query(
+        db=db, schema=CoreNumberPool, filters={"node__value": COUNTER_KIND}, branch_agnostic=True
+    )
+    assert (len(device_pools), len(counter_pools)) == (0, 1)

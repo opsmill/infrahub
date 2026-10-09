@@ -253,6 +253,9 @@ class SchemaNumberPoolSynchronizer:
     ) -> NodeSchema | GenericSchema | None:
         """Process NumberPool attributes for a schema node, creating pools as needed.
 
+        An attribute whose declared scope does not resolve on the default branch gets no pool, and the refusal is
+        logged so that the other attributes and branches are still processed.
+
         Args:
             schema_node: The schema node to process.
             branch_name: The branch name for schema lookups.
@@ -283,13 +286,19 @@ class SchemaNumberPoolSynchronizer:
 
             # If no pool ID, create one
             if not new_pool_id:
-                new_pool = await self.upserter.upsert_number_pool(
-                    schema_node=schema_node,
-                    attribute=attribute,
-                    branch_name=branch_name,
-                    schema_branch=schema_branch,
-                    user_id=user_id,
-                )
+                try:
+                    new_pool = await self.upserter.upsert_number_pool(
+                        schema_node=schema_node,
+                        attribute=attribute,
+                        branch_name=branch_name,
+                        schema_branch=schema_branch,
+                        user_id=user_id,
+                    )
+                except ValidationError as exc:
+                    self.log.warning(
+                        f"Not creating the pool of {schema_node.kind}.{attribute_name} on {branch_name}: {exc.message}"
+                    )
+                    continue
                 new_pool_id = new_pool.id
 
             self.log.info(f"Setting {schema_node.kind}.{attribute_name} number_pool_id to {new_pool_id}")
