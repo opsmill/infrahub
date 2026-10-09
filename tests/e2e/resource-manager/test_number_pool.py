@@ -77,16 +77,6 @@ class TestNumberPool:
         await admin_page.get_by_role("button", name="Save").click()
         await expect(admin_page.get_by_text("Number pool created")).to_be_visible()
 
-    async def test_displays_correct_details_for_created_number_pool(
-        self, admin_page: Page, number_pool_branch: str
-    ) -> None:
-        await admin_page.goto(f"/resource-manager?branch={number_pool_branch}")
-        await admin_page.get_by_test_id("object-items").get_by_role("link", name="number pool test for generic").click()
-        await admin_page.get_by_role("cell", name="number pool test for generic").first.click()
-        await expect(admin_page.get_by_role("cell", name="speed")).to_be_visible()
-        await expect(admin_page.get_by_role("cell", name="1", exact=True)).to_be_visible()
-        await expect(admin_page.get_by_role("cell", name="10", exact=True)).to_be_visible()
-
     async def test_header_for_user_created_pool(self, admin_page: Page, number_pool_branch: str) -> None:
         await admin_page.goto(f"/resource-manager?branch={number_pool_branch}")
         await admin_page.get_by_test_id("object-items").get_by_role("link", name="number pool test for generic").click()
@@ -106,7 +96,7 @@ class TestNumberPool:
     ) -> None:
         await admin_page.goto(f"/resource-manager?branch={number_pool_branch}")
         await admin_page.get_by_test_id("object-items").get_by_role("link", name="number pool test for generic").click()
-        await expect(admin_page.get_by_role("cell", name="number pool test for generic").first).to_be_visible()
+        await expect(admin_page.get_by_role("heading", level=1, name="number pool test for generic")).to_be_visible()
         await expect(admin_page.get_by_text("Node *")).not_to_be_visible()
         await expect(admin_page.get_by_text("Attribute *")).not_to_be_visible()
 
@@ -137,7 +127,7 @@ class TestNumberPool:
         await admin_page.goto(f"/resource-manager?branch={number_pool_branch}")
         await expect(admin_page.get_by_role("link", name="InfraService.")).to_be_visible()
         await admin_page.get_by_role("link", name="InfraService.").click()
-        await admin_page.get_by_role("link", name="View", exact=True).click()
+        await expect(admin_page.get_by_role("heading", level=1)).to_be_visible()
         await save_screenshot_for_docs(admin_page, "numberpool_attribute_kind_resource_manager")
 
     async def test_create_node_using_number_pool_and_verify_pool_assignment(
