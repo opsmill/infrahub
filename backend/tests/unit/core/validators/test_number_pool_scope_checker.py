@@ -1324,3 +1324,46 @@ class TestNumberPoolScopeCheckerUnchangedField:
 
         assert await checker.check(request) == []
         assert pool_source.requested_kinds == []
+
+
+class TestNumberPoolScopeCheckerRenameOnAnotherBranch:
+    """The stored names follow the default branch, while a branch forked earlier still names the element its own way."""
+
+    async def test_names_the_element_the_branch_renamed(self) -> None:
+        default_schema = _declared_schema()
+        _device_site_renamed(default_schema)
+        _declare_on_device(["location", "role"])(default_schema)
+        candidate_schema = _declared_schema()
+        _device(candidate_schema).get_relationship(name="site").name = "zone"
+        location = ScopeElement(id=DEVICE_SITE.id, name="location")
+        pool_source = RecordingPoolSource(
+            pools=(_pool(pool_id=DEVICE_SCHEMA_POOL_ID, kind=DEVICE, elements=(location, DEVICE_ROLE)),)
+        )
+        checker = NumberPoolScopeChecker(
+            pool_source=pool_source,
+            schema_source=StaticSchemaSource(
+                schema_branch=_unvalidated_schema_branch(_declared_schema()),
+                default_branch_schema=_unvalidated_schema_branch(default_schema, name=registry.default_branch),
+            ),
+        )
+        candidate = _unvalidated_schema_branch(candidate_schema)
+        node_schema = candidate.get(name=DEVICE, duplicate=False)
+        assert isinstance(node_schema, NodeSchema)
+        request = SchemaConstraintValidatorRequest(
+            branch=BRANCH,
+            constraint_name="relationship.name.update",
+            node_schema=node_schema,
+            schema_path=SchemaPath(path_type=SchemaPathType.RELATIONSHIP, schema_kind=DEVICE, field_name="zone"),
+            schema_branch=candidate,
+        )
+
+        grouped_data_paths = await checker.check(request)
+
+        data_paths = [path for grouped in grouped_data_paths for path in grouped.get_all_data_paths()]
+        assert [(path.node_id, path.value) for path in data_paths] == [
+            (
+                DEVICE_SCHEMA_POOL_ID,
+                'ScopeDevice.vlan_id: allocation_scope: "site" was renamed to "zone";'
+                " update allocation_scope to the new name",
+            )
+        ]

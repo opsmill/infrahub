@@ -285,7 +285,10 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
             if renamed and read_pools.unreadable
             else []
         )
-        comparator = DeclaredScopeComparator(schema_branch=request.schema_branch)
+        comparator = DeclaredScopeComparator(
+            schema_branch=request.schema_branch,
+            previous_schemas=self._previous_schemas(request=request, field_name=field_name),
+        )
         validator = DeclaredScopeValidator(
             candidate=request.schema_branch,
             default_branch_schema=lambda: registered_default_branch_schema(

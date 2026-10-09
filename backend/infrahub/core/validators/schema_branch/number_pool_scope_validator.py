@@ -127,10 +127,15 @@ class DeclaredScopeValidator:
 
 
 class DeclaredScopeComparator:
-    """Compares the allocation scope a schema declares for the pool it created with the scope that pool stores."""
+    """Compares the allocation scope a schema declares for the pool it created with the scope that pool stores.
 
-    def __init__(self, schema_branch: SchemaBranch) -> None:
+    The schemas before the change tell which element a declared name referred to, since the stored names follow the
+    default branch while a branch can still name an element its own way.
+    """
+
+    def __init__(self, schema_branch: SchemaBranch, previous_schemas: list[SchemaBranch]) -> None:
         self.schema_branch = schema_branch
+        self.previous_schemas = previous_schemas
 
     def refusal(self, kind: str, entries: list[str] | None, stored: AllocationScope) -> str | None:
         """Return why the declaration cannot stand for the stored scope, or None when both hold the same element ids.
@@ -155,17 +160,29 @@ class DeclaredScopeComparator:
             return None
         return f"{SCOPE_FIELD} can't be changed after the pool is created"
 
-    @staticmethod
-    def _new_name(resolver: AllocationScopeResolver, kind: str, entry: str, stored: AllocationScope) -> str | None:
-        for element in stored.elements:
-            if element.name != entry:
-                continue
+    def _new_name(
+        self, resolver: AllocationScopeResolver, kind: str, entry: str, stored: AllocationScope
+    ) -> str | None:
+        stored_ids = [element.id for element in stored.elements]
+        for previous_schema in self.previous_schemas:
             try:
-                current = resolver.resolve(kind=kind, entries=[{"id": element.id}]).elements[0]
+                previous = _DeclaredScopeResolver(schema_branch=previous_schema).resolve(kind=kind, entries=[entry])
             except UnknownScopeElementError:
-                return None
-            return current.name if current.name != entry else None
+                continue
+            if previous.elements[0].id in stored_ids:
+                return self._current_name(resolver=resolver, kind=kind, entry=entry, element_id=previous.elements[0].id)
+        for element in stored.elements:
+            if element.name == entry:
+                return self._current_name(resolver=resolver, kind=kind, entry=entry, element_id=element.id)
         return None
+
+    @staticmethod
+    def _current_name(resolver: AllocationScopeResolver, kind: str, entry: str, element_id: str) -> str | None:
+        try:
+            current = resolver.resolve(kind=kind, entries=[{"id": element_id}]).elements[0]
+        except UnknownScopeElementError:
+            return None
+        return current.name if current.name != entry else None
 
 
 def scope_refusal_reason(error: ValidationError) -> str:
