@@ -197,6 +197,9 @@ declare module 'gql.tada' {
     /** @gql.tada/hash sha256:f1359acb6444cd14eedc3e0b0a8a755b */
     "\n  query InfrahubGlobalPreferences {\n    InfrahubGlobalPreferences {\n      date_format\n      timezone\n    }\n  }\n":
       TadaDocumentNode<{ InfrahubGlobalPreferences: { date_format: "EU_DATETIME" | "ISO_8601" | "ISO_DATETIME" | "ISO_DATETIME_SECONDS" | "US_12H" | null; timezone: string | null; }; }, {}, void>;
+    /** @gql.tada/hash sha256:68e296d5f20126ed8b7ca92b6dde75e5 */
+    "\n  query REPOSITORY_DELIVERY_STATE($repositoryId: ID!) {\n    CoreRepository(ids: [$repositoryId]) {\n      edges {\n        node {\n          id\n          delivery_status {\n            value\n            label\n            color\n          }\n          delivery_failure_cause {\n            value\n            label\n          }\n          delivery_error {\n            value\n          }\n          delivery_queue {\n            value\n          }\n        }\n      }\n    }\n  }\n":
+      TadaDocumentNode<{ CoreRepository: { edges: { node: { id: string; delivery_status: { value: string | null; label: string | null; color: string | null; } | null; delivery_failure_cause: { value: string | null; label: string | null; } | null; delivery_error: { value: string | null; } | null; delivery_queue: { value: unknown; } | null; } | null; }[]; }; }, { repositoryId: string; }, void>;
     /** @gql.tada/hash sha256:535773ce3e79c65f7aa6f54460866718 */
     "\n  query REPOSITORY_GROUP($nodeIds: [ID]) {\n    CoreRepositoryGroup(repository__ids: $nodeIds) {\n      edges {\n        node {\n          id\n        }\n      }\n    }\n  }\n":
       TadaDocumentNode<{ CoreRepositoryGroup: { edges: { node: { id: string; } | null; }[]; }; }, { nodeIds?: (string | null)[] | null | undefined; }, void>;
