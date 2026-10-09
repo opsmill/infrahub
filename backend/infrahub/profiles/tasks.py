@@ -2,20 +2,24 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub_sdk.exceptions import GraphQLError
 from prefect import flow
 from prefect.logging import get_run_logger
 
+from infrahub.events.limits import get_submission_chunk_size
 from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
+from infrahub.exceptions import ProfileRefreshError
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
 from infrahub.trigger.setup import setup_triggers_specific
 from infrahub.workers.dependencies import get_client, get_component, get_database, get_workflow
-from infrahub.workflows.catalogue import PROFILE_REFRESH
 from infrahub.workflows.utils import add_tags, wait_for_schema_to_converge
 
 from .gather import gather_trigger_profile_refresh
+from .graphql_queries import ProfileNodeIDQuery
+from .submission import submit_profile_refresh
 
 if TYPE_CHECKING:
-    from infrahub_sdk.node.relationship import RelationshipManager
+    from infrahub_sdk.client import InfrahubClient
 
 REFRESH_PROFILES_MUTATION = """
 mutation RefreshProfiles(
@@ -30,27 +34,49 @@ mutation RefreshProfiles(
 """
 
 
+async def _refresh_node_profiles(client: InfrahubClient, branch_name: str, node_id: str) -> None:
+    await client.execute_graphql(query=REFRESH_PROFILES_MUTATION, variables={"id": node_id}, branch_name=branch_name)
+
+
 @flow(name="object-profiles-refresh", flow_run_name="Refresh profiles for {node_id}")
 async def object_profiles_refresh(branch_name: str, node_id: str) -> None:
     log = get_run_logger()
     client = get_client()
 
     await add_tags(branches=[branch_name], nodes=[node_id], db_change=True)
-    await client.execute_graphql(query=REFRESH_PROFILES_MUTATION, variables={"id": node_id}, branch_name=branch_name)
+    await _refresh_node_profiles(client=client, branch_name=branch_name, node_id=node_id)
     log.info(f"Profiles refreshed for {node_id}")
 
 
 @flow(name="objects-profiles-refresh-multiple", flow_run_name="Refresh profiles for multiple objects")
-async def objects_profiles_refresh_multiple(branch_name: str, node_ids: list[str]) -> None:
+async def objects_profiles_refresh_multiple(
+    branch_name: str,
+    node_ids: list[str],
+    context: EventContext | None = None,
+) -> None:
+    """Refresh the profiles of a chunk of nodes, one node after the other.
+
+    Raises:
+        ProfileRefreshError: If the refresh of one or more nodes returns a GraphQL error, after the refresh of
+            all the other nodes of the chunk.
+
+    """
     log = get_run_logger()
+    client = get_client()
+    if context is not None:
+        client.request_context = context.to_request_context()
 
-    await add_tags(branches=[branch_name])
-
+    failed_node_ids: list[str] = []
     for node_id in node_ids:
-        log.info(f"Requesting profile refresh for {node_id}")
-        await get_workflow().submit_workflow(
-            workflow=PROFILE_REFRESH, parameters={"branch_name": branch_name, "node_id": node_id}
-        )
+        try:
+            await _refresh_node_profiles(client=client, branch_name=branch_name, node_id=node_id)
+        except GraphQLError as exc:
+            log.warning(f"Profile refresh failed for {node_id}: {exc.errors}")
+            failed_node_ids.append(node_id)
+
+    log.info(f"Profiles refreshed for {len(node_ids) - len(failed_node_ids)} of {len(node_ids)} nodes")
+    if failed_node_ids:
+        raise ProfileRefreshError(node_ids=failed_node_ids)
 
 
 @flow(name="profile-refresh-setup", flow_run_name="Setup profile refresh triggers")
@@ -91,8 +117,8 @@ async def profile_refresh_process(
 ) -> None:
     """Process profile refresh when a profile's attributes or relationships change.
 
-    This flow fetches all nodes related to the profile via the `related_nodes`
-    relationship and submits profile refresh workflows for each of them.
+    This flow reads the ids of the nodes and templates linked to the profile in pages, and submits
+    one profile refresh flow for each chunk of ids.
     """
     log = get_run_logger()
     client = get_client()
@@ -100,17 +126,21 @@ async def profile_refresh_process(
 
     await add_tags(branches=[branch_name])
 
-    profile = await client.get(kind=profile_kind, id=profile_id, branch=branch_name, include=["related_nodes"])
-    related_nodes: RelationshipManager = profile.related_nodes  # type: ignore
+    profile_schema = await client.schema.get(kind=profile_kind, branch=branch_name)
+    peer_kinds = [profile_schema.get_relationship(name="related_nodes").peer]
+    if related_templates := profile_schema.get_relationship_or_none(name="related_templates"):
+        peer_kinds.append(related_templates.peer)
 
-    if not related_nodes.peer_ids:
-        log.info(f"No related nodes found for profile {profile_id}")
-        return
-
-    log.info(f"Found {len(related_nodes.peer_ids)} related nodes for profile {profile_id}")
-
-    for node_id in related_nodes.peer_ids:
-        log.info(f"Requesting profile refresh for {node_id}")
-        await get_workflow().submit_workflow(
-            workflow=PROFILE_REFRESH, context=context, parameters={"branch_name": branch_name, "node_id": node_id}
-        )
+    workflow = get_workflow()
+    chunk_size = get_submission_chunk_size()
+    for peer_kind in peer_kinds:
+        node_query = ProfileNodeIDQuery(kind=peer_kind, profile_id=profile_id)
+        submitted = 0
+        async for node_ids in node_query.fetch_all_chunked(
+            client=client, branch_name=branch_name, chunk_size=chunk_size
+        ):
+            await submit_profile_refresh(
+                workflow=workflow, branch_name=branch_name, node_ids=node_ids, context=context, profile_id=profile_id
+            )
+            submitted += len(node_ids)
+        log.info(f"Submitted the profile refresh of {submitted} {peer_kind} node(s) for profile {profile_id}")

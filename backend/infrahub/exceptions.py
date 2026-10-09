@@ -352,6 +352,13 @@ class ProcessingError(Error):
         super().__init__(self.message)
 
 
+class ProfileRefreshError(Error):
+    def __init__(self, node_ids: list[str]) -> None:
+        self.node_ids = node_ids
+        self.message = f"The profile refresh failed for {len(node_ids)} node(s): {', '.join(node_ids)}"
+        super().__init__(self.message)
+
+
 class PoolExhaustedError(Error):
     HTTP_CODE: int = 409
     message: str = "No more resources available in the pool"
