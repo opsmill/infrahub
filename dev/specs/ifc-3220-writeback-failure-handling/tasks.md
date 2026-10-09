@@ -193,10 +193,10 @@ Parts A and B of the plan.
       the generated files are committed, but the gate is open. The `python_sdk` pointer names a commit
       of the open SDK PR opsmill/infrahub-sdk-python#1400. Tick this task when that PR merges and the
       pointer moves to `infrahub-develop`.
-- [ ] T021 Write `backend/infrahub/git/writeback/ports.py`: `DeliveryStatePort`, `DeliveryGitPort`,
+- [X] T021 Write `backend/infrahub/git/writeback/ports.py`: `DeliveryStatePort`, `DeliveryGitPort`,
       `RegenerationReleasePort`, `DeliveryRunQuery`, `ReplayResult`, `RepositoryRef` and `Clock`, per
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) sections 2 and 4.
-- [ ] T022 Write `WritebackIntentStore` in `backend/infrahub/git/writeback/store.py`: every method
+- [X] T022 Write `WritebackIntentStore` in `backend/infrahub/git/writeback/store.py`: every method
       of contracts section 2, on the default branch, through `NodeManager` and
       `node.save(fields=...)`, under the `repository-delivery` lock with its time to live and
       bounded acquire. `settle_delivery` bounds its lease by the snapshot. Every lease names its
@@ -207,9 +207,9 @@ Parts A and B of the plan.
       `delivery_status` only. Each transition's transaction first takes the Neo4j write lock of the
       repository node (`RepositoryWriteLockQuery` in `queries.py`), so the state stays right after
       the state lock expires.
-- [ ] T023 [P] Write an in-memory `DeliveryStatePort` and a fixed `Clock` in
+- [X] T023 [P] Write an in-memory `DeliveryStatePort` and a fixed `Clock` in
       `backend/tests/unit/git/writeback/fakes.py`, with the same transition rules as the store.
-- [ ] T024 Write `backend/tests/component/git/writeback/test_store.py`: every transition of the data
+- [X] T024 Write `backend/tests/component/git/writeback/test_store.py`: every transition of the data
       model's table, one save per transition, the lock time to live, a timed-out acquire raising
       `DeliveryStateUnavailableError`, the abandonment edge naming the account, a status that never
       changes on an empty queue, a progress write that leaves `delivery_queue` untouched, an
@@ -218,7 +218,7 @@ Parts A and B of the plan.
       hold the state lock, each through its own lock registry, keeping both entries. A stored JSON
       value, status or cause that the store cannot read raises `DeliveryStateUnreadableError`: a unit
       test in `backend/tests/unit/git/writeback/test_store.py` checks the parse.
-- [ ] T025 [P] A branch created while the default branch holds a queue holds a copy that the store
+- [X] T025 [P] A branch created while the default branch holds a queue holds a copy that the store
       never returns: a case of `backend/tests/component/git/writeback/test_store.py`. The diff, merge
       and branch read of a branch-local attribute of `CoreRepository` are not tested again here:
       `backend/tests/component/git/test_repository_rewrite_branch_safety.py` and the core diff and
@@ -228,8 +228,8 @@ Parts A and B of the plan.
       `CoreRepositoryUpsertInput`. No test checks that a store transition emits no node mutation
       event: the store has no event service, and only the GraphQL mutations emit node events, which
       `backend/tests/component/graphql/test_mutation_update.py` tests.
-- [ ] T027 [P] Add a 200-entry queue case to `backend/tests/component/git/writeback/test_store.py`.
-- [ ] T028 [P] Write `backend/tests/unit/git/writeback/test_single_writer.py`: no module under
+- [X] T027 [P] Add a 200-entry queue case to `backend/tests/component/git/writeback/test_store.py`.
+- [X] T028 [P] Write `backend/tests/unit/git/writeback/test_single_writer.py`: no module under
       `backend/infrahub/` other than `store.py`, the schema definition and the generated files names
       any of the nine attribute names.
 - [ ] T110 Guard the repository conversion in
