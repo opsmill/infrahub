@@ -118,6 +118,13 @@ Three signs that you are reaching for the escape hatch instead of the fix:
 - **The suppression needs a paragraph.** A `# type: ignore[code]` carries its reason on the same
   line; when justifying one takes a docstring, remove it instead of documenting it.
 
+Narrowing is the fix only while the union is the real contract. The `redis.Redis | InfrahubServices`
+connection above is not one: it exists because the component picks between two backends for the same
+role, so narrowing it — or splitting it into one optional parameter per backend — satisfies the
+checker while the component stays tied to each backend. That union is a missing interface
+([Interfaces for multiple implementations](component-design.md#interfaces-for-multiple-implementations));
+when adding one is more than the change can take, raise it rather than re-typing the union.
+
 ## Don't widen to `Any` to make a wrong annotation type-check
 
 Clearing a suppression often exposes an annotation that was never true — a result wrapper declaring
