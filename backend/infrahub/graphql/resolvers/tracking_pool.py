@@ -55,6 +55,8 @@ class TrackingPoolResolver:
 
         graphql_context: GraphqlContext = info.context
         fields = extract_graphql_fields(info=info)
+        if "hfid" in fields:
+            fields["human_friendly_id"] = None
         loader = self._get_or_create_loader(
             db=graphql_context.db, branch=graphql_context.branch, at=graphql_context.at, fields=fields
         )
