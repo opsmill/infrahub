@@ -230,7 +230,7 @@ class TestConvertObjectType(TestInfrahubApp):
 
         # Refresh jack_1 now that we added a car
         jack_1 = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, id=jack_1.id, kind="TestmoPerson1", prefetch_relationships=True, branch=default_branch
+            db=db, id=jack_1.id, kind="TestudPerson1", prefetch_relationships=True, branch=default_branch
         )
 
         mapping = {
