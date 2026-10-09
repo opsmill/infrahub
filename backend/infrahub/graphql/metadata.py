@@ -61,6 +61,8 @@ def _extract_attribute_metadata_from_node_fields(node_fields: dict[str, Any]) ->
             attribute_metadata_options |= MetadataOptions.SOURCE
         if "owner" in metadata_properties_dict or "_relation__owner" in metadata_properties_dict:
             attribute_metadata_options |= MetadataOptions.OWNER
+        if "from_pool" in metadata_properties_dict:
+            attribute_metadata_options |= MetadataOptions.TRACKING_POOL
 
     return attribute_metadata_options
 

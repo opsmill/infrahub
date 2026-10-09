@@ -11795,6 +11795,7 @@ type NonRequiredStringValueField {
 
 """Attribute of type Number"""
 type NumberAttribute implements AttributeInterface {
+  from_pool: NumberAttributeFromPool
   id: String
   is_default: Boolean
   is_from_profile: Boolean
@@ -11816,6 +11817,14 @@ input NumberAttributeCreate {
   owner: String
   source: String
   value: BigInt
+}
+
+"""
+The number pool tracking a number attribute and how the value it holds got there
+"""
+type NumberAttributeFromPool {
+  pool: CoreNumberPool!
+  provenance: PoolRecordProvenance!
 }
 
 input NumberAttributeUpdate {

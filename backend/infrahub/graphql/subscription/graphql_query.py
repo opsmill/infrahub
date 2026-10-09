@@ -11,6 +11,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.graphql.resolvers.account_metadata import AccountMetadataResolver
 from infrahub.graphql.resolvers.many_relationship import ManyRelationshipResolver
 from infrahub.graphql.resolvers.single_relationship import SingleRelationshipResolver
+from infrahub.graphql.resolvers.tracking_pool import TrackingPoolResolver
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
@@ -52,6 +53,7 @@ async def resolver_graphql_query(
                     single_relationship_resolver=SingleRelationshipResolver(),
                     many_relationship_resolver=ManyRelationshipResolver(),
                     account_metadata_resolver=AccountMetadataResolver(),
+                    tracking_pool_resolver=TrackingPoolResolver(),
                 ),
                 root_value=None,
                 variable_values=params or {},
