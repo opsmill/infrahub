@@ -22,6 +22,7 @@ from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_a
 from infrahub.pools.number import NumberUtilizationGetter
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.number_ranges import EffectiveSpace, NumberDomain
+from infrahub.profiles.node_applier import NodeProfilesApplier
 from tests.helpers.agnostic_edges import pool_reservation_edges
 from tests.helpers.number_pool import (
     add_pool_range,
@@ -98,7 +99,13 @@ async def test_allocation_records_reservation_whether_pool_is_named_or_identifie
     await updated_by_name.new(db=db, title="updated-by-name", ticket_id=None)
     await updated_by_name.save(db=db)
     await updated_by_name.from_graphql(
-        db=db, data={"ticket_id": {"from_pool": {"id": "pool1"}}}, pool_applier=build_attribute_pool_applier(db=db)
+        db=db,
+        data={"ticket_id": {"from_pool": {"id": "pool1"}}},
+        pool_applier=build_attribute_pool_applier(
+            profiles_applier=NodeProfilesApplier(db=db, branch=updated_by_name.get_branch()),
+            db=db,
+            schema_branch=db.schema.get_schema_branch(name=updated_by_name.get_branch().name),
+        ),
     )
     await updated_by_name.save(db=db)
 

@@ -356,7 +356,11 @@ class InfrahubMutationMixin:
         await obj.from_graphql(
             db=db,
             data=data,
-            pool_applier=build_attribute_pool_applier(db=db),
+            pool_applier=build_attribute_pool_applier(
+                profiles_applier=NodeProfilesApplier(db=db, branch=branch),
+                db=db,
+                schema_branch=db.schema.get_schema_branch(name=branch.name),
+            ),
             user_id=graphql_context.assigned_user_id,
         )
         fields_to_validate = list(data)

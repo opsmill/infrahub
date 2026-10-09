@@ -43,6 +43,7 @@ from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_a
 from infrahub.pools.default_allocator import DefaultPoolAllocator
 from infrahub.pools.noop_allocator import NoOpPoolAllocator
 from infrahub.profiles.mandatory_fields_checker import ProfilesMandatoryFieldGetter
+from infrahub.profiles.node_applier import NodeProfilesApplier
 from infrahub.templates.node_applier import NodeTemplateApplier, TemplatePoolFields, get_relationship_names_to_read
 from infrahub.types import ATTRIBUTE_TYPES
 
@@ -975,7 +976,12 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         await self._process_fields(
             db=db,
             fields=kwargs,
-            pool_applier=pool_applier or build_attribute_pool_applier(db=db),
+            pool_applier=pool_applier
+            or build_attribute_pool_applier(
+                profiles_applier=NodeProfilesApplier(db=db, branch=self.get_branch()),
+                db=db,
+                schema_branch=db.schema.get_schema_branch(name=self.get_branch().name),
+            ),
             process_pools=process_pools,
             user_id=user_id,
         )

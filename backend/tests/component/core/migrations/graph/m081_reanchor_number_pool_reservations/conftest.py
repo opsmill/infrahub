@@ -31,6 +31,7 @@ from infrahub.core.path import SchemaPath
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.timestamp import Timestamp
 from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
+from infrahub.profiles.node_applier import NodeProfilesApplier
 from tests.helpers.number_pool import add_pool_range
 from tests.helpers.schema import TICKET, load_schema
 
@@ -145,7 +146,11 @@ async def allocate_from_pool(
     await ticket.from_graphql(
         db=db,
         data={TRACKED_ATTRIBUTE_NAME: {"value": None, "from_pool": {"id": pool.id}}},
-        pool_applier=build_attribute_pool_applier(db=db),
+        pool_applier=build_attribute_pool_applier(
+            profiles_applier=NodeProfilesApplier(db=db, branch=ticket.get_branch()),
+            db=db,
+            schema_branch=db.schema.get_schema_branch(name=ticket.get_branch().name),
+        ),
     )
     await ticket.save(db=db)
 
@@ -170,7 +175,11 @@ async def create_ticket_allocated_on_update(db: InfrahubDatabase, title: str, po
     await ticket.from_graphql(
         db=db,
         data={TRACKED_ATTRIBUTE_NAME: {"from_pool": {"id": pool.id}}},
-        pool_applier=build_attribute_pool_applier(db=db),
+        pool_applier=build_attribute_pool_applier(
+            profiles_applier=NodeProfilesApplier(db=db, branch=ticket.get_branch()),
+            db=db,
+            schema_branch=db.schema.get_schema_branch(name=ticket.get_branch().name),
+        ),
     )
     await ticket.save(db=db)
     return ticket
