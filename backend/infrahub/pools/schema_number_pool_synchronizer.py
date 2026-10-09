@@ -12,9 +12,11 @@ from infrahub.core.registry import registry
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import within_transaction
+from infrahub.exceptions import ValidationError
 from infrahub.log import get_logger
 from infrahub.pools.number_pool_shorthand import NumberPoolShorthandMirror
 from infrahub.pools.registration import get_branches_with_schema_number_pool
+from infrahub.pools.scope import AllocationScope, AllocationScopeResolver
 
 if TYPE_CHECKING:
     from logging import Logger, LoggerAdapter
@@ -69,7 +71,35 @@ class SchemaNumberPoolSynchronizer:
 
         """
         await self._sync_existing_pools_with_schema(user_id=user_id)
+        await self._refresh_scope_names(user_id=user_id)
         return await self._process_all_branches(user_id=user_id)
+
+    async def _refresh_scope_names(self, user_id: str) -> None:
+        """Rewrite the stored name of each scope element whose field the default branch now names differently.
+
+        A pool whose kind the default branch does not define, or whose stored scope is not a list of elements, is
+        left as stored.
+        """
+        schema_branch = self.schema_manager.get_schema_branch(name=registry.default_branch)
+        resolver = AllocationScopeResolver(schema_branch=schema_branch)
+        number_pools = await NodeManager.query(db=self.db, schema=CoreNumberPool, branch_agnostic=True)
+        for number_pool in number_pools:
+            stored_value = number_pool.allocation_scope.value
+            if not stored_value or not schema_branch.has(name=number_pool.node.value):
+                continue
+            try:
+                scope = AllocationScope.from_stored(value=stored_value, pool=number_pool.name.value)
+            except ValidationError as exc:
+                self.log.warning(f"Keeping the stored allocation scope of NumberPool={number_pool.id}: {exc.message}")
+                continue
+            refreshed = resolver.refresh_names(scope=scope, kind=number_pool.node.value)
+            if refreshed == scope:
+                continue
+            self.log.info(
+                f"Renaming the allocation scope of NumberPool={number_pool.id} to {list(refreshed.element_names)}"
+            )
+            number_pool.allocation_scope.value = refreshed.to_stored()
+            await number_pool.save(db=self.db, user_id=user_id)
 
     async def _sync_existing_pools_with_schema(self, user_id: str) -> None:
         """Update or delete existing pools based on current schema definitions."""

@@ -8,7 +8,7 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
-from tests.helpers.number_pool import SCOPED_DEVICE, SCOPED_HOLDER, SCOPED_POOL_SCHEMA
+from tests.helpers.number_pool import SCOPED_DEVICE, SCOPED_HOLDER, SCOPED_POOL_SCHEMA, run_schema_updated_workflow
 from tests.helpers.schema import load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+    from infrahub.services import InfrahubServices
 
 DEVICE_POOL_BY_SITE = "vlan-per-site"
 DEVICE_POOL_BY_ROLE = "vlan-per-role"
@@ -266,3 +267,55 @@ class TestNumberPoolScopeCheckerSchemaLifecycle(TestInfrahubApp):
         assert response is not None
         assert _error_messages(response) == sorted(case.refusals)
         assert await self._stored_kind_hash(db=db, branch=default_branch, kind=case.kind) == before
+
+    async def test_step04_renaming_the_relationship_renames_the_stored_element(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        default_branch: Branch,
+        service: InfrahubServices,
+        scoped_pools: dict[str, InfrahubNode],
+    ) -> None:
+        site_id = (
+            registry.schema.get_node_schema(name=SCOPED_DEVICE.kind, branch=default_branch)
+            .get_relationship(name="site")
+            .id
+        )
+        assert site_id
+        device = _device()
+        _field(device, "site").update(name="location", id=site_id)
+
+        response = await client.schema.load(schemas=[{"version": "1.0", "nodes": [device]}], branch=default_branch.name)
+        assert not response.errors
+        await run_schema_updated_workflow(service=service, branch=default_branch)
+
+        schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+        renamed = schema_branch.get_node(name=SCOPED_DEVICE.kind, duplicate=False).get_relationship(name="location")
+        assert renamed.id == site_id
+        pool = await client.get(kind=InfrahubKind.NUMBERPOOL, id=scoped_pools[DEVICE_POOL_BY_SITE].id)
+        assert pool.allocation_scope.value == [{"id": site_id, "name": "location"}]
+
+    @pytest.mark.xfail(
+        reason="per-division allocation lands with the allocation ticket", raises=AssertionError, strict=True
+    )
+    async def test_step05_new_device_allocates_per_site_after_the_rename(
+        self, client: InfrahubClient, default_branch: Branch, scoped_pools: dict[str, InfrahubNode]
+    ) -> None:
+        pool_id = scoped_pools[DEVICE_POOL_BY_SITE].id
+        await client.schema.all(branch=default_branch.name, refresh=True)
+        numbers: dict[str, int] = {}
+        for site_name in ("site-a", "site-b"):
+            site = await client.create(kind="ScopeSite", name=site_name)
+            await site.save()
+            device = await client.create(
+                kind=SCOPED_DEVICE.kind,
+                name=f"device-{site_name}",
+                role="leaf",
+                tags=[],
+                location=site,
+                vlan_id={"from_pool": {"id": pool_id}},
+            )
+            await device.save()
+            numbers[site_name] = device.vlan_id.value
+
+        assert numbers == {"site-a": 1, "site-b": 1}
