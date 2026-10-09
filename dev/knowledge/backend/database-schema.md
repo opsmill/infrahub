@@ -201,7 +201,8 @@ else. When a read asks for it (`MetadataOptions.TRACKING_POOL`), the attribute q
 attribute's active `-global-` `IS_RESERVED` edge and returns the pool's uuid with the provenance of the
 value the branch holds, read from `allocated_values` as above. The read does not check that the pool
 node is live: a live edge implies a live pool, because deleting a pool ends every edge it holds. The
-result is loaded into a property of its own on the attribute (`tracking_pool`), which no save path reads.
+result is loaded into the attribute's `_tracking_pool` property, read through `get_tracking_pool()`, which
+no save path reads.
 `source` is populated only by a stored `HAS_SOURCE` edge: the pool is never written there, and the
 read never puts it there, so a save after a re-pool or a detach cannot store the pool as a source.
 
