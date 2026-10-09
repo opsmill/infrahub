@@ -492,6 +492,22 @@ class NothingPendingError(ValidationError):
         super().__init__(f"Repository {repository_name} has nothing pending to push.")
 
 
+class DeliveryPendingError(ValidationError):
+    """Raised when a repository with pending pushes or held regeneration would be converted, which would drop them."""
+
+    def __init__(self, repository_name: str, *, regeneration_held: bool = False) -> None:
+        if regeneration_held:
+            super().__init__(
+                f"Repository {repository_name} has a regeneration that waits to be released after a push; wait "
+                "for the release, then convert the repository."
+            )
+            return
+        super().__init__(
+            f"Repository {repository_name} has pending pushes to its remote; retry or abandon them before you "
+            "convert the repository."
+        )
+
+
 class DeliveryStateUnavailableError(ServiceUnavailableError):
     """Raised when the lock of the delivery state of a repository is not acquired in time."""
 
