@@ -297,21 +297,112 @@ async def test_failed_enqueue_on_the_final_attempt_fails_and_names_the_merge(
     assert rig.intent == before
 
 
-async def test_unavailable_delivery_state_is_retryable(rig: Rig) -> None:
+UNAVAILABLE_STATE_MESSAGE = (
+    "The lock of the delivery state of repository repository-1 was not acquired within 10 seconds; try again."
+)
+
+
+async def test_unavailable_delivery_state_is_retried_before_the_final_attempt(rig: Rig) -> None:
     rig.state.failures["start_attempt"] = [
         DeliveryStateUnavailableError(repository_id=REPOSITORY.id, acquire_seconds=10)
     ]
 
-    with pytest.raises(
-        RetryableDeliveryError,
-        match=(
-            r"^The lock of the delivery state of repository repository-1 was not acquired within 10 seconds; "
-            r"try again\.$"
-        ),
-    ):
-        await rig.deliver(final_attempt=True)
+    with pytest.raises(RetryableDeliveryError, match=rf"^{re.escape(UNAVAILABLE_STATE_MESSAGE)}$"):
+        await rig.deliver(final_attempt=False)
 
     assert await rig.lock.locked() is False
+
+
+async def test_unavailable_delivery_state_on_the_final_attempt_fails_the_attempt(
+    rig: Rig, caplog: pytest.LogCaptureFixture
+) -> None:
+    rig.state.failures["start_attempt"] = [
+        DeliveryStateUnavailableError(repository_id=REPOSITORY.id, acquire_seconds=10)
+    ]
+
+    with caplog.at_level(logging.ERROR, logger=RUN_LOGGER):
+        result = await rig.deliver(final_attempt=True)
+
+    assert result == DeliveryAttemptResult(
+        outcome=DeliveryOutcome.FAILED,
+        failure=DeliveryFailure(cause=None, retryable=True, message=UNAVAILABLE_STATE_MESSAGE),
+    )
+    assert [record.getMessage() for record in caplog.records if record.levelno == logging.ERROR] == [
+        f"The delivery to repository net-repo failed on the last attempt: {UNAVAILABLE_STATE_MESSAGE}"
+    ]
+    assert await rig.lock.locked() is False
+
+
+@dataclass
+class StateFailureAfterPushCase:
+    name: str
+    method: str
+    remote_head: str
+    """Another head than the recorded commit makes an import owed."""
+    settled: bool
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        StateFailureAfterPushCase(name="progress_after_the_push", method="progress", remote_head=TRUNK, settled=False),
+        StateFailureAfterPushCase(name="owed_import", method="owe_import", remote_head=UPSTREAM, settled=False),
+        StateFailureAfterPushCase(name="settled_import", method="settle_import", remote_head=UPSTREAM, settled=False),
+        StateFailureAfterPushCase(name="settled_delivery", method="settle_delivery", remote_head=TRUNK, settled=True),
+    ],
+    ids=lambda case: case.name,
+)
+async def test_failed_state_write_after_the_push_fails_the_final_attempt_as_a_failed_record(
+    rig: Rig, case: StateFailureAfterPushCase
+) -> None:
+    await rig.queue(_merge())
+    rig.git.remote_heads["main"] = case.remote_head
+    error = DeliveryStateUnavailableError(repository_id=REPOSITORY.id, acquire_seconds=10)
+    # The progress before the push succeeds, so only a write after the push fails.
+    pushed: list[str] = []
+
+    async def mark_pushed() -> None:
+        pushed.append("push")
+        rig.state.failures[case.method] = [error]
+
+    rig.git.before["push"] = mark_pushed
+
+    result = await rig.deliver(final_attempt=True)
+
+    assert pushed == ["push"]
+    assert result == DeliveryAttemptResult(
+        outcome=DeliveryOutcome.FAILED,
+        commit=f"{case.remote_head}+{FEATURE}",
+        failure=DeliveryFailure(
+            cause=RepositoryDeliveryFailureCause.RECORD_FAILED, retryable=True, message=UNAVAILABLE_STATE_MESSAGE
+        ),
+    )
+    assert rig.intent.queue.entries == (_merge(),)
+    assert (rig.intent.status, rig.intent.cause) == (
+        RepositoryDeliveryStatus.ACTION_REQUIRED,
+        RepositoryDeliveryFailureCause.RECORD_FAILED,
+    )
+    assert ("settle_delivery" in rig.state.calls) is case.settled
+
+
+async def test_failed_state_write_after_the_push_is_retried_before_the_final_attempt(rig: Rig) -> None:
+    await rig.queue(_merge())
+
+    async def fail_the_settle() -> None:
+        rig.state.failures["settle_delivery"] = [
+            DeliveryStateUnavailableError(repository_id=REPOSITORY.id, acquire_seconds=10)
+        ]
+
+    rig.git.before["push"] = fail_the_settle
+
+    with pytest.raises(RetryableDeliveryError, match=rf"^{re.escape(UNAVAILABLE_STATE_MESSAGE)}$"):
+        await rig.deliver(final_attempt=False)
+
+    assert rig.intent.queue.entries == (_merge(),)
+    assert (rig.intent.status, rig.intent.cause) == (
+        RepositoryDeliveryStatus.PENDING,
+        RepositoryDeliveryFailureCause.RECORD_FAILED,
+    )
 
 
 async def test_every_entry_that_the_remote_holds_is_observed_and_its_head_recorded(rig: Rig) -> None:
@@ -528,6 +619,7 @@ class UnrecordedFailureCase:
     git_failures: dict[str, list[Exception]]
     conflicting_commits: frozenset[str]
     error_line: str
+    outcome: DeliveryOutcome
 
 
 UNRECORDED_FAILURE_CASES: list[UnrecordedFailureCase] = [
@@ -539,6 +631,7 @@ UNRECORDED_FAILURE_CASES: list[UnrecordedFailureCase] = [
             "The push step of the delivery to repository net-repo failed: Authentication failed for net-repo, "
             "please validate the credentials."
         ),
+        outcome=DeliveryOutcome.FAILED,
     ),
     UnrecordedFailureCase(
         name="replay_conflict",
@@ -550,12 +643,13 @@ UNRECORDED_FAILURE_CASES: list[UnrecordedFailureCase] = [
             "pushed. The branches are merged in Infrahub, and their merges wait in the push queue of the repository. "
             "Merge the source branch on the remote by hand, then retry the push, or abandon the push queue."
         ),
+        outcome=DeliveryOutcome.UNREPLAYABLE,
     ),
 ]
 
 
 @pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in UNRECORDED_FAILURE_CASES])
-async def test_failure_is_logged_before_a_failed_record_of_it_stops_the_attempt(
+async def test_failure_is_logged_and_still_ends_the_attempt_when_its_record_fails(
     rig: Rig, case: UnrecordedFailureCase, caplog: pytest.LogCaptureFixture
 ) -> None:
     await rig.queue(_merge())
@@ -565,19 +659,14 @@ async def test_failure_is_logged_before_a_failed_record_of_it_stops_the_attempt(
         DeliveryStateUnavailableError(repository_id=REPOSITORY.id, acquire_seconds=10)
     ]
 
-    with (
-        caplog.at_level(logging.ERROR, logger=RUN_LOGGER),
-        pytest.raises(
-            RetryableDeliveryError,
-            match=(
-                r"^The lock of the delivery state of repository repository-1 was not acquired within 10 seconds; "
-                r"try again\.$"
-            ),
-        ),
-    ):
-        await rig.deliver()
+    with caplog.at_level(logging.WARNING, logger=RUN_LOGGER):
+        result = await rig.deliver()
 
-    assert [record.getMessage() for record in caplog.records if record.levelno == logging.ERROR] == [case.error_line]
+    assert result.outcome == case.outcome
+    assert [record.getMessage() for record in caplog.records if record.levelno >= logging.WARNING] == [
+        case.error_line,
+        "Failed to record the failure of the delivery to repository net-repo.",
+    ]
     assert rig.state.calls[-1] == "record_failure"
 
 
