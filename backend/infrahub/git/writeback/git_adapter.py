@@ -10,6 +10,7 @@ from infrahub_sdk.protocols import CoreRepository
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.exceptions import RepositoryError
+from infrahub.git.commit_id import readable_commit
 from infrahub.git.divergence.gateway import GitAncestryGateway
 from infrahub.git.writeback.constants import FETCH_TIMEOUT_SECONDS, PUSH_TIMEOUT_SECONDS
 from infrahub.git.writeback.ports import ReplayResult
@@ -103,7 +104,8 @@ class RepositoryDeliveryGitAdapter:
         repository = await self.repository.sdk.get(
             kind=CoreRepository, id=str(self.repository.id), branch=self.destination_branch
         )
-        return repository.commit.value
+        # The API stores any text as the commit, and Git can compare only a full commit id.
+        return readable_commit(repository.commit.value)
 
     def is_ancestor(self, *, ancestor: str, descendant: str) -> bool:
         gateway = GitAncestryGateway(
