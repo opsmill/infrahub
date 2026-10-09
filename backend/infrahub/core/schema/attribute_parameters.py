@@ -244,11 +244,12 @@ class NumberPoolParameters(AttributeParameters):
     allocation_scope: list[str] | None = Field(
         default=None,
         description=(
-            "Fields of the kind that divide the pool's space; "
+            "Names of the attributes and relationships of the kind that divide the pool's space; "
             "allocation returns the lowest free number within the writer's division. "
-            "Same notation as uniqueness constraints."
+            "The names are resolved against the schema of the default branch when the pool is created, "
+            "and compared by id to the pool's scope on every later schema load."
         ),
-        json_schema_extra={"update": UpdateSupport.NOT_SUPPORTED.value},
+        json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
     )
 
     @property

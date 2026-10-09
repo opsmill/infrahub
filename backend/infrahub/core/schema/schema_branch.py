@@ -58,6 +58,7 @@ from infrahub.core.schema import (
 )
 from infrahub.core.schema.attribute_parameters import (
     ListAttributeParameters,
+    NumberPoolParameters,
     TextAttributeParameters,
 )
 from infrahub.core.schema.attribute_schema import get_attribute_schema_class_for_kind
@@ -67,6 +68,10 @@ from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
 from infrahub.core.validators.schema_branch.display_label_validator import DisplayLabelValidator
 from infrahub.core.validators.schema_branch.hierarchical_nodes_restricted_words_validator import (
     HierarchicalNodesRestrictedWords,
+)
+from infrahub.core.validators.schema_branch.number_pool_scope_validator import (
+    DeclaredScopeValidator,
+    scope_refusal_reason,
 )
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from infrahub.log import get_logger
@@ -1384,11 +1389,31 @@ class SchemaBranch:
                             ) from None
 
     def validate_attribute_parameters(self) -> None:
+        for name in self.generics.keys():
+            generic_schema = self.get_generic(name=name, duplicate=False)
+            for attribute in generic_schema.attributes:
+                if attribute.kind == "NumberPool":
+                    self._validate_number_pool_scope(kind_schema=generic_schema, attribute=attribute)
+
         for name in self.nodes.keys():
             node_schema = self.get_node(name=name, duplicate=False)
             for attribute in node_schema.attributes:
                 if attribute.kind == "NumberPool":
                     self._validate_number_pool_parameters(node_schema=node_schema, attribute=attribute)
+                    if not attribute.inherited:
+                        self._validate_number_pool_scope(kind_schema=node_schema, attribute=attribute)
+
+    def _validate_number_pool_scope(self, kind_schema: NodeSchema | GenericSchema, attribute: AttributeSchema) -> None:
+        if not isinstance(attribute.parameters, NumberPoolParameters) or not attribute.parameters.allocation_scope:
+            return
+        try:
+            DeclaredScopeValidator(candidate=self).validate(
+                kind=kind_schema.kind, tracked_attribute=attribute.name, entries=attribute.parameters.allocation_scope
+            )
+        except ValidationError as exc:
+            raise ValidationError(
+                f"{kind_schema.kind}.{attribute.name}: allocation_scope: {scope_refusal_reason(error=exc)}"
+            ) from exc
 
     def _validate_number_pool_parameters(self, node_schema: NodeSchema, attribute: AttributeSchema) -> None:
         if attribute.optional:
