@@ -326,6 +326,12 @@ The object views tier a node's attributes and relationships by the schema `displ
 [Backend is authoritative](#backend-is-authoritative)); there is no client-side list of which fields
 are advanced.
 
+One exception: the push state attributes of `CoreRepository` (`REPOSITORY_DELIVERY_ATTRIBUTE_NAMES`
+in `entities/repository/domain/model/repository.ts`). Only the default branch holds their live
+value, and another branch holds an old copy. So `is-repository-delivery-attribute.ts` keeps them out
+of the detail view, its "extra" toggle and the list-view column candidates, and only the push
+section of the repository page shows them, read from the default branch.
+
 The list-view rules above take an optional second argument that opts named `extra` fields back in —
 see [Column Visibility](column-visibility.md).
 
