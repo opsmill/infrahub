@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -28,6 +28,7 @@ from tests.adapters.repository_record_store import (
     WrittenRecord,
 )
 from tests.helpers.git import GraphRecordingClient, LocalRemote, clone_repository
+from tests.unit.git.writeback.fakes import FixedClock, InMemoryDeliveryState
 
 if TYPE_CHECKING:
     from infrahub.git.repository import InfrahubRepository
@@ -1141,3 +1142,135 @@ async def test_a_marker_written_after_the_read_is_left_for_the_next_cycle(
     )
 
     assert await is_marked(markers, tracked, target="main")
+
+
+def pushed_state(tracked: TrackedRepository, last_delivered_commit: str) -> InMemoryDeliveryState:
+    """A delivery state with no pending push, whose last push delivered the given commit."""
+    repository_id = str(tracked.repository.id)
+    state = InMemoryDeliveryState(
+        clock=FixedClock(now=REWRITTEN_AT), repository_names={repository_id: tracked.repository.name}
+    )
+    state.intents[repository_id] = replace(state.intents[repository_id], last_delivered_commit=last_delivered_commit)
+    return state
+
+
+def reverted_push(state: InMemoryDeliveryState, tracked: TrackedRepository) -> tuple[str, str] | None:
+    reverted = state.intents[str(tracked.repository.id)].reverted
+    return (reverted.delivered_commit, reverted.new_head) if reverted else None
+
+
+@pytest.mark.parametrize(
+    ("fetch_pushed", "fetch_imported"),
+    [
+        pytest.param(True, True, id="clone_holds_both_commits"),
+        pytest.param(True, False, id="clone_lacks_the_imported_commit"),
+        pytest.param(False, False, id="clone_lacks_both_commits"),
+    ],
+)
+async def test_a_rewrite_of_the_default_branch_that_discards_the_pushed_commit_records_a_reverted_push(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    fetch_pushed: bool,
+    fetch_imported: bool,
+) -> None:
+    """A clone that never fetched a commit cannot compare it, but the fetch shows the pushed commit is off the remote."""
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    pushed = tracked.remote.commit(branch_name="main", files={"data.txt": "main v2\n"})
+    if fetch_pushed:
+        await tracked.repository.fetch()
+    imported_trunk = tracked.remote.commit(branch_name="main", files={"data.txt": "main v3\n"})
+    if fetch_imported:
+        await tracked.repository.fetch()
+    tracked.remote.repo.git.reset("--hard", tracked.trunk_commit)
+    rewritten_trunk = tracked.remote.commit(branch_name="main", files={"data.txt": "main rewritten\n"})
+    state = pushed_state(tracked, last_delivered_commit=pushed)
+
+    collected = await tracked.repository.collect_pending_imports(
+        graph_commits=tracked.graph_commits(main=imported_trunk), state=state
+    )
+
+    assert collected.failed_imports == []
+    assert reverted_push(state, tracked) == (pushed, rewritten_trunk)
+    assert (
+        f"The rewrite of branch main of repository tracked-repo discarded the pushed commit {pushed}, "
+        f"the branch now points to {rewritten_trunk}"
+    ) in caplog.messages
+
+
+async def test_a_rewrite_of_the_default_branch_that_keeps_the_pushed_commit_records_nothing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Only the commit imported after the push is discarded, so the pushed commit is still on the remote."""
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    imported_trunk = tracked.remote.commit(branch_name="main", files={"data.txt": "main v2\n"})
+    await tracked.repository.fetch()
+    tracked.remote.commit(branch_name="main", files={"data.txt": "main rewritten\n"}, amend=True)
+    state = pushed_state(tracked, last_delivered_commit=tracked.trunk_commit)
+
+    collected = await tracked.repository.collect_pending_imports(
+        graph_commits=tracked.graph_commits(main=imported_trunk), state=state
+    )
+
+    assert collected.failed_imports == []
+    assert reverted_push(state, tracked) is None
+
+
+async def test_a_pushed_commit_that_an_earlier_rewrite_discarded_is_not_recorded_again(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    pushed = tracked.remote.commit(branch_name="main", files={"data.txt": "main v2\n"})
+    await tracked.repository.fetch()
+    imported_trunk = tracked.remote.commit(branch_name="main", files={"data.txt": "main v3\n"}, amend=True)
+    await tracked.repository.fetch()
+    tracked.remote.commit(branch_name="main", files={"data.txt": "main v4\n"}, amend=True)
+    state = pushed_state(tracked, last_delivered_commit=pushed)
+
+    collected = await tracked.repository.collect_pending_imports(
+        graph_commits=tracked.graph_commits(main=imported_trunk), state=state
+    )
+
+    assert collected.failed_imports == []
+    assert reverted_push(state, tracked) is None
+
+
+async def test_a_trunk_re_pointed_on_purpose_records_no_reverted_push(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The pushed commit stays on the branch that the trunk tracked before."""
+    re_pointed = await re_point_the_trunk(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    state = pushed_state(re_pointed.tracked, last_delivered_commit=re_pointed.discarded_commit)
+
+    collected = await re_pointed.tracked.repository.collect_pending_imports(
+        graph_commits=re_pointed.graph_commits(),
+        retarget_markers=await marked(re_pointed.tracked, target=TRACKED),
+        state=state,
+    )
+
+    assert collected.failed_imports == []
+    assert reverted_push(state, re_pointed.tracked) is None
+
+
+async def test_a_reverted_push_that_fails_to_record_fails_the_default_branch_and_keeps_its_import(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The graph already records the new commit, so no later cycle would select the branch to import it."""
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    rewritten_trunk = tracked.remote.commit(branch_name="main", files={"data.txt": "main rewritten\n"}, amend=True)
+    state = pushed_state(tracked, last_delivered_commit=tracked.trunk_commit)
+    state.failures["record_reverted"] = [RepositoryError(identifier="tracked-repo", message="The database is down")]
+
+    collected = await tracked.repository.collect_pending_imports(graph_commits=tracked.graph_commits(), state=state)
+
+    assert collected.failed_imports == [
+        FailedImport(
+            branch_name="main",
+            step=ImportStep.RECORD,
+            reason="The database is down",
+            on_default_branch=True,
+        )
+    ]
+    assert [(pending_import.infrahub_branch_name, pending_import.commit) for pending_import in collected.imports] == [
+        ("main", rewritten_trunk)
+    ]
