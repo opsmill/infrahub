@@ -107,7 +107,7 @@ How the share is worked out:
 
 - One reading stands for every container of the component, so every copy is assumed to run with the same settings. If copies differ, `per_worker` shows one container's figures, not an average.
 - When some readings miss a figure, the most complete one is used.
-- CPU shares keep two decimals. Memory shares are whole bytes, rounded down.
+- CPU shares keep two decimals. A whole number is sent as an integer (`2`, not `2.0`), because the telemetry endpoint checks the checksum by writing the data out again in JavaScript, which cannot tell the two apart. Memory shares are whole bytes, rounded down.
 
 ## When a figure is empty
 

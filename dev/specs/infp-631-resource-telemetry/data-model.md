@@ -43,8 +43,8 @@ One worker's share of its container's allocation, carried as `per_worker` by the
 
 | Field | Type |
 |-------|------|
-| `processor_available` | `float \| None` (default `None`), rounded to two decimals |
-| `processor_assigned` | `float \| None` (default `None`), rounded to two decimals |
+| `processor_available` | `float \| None` (default `None`), rounded to two decimals; written to JSON as an integer when whole |
+| `processor_assigned` | `float \| None` (default `None`), rounded to two decimals; written to JSON as an integer when whole |
 | `memory_total` | `int \| None` (default `None`), whole bytes, rounded down |
 | `memory_available` | `int \| None` (default `None`), whole bytes, rounded down |
 

@@ -7,6 +7,7 @@ across the gunicorn processes that report from it, and no prior payload key is
 renamed or removed.
 """
 
+import json
 import logging
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
@@ -255,6 +256,45 @@ async def test_payload_keeps_every_prior_key_and_its_version(resource_environmen
     # Stable identifiers are untouched by the additions.
     assert dumped["infrahub_version"] == __version__
     assert dumped["deployment_id"] == "test-deployment"
+
+
+def _whole_number_floats(value: object, path: str = "data") -> list[str]:
+    """List the places in a JSON-ready value that hold a float with no fractional part."""
+    if isinstance(value, float):
+        return [path] if value.is_integer() else []
+    if isinstance(value, dict):
+        return [found for key, item in value.items() for found in _whole_number_floats(item, f"{path}.{key}")]
+    if isinstance(value, list):
+        return [found for index, item in enumerate(value) for found in _whole_number_floats(item, f"{path}[{index}]")]
+    return []
+
+
+async def test_payload_has_no_whole_number_float(resource_environment: MemoryCache) -> None:
+    """No figure is sent as a whole-number float, because the telemetry endpoint writes 2.0 as 2 when it checks the checksum."""
+    cache = resource_environment
+
+    # Whole CPUs give a whole-number share, the case that must not be sent as a float.
+    _seed_active(cache, "git_agent", "w1")
+    _seed_reading(
+        cache,
+        "git_agent",
+        "w1",
+        WorkerResourceReading(
+            host="git-host-1",
+            processor_available=2,
+            processor_assigned=2,
+            memory_total=4_000_000_000,
+            memory_available=3_000_000_000,
+        ),
+    )
+
+    gatherer = await build_anonymous_telemetry_gatherer()
+    dumped = (await gatherer.gather()).model_dump(mode="json")
+
+    assert json.dumps(dumped["task_workers"]["per_worker"]) == (
+        '{"processor_available": 2, "processor_assigned": 2, "memory_total": 4000000000, "memory_available": 3000000000}'
+    )
+    assert _whole_number_floats(dumped) == []
 
 
 async def test_optout_snapshot_carries_resources_without_transmission(

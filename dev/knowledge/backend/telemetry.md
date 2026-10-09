@@ -82,6 +82,11 @@ between them. Their `total` and `active` count processes the same way `workers` 
 unchanged: `server.total + task_workers.total` equals `workers.total`, except for a process that
 stopped about two hours earlier and is only remembered by its presence key.
 
+A whole-number CPU share is sent as an integer (`2`, not `2.0`). The telemetry endpoint checks the
+checksum by writing the received data out again in JavaScript, which cannot tell the two apart, so
+a whole-number float fails the check and the endpoint drops the whole report. Any new float field
+in the payload needs the same treatment.
+
 Each API server and task-worker process reports its own figures through the cache. Every 10 seconds
 the main loop starts a read of the limits on a separate thread, so that a slow read never holds up
 requests and flows, and puts the reading in a shared slot in memory. The heartbeat

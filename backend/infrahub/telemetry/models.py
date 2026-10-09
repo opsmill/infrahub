@@ -1,13 +1,25 @@
-from pydantic import BaseModel, Field
+from typing import Annotated
+
+from pydantic import BaseModel, Field, PlainSerializer
 
 from .constants import InfrahubType
+
+
+def _whole_number_as_integer(value: float | None) -> float | int | None:
+    if value is not None and value.is_integer():
+        return int(value)
+    return value
+
+
+# The telemetry endpoint recomputes the checksum in JavaScript, which writes 2.0 as 2, so a whole number is sent as 2.
+ProcessorShare = Annotated[float | None, PlainSerializer(_whole_number_as_integer, when_used="json")]
 
 
 class TelemetryPerWorkerData(BaseModel):
     """One worker's share of its container's CPU and memory; multiplied by the active count it gives the total."""
 
-    processor_available: float | None = None
-    processor_assigned: float | None = None
+    processor_available: ProcessorShare = None
+    processor_assigned: ProcessorShare = None
     memory_total: int | None = None
     memory_available: int | None = None
 

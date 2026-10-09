@@ -53,7 +53,8 @@ share a hostname, for example when they use the host's network.
 worker process. Two new blocks, `server` and `task_workers`, count their own component's processes
 the same way and carry `per_worker`: one worker's share of its container. The share is the most
 complete reading of the component divided by the number of processes that reported from its
-container, with CPU figures kept to two decimals and memory in whole bytes, so `per_worker × active`
+container, with CPU figures kept to two decimals (sent as integers when whole, which the telemetry
+endpoint's checksum check needs) and memory in whole bytes, so `per_worker × active`
 is the component's total. The database block gains `processor_assigned`. `payload_format` stays the
 same until the receiving service confirms it accepts the new fields.
 
