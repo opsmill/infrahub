@@ -112,7 +112,9 @@ export const updateNumberPoolFieldValue = (
   defaultValue?: FormAttributeValue
 ): FormAttributeValue => {
   const next = updateAttributeFieldValue(newValue, defaultValue);
-  if (next === defaultValue || next.source?.type !== "pool") return next;
+  // The number input writes into the stored value in place, so it must never hold the default itself.
+  if (next === defaultValue) return structuredClone(next);
+  if (next.source?.type !== "pool") return next;
 
   const number = getNumberToReserve(current, defaultValue);
   if (number === null) return next;

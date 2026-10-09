@@ -455,6 +455,9 @@ describe("updateNumberPoolFieldValue", () => {
       from_pool: { id: "vlan-ids", name: "VLAN ids pool", kind: "CoreNumberPool" },
     };
 
-    expect(updateNumberPoolFieldValue(vlanPool, staged, tracked)).toBe(tracked);
+    const result = updateNumberPoolFieldValue(vlanPool, staged, tracked);
+
+    expect(result).toEqual(tracked);
+    expect(result).not.toBe(tracked);
   });
 });

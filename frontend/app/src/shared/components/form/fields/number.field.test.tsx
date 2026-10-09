@@ -295,6 +295,38 @@ describe("NumberField", () => {
     });
   });
 
+  test("keeps the default intact when a number is typed after re-picking the original pool", async () => {
+    const onSubmit = vi.fn();
+    const defaultValue = structuredClone(trackedValue);
+    const component = await render(
+      <TestForm defaultValues={{ vlan_id: structuredClone(trackedValue) }} onSubmit={onSubmit}>
+        <NumberField
+          {...poolProps}
+          pool={{
+            kind: "CoreNumberPool",
+            defaultAllocatedObjectKind: "TestDevice",
+            options: [numberPoolNode, otherNumberPoolNode],
+          }}
+          defaultValue={defaultValue}
+        />
+      </TestForm>
+    );
+
+    await component.getByTestId("select-open-pool-option-button").click();
+    await component.getByRole("option", { name: "Loopback ids pool" }).click();
+    await component.getByTestId("select-open-pool-option-button").click();
+    await component.getByRole("option", { name: "VLAN ids pool" }).click();
+    await component.getByRole("spinbutton", { name: "Number" }).fill("7");
+    await component.getByRole("button", { name: "Submit" }).click();
+
+    await expect.poll(() => onSubmit.mock.calls.length).toBeGreaterThan(0);
+    expect(onSubmit.mock.calls[0]?.[0]?.vlan_id).toEqual({
+      source: trackedValue.source,
+      value: { from_pool: { id: "number-pool-1", number: 7 } },
+    });
+    expect(defaultValue).toEqual(trackedValue);
+  });
+
   test("submits the same from-pool payload the pool button produced", async () => {
     const onSubmit = vi.fn();
     const component = await render(
