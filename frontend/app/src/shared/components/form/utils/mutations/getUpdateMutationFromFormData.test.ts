@@ -391,6 +391,26 @@ describe("getUpdateMutationFromFormData - test", () => {
     });
   });
 
+  describe("Number attribute served by a number pool", () => {
+    it("sends only the typed number when no pool tracks it", () => {
+      const fields: Array<DynamicFieldProps> = [
+        buildFormField({
+          name: "vlan_id",
+          type: "Number",
+          pool: { kind: "CoreNumberPool", defaultAllocatedObjectKind: "TestDevice" },
+          defaultValue: { source: { type: "user" }, value: 10 },
+        }),
+      ];
+      const formData: Record<string, FormAttributeValue> = {
+        vlan_id: { source: { type: "user" }, value: 42 },
+      };
+
+      const mutationData = getUpdateMutationFromFormData({ fields, formData });
+
+      expect(mutationData).to.deep.equal({ vlan_id: { value: 42 } });
+    });
+  });
+
   describe("Resource pool from-pool relationship", () => {
     it("sends only the pool id on the _from_resource_pool field, since its peer is the pool kind", () => {
       // That relationship is a plain RelatedNodeInput: sending either override is rejected before any resolver runs.
