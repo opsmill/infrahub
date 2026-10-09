@@ -100,13 +100,25 @@ async def ticket_schema(db: InfrahubDatabase, register_core_models_schema: Schem
     await initialize_registry(db=db)
 
 
+async def _save_scoped_schema(db: InfrahubDatabase) -> None:
+    await save_schema_kinds(db=db, schema=SCOPED_POOL_SCHEMA)
+    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+
+
 @pytest.fixture
 async def scoped_schema(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     """The scoped pool test schema, saved on the default branch so that its fields hold the ids a scope stores."""
-    await save_schema_kinds(db=db, schema=SCOPED_POOL_SCHEMA)
-    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+    await _save_scoped_schema(db=db)
+
+
+@pytest.fixture(scope="class")
+async def scoped_schema_scope_class(
+    db: InfrahubDatabase, default_branch_scope_class: Branch, register_core_models_schema_scope_class: SchemaBranch
+) -> None:
+    """The scoped pool test schema, saved once for every test of a class that only reads the data it creates."""
+    await _save_scoped_schema(db=db)
 
 
 @pytest.fixture
