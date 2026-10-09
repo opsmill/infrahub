@@ -16,6 +16,7 @@ from infrahub import config, lock
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
+from infrahub.core.branch.tasks import post_process_branch_merge
 from infrahub.core.constants import (
     FullRegenerationReason,
     InfrahubKind,
@@ -24,8 +25,10 @@ from infrahub.core.constants import (
 )
 from infrahub.core.diff.summary_cache import DiffSummaryCache
 from infrahub.core.diff.summary_serializer import DiffSummarySerializer
+from infrahub.core.manager import NodeManager
 from infrahub.core.merge.builder import build_post_merge_regeneration_dispatcher, build_regeneration_barrier
 from infrahub.core.node import Node
+from infrahub.core.protocols import CoreGeneratorDefinition
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.computed_attribute import ComputedAttribute, ComputedAttributeKind
 from infrahub.generators.constants import GeneratorDefinitionRunSource
@@ -275,6 +278,14 @@ class HeldRegenerationHarness:
             pending_merge_enqueued=enqueued,
         )
         return await merge_git_repository(model=model, context=self.context, return_state=True)
+
+
+async def _set_execute_after_merge(*, db: InfrahubDatabase, generator_definition_id: str, value: bool) -> None:
+    generator = await NodeManager.get_one(
+        db=db, id=generator_definition_id, kind=CoreGeneratorDefinition, raise_on_error=True
+    )
+    generator.execute_after_merge.value = value
+    await generator.save(db=db)
 
 
 def describe(call: dict[str, Any]) -> tuple[Any, ...]:
@@ -752,6 +763,79 @@ class TestHeldRegeneration(TestInfrahubAppWithoutLocalWorkflow):
             await harness.store.settle_delivery(
                 repository_id=other.repository_id, snapshot=other_intent, delivered_commit=None
             )
+
+    async def test_a_held_generator_that_no_longer_runs_after_a_merge_releases_nothing(
+        self, db: InfrahubDatabase, harness: HeldRegenerationHarness
+    ) -> None:
+        pending = harness.pending
+        changed = harness.dataset.changed_device_id
+        before = await harness.view()
+        assert before.held.is_empty
+        hold_seq = before.held.next_hold_seq
+
+        entry = harness.new_merge()
+        await harness.enqueue(entry)
+        await harness.dispatch_merge()
+        held = (await harness.view()).held
+        assert held.generator_definitions == (HeldItem(id=pending.generator_definition_id, hold_seq=hold_seq),)
+
+        await _set_execute_after_merge(db=db, generator_definition_id=pending.generator_definition_id, value=False)
+        try:
+            state = await harness.deliver(entry=entry, enqueued=True)
+        finally:
+            await _set_execute_after_merge(db=db, generator_definition_id=pending.generator_definition_id, value=True)
+
+        assert state.message == harness.delivered_message
+        assert [describe(call) for call in harness.recorder.calls] == [
+            ("submit", ARTIFACT_GENERATE, pending.artifact_definition_id, [changed])
+        ]
+        after = await harness.store.read(repository_id=pending.repository_id)
+        assert after.held == HeldRegeneration(next_hold_seq=hold_seq + 1)
+
+    async def test_a_follow_up_with_selective_execution_off_holds_the_pending_repository(
+        self, harness: HeldRegenerationHarness, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        pending = harness.pending
+        before = await harness.view()
+        assert before.held.is_empty
+        hold_seq = before.held.next_hold_seq
+        monkeypatch.setattr(config.SETTINGS.main, "selective_execution_after_merge", False)
+        monkeypatch.setattr(config.SETTINGS.main, "diff_update_after_merge", False)
+
+        entry = harness.new_merge()
+        await harness.enqueue(entry)
+        try:
+            await post_process_branch_merge(
+                source_branch=entry.source_branch, target_branch=TRUNK, context=harness.context
+            )
+
+            assert [describe(call) for call in harness.recorder.calls] == [
+                (
+                    "submit",
+                    TRIGGER_ARTIFACT_DEFINITION_GENERATE.name,
+                    {"branch": TRUNK, "exclude_repository_ids": [pending.repository_id]},
+                ),
+                (
+                    "submit",
+                    TRIGGER_GENERATOR_DEFINITION_RUN.name,
+                    {
+                        "branch": TRUNK,
+                        "source": GeneratorDefinitionRunSource.MERGE,
+                        "exclude_repository_ids": [pending.repository_id],
+                    },
+                ),
+            ]
+            assert (await harness.view()).held == HeldRegeneration(
+                next_hold_seq=hold_seq + 1,
+                widen=HeldWiden(scope="all", reason=FullRegenerationReason.FEATURE_DISABLED, hold_seq=hold_seq),
+            )
+        finally:
+            intent = await harness.store.read(repository_id=pending.repository_id)
+            lease = await harness.store.settle_delivery(
+                repository_id=pending.repository_id, snapshot=intent, delivered_commit=None
+            )
+            if lease is not None:
+                await harness.store.clear_released(repository_id=pending.repository_id, lease_id=lease.lease_id)
 
     async def test_a_hold_during_a_release_survives_its_clear(self, harness: HeldRegenerationHarness) -> None:
         pending = harness.pending
