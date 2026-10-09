@@ -122,33 +122,38 @@ def test_format_check_log_entry_produces_single_line_per_entry() -> None:
 @dataclass(frozen=True, kw_only=True)
 class ImportStatusCase:
     name: str
-    sync_status: str | None
-    internal_status: str
+    sync_status: RepositorySyncStatus | None
+    internal_status: RepositoryInternalStatus
 
 
 PASSING_IMPORT_STATUS_CASES = [
+    ImportStatusCase(name="not_written_on_branch", sync_status=None, internal_status=RepositoryInternalStatus.ACTIVE),
     ImportStatusCase(
-        name="not_written_on_branch", sync_status=None, internal_status=RepositoryInternalStatus.ACTIVE.value
-    ),
-    ImportStatusCase(
-        name="in_sync",
-        sync_status=RepositorySyncStatus.IN_SYNC.value,
-        internal_status=RepositoryInternalStatus.ACTIVE.value,
-    ),
-    ImportStatusCase(
-        name="syncing",
-        sync_status=RepositorySyncStatus.SYNCING.value,
-        internal_status=RepositoryInternalStatus.ACTIVE.value,
-    ),
-    ImportStatusCase(
-        name="unknown",
-        sync_status=RepositorySyncStatus.UNKNOWN.value,
-        internal_status=RepositoryInternalStatus.ACTIVE.value,
+        name="in_sync", sync_status=RepositorySyncStatus.IN_SYNC, internal_status=RepositoryInternalStatus.ACTIVE
     ),
     ImportStatusCase(
         name="inactive_after_import_error",
-        sync_status=RepositorySyncStatus.ERROR_IMPORT.value,
-        internal_status=RepositoryInternalStatus.INACTIVE.value,
+        sync_status=RepositorySyncStatus.ERROR_IMPORT,
+        internal_status=RepositoryInternalStatus.INACTIVE,
+    ),
+    ImportStatusCase(
+        name="inactive_while_syncing",
+        sync_status=RepositorySyncStatus.SYNCING,
+        internal_status=RepositoryInternalStatus.INACTIVE,
+    ),
+]
+
+INCOMPLETE_IMPORT_STATUS_CASES = [
+    ImportStatusCase(
+        name="syncing", sync_status=RepositorySyncStatus.SYNCING, internal_status=RepositoryInternalStatus.ACTIVE
+    ),
+    ImportStatusCase(
+        name="unknown", sync_status=RepositorySyncStatus.UNKNOWN, internal_status=RepositoryInternalStatus.ACTIVE
+    ),
+    ImportStatusCase(
+        name="staging_syncing",
+        sync_status=RepositorySyncStatus.SYNCING,
+        internal_status=RepositoryInternalStatus.STAGING,
     ),
 ]
 
@@ -165,12 +170,10 @@ def test_evaluate_import_status_passes_without_import_error(case: ImportStatusCa
     assert outcome == ImportStatusOutcome(conclusion=ValidatorConclusion.SUCCESS, severity=Severity.INFO, message="")
 
 
-@pytest.mark.parametrize(
-    "internal_status", [RepositoryInternalStatus.ACTIVE.value, RepositoryInternalStatus.STAGING.value]
-)
-def test_evaluate_import_status_fails_on_import_error(internal_status: str) -> None:
+@pytest.mark.parametrize("internal_status", [RepositoryInternalStatus.ACTIVE, RepositoryInternalStatus.STAGING])
+def test_evaluate_import_status_fails_on_import_error(internal_status: RepositoryInternalStatus) -> None:
     outcome = evaluate_import_status(
-        sync_status=RepositorySyncStatus.ERROR_IMPORT.value,
+        sync_status=RepositorySyncStatus.ERROR_IMPORT,
         internal_status=internal_status,
         repository_name="dealership-car",
         branch_name="remove-ca",
@@ -184,6 +187,29 @@ def test_evaluate_import_status_fails_on_import_error(internal_status: str) -> N
             "objects registered for this repository do not match the content of the branch. Merging would apply "
             "the rest of the branch without them. Review the latest 'Import objects' task for this repository, "
             "resolve the cause and run the checks again."
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    "case", INCOMPLETE_IMPORT_STATUS_CASES, ids=[case.name for case in INCOMPLETE_IMPORT_STATUS_CASES]
+)
+def test_evaluate_import_status_fails_without_a_completed_import(case: ImportStatusCase) -> None:
+    outcome = evaluate_import_status(
+        sync_status=case.sync_status,
+        internal_status=case.internal_status,
+        repository_name="dealership-car",
+        branch_name="remove-ca",
+    )
+
+    assert outcome == ImportStatusOutcome(
+        conclusion=ValidatorConclusion.FAILURE,
+        severity=Severity.CRITICAL,
+        message=(
+            "No completed import of the objects from repository 'dealership-car' is recorded on branch 'remove-ca', "
+            "so the objects registered for this repository may not match the content of the branch. Wait for the "
+            "import to complete, or run 'Reimport current commit' for this repository on the branch if it does not, "
+            "then run the checks again."
         ),
     )
 
