@@ -21,6 +21,7 @@ from infrahub.core.constants import (
     AttributeDBNodeType,
     InfrahubKind,
     MetadataOptions,
+    PoolRecordProvenance,
     RelationshipDirection,
     RelationshipHierarchyDirection,
     RelationshipStatus,
@@ -36,6 +37,7 @@ from infrahub.core.order import (
     OrderModel,
 )
 from infrahub.core.query import Query, QueryResult, QueryType
+from infrahub.core.query.resource_manager import TRACKING_POOL_UNREAD, TrackingPoolRecord, TrackingPoolUnread
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order, build_subquery_order_metadata
 from infrahub.core.query.utils import find_node_schema
 from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
@@ -113,6 +115,7 @@ class AttributeFromDB:
 
     is_default: bool
     is_from_profile: bool = dataclass_field(default=False)
+    tracking_pool: TrackingPoolRecord | TrackingPoolUnread | None = TRACKING_POOL_UNREAD
 
     updated_at: Timestamp | None = None
     updated_by: str | None = None
@@ -761,6 +764,10 @@ class NodeListGetAttributeQuery(Query):
         return bool(self.include_metadata & MetadataOptions.OWNER)
 
     @property
+    def _include_tracking_pool(self) -> bool:
+        return bool(self.include_metadata & MetadataOptions.TRACKING_POOL)
+
+    @property
     def _include_updated_metadata(self) -> bool:
         return bool(self.include_metadata & (MetadataOptions.UPDATED_AT | MetadataOptions.UPDATED_BY))
 
@@ -769,12 +776,7 @@ class NodeListGetAttributeQuery(Query):
         return bool(self.include_metadata & (MetadataOptions.CREATED_AT | MetadataOptions.CREATED_BY))
 
     def _add_source_to_query(self, branch_filter_str: str) -> None:
-        """Resolve the attribute's source, falling back to the number pool that accounts for it.
-
-        A number pool source is derived from the branch-agnostic reservation record, not a HAS_SOURCE
-        edge. A source the user set wins, so attaching a pool to an attribute that already carries a
-        source changes nothing the user sees.
-        """
+        """Resolve the source a user set on the attribute; the number pool tracking it is read separately."""
         if not self._include_source:
             return
         source_query = """
@@ -785,25 +787,10 @@ CALL (a) {
     ORDER BY rel_source.branch_level DESC, rel_source.from DESC, rel_source.status ASC
     LIMIT 1
 }
-CALL (a) {
-    OPTIONAL MATCH (pool_source:Node)-[rel_reserved:IS_RESERVED]->(a)
-    WHERE rel_reserved.branch = $global_branch_name
-      AND rel_reserved.status = "active"
-      AND rel_reserved.from <= $at_source
-      AND (rel_reserved.to IS NULL OR rel_reserved.to > $at_source)
-    RETURN pool_source
-    ORDER BY rel_reserved.from DESC
-    LIMIT 1
-}
 WITH *,
-    CASE
-        WHEN rel_source.status = "active" THEN source
-        ELSE pool_source
-    END AS source,
+    CASE WHEN rel_source.status = "active" THEN source ELSE NULL END AS source,
     CASE WHEN rel_source.status = "active" THEN rel_source ELSE NULL END AS rel_source
         """ % {"branch_filter": branch_filter_str}
-        self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
-        self.params["at_source"] = self.at.to_string()
         self.add_to_query(source_query)
         self.return_labels.extend(["source", "rel_source"])
 
@@ -824,6 +811,34 @@ WITH *,
         """ % {"branch_filter": branch_filter_str}
         self.add_to_query(owner_query)
         self.return_labels.extend(["owner", "rel_owner"])
+
+    def _add_tracking_pool_to_query(self) -> None:
+        """Read the number pool tracking the attribute and if the branch's value is allocated.
+
+        The record is on the global branch, so every branch reads the same pool; the provenance compares
+        the value this branch holds with the numbers the pool allocated to the attribute.
+        """
+        if not self._include_tracking_pool:
+            return
+        tracking_pool_query = """
+CALL (a, av) {
+    OPTIONAL MATCH (tracking_pool:Node:%(number_pool)s)-[reserved:IS_RESERVED]->(a)
+    WHERE reserved.branch = $global_branch_name
+      AND reserved.status = "active"
+      AND reserved.from <= $tracking_pool_at
+      AND (reserved.to IS NULL OR reserved.to > $tracking_pool_at)
+    RETURN
+        tracking_pool.uuid AS tracking_pool_uuid,
+        reserved.allocated_values IS NOT NULL AND NOT toInteger(av.value) IN reserved.allocated_values
+            AS tracking_pool_is_provided
+    ORDER BY reserved.from DESC
+    LIMIT 1
+}
+        """ % {"number_pool": InfrahubKind.NUMBERPOOL}
+        self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
+        self.params["tracking_pool_at"] = self.at.to_string()
+        self.add_to_query(tracking_pool_query)
+        self.return_labels.extend(["tracking_pool_uuid", "tracking_pool_is_provided"])
 
     def _add_created_metadata_to_query(self) -> None:
         if not self._include_created_metadata:
@@ -960,6 +975,7 @@ CALL (a) {
 
         self._add_source_to_query(branch_filter_str=branch_filter)
         self._add_owner_to_query(branch_filter_str=branch_filter)
+        self._add_tracking_pool_to_query()
         self._add_created_metadata_to_query()
         self._add_updated_metadata_to_query(branch_filter_str=branch_filter)
 
@@ -1028,6 +1044,15 @@ CALL (a) {
             data.node_properties["owner"] = AttributeNodePropertyFromDB(
                 uuid=result.get_node("owner").get("uuid"), labels=list(result.get_node("owner").labels)
             )
+
+        if self._include_tracking_pool:
+            data.tracking_pool = None
+            if tracking_pool_uuid := result.get_as_optional_type("tracking_pool_uuid", return_type=str):
+                is_provided = result.get_as_type("tracking_pool_is_provided", return_type=bool)
+                data.tracking_pool = TrackingPoolRecord(
+                    pool_id=tracking_pool_uuid,
+                    provenance=PoolRecordProvenance.PROVIDED if is_provided else PoolRecordProvenance.ALLOCATED,
+                )
 
         return data
 

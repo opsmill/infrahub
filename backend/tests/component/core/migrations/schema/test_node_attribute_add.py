@@ -14,6 +14,7 @@ from infrahub.core.constants import (
     InfrahubKind,
     MetadataOptions,
     NumberPoolType,
+    PoolRecordProvenance,
     SchemaPathType,
 )
 from infrahub.core.initialization import create_branch
@@ -31,6 +32,7 @@ from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.path import SchemaPath
 from infrahub.core.protocols import CoreNumberPool as CoreNumberPoolProtocol
+from infrahub.core.query.resource_manager import TrackingPoolRecord
 from infrahub.core.query.rollback import RollbackScope
 from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
@@ -542,7 +544,7 @@ async def test_migration_numberpool_attribute(
     server_schema_with_numberpool: NodeSchema,
     servers_in_db: list[Node],
 ) -> None:
-    """Test that adding a NumberPool attribute creates the pool, allocates unique values, and sets the source."""
+    """Adding a NumberPool attribute creates the pool, allocates unique values and has the pool track each of them."""
     # Get the current schema (without NumberPool)
     current_schema = registry.schema.get_node_schema(name="TestServer", branch=branch)
 
@@ -598,7 +600,10 @@ async def test_migration_numberpool_attribute(
 
     # Query servers and verify they have unique rack_unit values
     servers_map = await NodeManager.get_many(
-        db=db, branch=branch, ids=[s.get_id() for s in servers_in_db], include_metadata=MetadataOptions.SOURCE
+        db=db,
+        branch=branch,
+        ids=[s.get_id() for s in servers_in_db],
+        include_metadata=MetadataOptions.SOURCE | MetadataOptions.TRACKING_POOL,
     )
     assert len(servers_map) == 3
 
@@ -613,11 +618,12 @@ async def test_migration_numberpool_attribute(
     # All values should be within the pool range
     assert all(1 <= v <= 100 for v in rack_unit_values), "All rack_unit values should be within range 1-100"
 
-    # Verify the source is set to the pool for all servers
     for server in servers_map.values():
-        source = await server.get_attribute("rack_unit").get_source(db=db)
-        assert source is not None, "rack_unit should have a source set"
-        assert source.id == number_pool.id, f"rack_unit source should be the pool {number_pool.id}"
+        rack_unit = server.get_attribute("rack_unit")
+        assert await rack_unit.get_source(db=db) is None, "the pool is never reported as the attribute's source"
+        assert await rack_unit.get_tracking_pool(db=db) == TrackingPoolRecord(
+            pool_id=number_pool.id, provenance=PoolRecordProvenance.ALLOCATED
+        )
 
 
 async def test_migration_numberpool_attribute_from_ranges_declaration(

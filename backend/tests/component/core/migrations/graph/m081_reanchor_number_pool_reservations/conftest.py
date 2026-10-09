@@ -407,9 +407,8 @@ async def stored_source_pool_ids(
 ) -> list[str]:
     """The pools the object's attribute still stores as its source through a `HAS_SOURCE` edge.
 
-    Read from the graph because a node read falls back to the reserving pool when no `HAS_SOURCE` edge is
-    left, so it cannot tell a stored source from a derived one. `attribute_name` is only passed when the
-    attribute has been renamed out from under the pool.
+    Read from the graph because the stored edges are what the migration deletes. `attribute_name` is only
+    passed when the attribute has been renamed out from under the pool.
     """
     results = await db.execute_query(
         query="""

@@ -8,13 +8,14 @@ from uuid import uuid4
 import pytest
 
 from infrahub.core import registry
-from infrahub.core.constants import InfrahubKind, RelationshipCardinality
+from infrahub.core.constants import InfrahubKind, PoolRecordProvenance, RelationshipCardinality
 from infrahub.core.initialization import initialize_registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.create import create_node
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
+from infrahub.core.query.resource_manager import TrackingPoolRecord
 from infrahub.core.schema import AttributeSchema, RelationshipSchema
 from infrahub.exceptions import NodeNotFoundError, PoolExhaustedError, ValidationError
 from tests.constants import TestKind
@@ -402,9 +403,10 @@ async def test_object_from_template_with_number_pool_allocates_value(
     assert device.rack_unit.value is not None
     assert 1 <= device.rack_unit.value <= 48
 
-    source = await device.rack_unit.get_source(db=db)
-    assert source is not None
-    assert source.id == number_pool.id
+    assert await device.rack_unit.get_source(db=db) is None, "the pool is never reported as the attribute's source"
+    assert await device.rack_unit.get_tracking_pool(db=db) == TrackingPoolRecord(
+        pool_id=number_pool.id, provenance=PoolRecordProvenance.ALLOCATED
+    )
 
 
 async def test_object_from_template_with_explicit_value_uses_explicit(
@@ -438,8 +440,8 @@ async def test_object_from_template_with_explicit_value_uses_explicit(
 
     assert device.id is not None
     assert device.rack_unit.value == 99
-    source = await device.rack_unit.get_source(db=db)
-    assert source is None
+    assert await device.rack_unit.get_source(db=db) is None
+    assert await device.rack_unit.get_tracking_pool(db=db) is None, "an explicit value is not drawn from the pool"
 
 
 async def test_object_from_template_raises_error_when_number_pool_exhausted(
