@@ -26,6 +26,9 @@ import { refreshAccessTokenQueryOptions } from "@/entities/authentication/ui/que
 
 declare module 'gql.tada' {
  interface setupCache {
+    /** @gql.tada/hash sha256:ed111effcb962237de8dc518d945e5b6 */
+    "\n  mutation ABANDON_DELIVERY($repositoryId: String!, $queueVersion: Int!) {\n    InfrahubRepositoryDeliveryAbandon(\n      data: { id: $repositoryId, queue_version: $queueVersion }\n    ) {\n      ok\n      task {\n        id\n      }\n    }\n  }\n":
+      TadaDocumentNode<{ InfrahubRepositoryDeliveryAbandon: { ok: boolean | null; task: { id: string | null; } | null; } | null; }, { queueVersion: number; repositoryId: string; }, void>;
     /** @gql.tada/hash sha256:b3cef38d49ce04764fb0eb04a9054ca6 */
     "\n  mutation BRANCH_CREATE($name: String!, $description: String, $sync_with_git: Boolean) {\n    BranchCreate(data: { name: $name, description: $description, sync_with_git: $sync_with_git }) {\n      object {\n        id\n        name\n        description\n        origin_branch\n        branched_from\n        created_at\n        status\n        sync_with_git\n        is_default\n        status\n        schema_differs_from_default_branch\n      }\n    }\n  }\n":
       TadaDocumentNode<{ BranchCreate: { object: { id: string; name: string; description: string | null; origin_branch: string | null; branched_from: string | null; created_at: string | null; status: "DELETING" | "MERGED" | "MERGE_FAILED" | "MERGING" | "NEED_REBASE" | "NEED_UPGRADE_REBASE" | "OPEN"; sync_with_git: boolean | null; is_default: boolean | null; schema_differs_from_default_branch: boolean | null; } | null; } | null; }, { sync_with_git?: boolean | null | undefined; description?: string | null | undefined; name: string; }, void>;
@@ -86,6 +89,9 @@ declare module 'gql.tada' {
     /** @gql.tada/hash sha256:5aa32114aa931719729e702d32c65b26 */
     "\n  mutation RESOLVE_CONFLICT($id: String, $selection: ConflictSelection) {\n    ResolveDiffConflict(data: { conflict_id: $id, selected_branch: $selection }) {\n      ok\n    }\n  }\n":
       TadaDocumentNode<{ ResolveDiffConflict: { ok: boolean | null; } | null; }, { selection?: "BASE_BRANCH" | "DIFF_BRANCH" | null | undefined; id?: string | null | undefined; }, void>;
+    /** @gql.tada/hash sha256:e604d441ac542de178000ccc9166f2aa */
+    "\n  mutation RETRY_DELIVERY($repositoryId: String!) {\n    InfrahubRepositoryDeliveryRetry(data: { id: $repositoryId }) {\n      ok\n      task {\n        id\n      }\n    }\n  }\n":
+      TadaDocumentNode<{ InfrahubRepositoryDeliveryRetry: { ok: boolean | null; task: { id: string | null; } | null; } | null; }, { repositoryId: string; }, void>;
     /** @gql.tada/hash sha256:930514c1780a3f245855941a546828c1 */
     "\n  mutation RETRY_TASK($id: String!) {\n    InfrahubTaskRetry(data: { id: $id }) {\n      ok\n      task {\n        id\n      }\n    }\n  }\n":
       TadaDocumentNode<{ InfrahubTaskRetry: { ok: boolean | null; task: { id: string | null; } | null; } | null; }, { id: string; }, void>;
@@ -197,9 +203,9 @@ declare module 'gql.tada' {
     /** @gql.tada/hash sha256:f1359acb6444cd14eedc3e0b0a8a755b */
     "\n  query InfrahubGlobalPreferences {\n    InfrahubGlobalPreferences {\n      date_format\n      timezone\n    }\n  }\n":
       TadaDocumentNode<{ InfrahubGlobalPreferences: { date_format: "EU_DATETIME" | "ISO_8601" | "ISO_DATETIME" | "ISO_DATETIME_SECONDS" | "US_12H" | null; timezone: string | null; }; }, {}, void>;
-    /** @gql.tada/hash sha256:68e296d5f20126ed8b7ca92b6dde75e5 */
-    "\n  query REPOSITORY_DELIVERY_STATE($repositoryId: ID!) {\n    CoreRepository(ids: [$repositoryId]) {\n      edges {\n        node {\n          id\n          delivery_status {\n            value\n            label\n            color\n          }\n          delivery_failure_cause {\n            value\n            label\n          }\n          delivery_error {\n            value\n          }\n          delivery_queue {\n            value\n          }\n        }\n      }\n    }\n  }\n":
-      TadaDocumentNode<{ CoreRepository: { edges: { node: { id: string; delivery_status: { value: string | null; label: string | null; color: string | null; } | null; delivery_failure_cause: { value: string | null; label: string | null; } | null; delivery_error: { value: string | null; } | null; delivery_queue: { value: unknown; } | null; } | null; }[]; }; }, { repositoryId: string; }, void>;
+    /** @gql.tada/hash sha256:2e0a7ea002dca1b489e10d663b6ba306 */
+    "\n  query REPOSITORY_DELIVERY_STATE($repositoryId: ID!) {\n    CoreRepository(ids: [$repositoryId]) {\n      edges {\n        node {\n          id\n          delivery_status {\n            value\n            label\n            color\n          }\n          delivery_failure_cause {\n            value\n            label\n          }\n          delivery_error {\n            value\n          }\n          delivery_queue {\n            value\n          }\n          delivery_last_abandonment {\n            value\n          }\n        }\n      }\n    }\n  }\n":
+      TadaDocumentNode<{ CoreRepository: { edges: { node: { id: string; delivery_status: { value: string | null; label: string | null; color: string | null; } | null; delivery_failure_cause: { value: string | null; label: string | null; } | null; delivery_error: { value: string | null; } | null; delivery_queue: { value: unknown; } | null; delivery_last_abandonment: { value: unknown; } | null; } | null; }[]; }; }, { repositoryId: string; }, void>;
     /** @gql.tada/hash sha256:535773ce3e79c65f7aa6f54460866718 */
     "\n  query REPOSITORY_GROUP($nodeIds: [ID]) {\n    CoreRepositoryGroup(repository__ids: $nodeIds) {\n      edges {\n        node {\n          id\n        }\n      }\n    }\n  }\n":
       TadaDocumentNode<{ CoreRepositoryGroup: { edges: { node: { id: string; } | null; }[]; }; }, { nodeIds?: (string | null)[] | null | undefined; }, void>;
