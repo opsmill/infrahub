@@ -295,6 +295,11 @@ class NodeCreateAllQuery(NodeQuery):
             CALL (a, attr) {
                 UNWIND attr.pool_prop AS prop
                 MATCH (pool:%(number_pool)s { uuid: prop.peer_id })
+                // -------------------
+                // Lock the NumberPool vertex, so concurrent writes do not deadlock adding IS_RESERVED
+                // -------------------
+                SET pool._number_pool_lock = TRUE
+                REMOVE pool._number_pool_lock
                 CREATE (pool)-[reserved:IS_RESERVED $pool_rel_prop]->(a)
                 SET reserved.allocated_values = CASE WHEN prop.allocated_value IS NULL THEN [] ELSE [prop.allocated_value] END
                 %(stamp_pool)s
