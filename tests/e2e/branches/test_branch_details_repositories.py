@@ -1,44 +1,41 @@
-"""Git repositories card on the branch details page: the import error band.
-
-The repository is added on a throwaway Sync-with-Git branch from a fixture repo without an
-`.infrahub.yml`, so its initial import (`git-repository-add-read-write`) fails deterministically and
-leaves it in Import Error on that branch.
-"""
+"""Git repositories card on the branch details page: the import error band."""
 
 from __future__ import annotations
 
-import contextlib
 import re
 from typing import TYPE_CHECKING
 from urllib.parse import quote
 
 import pytest
-from helpers import Deadline, generate_random_branch_name
-from infrahub_testcontainers.container import PROJECT_ENV_VARIABLES
 from playwright.async_api import expect
 
 pytestmark = pytest.mark.shard_branches_repo
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
-    from pathlib import Path
-
-    from helpers import BranchAPI
+    from broken_repository import BrokenRepository
     from infrahub_sdk import InfrahubClient
     from playwright.async_api import Page
 
-POLL_TIMEOUT_SECONDS = 150.0
-POLL_INTERVAL_SECONDS = 5
 BAND_TIMEOUT_MS = 30_000
 
-FAILED_IMPORT_TASK_QUERY = """
-query FailedImportTask($branch: String!, $repositoryId: String!) {
+# The workflows the band reads a failed import from; a failed task of another workflow must not pass.
+IMPORT_WORKFLOWS = (
+    "git-repository-add-read-write",
+    "git-repository-add-read-only",
+    "git-repository-import-object",
+    "git-read-only-repository-import-last-commit",
+    "git-repository-pull-read-only",
+    "sync-git-repo-with-origin",
+)
+
+FAILED_REPOSITORY_TASK_QUERY = """
+query FailedRepositoryTask($taskId: String!, $branch: String!, $repositoryId: String!, $workflows: [String]!) {
   InfrahubTask(
+    ids: [$taskId]
     branch: $branch
     related_node__ids: [$repositoryId]
-    workflow: ["git-repository-add-read-write"]
-    state: [FAILED]
-    limit: 1
+    workflow: $workflows
+    state: [FAILED, CRASHED]
   ) {
     edges { node { id } }
   }
@@ -46,93 +43,11 @@ query FailedImportTask($branch: String!, $repositoryId: String!) {
 """
 
 
-async def _wait_for_import_error(client: InfrahubClient, branch: str, repository_name: str) -> str:
-    deadline = Deadline(f"repository {repository_name} to reach error-import on {branch}", timeout=POLL_TIMEOUT_SECONDS)
-    while True:
-        repository = await client.get(kind="CoreRepository", name__value=repository_name, branch=branch)
-        if repository.sync_status.value == "error-import":
-            return repository.id
-        await deadline.tick(pause=POLL_INTERVAL_SECONDS)
-
-
-async def _wait_for_failed_import_task(client: InfrahubClient, branch: str, repository_id: str) -> str:
-    # sync_status flips before the flow run ends Failed; the band reads the run's error lines.
-    deadline = Deadline(
-        f"a failed import task for repository {repository_id} on {branch}", timeout=POLL_TIMEOUT_SECONDS
-    )
-    while True:
-        response = await client.execute_graphql(
-            query=FAILED_IMPORT_TASK_QUERY,
-            variables={"branch": branch, "repositoryId": repository_id},
-            tracker="query-failed-import-task",
-        )
-        edges = response["InfrahubTask"]["edges"]
-        if edges:
-            return edges[0]["node"]["id"]
-        await deadline.tick(pause=POLL_INTERVAL_SECONDS)
-
-
 class TestBranchDetailsRepositoryImportError:
-    @pytest.fixture
-    async def broken_repository(
-        self,
-        branch_api: BranchAPI,
-        infrahub_client: InfrahubClient,
-        infrahub_compose_dir: Path,
-        infrahub_provisioned_externally: bool,
-        tmp_path: Path,
-    ) -> AsyncGenerator[tuple[str, str, str], None]:
-        """A branch holding one CoreRepository in Import Error, plus its failed import task id."""
-        if infrahub_provisioned_externally:
-            pytest.skip("Needs the compose /remote directory to host the fixture repository")
-
-        from infrahub_sdk.graphql import Mutation
-        from infrahub_sdk.testing.repository import GitRepo
-
-        branch = generate_random_branch_name("repo-error-")
-        repository_name = generate_random_branch_name("broken-repo-")
-
-        source = tmp_path / "broken-repo"
-        source.mkdir()
-        (source / "README.md").write_text("Fixture repository without an .infrahub.yml\n", encoding="utf-8")
-        remote_dir = infrahub_compose_dir / PROJECT_ENV_VARIABLES["INFRAHUB_TESTING_LOCAL_REMOTE_GIT_DIRECTORY"]
-        GitRepo(name=repository_name, src_directory=source, dst_directory=remote_dir)
-
-        # With Sync with Git off the card lists read-only repositories only, which would hide this one.
-        await branch_api.create(branch, sync_with_git=True)
-        try:
-            mutation = Mutation(
-                mutation="CoreRepositoryCreate",
-                input_data={
-                    "data": {
-                        "name": {"value": repository_name},
-                        "location": {"value": f"/remote/{repository_name}"},
-                    }
-                },
-                query={"ok": None},
-            )
-            await infrahub_client.execute_graphql(
-                query=mutation.render(), branch_name=branch, tracker="mutation-repository-create"
-            )
-
-            repository_id = await _wait_for_import_error(infrahub_client, branch, repository_name)
-            task_id = await _wait_for_failed_import_task(infrahub_client, branch, repository_id)
-
-            yield branch, repository_name, task_id
-        finally:
-            with contextlib.suppress(Exception):
-                await branch_api.delete(branch)
-            # Repositories are branch-agnostic, so the node outlives its branch.
-            with contextlib.suppress(Exception):
-                repository = await infrahub_client.get(kind="CoreRepository", name__value=repository_name)
-                await repository.delete()
-
     async def test_import_error_band_links_to_the_task_page(
-        self, admin_page: Page, broken_repository: tuple[str, str, str]
+        self, admin_page: Page, infrahub_client: InfrahubClient, broken_repository: BrokenRepository
     ) -> None:
-        branch, repository_name, task_id = broken_repository
-
-        await admin_page.goto(f"/branches/{quote(branch, safe='')}")
+        await admin_page.goto(f"/branches/{quote(broken_repository.branch, safe='')}")
 
         # The table is paged and ordered by name on the server, so the repository's row may sit on
         # another page; its band comes from a separate failing-repositories query and is always shown.
@@ -144,10 +59,25 @@ class TestBranchDetailsRepositoryImportError:
         if await show_all.is_visible():
             await show_all.click()
 
-        band = bands.filter(has_text=repository_name)
+        band = bands.filter(has_text=broken_repository.repository_name)
         await expect(band).to_be_visible(timeout=BAND_TIMEOUT_MS)
         await expect(band).to_contain_text("import failed")
         await expect(band).to_contain_text("is missing a configuration file")
 
         await band.get_by_role("link", name="View task log").click()
-        await expect(admin_page).to_have_url(re.compile(rf"/tasks/{re.escape(task_id)}"))
+        # The band links the newest failed import, which the periodic Git sync can replace after the first one.
+        task_url = re.compile(r"/tasks/([0-9a-f-]{36})(?=$|[?#])")
+        await expect(admin_page).to_have_url(task_url)
+        match = task_url.search(admin_page.url)
+        assert match
+        response = await infrahub_client.execute_graphql(
+            query=FAILED_REPOSITORY_TASK_QUERY,
+            variables={
+                "taskId": match[1],
+                "branch": broken_repository.branch,
+                "repositoryId": broken_repository.repository_id,
+                "workflows": list(IMPORT_WORKFLOWS),
+            },
+            tracker="query-failed-repository-task",
+        )
+        assert response["InfrahubTask"]["edges"]

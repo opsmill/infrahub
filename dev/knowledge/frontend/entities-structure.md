@@ -275,6 +275,38 @@ The `ui/` layer **never** builds `gql` strings inline or calls `graphqlClient.qu
 
 Inline `gql` in `ui/` bypasses caching, branch context, schema typing, and the layered architecture. It is a pattern bug, not a shortcut.
 
+### A new feature's data need gets its own query
+
+Reusing another entity's query as it is, through its hook or its `queryOptions`, is fine. When a new
+feature or a new screen needs data that an existing query does not return as it is, give it its own
+entity, or its own `api/`, `domain/` and `ui/queries/` files, with its own query. Do not add flags to
+an existing query that change or switch off its behaviour, such as its polling, the kind it selects
+or its paging. Both callers then depend on one query function, key and result shape, so a change
+made for the first caller (a field, the kind it selects, its page size) changes what the second one
+receives. An override such as `refetchInterval: false` applies only to the observer that passes it.
+Where the keys match, both callers share one cache entry, and the polling of one refreshes the data
+the other displays.
+
+The dependency goes one way. The new feature's entity imports the entities it reads (their
+`domain/` types and `ui/` hooks); those entities do not import it back. Pass it plain values, such
+as branch names, rather than another entity's types or hooks it would have to call.
+
+```ts
+// ✅ The branches list reads its own repository list: id, name and kind, nothing else
+useQuery(getBranchGitRepositoriesQueryOptions({ limit: REPOSITORY_LIST_LIMIT, offset: 0 }));
+// …and the table passes the branch names, not its branch objects
+const gitStatuses = useGetBranchGitStatuses(branches.map((branch) => branch.name));
+
+// ❌ The branch details card's query, with a flag that selects the kind, and polling switched off
+// for this caller only
+useQuery({
+  ...getBranchRepositoriesQueryOptions({
+    branchName, syncWithGit: true, isSyncing: false, limit, offset: 0,
+  }),
+  refetchInterval: false,
+});
+```
+
 ### Single-object reads
 
 For "I have a UUID, give me the node", always use `useGetObject` from `entities/nodes/object/ui/queries/get-object.query.ts`. Its `objectSchema` parameter is a full `ModelSchema`, so pass a schema obtained from `useSchema` rather than an inline literal:

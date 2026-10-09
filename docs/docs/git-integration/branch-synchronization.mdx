@@ -245,9 +245,52 @@ query {
 
 Only branches matching your configured rules should appear in the results.
 
+## Checking Git state from the branches list
+
+The **Branches** page shows the Git repositories on each branch next to the branch itself, so a failed import is visible without opening the branch or the repository. Each branch keeps a single row, and two columns follow **Proposed Changes**:
+
+| Column | What it shows |
+|---|---|
+| **Repositories** | The branch's first repository, linking to the repository's page on that branch. A repository whose last import failed comes first, then any repository with an unknown status or no status, then any repository that is syncing, then the rest, each group in alphabetical order. Hover the name to read its Git state, the first seven characters of the branch's commit for that repository, and whether the repository is read-only. When the branch has not imported a commit of its own, the commit can be inherited or missing, as [How values are resolved for each branch](#how-values-are-resolved-for-each-branch) describes. When the branch has more repositories, **+N more** opens the branch, whose details page lists all of them. |
+| **Git state** | The worst sync status among the branch's repositories, with the label and color the schema defines for it, such as **In Sync** or **Import Error**. When the branch has several repositories, a count such as **1/3** gives how many of them share that status. Hover the count to see how many repositories have each status. |
+
+The repositories listed for a branch follow the same rule as the query in the next section. A read-write repository appears only on branches that sync with Git, while a read-only repository appears on every open branch.
+
+When a branch has no repository to show, its **Repositories** cell shows one of the texts in the following table, and its **Git state** cell stays empty. The cell can also show:
+
+- a loading indicator, while the page is still reading the list of repositories, or while it is still reading the status of a repository and none of the repositories it has read so far lists the branch
+- only the **N repositories could not be loaded** notice described below, when the page read no repository that lists the branch and could not read the status of some repositories
+
+| Repositories cell | Shown on |
+|---|---|
+| **Not synced with Git** | One branch |
+| **No repositories** | One branch |
+| **No permission** | Every branch |
+| **Could not load repositories** | Every branch, or one branch |
+
+Each text has these causes:
+
+- **Not synced with Git**: the branch does not sync with Git, and no read-only repository lists it.
+- **No repositories**: the branch syncs with Git, but no repository lists it. This happens when:
+  - no repository is connected to Infrahub
+  - the branch is merged or being deleted
+  - the branch was created after the page last read the repository status lists
+- **No permission**: your account cannot read the repositories' Git state. This happens when:
+  - your account cannot view one of the two repository kinds (read-write or read-only), so the page cannot list the repositories
+  - your account cannot view the status of any repository
+- **Could not load repositories**: hover the text to read the reason. This happens when:
+  - the list of repositories could not be read, or holds more than 500 repositories: the text shows on every branch
+  - a repository lists more than 500 branches, and the branches the page read for it do not include this one: the text shows on this branch only
+
+When the page cannot read the status of some repositories but can read the others, the **Repositories** cell shows the repositories it read, followed by a notice such as **1 repository could not be loaded** or **3 repositories could not be loaded**. Hover the notice to read the name of each repository and the reason, or **No permission** when your account cannot view that repository's status. The notice shows on every branch, including branches that do not sync with Git, because the page cannot tell which branches a repository it could not read would list. The **Git state** column counts only the repositories the page read. While the page is still reading the status of other repositories, the **Repositories** cell also shows a loading indicator after the repositories it already read. The notice does not show on a branch whose **Repositories** cell shows **Could not load repositories** because a repository lists more than 500 branches: that cell shows only the text, and its hover text names the repository.
+
+The **Repositories** cell of a recently created branch can show **No repositories** or **Not synced with Git** until the page reads the repository status lists again. When you open the page or return to its window, the page reads the status lists again if it last read them more than a minute ago. It reads them at once when you select the reload button next to the **Branches** title. Creating or deleting a branch in the web interface also starts a new read. Merging or rebasing a branch from its details page runs as a background task. The status lists are read again when the task starts and again when it finishes, as long as the branch details page stays open and the task finishes before the page stops checking it, after 360 checks (about 30 minutes). A merge that deletes the branch opens the branches list at once. The branches list then reads the status lists again when the merge task finishes, under the same limit, as long as the branches list stays open. A branch that does not sync with Git and that no read-only repository lists keeps showing **Not synced with Git**.
+
+The **Branch**, **Status**, **Proposed Changes** and date columns show as usual in every one of these states. While a repository is syncing, the page reads its Git state again until the sync finishes.
+
 ## Checking a repository's status on every branch
 
-Listing branches tells you which ones Infrahub tracks. To see what a single repository looks like from each of those branches at once, including the commit each branch resolves and whether its last import succeeded, use the `InfrahubRepositoryBranchStatus` query. It returns one row per branch and reads everything from the graph, so it does not contact a Git server or a task worker.
+The branches list is organized by branch. To see what a single repository looks like from every branch at once, including the commit each branch resolves and whether its last import succeeded, use the `InfrahubRepositoryBranchStatus` query. It returns one row per branch and reads everything from the graph, so it does not contact a Git server or a task worker.
 
 The `id` argument accepts the repository's ID or its name.
 

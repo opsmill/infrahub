@@ -15,6 +15,8 @@ export const REPOSITORY_KIND = "CoreRepository";
 export const READONLY_REPOSITORY_KIND = "CoreReadOnlyRepository";
 
 export const REPOSITORY_SYNC_STATUS_SYNCING = "syncing";
+export const REPOSITORY_SYNC_STATUS_IN_SYNC = "in-sync";
+export const REPOSITORY_SYNC_STATUS_UNKNOWN = "unknown";
 export const REPOSITORY_OPERATIONAL_ERRORS = ["error-cred", "error-connection", "error"] as const;
 
 export const IMPORT_WORKFLOWS = [
