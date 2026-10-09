@@ -50,20 +50,20 @@ Row IDs (C1, E5, …) refer to [contracts/form-submission.md](contracts/form-sub
 
 **Independent test**: Rows C2 and C5.
 
-- [ ] T005 [P] [US1] Add failing tests for rows C2 and C5 in
+- [X] T005 [P] [US1] Add failing tests for rows C2 and C5 in
   `shared/components/form/utils/mutations/getCreateMutationFromFormData.test.ts`
-- [ ] T006 [US1] In `shared/components/form/utils/mutations/getCreateMutationFromFormData.ts::getCreateMutationFromFormData`,
+- [X] T006 [US1] In `shared/components/form/utils/mutations/getCreateMutationFromFormData.ts::getCreateMutationFromFormData`,
   use the T003 helper in the pool branch when `fieldData.source.kind` is `CoreNumberPool` and the
   field has no `fromPoolRelationshipName`; leave the template and IP paths as they are
-- [ ] T007 [US1] Add `PoolNumberField` to `shared/components/inputs/pool-select.tsx`: registered at
+- [X] T007 [US1] Add `PoolNumberField` to `shared/components/inputs/pool-select.tsx`: registered at
   `${name}.value.from_pool.number` with `shouldUnregister={false}` (same reason as
   `PoolPrefixLengthField`), rendered only when `getPendingFromPool(value)` is true and the pool
   kind is `CoreNumberPool`; label "Number", description "Leave empty to allocate the next free
   number from the pool."; whole numbers only; uses `usePreventScrollOnNumberInput`
-- [ ] T008 [US1] Render `PoolNumberField` below the pool picker in
+- [X] T008 [US1] Render `PoolNumberField` below the pool picker in
   `shared/components/form/pool-allocation-panel.tsx::PoolAllocationPanel` when
   `canOverrideAllocation` is true; the IP override row stays as is
-- [ ] T009 [P] [US1] Component test in `shared/components/form/fields/number.field.test.tsx`: the
+- [X] T009 [P] [US1] Component test in `shared/components/form/fields/number.field.test.tsx`: the
   number input is absent before a pool is picked and present after, and is absent for a
   template-backed field (`fromPoolRelationshipName` set)
 

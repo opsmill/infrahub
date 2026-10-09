@@ -295,6 +295,54 @@ describe("getCreateMutationFromFormData", () => {
     });
   });
 
+  describe("Number attribute served by a number pool", () => {
+    const numberPoolField = buildFormField({
+      name: "vlan_id",
+      type: "Number",
+      pool: { kind: "CoreNumberPool", defaultAllocatedObjectKind: "TestDevice" },
+    });
+
+    it("asks the picked pool for its next free number when no number is typed", () => {
+      const formData: Record<string, FormAttributeValue> = {
+        vlan_id: {
+          source: { type: "pool", label: "VLAN ids pool", id: "pool-b", kind: "CoreNumberPool" },
+          value: { from_pool: { id: "pool-b" } },
+        },
+      };
+
+      const mutationData = getCreateMutationFromFormData([numberPoolField], formData);
+
+      expect(mutationData).to.deep.equal({
+        vlan_id: { value: null, from_pool: { id: "pool-b" } },
+      });
+    });
+
+    it("asks for the next free number when the number input was cleared", () => {
+      const formData: Record<string, FormAttributeValue> = {
+        vlan_id: {
+          source: { type: "pool", label: "VLAN ids pool", id: "pool-b", kind: "CoreNumberPool" },
+          value: { from_pool: { id: "pool-b", number: null } },
+        },
+      };
+
+      const mutationData = getCreateMutationFromFormData([numberPoolField], formData);
+
+      expect(mutationData).to.deep.equal({
+        vlan_id: { value: null, from_pool: { id: "pool-b" } },
+      });
+    });
+
+    it("sends nothing after the pool tab was visited and left without picking", () => {
+      const formData: Record<string, FormFieldValue> = {
+        vlan_id: { source: null, value: null },
+      };
+
+      const mutationData = getCreateMutationFromFormData([numberPoolField], formData);
+
+      expect(mutationData).to.deep.equal({});
+    });
+  });
+
   describe("Resource pool from-pool relationship", () => {
     it("sends only the pool id on the _from_resource_pool field, since its peer is the pool kind (dropping the allocated kind)", () => {
       // `<rel>_from_resource_pool` is a plain RelatedNodeInput: sending `address_type` there is rejected before any resolver runs.
