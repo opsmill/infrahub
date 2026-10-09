@@ -6,9 +6,11 @@ from urllib.parse import quote_plus
 
 import pytest
 import redis
+from prefect_redis.connection import close_redis_client, redis_from_url
+from pydantic import SecretStr
 from redis.connection import Connection, SSLConnection
 
-from infrahub.config import CacheSettings
+from infrahub.config import CacheDriver, CacheSettings
 from infrahub.workflows.initialization import build_cache_connection_string
 
 # CA settings are validated at load, so the cases need a bundle that exists.
@@ -69,6 +71,22 @@ class ConnectionStringCase:
                 expected_url="redis://us%20er%40name:p%40ss%3Awor%2Fd%3F%23%26@redis.internal:6379/0",
             ),
             id="plain_special_chars_escaped",
+        ),
+        pytest.param(
+            ConnectionStringCase(
+                name="plain_bare_ipv6_address_bracketed",
+                cache_kwargs={"address": "::1", "database": 2},
+                expected_url="redis://[::1]:6379/2",
+            ),
+            id="plain_bare_ipv6_address_bracketed",
+        ),
+        pytest.param(
+            ConnectionStringCase(
+                name="plain_bracketed_ipv6_address_kept",
+                cache_kwargs={"address": "[2001:db8::2]", "password": "secret"},
+                expected_url="redis://:secret@[2001:db8::2]:6379/0",
+            ),
+            id="plain_bracketed_ipv6_address_kept",
         ),
         pytest.param(
             ConnectionStringCase(
@@ -140,11 +158,113 @@ class ConnectionStringCase:
             ),
             id="tls_disabled_ignores_tls_options",
         ),
+        pytest.param(
+            ConnectionStringCase(
+                name="url_single_node",
+                cache_kwargs={"url": "redis://cache:6380/2"},
+                expected_url="redis://cache:6380/2",
+            ),
+            id="url_single_node",
+        ),
+        pytest.param(
+            ConnectionStringCase(
+                name="url_single_node_with_auth",
+                cache_kwargs={"url": "redis://user:secret@cache:6379/0"},
+                expected_url="redis://user:secret@cache:6379/0",
+            ),
+            id="url_single_node_with_auth",
+        ),
+        pytest.param(
+            ConnectionStringCase(
+                name="url_single_node_passed_through_verbatim",
+                cache_kwargs={"url": "rediss://cache:6379?ssl_cert_reqs=none&ssl_check_hostname=false"},
+                expected_url="rediss://cache:6379?ssl_cert_reqs=none&ssl_check_hostname=false",
+            ),
+            id="url_single_node_passed_through_verbatim",
+        ),
+        pytest.param(
+            ConnectionStringCase(
+                name="url_sentinel_passed_through",
+                cache_kwargs={"url": "redis+sentinel://sentinel-a:26379,sentinel-b:26379/mymaster/1"},
+                expected_url="redis+sentinel://sentinel-a:26379,sentinel-b:26379/mymaster/1",
+            ),
+            id="url_sentinel_passed_through",
+        ),
+        pytest.param(
+            ConnectionStringCase(
+                name="url_sentinel_tls_and_auth_passed_through",
+                cache_kwargs={"url": "rediss+sentinel://user:secret@sentinel-a:26379/mymaster"},
+                expected_url="rediss+sentinel://user:secret@sentinel-a:26379/mymaster",
+            ),
+            id="url_sentinel_tls_and_auth_passed_through",
+        ),
+        pytest.param(
+            ConnectionStringCase(
+                name="url_tls_verifies_against_the_configured_ca_bundle",
+                cache_kwargs={"url": "rediss://cache:6379/0", "tls_ca_file": CA_BUNDLE},
+                expected_url=f"rediss://cache:6379/0?ssl_ca_certs={CA_BUNDLE_QUOTED}",
+            ),
+            id="url_tls_verifies_against_the_configured_ca_bundle",
+        ),
+        pytest.param(
+            ConnectionStringCase(
+                name="url_tls_keeps_its_own_options_alongside_the_ca_bundle",
+                cache_kwargs={
+                    "url": "rediss+sentinel://s1:26379/mymaster?ssl_check_hostname=false",
+                    "tls_ca_file": CA_BUNDLE,
+                },
+                expected_url=(
+                    f"rediss+sentinel://s1:26379/mymaster?ssl_check_hostname=false&ssl_ca_certs={CA_BUNDLE_QUOTED}"
+                ),
+            ),
+            id="url_tls_keeps_its_own_options_alongside_the_ca_bundle",
+        ),
+        pytest.param(
+            ConnectionStringCase(
+                name="url_ssl_ca_certs_wins_over_the_configured_ca_bundle",
+                cache_kwargs={
+                    "url": "rediss://cache:6379/0?ssl_ca_certs=/etc/ssl/url-ca.pem",
+                    "tls_ca_file": CA_BUNDLE,
+                },
+                expected_url="rediss://cache:6379/0?ssl_ca_certs=/etc/ssl/url-ca.pem",
+            ),
+            id="url_ssl_ca_certs_wins_over_the_configured_ca_bundle",
+        ),
+        pytest.param(
+            ConnectionStringCase(
+                name="url_plaintext_ignores_the_configured_ca_bundle",
+                cache_kwargs={"url": "redis://cache:6379/0", "tls_ca_file": CA_BUNDLE},
+                expected_url="redis://cache:6379/0",
+            ),
+            id="url_plaintext_ignores_the_configured_ca_bundle",
+        ),
     ],
 )
 def test_build_cache_connection_string(case: ConnectionStringCase) -> None:
     cache = CacheSettings(**case.cache_kwargs)
     assert build_cache_connection_string(cache) == case.expected_url
+
+
+def test_url_ca_bundle_reaches_the_result_storage_client() -> None:
+    """The result-storage block decodes the appended CA for the data nodes and the Sentinel daemons alike."""
+    cache = CacheSettings(url=SecretStr("rediss+sentinel://s1:26379/mymaster"), tls_ca_file=CA_BUNDLE)
+
+    client = redis_from_url(build_cache_connection_string(cache))
+
+    assert client.connection_pool.connection_kwargs["ssl_ca_certs"] == CA_BUNDLE
+    assert client.connection_pool.sentinel_manager.sentinel_kwargs["ssl_ca_certs"] == CA_BUNDLE
+    close_redis_client(client)
+
+
+def test_cache_url_is_ignored_for_a_non_redis_driver() -> None:
+    """CacheSettings documents the URL as Redis-only, so NATS keeps the scalar result-storage URL."""
+    cache = CacheSettings(
+        driver=CacheDriver.NATS,
+        address="nats.internal",
+        url=SecretStr("redis+sentinel://s1:26379,s2:26379/mymaster"),
+    )
+
+    assert build_cache_connection_string(cache) == "redis://nats.internal:4222/0"
 
 
 def test_username_without_password_raises() -> None:
