@@ -29,14 +29,14 @@ Row IDs (C1, E5, …) refer to [contracts/form-submission.md](contracts/form-sub
 
 ## Phase 2: Foundational (blocks every user story)
 
-- [ ] T002 Add `number?: number | null` to `AttributeValueFromPool["value"]["from_pool"]` in
+- [X] T002 Add `number?: number | null` to `AttributeValueFromPool["value"]["from_pool"]` in
   `shared/components/form/type.ts`, with a one-line doc comment saying it applies only to a
   `CoreNumberPool` source
-- [ ] T003 Add a number-pool helper to
+- [X] T003 Add a number-pool helper to
   `shared/components/form/utils/mutations/buildFromPoolMutationValue.ts` that returns
   `{ value: number ?? null, from_pool: { id } }` for a staged number pool; keep
   `buildFromPoolPayload` unchanged for IP pools
-- [ ] T004 [P] Unit-test the helper in
+- [X] T004 [P] Unit-test the helper in
   `shared/components/form/utils/mutations/buildFromPoolMutationValue.test.ts` (number given,
   number `null`, number absent)
 
