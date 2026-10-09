@@ -6,7 +6,12 @@ import { Icon } from "@/shared/components/display/icon";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import type { Permission } from "@/entities/permission/domain/model/permission";
+import {
+  EDIT_DEFAULT_BRANCH,
+  MANAGE_REPOSITORIES,
+  type Permission,
+} from "@/entities/permission/domain/model/permission";
+import { useHasGlobalPermission } from "@/entities/permission/ui/queries/has-global-permission.query";
 import { REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
 import type { RepositoryPushState } from "@/entities/repository/domain/model/repository-push-state";
 import { getPushActions } from "@/entities/repository/domain/rules/get-push-actions";
@@ -83,7 +88,10 @@ export function RepositoryMenuSection({
         </MenuItem>
       )}
 
-      <MenuItem onAction={() => importCurrentCommit({ repositoryId })}>
+      <MenuItem
+        isDisabled={!isUpdateAllowed}
+        onAction={() => importCurrentCommit({ repositoryId })}
+      >
         <Icon icon="mdi:reload" />
         Reimport current commit
       </MenuItem>
@@ -110,9 +118,15 @@ function RepositoryDeliveryMenuItems({
   isUpdateAllowed,
   onAbandonDelivery,
 }: RepositoryDeliveryMenuItemsProps) {
-  const { data: state } = useGetRepositoryPushState({ repositoryId });
-  // Until the state loads, or when it fails to load, nothing is known to be pending.
-  const { canRetry, canAbandon } = getPushActions(state?.status ?? "none");
+  const { data: state, isError } = useGetRepositoryPushState({ repositoryId });
+  // Until the state loads, nothing is known to be pending.
+  const { canRetry, canAbandon } = getPushActions(
+    isError ? "unreadable" : (state?.status ?? "none")
+  );
+  // The backend checks both global permissions for an action on the pending pushes.
+  const { data: canManageRepositories = false } = useHasGlobalPermission(MANAGE_REPOSITORIES);
+  const { data: canEditDefaultBranch = false } = useHasGlobalPermission(EDIT_DEFAULT_BRANCH);
+  const isAllowed = isUpdateAllowed && canManageRepositories && canEditDefaultBranch;
 
   const { mutate: retryDelivery } = useRetryDeliveryMutation({
     onSuccess: async (result) => {
@@ -132,7 +146,7 @@ function RepositoryDeliveryMenuItems({
   return (
     <>
       <MenuItem
-        isDisabled={!isUpdateAllowed || !canRetry}
+        isDisabled={!isAllowed || !canRetry}
         onAction={() => retryDelivery({ repositoryId })}
       >
         <Icon icon="mdi:upload" />
@@ -140,7 +154,7 @@ function RepositoryDeliveryMenuItems({
       </MenuItem>
 
       <MenuItem
-        isDisabled={!isUpdateAllowed || !canAbandon}
+        isDisabled={!isAllowed || !canAbandon}
         onAction={() => state && onAbandonDelivery(state)}
       >
         <Icon icon="mdi:upload-off" />
