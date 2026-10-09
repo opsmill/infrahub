@@ -383,6 +383,12 @@ class PostMergeRegenerationDispatcher:
     async def _submit_full_terminal_regeneration(
         self, context: InfrahubContext, target_branch: str, releasing: str | None
     ) -> None:
+        if releasing is not None:
+            # A release covers only the definitions of its own repository.
+            await self.submit_repository_regeneration(
+                context=context, target_branch=target_branch, repository_id=releasing, scope="terminals"
+            )
+            return
         held = await self.barrier.hold_widen(
             branch=target_branch,
             scope="terminals",
@@ -431,34 +437,40 @@ class PostMergeRegenerationDispatcher:
                         artifact_definitions=(HeldItem(id=request.artifact_definition_id, hold_seq=0),)
                     ),
                     request=request,
-                    union=self._join_artifact_requests,
+                    union=self._join_requests,
                 )
             case RequestGeneratorDefinitionRun():
-                # No rule joins the target members of two runs, so a repeated hold releases the run unnarrowed.
                 return OwnedRegeneration(
                     repository_id=request.generator_definition.repository_id,
                     held=HeldRegeneration(
                         generator_definitions=(HeldItem(id=request.generator_definition.definition_id, hold_seq=0),)
                     ),
                     request=request,
-                    union=None,
+                    union=self._join_requests,
                 )
             case _:
                 assert_never(request)
 
-    def _join_artifact_requests(self, previous: BaseModel, new: BaseModel) -> BaseModel:
-        if not isinstance(previous, RequestArtifactDefinitionGenerate) or not isinstance(
-            new, RequestArtifactDefinitionGenerate
-        ):
-            raise TypeError(f"Cannot join a {type(previous).__name__} and a {type(new).__name__}")
-        (consolidated,) = self.planner.consolidate_submissions(
-            [
-                PlannedRegeneration(
+    def _join_requests(self, previous: BaseModel, new: BaseModel) -> BaseModel:
+        """Join two requests of one definition with the consolidation of the selector that owns their kind.
+
+        Raises:
+            TypeError: The two requests are not of the same kind.
+
+        """
+        match previous, new:
+            case RequestArtifactDefinitionGenerate(), RequestArtifactDefinitionGenerate():
+                entry = PlannedRegeneration(
                     workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE,
                     cascade_role=CascadeRole.TERMINAL,
                     requests=[previous, new],
                 )
-            ]
-        )
+            case RequestGeneratorDefinitionRun(), RequestGeneratorDefinitionRun():
+                entry = PlannedRegeneration(
+                    workflow=REQUEST_GENERATOR_DEFINITION_RUN, cascade_role=CascadeRole.SOURCE, requests=[previous, new]
+                )
+            case _:
+                raise TypeError(f"Cannot join a {type(previous).__name__} and a {type(new).__name__}")
+        (consolidated,) = self.planner.consolidate_submissions([entry])
         (joined,) = consolidated.requests
         return joined
