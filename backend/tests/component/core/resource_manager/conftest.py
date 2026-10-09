@@ -12,6 +12,7 @@ from infrahub.core.initialization import initialize_registry
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.schema import SchemaRoot
+from infrahub.pools.scope import AllocationScopeResolver
 from tests.helpers.agnostic_edges import TEST_ACTOR_ID, IsReservedEdge, is_reserved_edge_on
 from tests.helpers.number_pool import SCOPED_DEVICE, SCOPED_POOL_SCHEMA, SCOPED_SITE, add_pool_range
 from tests.helpers.schema import TICKET, load_schema
@@ -102,13 +103,21 @@ async def ticket_schema(db: InfrahubDatabase, register_core_models_schema: Schem
 async def scoped_schema(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
-    """The scoped pool test schema, registered on the default branch."""
-    registry.schema.register_schema(schema=SCOPED_POOL_SCHEMA, branch=default_branch.name)
+    """The scoped pool test schema, saved on the default branch so that its fields hold the ids a scope stores."""
+    await load_schema(db=db, schema=SCOPED_POOL_SCHEMA, update_db=True)
     registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
 
 
+def stored_scope(names: list[str] | None) -> list[dict[str, str]] | None:
+    """Return the stored form of a device scope naming the given fields, or None for an unscoped pool."""
+    scope = AllocationScopeResolver(
+        schema_branch=registry.schema.get_schema_branch(name=registry.default_branch)
+    ).resolve(kind=SCOPED_DEVICE.kind, entries=names)
+    return None if scope.is_empty else scope.to_stored()
+
+
 async def scoped_pool(db: InfrahubDatabase, name: str, allocation_scope: list[str] | None) -> CoreNumberPool:
-    """A pool over the device's `vlan_id` with the given scope, allocating from one range."""
+    """A pool over the device's `vlan_id` with the scope naming the given fields, allocating from one range."""
     pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
     await pool.new(
         db=db,
@@ -117,7 +126,7 @@ async def scoped_pool(db: InfrahubDatabase, name: str, allocation_scope: list[st
         node_attribute=SCOPED_ATTRIBUTE_NAME,
         start_range=SCOPED_POOL_START,
         end_range=SCOPED_POOL_END,
-        allocation_scope=allocation_scope,
+        allocation_scope=stored_scope(names=allocation_scope),
     )
     await pool.save(db=db)
     await add_pool_range(db=db, pool=pool, start=SCOPED_POOL_START, end=SCOPED_POOL_END)
