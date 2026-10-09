@@ -238,7 +238,9 @@ the queued merges touched, not with the data.
 | `import_owed_commit` | `str \| None` | An import that was still owed and was dropped with the queue. |
 | `entries` | `tuple[PendingMerge, ...]` | What was dropped. |
 
-Earlier records stay readable through the temporal history of the node.
+The record must match its request: the abandonment raises `ValueError` when its `queue_version`,
+`account_id` or `account_name` differs from the version and the actor of the call. Earlier records
+stay readable through the temporal history of the node.
 
 ### `RevertedDelivery`
 

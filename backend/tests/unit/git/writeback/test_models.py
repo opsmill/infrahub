@@ -10,6 +10,7 @@ from infrahub.core.constants import FullRegenerationReason, RepositoryDeliveryFa
 from infrahub.git.writeback.constants import REMOVED_ENTRY_IDS_KEPT
 from infrahub.git.writeback.models import (
     AbandonmentRecord,
+    Actor,
     DeliveryFailure,
     DeliveryProgress,
     DeliveryQueue,
@@ -492,6 +493,51 @@ def test_failure_message_is_stored_without_credentials() -> None:
     failed = _intent().with_failure(failure=failure, final=True, retry_due_at=None, now=NOW)
 
     assert failed.error == "Merging https://gitlab.example.com/net/repo.git conflicted"
+
+
+@dataclass
+class MismatchedRecordTestCase:
+    name: str
+    queue_version: int
+    account_id: str
+    account_name: str
+
+
+MISMATCHED_RECORD_TEST_CASES: list[MismatchedRecordTestCase] = [
+    MismatchedRecordTestCase(name="other_queue_version", queue_version=2, account_id="account-1", account_name="admin"),
+    MismatchedRecordTestCase(name="other_account", queue_version=1, account_id="account-2", account_name="admin"),
+    MismatchedRecordTestCase(
+        name="other_account_name", queue_version=1, account_id="account-1", account_name="operator"
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in MISMATCHED_RECORD_TEST_CASES])
+def test_abandonment_refuses_a_record_that_does_not_match_its_request(test_case: MismatchedRecordTestCase) -> None:
+    intent = _intent(queue=_queued(_entry("e1")))
+    record = AbandonmentRecord(
+        abandoned_at=NOW,
+        account_id=test_case.account_id,
+        account_name=test_case.account_name,
+        queue_version=test_case.queue_version,
+        recorded_commit=COMMIT,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            r"^The abandonment record of repository net-repo names another queue version or account than its "
+            r"request$"
+        ),
+    ):
+        intent.abandoned(
+            repository_name="net-repo",
+            queue_version=1,
+            actor=Actor(account_id="account-1", account_name="admin"),
+            record=record,
+            lease_id="L",
+            now=NOW,
+        )
 
 
 def test_import_is_owed_only_while_a_merge_is_queued() -> None:
