@@ -301,6 +301,11 @@ unreplayable, with a cause that names the discarded source commit.
 
 ### Edge Cases
 
+- **A repository is converted to a read-only repository while a push waits.** The conversion deletes
+  the repository node, so it would drop the pending pushes and the held regeneration with no
+  abandonment record. The conversion is refused until the pushes are retried or abandoned and the
+  held regeneration is released. The check reads the state without the state lock, so a merge that
+  is queued between the check and the deletion is still dropped.
 - **A second merge lands while a delivery is outstanding.** It is appended to the queue and never
   replaces an earlier entry. One retry delivers both.
 - **The pending queue becomes unreplayable.** The remote destination advanced and a replayed merge

@@ -31,7 +31,7 @@ Every attribute has these settings in common:
 |---|---|---|---|
 | `delivery_status` | `Dropdown` | Push to remote | The required action. See "Status" below. A null value reads as `none`. |
 | `delivery_failure_cause` | `Dropdown` | Push failure cause | Why the last attempt failed. Null when nothing failed. |
-| `delivery_error` | `TextArea` | Push error | The remote's message of the last failed attempt, verbatim, with credentials removed. |
+| `delivery_error` | `TextArea` | Push error | The message of the last failed push, import or release step, with credentials removed. For a refused push, it holds the remote's own lines. |
 | `delivery_queue` | `JSON` | Pending pushes | The queue. See `DeliveryQueue`. |
 | `delivery_held_regeneration` | `JSON` | Held regeneration | The held set. See `HeldRegeneration`. |
 | `delivery_last_abandonment` | `JSON` | Last abandoned push | See `AbandonmentRecord`. |
@@ -49,8 +49,8 @@ migration. The attribute names never carry the label.
 
 #### Status
 
-`delivery_status` choices, backed by a new `RepositoryDeliveryStatus` `StrEnum` in
-`core/constants/__init__.py`, beside `RepositorySyncStatus`:
+`delivery_status` choices, backed by a new `RepositoryDeliveryStatus` `InfrahubStringEnum` (a `str`
+enum, like `RepositorySyncStatus`) in `core/constants/__init__.py`, beside `RepositorySyncStatus`:
 
 | Value | Label | Colour | Meaning |
 |---|---|---|---|
@@ -106,9 +106,28 @@ running. Staleness decides what the recovery check does. It no longer gates the 
 ## JSON values
 
 Each JSON attribute holds one Pydantic model, serialised with `model_dump(mode="json")` and parsed
-with `model_validate`. Each model has a `format` field, `1` today, so a later shape can be read next
-to an old one. The models live in `backend/infrahub/git/writeback/models.py`. Principle III forbids
-untyped dictionaries for this data.
+with `model_validate`. Each model has a `format` field, `1` today. The models live in
+`backend/infrahub/git/writeback/models.py`. Principle III forbids untyped dictionaries for this data.
+
+### A change of a stored format
+
+A worker reads only the formats that its release knows. A value that it cannot read stops every
+store method for that repository, `abandon` and the conversion guard included. So a change of a
+stored shape follows these rules:
+
+1. **Reads.** A release reads every format up to its own, so the values written before an upgrade
+   stay readable after it.
+2. **Writes.** A release writes a new format only when the release before it already reads that
+   format. An upgrade that replaces the workers one at a time, as a Helm rolling update can, runs
+   old and new workers together for a short time. With this rule, an old worker never reads a format
+   that it does not know.
+3. **Enum members.** The same two steps apply to a new member of `RepositoryDeliveryStatus` or
+   `RepositoryDeliveryFailureCause`, whose value the repository stores as a schema choice, and of
+   `FullRegenerationReason`, whose member name the held set stores. No member is renamed.
+4. **A value that still cannot be read.** It comes from a defect or a hand edit. Each store method
+   raises `DeliveryStateUnreadableError`, which names the repository and the attribute. No store
+   method clears the value: the release that fixes the defect carries a graph migration that
+   rewrites it.
 
 ### `DeliveryQueue`
 
@@ -159,7 +178,9 @@ destination branch.
 `hold_seq: int`. A repeated hold of the same identifier keeps one item and raises its `hold_seq`.
 
 `HeldWiden` is `scope: Literal["all", "terminals"]`, `reason: FullRegenerationReason`,
-`hold_seq: int`. It is one item, the `widen` marker. A repeated hold of the marker keeps one marker
+`hold_seq: int`. The stored JSON holds the member name of the reason, for example `UNHELD_FOLLOW_UP`,
+not its log sentence, so a new wording of the sentence never breaks a stored value. A new name of a
+member does, so no member is renamed. It is one item, the `widen` marker. A repeated hold of the marker keeps one marker
 and raises its `hold_seq`. A wider scope replaces a narrower one, and a narrower hold keeps the
 wider scope. The marker keeps the reason of the latest hold of the scope that it has. Scope `all`
 covers every definition and Python attribute of the repository. Scope `terminals` covers only its
@@ -182,9 +203,10 @@ keeps the named `hold_seq`. A hold of that item after the lease was taken raises
 the lease no longer covers it, and the next lease can take it.
 
 `HeldRegeneration.with_hold(...)` adds or refreshes items with the next sequence, and reports the
-previous sequence of each refreshed item. `lease_window(now)` returns the held items that no live
-lease covers, each with its current `hold_seq`. `with_lease(lease, now)` adds a lease that names
-such items. `without_window(lease, now)` removes each item that the lease names and that still has
+previous sequence of each refreshed item. `lease_window(now, max_hold_seq)` returns the held items
+that no live lease covers, each with its current `hold_seq`, and leaves out the items above
+`max_hold_seq` unless it is `None`. `with_lease(lease, now)` adds a lease that names such items.
+`without_window(lease_id, now)` removes each item that the lease names and that still has
 the named `hold_seq`, then removes the lease. An item held again after the lease was taken has a
 higher `hold_seq`, so it stays. When its release fails, its run sets `expires_at` to now and keeps
 the items, so the next lease takes them (`research.md` R10, rule 4).
@@ -273,7 +295,7 @@ its progress timestamps and never changes the status.
 | `none` | held-only run takes a lease, through `lease_owed_release` | unchanged | a release lease that names every uncovered held item; nothing when a live lease covers them all |
 | any | release renews | unchanged | the lease's `expires_at` |
 | any | release fails, so the lease expires | unchanged | the lease's `expires_at`, set to now; the items of its window stay held, and the next lease takes them (`research.md` R10, rule 4) |
-| any | release clears | unchanged | remove each item of the lease's window that still has the named `hold_seq`, then the lease; an item held again since stays |
+| any | release clears | unchanged | remove each item of the lease's window that still has the named `hold_seq`, then the lease; an item held again since stays; clear the cause and the error when the queue is empty |
 | any | recovery check submits | unchanged | `last_progress_at` |
 | any | rewrite discards the last delivered commit (FR-021) | unchanged | `delivery_reverted` |
 | any | guard refuses a branch deletion | unchanged | `delete_source_git_branch` on every entry that names the branch; the version does not move |
@@ -297,14 +319,20 @@ Every row that takes or clears a lease also cleans up the expired leases in the 
    its call raised, and every later try raised too. For that case, `enqueue` refuses an id that is
    still in `entries`, and an id that left the queue and is in `removed_entry_ids` or in the last
    abandonment record.
-6. Every read and write happens on Infrahub's default branch, under the delivery-state lock.
+6. Every read and write happens on Infrahub's default branch. Every write, and the read that each
+   transition starts from, happens under the delivery-state lock. The transaction of each transition
+   first takes the Neo4j write lock of the repository node, so two transitions never interleave, also
+   after the state lock expired (`research.md` R2). The two plain reads, `read` and
+   `pending_repository_ids`, take no lock.
 7. A hold recorded after a lease was taken survives that lease's clear (FR-015). The lease does
    not name the item, or names it with a lower `hold_seq`, and the clear removes an item only when
    it still has the named `hold_seq`. A delivery's lease takes only items whose `hold_seq` is not
    above the attempt's snapshot, so a hold for a merge that is still queued waits for that merge's
    delivery.
 8. `import_owed_commit` is saved before the commit it names is recorded (`research.md` R4 step 9).
-9. An owed import implies a non-empty queue.
+9. An owed import implies a non-empty queue. The service keeps it by its order of steps (`research.md`
+   R4), and the store enforces it: `owe_import` writes nothing on an empty queue, and a settle that
+   would leave an owed import with an empty queue raises and saves nothing.
 10. Two live leases never cover the same held item. A new lease takes only items that no live lease
     covers, and an item that it takes from an expired lease moves to it. So no two leases name the
     same held item with its current `hold_seq`.
@@ -322,9 +350,9 @@ unless stated otherwise.
 
 | Type | Kind | Fields | Meaning |
 |---|---|---|---|
-| `WritebackIntent` | frozen dataclass | `repository_id`, `status`, `cause`, `error`, `queue`, `held`, `progress`, `last_delivered_commit` | The whole state of one repository, as the store reads it. Exposes `is_stale(now, lock_free, run_queued)` and `has_work(now)`. The caller reads the lock and the orchestrator and passes the two booleans in, so the model stays pure. |
+| `WritebackIntent` | frozen dataclass | `repository_id`, `status`, `cause`, `error`, `queue`, `held`, `progress`, `last_delivered_commit`, `last_abandonment`, `reverted` | The whole state of one repository, as the store reads it. Exposes `is_stale(now, lock_free, run_queued)` and `has_work(now)`. The caller reads the lock and the orchestrator and passes the two booleans in, so the model stays pure. |
 | `DeliveryStage` | `StrEnum` | `enqueue`, `fetch`, `push`, `record`, `import`, `replay`, `release` | Where an attempt failed. An input of the classifier. `enqueue` is the write of the entry that `merge_git_repository` makes after a failed dispatcher enqueue, as the first step of the attempt (`research.md` R3). |
-| `DeliveryFailure` | frozen dataclass | `cause`, `retryable: bool`, `message` | The classifier's output. `message` is already scrubbed. |
+| `DeliveryFailure` | frozen dataclass | `cause: RepositoryDeliveryFailureCause \| None`, `retryable: bool`, `message` | The classifier's output. `message` is already scrubbed. `cause` is `None` for a failed enqueue or release. While merges are queued, the stored cause and error then stay as they are. With an empty queue, the message is stored with no cause (`research.md` R5). |
 | `DeliveryOutcome` | `StrEnum` | `nothing-pending`, `delivered`, `observed`, `released`, `failed`, `unreplayable`, `deferred` | What one attempt did. `deferred` means a retry chain was already due. |
 | `DeliveryAttemptResult` | frozen dataclass | `outcome`, `commit: str \| None`, `failure: DeliveryFailure \| None` | The service's return value. |
 | `Actor` | frozen dataclass | `account_id`, `account_name` | Who requested an abandonment. |
@@ -343,6 +371,9 @@ In `backend/infrahub/exceptions.py`:
 | `RepositoryNotFoundError` | `RepositoryConnectionError` | none | Today's connection wording, unchanged. |
 | `DeliveryQueueChangedError` | `ValidationError` | none | "The pending pushes of repository <name> changed since version <n>; reload and try again." |
 | `NothingPendingError` | `ValidationError` | none | "Repository <name> has nothing pending to push." |
+| `DeliveryPendingError` | `ValidationError` | none | "Repository <name> has pending pushes to its remote; retry or abandon them before you convert the repository." With held regeneration and the status `none`: "Repository <name> has a regeneration that waits to be released after a push; wait for the release, then convert the repository." |
+| `DeliveryStateUnavailableError` | `ServiceUnavailableError` | `repository_id` | "The lock of the delivery state of repository <id> was not acquired within <n> seconds; try again." |
+| `DeliveryStateUnreadableError` | `Error` | `repository_name`, `attribute_name` | "The stored value of <attribute> on repository <name> does not match its expected shape." |
 
 One function, `git/base.py::operational_status_for_error`, resolves the operational status for both
 call sites (`git/base.py::InfrahubRepositoryBase._raise_enriched_error` and
