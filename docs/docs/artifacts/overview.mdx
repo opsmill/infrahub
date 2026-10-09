@@ -34,7 +34,7 @@ While it's always possible to generate [Transformations](../transformations/over
 - **Peer Review**: artifacts are automatically part of the [Proposed Change](../proposed-changes/overview) review process.
 - **Database**: artifact nodes are stored in the database and other nodes can optionally have a relationship with them, which makes it possible to perform certain artifact related queries.
 
-While the content of an artifact can change, its identifier will remain the same over time.
+While the content of an artifact can change, its identifier on a branch will remain the same over time.
 
 ## High level design
 
@@ -90,6 +90,96 @@ An artifact is the cached output of a Transformation, so Infrahub regenerates it
 Data a Generator creates during a proposed change is not a reliable trigger for an artifact in that same pipeline: the two run concurrently, so the artifact can render before the data exists. To review artifacts built from Generator output, run the Generator on the branch before the pipeline starts. See [Ordering between Generators and artifacts](../proposed-changes/overview#ordering-between-generators-and-artifacts).
 
 Every regeneration decision during a proposed change is recorded in the pipeline's task log, naming the file, query, or field that triggered it. See [Understanding artifact regeneration](../proposed-changes/overview#understanding-artifact-regeneration).
+
+## How artifacts reach the default branch
+
+An artifact belongs to the branch it was generated on. When a branch merges, Infrahub does not copy its artifacts to the default branch. It regenerates the affected artifacts on the default branch, from the default branch's data and Transformation code at the time the regeneration runs. The artifact you reviewed in a [Proposed Change](../proposed-changes/overview) and the artifact on the default branch are separate nodes with different IDs. Their content is the same only when both were generated from the same data and code.
+
+If automation deploys artifacts from the default branch, such as device configurations pushed to the network after a merge, it deploys the regenerated artifact, not the one you reviewed.
+
+### What happens after a merge
+
+Once the merge is complete, Infrahub sets the branch status to `MERGED` and queues a follow-up task at low priority. The merge does not wait for this task, so the artifacts on the default branch are regenerated after the merge has finished.
+
+Which artifacts the task regenerates depends on the `INFRAHUB_SELECTIVE_EXECUTION_AFTER_MERGE` setting:
+
+- **`true`, the default**: Infrahub regenerates the artifact definitions and targets that the merge changed. Before the artifacts, it runs the affected Generators that have `execute_after_merge` set, and adds the artifacts that read their output to the selection. If Infrahub cannot build the selection, for example because the summary of the merge is not available, it regenerates every artifact definition.
+- **`false`**: Infrahub regenerates every artifact definition after each merge.
+
+See [Configuration](../reference/configuration.mdx) for the setting. Each artifact is generated in its own task.
+
+Infrahub sends the `infrahub.branch.merged` and `infrahub.proposed_change.merged` events once the regeneration has been queued, not once it has finished.
+
+### When the default branch artifact differs from the reviewed one
+
+Infrahub generates the artifacts of a Proposed Change on its branch. On that branch, Infrahub reads the default branch's data as it was at the branch's `branched_from`, plus the changes made on the branch, as described in [Parallel branches](../branches/parallel-branches.mdx). The regeneration after the merge reads the default branch as it is when the task runs. The two artifacts differ when data or code that the artifact reads changed in between:
+
+- **The branch was not rebased.** Changes made on the default branch after `branched_from` are not in the reviewed artifact.
+- **Another branch has changes to different data that the same artifact reads.** For example, you change the descriptions of a device's interfaces on one branch and add a BGP session to the same device on another, and the device's configuration artifact reads both. The two branches contain changes to different objects, so Infrahub reports no conflict, and each Proposed Change shows only its own change. After both branches merge, the configuration on the default branch contains both changes, a combination that no Proposed Change showed. Infrahub has no check that blocks a merge in this case.
+- **The default branch changed after the last rebase or the last run of the checks.** A rebase does not re-run the Proposed Change checks. The default branch can also change between the merge and the regeneration.
+- **A Generator that runs after the merge changed data the artifact reads.**
+- **The regeneration failed.** The artifact on the default branch keeps its previous content. See [When the regeneration fails](#when-the-regeneration-fails).
+- **The artifact includes content from another artifact.** The regeneration does not refresh the included content. See [Composing artifact content](./content-composition.mdx#known-limitations).
+
+The two-branch case, for one device configuration:
+
+```mermaid
+sequenceDiagram
+  participant A as Branch A
+  participant D as Default branch
+  participant B as Branch B
+  D->>A: Create branch A
+  D->>B: Create branch B
+  Note over A: Proposed Change shows the configuration with change A
+  Note over B: Proposed Change shows the configuration with change B
+  A->>D: Merge
+  Note over D: Regenerates the configuration with change A
+  B->>D: Merge, no conflict reported
+  Note over D: Regenerates the configuration with changes A and B
+```
+
+<!-- vale off -->
+The **Artifacts** tab of a Proposed Change shows the difference between each artifact on the branch and the current artifact on the default branch, not with the artifact as it was at `branched_from`. A change made on the default branch after `branched_from` can therefore appear in the tab as a difference, although the branch did not make it. Rebase the branch and re-run the checks to remove those differences from the tab.
+<!-- vale on -->
+
+### When the regeneration fails
+
+When an artifact fails to generate, Infrahub sets its `status` to `Error`. The artifact keeps the content and the checksum it had before the merge, and the API still returns that content. A deployment that does not check `status` deploys the previous version.
+
+To find a failure:
+
+- **Artifact status**: query `status` on the artifact on the default branch, or open the artifact in the web interface.
+- **Task log**: the failed task is named "Generate artifact" followed by the artifact name, and is tagged with the default branch and the target object.
+
+Infrahub sends no event when a generation fails. It sends `infrahub.artifact.created` and `infrahub.artifact.updated` only when a generation succeeds and the content changed, so a regeneration that produces the same content sends no event either.
+
+To retry, click **Re-generate** on the artifact's page. To regenerate every artifact of a definition, send `POST /api/artifact/generate/<artifact_definition_id>`.
+
+### Deploy the artifact that was reviewed
+
+Infrahub does not require any of these steps. Add them to your merge and deployment process where a difference between the reviewed and the deployed artifact matters:
+
+1. **Before you merge**, [rebase](../branches/rebase.mdx) the branch, then re-run the Proposed Change checks: click **Retry all** on the **Checks** tab, or send the `CoreProposedChangeRunCheck` mutation with `check_type` set to `artifact`. Review the regenerated artifacts in the Proposed Change, then merge.
+2. **Before you deploy**, wait until the artifact on the default branch has been regenerated, and check that its `status` is `Ready`. An artifact that was `Ready` before the merge stays `Ready` while its regeneration is queued or running, so the status does not show on its own that the regeneration ran. Infrahub sends no event when the regeneration finishes, and `infrahub.artifact.updated` is sent only for artifacts whose content changed. For an artifact whose content did not change, only the task log shows that the regeneration ran.
+3. **In the deployment step**, compare checksums. An artifact's `checksum` is an MD5 hash of its content. Infrahub records the checksum of each artifact that a Proposed Change generated on a `CoreArtifactCheck` node, named after the artifact and its target. That node does not belong to a branch, so you can still read it after the source branch is deleted. Compare it with the checksum of the artifact on the default branch, and stop the deployment for review when they differ. The check contains the result of the last run of the checks, so re-run them after the last change to the branch.
+
+When several Proposed Changes change data that the same artifacts read, merge them one at a time. After each merge, wait for the regeneration to finish, then rebase the next branch and re-run its checks, so that its review includes the change merged before it.
+
+To read the status and the checksum of an artifact on the default branch:
+
+```graphql title="Status and checksum of a device's artifact on the default branch"
+query ArtifactState {
+  CoreArtifact(object__ids: ["<device-id>"], definition__name__value: "<artifact-definition-name>") {
+    edges {
+      node {
+        id
+        status { value }
+        checksum { value }
+      }
+    }
+  }
+}
+```
 
 ## How artifacts relate to other features
 
