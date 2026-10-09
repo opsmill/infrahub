@@ -3,7 +3,7 @@ import type { ReactElement, ReactNode } from "react";
 import { Icon } from "@/shared/components/display/icon";
 
 type tNoData = {
-  title?: string;
+  title?: ReactNode;
   message?: ReactNode;
   icon?: ReactElement;
 };

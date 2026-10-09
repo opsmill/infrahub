@@ -31,6 +31,7 @@ from infrahub.log import get_logger
 from infrahub.tls.bundle import resolve_ca_bundle
 
 if TYPE_CHECKING:
+    from infrahub.git.state.reader import RepositoryGitStateReader
     from infrahub.services.adapters.cache import InfrahubCache
     from infrahub.services.adapters.message_bus import InfrahubMessageBus
     from infrahub.services.adapters.workflow import InfrahubWorkflow
@@ -571,6 +572,9 @@ class BrokerSettings(BaseSettings):
         default=2, description="The maximum number of concurrent messages fetched by each worker", ge=1
     )
     virtualhost: str = Field(default="/", description="The virtual host to connect to")
+    rpc_timeout: int = Field(
+        default=30, ge=1, description="The maximum number of seconds to wait for a worker to answer an RPC request"
+    )
     driver: BrokerDriver = Field(
         default=BrokerDriver.RabbitMQ,
         description=(
@@ -873,6 +877,12 @@ class GitSettings(BaseSettings):
         default=False,
         description="When enabled, the corresponding Git branch is deleted after the Infrahub branch is deleted. "
         "Requires delete_branch_after_merge to be enabled.",
+    )
+    read_only_refs_check_interval_mins: int = Field(
+        default=15,
+        ge=1,
+        le=1440,
+        description="Time (in minutes) between two checks of a read-only repository's remote for movement of its tracked refs.",
     )
     tls_insecure: bool = Field(
         default=False,
@@ -1965,6 +1975,7 @@ class Override:
     message_bus: InfrahubMessageBus | None = None
     cache: InfrahubCache | None = None
     workflow: InfrahubWorkflow | None = None
+    repository_git_state_reader: RepositoryGitStateReader | None = None
 
 
 @dataclass

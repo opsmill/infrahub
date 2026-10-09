@@ -186,6 +186,45 @@ class GitReadOnlyRepositoryImportCommit(BaseModel):
     )
 
 
+class TrackedRef(BaseModel):
+    """A git ref a read-only repository follows on one Infrahub branch.
+
+    It deliberately carries no commit: the commit a convergence pins the pool to is read when the
+    repository lock is held, and one carried from here could already have been superseded by an
+    import that ran in between.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    infrahub_branch_name: str = Field(..., description="Infrahub branch pinning this ref")
+    infrahub_branch_id: str = Field(..., description="Id of the Infrahub branch pinning this ref")
+    ref: str = Field(..., description="Branch or tag followed on the external repository")
+
+
+class GitReadOnlyRepositoryCheckRefs(BaseModel):
+    """Check a read-only repository's remote for movement of the refs it tracks."""
+
+    model_config = ConfigDict(frozen=True)
+
+    repository_id: str = Field(..., description="The unique ID of the Repository")
+    repository_name: str = Field(..., description="The name of the repository")
+    location: str = Field(..., min_length=1, description="The external URL of the repository")
+    refs: tuple[TrackedRef, ...] = Field(
+        ...,
+        min_length=1,
+        description="Refs to check, one entry per Infrahub branch tracking one",
+    )
+
+
+class GitRepositoryWarmUp(BaseModel):
+    """Create a repository's local copy on every worker, after a read found a worker without one."""
+
+    repository_id: str = Field(..., description="The unique ID of the Repository")
+    repository_name: str = Field(..., description="The name of the repository")
+    repository_kind: str = Field(..., description="The kind of the repository")
+    infrahub_branch_name: str = Field(..., description="Infrahub branch the read was made for")
+
+
 class GitDiffNamesOnly(BaseModel):
     """Request a list of modified files between two commits."""
 
@@ -300,6 +339,7 @@ class CheckRepositoryMergeConflicts(BaseModel):
 
 class RepositoryBranchInfo(BaseModel):
     internal_status: str
+    ref: str | None = Field(default=None, description="Ref tracked on that branch, set for read-only repositories only")
 
 
 class RepositoryData(BaseModel):
@@ -310,6 +350,7 @@ class RepositoryData(BaseModel):
     repository: CoreRepository | CoreReadOnlyRepository | Node = Field(
         ..., description="InfrahubNode representing a Repository"
     )
+    location: str | None = Field(..., description="External URL of the repository, absent when it has none")
     branches: dict[str, str | None] = Field(
         ...,
         description="Dictionary with the name of the branch as the key and the active commit id as the value, None when the branch has no commit",

@@ -15,8 +15,11 @@ from infrahub.tasks.check import set_check_status
 MessageHandler = Callable[..., Awaitable[None]]
 
 COMMAND_MAP: dict[str, MessageHandler] = {
+    "git.branch_heads.get": git.branch_heads.get,
+    "git.commit_log.get": git.commit_log.get,
     "git.file.get": git.file.get,
     "git.repository.connectivity": git.repository.connectivity,
+    "refresh.git.clone": git.repository.clone,
     "refresh.git.fetch": git.repository.fetch,
     "refresh.git.branch_deleted": git.repository.branch_deleted,
     "refresh.registry.branches": refresh.registry.branches,

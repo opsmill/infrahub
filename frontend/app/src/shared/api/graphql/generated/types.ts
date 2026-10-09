@@ -20053,6 +20053,7 @@ export type Mutation = {
   InfrahubIPAddressPoolGetResource: Maybe<IpAddressPoolGetResource>;
   InfrahubIPPrefixPoolGetResource: Maybe<IpPrefixPoolGetResource>;
   InfrahubProfilesRefresh: Maybe<InfrahubProfilesRefresh>;
+  InfrahubReadOnlyRepositoryCheckRefs: Maybe<ReadOnlyRepositoryCheckRefs>;
   InfrahubReadOnlyRepositoryImportLastCommit: Maybe<ReadOnlyRepositoryImportLastCommit>;
   InfrahubRecomputeComputedAttribute: Maybe<RecomputeComputedAttribute>;
   InfrahubRepositoryConnectivity: Maybe<ValidateRepositoryConnectivity>;
@@ -21731,6 +21732,11 @@ export type MutationInfrahubIpPrefixPoolGetResourceArgs = {
 export type MutationInfrahubProfilesRefreshArgs = {
   context?: InputMaybe<ContextInput>;
   data: ProfilesRefreshInput;
+};
+
+
+export type MutationInfrahubReadOnlyRepositoryCheckRefsArgs = {
+  data: IdentifierInput;
 };
 
 
@@ -25818,8 +25824,12 @@ export type Query = {
   InfrahubPermissions: AccountPermissionsEdges;
   /** Find all nodes of specified kinds reachable from a source node */
   InfrahubReachableNodes: ReachableNodesResultType;
+  /** Per-branch drift for a repository. */
+  InfrahubRepositoryBranchDrift: RepositoryBranchDrifts;
   /** Status of one repository as seen from every relevant branch, one row per branch. Resolved entirely from the graph; never contacts a task worker. Requires view permission on the repository's kind covering both the default and non-default branches (ALLOW_ALL, or ALLOW_DEFAULT plus ALLOW_OTHER). Always reports the present: a request carrying an 'at' query parameter is rejected, because the branch list this query builds its rows from has no historical form. */
   InfrahubRepositoryBranchStatus: InfrahubRepositoryBranchStatusType;
+  /** Paged commit log for a repository on the request branch. */
+  InfrahubRepositoryCommits: RepositoryCommits;
   InfrahubResourcePoolAllocated: PoolAllocated;
   InfrahubResourcePoolUtilization: PoolUtilization;
   InfrahubSearchAnywhere: NodeEdges;
@@ -38099,6 +38109,11 @@ export type QueryInfrahubReachableNodesArgs = {
 };
 
 
+export type QueryInfrahubRepositoryBranchDriftArgs = {
+  repository_id: Scalars['String']['input'];
+};
+
+
 export type QueryInfrahubRepositoryBranchStatusArgs = {
   id: Scalars['String']['input'];
   internal_status__value?: InputMaybe<Scalars['String']['input']>;
@@ -38110,6 +38125,13 @@ export type QueryInfrahubRepositoryBranchStatusArgs = {
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   status__value?: InputMaybe<BranchStatus>;
   sync_status__value?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryInfrahubRepositoryCommitsArgs = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  repository_id: Scalars['String']['input'];
 };
 
 
@@ -38929,6 +38951,12 @@ export type ReachableNodesResultType = {
   source: PathNodeType;
 };
 
+export type ReadOnlyRepositoryCheckRefs = {
+  __typename: 'ReadOnlyRepositoryCheckRefs';
+  ok: Maybe<Scalars['Boolean']['output']>;
+  task: Maybe<TaskInfo>;
+};
+
 export type ReadOnlyRepositoryImportLastCommit = {
   __typename: 'ReadOnlyRepositoryImportLastCommit';
   ok: Maybe<Scalars['Boolean']['output']>;
@@ -39039,6 +39067,120 @@ export type Relationships = {
   edges: Array<RelationshipNode>;
 };
 
+/** Drift of one Infrahub branch of a repository. */
+export type RepositoryBranchDrift = {
+  __typename: 'RepositoryBranchDrift';
+  branch_name: Scalars['String']['output'];
+  condition: RepositoryGitCondition;
+  /** Remote branch or tracked ref compared for this branch. Null when the branch is not tracked. */
+  git_ref: Maybe<Scalars['String']['output']>;
+  /** Latest remote commit. Null when there is no remote counterpart or when condition is UNAVAILABLE. */
+  remote_head: Maybe<Scalars['String']['output']>;
+  tracked_commit: Maybe<Scalars['String']['output']>;
+};
+
+export type RepositoryBranchDriftNode = {
+  __typename: 'RepositoryBranchDriftNode';
+  node: RepositoryBranchDrift;
+};
+
+/** Drift for every branch of a repository, produced by a single worker request. */
+export type RepositoryBranchDrifts = {
+  __typename: 'RepositoryBranchDrifts';
+  /** When the remote was last checked for movement. Read-only repositories only. */
+  checked_at: Maybe<Scalars['DateTime']['output']>;
+  /** One row per open branch the caller may view, and for a read-write repository only those synchronised with Git. The set is the branch list as it stands now: an `at` in the past changes the values each row reports, never which branches are listed. */
+  edges: Array<RepositoryBranchDriftNode>;
+  fetched_at: Maybe<Scalars['DateTime']['output']>;
+  repository_id: Scalars['String']['output'];
+  /** Set when the git-derived drift answer could not be produced. It does not suppress edges, which is resolved separately. */
+  unavailable: Maybe<RepositoryGitUnavailable>;
+};
+
+/** A commit read live from a worker's local clone. Never persisted. */
+export type RepositoryCommit = {
+  __typename: 'RepositoryCommit';
+  author_name: Scalars['String']['output'];
+  authored_at: Scalars['DateTime']['output'];
+  committed_at: Scalars['DateTime']['output'];
+  /** Full commit hash. */
+  hash: Scalars['String']['output'];
+  /** Full commit message. */
+  message: Scalars['String']['output'];
+  /** First 7 characters of the hash. */
+  short_hash: Scalars['String']['output'];
+  state: RepositoryCommitState;
+  /** First line of the commit message. */
+  summary: Scalars['String']['output'];
+};
+
+export type RepositoryCommitNode = {
+  __typename: 'RepositoryCommitNode';
+  node: RepositoryCommit;
+};
+
+/** Explicit state of one commit relative to the imported commit and the remote head. */
+export const RepositoryCommitState = {
+  HEAD: 'HEAD',
+  HISTORY: 'HISTORY',
+  IMPORTED: 'IMPORTED',
+  PENDING: 'PENDING',
+  UNRELATED: 'UNRELATED'
+} as const;
+
+export type RepositoryCommitState = typeof RepositoryCommitState[keyof typeof RepositoryCommitState];
+/** Commit log of a repository as seen from the request branch, newest first. */
+export type RepositoryCommits = {
+  __typename: 'RepositoryCommits';
+  /** The Infrahub branch the answer was computed for. */
+  branch_name: Scalars['String']['output'];
+  /** When the remote was last checked for movement. Read-only repositories only; null for read-write, where fetched_at already carries it. */
+  checked_at: Maybe<Scalars['DateTime']['output']>;
+  condition: RepositoryGitCondition;
+  edges: Array<RepositoryCommitNode>;
+  /** When the answering worker last fetched from the remote. Null before the first fetch, and after a failed fetch. */
+  fetched_at: Maybe<Scalars['DateTime']['output']>;
+  /** Remote branch or tracked ref whose history is listed. Null when the branch tracks nothing, matching RepositoryBranchDrift.git_ref. */
+  git_ref: Maybe<Scalars['String']['output']>;
+  /** Commit Infrahub has imported on this branch, from the repository's commit attribute. */
+  imported_commit: Maybe<Scalars['String']['output']>;
+  /** Number of commits between imported_commit and remote_head. Only set when condition is BEHIND. */
+  pending_count: Maybe<Scalars['Int']['output']>;
+  /** Head of the remote branch or tracked ref as last fetched by the answering worker. */
+  remote_head: Maybe<Scalars['String']['output']>;
+  repository_id: Scalars['String']['output'];
+  unavailable: Maybe<RepositoryGitUnavailable>;
+};
+
+/** How the remote head relates to the commit Infrahub has imported on the request branch. */
+export const RepositoryGitCondition = {
+  BEHIND: 'BEHIND',
+  IN_SYNC: 'IN_SYNC',
+  NOT_TRACKED: 'NOT_TRACKED',
+  NO_REMOTE: 'NO_REMOTE',
+  ORPHANED: 'ORPHANED',
+  REF_MISSING: 'REF_MISSING',
+  REWRITTEN: 'REWRITTEN',
+  UNAVAILABLE: 'UNAVAILABLE'
+} as const;
+
+export type RepositoryGitCondition = typeof RepositoryGitCondition[keyof typeof RepositoryGitCondition];
+/** Set when condition is UNAVAILABLE. Distinct from an error: the request succeeded, git had no answer yet. */
+export type RepositoryGitUnavailable = {
+  __typename: 'RepositoryGitUnavailable';
+  /** Human-readable explanation safe to display. */
+  message: Scalars['String']['output'];
+  reason: RepositoryGitUnavailableReason;
+};
+
+/** Why no git-derived answer was produced. */
+export const RepositoryGitUnavailableReason = {
+  NOT_CLONED: 'NOT_CLONED',
+  NOT_IMPLEMENTED: 'NOT_IMPLEMENTED',
+  TIMEOUT: 'TIMEOUT'
+} as const;
+
+export type RepositoryGitUnavailableReason = typeof RepositoryGitUnavailableReason[keyof typeof RepositoryGitUnavailableReason];
 export type RequiredStringValueField = {
   __typename: 'RequiredStringValueField';
   value: Scalars['String']['output'];

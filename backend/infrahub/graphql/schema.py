@@ -31,7 +31,12 @@ from .mutations.proposed_change import (
     ProposedChangeReview,
 )
 from .mutations.relationship import RelationshipAdd, RelationshipRemove
-from .mutations.repository import ProcessRepository, ReadOnlyRepositoryImportLastCommit, ValidateRepositoryConnectivity
+from .mutations.repository import (
+    ProcessRepository,
+    ReadOnlyRepositoryCheckRefs,
+    ReadOnlyRepositoryImportLastCommit,
+    ValidateRepositoryConnectivity,
+)
 from .mutations.resource_manager import IPAddressPoolGetResource, IPPrefixPoolGetResource
 from .mutations.schema import SchemaDropdownAdd, SchemaDropdownRemove, SchemaEnumAdd, SchemaEnumRemove
 from .mutations.task import InfrahubTaskCancel, InfrahubTaskRetry
@@ -48,6 +53,8 @@ from .queries import (
     InfrahubIPPrefixGetNextAvailable,
     InfrahubPathTraversal,
     InfrahubReachableNodes,
+    InfrahubRepositoryBranchDrift,
+    InfrahubRepositoryCommits,
     InfrahubResourcePoolAllocated,
     InfrahubResourcePoolUtilization,
     InfrahubSearchAnywhere,
@@ -97,6 +104,9 @@ class InfrahubBaseQuery(ObjectType):
     InfrahubReachableNodes = InfrahubReachableNodes
     InfrahubSearchAnywhere = InfrahubSearchAnywhere
 
+    InfrahubRepositoryCommits = InfrahubRepositoryCommits
+    InfrahubRepositoryBranchDrift = InfrahubRepositoryBranchDrift
+
     InfrahubTask = Task
     InfrahubEvent = Event
     InfrahubTaskBranchStatus = TaskBranchStatus
@@ -136,6 +146,7 @@ class InfrahubBaseMutation(ObjectType):
     InfrahubTaskRetry = InfrahubTaskRetry.Field()
     InfrahubTaskCancel = InfrahubTaskCancel.Field()
 
+    InfrahubReadOnlyRepositoryCheckRefs = ReadOnlyRepositoryCheckRefs.Field()
     InfrahubReadOnlyRepositoryImportLastCommit = ReadOnlyRepositoryImportLastCommit.Field()
     InfrahubRepositoryProcess = ProcessRepository.Field()
     InfrahubRepositoryConnectivity = ValidateRepositoryConnectivity.Field()

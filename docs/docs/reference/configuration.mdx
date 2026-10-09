@@ -91,6 +91,7 @@ Global TLS defaults shared by every component that opens outbound TLS connection
 | `INFRAHUB_GIT_GLOBAL_CONFIG_FILE` | The location of the git config file. This will be set as the system `GIT_CONFIG_GLOBAL` environment variable if the environment variable is not initially set | string | /opt/infrahub/.gitconfig |
 | `INFRAHUB_GIT_USE_EXPLICIT_MERGE_COMMIT` | Whether to allow explicit merge commits when infrahub merges branches | boolean | False |
 | `INFRAHUB_GIT_DELETE_GIT_BRANCH_AFTER_MERGE` | When enabled, the corresponding Git branch is deleted after the Infrahub branch is deleted. Requires delete_branch_after_merge to be enabled. | boolean | False |
+| `INFRAHUB_GIT_READ_ONLY_REFS_CHECK_INTERVAL_MINS` | Time (in minutes) between two checks of a read-only repository's remote for movement of its tracked refs. | integer | 15 |
 | `INFRAHUB_GIT_TLS_INSECURE` | Skip TLS certificate validation when git connects to HTTPS remotes, by setting `http.sslVerify` to false in the global git configuration. Takes precedence over `tls_ca_file`, which may stay configured. Test and development environments only; never enable in production. | boolean | False |
 | `INFRAHUB_GIT_TLS_CA_FILE` | File path to a CA cert or bundle in PEM format, or the PEM text itself, used to verify the certificate of HTTPS git remotes, set as `http.sslCAInfo` in the global git configuration. Falls back to `tls.ca_bundle` when unset. | string | None |
 
@@ -162,6 +163,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_BROKER_MAXIMUM_MESSAGE_RETRIES` | The maximum number of retries that are attempted for failed messages | integer | 10 |
 | `INFRAHUB_BROKER_MAXIMUM_CONCURRENT_MESSAGES` | The maximum number of concurrent messages fetched by each worker | integer | 2 |
 | `INFRAHUB_BROKER_VIRTUALHOST` | The virtual host to connect to | string | / |
+| `INFRAHUB_BROKER_RPC_TIMEOUT` | The maximum number of seconds to wait for a worker to answer an RPC request | integer | 30 |
 | `INFRAHUB_BROKER_DRIVER` | Message bus implementation. RabbitMQ is the recommended and fully supported driver. NATS JetStream is experimental and not feature-complete: some functionality does not currently work, so it is not recommended for production. | string (rabbitmq, nats) | rabbitmq |
 
 ## Cache

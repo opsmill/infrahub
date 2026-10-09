@@ -1,5 +1,4 @@
 import itertools
-import re
 from collections import defaultdict
 from typing import Any
 
@@ -25,6 +24,7 @@ from infrahub.generators.models import ProposedChangeGeneratorDefinition
 from infrahub.log import get_logger
 
 from .. import config
+from .branch_mapping import branch_name_matches_import_filters
 from .constants import REPOSITORY_BRANCH_READ_CHUNK_SIZE
 from .models import RepositoryBranchInfo, RepositoryData
 
@@ -76,6 +76,7 @@ async def get_repositories_commit_per_branch(
             repository_id=repository.get_id(),
             repository_name=repository.name.value,
             repository=repository,
+            location=repository.location.value,
             branches={},
         )
         for repository in repos
@@ -92,7 +93,7 @@ async def get_repositories_commit_per_branch(
         attributes = await reader.read(
             repository_ids=repository_ids,
             branch_names=chunk,
-            attribute_names=("commit", "internal_status"),
+            attribute_names=("commit", "internal_status", "ref"),
             at=at,
         )
         for repository_name, repository_data in repositories.items():
@@ -104,6 +105,11 @@ async def get_repositories_commit_per_branch(
                 )
                 repository_data.branches[branch_name] = commit.value if commit is not None else None
 
+                tracked_ref = attributes.get(
+                    repository_id=repository_data.repository_id,
+                    branch_name=branch_name,
+                    attribute_name="ref",
+                )
                 internal_status = attributes.get(
                     repository_id=repository_data.repository_id,
                     branch_name=branch_name,
@@ -113,7 +119,10 @@ async def get_repositories_commit_per_branch(
                 if internal_status_value is None:
                     internal_status_value = RepositoryInternalStatus.INACTIVE.value
                     branches_without_internal_status[repository_name].append(branch_name)
-                repository_data.branch_info[branch_name] = RepositoryBranchInfo(internal_status=internal_status_value)
+                repository_data.branch_info[branch_name] = RepositoryBranchInfo(
+                    internal_status=internal_status_value,
+                    ref=tracked_ref.value if tracked_ref is not None else None,
+                )
 
     for repository_name, unresolved_branches in branches_without_internal_status.items():
         log.warning(
@@ -242,7 +251,7 @@ async def fetch_proposed_change_generator_definition_targets(
 
 
 def branch_name_in_import_sync_branches(branch_short_name: str) -> bool:
-    for branch_filter in config.SETTINGS.git.import_sync_branch_names:
-        if re.fullmatch(branch_filter, branch_short_name) or branch_filter == branch_short_name:
-            return True
-    return False
+    return branch_name_matches_import_filters(
+        branch_short_name=branch_short_name,
+        import_sync_branch_names=config.SETTINGS.git.import_sync_branch_names,
+    )

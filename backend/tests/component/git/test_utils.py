@@ -76,15 +76,17 @@ async def test_get_repositories_commit_per_branch_main(
     assert repositories["repo01"].model_dump(exclude=["repository"]) == {
         "repository_id": repository_01.id,
         "repository_name": "repo01",
+        "location": "location01",
         "branches": {"main": "commit01"},
-        "branch_info": {"main": {"internal_status": "inactive"}},
+        "branch_info": {"main": {"internal_status": "inactive", "ref": None}},
     }
     assert repositories["repo02"].repository.id == repository_02.id
     assert repositories["repo02"].model_dump(exclude=["repository"]) == {
         "repository_id": repository_02.id,
         "repository_name": "repo02",
+        "location": "location02",
         "branches": {"main": "commit02"},
-        "branch_info": {"main": {"internal_status": "inactive"}},
+        "branch_info": {"main": {"internal_status": "inactive", "ref": "main"}},
     }
 
 
@@ -122,30 +124,32 @@ async def test_get_repositories_commit_per_branch_branches(
     assert repositories["repo01"].model_dump(exclude=["repository"]) == {
         "repository_id": repository_01.id,
         "repository_name": "repo01",
+        "location": "location01",
         "branches": {
             "branch2": "commit21",
             "branch3": "commit01",
             "main": "commit01",
         },
         "branch_info": {
-            "branch2": {"internal_status": "staging"},
-            "branch3": {"internal_status": "inactive"},
-            "main": {"internal_status": "inactive"},
+            "branch2": {"internal_status": "staging", "ref": None},
+            "branch3": {"internal_status": "inactive", "ref": None},
+            "main": {"internal_status": "inactive", "ref": None},
         },
     }
     assert repositories["repo02"].repository.id == repository_02.id
     assert repositories["repo02"].model_dump(exclude=["repository"]) == {
         "repository_id": repository_02.id,
         "repository_name": "repo02",
+        "location": "location02",
         "branches": {
             "branch2": "commit02",
             "branch3": "commit32",
             "main": "commit02",
         },
         "branch_info": {
-            "branch2": {"internal_status": "inactive"},
-            "branch3": {"internal_status": "inactive"},
-            "main": {"internal_status": "inactive"},
+            "branch2": {"internal_status": "inactive", "ref": "main"},
+            "branch3": {"internal_status": "inactive", "ref": "main"},
+            "main": {"internal_status": "inactive", "ref": "main"},
         },
     }
 
@@ -180,13 +184,14 @@ async def test_get_repositories_commit_per_branch_repository_created_on_a_branch
     assert repositories["repo-on-branch"].model_dump(exclude=["repository"]) == {
         "repository_id": repo.id,
         "repository_name": "repo-on-branch",
+        "location": "location-on-branch",
         "branches": {
             "branch-that-adds-a-repository": "commit-on-branch",
             "main": "commit-on-branch",
         },
         "branch_info": {
-            "branch-that-adds-a-repository": {"internal_status": "staging"},
-            "main": {"internal_status": "inactive"},
+            "branch-that-adds-a-repository": {"internal_status": "staging", "ref": None},
+            "main": {"internal_status": "inactive", "ref": None},
         },
     }
 
@@ -205,13 +210,14 @@ async def test_get_repositories_commit_per_branch_without_a_commit_on_a_branch(
     assert repositories["repo01"].model_dump(exclude=["repository"]) == {
         "repository_id": repository_01.id,
         "repository_name": "repo01",
+        "location": "location01",
         "branches": {
             "branch-without-commit": None,
             "main": "commit01",
         },
         "branch_info": {
-            "branch-without-commit": {"internal_status": "inactive"},
-            "main": {"internal_status": "inactive"},
+            "branch-without-commit": {"internal_status": "inactive", "ref": None},
+            "main": {"internal_status": "inactive", "ref": None},
         },
     }
 

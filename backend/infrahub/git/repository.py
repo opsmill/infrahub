@@ -33,6 +33,7 @@ from infrahub.exceptions import (
     RepositoryError,
     RepositoryPushRejectedError,
 )
+from infrahub.git.branch_mapping import get_mapped_remote_branch
 from infrahub.git.branch_status import accepts_commit_write
 from infrahub.git.commit_id import readable_commit
 from infrahub.git.divergence.detector import RemoteDivergenceDetector
@@ -274,9 +275,11 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         return self.default_branch
 
     def _get_mapped_remote_branch(self, branch_name: str) -> str:
-        if branch_name != self.default_branch and branch_name == registry.default_branch:
-            return self.default_branch
-        return branch_name
+        return get_mapped_remote_branch(
+            branch_name=branch_name,
+            repository_default_branch=self.default_branch,
+            infrahub_default_branch=registry.default_branch,
+        )
 
     def _get_mapped_target_branch(self, branch_name: str) -> str:
         if branch_name == self.default_branch and branch_name != registry.default_branch:
@@ -1404,7 +1407,7 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
 
         """
         git_repo = self.get_git_repo_main()
-        git_repo.remotes.origin.fetch()
+        self.fetch_from_origin(git_repo=git_repo)
 
         refs = (f"origin/{self.ref}", self.ref)
         commit = None
@@ -1461,20 +1464,11 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
 
         Raises:
             ValueError: When the ref cannot be resolved on the remote.
-            RepositoryError: When the rewrite cannot be recorded. The new commit is already imported.
+            RepositoryError: When the repository has no ref configured, or when the rewrite cannot be recorded.
+                In the second case the new commit is already imported.
 
         """
-        git_repo = self.get_git_repo_main()
-        git_repo.remotes.origin.fetch(prune=True, tags=True, prune_tags=True)
-        try:
-            latest_commit = git_repo.git.rev_parse(f"origin/{self.ref}")
-        except GitCommandError:
-            try:
-                latest_commit = git_repo.git.rev_parse(self.ref)
-            except GitCommandError as err:
-                log.error("No object found for ref %s on repository %s", self.ref, self.name)
-                raise ValueError(f"Ref {self.ref} not found.") from err
-        latest_commit = str(git_repo.commit(latest_commit))
+        latest_commit = self.get_commit_value(branch_name=await self.resolve_checkout_ref(), remote=True)
         divergence = await self._classify_latest_commit(
             latest_commit=latest_commit, tracked_targets=tracked_targets, target_changed=target_changed
         )
