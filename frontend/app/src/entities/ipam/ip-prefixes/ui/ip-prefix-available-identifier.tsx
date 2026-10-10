@@ -1,15 +1,13 @@
-import { Button, type ButtonProps, Sheet, Tooltip } from "@infrahub/ui";
+import { Button, type ButtonProps, Tooltip } from "@infrahub/ui";
 import { PlusIcon } from "lucide-react";
 import React from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { Row } from "@/shared/components/container";
-import { SlideOverTitle } from "@/shared/components/display/slide-over";
-import ObjectForm from "@/shared/components/form/object-form";
 import { classNames } from "@/shared/utils/common";
 
 import type { IpPrefixNode } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
-import type { NodeAttributeWithMetadata } from "@/entities/nodes/object/domain/model/node";
+import { IpPrefixCreateSheet } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-create-sheet";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 
@@ -54,34 +52,16 @@ export function IpPrefixAvailableIdentifier({
         </Button>
       </Tooltip>
 
-      <Sheet isOpen={isCreateFormOpen} onOpenChange={setIsCreateFormOpen}>
-        <SlideOverTitle
-          schema={selectedSchema}
-          currentObjectLabel="New"
-          title={`Create ${selectedSchema.label}`}
-          subtitle={selectedSchema.description}
-        />
-        <ObjectForm
-          onSuccess={() => {
-            setIsCreateFormOpen(false);
-            queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
-          }}
-          currentObject={{
-            prefix: {
-              value: ipPrefixNode.display_label ?? null,
-              is_default: false,
-              is_from_profile: false,
-              is_protected: false,
-              is_visible: true,
-              owner: null,
-              source: null,
-              updated_at: new Date().toISOString(),
-            } satisfies NodeAttributeWithMetadata,
-          }}
-          onCancel={() => setIsCreateFormOpen(false)}
-          kind={selectedSchema.kind!}
-        />
-      </Sheet>
+      <IpPrefixCreateSheet
+        schema={selectedSchema}
+        prefix={ipPrefixNode.display_label}
+        isOpen={isCreateFormOpen}
+        onOpenChange={setIsCreateFormOpen}
+        onSuccess={() => {
+          setIsCreateFormOpen(false);
+          queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
+        }}
+      />
     </>
   );
 }

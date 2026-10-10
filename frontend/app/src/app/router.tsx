@@ -416,6 +416,10 @@ export const router = createBrowserRouter([
                         lazy: () => import("@/pages/ipam/ipam-details-index-page"),
                       },
                       {
+                        path: "tree-map",
+                        lazy: () => import("@/pages/ipam/ipam-details-tree-map-page"),
+                      },
+                      {
                         path: ":relationshipName",
                         lazy: () => import("@/pages/ipam/ipam-details-relationship-page"),
                       },

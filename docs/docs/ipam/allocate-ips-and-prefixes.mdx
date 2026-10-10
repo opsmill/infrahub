@@ -6,6 +6,10 @@ title: Allocate IPs and prefixes
 
 Allocate from a Resource Pool when something other than a person assigns the address — a provisioning pipeline creating devices, a Generator rendering configuration, a CI/CD job reserving space for a new service. If you are only recording and querying IP data that already exists, the IPAM nodes alone are enough.
 
+## Allocate manually from the tree map
+
+When a person picks the block, open the prefix's **Tree Map** tab and click a free tile. The Create IP Prefix form opens with that block's CIDR filled in, so the new child lands where you pointed, and the map refreshes with it in place. Pools are drawn in their own color on the map, which shows at a glance which space is reserved for automated allocation and which is open for manual assignment. See [Visualize prefix utilization](./visualize-prefix-utilization.mdx#allocate-from-a-free-block).
+
 ## Use a resource pool
 
 Resource Pool is the recommended way to allocate IP addresses and prefixes. A `CoreIPAddressPool` or `CoreIPPrefixPool` takes your IPAM prefixes as its `resources` and returns the next available address or subnet on request.
