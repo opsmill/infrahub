@@ -2,6 +2,7 @@ dev/specs/ifc-3185-number-pool-scopes/tasks.md
   s_72ef99026f2c9f::t_5e5fe13c45d5ac 73-77,254
   s_72ef99026f2c9f::t_cf63c324af2f75 45
   s_72ef99026f2c9f::t_3faf3d987d9fb9 61-62,68-72
+  s_72ef99026f2c9f::t_c44ca52a830870 60,67,99
 ---
 {
   "schema_version": "authorship/3.0.0",
