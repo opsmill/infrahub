@@ -37,6 +37,8 @@ tests will use, so they are part of the contract.
 
 Common:
 
+- A cell cut by the child cap uses one aggregate per aligned CIDR block of its loaded portion.
+  Each label and hover list describes only that block; not-loaded tiles cover the remaining portion.
 - Tiles are placed by network address along a Hilbert curve, so blocks consecutive in address
   space share an edge.
 - `data-testid="ip-prefix-tree-map-tile"` and `data-tile-kind="<kind>"` on every tile.

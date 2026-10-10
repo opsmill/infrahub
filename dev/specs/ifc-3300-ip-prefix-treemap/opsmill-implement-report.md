@@ -236,7 +236,9 @@ left draft:
   blocks reads as one region. Binary partition and Z-order were considered and rejected because
   consecutive blocks separate at alternate levels. Tiles are no longer sorted by size.
 - **Aggregation and the cap**: small blocks aggregate per `/(parent + 12)` cell and the aggregate
-  sits where its cell sits (research R5, `TREE_MAP_CELL_DEPTH`). The "remainder" tile is gone; when
+  sits where its cell sits (research R5, `TREE_MAP_CELL_DEPTH`). If the cap cuts through a cell,
+  its loaded portion is split into aligned CIDR blocks, each aggregating its own members without
+  overlapping the not-loaded range. The "remainder" tile is gone; when
   the map is capped, the range from the end of the last fetched block to the end of the parent is
   decomposed into aligned CIDR blocks drawn as **Not loaded** with a cross-hatch, never as free or
   allocated, with a legend entry and a notice that says so.

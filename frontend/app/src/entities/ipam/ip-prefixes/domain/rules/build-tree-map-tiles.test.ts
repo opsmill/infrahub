@@ -191,6 +191,67 @@ describe("buildTreeMapTiles", () => {
     expectDisjoint(tiles);
   });
 
+  it.each([
+    {
+      parentCidr: "10.0.0.0/8",
+      childCidr: (index: number) => `10.0.${Math.floor(index / 256)}.${index % 256}/32`,
+    },
+    {
+      parentCidr: "2001:db8::/32",
+      childCidr: (index: number) => `2001:db8::${index.toString(16)}/128`,
+    },
+  ])(
+    "keeps capped aggregates disjoint from unloaded space in $parentCidr",
+    ({ parentCidr, childCidr }) => {
+      const parent = generateTreeMapParent({ cidr: parentCidr });
+      const children = Array.from({ length: 1000 }, (_, index) =>
+        generateTreeMapChild({ cidr: childCidr(index) })
+      );
+
+      const tiles = buildTreeMapTiles({ parent, children, freeBlocks: [], totalChildCount: 1200 });
+      const aggregates = tiles.filter((tile) => tile.kind === "aggregate-allocated");
+      const notLoaded = tiles.filter((tile) => tile.kind === "not-loaded");
+
+      expectDisjoint(tiles);
+      expect(sumAddressCounts(tiles)).toBe(parent.size.addressCount);
+      expect(sumAddressCounts(aggregates)).toBe(1000n);
+      expect(aggregates.flatMap((tile) => tile.children)).toEqual(children);
+      expect(notLoaded[0]?.size.networkAddress).toBe(parent.size.networkAddress + 1000n);
+      expect(notLoaded.every((tile) => tile.hiddenChildCount === 200)).toBe(true);
+    }
+  );
+
+  it("partitions children and free blocks within a partially loaded cell", () => {
+    const child = generateTreeMapChild({ cidr: "10.0.0.0/32" });
+    const freeBlocks = ["10.0.0.1/32", "10.0.0.2/31", "10.0.0.4/32"].map((cidr) =>
+      generateTreeMapFreeBlock({ cidr })
+    );
+
+    const tiles = buildTreeMapTiles({
+      parent: DEMO_PARENT,
+      children: [child],
+      freeBlocks,
+      totalChildCount: 2,
+    });
+    const aggregates = tiles.filter(
+      (tile) => tile.kind === "aggregate-allocated" || tile.kind === "aggregate-free"
+    );
+
+    expectDisjoint(tiles);
+    expect(sumAddressCounts(tiles)).toBe(2n ** 24n);
+    expect(aggregates.map((tile) => [tile.kind, formatCidr(tile.size)])).toEqual([
+      ["aggregate-allocated", "10.0.0.0/30"],
+      ["aggregate-free", "10.0.0.4/32"],
+    ]);
+    expect(
+      aggregates.flatMap((tile) => (tile.kind === "aggregate-allocated" ? tile.children : []))
+    ).toEqual([child]);
+    expect(aggregates.flatMap((tile) => tile.freeBlocks)).toEqual(freeBlocks);
+    expect(tiles.find((tile) => tile.kind === "not-loaded")?.size.networkAddress).toBe(
+      DEMO_PARENT.size.networkAddress + 5n
+    );
+  });
+
   it("produces no not-loaded tile when every child was fetched", () => {
     // GIVEN the demo supernet with its count matching its children
     // WHEN the tiles are built

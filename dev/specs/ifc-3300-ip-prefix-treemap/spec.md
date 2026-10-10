@@ -81,6 +81,8 @@ The engineer opens the Tree Map tab on a prefix with hundreds or thousands of di
 
 **Why this priority**: Real supernets are messy. Without a cap and an aggregation rule, the map either becomes unreadable or becomes slow, and tiny allocations become unclickable slivers that someone still needs to find.
 
+If the cap cuts through a cell, split its loaded portion into aligned CIDR blocks and aggregate each block separately. The unloaded portion must not overlap any aggregate.
+
 **Independent Test**: Render the map for a synthetic prefix with more children than the cap, and for a prefix containing one tiny child, and verify the notice, the aggregated tiles and their link target.
 
 **Acceptance Scenarios**:
@@ -120,6 +122,7 @@ The engineer opens the Tree Map tab on a prefix with hundreds or thousands of di
 - **FR-010**: System MUST render an empty state for prefixes whose member type is "address" and that have no child prefixes, showing the prefix's utilisation meter, a one-line explanation that the map shows child prefixes, and a link to the IP Addresses tab of the same prefix. An address-type prefix that does hold child prefixes gets the map.
 - **FR-011**: System MUST load at most 1,000 direct children per map in address order, render them, and whenever more exist display a notice of the form "showing the first 1,000 of N children" and mark the address space after the last loaded block as not loaded, drawn distinctly from allocated and free tiles, never as either, and leading to the Children tab.
 - **FR-012**: System MUST collapse allocated tiles below a legible minimum area into "N smaller prefixes" tiles and free tiles below the same minimum into "N smaller free blocks" tiles, one per legible cell of the parent and placed where that cell sits, each listing its members on hover; clicking a smaller-prefixes tile MUST open the Children tab of the current prefix.
+- **FR-012a**: When the cap cuts through an aggregation cell, system MUST split its loaded portion into aligned CIDR blocks, aggregate members within each block, and leave the unloaded portion exclusively to not-loaded tiles.
 - **FR-013**: System MUST render the map for the branch and IP namespace currently selected in the page, and re-render when either changes.
 - **FR-014**: System MUST keep an allocated tile visible, sized and labelled when that child's utilisation cannot be determined, showing the fill as unknown rather than as zero.
 

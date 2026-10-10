@@ -62,6 +62,22 @@ function toCellTile(cell: Cell): TreeMapTile {
   };
 }
 
+function toCellTiles(cell: Cell, loadedEnd: bigint): TreeMapTile[] {
+  if (blockEnd(cell.size) <= loadedEnd) return [toCellTile(cell)];
+
+  return rangeToBlocks(cell.size.networkAddress, loadedEnd, cell.size.family).map((size) => {
+    const end = blockEnd(size);
+    const isWithinBlock = (member: { size: PrefixSize }) =>
+      member.size.networkAddress >= size.networkAddress && member.size.networkAddress < end;
+
+    return toCellTile({
+      size,
+      children: cell.children.filter(isWithinBlock),
+      freeBlocks: cell.freeBlocks.filter(isWithinBlock),
+    });
+  });
+}
+
 /** Groups blocks too small to draw into the fixed-size cell that contains each of them. */
 function groupIntoCells(
   parent: PrefixSize,
@@ -125,11 +141,12 @@ export function buildTreeMapTiles(params: BuildTreeMapTilesParams): TreeMapTile[
     (end, item) => (blockEnd(item.size) > end ? blockEnd(item.size) : end),
     parent.networkAddress
   );
+  const loadedEnd = params.totalChildCount > params.children.length ? lastEnd : blockEnd(parent);
 
   const tiles: TreeMapTile[] = [
     ...largeChildren.map(toAllocatedTile),
     ...largeFree.map(toFreeTile),
-    ...cells.map(toCellTile),
+    ...cells.flatMap((cell) => toCellTiles(cell, loadedEnd)),
     ...toNotLoadedTiles(params, lastEnd),
   ];
 

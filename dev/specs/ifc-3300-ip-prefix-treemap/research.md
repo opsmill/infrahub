@@ -147,7 +147,9 @@ below 1/4096 of its space) is aggregated into the `/(parent length + 12)` cell t
 Each cell aggregates on its own: a cell holding small prefixes becomes one "`<cell CIDR>`: N
 smaller prefixes" tile (its free blocks listed alongside), a cell holding only small free blocks
 becomes one "`<cell CIDR>`: N smaller free blocks" tile. The aggregate is placed where its cell
-sits, so it stays next to its neighbours.
+sits, so it stays next to its neighbours. If the cap cuts through a cell, split its loaded portion
+into aligned CIDR blocks and aggregate the members of each block separately. This keeps
+aggregates disjoint from the not-loaded range.
 
 **Rationale**: A depth keeps tile preparation a pure function of the data, so it is unit testable
 and deterministic, and it is the natural unit for an address-ordered layout (R3): a cell is one

@@ -132,7 +132,8 @@ These are the decisions the tasks must respect; the reasoning is in research.md.
 2. **Arithmetic** (R4): BigInt network addresses and address counts; percentages only in the
    layout output.
 3. **Aggregation and the not-loaded range** (R2, R5): cell depth `TREE_MAP_CELL_DEPTH` (12 bits
-   below the parent), one aggregate per cell placed at the cell; not-loaded tiles only when
+   below the parent), one aggregate per full cell placed at the cell; split a partially loaded
+   boundary cell into aligned CIDR blocks and aggregate each loaded block separately. Not-loaded tiles only when
    `count > children.length`, covering the range after the last fetched block; invariants in
    data-model.md are test assertions.
 4. **Layout** (R3): Hilbert-curve placement by network address, no sorting by size, output in

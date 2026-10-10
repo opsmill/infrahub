@@ -7,7 +7,8 @@
 **Rework note (2026-10-04)**: the task descriptions below record the first implementation as it was
 executed. After review, T003, T004, T012, T013 and T015 were superseded: CIDR parsing became
 `prefix-size.ts` fed by the API's `prefixlen` and `version`, the squarified layout became an
-address-ordered Hilbert-curve layout, aggregation moved to one tile per cell, the remainder tile
+address-ordered Hilbert-curve layout, aggregation moved to one tile per full cell (a cell cut by
+the cap uses aligned CIDR blocks of its loaded portion), the remainder tile
 became the not-loaded range, and the use-case now fetches the parent itself. See
 opsmill-implement-report.md, Erratum 6; the design documents already reflect the current state.
 

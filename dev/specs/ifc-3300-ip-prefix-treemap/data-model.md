@@ -95,8 +95,8 @@ Output of `domain/rules/build-tree-map-tiles.ts`. A discriminated union on `kind
 |--------|--------------|-------------|
 | `"allocated"` | `child: TreeMapChild` | link to the child's Tree Map tab |
 | `"free"` | `block: TreeMapFreeBlock` | button opening the create sheet, gated by permission |
-| `"aggregate-allocated"` | `children: TreeMapChild[]`, `freeBlocks: TreeMapFreeBlock[]` | one per cell holding at least one small prefix; link to the parent's Children tab, hover lists members (free ones marked) |
-| `"aggregate-free"` | `freeBlocks: TreeMapFreeBlock[]` | one per cell holding only small free blocks; no action, hover lists members |
+| `"aggregate-allocated"` | `children: TreeMapChild[]`, `freeBlocks: TreeMapFreeBlock[]` | one per full cell or aligned block of its loaded portion holding at least one small prefix; link to the parent's Children tab, hover lists members (free ones marked) |
+| `"aggregate-free"` | `freeBlocks: TreeMapFreeBlock[]` | one per full cell or aligned block of its loaded portion holding only small free blocks; no action, hover lists members |
 | `"not-loaded"` | `hiddenChildCount: number` | one per aligned block of the not-loaded range; link to the parent's Children tab; present only when `isCapped` |
 
 Common fields on every tile:
@@ -104,7 +104,7 @@ Common fields on every tile:
 | Field | Type | Notes |
 |-------|------|-------|
 | `key` | `string` | stable React key (the tile's CIDR, prefixed by kind for aggregates and not-loaded blocks) |
-| `size` | `PrefixSize` | the block the tile occupies: the prefix itself, the cell for an aggregate, the aligned block for a not-loaded tile |
+| `size` | `PrefixSize` | the block the tile occupies: the prefix itself, a full cell or aligned block of its loaded portion for an aggregate, the aligned block for a not-loaded tile |
 | `label` | `string` | CIDR, "`<cell CIDR>`: N smaller prefixes", "`<cell CIDR>`: N smaller free blocks", or "Not loaded" |
 
 Tiles are emitted in network-address order.
@@ -115,6 +115,8 @@ Invariants enforced by the rule and asserted in its tests:
 - No two tiles describe overlapping address ranges, and the tiles are sorted by network address.
 - A block more than `TREE_MAP_CELL_DEPTH` bits narrower than the parent never appears as
   `allocated` or `free`; it is counted in the aggregate of the cell that contains it.
+- If the cap cuts through a cell, its loaded portion is split into aligned CIDR blocks. Each
+  block aggregates only the children and free blocks within it, without overlapping unloaded space.
 - When `isCapped`, the not-loaded tiles cover exactly the range from the end of the last fetched
   block (child or free) to the end of the parent, decomposed into aligned CIDR blocks; when the
   map is not capped there are none.
