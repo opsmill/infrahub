@@ -49,8 +49,10 @@ class DivisionReader(Protocol):
 
 
 class AttributeNumberAllocator(Protocol):
-    async def allocate(self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute, user_id: str) -> int:
-        """Return the number the pool gives the attribute.
+    async def allocate(
+        self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute, user_id: str, division: Division | None
+    ) -> int:
+        """Return the number the pool gives the attribute, within `division` when the pool has a scope.
 
         Raises:
             PoolExhaustedError: When the pool has no number left to give.
@@ -280,9 +282,10 @@ class AttributePoolApplier:
 
         """
         attribute.pool_provenance = PoolRecordProvenance.ALLOCATED
+        division = await self._read_division(node=node, pool=pool, attribute=attribute)
         try:
             attribute.value = await self.number_allocator.allocate(
-                pool=pool, node=node, attribute=attribute, user_id=user_id
+                pool=pool, node=node, attribute=attribute, user_id=user_id, division=division
             )
         except PoolExhaustedError as exc:
             raise ValidationError({f"{attribute.name}.from_pool": exc.message}) from exc

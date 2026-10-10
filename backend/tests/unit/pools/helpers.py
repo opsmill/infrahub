@@ -15,6 +15,7 @@ from infrahub.pools.number_pool_range_reconciler import ReconcilableRangeStore
 if TYPE_CHECKING:
     from infrahub.core.node.resource_manager.number_pool import CoreNumberPool as CoreNumberPoolNode
     from infrahub.pools.number_ranges import EffectiveSpace, PoolRange
+    from infrahub.pools.scope import Division
 
 TICKET_KIND = "TestingTicket"
 
@@ -65,7 +66,14 @@ class InMemoryNumberPoolNumbers:
     async def get_taken(self, pool: CoreNumberPoolNode, branch: Branch, space: EffectiveSpace) -> set[int]:
         return {value for value in self.taken if space.contains(value)}
 
-    async def get_free(self, pool: CoreNumberPoolNode, branch: Branch, min_value: int, max_value: int) -> int | None:
+    async def get_free(
+        self,
+        pool: CoreNumberPoolNode,
+        branch: Branch,
+        min_value: int,
+        max_value: int,
+        division: Division | None = None,
+    ) -> int | None:
         self.free_lookups.append((min_value, max_value))
         return next((value for value in range(min_value, max_value + 1) if value not in self.accounted), None)
 

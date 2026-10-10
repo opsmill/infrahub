@@ -13,12 +13,11 @@ from infrahub.core.migrations.query.node_duplicate import NodeDuplicateQuery, Sc
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.number_ranges import EffectiveSpace, NumberDomain
 from infrahub.pools.scope import Division, DivisionElementPath
-from tests.helpers.number_pool import SCOPED_DEVICE
-
-from .conftest import (
+from tests.component.core.resource_manager.conftest import delete_branch
+from tests.helpers.number_pool import (
+    SCOPED_DEVICE,
     SCOPED_POOL_END,
     SCOPED_POOL_START,
-    delete_branch,
     scoped_device,
     scoped_device_holding,
     scoped_pool,

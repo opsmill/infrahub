@@ -64,7 +64,9 @@ class RecordingNumberAllocator:
     exhausted: bool = False
     calls: list[PoolCall] = field(default_factory=list)
 
-    async def allocate(self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute, user_id: str) -> int:
+    async def allocate(
+        self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute, user_id: str, division: Division | None
+    ) -> int:
         self.calls.append(
             PoolCall(
                 action="allocate",
