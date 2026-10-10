@@ -27,6 +27,7 @@ from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynch
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from infrahub.pools.scope import AllocationScopeResolver
 from infrahub.schema.tasks import schema_updated
+from tests.adapters.lock.timeline import LockAction
 from tests.helpers.agnostic_edges import IsReservedEdge, is_reserved_edge_on
 from tests.helpers.schema import TICKET
 from tests.helpers.schema.snow import SNOW_INCIDENT, SNOW_TASK
@@ -35,6 +36,7 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
+    from tests.adapters.lock.timeline import LockTimeline
 
 
 def snow_schema_with_format_identifier(
@@ -342,3 +344,15 @@ def vlan_id(node: Node) -> int:
     value = node.get_attribute(SCOPED_ATTRIBUTE_NAME).value
     assert isinstance(value, int)
     return value
+
+
+def pool_lock_events(timeline: LockTimeline, pool: CoreNumberPool, after: int) -> list[tuple[str, LockAction]]:
+    """Return each acquire and release of the pool's locks recorded after the event `after`, in order."""
+    prefix = f"resource_pool.{pool.id}"
+    return [
+        (event.name, event.action)
+        for event in timeline.events
+        if event.seq > after
+        and event.action in {LockAction.ACQUIRE, LockAction.RELEASE}
+        and event.name.startswith(prefix)
+    ]

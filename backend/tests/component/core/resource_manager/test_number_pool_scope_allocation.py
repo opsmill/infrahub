@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import re
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any
@@ -10,17 +11,20 @@ from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, RelationshipDirection
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.node import Node
 from infrahub.core.node.create import create_node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.schema import AttributeSchema, SchemaRoot
 from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.pools.scope import Division, DivisionElementPath
+from tests.adapters.lock.timeline import LockAction
 from tests.helpers.number_pool import (
     SCOPED_ATTRIBUTE_NAME,
     SCOPED_DEVICE,
     SCOPED_POOL_SCHEMA,
     SCOPED_SITE,
     add_pool_range,
+    pool_lock_events,
     scoped_device,
     scoped_device_holding,
     scoped_pool,
@@ -32,9 +36,9 @@ from tests.helpers.schema import load_schema
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
-    from infrahub.core.node import Node
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
+    from tests.adapters.lock.timeline import LockTimeline
 
 
 def device_payload(name: str, site: Node, pool: CoreNumberPool, role: str | None = "leaf") -> dict[str, Any]:
@@ -47,6 +51,28 @@ def device_payload(name: str, site: Node, pool: CoreNumberPool, role: str | None
     if role is not None:
         payload["role"] = {"value": role}
     return payload
+
+
+async def create_device_in_own_session(db: InfrahubDatabase, branch: Branch, payload: dict[str, Any]) -> Node:
+    # A session holds a single connection, which cannot serve two racing coroutines.
+    async with db.start_session() as session_db:
+        return await create_node(
+            data=deepcopy(payload),
+            db=session_db,
+            branch=branch,
+            schema=session_db.schema.get(name=SCOPED_DEVICE.kind, branch=branch, duplicate=False),
+        )
+
+
+@pytest.fixture
+async def templated_scoped_schema(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """The scoped pool test schema with an object template generated for the device."""
+    schema = deepcopy(SCOPED_POOL_SCHEMA)
+    next(node for node in schema.nodes if node.kind == SCOPED_DEVICE.kind).generate_template = True
+    await load_schema(db=db, schema=schema, update_db=True)
+    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
 
 
 @pytest.fixture
@@ -98,6 +124,60 @@ async def test_a_node_asking_its_scoped_pool_again_gets_its_reserved_number(
 
     assert attribute.value == 1
     assert number == 1
+
+
+async def test_two_writers_in_one_division_receive_two_numbers_under_one_lock(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    site_scoped_pool: CoreNumberPool,
+    recording_lock_timeline: LockTimeline,
+) -> None:
+    site_a = await scoped_site(db=db, branch=default_branch, name="site-a")
+    payloads = [device_payload(name=name, site=site_a, pool=site_scoped_pool) for name in ("device-a1", "device-a2")]
+    lock_name = f"resource_pool.{site_scoped_pool.id}.{site_a.id}"
+    start = recording_lock_timeline.checkpoint("writes")
+
+    devices = await asyncio.gather(
+        *(create_device_in_own_session(db=db, branch=default_branch, payload=payload) for payload in payloads)
+    )
+
+    assert sorted(vlan_id(device) for device in devices) == [1, 2]
+    assert pool_lock_events(timeline=recording_lock_timeline, pool=site_scoped_pool, after=start) == [
+        (lock_name, LockAction.ACQUIRE),
+        (lock_name, LockAction.RELEASE),
+        (lock_name, LockAction.ACQUIRE),
+        (lock_name, LockAction.RELEASE),
+    ]
+
+
+async def test_two_writers_in_two_divisions_take_different_locks(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    site_scoped_pool: CoreNumberPool,
+    recording_lock_timeline: LockTimeline,
+) -> None:
+    site_a = await scoped_site(db=db, branch=default_branch, name="site-a")
+    site_b = await scoped_site(db=db, branch=default_branch, name="site-b")
+    payloads = [
+        device_payload(name="device-a1", site=site_a, pool=site_scoped_pool),
+        device_payload(name="device-b1", site=site_b, pool=site_scoped_pool),
+    ]
+    lock_name_a = f"resource_pool.{site_scoped_pool.id}.{site_a.id}"
+    lock_name_b = f"resource_pool.{site_scoped_pool.id}.{site_b.id}"
+
+    start = recording_lock_timeline.checkpoint("writes")
+
+    devices = await asyncio.gather(
+        *(create_device_in_own_session(db=db, branch=default_branch, payload=payload) for payload in payloads)
+    )
+
+    assert [vlan_id(device) for device in devices] == [1, 1]
+    acquired = [
+        name
+        for name, action in pool_lock_events(timeline=recording_lock_timeline, pool=site_scoped_pool, after=start)
+        if action is LockAction.ACQUIRE
+    ]
+    assert sorted(acquired) == sorted([lock_name_a, lock_name_b])
 
 
 async def test_a_full_division_is_refused_while_another_division_allocates(
@@ -154,6 +234,77 @@ async def test_an_attribute_element_after_the_pooled_attribute_is_read_before_al
     assert (vlan_id(leaf), vlan_id(spine), vlan_id(second_leaf)) == (1, 1, 2)
 
 
+async def test_a_role_set_by_an_object_template_divides_the_lock_and_the_allocation(
+    db: InfrahubDatabase, default_branch: Branch, templated_scoped_schema: None, recording_lock_timeline: LockTimeline
+) -> None:
+    pool = await scoped_pool(db=db, name="vlan-per-site-and-role", allocation_scope=["site", "role"])
+    site_a = await scoped_site(db=db, branch=default_branch, name="site-a")
+    await scoped_device_holding(
+        db=db, branch=default_branch, pool=pool, name="device-a1", site=site_a, number=1, role="from-template"
+    )
+    template = await Node.init(db=db, schema=f"Template{SCOPED_DEVICE.kind}", branch=default_branch)
+    await template.new(db=db, template_name="device-template", role="from-template", tags=["red"])
+    await template.save(db=db)
+    payload = device_payload(name="device-a2", site=site_a, pool=pool, role=None)
+    payload["object_template"] = {"id": template.id}
+    expected_lock_name = f"resource_pool.{pool.id}.{site_a.id}.from-template"
+    start = recording_lock_timeline.checkpoint("write")
+
+    device = await create_node(
+        data=deepcopy(payload),
+        db=db,
+        branch=default_branch,
+        schema=db.schema.get(name=SCOPED_DEVICE.kind, branch=default_branch, duplicate=False),
+    )
+
+    assert device.get_attribute("role").value == "from-template"
+    assert vlan_id(device) == 2
+    assert pool_lock_events(timeline=recording_lock_timeline, pool=pool, after=start) == [
+        (expected_lock_name, LockAction.ACQUIRE),
+        (expected_lock_name, LockAction.RELEASE),
+    ]
+
+
+async def test_a_role_set_by_a_profile_divides_the_lock_and_the_allocation(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    site_role_scoped_pool: CoreNumberPool,
+    recording_lock_timeline: LockTimeline,
+) -> None:
+    site_a = await scoped_site(db=db, branch=default_branch, name="site-a")
+    await scoped_device_holding(
+        db=db,
+        branch=default_branch,
+        pool=site_role_scoped_pool,
+        name="device-a1",
+        site=site_a,
+        number=1,
+        role="from-profile",
+    )
+    profile = await Node.init(db=db, schema=f"Profile{SCOPED_DEVICE.kind}", branch=default_branch)
+    await profile.new(db=db, profile_name="device-profile", profile_priority=1000, role="from-profile")
+    await profile.save(db=db)
+    payload = device_payload(name="device-a2", site=site_a, pool=site_role_scoped_pool, role=None)
+    payload["profiles"] = [{"id": profile.id}]
+    expected_lock_name = f"resource_pool.{site_role_scoped_pool.id}.{site_a.id}.from-profile"
+    start = recording_lock_timeline.checkpoint("write")
+
+    device = await create_node(
+        data=deepcopy(payload),
+        db=db,
+        branch=default_branch,
+        schema=db.schema.get(name=SCOPED_DEVICE.kind, branch=default_branch, duplicate=False),
+    )
+
+    stored = await NodeManager.get_one(db=db, branch=default_branch, id=device.id, raise_on_error=True)
+    assert stored.get_attribute("role").value == "from-profile"
+    assert vlan_id(stored) == 2
+    assert pool_lock_events(timeline=recording_lock_timeline, pool=site_role_scoped_pool, after=start) == [
+        (expected_lock_name, LockAction.ACQUIRE),
+        (expected_lock_name, LockAction.RELEASE),
+    ]
+
+
 async def test_a_provided_number_is_skipped_by_the_next_allocation_in_its_division_only(
     db: InfrahubDatabase, default_branch: Branch, site_scoped_pool: CoreNumberPool
 ) -> None:
@@ -191,6 +342,31 @@ async def test_an_allocation_on_a_branch_whose_schema_lacks_a_scope_element_is_r
     assert await NodeManager.query(db=db, schema=SCOPED_DEVICE.kind, branch=branch) == []
 
 
+async def test_an_unscoped_pool_keeps_allocating_from_one_space(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    unscoped_device_pool: CoreNumberPool,
+    recording_lock_timeline: LockTimeline,
+) -> None:
+    site_a = await scoped_site(db=db, branch=default_branch, name="site-a")
+    site_b = await scoped_site(db=db, branch=default_branch, name="site-b")
+    lock_name = f"resource_pool.{unscoped_device_pool.id}"
+    start = recording_lock_timeline.checkpoint("writes")
+
+    devices = [
+        await create_device_in_own_session(
+            db=db, branch=default_branch, payload=device_payload(name=name, site=site, pool=unscoped_device_pool)
+        )
+        for name, site in (("device-a1", site_a), ("device-b1", site_b), ("device-a2", site_a))
+    ]
+
+    assert [vlan_id(device) for device in devices] == [1, 2, 3]
+    assert pool_lock_events(timeline=recording_lock_timeline, pool=unscoped_device_pool, after=start) == 3 * [
+        (lock_name, LockAction.ACQUIRE),
+        (lock_name, LockAction.RELEASE),
+    ]
+
+
 @pytest.mark.parametrize("allocation_scope", [["site"], None], ids=["scoped", "unscoped"])
 async def test_a_site_named_by_an_unknown_name_is_refused_as_without_a_scope(
     db: InfrahubDatabase,
@@ -214,3 +390,26 @@ async def test_a_site_named_by_an_unknown_name_is_refused_as_without_a_scope(
     assert exc_info.value.identifier == "unknown-site"
     assert exc_info.value.message == "Unable to find the node unknown-site / ScopeSite in the database."
     assert await NodeManager.query(db=db, schema=SCOPED_DEVICE.kind, branch=default_branch) == []
+
+
+async def test_a_site_named_by_its_hfid_allocates_in_its_division(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    site_scoped_pool: CoreNumberPool,
+    recording_lock_timeline: LockTimeline,
+) -> None:
+    site_a = await scoped_site(db=db, branch=default_branch, name="site-a")
+    site_b = await scoped_site(db=db, branch=default_branch, name="site-b")
+    await scoped_device(db=db, branch=default_branch, pool=site_scoped_pool, name="device-a1", site=site_a)
+    payload = device_payload(name="device-b1", site=site_b, pool=site_scoped_pool)
+    payload["site"] = {"hfid": ["site-b"]}
+    expected_lock_name = f"resource_pool.{site_scoped_pool.id}.{site_b.id}"
+    start = recording_lock_timeline.checkpoint("write")
+
+    device = await create_device_in_own_session(db=db, branch=default_branch, payload=payload)
+
+    assert vlan_id(device) == 1
+    assert pool_lock_events(timeline=recording_lock_timeline, pool=site_scoped_pool, after=start) == [
+        (expected_lock_name, LockAction.ACQUIRE),
+        (expected_lock_name, LockAction.RELEASE),
+    ]
