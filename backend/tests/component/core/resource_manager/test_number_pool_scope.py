@@ -12,9 +12,8 @@ from infrahub.core.manager import NodeManager
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.number_ranges import EffectiveSpace, NumberDomain
 from infrahub.pools.scope import Division, DivisionElementPath
-from tests.helpers.number_pool import SCOPED_DEVICE
-
-from .conftest import (
+from tests.helpers.number_pool import (
+    SCOPED_DEVICE,
     SCOPED_POOL_END,
     SCOPED_POOL_START,
     scoped_device,
