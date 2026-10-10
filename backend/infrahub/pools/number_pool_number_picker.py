@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema import AttributeSchema
     from infrahub.core.timestamp import Timestamp
     from infrahub.pools.number_ranges import PoolRange
+    from infrahub.pools.scope import Division
 
 
 class NumberPoolNumberReader(Protocol):
@@ -21,7 +22,14 @@ class NumberPoolNumberReader(Protocol):
 
     async def get_taken(self, pool: CoreNumberPool, branch: Branch, space: EffectiveSpace) -> set[int]: ...
 
-    async def get_free(self, pool: CoreNumberPool, branch: Branch, min_value: int, max_value: int) -> int | None: ...
+    async def get_free(
+        self,
+        pool: CoreNumberPool,
+        branch: Branch,
+        min_value: int,
+        max_value: int,
+        division: Division | None = None,
+    ) -> int | None: ...
 
 
 class NumberPoolNumberPicker:
@@ -30,8 +38,10 @@ class NumberPoolNumberPicker:
     def __init__(self, number_reader: NumberPoolNumberReader) -> None:
         self.number_reader = number_reader
 
-    async def next_number(self, pool: CoreNumberPool, branch: Branch, attribute: AttributeSchema) -> int:
-        """Return the next number `pool` hands out for `attribute`.
+    async def next_number(
+        self, pool: CoreNumberPool, branch: Branch, attribute: AttributeSchema, division: Division | None = None
+    ) -> int:
+        """Return the next number `pool` hands out for `attribute`, within `division` when one is given.
 
         The pool's ranges are clipped to the numbers the attribute accepts, then drained heaviest first and
         lowest start first, each from its lowest free number.
@@ -57,7 +67,7 @@ class NumberPoolNumberPicker:
                     cursor += 1
                     continue
                 candidate = await self.number_reader.get_free(
-                    pool=pool, branch=branch, min_value=cursor, max_value=segment.end
+                    pool=pool, branch=branch, min_value=cursor, max_value=segment.end, division=division
                 )
                 if candidate is None:
                     break

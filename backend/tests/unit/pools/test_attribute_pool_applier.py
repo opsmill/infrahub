@@ -21,6 +21,7 @@ from .helpers import InMemoryNumberPool
 if TYPE_CHECKING:
     from infrahub.core.attribute import BaseAttribute
     from infrahub.core.protocols import CoreNumberPool
+    from infrahub.pools.scope import AllocationScope, Division
 
 NODE_ID = "18a0b9e3-0000-0000-0000-00000000aaaa"
 ATTRIBUTE_ID = "18a0b9e3-0000-0000-0000-00000000dddd"
@@ -63,7 +64,9 @@ class RecordingNumberAllocator:
     exhausted: bool = False
     calls: list[PoolCall] = field(default_factory=list)
 
-    async def allocate(self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute, user_id: str) -> int:
+    async def allocate(
+        self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute, user_id: str, division: Division | None
+    ) -> int:
         self.calls.append(
             PoolCall(
                 action="allocate",
@@ -98,6 +101,13 @@ class RecordingNumberAllocator:
                 user_id=user_id,
             )
         )
+
+
+class UnscopedDivisionReader:
+    """Refuses to read a division, since every pool of these tests allocates from one space."""
+
+    async def read(self, node: Node, scope: AllocationScope, pool_name: str, attribute_name: str) -> Division:
+        raise AssertionError(f"no division is read for the unscoped pool {pool_name}")
 
 
 def _ticket_attribute(attribute_schema: AttributeSchema, payload: dict[str, Any] | None = None) -> BaseAttribute:
@@ -137,7 +147,10 @@ def allocator() -> RecordingNumberAllocator:
 @pytest.fixture
 def applier(finder: InMemoryNumberPoolFinder, allocator: RecordingNumberAllocator) -> AttributePoolApplier:
     return AttributePoolApplier(
-        pool_finder=finder, number_allocator=allocator, intent_resolver=FromPoolIntentResolver()
+        pool_finder=finder,
+        number_allocator=allocator,
+        intent_resolver=FromPoolIntentResolver(),
+        division_reader=UnscopedDivisionReader(),
     )
 
 

@@ -48,9 +48,9 @@ Value of an element for a holding object, read on the branch of the request with
 
 A holding object that does not exist on the request branch has no division there and is not counted.
 
-`key`: a stable hash of the JSON form of `values`, used in lock names (`<pool id>.<key>`).
+`key`: the values joined by dots, used in lock names (`<pool id>.<key>`). Two divisions may share a key, for example when a text value contains a dot; they then share a lock, which delays writers but never gives a wrong number.
 
-Equality: two divisions are equal when their values are equal element by element. The values of one element are peer ids or come from one scalar attribute, so they share a type.
+Equality: two divisions are equal when their element paths and their values are equal element by element. A division also records where a Node keeps each value on the branch it was read on (`elements`: an attribute name, or a relationship identifier and direction), which the queries read. The values of one element are peer ids or come from one scalar attribute, so they share a type.
 
 **Refusal**: when the schema of the request branch does not define an element on the pool's kind, the division cannot be read; the request is refused naming the element and the branch.
 

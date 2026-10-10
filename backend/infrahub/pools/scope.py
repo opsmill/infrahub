@@ -1,17 +1,24 @@
 from __future__ import annotations
 
-import hashlib
 import json
 from dataclasses import dataclass
+from enum import Enum
 from typing import TYPE_CHECKING, Any
 
-from infrahub.core.constants import RelationshipCardinality
+from infrahub_sdk.utils import is_valid_uuid
+
+from infrahub.core.constants import RelationshipCardinality, RelationshipDirection
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.exceptions import ValidationError
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from infrahub.core.attribute import BaseAttribute
+    from infrahub.core.node import Node
+    from infrahub.core.relationship.model import RelationshipManager
     from infrahub.core.schema import AttributeSchema, MainSchemaTypes
     from infrahub.core.schema.schema_branch import SchemaBranch
 
@@ -84,19 +91,97 @@ class AllocationScope:
 
 
 @dataclass(frozen=True)
+class DivisionElementPath:
+    """Where a Node keeps the value of one scope element: an attribute by name, or a relationship by identifier."""
+
+    name: str
+    relationship_direction: RelationshipDirection | None = None
+
+    @property
+    def is_relationship(self) -> bool:
+        return self.relationship_direction is not None
+
+
+@dataclass(frozen=True)
 class Division:
-    """The values an object has for the scope elements, in scope order; one division is one space of the pool.
+    """The values a Node has for the scope elements, in scope order; one division is one space of the pool.
 
     A scope element is a relationship or a scalar attribute, so each value is a peer id or a scalar as stored.
+    `elements` says where a Node keeps each value on the branch the division was read on.
     """
 
+    elements: tuple[DivisionElementPath, ...]
     values: tuple[str | int | float | bool, ...]
+
+    def __post_init__(self) -> None:
+        if len(self.elements) != len(self.values):
+            raise ValueError("A division holds one value per scope element")
 
     @property
     def key(self) -> str:
-        """Return a hash of the values that stays the same across processes, used to name the division's lock."""
-        encoded = json.dumps(list(self.values), separators=(",", ":"), ensure_ascii=True)
-        return hashlib.sha256(encoded.encode("ascii")).hexdigest()
+        """Return the values joined by dots, used to name the division's lock."""
+        return ".".join(str(value) for value in self.values)
+
+    @classmethod
+    def from_node(
+        cls,
+        node: Node,
+        element_fields: Sequence[tuple[ScopeElement, AttributeSchema | RelationshipSchema]],
+        pool: str,
+        attribute: str,
+    ) -> Division:
+        """Return the division the node holds, reading only what the node holds in memory.
+
+        `element_fields` pairs each scope element with the attribute or relationship that holds it on the node's kind,
+        in scope order; `pool` names the pool and `attribute` the pooled attribute in the refusal.
+
+        Raises:
+            ValidationError: When an attribute element holds a value that is not a single scalar.
+            LookupError: When the peers of a relationship element have not been read, or a peer is known only by
+                a human-friendly id or a default filter value.
+
+        """
+        elements: list[DivisionElementPath] = []
+        values: list[str | int | float | bool] = []
+        for element, field in element_fields:
+            if isinstance(field, RelationshipSchema):
+                elements.append(
+                    DivisionElementPath(name=field.get_identifier(), relationship_direction=field.direction)
+                )
+                values.append(_peer_id(relationship=node.get_relationship(name=field.name)))
+                continue
+            elements.append(DivisionElementPath(name=field.name))
+            value = _attribute_value(attribute=node.get_attribute(name=field.name))
+            if value is None:
+                raise ValidationError(
+                    {
+                        f"{attribute}.from_pool": f'the scope element "{element.name}" of pool {pool} does not hold'
+                        f" a single scalar value on {node.get_kind()} on branch {node.get_branch().name}"
+                    }
+                )
+            values.append(value)
+        return cls(elements=tuple(elements), values=tuple(values))
+
+
+def _peer_id(relationship: RelationshipManager) -> str:
+    related = relationship.get_one()
+    if related is None:
+        return ""
+    if not related.peer_id or not is_valid_uuid(related.peer_id):
+        raise LookupError(f"the peer of {relationship.name} is not resolved to a node id")
+    return related.peer_id
+
+
+def _attribute_value(attribute: BaseAttribute) -> str | int | float | bool | None:
+    """Return the value as stored, an empty string when there is none, or None when it is not a single scalar."""
+    value = attribute.value
+    if value is None:
+        return ""
+    if isinstance(value, Enum):
+        value = value.value
+    if isinstance(value, str | int | float | bool):
+        return value
+    return None
 
 
 def _get_kind_schema(schema_branch: SchemaBranch, kind: str) -> MainSchemaTypes:
@@ -153,6 +238,40 @@ class AllocationScopeResolver:
                 for element in scope.elements
             )
         )
+
+    def element_fields(
+        self, kind: str, scope: AllocationScope, pool: str, attribute: str
+    ) -> list[tuple[ScopeElement, AttributeSchema | RelationshipSchema]]:
+        """Return each scope element with the attribute or relationship that holds it on `kind`, in scope order.
+
+        `pool` names the pool and `attribute` the pooled attribute in the refusal.
+
+        Raises:
+            ValidationError: When the schema branch does not define a scope element on `kind`.
+
+        """
+        node_schema = self.schema_branch.get(name=kind, duplicate=False) if self.schema_branch.has(name=kind) else None
+        element_fields: list[tuple[ScopeElement, AttributeSchema | RelationshipSchema]] = []
+        for element in scope.elements:
+            field = self.find_element_field(node_schema=node_schema, element=element) if node_schema else None
+            if field is None:
+                raise ValidationError(
+                    {
+                        f"{attribute}.from_pool": f'the scope element "{element.name}" of pool {pool} does not exist'
+                        f" on {kind} on branch {self.schema_branch.name}; rebase the branch to get it"
+                    }
+                )
+            element_fields.append((element, field))
+        return element_fields
+
+    def find_element_field(
+        self, node_schema: MainSchemaTypes, element: ScopeElement
+    ) -> AttributeSchema | RelationshipSchema | None:
+        """Return the attribute or relationship of the kind that the element's id identifies, or None."""
+        for field in self._fields(node_schema=node_schema):
+            if element.id in self._candidate_ids(node_schema=node_schema, field=field):
+                return field
+        return None
 
     def _parse(self, entries: object) -> list[str | dict[str, Any]]:
         if entries is None:

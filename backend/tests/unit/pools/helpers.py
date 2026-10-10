@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, override
 
-from infrahub.core.attribute import String
+from infrahub.core.attribute import ListAttributeOptional, String
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.node import Node
@@ -15,6 +15,7 @@ from infrahub.pools.number_pool_range_reconciler import ReconcilableRangeStore
 if TYPE_CHECKING:
     from infrahub.core.node.resource_manager.number_pool import CoreNumberPool as CoreNumberPoolNode
     from infrahub.pools.number_ranges import EffectiveSpace, PoolRange
+    from infrahub.pools.scope import Division
 
 TICKET_KIND = "TestingTicket"
 
@@ -39,6 +40,10 @@ class InMemoryNumberPool(CoreNumberPool):
         self.node_attribute = String(
             name="node_attribute", schema=node_attribute_schema, branch=branch, at=at, node=owner, data=node_attribute
         )
+        scope_schema = AttributeSchema(name="allocation_scope", kind="List", optional=True)
+        self.allocation_scope = ListAttributeOptional(
+            name="allocation_scope", schema=scope_schema, branch=branch, at=at, node=owner, data=None
+        )
 
     def get_id(self) -> str:
         return self.id
@@ -61,7 +66,14 @@ class InMemoryNumberPoolNumbers:
     async def get_taken(self, pool: CoreNumberPoolNode, branch: Branch, space: EffectiveSpace) -> set[int]:
         return {value for value in self.taken if space.contains(value)}
 
-    async def get_free(self, pool: CoreNumberPoolNode, branch: Branch, min_value: int, max_value: int) -> int | None:
+    async def get_free(
+        self,
+        pool: CoreNumberPoolNode,
+        branch: Branch,
+        min_value: int,
+        max_value: int,
+        division: Division | None = None,
+    ) -> int | None:
         self.free_lookups.append((min_value, max_value))
         return next((value for value in range(min_value, max_value + 1) if value not in self.accounted), None)
 

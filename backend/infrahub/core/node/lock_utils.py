@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.schema import GenericSchema
 from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
+from infrahub.profiles.node_applier import NodeProfilesApplier
 
 if TYPE_CHECKING:
     from infrahub.core.node import Node
@@ -20,14 +21,20 @@ RELATIONSHIP_COUNT_LOCK_NAMESPACE = "relationship_count"
 async def apply_payload_for_lock_names(db: InfrahubDatabase, node: Node, data: dict[str, Any]) -> None:
     """Apply a mutation payload to a node used only to compute lock names.
 
-    The peers this node already has in the database are left unread: the relationship lock names
-    are built from the peers the payload sets, and no pool is allocated. Marking the relationships
-    as fetched is what keeps `from_graphql` from reading them; this node is a preview that is never
-    saved, so the peers it ends up holding only have to cover the payload.
+    The peers the payload replaces are left unread: the relationship lock names are built from the
+    peers the payload sets, and no pool is allocated. Marking those relationships as fetched is what
+    keeps `from_graphql` from reading them; this node is a preview that is never saved, so the peers
+    it ends up holding only have to cover the payload. The relationships not set by the payload stay
+    unmarked, so that they will be read if necessary instead of assumed empty.
     """
-    node.mark_relationships_as_fetched()
+    node.mark_relationships_as_fetched(names=set(data))
 
-    await node.from_graphql(db=db, data=data, pool_applier=build_attribute_pool_applier(db=db), process_pools=False)
+    pool_applier = build_attribute_pool_applier(
+        profiles_applier=NodeProfilesApplier(db=db, branch=node.get_branch()),
+        db=db,
+        schema_branch=db.schema.get_schema_branch(name=node.get_branch().name),
+    )
+    await node.from_graphql(db=db, data=data, pool_applier=pool_applier, process_pools=False)
 
 
 def _get_kinds_to_lock_on_object_mutation(kind: str, schema_branch: SchemaBranch) -> list[str]:
@@ -83,6 +90,13 @@ def _any_subtype_has_count_constraint(
     )
 
 
+def _attribute_pool_lock_name(from_pool: dict[str, Any]) -> str:
+    """Return the pool's lock name, divided by the writer's division when the pool has a scope."""
+    if division_key := from_pool.get("division"):
+        return f"{RESOURCE_POOL_LOCK_NAMESPACE}.{from_pool['id']}.{division_key}"
+    return f"{RESOURCE_POOL_LOCK_NAMESPACE}.{from_pool['id']}"
+
+
 def get_lock_names_on_object_mutation(node: Node, schema_branch: SchemaBranch) -> list[str]:
     """Return lock names for object on which we want to avoid concurrent mutation (create/update).
 
@@ -95,7 +109,7 @@ def get_lock_names_on_object_mutation(node: Node, schema_branch: SchemaBranch) -
     for attr_name in node.get_schema().attribute_names:
         attribute = getattr(node, attr_name, None)
         if attribute is not None and getattr(attribute, "from_pool", None) and "id" in attribute.from_pool:
-            lock_names.add(f"{RESOURCE_POOL_LOCK_NAMESPACE}.{attribute.from_pool['id']}")
+            lock_names.add(_attribute_pool_lock_name(from_pool=attribute.from_pool))
 
     # Check if relationships allocate resources or have cardinality one constraint
     for rel_name in node._relationships:

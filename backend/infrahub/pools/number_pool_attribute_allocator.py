@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema import AttributeSchema
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
+    from infrahub.pools.scope import Division
 
 
 @runtime_checkable
@@ -30,6 +31,7 @@ class _AllocatingNumberPool(Protocol):
         attribute_id: str | None = None,
         at: Timestamp | None = None,
         user_id: str = SYSTEM_USER_ID,
+        division: Division | None = None,
     ) -> int: ...
 
 
@@ -39,8 +41,15 @@ class NumberPoolAttributeAllocator:
     def __init__(self, db: InfrahubDatabase) -> None:
         self.db = db
 
-    async def allocate(self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute, user_id: str) -> int:
-        """Return the number the pool holds for the attribute, or the next free one.
+    async def allocate(
+        self,
+        pool: CoreNumberPool,
+        node: Node,
+        attribute: BaseAttribute,
+        user_id: str,
+        division: Division | None = None,
+    ) -> int:
+        """Return the number the pool holds for the attribute, or the next free one in `division` when one is given.
 
         Raises:
             InitializationError: When the pool was not loaded as a number pool that can allocate.
@@ -56,6 +65,7 @@ class NumberPoolAttributeAllocator:
             attribute=attribute.schema,
             attribute_id=attribute.id,
             user_id=user_id,
+            division=division,
         )
 
     async def attach(self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute, user_id: str) -> None:

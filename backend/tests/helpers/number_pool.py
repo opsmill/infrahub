@@ -25,7 +25,10 @@ from infrahub.pools.number_pool_space import SchemaAttributeDomains
 from infrahub.pools.number_ranges import EffectiveSpace, NumberDomain
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
+from infrahub.pools.scope import AllocationScopeResolver
 from infrahub.schema.tasks import schema_updated
+from tests.adapters.lock.timeline import LockAction
+from tests.helpers.agnostic_edges import IsReservedEdge, is_reserved_edge_on
 from tests.helpers.schema import TICKET
 from tests.helpers.schema.snow import SNOW_INCIDENT, SNOW_TASK
 
@@ -33,6 +36,7 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
+    from tests.adapters.lock.timeline import LockTimeline
 
 
 def snow_schema_with_format_identifier(
@@ -243,3 +247,112 @@ SCOPED_POD_HOLDER = NodeSchema(
 SCOPED_POOL_SCHEMA = SchemaRoot(
     generics=[SCOPED_HOLDER], nodes=[SCOPED_SITE, SCOPED_RACK, SCOPED_LINK, SCOPED_DEVICE, SCOPED_POD_HOLDER]
 )
+
+
+SCOPED_POOL_START = 1
+SCOPED_POOL_END = 10
+SCOPED_ATTRIBUTE_NAME = "vlan_id"
+
+
+def stored_scope(names: list[str] | None) -> list[dict[str, str]] | None:
+    """Return the stored form of a device scope naming the given fields, or None for an unscoped pool."""
+    scope = AllocationScopeResolver(
+        schema_branch=registry.schema.get_schema_branch(name=registry.default_branch)
+    ).resolve(kind=SCOPED_DEVICE.kind, entries=names)
+    return None if scope.is_empty else scope.to_stored()
+
+
+async def scoped_pool(db: InfrahubDatabase, name: str, allocation_scope: list[str] | None) -> CoreNumberPool:
+    """A pool over the device's `vlan_id` with the scope naming the given fields, allocating from one range."""
+    pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
+    await pool.new(
+        db=db,
+        name=name,
+        node=SCOPED_DEVICE.kind,
+        node_attribute=SCOPED_ATTRIBUTE_NAME,
+        start_range=SCOPED_POOL_START,
+        end_range=SCOPED_POOL_END,
+        allocation_scope=stored_scope(names=allocation_scope),
+    )
+    await pool.save(db=db)
+    await add_pool_range(db=db, pool=pool, start=SCOPED_POOL_START, end=SCOPED_POOL_END)
+    return pool
+
+
+async def scoped_site(db: InfrahubDatabase, branch: Branch, name: str) -> Node:
+    site = await Node.init(db=db, schema=SCOPED_SITE.kind, branch=branch)
+    await site.new(db=db, name=name)
+    await site.save(db=db)
+    return site
+
+
+async def scoped_device(
+    db: InfrahubDatabase,
+    branch: Branch,
+    pool: CoreNumberPool,
+    name: str,
+    site: Node,
+    role: str = "leaf",
+    tags: list[str] | None = None,
+) -> Node:
+    """A device of the site holding a `vlan_id` the pool allocated, with the pool's IS_RESERVED edge open on it."""
+    device = await Node.init(db=db, schema=SCOPED_DEVICE.kind, branch=branch)
+    await device.new(
+        db=db,
+        name=name,
+        role=role,
+        tags=tags if tags is not None else ["red"],
+        site=site,
+        vlan_id={"from_pool": {"id": pool.id}},
+    )
+    await device.save(db=db)
+    assert (
+        await is_reserved_edge_on(db=db, pool_id=pool.id, node_id=device.id, attribute_name=SCOPED_ATTRIBUTE_NAME)
+        == IsReservedEdge.OPEN
+    )
+    return device
+
+
+async def scoped_device_holding(
+    db: InfrahubDatabase,
+    branch: Branch,
+    pool: CoreNumberPool,
+    name: str,
+    site: Node,
+    number: int,
+    role: str = "leaf",
+) -> Node:
+    """A device of the site holding a `vlan_id` it provided, which the pool tracks without allocating it."""
+    device = await Node.init(db=db, schema=SCOPED_DEVICE.kind, branch=branch)
+    await device.new(
+        db=db,
+        name=name,
+        role=role,
+        tags=["red"],
+        site=site,
+        vlan_id={"value": number, "from_pool": {"id": pool.id}},
+    )
+    await device.save(db=db)
+    assert (
+        await is_reserved_edge_on(db=db, pool_id=pool.id, node_id=device.id, attribute_name=SCOPED_ATTRIBUTE_NAME)
+        == IsReservedEdge.OPEN
+    )
+    return device
+
+
+def vlan_id(node: Node) -> int:
+    value = node.get_attribute(SCOPED_ATTRIBUTE_NAME).value
+    assert isinstance(value, int)
+    return value
+
+
+def pool_lock_events(timeline: LockTimeline, pool: CoreNumberPool, after: int) -> list[tuple[str, LockAction]]:
+    """Return each acquire and release of the pool's locks recorded after the event `after`, in order."""
+    prefix = f"resource_pool.{pool.id}"
+    return [
+        (event.name, event.action)
+        for event in timeline.events
+        if event.seq > after
+        and event.action in {LockAction.ACQUIRE, LockAction.RELEASE}
+        and event.name.startswith(prefix)
+    ]

@@ -12,9 +12,8 @@ from infrahub.core.initialization import initialize_registry
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.schema import SchemaRoot
-from infrahub.pools.scope import AllocationScopeResolver
 from tests.helpers.agnostic_edges import TEST_ACTOR_ID, IsReservedEdge, is_reserved_edge_on
-from tests.helpers.number_pool import SCOPED_DEVICE, SCOPED_POOL_SCHEMA, SCOPED_SITE, add_pool_range
+from tests.helpers.number_pool import SCOPED_POOL_SCHEMA, add_pool_range, scoped_pool
 from tests.helpers.schema import TICKET, load_schema
 from tests.helpers.schema.agnostic_retirement import AGNOSTIC_RETIREMENT_SCHEMA, WIDGET_KIND
 
@@ -26,10 +25,6 @@ if TYPE_CHECKING:
 SERIAL_POOL_START = 7001
 SERIAL_POOL_END = 7010
 SERIAL_ATTRIBUTE_NAME = "serial"
-
-SCOPED_POOL_START = 1
-SCOPED_POOL_END = 10
-SCOPED_ATTRIBUTE_NAME = "vlan_id"
 
 
 @pytest.fixture
@@ -108,31 +103,6 @@ async def scoped_schema(
     registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
 
 
-def stored_scope(names: list[str] | None) -> list[dict[str, str]] | None:
-    """Return the stored form of a device scope naming the given fields, or None for an unscoped pool."""
-    scope = AllocationScopeResolver(
-        schema_branch=registry.schema.get_schema_branch(name=registry.default_branch)
-    ).resolve(kind=SCOPED_DEVICE.kind, entries=names)
-    return None if scope.is_empty else scope.to_stored()
-
-
-async def scoped_pool(db: InfrahubDatabase, name: str, allocation_scope: list[str] | None) -> CoreNumberPool:
-    """A pool over the device's `vlan_id` with the scope naming the given fields, allocating from one range."""
-    pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
-    await pool.new(
-        db=db,
-        name=name,
-        node=SCOPED_DEVICE.kind,
-        node_attribute=SCOPED_ATTRIBUTE_NAME,
-        start_range=SCOPED_POOL_START,
-        end_range=SCOPED_POOL_END,
-        allocation_scope=stored_scope(names=allocation_scope),
-    )
-    await pool.save(db=db)
-    await add_pool_range(db=db, pool=pool, start=SCOPED_POOL_START, end=SCOPED_POOL_END)
-    return pool
-
-
 @pytest.fixture
 async def site_scoped_pool(db: InfrahubDatabase, scoped_schema: None) -> CoreNumberPool:
     return await scoped_pool(db=db, name="vlan-per-site", allocation_scope=["site"])
@@ -146,37 +116,3 @@ async def site_role_scoped_pool(db: InfrahubDatabase, scoped_schema: None) -> Co
 @pytest.fixture
 async def unscoped_device_pool(db: InfrahubDatabase, scoped_schema: None) -> CoreNumberPool:
     return await scoped_pool(db=db, name="vlan-shared", allocation_scope=None)
-
-
-async def scoped_site(db: InfrahubDatabase, branch: Branch, name: str) -> Node:
-    site = await Node.init(db=db, schema=SCOPED_SITE.kind, branch=branch)
-    await site.new(db=db, name=name)
-    await site.save(db=db)
-    return site
-
-
-async def scoped_device(
-    db: InfrahubDatabase,
-    branch: Branch,
-    pool: CoreNumberPool,
-    name: str,
-    site: Node,
-    role: str = "leaf",
-    tags: list[str] | None = None,
-) -> Node:
-    """A device of the site holding a `vlan_id` the pool allocated, with the pool's IS_RESERVED edge open on it."""
-    device = await Node.init(db=db, schema=SCOPED_DEVICE.kind, branch=branch)
-    await device.new(
-        db=db,
-        name=name,
-        role=role,
-        tags=tags if tags is not None else ["red"],
-        site=site,
-        vlan_id={"from_pool": {"id": pool.id}},
-    )
-    await device.save(db=db)
-    assert (
-        await is_reserved_edge_on(db=db, pool_id=pool.id, node_id=device.id, attribute_name=SCOPED_ATTRIBUTE_NAME)
-        == IsReservedEdge.OPEN
-    )
-    return device
