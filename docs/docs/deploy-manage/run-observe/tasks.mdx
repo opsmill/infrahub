@@ -72,17 +72,15 @@ Remove these variables from your deployment to let the `task_manager.retention` 
 
 `infrahub tasks flush flow-runs` deletes the same runs as the hourly cleanup, with their logs and artifacts, using the task history retention in effect on the task manager. The deletion runs inside the task manager, one day of end times at a time, and the command prints the progress and then a summary. If the command is interrupted, the deletion continues in the task manager. Running the command again follows the deletion that is still running, or continues from the oldest remaining day.
 
-Deleting runs does not shrink the database files: PostgreSQL reuses the space of deleted rows for new runs, so the disk usage stays level but does not go down. With `--rewrite`, the command then rewrites the six task history tables, which returns the space of the deleted runs to the disk. Each table is locked while it is rewritten, and the rewrite needs free disk space for a copy of the runs that remain. Run it in a maintenance window, with the Infrahub server and the task workers stopped. On Docker Compose:
+Deleting runs does not shrink the database files: PostgreSQL reuses the space of deleted rows for new runs, so the disk usage stays level but does not go down. With `--rewrite`, the command then rewrites each task history and activity log table whose live rows hold less than half of its disk space, which returns that space to the disk, and leaves a table whose rows mostly hold live data as it is. You do not need to stop anything: a task that writes to a table waits until the rewrite of that table ends, which on very large instances can take a few seconds. The rewrite needs free disk space for a copy of the rows that a table keeps. On Docker Compose:
 
 ```bash
-docker compose stop infrahub-server task-worker
-docker compose run --rm infrahub-server infrahub tasks flush flow-runs --rewrite
-docker compose start infrahub-server task-worker
+docker compose exec infrahub-server infrahub tasks flush flow-runs --rewrite
 ```
 
-The summary reports the number of runs deleted, the size of the task history tables before and after, and whether the tables were rewritten. If another session holds a lock on a table for more than 60 seconds, the command retries that table three times, then skips it and names it in the summary; run the command again later to rewrite it.
+The summary reports the number of runs deleted, the size of the task history and activity log tables before and after, and what the rewrite did with each table: the tables it rewrote, the tables it left as they are, and the tables it could not lock. If another session holds a lock on a table for more than 60 seconds, the command retries that table three times, then skips it and names it in the summary; run the command again later to rewrite it.
 
-Use `--rewrite` after you lower the task history retention. The next hourly cleanup deletes the runs older than the new value, and the command rewrites the tables even though it has little left to delete. It is also the maintenance step of a Helm upgrade, described in [Upgrade Community](../maintain-upgrade/upgrade/community.mdx) and [Upgrade Enterprise](../maintain-upgrade/upgrade/enterprise.mdx).
+Use `--rewrite` once after you upgrade an existing instance that holds a lot of task history, as described in [Clean up old task history after the upgrade](../maintain-upgrade/upgrade/overview.mdx#clean-up-old-task-history-after-the-upgrade), and after you lower the task history or the activity log retention. The next hourly cleanup deletes the records older than the new value, and the command still rewrites the tables that are mostly free space, even though it has little left to delete.
 
 The command exits with:
 

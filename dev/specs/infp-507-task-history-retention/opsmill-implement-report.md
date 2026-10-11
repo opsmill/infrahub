@@ -169,22 +169,28 @@ cubic findings on PR 1 and PR 2 (16 in total) were all fixed or recorded as know
    - T002, T041, T042 and T043 moved to PR 1, so `prefect_own_events` works from the first PR (a cubic finding).
    - T001 moved to PR 2.
 3. **Retention maximum**: 36,500 days, a technical safety bound. The design doc said "no upper limit"; the spec set is updated.
-4. **Rewrite modes (deviation from the design doc, D9)**:
+4. **Rewrite modes (deviation from the design doc, D9; superseded on 11 Oct, item 13)**:
    - `flush flow-runs --rewrite` always rewrites.
    - Only the upgrade step keeps the "deletes freed most of the tables" condition, measured as free space in `flow_run` (item 11).
 
    Applied to the explicit command, that condition would leave Helm users and anyone who lowers a retention without disk back, because Prefect's hourly cleanup deletes the runs first. The Notion page still has the old wording.
-5. **A failed cleanup no longer stops the upgrade**: the error and the command to finish it are printed, and the upgrade goes on to the branch rebase. Before, it stopped while exiting 0.
+5. **A failed cleanup no longer stops the upgrade** (superseded on 11 Oct, item 13: the upgrade runs no cleanup): the error and the command to finish it are printed, and the upgrade goes on to the branch rebase. Before, it stopped while exiting 0.
 6. **"Primary Node" Activities filter**: it keeps today's label matching unless the request lists event types. ID matching would drop branch merged/deleted and group auto-created events from the timelines.
    [CLAUDE RECOMMENDED – based on the task manager owning its event query] Match the indexed resource ID, OR the label limited to those three event types. This needs the tech owner's decision, and is in PR 3's body.
 7. **Carrying opsmill/infrahub#10379**: PR 3 carries the two commits with `cherry-pick -x`. Nothing was posted on that PR.
 8. **Reviews**: cubic ran on PR 1 and PR 2 only, because the user asked to stop after PR 2. `/pre-ci` ran before every push. One stack-wide `speckit-review-run` ran at the end, and its fixes were applied on the branch that introduced each issue, then the stack was rebased and force-pushed with lease.
 9. **GitHub stacked PRs**: the `github/gh-stack` extension was installed. PRs were created with `gh pr create --draft` and linked with `gh stack link`, never `gh stack submit`, which may rewrite the PR bodies.
 10. **No change to the public GraphQL schema**: the `since` description still says 180 days.
-11. **`if_freed` measures free space, not runs (FR-011 changed)**: the upgrade rewrites the tables when the live rows of `flow_run` take less than half of its size on disk, whoever deleted the runs and when. The earlier rule compared the runs left with the runs counted when the job started, so it missed the runs that Prefect's cleanup deletes when the task manager starts. The design doc's "freed most of the tables" describes space, so this follows the doc more closely than the run count did.
+11. **`if_freed` measures free space, not runs (FR-011 changed; extended on 11 Oct to each table, item 13)**: the upgrade rewrites the tables when the live rows of `flow_run` take less than half of its size on disk, whoever deleted the runs and when. The earlier rule compared the runs left with the runs counted when the job started, so it missed the runs that Prefect's cleanup deletes when the task manager starts. The design doc's "freed most of the tables" describes space, so this follows the doc more closely than the run count did.
     - Side effects: an upgrade that applies a lower retention now rewrites the tables, and small tables are rewritten on most upgrades, in milliseconds.
     - Rejected: rewriting on every upgrade. With a long retention and a lot of retained task history, each upgrade would need free disk for a full copy of the tables.
 12. **Startup warning about unlisted Prefect event types** (T060, asked for during review): the tests only see the event types their workload produces, so the task manager also checks what is stored at each start. The check reads only `prefect.*` types, as asked, and a type appears from the first start after Prefect stored an event of it.
+13. **Design changes of 8 and 11 Oct (T061)**: the design doc's "Design changes for implementation" list moved the one-off cleanup out of the upgrade and extended the rewrite.
+    - The upgrade deletes nothing. Its task manager step prints the task history size from a new `GET /infrahub/task-history/size` route and the command, within 10 s, or the command alone; the upgrade step, `--no-task-history-cleanup` and the `--check` text are gone.
+    - `--rewrite` sends `if_freed`; `always` is gone. The job rewrites each of the six task history tables and `events`, `event_resources` whose live rows hold less than half of its disk space, and records the tables rewritten, left as mostly live and left locked.
+    - Above 10,000 pages, a table's live size is estimated from `TABLESAMPLE SYSTEM`, so a mostly live event table is not read whole. On Fatih's 1.10 large backup the estimate was within 2 % of a full read, in 0.2 to 0.7 s against 4 to 6 s.
+    - Implemented from the design doc's suggestions: the command names each table it skipped and why. Not implemented: reporting how many old runs are left, which needs a count over millions of rows.
+    - The docs describe the cleanup step after the upgrade, the same for Compose and Helm, with a tip about short pauses on very large instances.
 
 ## 7. Suggested next steps
 
@@ -192,14 +198,12 @@ cubic findings on PR 1 and PR 2 (16 in total) were all fixed or recorded as know
 2. **Tech owner decision on the "Primary Node" filter** (§6 item 6).
 3. **Helm chart PR (T050), in the same release**:
    - the background-services deployment runs `infrahub tasks background-services`;
-   - the upgrade hook passes `--no-task-history-cleanup`;
+   - the upgrade hook needs no extra option;
    - the retention values go in `values.yaml`.
 
    The Enterprise sizing presets run the background services in their own pod, so the hourly deletion does not run there until this chart PR ships.
 4. **Private-tests evidence** (T021-T024, T037, T038, T046, then T057 on the release candidate): run it in a separate session in opsmill/infrahub-private-tests, and attach the results to the PRs and to INFP-507.
 5. **Update the Notion design doc for the decisions made here**:
-   - the rewrite modes, and the free-space measure of `if_freed`;
-   - the upgrade continuing after a failed cleanup;
    - the 36,500-day maximum;
    - the "Primary Node" filter;
    - the GraphQL `since` description (180 days), which needs a schema change.
