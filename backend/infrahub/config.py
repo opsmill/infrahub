@@ -1186,6 +1186,13 @@ class GraphQLCostSettings(BaseSettings):
         description="Worst-case database rows, estimated for one run of a GraphQL query, above which the query has "
         "the high cost level",
     )
+    pipelined_runtime_for_high_cost_queries: bool = Field(
+        default=False,
+        description="Run the database queries of a high-cost request to a stored GraphQL query with the pipelined "
+        "Cypher runtime where they would use the parallel runtime, so that each one uses one CPU core. A request "
+        "to a query with the high cost level is high-cost when, estimated with its variables, its worst-case "
+        "database rows are above `high_cost_database_rows`",
+    )
 
 
 class ExperimentalFeaturesSettings(BaseSettings):
