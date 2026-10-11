@@ -451,7 +451,7 @@ Prefect keeps every flow run, with its task runs, states, logs and artifacts, un
 |---|---|
 | A run reaches a terminal state (completed, failed, cancelled, crashed) | Prefect's hourly vacuum deletes it, with its logs and artifacts, once its end time is older than `task_manager.retention.task_history` (30 days by default) |
 | A run stays RUNNING or PENDING | Kept until the `crash-zombie-flows` automation or `infrahub tasks flush stale-runs` marks it CRASHED, which records an end time; a PENDING run that never started is never matched |
-| `infrahub tasks flush flow-runs [--rewrite]` or `infrahub upgrade` | The task manager deletes the backlog a day at a time with set-based SQL and, as the caller asks, rewrites the six task history tables to return their disk space |
+| `infrahub tasks flush flow-runs [--rewrite]` | The task manager deletes the backlog a day at a time with set-based SQL and, with `--rewrite`, rewrites each task history and activity log table that is mostly free space; `infrahub upgrade` deletes nothing and prints the task history size and this command |
 | Code reads flow runs older than the retention | They no longer exist, so anything built on flow runs, such as webhook delivery history, covers the retention at most |
 
 ## Key Locations

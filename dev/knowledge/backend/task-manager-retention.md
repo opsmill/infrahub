@@ -7,7 +7,7 @@ The task manager's database holds two kinds of records that grow with use: task 
 with their task runs, states, logs and artifacts) and events (Infrahub's activity log plus Prefect's
 own events). Infrahub bounds both with three settings that it translates into the settings of
 Prefect's own cleanup services. The retention code adds no tables, indexes or extensions to Prefect's
-database: it sets Prefect settings, and deletes and rewrites rows in Prefect's existing tables.
+database: it sets Prefect settings, deletes rows in Prefect's existing tables, and rewrites those tables.
 
 ## Behaviour
 
@@ -18,10 +18,10 @@ database: it sets Prefect settings, and deletes and rewrites rows in Prefect's e
 | `prefect_own_events` is longer than `activity_log` | It is capped to `activity_log`, with a warning |
 | Every hour | Prefect deletes finished top-level runs older than `task_history` with their logs and artifacts, events older than `activity_log`, and listed Prefect event types older than `prefect_own_events` |
 | A Prefect event type is missing from `PREFECT_EVENT_TYPES` | It is kept for `activity_log`: it costs disk, and no Infrahub event is ever deleted early |
-| `infrahub tasks flush flow-runs [--rewrite]` | Runs the cleanup job in the task manager with the rewrite mode `never`, or `always` with `--rewrite` |
-| `infrahub upgrade` | Its task history cleanup step runs the cleanup job with `if_freed`; a failure is reported with the command that finishes it, and the upgrade continues; `--no-task-history-cleanup` skips the step |
+| `infrahub tasks flush flow-runs [--rewrite]` | Runs the cleanup job in the task manager with the rewrite mode `never`, or `if_freed` with `--rewrite`, and prints the tables rewritten, left and locked |
+| `infrahub upgrade` | Deletes nothing; in its task manager step it prints the task history size from `GET /infrahub/task-history/size` and the command, or the command alone when the size does not come within 10 s |
 | The task manager has no cleanup route (an older release) | The CLI prints that the cleanup is not provided, deletes nothing and exits 0 |
-| A retention is lowered | The next hourly run deletes the older records; task history disk space returns only with `flush flow-runs --rewrite`; event tables are never rewritten, and PostgreSQL reuses their space |
+| A retention is lowered | The next hourly run deletes the older records; disk space returns only with `flush flow-runs --rewrite`, which rewrites each task history and activity log table that is mostly free space |
 | A run stays RUNNING or PENDING | Nothing deletes it until `infrahub tasks flush stale-runs` marks it CRASHED; see [Stuck runs](#stuck-runs) |
 | A branch is deleted | `branch-purge-tasks` deletes the finished runs tagged with the branch, independently of the retention |
 | Tests on the Prefect harness | `backend/tests/helpers/constants.py` sets `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` to `[]`, which takes precedence, so Prefect's vacuum stays off |
@@ -60,9 +60,11 @@ Prefect's flow-run vacuum deletes the hourly increment well, but it deletes a la
 backlog with set-based SQL inside the task manager, the only process connected to Prefect's
 database, and can then rewrite the tables to return the disk space.
 
-- **Routes**: `POST /infrahub/task-history/cleanup` starts a job and `GET
-  /infrahub/task-history/cleanup/{id}` reads it, in `prefect_server/task_history.py`. They have no
-  authentication, like the existing events route and Prefect's own API.
+- **Routes**: `POST /infrahub/task-history/cleanup` starts a job, `GET
+  /infrahub/task-history/cleanup/{id}` reads it, and `GET /infrahub/task-history/size` answers the
+  disk space of the six task history tables with their indexes (`pg_total_relation_size`, no table
+  data read; `null` on SQLite), in `prefect_server/task_history.py`. They have no authentication,
+  like the existing events route and Prefect's own API.
 - **Deletes**: `TaskHistoryTables.delete_runs` uses the conditions of Prefect's
   `vacuum_old_flow_runs` (top-level, terminal state, `end_time` before the cutoff), one day of end
   times per transaction. It deletes the runs first, so task runs and states follow by cascade, then
@@ -72,25 +74,30 @@ database, and can then rewrite the tables to return the disk space.
 - **Equivalence guard**: `backend/tests/component/task_manager/test_task_history_cleanup.py` runs
   Prefect's `vacuum_old_flow_runs` and the job on copies of the same data and compares what is left.
   It fails when a Prefect upgrade changes the vacuum's rules.
-- **Rewrite**: `CleanupRewrite` is `never`, `if_freed` or `always`. `if_freed` rewrites when the live
-  rows of `flow_run` take less than half of its size on disk (main data and TOAST, without indexes),
-  whoever deleted the runs and when. The live size sums `pg_column_size` per column plus 28 bytes a
-  row, so no value stored out of line is read. A run count taken by the job would miss the runs that
-  Prefect's vacuum deletes when the task manager starts, which on the Compose upgrade path is before
-  the job starts. On a small `flow_run`, the scheduled runs that Prefect replaces when the upgrade
-  updates the deployments can leave more than half of it free, so small tables are rewritten on most
-  upgrades, in milliseconds. The rewrite is `VACUUM FULL` on `flow_run`, `flow_run_state`,
-  `task_run`, `task_run_state`, `log` and `artifact`, on PostgreSQL only, in autocommit with a 60-second `lock_timeout` and 3 retries per table. A
-  `VACUUM FULL` waiting for its lock makes every later query on the table queue behind it, hence the
-  timeout; a table that still times out is listed in `not_rewritten` and the job moves on.
+- **Rewrite**: `CleanupRewrite` is `never` or `if_freed`, which `--rewrite` sends. With
+  `if_freed` the job rewrites each of `flow_run`, `flow_run_state`, `task_run`, `task_run_state`,
+  `log`, `artifact`, `events` and `event_resources` whose live rows take less than half of its size
+  on disk (main data and TOAST, without indexes), whoever deleted the rows and when. Prefect's vacuum
+  deletes old runs every hour and old events after their retention, so after an upgrade or a lowered
+  retention the job deletes little, and a rule on its own deletes would skip the rewrite exactly when
+  the disk must come back. The live size sums `pg_column_size` per column plus 28 bytes a row, so no
+  value stored out of line is read; `PostgresTableRewriter.space` reads a table of up to
+  `_EXACT_MEASURE_PAGES` (10,000) pages whole and estimates a larger one from `TABLESAMPLE SYSTEM`
+  over about that many random pages, so a mostly live event table of hundreds of GB is not read
+  whole only to be left as it is. A small table usually counts as mostly free, because space is
+  counted in whole pages and the upgrade replaces Prefect's scheduled runs, and is rewritten in
+  milliseconds. The rewrite is `VACUUM FULL`, on PostgreSQL only, in autocommit with a 60-second
+  `lock_timeout` and 3 retries per table. A `VACUUM FULL` waiting for its lock makes every later
+  query on the table queue behind it, hence the timeout. The job lists the tables in `rewritten`,
+  `mostly_live` (left because their live rows take at least half of their size) and
+  `not_rewritten` (still timed out), and the CLI prints one line per list.
 - **Database pool**: the job uses a small pool of its own with a statement timeout long enough for a
   day of deletes, since Prefect's default database timeout of 10 seconds would cut it short.
 - **One job at a time**: `CleanupJobs` keeps the job of this process, and a PostgreSQL advisory lock,
   held by a dedicated autocommit connection that is invalidated on release, covers every replica.
   Another replica answers `409`. The same replica returns its running job and raises its mode to a
-  stronger request's (`never` < `if_freed` < `always`). The job decides about the rewrite once its
-  deletes end, decides again when a stronger mode arrives after that, measuring the free space again,
-  and never rewrites twice. The mode change and the job's final check take the registry's
+  stronger request's (`never` < `if_freed`). The job decides about the rewrite once its deletes end,
+  decides again when `if_freed` arrives after a decision with `never`, and never rewrites twice. The mode change and the job's final check take the registry's
   start lock, so a request either reaches the job before that check or starts a new job.
 - **State in memory**: a task-manager restart loses the job (`GET` answers `404`) but not the days
   already committed; a new job continues from the oldest remaining day.
@@ -103,8 +110,14 @@ database, and can then rewrite the tables to return the disk space.
   posting again; each wait is reported when it starts and when its reason changes, and the client
   gives up 3 hours after it last saw a job, naming the last reason. A failed job comes back in
   `TaskHistoryCleanupFailedError`, so the CLI prints what it had deleted and rewritten.
-  `cli/tasks.py::flow_runs` and `cli/upgrade.py::upgrade_task_history` call it through
-  `cli/tasks.py::clean_task_history`.
+  `cli/tasks.py::flow_runs` calls it through `cli/tasks.py::flush_old_flow_runs`.
+- **Upgrade hint**: `cli/upgrade.py::_upgrade_execute` calls `cli/tasks.py::task_history_size_hint`
+  in its task manager step. The hint reads the size route through
+  `task_manager/flow_run/cleanup.py::read_task_history_size` within 10 seconds and prints the size
+  with the command; a late answer, an error answer (`404` from a task manager without the route) or
+  an answer without a size gets the command alone, so the hint never fails or holds up the upgrade.
+  The upgrade runs no cleanup: operators of existing instances with a lot of task history run the
+  command once after it, with the instance running.
 
 ## Stuck runs
 
@@ -149,8 +162,10 @@ deleted with their event.
 - Prefect's per-type vacuum deletes roughly 20 times fewer rows per second than its time-based
   vacuum. That is acceptable because the first run after an upgrade has little to delete and later
   runs delete one hour of events.
-- The event tables have no rewrite: lowering `activity_log` deletes the older events, and PostgreSQL
-  reuses their space without shrinking the files.
+- Lowering `activity_log` deletes the older events, and PostgreSQL reuses their space without
+  shrinking the files; `infrahub tasks flush flow-runs --rewrite` rewrites `events` and
+  `event_resources` when their live rows take less than half of their size, like the task history
+  tables.
 
 ## Key Locations
 
@@ -159,7 +174,7 @@ deleted with their event.
 | Settings | `backend/infrahub/config.py::TaskManagerRetentionSettings` |
 | Translation, event-type list | `backend/infrahub/prefect_server/retention.py` |
 | Startup wiring | `backend/infrahub/prefect_server/app.py::apply_infrahub_settings_to_prefect` |
-| Cleanup job and routes | `backend/infrahub/prefect_server/task_history.py` |
+| Cleanup job, size and routes | `backend/infrahub/prefect_server/task_history.py` |
 | Cleanup client | `backend/infrahub/task_manager/flow_run/cleanup.py` |
-| CLI commands | `backend/infrahub/cli/tasks.py`, `backend/infrahub/cli/upgrade.py::upgrade_task_history` |
+| CLI commands, upgrade hint | `backend/infrahub/cli/tasks.py`, `backend/infrahub/cli/upgrade.py::_upgrade_execute` |
 | Stale-run marking | `backend/infrahub/task_manager/flow_run/retention.py::FlowRunRetention` |

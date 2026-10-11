@@ -132,7 +132,7 @@ The task manager also stores events for its own use, such as the state changes o
 
 When the task manager starts, it checks the types of the events it stores for its own use. If it stores a type that Infrahub does not know, for example one added by a newer version of the task manager's engine, it logs a warning that starts with `Task manager retention: Infrahub does not list these Prefect event types` and names each type. Events of these types are kept for the activity log retention instead of `prefect_own_events`, so they take more disk space with a long activity log retention. To have the types added to the list, open an issue on the [Infrahub GitHub repository](https://github.com/opsmill/infrahub/issues) with the warning.
 
-When you lower the activity log retention, the next hourly cleanup deletes the events older than the new value. The database files do not shrink: PostgreSQL reuses the space of the deleted events for new ones.
+When you lower the activity log retention, the next hourly cleanup deletes the events older than the new value. The database files do not shrink on their own: PostgreSQL reuses the space of the deleted events for new ones. To get the disk space back, run `infrahub tasks flush flow-runs --rewrite`, which rewrites the activity log tables when most of their space is free; see [Delete old task runs and get disk space back](./tasks.mdx#delete-old-task-runs-and-get-disk-space-back).
 
 ### Plan disk space for a longer retention
 
