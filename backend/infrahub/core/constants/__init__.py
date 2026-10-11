@@ -374,6 +374,7 @@ class ValidatorConclusion(InfrahubStringEnum):
     UNKNOWN = "unknown"
     FAILURE = "failure"
     SUCCESS = "success"
+    SKIPPED = "skipped"
 
 
 class GraphQLQueryCostLevel(InfrahubStringEnum):

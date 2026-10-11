@@ -12,6 +12,7 @@ from infrahub.config import (
     ApiSettings,
     DatabaseSettings,
     GitSettings,
+    GraphQLCostSettings,
     MainSettings,
     SecurityOAuth2Provider1,
     SecurityOAuth2Provider2,
@@ -376,3 +377,11 @@ def test_fixture_loaded_providers_have_expected_groups_claim(helper: TestHelper)
     assert config.security.get_oauth2_provider("provider2").groups_claim == "groups"
     assert config.security.get_oidc_provider("provider1").groups_claim == "roles"
     assert config.security.get_oidc_provider("provider2").groups_claim == "groups"
+
+
+def test_skip_high_cost_artifact_checks_requires_the_limit_of_high_cost_renders() -> None:
+    with pytest.raises(ValueError, match=re.escape("requires 'limit_high_cost_renders' to be enabled")):
+        GraphQLCostSettings(skip_high_cost_artifact_checks=True)
+
+    settings = GraphQLCostSettings(skip_high_cost_artifact_checks=True, limit_high_cost_renders=True)
+    assert settings.high_cost_renders_at_once == 1

@@ -436,6 +436,9 @@ LDAP authentication configuration.
 | Name | Description | Type | Default |
 |------|-------------|------|---------|
 | `INFRAHUB_GRAPHQL_COST_HIGH_COST_DATABASE_ROWS` | Worst-case database rows, estimated for one run of a GraphQL query, above which the query has the high cost level | integer | 250000 |
+| `INFRAHUB_GRAPHQL_COST_LIMIT_HIGH_COST_RENDERS` | Run the artifact renders estimated above the high cost limit at most `high_cost_renders_at_once` at a time across every task worker, in the artifact checks of proposed changes and in artifact generation | boolean | False |
+| `INFRAHUB_GRAPHQL_COST_HIGH_COST_RENDERS_AT_ONCE` | Number of artifact renders estimated above the high cost limit that run at the same time, when `limit_high_cost_renders` is enabled | integer | 1 |
+| `INFRAHUB_GRAPHQL_COST_SKIP_HIGH_COST_ARTIFACT_CHECKS` | Do not render the artifacts estimated above the high cost limit in the artifact checks of a proposed change: their checks conclude as skipped, and the artifacts are generated after the merge. Requires `limit_high_cost_renders` | boolean | False |
 
 ## Logging
 

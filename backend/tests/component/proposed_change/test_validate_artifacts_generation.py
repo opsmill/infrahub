@@ -6,18 +6,21 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from infrahub_sdk import Config, InfrahubClient
 
+from infrahub import config
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
-from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, ValidatorConclusion
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
+from infrahub.graphql.cost.render_cost import LIGHT_RENDER, RenderCost
 from infrahub.message_bus.types import (
     ProposedChangeArtifactDefinition,
     ProposedChangeBranchDiff,
     ProposedChangeRepository,
 )
+from infrahub.proposed_change import tasks as proposed_change_tasks
 from infrahub.proposed_change.branch_diff import set_diff_summary_cache
 from infrahub.proposed_change.models import RequestArtifactDefinitionCheck
 from infrahub.proposed_change.tasks import validate_artifacts_generation
@@ -30,7 +33,7 @@ from tests.helpers.test_app import TestInfrahubAppWithoutLocalWorkflow
 from tests.helpers.workflow_override import override_workflow
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
+    from collections.abc import AsyncGenerator, Iterable
 
     from fast_depends import Provider
 
@@ -64,6 +67,25 @@ ARTIFACT_SCHEMA = SchemaRoot(
         )
     ]
 )
+
+
+class StubRenderCostClassifier:
+    """Classifies the renders of the targets it names as high-cost, at 900,000 worst-case database rows."""
+
+    def __init__(self, high_cost_targets: Iterable[str]) -> None:
+        self.high_cost_targets = set(high_cost_targets)
+
+    async def classify(self, variables: dict[str, Any]) -> RenderCost:
+        if variables.get("name") in self.high_cost_targets:
+            return RenderCost(high_cost=True, worst_case_database_rows=900_000)
+        return LIGHT_RENDER
+
+
+def _classify_as_high_cost(monkeypatch: pytest.MonkeyPatch, targets: Iterable[str]) -> None:
+    async def build_classifier(**_: Any) -> StubRenderCostClassifier:
+        return StubRenderCostClassifier(high_cost_targets=targets)
+
+    monkeypatch.setattr(proposed_change_tasks, "build_render_cost_classifier", build_classifier)
 
 
 class TestValidateArtifactsGeneration(TestInfrahubAppWithoutLocalWorkflow):
@@ -877,3 +899,81 @@ class TestValidateArtifactsGeneration(TestInfrahubAppWithoutLocalWorkflow):
 
         triggered_ids = {c["parameters"]["model"].target_id for c in workflow_recorder.execute_calls}
         assert triggered_ids == {artifact_dataset["dev1_id"]}
+
+    async def test_high_cost_renders_are_skipped_when_enabled(
+        self,
+        artifact_dataset: dict[str, Any],
+        memory_cache: MemoryCache,
+        workflow_recorder: WorkflowRecorder,
+        default_branch: Branch,
+        admin_account: CoreAccount,
+        client: InfrahubClient,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """dev1 and dev3 change 'name'; the render for dev1 is high-cost, so its check is skipped."""
+        monkeypatch.setattr(config.SETTINGS.graphql_cost, "limit_high_cost_renders", True)
+        monkeypatch.setattr(config.SETTINGS.graphql_cost, "skip_high_cost_artifact_checks", True)
+        _classify_as_high_cost(monkeypatch=monkeypatch, targets=["dev1"])
+        context = self._make_context(admin_account, default_branch)
+        diff_summary = [
+            make_node_diff(artifact_dataset["dev1_id"], "TestNetworkDevice", SOURCE_BRANCH, ["name"]),
+            make_node_diff(artifact_dataset["dev3_id"], "TestNetworkDevice", SOURCE_BRANCH, ["name"]),
+        ]
+        model = RequestArtifactDefinitionCheck(
+            artifact_definition=artifact_dataset["artdef_full"],
+            branch_diff=await self._make_branch_diff(artifact_dataset, uuid.uuid4()),
+            proposed_change=artifact_dataset["proposed_change_id"],
+            source_branch=SOURCE_BRANCH,
+            source_branch_sync_with_git=False,
+            destination_branch=default_branch.name,
+        )
+
+        await self._run(model=model, context=context, diff_summary=diff_summary, memory_cache=memory_cache)
+
+        triggered_ids = {c["parameters"]["model"].target_id for c in workflow_recorder.execute_calls}
+        assert triggered_ids == {artifact_dataset["dev3_id"]}
+        checks = await client.filters(kind=InfrahubKind.ARTIFACTCHECK, name__value="device-config: dev1")
+        assert len(checks) == 1
+        assert checks[0].conclusion.value == ValidatorConclusion.SKIPPED.value
+        assert "estimated at 900,000 worst-case database rows" in checks[0].message.value
+        validators = await client.filters(
+            kind=InfrahubKind.ARTIFACTVALIDATOR,
+            proposed_change__ids=[artifact_dataset["proposed_change_id"]],
+            definition__ids=[artifact_dataset["artdef_full"].definition_id],
+        )
+        assert [validator.conclusion.value for validator in validators] == [ValidatorConclusion.SKIPPED.value]
+
+    async def test_high_cost_renders_are_marked_when_limited(
+        self,
+        artifact_dataset: dict[str, Any],
+        memory_cache: MemoryCache,
+        workflow_recorder: WorkflowRecorder,
+        default_branch: Branch,
+        admin_account: CoreAccount,
+        client: InfrahubClient,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Without skipping, the high-cost render for dev1 still runs, marked to wait for a slot."""
+        monkeypatch.setattr(config.SETTINGS.graphql_cost, "limit_high_cost_renders", True)
+        _classify_as_high_cost(monkeypatch=monkeypatch, targets=["dev1"])
+        context = self._make_context(admin_account, default_branch)
+        diff_summary = [
+            make_node_diff(artifact_dataset["dev1_id"], "TestNetworkDevice", SOURCE_BRANCH, ["name"]),
+            make_node_diff(artifact_dataset["dev3_id"], "TestNetworkDevice", SOURCE_BRANCH, ["name"]),
+        ]
+        model = RequestArtifactDefinitionCheck(
+            artifact_definition=artifact_dataset["artdef_full"],
+            branch_diff=await self._make_branch_diff(artifact_dataset, uuid.uuid4()),
+            proposed_change=artifact_dataset["proposed_change_id"],
+            source_branch=SOURCE_BRANCH,
+            source_branch_sync_with_git=False,
+            destination_branch=default_branch.name,
+        )
+
+        await self._run(model=model, context=context, diff_summary=diff_summary, memory_cache=memory_cache)
+
+        high_cost_by_target = {
+            c["parameters"]["model"].target_id: c["parameters"]["model"].high_cost
+            for c in workflow_recorder.execute_calls
+        }
+        assert high_cost_by_target == {artifact_dataset["dev1_id"]: True, artifact_dataset["dev3_id"]: False}

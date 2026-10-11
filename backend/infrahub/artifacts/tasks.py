@@ -4,6 +4,7 @@ from infrahub.artifacts.models import CheckArtifactCreate
 from infrahub.core.constants import InfrahubKind, ValidatorConclusion
 from infrahub.core.timestamp import Timestamp
 from infrahub.git.repository import get_initialized_repo
+from infrahub.graphql.cost.render_slots import high_cost_render_slot
 from infrahub.tasks.artifact import define_artifact
 from infrahub.workers.dependencies import get_client
 from infrahub.workflows.utils import add_tags
@@ -38,7 +39,8 @@ async def create(model: CheckArtifactCreate) -> ValidatorConclusion:
     check_message = "Failed to render artifact"
 
     try:
-        result = await repo.render_artifact(artifact=artifact, artifact_created=artifact_created, message=model)
+        async with high_cost_render_slot(high_cost=model.high_cost):
+            result = await repo.render_artifact(artifact=artifact, artifact_created=artifact_created, message=model)
         artifact_result["changed"] = result.changed
         artifact_result["checksum"] = result.checksum
         artifact_result["artifact_id"] = result.artifact_id

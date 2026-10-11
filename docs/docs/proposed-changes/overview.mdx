@@ -65,6 +65,8 @@ Infrahub will automatically run Transformations and generate artifacts as part o
 
 Learn more about [Transformations](../transformations/overview) and [Artifacts](../artifacts/overview).
 
+An administrator can configure Infrahub to skip the checks of artifacts whose render is estimated above a cost limit. Such a check concludes as `skipped`, which does not block the merge, and Infrahub generates the artifact after the merge. Learn more in [Limit the renders of high-cost queries](../development-resources/graphql/query-cost.mdx#limit-the-renders-of-high-cost-queries).
+
 ### Understanding artifact regeneration
 
 When a proposed change includes commits to a linked Git repository, Infrahub regenerates only the artifacts whose Transformation actually depends on a changed file. Each Transformation's dependency closure - the templates it includes for a Jinja2 Transformation, or its own source file for a Python Transformation - is computed when the repository is imported and stored on the Transformation. A file change regenerates a definition's artifacts only when the changed file is in that definition's closure. A change to a GraphQL query the definition uses, or to the artifact definition itself, also triggers regeneration.

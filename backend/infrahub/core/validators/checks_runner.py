@@ -20,7 +20,8 @@ async def run_checks_and_update_validator(
     """Execute a list of checks coroutines, and set validator fields accordingly.
 
     Tasks are retrieved by completion order so as soon as we detect a failing check,
-    we set validator conclusion to failure.
+    we set validator conclusion to failure. Without a failure, a validator with a skipped check
+    concludes as skipped.
     """
     event_context = context.to_event_context()
 
@@ -31,9 +32,11 @@ async def run_checks_and_update_validator(
     await validator.save()
 
     failed_early = False
+    skipped = False
 
     for earliest_task in asyncio.as_completed(checks):
         result = await earliest_task
+        skipped = skipped or result == ValidatorConclusion.SKIPPED
         if validator.conclusion.value != ValidatorConclusion.FAILURE.value and result == ValidatorConclusion.FAILURE:
             validator.conclusion.value = ValidatorConclusion.FAILURE.value
             failed_early = True
@@ -49,12 +52,12 @@ async def run_checks_and_update_validator(
     validator.state.value = ValidatorState.COMPLETED.value
     validator.completed_at.value = Timestamp().to_string()
     if validator.conclusion.value != ValidatorConclusion.FAILURE.value:
-        validator.conclusion.value = ValidatorConclusion.SUCCESS.value
+        validator.conclusion.value = ValidatorConclusion.SKIPPED.value if skipped else ValidatorConclusion.SUCCESS.value
 
     await validator.save()
 
     if not failed_early:
-        if validator.conclusion.value == ValidatorConclusion.SUCCESS.value:
+        if validator.conclusion.value in {ValidatorConclusion.SUCCESS.value, ValidatorConclusion.SKIPPED.value}:
             await send_passed_validator(
                 event_service=event_service,
                 validator=validator,
