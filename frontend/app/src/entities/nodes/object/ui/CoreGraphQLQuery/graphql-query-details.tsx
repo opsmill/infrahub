@@ -3,6 +3,7 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 
 import type { NodeAttributeWithMetadata } from "@/entities/nodes/object/domain/model/node";
 import { GRAPHQL_QUERY_OBJECT } from "@/entities/nodes/object/domain/model/object-kinds";
+import { GraphqlQueryCostWarning } from "@/entities/nodes/object/ui/CoreGraphQLQuery/graphql-query-cost-warning";
 import { GraphQLQueryDetailsPageSkeleton } from "@/entities/nodes/object/ui/CoreGraphQLQuery/graphql-query-details-page-skeleton";
 import { GraphqlQueryViewerCard } from "@/entities/nodes/object/ui/CoreGraphQLQuery/graphql-query-viewer-card";
 import { ObjectActivitiesCard } from "@/entities/nodes/object/ui/object-details/object-activities-card";
@@ -41,6 +42,12 @@ export function GraphqlQueryDetails({
 
   return (
     <section className="grid grid-cols-1 items-start gap-2 p-2 lg:grid-cols-2">
+      <GraphqlQueryCostWarning
+        costLevel={getAttributeValue(graphqlQuery.cost_level)}
+        costEstimate={getAttributeValue(graphqlQuery.cost_estimate)}
+        className="lg:col-span-2"
+      />
+
       <GraphqlQueryViewerCard
         query={(graphqlQuery.query as NodeAttributeWithMetadata).value as string}
       />
@@ -59,4 +66,8 @@ export function GraphqlQueryDetails({
       </Col>
     </section>
   );
+}
+
+function getAttributeValue(field: unknown): unknown {
+  return typeof field === "object" && field !== null && "value" in field ? field.value : undefined;
 }
