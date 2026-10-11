@@ -4,6 +4,8 @@ dev/specs/infp-507-task-history-retention/opsmill-implement-report.md
   s_cfd0841cea4d76::t_5413dec8840dab 55,199
 dev/specs/infp-507-task-history-retention/tasks.md
   s_cfd0841cea4d76::t_5413dec8840dab 110,164,175,188
+dev/specs/infp-507-task-history-retention/spec.md
+  s_cfd0841cea4d76::t_5e5e6fdf35e930 243
 ---
 {
   "schema_version": "authorship/3.0.0",
