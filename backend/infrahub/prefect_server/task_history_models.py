@@ -70,3 +70,7 @@ class TaskHistorySize(BaseModel):
     size: int | None = Field(
         description="Disk space in bytes of the task history tables with their indexes, or None on SQLite"
     )
+    old_runs: int = Field(
+        description="Finished top-level runs older than the task history retention, counted up to a limit"
+    )
+    old_runs_limit_reached: bool = Field(description="Whether more runs than `old_runs` are older than the retention")
