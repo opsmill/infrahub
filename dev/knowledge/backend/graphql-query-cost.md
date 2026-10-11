@@ -214,9 +214,10 @@ the first) change how artifact renders run. All the logic runs in the task worke
   render with the target's variables (counted first step) and compares the worst-case rows with
   `high_cost_database_rows`. A render without an estimate counts as high-cost.
 - The flows that start renders (`validate_artifacts_generation`, `generate_request_artifact_definition`)
-  set `high_cost` on the render model. They start the light renders as before and the high-cost ones in
-  `high_cost_renders_at_once` sequences, after the light ones: a render waiting for a slot holds a task
-  worker slot, so starting them all at once would hold the workers that light renders need.
+  set `high_cost` on the render model. They start the light renders as before and run the high-cost ones
+  in `high_cost_renders_at_once` sequences: the validator runs the sequences next to the light checks, and
+  the generation flow runs them after it submitted the light renders. A render waiting for a slot holds a
+  task worker slot, so starting them all at once would hold the workers that light renders need.
 - The render flows (`git-repository-check-artifact-create`, `artifact-generate`) hold a slot of
   `RenderSlots` (`infrahub.graphql.cost.render_slots`) around the query and the Transformation when
   `high_cost` is set. A slot is a cache key set with `not_exists` and a one-hour expiry, so it works with

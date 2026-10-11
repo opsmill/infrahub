@@ -285,7 +285,7 @@ With `INFRAHUB_GRAPHQL_COST_LIMIT_HIGH_COST_RENDERS` set to `true`:
 
 - At most `INFRAHUB_GRAPHQL_COST_HIGH_COST_RENDERS_AT_ONCE` high-cost renders run at the same time, 1 by default, across every task worker. This applies to the artifact checks of proposed changes and to artifact generation: after a merge, after a change to an artifact definition, and when you regenerate artifacts.
 - Each high-cost render holds a slot in the cache while it runs the query and the Transformation. When a task worker stops during a render, its slot is free again after one hour. The logs of the render's task show when it took the slot, how long it waited for it, and when it released it.
-- Infrahub starts the other renders first, then the high-cost renders one after the other, in as many sequences as slots, so that renders waiting for a slot do not take the task workers that the other renders need.
+- Infrahub runs the high-cost renders one after the other, in as many sequences as slots, while the other renders start at once as before. Renders that wait for a slot then do not take the task workers that the other renders need.
 
 With `INFRAHUB_GRAPHQL_COST_SKIP_HIGH_COST_ARTIFACT_CHECKS` also set to `true`, the artifact checks of a proposed change do not render the high-cost artifacts:
 
