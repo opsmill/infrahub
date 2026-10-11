@@ -5,7 +5,7 @@
 - **Feature**: task history and activity log retention, INFP-507, target release 1.13. Source of truth: the [Notion design doc](https://app.notion.com/p/opsmill/Task-history-and-Activity-log-retention-3dc228b830258012ba28dc3a23eece65).
 - **Spec directory**: `dev/specs/infp-507-task-history-retention/`
 - **Base commit**: `origin/develop` at `1920cd11d`. The spec commits were cut from `stable` and rebased onto `develop` before implementation, because `dev/guidelines/git-workflow.md` sends features to `develop`.
-- **Head commit**: `eecd212d1`, the tip of `retention-docs-infp-507`, the top of the stack, before the commit that adds this report.
+- **Head commit**: `86d547229`, the tip of `retention-docs-infp-507`, the top of the stack, before the commit that adds this report.
 - **Wall-clock time**: about 9.5 hours on 2026-10-04, from about 11:55 UTC (first chunk) to about 21:30 UTC (this report).
 - **Status**: DONE. Every chunk completed, and every test added or changed has local-pass evidence (§4). The quickstart run (T059) found a defect in the upgrade's rewrite, which is fixed on PR 2 and passed a second Compose run. The tasks still open run in other repositories or on a release candidate (§3).
 - **Delivery**: six draft pull requests in GitHub stack #10873, based on `develop`. Merge them bottom-up:
@@ -25,27 +25,27 @@ The review fixes rebased the stack after the chunks ran, and the quickstart fix 
 
 | # | Chunk | Tasks | Outcome | Commits now on the branch | Flagged upward |
 |---|---|---|---|---|---|
-| 1 | Foundational (PR 1) | T003-T007, T047 (pulled forward from US4 as the test for T007) | 6 ✅ | `62db5e844`, `d4bbf506f`, `289e10d6a` | Prefect reads its settings once at import, so the task manager refreshes Prefect's settings context after applying the values. The stock Prefect test container now uses a factory without the configuration step. |
-| 1b | Event types and review fixes (PR 1) | T002, T041, T042, T043 (pulled forward from US2 and US3); legacy aliases, startup log, 36,500-day maximum, changelog | 4 ✅ | `56439d938`, `14c619dac`, `4242f7fe5`, `8e65b4170` | 103 Prefect event types, read from the Prefect 3.8.6 source. 5 state names set by Prefect's engine are not covered by the state unit test. |
-| 2 | Cleanup job and routes (PR 2) | T001, T008, T009, T010, T014, T015, T016 | 7 ✅ | `52a5065da`, `8d8f80a6e` | Postgres 14 and 18 probe (not committed): lock `409`, concurrency with Prefect's vacuum, and a skipped table on lock timeout. |
-| 3 | Client, CLI, upgrade (PR 2) | T011, T012, T013, T017, T018, T019, T020; rewrite modes | 7 ✅ | `18ab30664`, `9b25fab11` | Rewrite modes `never` / `if_freed` / `always` (see §6). |
-| 3b-3d | Review rounds on PR 2 | review fixes | ✅ | `0494764e1` … `dbd1841a0` | A running job's rewrite mode is raised in the task manager; the job lifecycle lives in one place. |
-| 4 | Activities backend (PR 3) | T025 (cherry-pick of #10379), T026-T028, T030-T033 | 8 ✅ | `97d6187c3`, `f482680f3` (#10379), `cf14102a8`, `8fb83cdf3` | The "Primary Node" filter keeps label matching unless the request lists event types (see §6). `include_total` keeps #10379's name. |
-| 5 | Activities frontend and E2E (PR 3) | T029, T034, T035, T036 | 4 ✅ | `2af3c61e8`, `9a89e8b17` | No tie offset, because Prefect orders events by time only. The proposed-change timeline pages with `since`. |
-| 6 | Event-type guard (PR 4) | T040, T044, T045 | 3 ✅ | `619f16cc0`, `8b2516a3c` | T044 needed no production code. T045's sizing guidance went to the docs (T053). |
-| 7 | Background services (PR 5) | T048, T049 | 2 ✅ | `ce209b3f2`, `f3de0af95`, `744177de0` | The background services now log at `INFRAHUB_LOG_LEVEL` (INFO), not Prefect's WARNING. |
-| 8 | Documentation (PR 6) | T051-T056 | 6 ✅ | `fb0ef43a2`, `b90ed68d9`, `58dcce5ec`, `e868761ee` | Findings are listed in §7. |
-| R | Stack-wide review fixes | see §5 | ✅ | PR 1 `6d0fa03e0`, `35b8e561c`; PR 2 `96fdf9c22`-`4f05013fd`; PR 3 `2c564cd0c`-`cd1c43fa4`; PR 6 `17cc72ac2` | One partial item (§5). |
-| Q | Quickstart run and the fix it needed (PR 2, PR 6) | T059 | ✅ after a fix | PR 2 `389fb275b`, `4779e7130`; PR 6 `d38615cb1`, `eecd212d1` | The documented Compose upgrade never rewrote the tables. The `if_freed` rule now measures free space (§6 item 11). |
+| 1 | Foundational (PR 1) | T003-T007, T047 (pulled forward from US4 as the test for T007) | 6 ✅ | `aa5f4f0f5`, `1738237d2`, `eeb259dd6` | Prefect reads its settings once at import, so the task manager refreshes Prefect's settings context after applying the values. The stock Prefect test container now uses a factory without the configuration step. |
+| 1b | Event types and review fixes (PR 1) | T002, T041, T042, T043 (pulled forward from US2 and US3); legacy aliases, startup log, 36,500-day maximum, changelog | 4 ✅ | `1b41198b3`, `e4d08d8c0`, `a1dcd7765`, `4bcffefac` | 103 Prefect event types, read from the Prefect 3.8.6 source. 5 state names set by Prefect's engine are not covered by the state unit test. |
+| 2 | Cleanup job and routes (PR 2) | T001, T008, T009, T010, T014, T015, T016 | 7 ✅ | `30dc42721`, `67bcd49a1` | Postgres 14 and 18 probe (not committed): lock `409`, concurrency with Prefect's vacuum, and a skipped table on lock timeout. |
+| 3 | Client, CLI, upgrade (PR 2) | T011, T012, T013, T017, T018, T019, T020; rewrite modes | 7 ✅ | `328c8e488`, `b4db66880` | Rewrite modes `never` / `if_freed` / `always` (see §6). |
+| 3b-3d | Review rounds on PR 2 | review fixes | ✅ | `d29f7b13a` … `42230450d` | A running job's rewrite mode is raised in the task manager; the job lifecycle lives in one place. |
+| 4 | Activities backend (PR 3) | T025 (cherry-pick of #10379), T026-T028, T030-T033 | 8 ✅ | `198ec1888`, `d5786abfe` (#10379), `96c33b6aa`, `4927686c5` | The "Primary Node" filter keeps label matching unless the request lists event types (see §6). `include_total` keeps #10379's name. |
+| 5 | Activities frontend and E2E (PR 3) | T029, T034, T035, T036 | 4 ✅ | `843163674`, `99febc0b6` | No tie offset, because Prefect orders events by time only. The proposed-change timeline pages with `since`. |
+| 6 | Event-type guard (PR 4) | T040, T044, T045 | 3 ✅ | `52a178447`, `9ee4058d5` | T044 needed no production code. T045's sizing guidance went to the docs (T053). |
+| 7 | Background services (PR 5) | T048, T049 | 2 ✅ | `a2ce3ea0d`, `6f1de4fef`, `0be0f2f8e` | The background services now log at `INFRAHUB_LOG_LEVEL` (INFO), not Prefect's WARNING. |
+| 8 | Documentation (PR 6) | T051-T056 | 6 ✅ | `9df44f927`, `c3bc3f2b8`, `969ca54fe`, `886d2c151` | Findings are listed in §7. |
+| R | Stack-wide review fixes | see §5 | ✅ | PR 1 `33459ac28`, `b9db2c4ca`; PR 2 `21b4d3903`-`36db95c5c`; PR 3 `e75b76b80`-`daa5f0c91`; PR 6 `37cc3e2b4` | One partial item (§5). |
+| Q | Quickstart run and the fix it needed (PR 2, PR 6) | T059 | ✅ after a fix | PR 2 `abf341320`, `e65cadca0`; PR 6 `e1b86676d`, `86d547229` | The documented Compose upgrade never rewrote the tables. The `if_freed` rule now measures free space (§6 item 11). |
 
 Orchestrator commits outside the chunks:
 
-- `cd22dd835`: retention variables on the Compose `task-manager` service.
-- `bcdcd02a8`: after review on PR 3, the event query reads branch IDs from the database instead of the global registry, which new code avoids (`dev/knowledge/backend/query-pattern.md`). A branch whose deletion has started still resolves; a new component test covers it.
-- `637df52b1`: the event query reads the IDs of all the branch names in its filter with one database query, `BranchGetIdsByNameQuery`, instead of one query per name.
-- `e8e1e626e`: the telemetry component test compares the window with its count before seeding. CI failed it once because the event filter equivalence test, on the same worker, stores a branch-deleted event one day old, which falls inside the previous UTC day at some times of day.
-- `88b7cde23`, `15a64425b`: at startup, after Prefect's own startup, the task manager logs a warning naming every stored `prefect.*` event type missing from the list (T060).
-- Spec, docs and changelog corrections: `84b1848f0`, `48fcc60a7`, `dd707e1b4`, `d9758ab3c`, `ff6a8ce62`, `c2237d75d`, `bcd0d4b46`, `94df5e8e8`, `d38615cb1`, `eecd212d1`.
+- `0db4febc9`: retention variables on the Compose `task-manager` service.
+- `0c59d611f`: after review on PR 3, the event query reads branch IDs from the database instead of the global registry, which new code avoids (`dev/knowledge/backend/query-pattern.md`). A branch whose deletion has started still resolves; a new component test covers it.
+- `5a88fcdc7`: the event query reads the IDs of all the branch names in its filter with one database query, `BranchGetIdsByNameQuery`, instead of one query per name.
+- `4d9553ebb`: the telemetry component test compares the window with its count before seeding. CI failed it once because the event filter equivalence test, on the same worker, stores a branch-deleted event one day old, which falls inside the previous UTC day at some times of day.
+- `d6a914ff6`, `c15a7b698`: at startup, after Prefect's own startup, the task manager logs a warning naming every stored `prefect.*` event type missing from the list (T060).
+- Spec, docs and changelog corrections: `bf6152347`, `9ca61347a`, `8e02c16cc`, `6d78b5909`, `bc9727d9e`, `d566587a0`, `58e618a43`, `458ed75bd`, `e1b86676d`, `86d547229`.
 
 ## 3. Tasks not completed
 
@@ -54,7 +54,7 @@ Orchestrator commits outside the chunks:
 | T021, T022, T023, T024 | Release evidence in opsmill/infrahub-private-tests. Per `plan.md`, these run in a separate session in that repository. |
 | T037, T038 | Same: private performance tests. T037 includes switching PR #33's override to `INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG`. |
 | T046 | Same: activity log retention test on a restored backup. |
-| T050 | The opsmill/infrahub-helm PR is in another repository. It must ship in the same release; see §7. |
+| T050 | Opened as a draft, [opsmill/infrahub-helm#100](https://github.com/opsmill/infrahub-helm/pull/100), and ticked in `tasks.md`; it merges once the chart's images move to Infrahub 1.13. See §7. |
 | T057 | The private-tests run against the release candidate. It depends on the tasks above and on a release candidate. |
 
 T058 (`/pre-ci`) ran before each push: PR 1, PR 2, PR 3, PRs 4 and 5 together, and PR 6, then once more on the top of the stack after the quickstart fix. Every failure it reported came from the environment (see §4).
@@ -68,6 +68,10 @@ T059 (quickstart on a local Compose stack, image built from the top of the stack
 - Part 2: steps 1 and 2 are covered by the equivalence component test and the Activities E2E test in §4. Step 3 passed: the Postgres statement log shows the count query only for a GraphQL query that selects `count`.
 - Part 3: step 1 ran with own events of 30 days, so it showed `P365D` and `P30D for 103 event types` rather than the 7-day default the step expects; the overrides follow `prefect_own_events`, and the unit tests cover the default. Step 2 passed: the warning and `P7D`. The event-type tests of step 3 are in §4.
 - Part 4: `docs.validate` passed in `/pre-ci`.
+- 11 Oct, after the design changes (T061, T062): Part 1 steps 5 and 6 ran again on a new dev stack from the top of the stack, with 30,000 runs that ended 35 days ago.
+  - Step 5 as the Compose guide gives it (`down`, then `run --rm server infrahub upgrade`): no cleanup step, and `Task history takes 26.6 MB, with no runs older than the retention. To get the space back, run: infrahub tasks flush flow-runs --rewrite`. The task manager's own cleanup had deleted the 30,000 runs when it started, before step 5.
+  - Step 6 with the instance running: `Deleted 0 runs`, `29.9 MB before, 4.9 MB after`, `Rewrote flow_run, flow_run_state, task_run, artifact`, and the other four tables left as mostly live; `flow_run` went from 24 MB to 816 kB.
+  - The same steps inside the running instance, as on Helm, after 30,000 more old runs: `Task history takes 27.3 MB, with 30,000 runs older than the retention.`, then `Deleted 30000 runs`, `31.4 MB before, 6.5 MB after`, `Rewrote flow_run, artifact`.
 - The results are in PR 6's description. The constitution deviation is in PR 2's description.
 
 ## 4. Local-pass evidence
@@ -92,10 +96,17 @@ The rows group tests by file and run. Each run's pass line covers every test in 
 | Scale-out stack check of `infrahub tasks background-services` | integration-docker | `INFRAHUB_TESTING_TASKMGR_SCALEOUT=1 … uv run --no-sync pytest backend/tests/integration_docker/test_prefect_event_types.py` | 2026-10-04T18:16:36Z-18:18:21Z | `local-infp507` built from PR 5, `INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY=12d` | `2 passed … in 99.69s`; container log `Task manager retention: PREFECT_SERVER_SERVICES_DB_VACUUM_RETENTION_PERIOD=P12D` |
 | Final run on the top of the stack: `backend/tests/unit/cli`, `config`, `prefect_server`, `task_manager` | unit | `uv run --no-sync pytest backend/tests/unit/cli backend/tests/unit/config backend/tests/unit/prefect_server backend/tests/unit/task_manager -q -n 4` | 2026-10-04T20:03:29Z | n/a | `498 passed, 80 warnings in 7.84s` |
 | Final run on the top of the stack: `backend/tests/component/task_manager` | component | `uv run --no-sync pytest backend/tests/component/task_manager -q -n 4` | 2026-10-04T20:04:24Z | SQLite Prefect test server | `65 passed, 80 warnings in 18.16s` |
-| After the free-space fix: `backend/tests/unit/task_manager/flow_run/test_cleanup.py`, `backend/tests/unit/cli/test_upgrade_task_history.py`, `backend/tests/unit/cli/test_tasks_flush_flow_runs.py`, `backend/tests/component/task_manager/test_task_history_cleanup.py`, `backend/tests/component/task_manager/test_task_history_routes.py` | unit + component | `uv run --no-sync pytest <the five files> -p no:randomly -v` | 2026-10-04T20:57:58Z | PR 2 at `4779e7130`, SQLite Prefect test server | `59 passed, 16 warnings in 11.93s` |
+| After the free-space fix: `backend/tests/unit/task_manager/flow_run/test_cleanup.py`, `backend/tests/unit/cli/test_upgrade_task_history.py`, `backend/tests/unit/cli/test_tasks_flush_flow_runs.py`, `backend/tests/component/task_manager/test_task_history_cleanup.py`, `backend/tests/component/task_manager/test_task_history_routes.py` | unit + component | `uv run --no-sync pytest <the five files> -p no:randomly -v` | 2026-10-04T20:57:58Z | PR 2 at `e65cadca0`, SQLite Prefect test server | `59 passed, 16 warnings in 11.93s` |
 | `backend/tests/integration_docker/test_task_history_cleanup.py` (5 tests, including `test_a_cleanup_rewrites_the_tables_freed_by_runs_deleted_before_it_started` and `test_a_cleanup_leaves_tables_of_mostly_live_runs_as_they_are`) | integration-docker | `INFRAHUB_TESTING_IMAGE_VER=local-infp507-fix INFRAHUB_TESTING_DOCKER_PULL=false uv run --no-sync pytest backend/tests/integration_docker/test_task_history_cleanup.py -n 0 -p no:randomly -v` | 2026-10-04T20:51:36Z, and in a different order at 20:53:26Z | image `local-infp507-fix` built from PR 2 | `5 passed, 16 warnings in 67.49s` / `in 67.58s` |
-| The same file on the top of the stack | integration-docker | the same, with `INFRAHUB_TESTING_IMAGE_VER=local-infp507-validate2` | 2026-10-04T21:14:56Z | image `local-infp507-validate2` (`sha256:40f5bbbdfcba…`) built from `d38615cb1` | `5 passed, 16 warnings in 81.55s (0:01:21)` |
+| The same file on the top of the stack | integration-docker | the same, with `INFRAHUB_TESTING_IMAGE_VER=local-infp507-validate2` | 2026-10-04T21:14:56Z | image `local-infp507-validate2` (`sha256:40f5bbbdfcba…`) built from `e1b86676d` | `5 passed, 16 warnings in 81.55s (0:01:21)` |
 | Quickstart Part 1 step 5: `docker compose down`, then `docker compose run --rm server infrahub upgrade`, with 120,305 old runs | Compose (T059) | dev stack, project `infp507grillingspec087164` | 2026-10-04T21:08:57Z (failed before the fix at 20:25:16Z) | image `local-infp507-validate2` | `Task history tables: 175.0 MB before, 1.6 MB after` / `Task history tables rewritten` (before the fix: `166.5 MB before, 166.5 MB after` / `not rewritten`) |
+| 11 Oct, after T061: `backend/tests/integration_docker/test_task_history_cleanup.py` (5 tests: size route, flush with rewrite reporting every table, freed and mostly live tables with sampling, advisory lock, locked table) | integration-docker | `INFRAHUB_TESTING_IMAGE_VER=local-infp507-rewrite INFRAHUB_TESTING_DOCKER_PULL=false uv run --no-sync pytest backend/tests/integration_docker/test_task_history_cleanup.py -n 0 -p no:randomly -v` | 2026-10-11T19:40:54Z | image `local-infp507-rewrite` built from PR 2 with T061 | `5 passed, 16 warnings in 72.31s (0:01:12)` |
+| 11 Oct, after T062: the same file | integration-docker | the same, with `INFRAHUB_TESTING_IMAGE_VER=local-infp507-oldruns` | 2026-10-11T20:18:28Z | image `local-infp507-oldruns` (`sha256:58531f3dd96ea…`) built from PR 2 with T062 | `5 passed, 16 warnings in 79.67s (0:01:19)` |
+| 11 Oct, top of the stack: `backend/tests/unit/cli`, `prefect_server`, `task_manager` (includes `test_upgrade_task_history.py`, `test_tasks_flush_flow_runs.py`, `test_cleanup.py`) | unit | `uv run --no-sync pytest backend/tests/unit/cli backend/tests/unit/task_manager backend/tests/unit/prefect_server -q -n 4` | 2026-10-11T20:26:11Z | n/a | `191 passed, 80 warnings in 9.84s` |
+| 11 Oct, top of the stack: `backend/tests/component/task_manager` (includes `test_task_history_cleanup.py` and `test_task_history_routes.py`) | component | `uv run --no-sync pytest backend/tests/component/task_manager -q -n 4` | 2026-10-11T20:26:37Z | SQLite Prefect test server | `69 passed, 80 warnings in 20.31s` |
+| 11 Oct quickstart Part 1 step 5, Compose path: `down`, then `run --rm server infrahub upgrade`, after inserting 30,000 runs that ended 35 days ago | Compose | dev stack, project `infp507grillingspec087164`, image `local` with the worktree mounted at the top of the stack | 2026-10-11T20:23:57Z | the task manager's own cleanup deleted the old runs at its start | `Task history takes 26.6 MB, with no runs older than the retention. To get the space back, run: infrahub tasks flush flow-runs --rewrite` |
+| 11 Oct quickstart Part 1 step 6, instance running | Compose | the same stack, `exec server infrahub tasks flush flow-runs --rewrite` | 2026-10-11T20:24:44Z | n/a | `Task history and activity log tables: 29.9 MB before, 4.9 MB after` / `Rewrote flow_run, flow_run_state, task_run, artifact` |
+| 11 Oct steps 5 and 6 inside the running instance, after 30,000 more old runs | Compose | the same stack, `exec server infrahub upgrade`, then `exec server infrahub tasks flush flow-runs --rewrite` | 2026-10-11T20:25:11Z and 20:25:17Z | n/a | `Task history takes 27.3 MB, with 30,000 runs older than the retention.` / `Deleted 30000 runs` / `31.4 MB before, 6.5 MB after` |
 | Final run on the top of the stack: backend unit suite | unit | `uv run --no-sync invoke backend.test-unit` | 2026-10-04T21:05:55Z | n/a | `3092 passed, 18 warnings, 6 errors in 89.21s`; the 6 errors are environment failures, see below |
 | Final run on the top of the stack: `frontend/app/src/entities/events/ui/queries/get-events.query.test.ts` | unit (Vitest) | `vitest run src/entities/events/ui/queries/get-events.query.test.ts` | 2026-10-04T21:04:43Z | chromium browser mode | `Tests  6 passed (6)` |
 
@@ -191,15 +202,16 @@ cubic findings on PR 1 and PR 2 (16 in total) were all fixed or recorded as know
     - Above 10,000 pages, a table's live size is estimated from `TABLESAMPLE SYSTEM`, so a mostly live event table is not read whole. On Fatih's 1.10 large backup the estimate was within 2 % of a full read, in 0.2 to 0.7 s against 4 to 6 s.
     - Implemented from the design doc's suggestions: the command names each table it skipped and why, and the hint counts the runs older than the retention, up to 100,000 (T062).
     - The docs describe the cleanup step after the upgrade, the same for Compose and Helm, with a tip about short pauses on very large instances.
+    - Commits: PR 2 `0ad1b3f0d` (T061), `b5f0abe23` (hint wording), `af421c5dc` (T062); PR 6 `d2d342a1b`, `f8ad263ef`, `405c47075`.
 
 ## 7. Suggested next steps
 
 1. **Maintainer approval of the constitution deviation**: the cleanup route deletes data without authentication (Principle VI). It is recorded in PR 2's body.
 2. **Tech owner decision on the "Primary Node" filter** (§6 item 6).
-3. **Helm chart PR (T050), in the same release**:
-   - the background-services deployment runs `infrahub tasks background-services`;
-   - the upgrade hook needs no extra option;
-   - the retention values go in `values.yaml`.
+3. **Helm chart PR (T050), in the same release**: [opsmill/infrahub-helm#100](https://github.com/opsmill/infrahub-helm/pull/100), a draft.
+   - The Enterprise presets start the separate background services pod with `infrahub tasks background-services`, and the retention variables go in `prefect-server.global.prefect.env`; the upgrade hook is unchanged.
+   - Merge it only once the chart's images move to Infrahub 1.13: earlier images do not have the command, so the presets' background services pod would fail to start.
+   - Open in that PR: a version check for the presets, and a command for a separate background services pod without a preset.
 
    The Enterprise sizing presets run the background services in their own pod, so the hourly deletion does not run there until this chart PR ships.
 4. **Private-tests evidence** (T021-T024, T037, T038, T046, then T057 on the release candidate): run it in a separate session in opsmill/infrahub-private-tests, and attach the results to the PRs and to INFP-507.
