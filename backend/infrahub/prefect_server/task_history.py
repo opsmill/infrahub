@@ -20,7 +20,7 @@ from prefect.settings import get_current_settings
 from sqlalchemy.dialects.postgresql import REGCLASS
 from sqlalchemy.exc import DBAPIError
 
-from .task_history_models import CleanupJob, CleanupJobState, CleanupRequest, CleanupRewrite
+from .task_history_models import CleanupJob, CleanupJobState, CleanupRequest, CleanupRewrite, TaskHistorySize
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncConnection
@@ -28,6 +28,9 @@ if TYPE_CHECKING:
 log = get_logger(__name__)
 
 _TASK_HISTORY_TABLES = ("flow_run", "flow_run_state", "task_run", "task_run_state", "log", "artifact")
+_ACTIVITY_LOG_TABLES = ("events", "event_resources")
+# Above this many pages a table's live size is estimated from a sample of its pages, so a mostly live table is not read whole.
+_EXACT_MEASURE_PAGES = 10_000
 _REWRITE_LOCK_TIMEOUT = timedelta(seconds=60)
 _REWRITE_RETRIES = 3
 _CLEANUP_LOCK_KEY = int.from_bytes(b"taskhist", byteorder="big")
@@ -149,60 +152,87 @@ class TableSpace:
 
 
 class TableRewriter(Protocol):
-    """Rewrites the task history tables to return the space of deleted rows to the disk."""
+    """Rewrites tables to return the space of deleted rows to the disk."""
+
+    @property
+    def tables(self) -> tuple[str, ...]:
+        """The tables it may rewrite, in the order it rewrites them."""
+        ...
 
     async def total_size(self) -> int: ...
 
-    async def flow_run_space(self) -> TableSpace:
-        """Measure the disk space of the table of runs, and the part of it that its live rows hold."""
+    async def space(self, table: str) -> TableSpace:
+        """Measure the disk space of the table, and the part of it that its live rows hold."""
         ...
 
-    async def rewrite(self) -> list[str]:
-        """Rewrite every table, returning those that stayed locked by other sessions."""
+    async def rewrite(self, tables: list[str]) -> list[str]:
+        """Rewrite the tables, returning those that stayed locked by other sessions."""
         ...
+
+
+async def total_size(db: PrefectDBInterface, tables: tuple[str, ...]) -> int:
+    """Return the disk space in bytes of the tables with their indexes."""
+    async with db.session_context() as session:
+        sizes = (
+            await session.execute(
+                sa.select(*(sa.func.pg_total_relation_size(sa.cast(sa.literal(table), REGCLASS)) for table in tables))
+            )
+        ).one()
+    return sum(sizes)
 
 
 class PostgresTableRewriter:
     """Rewrites tables with VACUUM FULL, giving up on a table that stays locked."""
 
-    def __init__(self, db: PrefectDBInterface, tables: tuple[str, ...], lock_timeout: timedelta, retries: int) -> None:
+    def __init__(
+        self,
+        db: PrefectDBInterface,
+        tables: tuple[str, ...],
+        exact_measure_pages: int,
+        lock_timeout: timedelta,
+        retries: int,
+    ) -> None:
         self._db = db
         self._tables = tables
+        self._exact_measure_pages = exact_measure_pages
         self._lock_timeout = lock_timeout
         self._retries = retries
 
-    async def total_size(self) -> int:
-        async with self._db.session_context() as session:
-            sizes = (
-                await session.execute(
-                    sa.select(
-                        *(
-                            sa.func.pg_total_relation_size(sa.cast(sa.literal(table), REGCLASS))
-                            for table in self._tables
-                        )
-                    )
-                )
-            ).one()
-        return sum(sizes)
+    @property
+    def tables(self) -> tuple[str, ...]:
+        return self._tables
 
-    async def flow_run_space(self) -> TableSpace:
-        # The other task history tables lose their rows with the runs they belong to, so they free space alike.
-        flow_run = self._db.FlowRun.__table__
-        relation = sa.cast(sa.literal(self._db.FlowRun.__tablename__), REGCLASS)
+    async def total_size(self) -> int:
+        return await total_size(db=self._db, tables=self._tables)
+
+    async def space(self, table: str) -> TableSpace:
+        relation = sa.cast(sa.literal(table), REGCLASS)
         toast_relation = sa.select(_PG_CLASS.c.reltoastrelid).where(_PG_CLASS.c.oid == relation).scalar_subquery()
-        # Column by column, because the size of a whole row reads every value stored out of line.
-        row_bytes: sa.ColumnElement[int] = sa.literal(_ROW_OVERHEAD_BYTES)
-        for column in flow_run.columns:
-            row_bytes += sa.func.coalesce(sa.func.pg_column_size(column), 0)
         disk_bytes = sa.func.pg_relation_size(relation) + sa.case(
             (toast_relation == 0, 0), else_=sa.func.pg_relation_size(toast_relation)
         )
-        live_bytes = sa.select(sa.func.coalesce(sa.func.sum(row_bytes), 0)).select_from(flow_run).scalar_subquery()
+        main_bytes = sa.func.pg_relation_size(relation)
+        block_size = sa.cast(sa.func.current_setting("block_size"), sa.BigInteger)
         async with self._db.session_context() as session:
-            disk, live = (await session.execute(sa.select(disk_bytes, live_bytes))).one()
-        return TableSpace(disk_bytes=disk, live_bytes=live)
+            disk, main, block = (await session.execute(sa.select(disk_bytes, main_bytes, block_size))).one()
+            main_pages = main // block
+            percent = (
+                100.0 if main_pages <= self._exact_measure_pages else 100.0 * self._exact_measure_pages / main_pages
+            )
+            live = await session.scalar(self._live_bytes(table=table, percent=percent))
+        return TableSpace(disk_bytes=disk, live_bytes=round(live * 100.0 / percent))
 
-    async def rewrite(self) -> list[str]:
+    def _live_bytes(self, table: str, percent: float) -> sa.Select[tuple[int]]:
+        """Select the bytes that the live rows hold in the given percent of the table's pages, picked at random."""
+        whole = self._db.Base.metadata.tables[table]
+        source = whole if percent >= 100.0 else sa.tablesample(whole, sa.func.system(percent), name="sampled")
+        # Column by column, because the size of a whole row reads every value stored out of line.
+        row_bytes: sa.ColumnElement[int] = sa.literal(_ROW_OVERHEAD_BYTES)
+        for column in source.columns:
+            row_bytes += sa.func.coalesce(sa.func.pg_column_size(column), 0)
+        return sa.select(sa.func.coalesce(sa.func.sum(row_bytes), 0)).select_from(source)
+
+    async def rewrite(self, tables: list[str]) -> list[str]:
         engine = await self._db.engine()
         not_rewritten: list[str] = []
         async with engine.connect() as connection:
@@ -211,7 +241,7 @@ class PostgresTableRewriter:
                 await connection.execute(
                     sa.select(sa.func.set_config("lock_timeout", f"{int(self._lock_timeout.total_seconds())}s", False))
                 )
-                for table in self._tables:
+                for table in tables:
                     if not await self._rewrite_table(connection=connection, table=table):
                         not_rewritten.append(table)
             finally:
@@ -258,26 +288,32 @@ class TaskHistoryCleanup:
         await self._delete_old_runs(job=job)
 
     async def rewrite(self, job: CleanupJob, mode: CleanupRewrite) -> None:
-        """Rewrite the tables if the mode asks for it against their free space now, recording it on the job.
-
-        Tables the job already rewrote are never rewritten again, whatever mode it is decided with afterwards.
-        """
-        if self._rewriter is None or job.rewritten:
+        """Rewrite the tables the mode asks for against their free space now, recording each table's outcome on the job."""
+        if self._rewriter is None:
             return
-        if await self._rewrite_wanted(rewriter=self._rewriter, rewrite=mode):
-            job.not_rewritten = await self._rewriter.rewrite()
-            job.rewritten = True
+        if mode is CleanupRewrite.IF_FREED:
+            freed = await self._freed_tables(job=job, rewriter=self._rewriter)
+            if freed:
+                job.not_rewritten = await self._rewriter.rewrite(tables=freed)
+                job.rewritten = [table for table in freed if table not in job.not_rewritten]
         job.size_after = await self._rewriter.total_size()
 
-    async def _rewrite_wanted(self, rewriter: TableRewriter, rewrite: CleanupRewrite) -> bool:
-        match rewrite:
-            case CleanupRewrite.ALWAYS:
-                return True
-            case CleanupRewrite.IF_FREED:
-                space = await rewriter.flow_run_space()
-                return space.live_bytes * 2 < space.disk_bytes
-            case CleanupRewrite.NEVER:
-                return False
+    async def _freed_tables(self, job: CleanupJob, rewriter: TableRewriter) -> list[str]:
+        """Return the tables whose live rows hold less than half of their disk space, recording the others on the job."""
+        freed: list[str] = []
+        mostly_live: list[str] = []
+        for table in rewriter.tables:
+            space = await rewriter.space(table=table)
+            if space.live_bytes * 2 < space.disk_bytes:
+                freed.append(table)
+                continue
+            mostly_live.append(table)
+            log.info(
+                f"Task history cleanup {job.id}: left {table} as it is, "
+                f"its live rows hold {space.live_bytes} of its {space.disk_bytes} bytes"
+            )
+        job.mostly_live = mostly_live
+        return freed
 
     async def _delete_old_runs(self, job: CleanupJob) -> None:
         # A deleted parent leaves its subflows top-level, and they may have ended on a day already passed.
@@ -410,7 +446,8 @@ def build_task_history_cleanup(
             tables=TaskHistoryTables(db=maintenance, ids_per_statement=ids_per_statement),
             rewriter=PostgresTableRewriter(
                 db=maintenance,
-                tables=_TASK_HISTORY_TABLES,
+                tables=_TASK_HISTORY_TABLES + _ACTIVITY_LOG_TABLES,
+                exact_measure_pages=_EXACT_MEASURE_PAGES,
                 lock_timeout=_REWRITE_LOCK_TIMEOUT,
                 retries=_REWRITE_RETRIES,
             ),
@@ -447,6 +484,16 @@ async def start_cleanup(
     if started is None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="a cleanup is running elsewhere")
     return started
+
+
+@router.get("/size")
+async def read_task_history_size(
+    db: Annotated[PrefectDBInterface, Depends(provide_database_interface)],
+) -> TaskHistorySize:
+    """Return the disk space of the task history tables with their indexes, which is not measured on SQLite."""
+    if not isinstance(db.database_config, AsyncPostgresConfiguration):
+        return TaskHistorySize(size=None)
+    return TaskHistorySize(size=await total_size(db=db, tables=_TASK_HISTORY_TABLES))
 
 
 @router.get("/cleanup/{job_id}")

@@ -41,14 +41,14 @@ class RewriteOptionCase:
 
 
 REWRITE_OPTION_CASES: list[RewriteOptionCase] = [
-    RewriteOptionCase(name="with_rewrite", rewrite=True, expected_body={"rewrite": "always"}),
+    RewriteOptionCase(name="with_rewrite", rewrite=True, expected_body={"rewrite": "if_freed"}),
     RewriteOptionCase(name="without_rewrite", rewrite=False, expected_body={"rewrite": "never"}),
 ]
 
 
 @pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in REWRITE_OPTION_CASES])
-async def test_the_rewrite_option_asks_the_task_manager_to_always_rewrite(case: RewriteOptionCase) -> None:
-    """The rewrite option asks for a rewrite whatever the deletes freed, and no rewrite is asked for without it."""
+async def test_the_rewrite_option_asks_the_task_manager_to_rewrite_the_freed_tables(case: RewriteOptionCase) -> None:
+    """The rewrite option asks for a rewrite of each table that is mostly free space, and none is asked for without it."""
     mode = case.expected_body["rewrite"]
     task_manager = ScriptedTaskManager(responses=[started(rewrite=mode), polled(rewrite=mode, state="completed")])
 
@@ -62,11 +62,11 @@ async def test_the_rewrite_option_follows_a_cleanup_already_running_to_its_own_s
     """With the rewrite option, a cleanup already running is reported from the progress it had when joined to its end."""
     task_manager = ScriptedTaskManager(
         responses=[
-            started(rewrite="always", current_day="2026-01-15", deleted_runs=7),
+            started(rewrite="if_freed", current_day="2026-01-15", deleted_runs=7),
             polled(
-                rewrite="always",
+                rewrite="if_freed",
                 state="completed",
-                rewritten=True,
+                rewritten=["flow_run", "log"],
                 current_day="2026-01-15",
                 deleted_runs=7,
                 size_before=3_000_000,
@@ -80,33 +80,34 @@ async def test_the_rewrite_option_follows_a_cleanup_already_running_to_its_own_s
 
     assert exit_code == 0
     assert task_manager.requests == [
-        RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "always"}),
+        RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "if_freed"}),
         RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-1"),
     ]
     assert console.lines == [
         "Deleting the runs that ended on 2026-01-15, 7 runs deleted so far",
         "Deleted 7 runs that ended before 2026-09-04 00:00 UTC",
-        "Task history tables: 3.0 MB before, 1.0 MB after",
-        "Task history tables rewritten",
+        "Task history and activity log tables: 3.0 MB before, 1.0 MB after",
+        "Rewrote flow_run, log",
     ]
 
 
-async def test_progress_lines_then_the_summary_are_printed() -> None:
-    """Each change of progress prints a line, then the outcome is summarised with the sizes the task manager measured."""
+async def test_progress_lines_then_the_summary_with_each_table_are_printed() -> None:
+    """Each change of progress prints a line, then the summary gives the sizes and what the rewrite did with each table."""
     task_manager = ScriptedTaskManager(
         responses=[
-            started(rewrite="always"),
-            polled(rewrite="always", current_day="2026-01-15", deleted_runs=1),
-            polled(rewrite="always", current_day="2026-01-16", deleted_runs=1200),
+            started(rewrite="if_freed"),
+            polled(rewrite="if_freed", current_day="2026-01-15", deleted_runs=1),
+            polled(rewrite="if_freed", current_day="2026-01-16", deleted_runs=1200),
             polled(
-                rewrite="always",
+                rewrite="if_freed",
                 state="completed",
-                rewritten=True,
+                rewritten=["flow_run", "flow_run_state", "task_run", "task_run_state"],
+                mostly_live=["events", "event_resources"],
+                not_rewritten=["log", "artifact"],
                 current_day="2026-01-16",
                 deleted_runs=1234,
                 size_before=25_300_000_000,
                 size_after=1_200_000_000,
-                not_rewritten=["log", "artifact"],
             ),
         ]
     )
@@ -119,13 +120,28 @@ async def test_progress_lines_then_the_summary_are_printed() -> None:
         "Deleting the runs that ended on 2026-01-15, 1 run deleted so far",
         "Deleting the runs that ended on 2026-01-16, 1200 runs deleted so far",
         "Deleted 1234 runs that ended before 2026-09-04 00:00 UTC",
-        "Task history tables: 25.3 GB before, 1.2 GB after",
-        "Task history tables rewritten, except log, artifact, which stayed locked",
+        "Task history and activity log tables: 25.3 GB before, 1.2 GB after",
+        "Rewrote flow_run, flow_run_state, task_run, task_run_state",
+        "Left events, event_resources as they are, because their live rows hold at least half of their disk space",
+        "Did not rewrite log, artifact, which stayed locked by other sessions",
     ]
 
 
+async def test_a_rewrite_that_found_no_freed_table_says_so() -> None:
+    """A cleanup asked to rewrite that reports no table, as on SQLite, says that no table was rewritten."""
+    task_manager = ScriptedTaskManager(
+        responses=[started(rewrite="if_freed"), polled(rewrite="if_freed", state="completed")]
+    )
+    console = RecordedConsole()
+
+    exit_code = await _flush(task_manager=task_manager, console=console, rewrite=True)
+
+    assert exit_code == 0
+    assert console.lines == ["Deleted 0 runs that ended before 2026-09-04 00:00 UTC", "No table rewritten"]
+
+
 async def test_a_cleanup_that_rewrote_nothing_on_a_database_without_sizes_says_so() -> None:
-    """Without sizes from the task manager the summary leaves them out, and says the tables were not rewritten."""
+    """Without sizes from the task manager the summary leaves them out, and says no table was rewritten."""
     task_manager = ScriptedTaskManager(responses=[running_elsewhere(), started(), polled(state="completed")])
     console = RecordedConsole()
 
@@ -135,7 +151,7 @@ async def test_a_cleanup_that_rewrote_nothing_on_a_database_without_sizes_says_s
     assert console.lines == [
         "Waiting to start the cleanup, because the task manager answered that a cleanup runs elsewhere",
         "Deleted 0 runs that ended before 2026-09-04 00:00 UTC",
-        "Task history tables not rewritten",
+        "Tables not rewritten",
     ]
 
 
@@ -165,7 +181,7 @@ async def test_each_wait_prints_one_line_when_it_starts_or_its_reason_changes() 
         "Waiting to start the cleanup, because the task manager answered that it does not know the cleanup",
         "Waiting to start the cleanup, because the task manager could not be reached",
         "Deleted 0 runs that ended before 2026-09-04 00:00 UTC",
-        "Task history tables not rewritten",
+        "Tables not rewritten",
     ]
 
 
@@ -210,24 +226,33 @@ async def test_a_failed_cleanup_prints_its_error_and_fails() -> None:
 class FailedAfterRewriteCase:
     name: str
     deleted_runs: int
+    rewritten: list[str]
+    mostly_live: list[str]
     not_rewritten: list[str]
-    expected_committed: str
+    expected_committed: list[str]
 
 
 FAILED_AFTER_REWRITE_CASES: list[FailedAfterRewriteCase] = [
     FailedAfterRewriteCase(
         name="every_table_rewritten",
         deleted_runs=1,
+        rewritten=["flow_run", "events"],
+        mostly_live=[],
         not_rewritten=[],
-        expected_committed="Deleted 1 run before the failure; task history tables rewritten",
+        expected_committed=["Deleted 1 run before the failure", "Rewrote flow_run, events"],
     ),
     FailedAfterRewriteCase(
-        name="tables_left_locked",
+        name="tables_left_mostly_live_or_locked",
         deleted_runs=40,
+        rewritten=["flow_run"],
+        mostly_live=["events"],
         not_rewritten=["log", "artifact"],
-        expected_committed=(
-            "Deleted 40 runs before the failure; task history tables rewritten, except log, artifact, which stayed locked"
-        ),
+        expected_committed=[
+            "Deleted 40 runs before the failure",
+            "Rewrote flow_run",
+            "Left events as they are, because their live rows hold at least half of their disk space",
+            "Did not rewrite log, artifact, which stayed locked by other sessions",
+        ],
     ),
 ]
 
@@ -239,11 +264,12 @@ async def test_a_cleanup_that_failed_after_its_rewrite_prints_what_it_deleted_an
     """A cleanup that failed once its rewrite had run prints the runs it deleted and the tables it rewrote."""
     task_manager = ScriptedTaskManager(
         responses=[
-            started(rewrite="always"),
+            started(rewrite="if_freed"),
             polled(
-                rewrite="always",
+                rewrite="if_freed",
                 state="failed",
-                rewritten=True,
+                rewritten=case.rewritten,
+                mostly_live=case.mostly_live,
                 deleted_runs=case.deleted_runs,
                 not_rewritten=case.not_rewritten,
                 size_before=1000,
@@ -258,7 +284,7 @@ async def test_a_cleanup_that_failed_after_its_rewrite_prints_what_it_deleted_an
     assert exit_code == 1
     assert console.lines == [
         "ERROR The cleanup failed with DBAPIError; the task manager log has the details",
-        case.expected_committed,
+        *case.expected_committed,
     ]
 
 
@@ -270,7 +296,7 @@ async def test_an_unreachable_task_manager_prints_the_error_and_fails() -> None:
     exit_code = await _flush(task_manager=task_manager, console=console, rewrite=True)
 
     assert exit_code == 1
-    assert task_manager.requests == [RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "always"})]
+    assert task_manager.requests == [RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "if_freed"})]
     assert console.lines == ["ERROR ConnectError: All connection attempts failed"]
 
 
