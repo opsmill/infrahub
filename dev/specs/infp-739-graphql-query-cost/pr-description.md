@@ -1,12 +1,8 @@
 # Estimated and actual cost of GraphQL queries for each relationship field
 
-<!--
-Draft written from the plan, before the implementation. Before the PR leaves draft:
-- check every identifier, file path, figure and default below against the diff, and state what landed (AGENTS.md "Always Do")
-- replace "Not known yet" in the four result sections at the end
--->
-
 Jira: [INFP-739](https://opsmill.atlassian.net/browse/INFP-739). A GitHub issue for this work is not known.
+
+This PR targets the branch of #11002, which adds the spec, plan and tasks that this implementation follows. This PR also updates some of those documents to match the code that landed, and adds this description and the [implementation report](opsmill-implement-report.md).
 
 This PR stays in draft until a maintainer confirms the three changes listed under "Changes that need a maintainer's confirmation".
 
@@ -90,16 +86,27 @@ What stays the same:
 
 [spec.md, "Edge Cases"](spec.md#edge-cases) lists the other cases where the estimate is less reliable. In each one, the actual counts stay correct.
 
+## Review findings not fixed in this PR
+
+A review of the implementation rated no finding critical. The two high findings and the medium findings about tests and documentation are fixed in this PR. These medium findings are not fixed ([implementation report, "Review findings"](opsmill-implement-report.md#review-findings)):
+
+- `statistics_store.py`: a pointer that cannot be parsed, for example one written by another Infrahub version, makes every later refresh fail before it writes anything. The cache keys carry no format version.
+- `models.py`: the statistics rules of the data model are not checked when a cache entry is read. An inconsistent entry makes the estimator divide by zero.
+- `statistics_store.py`: when the cleanup after the pointer move fails, the flow is marked failed and the old version's keys stay in the cache with no expiry.
+- `details.py`: the check for rows recorded without a resolver call raises `ValueError` after the query ran. No current code path reaches it, but if one did, a successful query would return a 500.
+
+The report also lists the low and advisory findings that are not fixed.
+
 ## Suggested review order and code that every request runs through
 
 [CLAUDE RECOMMENDED – based on the delivery order in [plan.md](plan.md#delivery-order)] Review in the order the work was delivered:
 
 1. The contracts in [contracts/](contracts/).
 2. The recorder and the actual counts:
-   - `backend/infrahub/graphql/cost/recorder.py` and `details.py`
+   - `constants.py`, `models.py`, `recorder.py` and `details.py` in `backend/infrahub/graphql/cost/`
    - the changes to `backend/infrahub/database/__init__.py`, `backend/infrahub/graphql/resolvers/`, `backend/infrahub/graphql/app.py`, and `backend/infrahub/api/query.py`
-3. The statistics refresh and store: `histogram.py`, `queries.py`, `collector.py`, `statistics_store.py`, and `tasks.py` in `backend/infrahub/graphql/cost/`, and the entry in `backend/infrahub/workflows/catalogue.py`.
-4. The estimate: the changes to `backend/infrahub/graphql/analyzer.py`, then `tree.py`, `first_step.py`, `estimator.py`, and `service.py` in `backend/infrahub/graphql/cost/`.
+3. The statistics refresh and store: `histogram.py`, `queries.py`, `collector.py`, `statistics_store.py`, and `tasks.py` in `backend/infrahub/graphql/cost/`, the entry in `backend/infrahub/workflows/catalogue.py`, and the change to `CountNodesByKindsQuery` in `backend/infrahub/telemetry/queries.py`, which the refresh reuses to count the active nodes of each kind.
+4. The estimate: the changes to `backend/infrahub/graphql/analyzer.py`, then `tree.py`, `first_step.py`, `estimator.py`, `service.py`, and `request_estimate.py` in `backend/infrahub/graphql/cost/`.
 5. The report: `backend/infrahub/graphql/queries/graphql_query_report.py`.
 6. Documentation and generated files:
    - `docs/docs/development-resources/graphql/query-cost.mdx`, `dev/knowledge/backend/graphql-query-cost.md`, and the changelog fragment
@@ -488,11 +495,11 @@ Not known yet. This section will link the PR in `opsmill/infrahub-private-tests`
 ## Checklist
 
 - [ ] A maintainer confirmed the three changes under "Changes that need a maintainer's confirmation"
-- [ ] Unit and component tests added
-- [ ] Changelog fragment added: `changelog/+graphql-query-cost.added.md`
-- [ ] User documentation added: `docs/docs/development-resources/graphql/query-cost.mdx`
-- [ ] Internal documentation added: `dev/knowledge/backend/graphql-query-cost.md`
-- [ ] Generated files regenerated: `schema/schema.graphql` and the frontend GraphQL types
+- [x] Unit and component tests added
+- [x] Changelog fragment added: `changelog/+graphql-query-cost.added.md`
+- [x] User documentation added: `docs/docs/development-resources/graphql/query-cost.mdx`
+- [x] Internal documentation added: `dev/knowledge/backend/graphql-query-cost.md`
+- [x] Generated files regenerated: `schema/schema.graphql` and the frontend GraphQL types
 - [ ] I have reviewed AI generated content
 
 ## Sources
@@ -506,8 +513,11 @@ Not known yet. This section will link the PR in `opsmill/infrahub-private-tests`
   - [quickstart.md](quickstart.md)
   - [tasks.md](tasks.md)
   - [critiques/critique-20261007-184332.md](critiques/critique-20261007-184332.md)
+- The implementation report: [opsmill-implement-report.md](opsmill-implement-report.md)
 - The contracts:
   - [contracts/cost-details-header.md](contracts/cost-details-header.md)
   - [contracts/cost-details.schema.json](contracts/cost-details.schema.json)
   - [contracts/graphql_query_report.graphql](contracts/graphql_query_report.graphql)
 - [AGENTS.md](../../../AGENTS.md) and [backend/AGENTS.md](../../../backend/AGENTS.md), "Ask First"
+
+Generated with [Claude Code](https://claude.com/claude-code)
