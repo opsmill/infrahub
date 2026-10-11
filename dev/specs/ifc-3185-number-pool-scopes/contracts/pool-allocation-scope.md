@@ -60,6 +60,7 @@ Each refusal is a `ValidationError` on the `allocation_scope` field, naming the 
 | Case | Message |
 |------|---------|
 | `allocation_scope` in the payload differs from the stored list (ids or order), or is `null` | `allocation_scope can't be changed after the pool is created` |
+| An entry is a path, or names no attribute or relationship of the pool's kind in the default branch's schema | `allocation_scope can't be changed after the pool is created; <the create refusal for that entry>` |
 | The payload is not a list | `allocation_scope: the allocation scope must be a list of entries` |
 
 The same list, in any accepted input form, is not a change. The refusal applies to user-created and schema-created pools alike. Today's behaviour, where `null` on update clears the scope, goes away with its test.

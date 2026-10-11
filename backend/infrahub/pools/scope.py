@@ -23,6 +23,10 @@ NON_SCALAR_ATTRIBUTE_KINDS = frozenset({"List", "JSON", "Any"})
 class UnknownScopeElementError(ValidationError):
     """Raised when an allocation scope entry names no attribute or relationship of the pool's kind."""
 
+    def __init__(self, reason: str) -> None:
+        self.reason = reason
+        super().__init__({SCOPE_FIELD: reason})
+
 
 @dataclass(frozen=True)
 class ScopeElement:
@@ -165,15 +169,13 @@ class AllocationScopeResolver:
         label = entry if isinstance(entry, str) else entry["id"]
         if isinstance(entry, str) and SCOPE_SEPARATOR in entry:
             raise UnknownScopeElementError(
-                {
-                    SCOPE_FIELD: f'"{entry}" is a path; a scope element must be an attribute or a relationship'
-                    f" of {node_schema.kind} itself"
-                }
+                f'"{entry}" is a path; a scope element must be an attribute or a relationship of {node_schema.kind}'
+                " itself"
             )
 
         field = self._find_field(node_schema=node_schema, entry=entry)
         if field is None:
-            raise UnknownScopeElementError({SCOPE_FIELD: self._not_found_message(node_schema=node_schema, label=label)})
+            raise UnknownScopeElementError(self._not_found_message(node_schema=node_schema, label=label))
 
         element_id = self._element_id(node_schema=node_schema, field=field)
         if element_id is None:

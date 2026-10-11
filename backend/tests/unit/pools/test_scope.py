@@ -375,20 +375,35 @@ def test_the_resolver_returns_the_elements_that_only_the_validator_refuses(
 def test_the_resolver_refuses_an_entry_that_names_no_element_as_unknown(
     resolver: AllocationScopeResolver, test_case: AllocationScopeRefusalTestCase
 ) -> None:
-    with pytest.raises(UnknownScopeElementError):
+    with pytest.raises(UnknownScopeElementError) as exc:
         resolver.resolve(kind=test_case.kind, entries=test_case.entries)
+
+    assert exc.value.reason == test_case.expected_message
+
+
+@dataclass(frozen=True)
+class MalformedEntriesTestCase:
+    name: str
+    entries: object
 
 
 @pytest.mark.parametrize(
-    "entries",
-    ["site", {"id": "site"}, [1], ["site", None], [{"name": "site"}], [{"id": 1, "name": "site"}]],
-    ids=["string", "object", "int", "none-entry", "object-without-id", "id-not-a-string"],
+    "test_case",
+    [
+        MalformedEntriesTestCase(name="string", entries="site"),
+        MalformedEntriesTestCase(name="object", entries={"id": "site"}),
+        MalformedEntriesTestCase(name="int", entries=[1]),
+        MalformedEntriesTestCase(name="none-entry", entries=["site", None]),
+        MalformedEntriesTestCase(name="object-without-id", entries=[{"name": "site"}]),
+        MalformedEntriesTestCase(name="id-not-a-string", entries=[{"id": 1, "name": "site"}]),
+    ],
+    ids=lambda test_case: test_case.name,
 )
 def test_the_resolver_refuses_entries_that_are_not_a_list_of_names_ids_or_objects(
-    resolver: AllocationScopeResolver, entries: object
+    resolver: AllocationScopeResolver, test_case: MalformedEntriesTestCase
 ) -> None:
     with pytest.raises(ValidationError) as exc:
-        _resolve(resolver=resolver, entries=entries)
+        _resolve(resolver=resolver, entries=test_case.entries)
 
     assert exc.value.message == "the allocation scope must be a list of entries at allocation_scope"
     assert not isinstance(exc.value, UnknownScopeElementError)

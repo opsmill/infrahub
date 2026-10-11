@@ -198,6 +198,8 @@ class ScopeRefusalTestCase:
     kind: str = SCOPED_DEVICE_KIND
     malformed: bool = False
     """Whether the payload is not a list of entries, which an update refuses with the same message as a create."""
+    unknown_entry: bool = False
+    """Whether an entry names no field of the kind, which an update refuses as a change followed by this message."""
 
 
 SCOPE_REFUSAL_TEST_CASES: list[ScopeRefusalTestCase] = [
@@ -226,6 +228,7 @@ SCOPE_REFUSAL_TEST_CASES: list[ScopeRefusalTestCase] = [
         scope=["site__name"],
         message=f'"site__name" is a path; a scope element must be an attribute or a relationship of {SCOPED_DEVICE_KIND}'
         " itself",
+        unknown_entry=True,
     ),
     ScopeRefusalTestCase(
         name="tracked-attribute",
@@ -237,12 +240,14 @@ SCOPE_REFUSAL_TEST_CASES: list[ScopeRefusalTestCase] = [
         name="undefined-on-kind",
         scope=["zone"],
         message=f'"zone" is not an attribute or a relationship of {SCOPED_DEVICE_KIND} on branch main',
+        unknown_entry=True,
     ),
     ScopeRefusalTestCase(
         name="declared-on-an-implementing-node-only",
         scope=["pod"],
         message=f'"pod" is not declared on the generic {SCOPED_HOLDER_KIND}',
         kind=SCOPED_HOLDER_KIND,
+        unknown_entry=True,
     ),
     ScopeRefusalTestCase(
         name="unique-tracked-attribute",
@@ -259,6 +264,14 @@ DEVICE_POOL_REFUSAL_TEST_CASES = [
     for test_case in SCOPE_REFUSAL_TEST_CASES
     if test_case.kind == SCOPED_DEVICE_KIND and test_case.attribute == SCOPED_DEVICE_ATTRIBUTE
 ]
+
+
+def update_refusal(test_case: ScopeRefusalTestCase) -> str:
+    if test_case.malformed:
+        return create_refusal(test_case.message)
+    if test_case.unknown_entry:
+        return f"{SCOPE_UPDATE_REFUSED}; {test_case.message}"
+    return SCOPE_UPDATE_REFUSED
 
 
 @pytest.fixture(autouse=True)
@@ -372,8 +385,7 @@ class TestNumberPoolAllocationScope:
 
         result = await save_scope(db=db, branch=default_branch_scope_class, pool_id=pool["id"], scope=test_case.scope)
 
-        expected = create_refusal(test_case.message) if test_case.malformed else SCOPE_UPDATE_REFUSED
-        assert error_messages(result) == [expected]
+        assert error_messages(result) == [update_refusal(test_case=test_case)]
         assert await read_stored_scope(db=db, pool_id=pool["id"]) == expected_scope(
             kind=SCOPED_DEVICE_KIND, names=["site"]
         )
@@ -575,7 +587,10 @@ class TestNumberPoolScopeOnBranchSchema:
 
         result = await save_scope(db=db, branch=pod_branch, pool_id=pool["id"], scope=["site", "function"])
 
-        assert error_messages(result) == [SCOPE_UPDATE_REFUSED]
+        assert error_messages(result) == [
+            f'{SCOPE_UPDATE_REFUSED}; "function" is not an attribute or a relationship of {SCOPED_DEVICE_KIND}'
+            " on branch main"
+        ]
 
 
 class TestNumberPoolScopeAfterFieldReachesDefaultBranch:

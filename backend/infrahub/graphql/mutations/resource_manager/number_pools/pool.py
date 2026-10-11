@@ -240,8 +240,9 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
         are not checked again, because the scope is never set a second time.
 
         Raises:
-            ValidationError: When the scope is not a list of entries, differs from the stored one (an entry that names
-                no field of the pool's kind included), or the stored scope is not a list of `{id, name}` elements.
+            ValidationError: When the scope is not a list of entries, differs from the stored one (naming the first
+                entry that names no field of the pool's kind, if any), or the stored scope is not a list of `{id, name}`
+                elements.
 
         """
         scope_input = data.get(SCOPE_FIELD)
@@ -256,8 +257,8 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
         try:
             sent_scope = resolver.resolve(kind=str(pool.get_attribute("node").value), entries=scope_input["value"])
         except UnknownScopeElementError as exc:
-            # An entry that names no element cannot match the stored scope, so it gets change refused error.
-            raise ValidationError(input_value=SCOPE_UPDATE_REFUSED) from exc
+            # An entry that names no field cannot match the stored scope.
+            raise ValidationError(input_value=f"{SCOPE_UPDATE_REFUSED}; {exc.reason}") from exc
         if [element.id for element in sent_scope.elements] != [element.id for element in stored_scope.elements]:
             raise ValidationError(input_value=SCOPE_UPDATE_REFUSED)
         scope_input["value"] = stored_value
