@@ -244,13 +244,44 @@ Selecting `cost_estimate` requires the permissions that running the submitted qu
 - A variable does not match its declared type: the GraphQL error for that variable.
 - Infrahub cannot read the statistics from the cache: the error of the cache read.
 
+## View the cost level of a stored query
+
+Infrahub estimates one run of each [stored query](stored-queries.mdx) when you create the query or change its text, and again after each refresh of the statistics. A stored query has no variable values, so the estimate uses the statistics only, as the report does without `variables`. Two attributes of the stored query hold the result:
+
+- `cost_level`:
+  - `high` when the worst-case database rows of the query, summed over its fields, are above the limit set by `INFRAHUB_GRAPHQL_COST_HIGH_COST_DATABASE_ROWS`, 250,000 by default
+  - `low` when they are not above the limit
+  - `unknown` when Infrahub cannot estimate the query: no refresh of the statistics has completed yet, the query contains a mutation, or the estimate failed
+- `cost_estimate`: a JSON object with the expected and worst-case `nodes`, `resolver_calls` and `database_rows` summed over the fields that have an estimate, the number of fields without an estimate, the 3 fields with the most worst-case database rows, the limit the level was compared with, the version and time of the statistics, and the `reason` of an `unknown` level.
+
+The level compares the worst case rather than the expected figures with the limit. An artifact query filtered on the name of its target gets, without variables, the expected figures of a target with the average number of peers at each step. The worst case covers the target with the most peers, which is the render that takes the longest.
+
+To list the stored queries with the `high` level and their estimate:
+
+```graphql
+query {
+  CoreGraphQLQuery(cost_level__value: "high") {
+    edges {
+      node {
+        name { value }
+        cost_estimate { value }
+      }
+    }
+  }
+}
+```
+
+To choose the limit for your data, run the report with the variables of your largest target, as described in [Estimate the cost without running the query](#estimate-the-cost-without-running-the-query), and compare its worst-case `database_rows` with the duration of one render for that target. On a test data set, a cabling plan query took 80 seconds for a logical network of 938 devices, estimated at 991,262 worst-case database rows, and 4 seconds for a network of 80 devices, estimated at 112,806.
+
+Infrahub saves a new estimate only when the level or one of the figures changes, so a refresh that finds the same figures does not change the stored query.
+
 ## Refresh the statistics
 
 The `graphql-cost-statistics-refresh` workflow reads the default branch and stores, for each kind, its number of nodes and, for each relationship, the number of peers of its nodes: the total, a histogram of peers per node, and the 20 nodes with the most peers. Infrahub stores the statistics in the cache, Redis by default. The workflow reads the IDs of the nodes of each kind in chunks of `INFRAHUB_DB_QUERY_SIZE_LIMIT` IDs, and each query that counts peers reads one chunk of IDs, so no query returns more than one chunk. To return each chunk of IDs, the database sorts all the nodes of the kind, and the queries that count the nodes of each kind read every kind.
 
 The task manager runs the workflow once a day, between 04:00 and 05:00 UTC, at a random minute that Infrahub sets when the server starts. Only one run takes place at a time: the task manager cancels a run that starts while another run is in progress. Requests use the new statistics as soon as a run completes.
 
-Until the first run completes, every field has the reason `no statistics`. A relationship added to the schema has statistics after the next run.
+Until the first run completes, every field has the reason `no statistics`. A relationship added to the schema has statistics after the next run. After it publishes the statistics, the workflow estimates every stored query of the default branch again, as described in [View the cost level of a stored query](#view-the-cost-level-of-a-stored-query).
 
 Run these commands from a shell in a task worker container, which has the address of the task manager. The examples use Docker Compose.
 

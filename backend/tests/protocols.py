@@ -455,6 +455,8 @@ class CoreGraphQLQuery(CoreNode):
     models: ListAttributeOptional
     depth: IntegerOptional
     height: IntegerOptional
+    cost_level: Enum
+    cost_estimate: JSONAttributeOptional
     repository: RelationshipManager[CoreGenericRepository]
     tags: RelationshipManager[BuiltinTag]
     query_groups: RelationshipManager[CoreGraphQLQueryGroup]

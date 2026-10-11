@@ -66,9 +66,11 @@ async def estimate_request_cost(
     estimator: QueryCostEstimator,
     analyzer: InfrahubGraphQLQueryAnalyzer,
     schema: GraphQLSchema,
-    variable_values: dict[str, Any],
+    variable_values: dict[str, Any] | None,
 ) -> QueryEstimate | None:
     """Estimate the cost of the query of a request, or return None when no estimate can be computed.
+
+    Without variable values, every figure comes from the statistics.
 
     The request runs and returns the same data and errors whether or not its cost can be estimated, so a failure
     leaves the cost details without an estimate rather than failing the request.

@@ -376,6 +376,12 @@ class ValidatorConclusion(InfrahubStringEnum):
     SUCCESS = "success"
 
 
+class GraphQLQueryCostLevel(InfrahubStringEnum):
+    UNKNOWN = "unknown"
+    LOW = "low"
+    HIGH = "high"
+
+
 class ValidatorState(InfrahubStringEnum):
     QUEUED = "queued"
     IN_PROGRESS = "in_progress"

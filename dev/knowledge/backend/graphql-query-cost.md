@@ -182,6 +182,27 @@ Failure handling differs by caller. `estimate_request_cost` (header path) return
 error, so the response keeps its `data` and `errors` and the details have no estimate. The report's
 `resolve_graphql_query_cost_estimate` lets errors propagate, so a cache failure reaches the caller.
 
+## Stored query cost
+
+`infrahub.graphql.cost.stored_query` estimates one run of a stored query with the statistics only, since a
+stored query has no variable values, and stores the result in two read-only attributes of
+`CoreGraphQLQuery`: `cost_level` (`GraphQLQueryCostLevel`: `unknown`, `low`, `high`) and `cost_estimate`
+(the JSON form of `StoredQueryCost`).
+
+- The level compares the worst-case database rows, summed over the fields with an estimate, with
+  `config.SETTINGS.graphql_cost.high_cost_database_rows`. The expected figures of a query filtered on one
+  target describe a target with the mean number of peers, so they miss the largest target, which the worst
+  case covers.
+- The level is `unknown` without statistics, for a query that contains a mutation, and when the estimate
+  fails; `estimate_request_cost` logs the failure and the query is still saved.
+- The stored query mutation estimates the query when its text is created or changed, on the branch of the
+  mutation, next to `depth` and `height`.
+- `refresh_query_cost_statistics` estimates every stored query of the default branch again after it
+  publishes a version, in a write session. It saves a query only when the level or a figure changed: the
+  comparison leaves out the statistics version and time, so an unchanged estimate is not written every day.
+  The save goes through `Node.save`, which emits no event, so it starts no trigger.
+- Stored queries changed on another branch keep the estimate of their last change until they are merged.
+
 ## Known limits
 
 - **Shared `NodeDataLoader` batches**: `NodeDataLoader` is keyed without the relationship name, so

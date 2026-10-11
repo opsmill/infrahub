@@ -3565,7 +3565,7 @@ interface CoreGenericRepository {
   name: TextAttribute
   """Connectivity status of the repository"""
   operational_status: Dropdown
-  queries(depth__is_protected: Boolean, depth__owner__id: ID, depth__source__id: ID, depth__value: BigInt, depth__values: [BigInt], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], fingerprint__is_protected: Boolean, fingerprint__owner__id: ID, fingerprint__source__id: ID, fingerprint__value: String, fingerprint__values: [String], height__is_protected: Boolean, height__owner__id: ID, height__source__id: ID, height__value: BigInt, height__values: [BigInt], ids: [ID], isnull: Boolean, limit: Int, models__is_protected: Boolean, models__owner__id: ID, models__source__id: ID, models__value: GenericScalar, models__values: [GenericScalar], name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, operations__is_protected: Boolean, operations__owner__id: ID, operations__source__id: ID, operations__value: GenericScalar, operations__values: [GenericScalar], order: OrderInput, query__is_protected: Boolean, query__owner__id: ID, query__source__id: ID, query__value: String, query__values: [String], variables__is_protected: Boolean, variables__owner__id: ID, variables__source__id: ID, variables__value: GenericScalar, variables__values: [GenericScalar]): NestedPaginatedCoreGraphQLQuery!
+  queries(cost_estimate__is_protected: Boolean, cost_estimate__owner__id: ID, cost_estimate__source__id: ID, cost_estimate__value: GenericScalar, cost_estimate__values: [GenericScalar], cost_level__is_protected: Boolean, cost_level__owner__id: ID, cost_level__source__id: ID, cost_level__value: String, cost_level__values: [String], depth__is_protected: Boolean, depth__owner__id: ID, depth__source__id: ID, depth__value: BigInt, depth__values: [BigInt], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], fingerprint__is_protected: Boolean, fingerprint__owner__id: ID, fingerprint__source__id: ID, fingerprint__value: String, fingerprint__values: [String], height__is_protected: Boolean, height__owner__id: ID, height__source__id: ID, height__value: BigInt, height__values: [BigInt], ids: [ID], isnull: Boolean, limit: Int, models__is_protected: Boolean, models__owner__id: ID, models__source__id: ID, models__value: GenericScalar, models__values: [GenericScalar], name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, operations__is_protected: Boolean, operations__owner__id: ID, operations__source__id: ID, operations__value: GenericScalar, operations__values: [GenericScalar], order: OrderInput, query__is_protected: Boolean, query__owner__id: ID, query__source__id: ID, query__value: String, query__values: [String], variables__is_protected: Boolean, variables__owner__id: ID, variables__source__id: ID, variables__value: GenericScalar, variables__values: [GenericScalar]): NestedPaginatedCoreGraphQLQuery!
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """Current synchronization status of the repository"""
   sync_status: Dropdown
@@ -3687,6 +3687,14 @@ input CoreGlobalPermissionUpsertInput {
 
 """A pre-defined GraphQL Query"""
 type CoreGraphQLQuery implements CoreNode {
+  """
+  Estimated nodes, resolver calls and database rows of one run of the query, from the GraphQL query cost statistics
+  """
+  cost_estimate: JSONAttribute
+  """
+  Estimated cost of one run of the query: high above the configured database rows limit, unknown when not estimated
+  """
+  cost_level: TextAttribute
   """number of nested levels in the query"""
   depth: NumberAttribute
   """None"""
@@ -5629,7 +5637,7 @@ type CoreReadOnlyRepository implements CoreGenericRepository & CoreNode & CoreTa
   name: TextAttribute
   """Connectivity status of the repository"""
   operational_status: Dropdown
-  queries(depth__is_protected: Boolean, depth__owner__id: ID, depth__source__id: ID, depth__value: BigInt, depth__values: [BigInt], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], fingerprint__is_protected: Boolean, fingerprint__owner__id: ID, fingerprint__source__id: ID, fingerprint__value: String, fingerprint__values: [String], height__is_protected: Boolean, height__owner__id: ID, height__source__id: ID, height__value: BigInt, height__values: [BigInt], ids: [ID], isnull: Boolean, limit: Int, models__is_protected: Boolean, models__owner__id: ID, models__source__id: ID, models__value: GenericScalar, models__values: [GenericScalar], name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, operations__is_protected: Boolean, operations__owner__id: ID, operations__source__id: ID, operations__value: GenericScalar, operations__values: [GenericScalar], order: OrderInput, query__is_protected: Boolean, query__owner__id: ID, query__source__id: ID, query__value: String, query__values: [String], variables__is_protected: Boolean, variables__owner__id: ID, variables__source__id: ID, variables__value: GenericScalar, variables__values: [GenericScalar]): NestedPaginatedCoreGraphQLQuery!
+  queries(cost_estimate__is_protected: Boolean, cost_estimate__owner__id: ID, cost_estimate__source__id: ID, cost_estimate__value: GenericScalar, cost_estimate__values: [GenericScalar], cost_level__is_protected: Boolean, cost_level__owner__id: ID, cost_level__source__id: ID, cost_level__value: String, cost_level__values: [String], depth__is_protected: Boolean, depth__owner__id: ID, depth__source__id: ID, depth__value: BigInt, depth__values: [BigInt], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], fingerprint__is_protected: Boolean, fingerprint__owner__id: ID, fingerprint__source__id: ID, fingerprint__value: String, fingerprint__values: [String], height__is_protected: Boolean, height__owner__id: ID, height__source__id: ID, height__value: BigInt, height__values: [BigInt], ids: [ID], isnull: Boolean, limit: Int, models__is_protected: Boolean, models__owner__id: ID, models__source__id: ID, models__value: GenericScalar, models__values: [GenericScalar], name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, operations__is_protected: Boolean, operations__owner__id: ID, operations__source__id: ID, operations__value: GenericScalar, operations__values: [GenericScalar], order: OrderInput, query__is_protected: Boolean, query__owner__id: ID, query__source__id: ID, query__value: String, query__values: [String], variables__is_protected: Boolean, variables__owner__id: ID, variables__source__id: ID, variables__value: GenericScalar, variables__values: [GenericScalar]): NestedPaginatedCoreGraphQLQuery!
   """Git reference (branch or tag) to track"""
   ref: TextAttribute
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
@@ -5785,7 +5793,7 @@ type CoreRepository implements CoreGenericRepository & CoreNode & CoreTaskTarget
   name: TextAttribute
   """Connectivity status of the repository"""
   operational_status: Dropdown
-  queries(depth__is_protected: Boolean, depth__owner__id: ID, depth__source__id: ID, depth__value: BigInt, depth__values: [BigInt], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], fingerprint__is_protected: Boolean, fingerprint__owner__id: ID, fingerprint__source__id: ID, fingerprint__value: String, fingerprint__values: [String], height__is_protected: Boolean, height__owner__id: ID, height__source__id: ID, height__value: BigInt, height__values: [BigInt], ids: [ID], isnull: Boolean, limit: Int, models__is_protected: Boolean, models__owner__id: ID, models__source__id: ID, models__value: GenericScalar, models__values: [GenericScalar], name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, operations__is_protected: Boolean, operations__owner__id: ID, operations__source__id: ID, operations__value: GenericScalar, operations__values: [GenericScalar], order: OrderInput, query__is_protected: Boolean, query__owner__id: ID, query__source__id: ID, query__value: String, query__values: [String], variables__is_protected: Boolean, variables__owner__id: ID, variables__source__id: ID, variables__value: GenericScalar, variables__values: [GenericScalar]): NestedPaginatedCoreGraphQLQuery!
+  queries(cost_estimate__is_protected: Boolean, cost_estimate__owner__id: ID, cost_estimate__source__id: ID, cost_estimate__value: GenericScalar, cost_estimate__values: [GenericScalar], cost_level__is_protected: Boolean, cost_level__owner__id: ID, cost_level__source__id: ID, cost_level__value: String, cost_level__values: [String], depth__is_protected: Boolean, depth__owner__id: ID, depth__source__id: ID, depth__value: BigInt, depth__values: [BigInt], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], fingerprint__is_protected: Boolean, fingerprint__owner__id: ID, fingerprint__source__id: ID, fingerprint__value: String, fingerprint__values: [String], height__is_protected: Boolean, height__owner__id: ID, height__source__id: ID, height__value: BigInt, height__values: [BigInt], ids: [ID], isnull: Boolean, limit: Int, models__is_protected: Boolean, models__owner__id: ID, models__source__id: ID, models__value: GenericScalar, models__values: [GenericScalar], name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, operations__is_protected: Boolean, operations__owner__id: ID, operations__source__id: ID, operations__value: GenericScalar, operations__values: [GenericScalar], order: OrderInput, query__is_protected: Boolean, query__owner__id: ID, query__source__id: ID, query__value: String, query__values: [String], variables__is_protected: Boolean, variables__owner__id: ID, variables__source__id: ID, variables__value: GenericScalar, variables__values: [GenericScalar]): NestedPaginatedCoreGraphQLQuery!
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """Current synchronization status of the repository"""
   sync_status: Dropdown
@@ -15763,6 +15771,16 @@ type Query {
     parameters__value: GenericScalar
     parameters__values: [GenericScalar]
     partial_match: Boolean
+    query__cost_estimate__is_protected: Boolean
+    query__cost_estimate__owner__id: ID
+    query__cost_estimate__source__id: ID
+    query__cost_estimate__value: GenericScalar
+    query__cost_estimate__values: [GenericScalar]
+    query__cost_level__is_protected: Boolean
+    query__cost_level__owner__id: ID
+    query__cost_level__source__id: ID
+    query__cost_level__value: String
+    query__cost_level__values: [String]
     query__depth__is_protected: Boolean
     query__depth__owner__id: ID
     query__depth__source__id: ID
@@ -17669,6 +17687,16 @@ type Query {
     parameters__value: GenericScalar
     parameters__values: [GenericScalar]
     partial_match: Boolean
+    query__cost_estimate__is_protected: Boolean
+    query__cost_estimate__owner__id: ID
+    query__cost_estimate__source__id: ID
+    query__cost_estimate__value: GenericScalar
+    query__cost_estimate__values: [GenericScalar]
+    query__cost_level__is_protected: Boolean
+    query__cost_level__owner__id: ID
+    query__cost_level__source__id: ID
+    query__cost_level__value: String
+    query__cost_level__values: [String]
     query__depth__is_protected: Boolean
     query__depth__owner__id: ID
     query__depth__source__id: ID
@@ -18629,6 +18657,16 @@ type Query {
     operational_status__values: [String]
     order: OrderInput
     partial_match: Boolean
+    queries__cost_estimate__is_protected: Boolean
+    queries__cost_estimate__owner__id: ID
+    queries__cost_estimate__source__id: ID
+    queries__cost_estimate__value: GenericScalar
+    queries__cost_estimate__values: [GenericScalar]
+    queries__cost_level__is_protected: Boolean
+    queries__cost_level__owner__id: ID
+    queries__cost_level__source__id: ID
+    queries__cost_level__value: String
+    queries__cost_level__values: [String]
     queries__depth__is_protected: Boolean
     queries__depth__owner__id: ID
     queries__depth__source__id: ID
@@ -18856,6 +18894,18 @@ type Query {
     any__source__id: ID
     any__value: String
     any__values: [String]
+    cost_estimate__is_protected: Boolean
+    cost_estimate__isnull: Boolean
+    cost_estimate__owner__id: ID
+    cost_estimate__source__id: ID
+    cost_estimate__value: GenericScalar
+    cost_estimate__values: [GenericScalar]
+    cost_level__is_protected: Boolean
+    cost_level__isnull: Boolean
+    cost_level__owner__id: ID
+    cost_level__source__id: ID
+    cost_level__value: String
+    cost_level__values: [String]
     depth__is_protected: Boolean
     depth__isnull: Boolean
     depth__owner__id: ID
@@ -19163,6 +19213,16 @@ type Query {
     parent__name__value: String
     parent__name__values: [String]
     partial_match: Boolean
+    query__cost_estimate__is_protected: Boolean
+    query__cost_estimate__owner__id: ID
+    query__cost_estimate__source__id: ID
+    query__cost_estimate__value: GenericScalar
+    query__cost_estimate__values: [GenericScalar]
+    query__cost_level__is_protected: Boolean
+    query__cost_level__owner__id: ID
+    query__cost_level__source__id: ID
+    query__cost_level__value: String
+    query__cost_level__values: [String]
     query__depth__is_protected: Boolean
     query__depth__owner__id: ID
     query__depth__source__id: ID
@@ -22181,6 +22241,16 @@ type Query {
     operational_status__values: [String]
     order: OrderInput
     partial_match: Boolean
+    queries__cost_estimate__is_protected: Boolean
+    queries__cost_estimate__owner__id: ID
+    queries__cost_estimate__source__id: ID
+    queries__cost_estimate__value: GenericScalar
+    queries__cost_estimate__values: [GenericScalar]
+    queries__cost_level__is_protected: Boolean
+    queries__cost_level__owner__id: ID
+    queries__cost_level__source__id: ID
+    queries__cost_level__value: String
+    queries__cost_level__values: [String]
     queries__depth__is_protected: Boolean
     queries__depth__owner__id: ID
     queries__depth__source__id: ID
@@ -22547,6 +22617,16 @@ type Query {
     operational_status__values: [String]
     order: OrderInput
     partial_match: Boolean
+    queries__cost_estimate__is_protected: Boolean
+    queries__cost_estimate__owner__id: ID
+    queries__cost_estimate__source__id: ID
+    queries__cost_estimate__value: GenericScalar
+    queries__cost_estimate__values: [GenericScalar]
+    queries__cost_level__is_protected: Boolean
+    queries__cost_level__owner__id: ID
+    queries__cost_level__source__id: ID
+    queries__cost_level__value: String
+    queries__cost_level__values: [String]
     queries__depth__is_protected: Boolean
     queries__depth__owner__id: ID
     queries__depth__source__id: ID
@@ -24295,6 +24375,16 @@ type Query {
     offset: Int
     order: OrderInput
     partial_match: Boolean
+    query__cost_estimate__is_protected: Boolean
+    query__cost_estimate__owner__id: ID
+    query__cost_estimate__source__id: ID
+    query__cost_estimate__value: GenericScalar
+    query__cost_estimate__values: [GenericScalar]
+    query__cost_level__is_protected: Boolean
+    query__cost_level__owner__id: ID
+    query__cost_level__source__id: ID
+    query__cost_level__value: String
+    query__cost_level__values: [String]
     query__depth__is_protected: Boolean
     query__depth__owner__id: ID
     query__depth__source__id: ID
@@ -24558,6 +24648,16 @@ type Query {
     offset: Int
     order: OrderInput
     partial_match: Boolean
+    query__cost_estimate__is_protected: Boolean
+    query__cost_estimate__owner__id: ID
+    query__cost_estimate__source__id: ID
+    query__cost_estimate__value: GenericScalar
+    query__cost_estimate__values: [GenericScalar]
+    query__cost_level__is_protected: Boolean
+    query__cost_level__owner__id: ID
+    query__cost_level__source__id: ID
+    query__cost_level__value: String
+    query__cost_level__values: [String]
     query__depth__is_protected: Boolean
     query__depth__owner__id: ID
     query__depth__source__id: ID
@@ -24797,6 +24897,16 @@ type Query {
     offset: Int
     order: OrderInput
     partial_match: Boolean
+    query__cost_estimate__is_protected: Boolean
+    query__cost_estimate__owner__id: ID
+    query__cost_estimate__source__id: ID
+    query__cost_estimate__value: GenericScalar
+    query__cost_estimate__values: [GenericScalar]
+    query__cost_level__is_protected: Boolean
+    query__cost_level__owner__id: ID
+    query__cost_level__source__id: ID
+    query__cost_level__value: String
+    query__cost_level__values: [String]
     query__depth__is_protected: Boolean
     query__depth__owner__id: ID
     query__depth__source__id: ID
