@@ -98,7 +98,7 @@ The upgrade deletes no task runs. In step 5/6, it prints how much disk space the
 Task history takes 24.8 GB. To get the space back, run: infrahub tasks flush flow-runs --rewrite
 ```
 
-When the upgrade cannot read the size from the task manager within 10 seconds, for example because the task manager still runs the previous release, it prints the command without the size and continues.
+When the upgrade cannot read the size from the task manager within 10 seconds, for example because the task manager still runs the previous release, it prints `Could not read the task history size from the task manager`, with the reason, then the command, and continues.
 
 :::warning
 
