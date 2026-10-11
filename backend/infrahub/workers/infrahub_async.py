@@ -43,15 +43,9 @@ from infrahub.workers.dependencies import (
     get_workflow,
     set_component_type,
 )
-<<<<<<< HEAD
-from infrahub.workers.utils import get_parameter_name, load_flow_function
-||||||| 366e20570
-from infrahub.workers.utils import inject_service_parameter, load_flow_function
-=======
 from infrahub.workers.reservations import CacheFlowRunReservations
 from infrahub.workers.submission import SubmissionWindow
-from infrahub.workers.utils import inject_service_parameter, load_flow_function
->>>>>>> origin/stable
+from infrahub.workers.utils import get_parameter_name, load_flow_function
 from infrahub.workflows.models import TASK_RESULT_STORAGE_NAME
 
 if TYPE_CHECKING:
