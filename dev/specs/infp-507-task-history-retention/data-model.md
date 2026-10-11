@@ -66,8 +66,10 @@ A Prefect variable already set in the environment is left as is, with a warning.
 | Field | Meaning |
 |---|---|
 | `size` | Disk space in bytes of the six task-history tables with their indexes; `null` on SQLite |
+| `old_runs` | Finished top-level runs older than the task history retention, counted up to 100,000 |
+| `old_runs_limit_reached` | Whether more runs than `old_runs` are older than the retention |
 
-- Read with `pg_total_relation_size`, which reads no table data, so the answer is immediate.
+- The size is read with `pg_total_relation_size`, which reads no table data. The count selects the runs as the cleanup does and stops at 100,001, so it stays fast on millions of runs.
 
 ## Activities filters (changed expression, same results)
 

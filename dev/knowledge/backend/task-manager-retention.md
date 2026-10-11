@@ -19,7 +19,7 @@ database: it sets Prefect settings, deletes rows in Prefect's existing tables, a
 | Every hour | Prefect deletes finished top-level runs older than `task_history` with their logs and artifacts, events older than `activity_log`, and listed Prefect event types older than `prefect_own_events` |
 | A Prefect event type is missing from `PREFECT_EVENT_TYPES` | It is kept for `activity_log`: it costs disk, and no Infrahub event is ever deleted early |
 | `infrahub tasks flush flow-runs [--rewrite]` | Runs the cleanup job in the task manager with the rewrite mode `never`, or `if_freed` with `--rewrite`, and prints the tables rewritten, left and locked |
-| `infrahub upgrade` | Deletes nothing; in its task manager step it prints the task history size from `GET /infrahub/task-history/size` and the command, or why it has no size and the command when the size does not come within 10 s |
+| `infrahub upgrade` | Deletes nothing; in its task manager step it prints the task history size and the count of old runs from `GET /infrahub/task-history/size` and the command, or why it has no size and the command when the size does not come within 10 s |
 | The task manager has no cleanup route (an older release) | The CLI prints that the cleanup is not provided, deletes nothing and exits 0 |
 | A retention is lowered | The next hourly run deletes the older records; disk space returns only with `flush flow-runs --rewrite`, which rewrites each task history and activity log table that is mostly free space |
 | A run stays RUNNING or PENDING | Nothing deletes it until `infrahub tasks flush stale-runs` marks it CRASHED; see [Stuck runs](#stuck-runs) |
@@ -63,7 +63,8 @@ database, and can then rewrite the tables to return the disk space.
 - **Routes**: `POST /infrahub/task-history/cleanup` starts a job, `GET
   /infrahub/task-history/cleanup/{id}` reads it, and `GET /infrahub/task-history/size` answers the
   disk space of the six task history tables with their indexes (`pg_total_relation_size`, no table
-  data read; `null` on SQLite), in `prefect_server/task_history.py`. They have no authentication,
+  data read; `null` on SQLite) and the runs that a cleanup would delete now, counted up to
+  `_OLD_RUNS_COUNT_LIMIT` (100,000) so the count stays fast, in `prefect_server/task_history.py`. They have no authentication,
   like the existing events route and Prefect's own API.
 - **Deletes**: `TaskHistoryTables.delete_runs` uses the conditions of Prefect's
   `vacuum_old_flow_runs` (top-level, terminal state, `end_time` before the cutoff), one day of end
@@ -114,7 +115,7 @@ database, and can then rewrite the tables to return the disk space.
 - **Upgrade hint**: `cli/upgrade.py::_upgrade_execute` calls `cli/tasks.py::task_history_size_hint`
   in its task manager step. The hint reads the size route through
   `task_manager/flow_run/cleanup.py::read_task_history_size` within 10 seconds and prints the size
-  with the command; a late answer, an error answer (`404` from a task manager without the route) or
+  and the count of old runs (`more than 100,000` past the limit) with the command; a late answer, an error answer (`404` from a task manager without the route) or
   an answer without a size gets a line that names the error type, then the command, so the hint
   never fails or holds up the upgrade.
   The upgrade runs no cleanup: operators of existing instances with a lot of task history run the

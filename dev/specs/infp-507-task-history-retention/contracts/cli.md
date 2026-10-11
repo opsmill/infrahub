@@ -32,6 +32,6 @@ infrahub tasks background-services [CONFIG_FILE]
 ## `infrahub upgrade` (changed)
 
 - Deletes no task history and keeps its six steps.
-- In the "Task manager" step, after `Task manager configured`, prints `Task history takes <size>. To get the space back, run: infrahub tasks flush flow-runs --rewrite`, with the size from `GET /infrahub/task-history/size` (see [task-manager-api.md](task-manager-api.md)).
+- In the "Task manager" step, after `Task manager configured`, prints `Task history takes <size>, with <count> runs older than the retention. To get the space back, run: infrahub tasks flush flow-runs --rewrite` (`1 run`, `no runs`, or `more than 100,000 runs` past the count limit), with the size and the count from `GET /infrahub/task-history/size` (see [task-manager-api.md](task-manager-api.md)).
 - The size is read with a 10 s bound. A task manager that does not answer in time, answers an error (`404` from a task manager without the route) or answers without a size gets `Could not read the task history size from the task manager (<error type>). To get the disk space of old task history back, run: infrahub tasks flush flow-runs --rewrite`, and the upgrade goes on. On SQLite (`size` is `null`) nothing is printed.
 - Removed from the design of 4 Oct: the "Task history cleanup" step, the step numbering 1/7 to 7/7, `--no-task-history-cleanup` and the `--check` "Task history" section.
