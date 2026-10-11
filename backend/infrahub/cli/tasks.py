@@ -15,7 +15,7 @@ from rich.filesize import decimal
 
 from infrahub import config
 from infrahub.core.migrations.shared import get_migration_console
-from infrahub.prefect_server.task_history_models import CleanupJob, CleanupRewrite
+from infrahub.prefect_server.task_history_models import CleanupJob, CleanupRewrite, TaskHistorySize
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 from infrahub.task_manager.flow_run.cleanup import (
     POLL_INTERVAL,
@@ -99,16 +99,27 @@ async def task_history_size_hint(
     """Return the disk space the task history takes and the command that returns it, or None on SQLite."""
     try:
         async with asyncio.timeout(answer_within.total_seconds()):
-            size = await read_task_history_size(client=client)
+            measured = await read_task_history_size(client=client)
     # The size only informs the hint, so a failure to read it is named and the command is given without it.
     except (httpx.HTTPError, ValidationError, TimeoutError) as exc:
         return (
             f"Could not read the task history size from the task manager ({type(exc).__name__}). "
             f"To get the disk space of old task history back, run: {TASK_HISTORY_REWRITE_COMMAND}"
         )
-    if size is None:
+    if measured.size is None:
         return None
-    return f"Task history takes {decimal(size)}. To get the space back, run: {TASK_HISTORY_REWRITE_COMMAND}"
+    return (
+        f"Task history takes {decimal(measured.size)}, with {_old_runs(measured=measured)} older than the retention. "
+        f"To get the space back, run: {TASK_HISTORY_REWRITE_COMMAND}"
+    )
+
+
+def _old_runs(measured: TaskHistorySize) -> str:
+    if measured.old_runs_limit_reached:
+        return f"more than {measured.old_runs:,} runs"
+    if measured.old_runs == 0:
+        return "no runs"
+    return f"{measured.old_runs:,} run" if measured.old_runs == 1 else f"{measured.old_runs:,} runs"
 
 
 async def flush_old_flow_runs(

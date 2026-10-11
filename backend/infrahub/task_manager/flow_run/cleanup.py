@@ -131,16 +131,16 @@ async def run_task_history_cleanup(
         await sleep(poll_interval.total_seconds())
 
 
-async def read_task_history_size(client: PrefectClient) -> int | None:
-    """Return the disk space of the task history tables with their indexes, or None when the task manager does not measure it.
+async def read_task_history_size(client: PrefectClient) -> TaskHistorySize:
+    """Return the disk space of the task history tables, unmeasured on SQLite, and how many runs are older than the retention.
 
     Raises:
         httpx.HTTPError: When the task manager cannot be reached or answers with an error, such as 404 without the route.
-        pydantic.ValidationError: When the answer does not hold a size.
+        pydantic.ValidationError: When the answer does not hold a size and a count.
 
     """
     response = await client._client.get(SIZE_PATH)
-    return TaskHistorySize.model_validate_json(response.content).size
+    return TaskHistorySize.model_validate_json(response.content)
 
 
 async def _answer(request: Awaitable[httpx.Response], posted: bool) -> CleanupJob | CleanupWait | None:

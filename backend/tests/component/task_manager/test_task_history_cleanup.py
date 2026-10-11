@@ -125,6 +125,43 @@ async def test_cleanup_and_prefect_vacuum_running_together_leave_the_same_task_h
     assert await read_task_history_ids(db=db) == seeded.kept
 
 
+@dataclass
+class CountCase:
+    name: str
+    limit: int
+    expected_count: int
+
+
+COUNT_CASES: list[CountCase] = [
+    CountCase(name="below_the_limit", limit=10, expected_count=3),
+    CountCase(name="stopped_at_the_limit", limit=2, expected_count=2),
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in COUNT_CASES])
+async def test_old_runs_are_counted_as_the_cleanup_selects_them_up_to_the_limit(
+    task_manager_database_path: Path, case: CountCase
+) -> None:
+    """Only finished top-level runs that ended before the cutoff are counted, and counting stops at the limit."""
+    db = task_manager_database(task_manager_database_path)
+    for _ in range(3):
+        await seed_flow_run(db=db, state_type=StateType.COMPLETED, start_time=days_ago(41), end_time=days_ago(40))
+    recent = await seed_flow_run(db=db, state_type=StateType.COMPLETED, start_time=days_ago(6), end_time=days_ago(5))
+    await seed_flow_run(
+        db=db,
+        state_type=StateType.COMPLETED,
+        start_time=days_ago(41),
+        end_time=days_ago(40),
+        parent_task_run_id=recent.task_run_ids[0],
+    )
+    await seed_flow_run(db=db, state_type=StateType.RUNNING, start_time=days_ago(41), end_time=None)
+    tables = TaskHistoryTables(db=db, ids_per_statement=999)
+
+    counted = await tables.count_runs(ended_before=datetime.now(UTC) - RETENTION, limit=case.limit)
+
+    assert counted == case.expected_count
+
+
 MOSTLY_FREE = TableSpace(disk_bytes=1000, live_bytes=499)
 HALF_FREE = TableSpace(disk_bytes=1000, live_bytes=500)
 MOSTLY_LIVE = TableSpace(disk_bytes=1000, live_bytes=900)

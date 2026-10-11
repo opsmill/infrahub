@@ -310,11 +310,16 @@ async def test_cleanup_on_sqlite_reports_that_it_rewrites_nothing(app: FastAPI, 
     assert await _flow_run_ids(db=db) == set()
 
 
-async def test_the_task_history_size_is_not_measured_on_sqlite(app: FastAPI, db: PrefectDBInterface) -> None:
-    """On SQLite the task manager answers that it does not measure the size of the task history."""
-    await _seed_old_run(db=db)
+async def test_on_sqlite_the_task_manager_counts_the_old_runs_without_measuring_the_size(
+    app: FastAPI, db: PrefectDBInterface
+) -> None:
+    """On SQLite the task manager counts the runs older than the retention, and does not measure the size."""
+    await _seed_old_and_recent_runs(db=db)
 
     async with _client(app) as client:
         response = await client.get(SIZE_URL)
 
-    assert (response.status_code, response.json()) == (200, {"size": None})
+    assert (response.status_code, response.json()) == (
+        200,
+        {"size": None, "old_runs": OLD_RUNS, "old_runs_limit_reached": False},
+    )

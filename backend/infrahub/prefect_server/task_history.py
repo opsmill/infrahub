@@ -31,6 +31,8 @@ _TASK_HISTORY_TABLES = ("flow_run", "flow_run_state", "task_run", "task_run_stat
 _ACTIVITY_LOG_TABLES = ("events", "event_resources")
 # Above this many pages a table's live size is estimated from a sample of its pages, so a mostly live table is not read whole.
 _EXACT_MEASURE_PAGES = 10_000
+# Counting stops here, so the count of old runs stays fast on a task history of millions of runs.
+_OLD_RUNS_COUNT_LIMIT = 100_000
 _REWRITE_LOCK_TIMEOUT = timedelta(seconds=60)
 _REWRITE_RETRIES = 3
 _CLEANUP_LOCK_KEY = int.from_bytes(b"taskhist", byteorder="big")
@@ -121,6 +123,15 @@ class TaskHistoryTables:
                 )
             )
         return oldest
+
+    async def count_runs(self, ended_before: datetime, limit: int) -> int:
+        """Return how many runs that ended before the time may be deleted, counting no further than the limit."""
+        eligible = sa.select(self._db.FlowRun.id).where(self._eligible(ended_before=ended_before, ended_from=None))
+        async with self._db.session_context() as session:
+            counted: int = await session.scalar(
+                sa.select(sa.func.count()).select_from(eligible.limit(limit).subquery())
+            )
+        return counted
 
     async def delete_runs(self, ended_from: datetime, ended_before: datetime) -> int:
         """Delete the runs that ended within the time range, then their logs and artifacts, in one transaction.
@@ -490,10 +501,18 @@ async def start_cleanup(
 async def read_task_history_size(
     db: Annotated[PrefectDBInterface, Depends(provide_database_interface)],
 ) -> TaskHistorySize:
-    """Return the disk space of the task history tables with their indexes, which is not measured on SQLite."""
-    if not isinstance(db.database_config, AsyncPostgresConfiguration):
-        return TaskHistorySize(size=None)
-    return TaskHistorySize(size=await total_size(db=db, tables=_TASK_HISTORY_TABLES))
+    """Return the disk space of the task history tables, which is not measured on SQLite, and how many runs are old."""
+    retention = get_current_settings().server.services.db_vacuum.retention_period
+    tables = TaskHistoryTables(db=db, ids_per_statement=get_max_query_parameters())
+    counted = await tables.count_runs(ended_before=datetime.now(UTC) - retention, limit=_OLD_RUNS_COUNT_LIMIT + 1)
+    size = None
+    if isinstance(db.database_config, AsyncPostgresConfiguration):
+        size = await total_size(db=db, tables=_TASK_HISTORY_TABLES)
+    return TaskHistorySize(
+        size=size,
+        old_runs=min(counted, _OLD_RUNS_COUNT_LIMIT),
+        old_runs_limit_reached=counted > _OLD_RUNS_COUNT_LIMIT,
+    )
 
 
 @router.get("/cleanup/{job_id}")

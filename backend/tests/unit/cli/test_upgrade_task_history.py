@@ -31,6 +31,16 @@ def _without_size(error: str) -> str:
     return f"Could not read the task history size from the task manager ({error}). {COMMAND}"
 
 
+def _with_size(measured: str) -> str:
+    return f"{measured} To get the space back, run: infrahub tasks flush flow-runs --rewrite"
+
+
+def _measured(size: int | None, old_runs: int, old_runs_limit_reached: bool) -> httpx.Response:
+    return httpx.Response(
+        status_code=200, json={"size": size, "old_runs": old_runs, "old_runs_limit_reached": old_runs_limit_reached}
+    )
+
+
 def _upgrade_outline() -> list[str]:
     """The step headers and the task history hint of the upgrade, in source order."""
     tree = ast.parse(textwrap.dedent(inspect.getsource(_upgrade_execute)))
@@ -67,13 +77,28 @@ class HintCase:
 
 HINT_CASES: list[HintCase] = [
     HintCase(
-        name="size_measured",
-        answer=httpx.Response(status_code=200, json={"size": 23_400_000_000}),
-        expected_hint="Task history takes 23.4 GB. To get the space back, run: infrahub tasks flush flow-runs --rewrite",
+        name="size_and_old_runs",
+        answer=_measured(size=23_400_000_000, old_runs=1234, old_runs_limit_reached=False),
+        expected_hint=_with_size("Task history takes 23.4 GB, with 1,234 runs older than the retention."),
+    ),
+    HintCase(
+        name="one_old_run",
+        answer=_measured(size=23_400_000_000, old_runs=1, old_runs_limit_reached=False),
+        expected_hint=_with_size("Task history takes 23.4 GB, with 1 run older than the retention."),
+    ),
+    HintCase(
+        name="no_old_runs",
+        answer=_measured(size=1_200_000_000, old_runs=0, old_runs_limit_reached=False),
+        expected_hint=_with_size("Task history takes 1.2 GB, with no runs older than the retention."),
+    ),
+    HintCase(
+        name="old_runs_over_the_count_limit",
+        answer=_measured(size=99_000_000_000, old_runs=100_000, old_runs_limit_reached=True),
+        expected_hint=_with_size("Task history takes 99.0 GB, with more than 100,000 runs older than the retention."),
     ),
     HintCase(
         name="size_not_measured_on_sqlite",
-        answer=httpx.Response(status_code=200, json={"size": None}),
+        answer=_measured(size=None, old_runs=3, old_runs_limit_reached=False),
         expected_hint=None,
     ),
     HintCase(
@@ -88,8 +113,8 @@ HINT_CASES: list[HintCase] = [
         expected_hint=_without_size("PrefectHTTPStatusError"),
     ),
     HintCase(
-        name="answer_without_a_size",
-        answer=httpx.Response(status_code=200, json={"detail": "unexpected"}),
+        name="answer_without_a_count_of_old_runs",
+        answer=httpx.Response(status_code=200, json={"size": 1000}),
         expected_hint=_without_size("ValidationError"),
     ),
 ]
@@ -98,7 +123,7 @@ HINT_CASES: list[HintCase] = [
 @pytest.mark.usefixtures("prefect_client_without_retries")
 @pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in HINT_CASES])
 async def test_the_hint_gives_the_size_and_the_command_or_why_it_has_no_size(case: HintCase) -> None:
-    """The hint gives the size the task manager measured, nothing on SQLite, and why it has no size otherwise."""
+    """The hint gives the size and the old runs the task manager measured, nothing on SQLite, and why it has no size otherwise."""
     task_manager = ScriptedTaskManager(responses=[case.answer])
 
     async with task_manager.client() as client:
@@ -116,7 +141,7 @@ async def test_the_hint_gives_the_command_without_the_size_when_the_task_manager
         if request.url.path == "/api/csrf-token":
             return httpx.Response(status_code=422, json={"detail": "CSRF protection is disabled."})
         await answered.wait()
-        return httpx.Response(status_code=200, json={"size": 1})
+        return httpx.Response(status_code=200, json={"size": 1, "old_runs": 0, "old_runs_limit_reached": False})
 
     client = PrefectClient(api=TASK_MANAGER_API, httpx_settings={"transport": httpx.MockTransport(never_answers)})
     async with client:
