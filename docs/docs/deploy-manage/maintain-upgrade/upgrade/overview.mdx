@@ -24,7 +24,7 @@ Upgrading Infrahub involves pulling the latest container images, running databas
 | 2/6   | Internal schema initialization |
 | 3/6   | Core schema update |
 | 4/6   | Internal objects — menu and permissions |
-| 5/6   | Task manager — workflow blocks, worker pools, deployments; prints the disk space the task history takes (see [Clean up old task history after the upgrade](#clean-up-old-task-history-after-the-upgrade)) |
+| 5/6   | Task manager — workflow blocks, worker pools, deployments; prints the disk space the task history takes and how many task runs are older than the retention (see [Clean up old task history after the upgrade](#clean-up-old-task-history-after-the-upgrade)) |
 | 6/6   | Branch rebase: marks open branches on an older graph version as `NEED_UPGRADE_REBASE`, and rebases them when `--rebase-branches` is set |
 
 The command logs a header for each step, per-migration timing inside Step 1/6, and a final `Upgrade complete SUCCESS` line. Use `--check` to see what the upgrade would do without writing anything.
@@ -72,7 +72,7 @@ Permissions up to date, nothing to update
 
 Step 5/6: Task manager
 Task manager configured
-Task history takes 24.8 GB. To get the space back, run: infrahub tasks flush flow-runs --rewrite
+Task history takes 24.8 GB, with 1,234 runs older than the retention. To get the space back, run: infrahub tasks flush flow-runs --rewrite
 
 Step 6/6: Branch rebase
 Found 2 branches that need to be rebased
@@ -92,11 +92,13 @@ Lines such as `Cleaning up …`, `Recomputing HFID/display_label …`, `Normaliz
 
 The task manager keeps finished task runs, with their logs and artifacts, for the task history retention, 30 days by default, and deletes older runs every hour. An instance that ran a release without this retention can hold months of task history: the large instances that OpsMill knows of hold 20 to 35 GB.
 
-The upgrade deletes no task runs. In step 5/6, it prints how much disk space the task history takes and the command that gets that space back:
+The upgrade deletes no task runs. In step 5/6, it prints how much disk space the task history takes, how many task runs are older than the retention, and the command that gets that space back:
 
 ```console
-Task history takes 24.8 GB. To get the space back, run: infrahub tasks flush flow-runs --rewrite
+Task history takes 24.8 GB, with 1,234 runs older than the retention. To get the space back, run: infrahub tasks flush flow-runs --rewrite
 ```
+
+The count stops at 100,000, so a larger backlog shows as `more than 100,000 runs`. When it shows `no runs older than the retention`, there is no backlog left to delete, and the cleanup step only shrinks the tables: in OpsMill benchmarks, that took about 20 seconds for 25 GB of task history and 85 seconds for 100 GB.
 
 When the upgrade cannot read the size from the task manager within 10 seconds, for example because the task manager still runs the previous release, it prints `Could not read the task history size from the task manager`, with the reason, then the command, and continues.
 
