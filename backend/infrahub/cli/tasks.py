@@ -45,7 +45,7 @@ STALE_FLOW_RUN_STATES = [StateType.RUNNING, StateType.PENDING]
 
 TASK_HISTORY_CLEANUP_NOT_PROVIDED = "The task manager does not provide the task history cleanup yet; skipped."
 TASK_HISTORY_REWRITE_COMMAND = "infrahub tasks flush flow-runs --rewrite"
-# Short, because reading the size must never hold up the upgrade.
+# Short, because the size only informs the hint and is not worth a long wait.
 TASK_HISTORY_SIZE_TIMEOUT = timedelta(seconds=10)
 
 
@@ -100,9 +100,12 @@ async def task_history_size_hint(
     try:
         async with asyncio.timeout(answer_within.total_seconds()):
             size = await read_task_history_size(client=client)
-    # The hint must never fail the upgrade, and the command stays the way back to the space without the size.
-    except (httpx.HTTPError, ValidationError, TimeoutError):
-        return f"To get the disk space of old task history back, run: {TASK_HISTORY_REWRITE_COMMAND}"
+    # The size only informs the hint, so a failure to read it is named and the command is given without it.
+    except (httpx.HTTPError, ValidationError, TimeoutError) as exc:
+        return (
+            f"Could not read the task history size from the task manager ({type(exc).__name__}). "
+            f"To get the disk space of old task history back, run: {TASK_HISTORY_REWRITE_COMMAND}"
+        )
     if size is None:
         return None
     return f"Task history takes {decimal(size)}. To get the space back, run: {TASK_HISTORY_REWRITE_COMMAND}"
@@ -192,8 +195,9 @@ async def flow_runs(
         False,
         "--rewrite",
         help=(
-            "Then rewrite each task history and activity log table whose live rows hold less than half of its "
-            "disk space, to return that space to the disk. Tasks that write to a table wait while it is rewritten."
+            "After the deletes, rewrite each task history and activity log table whose live rows hold less than "
+            "half of its disk space, to return that space to the disk. Tasks that write to a table wait while it is "
+            "rewritten."
         ),
     ),
 ) -> None:

@@ -24,7 +24,11 @@ from tests.helpers.task_history_api import (
 )
 
 STEP_HEADER = re.compile(r"^\[bold\]Step (?P<number>\d+)/(?P<total>\d+): (?P<name>.+)\[/bold\]$")
-COMMAND_ONLY = "To get the disk space of old task history back, run: infrahub tasks flush flow-runs --rewrite"
+COMMAND = "To get the disk space of old task history back, run: infrahub tasks flush flow-runs --rewrite"
+
+
+def _without_size(error: str) -> str:
+    return f"Could not read the task history size from the task manager ({error}). {COMMAND}"
 
 
 def _upgrade_outline() -> list[str]:
@@ -72,25 +76,29 @@ HINT_CASES: list[HintCase] = [
         answer=httpx.Response(status_code=200, json={"size": None}),
         expected_hint=None,
     ),
-    HintCase(name="task_manager_without_the_route", answer=route_missing(), expected_hint=COMMAND_ONLY),
-    HintCase(name="task_manager_unreachable", answer=unreachable(), expected_hint=COMMAND_ONLY),
+    HintCase(
+        name="task_manager_without_the_route",
+        answer=route_missing(),
+        expected_hint=_without_size("PrefectHTTPStatusError"),
+    ),
+    HintCase(name="task_manager_unreachable", answer=unreachable(), expected_hint=_without_size("ConnectError")),
     HintCase(
         name="task_manager_error",
         answer=httpx.Response(status_code=500, json={"detail": "boom"}),
-        expected_hint=COMMAND_ONLY,
+        expected_hint=_without_size("PrefectHTTPStatusError"),
     ),
     HintCase(
         name="answer_without_a_size",
         answer=httpx.Response(status_code=200, json={"detail": "unexpected"}),
-        expected_hint=COMMAND_ONLY,
+        expected_hint=_without_size("ValidationError"),
     ),
 ]
 
 
 @pytest.mark.usefixtures("prefect_client_without_retries")
 @pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in HINT_CASES])
-async def test_the_hint_gives_the_size_and_the_command_or_the_command_alone(case: HintCase) -> None:
-    """The hint gives the size the task manager measured, nothing on SQLite, and the command alone when it gets no size."""
+async def test_the_hint_gives_the_size_and_the_command_or_why_it_has_no_size(case: HintCase) -> None:
+    """The hint gives the size the task manager measured, nothing on SQLite, and why it has no size otherwise."""
     task_manager = ScriptedTaskManager(responses=[case.answer])
 
     async with task_manager.client() as client:
@@ -100,8 +108,8 @@ async def test_the_hint_gives_the_size_and_the_command_or_the_command_alone(case
     assert task_manager.requests == [RecordedRequest(method="GET", path=SIZE_PATH)]
 
 
-async def test_the_hint_gives_the_command_alone_when_the_task_manager_answers_too_late() -> None:
-    """A task manager that does not answer within the bound gets the command alone, so the upgrade goes on."""
+async def test_the_hint_gives_the_command_without_the_size_when_the_task_manager_answers_too_late() -> None:
+    """A task manager that does not answer within the bound gets the command without the size, so the upgrade goes on."""
     answered = asyncio.Event()
 
     async def never_answers(request: httpx.Request) -> httpx.Response:
@@ -114,4 +122,4 @@ async def test_the_hint_gives_the_command_alone_when_the_task_manager_answers_to
     async with client:
         hint = await task_history_size_hint(client=client, answer_within=timedelta(milliseconds=50))
 
-    assert hint == COMMAND_ONLY
+    assert hint == _without_size("TimeoutError")
