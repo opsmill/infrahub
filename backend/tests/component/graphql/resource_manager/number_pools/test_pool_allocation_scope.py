@@ -188,6 +188,12 @@ def device_schema_on_branch(device: NodeSchema) -> SchemaRoot:
     return SchemaRoot(nodes=[device])
 
 
+async def save_schema(db: InfrahubDatabase, schema: SchemaRoot, branch_name: str | None = None) -> None:
+    """Load the schema and save only its own kinds, because saving the whole core schema takes about 25 seconds."""
+    kinds = [element.kind for element in [*schema.generics, *schema.nodes]]
+    await load_schema(db=db, schema=schema, branch_name=branch_name, update_db=True, limit=kinds)
+
+
 @dataclass
 class ScopeRefusalTestCase:
     name: str
@@ -292,7 +298,7 @@ class TestNumberPoolAllocationScope:
         default_branch_scope_class: Branch,
         register_core_models_schema_scope_class: SchemaBranch,
     ) -> None:
-        await load_schema(db=db, schema=_default_branch_schema(), update_db=True)
+        await save_schema(db=db, schema=_default_branch_schema())
         default_branch_scope_class.update_schema_hash()
 
     @pytest.mark.parametrize("form", ["name", "id", "object"])
@@ -530,7 +536,7 @@ class TestNumberPoolScopeOnBranchSchema:
         default_branch_scope_class: Branch,
         register_core_models_schema_scope_class: SchemaBranch,
     ) -> Branch:
-        await load_schema(db=db, schema=SCOPED_POOL_SCHEMA, update_db=True)
+        await save_schema(db=db, schema=SCOPED_POOL_SCHEMA)
         default_branch_scope_class.update_schema_hash()
         branch = await create_branch(branch_name=POD_BRANCH, db=db)
         device = registry.schema.get_node_schema(name=SCOPED_DEVICE_KIND, branch=branch, duplicate=True)
@@ -607,12 +613,10 @@ class TestNumberPoolScopeAfterFieldReachesDefaultBranch:
         default_branch_scope_class: Branch,
         register_core_models_schema_scope_class: SchemaBranch,
     ) -> dict[str, Branch]:
-        await load_schema(db=db, schema=SCOPED_POOL_SCHEMA, update_db=True)
+        await save_schema(db=db, schema=SCOPED_POOL_SCHEMA)
         default_branch_scope_class.update_schema_hash()
         forked_before_pod = await create_branch(branch_name=FORKED_BEFORE_POD, db=db)
-        await load_schema(
-            db=db, schema=device_schema_with_pod(), branch_name=default_branch_scope_class.name, update_db=True
-        )
+        await save_schema(db=db, schema=device_schema_with_pod(), branch_name=default_branch_scope_class.name)
         pod_branch = await create_branch(branch_name=POD_BRANCH, db=db)
         return {
             DEFAULT_BRANCH_KEY: default_branch_scope_class,
@@ -715,18 +719,15 @@ class TestNumberPoolScopeAfterTheSchemaChangesAnElement:
         default_branch_scope_class: Branch,
         register_core_models_schema_scope_class: SchemaBranch,
     ) -> dict[str, Any]:
-        await load_schema(db=db, schema=SCOPED_POOL_SCHEMA, update_db=True)
+        await save_schema(db=db, schema=SCOPED_POOL_SCHEMA)
         default_branch_scope_class.update_schema_hash()
         pool = await create_device_pool(
             db=db, branch=default_branch_scope_class, name="element-changed", scope={"value": ["site", "role"]}
         )
         device = copy.deepcopy(SCOPED_DEVICE)
         device.get_attribute(name="role").optional = True
-        await load_schema(
-            db=db,
-            schema=SchemaRoot(nodes=[*_peer_schemas(), device]),
-            branch_name=default_branch_scope_class.name,
-            update_db=True,
+        await save_schema(
+            db=db, schema=SchemaRoot(nodes=[*_peer_schemas(), device]), branch_name=default_branch_scope_class.name
         )
         default_branch_scope_class.update_schema_hash()
         assert registry.schema.get(name=SCOPED_DEVICE_KIND, duplicate=False).get_attribute(name="role").optional
