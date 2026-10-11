@@ -11,6 +11,7 @@ from rich.console import Console
 
 TASK_MANAGER_API = "http://task-manager:4200/api"
 CLEANUP_PATH = "/api/infrahub/task-history/cleanup"
+SIZE_PATH = "/api/infrahub/task-history/size"
 
 
 @dataclass(frozen=True)
@@ -26,12 +27,13 @@ def cleanup_job(**fields: Any) -> dict[str, Any]:
         "id": "job-1",
         "state": "running",
         "rewrite": "never",
-        "rewritten": False,
         "cutoff": "2026-09-04T00:00:00Z",
         "deleted_runs": 0,
         "current_day": None,
         "size_before": None,
         "size_after": None,
+        "rewritten": [],
+        "mostly_live": [],
         "not_rewritten": [],
         "error": None,
     } | fields

@@ -125,76 +125,79 @@ async def test_cleanup_and_prefect_vacuum_running_together_leave_the_same_task_h
     assert await read_task_history_ids(db=db) == seeded.kept
 
 
+MOSTLY_FREE = TableSpace(disk_bytes=1000, live_bytes=499)
+HALF_FREE = TableSpace(disk_bytes=1000, live_bytes=500)
+MOSTLY_LIVE = TableSpace(disk_bytes=1000, live_bytes=900)
+
+
 @dataclass
 class RewriteDecisionCase:
     name: str
     rewrite: CleanupRewrite
     old_runs: int
-    flow_run_space: TableSpace
-    expected_rewritten: bool
+    spaces: dict[str, TableSpace]
+    locked: tuple[str, ...]
     expected_calls: list[str]
+    expected_rewritten: list[str]
+    expected_mostly_live: list[str]
     expected_not_rewritten: list[str]
     expected_size_after: int
 
 
 REWRITE_DECISION_CASES: list[RewriteDecisionCase] = [
     RewriteDecisionCase(
-        name="if_freed_with_more_than_half_of_the_runs_table_free",
+        name="if_freed_rewrites_each_table_more_than_half_free",
         rewrite=CleanupRewrite.IF_FREED,
         old_runs=3,
-        flow_run_space=TableSpace(disk_bytes=1000, live_bytes=499),
-        expected_rewritten=True,
-        expected_calls=["total_size", "flow_run_space", "rewrite", "total_size"],
+        spaces={"flow_run": MOSTLY_FREE, "log": MOSTLY_FREE, "events": HALF_FREE, "event_resources": MOSTLY_FREE},
+        locked=("log",),
+        expected_calls=[
+            "total_size",
+            "space flow_run",
+            "space log",
+            "space events",
+            "space event_resources",
+            "rewrite flow_run log event_resources",
+            "total_size",
+        ],
+        expected_rewritten=["flow_run", "event_resources"],
+        expected_mostly_live=["events"],
         expected_not_rewritten=["log"],
         expected_size_after=100,
-    ),
-    RewriteDecisionCase(
-        name="if_freed_with_half_of_the_runs_table_free",
-        rewrite=CleanupRewrite.IF_FREED,
-        old_runs=3,
-        flow_run_space=TableSpace(disk_bytes=1000, live_bytes=500),
-        expected_rewritten=False,
-        expected_calls=["total_size", "flow_run_space", "total_size"],
-        expected_not_rewritten=[],
-        expected_size_after=1000,
     ),
     RewriteDecisionCase(
         name="if_freed_with_the_runs_deleted_before_the_cleanup_started",
         rewrite=CleanupRewrite.IF_FREED,
         old_runs=0,
-        flow_run_space=TableSpace(disk_bytes=1000, live_bytes=100),
-        expected_rewritten=True,
-        expected_calls=["total_size", "flow_run_space", "rewrite", "total_size"],
-        expected_not_rewritten=["log"],
+        spaces={"flow_run": TableSpace(disk_bytes=1000, live_bytes=100)},
+        locked=(),
+        expected_calls=["total_size", "space flow_run", "rewrite flow_run", "total_size"],
+        expected_rewritten=["flow_run"],
+        expected_mostly_live=[],
+        expected_not_rewritten=[],
         expected_size_after=100,
     ),
     RewriteDecisionCase(
-        name="if_freed_with_runs_deleted_from_a_mostly_live_runs_table",
+        name="if_freed_with_every_table_mostly_live",
         rewrite=CleanupRewrite.IF_FREED,
         old_runs=3,
-        flow_run_space=TableSpace(disk_bytes=1000, live_bytes=900),
-        expected_rewritten=False,
-        expected_calls=["total_size", "flow_run_space", "total_size"],
+        spaces={"flow_run": MOSTLY_LIVE, "events": MOSTLY_LIVE},
+        locked=(),
+        expected_calls=["total_size", "space flow_run", "space events", "total_size"],
+        expected_rewritten=[],
+        expected_mostly_live=["flow_run", "events"],
         expected_not_rewritten=[],
         expected_size_after=1000,
     ),
     RewriteDecisionCase(
-        name="always_with_a_mostly_live_runs_table",
-        rewrite=CleanupRewrite.ALWAYS,
-        old_runs=1,
-        flow_run_space=TableSpace(disk_bytes=1000, live_bytes=900),
-        expected_rewritten=True,
-        expected_calls=["total_size", "rewrite", "total_size"],
-        expected_not_rewritten=["log"],
-        expected_size_after=100,
-    ),
-    RewriteDecisionCase(
-        name="never_with_a_runs_table_holding_no_live_rows",
+        name="never_with_a_table_holding_no_live_rows",
         rewrite=CleanupRewrite.NEVER,
         old_runs=3,
-        flow_run_space=TableSpace(disk_bytes=1000, live_bytes=0),
-        expected_rewritten=False,
+        spaces={"flow_run": TableSpace(disk_bytes=1000, live_bytes=0)},
+        locked=(),
         expected_calls=["total_size", "total_size"],
+        expected_rewritten=[],
+        expected_mostly_live=[],
         expected_not_rewritten=[],
         expected_size_after=1000,
     ),
@@ -202,14 +205,14 @@ REWRITE_DECISION_CASES: list[RewriteDecisionCase] = [
 
 
 @pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in REWRITE_DECISION_CASES])
-async def test_tables_are_rewritten_as_the_cleanup_asks(
+async def test_each_table_is_rewritten_when_the_cleanup_asks_and_most_of_it_is_free(
     task_manager_database_path: Path, case: RewriteDecisionCase
 ) -> None:
-    """The tables are rewritten always, never, or only when more than half of the runs table is free, whoever freed it."""
+    """Asked to rewrite, the cleanup rewrites each table whose live rows hold less than half of it, whoever freed it."""
     db = task_manager_database(task_manager_database_path)
     for _ in range(case.old_runs):
         await seed_flow_run(db=db, state_type=StateType.COMPLETED, start_time=days_ago(41), end_time=days_ago(40))
-    rewriter = RecordingRewriter(flow_run_space=case.flow_run_space)
+    rewriter = RecordingRewriter(spaces=case.spaces, locked=case.locked)
     job = _job(rewrite=case.rewrite)
     cleanup = TaskHistoryCleanup(tables=TaskHistoryTables(db=db, ids_per_statement=999), rewriter=rewriter)
 
@@ -217,10 +220,19 @@ async def test_tables_are_rewritten_as_the_cleanup_asks(
     await cleanup.rewrite(job=job, mode=job.rewrite)
 
     assert rewriter.calls == case.expected_calls
-    assert (job.deleted_runs, job.rewrite, job.rewritten, job.not_rewritten, job.size_before, job.size_after) == (
+    assert (
+        job.deleted_runs,
+        job.rewrite,
+        job.rewritten,
+        job.mostly_live,
+        job.not_rewritten,
+        job.size_before,
+        job.size_after,
+    ) == (
         case.old_runs,
         case.rewrite,
         case.expected_rewritten,
+        case.expected_mostly_live,
         case.expected_not_rewritten,
         1000,
         case.expected_size_after,

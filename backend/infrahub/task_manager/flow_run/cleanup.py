@@ -11,7 +11,7 @@ import httpx
 from prefect.exceptions import PrefectHTTPStatusError
 
 from infrahub.exceptions import Error
-from infrahub.prefect_server.task_history_models import CleanupJob, CleanupJobState, CleanupRewrite
+from infrahub.prefect_server.task_history_models import CleanupJob, CleanupJobState, CleanupRewrite, TaskHistorySize
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from prefect.client.orchestration import PrefectClient
 
 CLEANUP_PATH = "/infrahub/task-history/cleanup"
+SIZE_PATH = "/infrahub/task-history/size"
 POLL_INTERVAL = timedelta(seconds=2)
 # Long enough to wait out a cleanup another task manager runs on a large task history, short enough to end a stuck loop.
 GIVE_UP_AFTER = timedelta(hours=3)
@@ -128,6 +129,18 @@ async def run_task_history_cleanup(
                     message=f"Gave up after {_duration(give_up_after)} without a cleanup to follow, when {answer.reason}"
                 )
         await sleep(poll_interval.total_seconds())
+
+
+async def read_task_history_size(client: PrefectClient) -> int | None:
+    """Return the disk space of the task history tables with their indexes, or None when the task manager does not measure it.
+
+    Raises:
+        httpx.HTTPError: When the task manager cannot be reached or answers with an error, such as 404 without the route.
+        pydantic.ValidationError: When the answer does not hold a size.
+
+    """
+    response = await client._client.get(SIZE_PATH)
+    return TaskHistorySize.model_validate_json(response.content).size
 
 
 async def _answer(request: Awaitable[httpx.Response], posted: bool) -> CleanupJob | CleanupWait | None:

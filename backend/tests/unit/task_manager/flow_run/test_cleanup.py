@@ -86,10 +86,10 @@ async def test_a_task_manager_without_the_cleanup_route_runs_no_cleanup() -> Non
     task_manager = ScriptedTaskManager(responses=[route_missing()])
     clock = FakeClock()
 
-    result = await _run(task_manager=task_manager, clock=clock, rewrite=CleanupRewrite.ALWAYS)
+    result = await _run(task_manager=task_manager, clock=clock, rewrite=CleanupRewrite.IF_FREED)
 
     assert result is None
-    assert task_manager.requests == [RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "always"})]
+    assert task_manager.requests == [RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "if_freed"})]
     assert clock.sleeps == []
 
 
@@ -104,7 +104,7 @@ async def test_a_cleanup_is_polled_until_it_completes_reporting_each_change_of_p
             polled(
                 rewrite="if_freed",
                 state="completed",
-                rewritten=True,
+                rewritten=["flow_run"],
                 current_day="2026-01-17",
                 deleted_runs=12,
                 size_before=1000,
@@ -120,7 +120,7 @@ async def test_a_cleanup_is_polled_until_it_completes_reporting_each_change_of_p
     assert result is not None
     assert (result.state, result.rewritten, result.deleted_runs, result.size_before, result.size_after) == (
         CleanupJobState.COMPLETED,
-        True,
+        ["flow_run"],
         12,
         1000,
         100,
@@ -186,11 +186,11 @@ async def test_a_failed_cleanup_raises_the_error_the_task_manager_recorded_with_
     """A cleanup that ends failed raises with the error the task manager recorded on it, holding the job as it ended."""
     task_manager = ScriptedTaskManager(
         responses=[
-            started(rewrite="always"),
+            started(rewrite="if_freed"),
             polled(
-                rewrite="always",
+                rewrite="if_freed",
                 state="failed",
-                rewritten=True,
+                rewritten=["flow_run"],
                 current_day="2026-01-15",
                 deleted_runs=7,
                 not_rewritten=["log"],
@@ -203,7 +203,7 @@ async def test_a_failed_cleanup_raises_the_error_the_task_manager_recorded_with_
         TaskHistoryCleanupFailedError,
         match=r"^The cleanup failed with DBAPIError; the task manager log has the details$",
     ) as raised:
-        await _run(task_manager=task_manager, clock=FakeClock(), rewrite=CleanupRewrite.ALWAYS)
+        await _run(task_manager=task_manager, clock=FakeClock(), rewrite=CleanupRewrite.IF_FREED)
 
     job = raised.value.job
     assert (job.id, job.state, job.deleted_runs, job.current_day, job.rewritten, job.not_rewritten) == (
@@ -211,7 +211,7 @@ async def test_a_failed_cleanup_raises_the_error_the_task_manager_recorded_with_
         CleanupJobState.FAILED,
         7,
         date(2026, 1, 15),
-        True,
+        ["flow_run"],
         ["log"],
     )
 

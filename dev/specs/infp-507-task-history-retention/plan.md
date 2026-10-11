@@ -8,7 +8,7 @@
 
 Bound the task manager's storage and make the activity log retention configurable, without adding tables or indexes to Prefect's database:
 
-- **Task history (part 1)**: turn on Prefect's built-in cleanup of old runs, driven by a new Infrahub retention setting; reimplement `infrahub tasks flush flow-runs` as a task-manager job that deletes with set-based SQL and optionally rewrites the tables; run it in the Compose upgrade, which rewrites the tables when more than half of their disk space is free after the deletes, whoever deleted the runs.
+- **Task history (part 1)**: turn on Prefect's built-in cleanup of old runs, driven by a new Infrahub retention setting; reimplement `infrahub tasks flush flow-runs` as a task-manager job that deletes with set-based SQL and, with `--rewrite`, rewrites each task history and activity log table whose live rows hold less than half of its disk space, whoever deleted the rows; operators of existing instances with a lot of task history run it once after the upgrade, which prints the task history size and the command.
 - **Activities page (part 2)**: filter on Prefect's indexed resource IDs instead of labels, read newest first in widening time windows, count only on request, plan each query for its values (PR #10379), and page by time on the frontend.
 - **Activity log (part 3)**: keep Infrahub events for the activity log retention and delete Prefect's own events after their own retention, through a list of Prefect event types guarded by a test.
 - **Documentation (part 4)**: configuration reference, CLI reference, upgrade guides, sizing, knowledge docs.
@@ -89,7 +89,7 @@ backend/infrahub/
 ├── graphql/queries/event.py           # include_count from selected fields, branch name → ID resolution
 └── cli/
     ├── tasks.py                       # flush flow-runs via the job, background-services command
-    └── upgrade.py                     # task history cleanup step, --no-task-history-cleanup
+    └── upgrade.py                     # task history size hint in the task manager step
 
 backend/tests/
 ├── unit/task_manager/event/           # filter construction
@@ -112,7 +112,7 @@ tests/performance/test_task_history_retention.py, test_task_history_upgrade.py, 
 changelog/                             # fragments per part
 ```
 
-**Structure Decision**: Existing backend/frontend layout. New task-manager code lives in `backend/infrahub/prefect_server/` next to Infrahub's existing routes, because only the task manager connects to Prefect's database. The Helm chart change (background-services command, `--no-task-history-cleanup` in the upgrade hook arguments) is a separate PR in opsmill/infrahub-helm.
+**Structure Decision**: Existing backend/frontend layout. New task-manager code lives in `backend/infrahub/prefect_server/` next to Infrahub's existing routes, because only the task manager connects to Prefect's database. The Helm chart change (background-services command) is a separate PR in opsmill/infrahub-helm; the chart's upgrade hook needs no extra option.
 
 ## Evidence: infrahub-private-tests
 
@@ -139,25 +139,25 @@ Keeping it separate keeps this repository's implementation context free of the p
 
 ## Delivery Order
 
-1. **Part 1, task history** (independent): settings section and translation, flow-run vacuum on, cleanup job and routes (advisory lock, Prefect's delete order of runs then children, rewrite modes `never`, `if_freed` for the upgrade and `always` for the command's rewrite option, rewrite lock timeout with retries), `flush flow-runs` reimplementation without `--days-to-keep` and `--batch-size`, upgrade step and `--no-task-history-cleanup`, background-services command, stale-runs documentation, cleanup equivalence and concurrency tests, Postgres run of the cleanup test in the integration-docker tier. The infrahub-helm PR (background-services command, `--no-task-history-cleanup` in the upgrade hook arguments) ships in the same release.
+1. **Part 1, task history** (independent): settings section and translation, flow-run vacuum on, cleanup job and routes (advisory lock, Prefect's delete order of runs then children, rewrite modes `never` and `if_freed`, the latter for the command's rewrite option and per table over the six task history and two activity log tables, rewrite lock timeout with retries), `flush flow-runs` reimplementation without `--days-to-keep` and `--batch-size`, the task history size route and the upgrade's hint, background-services command, stale-runs documentation, cleanup equivalence and concurrency tests, Postgres run of the cleanup test in the integration-docker tier. The infrahub-helm PR (background-services command) ships in the same release.
 2. **Part 2, Activities page** (before part 3): PR #10379 merged first or carried in; ID filters and branch resolution; time windows; optional count; frontend paging by time (the page already omits `count`); filter equivalence test.
 3. **Part 3, activity log retention**: Prefect event-type list and its guard test; activity log and own-event retentions applied; defaults.
 4. **Part 4, documentation**: ships with parts 1 and 3.
 
-Each of parts 1 to 3 merges only with its private-test evidence. The final run on the release candidate (T057) covers all three together. The release notes explain how to raise the activity log retention and its cost, and the Helm upgrade notes lead with the maintenance step and its expected duration.
+Each of parts 1 to 3 merges only with its private-test evidence. The final run on the release candidate (T057) covers all three together. The release notes explain how to raise the activity log retention and its cost, and the upgrade notes lead with the cleanup step after the upgrade, for existing instances with a lot of task history, and its expected duration.
 
 ## Risks
 
 | Risk | Mitigation |
 |---|---|
-| Upgrade step takes hours on large instances (Q1) | Per-day commits, progress output, re-runnable; operators can set a longer retention before upgrading. Release notes wait for the 100 GB figure. |
+| The cleanup step takes hours on large instances (Q1) | It runs after the upgrade with the instance up, not inside the upgrade; per-day commits, progress output, re-runnable; operators can set a longer retention before upgrading. Release notes wait for the 100 GB figure. |
 | API clients that select `count` | They still get it, and still wait for it (about 10 minutes for level 0 events on a year of activity log), as the design doc states. |
 | SQL cleanup drifts from Prefect's rules on a Prefect upgrade | Cleanup equivalence component test in CI. |
 | New Prefect event type not in the list | Integration-docker guard on the full stack (real workers, failure paths) plus a unit test over every built-in Prefect state; a missed type only costs disk. |
 | Filter results change on a Prefect upgrade | Filter equivalence component test in CI. |
 | Behaviour proven only on small CI data | Private tests on restored production-scale backups for each part, on both Postgres versions, attached as evidence. |
 | PR #33's retention override bypasses the new Infrahub setting | Switch it to `INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG` (T037). |
-| The Helm upgrade hook runs while the instance is serving | The chart passes `--no-task-history-cleanup`, and Helm users run the cleanup in a maintenance step after the rollout. Without the flag, the upgrade rewrites the tables whenever more than half of their disk space is free, including the space that Prefect's hourly cleanup freed before the upgrade. The 404 path covers a chart without the flag on the first release. |
+| Tables are rewritten while the instance is serving | Tasks that write to a table wait while it is rewritten: up to 7.4 s measured with the instance running on 25 GB of task history, about 20 s for the slowest table on 100 GB; rewriting the activity log tables after a long retention was lowered was not measured. Each table is rewritten only when its live rows hold less than half of its disk space, and the upgrade guides tell operators about the pauses. |
 | Operators already set PREFECT_* variables by hand | Explicit values win, with a warning naming the hidden Infrahub setting. |
 | Several task-manager replicas run two cleanups | Postgres advisory lock; the CLI retries on "running elsewhere" or an unknown job. |
 | The cleanup and Prefect's now-enabled vacuum run at the same time | Same order as Prefect (runs, then their children); Prefect skips locked runs and each side deletes children only for its own runs, so they cannot deadlock; the concurrency test (T009) guards it. |

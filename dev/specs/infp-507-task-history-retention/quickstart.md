@@ -12,12 +12,12 @@ Validation scenarios for each part. Settings and commands are defined in [contra
 1. Set `INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY=1d` on the task manager and restart it. Expect it to start and log the derived Prefect settings.
 2. Set `INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY=0d` and restart. Expect the task manager to refuse to start, naming `task_history`.
 3. Seed finished runs with end times older than 1 day, recent runs, and one RUNNING run (component test fixtures do this). Run `infrahub tasks flush flow-runs`. Expect only the old finished runs, their logs and artifacts gone, and the RUNNING run kept.
-4. Run `infrahub tasks flush flow-runs --rewrite` on a database with old runs. Expect the reported size after to be smaller than before.
-5. Run `infrahub upgrade` on a Compose stack with old runs. Expect a "Task history cleanup" step with progress lines, then the summary, with the tables rewritten when more than half of their disk space is free after the deletes. When the task manager started just before the step, its own cleanup has already deleted the old runs: expect few or no runs deleted by the step, and the tables rewritten all the same.
-6. Run `infrahub upgrade --no-task-history-cleanup`. Expect the step to be reported as skipped.
+4. Run `infrahub tasks flush flow-runs --rewrite` on a database with old runs. Expect the reported size after to be smaller than before, and every one of the eight tables named once in the rewrite lines.
+5. Run `infrahub upgrade` on a Compose stack with old runs. Expect no cleanup step and, in the task manager step, the line `Task history takes <size>. To get the space back, run: infrahub tasks flush flow-runs --rewrite`.
+6. Run `infrahub tasks flush flow-runs --rewrite` after that upgrade, with the instance running. Expect the old runs deleted (few or none when the task manager's own cleanup ran first), then one line naming the tables rewritten and one naming the tables left as they are because their live rows hold at least half of their disk space.
 7. Point `infrahub tasks flush flow-runs` at a task manager from the previous release. Expect the "does not provide the task history cleanup yet" message and exit code 0.
 8. Start the background services through `infrahub tasks background-services` with the test compose file and confirm the derived settings in its log.
-9. Lower `INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY`, restart the task manager and let its hourly cleanup delete the older runs, then run `infrahub tasks flush flow-runs --rewrite`. Expect few or no runs deleted, the tables rewritten, and the reported size after smaller than before.
+9. Lower `INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY`, restart the task manager and let its hourly cleanup delete the older runs, then run `infrahub tasks flush flow-runs --rewrite`. Expect few or no runs deleted, the freed task history tables rewritten, and the reported size after smaller than before.
 
 Automated: the cleanup equivalence component test (new cleanup and Prefect's `vacuum_old_flow_runs` leave the same runs, logs and artifacts).
 
@@ -38,4 +38,4 @@ Speed with a year of activity log is validated by the private performance tests 
 ## Part 4: documentation
 
 1. `uv run invoke docs.generate` then `uv run invoke docs.validate`: the configuration reference lists the three settings, and the CLI reference includes `infrahub tasks`.
-2. Read the upgrade guides for the cleanup step, the retention to set before upgrading, the free disk needed and the Helm maintenance step.
+2. Read the upgrade guides for the cleanup step after the upgrade, the same on Compose and Helm, the retention to set before upgrading and the free disk needed.

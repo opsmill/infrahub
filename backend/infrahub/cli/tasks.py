@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import asyncio
 import logging
-from dataclasses import dataclass
 from datetime import UTC, timedelta
 from typing import TYPE_CHECKING
 
@@ -10,6 +10,7 @@ import typer
 from infrahub_sdk.async_typer import AsyncTyper
 from prefect.client.orchestration import get_client
 from prefect.client.schemas.objects import StateType
+from pydantic import ValidationError
 from rich.filesize import decimal
 
 from infrahub import config
@@ -20,6 +21,7 @@ from infrahub.task_manager.flow_run.cleanup import (
     POLL_INTERVAL,
     TaskHistoryCleanupError,
     TaskHistoryCleanupFailedError,
+    read_task_history_size,
     run_task_history_cleanup,
 )
 from infrahub.task_manager.flow_run.prefect_client import PrefectClientAdapter
@@ -42,9 +44,9 @@ app = AsyncTyper()
 STALE_FLOW_RUN_STATES = [StateType.RUNNING, StateType.PENDING]
 
 TASK_HISTORY_CLEANUP_NOT_PROVIDED = "The task manager does not provide the task history cleanup yet; skipped."
-TASK_HISTORY_CLEANUP_RERUN_HINT = (
-    "Run `infrahub tasks flush flow-runs --rewrite` after the upgrade to finish the cleanup."
-)
+TASK_HISTORY_REWRITE_COMMAND = "infrahub tasks flush flow-runs --rewrite"
+# Short, because reading the size must never hold up the upgrade.
+TASK_HISTORY_SIZE_TIMEOUT = timedelta(seconds=10)
 
 
 @app.command()
@@ -91,61 +93,55 @@ flush_app = AsyncTyper()
 app.add_typer(flush_app, name="flush")
 
 
-@dataclass(frozen=True)
-class CleanupFailure:
-    """Why the cleanup failed or could not run, and what a cleanup that failed in the task manager had committed."""
-
-    error: str
-    committed: str | None = None
-
-
-async def clean_task_history(
-    client: PrefectClient, rewrite: CleanupRewrite, console: Console, poll_interval: timedelta = POLL_INTERVAL
-) -> CleanupFailure | None:
-    """Run a task history cleanup in the task manager, printing its progress and waits, then its outcome.
-
-    Returns:
-        Why the cleanup failed or could not run, or None when it ran or the task manager does not provide it.
-
-    """
+async def task_history_size_hint(
+    client: PrefectClient, answer_within: timedelta = TASK_HISTORY_SIZE_TIMEOUT
+) -> str | None:
+    """Return the disk space the task history takes and the command that returns it, or None on SQLite."""
     try:
-        job = await run_task_history_cleanup(
-            client=client,
-            rewrite=rewrite,
-            on_progress=lambda progress: console.log(_progress_line(job=progress)),
-            on_wait=lambda wait: console.log(f"Waiting to start the cleanup, because {wait.reason}"),
-            poll_interval=poll_interval,
-        )
-    except TaskHistoryCleanupFailedError as exc:
-        return CleanupFailure(error=exc.message, committed=_committed_line(job=exc.job))
-    except TaskHistoryCleanupError as exc:
-        return CleanupFailure(error=exc.message)
-    except httpx.HTTPError as exc:
-        return CleanupFailure(error=f"{type(exc).__name__}: {exc}")
-    if job is None:
-        console.log(TASK_HISTORY_CLEANUP_NOT_PROVIDED)
+        async with asyncio.timeout(answer_within.total_seconds()):
+            size = await read_task_history_size(client=client)
+    # The hint must never fail the upgrade, and the command stays the way back to the space without the size.
+    except (httpx.HTTPError, ValidationError, TimeoutError):
+        return f"To get the disk space of old task history back, run: {TASK_HISTORY_REWRITE_COMMAND}"
+    if size is None:
         return None
-    for line in _summary_lines(job=job):
-        console.log(line)
-    return None
+    return f"Task history takes {decimal(size)}. To get the space back, run: {TASK_HISTORY_REWRITE_COMMAND}"
 
 
 async def flush_old_flow_runs(
     client: PrefectClient, rewrite: bool, console: Console, poll_interval: timedelta = POLL_INTERVAL
 ) -> int:
-    """Delete the finished runs older than the task history retention, returning the exit code of the command."""
-    failure = await clean_task_history(
-        client=client,
-        rewrite=CleanupRewrite.ALWAYS if rewrite else CleanupRewrite.NEVER,
-        console=console,
-        poll_interval=poll_interval,
-    )
-    if failure is None:
+    """Delete the finished runs older than the task history retention, printing the progress, waits and outcome.
+
+    Returns:
+        The exit code of the command.
+
+    """
+    try:
+        job = await run_task_history_cleanup(
+            client=client,
+            rewrite=CleanupRewrite.IF_FREED if rewrite else CleanupRewrite.NEVER,
+            on_progress=lambda progress: console.log(_progress_line(job=progress)),
+            on_wait=lambda wait: console.log(f"Waiting to start the cleanup, because {wait.reason}"),
+            poll_interval=poll_interval,
+        )
+    except TaskHistoryCleanupFailedError as exc:
+        console.log(f"{ERROR_BADGE} {exc.message}")
+        for line in _committed_lines(job=exc.job):
+            console.log(line)
+        return 1
+    except TaskHistoryCleanupError as exc:
+        console.log(f"{ERROR_BADGE} {exc.message}")
+        return 1
+    except httpx.HTTPError as exc:
+        console.log(f"{ERROR_BADGE} {type(exc).__name__}: {exc}")
+        return 1
+    if job is None:
+        console.log(TASK_HISTORY_CLEANUP_NOT_PROVIDED)
         return 0
-    console.log(f"{ERROR_BADGE} {failure.error}")
-    if failure.committed is not None:
-        console.log(failure.committed)
-    return 1
+    for line in _summary_lines(job=job):
+        console.log(line)
+    return 0
 
 
 def _runs(count: int) -> str:
@@ -156,26 +152,35 @@ def _progress_line(job: CleanupJob) -> str:
     return f"Deleting the runs that ended on {job.current_day}, {_runs(job.deleted_runs)} deleted so far"
 
 
-def _committed_line(job: CleanupJob) -> str:
-    """The runs a failed cleanup deleted, and its rewrite only once that finished, as the job records no table of one cut short."""
-    deleted = f"Deleted {_runs(job.deleted_runs)} before the failure"
-    if not job.rewritten:
-        return deleted
+def _rewrite_lines(job: CleanupJob) -> list[str]:
+    """What the rewrite did with each table, which a job records only once its rewrite finished."""
+    lines: list[str] = []
+    if job.rewritten:
+        lines.append(f"Rewrote {', '.join(job.rewritten)}")
+    if job.mostly_live:
+        lines.append(
+            f"Left {', '.join(job.mostly_live)} as they are, because their live rows hold at least half of their disk space"
+        )
     if job.not_rewritten:
-        return f"{deleted}; task history tables rewritten, except {', '.join(job.not_rewritten)}, which stayed locked"
-    return f"{deleted}; task history tables rewritten"
+        lines.append(f"Did not rewrite {', '.join(job.not_rewritten)}, which stayed locked by other sessions")
+    return lines
+
+
+def _committed_lines(job: CleanupJob) -> list[str]:
+    """The runs a failed cleanup deleted, and the tables it rewrote."""
+    return [f"Deleted {_runs(job.deleted_runs)} before the failure", *_rewrite_lines(job=job)]
 
 
 def _summary_lines(job: CleanupJob) -> list[str]:
     lines = [f"Deleted {_runs(job.deleted_runs)} that ended before {job.cutoff.astimezone(UTC):%Y-%m-%d %H:%M} UTC"]
     if job.size_before is not None and job.size_after is not None:
-        lines.append(f"Task history tables: {decimal(job.size_before)} before, {decimal(job.size_after)} after")
-    if not job.rewritten:
-        lines.append("Task history tables not rewritten")
-    elif job.not_rewritten:
-        lines.append(f"Task history tables rewritten, except {', '.join(job.not_rewritten)}, which stayed locked")
+        lines.append(
+            f"Task history and activity log tables: {decimal(job.size_before)} before, {decimal(job.size_after)} after"
+        )
+    if job.rewrite is CleanupRewrite.NEVER:
+        lines.append("Tables not rewritten")
     else:
-        lines.append("Task history tables rewritten")
+        lines.extend(_rewrite_lines(job=job) or ["No table rewritten"])
     return lines
 
 
@@ -187,8 +192,8 @@ async def flow_runs(
         False,
         "--rewrite",
         help=(
-            "Rewrite the task history tables after the deletes, to return their disk space. "
-            "Each table is locked while it is rewritten, so run it in a maintenance window."
+            "Then rewrite each task history and activity log table whose live rows hold less than half of its "
+            "disk space, to return that space to the disk. Tasks that write to a table wait while it is rewritten."
         ),
     ),
 ) -> None:
