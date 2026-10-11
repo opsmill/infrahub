@@ -69,6 +69,7 @@ backend/tests/component/task_manager/test_task_history_cleanup.py
   s_cfd0841cea4d76::t_4163f66fc0b135 12,123,254
 backend/infrahub/prefect_server/app.py
   s_cfd0841cea4d76::t_41054f4c026017 16,32
+  s_cfd0841cea4d76::t_c4e886b57d4c1c 50-56,60
 dev/specs/infp-507-task-history-retention/plan.md
   s_cfd0841cea4d76::t_ad8096bacda59b 84,87,89
   s_cfd0841cea4d76::t_75e793da0f555a 101-102
@@ -111,6 +112,7 @@ backend/infrahub/cli/tasks.py
   s_cfd0841cea4d76::t_098fac6d61520b 54
   s_cfd0841cea4d76::t_c629155e0eb667 148,152-154,156,158-159,165,168
   s_cfd0841cea4d76::t_807285b772a021 8
+  s_cfd0841cea4d76::t_c4e886b57d4c1c 11,19,39-40,95-106
 backend/tests/unit/cli/test_tasks_flush_flow_runs.py
   s_cfd0841cea4d76::t_b0691aede39427 9-12
   s_cfd0841cea4d76::t_3fd6657870accc 333,335-336
@@ -205,6 +207,14 @@ backend/tests/integration_docker/test_prefect_event_types.py
   s_cfd0841cea4d76::t_65de3fcfb498c0 10,12,21,24-25,128,147-159
   s_cfd0841cea4d76::t_eb76a86f4adc20 43,78-80,106-108,115-117,131,162,185,198-200
   s_cfd0841cea4d76::t_d10b907f944fcd 192
+changelog/+tasks-background-services.added.md
+  s_cfd0841cea4d76::t_c4e886b57d4c1c 1
+backend/tests/unit/cli/test_tasks_background_services.py
+  s_cfd0841cea4d76::t_c4e886b57d4c1c 1-129
+backend/tests/helpers/task_manager_retention.py
+  s_cfd0841cea4d76::t_c4e886b57d4c1c 1-59
+backend/tests/unit/prefect_server/test_app_retention.py
+  s_cfd0841cea4d76::t_c4e886b57d4c1c 19-23,34-35
 ---
 {
   "schema_version": "authorship/3.0.0",
