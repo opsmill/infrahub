@@ -5,5 +5,6 @@ export const CHECKS_LABEL = {
   QUEUED: "Queued",
   FAILURE: "Failure",
   SUCCESS: "Success",
+  SKIPPED: "Skipped",
   IN_PROGRESS: "In progress",
 };

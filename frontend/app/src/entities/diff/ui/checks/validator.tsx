@@ -8,6 +8,8 @@ import { DurationDisplay } from "@/shared/components/display/duration-display";
 import { List } from "@/shared/components/table/list";
 import { Link } from "@/shared/components/ui/link";
 
+import { VALIDATION_CONCLUSIONS } from "@/entities/diff/domain/model/check";
+import { CHECKS_LABEL } from "@/entities/diff/ui/checks/checks-labels";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 
 import { ValidatorDetails } from "./validator-details";
@@ -42,6 +44,18 @@ const getValidatorState = (state?: string, conclusion?: string) => {
               icon={"mdi:check-circle-outline"}
               className="text-green-500"
               data-testid="validator-success"
+            />
+          </Tooltip>
+        );
+      }
+
+      if (conclusion === VALIDATION_CONCLUSIONS.SKIPPED) {
+        return (
+          <Tooltip message={CHECKS_LABEL.SKIPPED} nonInteractiveTrigger>
+            <Icon
+              icon={"mdi:skip-next-circle-outline"}
+              className="text-blue-500"
+              data-testid="validator-skipped"
             />
           </Tooltip>
         );

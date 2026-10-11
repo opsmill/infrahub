@@ -11,6 +11,8 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { List } from "@/shared/components/table/list";
 import { classNames } from "@/shared/utils/common";
 
+import { VALIDATION_CONCLUSIONS } from "@/entities/diff/domain/model/check";
+import { CHECKS_LABEL } from "@/entities/diff/ui/checks/checks-labels";
 import { DataIntegrityConflicts } from "@/entities/diff/ui/checks/data-integrity-conflicts";
 import { SchemaIntegrityConflicts } from "@/entities/diff/ui/checks/schema-integrity-conflicts";
 import { useGetCheckDetails } from "@/entities/diff/ui/queries/get-check-details.query";
@@ -36,6 +38,17 @@ const getCheckIcon = (conclusion?: string | null) => {
         </Tooltip>
       );
     }
+    case VALIDATION_CONCLUSIONS.SKIPPED: {
+      return (
+        <Tooltip message={CHECKS_LABEL.SKIPPED} nonInteractiveTrigger>
+          <Icon
+            icon={"mdi:skip-next-circle-outline"}
+            className="mr-2 text-blue-500"
+            data-testid="check-skipped"
+          />
+        </Tooltip>
+      );
+    }
     default: {
       return (
         <Tooltip message="In progress" nonInteractiveTrigger>
@@ -46,7 +59,12 @@ const getCheckIcon = (conclusion?: string | null) => {
   }
 };
 
-const getCheckBorderColor = (severity?: string | null) => {
+const getCheckBorderColor = (severity?: string | null, conclusion?: string | null) => {
+  // A skipped check did not run, so its severity does not describe a result.
+  if (conclusion === VALIDATION_CONCLUSIONS.SKIPPED) {
+    return "border-blue-400";
+  }
+
   switch (severity) {
     case "success": {
       return "border-green-400";
@@ -130,7 +148,7 @@ export const Check = ({ id }: tCheckProps) => {
     <div
       className={classNames(
         "flex min-w-0 flex-col rounded-md border border-l-4 bg-gray-50 p-2",
-        getCheckBorderColor(severity?.value)
+        getCheckBorderColor(severity?.value, conclusion?.value)
       )}
     >
       <div className="mb-2 flex min-w-0">

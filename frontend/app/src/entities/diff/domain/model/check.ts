@@ -13,6 +13,7 @@ export const VALIDATION_CONCLUSIONS = {
   UNKNOWN: "unknown",
   FAILURE: "failure",
   SUCCESS: "success",
+  SKIPPED: "skipped",
 };
 
 export const VALIDATIONS_ENUM_MAP: { [key: string]: CheckType } = {
