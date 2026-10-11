@@ -173,6 +173,10 @@ function classify(pr) {
 	) {
 		state = "Blocked";
 		action = "Resolve conflicts, checks or unmet requirements";
+		if (pr.merge.reviewDecision === "REVIEW_REQUIRED" && pr.reviewers.length) {
+			actor = [pr.author, ...pr.reviewers].join(", ");
+			action = "Review the PR; author resolves remaining requirements";
+		}
 	} else if (ready) {
 		state = "Ready to merge";
 		action = "Merge the PR";

@@ -57,7 +57,7 @@ Mark deprecated docs clearly. Don't delete—update with pointers to replacement
 
 ## Current Knowledge
 
-- [PR lifecycle](knowledge/pr-lifecycle.md) - GitHub PR activity, reminders, cleanup, and coverage
+- [PR lifecycle](knowledge/pr-lifecycle.md) - Native stale cleanup, Slack reminders, and the PR dashboard
 
 Backend architecture documentation in [knowledge/backend/](knowledge/backend/):
 
@@ -101,7 +101,7 @@ Start a new ADR from [template.md](adr/template.md).
 
 ## Current Guides
 
-- [Operate PR lifecycle observation](guides/pr-lifecycle.md) - Dry runs, coverage, and recovery
+- [Operate PR lifecycle](guides/pr-lifecycle.md) - Previews, reminder setup, and controlled rollout
 
 Backend guides in [guides/backend/](guides/backend/):
 

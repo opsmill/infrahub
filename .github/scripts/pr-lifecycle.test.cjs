@@ -361,3 +361,20 @@ test("bots need no review reads and unavailable merge aggregates never establish
 		assert.match(preview.body, /Exempt: current approval/);
 	}
 });
+
+test("review-required blocks retain reviewers and author as next actors", () => {
+	const pr = observed({
+		reviewers: ["reviewer", "Network team"],
+		merge: {
+			headRefOid: "abc",
+			mergeStateStatus: "BLOCKED",
+			reviewDecision: "REVIEW_REQUIRED",
+		},
+	});
+	const status = classify(pr);
+	assert.match(status.actor, /reviewer/);
+	assert.match(status.actor, /Network team/);
+	assert.match(status.actor, new RegExp(pr.author));
+	assert.match(status.action, /review/i);
+	assert.notEqual(status.state, "Ready to merge");
+});

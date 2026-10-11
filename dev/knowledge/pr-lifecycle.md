@@ -1,106 +1,75 @@
 # PR lifecycle
 
-Keep lifecycle processing in observation mode until its proposed actions and hosted behavior have
-been reviewed. Observation reads GitHub and produces local reports; it does not send reminders,
-change labels, update an issue, or close a pull request.
+Use native stale processing for cleanup and GitHub's scheduled Slack reminders for notifications.
+The dashboard summarizes the queue without adding activity to individual pull requests.
 
-The lifecycle companion is separate from Infrahub's proposed changes feature. It manages GitHub
-pull requests in this repository. See the [operator guide](../guides/pr-lifecycle.md) for commands
-and recovery procedures.
+## Responsibilities
 
-## Activity and delivery clocks
-
-GitHub updates a pull request's `updated_at` when automation comments on it. Using that timestamp
-alone would let weekly reminders postpone cleanup indefinitely. The companion therefore records
-an activity baseline alongside the observed head, normalized metadata, and paginated event feeds.
-
-A matching recorded receipt identifies an automation write. An unrecognized update counts as
-activity, including edits to previously recorded bot comments. Changed heads use observation time
-rather than commit author dates. Reopening clears the previous warning cycle. Missing pages,
-ambiguous provenance, and corrupt saved state prevent a complete scan.
-
-## Warnings and exemptions
-
-Cleanup eligibility starts after 60 days without observed activity. A new warning establishes a
-fresh 14-day period from its server-confirmed delivery time. Existing `stale` labels do not prove
-that a warning was delivered. The initial comment must display the confirmed deadline before the
-cycle can authorize closure.
-
-Later notices retain that deadline. The middle reminder becomes due at midnight UTC on delivery
-date plus seven days, and the final reminder at midnight UTC on delivery date plus thirteen days.
-Only the strongest applicable unsent notice is selected. Missed windows are not replayed, and
-notices state the absolute deadline rather than promising an exact number of hours remaining.
-
-Any current approval exempts closure, even if more reviews are required. A later comment-only
-review does not erase an approval or changes request; a later decisive review or dismissal does.
-The manual `keep-open` label also exempts closure. Bot-authored PRs are excluded from reminders
-and cleanup. Draft and otherwise exempt human PRs can still need ordinary reminders.
-
-## Reminder routing and readiness
-
-Ordinary reminders are limited to one per seven days. The selected action follows the state that
-requires attention; an approval exemption does not by itself mean a PR is ready to merge.
-
-| Current state | Next action |
+| Component | Responsibility |
 | --- | --- |
-| Draft | Author finishes the work and marks it ready |
-| Outstanding changes request | Author addresses the requested changes |
-| Conflicts, failing checks, or explicit blocker | Author resolves the blocker |
-| Approved and merge-ready | Author merges the PR |
-| More review needed | Requested users or team review it |
-| No reviewer requested | Author requests review |
+| Stock actions/stale | Inactivity warning, stale label, eventual closure, operation budget and continuation |
+| Workflow helper | Approval/bot exemption labels and a dashboard with next actions |
+| GitHub scheduled reminders | Slack review requests and author follow-up after reviews |
 
-Readiness uses GitHub's aggregate for the same head as the REST snapshot. A current approval,
-`MERGEABLE`, `CLEAN`, and either `APPROVED` or an explicitly returned null review decision are
-required. Missing fields, errors, pending requirements, and unknown states cannot establish
-readiness. Check details explain blockers; they do not replace GitHub's required-rule evaluation.
+The [workflow](https://github.com/opsmill/infrahub/blob/stable/.github/workflows/manage-stale-prs.yml)
+coordinates these components. The
+[helper](https://github.com/opsmill/infrahub/blob/stable/.github/scripts/pr-lifecycle.cjs)
+uses the GitHub client supplied by actions/github-script. It keeps no persistent activity clock,
+delivery ledger or notification history. The [operator guide](../guides/pr-lifecycle.md) describes
+previewing results and configuring reminders.
 
-The dashboard groups PRs by their primary state and shows exemptions and next actions separately.
-It uses plain names instead of mentions and updates one issue body rather than posting recurring
-issue comments. A failed refresh preserves the last successful refresh timestamp.
+## Native cleanup timing
 
-## Coverage and closure
+A PR becomes eligible for a stale warning after 60 days without updates. The action applies
+the dedicated lifecycle-stale label and posts the initial warning. Another 14 days without activity
+makes it eligible for closure. Activity can remove stale status or postpone closure. The action
+does not delete branches, and issues are excluded from cleanup.
 
-The companion evaluates the full open-PR inventory independently of the stale action's progress.
-Excluded bots need only their validated author identity. Human PRs require complete activity and
-review feeds, with readiness data tied to the observed head. REST and GraphQL quotas are tracked
-separately. Preflight estimates the minimum reads and retains a reserve; extra pages and retries
-still count against the actual budget. A partial scan reports failure.
+The native clock includes other automation updates. ignore-pr-updates remains false: enabling it
+would use creation age for stale detection, not selectively ignore bot activity. There is no
+immutable deadline or seven-day/one-day follow-up comment. Recurring notifications go to Slack,
+so our reminders do not modify the PR's activity timestamp.
+See [actions/stale timing](https://github.com/actions/stale#days-before-stale).
 
-Mutation preflight also budgets fresh reads and state persistence for the proposed changes. A
-complete observation does not establish enough capacity to send every proposed notice. If the
-mutation estimate exceeds quota, reconciliation stops before posting. Activation therefore needs
-a hosted capacity test against the expected backlog as well as policy tests.
+Any current approval, bot author, or keep-open label exempts a PR from cleanup. The helper reduces
+each reviewer's decisive history; a comment-only review preserves an earlier approval or changes
+request, while a dismissal clears it. It synchronizes lifecycle-approved and lifecycle-bot before
+native stale can run. It does not modify keep-open. Failed collection prevents synchronization and
+cleanup. A later approval can still race the next action's snapshot; this is not an atomic policy.
 
-The pinned `actions/stale` action is the sole closer. It receives a label unique to the workflow
-run and attempt; neither old warning labels nor a previous run's gate can select a PR. The companion
-refreshes eligibility after adding gates and before each action pass, then reads candidate states
-to verify the outcome. The action's successful exit and reported close count are insufficient
-because an attempted close can fail.
+A new lifecycle-stale label separates this policy from legacy stale labels. Before activation,
+inspect whether that name already exists on PRs; never assume an existing label proves a new warning.
+Labels and review exemptions are policy inputs, not authenticated proof of comment delivery.
 
-The action's cached processed IDs can skip newly eligible PRs, and closing items changes page
-positions in its open-item listing. Bounded continuation therefore checks both actual remaining
-candidates and the exact `_state` cache identity on the execution ref. An unchanged cache with
-remaining work, incomplete reads, or an exhausted bound fails the run. Normal continuation does
-not delete the cache between passes.
+## Dashboard and notifications
 
-Polling cannot make the last eligibility check and upstream closure atomic. An approval or human
-update can arrive between them. A same-resolution edit and reversal during an automation write
-may also be unobservable. Hosted validation and a separate activation review are required before
-these residual races become operational risks.
+The dashboard uses one dedicated issue, updated in place. Names are plain text, including requested
+teams; issue-body edits are not the notification mechanism. Every open PR has a linked title,
+author, next actor/action, last update, and cleanup status. Bot PRs remain visible as excluded.
+The dashboard labels closure timing as an estimate; the action's cache, activity checks and
+operation budget can delay processing.
 
-## State and trust
+Drafts point to the author, outstanding changes requests take precedence over pending review,
+and pending reviewers/teams remain visible. Ready-to-merge classification requires a current
+approval and GitHub's merge aggregate for the observed head. Unknown requirements cannot establish
+readiness. An approval can exempt cleanup without making a PR ready to merge.
 
-The dashboard body contains a versioned, compressed ledger. Each entry identifies the pull request
-and records activity, pending operations, and receipts. Complete event feeds are fetched for each
-scan, but state stores an aggregate digest instead of every historical event hash. An unexplained
-digest change resets activity conservatively. Label recovery proves that exactly one matching
-trusted event was added to the pre-write set. Confirmed ordinary receipts can retire after a full
-observation, preserving their delivery timestamp and rebasing the digest. Active warning proofs
-remain until that cycle ends. State includes a generation counter; an unexpected body change
-stops reconciliation. Size limits apply to both the issue body and decoded
-state. Pending operations survive history pruning until their result is reconciled.
+Native Slack reminders can notify authors after reviews, but that option does not verify every
+merge requirement. They do not reproduce all custom next-action messages from the dashboard.
+They cover up to 20 oldest PRs per repository per reminder, so the full dashboard remains useful
+for a larger queue. Recipients need access to the configured Slack workspace; outside contributors
+still receive the initial warning on their PR.
+See [native reminder configuration](https://docs.github.com/en/organizations/managing-organization-settings/managing-scheduled-reminders-for-your-organization).
 
-A marker alone does not establish ownership. Dashboard discovery checks the creator, and write
-recovery requires matching identity and content. Human activity must remain visible even when it
-uses a reserved label or copies an automation marker.
+## Failure and rollout boundaries
+
+The helper collects the complete paginated inventory and reviews before writing anything. It
+does not truncate the dashboard to fit the issue body limit. Publishing requires an explicitly
+configured dedicated issue with the dashboard marker; it never searches for or creates a substitute.
+
+Native stale continues across runs when its operation budget is exhausted. A successful run does
+not guarantee every PR was processed that day. Cache persistence needs appropriate permissions
+when cleanup is activated; the helper does not manage caches or retry closure in custom passes.
+
+The shipped workflow only renders a preview. Publishing and native cleanup are disabled in code,
+and native stale also retains debug-only. Enabling writes requires a separate reviewed rollout.
