@@ -5,7 +5,7 @@ How to prove the feature works end-to-end. Shapes and rules are in [data-model.m
 ## Prerequisites
 
 - Backend dev environment (`uv sync --all-groups`).
-- Docker available for the component tests. `test_resources.py` uses testcontainers Neo4j; `test_cgroup_kernels.py` additionally needs the daemon's host to run cgroup v2 (it skips itself otherwise) and network access on first run, since its probe image build pulls a base image and installs into it — so the full component suite does not run offline. Export the docker socket if needed: `DOCKER_HOST=unix://$HOME/.docker/run/docker.sock`.
+- Docker available for the component tests. `test_resources.py` uses testcontainers Neo4j; `test_cgroup_kernels.py` also starts its containers through testcontainers, and additionally needs the daemon's host to run cgroup v2 (it skips itself otherwise) and network access on first run, since its probe image build pulls a Python base image matching the test interpreter and installs the locked `psutil` and `pydantic` versions into it — so the full component suite does not run offline. Export the docker socket if needed: `DOCKER_HOST=unix://$HOME/.docker/run/docker.sock`.
 
 ## Scenario 1 — Unit: cgroup + host reading (`backend/tests/unit/telemetry/test_resources.py`)
 
