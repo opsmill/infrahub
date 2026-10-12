@@ -1,0 +1,26 @@
+dev/specs/ifc-3185-number-pool-scopes/tasks.md
+  s_72ef99026f2c9f::t_5e5fe13c45d5ac 73-77,254
+  s_72ef99026f2c9f::t_cf63c324af2f75 45,99
+  s_72ef99026f2c9f::t_3faf3d987d9fb9 60-62,67-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1b7c39164981118122e3be61e8c5ff689be0555e",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_72ef99026f2c9f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be44e175-9c81-4c5f-8671-68044dd6782f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
