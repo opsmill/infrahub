@@ -145,9 +145,9 @@ class TestAcceptedChanges:
         assert [path for grouped in grouped_data_paths for path in grouped.get_all_data_paths()] == []
         assert pool_source.requested_kinds == case.expected_kinds_read
 
-    # A proposed change or a merge also raises these constraints for the data changed on a field the schema keeps.
     @pytest.mark.parametrize("case", UNCHANGED_FIELD_CASES, ids=[case.name for case in UNCHANGED_FIELD_CASES])
     async def test_reports_no_violation_without_reading_pools(self, case: UnchangedFieldCase) -> None:
+        """A proposed change or a merge also requests these constraints when only the data of a field changed."""
         pool_source = RecordingPoolSource(pools=ALL_POOLS)
         checker = build_checker(
             pool_source=pool_source,
