@@ -1,0 +1,300 @@
+from __future__ import annotations
+
+import copy
+import re
+from dataclasses import dataclass
+
+import pytest
+
+from infrahub.core.registry import registry
+from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters
+from infrahub.core.schema.manager import SchemaManager
+from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.validators.schema_branch.number_pool_scope_validator import DefaultBranchSchema
+from infrahub.exceptions import ValidationError
+from tests.helpers.number_pool import (
+    SCOPED_DEVICE,
+    SCOPED_HOLDER,
+    SCOPED_LINK,
+    SCOPED_POD_HOLDER,
+    SCOPED_RACK,
+    SCOPED_SITE,
+)
+
+EXISTING_POOL_ID = "8c0f3e52-0000-4000-8000-000000000001"
+
+
+def _with_pooled_vlan_id[SchemaT: (NodeSchema, GenericSchema)](
+    schema: SchemaT, scope: list[str] | None, number_pool_id: str | None = None
+) -> SchemaT:
+    pooled: SchemaT = copy.deepcopy(schema)
+    pooled.attributes = [attribute for attribute in pooled.attributes if attribute.name != "vlan_id"]
+    pooled.attributes.append(
+        AttributeSchema(
+            name="vlan_id",
+            kind="NumberPool",
+            optional=False,
+            read_only=True,
+            parameters=NumberPoolParameters(
+                start_range=1, end_range=100, allocation_scope=scope, number_pool_id=number_pool_id
+            ),
+        )
+    )
+    return pooled
+
+
+def _schema(device: NodeSchema = SCOPED_DEVICE, holder: GenericSchema = SCOPED_HOLDER) -> SchemaRoot:
+    return SchemaRoot(generics=[holder], nodes=[SCOPED_SITE, SCOPED_RACK, SCOPED_LINK, device, SCOPED_POD_HOLDER])
+
+
+def _device_schema(scope: list[str] | None, number_pool_id: str | None = None) -> SchemaRoot:
+    return _schema(device=_with_pooled_vlan_id(SCOPED_DEVICE, scope=scope, number_pool_id=number_pool_id))
+
+
+def _unvalidated_schema_branch(name: str, schema: SchemaRoot) -> SchemaBranch:
+    """Return the schema as a load holds it before validation: processed, with no field saved and so no field id."""
+    schema_branch = SchemaBranch(cache={}, name=name)
+    schema_branch.load_schema(schema=copy.deepcopy(schema))
+    schema_branch.process(validate_schema=False)
+    return schema_branch
+
+
+@dataclass(frozen=True)
+class RefusedDeclarationCase:
+    name: str
+    schema: SchemaRoot
+    message: str
+
+
+def _pod_holder_with_optional_site() -> NodeSchema:
+    pod_holder = copy.deepcopy(SCOPED_POD_HOLDER)
+    site = copy.deepcopy(SCOPED_HOLDER.get_relationship(name="site"))
+    site.optional = True
+    pod_holder.relationships = [site]
+    return pod_holder
+
+
+def _pod_holder_with_unique_vlan_id() -> NodeSchema:
+    pod_holder = copy.deepcopy(SCOPED_POD_HOLDER)
+    pod_holder.uniqueness_constraints = [["vlan_id__value"]]
+    return pod_holder
+
+
+def _holder_declared_schema(pod_holder: NodeSchema) -> SchemaRoot:
+    return SchemaRoot(
+        generics=[_with_pooled_vlan_id(SCOPED_HOLDER, scope=["site"])],
+        nodes=[SCOPED_SITE, SCOPED_RACK, SCOPED_LINK, SCOPED_DEVICE, pod_holder],
+    )
+
+
+REFUSED_DECLARATION_CASES = [
+    RefusedDeclarationCase(
+        name="optional-relationship",
+        schema=_device_schema(scope=["site", "rack"]),
+        message='ScopeDevice.vlan_id: allocation_scope: "rack" is optional; a scope element must be required on'
+        " ScopeDevice",
+    ),
+    RefusedDeclarationCase(
+        name="relationship-of-cardinality-many",
+        schema=_device_schema(scope=["links"]),
+        message='ScopeDevice.vlan_id: allocation_scope: "links" has cardinality many; a scope element must be a'
+        " relationship of cardinality one",
+    ),
+    RefusedDeclarationCase(
+        name="path",
+        schema=_device_schema(scope=["site__name"]),
+        message='ScopeDevice.vlan_id: allocation_scope: "site__name" is a path; a scope element must be an attribute'
+        " or a relationship of ScopeDevice itself",
+    ),
+    RefusedDeclarationCase(
+        name="absent-element",
+        schema=_device_schema(scope=["region"]),
+        message='ScopeDevice.vlan_id: allocation_scope: "region" is not an attribute or a relationship of ScopeDevice'
+        " on branch main",
+    ),
+    RefusedDeclarationCase(
+        name="list-attribute",
+        schema=_device_schema(scope=["tags"]),
+        message='ScopeDevice.vlan_id: allocation_scope: "tags" is of kind List; a scope element must hold a single'
+        " scalar value",
+    ),
+    RefusedDeclarationCase(
+        name="element-declared-twice",
+        schema=_device_schema(scope=["site", "site"]),
+        message='ScopeDevice.vlan_id: allocation_scope: "site" appears more than once',
+    ),
+    RefusedDeclarationCase(
+        name="tracked-attribute",
+        schema=_device_schema(scope=["vlan_id"]),
+        message='ScopeDevice.vlan_id: allocation_scope: "vlan_id" is the attribute the pool allocates; it cannot'
+        " divide the pool",
+    ),
+    RefusedDeclarationCase(
+        name="element-of-the-implementing-kind-only",
+        schema=_schema(holder=_with_pooled_vlan_id(SCOPED_HOLDER, scope=["pod"])),
+        message='ScopeHolder.vlan_id: allocation_scope: "pod" is not declared on the generic ScopeHolder',
+    ),
+    RefusedDeclarationCase(
+        name="element-redefined-as-optional-on-an-implementing-node",
+        schema=_holder_declared_schema(pod_holder=_pod_holder_with_optional_site()),
+        message='ScopePodHolder.vlan_id: allocation_scope: "site" is optional; a scope element must be required on'
+        " ScopePodHolder",
+    ),
+    RefusedDeclarationCase(
+        name="tracked-attribute-made-unique-on-an-implementing-node",
+        schema=_holder_declared_schema(pod_holder=_pod_holder_with_unique_vlan_id()),
+        message="ScopePodHolder.vlan_id: allocation_scope: ScopePodHolder.vlan_id is unique; a globally unique number"
+        " cannot be allocated per division",
+    ),
+    # Once the pool exists, only a name matching no field is left to the checker, and every other rule still applies.
+    RefusedDeclarationCase(
+        name="optional-relationship-once-the-pool-exists",
+        schema=_device_schema(scope=["rack"], number_pool_id=EXISTING_POOL_ID),
+        message='ScopeDevice.vlan_id: allocation_scope: "rack" is optional; a scope element must be required on'
+        " ScopeDevice",
+    ),
+    RefusedDeclarationCase(
+        name="path-once-the-pool-exists",
+        schema=_device_schema(scope=["site", "site__name"], number_pool_id=EXISTING_POOL_ID),
+        message='ScopeDevice.vlan_id: allocation_scope: "site__name" is a path; a scope element must be an attribute'
+        " or a relationship of ScopeDevice itself",
+    ),
+]
+
+
+@dataclass(frozen=True)
+class AcceptedDeclarationCase:
+    name: str
+    schema: SchemaRoot
+
+
+ACCEPTED_DECLARATION_CASES = [
+    # The schema is not saved, so its fields hold no id, like the fields a load adds.
+    AcceptedDeclarationCase(name="fields-the-load-adds", schema=_device_schema(scope=["site", "role"])),
+    AcceptedDeclarationCase(name="no-scope", schema=_device_schema(scope=None)),
+    AcceptedDeclarationCase(
+        name="element-declared-on-the-generic",
+        schema=_schema(holder=_with_pooled_vlan_id(SCOPED_HOLDER, scope=["site"])),
+    ),
+    # Once the pool exists, a name matching no field can be a rename that only the stored scope confirms.
+    AcceptedDeclarationCase(
+        name="name-matching-no-field-left-to-the-checker-once-the-pool-exists",
+        schema=_device_schema(scope=["site", "location"], number_pool_id=EXISTING_POOL_ID),
+    ),
+]
+
+
+def exact_message(message: str) -> str:
+    return f"^{re.escape(message)}$"
+
+
+@pytest.mark.parametrize("case", REFUSED_DECLARATION_CASES, ids=lambda case: case.name)
+def test_declared_scope_is_refused(case: RefusedDeclarationCase) -> None:
+    schema_branch = _unvalidated_schema_branch(name="main", schema=case.schema)
+
+    with pytest.raises(ValidationError, match=exact_message(case.message)):
+        schema_branch.validate_attribute_parameters()
+
+
+@pytest.mark.parametrize("case", ACCEPTED_DECLARATION_CASES, ids=lambda case: case.name)
+def test_declared_scope_is_accepted(case: AcceptedDeclarationCase) -> None:
+    schema_branch = _unvalidated_schema_branch(name="main", schema=case.schema)
+
+    schema_branch.validate_attribute_parameters()
+
+
+def _default_branch_source(schema: SchemaRoot) -> DefaultBranchSchema:
+    schema_manager = SchemaManager()
+    schema_manager.set_schema_branch(
+        name=registry.default_branch, schema=_unvalidated_schema_branch(name="main", schema=schema)
+    )
+    return DefaultBranchSchema(source=schema_manager, name=registry.default_branch)
+
+
+class TestDeclaredScopeOnABranch:
+    """On a branch, the declared names resolve against the schema of the default branch."""
+
+    @pytest.fixture
+    def default_branch_schema(self) -> DefaultBranchSchema:
+        return _default_branch_source(schema=_schema())
+
+    def test_element_only_on_the_branch_is_refused(self, default_branch_schema: DefaultBranchSchema) -> None:
+        device = _with_pooled_vlan_id(SCOPED_DEVICE, scope=["zone"])
+        device.attributes.append(AttributeSchema(name="zone", kind="Text", optional=False))
+        schema_branch = _unvalidated_schema_branch(name="branch1", schema=_schema(device=device))
+
+        with pytest.raises(
+            ValidationError,
+            match=exact_message(
+                'ScopeDevice.vlan_id: allocation_scope: "zone" is not an attribute or a relationship of ScopeDevice'
+                " on branch main"
+            ),
+        ):
+            schema_branch.validate_attribute_parameters(default_branch_source=default_branch_schema)
+
+    def test_element_of_the_default_branch_is_accepted(self, default_branch_schema: DefaultBranchSchema) -> None:
+        schema_branch = _unvalidated_schema_branch(name="branch1", schema=_device_schema(scope=["site"]))
+
+        schema_branch.validate_attribute_parameters(default_branch_source=default_branch_schema)
+
+    def test_element_made_optional_by_the_same_load_is_refused(
+        self, default_branch_schema: DefaultBranchSchema
+    ) -> None:
+        # The element resolves on the default branch, where it is required, and must also divide the pool on the branch.
+        device = _with_pooled_vlan_id(SCOPED_DEVICE, scope=["site"])
+        device.get_relationship(name="site").optional = True
+        schema_branch = _unvalidated_schema_branch(name="branch1", schema=_schema(device=device))
+
+        with pytest.raises(
+            ValidationError,
+            match=exact_message(
+                'ScopeDevice.vlan_id: allocation_scope: "site" is optional; a scope element must be required on'
+                " ScopeDevice"
+            ),
+        ):
+            schema_branch.validate_attribute_parameters(default_branch_source=default_branch_schema)
+
+    def test_existing_pool_on_a_kind_the_default_branch_no_longer_defines_is_accepted(self) -> None:
+        # A declaration whose pool exists is checked on the branch's schema only, so the default branch is not read.
+        default_branch_schema = _default_branch_source(
+            schema=SchemaRoot(
+                generics=[SCOPED_HOLDER], nodes=[SCOPED_SITE, SCOPED_RACK, SCOPED_LINK, SCOPED_POD_HOLDER]
+            ),
+        )
+        schema_branch = _unvalidated_schema_branch(
+            name="branch1", schema=_device_schema(scope=["site"], number_pool_id=EXISTING_POOL_ID)
+        )
+
+        schema_branch.validate_attribute_parameters(default_branch_source=default_branch_schema)
+
+
+def _device_with_site_id(site_id: str, scope: list[str] | None = None) -> NodeSchema:
+    device = _with_pooled_vlan_id(SCOPED_DEVICE, scope=scope)
+    device.get_relationship(name="site").id = site_id
+    return device
+
+
+def test_a_name_that_holds_another_field_on_the_branch_than_on_the_default_branch_is_refused() -> None:
+    default_branch_source = _default_branch_source(schema=_schema(device=_device_with_site_id(site_id="main-site")))
+    schema_branch = _unvalidated_schema_branch(
+        name="branch1", schema=_schema(device=_device_with_site_id(site_id="branch-site", scope=["site"]))
+    )
+
+    with pytest.raises(
+        ValidationError,
+        match=exact_message(
+            'ScopeDevice.vlan_id: allocation_scope: "site" is a different field on branch branch1 than on the default'
+            " branch main; declare the scope once the field is the same on both branches"
+        ),
+    ):
+        schema_branch.validate_attribute_parameters(default_branch_source=default_branch_source)
+
+
+def test_a_name_that_holds_the_same_field_on_both_branches_is_accepted() -> None:
+    default_branch_source = _default_branch_source(schema=_schema(device=_device_with_site_id(site_id="site-id")))
+    schema_branch = _unvalidated_schema_branch(
+        name="branch1", schema=_schema(device=_device_with_site_id(site_id="site-id", scope=["site"]))
+    )
+
+    schema_branch.validate_attribute_parameters(default_branch_source=default_branch_source)

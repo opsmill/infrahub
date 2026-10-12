@@ -58,6 +58,7 @@ from infrahub.core.validators.models.validate_migration import (
     SchemaValidateMigrationData,
     SchemaValidatorPathResponseData,
 )
+from infrahub.core.validators.schema_branch.number_pool_scope_validator import DefaultBranchSchema
 from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.events import EventMeta
 from infrahub.events.schema_action import SchemaUpdatedEvent, build_changed_elements_payload
@@ -223,7 +224,9 @@ def evaluate_candidate_schemas(
         schema = _merge_candidate_schemas(schemas=schemas_to_evaluate)
 
         candidate_schema.load_schema(schema=schema)
-        candidate_schema.process()
+        candidate_schema.process(
+            default_branch_source=DefaultBranchSchema(source=registry.schema, name=registry.default_branch)
+        )
 
         schema_diff = branch_schema.diff(other=candidate_schema)
         candidate_schema.validate_node_deletions(diff=schema_diff)

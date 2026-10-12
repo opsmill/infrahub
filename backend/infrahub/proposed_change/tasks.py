@@ -69,6 +69,7 @@ from infrahub.core.validators.checks_runner import run_checks_and_update_validat
 from infrahub.core.validators.constraint_merge import build_constraint_info_merger
 from infrahub.core.validators.determiner import build_constraint_validator_determiner
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
+from infrahub.core.validators.schema_branch.number_pool_scope_validator import DefaultBranchSchema
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.events import EventMeta, ProposedChangeMergedEvent
@@ -526,7 +527,9 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
     candidate_schema.update(schema=source_schema)
 
     try:
-        candidate_schema.duplicate().process()
+        candidate_schema.duplicate().process(
+            default_branch_source=DefaultBranchSchema(source=registry.schema, name=registry.default_branch)
+        )
     except (ValueError, ValidationError, SchemaNotFoundError) as exc:
         error_msg = str(exc)
         parts = error_msg.split(":", 1)
