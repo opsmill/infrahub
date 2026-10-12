@@ -129,15 +129,17 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
     async def _check_attributes_made_unique(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
         """Return the violations of each attribute of the node that the uniqueness constraint change makes unique.
 
-        A uniqueness constraint naming one attribute makes it unique on the node, and for an inherited attribute
-        the schema diff records that change only under this constraint, so every attribute of the node goes
-        through the tracked-attribute rule.
+        A uniqueness constraint naming one attribute makes it unique on the node. The schema diff records that change
+        under this constraint alone only for an inherited attribute, so only the inherited attributes go through the
+        tracked-attribute rule here, and every other attribute is checked once under its own unique change.
         """
         kind = request.schema_path.schema_kind
         if not request.schema_branch.has(name=kind):
             return []
         results: list[GroupedDataPaths] = []
         for attribute in request.schema_branch.get(name=kind, duplicate=False).attributes:
+            if not attribute.inherited:
+                continue
             breakage = self._made_unique(request, attribute.name)
             if breakage is not None:
                 results.extend(
