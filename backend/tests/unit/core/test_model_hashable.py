@@ -325,3 +325,19 @@ def test_update_nested_objects() -> None:
 
     assert node1.value4.value2 == node2.value4.value2
     assert sorted(node1.subs) == sorted(node2.subs)
+
+
+def test_model_hashes_and_diffs_a_list_named_as_ordered_in_its_order() -> None:
+    class MyElement(HashableModel):
+        _ordered_in_hash: list[str] = ["ordered"]
+        ordered: list[str]
+        unordered: list[str]
+
+    element = MyElement(ordered=["apple", "orange"], unordered=["apple", "orange"])
+    ordered_reversed = MyElement(ordered=["orange", "apple"], unordered=["apple", "orange"])
+    unordered_reversed = MyElement(ordered=["apple", "orange"], unordered=["orange", "apple"])
+
+    assert element.get_hash() != ordered_reversed.get_hash()
+    assert element.diff(ordered_reversed).model_dump() == {"added": {}, "changed": {"ordered": None}, "removed": {}}
+    assert element.get_hash() == unordered_reversed.get_hash()
+    assert element.diff(unordered_reversed).has_diff is False
