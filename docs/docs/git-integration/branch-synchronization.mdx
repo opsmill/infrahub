@@ -420,7 +420,7 @@ While a repository has pending pushes, with the status **Pending** or **Action r
 - The synchronization skips the remote default branch and the remote branches that the pending merges come from. Infrahub imports a commit pushed to the remote default branch in the meantime when the push succeeds, or at the first synchronization after the queue is empty. Other branches synchronize as usual.
 - A task worker that clones the repository again does not import its default branch.
 - **Reimport current commit** is refused on every branch, with the message `Repository <name> has pending pushes; a reimport now would remove the objects they added. Retry or abandon the pending pushes first.`
-- A conversion of the repository to a read-only repository is refused.
+- Infrahub refuses to convert the repository to a read-only repository, and keeps refusing until the regeneration that waited for the push has run.
 
 The regeneration that the repository defines also waits: its artifact definitions, its Generator definitions, and the computed attributes that its Python Transformations calculate. After the merge, they would use the files of the repository from before the merge. Infrahub runs them once, after the push succeeds or after you abandon the pending pushes. The regeneration that other repositories define runs at once.
 

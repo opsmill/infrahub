@@ -61,7 +61,7 @@ after the graph merge and before the follow-ups submit any regeneration
   remote branch that a delivery pushes to. A stored commit that is not a full commit id counts as no
   commit, so one repository cannot stop the others.
 - The dispatcher queues all entries at the same time, each try on its own database session, with
-  three tries after 2, 8 and 20 s. The branch merge holds the global merge lock meanwhile.
+  one try and three retries after 2, 8 and 20 s. The branch merge holds the global merge lock meanwhile.
 - It submits `git.tasks.merge_git_repository` for each repository that has an entry, with the entry
   and the delivery tags. A merge that changes no content submits no merge flow. The merge run log
   gets one line for each queued repository.
@@ -113,8 +113,8 @@ back on it:
 - A merge that conflicts with the remote head: `replay-conflict`.
 - A merge that the remote head already contains is not replayed.
 
-A failed step resets the worktree to the commit that the default branch recorded before the attempt,
-or to the remote head when it records none. After a failed record, the remote holds the push, so the
+A failed replay, push or record resets the worktree to the commit that the default branch recorded
+before the attempt, or to the remote head when it records none. After a failed record, the remote holds the push, so the
 next attempt finds the merges on the remote and records the commit. A clone with no `origin` fails
 the attempt as `unclassified` and keeps the queue.
 
@@ -136,8 +136,9 @@ any worker.
 
 ## Failure causes and the automatic retry
 
-`git/writeback/classifier.py::classify_delivery_failure` maps the error and the step to a cause. The
-cause comes from the error type, never from Git's text.
+`git/writeback/classifier.py::classify_delivery_failure` maps the error and the step to a cause. It
+reads only the error type, which the Git layer sets from Git's output and the push result
+([Git Integration](git-integration.md#how-git-errors-are-classified)).
 
 | Cause | When | Retried |
 |---|---|---|
@@ -145,8 +146,8 @@ cause comes from the error type, never from Git's text.
 | `remote-advanced` | The remote refuses the push as a non-fast-forward, or cannot update the ref | Yes |
 | `record-failed` | Infrahub cannot read the recorded commit, or cannot record the push | Yes |
 | `import-interrupted` | A database or connection error stops the import of the pushed commit | Yes |
-| `not-found` | The remote repository does not exist, at any step | No |
-| `certificate` | Git refuses the certificate of the remote, at any step | No |
+| `not-found` | The remote repository does not exist, at the fetch, the push or the import | No |
+| `certificate` | Git refuses the certificate of the remote, at the fetch, the push or the import | No |
 | `credentials` | The remote refuses the credentials | No |
 | `permission` | A hook or a branch protection refuses the push, or the account cannot push | No |
 | `import-failed` | The import of the pushed commit fails for another reason | No |
@@ -262,8 +263,8 @@ admits everything on another branch:
   repository.
 - A blanket regeneration holds a marker (`widen`) under each pending repository and excludes those
   repositories from the blanket runs.
-- It never raises. When it cannot read or update the state after three tries (2, 8 and 20 s), it
-  admits every candidate, and the holds written before the failure stay.
+- It never raises. When it cannot read or update the state after one try and three retries (after 2,
+  8 and 20 s), it admits every candidate, and the holds written before the failure stay.
 
 `core/merge/regeneration_release.py::HeldRegenerationReleaser` runs after a delivery or an
 abandonment, under a release lease of 15 minutes that each awaited step renews. Its dispatches pass
