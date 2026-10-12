@@ -1,0 +1,55 @@
+backend/AGENTS.md
+  s_d1d97b4114dca4::t_a352ec1fb61251 131
+docs/docs/artifacts/overview.mdx
+  s_d1d97b4114dca4::t_a352ec1fb61251 37,94-204
+  s_d1d97b4114dca4::t_889534ee01364c 205
+backend/tests/helpers/flow_run_reservations.py
+  s_d1d97b4114dca4::t_a352ec1fb61251 1-16
+backend/infrahub/workers/reservations.py
+  s_d1d97b4114dca4::t_a352ec1fb61251 1-37
+docker-compose.yml
+  s_d1d97b4114dca4::t_a352ec1fb61251 284,317,363
+dev/README.md
+  s_d1d97b4114dca4::t_a352ec1fb61251 67
+docs/docs/branches/parallel-branches.mdx
+  s_d1d97b4114dca4::t_a352ec1fb61251 102
+backend/tests/unit/workers/test_submission.py
+  s_d1d97b4114dca4::t_a352ec1fb61251 1-231
+CHANGELOG.md
+  s_d1d97b4114dca4::t_a352ec1fb61251 14-30
+docs/docs/release-notes/infrahub/release-1_11_5.mdx
+  s_d1d97b4114dca4::t_a352ec1fb61251 1-37
+.github/CODEOWNERS
+  s_d1d97b4114dca4::t_a352ec1fb61251 8-10,12-19,23-24
+backend/infrahub/workers/submission.py
+  s_d1d97b4114dca4::t_a352ec1fb61251 1-81
+backend/tests/unit/workers/test_reservations.py
+  s_d1d97b4114dca4::t_a352ec1fb61251 1-108
+backend/infrahub/workers/infrahub_async.py
+  s_d1d97b4114dca4::t_a352ec1fb61251 5,31,34,46,48-52,55-57,61-64,129,188-191,235-274
+  s_d1d97b4114dca4::t_c5937ee498ac86 275
+backend/tests/integration/workers/test_submission_window.py
+  s_d1d97b4114dca4::t_a352ec1fb61251 1-116
+docs/docs/proposed-changes/overview.mdx
+  s_d1d97b4114dca4::t_a352ec1fb61251 66-67
+dev/knowledge/backend/task-workers.md
+  s_d1d97b4114dca4::t_a352ec1fb61251 1-96
+dev/knowledge/backend/async-tasks.md
+  s_d1d97b4114dca4::t_a352ec1fb61251 228,460,468
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "38bd09ab7d87019e2f1225e95c31244ecddee732",
+  "prompts": {},
+  "sessions": {
+    "s_d1d97b4114dca4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "36eb8624-c6b8-4863-b2f1-62374db2a52a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
