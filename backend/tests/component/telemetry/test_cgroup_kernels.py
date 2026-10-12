@@ -53,7 +53,7 @@ _PROBE_DIR = "/probe"
 _PROBE = """\
 import json, os
 import psutil, resources
-reading = resources.ProcessResources().read()
+reading = resources.ProcessResources(machine=resources.PsutilMachine()).read()
 print(json.dumps(reading.model_dump() | {
     "host_memory_total": psutil.virtual_memory().total,
     "host_processor_available": psutil.cpu_count(logical=True),

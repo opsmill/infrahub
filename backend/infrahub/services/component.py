@@ -17,6 +17,7 @@ from infrahub.telemetry.resources import (
     RESOURCE_READ_FAILURES,
     UNKNOWN_CONTAINER,
     ProcessResources,
+    PsutilMachine,
     WorkerResourceReading,
 )
 from infrahub.worker import WORKER_IDENTITY
@@ -140,7 +141,7 @@ class InfrahubComponent:
     db: InfrahubDatabase
     message_bus: InfrahubMessageBus
     component_type: ComponentType
-    process_resources: ProcessResources = Factory(ProcessResources)
+    process_resources: ProcessResources = Factory(lambda: ProcessResources(machine=PsutilMachine()))
 
     @classmethod
     async def new(

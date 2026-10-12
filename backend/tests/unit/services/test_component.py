@@ -25,6 +25,7 @@ from infrahub.tasks.recurring import trigger_resource_refresh
 from infrahub.telemetry.resources import ProcessResources, WorkerResourceReading
 from infrahub.worker import WORKER_IDENTITY
 from tests.adapters.cache import MemoryCache
+from tests.adapters.machine import FixedMachine
 from tests.adapters.message_bus import BusRecorder
 
 if TYPE_CHECKING:
@@ -123,7 +124,7 @@ class ThreadRecordingProcessResources(ProcessResources):
     """A resource reader that records, for each read, whether it ran on the thread running the event loop."""
 
     def __init__(self, event_loop_thread_id: int) -> None:
-        super().__init__()
+        super().__init__(machine=FixedMachine())
         self.event_loop_thread_id = event_loop_thread_id
         self.reads_on_event_loop_thread: list[bool] = []
 
@@ -149,7 +150,7 @@ class ResourceRefreshCase:
 
 RESOURCE_REFRESH_CASES = [
     ResourceRefreshCase(name="startup_heartbeat", refresh=refresh_at_startup),
-    ResourceRefreshCase(name="ten_second_schedule", refresh=refresh_on_schedule),
+    ResourceRefreshCase(name="recurring_schedule", refresh=refresh_on_schedule),
 ]
 
 
@@ -199,6 +200,9 @@ class AlwaysFailingProcessResources(ProcessResources):
     a psutil hiccup). This adapter raises on every attempt instead. Its container name is fixed,
     so the stored reading can be checked exactly.
     """
+
+    def __init__(self) -> None:
+        super().__init__(machine=FixedMachine())
 
     def read(self) -> WorkerResourceReading:
         raise OSError("resource read unavailable")

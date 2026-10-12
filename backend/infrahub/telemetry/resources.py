@@ -34,6 +34,7 @@ import math
 import socket
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Protocol
 
 import psutil
 from pydantic import BaseModel, Field
@@ -202,20 +203,6 @@ def _usable_processors(host_count: int | None, quota_cores: int | None, affinity
     """
     knowns = [value for value in (host_count, quota_cores, affinity_count) if value is not None]
     return min(knowns) if knowns else None
-
-
-def _affinity_processor_count() -> int | None:
-    """How many CPUs this process is pinned to, or ``None`` when that cannot be read.
-
-    A container can be pinned to specific CPUs without a CPU limit (for example
-    ``docker run --cpuset-cpus``), which the limit alone would miss. On platforms
-    that do not support pinning, psutil raises ``NotImplementedError``, which is
-    treated as unknown rather than failing the whole read.
-    """
-    try:
-        return len(psutil.Process().cpu_affinity())
-    except (AttributeError, NotImplementedError, OSError, psutil.Error):
-        return None
 
 
 def _own_cgroup_dirs(cgroup_root: Path, proc_cgroup: Path) -> list[Path]:
@@ -406,12 +393,66 @@ def _memory_headroom(levels: list[tuple[int, Path]]) -> int:
     return min(headroom)
 
 
-def _host_memory_total() -> int | None:
-    return int(psutil.virtual_memory().total)
+class Machine(Protocol):
+    """What this process can see of the machine it runs on.
+
+    Inside a container this is still the whole machine's CPUs and memory, which is
+    why the container's own limits are read from the cgroup files.
+    """
+
+    def hostname(self) -> str:
+        """This process's hostname, which inside a container is the container's.
+
+        Raises:
+            OSError: The hostname could not be read.
+
+        """
+        ...
+
+    def processor_count(self) -> int | None:
+        """The machine's logical CPUs, or ``None`` when the platform does not report them."""
+        ...
+
+    def pinned_processor_count(self) -> int | None:
+        """How many CPUs this process is pinned to, or ``None`` when that cannot be read."""
+        ...
+
+    def memory_total(self) -> int:
+        """The machine's memory in bytes."""
+        ...
+
+    def memory_available(self) -> int:
+        """The machine's free memory in bytes."""
+        ...
 
 
-def _host_memory_available() -> int | None:
-    return int(psutil.virtual_memory().available)
+class PsutilMachine:
+    """The machine as psutil and the operating system report it."""
+
+    def hostname(self) -> str:
+        return socket.gethostname()
+
+    def processor_count(self) -> int | None:
+        return psutil.cpu_count(logical=True)
+
+    def pinned_processor_count(self) -> int | None:
+        """How many CPUs this process is pinned to, or ``None`` when that cannot be read.
+
+        A container can be pinned to specific CPUs without a CPU limit (for example
+        ``docker run --cpuset-cpus``), which the limit alone would miss. On platforms
+        that do not support pinning, psutil raises ``NotImplementedError``, which is
+        treated as unknown rather than failing the whole read.
+        """
+        try:
+            return len(psutil.Process().cpu_affinity())
+        except (AttributeError, NotImplementedError, OSError, psutil.Error):
+            return None
+
+    def memory_total(self) -> int:
+        return int(psutil.virtual_memory().total)
+
+    def memory_available(self) -> int:
+        return int(psutil.virtual_memory().available)
 
 
 class ProcessResources:
@@ -424,10 +465,12 @@ class ProcessResources:
 
     def __init__(
         self,
+        machine: Machine,
         cgroup_root: Path = CGROUP_ROOT,
         proc_cgroup: Path = PROC_SELF_CGROUP,
         pid_namespace: Path = PROC_SELF_PID_NAMESPACE,
     ) -> None:
+        self._machine = machine
         self._cgroup_root = cgroup_root
         self._proc_cgroup = proc_cgroup
         self._pid_namespace = pid_namespace
@@ -447,7 +490,7 @@ class ProcessResources:
             OSError: The hostname could not be read.
 
         """
-        hostname = socket.gethostname()
+        hostname = self._machine.hostname()
         try:
             namespace = self._pid_namespace.readlink()
         except OSError:
@@ -458,7 +501,7 @@ class ProcessResources:
         return _ProcessIdentity(
             host=self.container_name(),
             cgroup_dirs=_own_cgroup_dirs(cgroup_root=self._cgroup_root, proc_cgroup=self._proc_cgroup),
-            host_processor_count=psutil.cpu_count(logical=True),
+            host_processor_count=self._machine.processor_count(),
             v1_cpu_dirs=_v1_controller_dirs(self._cgroup_root, self._proc_cgroup, "cpu"),
             v1_memory_dirs=_v1_controller_dirs(self._cgroup_root, self._proc_cgroup, "memory"),
         )
@@ -476,7 +519,7 @@ class ProcessResources:
             processor_available = _usable_processors(
                 host_count=identity.host_processor_count,
                 quota_cores=_usable_cores_under_quota(quota_cores),
-                affinity_count=_affinity_processor_count(),
+                affinity_count=self._machine.pinned_processor_count(),
             )
         except _CgroupLimitUnusableError as exc:
             # The unreadable limit could be the tightest one, and the machine's figures could be far too high.
@@ -491,7 +534,7 @@ class ProcessResources:
         try:
             memory_levels = _read_cgroup_memory_levels(identity.cgroup_dirs, identity.v1_memory_dirs)
             memory_limit = min(limit for limit, _ in memory_levels) if memory_levels else None
-            memory_total = memory_limit if memory_limit is not None else _host_memory_total()
+            memory_total = memory_limit if memory_limit is not None else self._machine.memory_total()
         except _CgroupLimitUnusableError as exc:
             log.warning(
                 "Memory limit file %s exists but could not be used; reporting memory as unknown (host=%s)",
@@ -518,7 +561,7 @@ class ProcessResources:
 
         # Free memory is read on its own, so failing to read it does not lose the total.
         try:
-            memory_available = _memory_headroom(memory_levels) if memory_levels else _host_memory_available()
+            memory_available = _memory_headroom(memory_levels) if memory_levels else self._machine.memory_available()
         except _CgroupUsageUnreadableError as exc:
             log.warning(
                 "Memory usage file %s could not be read; reporting free memory as unknown (host=%s)",

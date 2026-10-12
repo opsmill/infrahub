@@ -1,27 +1,30 @@
 """Unit tests for the per-process resource reader.
 
 The reader parses the container control group (cgroup v2 first, then v1) for the
-enforced CPU quota and the memory limit, and falls back to whole-host figures
-from psutil when no control group is present. Every case is driven from fixture
-files under a temporary cgroup root, so the cgroup inputs are fixture-isolated
-and need no patching; the host's logical CPU count and CPU-affinity mask are
-still read live from the real environment for the capping math.
+enforced CPU quota and the memory limit, and falls back to the machine's own
+figures when no control group is present. Every case is driven from fixture
+files under a temporary cgroup root, on a machine whose CPU count, pinned CPUs,
+memory and hostname are fixed, so every figure is checked against an exact
+number and nothing is read from the machine running the tests.
 """
 
 from __future__ import annotations
 
 import logging
-import socket
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-import psutil
 import pytest
 
-from infrahub.telemetry.resources import ProcessResources, _usable_processors
+from infrahub.telemetry.resources import ProcessResources, WorkerResourceReading
+from tests.adapters.machine import GIBIBYTE, FixedMachine
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+
+MACHINE = FixedMachine()
+"""18 CPUs, none pinned, 64 GiB of which 48 GiB are free."""
 
 
 def _write_cgroup_files(cgroup_root: Path, files: dict[str, str]) -> None:
@@ -31,188 +34,138 @@ def _write_cgroup_files(cgroup_root: Path, files: dict[str, str]) -> None:
         target.write_text(content)
 
 
+def _reader(
+    tmp_path: Path, files: dict[str, str], proc_content: str = "0::/\n", machine: FixedMachine = MACHINE
+) -> ProcessResources:
+    """A reader over limit files under ``tmp_path``, with no process ID namespace to read, so its container name is the hostname."""
+    cgroup_root = tmp_path / "cgroup"
+    cgroup_root.mkdir(exist_ok=True)
+    _write_cgroup_files(cgroup_root, files)
+    proc_cgroup = tmp_path / "proc_self_cgroup"
+    proc_cgroup.write_text(proc_content)
+    return ProcessResources(
+        machine=machine,
+        cgroup_root=cgroup_root,
+        proc_cgroup=proc_cgroup,
+        pid_namespace=tmp_path / "no_pid_namespace",
+    )
+
+
 @dataclass
-class CpuQuotaCase:
+class CpuCase:
     name: str
     files: dict[str, str]
     expected_assigned: int | None
+    expected_available: int | None
+    machine: FixedMachine = MACHINE
 
-    expected_quota_cap: int | None = None
-    """Cores the quota lets the process occupy, when that differs from the enforced figure."""
 
-
-CPU_QUOTA_CASES = [
-    CpuQuotaCase(
+CPU_CASES = [
+    CpuCase(
         name="v2_limited",
         files={"cpu.max": "400000 100000"},
         expected_assigned=4,
+        expected_available=4,
     ),
-    CpuQuotaCase(
-        name="v2_unlimited",
+    CpuCase(
+        name="v2_unlimited_reports_the_machine",
         files={"cpu.max": "max 100000"},
         expected_assigned=None,
+        expected_available=18,
     ),
-    CpuQuotaCase(
-        name="v2_fractional_rounds_up",
+    CpuCase(
+        name="v2_fractional_rounds_assigned_up_and_available_down",
         files={"cpu.max": "150000 100000"},
         expected_assigned=2,
-        expected_quota_cap=1,
+        expected_available=1,
     ),
-    CpuQuotaCase(
+    CpuCase(
         name="v1_limited",
         files={"cpu/cpu.cfs_quota_us": "200000", "cpu/cpu.cfs_period_us": "100000"},
         expected_assigned=2,
+        expected_available=2,
     ),
-    CpuQuotaCase(
-        name="v1_unlimited_sentinel",
+    CpuCase(
+        name="v1_unlimited_sentinel_reports_the_machine",
         files={"cpu/cpu.cfs_quota_us": "-1", "cpu/cpu.cfs_period_us": "100000"},
         expected_assigned=None,
+        expected_available=18,
     ),
-    CpuQuotaCase(
-        name="v1_fractional_rounds_up",
+    CpuCase(
+        name="v1_fractional_rounds_assigned_up_and_available_down",
         files={"cpu/cpu.cfs_quota_us": "250000", "cpu/cpu.cfs_period_us": "100000"},
         expected_assigned=3,
-        expected_quota_cap=2,
+        expected_available=2,
     ),
-    CpuQuotaCase(
+    CpuCase(
         name="v2_single_core",
         files={"cpu.max": "100000 100000"},
         expected_assigned=1,
+        expected_available=1,
     ),
-    CpuQuotaCase(
+    CpuCase(
         name="v2_sub_core_quota_still_counts_one_usable_cpu",
         files={"cpu.max": "25000 100000"},
         expected_assigned=1,
-        expected_quota_cap=1,
+        expected_available=1,
     ),
-    CpuQuotaCase(
-        name="v2_quota_above_host_count",
+    CpuCase(
+        name="v2_quota_above_the_machine_is_capped_by_the_machine",
         files={"cpu.max": "102400000 100000"},
         expected_assigned=1024,
+        expected_available=18,
     ),
-    CpuQuotaCase(
-        name="missing_files",
+    CpuCase(
+        name="missing_files_report_the_machine",
         files={},
         expected_assigned=None,
+        expected_available=18,
+    ),
+    CpuCase(
+        name="pinning_without_a_limit_caps_available",
+        files={},
+        machine=FixedMachine(pinned_processors=2),
+        expected_assigned=None,
+        expected_available=2,
+    ),
+    CpuCase(
+        name="a_limit_tighter_than_the_pinning_wins",
+        files={"cpu.max": "400000 100000"},
+        machine=FixedMachine(pinned_processors=8),
+        expected_assigned=4,
+        expected_available=4,
+    ),
+    CpuCase(
+        name="pinning_alone_when_the_machine_reports_no_cpu_count",
+        files={},
+        machine=FixedMachine(processors=None, pinned_processors=3),
+        expected_assigned=None,
+        expected_available=3,
+    ),
+    CpuCase(
+        name="nothing_known_leaves_available_unknown",
+        files={},
+        machine=FixedMachine(processors=None),
+        expected_assigned=None,
+        expected_available=None,
     ),
 ]
 
 
-def _unrestricted_cores() -> int | None:
-    """What this machine offers with no cgroup limit in play, observed once.
-
-    Read from psutil rather than from the reader: taking it from the reader would
-    let the unrestricted path stand as its own oracle, so a regression that moved
-    that figure would move every expectation with it and the capping tests would
-    still pass. Both numbers are properties of this environment, not a second copy
-    of the capping rule, whose arithmetic is pinned separately against fixed inputs.
-    """
-    count = psutil.cpu_count(logical=True)
-    if count is None:
-        return None
-    try:
-        return min(count, len(psutil.Process().cpu_affinity()))
-    except (AttributeError, NotImplementedError, OSError, psutil.Error):
-        return count
-
-
-HOST_CORES = _unrestricted_cores()
-
-needs_host_cores = pytest.mark.skipif(
-    HOST_CORES is None, reason="this platform reports no logical CPU count to compare against"
-)
-
-
-def _usable_cores(assigned: int | None) -> int:
-    """The figure expected under ``assigned``: the quota when it binds, else this machine's own."""
-    assert HOST_CORES is not None
-    if assigned is None or assigned >= HOST_CORES:
-        return HOST_CORES
-    return assigned
-
-
-@needs_host_cores
-@pytest.mark.parametrize("case", CPU_QUOTA_CASES, ids=[case.name for case in CPU_QUOTA_CASES])
-def test_cgroup_cpu_quota(case: CpuQuotaCase, tmp_path: Path) -> None:
-    _write_cgroup_files(tmp_path, case.files)
-
-    reading = ProcessResources(cgroup_root=tmp_path).read()
+@pytest.mark.parametrize("case", CPU_CASES, ids=[case.name for case in CPU_CASES])
+def test_cpu_figures(case: CpuCase, tmp_path: Path) -> None:
+    reading = _reader(tmp_path, case.files, machine=case.machine).read()
 
     assert reading.processor_assigned == case.expected_assigned
-    assert reading.processor_available == _usable_cores(case.expected_quota_cap or case.expected_assigned)
-
-
-@dataclass
-class UsableProcessorsCase:
-    name: str
-    host_count: int | None
-    quota_cores: int | None
-    affinity_count: int | None
-    expected: int | None
-
-
-USABLE_PROCESSORS_CASES = [
-    UsableProcessorsCase(
-        name="affinity_narrower_than_host_and_quota",
-        host_count=18,
-        quota_cores=None,
-        affinity_count=2,
-        expected=2,
-    ),
-    UsableProcessorsCase(
-        name="quota_narrower_than_affinity",
-        host_count=18,
-        quota_cores=4,
-        affinity_count=8,
-        expected=4,
-    ),
-    UsableProcessorsCase(
-        name="affinity_unreadable_falls_back_to_quota",
-        host_count=18,
-        quota_cores=4,
-        affinity_count=None,
-        expected=4,
-    ),
-    UsableProcessorsCase(
-        name="nothing_restricts_reports_the_host_count",
-        host_count=18,
-        quota_cores=None,
-        affinity_count=None,
-        expected=18,
-    ),
-    UsableProcessorsCase(
-        name="only_affinity_known",
-        host_count=None,
-        quota_cores=None,
-        affinity_count=3,
-        expected=3,
-    ),
-    UsableProcessorsCase(
-        name="nothing_known",
-        host_count=None,
-        quota_cores=None,
-        affinity_count=None,
-        expected=None,
-    ),
-]
-
-
-@pytest.mark.parametrize("case", USABLE_PROCESSORS_CASES, ids=[case.name for case in USABLE_PROCESSORS_CASES])
-def test_usable_processors_caps_by_the_tightest_known_limit(case: UsableProcessorsCase) -> None:
-    result = _usable_processors(
-        host_count=case.host_count, quota_cores=case.quota_cores, affinity_count=case.affinity_count
-    )
-
-    assert result == case.expected
+    assert reading.processor_available == case.expected_available
 
 
 @dataclass
 class MemoryCase:
     name: str
     files: dict[str, str]
-    expected_total: int | None
-    expected_available: int | None
-    total_from_host: bool = field(default=False)
+    expected_total: int
+    expected_available: int
 
 
 MEMORY_CASES = [
@@ -238,44 +191,32 @@ MEMORY_CASES = [
         expected_available=0,
     ),
     MemoryCase(
-        name="v2_unlimited_falls_back_to_host",
+        name="v2_unlimited_falls_back_to_the_machine",
         files={"memory.max": "max"},
-        expected_total=None,
-        expected_available=None,
-        total_from_host=True,
+        expected_total=64 * GIBIBYTE,
+        expected_available=48 * GIBIBYTE,
     ),
     MemoryCase(
-        name="v1_unlimited_sentinel_falls_back_to_host",
+        name="v1_unlimited_sentinel_falls_back_to_the_machine",
         files={"memory/memory.limit_in_bytes": "9223372036854771712"},
-        expected_total=None,
-        expected_available=None,
-        total_from_host=True,
+        expected_total=64 * GIBIBYTE,
+        expected_available=48 * GIBIBYTE,
     ),
     MemoryCase(
-        name="missing_files_fall_back_to_host",
+        name="missing_files_fall_back_to_the_machine",
         files={},
-        expected_total=None,
-        expected_available=None,
-        total_from_host=True,
+        expected_total=64 * GIBIBYTE,
+        expected_available=48 * GIBIBYTE,
     ),
 ]
 
 
 @pytest.mark.parametrize("case", MEMORY_CASES, ids=[case.name for case in MEMORY_CASES])
 def test_cgroup_memory(case: MemoryCase, tmp_path: Path) -> None:
-    _write_cgroup_files(tmp_path, case.files)
+    reading = _reader(tmp_path, case.files).read()
 
-    reading = ProcessResources(cgroup_root=tmp_path).read()
-
-    if case.total_from_host:
-        # A host without a memory limit reports its whole capacity; that value is
-        # never ``None`` on a normal host, and free memory is always readable.
-        assert reading.memory_total == psutil.virtual_memory().total
-        assert reading.memory_available is not None
-        assert reading.memory_available >= 0
-    else:
-        assert reading.memory_total == case.expected_total
-        assert reading.memory_available == case.expected_available
+    assert reading.memory_total == case.expected_total
+    assert reading.memory_available == case.expected_available
 
 
 @dataclass
@@ -291,6 +232,7 @@ class CgroupPathCase:
     proc_content: str
     files: dict[str, str]
     expected_assigned: int | None
+    expected_available: int | None
     expected_memory_total: int | None
     expected_memory_available: int | None
 
@@ -305,6 +247,7 @@ CGROUP_PATH_CASES = [
             "system.slice/app.scope/memory.current": "1073741824",
         },
         expected_assigned=4,
+        expected_available=4,
         expected_memory_total=8589934592,
         expected_memory_available=8589934592 - 1073741824,
     ),
@@ -319,6 +262,7 @@ CGROUP_PATH_CASES = [
             "kubepods.slice/pod1.slice/memory.current": "1073741824",
         },
         expected_assigned=2,
+        expected_available=2,
         expected_memory_total=4294967296,
         expected_memory_available=4294967296 - 1073741824,
     ),
@@ -334,6 +278,7 @@ CGROUP_PATH_CASES = [
             "a/memory.current": "1073741824",
         },
         expected_assigned=2,
+        expected_available=2,
         expected_memory_total=4294967296,
         expected_memory_available=4294967296 - 1073741824,
     ),
@@ -350,6 +295,7 @@ CGROUP_PATH_CASES = [
             "a/memory.current": "1073741824",
         },
         expected_assigned=4,
+        expected_available=4,
         expected_memory_total=8589934592,
         expected_memory_available=8589934592 - 1073741824,
     ),
@@ -365,6 +311,7 @@ CGROUP_PATH_CASES = [
             "memory/system.slice/app.service/memory.usage_in_bytes": "2147483648",
         },
         expected_assigned=2,
+        expected_available=2,
         expected_memory_total=8589934592,
         expected_memory_available=8589934592 - 2147483648,
     ),
@@ -384,57 +331,38 @@ CGROUP_PATH_CASES = [
             "memory/system.slice/memory.usage_in_bytes": "1073741824",
         },
         expected_assigned=4,
+        expected_available=4,
         expected_memory_total=4294967296,
         expected_memory_available=4294967296 - 1073741824,
     ),
 ]
 
 
-def _process_resources_for(case: CgroupPathCase, tmp_path: Path) -> ProcessResources:
-    cgroup_root = tmp_path / "cgroup"
-    cgroup_root.mkdir()
-    _write_cgroup_files(cgroup_root, case.files)
-    proc_cgroup = tmp_path / "proc_self_cgroup"
-    proc_cgroup.write_text(case.proc_content)
-    return ProcessResources(cgroup_root=cgroup_root, proc_cgroup=proc_cgroup)
-
-
-@needs_host_cores
 @pytest.mark.parametrize("case", CGROUP_PATH_CASES, ids=[case.name for case in CGROUP_PATH_CASES])
-def test_cgroup_path_resolution_cpu(case: CgroupPathCase, tmp_path: Path) -> None:
-    reading = _process_resources_for(case, tmp_path).read()
+def test_cgroup_path_resolution(case: CgroupPathCase, tmp_path: Path) -> None:
+    reading = _reader(tmp_path, case.files, proc_content=case.proc_content).read()
 
-    assert reading.processor_assigned == case.expected_assigned
-    assert reading.processor_available == _usable_cores(case.expected_assigned)
-
-
-@pytest.mark.parametrize("case", CGROUP_PATH_CASES, ids=[case.name for case in CGROUP_PATH_CASES])
-def test_cgroup_path_resolution_memory(case: CgroupPathCase, tmp_path: Path) -> None:
-    reading = _process_resources_for(case, tmp_path).read()
-
-    assert reading.memory_total == case.expected_memory_total
-    assert reading.memory_available == case.expected_memory_available
+    assert reading == WorkerResourceReading(
+        host="test-host",
+        processor_assigned=case.expected_assigned,
+        processor_available=case.expected_available,
+        memory_total=case.expected_memory_total,
+        memory_available=case.expected_memory_available,
+    )
 
 
 def test_a_nearly_full_ancestor_binds_before_a_roomier_leaf_limit(tmp_path: Path) -> None:
     # The leaf carries the smaller limit, but the ancestor's limit is charged against
     # its whole subtree and is nearly exhausted, so it binds first.
-    gib = 1024**3
-    case = CgroupPathCase(
-        name="ancestor_binds",
-        proc_content="0::/pod/container\n",
-        files={
-            "pod/container/memory.max": str(4 * gib),
-            "pod/container/memory.current": str(gib // 2),
-            "pod/memory.max": str(5 * gib),
-            "pod/memory.current": str(4 * gib + gib // 2 + gib // 10),
-        },
-        expected_assigned=None,
-        expected_memory_total=4 * gib,
-        expected_memory_available=None,
-    )
+    gib = GIBIBYTE
+    files = {
+        "pod/container/memory.max": str(4 * gib),
+        "pod/container/memory.current": str(gib // 2),
+        "pod/memory.max": str(5 * gib),
+        "pod/memory.current": str(4 * gib + gib // 2 + gib // 10),
+    }
 
-    reading = _process_resources_for(case, tmp_path).read()
+    reading = _reader(tmp_path, files, proc_content="0::/pod/container\n").read()
 
     # Capacity is still the tightest ceiling, the leaf's 4 GiB...
     assert reading.memory_total == 4 * gib
@@ -443,19 +371,14 @@ def test_a_nearly_full_ancestor_binds_before_a_roomier_leaf_limit(tmp_path: Path
 
 
 def test_unreadable_usage_file_keeps_the_capacity_figure(tmp_path: Path) -> None:
-    cgroup_root = tmp_path / "cgroup"
-    cgroup_root.mkdir()
-    _write_cgroup_files(cgroup_root, {"memory.max": "8589934592"})
     # A directory where the usage file belongs fails the read without being absent.
-    (cgroup_root / "memory.current").mkdir()
-    proc_cgroup = tmp_path / "proc_self_cgroup"
-    proc_cgroup.write_text("0::/\n")
+    (tmp_path / "cgroup" / "memory.current").mkdir(parents=True)
 
-    reading = ProcessResources(cgroup_root=cgroup_root, proc_cgroup=proc_cgroup).read()
+    reading = _reader(tmp_path, {"memory.max": "8589934592"}).read()
 
     assert reading.memory_total == 8589934592
     assert reading.memory_available is None
-    assert reading.processor_available is not None
+    assert reading.processor_available == 18
 
 
 @dataclass
@@ -465,8 +388,7 @@ class ContainerNameCase:
     namespaces: list[str | None]
     """For each process, what its process ID namespace link points to; ``None`` leaves no link."""
 
-    expected_suffixes: list[str]
-    """What each process's container name adds after the hostname."""
+    expected_names: list[str]
 
     plain_files: bool = False
     """Write each namespace as an ordinary file holding the text, which cannot be read as a link."""
@@ -476,22 +398,22 @@ CONTAINER_NAME_CASES = [
     ContainerNameCase(
         name="processes_in_one_namespace_share_one_container_name",
         namespaces=["pid:[4026532001]", "pid:[4026532001]"],
-        expected_suffixes=["/pid:[4026532001]", "/pid:[4026532001]"],
+        expected_names=["api-1/pid:[4026532001]", "api-1/pid:[4026532001]"],
     ),
     ContainerNameCase(
         name="two_namespaces_under_one_hostname_get_two_container_names",
         namespaces=["pid:[4026532001]", "pid:[4026532002]"],
-        expected_suffixes=["/pid:[4026532001]", "/pid:[4026532002]"],
+        expected_names=["api-1/pid:[4026532001]", "api-1/pid:[4026532002]"],
     ),
     ContainerNameCase(
         name="a_missing_namespace_leaves_the_hostname_alone",
         namespaces=[None, None],
-        expected_suffixes=["", ""],
+        expected_names=["api-1", "api-1"],
     ),
     ContainerNameCase(
         name="a_namespace_that_is_not_a_link_leaves_the_hostname_alone",
         namespaces=["pid:[4026532001]", "pid:[4026532002]"],
-        expected_suffixes=["", ""],
+        expected_names=["api-1", "api-1"],
         plain_files=True,
     ),
 ]
@@ -499,6 +421,7 @@ CONTAINER_NAME_CASES = [
 
 @pytest.mark.parametrize("case", CONTAINER_NAME_CASES, ids=[case.name for case in CONTAINER_NAME_CASES])
 def test_container_name_is_the_hostname_and_the_process_namespace(case: ContainerNameCase, tmp_path: Path) -> None:
+    machine = FixedMachine(name="api-1")
     namespace_dir = tmp_path / "namespaces"
     namespace_dir.mkdir()
     readers = []
@@ -508,37 +431,42 @@ def test_container_name_is_the_hostname_and_the_process_namespace(case: Containe
             namespace.write_text(target)
         elif target is not None:
             namespace.symlink_to(target)
-        readers.append(ProcessResources(cgroup_root=tmp_path / "cgroup", pid_namespace=namespace))
+        readers.append(
+            ProcessResources(
+                machine=machine,
+                cgroup_root=tmp_path / "cgroup",
+                proc_cgroup=tmp_path / "proc_self_cgroup",
+                pid_namespace=namespace,
+            )
+        )
 
-    expected = [socket.gethostname() + suffix for suffix in case.expected_suffixes]
-    assert [reader.read().host for reader in readers] == expected
-    assert [reader.container_name() for reader in readers] == expected
+    assert [reader.read().host for reader in readers] == case.expected_names
+    assert [reader.container_name() for reader in readers] == case.expected_names
 
 
-@needs_host_cores
 def test_limit_values_refresh_between_reads(tmp_path: Path) -> None:
     # A live reconfiguration (a ``docker update --cpus``, a Kubernetes in-place
     # pod resize) rewrites the cgroup limit files without restarting the process,
     # so the CPU quota and memory capacity must reflect it on the next read
     # rather than staying at whatever was true when the process started.
-    _write_cgroup_files(
+    reader = _reader(
         tmp_path,
         {"cpu.max": "100000 100000", "memory.max": "8589934592", "memory.current": "1073741824"},
     )
-    reader = ProcessResources(cgroup_root=tmp_path)
 
     first = reader.read()
     assert first.processor_assigned == 1
     assert first.memory_total == 8589934592
     assert first.memory_available == 8589934592 - 1073741824
 
-    (tmp_path / "cpu.max").write_text("400000 100000")
-    (tmp_path / "memory.max").write_text("4294967296")
-    (tmp_path / "memory.current").write_text("536870912")
+    _write_cgroup_files(
+        tmp_path / "cgroup",
+        {"cpu.max": "400000 100000", "memory.max": "4294967296", "memory.current": "536870912"},
+    )
     second = reader.read()
 
     assert second.processor_assigned == 4
-    assert second.processor_available == _usable_cores(4)
+    assert second.processor_available == 4
     assert second.memory_total == 4294967296
     assert second.memory_available == 4294967296 - 536870912
 
@@ -549,13 +477,9 @@ def test_leaf_cpu_max_absent_still_falls_through_to_ancestor(tmp_path: Path) -> 
     An absent file falls through to an ancestor's limit; only a genuine read failure
     stops that fallback.
     """
-    cgroup_root = tmp_path / "cgroup"
-    (cgroup_root / "a" / "b").mkdir(parents=True)  # leaf exists but carries no cpu.max of its own
-    (cgroup_root / "a" / "cpu.max").write_text("200000 100000")
-    proc_cgroup = tmp_path / "proc_self_cgroup"
-    proc_cgroup.write_text("0::/a/b\n")
+    (tmp_path / "cgroup" / "a" / "b").mkdir(parents=True)  # leaf exists but carries no cpu.max of its own
 
-    reading = ProcessResources(cgroup_root=cgroup_root, proc_cgroup=proc_cgroup).read()
+    reading = _reader(tmp_path, {"a/cpu.max": "200000 100000"}, proc_content="0::/a/b\n").read()
 
     assert reading.processor_assigned == 2
 
@@ -570,17 +494,12 @@ def test_unreadable_leaf_cpu_max_reports_unknown_instead_of_ancestor_value(
     directory where a file is expected is a portable, root-independent way to trigger
     a genuine (non-ENOENT) read failure.
     """
-    cgroup_root = tmp_path / "cgroup"
-    cgroup_root.mkdir()
-    (cgroup_root / "a" / "b").mkdir(parents=True)
-    failing_file = cgroup_root / "a" / "b" / "cpu.max"
-    failing_file.mkdir()  # a directory, not a file: read raises IsADirectoryError
-    (cgroup_root / "a" / "cpu.max").write_text("200000 100000")
-    proc_cgroup = tmp_path / "proc_self_cgroup"
-    proc_cgroup.write_text("0::/a/b\n")
+    failing_file = tmp_path / "cgroup" / "a" / "b" / "cpu.max"
+    failing_file.mkdir(parents=True)  # a directory, not a file: read raises IsADirectoryError
+    reader = _reader(tmp_path, {"a/cpu.max": "200000 100000"}, proc_content="0::/a/b\n")
 
     with caplog.at_level(logging.WARNING, logger="infrahub.telemetry.resources"):
-        reading = ProcessResources(cgroup_root=cgroup_root, proc_cgroup=proc_cgroup).read()
+        reading = reader.read()
 
     assert reading.processor_assigned is None
     assert reading.processor_available is None
@@ -591,18 +510,14 @@ def test_unreadable_leaf_cpu_max_reports_unknown_instead_of_ancestor_value(
 def test_unreadable_memory_max_reports_unknown_instead_of_ancestor_value(
     tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
-    cgroup_root = tmp_path / "cgroup"
-    cgroup_root.mkdir()
-    (cgroup_root / "a" / "b").mkdir(parents=True)
-    failing_file = cgroup_root / "a" / "b" / "memory.max"
-    failing_file.mkdir()
-    (cgroup_root / "a" / "memory.max").write_text("4294967296")
-    (cgroup_root / "a" / "memory.current").write_text("1073741824")
-    proc_cgroup = tmp_path / "proc_self_cgroup"
-    proc_cgroup.write_text("0::/a/b\n")
+    failing_file = tmp_path / "cgroup" / "a" / "b" / "memory.max"
+    failing_file.mkdir(parents=True)
+    reader = _reader(
+        tmp_path, {"a/memory.max": "4294967296", "a/memory.current": "1073741824"}, proc_content="0::/a/b\n"
+    )
 
     with caplog.at_level(logging.WARNING, logger="infrahub.telemetry.resources"):
-        reading = ProcessResources(cgroup_root=cgroup_root, proc_cgroup=proc_cgroup).read()
+        reading = reader.read()
 
     assert reading.memory_total is None
     assert reading.memory_available is None
@@ -618,17 +533,11 @@ def test_unparseable_leaf_cpu_max_reports_unknown_instead_of_ancestor_value(
     be determined, not a limit that is absent, so falling through to the ancestor
     would overstate the allocation in exactly the way the unreadable case does.
     """
-    cgroup_root = tmp_path / "cgroup"
-    cgroup_root.mkdir()
-    (cgroup_root / "a" / "b").mkdir(parents=True)
-    failing_file = cgroup_root / "a" / "b" / "cpu.max"
-    failing_file.write_text("not-a-quota")
-    (cgroup_root / "a" / "cpu.max").write_text("200000 100000")
-    proc_cgroup = tmp_path / "proc_self_cgroup"
-    proc_cgroup.write_text("0::/a/b\n")
+    reader = _reader(tmp_path, {"a/b/cpu.max": "not-a-quota", "a/cpu.max": "200000 100000"}, proc_content="0::/a/b\n")
+    failing_file = tmp_path / "cgroup" / "a" / "b" / "cpu.max"
 
     with caplog.at_level(logging.WARNING, logger="infrahub.telemetry.resources"):
-        reading = ProcessResources(cgroup_root=cgroup_root, proc_cgroup=proc_cgroup).read()
+        reading = reader.read()
 
     assert reading.processor_assigned is None
     assert reading.processor_available is None
@@ -636,37 +545,31 @@ def test_unparseable_leaf_cpu_max_reports_unknown_instead_of_ancestor_value(
 
 
 def test_unparseable_memory_max_reports_unknown_instead_of_ancestor_value(tmp_path: Path) -> None:
-    cgroup_root = tmp_path / "cgroup"
-    cgroup_root.mkdir()
-    (cgroup_root / "a" / "b").mkdir(parents=True)
-    (cgroup_root / "a" / "b" / "memory.max").write_text("eight gigabytes")
-    (cgroup_root / "a" / "memory.max").write_text("4294967296")
-    (cgroup_root / "a" / "memory.current").write_text("1073741824")
-    proc_cgroup = tmp_path / "proc_self_cgroup"
-    proc_cgroup.write_text("0::/a/b\n")
+    reader = _reader(
+        tmp_path,
+        {"a/b/memory.max": "eight gigabytes", "a/memory.max": "4294967296", "a/memory.current": "1073741824"},
+        proc_content="0::/a/b\n",
+    )
 
-    reading = ProcessResources(cgroup_root=cgroup_root, proc_cgroup=proc_cgroup).read()
+    reading = reader.read()
 
     assert reading.memory_total is None
     assert reading.memory_available is None
 
 
 def test_unparseable_v1_quota_reports_unknown_instead_of_ancestor_value(tmp_path: Path) -> None:
-    cgroup_root = tmp_path / "cgroup"
-    cgroup_root.mkdir()
-    _write_cgroup_files(
-        cgroup_root,
+    reader = _reader(
+        tmp_path,
         {
             "cpu,cpuacct/system.slice/app.service/cpu.cfs_quota_us": "",
             "cpu,cpuacct/system.slice/app.service/cpu.cfs_period_us": "100000",
             "cpu,cpuacct/system.slice/cpu.cfs_quota_us": "400000",
             "cpu,cpuacct/system.slice/cpu.cfs_period_us": "100000",
         },
+        proc_content="3:cpu,cpuacct:/system.slice/app.service\n",
     )
-    proc_cgroup = tmp_path / "proc_self_cgroup"
-    proc_cgroup.write_text("3:cpu,cpuacct:/system.slice/app.service\n")
 
-    reading = ProcessResources(cgroup_root=cgroup_root, proc_cgroup=proc_cgroup).read()
+    reading = reader.read()
 
     assert reading.processor_assigned is None
     assert reading.processor_available is None
@@ -674,13 +577,9 @@ def test_unparseable_v1_quota_reports_unknown_instead_of_ancestor_value(tmp_path
 
 def test_unreadable_cpu_max_does_not_affect_memory_fields(tmp_path: Path) -> None:
     """CPU and memory are collected independently: a CPU-only failure must not null memory."""
-    cgroup_root = tmp_path / "cgroup"
-    cgroup_root.mkdir()
-    (cgroup_root / "cpu.max").mkdir()
-    (cgroup_root / "memory.max").write_text("8589934592")
-    (cgroup_root / "memory.current").write_text("1073741824")
+    (tmp_path / "cgroup" / "cpu.max").mkdir(parents=True)
 
-    reading = ProcessResources(cgroup_root=cgroup_root).read()
+    reading = _reader(tmp_path, {"memory.max": "8589934592", "memory.current": "1073741824"}).read()
 
     assert reading.processor_assigned is None
     assert reading.processor_available is None
@@ -688,16 +587,12 @@ def test_unreadable_cpu_max_does_not_affect_memory_fields(tmp_path: Path) -> Non
     assert reading.memory_available == 8589934592 - 1073741824
 
 
-@needs_host_cores
 def test_unreadable_memory_max_does_not_affect_cpu_fields(tmp_path: Path) -> None:
-    cgroup_root = tmp_path / "cgroup"
-    cgroup_root.mkdir()
-    (cgroup_root / "memory.max").mkdir()
-    (cgroup_root / "cpu.max").write_text("400000 100000")
+    (tmp_path / "cgroup" / "memory.max").mkdir(parents=True)
 
-    reading = ProcessResources(cgroup_root=cgroup_root).read()
+    reading = _reader(tmp_path, {"cpu.max": "400000 100000"}).read()
 
     assert reading.memory_total is None
     assert reading.memory_available is None
     assert reading.processor_assigned == 4
-    assert reading.processor_available == _usable_cores(4)
+    assert reading.processor_available == 4

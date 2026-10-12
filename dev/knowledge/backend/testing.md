@@ -274,6 +274,7 @@ async def test_message_sent(bus_simulator: BusSimulator, ...):
 - `MemoryCache` - In-memory cache for fast tests
 - `FakeLogger` - Captures log output for assertions
 - `RecordingLockRegistry` / `LockTimeline` - Records lock acquire/release order so tests can assert what runs inside versus outside a critical section
+- `FixedMachine` (`backend/tests/adapters/machine.py`) - A machine with a fixed hostname, CPU count, pinned CPUs and memory, passed to the telemetry resource reader so its figures can be checked against exact numbers
 
 **Event and Workflow Adapters:**
 
