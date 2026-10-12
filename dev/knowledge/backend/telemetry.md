@@ -97,20 +97,20 @@ report runs.
 
 ```mermaid
 flowchart LR
-    limits["Container limits<br/>cgroup files + psutil<br/>ProcessResources"]
-    subgraph process["One Infrahub process: API server or task worker"]
-        main["Main loop<br/>starts a read every 10 s<br/>refresh_resources()"]
-        reader["Separate thread<br/>reads the limits"]
-        slot["Shared slot<br/>latest reading, with a lock<br/>LatestResourceReading"]
-        beat["Heartbeat thread<br/>every 5 s, cache writes only<br/>WorkerHeartbeat"]
-        main -->|start| reader
-        reader -->|reading| main
-        main -->|publish| slot
-        slot -->|latest| beat
+    limits["Allowed CPU and memory<br/>container limit, or the whole machine<br/>ProcessResources"]
+    subgraph process["One Infrahub process: an API server or a task worker"]
+        main["Main work<br/>asks for a new reading every 10 s<br/>refresh_resources()"]
+        reader["Side helper<br/>looks up the numbers"]
+        slot["Latest reading<br/>kept in memory<br/>LatestResourceReading"]
+        beat["Heartbeat<br/>says it is alive every 5 s<br/>WorkerHeartbeat"]
+        main -->|asks| reader
+        reader -->|returns the numbers| main
+        main -->|saves| slot
+        slot -->|picks up| beat
     end
-    cache[("Cache<br/>read by the daily report<br/>workers:resources:*")]
-    limits -->|read every 10 s| reader
-    beat -->|alive key + reading, 15 s| cache
+    cache[("Shared cache<br/>read by the daily report<br/>workers:resources:*")]
+    limits -->|looked up| reader
+    beat -->|alive signal and reading, kept 15 s| cache
 ```
 
 <!-- Extracted from specs/infp-631-resource-telemetry on 2026-10-08 -->
