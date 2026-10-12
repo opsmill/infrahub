@@ -1,6 +1,6 @@
 # Git Sync
 
-> Part of: `dev/knowledge/backend/` | Related: [Architecture](architecture.md)
+> Part of: `dev/knowledge/backend/` | Related: [Architecture](architecture.md), [Git Push Queue](git-push-queue.md)
 
 How Infrahub maps and imports branches from external git repositories, how the sync flow reads the
 per-branch state of each repository, and how git and import errors surface. Read this before
@@ -216,17 +216,22 @@ apart, because they drive different outcomes:
   moves a worktree by a hard reset onto the remote head it classified, so a worktree behind the
   remote fast-forwards and the commit imported is the one classified. A worktree that does not lead
   to the remote head, because the remote was rewritten or rewound, loses the commits it held, and
-  that includes a worktree ahead of the remote. Such a commit is rare: `InfrahubRepository.merge`
-  pushes before it records the commit, and resets the destination worktree when either step fails.
-  Only a failed reset, which `merge` logs as needing manual reconciliation, leaves an unpushed merge
-  commit there, and the sync reset then discards it
-  ([Git Integration](git-integration.md#the-writeback-direction-has-no-reconciliation)). A worktree
+  that includes a worktree ahead of the remote. Such a commit is rare: a delivery pushes before it
+  records the commit, and resets the destination worktree when either step fails. Only a failed
+  reset, which the delivery logs, leaves an unpushed merge commit there, and the sync reset then
+  discards it ([Git Integration](git-integration.md#the-push-queue)). A worktree
   already on the remote head stays there. When the graph records another commit, the sync resets the
   worktree onto the same commit, which records it, and imports the branch again: a pull would move
   nothing, so it would record nothing.
 
 A worker whose graph already holds the remote head can still hold the discarded history on disk. It
 resets and logs the reconciliation, and its classification stays unchanged.
+
+While a read-write repository has pending pushes, the sync leaves out its default branch and the
+remote source branch of each pending merge before the classification, so none of them is
+classified, moved or recorded until the queue clears. When the default branch is classified as a rewrite, the
+sync also checks whether the rewrite discarded the last pushed commit, and records it as a reverted
+push ([Git Push Queue](git-push-queue.md#the-reverted-push-record)).
 
 The sync considers the branches whose local head differs from the remote, and also the local
 branches whose graph commit differs from the remote head. Only branches that can still record a
@@ -290,7 +295,8 @@ trunk and records no rewrite.
   stay.
 - **Cleared only by the cycle that reconciles it.** After the collection, the sync clears a marker
   it read once the trunk records the remote head of the branch the marker names. A failed trunk, an
-  inactive repository, or a default branch the remote does not hold yet keeps it.
+  inactive repository, a default branch the remote does not hold yet, or a default branch that the
+  sync skips for pending pushes keeps it.
 - **Expires after seven days**, which only removes a marker that no cycle reconciles.
 
 A read-only repository uses no marker. An update or an upsert that changes its `ref` or `commit`
