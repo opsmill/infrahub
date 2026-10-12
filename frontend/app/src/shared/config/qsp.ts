@@ -14,4 +14,6 @@ export const QSP = {
   IPAM_NAMESPACE: "namespace",
   STATUS: "status",
   HIGHLIGHT: "highlight",
+  POOL_ALLOCATION_BRANCH: "allocation_branch",
+  POOL_ALLOCATION_SOURCE: "allocation_source",
 } as const;

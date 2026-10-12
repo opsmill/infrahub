@@ -29,6 +29,8 @@ import {
   type NumberPoolAllocation,
   type NumberPoolProvenance,
 } from "@/entities/resource-manager/domain/model/number-pool";
+import { useNumberPoolAllocationFilters } from "@/entities/resource-manager/ui/hooks/use-number-pool-allocation-filters";
+import { NumberPoolAllocationFiltersBar } from "@/entities/resource-manager/ui/number-pool/number-pool-allocation-filters-bar";
 import { useGetNumberPoolAllocationCount } from "@/entities/resource-manager/ui/queries/get-number-pool-allocation-count.query";
 import { useGetNumberPoolAllocations } from "@/entities/resource-manager/ui/queries/get-number-pool-allocations.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -121,9 +123,14 @@ export function NumberPoolAllocationsTable({
   ranges,
   selectedRange,
 }: NumberPoolAllocationsTableProps) {
+  const [filters] = useNumberPoolAllocationFilters();
   const { data, error, isPending, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useGetNumberPoolAllocations({ poolId, rangeId: selectedRange?.id });
-  const { data: count } = useGetNumberPoolAllocationCount({ poolId, rangeId: selectedRange?.id });
+    useGetNumberPoolAllocations({ poolId, rangeId: selectedRange?.id, filters });
+  const { data: count } = useGetNumberPoolAllocationCount({
+    poolId,
+    rangeId: selectedRange?.id,
+    filters,
+  });
   const { data: branches } = useGetBranches();
   const { schema: nodeSchema } = useSchema(nodeKind);
 
@@ -136,9 +143,11 @@ export function NumberPoolAllocationsTable({
   const numberHeader =
     nodeSchema?.attributes?.find(({ name }) => name === nodeAttribute)?.label ?? "Number";
   const objectHeader = nodeSchema?.label ?? "Object";
-  const emptyMessage = selectedRange
+  const isFiltered = filters.branch !== undefined || filters.provenance !== undefined;
+  const rangeEmptyMessage = selectedRange
     ? `No allocations in ${formatSpan(selectedRange)}`
     : "No allocations yet";
+  const emptyMessage = isFiltered ? "No allocations match these filters" : rangeEmptyMessage;
 
   return (
     <Col className="min-h-0 min-w-0 flex-1 gap-0">
@@ -149,6 +158,7 @@ export function NumberPoolAllocationsTable({
             {formatNumberDisplay(count)}
           </span>
         )}
+        <NumberPoolAllocationFiltersBar />
       </Row>
 
       <Virtualizer

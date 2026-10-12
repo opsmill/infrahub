@@ -112,7 +112,12 @@ A user who works with the keyboard selects a range, moves through the table and 
 - **FR-011**: Above the table, the body MUST show the title "Allocations" and the total count of numbers in the current selection.
 - **FR-012**: The table MUST load more rows as the user scrolls, keep the column headers visible while scrolling, and show a loading row while the next rows load.
 - **FR-013**: Selecting another range MUST reset the table to its first rows and scroll it back to the top.
-- **FR-014**: The table MUST NOT offer search or filters in this work.
+- **FR-014**: Users MUST be able to filter the table by source (allocated or provided) and by the branch that holds each number.
+  - The two filters combine, and the count next to the table title counts only the matching numbers.
+  - The filters are kept in the page address (`allocation_source`, `allocation_branch`), so a filtered view can be shared.
+  - A Clear button removes both filters. It shows only while a filter is set.
+  - When no number matches, the table says "No allocations match these filters".
+  - The table MUST NOT offer a number search: the backend query has no argument to search by value.
 
 **Keyboard**
 
@@ -151,7 +156,7 @@ A user who works with the keyboard selects a range, moves through the table and 
 - **Users**: network engineers and operators who manage number pools. Their main question is "which numbers are taken, where, and by which node?".
 - **Scope of v1**: only pools without an allocation scope. The following are not part of this work:
   - allocation scopes: the scope picker, the scope table and choosing a division
-  - search and filters on the table: number search, source filter, branch filter
+  - a number search on the table, which needs a backend argument the query does not have
   - any change to the header, including a button to add a range
   - a redirect from old `resources/<id>` addresses
 - **Pools with an allocation scope**: this work adds nothing for them; another PR handles them. Until it lands, their body shows the error the backend returns when asked for a scoped pool's usage without a division.

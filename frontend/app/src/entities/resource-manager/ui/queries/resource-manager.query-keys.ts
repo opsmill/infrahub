@@ -1,5 +1,7 @@
 import type { PaginationParams } from "@/shared/api/types";
 
+import type { NumberPoolAllocationFilters } from "@/entities/resource-manager/domain/model/number-pool";
+
 export interface ResourceUtilizationKeysParams {
   poolId: string;
 }
@@ -21,7 +23,7 @@ export interface NumberPoolUtilizationKeysParams {
   atDate?: Date | null;
 }
 
-export interface NumberPoolAllocationsKeysParams {
+export interface NumberPoolAllocationsKeysParams extends NumberPoolAllocationFilters {
   poolId: string;
   rangeId?: string;
   branchName: string;
@@ -69,6 +71,8 @@ export const resourceManagerQueryKeys = {
       "number-pool-allocations",
       params.poolId,
       params.rangeId ?? null,
+      params.branch ?? null,
+      params.provenance ?? null,
       params.branchName,
       params.atDate,
     ] as const,
@@ -78,6 +82,8 @@ export const resourceManagerQueryKeys = {
       "number-pool-allocation-count",
       params.poolId,
       params.rangeId ?? null,
+      params.branch ?? null,
+      params.provenance ?? null,
       params.branchName,
       params.atDate,
     ] as const,

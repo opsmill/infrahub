@@ -60,6 +60,10 @@ const mockAllocations = ({
   } as unknown as ReturnType<typeof useGetNumberPoolAllocationCount>);
 };
 
+const openWithFilters = (search: string) => window.history.pushState(null, "", `/${search}`);
+
+const urlParam = (name: string) => new URLSearchParams(window.location.search).get(name);
+
 const renderTable = (props: Partial<NumberPoolAllocationsTableProps> = {}) =>
   render(
     <div className="flex h-100 flex-col">
@@ -78,6 +82,7 @@ describe("NumberPoolAllocationsTable", () => {
   beforeEach(() => {
     // react-stately ^3.49 reads process.env.VIRT_ON under NODE_ENV=test, and browser mode has no process global.
     vi.stubGlobal("process", { env: { VIRT_ON: "1" } });
+    window.history.replaceState(null, "", "/");
     vi.mocked(useGetBranches).mockReturnValue({
       data: [
         { id: "main-id", name: "main", is_default: true },
@@ -232,7 +237,7 @@ describe("NumberPoolAllocationsTable", () => {
     const component = await renderTable();
 
     // THEN
-    await expect.element(component.getByText("Provided")).toBeVisible();
+    await expect.element(component.getByRole("grid").getByText("Provided")).toBeVisible();
   });
 
   it("says when the pool has no allocated number", async () => {
@@ -255,6 +260,88 @@ describe("NumberPoolAllocationsTable", () => {
 
     // THEN
     await expect.element(component.getByText("No allocations in 1 – 50")).toBeVisible();
+  });
+
+  it("says when no allocated number matches the filters", async () => {
+    // GIVEN
+    mockAllocations({ allocations: [] });
+    openWithFilters("?allocation_source=PROVIDED");
+
+    // WHEN
+    const component = await renderTable();
+
+    // THEN
+    await expect.element(component.getByText("No allocations match these filters")).toBeVisible();
+  });
+
+  it("reads the numbers and their count with the filters in the URL", async () => {
+    // GIVEN
+    mockAllocations({ allocations: [] });
+    openWithFilters("?allocation_branch=b1&allocation_source=PROVIDED");
+
+    // WHEN
+    await renderTable({ selectedRange: firstRange });
+
+    // THEN
+    const expected = {
+      poolId: "pool-id",
+      rangeId: firstRange?.id,
+      filters: { branch: "b1", provenance: "PROVIDED" },
+    };
+    expect(useGetNumberPoolAllocations).toHaveBeenCalledWith(expected);
+    expect(useGetNumberPoolAllocationCount).toHaveBeenCalledWith(expected);
+  });
+
+  it("filters the numbers by source and keeps the branch filter", async () => {
+    // GIVEN
+    mockAllocations({ allocations: [] });
+    openWithFilters("?allocation_branch=b1");
+    const component = await renderTable();
+    await component.getByRole("button", { name: /Source/ }).click();
+
+    // WHEN
+    await component.getByRole("option", { name: "Provided" }).click();
+
+    // THEN
+    await expect.poll(() => urlParam("allocation_source")).toBe("PROVIDED");
+    expect(urlParam("allocation_branch")).toBe("b1");
+  });
+
+  it("filters the numbers by the branch that holds them", async () => {
+    // GIVEN
+    mockAllocations({ allocations: [] });
+    const component = await renderTable();
+    await component.getByRole("button", { name: /Branch/ }).click();
+
+    // WHEN
+    await component.getByRole("option", { name: "b1" }).click();
+
+    // THEN
+    await expect.poll(() => urlParam("allocation_branch")).toBe("b1");
+  });
+
+  it("clears every filter at once", async () => {
+    // GIVEN
+    mockAllocations({ allocations: [] });
+    openWithFilters("?allocation_branch=b1&allocation_source=PROVIDED");
+    const component = await renderTable();
+
+    // WHEN
+    await component.getByRole("button", { name: "Clear" }).click();
+
+    // THEN
+    await expect.poll(() => window.location.search).toBe("");
+  });
+
+  it("offers no Clear button while no filter is set", async () => {
+    // GIVEN
+    mockAllocations({ allocations: [generateNumberPoolAllocation()] });
+
+    // WHEN
+    const component = await renderTable();
+
+    // THEN
+    await expect.element(component.getByRole("button", { name: "Clear" })).not.toBeInTheDocument();
   });
 
   it("shows the total count of allocated numbers", async () => {
@@ -294,7 +381,8 @@ describe("NumberPoolAllocationsTable", () => {
     // GIVEN
     mockAllocations({ allocations: [generateNumberPoolAllocation()] });
     const component = await renderTable();
-    await userEvent.keyboard("{Tab}");
+    // the Source and Branch filters come before the table in tab order
+    await userEvent.keyboard("{Tab}{Tab}{Tab}");
 
     // WHEN
     await userEvent.keyboard("{ArrowRight}{ArrowRight}");

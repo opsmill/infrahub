@@ -48,6 +48,16 @@ export type NumberPoolProvenance =
   | typeof NUMBER_POOL_PROVENANCE_ALLOCATED
   | typeof NUMBER_POOL_PROVENANCE_PROVIDED;
 
+export const NUMBER_POOL_PROVENANCES = [
+  NUMBER_POOL_PROVENANCE_ALLOCATED,
+  NUMBER_POOL_PROVENANCE_PROVIDED,
+] as const;
+
+export interface NumberPoolAllocationFilters {
+  branch?: string;
+  provenance?: NumberPoolProvenance;
+}
+
 export interface NumberPoolAllocation {
   value: number;
   branch: string;

@@ -145,3 +145,13 @@ Each entry gives the decision, why it was chosen, and what else was considered. 
 - **Removal**: when the queries read the database, delete `BACKEND_MOCK_NUMBER_POOL_ID` and pass `poolId` in the three fetchers.
 - **Alternatives considered**: a backend change that picks the dataset from the real pool's `allocation_scope`. Not chosen for now; it needs the backend owners.
 
+## R15. Source and branch filters on the allocations table
+
+- **Decision**: the table header carries two selects, Source and Branch, plus a Clear button, as in the prototype's filter bar (`NumberPoolAllocationFiltersBar` in `entities/resource-manager/ui/number-pool/`).
+  - The filters live in the URL as `allocation_source` and `allocation_branch` (`QSP.POOL_ALLOCATION_SOURCE`, `QSP.POOL_ALLOCATION_BRANCH`). `branch` is already the current-branch parameter, so the filter cannot reuse it. The table and the filter bar both read them through `useNumberPoolAllocationFilters` (`entities/resource-manager/ui/hooks/`), so no component passes them down as props.
+  - Both filters go to `InfrahubNumberPoolAllocations` as its `provenance` and `branch` arguments, in the rows query and in the count query, and into both query keys.
+  - The Branch options come from the branch list (`useGetBranches`).
+- **Rationale**: the backend query already accepts `branch` and `provenance`, and the backend's fixed dataset applies them, so the filters need no backend change. Filters must be preserved and shareable, so they are URL state, and the URL gives them to every component that reads them.
+- **Not done**: number search. The query has no argument to search by value, and filtering the loaded page on the client would miss numbers on pages not loaded yet.
+- **Known limit**: selecting another range builds its link with `constructPath`, which keeps only the global query parameters, so the filters reset when the range changes.
+

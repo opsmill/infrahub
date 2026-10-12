@@ -4,6 +4,7 @@ import { useAtomValue } from "jotai";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import type { NumberPoolAllocationFilters } from "@/entities/resource-manager/domain/model/number-pool";
 import {
   type GetNumberPoolAllocationsParams,
   getNumberPoolAllocations,
@@ -41,11 +42,13 @@ export function getNumberPoolAllocationsInfiniteQueryOptions(
 export interface UseGetNumberPoolAllocationsParams {
   poolId: string;
   rangeId?: string;
+  filters?: NumberPoolAllocationFilters;
 }
 
 export function useGetNumberPoolAllocations({
   poolId,
   rangeId,
+  filters,
 }: UseGetNumberPoolAllocationsParams) {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
@@ -54,6 +57,7 @@ export function useGetNumberPoolAllocations({
     getNumberPoolAllocationsInfiniteQueryOptions({
       poolId,
       rangeId,
+      ...filters,
       branchName: currentBranch.name,
       atDate: timeMachineDate,
     })
