@@ -641,9 +641,9 @@ command that it runs. The limit does not stop every command; see "What the limit
 - **A hung fetch or push is not stopped by GitPython.** A remote that accepts the connection and
   never answers keeps `Remote.fetch` and `Remote.push` running past their limit. So the fetch, the
   push and the deletion also set Git's low-speed limit, in the environment of that one command:
-  `http.lowSpeedLimit` is 1 byte per second, and `http.lowSpeedTime` is the bound, rounded up. Git
-  then ends a stalled HTTP(S) transfer itself, libcurl reports "Operation too slow", and R5 makes it
-  `remote-unreachable`, which the chain retries. An SSH transfer has no such bound.
+  `GIT_HTTP_LOW_SPEED_LIMIT` is 1 byte per second, and `GIT_HTTP_LOW_SPEED_TIME` is the bound,
+  rounded up. Git then ends a stalled HTTP(S) transfer itself, libcurl reports "Operation too slow",
+  and R5 makes it `remote-unreachable`, which the chain retries. An SSH transfer has no such bound.
 - **A direct Git call is stopped by a watchdog that needs `ps`.** Every other command, the deletion
   of a source branch included, runs through `Git.execute`. There a watchdog kills Git when the limit
   passes, and GitPython reports "Timeout: the command ... did not complete". The watchdog finds the

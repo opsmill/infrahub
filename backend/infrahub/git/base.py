@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import contextlib
 import math
-import os
 import re
 import shutil
 from abc import ABC, abstractmethod
@@ -109,15 +108,8 @@ def stalled_transfer_limit(repo: Repo, timeout_seconds: float | None) -> Iterato
         yield
         return
     # GitPython 3.1 does not stop a hung fetch or push at kill_after_timeout, so Git must end a stalled transfer.
-    inherited_count = int(os.environ.get("GIT_CONFIG_COUNT", "0"))
     with repo.git.custom_environment(
-        GIT_CONFIG_COUNT=str(inherited_count + 2),
-        **{
-            f"GIT_CONFIG_KEY_{inherited_count}": "http.lowSpeedLimit",
-            f"GIT_CONFIG_VALUE_{inherited_count}": "1",
-            f"GIT_CONFIG_KEY_{inherited_count + 1}": "http.lowSpeedTime",
-            f"GIT_CONFIG_VALUE_{inherited_count + 1}": str(max(1, math.ceil(timeout_seconds))),
-        },
+        GIT_HTTP_LOW_SPEED_LIMIT="1", GIT_HTTP_LOW_SPEED_TIME=str(max(1, math.ceil(timeout_seconds)))
     ):
         yield
 
@@ -1298,7 +1290,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             "RPC failed; HTTP 5xx" (git remote-curl.c); and "does not appear to be a git".
           - time limit: "process killed because it timed out", the line GitPython adds to the error
             lines of a fetch or a push when Git ran past its ``kill_after_timeout``; "Operation too slow"
-            (libcurl), when an HTTP(S) transfer sent no data for ``http.lowSpeedTime``; and for a direct
+            (libcurl), when an HTTP(S) transfer sent no data for ``GIT_HTTP_LOW_SPEED_TIME``; and for a direct
             Git call stopped at its limit, "Timeout: the command ... did not complete"
             (``GIT_CALL_TIME_LIMIT``), whose message keeps the Git command and the limit but not the
             arguments, which can name worker paths. A write operation is a push to the remote, so past

@@ -131,7 +131,7 @@ ENRICHMENT_CASES = [
         message=TIME_LIMIT_HINT,
     ),
     EnrichmentCase(
-        # libcurl's line when an HTTP(S) transfer sent no data for http.lowSpeedTime.
+        # libcurl's line when an HTTP(S) transfer sent no data for GIT_HTTP_LOW_SPEED_TIME.
         name="stalled_transfer_past_its_low_speed_time",
         stderr="fatal: unable to access 'https://gitlab.example.com/repo.git/': "
         "Operation too slow. Less than 1 bytes/sec transferred the last 300 seconds",
