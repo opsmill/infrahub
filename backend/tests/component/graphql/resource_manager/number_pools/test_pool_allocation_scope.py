@@ -800,3 +800,40 @@ class TestNumberPoolScopeAfterTheSchemaChangesAnElement:
         assert await read_stored_scope(db=db, pool_id=pool["id"]) == expected_scope(
             kind=SCOPED_DEVICE_KIND, names=["site", "role"]
         )
+
+
+class TestNumberPoolAllocationScopeOnAStaleWorker:
+    """A worker that holds the default branch's schema from before a load validates a new scope against that load."""
+
+    @pytest.fixture(scope="class")
+    async def device_schema(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        register_core_models_schema_scope_class: SchemaBranch,
+    ) -> None:
+        await save_schema(db=db, schema=_default_branch_schema())
+        default_branch_scope_class.update_schema_hash()
+
+    async def test_create_refuses_an_element_that_a_load_the_worker_missed_made_optional(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, device_schema: None
+    ) -> None:
+        stale_schema = registry.schema.get_schema_branch(name=registry.default_branch).duplicate()
+        stale_branch = registry.get_branch_from_registry(registry.default_branch).model_copy(deep=True)
+        loaded_schema = _default_branch_schema()
+        device = next(node for node in loaded_schema.nodes if node.kind == SCOPED_DEVICE_KIND)
+        device.get_attribute(name="role").optional = True
+        await save_schema(db=db, schema=loaded_schema)
+        registry.schema.set_schema_branch(name=registry.default_branch, schema=stale_schema)
+        registry.branch[registry.default_branch] = stale_branch
+
+        result = await execute(
+            db=db,
+            branch=default_branch_scope_class,
+            source=CREATE_SCOPED_POOL,
+            variables={"data": device_pool_input(name="stale-worker", scope={"value": ["role"]})},
+        )
+
+        assert error_messages(result) == [
+            create_refusal(f'"role" is optional; a scope element must be required on {SCOPED_DEVICE_KIND}')
+        ]

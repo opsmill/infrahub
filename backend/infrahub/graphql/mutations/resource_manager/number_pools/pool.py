@@ -6,6 +6,7 @@ from typing_extensions import Self
 
 from infrahub import lock
 from infrahub.core import protocols, registry
+from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, PermissionAction
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters, NumberPoolRangeParameters
@@ -27,6 +28,7 @@ from infrahub.pools.scope import (
     AllocationScopeValidator,
     UnknownScopeElementError,
 )
+from infrahub.tasks.registry import update_branch_registry
 
 from ...main import DeleteResult, InfrahubMutation, build_graphql_response
 from .common import (
@@ -47,7 +49,6 @@ if TYPE_CHECKING:
     from graphene import InputObjectType
     from graphql import GraphQLResolveInfo
 
-    from infrahub.core.branch import Branch
     from infrahub.core.node import Node
     from infrahub.core.protocols import CoreNumberPoolRange
     from infrahub.core.schema import AttributeSchema
@@ -83,6 +84,10 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
         # A schema load checks its changes against the scoped pools, so a scoped pool waits until no load can change
         # the fields its scope resolves to.
         async with lock.registry.global_schema_lock():
+            # A load that ran while this worker waited for the lock is only in the database until the worker reloads it.
+            graphql_context: GraphqlContext = info.context
+            default_branch = await Branch.get_by_name(db=graphql_context.db, name=registry.default_branch)
+            await update_branch_registry(db=graphql_context.db, branch=default_branch)
             return await cls._create(info=info, data=data, branch=branch)
 
     @classmethod
