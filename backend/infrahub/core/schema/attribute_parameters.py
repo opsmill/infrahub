@@ -212,6 +212,9 @@ def _is_unset(value: int | list[NumberPoolRangeParameters] | None) -> bool:
 
 # Unset range fields stay out of dumps so clients of an older published contract can load a dumped schema.
 class NumberPoolParameters(AttributeParameters):
+    # The scope order is the order of the values in each division.
+    _ordered_in_hash: list[str] = ["allocation_scope"]
+
     end_range: int | None = Field(
         default=None,
         description=(
