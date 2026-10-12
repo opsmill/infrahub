@@ -6,6 +6,7 @@ import pytest
 from infrahub.core.branch.models import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType
 from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
@@ -533,6 +534,40 @@ class TestVerifyGraph:
         assert [violation.check for violation in violations] == [GraphCheck.ATTRIBUTE_EDGE_BRANCH]
         assert f"branch_level={branch_level!r}" in violations[0].message
         assert "expected branch_level 1" in violations[0].message
+
+    async def test_branch_local_value_of_agnostic_node_is_valid_on_any_branch(
+        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+    ) -> None:
+        repository = await Node.init(db=db, schema="CoreRepository", branch=default_branch)
+        await repository.new(db=db, name="local-value", location="https://example.com/local-value.git", commit="aaa")
+        await repository.save(db=db)
+        branch = await create_branch(db=db, branch_name="local-value-branch")
+
+        for write_branch, commit in ((default_branch, "bbb"), (branch, "ccc")):
+            on_branch = await NodeManager.get_one(db=db, id=repository.id, branch=write_branch, raise_on_error=True)
+            on_branch.get_attribute(name="commit").value = commit
+            await on_branch.save(db=db)
+
+        assert await collect_graph_violations(db=db) == []
+
+    async def test_branch_local_attribute_of_agnostic_node_is_attached_on_global_branch(
+        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+    ) -> None:
+        repository = await Node.init(db=db, schema="CoreRepository", branch=default_branch)
+        await repository.new(db=db, name="local-attach", location="https://example.com/local-attach.git", commit="aaa")
+        await repository.save(db=db)
+        query = """
+MATCH (:Node {uuid: $node_id})-[hae:HAS_ATTRIBUTE]->(:Attribute {name: "commit"})
+SET hae.branch = $branch_name
+        """
+        await db.execute_query(query=query, params={"node_id": repository.id, "branch_name": default_branch.name})
+
+        violations = await collect_graph_violations(db=db, kinds=["CoreRepository"])
+        assert [str(violation) for violation in violations] == [
+            f"[attribute_edge_branch] Attribute field_name='commit' of node '{repository.id}' with"
+            f" branch_support='local' has 1 active HAS_ATTRIBUTE edge(s) on branch='{default_branch.name}',"
+            f" expected '{GLOBAL_BRANCH_NAME}'"
+        ]
 
     async def test_every_check_runs_and_all_violations_are_reported(
         self,
