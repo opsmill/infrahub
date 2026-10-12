@@ -87,8 +87,9 @@ docstring as "raises nothing but cancellation", not "never raises".
 ## `# noqa: BLE001`
 
 Narrowing is the default answer when ruff flags a broad `except Exception` — most call sites raise a
-knowable set of types (see above). Suppress the rule only when catching everything is deliberate, and
-name which case it is in the comment above it:
+knowable set of types (see above). Catching everything is not the target design: the lower layers
+should raise precise exceptions so callers can catch them. Until they do, the rule is suppressed only
+in the cases below, and the comment above the suppression names which case it is:
 
 - a top-level boundary (worker loop, request handler) that must not let one failure take down the process
 - a loop that turns a per-item failure into a reported result instead of aborting the whole run

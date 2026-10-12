@@ -45,8 +45,6 @@ The boundary is: long-lived collaborators go in the constructor; transient work 
 
 Each component should have one reason to change. If a class is doing two unrelated things, split it. Prefer composition of small components over large multi-purpose ones.
 
-Two phases of one workflow are still two responsibilities when the caller decides between them — a confirmation, a report, a dry run. Split a plan-then-act flow into a planner that returns a plan object and an actor whose entry method takes the whole plan; the caller composes them, and no combining class is needed when the caller is the only composition point.
-
 ## Reset means reset everything derived
 
 A component that is reused across calls via an `initialize()`/`reset()` method (rather than being constructed fresh each time) must clear every value it memoized from the previous input in that same method — not just the field the method obviously replaces. A cache or derived value left over from the prior input silently serves stale results on the component's next call, and nothing else in the reuse pattern catches it.
