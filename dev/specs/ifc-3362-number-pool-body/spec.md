@@ -160,7 +160,7 @@ A user who works with the keyboard selects a range, moves through the table and 
 - **Range order**: the backend returns ranges ordered by start. The frontend re-sorts them into fill order, using the same rule as the backend.
 - **Weight**: the backend returns 0 for a range that declares no weight, so the page cannot tell "no weight" apart from "weight 0".
 - **Unknown range**: the backend returns an error when asked for the numbers of a range that is not in the pool.
-- **Testing**: until the queries read the database, every real pool returns the fake data for a pool with an allocation scope, so the page can only be checked through component tests on fake responses that follow the contract. The end-to-end test against real data is written once the queries read the database. It is tracked in its own ticket, linked to IFC-3347, and must pass before `feature-number-pools-1.12` merges into `stable`. This follows the constitution's principle IV, which states that a feature is not complete until its end-to-end tests pass.
+- **Testing**: until the queries read the database, the frontend asks for the backend's unscoped dataset (`pool_id: "mock-unscoped"`) for every pool, so every real pool shows those two ranges and three numbers rather than its own. Component tests on fake responses that follow the contract cover the rest. The end-to-end test against real data is written once the queries read the database. It is tracked in its own ticket, linked to IFC-3347, and must pass before `feature-number-pools-1.12` merges into `stable`. This follows the constitution's principle IV, which states that a feature is not complete until its end-to-end tests pass.
 - **Changelog**: the body is a user-visible change and needs a changelog fragment.
 
 ## Planning Inputs

@@ -55,7 +55,7 @@ The full page cannot load the fake pool, because the header reads the pool from 
 ## 3. Manual check of the page on a real pool (before the database reads)
 
 1. `uv run invoke dev.start`, then open any number pool at `/resource-manager/<id>`.
-2. **Expected:** the header renders unchanged. The body shows the backend's refusal for a scoped pool, because #10932 answers every real pool ID with the scoped fake pool. The old properties card, the Resources card and the "View" links are gone.
+2. **Expected:** the header renders unchanged. The body shows the backend's unscoped dataset (ranges 1–50 and 51–100, numbers 1, 7 and 51), whatever pool is open, because the frontend sends `pool_id: "mock-unscoped"` until the queries read the database. The old properties card, the Resources card and the "View" links are gone.
 3. Open an IP prefix pool. **Expected:** its page is unchanged, including the `resources/<id>` view.
 
 ## 4. After IFC-3347 reads the database (tracked separately)

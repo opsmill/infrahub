@@ -1,10 +1,7 @@
 import { graphql, graphqlClient, type ResultOf } from "@/shared/api/graphql/client";
 import type { ContextParams } from "@/shared/api/types";
 
-import {
-  getFakeNumberPoolAllocations,
-  USE_FAKE_NUMBER_POOL_DATA,
-} from "@/entities/resource-manager/api/fake-number-pool-from-api";
+import { BACKEND_MOCK_NUMBER_POOL_ID } from "@/entities/resource-manager/domain/model/number-pool";
 
 const GET_NUMBER_POOL_ALLOCATIONS = graphql(`
   query GET_NUMBER_POOL_ALLOCATIONS(
@@ -51,20 +48,15 @@ export interface GetNumberPoolAllocationsFromApiParams extends ContextParams {
 }
 
 export function getNumberPoolAllocationsFromApi({
-  poolId,
   rangeId,
   offset,
   limit,
   branchName,
   atDate,
 }: GetNumberPoolAllocationsFromApiParams) {
-  if (USE_FAKE_NUMBER_POOL_DATA) {
-    return getFakeNumberPoolAllocations({ poolId, rangeId, offset, limit, branchName, atDate });
-  }
-
   return graphqlClient.query({
     query: GET_NUMBER_POOL_ALLOCATIONS,
-    variables: { poolId, rangeId, offset, limit },
+    variables: { poolId: BACKEND_MOCK_NUMBER_POOL_ID, rangeId, offset, limit },
     context: {
       branch: branchName,
       date: atDate,

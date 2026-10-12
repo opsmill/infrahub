@@ -55,3 +55,6 @@ export interface NumberPoolAllocation {
   provenance: NumberPoolProvenance;
   rangeId: string;
 }
+
+// The number pool queries answer from fixed backend data until they read the database, and only this ID returns the unscoped dataset.
+export const BACKEND_MOCK_NUMBER_POOL_ID = "mock-unscoped";

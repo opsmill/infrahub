@@ -1,10 +1,7 @@
-import { graphql, graphqlClient, type ResultOf } from "@/shared/api/graphql/client";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import type { ContextParams } from "@/shared/api/types";
 
-import {
-  getFakeNumberPoolAllocationCount,
-  USE_FAKE_NUMBER_POOL_DATA,
-} from "@/entities/resource-manager/api/fake-number-pool-from-api";
+import { BACKEND_MOCK_NUMBER_POOL_ID } from "@/entities/resource-manager/domain/model/number-pool";
 
 const GET_NUMBER_POOL_ALLOCATION_COUNT = graphql(`
   query GET_NUMBER_POOL_ALLOCATION_COUNT($poolId: String!, $rangeId: String) {
@@ -14,26 +11,19 @@ const GET_NUMBER_POOL_ALLOCATION_COUNT = graphql(`
   }
 `);
 
-export type NumberPoolAllocationCountResponse = ResultOf<typeof GET_NUMBER_POOL_ALLOCATION_COUNT>;
-
 export interface GetNumberPoolAllocationCountFromApiParams extends ContextParams {
   poolId: string;
   rangeId?: string;
 }
 
 export function getNumberPoolAllocationCountFromApi({
-  poolId,
   rangeId,
   branchName,
   atDate,
 }: GetNumberPoolAllocationCountFromApiParams) {
-  if (USE_FAKE_NUMBER_POOL_DATA) {
-    return getFakeNumberPoolAllocationCount({ poolId, rangeId, branchName, atDate });
-  }
-
   return graphqlClient.query({
     query: GET_NUMBER_POOL_ALLOCATION_COUNT,
-    variables: { poolId, rangeId },
+    variables: { poolId: BACKEND_MOCK_NUMBER_POOL_ID, rangeId },
     context: {
       branch: branchName,
       date: atDate,

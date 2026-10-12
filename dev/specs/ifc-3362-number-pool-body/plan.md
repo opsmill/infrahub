@@ -54,7 +54,7 @@ No new dependency.
 
 - The header stays unchanged, and IP pools stay unchanged.
 - The default branch is never identified by its name.
-- Until IFC-3347 reads the database, the queries return fake data, and every real pool gets the scoped fake pool.
+- Until IFC-3347 reads the database, the queries return fake data. The frontend sends `pool_id: "mock-unscoped"` for every pool, so every real pool shows the backend's unscoped dataset.
 
 **Scale/Scope**:
 
