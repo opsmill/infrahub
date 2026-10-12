@@ -203,6 +203,27 @@ stored query has no variable values, and stores the result in two read-only attr
   The save goes through `Node.save`, which emits no event, so it starts no trigger.
 - Stored queries changed on another branch keep the estimate of their last change until they are merged.
 
+## Pipelined runtime for high-cost requests
+
+With `config.SETTINGS.graphql_cost.pipelined_runtime_for_high_cost_queries`, the stored query endpoint
+(`infrahub.api.query.execute_query`) runs a high-cost request with the database queries that would use the
+parallel Cypher runtime switched to the pipelined runtime.
+
+- `find_high_cost_request` (`infrahub.graphql.cost.high_cost_request`) estimates the request with its variables
+  only when the stored `cost_level` is `high` and the request has no mutation; it reuses the estimate of the cost
+  details when the client asked for them. A request is high-cost when `classify_query_estimate` gives any level
+  other than `low`, so a request that cannot be estimated is high-cost.
+- `replace_parallel_runtime` (`infrahub.graphql.cost.runtime`) sets a `ContextVar` around the GraphQL execution,
+  so the resolvers and the tasks they start see it. `InfrahubDatabase.execute_query_with_metadata` replaces
+  `Neo4jRuntime.PARALLEL`, from `queries_names_to_config` or `default_neo4j_runtime`, with the runtime of the
+  block. Infrahub Enterprise sets `default_neo4j_runtime` to `PARALLEL` (`build_ent_database`), so every read
+  query of the execution is replaced. Infrahub Community configures no query with `PARALLEL`, so the setting has
+  no effect there. Write queries are not changed, since they never get a runtime prefix. A read query in a
+  transaction, which would lose its parallel prefix, gets the pipelined prefix.
+- The `runtime` label of `QUERY_EXECUTION_METRICS` follows the replaced runtime, and the endpoint logs one line
+  with `PIPELINED_RUNTIME_MESSAGE` for each high-cost request.
+- Requests to `/graphql` are not estimated, to keep the estimate queries off every request.
+
 ## Known limits
 
 - **Shared `NodeDataLoader` batches**: `NodeDataLoader` is keyed without the relationship name, so

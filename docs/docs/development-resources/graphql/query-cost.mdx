@@ -277,6 +277,24 @@ To choose the limit for your data, run the report with the variables of your lar
 
 Infrahub saves a new estimate only when the level or one of the figures changes, so a refresh that finds the same figures does not change the stored query.
 
+## Run the database queries of high-cost requests on one CPU core
+
+Infrahub can run a database query with the parallel runtime of Neo4j, which uses several CPU cores of the database server for one query. Infrahub Enterprise does so for every query that reads data outside a transaction, including the queries that a GraphQL query sends for each of its fields. When several renders of a high-cost stored query run at the same time, their database queries can take most of the cores of the database server.
+
+To run these database queries on one core for each high-cost request to a stored query, set this variable on the API servers:
+
+```bash
+INFRAHUB_GRAPHQL_COST_PIPELINED_RUNTIME_FOR_HIGH_COST_QUERIES=true
+```
+
+With the setting enabled, Infrahub handles each request to a stored query with the `high` level, at `/api/query/<name>`, as follows:
+
+1. It estimates the request with its variables, as the report does with `variables`.
+2. When the worst-case database rows are above `INFRAHUB_GRAPHQL_COST_HIGH_COST_DATABASE_ROWS`, or when the request cannot be estimated, it runs the database queries of the request that would use the parallel runtime with the pipelined runtime instead. The pipelined runtime runs each database query on one core.
+3. It logs `Running the stored GraphQL query <name> with the pipelined Cypher runtime` with the estimated worst-case database rows. The `runtime` label of the `infrahub_db_query_execution_seconds` metric shows `pipelined` for these database queries.
+
+Artifact renders run their query through `/api/query`, so the renders of one query are estimated one by one, each with the variables of its target. The renders still start at the same time: the setting changes only the number of cores that each database query uses. Requests to a stored query with the `low` or `unknown` level are not estimated, and requests to `/graphql` keep the runtime that Infrahub configures.
+
 ## Refresh the statistics
 
 The `graphql-cost-statistics-refresh` workflow reads the default branch and stores, for each kind, its number of nodes and, for each relationship, the number of peers of its nodes: the total, a histogram of peers per node, and the 20 nodes with the most peers. Infrahub stores the statistics in the cache, Redis by default. The workflow reads the IDs of the nodes of each kind in chunks of `INFRAHUB_DB_QUERY_SIZE_LIMIT` IDs, and each query that counts peers reads one chunk of IDs, so no query returns more than one chunk. To return each chunk of IDs, the database sorts all the nodes of the kind, and the queries that count the nodes of each kind read every kind.

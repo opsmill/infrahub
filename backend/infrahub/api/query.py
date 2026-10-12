@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from contextlib import nullcontext
+from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Body, Depends, Path, Query, Request
 from pydantic import BaseModel, Field
 
 from infrahub.api.dependencies import BranchParams, get_branch_params, get_current_user, get_db
+from infrahub.constants.database import Neo4jRuntime
 from infrahub.context import InfrahubContext
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
@@ -15,8 +17,10 @@ from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.api.dependencies import build_graphql_query_permission_checker
 from infrahub.graphql.cost.details import build_query_cost_details, query_cost_details_requested
+from infrahub.graphql.cost.high_cost_request import PIPELINED_RUNTIME_MESSAGE, find_high_cost_request
 from infrahub.graphql.cost.recorder import QueryCostRecorder, activate_recorder
 from infrahub.graphql.cost.request_estimate import build_query_cost_estimator, estimate_request_cost
+from infrahub.graphql.cost.runtime import replace_parallel_runtime
 from infrahub.graphql.execution import cached_parse, execute_graphql_query
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.metrics import (
@@ -94,8 +98,9 @@ async def execute_query(
         )
 
         cost_estimate: QueryEstimate | None = None
-        if cost_recorder is not None:
-            cost_estimate = await estimate_request_cost(
+
+        async def estimate() -> QueryEstimate | None:
+            return await estimate_request_cost(
                 estimator=build_query_cost_estimator(
                     db=db,
                     branch=branch_params.branch,
@@ -109,6 +114,28 @@ async def execute_query(
                 variable_values=params,
             )
 
+        if cost_recorder is not None:
+            cost_estimate = await estimate()
+
+        async def estimate_once() -> QueryEstimate | None:
+            return cost_estimate if cost_recorder is not None else await estimate()
+
+        # The attribute holds a member of the enum that Infrahub generates from the schema, or None.
+        cost_level = gql_query.cost_level.value
+        high_cost_request = (
+            None
+            if analyzed_query.contains_mutation
+            else await find_high_cost_request(
+                cost_level=cost_level.value if isinstance(cost_level, Enum) else cost_level, estimate=estimate_once
+            )
+        )
+        if high_cost_request is not None:
+            log.info(
+                f"Running the stored GraphQL query {gql_query.name.value} {PIPELINED_RUNTIME_MESSAGE}",
+                branch=branch_params.branch.name,
+                worst_case_database_rows=high_cost_request.worst_case_database_rows,
+            )
+
         labels = {
             "type": "mutation" if analyzed_query.contains_mutation else "query",
             "branch": branch_params.branch.name,
@@ -117,7 +144,10 @@ async def execute_query(
             "query_id": query_id,
         }
 
-        with GRAPHQL_DURATION_METRICS.labels(**labels).time():
+        with (
+            GRAPHQL_DURATION_METRICS.labels(**labels).time(),
+            replace_parallel_runtime(Neo4jRuntime.PIPELINED) if high_cost_request is not None else nullcontext(),
+        ):
             result = await execute_graphql_query(
                 schema=gql_params.schema,
                 source=gql_query.query.value,

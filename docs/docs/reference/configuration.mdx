@@ -436,6 +436,7 @@ LDAP authentication configuration.
 | Name | Description | Type | Default |
 |------|-------------|------|---------|
 | `INFRAHUB_GRAPHQL_COST_HIGH_COST_DATABASE_ROWS` | Worst-case database rows, estimated for one run of a GraphQL query, above which the query has the high cost level | integer | 250000 |
+| `INFRAHUB_GRAPHQL_COST_PIPELINED_RUNTIME_FOR_HIGH_COST_QUERIES` | Run the database queries of a high-cost request to a stored GraphQL query with the pipelined Cypher runtime where they would use the parallel runtime, so that each one uses one CPU core. A request to a query with the high cost level is high-cost when, estimated with its variables, its worst-case database rows are above `high_cost_database_rows` | boolean | False |
 
 ## Logging
 

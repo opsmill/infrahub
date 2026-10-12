@@ -37,6 +37,7 @@ from infrahub.core.constants import (
 from infrahub.core.query import QueryType
 from infrahub.exceptions import DatabaseError, QueryTimeoutError
 from infrahub.graphql.cost.recorder import get_cost_recorder, get_current_field
+from infrahub.graphql.cost.runtime import get_parallel_runtime_replacement
 from infrahub.log import get_logger
 from infrahub.utils import InfrahubStringEnum
 
@@ -363,6 +364,9 @@ class InfrahubDatabase:
 
                 if query_config and query_config.neo4j_runtime not in [Neo4jRuntime.DEFAULT, Neo4jRuntime.UNDEFINED]:
                     runtime = query_config.neo4j_runtime
+
+                if runtime == Neo4jRuntime.PARALLEL and (replacement := get_parallel_runtime_replacement()):
+                    runtime = replacement
 
                 if (
                     type
