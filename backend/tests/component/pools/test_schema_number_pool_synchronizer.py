@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import copy
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -246,6 +246,22 @@ async def create_device_pool(db: InfrahubDatabase, name: str, scope: list[str]) 
     return pool.get_id()
 
 
+async def create_pool_with_stored_scope(db: InfrahubDatabase, name: str, kind: str, stored_scope: Any) -> str:
+    """Create a user pool over vlan_id holding `stored_scope` as written, and return its id."""
+    pool = await Node.init(db=db, schema=InfrahubKind.NUMBERPOOL)
+    await pool.new(
+        db=db,
+        name=name,
+        node=kind,
+        node_attribute="vlan_id",
+        start_range=1,
+        end_range=10,
+        allocation_scope=stored_scope,
+    )
+    await pool.save(db=db)
+    return pool.get_id()
+
+
 async def stored_scope_of(db: InfrahubDatabase, pool_id: str) -> list[dict[str, str]] | None:
     pool = await NodeManager.get_one(db=db, id=pool_id, kind=CoreNumberPool, branch_agnostic=True)
     assert pool is not None
@@ -439,3 +455,25 @@ async def test_saving_a_branch_schema_holding_a_declaration_the_default_branch_c
     reloaded_index = reloaded.get_node(name=SCOPED_DEVICE.kind).get_attribute(name="vlan_index")
     assert isinstance(reloaded_index.parameters, NumberPoolParameters)
     assert (reloaded_index.parameters.allocation_scope, reloaded_index.parameters.number_pool_id) == (["site"], None)
+
+
+async def test_a_pool_whose_kind_is_gone_keeps_its_scope_while_a_stale_name_is_rewritten(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """A pool whose kind the default branch does not define keeps its scope as written while a rename is applied."""
+    await load_schema(db=db, schema=SCOPED_POOL_SCHEMA, update_db=True)
+    renamed_pool_id = await create_device_pool(db=db, name="vlan-per-site", scope=["site"])
+    undefined_kind_pool_id = await create_pool_with_stored_scope(
+        db=db, name="vlan-undefined-kind", kind="ScopeGone", stored_scope=[{"id": "gone-site-id", "name": "site"}]
+    )
+    writes_before = await scope_writes_of(db=db, pool_id=undefined_kind_pool_id)
+    device = default_device()
+    site_id = device.get_relationship(name="site").id
+    device.get_relationship(name="site").name = "location"
+    await load_schema(db=db, schema=SchemaRoot(nodes=[device]), update_db=True)
+
+    await run_synchronizer(db=db)
+
+    assert await stored_scope_of(db=db, pool_id=renamed_pool_id) == [{"id": site_id, "name": "location"}]
+    assert await stored_scope_of(db=db, pool_id=undefined_kind_pool_id) == [{"id": "gone-site-id", "name": "site"}]
+    assert await scope_writes_of(db=db, pool_id=undefined_kind_pool_id) == writes_before
