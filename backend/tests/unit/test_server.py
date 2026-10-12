@@ -67,12 +67,21 @@ def _server_span_scope_names(exporter: InMemorySpanExporter) -> list[str | None]
     ]
 
 
+def _all_scope_names(exporter: InMemorySpanExporter) -> set[str | None]:
+    return {
+        span.instrumentation_scope.name if span.instrumentation_scope else None
+        for span in exporter.get_finished_spans()
+    }
+
+
 @pytest.mark.parametrize("case", [pytest.param(tc, id=tc.name) for tc in REQUEST_CASES])
 def test_one_request_records_one_server_span(span_exporter: InMemorySpanExporter, case: RequestCase) -> None:
     response = TestClient(app).get(case.path)
 
     assert response.status_code == case.status_code
     assert _server_span_scope_names(span_exporter) == ["opentelemetry.instrumentation.fastapi"]
+    # FastAPI's own tracing also records internal spans (dependencies, endpoint, serialization); none may appear.
+    assert _all_scope_names(span_exporter) == {"opentelemetry.instrumentation.fastapi"}
 
 
 def test_plain_fastapi_app_records_a_native_server_span(span_exporter: InMemorySpanExporter) -> None:
