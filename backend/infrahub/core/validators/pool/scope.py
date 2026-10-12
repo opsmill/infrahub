@@ -1,25 +1,26 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from enum import StrEnum
 from typing import TYPE_CHECKING, Protocol
 
-from infrahub.core.constants import InfrahubKind, PathType, RelationshipCardinality
-from infrahub.core.path import DataPath, GroupedDataPaths
+from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema
+from infrahub.core.validators.enum import ConstraintIdentifier
 from infrahub.exceptions import InitializationError, ValidationError
 from infrahub.pools.scope import NON_SCALAR_ATTRIBUTE_KINDS, AllocationScopeResolver, ScopeElement
 
 from ..interface import ConstraintCheckerInterface
+from .scope_dependency import ChangedField, PoolDependency, ScopeBreakage
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
 
+    from infrahub.core.path import GroupedDataPaths
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.pools.scoped_number_pool_reader import ScopedNumberPool
 
     from ..model import SchemaConstraintValidatorRequest
+    from .scope_dependency import DependentPoolFinder, ScopeViolationBuilder
 
 
 class ScopedNumberPoolSource(Protocol):
@@ -32,36 +33,37 @@ class SchemaBranchSource(Protocol):
     def get_schema_branch(self, name: str) -> SchemaBranch: ...
 
 
-class PoolDependency(StrEnum):
-    """What ties a pool to the changed field."""
-
-    SCOPE_ELEMENT = "scope_element"
-    TRACKED_ATTRIBUTE = "tracked_attribute"
-
-
-@dataclass(frozen=True)
-class ScopeBreakage:
-    """A schema change that stops the pools depending on the changed field from dividing their space."""
-
-    dependency: PoolDependency
-    reason: str
-
-
 class NumberPoolScopeChecker(ConstraintCheckerInterface):
     """Refuses a schema change that stops a field from giving the one value per node that a pool's scope needs."""
 
     # Only a schema change can break a scope, so a data change never needs this checker.
     triggered_by_data_change = False
 
-    def __init__(self, pool_source: ScopedNumberPoolSource, schema_source: SchemaBranchSource) -> None:
+    def __init__(
+        self,
+        pool_source: ScopedNumberPoolSource,
+        schema_source: SchemaBranchSource,
+        pool_finder: DependentPoolFinder,
+        violation_builder: ScopeViolationBuilder,
+    ) -> None:
         self.pool_source = pool_source
         self.schema_source = schema_source
+        self.pool_finder = pool_finder
+        self.violation_builder = violation_builder
         made_optional = self._gained_property_rule(
             predicate=lambda field: field.optional,
             breakage=ScopeBreakage(
                 dependency=PoolDependency.SCOPE_ELEMENT, reason="a scope element must stay required"
             ),
         )
+        made_unique = self._gained_property_rule(
+            predicate=lambda field: isinstance(field, AttributeSchema) and field.unique,
+            breakage=ScopeBreakage(
+                dependency=PoolDependency.TRACKED_ATTRIBUTE,
+                reason="a globally unique number cannot be allocated per division",
+            ),
+        )
+        self._made_unique = made_unique
         self._rules: dict[str, Callable[[SchemaConstraintValidatorRequest, str], ScopeBreakage | None]] = {
             "attribute.optional.update": made_optional,
             "relationship.optional.update": made_optional,
@@ -74,13 +76,7 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
                     reason="a scope element must stay a relationship of cardinality one",
                 ),
             ),
-            "attribute.unique.update": self._gained_property_rule(
-                predicate=lambda field: isinstance(field, AttributeSchema) and field.unique,
-                breakage=ScopeBreakage(
-                    dependency=PoolDependency.TRACKED_ATTRIBUTE,
-                    reason="a globally unique number cannot be allocated per division",
-                ),
-            ),
+            "attribute.unique.update": made_unique,
             "attribute.kind.update": self._gained_property_rule(
                 predicate=lambda field: isinstance(field, AttributeSchema) and field.kind in NON_SCALAR_ATTRIBUTE_KINDS,
                 breakage=ScopeBreakage(
@@ -96,8 +92,14 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         return "number_pool.scope"
 
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
-        """Accept the constraints whose change can break a scope."""
-        return request.constraint_name in self._rules
+        """Accept the constraints whose change can break a scope.
+
+        They include the node uniqueness constraint, which another checker is registered for.
+        """
+        return (
+            request.constraint_name in self._rules
+            or request.constraint_name == ConstraintIdentifier.NODE_UNIQUENESS_CONSTRAINTS_UPDATE.value
+        )
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
         """Return one violation per number pool that the schema change stops from dividing its space.
@@ -116,19 +118,50 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         if not field_name:
             raise ValueError("field_name is not defined")
 
+        if request.constraint_name == ConstraintIdentifier.NODE_UNIQUENESS_CONSTRAINTS_UPDATE.value:
+            return await self._check_attributes_made_unique(request=request)
+
         breakage = self._rules[request.constraint_name](request, field_name)
         if breakage is None:
             return []
+        return await self._check_breakage(request=request, field_name=field_name, breakage=breakage)
 
-        previous_schemas = self._loaded_previous_schemas(request=request)
+    async def _check_attributes_made_unique(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
+        """Return the violations of each attribute of the node that the uniqueness constraint change makes unique.
+
+        A uniqueness constraint naming one attribute makes it unique on the node, and for an inherited attribute
+        the schema diff records that change only under this constraint, so every attribute of the node goes
+        through the tracked-attribute rule.
+        """
+        kind = request.schema_path.schema_kind
+        if not request.schema_branch.has(name=kind):
+            return []
+        results: list[GroupedDataPaths] = []
+        for attribute in request.schema_branch.get(name=kind, duplicate=False).attributes:
+            breakage = self._made_unique(request, attribute.name)
+            if breakage is not None:
+                results.extend(
+                    await self._check_breakage(request=request, field_name=attribute.name, breakage=breakage)
+                )
+        return results
+
+    async def _check_breakage(
+        self, request: SchemaConstraintValidatorRequest, field_name: str, breakage: ScopeBreakage
+    ) -> list[GroupedDataPaths]:
+        """Return one violation per pool that depends on the changed field, for a change known to break a scope.
+
+        The pools of the kind and of the kinds sharing its fields through inheritance are read, and each one is
+        matched against the scope elements the field was before the change. No violation is returned when no
+        schema before the change defines the kind.
+
+        Raises:
+            InitializationError: When the worker has not loaded the schema of the request's branch and a pool may
+                depend on the changed field.
+
+        """
+        previous_schemas = await self._previous_schemas_to_check(request=request, field_name=field_name)
         if previous_schemas is None:
-            # Without the branch's schema a change can only be accepted when no pool can depend on the field.
-            if not await self._has_pools_sharing_fields(request=request):
-                return []
-            raise InitializationError(
-                f"The schema of branch {request.branch.name} is not loaded; the change to"
-                f" {request.schema_path.schema_kind}.{field_name} cannot be checked against the number pools"
-            )
+            return []
         kind = request.schema_path.schema_kind
         kind_schemas = [
             schema_branch.get(name=kind, duplicate=False)
@@ -141,28 +174,42 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         pools = await self.pool_source.get_for_kinds(
             kinds={kind for kind_schema in kind_schemas for kind in self._kinds_sharing_fields(kind_schema=kind_schema)}
         )
-        elements = self._scope_elements(request=request, schema_branches=previous_schemas, field_name=field_name)
-        if breakage.dependency == PoolDependency.SCOPE_ELEMENT:
-            element_ids = {element.id for element in elements}
-            dependent_pools = [pool for pool in pools if element_ids & {stored.id for stored in pool.scope.elements}]
-        else:
-            # A pool stores its tracked attribute by name, which is the pre-change name when the same load renames it.
-            tracked_names = {field_name} | {element.name for element in elements}
-            dependent_pools = [pool for pool in pools if pool.tracked_attribute in tracked_names]
-
-        grouped_data_paths = GroupedDataPaths()
-        for pool in dependent_pools:
-            grouped_data_paths.add_data_path(
-                DataPath(
-                    branch=request.branch.name,
-                    path_type=PathType.NODE,
-                    node_id=pool.id,
-                    kind=InfrahubKind.NUMBERPOOL,
-                    field_name=field_name,
-                    value=self._describe(pool=pool, kind=kind, field_name=field_name, breakage=breakage),
-                )
+        field = ChangedField(
+            kind=kind,
+            name=field_name,
+            elements=tuple(
+                self._scope_elements(request=request, schema_branches=previous_schemas, field_name=field_name)
+            ),
+        )
+        return [
+            self.violation_builder.build(
+                branch_name=request.branch.name,
+                field=field,
+                breakage=breakage,
+                pools=self.pool_finder.find(pools=pools, field=field, dependency=breakage.dependency),
             )
-        return [grouped_data_paths]
+        ]
+
+    async def _previous_schemas_to_check(
+        self, request: SchemaConstraintValidatorRequest, field_name: str
+    ) -> list[SchemaBranch] | None:
+        """Return the schemas before the change that the pools are checked against.
+
+        Returns:
+            The schema of the request's branch, and the schema the candidate was built from when it is another
+            one, or None when the worker has not loaded them and no pool shares the kind's fields.
+
+        Raises:
+            InitializationError: When the worker has not loaded them and a pool may depend on the changed field.
+
+        """
+        previous_schemas = self._loaded_previous_schemas(request=request)
+        if previous_schemas is not None or not await self._has_pools_sharing_fields(request=request):
+            return previous_schemas
+        raise InitializationError(
+            f"The schema of branch {request.branch.name} is not loaded; the change to"
+            f" {request.schema_path.schema_kind}.{field_name} cannot be checked against the number pools"
+        )
 
     def _candidate_field(
         self, request: SchemaConstraintValidatorRequest, field_name: str
@@ -298,8 +345,3 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
                 continue
             elements.setdefault(scope.elements[0].id, scope.elements[0])
         return list(elements.values())
-
-    def _describe(self, pool: ScopedNumberPool, kind: str, field_name: str, breakage: ScopeBreakage) -> str:
-        if breakage.dependency == PoolDependency.TRACKED_ATTRIBUTE:
-            return f"pool {pool.name} allocates {kind}.{field_name} per division; {breakage.reason}"
-        return f"pool {pool.name} divides its numbers by {kind}.{field_name}; {breakage.reason}"

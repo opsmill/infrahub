@@ -5,7 +5,9 @@ from __future__ import annotations
 import pytest
 
 from infrahub.core.constants import InfrahubKind, PathType, SchemaPathType
-from infrahub.core.validators.pool.scope import NumberPoolScopeChecker
+from infrahub.core.path import SchemaPath
+from infrahub.core.schema import NodeSchema
+from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from tests.unit.core.validators.number_pool_scope.helpers import (
     BRANCH,
     DEVICE,
@@ -13,9 +15,11 @@ from tests.unit.core.validators.number_pool_scope.helpers import (
     DEVICE_POOL_BY_SITE,
     HOLDER,
     POD_HOLDER,
+    POD_HOLDER_POOL_BY_SITE,
     RecordingPoolSource,
     SchemaChangeCase,
     StaticSchemaSource,
+    build_checker,
     build_request,
     build_schema_branch,
     device_role_kind,
@@ -216,7 +220,7 @@ class TestRefusedChanges:
         candidate_schema = saved_schema()
         case.change(candidate_schema)
         pool_source = RecordingPoolSource(pools=case.pools)
-        checker = NumberPoolScopeChecker(
+        checker = build_checker(
             pool_source=pool_source,
             schema_source=StaticSchemaSource(schema_branch=build_schema_branch(saved_schema())),
         )
@@ -231,3 +235,43 @@ class TestRefusedChanges:
             (BRANCH.name, PathType.NODE, InfrahubKind.NUMBERPOOL, case.field_name)
         }
         assert pool_source.requested_kinds == case.expected_kinds_read
+
+    async def test_reports_an_inherited_tracked_attribute_made_unique_by_a_uniqueness_constraint(self) -> None:
+        candidate_schema = saved_schema()
+        pod_holder_index = next(index for index, node in enumerate(candidate_schema.nodes) if node.kind == POD_HOLDER)
+        pod_holder = candidate_schema.nodes[pod_holder_index].duplicate()
+        pod_holder.uniqueness_constraints = [["vlan_id__value"]]
+        candidate_schema.nodes[pod_holder_index] = pod_holder
+        candidate = build_schema_branch(candidate_schema)
+        node_schema = candidate.get(name=POD_HOLDER, duplicate=False)
+        assert isinstance(node_schema, NodeSchema)
+        tracked_attribute = node_schema.get_attribute(name="vlan_id")
+        assert (tracked_attribute.inherited, tracked_attribute.unique) == (True, True)
+        checker = build_checker(
+            pool_source=RecordingPoolSource(pools=(POD_HOLDER_POOL_BY_SITE,)),
+            schema_source=StaticSchemaSource(schema_branch=build_schema_branch(saved_schema())),
+        )
+        request = SchemaConstraintValidatorRequest(
+            branch=BRANCH,
+            constraint_name="node.uniqueness_constraints.update",
+            node_schema=node_schema,
+            schema_path=SchemaPath(
+                path_type=SchemaPathType.NODE,
+                schema_kind=POD_HOLDER,
+                field_name="uniqueness_constraints",
+                property_name="uniqueness_constraints",
+            ),
+            schema_branch=candidate,
+        )
+
+        grouped_data_paths = await checker.check(request)
+
+        data_paths = [path for grouped in grouped_data_paths for path in grouped.get_all_data_paths()]
+        assert [(path.node_id, path.field_name, path.value) for path in data_paths] == [
+            (
+                "pod-holder-per-site",
+                "vlan_id",
+                "pool pod-holder-per-site allocates ScopePodHolder.vlan_id per division;"
+                " a globally unique number cannot be allocated per division",
+            )
+        ]

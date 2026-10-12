@@ -7,13 +7,13 @@ from infrahub.core.path import SchemaPath
 from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
-from infrahub.core.validators.pool.scope import NumberPoolScopeChecker
 from tests.unit.core.validators.number_pool_scope.helpers import (
     ALL_POOLS,
     BRANCH,
     DEVICE,
     RecordingPoolSource,
     StaticSchemaSource,
+    build_checker,
     build_schema_branch,
     device_site_removed,
     saved_schema,
@@ -29,7 +29,7 @@ class TestCandidateOnDestination:
         candidate_schema = saved_schema()
         device_site_removed(candidate_schema)
         pool_source = RecordingPoolSource(pools=ALL_POOLS)
-        checker = NumberPoolScopeChecker(
+        checker = build_checker(
             pool_source=pool_source,
             schema_source=StaticSchemaSource(
                 schema_branch=build_schema_branch(source_schema),

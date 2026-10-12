@@ -12,19 +12,20 @@ from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
-from infrahub.core.validators.pool.scope import NumberPoolScopeChecker
 from infrahub.exceptions import InitializationError
 from tests.unit.core.validators.number_pool_scope.helpers import (
     BRANCH,
     DEVICE,
     DEVICE_POOL_BY_SITE,
     RecordingPoolSource,
+    build_checker,
     build_schema_branch,
     device_site_optional,
     saved_schema,
 )
 
 if TYPE_CHECKING:
+    from infrahub.core.validators.pool.scope import NumberPoolScopeChecker
     from infrahub.pools.scoped_number_pool_reader import ScopedNumberPool
 
 
@@ -37,7 +38,7 @@ class TestUnloadedBranch:
         schema_manager.set_schema_branch(
             name=registry.default_branch, schema=build_schema_branch(saved_schema(), name=registry.default_branch)
         )
-        checker = NumberPoolScopeChecker(
+        checker = build_checker(
             pool_source=RecordingPoolSource(pools=pools),
             schema_source=schema_manager,
         )

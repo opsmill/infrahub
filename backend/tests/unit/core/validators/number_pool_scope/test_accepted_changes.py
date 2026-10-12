@@ -7,7 +7,6 @@ from dataclasses import dataclass
 import pytest
 
 from infrahub.core.constants import SchemaPathType
-from infrahub.core.validators.pool.scope import NumberPoolScopeChecker
 from tests.unit.core.validators.number_pool_scope.helpers import (
     ALL_POOLS,
     DEVICE,
@@ -16,6 +15,7 @@ from tests.unit.core.validators.number_pool_scope.helpers import (
     RecordingPoolSource,
     SchemaChangeCase,
     StaticSchemaSource,
+    build_checker,
     build_request,
     build_schema_branch,
     device_role_kind,
@@ -133,7 +133,7 @@ class TestAcceptedChanges:
         candidate_schema = saved_schema()
         case.change(candidate_schema)
         pool_source = RecordingPoolSource(pools=case.pools)
-        checker = NumberPoolScopeChecker(
+        checker = build_checker(
             pool_source=pool_source,
             schema_source=StaticSchemaSource(schema_branch=build_schema_branch(saved_schema())),
         )
@@ -149,7 +149,7 @@ class TestAcceptedChanges:
     @pytest.mark.parametrize("case", UNCHANGED_FIELD_CASES, ids=[case.name for case in UNCHANGED_FIELD_CASES])
     async def test_reports_no_violation_without_reading_pools(self, case: UnchangedFieldCase) -> None:
         pool_source = RecordingPoolSource(pools=ALL_POOLS)
-        checker = NumberPoolScopeChecker(
+        checker = build_checker(
             pool_source=pool_source,
             schema_source=StaticSchemaSource(schema_branch=build_schema_branch(saved_schema())),
         )
