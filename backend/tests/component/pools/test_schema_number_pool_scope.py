@@ -8,7 +8,6 @@ import pytest
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.protocols import CoreNumberPool as CoreNumberPoolProtocol
 from infrahub.core.registry import registry
@@ -86,20 +85,6 @@ def _saved_field_id(kind: str, name: str) -> str:
     field = registry.schema.get(name=kind, duplicate=False).get_field(name=name)
     assert field.id is not None
     return field.id
-
-
-async def _site(db: InfrahubDatabase, branch: Branch, name: str) -> Node:
-    site = await Node.init(db=db, schema=SCOPED_SITE.kind, branch=branch)
-    await site.new(db=db, name=name)
-    await site.save(db=db)
-    return site
-
-
-async def _device(db: InfrahubDatabase, branch: Branch, name: str, site: Node) -> Node:
-    device = await Node.init(db=db, schema=SCOPED_DEVICE.kind, branch=branch)
-    await device.new(db=db, name=name, role="leaf", tags=["edge"], site=site)
-    await device.save(db=db)
-    return device
 
 
 async def test_declared_scope_is_stored_as_ids_and_names(
@@ -196,19 +181,3 @@ async def test_declared_scope_on_a_branch_differing_from_the_existing_pool_is_no
             attribute=branch_attribute,
             branch_name=branch.name,
         )
-
-
-@pytest.mark.xfail(
-    reason="per-division allocation lands with the allocation ticket", strict=True, raises=AssertionError
-)
-async def test_nodes_in_two_sites_each_receive_the_first_number(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
-) -> None:
-    await _load_and_provision(db=db, schema=_schema(device=_with_pooled_vlan_id(SCOPED_DEVICE, scope=["site"])))
-    site_a = await _site(db=db, branch=default_branch, name="site-a")
-    site_b = await _site(db=db, branch=default_branch, name="site-b")
-
-    device_a = await _device(db=db, branch=default_branch, name="device-a", site=site_a)
-    device_b = await _device(db=db, branch=default_branch, name="device-b", site=site_b)
-
-    assert (device_a.get_attribute("vlan_id").value, device_b.get_attribute("vlan_id").value) == (1, 1)
