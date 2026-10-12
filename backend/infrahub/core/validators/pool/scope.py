@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Protocol
 from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema
 from infrahub.core.validators.enum import ConstraintIdentifier
-from infrahub.exceptions import InitializationError, ValidationError
+from infrahub.exceptions import ValidationError
 from infrahub.pools.scope import NON_SCALAR_ATTRIBUTE_KINDS, AllocationScopeResolver, ScopeElement
 
 from ..interface import ConstraintCheckerInterface
@@ -28,8 +28,6 @@ class ScopedNumberPoolSource(Protocol):
 
 
 class SchemaBranchSource(Protocol):
-    def has_schema_branch(self, name: str) -> bool: ...
-
     def get_schema_branch(self, name: str) -> SchemaBranch: ...
 
 
@@ -110,8 +108,6 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
 
         Raises:
             ValueError: When the request names no field.
-            InitializationError: When the worker has not loaded the schema of the request's branch and a pool may
-                depend on the changed field.
 
         """
         field_name = request.schema_path.field_name
@@ -155,15 +151,8 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         The pools of the kind and of the kinds sharing its fields through inheritance are read, and each one is
         matched against the scope elements the field was before the change. No violation is returned when no
         schema before the change defines the kind.
-
-        Raises:
-            InitializationError: When the worker has not loaded the schema of the request's branch and a pool may
-                depend on the changed field.
-
         """
-        previous_schemas = await self._previous_schemas_to_check(request=request, field_name=field_name)
-        if previous_schemas is None:
-            return []
+        previous_schemas = self._previous_schemas(request=request)
         kind = request.schema_path.schema_kind
         kind_schemas = [
             schema_branch.get(name=kind, duplicate=False)
@@ -191,27 +180,6 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
                 pools=self.pool_finder.find(pools=pools, field=field, dependency=breakage.dependency),
             )
         ]
-
-    async def _previous_schemas_to_check(
-        self, request: SchemaConstraintValidatorRequest, field_name: str
-    ) -> list[SchemaBranch] | None:
-        """Return the schemas before the change that the pools are checked against.
-
-        Returns:
-            The schema of the request's branch, and the schema the candidate was built from when it is another
-            one, or None when the worker has not loaded them and no pool shares the kind's fields.
-
-        Raises:
-            InitializationError: When the worker has not loaded them and a pool may depend on the changed field.
-
-        """
-        previous_schemas = self._loaded_previous_schemas(request=request)
-        if previous_schemas is not None or not await self._has_pools_sharing_fields(request=request):
-            return previous_schemas
-        raise InitializationError(
-            f"The schema of branch {request.branch.name} is not loaded; the change to"
-            f" {request.schema_path.schema_kind}.{field_name} cannot be checked against the number pools"
-        )
 
     def _candidate_field(
         self, request: SchemaConstraintValidatorRequest, field_name: str
@@ -261,7 +229,7 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
 
         Returns:
             A rule that returns the breakage when the field has the property and did not have it before the change,
-            and None otherwise. Without the schemas before the change, the rule returns the breakage.
+            and None otherwise.
 
         """
 
@@ -269,10 +237,9 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
             field = self._candidate_field(request=request, field_name=field_name)
             if field is None or not predicate(field):
                 return None
-            previous_schemas = self._loaded_previous_schemas(request=request)
-            if previous_schemas is None:
-                return breakage
-            previous_fields = self._previous_fields(request=request, field=field, previous_schemas=previous_schemas)
+            previous_fields = self._previous_fields(
+                request=request, field=field, previous_schemas=self._previous_schemas(request=request)
+            )
             if all(predicate(previous) for previous in previous_fields):
                 return None
             return breakage
@@ -298,8 +265,8 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
             kinds.update(kind_schema.used_by)
         return kinds
 
-    def _loaded_previous_schemas(self, request: SchemaConstraintValidatorRequest) -> list[SchemaBranch] | None:
-        """Return the schemas before the change, or None when the worker has not loaded one of them.
+    def _previous_schemas(self, request: SchemaConstraintValidatorRequest) -> list[SchemaBranch]:
+        """Return the schemas before the change.
 
         A schema load builds the candidate on the branch's own schema, while a proposed change, a merge or a rebase
         builds it on the destination's schema, so the changed field is looked up on both: a field the change
@@ -308,23 +275,7 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         names = [request.branch.name]
         if request.schema_branch.name != request.branch.name:
             names.append(request.schema_branch.name)
-        # Reading a branch the worker has not loaded would register an empty schema for it.
-        if not all(self.schema_source.has_schema_branch(name=name) for name in names):
-            return None
         return [self.schema_source.get_schema_branch(name=name) for name in names]
-
-    async def _has_pools_sharing_fields(self, request: SchemaConstraintValidatorRequest) -> bool:
-        """Tell whether a scoped pool sits on the kind or on a kind sharing its fields.
-
-        A kind the candidate schema no longer defines is assumed to have one.
-        """
-        kind = request.schema_path.schema_kind
-        if not request.schema_branch.has(name=kind):
-            return True
-        pools = await self.pool_source.get_for_kinds(
-            kinds=self._kinds_sharing_fields(kind_schema=request.schema_branch.get(name=kind, duplicate=False))
-        )
-        return bool(pools)
 
     def _scope_elements(
         self, request: SchemaConstraintValidatorRequest, schema_branches: list[SchemaBranch], field_name: str

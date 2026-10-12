@@ -189,9 +189,6 @@ class StaticSchemaSource:
         assert name == BRANCH.name
         return self.schema_branch
 
-    def has_schema_branch(self, name: str) -> bool:
-        return name == BRANCH.name or (name == registry.default_branch and self.default_branch_schema is not None)
-
 
 @dataclass(frozen=True)
 class SchemaChangeCase:
