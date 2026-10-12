@@ -10,6 +10,7 @@ from infrahub.core.constants import PoolRecordProvenance
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.query.resource_manager import NumberPoolGetAllocated
+from infrahub.pools.number import NumberUtilizationGetter
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.number_ranges import EffectiveSpace, NumberDomain
 from infrahub.pools.scope import (
@@ -366,6 +367,26 @@ class TestScopedPoolQueries:
             (dataset.sites["site-b"],): (2, 1, 1),
             (dataset.sites["site-c"],): (1, 1, 0),
         }
+
+    async def test_the_utilization_of_a_division_counts_the_numbers_the_division_lists(
+        self, db: InfrahubDatabase, dataset: DivisionsDataset
+    ) -> None:
+        pool = dataset.site_pool
+        branch = dataset.default_branch
+        repository = NumberPoolRepository(db=db)
+        getter = NumberUtilizationGetter(
+            db=db,
+            pool=pool,
+            space=EffectiveSpace(ranges=await repository.get_pool_ranges(pool_id=pool.id), domain=NumberDomain()),
+            branch=branch,
+            division=Division.from_entries(
+                entries=[("site", dataset.sites["site-a"])], element_fields=element_fields_of(pool=pool, branch=branch)
+            ),
+        )
+
+        await getter.load_data()
+
+        assert (getter.figures.used_default_branch, getter.figures.used_branches) == (2, 1)
 
     async def test_divisions_read_one_row_at_a_time_are_each_counted_once(
         self, db: InfrahubDatabase, dataset: DivisionsDataset, query_limit_of_one: None
