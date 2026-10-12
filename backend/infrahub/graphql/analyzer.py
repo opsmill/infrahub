@@ -396,6 +396,25 @@ class GraphQLQueryReport:
         return access
 
     @cached_property
+    def filtered_fields_by_kind(self) -> dict[str, set[str]]:
+        """Return, per kind, the attributes and relationships the query's filter arguments select on.
+
+        A filter argument is named after the field it applies to, followed by ``__`` and the filtered
+        property (``name__value``, ``owner__name__value``). Arguments without that form, such as ``ids``,
+        ``hfid`` or pagination, select on no field and are left out.
+        """
+        filtered: dict[str, set[str]] = {}
+        for query in self.queries:
+            for query_model in query.get_models():
+                field_names = set(query_model.model.attribute_names) | set(query_model.model.relationship_names)
+                for argument in query_model.arguments:
+                    field_name, separator, _ = argument.name.partition("__")
+                    if separator and field_name in field_names:
+                        filtered.setdefault(query_model.model.kind, set()).add(field_name)
+
+        return filtered
+
+    @cached_property
     def traversed_kinds(self) -> set[str]:
         """Return the kinds this query reaches by following a relationship.
 
