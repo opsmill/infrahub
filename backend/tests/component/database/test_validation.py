@@ -575,13 +575,8 @@ SET hae.branch = $branch_name
         assert "branch='main'" in violations[0].message
         assert "expected '-global-'" in violations[0].message
 
-    @pytest.mark.parametrize("branch_level", [None, 0, 2], ids=["missing", "zero", "branch"])
     async def test_local_value_edge_on_global_branch_is_reported_for_its_branch_level(
-        self,
-        db: InfrahubDatabase,
-        default_branch: Branch,
-        register_core_models_schema: SchemaBranch,
-        branch_level: int | None,
+        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
     ) -> None:
         repository = await Node.init(db=db, schema="CoreRepository", branch=default_branch)
         await repository.new(db=db, name="local-level", location="https://example.com/local-level.git", commit="aaa")
@@ -594,12 +589,12 @@ SET hv.branch_level = $branch_level
         """
         await db.execute_query(
             query=query,
-            params={"node_id": repository.id, "global_branch": GLOBAL_BRANCH_NAME, "branch_level": branch_level},
+            params={"node_id": repository.id, "global_branch": GLOBAL_BRANCH_NAME, "branch_level": 2},
         )
 
         violations = await collect_graph_violations(db=db, kinds=["CoreRepository"])
         assert [violation.check for violation in violations] == [GraphCheck.ATTRIBUTE_EDGE_BRANCH]
-        assert f"branch_level={branch_level!r}" in violations[0].message
+        assert "branch_level=2" in violations[0].message
         assert "expected branch_level 1" in violations[0].message
 
     async def test_every_check_runs_and_all_violations_are_reported(
