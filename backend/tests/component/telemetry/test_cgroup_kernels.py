@@ -37,6 +37,13 @@ RESOURCES_MODULE = Path(__file__).parents[3] / "infrahub" / "telemetry" / "resou
 
 _MEBIBYTE = 1024**2
 _NANO_CPUS_PER_CPU = 10**9
+# The kernel takes a CPU limit as microseconds of CPU time per period, so N CPUs is N times this period.
+_CPU_PERIOD_US = 100_000
+
+_MEMORY_LIMIT = 512 * _MEBIBYTE
+_WHOLE_CPU_LIMIT = 2
+# A fraction makes the assigned figure round up and the usable one round down, so the two can be told apart.
+_FRACTIONAL_CPU_LIMIT = 1.5
 
 # A responsive daemon answers at once; a build may pull a base image and install into
 # it; a probe run is a few file reads. Bounded so a stall fails rather than hangs.
@@ -65,14 +72,19 @@ print(json.dumps(reading.model_dump() | {
 # Every probe container gets this hostname, so the hostname part of the container name is known.
 _PROBE_HOSTNAME = "telemetry-probe"
 
-# Enforce the limits on the parent and leave the process's own group unbounded,
-# the shape a pod-level limit produces. The parent must be vacated before its
-# controllers can be delegated to children.
-#
-# This runs privileged against the host's cgroup hierarchy, so it refuses to act
-# unless it has resolved its own non-root group: an unresolved path would place
-# the limits on the root and throttle everything else sharing the machine.
-_ANCESTOR_LIMIT_SETUP = """
+
+def _ancestor_limit_setup(cpus: int, memory_bytes: int) -> str:
+    """Shell commands that put the limits on the process's parent group and move the process into an unlimited child.
+
+    That is the shape a pod-level limit produces. The parent must be vacated before
+    its controllers can be delegated to children.
+
+    The commands run privileged against the host's cgroup hierarchy, so they refuse
+    to act unless they have resolved the process's own non-root group: an unresolved
+    path would place the limits on the root and throttle everything else sharing the
+    machine.
+    """
+    return f"""
 own=$(sed -n 's/^0:://p' /proc/self/cgroup)
 if [ -z "$own" ] || [ "$own" = "/" ]; then
     echo "refusing to run: own cgroup did not resolve to a non-root path" >&2
@@ -86,8 +98,8 @@ fi
 mkdir -p $cgroup/leaf
 echo $$ > $cgroup/leaf/cgroup.procs
 echo '+memory +cpu' > $cgroup/cgroup.subtree_control
-echo 536870912 > $cgroup/memory.max
-echo '200000 100000' > $cgroup/cpu.max
+echo {memory_bytes} > $cgroup/memory.max
+echo '{cpus * _CPU_PERIOD_US} {_CPU_PERIOD_US}' > $cgroup/cpu.max
 """
 
 
@@ -119,24 +131,32 @@ class KernelCase:
 KERNEL_CASES = [
     KernelCase(
         name="private_namespace_reads_container_limits",
-        container_options={"cgroupns": "private", "nano_cpus": int(1.5 * _NANO_CPUS_PER_CPU), "mem_limit": "512m"},
+        container_options={
+            "cgroupns": "private",
+            "nano_cpus": int(_FRACTIONAL_CPU_LIMIT * _NANO_CPUS_PER_CPU),
+            "mem_limit": _MEMORY_LIMIT,
+        },
         expected_assigned=2,
         expected_usable=1,
-        expected_memory_total=512 * _MEBIBYTE,
+        expected_memory_total=_MEMORY_LIMIT,
     ),
     KernelCase(
         name="host_namespace_reads_container_limits",
-        container_options={"cgroupns": "host", "nano_cpus": int(1.5 * _NANO_CPUS_PER_CPU), "mem_limit": "512m"},
+        container_options={
+            "cgroupns": "host",
+            "nano_cpus": int(_FRACTIONAL_CPU_LIMIT * _NANO_CPUS_PER_CPU),
+            "mem_limit": _MEMORY_LIMIT,
+        },
         expected_assigned=2,
         expected_usable=1,
-        expected_memory_total=512 * _MEBIBYTE,
+        expected_memory_total=_MEMORY_LIMIT,
     ),
     KernelCase(
         name="ancestor_limit_applies_to_an_unlimited_leaf",
         container_options={"cgroupns": "host", "privileged": True},
-        expected_assigned=2,
-        expected_memory_total=512 * _MEBIBYTE,
-        setup=_ANCESTOR_LIMIT_SETUP,
+        expected_assigned=_WHOLE_CPU_LIMIT,
+        expected_memory_total=_MEMORY_LIMIT,
+        setup=_ancestor_limit_setup(cpus=_WHOLE_CPU_LIMIT, memory_bytes=_MEMORY_LIMIT),
     ),
     KernelCase(
         name="cpuset_without_quota_caps_available_by_affinity",
