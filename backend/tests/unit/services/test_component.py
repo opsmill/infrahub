@@ -195,10 +195,9 @@ async def test_resource_read_runs_off_the_event_loop_thread(
 class AlwaysFailingProcessResources(ProcessResources):
     """A resource reader whose self-read always fails, to drive the retry-then-empty-reading path.
 
-    The production reader turns unreadable sources into empty figures rather than raising, so it
-    cannot be forced into the passing failure the retries guard against (a file rotated mid-read,
-    a psutil hiccup). This adapter raises on every attempt instead. Its container name is fixed,
-    so the stored reading can be checked exactly.
+    It raises from the read itself, so the retries are tested without depending on which source
+    makes the real reader fail. Its container name is fixed, so the stored reading can be checked
+    exactly.
     """
 
     def __init__(self) -> None:
