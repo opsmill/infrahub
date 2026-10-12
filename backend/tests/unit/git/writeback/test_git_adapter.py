@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from git.exc import GitCommandError
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
 
@@ -265,16 +264,11 @@ STALLED_TRANSFER_CASES: list[StalledTransferCase] = [
         message=TIME_LIMIT_MESSAGE,
         stage=DeliveryStage.PUSH,
     ),
-    # GitPython writes this message only where `ps` exists; without it, the error is the libcurl one.
     StalledTransferCase(
         name="stalled_remote_branch_deletion",
         transfer=lambda repository: repository.delete_remote_branch(branch_name="feature", timeout_seconds=2),
-        error=GitCommandError,
-        message=(
-            "Cmd('git') failed due to: exit code(-9)\n"
-            "  cmdline: git push origin --delete feature\n"
-            """  stderr: 'Timeout: the command "git push origin --delete feature" did not complete in 2 secs.'"""
-        ),
+        error=RepositoryConnectionError,
+        message=TIME_LIMIT_MESSAGE,
         stage=None,
     ),
 ]
