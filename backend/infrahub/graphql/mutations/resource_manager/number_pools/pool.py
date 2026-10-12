@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from typing_extensions import Self
 
+from infrahub import lock
 from infrahub.core import protocols, registry
 from infrahub.core.constants import InfrahubKind, PermissionAction
 from infrahub.core.manager import NodeManager
@@ -76,6 +77,16 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
         branch: Branch,
         database: InfrahubDatabase | None = None,  # noqa: ARG003
     ) -> Any:
+        scope_input = data.get(SCOPE_FIELD)
+        if not scope_input or not scope_input.get("value"):
+            return await cls._create(info=info, data=data, branch=branch)
+        # A schema load checks its changes against the scoped pools, so a scoped pool waits until no load can change
+        # the fields its scope resolves to.
+        async with lock.registry.global_schema_lock():
+            return await cls._create(info=info, data=data, branch=branch)
+
+    @classmethod
+    async def _create(cls, info: GraphQLResolveInfo, data: InputObjectType, branch: Branch) -> Any:
         graphql_context: GraphqlContext = info.context
         attribute = cls._resolve_target_attribute(db=graphql_context.db, data=data, branch=branch)
         cls._resolve_scope(data=data, kind=data["node"].value, attribute_name=attribute.name)

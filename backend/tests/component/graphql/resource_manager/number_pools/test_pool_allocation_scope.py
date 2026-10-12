@@ -5,6 +5,7 @@ from typing import Any
 import pytest
 from graphql import ExecutionResult
 
+from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
@@ -18,6 +19,7 @@ from infrahub.graphql.manager import registry as graphql_registry
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
+from tests.adapters.lock import LockAction, LockTimeline
 from tests.helpers.number_pool import (
     SCOPED_DEVICE,
     SCOPED_HOLDER,
@@ -315,6 +317,34 @@ class TestNumberPoolAllocationScope:
         assert pool["allocation_scope"]["value"] == expected
         assert await read_scope(db=db, branch=default_branch_scope_class, pool_id=pool["id"]) == expected
         assert await read_stored_scope(db=db, pool_id=pool["id"]) == expected
+
+    async def test_create_with_a_scope_holds_the_schema_lock(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        device_schema: None,
+        recording_lock_timeline: LockTimeline,
+    ) -> None:
+        pool = await create_device_pool(
+            db=db, branch=default_branch_scope_class, name="holds-schema-lock", scope={"value": ["site"]}
+        )
+
+        local_lock, global_lock = (
+            lock.registry.get(name=name).name for name in (lock.LOCAL_SCHEMA_LOCK, lock.GLOBAL_SCHEMA_LOCK)
+        )
+        assert [
+            (event.name, event.action)
+            for event in recording_lock_timeline.events
+            if event.name in {local_lock, global_lock}
+        ] == [
+            (local_lock, LockAction.ACQUIRE),
+            (global_lock, LockAction.ACQUIRE),
+            (global_lock, LockAction.RELEASE),
+            (local_lock, LockAction.RELEASE),
+        ]
+        assert await read_stored_scope(db=db, pool_id=pool["id"]) == expected_scope(
+            kind=SCOPED_DEVICE_KIND, names=["site"]
+        )
 
     @pytest.mark.parametrize("scope", [None, {"value": None}, {"value": []}], ids=["absent", "null", "empty-list"])
     async def test_create_without_elements_creates_an_unscoped_pool(
