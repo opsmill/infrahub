@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import os
 import re
+import socket
+import threading
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
@@ -17,6 +20,7 @@ from infrahub.git.repository import InfrahubRepository
 from tests.helpers.test_client import dummy_async_request
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from pathlib import Path
 
     import pytest
@@ -161,6 +165,34 @@ def install_remote_helper(directory: Path, monkeypatch: pytest.MonkeyPatch, scri
     helper.chmod(0o755)
     monkeypatch.setenv("PATH", f"{helper_directory}{os.pathsep}{os.environ['PATH']}")
     return "fake::nowhere"
+
+
+@contextmanager
+def silent_remote() -> Iterator[int]:
+    """Accept connections on a loopback port and never answer, the way a hung remote host behaves."""
+    server = socket.socket()
+    server.bind(("127.0.0.1", 0))
+    server.listen()
+    held: list[socket.socket] = []
+    stopped = threading.Event()
+
+    def accept() -> None:
+        while not stopped.is_set():
+            try:
+                connection, _ = server.accept()
+            except OSError:
+                return
+            held.append(connection)
+
+    thread = threading.Thread(target=accept, daemon=True)
+    thread.start()
+    try:
+        yield server.getsockname()[1]
+    finally:
+        stopped.set()
+        server.close()
+        for connection in held:
+            connection.close()
 
 
 def build_repository_client(
