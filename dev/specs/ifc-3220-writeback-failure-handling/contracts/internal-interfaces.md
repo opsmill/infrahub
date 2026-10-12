@@ -230,8 +230,8 @@ Every port method that runs Git gives each of its Git commands a bound, as GitPy
   `delete_remote_branch` is a push too: it types its errors as `push` does, so a stalled deletion
   raises `RepositoryConnectionError` as well.
 - `remote_head`, `is_ancestor`, `replay`, `reset` and `record` by `LOCAL_GIT_TIMEOUT_SECONDS`, for
-  each local command. GitPython stops a local command at the bound only where `ps` exists, and the
-  backend image has no `ps`. `remote_head` reads with `git rev-parse`, not through GitPython's object
+  each local command. GitPython stops a local command at the bound only where `ps` exists, so the
+  backend image installs `procps`. `remote_head` reads with `git rev-parse`, not through GitPython's object
   database. A stopped local command raises `RepositoryError`, with a message that names the command
   and the bound but not the arguments, which can name worker paths. After a killed local command,
   the adapter removes a left-over `index.lock` of the worktree before it raises. `reset` never

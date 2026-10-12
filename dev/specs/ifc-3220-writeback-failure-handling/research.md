@@ -647,12 +647,11 @@ command that it runs. The limit does not stop every command; see "What the limit
 - **A direct Git call is stopped by a watchdog that needs `ps`.** Every other command, the deletion
   of a source branch included, runs through `Git.execute`. There a watchdog kills Git when the limit
   passes, and GitPython reports "Timeout: the command ... did not complete". The watchdog finds the
-  child processes of Git with `ps`. The runtime image has no `ps`, so there the watchdog cannot stop
-  a direct Git call either.
+  child processes of Git with `ps --ppid`, so the backend image installs `procps`. On a host without
+  that `ps`, the watchdog cannot stop a direct Git call.
 
-**Open point for a later story**: a bound on an SSH transfer, and on a direct local Git call in the
-runtime image, which has no `ps`. Until it ships, FR-004 holds for these commands only when Git ends
-by itself.
+**Open point for a later story**: a bound on an SSH transfer. Until it ships, FR-004 holds for a
+fetch, a push or a deletion over SSH only when Git ends by itself.
 
 A local command normally ends in seconds, so its limit matters only for a command that is stuck. A
 killed local command raises a `RepositoryError` that names the command and the limit, and R5
@@ -660,8 +659,8 @@ classifies it. A killed `worktree add` leaves a worktree that Git keeps locked a
 `create_commit_worktree` removes it with `git worktree remove -f -f` before it raises. After any
 other failure, it removes nothing. The deletion of a source branch is a push, so
 `delete_remote_branch` types its errors as `push` does. Past its limit it raises
-`RepositoryConnectionError`. Where the watchdog cannot stop Git, which needs `ps` (see above), the
-low-speed limit stops a stalled HTTP(S) deletion.
+`RepositoryConnectionError`. Where the watchdog cannot stop Git, on a host without `ps --ppid` (see
+above), the low-speed limit still stops a stalled HTTP(S) deletion.
 `reset` never raises: a killed reset is logged like any failed reset, and the failure of the attempt
 still propagates. The limits live in `git/writeback/constants.py`.
 

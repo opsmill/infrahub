@@ -58,8 +58,8 @@ delivery-state lock is held for one read-modify-write, has a 30-second time to l
 held across Git work, so a branch merge never waits for a push. A delivery attempt holds no lock
 across a retry delay or a release. Every Git command that the delivery adapter runs gets a time
 limit, the local ones included. GitPython does not stop a fetch or a push at its limit, so Git's
-low-speed limit ends a stalled HTTP(S) transfer. An SSH transfer has no bound, and in the runtime
-image, which has no `ps`, the limit stops no direct Git call (`research.md` R6, open point). The import has no bound, and the
+low-speed limit ends a stalled HTTP(S) transfer. An SSH transfer has no bound (`research.md` R6,
+open point). GitPython stops a direct Git call with `ps`, which the backend image installs. The import has no bound, and the
 Git commands inside it have none either. While the import holds the repository lock, the recovery check starts no second attempt
 (`research.md` R6, R20).
 
