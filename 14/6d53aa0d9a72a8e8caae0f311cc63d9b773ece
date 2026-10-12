@@ -1,0 +1,43 @@
+backend/tests/adapters/machine.py
+  s_b134b1501718e5::t_0c278ee8fde6b9 1-29
+backend/tests/component/telemetry/test_cgroup_kernels.py
+  s_b134b1501718e5::t_de7c14b391dcbb 56
+backend/tests/unit/services/test_component.py
+  s_b134b1501718e5::t_cb2cc61f82e528 127,204-205
+  s_b134b1501718e5::t_32672532f343f6 28,153
+  s_b134b1501718e5::t_3a664db5c06b3f 206
+dev/specs/infp-631-resource-telemetry/tasks.md
+  s_b134b1501718e5::t_fffe03e51c258d 100,151
+backend/infrahub/services/component.py
+  s_b134b1501718e5::t_de7c14b391dcbb 20,144
+dev/specs/infp-631-resource-telemetry/quickstart.md
+  s_b134b1501718e5::t_fffe03e51c258d 21-22
+backend/tests/unit/telemetry/test_resources.py
+  s_b134b1501718e5::t_ad8d9c85c732db 167-168,194,196-197,200,202-203,206,208-209,216,218-219
+  s_b134b1501718e5::t_acc7a2b725eaf7 4-5,14,536
+  s_b134b1501718e5::t_ba4c08fe3de147 375,377,381,391,401,406,411,416,424,434-441,443-444,452,462-465,469,480,482,497-499,502,513-517,520,537,540,548-552,554,561-562,569,572,580,582,591,593,598
+  s_b134b1501718e5::t_a5d446210e4350 55,59-60,63-64,68,70-71,74,76-77,80,82,86,88-89,92,94-95,98,100,104,106,110,112-113,116,118-119,122,124-129,131-136,138-143,145-150,155-157,159-160
+  s_b134b1501718e5::t_0f45f032d069f7 235,250,265,281,298,314,334,342-351,357-363,365
+  s_b134b1501718e5::t_625c82f4d87eb7 6-8,19-20,26-29,37-51
+  s_b134b1501718e5::t_6c58c48bea2f60 52-53
+dev/knowledge/backend/testing.md
+  s_b134b1501718e5::t_5681bfb2e5c636 277
+backend/infrahub/telemetry/resources.py
+  s_b134b1501718e5::t_de7c14b391dcbb 37,396-449,451-452,454-455,468,473,493,504,522,537,564
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "146d53aa0d9a72a8e8caae0f311cc63d9b773ece",
+  "prompts": {},
+  "sessions": {
+    "s_b134b1501718e5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "94683ba3-7a9a-45ea-9335-07384e00b903",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}
