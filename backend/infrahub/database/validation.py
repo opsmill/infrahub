@@ -466,8 +466,10 @@ async def _check_attribute_edge_branch(db: InfrahubDatabase, kinds: list[str] | 
     A branch-agnostic attribute is stored once on the global branch so that every branch reads the same
     value. A branch-local attribute of a branch-agnostic node is attached on the global branch so that
     every branch has it, but each branch keeps its own value, so its property edges may sit on the global
-    branch or on any branch. Anything else is stored on a branch, and an edge on the global branch always
-    has branch_level 1.
+    branch or on any branch. Its value edge on the global branch still stays open: it is the value of the
+    default branch until that branch writes one, and of every branch with no value of its own that forked
+    before that write. Anything else is stored on a branch, and an edge on the global branch always has
+    branch_level 1.
     Only open, active edges are judged: a deleted branch-agnostic attribute is deliberately tombstoned
     at branch level, and the closed edges of same-uuid node copies are history rather than current state.
     """
@@ -493,14 +495,12 @@ RETURN n.uuid AS node_id, a.name AS field_name, a.branch_support AS branch_suppo
        CASE WHEN wrong_branch THEN "branch" ELSE "branch_level" END AS reason,
        collect(DISTINCT type(e)) AS edge_types, count(*) AS num_edges
     """ % {"node_labels": _node_labels(kinds)}
-    results = await db.execute_query(
-        query=query,
-        params={
-            "global_branch": GLOBAL_BRANCH_NAME,
-            "agnostic": BranchSupportType.AGNOSTIC.value,
-            "local": BranchSupportType.LOCAL.value,
-        },
-    )
+    params = {
+        "global_branch": GLOBAL_BRANCH_NAME,
+        "agnostic": BranchSupportType.AGNOSTIC.value,
+        "local": BranchSupportType.LOCAL.value,
+    }
+    results = await db.execute_query(query=query, params=params)
     violations = []
     for result in results:
         node_id = result.get("node_id")
@@ -522,6 +522,29 @@ RETURN n.uuid AS node_id, a.name AS field_name, a.branch_support AS branch_suppo
                 message=(
                     f"Attribute {field_name=} of node '{node_id}' with {branch_support=}"
                     f" has {num_edges} active {edge_types} edge(s) {problem}"
+                ),
+            )
+        )
+
+    missing_global_value_query = """
+MATCH (n:%(node_labels)s)-[owning:HAS_ATTRIBUTE]->(a:Attribute)
+WHERE owning.status = "active" AND owning.to IS NULL
+  AND a.branch_support = $local AND n.branch_support = $agnostic
+  AND NOT EXISTS {
+      MATCH (a)-[value:HAS_VALUE]->()
+      WHERE value.branch = $global_branch AND value.status = "active" AND value.to IS NULL
+  }
+RETURN DISTINCT n.uuid AS node_id, a.name AS field_name
+    """ % {"node_labels": _node_labels(kinds)}
+    for result in await db.execute_query(query=missing_global_value_query, params=params):
+        node_id = result.get("node_id")
+        field_name = result.get("field_name")
+        violations.append(
+            GraphViolation(
+                check=GraphCheck.ATTRIBUTE_EDGE_BRANCH,
+                message=(
+                    f"Attribute {field_name=} of node '{node_id}' with branch_support='{BranchSupportType.LOCAL.value}'"
+                    f" has no active HAS_VALUE edge on '{GLOBAL_BRANCH_NAME}'"
                 ),
             )
         )

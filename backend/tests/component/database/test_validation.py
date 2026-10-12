@@ -294,6 +294,19 @@ SET hae.branch = $branch_name
     )
 
 
+async def _close_global_value_edge(db: InfrahubDatabase, node_uuid: str, attr_name: str, at: str) -> None:
+    """Close the attribute's open HAS_VALUE edge on the global branch."""
+    query = """
+MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(:Attribute {name: $attr_name})-[hv:HAS_VALUE]->()
+WHERE hv.branch = $global_branch AND hv.status = "active" AND hv.to IS NULL
+SET hv.to = $at
+    """
+    await db.execute_query(
+        query=query,
+        params={"node_id": node_uuid, "attr_name": attr_name, "global_branch": GLOBAL_BRANCH_NAME, "at": at},
+    )
+
+
 async def _set_global_value_edge_branch_level(
     db: InfrahubDatabase, node_uuid: str, attr_name: str, branch_level: int
 ) -> None:
@@ -628,6 +641,27 @@ class TestVerifyGraph:
         assert [violation.check for violation in violations] == [GraphCheck.ATTRIBUTE_EDGE_BRANCH]
         assert "branch_level=2" in violations[0].message
         assert "expected branch_level 1" in violations[0].message
+
+    async def test_local_attribute_of_agnostic_node_keeps_its_value_on_global_branch(
+        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+    ) -> None:
+        """The default branch reads the global value until it writes its own, so that edge must stay open."""
+        repository = await Node.init(db=db, schema="CoreRepository", branch=default_branch)
+        await repository.new(
+            db=db, name="local-fallback", location="https://example.com/local-fallback.git", commit="aaa"
+        )
+        await repository.save(db=db)
+        on_main = await NodeManager.get_one(db=db, id=repository.id, branch=default_branch, raise_on_error=True)
+        on_main.get_attribute(name="commit").value = "bbb"
+        await on_main.save(db=db)
+        assert await collect_graph_violations(db=db, kinds=["CoreRepository"]) == []
+
+        await _close_global_value_edge(db=db, node_uuid=repository.id, attr_name="commit", at=Timestamp().to_string())
+
+        assert await _open_value_edge_branches(db=db, node_uuid=repository.id, attr_name="commit") == ["main"]
+        violations = await collect_graph_violations(db=db, kinds=["CoreRepository"])
+        assert [violation.check for violation in violations] == [GraphCheck.ATTRIBUTE_EDGE_BRANCH]
+        assert "no active HAS_VALUE edge on '-global-'" in violations[0].message
 
     async def test_every_check_runs_and_all_violations_are_reported(
         self,
