@@ -20075,6 +20075,8 @@ export type Mutation = {
   InfrahubReadOnlyRepositoryImportLastCommit: Maybe<ReadOnlyRepositoryImportLastCommit>;
   InfrahubRecomputeComputedAttribute: Maybe<RecomputeComputedAttribute>;
   InfrahubRepositoryConnectivity: Maybe<ValidateRepositoryConnectivity>;
+  /** Push every pending merge of a repository to its remote, in order, in a single push. */
+  InfrahubRepositoryDeliveryRetry: Maybe<RepositoryDeliveryRetry>;
   InfrahubRepositoryProcess: Maybe<ProcessRepository>;
   /**
    * Write preferences for one writable scope, USER or GLOBAL.
@@ -21771,6 +21773,11 @@ export type MutationInfrahubRecomputeComputedAttributeArgs = {
 
 export type MutationInfrahubRepositoryConnectivityArgs = {
   data: IdentifierInput;
+};
+
+
+export type MutationInfrahubRepositoryDeliveryRetryArgs = {
+  data: RepositoryDeliveryRetryInput;
 };
 
 
@@ -39267,6 +39274,17 @@ export type RepositoryCommits = {
   remote_head: Maybe<Scalars['String']['output']>;
   repository_id: Scalars['String']['output'];
   unavailable: Maybe<RepositoryGitUnavailable>;
+};
+
+export type RepositoryDeliveryRetry = {
+  __typename: 'RepositoryDeliveryRetry';
+  ok: Maybe<Scalars['Boolean']['output']>;
+  task: Maybe<TaskInfo>;
+};
+
+export type RepositoryDeliveryRetryInput = {
+  /** The id of the CoreRepository */
+  id: Scalars['String']['input'];
 };
 
 /** How the remote head relates to the commit Infrahub has imported on the request branch. */
