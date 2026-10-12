@@ -1,0 +1,14 @@
+backend/infrahub/core/validators/pool/scope.py
+  h_bd00275aefc321 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9f6090af4eb9ea02fd3ed8d2514f0340e947a404",
+  "prompts": {},
+  "humans": {
+    "h_bd00275aefc321": {
+      "author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
