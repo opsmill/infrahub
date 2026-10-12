@@ -1,0 +1,1 @@
+Post-merge and proposed-change regeneration now regenerate only the affected members when a Generator or artifact query reads a `display_label` or `human_friendly_id` built from a related node's attribute and that related node changes, instead of regenerating every member of the definition.
