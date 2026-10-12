@@ -29,7 +29,7 @@ from infrahub.pools.scope import AllocationScopeResolver
 from infrahub.schema.tasks import schema_updated
 from tests.adapters.lock.timeline import LockAction
 from tests.helpers.agnostic_edges import IsReservedEdge, is_reserved_edge_on
-from tests.helpers.schema import TICKET
+from tests.helpers.schema import TICKET, load_schema
 from tests.helpers.schema.snow import SNOW_INCIDENT, SNOW_TASK
 
 if TYPE_CHECKING:
@@ -247,6 +247,13 @@ SCOPED_POD_HOLDER = NodeSchema(
 SCOPED_POOL_SCHEMA = SchemaRoot(
     generics=[SCOPED_HOLDER], nodes=[SCOPED_SITE, SCOPED_RACK, SCOPED_LINK, SCOPED_DEVICE, SCOPED_POD_HOLDER]
 )
+
+
+async def save_schema_kinds(db: InfrahubDatabase, schema: SchemaRoot, branch_name: str | None = None) -> None:
+    """Load the schema and save only its own kinds with their profiles and templates to save time."""
+    kinds = [element.kind for element in [*schema.generics, *schema.nodes]]
+    generated = [f"{prefix}{kind}" for kind in kinds for prefix in ("Profile", "Template")]
+    await load_schema(db=db, schema=schema, branch_name=branch_name, update_db=True, limit=kinds + generated)
 
 
 SCOPED_POOL_START = 1

@@ -25,6 +25,7 @@ from tests.helpers.number_pool import (
     SCOPED_SITE,
     add_pool_range,
     pool_lock_events,
+    save_schema_kinds,
     scoped_device,
     scoped_device_holding,
     scoped_pool,
@@ -32,7 +33,6 @@ from tests.helpers.number_pool import (
     stored_scope,
     vlan_id,
 )
-from tests.helpers.schema import load_schema
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -71,7 +71,7 @@ async def templated_scoped_schema(
     """The scoped pool test schema with an object template generated for the device."""
     schema = deepcopy(SCOPED_POOL_SCHEMA)
     next(node for node in schema.nodes if node.kind == SCOPED_DEVICE.kind).generate_template = True
-    await load_schema(db=db, schema=schema, update_db=True)
+    await save_schema_kinds(db=db, schema=schema)
     registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
 
 
@@ -82,7 +82,7 @@ async def site_default_filter_schema(
     """The scoped pool test schema with a site that a write can name by its name as a default filter value."""
     schema = deepcopy(SCOPED_POOL_SCHEMA)
     next(node for node in schema.nodes if node.kind == SCOPED_SITE.kind).default_filter = "name__value"
-    await load_schema(db=db, schema=schema, update_db=True)
+    await save_schema_kinds(db=db, schema=schema)
     registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
 
 
@@ -326,7 +326,7 @@ async def test_an_allocation_on_a_branch_whose_schema_lacks_a_scope_element_is_r
     branch = await create_branch(branch_name="predates-the-zone", db=db)
     device_with_zone = deepcopy(SCOPED_DEVICE)
     device_with_zone.attributes.append(AttributeSchema(name="zone", kind="Text", optional=False))
-    await load_schema(db=db, schema=SchemaRoot(nodes=[device_with_zone]), update_db=True)
+    await save_schema_kinds(db=db, schema=SchemaRoot(nodes=[device_with_zone]))
     pool = await scoped_pool(db=db, name="vlan-per-zone", allocation_scope=["zone"])
     site = await scoped_site(db=db, branch=branch, name="site-a")
 

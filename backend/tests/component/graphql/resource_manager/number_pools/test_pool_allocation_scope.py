@@ -189,7 +189,7 @@ def device_schema_on_branch(device: NodeSchema) -> SchemaRoot:
 
 
 async def save_schema(db: InfrahubDatabase, schema: SchemaRoot, branch_name: str | None = None) -> None:
-    """Load the schema and save only its own kinds, because saving the whole core schema takes about 25 seconds."""
+    """Load the schema and save only its own kinds to save time."""
     kinds = [element.kind for element in [*schema.generics, *schema.nodes]]
     await load_schema(db=db, schema=schema, branch_name=branch_name, update_db=True, limit=kinds)
 

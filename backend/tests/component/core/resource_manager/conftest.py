@@ -13,7 +13,7 @@ from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.schema import SchemaRoot
 from tests.helpers.agnostic_edges import TEST_ACTOR_ID, IsReservedEdge, is_reserved_edge_on
-from tests.helpers.number_pool import SCOPED_POOL_SCHEMA, add_pool_range, scoped_pool
+from tests.helpers.number_pool import SCOPED_POOL_SCHEMA, add_pool_range, save_schema_kinds, scoped_pool
 from tests.helpers.schema import TICKET, load_schema
 from tests.helpers.schema.agnostic_retirement import AGNOSTIC_RETIREMENT_SCHEMA, WIDGET_KIND
 
@@ -99,7 +99,7 @@ async def scoped_schema(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     """The scoped pool test schema, saved on the default branch so that its fields hold the ids a scope stores."""
-    await load_schema(db=db, schema=SCOPED_POOL_SCHEMA, update_db=True)
+    await save_schema_kinds(db=db, schema=SCOPED_POOL_SCHEMA)
     registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
 
 

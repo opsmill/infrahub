@@ -16,12 +16,12 @@ from tests.helpers.number_pool import (
     SCOPED_DEVICE,
     SCOPED_POOL_SCHEMA,
     pool_lock_events,
+    save_schema_kinds,
     scoped_device,
     scoped_pool,
     scoped_site,
     vlan_id,
 )
-from tests.helpers.schema import load_schema
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -61,7 +61,7 @@ async def scoped_schema(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     """The scoped pool test schema, saved on the default branch so that its fields hold the ids a scope stores."""
-    await load_schema(db=db, schema=SCOPED_POOL_SCHEMA, update_db=True)
+    await save_schema_kinds(db=db, schema=SCOPED_POOL_SCHEMA)
     registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
 
 
