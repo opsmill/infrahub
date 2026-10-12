@@ -8,12 +8,18 @@ backend/tests/component/pools/test_schema_number_pool_synchronizer.py
   s_9a65b7e7908928::t_d8a62baa7f12bb 336-337
 backend/infrahub/pools/scoped_number_pool_reader.py
   s_9a65b7e7908928::t_5c2f9183902079 57-66
+  h_bd00275aefc321 66
 ---
 {
   "schema_version": "authorship/3.0.0",
   "git_ai_version": "1.7.5",
   "base_commit_sha": "fbd8a124f9ebc5f1be2b1ec1cdf4a60e343b7fbc",
   "prompts": {},
+  "humans": {
+    "h_bd00275aefc321": {
+      "author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  },
   "sessions": {
     "s_9a65b7e7908928": {
       "agent_id": {
