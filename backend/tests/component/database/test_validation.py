@@ -538,6 +538,7 @@ class TestVerifyGraph:
     async def test_branch_local_value_of_agnostic_node_is_valid_on_any_branch(
         self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
     ) -> None:
+        """Each branch keeps its own value of a branch-local attribute, so its value edges may sit on any branch."""
         repository = await Node.init(db=db, schema="CoreRepository", branch=default_branch)
         await repository.new(db=db, name="local-value", location="https://example.com/local-value.git", commit="aaa")
         await repository.save(db=db)
@@ -561,6 +562,7 @@ RETURN hv.branch AS branch
     async def test_branch_local_attribute_of_agnostic_node_is_attached_on_global_branch(
         self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
     ) -> None:
+        """Every branch must have the attribute, so the edge from the node to it stays on the global branch."""
         repository = await Node.init(db=db, schema="CoreRepository", branch=default_branch)
         await repository.new(db=db, name="local-attach", location="https://example.com/local-attach.git", commit="aaa")
         await repository.save(db=db)
@@ -578,6 +580,7 @@ SET hae.branch = $branch_name
     async def test_local_value_edge_on_global_branch_is_reported_for_its_branch_level(
         self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
     ) -> None:
+        """Reads rank edges by branch_level, so a global value edge needs level 1 even when any branch is valid."""
         repository = await Node.init(db=db, schema="CoreRepository", branch=default_branch)
         await repository.new(db=db, name="local-level", location="https://example.com/local-level.git", commit="aaa")
         await repository.save(db=db)
