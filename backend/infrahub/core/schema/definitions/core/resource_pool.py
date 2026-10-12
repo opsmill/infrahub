@@ -228,8 +228,8 @@ core_number_pool = NodeSchema(
             kind="List",
             optional=True,
             description=(
-                "Fields of the kind that divide the pool's space; "
-                "allocation returns the lowest free number within the writer's division"
+                "Ordered fields that divide the pool's space, each as {id, name}: "
+                "the field's schema id on the default branch and its name"
             ),
         ),
     ],
