@@ -640,12 +640,12 @@ and is not re-imported; retry; the branch is gone.
 
 ## Phase 10: Documentation and polish
 
-- [ ] T102 [P] Update `dev/knowledge/backend/git-integration.md` per [research.md](research.md) R16.
-- [ ] T103 [P] Update `dev/knowledge/backend/selective-merge-regeneration.md` per R16.
-- [ ] T104 [P] Update `dev/knowledge/backend/merge-recompute.md` per R16.
-- [ ] T105 [P] Update `docs/docs/git-integration/branch-synchronization.mdx` and
+- [x] T102 [P] Update `dev/knowledge/backend/git-integration.md` per [research.md](research.md) R16.
+- [x] T103 [P] Update `dev/knowledge/backend/selective-merge-regeneration.md` per R16.
+- [x] T104 [P] Update `dev/knowledge/backend/merge-recompute.md` per R16.
+- [x] T105 [P] Update `docs/docs/git-integration/branch-synchronization.mdx` and
       `docs/docs/git-integration/overview.mdx` per R16, then run `uv run invoke docs.lint`.
-- [ ] T106 Write the changelog fragment with the `creating-changelog-entries` skill, including the
+- [x] T106 Write the changelog fragment with the `creating-changelog-entries` skill, including the
       rollback note of R22.
 - [ ] T107 Land the shared SDK PR for the protocols on `opsmill/infrahub-sdk-python`, then bump the
       `python_sdk` pointer here.
