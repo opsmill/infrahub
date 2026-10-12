@@ -1,0 +1,24 @@
+backend/tests/component/telemetry/test_cgroup_kernels.py
+  s_b134b1501718e5::t_5d64fff151024b 211-216
+  s_b134b1501718e5::t_85c6c0df526107 12-16,21,24,27,30-34,39,47-50,53,98-99,116,122,129,136,143,160-165,174-182,187-199,201-202,206-207,210,217-222,224-240,242-244
+dev/specs/infp-631-resource-telemetry/quickstart.md
+  s_b134b1501718e5::t_fb2cca11fe210e 8
+dev/specs/infp-631-resource-telemetry/tasks.md
+  s_b134b1501718e5::t_1395839b667362 99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "693cc3dff0f4fc94674e05f0246e5733d287cfad",
+  "prompts": {},
+  "sessions": {
+    "s_b134b1501718e5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "94683ba3-7a9a-45ea-9335-07384e00b903",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}
