@@ -1,0 +1,40 @@
+backend/infrahub/pools/scope.py
+  s_cb366a90ec4f4f::t_42c67c7f853a1c 119,135,137-140,143,150,153-157,172-174,182,184,186,188,193,199,207,211,213,216,218-220,222,228-230,232-234,238-241,244-245,249,259,270,292
+backend/tests/component/pools/test_schema_number_pool_synchronizer.py
+  s_cb366a90ec4f4f::t_84c5704fabef47 222-226
+backend/infrahub/dependencies/builder/constraint/schema/number_pool_scope.py
+  s_cb366a90ec4f4f::t_e92a791b0c30ca 4,11-15
+backend/tests/unit/pools/test_scope.py
+  s_cb366a90ec4f4f::t_84c5704fabef47 207-208,212-213,216-219,340-343,345-348,354-357,360,371,375,386,389,422-424,426,432-433,436,457,459,464-467,473-476,480,482-487,490-492,495-497,501,503-506,511-516,521,528-530,539-541,546-548
+backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py
+  s_cb366a90ec4f4f::t_1650d034e1b182 255-259
+  s_cb366a90ec4f4f::t_e92a791b0c30ca 228-230
+backend/tests/component/core/resource_manager/conftest.py
+  s_cb366a90ec4f4f::t_84c5704fabef47 113-117
+backend/tests/unit/core/validators/test_number_pool_scope_checker.py
+  s_cb366a90ec4f4f::t_e549baac5d56c3 658
+  s_cb366a90ec4f4f::t_84c5704fabef47 579,604,630,734
+  s_cb366a90ec4f4f::t_484a52773dd9b0 17
+backend/infrahub/pools/schema_number_pool_synchronizer.py
+  s_cb366a90ec4f4f::t_e92a791b0c30ca 84,95
+backend/infrahub/core/validators/pool/scope.py
+  s_cb366a90ec4f4f::t_e92a791b0c30ca 59-64,67,281-282
+backend/tests/component/core/constraint_validators/test_number_pool_scope.py
+  s_cb366a90ec4f4f::t_84c5704fabef47 33-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "189ea7bcb3b77ee354159ebc83a3067723bc06ec",
+  "prompts": {},
+  "sessions": {
+    "s_cb366a90ec4f4f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1cf89e8e-b595-438b-bb34-2b4a5f02f91f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
