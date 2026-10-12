@@ -122,11 +122,34 @@ def report_transform_config(template_path: str) -> str:
     return REPORT_TRANSFORM_CONFIG.format(template_path=template_path)
 
 
+NOTHING_IMPORTED_SUMMARY = "stopped before any import step ran, so nothing was imported."
+SCHEMA_STEP_SUMMARY = (
+    "stopped while importing the schema. Completed: none. "
+    "Not run: GraphQL queries; Python transforms; Jinja2 transforms; objects and menus; check definitions; "
+    "generator definitions; artifact definitions; generator actions and trigger rules from object files; "
+    "deletion of removed GraphQL queries, transforms, checks and generators."
+)
+PYTHON_TRANSFORMS_STEP_SUMMARY = (
+    "stopped while importing Python transforms. Completed: schema; GraphQL queries. "
+    "Not run: Jinja2 transforms; objects and menus; check definitions; generator definitions; "
+    "artifact definitions; generator actions and trigger rules from object files; "
+    "deletion of removed GraphQL queries, transforms, checks and generators."
+)
+OBJECTS_STEP_SUMMARY = (
+    "stopped while importing objects and menus. "
+    "Completed: schema; GraphQL queries; Python transforms; Jinja2 transforms. "
+    "Not run: check definitions; generator definitions; artifact definitions; "
+    "generator actions and trigger rules from object files; "
+    "deletion of removed GraphQL queries, transforms, checks and generators."
+)
+
+
 @dataclass
 class EntryFailureCase:
     name: str
     files: dict[str, str]
     expected_reason: str
+    expected_summary: str
 
 
 ENTRY_FAILURE_CASES: list[EntryFailureCase] = [
@@ -134,41 +157,49 @@ ENTRY_FAILURE_CASES: list[EntryFailureCase] = [
         name="schema_path_missing",
         files={".infrahub.yml": "schemas:\n  - schemas/devices.yml\n"},
         expected_reason="Schema 'schemas/devices.yml': The path does not exist",
+        expected_summary=SCHEMA_STEP_SUMMARY,
     ),
     EntryFailureCase(
         name="schema_directory_without_schema_file",
         files={".infrahub.yml": "schemas:\n  - schemas\n", "schemas/README.md": "Schemas live here.\n"},
         expected_reason="Schema 'schemas': The directory contains no .yml, .yaml or .json file",
+        expected_summary=SCHEMA_STEP_SUMMARY,
     ),
     EntryFailureCase(
         name="schema_file_invalid_yaml",
         files={".infrahub.yml": INVALID_SCHEMA_CONFIG, "schema.yml": "nodes: [\n"},
         expected_reason="Unable to load the file schema.yml, Invalid YAML/JSON file",
+        expected_summary=SCHEMA_STEP_SUMMARY,
     ),
     EntryFailureCase(
         name="schema_file_empty",
         files={".infrahub.yml": INVALID_SCHEMA_CONFIG, "schema.yml": ""},
         expected_reason="Unable to load the file schema.yml, Empty YAML/JSON file",
+        expected_summary=SCHEMA_STEP_SUMMARY,
     ),
     EntryFailureCase(
         name="jinja2_template_missing",
         files={".infrahub.yml": report_transform_config("report.j2")},
         expected_reason="Jinja2 transform 'report' (report.j2): The template file does not exist",
+        expected_summary=NOTHING_IMPORTED_SUMMARY,
     ),
     EntryFailureCase(
         name="jinja2_template_empty",
         files={".infrahub.yml": report_transform_config("report.j2"), "report.j2": "\n"},
         expected_reason="Jinja2 transform 'report' (report.j2): The template file is empty",
+        expected_summary=NOTHING_IMPORTED_SUMMARY,
     ),
     EntryFailureCase(
         name="jinja2_template_syntax_error",
         files={".infrahub.yml": report_transform_config("report.j2"), "report.j2": "{{ name }\n"},
         expected_reason="Jinja2 transform 'report' (report.j2): Syntax error in report.j2, line 1: unexpected '}'",
+        expected_summary=NOTHING_IMPORTED_SUMMARY,
     ),
     EntryFailureCase(
         name="jinja2_template_outside_the_repository",
         files={".infrahub.yml": report_transform_config("../report.j2")},
         expected_reason="Jinja2 transform 'report' (../report.j2): The template path is outside the repository",
+        expected_summary=NOTHING_IMPORTED_SUMMARY,
     ),
     EntryFailureCase(
         name="check_class_missing",
@@ -176,6 +207,31 @@ ENTRY_FAILURE_CASES: list[EntryFailureCase] = [
         expected_reason=(
             "Check definition 'inventory' (check.py): The specified class Inventory was not found within the module"
         ),
+        expected_summary=NOTHING_IMPORTED_SUMMARY,
+    ),
+]
+
+
+@dataclass
+class TransformReferenceCase:
+    name: str
+    module: str
+    expected_reason: str
+    expected_summary: str
+
+
+TRANSFORM_REFERENCE_CASES: list[TransformReferenceCase] = [
+    TransformReferenceCase(
+        name="unknown_query",
+        module=TRANSFORM_WITH_UNKNOWN_QUERY,
+        expected_reason="GraphQL query 'device_inventry' was not found",
+        expected_summary=PYTHON_TRANSFORMS_STEP_SUMMARY,
+    ),
+    TransformReferenceCase(
+        name="unknown_class",
+        module=TRANSFORM_WITH_OTHER_CLASS,
+        expected_reason="The specified class Interfaces was not found within the module",
+        expected_summary=NOTHING_IMPORTED_SUMMARY,
     ),
 ]
 
@@ -195,6 +251,18 @@ def run_log_errors(caplog: pytest.LogCaptureFixture, state: State) -> list[loggi
         for record in caplog.records
         if record.name == FLOW_RUN_LOGGER
         and record.levelno >= logging.ERROR
+        and vars(record).get("flow_run_id") == flow_run_id
+    ]
+
+
+def run_log_warnings(caplog: pytest.LogCaptureFixture, state: State) -> list[str]:
+    """Return the warning-level messages the flow run wrote to its task log, in order."""
+    flow_run_id = str(flow_run_id_of(state))
+    return [
+        record.getMessage()
+        for record in caplog.records
+        if record.name == FLOW_RUN_LOGGER
+        and record.levelno == logging.WARNING
         and vars(record).get("flow_run_id") == flow_run_id
     ]
 
@@ -302,19 +370,7 @@ class TestImportFailureLogs(TestInfrahubApp):
             )
         ]
 
-    @pytest.mark.parametrize(
-        ("module", "expected_reason"),
-        [
-            pytest.param(
-                TRANSFORM_WITH_UNKNOWN_QUERY, "GraphQL query 'device_inventry' was not found", id="unknown_query"
-            ),
-            pytest.param(
-                TRANSFORM_WITH_OTHER_CLASS,
-                "The specified class Interfaces was not found within the module",
-                id="unknown_class",
-            ),
-        ],
-    )
+    @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in TRANSFORM_REFERENCE_CASES])
     async def test_python_transform_reference_error_names_the_entry(
         self,
         db: InfrahubDatabase,
@@ -323,15 +379,15 @@ class TestImportFailureLogs(TestInfrahubApp):
         caplog: pytest.LogCaptureFixture,
         tmp_path: Path,
         git_repos_dir: Path,
-        module: str,
-        expected_reason: str,
+        test_case: TransformReferenceCase,
     ) -> None:
-        name = f"transform-reference-repo-{len(expected_reason)}"
-        branch_name = f"transform-reference-{len(expected_reason)}"
+        name = f"transform-reference-repo-{len(test_case.expected_reason)}"
+        branch_name = f"transform-reference-{len(test_case.expected_reason)}"
         remote, node = await self._connect(db=db, tmp_path=tmp_path, name=name)
         await create_branch(branch_name=branch_name, db=db)
         remote.commit(
-            branch_name=branch_name, files={".infrahub.yml": INTERFACES_TRANSFORM_CONFIG, "transform.py": module}
+            branch_name=branch_name,
+            files={".infrahub.yml": INTERFACES_TRANSFORM_CONFIG, "transform.py": test_case.module},
         )
         caplog.clear()
 
@@ -340,15 +396,15 @@ class TestImportFailureLogs(TestInfrahubApp):
         assert state.is_failed()
         assert await sync_status(client, node.id, branch_name) == RepositorySyncStatus.ERROR_IMPORT.value
         import_entry, _ = run_log_errors(caplog, state)
-        assert import_entry.getMessage() == (
-            f"Failed to import branch '{branch_name}': Python transform 'interfaces' (transform.py): {expected_reason}"
-        )
+        reason = f"Python transform 'interfaces' (transform.py): {test_case.expected_reason}"
+        assert import_entry.getMessage() == f"Failed to import branch '{branch_name}': {reason}"
         assert {key: vars(import_entry)[key] for key in ("repository", "branch", "step", "reason")} == {
             "repository": name,
             "branch": branch_name,
             "step": "import",
-            "reason": f"Python transform 'interfaces' (transform.py): {expected_reason}",
+            "reason": reason,
         }
+        assert run_log_warnings(caplog, state) == [f"Import of branch '{branch_name}' {test_case.expected_summary}"]
         assert records_with_traceback(caplog) == []
 
     async def test_syntax_error_names_the_file_relative_to_the_repository(
@@ -402,6 +458,7 @@ class TestImportFailureLogs(TestInfrahubApp):
         assert await sync_status(client, node.id, branch_name) == RepositorySyncStatus.ERROR_IMPORT.value
         import_entry, _ = [record.getMessage() for record in run_log_errors(caplog, state)]
         assert import_entry == f"Failed to import branch '{branch_name}': File 'devices.yml': The file does not exist"
+        assert run_log_warnings(caplog, state) == [f"Import of branch '{branch_name}' {OBJECTS_STEP_SUMMARY}"]
         assert records_with_traceback(caplog) == []
 
     @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in ENTRY_FAILURE_CASES])
@@ -428,6 +485,7 @@ class TestImportFailureLogs(TestInfrahubApp):
         assert await sync_status(client, node.id, branch_name) == RepositorySyncStatus.ERROR_IMPORT.value
         import_entry, _ = [record.getMessage() for record in run_log_errors(caplog, state)]
         assert import_entry == f"Failed to import branch '{branch_name}': {test_case.expected_reason}"
+        assert run_log_warnings(caplog, state) == [f"Import of branch '{branch_name}' {test_case.expected_summary}"]
         assert records_with_traceback(caplog) == []
 
     async def _import_then_break(
