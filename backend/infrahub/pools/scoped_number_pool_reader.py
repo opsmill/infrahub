@@ -40,6 +40,18 @@ class ScopedNumberPoolReader:
         pools = await NodeManager.query(db=self.db, schema=CoreNumberPool, filters={"node__values": sorted(set(kinds))})
         return self._scoped(pools=pools)
 
+    async def get_with_scope(self) -> list[ScopedNumberPool]:
+        """Return every pool that stores a scope.
+
+        Raises:
+            ValidationError: When a pool stores an allocation scope that is not a list of elements.
+
+        """
+        pools = await NodeManager.query(
+            db=self.db, schema=CoreNumberPool, filters={"allocation_scope__isnull": False}, branch_agnostic=True
+        )
+        return self._scoped(pools=pools)
+
     def _scoped(self, pools: Iterable[CoreNumberPool]) -> list[ScopedNumberPool]:
         scoped_pools: list[ScopedNumberPool] = []
         for pool in pools:

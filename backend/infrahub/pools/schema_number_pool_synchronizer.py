@@ -15,6 +15,8 @@ from infrahub.log import get_logger
 from infrahub.pools.number_pool_range_reconciler import NumberPoolRangeReconciler
 from infrahub.pools.number_pool_shorthand import NumberPoolShorthandMirror
 from infrahub.pools.registration import get_branches_with_schema_number_pool
+from infrahub.pools.scope import AllocationScopeResolver
+from infrahub.pools.scoped_number_pool_reader import ScopedNumberPoolReader
 
 if TYPE_CHECKING:
     from logging import Logger, LoggerAdapter
@@ -69,7 +71,29 @@ class SchemaNumberPoolSynchronizer:
 
         """
         await self._sync_existing_pools_with_schema(user_id=user_id)
+        await self._refresh_scope_names(user_id=user_id)
         return await self._process_all_branches(user_id=user_id)
+
+    async def _refresh_scope_names(self, user_id: str) -> None:
+        """Rewrite the stored name of each scope element whose field the default branch now names differently."""
+        schema_branch = self.schema_manager.get_schema_branch(name=registry.default_branch)
+        resolver = AllocationScopeResolver(schema_branch=schema_branch)
+        for pool in await ScopedNumberPoolReader(db=self.db).get_with_scope():
+            # A pool outlives the removal of its kind from the default branch, which leaves no field to rename.
+            if not schema_branch.has(name=pool.kind):
+                continue
+            refreshed = resolver.refresh_names(scope=pool.scope, kind=pool.kind)
+            if refreshed == pool.scope:
+                continue
+            async with lock.registry.get(name=pool.id, namespace=RESOURCE_POOL_LOCK_NAMESPACE):
+                number_pool = await NodeManager.get_one(
+                    db=self.db, id=pool.id, kind=CoreNumberPool, branch_agnostic=True, raise_on_error=True
+                )
+                self.log.info(
+                    f"Renaming the allocation scope of NumberPool={pool.id} to {list(refreshed.element_names)}"
+                )
+                number_pool.allocation_scope.value = refreshed.to_stored()
+                await number_pool.save(db=self.db, user_id=user_id)
 
     async def _sync_existing_pools_with_schema(self, user_id: str) -> None:
         """Update or delete existing pools based on current schema definitions."""
