@@ -31,3 +31,7 @@ class CheckArtifactCreate(BaseModel):
     variables: dict = Field(..., description="Input variables when generating the artifact")
     validator_id: str = Field(..., description="The ID of the validator")
     context: InfrahubContext = Field(..., description="The context of the task")
+    check_stored_file: bool = Field(
+        default=False,
+        description="Store the file again when the content is unchanged but the stored copy is missing or refused",
+    )

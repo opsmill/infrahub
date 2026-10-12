@@ -1,1 +1,0 @@
-Fixed rebasing a branch with changes of its own not releasing the branch-agnostic attribute and relationship values of objects deleted on the default branch, which kept counting towards uniqueness constraints and kept resource pool values allocated.

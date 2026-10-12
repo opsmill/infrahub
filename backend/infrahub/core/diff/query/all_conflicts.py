@@ -5,7 +5,7 @@ from neo4j.graph import Node as Neo4jNode
 from infrahub.core.query import Query, QueryType
 from infrahub.database import InfrahubDatabase
 
-from ..model.path import TrackingId
+from ..model.path import ConflictLevel, TrackingId
 
 
 class EnrichedDiffAllConflictsQuery(Query):
@@ -39,25 +39,29 @@ AND (
 )
 CALL (root) {
     MATCH (root)-[:DIFF_HAS_NODE]->(node:DiffNode)-[:DIFF_HAS_CONFLICT]->(node_conflict:DiffConflict)
-    RETURN node.path_identifier AS path_identifier, node_conflict AS conflict
+    RETURN node.path_identifier AS path_identifier, node_conflict AS conflict, "node" AS level
     UNION
     MATCH (root)-[:DIFF_HAS_NODE]->(node:DiffNode)-[:DIFF_HAS_ATTRIBUTE]->(:DiffAttribute)
         -[:DIFF_HAS_PROPERTY]->(property:DiffProperty)-[:DIFF_HAS_CONFLICT]->(attr_property_conflict:DiffConflict)
-    RETURN property.path_identifier AS path_identifier, attr_property_conflict AS conflict
+    RETURN property.path_identifier AS path_identifier, attr_property_conflict AS conflict, "attribute_property" AS level
     UNION
     MATCH (root)-[:DIFF_HAS_NODE]->(node:DiffNode)-[:DIFF_HAS_RELATIONSHIP]->(:DiffRelationship)
         -[:DIFF_HAS_ELEMENT]->(element:DiffRelationshipElement)-[:DIFF_HAS_CONFLICT]->(rel_element_conflict:DiffConflict)
-    RETURN element.path_identifier AS path_identifier, rel_element_conflict AS conflict
+    RETURN element.path_identifier AS path_identifier, rel_element_conflict AS conflict, "relationship_element" AS level
     UNION
     MATCH (root)-[:DIFF_HAS_NODE]->(node:DiffNode)-[:DIFF_HAS_RELATIONSHIP]->(:DiffRelationship)
         -[:DIFF_HAS_ELEMENT]->(:DiffRelationshipElement)-[:DIFF_HAS_PROPERTY]->(property:DiffProperty)
         -[:DIFF_HAS_CONFLICT]->(rel_property_conflict:DiffConflict)
-    RETURN property.path_identifier AS path_identifier, rel_property_conflict AS conflict
+    RETURN property.path_identifier AS path_identifier, rel_property_conflict AS conflict, "relationship_property" AS level
 }
 """
-        self.return_labels = ["path_identifier", "conflict"]
+        self.return_labels = ["path_identifier", "conflict", "level"]
         self.add_to_query(query=query)
 
-    def get_conflict_paths_and_nodes(self) -> Generator[tuple[str, Neo4jNode], None, None]:
+    def get_conflict_paths_levels_and_nodes(self) -> Generator[tuple[str, ConflictLevel, Neo4jNode], None, None]:
         for result in self.get_results():
-            yield (result.get_as_type("path_identifier", str), result.get_node("conflict"))
+            yield (
+                result.get_as_type("path_identifier", str),
+                ConflictLevel(result.get_as_type("level", str)),
+                result.get_node("conflict"),
+            )

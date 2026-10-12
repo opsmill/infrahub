@@ -225,7 +225,7 @@ Every workflow runs in one of three priority lanes, each backed by a Prefect wor
 | Medium | `medium` | 2 |
 | Low | `low` | 3 (served last) |
 
-The lanes are modeled by the `WorkflowPriority` enum (`backend/infrahub/workflows/constants.py`); `setup_work_queues` in `backend/infrahub/workflows/initialization.py` provisions the three queues idempotently at task-manager setup (creating missing queues, re-asserting precedence on existing ones). Workers drain all three queues; precedence only matters under contention — a lower number is served first, and nothing preempts a run that already started.
+The lanes are modeled by the `WorkflowPriority` enum (`backend/infrahub/workflows/constants.py`); `setup_work_queues` in `backend/infrahub/workflows/initialization.py` provisions the three queues idempotently at task-manager setup (creating missing queues, re-asserting precedence on existing ones). Workers drain all three queues; precedence only orders runs still waiting on the server — a lower number is served first, and nothing preempts a run that already started. How a worker claims runs, and why it claims only a few at a time, is in [Task Workers](task-workers.md).
 
 Each `WorkflowDefinition` declares a `default_priority` (defaults to `WorkflowPriority.MEDIUM`), which becomes the `work_queue_name` of its Prefect deployment. Both dispatch entry points of the workflow adapter (`execute_workflow`, `submit_workflow`) also accept an optional `priority` argument that overrides the resolved priority for that dispatch — and, because the value is stamped into an `InfrahubContext` when one is passed, re-roots the priority for the dispatched flow's whole subtree. Routing is a static tier-to-queue mapping — no per-dispatch queue lookup or existence check.
 
@@ -334,16 +334,16 @@ nodes = q.parse_response(response=response)
 
 | Situation | Approach |
 |-----------|----------|
-| Need only `id` (fan-out pattern) | Subclass `NodeIDQuery` from `infrahub.core.query.node_query` |
+| Need only `id` (fan-out pattern) | Subclass `NodeIDQuery` from `infrahub.core.graphql_query.node_id_query` |
 | Need a few scalar/relationship fields, read-only | Standalone query model with `execute_graphql()` |
 | Need to mutate the fetched node afterwards | Keep `client.get()` / `client.filters()` with `include=[...]` to narrow fetched fields; use `do_full_update=False` on `.update()` |
 
 ### Existing query model base
 
-`NodeIDQuery` in `backend/infrahub/core/query/node_query.py` is the base class for queries that only need the `id` field. Subclass it with a unique `query_name: ClassVar[str]` for each domain:
+`NodeIDQuery` in `backend/infrahub/core/graphql_query/node_id_query.py` is the base class for queries that only need the `id` field. It pages by offset with ordering disabled (`order: {disable: true}`), so pages follow the node uuid alone. A schema `order_by` field would break that: a fan-out whose flows rewrite the field while paging continues shifts nodes across page boundaries, repeating some and skipping others. Subclass it with a unique `query_name: ClassVar[str]` for each domain:
 
 ```python
-from infrahub.core.query.node_query import NodeIDQuery
+from infrahub.core.graphql_query.node_id_query import NodeIDQuery
 
 class DisplayLabelNodeIDQuery(NodeIDQuery):
     query_name: ClassVar[str] = "DisplayLabelFetchNodeIDs"
@@ -457,6 +457,7 @@ the deadlock cleanup has no equivalent.
 | Schema tasks | `backend/infrahub/core/migrations/schema/tasks.py` |
 | System automations | `backend/infrahub/trigger/system.py` |
 | Worker liveness heartbeat | `backend/infrahub/services/heartbeat.py`, `backend/infrahub/services/component.py` |
+| Worker submission window | `backend/infrahub/workers/submission.py` |
 | Deadlock cleanup | `backend/infrahub/locks/tasks.py` |
 
 ## See Also
@@ -464,6 +465,7 @@ the deadlock cleanup has no equivalent.
 - [ADR-0003: Asynchronous Tasks](../../adr/0003-asynchronous-tasks.md) - Why we use Prefect
 - [Creating Workflows Guide](../../guides/backend/creating-async-tasks.md) - How to create a new workflow
 - [Prefect Flow and Task Payloads](../../guidelines/backend/prefect-payloads.md) - What flows may return and tasks may receive
+- [Task Workers](task-workers.md) - How workers claim and start flow runs
 - [Events System](events.md) - Event-driven workflow triggers
 - [Webhooks](webhooks.md) - Primary consumer of events and async tasks
 - [Backend Architecture](architecture.md) - Overall backend structure

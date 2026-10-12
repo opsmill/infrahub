@@ -217,7 +217,7 @@ docker compose logs infrahub-server task-worker | grep -i "ca_bundle"
 Confirm that the task worker configured git with the bundle. Infrahub writes its git settings to the file named by `INFRAHUB_GIT_GLOBAL_CONFIG_FILE` (default `/opt/infrahub/.gitconfig`) and points git at it through `GIT_CONFIG_GLOBAL` in its own process only, so read that file explicitly: a `git config --global` call from an exec shell does not see the variable and reads a different file.
 
 ```shell
-docker compose exec task-worker git config --file /opt/infrahub/.gitconfig --get http.sslCAInfo
+docker compose exec task-worker sh -c 'git config --file "${INFRAHUB_GIT_GLOBAL_CONFIG_FILE:-/opt/infrahub/.gitconfig}" --get http.sslCAInfo'
 ```
 
 The command prints the path of the bundle, or the path of the file Infrahub wrote under the temporary directory when the setting holds PEM text. Then add or refresh a repository hosted on your internal Git server, following [How to connect external Git repositories](../../../git-integration/connect-repository.mdx). The repository reaches the `Online` operational status instead of failing with `SSL verification failed`.

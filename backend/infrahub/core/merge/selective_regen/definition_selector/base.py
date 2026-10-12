@@ -110,6 +110,11 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
                     every_target=list(subscriber_by_member.values()),
                 )
                 impacted = selection.ids
+                if selection.widening is not None:
+                    self.log.info(
+                        f"{definition.definition_name}: {selection.widening.detail}. "
+                        f"All {definition.instance_noun} will be processed."
+                    )
 
             rendered_members = [
                 member_id

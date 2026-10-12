@@ -339,6 +339,40 @@ class DiffCoordinator:
                 self.logger.info(f"Arbitrary diff update complete for {base_branch.name} - {diff_branch.name}")
             return enriched_diffs.diff_branch_diff
 
+    async def calculate_arbitrary_timeframe_diff(
+        self,
+        base_branch: Branch,
+        diff_branch: Branch,
+        from_time: Timestamp,
+        to_time: Timestamp,
+        node_kinds: list[str] | None = None,
+    ) -> EnrichedDiffRoot:
+        """Calculate and enrich the diff of a time range without storing it.
+
+        No diff lock is taken: a diff that is never stored cannot race another update of the same pair.
+
+        Args:
+            node_kinds: Calculate the changes of the diff branch for nodes of these kinds only.
+
+        """
+        self.logger.info(f"Calculating unstored diff for {base_branch.name} - {diff_branch.name}")
+        enriched_diffs = await self._calculate_enriched_diff(
+            diff_request=EnrichedDiffRequest(
+                base_branch=base_branch,
+                diff_branch=diff_branch,
+                from_time=from_time,
+                to_time=to_time,
+                tracking_id=NameTrackingId(name=str(uuid4())),
+            ),
+            is_incremental_diff=False,
+            node_kinds=node_kinds,
+        )
+        await self.conflicts_enricher.add_conflicts_to_branch_diff(
+            base_diff_root=enriched_diffs.base_branch_diff, branch_diff_root=enriched_diffs.diff_branch_diff
+        )
+        await self.labels_enricher.enrich(enriched_diff_root=enriched_diffs.diff_branch_diff, conflicts_only=True)
+        return enriched_diffs.diff_branch_diff
+
     async def recalculate(
         self,
         base_branch: Branch,
@@ -363,7 +397,10 @@ class DiffCoordinator:
                         f"Diff {diff_id} for branch {diff_branch.name} no longer exists, skipping recalculation"
                     )
                     return None
-                current_base_diff = await self.diff_repo.get_one(
+                if not current_branch_diff.partner_uuid:
+                    raise ResourceNotFoundError(f"Diff {diff_id} for branch {diff_branch.name} has no partner diff")
+                # a recalculation replaces the partner and reads only its uuid and proposed change
+                current_base_diff = await self.diff_repo.get_one_metadata(
                     diff_branch_name=base_branch.name, diff_id=current_branch_diff.partner_uuid
                 )
                 if current_branch_diff.tracking_id and isinstance(current_branch_diff.tracking_id, BranchTrackingId):
@@ -774,7 +811,7 @@ class DiffCoordinator:
         return await self.data_check_synchronizer.synchronize(enriched_diff=enriched_diff)
 
     async def _calculate_enriched_diff(
-        self, diff_request: EnrichedDiffRequest, is_incremental_diff: bool
+        self, diff_request: EnrichedDiffRequest, is_incremental_diff: bool, node_kinds: list[str] | None = None
     ) -> EnrichedDiffs:
         self.logger.info(f"Calculating diff for {diff_request!r}, include_unchanged={is_incremental_diff}")
         calculated_diff_pair = await self.diff_calculator.calculate_diff(
@@ -784,6 +821,7 @@ class DiffCoordinator:
             to_time=diff_request.to_time,
             include_unchanged=is_incremental_diff,
             previous_node_specifiers=diff_request.node_field_specifiers,
+            node_kinds=node_kinds,
         )
         self.logger.info("Calculation complete. Enriching diff...")
         enriched_diff_pair = await self.diff_enricher.enrich(

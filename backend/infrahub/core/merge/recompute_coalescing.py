@@ -176,10 +176,15 @@ class CoalescedSubmission:
 
 
 class CoalescedRecomputeBuilder:
-    """Derive the deduplicated recompute for a merge or rebase change set from one schema branch."""
+    """Derive the deduplicated recompute for a merge or rebase change set from one schema branch.
 
-    def __init__(self, schema_branch: SchemaBranch) -> None:
+    ``refresh_updated_nodes`` also recomputes an updated node's own derived values, for a change set replayed onto
+    a base that moved under the values the node derived when it was saved.
+    """
+
+    def __init__(self, schema_branch: SchemaBranch, refresh_updated_nodes: bool = False) -> None:
         self.schema_branch = schema_branch
+        self.refresh_updated_nodes = refresh_updated_nodes
 
     def build(self, *, changes: Iterable[MergeChange], branch: str) -> CoalescedRecompute:
         """Derive the deduplicated set of derived values to recompute for a merge or rebase.
@@ -247,6 +252,12 @@ class CoalescedRecomputeBuilder:
                 include_cross=True,
                 precise=True,
             )
+            if self.refresh_updated_nodes:
+                # Every value the node derived read the old base, including one that reads no changed field.
+                yield from self._derive_family_targets(
+                    kind=signature.kind, fields=None, include_self=True, include_cross=False, precise=True
+                )
+                return
             # A relationship change that doesn't save the reader (e.g. a peer deleted on another branch)
             # skips the reader's inline recompute, so refresh its own values here.
             relationship_fields = self._changed_relationship_fields(

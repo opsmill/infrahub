@@ -1,1 +1,0 @@
-Fixed the diff of a branch without changes of its own collecting every change made on the default branch since the branch was created, which made updating its diff and rebasing it slow and could exhaust database memory.

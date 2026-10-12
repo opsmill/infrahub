@@ -62,6 +62,10 @@ docker ps | grep infrahub
 
 :::
 
+### Observability (optional)
+
+To also deploy the observability stack (Grafana, Prometheus, Loki, Tempo, Alloy), fetch the compose file with `?observability=true`: `curl "https://infrahub.opsmill.io/?observability=true" > docker-compose.yml`. See [Observability stack](./observability-stack).
+
 ### Stop and remove an Infrahub environment
 
 <Tabs groupId="os" queryString>

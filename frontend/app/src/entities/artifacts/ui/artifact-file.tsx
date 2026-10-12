@@ -3,6 +3,7 @@ import { DataViewerLinkButton } from "@/shared/components/data-viewer/data-viewe
 import { DataViewerCopyButton } from "@/shared/components/data-viewer/data-viewer-copy-button";
 import { DataViewerDownloadButton } from "@/shared/components/data-viewer/data-viewer-download-button";
 import type { DataViewerContentType } from "@/shared/components/data-viewer/types";
+import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { isBinaryContentType, isCopyableContentType } from "@/shared/utils/file";
@@ -25,7 +26,7 @@ export function ArtifactFile({ storageId, fileName, contentType, className }: Ar
   }
 
   if (error) {
-    return <NoDataFound message={error.message} />;
+    return <ErrorScreen message={<p className="max-w-prose text-center">{error.message}</p>} />;
   }
 
   if (!data) {

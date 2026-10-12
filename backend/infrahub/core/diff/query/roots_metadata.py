@@ -21,6 +21,7 @@ class EnrichedDiffRootsMetadataQuery(Query):
         to_time: Timestamp | None = None,
         tracking_id: TrackingId | None = None,
         proposed_change_id: str | None = None,
+        diff_ids: list[str] | None = None,
         exclude_merged: bool = True,
         **kwargs: Any,
     ) -> None:
@@ -31,6 +32,7 @@ class EnrichedDiffRootsMetadataQuery(Query):
         self.to_time = to_time
         self.tracking_id = tracking_id
         self.proposed_change_id = proposed_change_id
+        self.diff_ids = diff_ids
         self.exclude_merged = exclude_merged
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
@@ -41,6 +43,7 @@ class EnrichedDiffRootsMetadataQuery(Query):
             "to_time": self.to_time.to_string() if self.to_time else None,
             "tracking_id": self.tracking_id.serialize() if self.tracking_id else None,
             "proposed_change_id": self.proposed_change_id,
+            "diff_ids": self.diff_ids,
             "exclude_merged": self.exclude_merged,
         }
 
@@ -52,6 +55,7 @@ class EnrichedDiffRootsMetadataQuery(Query):
         AND ($from_time IS NULL OR diff_root.from_time >= $from_time)
         AND ($to_time IS NULL OR diff_root.to_time <= $to_time)
         AND ($tracking_id IS NULL OR diff_root.tracking_id = $tracking_id)
+        AND ($diff_ids IS NULL OR diff_root.uuid IN $diff_ids)
         AND ($proposed_change_id IS NULL OR EXISTS {
             MATCH (diff_root)-[:DIFF_FOR_PROPOSED_CHANGE]->(:Node {uuid: $proposed_change_id})
         })

@@ -3,6 +3,8 @@ title: Observability stack
 ---
 
 import ReferenceLink from "../../../../src/components/Card";
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
 
 # Observability stack
 
@@ -13,22 +15,36 @@ Infrahub ships an observability stack that runs alongside Infrahub:
 - **Prometheus** — metric storage
 - **Tempo** — distributed tracing
 - **Grafana** — dashboards and visualization
-- **Prefect exporter** — task-manager metrics
+- **Prefect exporter** — task-manager metrics, see [Metrics](../../run-observe/metrics.mdx)
 
-You can deploy it with **Docker Compose** (Infrahub Enterprise) or on **Kubernetes** with the `infrahub-observability` Helm chart. Grafana comes provisioned with pre-built dashboards and data sources for Infrahub, Neo4j, RabbitMQ, and Prefect.
+You can deploy it with **Docker Compose** or on **Kubernetes** with the `infrahub-observability` Helm chart. Grafana comes provisioned with pre-built dashboards and data sources for Infrahub, Neo4j, RabbitMQ, and Prefect.
 
 <ReferenceLink title="infrahub-observability Helm chart" url="https://github.com/opsmill/infrahub-helm/tree/stable/charts/infrahub-observability" openInNewTab />
 
 ## Docker Compose
 
-The Infrahub Enterprise Docker Compose deployment can include the observability stack. Add the `?observability=true` query parameter when you fetch the compose file:
+The Community and Enterprise Docker Compose deployments can both include the observability stack. Add the `?observability=true` query parameter when you fetch the compose file:
+
+<Tabs groupId="edition" queryString>
+<TabItem value="community" label="Community" default>
+
+```bash
+curl "https://infrahub.opsmill.io/?observability=true" > docker-compose.yml
+docker compose -p infrahub up -d
+```
+
+</TabItem>
+<TabItem value="enterprise" label="Enterprise">
 
 ```bash
 curl "https://infrahub.opsmill.io/enterprise?observability=true" > docker-compose.yml
 docker compose -p infrahub up -d
 ```
 
-It combines with other parameters such as a sizing preset:
+</TabItem>
+</Tabs>
+
+On Enterprise, it combines with other parameters such as a sizing preset:
 
 ```bash
 curl "https://infrahub.opsmill.io/enterprise?size=small&observability=true" > docker-compose.yml
@@ -65,7 +81,7 @@ The bundle is a PEM file that must be readable by the Infrahub server and task w
 
 To skip certificate verification entirely in a test environment, set `INFRAHUB_TRACE_TLS_INSECURE=true`. This requires `INFRAHUB_TRACE_EXPORTER_PROTOCOL=http/protobuf` and an `https://` endpoint, because the gRPC client cannot skip verification; use a CA bundle for gRPC collectors. Never enable it in production.
 
-For the full Infrahub Enterprise Compose install, see the [Enterprise install guide](./enterprise).
+For the full Compose install, see the [Community](./community) or [Enterprise](./enterprise) install guide.
 
 ## Kubernetes with Helm
 

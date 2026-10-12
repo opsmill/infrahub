@@ -208,3 +208,42 @@ class TestArtifactDefinitionGenerateMembers(TestInfrahubAppWithoutLocalWorkflow)
             for call in workflow_recorder.get_submit_calls_for(REQUEST_ARTIFACT_GENERATE)
         }
         assert targets == {dataset["device1_id"], dataset["device2_id"]}
+
+    async def test_only_a_limited_regeneration_checks_the_stored_file(
+        self,
+        db: InfrahubDatabase,
+        dataset: dict[str, Any],
+        default_branch: Branch,
+        admin_account: CoreAccount,
+        workflow_recorder: WorkflowRecorder,
+    ) -> None:
+        """Regenerating given artifacts checks their stored file; regenerating the whole definition does not."""
+        artifact = await Node.init(db=db, schema=InfrahubKind.ARTIFACT)
+        await artifact.new(
+            db=db,
+            name="device-config",
+            definition=dataset["artifact_definition_id"],
+            object=dataset["device2_id"],
+            status="Ready",
+            content_type="text/plain",
+        )
+        await artifact.save(db=db)
+        context = self._context(admin_account, default_branch)
+        base = {
+            "artifact_definition_id": dataset["artifact_definition_id"],
+            "artifact_definition_name": "device-artifact",
+            "branch": default_branch.name,
+        }
+
+        await generate_request_artifact_definition(
+            model=RequestArtifactDefinitionGenerate(**base, limit=[artifact.id]), context=context
+        )
+        await generate_request_artifact_definition(model=RequestArtifactDefinitionGenerate(**base), context=context)
+
+        requests = [
+            (call["parameters"]["model"].target_id, call["parameters"]["model"].check_stored_file)
+            for call in workflow_recorder.get_submit_calls_for(REQUEST_ARTIFACT_GENERATE)
+        ]
+        limited, *whole_definition = requests
+        assert limited == (dataset["device2_id"], True)
+        assert sorted(whole_definition) == sorted([(dataset["device1_id"], False), (dataset["device2_id"], False)])

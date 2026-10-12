@@ -1,3 +1,4 @@
+import hashlib
 import io
 from unittest.mock import call, patch
 
@@ -14,12 +15,20 @@ from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
+from infrahub.core.protocols import CoreArtifact
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE
 from tests.helpers.test_app import TestInfrahubApp
 from tests.helpers.test_client import InfrahubTestClient
+
+STORAGE_ID = "95008984-16ca-4e58-8323-0899bb60035f"
+CONTENT = b'{"test": true}'
+
+
+def md5(content: bytes) -> str:
+    return hashlib.md5(content, usedforsecurity=False).hexdigest()
 
 
 class TestArtifact11(TestInfrahubApp):
@@ -80,13 +89,13 @@ class TestArtifact11(TestInfrahubApp):
             definition=definition,
             status="Ready",
             object=car_person_data_generic["c1"],
-            storage_id="95008984-16ca-4e58-8323-0899bb60035f",
-            checksum="60d39063c26263353de24e1b913e1e1c",
+            storage_id=STORAGE_ID,
+            checksum=md5(CONTENT),
             content_type="application/json",
         )
         await artifact.save(db=db)
 
-        registry.storage.store(identifier="95008984-16ca-4e58-8323-0899bb60035f", content=io.BytesIO(b'{"test": true}'))
+        registry.storage.store(identifier=STORAGE_ID, content=io.BytesIO(CONTENT))
 
         return artifact
 
@@ -155,7 +164,7 @@ class TestArtifact11(TestInfrahubApp):
         authentication_base: Node,
         test_client: InfrahubTestClient,
     ) -> None:
-        response = await test_client.get("/api/artifact/95008984-16ca-4e58-8323-0899bb60035f", headers=admin_headers)
+        response = await test_client.get(f"/api/artifact/{STORAGE_ID}", headers=admin_headers)
         assert response.status_code == 404
 
         artifact = await self.setup_artifact(
@@ -169,6 +178,222 @@ class TestArtifact11(TestInfrahubApp):
 
         assert response.status_code == 200
         assert response.json() == {"test": True}
+
+    @pytest.mark.parametrize("by_storage_id", [False, True], ids=["artifact-endpoint", "storage-endpoint"])
+    @pytest.mark.parametrize(
+        ("stored", "expected_status"),
+        [(CONTENT, 200), (b'{"test": false}', 409), (None, 404)],
+        ids=["unchanged", "modified", "missing"],
+    )
+    async def test_artifact_file_is_served_only_when_it_matches_its_checksum(
+        self,
+        db: InfrahubDatabase,
+        admin_headers: dict[str, str],
+        register_core_models_schema: SchemaBranch,
+        register_builtin_models_schema: SchemaBranch,
+        car_person_data_generic: dict[str, Node],
+        authentication_base: Node,
+        test_client: InfrahubTestClient,
+        by_storage_id: bool,
+        stored: bytes | None,
+        expected_status: int,
+    ) -> None:
+        artifact = await self.setup_artifact(
+            db=db,
+            register_core_models_schema=register_core_models_schema,
+            register_builtin_models_schema=register_builtin_models_schema,
+            car_person_data_generic=car_person_data_generic,
+        )
+        if stored is None:
+            registry.storage.delete(identifier=STORAGE_ID)
+        else:
+            registry.storage.store(identifier=STORAGE_ID, content=io.BytesIO(stored))
+
+        url = f"/api/storage/object/{STORAGE_ID}" if by_storage_id else f"/api/artifact/{artifact.id}"
+        response = await test_client.get(url, headers=admin_headers)
+
+        assert response.status_code == expected_status
+        if expected_status == 200:
+            assert response.content == CONTENT
+        if expected_status == 409:
+            assert response.json()["errors"][0]["message"] == (
+                f"The stored file of this artifact ({STORAGE_ID}) does not match its checksum, so it was not served. "
+                "It may have been modified outside of Infrahub. Regenerate the artifact to restore it."
+            )
+
+    async def test_artifact_file_is_served_unchecked_when_verification_is_off(
+        self,
+        db: InfrahubDatabase,
+        admin_headers: dict[str, str],
+        register_core_models_schema: SchemaBranch,
+        register_builtin_models_schema: SchemaBranch,
+        car_person_data_generic: dict[str, Node],
+        authentication_base: Node,
+        test_client: InfrahubTestClient,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        artifact = await self.setup_artifact(
+            db=db,
+            register_core_models_schema=register_core_models_schema,
+            register_builtin_models_schema=register_builtin_models_schema,
+            car_person_data_generic=car_person_data_generic,
+        )
+        registry.storage.store(identifier=STORAGE_ID, content=io.BytesIO(b'{"test": false}'))
+        monkeypatch.setattr(config.SETTINGS.storage, "verify_artifact_checksum", False)
+
+        for url in (f"/api/artifact/{artifact.id}", f"/api/storage/object/{STORAGE_ID}"):
+            response = await test_client.get(url, headers=admin_headers)
+            assert response.status_code == 200
+            assert response.content == b'{"test": false}'
+
+    async def test_storage_endpoint_serves_content_no_artifact_references(
+        self,
+        db: InfrahubDatabase,
+        admin_headers: dict[str, str],
+        default_branch: Branch,
+        authentication_base: Node,
+        test_client: InfrahubTestClient,
+    ) -> None:
+        registry.storage.store(identifier="unreferenced", content=io.BytesIO(b"anything"))
+
+        response = await test_client.get("/api/storage/object/unreferenced", headers=admin_headers)
+
+        assert response.status_code == 200
+        assert response.content == b"anything"
+
+    async def test_storage_endpoint_checks_each_version_against_its_own_checksum(
+        self,
+        db: InfrahubDatabase,
+        admin_headers: dict[str, str],
+        register_core_models_schema: SchemaBranch,
+        register_builtin_models_schema: SchemaBranch,
+        car_person_data_generic: dict[str, Node],
+        authentication_base: Node,
+        test_client: InfrahubTestClient,
+    ) -> None:
+        artifact = await self.setup_artifact(
+            db=db,
+            register_core_models_schema=register_core_models_schema,
+            register_builtin_models_schema=register_builtin_models_schema,
+            car_person_data_generic=car_person_data_generic,
+        )
+        branch = await create_branch(branch_name="branch1", db=db)
+        versions = [
+            (branch, "branch-version", b'{"test": "branch"}'),
+            (registry.get_branch_from_registry(), "main-version", b'{"test": "main"}'),
+        ]
+        for version_branch, storage_id, content in versions:
+            registry.storage.store(identifier=storage_id, content=io.BytesIO(content))
+            version = await registry.manager.get_one(
+                db=db, id=artifact.id, branch=version_branch, kind=CoreArtifact, raise_on_error=True
+            )
+            version.storage_id.value = storage_id
+            version.checksum.value = md5(content)
+            await version.save(db=db)
+
+        # Every version is served as long as it matches the checksum recorded with it, including the previous one
+        for _, storage_id, content in [(None, STORAGE_ID, CONTENT), *versions]:
+            response = await test_client.get(f"/api/storage/object/{storage_id}", headers=admin_headers)
+            assert response.status_code == 200
+            assert response.content == content
+
+        # The content of another version does not match
+        registry.storage.store(identifier="branch-version", content=io.BytesIO(b'{"test": "main"}'))
+        registry.storage.store(identifier=STORAGE_ID, content=io.BytesIO(b'{"test": "main"}'))
+        for storage_id in ("branch-version", STORAGE_ID):
+            response = await test_client.get(f"/api/storage/object/{storage_id}", headers=admin_headers)
+            assert response.status_code == 409
+
+    async def test_artifact_endpoint_refuses_an_artifact_without_checksum(
+        self,
+        db: InfrahubDatabase,
+        admin_headers: dict[str, str],
+        register_core_models_schema: SchemaBranch,
+        register_builtin_models_schema: SchemaBranch,
+        car_person_data_generic: dict[str, Node],
+        authentication_base: Node,
+        test_client: InfrahubTestClient,
+    ) -> None:
+        artifact = await self.setup_artifact(
+            db=db,
+            register_core_models_schema=register_core_models_schema,
+            register_builtin_models_schema=register_builtin_models_schema,
+            car_person_data_generic=car_person_data_generic,
+        )
+        artifact.checksum.value = None
+        await artifact.save(db=db)
+
+        response = await test_client.get(f"/api/artifact/{artifact.id}", headers=admin_headers)
+
+        assert response.status_code == 409
+        assert response.json()["errors"][0]["message"] == (
+            f"This artifact has no recorded checksum to check its stored file ({STORAGE_ID}) against, "
+            "so it was not served. Regenerate the artifact to restore it."
+        )
+
+    async def test_artifact_file_replaced_with_another_artifact_content_is_refused(
+        self,
+        db: InfrahubDatabase,
+        admin_headers: dict[str, str],
+        register_core_models_schema: SchemaBranch,
+        register_builtin_models_schema: SchemaBranch,
+        car_person_data_generic: dict[str, Node],
+        authentication_base: Node,
+        test_client: InfrahubTestClient,
+    ) -> None:
+        artifact = await self.setup_artifact(
+            db=db,
+            register_core_models_schema=register_core_models_schema,
+            register_builtin_models_schema=register_builtin_models_schema,
+            car_person_data_generic=car_person_data_generic,
+        )
+        other_content = b'{"test": "other artifact"}'
+        other = await Node.init(db=db, schema=InfrahubKind.ARTIFACT)
+        await other.new(
+            db=db,
+            name="other",
+            definition=await artifact.definition.get_peer(db=db),
+            status="Ready",
+            object=car_person_data_generic["c2"],
+            storage_id="other-storage-id",
+            checksum=md5(other_content),
+            content_type="application/json",
+        )
+        await other.save(db=db)
+        registry.storage.store(identifier=STORAGE_ID, content=io.BytesIO(other_content))
+
+        for url in (f"/api/storage/object/{STORAGE_ID}", f"/api/artifact/{artifact.id}"):
+            response = await test_client.get(url, headers=admin_headers)
+            assert response.status_code == 409
+
+    async def test_artifact_endpoint_checks_the_checksum_of_the_requested_branch(
+        self,
+        db: InfrahubDatabase,
+        admin_headers: dict[str, str],
+        register_core_models_schema: SchemaBranch,
+        register_builtin_models_schema: SchemaBranch,
+        car_person_data_generic: dict[str, Node],
+        authentication_base: Node,
+        test_client: InfrahubTestClient,
+    ) -> None:
+        artifact = await self.setup_artifact(
+            db=db,
+            register_core_models_schema=register_core_models_schema,
+            register_builtin_models_schema=register_builtin_models_schema,
+            car_person_data_generic=car_person_data_generic,
+        )
+        # The file is stored again on the branch while the checksum stays the one recorded on main
+        branch = await create_branch(branch_name="branch1", db=db)
+        branch_artifact = await registry.manager.get_one(
+            db=db, id=artifact.id, branch=branch, kind=CoreArtifact, raise_on_error=True
+        )
+        branch_artifact.storage_id.value = "branch-copy"
+        await branch_artifact.save(db=db)
+        registry.storage.store(identifier="branch-copy", content=io.BytesIO(b'{"test": false}'))
+
+        response = await test_client.get(f"/api/artifact/{artifact.id}?branch={branch.name}", headers=admin_headers)
+
+        assert response.status_code == 409
 
     @pytest.mark.parametrize("allow_anonymous_access", [False, True])
     async def test_artifact_endpoint_anonymous_account(

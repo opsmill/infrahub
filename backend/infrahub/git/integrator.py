@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import httpx
 import ujson
 import yaml
 from infrahub_sdk import InfrahubClient  # noqa: TC002
@@ -61,6 +62,7 @@ from infrahub.exceptions import (
     CheckError,
     CommitNotFoundError,
     RepositoryConfigurationError,
+    RepositoryError,
     RepositoryInvalidFileSystemError,
     TransformError,
 )
@@ -81,9 +83,11 @@ from infrahub.workflows.utils import add_tags
 
 if TYPE_CHECKING:
     import types
+    from collections.abc import Mapping
 
     from infrahub_sdk.checks import InfrahubCheck
     from infrahub_sdk.ctl.utils import YamlFileVar
+    from infrahub_sdk.protocols_base import CoreNode
     from infrahub_sdk.schema import MainSchemaTypesAPI
     from infrahub_sdk.schema.repository import InfrahubRepositoryArtifactDefinitionConfig
     from infrahub_sdk.transforms import InfrahubTransform
@@ -243,21 +247,46 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     class that uses an "InfrahubRepository" or "InfrahubReadOnlyRepository" as input
     """
 
+    def _has_valid_local_directories(self) -> bool:
+        """Return whether the local clone is usable, without raising when it is simply absent."""
+        try:
+            self.validate_local_directories()
+        except RepositoryInvalidFileSystemError:
+            return False
+        return True
+
+    def _local_copy_needs_cloning(self) -> bool:
+        """Return whether the local copy has to be cloned, because it is absent or present but unusable."""
+        try:
+            self.validate_local_directories()
+        except RepositoryInvalidFileSystemError:
+            return True
+        except RepositoryError as exc:
+            get_logger().warning("Replacing an unusable local copy", repository=self.name, reason=exc.message)
+            return True
+        return False
+
     @classmethod
     async def init(cls, commit: str | None = None, **kwargs: Any) -> Self:
         self = cls(**kwargs)
         log = get_logger()
-        try:
-            self.validate_local_directories()
-        except RepositoryInvalidFileSystemError:
+        if not self._has_valid_local_directories():
             await self.ensure_location_is_defined()
-            await self.create_locally(
-                checkout_ref=await self.resolve_checkout_ref(),
-                infrahub_branch_name=self.infrahub_branch_name,
-                update_commit_value=False,
-            )
-            self.reinitialized = True
-            log.info(f"Initialized the local directory for {self.name} because it was missing.")
+            # Cloning deletes and rebuilds the shared on-disk copy, so it has to be serialized.
+            async with lock.registry.get(name=self.name, namespace="repository"):
+                # The copy was absent a moment ago, so a broken one now was left by a failed concurrent clone.
+                if self._local_copy_needs_cloning():
+                    # A Repo opened on the copy being replaced would keep reading its deleted object store.
+                    if self.cache_repo is not None:
+                        self.cache_repo.close()
+                        self.cache_repo = None
+                    await self.create_locally(
+                        checkout_ref=await self.resolve_checkout_ref(),
+                        infrahub_branch_name=self.infrahub_branch_name,
+                        update_commit_value=False,
+                    )
+                    self.reinitialized = True
+                    log.info(f"Initialized the local directory for {self.name}.")
 
         # An existing clone keeps whatever origin URL it was first cloned with, so re-point it when the
         # configured location has since changed, so subsequent fetches target the current remote.
@@ -374,19 +403,19 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             )  # type: ignore[call-overload]
             if plan.config_file.schemas:
                 await self.sdk.schema.all(branch=plan.infrahub_branch_name, refresh=True)
-            await self._apply_graphql_query_definitions(
+            stale_queries = await self._apply_graphql_query_definitions(
                 branch_name=plan.infrahub_branch_name,
                 local_queries=plan.query_strings,
                 fingerprint_composer=fingerprint_composer,
             )
             # Transforms must be registered before objects so that an object referencing a transform
             # defined in the same repository resolves during import.
-            await self._apply_python_transform_definitions(
+            stale_python_transforms = await self._apply_python_transform_definitions(
                 branch_name=plan.infrahub_branch_name,
                 definitions=plan.transform_definitions,
                 fingerprint_composer=fingerprint_composer,
             )
-            await self._apply_jinja2_transform_definitions(
+            stale_jinja2_transforms = await self._apply_jinja2_transform_definitions(
                 branch_name=plan.infrahub_branch_name,
                 local_transforms=plan.jinja2_definitions,
                 fingerprint_composer=fingerprint_composer,
@@ -398,10 +427,10 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             )  # type: ignore[call-overload]
             # Checks, generators and artifact definitions are imported after objects because their
             # targets reference groups that are defined as objects in the repository.
-            await self._apply_python_check_definitions(
+            stale_checks = await self._apply_python_check_definitions(
                 branch_name=plan.infrahub_branch_name, definitions=plan.check_definitions
             )
-            await self._apply_generator_definitions(
+            stale_generators = await self._apply_generator_definitions(
                 branch_name=plan.infrahub_branch_name,
                 definitions=plan.generator_definitions,
                 fingerprint_composer=fingerprint_composer,
@@ -419,6 +448,17 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 commit=plan.commit,
                 config_file=plan.config_file,
             )  # type: ignore[call-overload]
+            # A mandatory relationship blocks deleting its peer, so a removed node is deleted only
+            # after everything still declared has been re-pointed, and before the nodes it references.
+            stale_nodes_in_delete_order: list[Mapping[str, CoreNode]] = [
+                stale_generators,
+                stale_checks,
+                stale_python_transforms,
+                stale_jinja2_transforms,
+                stale_queries,
+            ]
+            for stale_nodes in stale_nodes_in_delete_order:
+                await self._delete_stale_nodes(branch_name=plan.infrahub_branch_name, nodes=stale_nodes)
 
         except Exception as exc:
             sync_status = RepositorySyncStatus.ERROR_IMPORT
@@ -448,6 +488,13 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         """Wire a fingerprint composer against the pinned commit worktree for one import."""
         return build_fingerprint_composer(repo=self.get_git_repo_worktree(identifier=commit), commit=commit)
 
+    async def _delete_stale_nodes(self, branch_name: str, nodes: Mapping[str, CoreNode]) -> None:
+        """Delete graph nodes the repository no longer declares, keyed by name, in the order given."""
+        log = get_run_logger()
+        for name, node in nodes.items():
+            log.info(f"{node.get_kind()} {name!r} not found locally in branch {branch_name}, deleting")
+            await node.delete()
+
     @task(name="import-jinja2-transforms", task_run_name="Import Jinja2 transform", cache_policy=NONE)
     async def import_jinja2_transforms(
         self,
@@ -458,11 +505,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         local_transforms = await self._build_jinja2_transform_definitions(
             branch_name=branch_name, commit=commit, config_file=config_file
         )
-        await self._apply_jinja2_transform_definitions(
+        stale_transforms = await self._apply_jinja2_transform_definitions(
             branch_name=branch_name,
             local_transforms=local_transforms,
             fingerprint_composer=self._build_fingerprint_composer(commit=commit),
         )
+        await self._delete_stale_nodes(branch_name=branch_name, nodes=stale_transforms)
 
     async def _build_jinja2_transform_definitions(
         self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
@@ -517,8 +565,11 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         branch_name: str,
         local_transforms: dict[str, InfrahubRepositoryJinja2],
         fingerprint_composer: FingerprintComposer,
-    ) -> None:
-        """Reconcile the desired Jinja2 transform definitions against the graph: create, update, delete.
+    ) -> dict[str, CoreTransformJinja2]:
+        """Reconcile the desired Jinja2 transform definitions against the graph by creating and updating.
+
+        Returns the transforms the repository no longer declares, left for the caller to delete once
+        whatever references them has been reconciled.
 
         Mutates graph nodes whose names are globally unique, so it must run serialized against any
         concurrent import of the same repository.
@@ -581,9 +632,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                     fingerprint=fingerprint,
                 )
 
-        for transform_name in only_graph:
-            log.info(f"Jinja2 Transform '{transform_name}' not found locally in branch {branch_name}, deleting")
-            await transforms_in_graph[transform_name].delete()
+        return {transform_name: transforms_in_graph[transform_name] for transform_name in only_graph}
 
     async def create_jinja2_transform(
         self, branch_name: str, data: InfrahubRepositoryJinja2, fingerprint: str | None = None
@@ -952,11 +1001,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         """
         local_queries = await self._build_graphql_query_definitions(commit=commit, config_file=config_file)
-        await self._apply_graphql_query_definitions(
+        stale_queries = await self._apply_graphql_query_definitions(
             branch_name=branch_name,
             local_queries=local_queries,
             fingerprint_composer=self._build_fingerprint_composer(commit=commit),
         )
+        await self._delete_stale_nodes(branch_name=branch_name, nodes=stale_queries)
 
     async def _build_graphql_query_definitions(
         self, commit: str, config_file: InfrahubRepositoryConfig
@@ -989,8 +1039,11 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
     async def _apply_graphql_query_definitions(
         self, branch_name: str, local_queries: dict[str, str], fingerprint_composer: FingerprintComposer
-    ) -> None:
-        """Reconcile the desired GraphQL queries against the graph by creating, updating and deleting.
+    ) -> dict[str, CoreGraphQLQuery]:
+        """Reconcile the desired GraphQL queries against the graph by creating and updating.
+
+        Returns the queries the repository no longer declares, left for the caller to delete once
+        whatever references them has been reconciled.
 
         Mutates graph nodes whose names are globally unique, so it must run serialized against any
         concurrent import of the same repository.
@@ -1006,9 +1059,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             )
             for query_name, query_text in local_queries.items()
         }
-
-        if not local_queries:
-            return
 
         queries_in_graph = {
             query.name.value: query
@@ -1043,10 +1093,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             if changed:
                 await graph_query.save()
 
-        for query_name in only_graph:
-            graph_query = queries_in_graph[query_name]
-            log.info(f"Graphql Query {query_name!r} not found locally, deleting")
-            await graph_query.delete()
+        return {query_name: queries_in_graph[query_name] for query_name in only_graph}
 
     async def create_graphql_query(
         self, branch_name: str, name: str, query_string: str, fingerprint: str | None = None
@@ -1071,7 +1118,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         definitions = await self._build_python_check_definitions(
             branch_name=branch_name, commit=commit, config_file=config_file
         )
-        await self._apply_python_check_definitions(branch_name=branch_name, definitions=definitions)
+        stale_checks = await self._apply_python_check_definitions(branch_name=branch_name, definitions=definitions)
+        await self._delete_stale_nodes(branch_name=branch_name, nodes=stale_checks)
 
     async def _build_python_check_definitions(
         self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
@@ -1121,8 +1169,10 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
     async def _apply_python_check_definitions(
         self, branch_name: str, definitions: list[CheckDefinitionInformation]
-    ) -> None:
-        """Reconcile the desired check definitions against the graph by creating, updating and deleting.
+    ) -> dict[str, CoreCheckDefinition]:
+        """Reconcile the desired check definitions against the graph by creating and updating.
+
+        Returns the check definitions the repository no longer declares, left for the caller to delete.
 
         Mutates graph nodes whose names are globally unique, so it must run serialized against any
         concurrent import of the same repository.
@@ -1166,9 +1216,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                     existing_check=check_definition_in_graph[check_name],
                 )
 
-        for check_name in only_graph:
-            log.info(f"CheckDefinition '{check_name!r}' not found locally, deleting")
-            await check_definition_in_graph[check_name].delete()
+        return {check_name: check_definition_in_graph[check_name] for check_name in only_graph}
 
     @task(name="import-generator-definitions", task_run_name="Import Generator Definitions", cache_policy=NONE)
     async def import_generator_definitions(
@@ -1177,11 +1225,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         definitions = await self._build_generator_definitions(
             branch_name=branch_name, commit=commit, config_file=config_file
         )
-        await self._apply_generator_definitions(
+        stale_generators = await self._apply_generator_definitions(
             branch_name=branch_name,
             definitions=definitions,
             fingerprint_composer=self._build_fingerprint_composer(commit=commit),
         )
+        await self._delete_stale_nodes(branch_name=branch_name, nodes=stale_generators)
 
     async def _build_generator_definitions(
         self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
@@ -1227,8 +1276,10 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         branch_name: str,
         definitions: list[GeneratorDefinitionWithClosure],
         fingerprint_composer: FingerprintComposer,
-    ) -> None:
-        """Reconcile the desired generator definitions against the graph by creating, updating and deleting.
+    ) -> dict[str, CoreGeneratorDefinition]:
+        """Reconcile the desired generator definitions against the graph by creating and updating.
+
+        Returns the generator definitions the repository no longer declares, left for the caller to delete.
 
         Mutates graph nodes whose names are globally unique, so it must run serialized against any
         concurrent import of the same repository.
@@ -1299,9 +1350,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                     fingerprint=fingerprint,
                 )
 
-        for generator_name in only_graph:
-            log.info(f"GeneratorDefinition '{generator_name!r}' not found locally, deleting")
-            await generator_definition_in_graph[generator_name].delete()
+        return {generator_name: generator_definition_in_graph[generator_name] for generator_name in only_graph}
 
     async def _resolve_target_group_id(self, branch_name: str, group_name: str) -> str | None:
         """Resolve a target group name to its node id for the group-identity fingerprint term."""
@@ -1358,11 +1407,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         definitions = await self._build_python_transform_definitions(
             branch_name=branch_name, commit=commit, config_file=config_file
         )
-        await self._apply_python_transform_definitions(
+        stale_transforms = await self._apply_python_transform_definitions(
             branch_name=branch_name,
             definitions=definitions,
             fingerprint_composer=self._build_fingerprint_composer(commit=commit),
         )
+        await self._delete_stale_nodes(branch_name=branch_name, nodes=stale_transforms)
 
     async def _build_python_transform_definitions(
         self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
@@ -1424,8 +1474,11 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         branch_name: str,
         definitions: list[TransformPythonInformation],
         fingerprint_composer: FingerprintComposer,
-    ) -> None:
-        """Reconcile the desired transform definitions against the graph by creating, updating and deleting.
+    ) -> dict[str, CoreTransformPython]:
+        """Reconcile the desired transform definitions against the graph by creating and updating.
+
+        Returns the transforms the repository no longer declares, left for the caller to delete once
+        whatever references them has been reconciled.
 
         Mutates graph nodes whose names are globally unique, so it must run serialized against any
         concurrent import of the same repository.
@@ -1491,9 +1544,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                     fingerprint=fingerprint,
                 )
 
-        for transform_name in only_graph:
-            log.info(f"TransformPython {transform_name!r} not found locally, deleting")
-            await transform_definition_in_graph[transform_name].delete()
+        return {transform_name: transform_definition_in_graph[transform_name] for transform_name in only_graph}
 
     async def _load_yamlfile_from_disk(self, paths: list[Path], file_type: type[YamlFileVar]) -> list[YamlFileVar]:
         data_files = file_type.load_from_disk(paths=paths)
@@ -2164,6 +2215,25 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         return ArtifactGenerateResult(changed=True, checksum=checksum, storage_id=storage_id, artifact_id=artifact.id)
 
+    async def _stored_content_matches(self, storage_id: str | None, checksum: str) -> bool:
+        """Whether the object storage still holds the content recorded with this checksum.
+
+        A missing object (404) and one the API refuses because it failed its integrity check (409) do not.
+
+        Raises:
+            httpx.HTTPStatusError: If the object cannot be read for another reason.
+
+        """
+        if not storage_id:
+            return False
+        try:
+            content = await self.sdk.object_store.get(identifier=storage_id, tracker="artifact-verify-content")
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code not in {404, 409}:
+                raise
+            return False
+        return hashlib.md5(bytes(content, encoding="utf-8"), usedforsecurity=False).hexdigest() == checksum
+
     async def render_artifact(
         self,
         artifact: CoreArtifact,
@@ -2208,7 +2278,11 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         checksum = hashlib.md5(bytes(artifact_content_str, encoding="utf-8"), usedforsecurity=False).hexdigest()
 
-        if artifact.checksum.value == checksum:
+        # Same content: keep the stored file, unless it was asked to be checked and is missing or refused.
+        if artifact.checksum.value == checksum and (
+            not message.check_stored_file
+            or await self._stored_content_matches(storage_id=artifact.storage_id.value, checksum=checksum)
+        ):
             return ArtifactGenerateResult(
                 changed=False, checksum=checksum, storage_id=artifact.storage_id.value, artifact_id=artifact.id
             )

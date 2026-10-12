@@ -1301,3 +1301,54 @@ async def test_single_relationship_id_only_uses_preloaded_peer_id(
         "TestPerson": {"edges": [{"node": {"id": person.id, "favorite_animal": {"node": {"id": dog.id}}}}]}
     }
     assert gql_params.context.related_node_ids == {person.id, dog.id}
+
+
+async def test_query_many_relationship_with_a_shared_peer_across_pages(
+    db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None, query_limit_of_one: None
+) -> None:
+    """Each person keeps its tag when the read of the tags of all the persons spans several pages."""
+    tag = await Node.init(db=db, schema=InfrahubKind.TAG)
+    await tag.new(db=db, name="Blue")
+    await tag.save(db=db)
+    persons = []
+    for idx in range(10):
+        person = await Node.init(db=db, schema="TestPerson")
+        await person.new(db=db, firstname=f"person-{idx}", lastname="Doe", tags=[tag])
+        await person.save(db=db)
+        persons.append(person)
+
+    query = """
+    query {
+        TestPerson {
+            edges {
+                node {
+                    id
+                    tags {
+                        edges {
+                            node {
+                                id
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data
+    assert len(result.data["TestPerson"]["edges"]) == 10
+    assert {
+        edge["node"]["id"]: [tag_edge["node"]["id"] for tag_edge in edge["node"]["tags"]["edges"]]
+        for edge in result.data["TestPerson"]["edges"]
+    } == {person.id: [tag.id] for person in persons}

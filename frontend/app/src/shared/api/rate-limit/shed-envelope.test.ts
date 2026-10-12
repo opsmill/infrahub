@@ -148,6 +148,17 @@ describe("withShedWording", () => {
     expect(reworded.headers.get(SHED_MARKER_HEADER)).toBe(SHED_MARKER_VALUE);
   });
 
+  it("drops the original Content-Length, which no longer describes the copy's body", async () => {
+    // GIVEN
+    const response = shedResponse({ "Content-Length": "9999" });
+
+    // WHEN
+    const reworded = await withShedWording(response);
+
+    // THEN
+    expect(reworded.headers.get("Content-Length")).toBeNull();
+  });
+
   it("leaves a 429 from something else in front of the API untouched", async () => {
     // GIVEN
     const response = foreignRateLimitResponse();

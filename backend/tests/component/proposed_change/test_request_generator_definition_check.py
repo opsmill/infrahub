@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import uuid
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
@@ -28,7 +29,7 @@ from tests.helpers.schema import load_schema
 from tests.helpers.test_app import TestInfrahubAppWithoutLocalWorkflow
 from tests.helpers.workflow_override import override_workflow
 
-from .conftest import QUERY_NON_UNIQUE_TARGETS, QUERY_UNIQUE_TARGETS, make_node_diff
+from .conftest import FLOW_RUN_LOGGER, QUERY_NON_UNIQUE_TARGETS, QUERY_UNIQUE_TARGETS, make_node_diff
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -176,6 +177,52 @@ GENERATOR_DISPATCH_CASES = [
         name="flip_on_read_relationship_dispatches_matching_instance",
         definition_key="gendef_tags",
         diff=[DiffEntry(id_key="dev1_id", kind="TestNetworkDevice", fields=["tags"], element_type="RELATIONSHIP_MANY")],
+        expected_keys=["dev1_id"],
+    ),
+]
+
+
+@dataclass
+class GeneratorWideningLogCase:
+    name: str
+    definition_key: str
+    diff: list[DiffEntry]
+    expected_warnings: list[str]
+    expected_keys: list[str]
+
+
+ALL_INSTANCES = ["dev1_id", "dev2_id", "dev3_id", "dev4_id"]
+
+GENERATOR_WIDENING_LOG_CASES = [
+    GeneratorWideningLogCase(
+        name="non_unique_query_names_target_uniqueness",
+        definition_key="gendef_non_unique",
+        diff=[DiffEntry(id_key="dev1_id", kind="TestNetworkDevice", fields=["name"])],
+        expected_warnings=[
+            "Generator definition device-generator: the query does not guarantee unique targets. "
+            "All targets will be processed."
+        ],
+        expected_keys=ALL_INSTANCES,
+    ),
+    GeneratorWideningLogCase(
+        name="change_on_a_related_kind_names_that_kind_not_target_uniqueness",
+        definition_key="gendef_tags",
+        diff=[
+            DiffEntry(
+                id_key="00000000-0000-0000-0000-000000000000", kind=InfrahubKind.TAG, fields=["name"], literal_id=True
+            )
+        ],
+        expected_warnings=[
+            f"Generator definition device-generator: the query reads {InfrahubKind.TAG} through a relationship, "
+            "and a change there cannot be traced back to specific targets. All targets will be processed."
+        ],
+        expected_keys=ALL_INSTANCES,
+    ),
+    GeneratorWideningLogCase(
+        name="narrowed_selection_logs_no_widening",
+        definition_key="gendef_unique",
+        diff=[DiffEntry(id_key="dev1_id", kind="TestNetworkDevice", fields=["name"])],
+        expected_warnings=[],
         expected_keys=["dev1_id"],
     ),
 ]
@@ -503,3 +550,43 @@ class TestRequestGeneratorDefinitionCheck(TestInfrahubAppWithoutLocalWorkflow):
         )
         expected_targets = {generator_dataset[key] for key in case.expected_keys}
         assert self._dispatched_target_ids(workflow_recorder) == expected_targets
+
+    @pytest.mark.parametrize("case", GENERATOR_WIDENING_LOG_CASES, ids=lambda case: case.name)
+    async def test_widening_warning_names_the_actual_reason(
+        self,
+        case: GeneratorWideningLogCase,
+        generator_dataset: dict[str, Any],
+        memory_cache: MemoryCache,
+        workflow_recorder: WorkflowRecorder,
+        default_branch: Branch,
+        admin_account: CoreAccount,
+        client: InfrahubClient,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        diff_summary = [
+            make_node_diff(
+                entry.id_key if entry.literal_id else generator_dataset[entry.id_key],
+                entry.kind,
+                SOURCE_BRANCH,
+                entry.fields,
+                element_type=entry.element_type,
+            )
+            for entry in case.diff
+        ]
+        with caplog.at_level(logging.INFO, logger=FLOW_RUN_LOGGER):
+            await self._run(
+                generator_dataset[case.definition_key],
+                generator_dataset,
+                self._make_context(admin_account, default_branch),
+                diff_summary,
+                memory_cache,
+                default_branch,
+            )
+
+        warnings = [
+            record.getMessage()
+            for record in caplog.records
+            if record.levelno == logging.WARNING and record.getMessage().startswith("Generator definition ")
+        ]
+        assert warnings == case.expected_warnings
+        assert self._dispatched_target_ids(workflow_recorder) == {generator_dataset[key] for key in case.expected_keys}

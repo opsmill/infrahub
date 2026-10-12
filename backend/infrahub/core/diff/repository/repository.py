@@ -20,6 +20,7 @@ from infrahub.log import get_logger
 
 from ..model.field_specifiers_map import NodeFieldSpecifierMap
 from ..model.path import (
+    ConflictLevel,
     ConflictSelection,
     EnrichedDiffConflict,
     EnrichedDiffNode,
@@ -259,7 +260,7 @@ class DiffRepository:
         self, enriched_diffs: EnrichedDiffs
     ) -> Generator[list[EnrichedNodeCreateRequest], None, None]:
         node_requests = []
-        for diff_root in (enriched_diffs.base_branch_diff, enriched_diffs.diff_branch_diff):
+        for diff_root in enriched_diffs.roots:
             size_count = 0
             for node in diff_root.nodes:
                 node_size_count = node.num_properties
@@ -296,7 +297,7 @@ class DiffRepository:
         the fields of the nodes never touch the root and can run concurrently.
         """
         chunk_size = config.SETTINGS.database.query_size_limit
-        for diff_root in (enriched_diffs.base_branch_diff, enriched_diffs.diff_branch_diff):
+        for diff_root in enriched_diffs.roots:
             for nodes_chunk in batched(diff_root.nodes, chunk_size):
                 log.info(f"Creating diff nodes, num_nodes={len(nodes_chunk)}")
                 await self._run_diff_nodes_create_query(diff_root_uuid=diff_root.uuid, diff_nodes=list(nodes_chunk))
@@ -365,7 +366,7 @@ class DiffRepository:
         await link_query.execute(db=self.db)
 
     async def _update_hierarchy_links(self, enriched_diffs: EnrichedDiffs) -> None:
-        for diff_root in (enriched_diffs.base_branch_diff, enriched_diffs.diff_branch_diff):
+        for diff_root in enriched_diffs.roots:
             nodes_to_update = []
             for node in diff_root.nodes:
                 if any(r.nodes for r in node.relationships):
@@ -416,7 +417,7 @@ class DiffRepository:
             await self._save_root_metadata(enriched_diffs=enriched_diffs)
             return
 
-        num_nodes = len(enriched_diffs.base_branch_diff.nodes) + len(enriched_diffs.diff_branch_diff.nodes)
+        num_nodes = sum(len(diff_root.nodes) for diff_root in enriched_diffs.roots)
         log.info(f"Saving diff ({num_nodes=})...")
         await self._create_diff_nodes(enriched_diffs=enriched_diffs)
         await self._save_node_batches(enriched_diffs=enriched_diffs)
@@ -544,6 +545,7 @@ class DiffRepository:
         to_time: Timestamp | None = None,
         tracking_id: TrackingId | None = None,
         proposed_change_id: str | None = None,
+        diff_ids: list[str] | None = None,
         exclude_merged: bool = True,
     ) -> list[EnrichedDiffRootMetadata]:
         query = await EnrichedDiffRootsMetadataQuery.init(
@@ -554,6 +556,7 @@ class DiffRepository:
             to_time=to_time,
             tracking_id=tracking_id,
             proposed_change_id=proposed_change_id,
+            diff_ids=diff_ids,
             exclude_merged=exclude_merged,
         )
         await query.execute(db=self.db)
@@ -563,6 +566,12 @@ class DiffRepository:
                 self.deserializer.build_diff_root_metadata(root_node=neo4j_node, proposed_change_id=pc_id)
             )
         return diff_roots
+
+    async def get_one_metadata(self, diff_branch_name: str, diff_id: str) -> EnrichedDiffRootMetadata:
+        diff_roots = await self.get_roots_metadata(diff_branch_names=[diff_branch_name], diff_ids=[diff_id])
+        if not diff_roots:
+            raise ResourceNotFoundError(f"Cannot find diff for branch {diff_branch_name} with ID {diff_id}")
+        return diff_roots[0]
 
     async def diff_has_conflicts(
         self,
@@ -600,12 +609,27 @@ class DiffRepository:
         tracking_id: TrackingId | None = None,
         diff_id: str | None = None,
     ) -> AsyncGenerator[tuple[str, EnrichedDiffConflict], None]:
+        async for conflict_path, _, conflict in self.get_all_conflicts_with_level_for_diff(
+            diff_branch_name=diff_branch_name, tracking_id=tracking_id, diff_id=diff_id
+        ):
+            yield (conflict_path, conflict)
+
+    async def get_all_conflicts_with_level_for_diff(
+        self,
+        diff_branch_name: str,
+        tracking_id: TrackingId | None = None,
+        diff_id: str | None = None,
+    ) -> AsyncGenerator[tuple[str, ConflictLevel, EnrichedDiffConflict], None]:
         query = await EnrichedDiffAllConflictsQuery.init(
             db=self.db, diff_branch_name=diff_branch_name, tracking_id=tracking_id, diff_id=diff_id
         )
         await query.execute(db=self.db)
-        for conflict_path, conflict_node in query.get_conflict_paths_and_nodes():
-            yield (conflict_path, self.deserializer.deserialize_conflict(diff_conflict_node=conflict_node))
+        for conflict_path, conflict_level, conflict_node in query.get_conflict_paths_levels_and_nodes():
+            yield (
+                conflict_path,
+                conflict_level,
+                self.deserializer.deserialize_conflict(diff_conflict_node=conflict_node),
+            )
 
     async def get_conflicted_node_uuids(
         self,

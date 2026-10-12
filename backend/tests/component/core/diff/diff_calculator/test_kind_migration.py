@@ -1,7 +1,12 @@
 from collections import defaultdict
+from collections.abc import Generator
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
+import pytest
+
+from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType, DiffAction, SchemaPathType
@@ -1499,3 +1504,80 @@ async def test_cleared_attribute_property_with_target_branch_kind_migration(
         f"expected HAS_SOURCE previous_value=alfred, got {prop.previous_value}"
     )
     assert prop.new_value is None, f"expected HAS_SOURCE new_value=None, got {prop.new_value}"
+
+
+@pytest.fixture
+def query_limit_of_two() -> Generator[None, None, None]:
+    original_query_size_limit = config.SETTINGS.database.query_size_limit
+    config.SETTINGS.database.query_size_limit = 2
+    yield
+    config.SETTINGS.database.query_size_limit = original_query_size_limit
+
+
+@dataclass
+class MigratedKindPagesTestCase:
+    name: str
+    node_kinds: list[str] | None
+    expected_car_kinds: set[str]
+
+
+MIGRATED_KIND_PAGES_TEST_CASES: list[MigratedKindPagesTestCase] = [
+    MigratedKindPagesTestCase(name="every_kind", node_kinds=None, expected_car_kinds={"TestCar", "Test2NewCar"}),
+    MigratedKindPagesTestCase(name="new_kind_only", node_kinds=["Test2NewCar"], expected_car_kinds={"Test2NewCar"}),
+    MigratedKindPagesTestCase(name="unrelated_kind", node_kinds=["TestPerson"], expected_car_kinds=set()),
+]
+
+
+@pytest.mark.usefixtures("query_limit_of_two")
+@pytest.mark.parametrize(
+    "test_case",
+    [pytest.param(test_case, id=test_case.name) for test_case in MIGRATED_KIND_PAGES_TEST_CASES],
+)
+async def test_migrated_kind_nodes_on_every_page_of_the_requested_kinds(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
+    test_case: MigratedKindPagesTestCase,
+) -> None:
+    """A page of kind-migrated nodes the diff already holds, or of kinds left out, does not end the listing."""
+    branch = await create_branch(db=db, branch_name=f"migrated-kind-pages-{test_case.name.replace('_', '-')}")
+    car_ids = {car_accord_main.id, car_camry_main.id, car_volt_main.id}
+    # The listing pages the migrated nodes by uuid, and changing both vertices of a car puts it in the diff already.
+    first_page_car_ids = sorted(car_ids)[:2]
+    for car_id in first_page_car_ids:
+        car = await NodeManager.get_one(db=db, branch=branch, id=car_id)
+        car.nbr_seats.value = 9
+        await car.save(db=db)
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    car_schema = schema.get(name="TestCar")
+    car_schema.name = "NewCar"
+    car_schema.namespace = "Test2"
+    registry.schema.set(name="Test2NewCar", schema=car_schema, branch=branch.name)
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=schema.get(name="TestCar"),
+        new_node_schema=car_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewCar", field_name="namespace"),
+    )
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=branch)
+    assert not execution_result.errors
+    for car_id in first_page_car_ids:
+        car = await NodeManager.get_one(db=db, branch=branch, id=car_id)
+        car.color.value = "#112233"
+        await car.save(db=db)
+
+    calculated_diffs = await DiffCalculator(db=db).calculate_diff(
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=Timestamp(branch.get_branched_from()),
+        to_time=Timestamp(),
+        node_kinds=test_case.node_kinds,
+    )
+
+    migrated_flags = {
+        (node.uuid, node.kind): node.is_node_kind_migration
+        for node in calculated_diffs.diff_branch_diff.nodes
+        if node.uuid in car_ids
+    }
+    assert migrated_flags == {(car_id, kind): True for car_id in car_ids for kind in test_case.expected_car_kinds}

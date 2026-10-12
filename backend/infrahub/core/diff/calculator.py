@@ -35,6 +35,7 @@ class DiffCalculationRequest:
     to_time: Timestamp
     current_node_field_specifiers: NodeFieldSpecifierMap | None = field(default=None)
     new_node_field_specifiers: NodeFieldSpecifierMap | None = field(default=None)
+    node_kinds: list[str] | None = field(default=None)
 
 
 class DiffCalculator:
@@ -99,6 +100,7 @@ class DiffCalculator:
             diff_branch_from_time=calculation_request.branch_from_time,
             diff_from=calculation_request.from_time,
             diff_to=calculation_request.to_time,
+            node_kinds=calculation_request.node_kinds,
         )
         await nodes_query.execute(db=self.db)
         node_uuids = nodes_query.get_node_uuids()
@@ -136,6 +138,12 @@ class DiffCalculator:
             log.info(f"Migrated kind nodes query complete {limit=}, {offset=}")
             last_result = None
             for migrated_kind_node in diff_query.get_migrated_kind_nodes():
+                last_result = migrated_kind_node
+                if (
+                    calculation_request.node_kinds is not None
+                    and migrated_kind_node.kind not in calculation_request.node_kinds
+                ):
+                    continue
                 migrated_kind_identifier = NodeIdentifier(
                     uuid=migrated_kind_node.uuid,
                     kind=migrated_kind_node.kind,
@@ -155,7 +163,6 @@ class DiffCalculator:
                 )
                 diff_nodes_by_identifier[migrated_kind_identifier] = new_diff_node
                 diff_nodes_to_add.append(new_diff_node)
-                last_result = migrated_kind_node
             has_more_data = False
             if last_result:
                 has_more_data = last_result.has_more_data
@@ -170,7 +177,14 @@ class DiffCalculator:
         to_time: Timestamp,
         include_unchanged: bool = True,
         previous_node_specifiers: NodeFieldSpecifierMap | None = None,
+        node_kinds: list[str] | None = None,
     ) -> CalculatedDiffs:
+        """Calculate the diff of the diff branch against the base branch over a time range.
+
+        Args:
+            node_kinds: Calculate the changes of the diff branch for nodes of these kinds only.
+
+        """
         if diff_branch.name == registry.default_branch:
             diff_branch_from_time = from_time
         else:
@@ -193,6 +207,7 @@ class DiffCalculator:
             branch_from_time=diff_branch_from_time,
             from_time=from_time,
             to_time=to_time,
+            node_kinds=node_kinds,
         )
 
         log.info("Beginning diff node-level calculation queries for branch")

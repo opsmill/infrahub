@@ -66,9 +66,13 @@ class DiffChangelogCollector:
         try:
             return self.get_node(node_id=peer_id).kind
         except KeyError:
+            pass
+        try:
             schema = self._db.schema.get(node_kind, branch=self._branch, duplicate=False)
-            rel_schema = schema.get_relationship(name=relationship_name)
-            return rel_schema.peer
+            return schema.get_relationship(name=relationship_name).peer
+        except (SchemaNotFoundError, ValueError):
+            # a schema migration removed the kind or the relationship, so the peer kind is not known anymore
+            return "n/a"
 
     def _process_node(self, node: EnrichedDiffNode) -> NodeChangelog:
         node_changelog = NodeChangelog(node_id=node.uuid, node_kind=node.kind, display_label=node.label)

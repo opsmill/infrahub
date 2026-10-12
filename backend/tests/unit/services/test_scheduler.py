@@ -110,6 +110,7 @@ async def test_scheduler_does_not_start_the_heartbeat_when_not_running() -> None
         component_type=ComponentType.GIT_AGENT, cache_factory=build_heartbeat_cache, interval_seconds=0.05
     )
     scheduler = InfrahubScheduler(component_type=ComponentType.GIT_AGENT, heartbeat=heartbeat)
+    scheduler.schedules = []
     scheduler.running = False
 
     await scheduler.start_schedule()

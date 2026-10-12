@@ -16,6 +16,8 @@ import { ERROR_CODES } from "@/shared/api/errors";
 import { handleGraphQLErrors, hasCatalogueCode } from "@/shared/api/graphql/error-handling";
 import type { GraphQLRequestContext, GraphQLResult } from "@/shared/api/graphql/types";
 import { DEFAULT_PRIORITY, PRIORITY_HEADER } from "@/shared/api/priority";
+import { retryingFetch } from "@/shared/api/rate-limit/retrying-fetch";
+import { isShedErrorItem, SHED_USER_MESSAGE } from "@/shared/api/rate-limit/shed-envelope";
 import { queryClient } from "@/shared/api/rest/client";
 import { CONFIG } from "@/shared/config/config";
 import { getAccessToken } from "@/entities/authentication/api/token-storage";

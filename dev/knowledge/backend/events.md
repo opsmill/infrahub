@@ -48,12 +48,12 @@ available in the event payload's changelog.
 
 Events truncate to `get_related_resource_budget()`, which sits below that
 maximum rather than on it. Prefect's events worker appends run-context
-resources — flow run, task run, flow, deployment, work queue, work pool, and
-one per flow-run tag — after the event has been handed over, extending the list
-in place in a way that skips the client-side validation. An event that leaves
-Infrahub on the maximum therefore arrives above it, and the Prefect API answers
-by closing the `/events/in` websocket rather than by dropping the single event.
-The reserved headroom keeps the enlarged event acceptable.
+resources (flow run, task run, flow, deployment, work queue, work pool, and
+one per flow-run tag) after the event has been handed over, and attaches only
+as many of them as still fit under the maximum, logging a warning for the rest.
+An event that leaves Infrahub on the maximum therefore reaches the API valid
+but stripped of its run context, which carries the tags a run is filtered by.
+The reserved headroom keeps room for those resources.
 
 Group mutation events (`member_added` / `member_removed`) follow the same rule.
 Each member and each ancestor is a single related resource carrying its own

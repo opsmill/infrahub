@@ -1,1 +1,0 @@
-Added `INFRAHUB_STORAGE_TLS_INSECURE` to skip certificate validation of the S3 endpoint, and a per-destination `tls_insecure` setting that does the same for log-forwarding syslog servers (Enterprise), for test environments.

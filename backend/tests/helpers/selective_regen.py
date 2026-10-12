@@ -43,7 +43,7 @@ class NoImpactResolver(ImpactedSubscriberResolver):
         subscriber_kind: str,
         every_target: list[str],
     ) -> TargetSelection:
-        return TargetSelection(ids=[], widened=False)
+        return TargetSelection(ids=[])
 
 
 class ForcingTemplateSelector[DefinitionT: DefinitionModel, RequestT](DefinitionSelectorBase[DefinitionT, RequestT]):

@@ -7,11 +7,13 @@ from infrahub.core.recompute.bulk_write import HFID_FIELD, AttributeValueWrite
 from infrahub.core.recompute.dispatch import build_bulk_recompute_dispatcher
 from infrahub.core.registry import registry
 from infrahub.events import BranchDeletedEvent
+from infrahub.events.limits import get_submission_chunk_size
 from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
 from infrahub.trigger.setup import setup_triggers_specific
 from infrahub.workers.dependencies import get_client, get_component, get_database, get_workflow
 from infrahub.workflows.catalogue import HFID_PROCESS, TRIGGER_UPDATE_HFID
+from infrahub.workflows.constants import WorkflowTag
 from infrahub.workflows.utils import add_tags, wait_for_schema_to_converge
 
 from .gather import gather_trigger_hfid
@@ -150,16 +152,19 @@ async def trigger_update_hfid(
 
     node_query = HFIDNodeIDQuery(kind=kind)
     workflow = get_workflow()
-    async for node_batch in node_query.fetch_all_paginated(client=client, branch_name=branch_name):
-        for node_id in node_batch:
-            await workflow.submit_workflow(
-                workflow=HFID_PROCESS,
-                context=context,
-                parameters={
-                    "branch_name": branch_name,
-                    "node_kind": kind,
-                    "target_kind": kind,
-                    "object_id": node_id,
-                    "context": context,
-                },
-            )
+    async for node_ids in node_query.fetch_all_chunked(
+        client=client, branch_name=branch_name, chunk_size=get_submission_chunk_size()
+    ):
+        await workflow.submit_workflow(
+            workflow=HFID_PROCESS,
+            context=context,
+            parameters={
+                "branch_name": branch_name,
+                "node_kind": kind,
+                "target_kind": kind,
+                "object_ids": node_ids,
+                "context": context,
+            },
+            # Must be a creation tag: in-flow tag updates drop tags added mid-run.
+            tags=[WorkflowTag.BRANCH.render(identifier=branch_name)],
+        )
