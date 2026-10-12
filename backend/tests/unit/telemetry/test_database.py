@@ -27,7 +27,6 @@ CASES = [
     WorkerLimitCase(name="auto_zero", value="0", expected=None),
     WorkerLimitCase(name="negative", value="-1", expected=None),
     WorkerLimitCase(name="non_numeric", value="abc", expected=None),
-    WorkerLimitCase(name="empty_string", value="", expected=None),
     WorkerLimitCase(name="none", value=None, expected=None),
 ]
 

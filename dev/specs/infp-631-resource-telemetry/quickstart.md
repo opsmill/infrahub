@@ -28,7 +28,6 @@ No services. Point the reader at fixture cgroup files.
 Feed synthetic per-process readings to `_per_worker_share()`; assert one worker's share of its container (the four figures). Each case is a `SHARE_CASES` entry of the parametrized `test_per_worker_share`:
 
 - `one_process_per_container_keeps_the_container_figures`: readings from hosts `w1` and `w2`, each `processor_available=4` → `processor_available == 4.0`, the container's own figures.
-- `processes_of_one_container_split_it_evenly`: 4 readings from host `api` with 4 CPUs and 8 GB → `processor_available == 1.0`, `memory_total == 2_000_000_000`.
 - `an_uneven_split_rounds_processors_to_two_decimals`: 3 readings from one host with 4 CPUs → `processor_available == 1.33`; memory divided by floor division.
 - `more_processes_than_processors_gives_a_fraction`: 4 readings from one host with 2 CPUs → `processor_available == 0.5`.
 - `a_failed_read_still_shares_its_container`: 2 healthy readings and 1 `WorkerResourceReading.failed(host="api")` from the same host → divided by 3, not 2: `processor_available == 1.33`, `memory_total == 2_666_666_666`.
@@ -54,22 +53,24 @@ DOCKER_HOST=unix://$HOME/.docker/run/docker.sock \
 - `server.per_worker` is a third of the api_server container's figures, since three processes share it.
 - `task_workers` counts the two git_agent processes (2 total, 2 active) and `server` the three api_server ones (3 total, 3 active). `workers` counts every worker process (6 total, 5 active), including the process known only by its presence key, which neither new block counts.
 - `task_workers.per_worker` equals one git_agent container's figures.
+- The gather logs no warning. A failed `worker_limit` read would also leave `processor_assigned` as `None`, so the absence of a warning is what shows the read worked.
+- No figure is written as a whole-number decimal such as `2.0`; whole numbers go out as JSON integers, which the telemetry endpoint's checksum needs.
 - Force the database `worker_limit` read to fail → only `database.system_info.processor_assigned` is `None`; the snapshot is still produced (FR-006). This holds for that read only, which is guarded on its own; a failure of the JMX read behind the other `system_info` figures aborts the snapshot.
 
 ## Scenario 4 — Opt-out still stores locally (FR-006/FR-007)
 
-With `telemetry_optout = true`, run the flow; confirm the locally stored snapshot still carries the new resource fields (`task_workers.per_worker`, `server.per_worker`, `system_info.processor_assigned`) and nothing is transmitted.
+With `telemetry_optout = true`, run the flow; confirm the locally stored snapshot still carries the new resource fields (`task_workers.per_worker`, `server.per_worker`, `system_info.processor_assigned`) and nothing is transmitted. The flow stores the gathered payload unchanged, so no test of its own covers this: the opt-out branch is covered by `TestSendTelemetryPushOptedOut` in `backend/tests/unit/telemetry/test_workflow.py`, and the new fields by Scenario 3.
 
 ## Scenario 5 — Backward compatibility (SC-005)
 
-Assert `payload_format` is **unchanged** (`20260628` — the bump is deferred, research D13), every previously-emitted key in `data` is still present with its type unchanged, and the new fields are purely additive. `workers` has exactly its earlier keys, `total` and `active`, which still count every worker process; the only new top-level keys are `server` and `task_workers` (research D17).
+`payload_format` stays `20260628` (the bump is deferred, research D13). Assert every previously-emitted key in `data` is still present and the new fields are purely additive. `workers` has exactly its earlier keys, `total` and `active`, which still count every worker process; the only new top-level keys are `server` and `task_workers` (research D17).
 
 ## Full suite
 
 ```bash
 uv run invoke backend.test-unit                          # scenarios 1–2
 DOCKER_HOST=unix://$HOME/.docker/run/docker.sock \
-  uv run pytest backend/tests/component/telemetry -q      # scenarios 3–5
+  uv run pytest backend/tests/component/telemetry -q      # scenarios 3 and 5
 ```
 
 Do not trigger the real `send_telemetry_push` flow against the production endpoint during validation — it POSTs to the live telemetry receiver. Opt out first, or exercise the gather directly.

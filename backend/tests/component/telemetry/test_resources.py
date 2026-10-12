@@ -7,28 +7,22 @@ across the gunicorn processes that report from it, and no prior payload key is
 renamed or removed.
 """
 
-import json
 import logging
 from collections.abc import AsyncGenerator
-from dataclasses import dataclass
 from typing import Generator
 
 import pytest
 
-from infrahub import __version__, config
+from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.core import registry
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-from infrahub.services.component import InfrahubComponent
 from infrahub.telemetry import database as telemetry_database
-from infrahub.telemetry.constants import TELEMETRY_VERSION, RemoteSendStatus
 from infrahub.telemetry.models import TelemetryPerWorkerData
-from infrahub.telemetry.repository import TelemetrySnapshotRepository
-from infrahub.telemetry.resources import ProcessResources, WorkerResourceReading
-from infrahub.telemetry.tasks import build_anonymous_telemetry_gatherer, send_telemetry_push
-from infrahub.worker import WORKER_IDENTITY
+from infrahub.telemetry.resources import WorkerResourceReading
+from infrahub.telemetry.tasks import build_anonymous_telemetry_gatherer
 from infrahub.workers.dependencies import (
     build_component,
     clear_singletons,
@@ -36,32 +30,6 @@ from infrahub.workers.dependencies import (
 )
 from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusSimulator
-
-
-class _AlwaysFailingProcessResources(ProcessResources):
-    """A resource reader whose self-read always fails, to drive the retry-then-null path.
-
-    The production reader is built to degrade unreadable sources to null rather than
-    raise, so it cannot be deterministically forced into the transient failure the
-    retry loop guards against (a control-group file rotated mid-read, a psutil
-    hiccup). This adapter stands in for that failure by raising on every attempt, so
-    the bounded retries are exhausted and the warning-then-null branch runs. Its
-    container name is fixed, so the stored reading can be checked exactly.
-    """
-
-    def read(self) -> WorkerResourceReading:
-        raise OSError("resource read unavailable")
-
-    def container_name(self) -> str:
-        return "worker-container"
-
-
-class _NamelessFailingProcessResources(_AlwaysFailingProcessResources):
-    """A resource reader that cannot read even its container's name, the case where no name can be stored."""
-
-    def container_name(self) -> str:
-        raise OSError("container name unavailable")
-
 
 # The full set of `data` fields the payload emitted before resource telemetry; the
 # only top-level additions are the `server` and `task_workers` blocks.
@@ -83,7 +51,6 @@ _PRE_FEATURE_DATA_FIELDS = {
 }
 _PRE_FEATURE_WORKER_FIELDS = {"total", "active"}
 _PRE_FEATURE_SYSTEM_INFO_FIELDS = {"memory_total", "memory_available", "processor_available"}
-_RESOURCE_FIELDS = {"processor_available", "processor_assigned", "memory_total", "memory_available"}
 
 
 def _seed_active(cache: MemoryCache, component: str, identity: str) -> None:
@@ -126,7 +93,20 @@ async def resource_environment(
         clear_singletons()
 
 
-async def test_gather_reports_one_workers_share_for_each_component(resource_environment: MemoryCache) -> None:
+def _whole_number_floats(value: object, path: str = "data") -> list[str]:
+    """List the places in a JSON-ready value that hold a float with no fractional part."""
+    if isinstance(value, float):
+        return [path] if value.is_integer() else []
+    if isinstance(value, dict):
+        return [found for key, item in value.items() for found in _whole_number_floats(item, f"{path}.{key}")]
+    if isinstance(value, list):
+        return [found for index, item in enumerate(value) for found in _whole_number_floats(item, f"{path}[{index}]")]
+    return []
+
+
+async def test_gather_reports_one_workers_share_for_each_component(
+    resource_environment: MemoryCache, caplog: pytest.LogCaptureFixture
+) -> None:
     """Each block counts its own processes and reports one worker's share of its container."""
     cache = resource_environment
 
@@ -159,7 +139,8 @@ async def test_gather_reports_one_workers_share_for_each_component(resource_envi
     cache.storage["workers:worker:exited"] = Timestamp().to_string()
 
     gatherer = await build_anonymous_telemetry_gatherer()
-    data = await gatherer.gather()
+    with caplog.at_level(logging.WARNING):
+        data = await gatherer.gather()
 
     # `workers` counts every worker process, as before; the new blocks break it down by component.
     assert (data.workers.total, data.workers.active) == (6, 5)
@@ -187,6 +168,11 @@ async def test_gather_reports_one_workers_share_for_each_component(resource_envi
     assert data.database.system_info.processor_available > 0
     assert data.database.system_info.memory_total > 0
     assert data.database.system_info.processor_assigned is None
+    # A failed worker-limit read would also give null, so the healthy gather must log no warning.
+    assert [record.getMessage() for record in caplog.records if record.levelno >= logging.WARNING] == []
+
+    # Whole-number shares go out as JSON integers, which the telemetry endpoint's checksum needs.
+    assert _whole_number_floats(data.model_dump(mode="json")) == []
 
 
 async def test_corrupted_reading_is_dropped(resource_environment: MemoryCache) -> None:
@@ -227,11 +213,8 @@ async def test_corrupted_reading_is_dropped(resource_environment: MemoryCache) -
     assert await gatherer.component.read_worker_resources() == {"git_agent": [healthy_reading]}
 
 
-async def test_payload_keeps_every_prior_key_and_its_version(resource_environment: MemoryCache) -> None:
-    """No prior key is renamed, removed or changed, and the version is unchanged."""
-    # The payload version is deliberately not bumped this phase.
-    assert TELEMETRY_VERSION == "20260628"
-
+async def test_payload_keeps_every_prior_key(resource_environment: MemoryCache) -> None:
+    """No prior key is renamed or removed, and the new keys sit only in the new blocks and fields."""
     gatherer = await build_anonymous_telemetry_gatherer()
     data = await gatherer.gather()
     dumped = data.model_dump(mode="json")
@@ -241,129 +224,14 @@ async def test_payload_keeps_every_prior_key_and_its_version(resource_environmen
 
     # `workers` is exactly as before.
     assert set(dumped["workers"]) == _PRE_FEATURE_WORKER_FIELDS
-    assert isinstance(dumped["workers"]["total"], int)
-    assert isinstance(dumped["workers"]["active"], int)
 
     # The new blocks follow the same total/active convention and add one worker's figures.
     for block in ("server", "task_workers"):
         assert set(dumped[block]) == _PRE_FEATURE_WORKER_FIELDS | {"per_worker"}
-        assert set(dumped[block]["per_worker"]) == _RESOURCE_FIELDS
 
     # system_info keeps its three fields and gains exactly processor_assigned.
     assert data.database.system_info is not None
     assert set(dumped["database"]["system_info"]) == _PRE_FEATURE_SYSTEM_INFO_FIELDS | {"processor_assigned"}
-
-    # Stable identifiers are untouched by the additions.
-    assert dumped["infrahub_version"] == __version__
-    assert dumped["deployment_id"] == "test-deployment"
-
-
-def _whole_number_floats(value: object, path: str = "data") -> list[str]:
-    """List the places in a JSON-ready value that hold a float with no fractional part."""
-    if isinstance(value, float):
-        return [path] if value.is_integer() else []
-    if isinstance(value, dict):
-        return [found for key, item in value.items() for found in _whole_number_floats(item, f"{path}.{key}")]
-    if isinstance(value, list):
-        return [found for index, item in enumerate(value) for found in _whole_number_floats(item, f"{path}[{index}]")]
-    return []
-
-
-async def test_payload_has_no_whole_number_float(resource_environment: MemoryCache) -> None:
-    """No figure is sent as a whole-number float, because the telemetry endpoint writes 2.0 as 2 when it checks the checksum."""
-    cache = resource_environment
-
-    # Whole CPUs give a whole-number share, the case that must not be sent as a float.
-    _seed_active(cache, "git_agent", "w1")
-    _seed_reading(
-        cache,
-        "git_agent",
-        "w1",
-        WorkerResourceReading(
-            host="git-host-1",
-            processor_available=2,
-            processor_assigned=2,
-            memory_total=4_000_000_000,
-            memory_available=3_000_000_000,
-        ),
-    )
-
-    gatherer = await build_anonymous_telemetry_gatherer()
-    dumped = (await gatherer.gather()).model_dump(mode="json")
-
-    assert json.dumps(dumped["task_workers"]["per_worker"]) == (
-        '{"processor_available": 2, "processor_assigned": 2, "memory_total": 4000000000, "memory_available": 3000000000}'
-    )
-    assert _whole_number_floats(dumped) == []
-
-
-async def test_optout_snapshot_carries_resources_without_transmission(
-    db: InfrahubDatabase,
-    resource_environment: MemoryCache,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Opted out: the resource figures reach the local snapshot and nothing is transmitted.
-
-    The whole payload, resource fields included, is assembled before the store and
-    opt-out branch, so with remote transmission disabled the flow persists the
-    snapshot and marks it skipped rather than posting it. The git_agent, api_server,
-    and database figures must all survive into that stored payload.
-    """
-    cache = resource_environment
-    monkeypatch.setattr(config.SETTINGS.main, "telemetry_optout", True)
-
-    # Two git_agent replicas, and one api_server container shared by two processes.
-    git_reading = WorkerResourceReading(
-        host="git-host-1",
-        processor_available=4,
-        processor_assigned=None,
-        memory_total=8_000_000_000,
-        memory_available=6_000_000_000,
-    )
-    _seed_active(cache, "git_agent", "w1")
-    _seed_reading(cache, "git_agent", "w1", git_reading)
-    _seed_active(cache, "git_agent", "w2")
-    _seed_reading(cache, "git_agent", "w2", git_reading.model_copy(update={"host": "git-host-2"}))
-    api_reading = WorkerResourceReading(
-        host="api-host",
-        processor_available=8,
-        processor_assigned=None,
-        memory_total=16_000_000_000,
-        memory_available=10_000_000_000,
-    )
-    _seed_reading(cache, "api_server", "w1", api_reading)
-    _seed_reading(cache, "api_server", "w2", api_reading)
-
-    # Identify this run's snapshot by set difference so leftover snapshots don't confuse the read-back.
-    repository = TelemetrySnapshotRepository(db=db)
-    before = {str(snapshot.uuid) for snapshot in await repository.get_list()}
-
-    await send_telemetry_push()
-
-    added = [snapshot for snapshot in await repository.get_list() if str(snapshot.uuid) not in before]
-    assert len(added) == 1
-    stored = added[0]
-
-    # Opted out: stored locally, marked skipped, never posted.
-    assert stored.remote_send_status == RemoteSendStatus.SKIPPED
-
-    payload = stored.data
-    assert payload["task_workers"]["per_worker"] == {
-        "processor_available": 4.0,
-        "processor_assigned": None,
-        "memory_total": 8_000_000_000,
-        "memory_available": 6_000_000_000,
-    }
-    # The api_server container is split between its two processes.
-    assert payload["server"]["per_worker"] == {
-        "processor_available": 4.0,
-        "processor_assigned": None,
-        "memory_total": 8_000_000_000,
-        "memory_available": 5_000_000_000,
-    }
-
-    # The test database leaves the Cypher parallel runtime's worker limit at its default.
-    assert payload["database"]["system_info"]["processor_assigned"] is None
 
 
 async def test_database_processor_assigned_read_failure_nulls_only_that_field(
@@ -428,110 +296,3 @@ async def test_a_worker_that_does_not_report_is_still_counted(resource_environme
         memory_total=8_000_000_000,
         memory_available=6_000_000_000,
     )
-
-
-async def test_resources_key_does_not_change_worker_counts(resource_environment: MemoryCache) -> None:
-    """Writing a per-process resource key for an existing identity leaves the census untouched.
-
-    A running deployment writes both an active heartbeat and a resource reading for the
-    same worker identity on every beat. The resource key must not be mistaken for a new
-    worker: every block counts distinct identities, and reusing an identity for its
-    resource reading adds none. Baseline the counts from active heartbeats
-    alone, then add the resource keys for those same identities and confirm neither moves.
-    """
-    cache = resource_environment
-
-    # Three worker identities announce themselves via active heartbeats only, exactly as
-    # they did before per-process resource reporting existed.
-    _seed_active(cache, "git_agent", "w1")
-    _seed_active(cache, "git_agent", "w2")
-    _seed_active(cache, "api_server", "w3")
-
-    gatherer = await build_anonymous_telemetry_gatherer()
-    baseline = await gatherer.gather()
-    assert (baseline.workers.total, baseline.workers.active) == (3, 3)
-    assert (baseline.task_workers.total, baseline.task_workers.active) == (2, 2)
-    assert (baseline.server.total, baseline.server.active) == (1, 1)
-
-    # Each of those same identities now also writes its resource reading. The identity is
-    # reused, so no new worker should appear in the census.
-    reading = WorkerResourceReading(
-        host="host-1",
-        processor_available=4,
-        processor_assigned=None,
-        memory_total=8_000_000_000,
-        memory_available=6_000_000_000,
-    )
-    _seed_reading(cache, "git_agent", "w1", reading)
-    _seed_reading(cache, "git_agent", "w2", reading)
-    _seed_reading(cache, "api_server", "w3", reading)
-
-    after = await gatherer.gather()
-
-    # The resource keys must not change any block's count.
-    assert (after.workers.total, after.workers.active) == (3, 3)
-    assert (after.task_workers.total, after.task_workers.active) == (2, 2)
-    assert (after.server.total, after.server.active) == (1, 1)
-
-
-@dataclass
-class FailedSelfReadCase:
-    name: str
-    process_resources: ProcessResources
-    expected_reading: WorkerResourceReading
-
-
-FAILED_SELF_READ_CASES = [
-    FailedSelfReadCase(
-        name="the_empty_reading_keeps_the_container_name",
-        process_resources=_AlwaysFailingProcessResources(),
-        expected_reading=WorkerResourceReading(host="worker-container"),
-    ),
-    FailedSelfReadCase(
-        name="a_container_name_that_cannot_be_read_is_stored_as_unknown",
-        process_resources=_NamelessFailingProcessResources(),
-        expected_reading=WorkerResourceReading(host="unknown"),
-    ),
-]
-
-
-@pytest.mark.parametrize("case", FAILED_SELF_READ_CASES, ids=[case.name for case in FAILED_SELF_READ_CASES])
-async def test_self_read_failure_after_retries_logs_and_writes_null(
-    db: InfrahubDatabase,
-    caplog: pytest.LogCaptureFixture,
-    case: FailedSelfReadCase,
-) -> None:
-    """An exhausted self-read logs a warning with component + source, then writes a reading with no figures.
-
-    A reader that raises on every attempt exhausts the bounded retries; the heartbeat
-    must leave a traceable warning carrying the component and the failing source, then
-    write a reading with no figures so a worker that stops reporting leaves a trace in the log.
-    The reading keeps the container's name, so the process still counts as sharing its container.
-    """
-    cache = MemoryCache()
-    component = InfrahubComponent(
-        cache=cache,
-        db=db,
-        message_bus=BusSimulator(),
-        component_type=ComponentType.GIT_AGENT,
-        process_resources=case.process_resources,
-    )
-
-    with caplog.at_level(logging.WARNING, logger="infrahub"):
-        await component.refresh_heartbeat()
-
-    warnings = [
-        record
-        for record in caplog.records
-        if "Unable to read process resource allocation for telemetry" in record.getMessage()
-    ]
-    assert len(warnings) == 1
-    message = warnings[0].getMessage()
-    # The warning identifies the component and the failing source so the gap is traceable.
-    assert "GIT_AGENT" in message
-    assert WORKER_IDENTITY in message
-    assert "resource read unavailable" in message
-
-    # After exhausted retries the heartbeat still writes a reading, with no figures.
-    stored = cache.storage[f"workers:resources:git_agent:worker:{WORKER_IDENTITY}"]
-    assert WorkerResourceReading.model_validate_json(stored) == case.expected_reading

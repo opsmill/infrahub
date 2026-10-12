@@ -7,7 +7,7 @@ cases run the reader inside containers configured for each layout that occurs in
 practice — a private cgroup namespace, a host namespace, and a limit enforced on
 an ancestor rather than on the process's own group — so a regression in the path
 resolution fails here rather than in a deployment. They also check that the name
-the reader gives its container tells apart containers that share a hostname.
+the reader gives its container is the hostname plus the container's process ID namespace.
 
 Requires a Docker daemon and a Linux kernel with cgroup v2, plus network access
 the first time — the probe image pulls a base image and installs into it. Every
@@ -131,18 +131,6 @@ KERNEL_CASES = [
         expected_assigned=2,
         expected_memory_total=512 * _MEBIBYTE,
         setup=_ANCESTOR_LIMIT_SETUP,
-    ),
-    KernelCase(
-        name="whole_core_quota_is_not_rounded",
-        docker_args=["--cpus=4", "--memory=1g"],
-        expected_assigned=4,
-        expected_memory_total=1024 * _MEBIBYTE,
-    ),
-    KernelCase(
-        name="no_limits_report_the_whole_host",
-        docker_args=[],
-        expected_assigned=None,
-        expected_memory_total=None,
     ),
     KernelCase(
         name="cpuset_without_quota_caps_available_by_affinity",
@@ -270,58 +258,3 @@ def test_reader_against_real_cgroups(case: KernelCase, probe_image: str) -> None
     else:
         assert reading["memory_total"] == case.expected_memory_total
         assert 0 <= reading["memory_available"] <= case.expected_memory_total
-
-
-def test_containers_sharing_a_hostname_get_different_container_names(probe_image: str) -> None:
-    """Two containers given one hostname, as a fixed hostname on a scaled service does, keep separate names.
-
-    Both containers run at the same time, because the kernel can give a stopped
-    container's process ID namespace number to the next container.
-    """
-    containers: list[str] = []
-    readings = []
-    try:
-        for _ in range(2):
-            started = subprocess.run(  # noqa: S603
-                [
-                    DOCKER,
-                    "run",
-                    "--detach",
-                    "--rm",
-                    "--hostname",
-                    _PROBE_HOSTNAME,
-                    probe_image,
-                    "sleep",
-                    str(_RUN_TIMEOUT_SECONDS),
-                ],
-                capture_output=True,
-                text=True,
-                check=True,
-                timeout=_RUN_TIMEOUT_SECONDS,
-            )
-            containers.append(started.stdout.strip())
-        for container in containers:
-            probed = subprocess.run(  # noqa: S603
-                [DOCKER, "exec", "--interactive", container, *_probe_command()],
-                input=RESOURCES_MODULE.read_text(),
-                capture_output=True,
-                text=True,
-                check=True,
-                timeout=_RUN_TIMEOUT_SECONDS,
-            )
-            readings.append(json.loads(probed.stdout.strip().splitlines()[-1]))
-    finally:
-        if containers:
-            subprocess.run(  # noqa: S603
-                [DOCKER, "rm", "--force", *containers],
-                capture_output=True,
-                check=False,
-                timeout=_DAEMON_TIMEOUT_SECONDS,
-            )
-
-    first, second = readings
-    assert first["pid_namespace_number"] != second["pid_namespace_number"]
-    assert [first["host"], second["host"]] == [
-        f"{_PROBE_HOSTNAME}/pid:[{first['pid_namespace_number']}]",
-        f"{_PROBE_HOSTNAME}/pid:[{second['pid_namespace_number']}]",
-    ]

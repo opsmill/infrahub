@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import threading
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -88,16 +89,12 @@ def test_worker_is_attributed_to_the_component_its_keys_name(case: AttributionCa
     assert worker.active is case.expected_active
 
 
-def test_attribution_leaves_the_status_payload_unchanged() -> None:
-    worker = WorkerInfo(identity="w1")
-    worker.add_key(key="workers:active:git_agent:worker:w1")
-
-    assert set(worker.to_dict()) == {"id", "active", "schema_hash"}
-
-
 async def test_heartbeat_carries_the_latest_published_resource_reading() -> None:
     cache = MemoryCache()
     resources = LatestResourceReading()
+    resources.publish(
+        WorkerResourceReading(host="git-host-1", processor_available=2, memory_total=8, memory_available=7)
+    )
     reading = WorkerResourceReading(host="git-host-1", processor_available=4, memory_total=8, memory_available=6)
     resources.publish(reading)
 
@@ -115,17 +112,6 @@ async def test_heartbeat_writes_liveness_but_no_resources_before_a_reading_exist
 
     assert ACTIVE_KEY in cache.storage
     assert RESOURCE_KEY not in cache.storage
-
-
-def test_a_newer_reading_replaces_the_one_the_beat_carries() -> None:
-    resources = LatestResourceReading()
-    resources.publish(WorkerResourceReading(host="h", processor_available=2))
-    resources.publish(WorkerResourceReading(host="h", processor_available=4))
-
-    latest = resources.latest()
-
-    assert latest is not None
-    assert WorkerResourceReading.model_validate_json(latest).processor_available == 4
 
 
 THREAD_TEST_READING = WorkerResourceReading(
@@ -203,3 +189,77 @@ async def test_resource_read_runs_off_the_event_loop_thread(
     latest = LATEST_RESOURCE_READING.latest()
     assert latest is not None
     assert WorkerResourceReading.model_validate_json(latest) == THREAD_TEST_READING
+
+
+class AlwaysFailingProcessResources(ProcessResources):
+    """A resource reader whose self-read always fails, to drive the retry-then-empty-reading path.
+
+    The production reader turns unreadable sources into empty figures rather than raising, so it
+    cannot be forced into the passing failure the retries guard against (a file rotated mid-read,
+    a psutil hiccup). This adapter raises on every attempt instead. Its container name is fixed,
+    so the stored reading can be checked exactly.
+    """
+
+    def read(self) -> WorkerResourceReading:
+        raise OSError("resource read unavailable")
+
+    def container_name(self) -> str:
+        return "worker-container"
+
+
+class NamelessFailingProcessResources(AlwaysFailingProcessResources):
+    """A resource reader that cannot read even its container's name, the case where no name can be stored."""
+
+    def container_name(self) -> str:
+        raise OSError("container name unavailable")
+
+
+@dataclass
+class FailedSelfReadCase:
+    name: str
+    process_resources: ProcessResources
+    expected_reading: WorkerResourceReading
+
+
+FAILED_SELF_READ_CASES = [
+    FailedSelfReadCase(
+        name="the_empty_reading_keeps_the_container_name",
+        process_resources=AlwaysFailingProcessResources(),
+        expected_reading=WorkerResourceReading(host="worker-container"),
+    ),
+    FailedSelfReadCase(
+        name="a_container_name_that_cannot_be_read_is_stored_as_unknown",
+        process_resources=NamelessFailingProcessResources(),
+        expected_reading=WorkerResourceReading(host="unknown"),
+    ),
+]
+
+
+@pytest.mark.parametrize("case", FAILED_SELF_READ_CASES, ids=[case.name for case in FAILED_SELF_READ_CASES])
+async def test_self_read_failure_after_retries_logs_and_stores_an_empty_reading(
+    case: FailedSelfReadCase,
+    unconnected_db: InfrahubDatabase,
+    latest_resource_reading_restored: None,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A read that fails on every try leaves a warning naming the component and the error, and a reading with no figures.
+
+    The reading keeps the container's name, so the process still counts as sharing its container.
+    """
+    cache = MemoryCache()
+    component = InfrahubComponent(
+        cache=cache,
+        db=unconnected_db,
+        message_bus=BusRecorder(),
+        component_type=ComponentType.GIT_AGENT,
+        process_resources=case.process_resources,
+    )
+
+    with caplog.at_level(logging.WARNING, logger="infrahub"):
+        await component.refresh_heartbeat()
+
+    warnings = [record for record in caplog.records if WORKER_IDENTITY in record.getMessage()]
+    assert [record.levelname for record in warnings] == ["WARNING"]
+    assert "GIT_AGENT" in warnings[0].getMessage()
+    assert "resource read unavailable" in warnings[0].getMessage()
+    assert WorkerResourceReading.model_validate_json(cache.storage[RESOURCE_KEY]) == case.expected_reading

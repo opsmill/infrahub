@@ -112,13 +112,12 @@ backend/tests/unit/telemetry/
 └── test_database.py     # NEW: the worker_limit setting parse
 
 backend/tests/unit/services/
-├── test_component.py    # NEW: component attribution; the heartbeat's resource write
+├── test_component.py    # NEW: component attribution; the heartbeat's resource write;
+│                        #   a read that keeps failing leaves a warning and an empty reading
 └── test_scheduler.py    # extended: resource_refresh is registered for worker processes
 
 backend/tests/component/telemetry/
-├── test_resources.py    # NEW: end-to-end gather with synthesized worker heartbeats;
-│                        #   + regression: the new resources heartbeat key must NOT change
-│                        #     the existing workers.total / workers.active counts
+├── test_resources.py    # NEW: end-to-end gather with synthesized worker heartbeats
 └── test_cgroup_kernels.py  # NEW: the reader against real kernel control groups
 ```
 

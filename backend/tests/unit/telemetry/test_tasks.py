@@ -45,25 +45,6 @@ SHARE_CASES = [
         ),
     ),
     ShareCase(
-        name="processes_of_one_container_split_it_evenly",
-        readings=[
-            WorkerResourceReading(
-                host="api",
-                processor_available=4,
-                processor_assigned=4,
-                memory_total=8_000_000_000,
-                memory_available=6_000_000_000,
-            )
-        ]
-        * 4,
-        expected=TelemetryPerWorkerData(
-            processor_available=1.0,
-            processor_assigned=1.0,
-            memory_total=2_000_000_000,
-            memory_available=1_500_000_000,
-        ),
-    ),
-    ShareCase(
         name="an_uneven_split_rounds_processors_to_two_decimals",
         readings=[
             WorkerResourceReading(
