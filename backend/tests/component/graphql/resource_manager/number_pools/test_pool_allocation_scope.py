@@ -19,6 +19,7 @@ from infrahub.graphql.manager import registry as graphql_registry
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
+from infrahub.pools.scoped_number_pool_reader import ScopedNumberPoolReader
 from tests.adapters.lock import LockAction, LockTimeline
 from tests.helpers.number_pool import (
     SCOPED_DEVICE,
@@ -702,7 +703,11 @@ class TestSchemaNumberPoolScope:
             db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository
         )
         synchronizer = SchemaNumberPoolSynchronizer(
-            db=db, schema_manager=registry.schema, upserter=upserter, range_store_factory=NumberPoolRepository
+            db=db,
+            scope_reader=ScopedNumberPoolReader(db=db),
+            schema_manager=registry.schema,
+            upserter=upserter,
+            range_store_factory=NumberPoolRepository,
         )
         await synchronizer.run()
         registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool

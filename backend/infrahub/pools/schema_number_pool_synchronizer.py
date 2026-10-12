@@ -16,7 +16,6 @@ from infrahub.pools.number_pool_range_reconciler import NumberPoolRangeReconcile
 from infrahub.pools.number_pool_shorthand import NumberPoolShorthandMirror
 from infrahub.pools.registration import get_branches_with_schema_number_pool
 from infrahub.pools.scope import AllocationScopeResolver
-from infrahub.pools.scoped_number_pool_reader import ScopedNumberPoolReader
 
 if TYPE_CHECKING:
     from logging import Logger, LoggerAdapter
@@ -29,6 +28,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
     from infrahub.pools.number_pool_repository import NumberPoolRangeStoreFactory
     from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
+    from infrahub.pools.scoped_number_pool_reader import ScopedNumberPoolReader
 
 default_log = get_logger()
 
@@ -42,6 +42,7 @@ class SchemaNumberPoolSynchronizer:
 
     Args:
         db: Database connection.
+        scope_reader: Reads the pools that store an allocation scope.
         log: Logger instance.
         schema_manager: Schema manager for looking up schemas.
         range_store_factory: Builds the store that rewrites a pool's ranges, from the database running
@@ -52,12 +53,14 @@ class SchemaNumberPoolSynchronizer:
     def __init__(
         self,
         db: InfrahubDatabase,
+        scope_reader: ScopedNumberPoolReader,
         schema_manager: SchemaManager,
         upserter: SchemaNumberPoolUpserter,
         range_store_factory: NumberPoolRangeStoreFactory,
         log: Logger | LoggerAdapter | BoundLogger | None = None,
     ) -> None:
         self.db = db
+        self.scope_reader = scope_reader
         self.log = log or default_log
         self.schema_manager = schema_manager
         self.upserter = upserter
@@ -78,7 +81,7 @@ class SchemaNumberPoolSynchronizer:
         """Rewrite the stored name of each scope element whose field the default branch now names differently."""
         schema_branch = self.schema_manager.get_schema_branch(name=registry.default_branch)
         resolver = AllocationScopeResolver(schema_branch=schema_branch)
-        for pool in await ScopedNumberPoolReader(db=self.db).get_with_scope():
+        for pool in await self.scope_reader.get_with_scope():
             # A pool outlives the removal of its kind from the default branch, which leaves no field to rename.
             if not schema_branch.has(name=pool.kind):
                 continue

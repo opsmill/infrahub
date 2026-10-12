@@ -18,6 +18,7 @@ from infrahub.graphql.manager import registry as graphql_registry
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
+from infrahub.pools.scoped_number_pool_reader import ScopedNumberPoolReader
 from tests.helpers.schema import load_schema
 
 from .helpers import (
@@ -201,7 +202,11 @@ class TestSchemaNumberPoolRangeWrites:
             db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository
         )
         await SchemaNumberPoolSynchronizer(
-            db=db, schema_manager=registry.schema, upserter=upserter, range_store_factory=NumberPoolRepository
+            db=db,
+            scope_reader=ScopedNumberPoolReader(db=db),
+            schema_manager=registry.schema,
+            upserter=upserter,
+            range_store_factory=NumberPoolRepository,
         ).run()
         registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
         graphql_registry.clear_cache()

@@ -17,6 +17,7 @@ from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from infrahub.pools.scope import AllocationScopeResolver
+from infrahub.pools.scoped_number_pool_reader import ScopedNumberPoolReader
 from tests.component.pools.helpers import NumberPoolRepositoryFailingOnDelete
 from tests.helpers.number_pool import SCOPED_DEVICE, SCOPED_POOL_SCHEMA, register_and_provision_number_pools
 from tests.helpers.schema import load_schema
@@ -76,7 +77,11 @@ async def redeclare(
 
     upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository)
     await SchemaNumberPoolSynchronizer(
-        db=db, schema_manager=registry.schema, upserter=upserter, range_store_factory=range_store_factory
+        db=db,
+        scope_reader=ScopedNumberPoolReader(db=db),
+        schema_manager=registry.schema,
+        upserter=upserter,
+        range_store_factory=range_store_factory,
     ).run()
 
 
@@ -213,7 +218,11 @@ async def test_declaration_on_another_branch_leaves_the_pool_untouched(
 async def run_synchronizer(db: InfrahubDatabase) -> None:
     upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository)
     await SchemaNumberPoolSynchronizer(
-        db=db, schema_manager=registry.schema, upserter=upserter, range_store_factory=NumberPoolRepository
+        db=db,
+        scope_reader=ScopedNumberPoolReader(db=db),
+        schema_manager=registry.schema,
+        upserter=upserter,
+        range_store_factory=NumberPoolRepository,
     ).run()
 
 

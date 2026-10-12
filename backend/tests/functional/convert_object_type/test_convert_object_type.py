@@ -13,6 +13,7 @@ from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
+from infrahub.pools.scoped_number_pool_reader import ScopedNumberPoolReader
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -213,7 +214,11 @@ class TestConvertObjectTypeResourcePool(TestInfrahubApp):
             db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository
         )
         snps = SchemaNumberPoolSynchronizer(
-            db=db, schema_manager=registry.schema, upserter=upserter, range_store_factory=NumberPoolRepository
+            db=db,
+            scope_reader=ScopedNumberPoolReader(db=db),
+            schema_manager=registry.schema,
+            upserter=upserter,
+            range_store_factory=NumberPoolRepository,
         )
         await snps.run()
 
