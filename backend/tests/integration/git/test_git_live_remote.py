@@ -1441,6 +1441,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         client: InfrahubClient,
         gogs_server: GogsServer,
         fast_forward_merges: None,
+        immediate_delivery_retries: None,
         synced_branch_repository: Callable[[str], Awaitable[SyncedBranchRepository]],
         caplog: pytest.LogCaptureFixture,
     ) -> None:
@@ -1452,6 +1453,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
             raise _KilledAttemptError
 
         # The kill unwinds through the repository lock and frees it, as the deadlock cleanup frees the lock of a dead worker.
+        # The task retries an error that escapes an attempt, so each retry dies the same way, with no wait.
         with _on_log_line(prefix=f"Delivery attempt of repository {repository.name} works on the merges", action=kill):
             await client.branch.merge(branch_name=repository.branch_name)
         lost = await _delivery_state(db=db, repository_id=repository.node_id)
