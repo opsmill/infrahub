@@ -277,7 +277,7 @@ async def sync_status(client: InfrahubClient, repository_id: str, branch_name: s
 
 
 class TestImportFailureLogs(TestInfrahubApp):
-    """A failed branch import logs one error and a summary of its steps, without a traceback, and stays on its branch."""
+    """A failed branch import logs one error entry, without a Prefect traceback, and stays on its branch."""
 
     @pytest.fixture(autouse=True)
     def traceback_suppression_installed(self) -> Generator[None, None, None]:
