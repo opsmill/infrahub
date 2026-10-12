@@ -65,6 +65,20 @@ query GetImpactCarsByOwner($owner: String!) {
 }
 """
 
+# ``any__value`` matches a car on any of its attributes, so a change to an attribute the query never
+# reads can still move which cars answer it.
+QUERY_CARS_BY_ANY_VALUE = """
+query GetImpactCarsByAnyValue($value: String!) {
+    TestingCar(any__value: $value) {
+        edges {
+            node {
+                name { value }
+            }
+        }
+    }
+}
+"""
+
 # The car is the group member; the tag stands in for an artifact or generator definition. The impact
 # mapping reads only the subscriber's id and typename, so a plain kind keeps the fixture free of the
 # transformation and repository wiring a real definition would demand.
@@ -283,6 +297,37 @@ class TestFieldLevelImpact(TestInfrahubApp):
                     branch=default_branch.name,
                     field_names=["owner"],
                     element_type="RELATIONSHIP_ONE",
+                )
+            ],
+            query_branch=default_branch.name,
+            subscriber_kind=SUBSCRIBER_KIND,
+            every_target=[dataset["subscriber_id"]],
+            client=client,
+        )
+        assert resolved == TargetSelection(
+            ids=[dataset["subscriber_id"]],
+            widening=Widening(reason=WideningReason.NON_UNIQUE_TARGETS),
+        )
+
+    async def test_change_to_an_attribute_matched_by_any_value_selects_every_target(
+        self,
+        dataset: dict[str, Any],
+        default_branch: Branch,
+        client: InfrahubClient,
+    ) -> None:
+        """A change to any attribute selects every target when the query filters on ``any__value``.
+
+        The query reads only the car's ``name``, but its filter matches on every attribute, so a
+        change to ``color`` can move which cars answer the query.
+        """
+        resolved = await get_field_level_impacted_subscribers(
+            query_payload=QUERY_CARS_BY_ANY_VALUE,
+            diff_summary=[
+                node_diff(
+                    node_id=dataset["car_id"],
+                    kind=TestKind.CAR,
+                    branch=default_branch.name,
+                    field_names=["color"],
                 )
             ],
             query_branch=default_branch.name,

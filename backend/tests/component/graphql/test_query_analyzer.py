@@ -358,6 +358,28 @@ FILTERED_FIELDS_CASES = [
         },
     ),
     RequestedReadCase(
+        name="any_filter_selects_on_every_attribute",
+        query="""
+        query {
+            TestPerson(any__value: "John") {
+                edges { node { name { value } } }
+            }
+        }
+        """,
+        expected_fields_by_kind={"TestPerson": {"name", "height"}},
+    ),
+    RequestedReadCase(
+        name="display_label_filter_selects_on_display_label",
+        query="""
+        query {
+            TestPerson(display_label__value: "John") {
+                edges { node { name { value } } }
+            }
+        }
+        """,
+        expected_fields_by_kind={"TestPerson": {"display_label"}},
+    ),
+    RequestedReadCase(
         name="arguments_that_select_no_field_are_left_out",
         query="""
         query {
@@ -407,6 +429,34 @@ async def test_filtered_fields_by_kind(
     )
 
     assert analyzer.query_report.filtered_fields_by_kind == case.expected_fields_by_kind
+
+
+async def test_filtered_fields_by_kind_reports_the_hfid_filter(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+) -> None:
+    """A filter on ``hfid`` selects on the kind's ``human_friendly_id``."""
+    tshirt_hfid = deepcopy(TSHIRT)
+    tshirt_hfid.name = "TShirtHfid"
+    tshirt_hfid.human_friendly_id = ["name__value"]
+    registry.schema.register_schema(schema=SchemaRoot(nodes=[COLOR, tshirt_hfid]), branch=default_branch.name)
+    default_branch.update_schema_hash()
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    analyzer = InfrahubGraphQLQueryAnalyzer(
+        query="""
+        query {
+            TestingTShirtHfid(hfid: ["blue"]) {
+                edges { node { name { value } } }
+            }
+        }
+        """,
+        schema=gql_params.schema,
+        branch=default_branch,
+        schema_branch=schema_branch,
+    )
+
+    assert analyzer.query_report.filtered_fields_by_kind == {"TestingTShirtHfid": {"human_friendly_id"}}
 
 
 async def test_query_report(
