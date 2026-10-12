@@ -1,0 +1,22 @@
+backend/infrahub/core/validators/pool/scope_dependency.py
+  s_04e9c61d1d4032::t_c027ca0a71530d 73-81,83,88,90-91
+backend/infrahub/core/validators/pool/scope.py
+  s_04e9c61d1d4032::t_c027ca0a71530d 6,246,275,278-285,352,364-368,370,379-389,498-504
+  s_04e9c61d1d4032::t_1a294b1b067ab8 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1f1abbdacfba1c1da39e9ca120ac145de848411b",
+  "prompts": {},
+  "sessions": {
+    "s_04e9c61d1d4032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7cd7a867-c728-45f2-af2b-cf1bc4f2f88a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
