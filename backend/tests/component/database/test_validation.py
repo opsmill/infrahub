@@ -272,6 +272,48 @@ async def _agnostic_attribute_global_edges_with_branch_level_2(db: InfrahubDatab
     await _make_attribute_agnostic_on_global_branch(db=db, node_uuid=car.id, branch_level=2)
 
 
+async def _open_value_edge_branches(db: InfrahubDatabase, node_uuid: str, attr_name: str) -> list[str]:
+    """Return the sorted branches of the attribute's active, open HAS_VALUE edges."""
+    query = """
+MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(:Attribute {name: $attr_name})-[hv:HAS_VALUE]->()
+WHERE hv.status = "active" AND hv.to IS NULL
+RETURN hv.branch AS branch
+    """
+    records = await db.execute_query(query=query, params={"node_id": node_uuid, "attr_name": attr_name})
+    return sorted(record["branch"] for record in records)
+
+
+async def _move_attribute_edge_to_branch(db: InfrahubDatabase, node_uuid: str, attr_name: str, branch: Branch) -> None:
+    """Move the attribute's HAS_ATTRIBUTE edge onto a branch."""
+    query = """
+MATCH (:Node {uuid: $node_id})-[hae:HAS_ATTRIBUTE]->(:Attribute {name: $attr_name})
+SET hae.branch = $branch_name
+    """
+    await db.execute_query(
+        query=query, params={"node_id": node_uuid, "attr_name": attr_name, "branch_name": branch.name}
+    )
+
+
+async def _set_global_value_edge_branch_level(
+    db: InfrahubDatabase, node_uuid: str, attr_name: str, branch_level: int
+) -> None:
+    """Give the attribute's HAS_VALUE edge on the global branch another branch_level."""
+    query = """
+MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(:Attribute {name: $attr_name})-[hv:HAS_VALUE]->()
+WHERE hv.branch = $global_branch
+SET hv.branch_level = $branch_level
+    """
+    await db.execute_query(
+        query=query,
+        params={
+            "node_id": node_uuid,
+            "attr_name": attr_name,
+            "global_branch": GLOBAL_BRANCH_NAME,
+            "branch_level": branch_level,
+        },
+    )
+
+
 @dataclass
 class GraphDamageCase:
     name: str
@@ -549,13 +591,11 @@ class TestVerifyGraph:
             on_branch.get_attribute(name="commit").value = commit
             await on_branch.save(db=db)
 
-        query = """
-MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(:Attribute {name: "commit"})-[hv:HAS_VALUE]->()
-WHERE hv.status = "active" AND hv.to IS NULL
-RETURN hv.branch AS branch
-        """
-        records = await db.execute_query(query=query, params={"node_id": repository.id})
-        assert sorted(record["branch"] for record in records) == ["-global-", "local-value-branch", "main"]
+        assert await _open_value_edge_branches(db=db, node_uuid=repository.id, attr_name="commit") == [
+            "-global-",
+            "local-value-branch",
+            "main",
+        ]
 
         assert await collect_graph_violations(db=db, kinds=["CoreRepository"]) == []
 
@@ -566,11 +606,7 @@ RETURN hv.branch AS branch
         repository = await Node.init(db=db, schema="CoreRepository", branch=default_branch)
         await repository.new(db=db, name="local-attach", location="https://example.com/local-attach.git", commit="aaa")
         await repository.save(db=db)
-        query = """
-MATCH (:Node {uuid: $node_id})-[hae:HAS_ATTRIBUTE]->(:Attribute {name: "commit"})
-SET hae.branch = $branch_name
-        """
-        await db.execute_query(query=query, params={"node_id": repository.id, "branch_name": default_branch.name})
+        await _move_attribute_edge_to_branch(db=db, node_uuid=repository.id, attr_name="commit", branch=default_branch)
 
         violations = await collect_graph_violations(db=db, kinds=["CoreRepository"])
         assert [violation.check for violation in violations] == [GraphCheck.ATTRIBUTE_EDGE_BRANCH]
@@ -586,14 +622,7 @@ SET hae.branch = $branch_name
         await repository.save(db=db)
         assert await collect_graph_violations(db=db, kinds=["CoreRepository"]) == []
 
-        query = """
-MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(:Attribute {name: "commit"})-[hv:HAS_VALUE {branch: $global_branch}]->()
-SET hv.branch_level = $branch_level
-        """
-        await db.execute_query(
-            query=query,
-            params={"node_id": repository.id, "global_branch": GLOBAL_BRANCH_NAME, "branch_level": 2},
-        )
+        await _set_global_value_edge_branch_level(db=db, node_uuid=repository.id, attr_name="commit", branch_level=2)
 
         violations = await collect_graph_violations(db=db, kinds=["CoreRepository"])
         assert [violation.check for violation in violations] == [GraphCheck.ATTRIBUTE_EDGE_BRANCH]
