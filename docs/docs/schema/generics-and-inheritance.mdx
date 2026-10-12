@@ -4,17 +4,13 @@ title: Generics & inheritance
 
 # Generics & inheritance
 
-A generic defines attributes and relationships that several nodes share. Every node that lists the generic in `inherit_from` receives them, in addition to the attributes and relationships the node defines itself. A generic works like an abstract class in object-oriented programming: you cannot create an object of a generic, only objects of the nodes that inherit from it.
+A Generic in Infrahub is a reusable base that shares attributes and relationships across multiple node types. They work similarly to abstract base classes or interfaces in object-oriented programming — you define common structure once, and node types that `inherit_from` a generic receive that structure automatically.
 
 ## When to use a generic
 
-Define a node for each type of object you store. Add a generic when several nodes have the same attributes or relationships, such as routers, switches and firewalls that all have a serial number and a location.
+Use a `Node` when you need to represent a concrete object in your infrastructure model with specific attributes and relationships.
 
-With a generic:
-
-- You define the shared attributes and relationships once. A later change to them on the generic applies to every node that inherits them. See [Change generics](./change-generics).
-- A relationship whose `peer` is a generic accepts objects of every node that inherits from it. A location's `devices` relationship can then link routers, switches and firewalls. See [Generic node relationships](./relationships#generic-node-relationships).
-- You can query the generic in GraphQL to list the objects of every node that inherits from it.
+Use a `Generic` when you want to share common attributes or relationships across multiple node types. This helps to avoid redundancy and ensures consistency across your schema. Generics can also be used to connect multiple types of Nodes to the same relationship.
 
 ## Define a generic
 

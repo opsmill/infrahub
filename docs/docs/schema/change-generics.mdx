@@ -5,19 +5,25 @@ description: Which changes on a generic apply to the nodes that inherit from it,
 
 # Change generics
 
-When you change an attribute or relationship on a [generic](./generics-and-inheritance) and load the schema, Infrahub applies the change to every node that inherits that attribute or relationship. In two cases, you make the change on each node instead:
+When you change an attribute or relationship on a [generic](./generics-and-inheritance) and load the schema, Infrahub applies the change to every node that inherits that attribute or relationship.
+
+There are two cases, where the change is not automatically propagated to nodes:
 
 - A node that [overrides](./generics-and-inheritance#override) the attribute or relationship keeps its own definition.
 - A node keeps the node-level properties it received when it was first loaded, such as `human_friendly_id` or `icon`.
 
+In both cases you need to apply the change at the node level, for all the nodes where it's applicable.
+
 ## Change an attribute or relationship on a generic
 
-Edit the attribute or relationship on the generic and load the schema. For each node that inherits from the generic, the result depends on whether the node inherits or overrides it:
+Edit the attribute or relationship on the generic and load the schema.
+
+For each node that inherits from the generic, the result depends on whether the node inherits or overrides it:
 
 - **The node inherits it**: Infrahub applies the change to the node. For example, setting `optional: false` on the generic makes the attribute mandatory on the node. Infrahub checks the change against the existing objects of every inheriting node, and refuses the load if one object fails the new rule. See [Make an attribute mandatory or unique](./change-nodes-and-attributes#make-an-attribute-mandatory-or-unique).
 - **The node overrides it**: the node keeps its own definition, and the change does not apply to it. To apply the change, make the same change on the node, or [remove the override](#remove-an-override) so the node inherits the generic's definition.
 
-A node can inherit some attributes and relationships of a generic and override others. To find out which applies, open **Object Management > Schemas**, select the node, and select the attribute or relationship. The **Inherited** row shows `true` when the node inherits it and `false` when the node overrides it. An inherited attribute or relationship also has no **ID** on the node, because its `id` belongs to the generic.
+To find out which applies, open **Object Management > Schemas**, select the node, and select the attribute or relationship. The **Inherited** row shows `true` when the node inherits it and `false` when the node overrides it. An inherited attribute or relationship also has no **ID** on the node, because its `id` belongs to the generic. A node can inherit some attributes and relationships of a generic and override others.
 
 ## Remove an override
 

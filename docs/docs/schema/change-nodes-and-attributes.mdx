@@ -1,11 +1,11 @@
 ---
 title: Change nodes and attributes
-description: What happens to existing objects when you add an attribute, make it mandatory or unique, change its kind, or move attributes and relationships onto a generic.
+description: What happens to existing objects when you add an attribute, make it mandatory or unique, change its kind, move attributes and relationships onto a generic, or clear a property.
 ---
 
 # Change nodes and attributes
 
-When a node already has objects, Infrahub handles each schema change differently. For some changes it writes new values into every object, for others it accepts the change only when every object already satisfies the new rule, and it refuses a few whether or not objects exist. Before it applies a change to the schema, Infrahub checks every existing object and refuses the load if one object fails a new rule. See [Schema operations](./operations) for details.
+When you load a change to a node or an attribute that already exists, Infrahub checks that it supports the change and that the resulting schema is valid. When the node already has objects, Infrahub also checks every object against each new rule, and refuses the load if one object fails. For details, see [Schema operations](./operations).
 
 ## Add an attribute
 
@@ -199,6 +199,13 @@ You cannot change `branch` on a node, a generic, an attribute or a relationship 
 :::
 
 Choose the branch support of each element before you first load it. See [Branch awareness](./branch-awareness).
+
+## Clear a property
+
+A property that has no default value and is missing from the file keeps its current value. So to clear a property, write it with an empty value and load the schema again:
+
+- **Text property**, such as `description` or `label`: set it to an empty string.
+- **List property**, such as `human_friendly_id`, `display_labels` or `order_by`: set it to an empty list (`[]`).
 
 ## Remove a generic from a node
 
