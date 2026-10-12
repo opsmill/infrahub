@@ -28,6 +28,7 @@ from infrahub.core.registry import registry
 from infrahub.events.repository_action import CommitUpdatedEvent
 from infrahub.git.import_errors import RepositoryImportError
 from infrahub.git.models import GitRepositoryAddReadOnly, GitRepositoryPullReadOnly
+from infrahub.git.repository import ImportStep
 from infrahub.git.sync import RepositoryBranchesFailedError
 from infrahub.git.tasks import (
     add_git_repository_read_only,
@@ -199,6 +200,17 @@ def run_log_errors(caplog: pytest.LogCaptureFixture, state: State) -> list[loggi
     ]
 
 
+def import_run_log_errors(caplog: pytest.LogCaptureFixture, branch_name: str) -> list[logging.LogRecord]:
+    """Return the error-level entries the import of the branch wrote to its own task log, in order."""
+    return [
+        record
+        for record in caplog.records
+        if record.name == FLOW_RUN_LOGGER
+        and record.levelno >= logging.ERROR
+        and vars(record).get("flow_run_name") == f"Import objects into branch {branch_name}"
+    ]
+
+
 def records_with_traceback(caplog: pytest.LogCaptureFixture) -> list[logging.LogRecord]:
     return [record for record in caplog.records if record.name in PREFECT_RUN_LOGGERS and record.exc_info]
 
@@ -264,10 +276,14 @@ class TestImportFailureLogs(TestInfrahubApp):
         assert state.is_failed()
         assert isinstance(await state.aresult(raise_on_failure=False), RepositoryBranchesFailedError)
         assert await sync_status(client, node.id, branch_name) == RepositorySyncStatus.ERROR_IMPORT.value
-        # Prefect's own closing entry is matched by its prefix, which is the part of its wording it owns.
-        import_entry, finished_entry = [record.getMessage() for record in run_log_errors(caplog, state)]
+        # Prefect's own closing entries are matched by their prefix, which is the part of their wording it owns.
+        import_entry, import_finished_entry = [
+            record.getMessage() for record in import_run_log_errors(caplog, branch_name)
+        ]
         assert import_entry == invalid_schema_message(branch_name)
-        assert finished_entry.startswith(FINISHED_FAILED_PREFIX)
+        assert import_finished_entry.startswith(FINISHED_FAILED_PREFIX)
+        (sync_finished_entry,) = [record.getMessage() for record in run_log_errors(caplog, state)]
+        assert sync_finished_entry.startswith(FINISHED_FAILED_PREFIX)
         assert records_with_traceback(caplog) == []
 
     async def test_unrecognised_failure_is_logged_once_with_its_traceback(
@@ -339,7 +355,7 @@ class TestImportFailureLogs(TestInfrahubApp):
 
         assert state.is_failed()
         assert await sync_status(client, node.id, branch_name) == RepositorySyncStatus.ERROR_IMPORT.value
-        import_entry, _ = run_log_errors(caplog, state)
+        import_entry, _ = import_run_log_errors(caplog, branch_name)
         assert import_entry.getMessage() == (
             f"Failed to import branch '{branch_name}': Python transform 'interfaces' (transform.py): {expected_reason}"
         )
@@ -373,7 +389,7 @@ class TestImportFailureLogs(TestInfrahubApp):
         state = await run_sync_flow(client=client, repository_id=node.id, name=name, location=str(remote.directory))
 
         assert state.is_failed()
-        import_entry, _ = [record.getMessage() for record in run_log_errors(caplog, state)]
+        import_entry, _ = [record.getMessage() for record in import_run_log_errors(caplog, branch_name)]
         assert import_entry == (
             f"Failed to import branch '{branch_name}': Python transform 'broken' (transform.py): "
             "Syntax error in transform.py, line 1: invalid syntax"
@@ -400,7 +416,7 @@ class TestImportFailureLogs(TestInfrahubApp):
 
         assert state.is_failed()
         assert await sync_status(client, node.id, branch_name) == RepositorySyncStatus.ERROR_IMPORT.value
-        import_entry, _ = [record.getMessage() for record in run_log_errors(caplog, state)]
+        import_entry, _ = [record.getMessage() for record in import_run_log_errors(caplog, branch_name)]
         assert import_entry == f"Failed to import branch '{branch_name}': File 'devices.yml': The file does not exist"
         assert records_with_traceback(caplog) == []
 
@@ -426,7 +442,7 @@ class TestImportFailureLogs(TestInfrahubApp):
 
         assert state.is_failed()
         assert await sync_status(client, node.id, branch_name) == RepositorySyncStatus.ERROR_IMPORT.value
-        import_entry, _ = [record.getMessage() for record in run_log_errors(caplog, state)]
+        import_entry, _ = [record.getMessage() for record in import_run_log_errors(caplog, branch_name)]
         assert import_entry == f"Failed to import branch '{branch_name}': {test_case.expected_reason}"
         assert records_with_traceback(caplog) == []
 
@@ -557,7 +573,9 @@ class TestImportFailureLogs(TestInfrahubApp):
         assert state.is_failed()
         error = await state.aresult(raise_on_failure=False)
         assert isinstance(error, RepositoryBranchesFailedError)
-        assert sorted(error.outcome.report.failed_import_branches) == branches
+        assert sorted((failed.branch_name, failed.step) for failed in error.outcome.failed) == [
+            (branch_name, ImportStep.IMPORT) for branch_name in branches
+        ]
         statuses = {branch_name: await sync_status(client, node.id, branch_name) for branch_name in branches}
         assert statuses == dict.fromkeys(branches, RepositorySyncStatus.IN_SYNC.value)
         assert sorted(

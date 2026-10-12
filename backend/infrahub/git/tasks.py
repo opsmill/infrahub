@@ -107,7 +107,13 @@ from .refs_check.constants import REFS_CHECK_CONCURRENCY
 from .refs_check.factory import build_check_refs_model, build_refs_checker, build_refs_scheduler
 from .refs_check.models import RefsCheckCycleSummary, RefsCheckOutcome, RefsCheckResult
 from .refs_check.tracked_commit import GraphTrackedCommitReader
-from .repository import InfrahubReadOnlyRepository, InfrahubRepository, PendingObjectImport, get_initialized_repo
+from .repository import (
+    ImportStep,
+    InfrahubReadOnlyRepository,
+    InfrahubRepository,
+    PendingObjectImport,
+    get_initialized_repo,
+)
 from .state.warm_up import RepositoryWarmUp
 from .sync import (
     RepositoryAdder,
@@ -355,8 +361,9 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
 ) -> SyncOutcome:
     """Synchronize one repository, linking the run to it when there is something to see there.
 
-    A run is linked when it imports a branch, when it reports a skipped branch, or when it fails while
-    the repository is online. A successful run where nothing moved on the remote is not linked.
+    A run is linked when it reports a skipped branch and, while the repository is online, when a branch
+    fails before its import or the synchronization fails. Each branch import is shown by a run of its
+    own, so it does not link this one. A successful run where nothing moved on the remote is not linked.
 
     Raises:
         RepositoryBranchesFailedError: When at least one branch failed to synchronize.
@@ -392,23 +399,26 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
         if online:
             await add_tags(branches=[infrahub_branch], nodes=[str(repository_id)])
         raise
-    await report_sync_run(
-        repo=repo, report=outcome.report, infrahub_branch=infrahub_branch, link_run=online and bool(outcome.failed)
-    )
+    await report_sync_run(repo=repo, outcome=outcome, infrahub_branch=infrahub_branch, online=online)
     raise_if_branches_failed(repo=repo, outcome=outcome)
     return outcome
 
 
-async def report_sync_run(repo: InfrahubRepository, report: SyncReport, infrahub_branch: str, link_run: bool) -> None:
-    """Log the run's skipped branches when it moved something, and link the run when there is a reason to.
+async def report_sync_run(repo: InfrahubRepository, outcome: SyncOutcome, infrahub_branch: str, online: bool) -> None:
+    """Log the run's skipped branches when it moved something, and link the run to the branches it reports on.
 
-    Every tag update is rebuilt from the tags the run started with, so the call carries the branches
-    the imports tagged the run with as well, or it would drop them.
+    The run is linked to its own branch when it reports skipped branches, and, while the repository is
+    online, to each branch that failed before its import. A failed import is not one of them, because it
+    is shown on its branch by its own flow run.
     """
+    report = outcome.report
+    branches = [infrahub_branch] if report.reports_skipped_branches else []
     if report.reports_skipped_branches:
         log_skipped_branches(repo=repo, report=report)
-    if report.reports_skipped_branches or link_run:
-        await add_tags(branches=[infrahub_branch, *report.attempted_import_branches], nodes=[str(repo.id)])
+    if online:
+        branches.extend(failed.branch_name for failed in outcome.failed if failed.step is not ImportStep.IMPORT)
+    if branches:
+        await add_tags(branches=branches, nodes=[str(repo.id)])
 
 
 def select_writable_branch_commits(

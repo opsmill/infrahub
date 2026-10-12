@@ -75,11 +75,12 @@ The read-write kind implements the mapping described below; the read-only kind r
   Prefect's run logger. The add flow writes it whenever its first sync skips a branch. The
   per-repository sync flow writes it only when the run imported a branch or saw a skipped branch
   advance (`SyncReport.reports_skipped_branches`).
-- That sync flow's run is linked to the repository node when it imports a branch (the import tags the
-  run itself), when it writes the warning, or when it fails while the repository is online. A
-  successful run where nothing moved adds nothing to the repository's task history. Every tag update
-  is rebuilt from the tags the run started with, so a later `add_tags` call must repeat the branches
-  the imports tagged, or it drops them.
+- Each branch import runs as a flow run of its own (`git/sync.py::import_branch`), linked to the
+  repository node and tagged only with the branch it imports into, so its logs and failure show on
+  that branch. The sync flow's run is linked to its own branch when it writes the warning and, while
+  the repository is online, to each branch that failed before its import. A failed import does not
+  link the sync run, because its own run already shows it. A successful run where nothing moved adds
+  nothing to the repository's task history.
 - The reverse mapping — from an Infrahub branch name to the remote git branch — is the pure
   function `get_mapped_remote_branch` in `backend/infrahub/git/branch_mapping.py`. Any git
   operation that names a remote ref (`pull`, `push`) must route the branch name through it: when
