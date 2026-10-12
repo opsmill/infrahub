@@ -20075,6 +20075,8 @@ export type Mutation = {
   InfrahubReadOnlyRepositoryImportLastCommit: Maybe<ReadOnlyRepositoryImportLastCommit>;
   InfrahubRecomputeComputedAttribute: Maybe<RecomputeComputedAttribute>;
   InfrahubRepositoryConnectivity: Maybe<ValidateRepositoryConnectivity>;
+  /** Abandon every pending merge of a repository. Nothing is removed from the remote, and no remote branch is deleted. Repository objects of the abandoned merges can stay on the default branch until the current commit is reimported. */
+  InfrahubRepositoryDeliveryAbandon: Maybe<RepositoryDeliveryAbandon>;
   /** Push every pending merge of a repository to its remote, in order, in a single push. */
   InfrahubRepositoryDeliveryRetry: Maybe<RepositoryDeliveryRetry>;
   InfrahubRepositoryProcess: Maybe<ProcessRepository>;
@@ -21773,6 +21775,11 @@ export type MutationInfrahubRecomputeComputedAttributeArgs = {
 
 export type MutationInfrahubRepositoryConnectivityArgs = {
   data: IdentifierInput;
+};
+
+
+export type MutationInfrahubRepositoryDeliveryAbandonArgs = {
+  data: RepositoryDeliveryAbandonInput;
 };
 
 
@@ -39274,6 +39281,19 @@ export type RepositoryCommits = {
   remote_head: Maybe<Scalars['String']['output']>;
   repository_id: Scalars['String']['output'];
   unavailable: Maybe<RepositoryGitUnavailable>;
+};
+
+export type RepositoryDeliveryAbandon = {
+  __typename: 'RepositoryDeliveryAbandon';
+  ok: Maybe<Scalars['Boolean']['output']>;
+  task: Maybe<TaskInfo>;
+};
+
+export type RepositoryDeliveryAbandonInput = {
+  /** The id of the CoreRepository */
+  id: Scalars['String']['input'];
+  /** The version of the delivery queue the user saw. The request is refused if the queue changed since. */
+  queue_version: Scalars['Int']['input'];
 };
 
 export type RepositoryDeliveryRetry = {
