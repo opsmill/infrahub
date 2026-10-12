@@ -1,0 +1,59 @@
+backend/tests/functional/pools/test_numberpool_lifecycle.py
+  s_04e9c61d1d4032::t_4639bb4f3bc627 93-97
+  s_04e9c61d1d4032::t_606b59fb4b1688 21
+backend/tests/functional/pools/test_numberpool_branch.py
+  s_04e9c61d1d4032::t_4639bb4f3bc627 104-108
+  s_04e9c61d1d4032::t_591b7df98eea00 15
+backend/tests/component/core/resource_manager/test_number_pool_query.py
+  s_04e9c61d1d4032::t_4639bb4f3bc627 97,618-622
+  s_04e9c61d1d4032::t_0e818dd8d01fe6 39
+backend/infrahub/pools/tasks.py
+  s_04e9c61d1d4032::t_4639bb4f3bc627 31
+  s_04e9c61d1d4032::t_e7864243f59681 13
+backend/tests/component/core/constraint_validators/test_attribute_numberpool_constraints.py
+  s_04e9c61d1d4032::t_4639bb4f3bc627 33-37
+  s_04e9c61d1d4032::t_1f07d0f14d8735 22
+backend/tests/integration/schema_lifecycle/test_number_pool_branch_merge.py
+  s_04e9c61d1d4032::t_4639bb4f3bc627 167,413,459,679-683
+  s_04e9c61d1d4032::t_1943e1687218f8 20
+backend/tests/component/graphql/resource_manager/number_pools/test_schema_pool_range_writes.py
+  s_04e9c61d1d4032::t_4639bb4f3bc627 205-209
+  s_04e9c61d1d4032::t_3481dea8320bb0 21
+backend/tests/functional/convert_object_type/test_convert_object_type.py
+  s_04e9c61d1d4032::t_4639bb4f3bc627 217-221
+  s_04e9c61d1d4032::t_c2d9f78e392e7f 16
+backend/tests/component/pools/test_schema_number_pool_synchronizer.py
+  s_04e9c61d1d4032::t_a3dcf785cc925c 20,80-84,221-225
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_allocation_scope.py
+  s_04e9c61d1d4032::t_4639bb4f3bc627 706-710
+  s_04e9c61d1d4032::t_02fdc0515579b6 22
+backend/tests/component/graphql/resource_manager/number_pools/test_schema_pools.py
+  s_04e9c61d1d4032::t_4639bb4f3bc627 48-52
+  s_04e9c61d1d4032::t_44385cc56cd1c1 15
+backend/tests/component/core/schema/test_attribute_parameters.py
+  s_04e9c61d1d4032::t_4639bb4f3bc627 45-49
+  s_04e9c61d1d4032::t_8dd06e99c35de9 34
+backend/infrahub/pools/schema_number_pool_synchronizer.py
+  s_04e9c61d1d4032::t_d447131c373253 56,63,84
+  s_04e9c61d1d4032::t_4639bb4f3bc627 31
+  s_04e9c61d1d4032::t_b559e3584763f5 45
+backend/tests/helpers/number_pool.py
+  s_04e9c61d1d4032::t_4639bb4f3bc627 61-65
+  s_04e9c61d1d4032::t_5e2829bffc6957 28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f6247ce1ac8b6705bf9ad8a6240bf234e4a95e8b",
+  "prompts": {},
+  "sessions": {
+    "s_04e9c61d1d4032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7cd7a867-c728-45f2-af2b-cf1bc4f2f88a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
