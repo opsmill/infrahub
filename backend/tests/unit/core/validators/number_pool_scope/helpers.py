@@ -171,11 +171,24 @@ class RecordingPoolSource:
     def __init__(self, pools: Iterable[ScopedNumberPool]) -> None:
         self.pools = list(pools)
         self.requested_kinds: list[set[str]] = []
+        self.requested_ids: list[set[str]] = []
+        self.requested_attributes: list[set[tuple[str, str]]] = []
 
     async def get_for_kinds(self, kinds: Iterable[str]) -> list[ScopedNumberPool]:
         requested = set(kinds)
         self.requested_kinds.append(requested)
-        return [pool for pool in self.pools if pool.kind in requested]
+        return [pool for pool in self.pools if pool.kind in requested and not pool.scope.is_empty]
+
+    async def get_schema_pool_ids(self, attributes: Iterable[tuple[str, str]]) -> dict[tuple[str, str], str]:
+        requested = set(attributes)
+        self.requested_attributes.append(requested)
+        pool_ids = {(pool.kind, pool.tracked_attribute): pool.id for pool in self.pools}
+        return {attribute: pool_id for attribute, pool_id in pool_ids.items() if attribute in requested}
+
+    async def get_by_ids(self, ids: Iterable[str]) -> list[ScopedNumberPool]:
+        requested = set(ids)
+        self.requested_ids.append(requested)
+        return [pool for pool in self.pools if pool.id in requested]
 
 
 class StaticSchemaSource:
@@ -221,4 +234,5 @@ def build_checker(pool_source: ScopedNumberPoolSource, schema_source: SchemaBran
         schema_source=schema_source,
         pool_finder=DependentPoolFinder(),
         violation_builder=ScopeViolationBuilder(),
+        default_branch_name=registry.default_branch,
     )

@@ -13,4 +13,5 @@ class SchemaNumberPoolScopeConstraintDependency(DependencyBuilder[NumberPoolScop
             schema_source=registry.schema,
             pool_finder=DependentPoolFinder(),
             violation_builder=ScopeViolationBuilder(),
+            default_branch_name=registry.default_branch,
         )

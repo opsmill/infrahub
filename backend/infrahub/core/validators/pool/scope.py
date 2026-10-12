@@ -1,12 +1,21 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
 from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.validators.enum import ConstraintIdentifier
+from infrahub.core.validators.schema_branch.number_pool_scope_validator import (
+    DeclaredScopeComparator,
+    DeclaredScopeValidator,
+    DefaultBranchSchema,
+    SchemaBranchSource,
+    scope_refusal_reason,
+)
 from infrahub.exceptions import ValidationError
-from infrahub.pools.scope import NON_SCALAR_ATTRIBUTE_KINDS, AllocationScopeResolver, ScopeElement
+from infrahub.pools.scope import NON_SCALAR_ATTRIBUTE_KINDS, SCOPE_FIELD, AllocationScopeResolver, ScopeElement
 
 from ..interface import ConstraintCheckerInterface
 from .scope_dependency import ChangedField, PoolDependency, ScopeBreakage
@@ -26,9 +35,22 @@ if TYPE_CHECKING:
 class ScopedNumberPoolSource(Protocol):
     async def get_for_kinds(self, kinds: Iterable[str]) -> list[ScopedNumberPool]: ...
 
+    async def get_by_ids(self, ids: Iterable[str]) -> list[ScopedNumberPool]: ...
 
-class SchemaBranchSource(Protocol):
-    def get_schema_branch(self, name: str) -> SchemaBranch: ...
+    async def get_schema_pool_ids(self, attributes: Iterable[tuple[str, str]]) -> dict[tuple[str, str], str]: ...
+
+
+@dataclass(frozen=True)
+class DeclaringAttribute:
+    """A NumberPool attribute on the kind that declares its allocation scope, with the pool the schema created.
+
+    The pool id is unknown until it is written into the attribute's parameters.
+    """
+
+    kind: str
+    attribute_name: str
+    pool_id: str | None
+    entries: list[str] | None
 
 
 class NumberPoolScopeChecker(ConstraintCheckerInterface):
@@ -43,9 +65,11 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         schema_source: SchemaBranchSource,
         pool_finder: DependentPoolFinder,
         violation_builder: ScopeViolationBuilder,
+        default_branch_name: str,
     ) -> None:
         self.pool_source = pool_source
         self.schema_source = schema_source
+        self.default_branch = DefaultBranchSchema(source=schema_source, name=default_branch_name)
         self.pool_finder = pool_finder
         self.violation_builder = violation_builder
         made_optional = self._gained_property_rule(
@@ -84,6 +108,13 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
             "node.attribute.remove": self._removed,
             "node.relationship.remove": self._removed,
         }
+        self._declaration_rules: dict[
+            str, Callable[[SchemaConstraintValidatorRequest, str], list[DeclaringAttribute]]
+        ] = {
+            "attribute.name.update": self._declarations_reaching_renamed_field,
+            "relationship.name.update": self._declarations_reaching_renamed_field,
+            ConstraintIdentifier.ATTRIBUTE_PARAMETERS_ALLOCATION_SCOPE_UPDATE.value: self._changed_declaration,
+        }
 
     @property
     def name(self) -> str:
@@ -96,6 +127,7 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         """
         return (
             request.constraint_name in self._rules
+            or request.constraint_name in self._declaration_rules
             or request.constraint_name == ConstraintIdentifier.NODE_UNIQUENESS_CONSTRAINTS_UPDATE.value
         )
 
@@ -113,6 +145,11 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         field_name = request.schema_path.field_name
         if not field_name:
             raise ValueError("field_name is not defined")
+
+        if declaration_rule := self._declaration_rules.get(request.constraint_name):
+            return await self._check_declarations(
+                request=request, field_name=field_name, declarations=declaration_rule(request, field_name)
+            )
 
         if request.constraint_name == ConstraintIdentifier.NODE_UNIQUENESS_CONSTRAINTS_UPDATE.value:
             return await self._check_attributes_made_unique(request=request)
@@ -208,12 +245,16 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
                 continue
             kind_schema = schema_branch.get(name=kind, duplicate=False)
             fields: list[AttributeSchema | RelationshipSchema] = [*kind_schema.attributes, *kind_schema.relationships]
-            previous_fields.extend(
-                previous
-                for previous in fields
-                if (previous.id == field.id if field.id else previous.name == field.name)
-            )
+            previous_fields.extend(previous for previous in fields if self._same_field(previous=previous, field=field))
         return previous_fields
+
+    @staticmethod
+    def _same_field(
+        previous: AttributeSchema | RelationshipSchema, field: AttributeSchema | RelationshipSchema
+    ) -> bool:
+        """Tell whether a field before the change is the field, by id, or by name for a field not saved yet."""
+        # A field renamed by the same load keeps its id.
+        return previous.id == field.id if field.id else previous.name == field.name
 
     def _gained_property_rule(
         self, predicate: Callable[[AttributeSchema | RelationshipSchema], bool], breakage: ScopeBreakage
@@ -251,6 +292,158 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         return ScopeBreakage(
             dependency=PoolDependency.SCOPE_ELEMENT, reason="a scope element cannot be removed while the pool exists"
         )
+
+    async def _check_declarations(
+        self, request: SchemaConstraintValidatorRequest, field_name: str, declarations: list[DeclaringAttribute]
+    ) -> list[GroupedDataPaths]:
+        """Return one violation per schema-created pool whose declaration the change no longer matches.
+
+        Raises:
+            ValidationError: When a pool stores an allocation scope that is not a list of elements.
+
+        """
+        declarations_by_pool = await self._with_pool_ids(declarations=declarations)
+        if not declarations_by_pool:
+            return []
+        pools = {
+            pool.id: pool
+            for pool in await self.pool_source.get_by_ids(ids={pool_id for pool_id, _ in declarations_by_pool})
+        }
+        comparator = DeclaredScopeComparator(
+            schema_branch=request.schema_branch,
+            previous_schemas=self._previous_schemas(request=request),
+        )
+        validator = DeclaredScopeValidator(
+            candidate=request.schema_branch,
+            default_branch_schema=lambda: self.default_branch.for_candidate(candidate=request.schema_branch),
+        )
+
+        refusals: list[tuple[str, str]] = []
+        for pool_id, declaration in declarations_by_pool:
+            pool = pools.get(pool_id)
+            if pool is None:
+                # The load accepted the names it could not resolve as a possible rename, which only a stored scope
+                # can confirm, so a declaration without its pool is checked as a new one.
+                reason = self._new_declaration_refusal(validator=validator, declaration=declaration)
+            else:
+                reason = comparator.refusal(kind=declaration.kind, entries=declaration.entries, stored=pool.scope)
+            if reason is not None:
+                refusals.append((pool_id, f"{declaration.kind}.{declaration.attribute_name}: {reason}"))
+        return [
+            self.violation_builder.build_refusals(
+                branch_name=request.branch.name, field_name=field_name, refusals=refusals
+            )
+        ]
+
+    @staticmethod
+    def _new_declaration_refusal(validator: DeclaredScopeValidator, declaration: DeclaringAttribute) -> str | None:
+        """Return why the declaration cannot scope a new pool, or None when it can."""
+        try:
+            validator.validate(
+                kind=declaration.kind,
+                tracked_attribute=declaration.attribute_name,
+                entries=declaration.entries,
+                pool_exists=False,
+            )
+        except ValidationError as exc:
+            return f"{SCOPE_FIELD}: {scope_refusal_reason(error=exc)}"
+        return None
+
+    def _changed_declaration(
+        self, request: SchemaConstraintValidatorRequest, field_name: str
+    ) -> list[DeclaringAttribute]:
+        """Return the declaration of the attribute whose allocation_scope the change updates."""
+        kind = request.schema_path.schema_kind
+        if not request.schema_branch.has(name=kind):
+            return []
+        kind_schema = request.schema_branch.get(name=kind, duplicate=False)
+        attribute = kind_schema.get_attribute_or_none(name=field_name)
+        # An inherited declaration is compared on the generic that declares it, so the pool is reported once.
+        if attribute is None or attribute.inherited:
+            return []
+        declaration = self._declaring(kind=kind, attribute=attribute)
+        return [declaration] if declaration is not None else []
+
+    def _declarations_reaching_renamed_field(
+        self,
+        request: SchemaConstraintValidatorRequest,
+        field_name: str,  # noqa: ARG002
+    ) -> list[DeclaringAttribute]:
+        """Return the declarations of the kinds sharing the renamed field's fields that the same load leaves as is."""
+        kind = request.schema_path.schema_kind
+        if not request.schema_branch.has(name=kind):
+            return []
+        candidates: list[tuple[str, AttributeSchema, DeclaringAttribute]] = []
+        for sharing_kind in sorted(
+            self._kinds_sharing_fields(kind_schema=request.schema_branch.get(name=kind, duplicate=False))
+        ):
+            if not request.schema_branch.has(name=sharing_kind):
+                continue
+            kind_schema = request.schema_branch.get(name=sharing_kind, duplicate=False)
+            # An inherited declaration is compared on the generic that declares it, so the pool is reported once, and
+            # a rename cannot reach a declaration that names no element.
+            for attribute in kind_schema.attributes:
+                declaration = None if attribute.inherited else self._declaring(kind=sharing_kind, attribute=attribute)
+                if declaration is not None and declaration.entries:
+                    candidates.append((sharing_kind, attribute, declaration))
+        if not candidates:
+            return []
+
+        # A declaration changed by the same load is compared under its own constraint, so the pool is reported once.
+        previous_schemas = self._previous_schemas(request=request)
+        return [
+            declaration
+            for sharing_kind, attribute, declaration in candidates
+            if not any(
+                self._declaration_changed(previous_schema=previous_schema, kind=sharing_kind, attribute=attribute)
+                for previous_schema in previous_schemas
+            )
+        ]
+
+    async def _with_pool_ids(self, declarations: list[DeclaringAttribute]) -> list[tuple[str, DeclaringAttribute]]:
+        """Return the declarations that have a schema-created pool, each after the id of that pool."""
+        # A pool the schema created holds the declaration's scope before its id is written into the attribute.
+        missing = {
+            (declaration.kind, declaration.attribute_name) for declaration in declarations if not declaration.pool_id
+        }
+        found = await self.pool_source.get_schema_pool_ids(attributes=missing) if missing else {}
+        declarations_by_pool: list[tuple[str, DeclaringAttribute]] = []
+        for declaration in declarations:
+            pool_id = declaration.pool_id or found.get((declaration.kind, declaration.attribute_name))
+            if pool_id is not None:
+                declarations_by_pool.append((pool_id, declaration))
+        return declarations_by_pool
+
+    @staticmethod
+    def _declaring(kind: str, attribute: AttributeSchema) -> DeclaringAttribute | None:
+        """Return the attribute's declaration when it is a NumberPool attribute, and None otherwise."""
+        parameters = attribute.parameters
+        if not isinstance(parameters, NumberPoolParameters):
+            return None
+        return DeclaringAttribute(
+            kind=kind,
+            attribute_name=attribute.name,
+            pool_id=parameters.number_pool_id,
+            entries=parameters.allocation_scope,
+        )
+
+    @staticmethod
+    def _declaration_changed(previous_schema: SchemaBranch, kind: str, attribute: AttributeSchema) -> bool:
+        """Tell whether the attribute's declaration differs from the one on the schema before the change."""
+        if not isinstance(attribute.parameters, NumberPoolParameters) or not previous_schema.has(name=kind):
+            return False
+        previous_kind = previous_schema.get(name=kind, duplicate=False)
+        previous = next(
+            (
+                candidate
+                for candidate in previous_kind.attributes
+                if NumberPoolScopeChecker._same_field(previous=candidate, field=attribute)
+            ),
+            None,
+        )
+        if previous is None or not isinstance(previous.parameters, NumberPoolParameters):
+            return False
+        return previous.parameters.allocation_scope != attribute.parameters.allocation_scope
 
     def _kinds_sharing_fields(self, kind_schema: MainSchemaTypes) -> set[str]:
         """Return the kind and the kinds it shares fields with through inheritance.
