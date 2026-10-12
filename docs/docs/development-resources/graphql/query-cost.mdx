@@ -279,7 +279,7 @@ Infrahub saves a new estimate only when the level or one of the figures changes,
 
 ## Run the database queries of high-cost requests on one CPU core
 
-Infrahub can run a database query with the parallel runtime of Neo4j, which uses several CPU cores of the database server for one query. Infrahub Enterprise does so for the queries that read nodes, attributes and peers, which a GraphQL query sends for each of its fields. When several renders of a high-cost stored query run at the same time, their database queries can take most of the cores of the database server.
+Infrahub can run a database query with the parallel runtime of Neo4j, which uses several CPU cores of the database server for one query. Infrahub Enterprise does so for every query that reads data outside a transaction, including the queries that a GraphQL query sends for each of its fields. When several renders of a high-cost stored query run at the same time, their database queries can take most of the cores of the database server.
 
 To run these database queries on one core for each high-cost request to a stored query, set this variable on the API servers:
 

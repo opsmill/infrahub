@@ -216,8 +216,10 @@ parallel Cypher runtime switched to the pipelined runtime.
 - `replace_parallel_runtime` (`infrahub.graphql.cost.runtime`) sets a `ContextVar` around the GraphQL execution,
   so the resolvers and the tasks they start see it. `InfrahubDatabase.execute_query_with_metadata` replaces
   `Neo4jRuntime.PARALLEL`, from `queries_names_to_config` or `default_neo4j_runtime`, with the runtime of the
-  block. Queries without a configured runtime keep the default runtime of Neo4j, and write queries are not
-  changed, since they never get a runtime prefix.
+  block. Infrahub Enterprise sets `default_neo4j_runtime` to `PARALLEL` (`build_ent_database`), so every read
+  query of the execution is replaced. Infrahub Community configures no query with `PARALLEL`, so the setting has
+  no effect there. Write queries are not changed, since they never get a runtime prefix. A read query in a
+  transaction, which would lose its parallel prefix, gets the pipelined prefix.
 - The `runtime` label of `QUERY_EXECUTION_METRICS` follows the replaced runtime, and the endpoint logs one line
   with `PIPELINED_RUNTIME_MESSAGE` for each high-cost request.
 - Requests to `/graphql` are not estimated, to keep the estimate queries off every request.
