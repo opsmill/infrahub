@@ -68,7 +68,7 @@ task_workers: TelemetryComponentData = Field(default_factory=TelemetryComponentD
 
 ## Per-process reading (transits the cache, not part of the payload)
 
-Read by each process every 10 seconds, on a separate thread its main loop starts, and written into `workers:resources:{component}:worker:{WORKER_IDENTITY}` by its liveness heartbeat, alongside the active key and with the same expiry:
+Read by each process at startup and every 5 minutes, on a separate thread its main loop starts, and written into `workers:resources:{component}:worker:{WORKER_IDENTITY}` by its liveness heartbeat, alongside the active key and with the same expiry:
 
 | Field | Type | Source |
 |-------|------|--------|
@@ -80,7 +80,7 @@ Read by each process every 10 seconds, on a separate thread its main loop starts
 
 Internal transport shape (`WorkerResourceReading`, a small typed model in `resources.py`), **not** a payload model — the payload carries only each component's per-worker share, never per-process rows (FR-004). The `host` identifier only groups readings by container and is never emitted. The four figures are bounded non-negative (`ge=0`), so a corrupted cache entry fails to parse and is skipped by the scan rather than reaching the payload. A read that fails after its retries is written as `WorkerResourceReading.failed(host=...)`: the process's container name and every figure `None`. The name is read again on its own, so it is still known when the rest of the read failed; only when that lookup also fails is the host `"unknown"`. Any reading with every figure `None` counts as failed, including one whose CPU and memory pairs were both nulled field by field.
 
-`host`, the resolved cgroup path, and the host's logical CPU count are read once per process and cached — none can change without a container restart. `processor_available`, `processor_assigned`, `memory_total`, and `memory_available` are all re-read every 10 seconds, since a live limit reconfiguration (a `docker update`, a Kubernetes in-place pod resize) changes them without restarting the process (D12).
+`host`, the resolved cgroup path, and the host's logical CPU count are read once per process and cached — none can change without a container restart. `processor_available`, `processor_assigned`, `memory_total`, and `memory_available` are all re-read every 5 minutes, since a live limit reconfiguration (a `docker update`, a Kubernetes in-place pod resize) changes them without restarting the process (D12).
 
 ## Field derivation per component
 

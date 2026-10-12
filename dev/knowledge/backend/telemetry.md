@@ -87,11 +87,13 @@ checksum by writing the received data out again in JavaScript, which cannot tell
 a whole-number float fails the check and the endpoint drops the whole report. Any new float field
 in the payload needs the same treatment.
 
-Each API server and task-worker process reports its own figures through the cache. Every 10 seconds
-the main loop starts a read of the limits on a separate thread, so that a slow read never holds up
-requests and flows, and puts the reading in a shared slot in memory. The heartbeat
-thread, which only writes to the cache so that a busy main loop never stalls it, copies the latest
-reading into the cache every 5 seconds next to its "alive" key, with the same 15-second expiry.
+Each API server and task-worker process reports its own figures through the cache. At startup and
+then every 5 minutes, the main loop starts a read of the limits on a separate thread, so that a slow
+read never holds up requests and flows, and puts the reading in a shared slot in memory. The report
+runs once a day, so a reading every 5 minutes still catches a limit changed while Infrahub runs. The
+heartbeat thread, which only writes to the cache so that a busy main loop never stalls it, copies
+the latest reading into the cache every 5 seconds next to its "alive" key, with the same 15-second
+expiry, so a reading stays in the cache for as long as its process is alive, however old it is.
 Once a day the report reads those entries. The database figures come from Neo4j itself when the
 report runs.
 
@@ -99,7 +101,7 @@ report runs.
 flowchart LR
     limits["Allowed CPU and memory<br/>container limit, or the whole machine<br/>ProcessResources"]
     subgraph process["One Infrahub process: an API server or a task worker"]
-        main["Main work<br/>asks for a new reading every 10 s<br/>refresh_resources()"]
+        main["Main work<br/>asks for a new reading every 5 min<br/>refresh_resources()"]
         reader["Side helper<br/>looks up the numbers"]
         slot["Latest reading<br/>kept in memory<br/>LatestResourceReading"]
         beat["Heartbeat<br/>says it is alive every 5 s<br/>WorkerHeartbeat"]
@@ -194,7 +196,7 @@ both gated on the `READ_TELEMETRY` global permission.
 | `backend/infrahub/telemetry/utils.py` | Degradation helper, 24h window functions, infrahub-type detection |
 | `backend/infrahub/telemetry/database.py` | Database and node-count metrics |
 | `backend/infrahub/telemetry/resources.py` | Reads a process's CPU and memory limits and the machine's figures |
-| `backend/infrahub/services/scheduler.py`, `backend/infrahub/tasks/recurring.py` | The 10-second schedule on the main loop that starts each read of the figures on a separate thread |
+| `backend/infrahub/services/scheduler.py`, `backend/infrahub/tasks/recurring.py` | The 5-minute schedule on the main loop that starts each read of the figures on a separate thread |
 | `backend/infrahub/services/heartbeat.py` | The heartbeat thread that copies the latest reading into the cache every 5 seconds |
 | `backend/infrahub/services/component.py` | Stores each process's CPU and memory reading next to its heartbeat |
 | `backend/infrahub/telemetry/models.py` | Payload schema |

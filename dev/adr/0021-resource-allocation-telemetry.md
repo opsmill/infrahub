@@ -34,17 +34,17 @@ writes the limit it puts on a container, and `psutil` for the whole machine.
   the machine. All CPU counts are logical CPUs.
 - `memory_total` is the tightest memory limit, or the machine's memory without one.
   `memory_available` is the smallest free amount under any limit, never below zero.
-- The limits are read again every 10 seconds, so a live change to a limit shows up without a
+- The limits are read again every 5 minutes, so a live change to a limit shows up without a
   restart. Where the limit files are, and the machine's CPU count, are read once.
 - For the database, `processor_assigned` is Neo4j's `server.cypher.parallel.worker_limit` setting;
   its default, 0, is reported as `null`. The other database figures are the ones Neo4j already
   reported.
 
-**Carry the reading through the liveness heartbeat.** Every 10 seconds the main loop starts a read
-of the figures on a separate thread, so that a slow read cannot hold up requests and flows, and hands
-the reading to the heartbeat thread through a locked slot in memory. Every 5 seconds the
-heartbeat writes the latest reading to the cache next to its "alive" key, with the same 15-second
-expiry. Once a day the report reads every reading back from the cache. Each reading carries the
+**Carry the reading through the liveness heartbeat.** At startup and every 5 minutes the main loop
+starts a read of the figures on a separate thread, so that a slow read cannot hold up requests and
+flows, and hands the reading to the heartbeat thread through a locked slot in memory. Every 5
+seconds the heartbeat writes the latest reading to the cache next to its "alive" key, with the same
+15-second expiry, so a reading stays in the cache for as long as its process is alive. Once a day the report reads every reading back from the cache. Each reading carries the
 container's name, which is never sent, so readings from the same container can be grouped. The name
 is the hostname followed by the container's process ID namespace, because separate containers can
 share a hostname, for example when they use the host's network.
@@ -66,7 +66,7 @@ same until the receiving service confirms it accepts the new fields.
   The snapshot is stored locally even when the deployment does not send telemetry.
 - A figure never overstates the allocation: an unreadable limit is unknown, and an assigned figure
   is never invented.
-- A live limit change reaches the cache within about 15 seconds.
+- A live limit change reaches the cache within about 5 minutes, well before the next daily report.
 - A worker busy with a long task keeps reporting for as long as it is alive, and a stopped worker's
   reading disappears within 15 seconds, so the counts and the figures describe the same processes.
 - No existing field changes, so current ingestion keeps working.
@@ -85,8 +85,10 @@ same until the receiving service confirms it accepts the new fields.
   Neo4j itself, is set either way. Only the warning that a failed read writes to the log tells the
   two apart.
 - `psutil` becomes a runtime dependency.
-- The reading in the cache can be up to about 15 seconds old, or older while the main loop is busy
-  with a long task. Limits rarely change, so this is acceptable.
+- The reading in the cache can be up to about 5 minutes old, or older while the main loop is busy
+  with a long task. Limits rarely change, so this is acceptable for a daily report. Free memory does
+  change on its own, so it describes a moment up to 5 minutes before the report. An empty reading
+  left by a failed read at startup stays until the next read.
 
 ### Neutral
 
@@ -108,6 +110,11 @@ limited to 2 CPUs it reports 18.
 
 A long task that keeps the main loop busy would let the reading expire while the heartbeat kept the
 worker alive, so the worker would be counted with no figures.
+
+### Read the figures every 10 seconds
+
+The report runs once a day, so the extra reads bought nothing, and a limit file that exists but
+cannot be used logs a warning on every read: 8,640 identical warnings a day per process.
 
 ### Read the figures on the heartbeat thread
 

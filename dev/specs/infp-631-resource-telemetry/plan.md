@@ -26,7 +26,7 @@ Technical approach: reuse the existing telemetry gatherer, the `safe_metric` deg
 
 **Project Type**: Single backend service; changes localized to the telemetry module and the component/heartbeat service
 
-**Performance Goals**: Cold daily path; cost is negligible. The existing `workers:*` key scan, plus a separate `workers:resources:*` key scan and a multi-get of those values (one per live process), plus a handful of local file reads per process every 10 seconds
+**Performance Goals**: Cold daily path; cost is negligible. The existing `workers:*` key scan, plus a separate `workers:resources:*` key scan and a multi-get of those values (one per live process), plus a handful of local file reads per process every 5 minutes
 
 **Constraints**: MUST NOT block or fail the snapshot; each source this feature reads degrades independently to `null` (the existing database JMX gather is not guarded and still aborts the snapshot on failure); payload changes are additive only and no existing field changes meaning (research D17), with the version bump gated on receiving-service confirmation rather than made this phase; **no new third-party package**, though `psutil` is promoted from a dev-only pin to a production runtime dependency (research D1, an Ask-First gate); cgroup v2 primary with a v1 fallback, psutil's whole-host figures where neither is present (only `processor_assigned` is then `null`)
 
@@ -99,7 +99,7 @@ backend/infrahub/services/
 │                        #   the gatherer reads them back through the new
 │                        #   read_worker_resources() scan; WorkerInfo gains a component
 │                        #   attribute, set by add_key from the process's own keys
-└── scheduler.py         # registers the 10-second resource_refresh schedule on the main loop
+└── scheduler.py         # registers the 5-minute resource_refresh schedule on the main loop
 
 backend/infrahub/tasks/
 └── recurring.py         # trigger_resource_refresh(), the schedule's function, which calls

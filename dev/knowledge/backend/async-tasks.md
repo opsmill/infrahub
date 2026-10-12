@@ -447,9 +447,10 @@ the deadlock cleanup has no equivalent.
 Each beat also carries the process's CPU and memory reading for telemetry, under
 `workers:resources:{component}:worker:{worker_id}` with the same 15-second expiry, so a reading
 exists exactly as long as the process counts as alive. The reading itself is taken on the main loop
-every 10 seconds and handed to the thread through `LatestResourceReading` in
-`services/component.py`, because the thread only writes to the cache: reading the limit files there
-could stall the beat. See [Telemetry](telemetry.md#cpu-and-memory-figures).
+every 5 minutes, and each beat writes the latest one again. It is handed to the thread through
+`LatestResourceReading` in `services/component.py`, because the thread only writes to the cache:
+reading the limit files there could stall the beat. See
+[Telemetry](telemetry.md#cpu-and-memory-figures).
 
 ## Key Locations
 
