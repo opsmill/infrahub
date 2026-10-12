@@ -1,10 +1,7 @@
 import { graphql, graphqlClient, type ResultOf } from "@/shared/api/graphql/client";
 import type { ContextParams } from "@/shared/api/types";
 
-import {
-  BACKEND_MOCK_NUMBER_POOL_ID,
-  type NumberPoolAllocationFilters,
-} from "@/entities/resource-manager/domain/model/number-pool";
+import type { NumberPoolAllocationFilters } from "@/entities/resource-manager/domain/model/number-pool";
 
 const GET_NUMBER_POOL_ALLOCATIONS = graphql(`
   query GET_NUMBER_POOL_ALLOCATIONS(
@@ -57,6 +54,7 @@ export interface GetNumberPoolAllocationsFromApiParams
 }
 
 export function getNumberPoolAllocationsFromApi({
+  poolId,
   rangeId,
   offset,
   limit,
@@ -67,7 +65,7 @@ export function getNumberPoolAllocationsFromApi({
 }: GetNumberPoolAllocationsFromApiParams) {
   return graphqlClient.query({
     query: GET_NUMBER_POOL_ALLOCATIONS,
-    variables: { poolId: BACKEND_MOCK_NUMBER_POOL_ID, rangeId, offset, limit, branch, provenance },
+    variables: { poolId, rangeId, offset, limit, branch, provenance },
     context: {
       branch: branchName,
       date: atDate,

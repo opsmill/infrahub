@@ -1,8 +1,6 @@
 import { graphql, graphqlClient, type ResultOf } from "@/shared/api/graphql/client";
 import type { ContextParams } from "@/shared/api/types";
 
-import { BACKEND_MOCK_NUMBER_POOL_ID } from "@/entities/resource-manager/domain/model/number-pool";
-
 const GET_NUMBER_POOL_UTILIZATION = graphql(`
   query GET_NUMBER_POOL_UTILIZATION($poolId: String!) {
     InfrahubNumberPoolUtilization(pool_id: $poolId) {
@@ -42,12 +40,13 @@ export interface GetNumberPoolUtilizationFromApiParams extends ContextParams {
 }
 
 export function getNumberPoolUtilizationFromApi({
+  poolId,
   branchName,
   atDate,
 }: GetNumberPoolUtilizationFromApiParams) {
   return graphqlClient.query({
     query: GET_NUMBER_POOL_UTILIZATION,
-    variables: { poolId: BACKEND_MOCK_NUMBER_POOL_ID },
+    variables: { poolId },
     context: {
       branch: branchName,
       date: atDate,

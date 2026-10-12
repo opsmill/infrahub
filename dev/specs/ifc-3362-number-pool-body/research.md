@@ -12,7 +12,7 @@ Each entry gives the decision, why it was chosen, and what else was considered. 
   - `range_id` limits the numbers to one range.
   - Each row carries the holder node (`id`, `kind`, `display_label`) and the `provenance`.
 - **Alternatives considered**: `InfrahubResourcePoolUtilization` and `InfrahubResourcePoolAllocated`. They return percentages only, they ignore `resource_id` for number pools, and they return neither the holder node's label nor the provenance.
-- **Constraint**: until [IFC-3347](https://opsmill.atlassian.net/browse/IFC-3347) reads the database, both queries answer from fake data. Any real pool ID gets the scoped fake pool, which `InfrahubNumberPoolUtilization` refuses without `division`. Until then the frontend sends `pool_id: "mock-unscoped"` for every pool (see the last decision in this file).
+- **Constraint**: until [IFC-3347](https://opsmill.atlassian.net/browse/IFC-3347) reads the database, both queries answer from fake data. Any real pool ID gets the scoped fake pool, which `InfrahubNumberPoolUtilization` refuses without `division`. The committed code sends the real pool ID (R14).
 
 ## R2. Scalar types from gql.tada
 
@@ -137,14 +137,14 @@ Each entry gives the decision, why it was chosen, and what else was considered. 
 
 - **Finding**: `CLAUDE.md` contains only `@AGENTS.md`, and neither file has `<!-- SPECKIT START -->` / `<!-- SPECKIT END -->` markers, so the plan step that updates the plan reference between them has nothing to update. No markers are added, because `AGENTS.md` is shared project guidance.
 
-## R14. Read the backend's unscoped dataset for every pool until the queries read the database
+## R14. Send the real pool ID; use the unscoped fake pool only locally
 
-- **Decision**: the three number pool fetchers send `pool_id: BACKEND_MOCK_NUMBER_POOL_ID` (`"mock-unscoped"`, in `entities/resource-manager/domain/model/number-pool.ts`) instead of the open pool's ID. The frontend fake data and its `USE_FAKE_NUMBER_POOL_DATA` switch are removed. The fetchers keep their `poolId` parameter, so the query keys and callers do not change.
-- **Rationale**: the user wants the backend to be the source of truth. The backend's fixed dataset holds every field the body reads, but it returns the unscoped dataset only for the ID `"mock-unscoped"`; any other ID gets the scoped dataset, which `InfrahubNumberPoolUtilization` refuses without `division`.
-- **Cost**: until IFC-3347, every real pool shows the same two ranges and three numbers, which do not belong to the pool in the header, and the holder links lead to nodes that do not exist.
-- **Removal**: when the queries read the database, delete `BACKEND_MOCK_NUMBER_POOL_ID` and pass `poolId` in the three fetchers.
-- **Alternatives considered**: a backend change that picks the dataset from the real pool's `allocation_scope`. Not chosen for now; it needs the backend owners.
-
+- **Decision**: the three number pool fetchers send the open pool's ID. To check the body against the backend's unscoped fake pool before the queries read the database, a developer temporarily sends `pool_id: "mock-unscoped"` in a local, uncommitted change.
+- **Rationale**: the user wants the backend to be the source of truth, and wants no test-only ID in the committed code. The backend's fixed dataset holds every field the body reads, but it returns the unscoped dataset only for the ID `"mock-unscoped"`; any other ID gets the scoped dataset, which `InfrahubNumberPoolUtilization` refuses without `division`.
+- **Cost**: until IFC-3347, opening a real pool shows that refusal in the body.
+- **Alternatives considered**:
+  - A frontend fake behind a switch. Removed: the backend is the source of truth.
+  - Sending `"mock-unscoped"` for every pool from the committed code. Removed: a test-only ID does not belong in the shipped code.
 ## R15. Source and branch filters on the allocations table
 
 - **Decision**: the table header carries two selects, Source and Branch, plus a Clear button, as in the prototype's filter bar (`NumberPoolAllocationFiltersBar` in `entities/resource-manager/ui/number-pool/`).
@@ -154,4 +154,3 @@ Each entry gives the decision, why it was chosen, and what else was considered. 
 - **Rationale**: the backend query already accepts `branch` and `provenance`, and the backend's fixed dataset applies them, so the filters need no backend change. Filters must be preserved and shareable, so they are URL state, and the URL gives them to every component that reads them.
 - **Not done**: number search. The query has no argument to search by value, and filtering the loaded page on the client would miss numbers on pages not loaded yet.
 - **Range links keep the filters**: the ranges card and the "View all ranges" link build their URLs with `getNumberPoolRangeUrl` (`entities/resource-manager/ui/routing/number-pool-urls.ts`), which tells `constructPath` to keep the two filter parameters from the current URL. Links to a pool from elsewhere in the app do not keep them, so another pool does not inherit the filters.
-
