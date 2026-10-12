@@ -88,8 +88,10 @@ async def get_field_level_impacted_subscribers(
         case ChangedNodes(node_ids=node_ids):
             member_ids = node_ids
         case RelationshipReachedChanges():
-            dependent_resolver = UniquenessDependentResolver(db=db, branch=query_branch_obj)
-            member_ids = sorted(await ReachedMemberResolver(resolver=dependent_resolver).resolve(assessment))
+            # The worker's database object is shared by concurrent flows, so the walk queries on its own session.
+            async with db.start_session(read_only=True) as session_db:
+                dependent_resolver = UniquenessDependentResolver(db=session_db, branch=query_branch_obj)
+                member_ids = sorted(await ReachedMemberResolver(resolver=dependent_resolver).resolve(assessment))
         case _ as unreachable:
             assert_never(unreachable)
 
