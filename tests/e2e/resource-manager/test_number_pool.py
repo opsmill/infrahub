@@ -16,6 +16,7 @@ InfraService number pool come from the schema, not the data.
 from __future__ import annotations
 
 import contextlib
+import re
 from typing import TYPE_CHECKING
 
 import pytest
@@ -86,6 +87,20 @@ class TestNumberPool:
         await expect(admin_page.get_by_role("cell", name="1", exact=True)).to_be_visible()
         await expect(admin_page.get_by_role("cell", name="10", exact=True)).to_be_visible()
 
+    async def test_header_for_user_created_pool(self, admin_page: Page, number_pool_branch: str) -> None:
+        await admin_page.goto(f"/resource-manager?branch={number_pool_branch}")
+        await admin_page.get_by_test_id("object-items").get_by_role("link", name="number pool test for generic").click()
+
+        header = admin_page.locator("header").filter(has=admin_page.get_by_role("heading", level=1))
+        await expect(header.get_by_role("heading", level=1, name="number pool test for generic")).to_be_visible()
+        await expect(header.get_by_text("Managed by")).to_have_count(0)
+        await expect(header.get_by_text("Allocates to")).to_be_visible()
+        await expect(header.get_by_role("button", name="InfraInterface", exact=True)).to_be_visible()
+
+        await header.get_by_role("button", name="Actions").click()
+        await expect(admin_page.get_by_role("menuitem", name="Edit")).not_to_have_attribute("aria-disabled", "true")
+        await expect(admin_page.get_by_role("menuitem", name="Delete")).not_to_have_attribute("aria-disabled", "true")
+
     async def test_update_form_should_not_include_node_and_attribute_selects(
         self, admin_page: Page, number_pool_branch: str
     ) -> None:
@@ -94,6 +109,29 @@ class TestNumberPool:
         await expect(admin_page.get_by_role("cell", name="number pool test for generic").first).to_be_visible()
         await expect(admin_page.get_by_text("Node *")).not_to_be_visible()
         await expect(admin_page.get_by_text("Attribute *")).not_to_be_visible()
+
+    async def test_header_for_schema_created_pool(self, admin_page: Page, number_pool_branch: str) -> None:
+        await admin_page.goto(f"/resource-manager?branch={number_pool_branch}")
+        await admin_page.get_by_role("link", name="InfraService.").click()
+
+        header = admin_page.locator("header").filter(has=admin_page.get_by_role("heading", level=1))
+        await expect(header.get_by_role("button", name="Managed by schema")).to_be_visible()
+        await expect(header.get_by_text("Allocates to")).to_be_visible()
+        await expect(header.get_by_role("button", name="InfraService", exact=True)).to_be_visible()
+        await expect(header.get_by_role("button", name="service_identifier", exact=True)).to_be_visible()
+
+        await header.get_by_role("button", name="InfraService", exact=True).click()
+        await expect(admin_page.get_by_role("dialog", name="Schema viewer")).to_be_visible()
+        await admin_page.keyboard.press("Escape")
+        await expect(admin_page.get_by_role("dialog", name="Schema viewer")).to_have_count(0)
+
+        await header.get_by_role("button", name="Actions").click()
+        await expect(admin_page.get_by_role("menuitem", name="Edit")).to_have_attribute("aria-disabled", "true")
+        await expect(admin_page.get_by_role("menuitem", name="Groups")).to_have_attribute("aria-disabled", "true")
+        await expect(admin_page.get_by_role("menuitem", name="Delete")).to_have_attribute("aria-disabled", "true")
+        await expect(admin_page.get_by_role("menuitem", name="View schema")).to_have_attribute(
+            "href", re.compile(r"kind=CoreNumberPool")
+        )
 
     async def test_number_pool_attribute_kind_resource_manager(self, admin_page: Page, number_pool_branch: str) -> None:
         await admin_page.goto(f"/resource-manager?branch={number_pool_branch}")

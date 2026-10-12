@@ -9,6 +9,12 @@ export interface ResourceAllocatedKeysParams extends PaginationParams {
   resourceId: string;
 }
 
+export interface NumberPoolKeysParams {
+  poolId: string;
+  branchName: string;
+  atDate?: Date | null;
+}
+
 export interface NumberPoolsKeysParams {
   branchName: string;
   atDate?: Date | null;
@@ -27,6 +33,14 @@ export const resourceManagerQueryKeys = {
       params.resourceId,
       params.limit,
       params.offset,
+    ] as const,
+  numberPool: (params: NumberPoolKeysParams) =>
+    [
+      ...resourceManagerQueryKeys.all,
+      "number-pool",
+      params.poolId,
+      params.branchName,
+      params.atDate,
     ] as const,
   numberPools: (params: NumberPoolsKeysParams) =>
     [
