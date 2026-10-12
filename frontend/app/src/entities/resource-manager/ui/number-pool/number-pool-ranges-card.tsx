@@ -63,7 +63,7 @@ interface NoRangesCardProps {
 
 function NoRangesCard({ poolType }: NoRangesCardProps) {
   return (
-    <Card className="items-start gap-1 px-4 py-3 text-sm">
+    <Card className="min-w-64 items-start gap-1 px-4 py-3 text-sm">
       <p className="font-medium">No ranges</p>
       <p className="text-pretty text-foreground-muted">
         This pool can't allocate numbers until it has a range.
@@ -95,7 +95,7 @@ export function NumberPoolRangesCard({
   }
 
   return (
-    <Card className="shrink-0">
+    <Card className="min-w-64 shrink-0">
       <div className="px-3 pt-2 pb-1 font-medium text-foreground-muted text-sm">Ranges</div>
       <ListBox
         aria-label="Ranges"
