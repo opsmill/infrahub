@@ -354,8 +354,8 @@ read-only flows through `import_objects_from_files`.
   and `reason` as log record fields for log shippers and alert rules. `raise_if_branches_failed`
   logs its warning with the same fields only for branches that failed before the import (step
   `collection`), so each failure appears once in the task log as an entry with these fields.
-- **Summary of the import steps.** After the error entry, the boundary logs a warning without these
-  fields that names the import step that was running, the steps that ran before it and the steps
+- **Summary of the import steps.** After the error entry, and before the branch is set to
+  `ERROR_IMPORT`, the boundary logs a warning without these fields that names the import step that was running, the steps that ran before it and the steps
   that did not run, in the order of `ImportSummaryStep` in `backend/infrahub/git/integrator.py`.
   A step with nothing to import is still listed as completed. When the build step fails, the
   warning states that no import step ran. Connection and credential errors, and failures outside

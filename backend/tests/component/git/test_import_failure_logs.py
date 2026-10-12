@@ -255,14 +255,14 @@ def run_log_errors(caplog: pytest.LogCaptureFixture, state: State) -> list[loggi
     ]
 
 
-def run_log_warnings(caplog: pytest.LogCaptureFixture, state: State) -> list[str]:
-    """Return the warning-level messages the flow run wrote to its task log, in order."""
+def run_log_warnings_and_errors(caplog: pytest.LogCaptureFixture, state: State) -> list[logging.LogRecord]:
+    """Return the warning- and error-level entries the flow run wrote to its task log, in order."""
     flow_run_id = str(flow_run_id_of(state))
     return [
-        record.getMessage()
+        record
         for record in caplog.records
         if record.name == FLOW_RUN_LOGGER
-        and record.levelno == logging.WARNING
+        and record.levelno >= logging.WARNING
         and vars(record).get("flow_run_id") == flow_run_id
     ]
 
@@ -277,7 +277,7 @@ async def sync_status(client: InfrahubClient, repository_id: str, branch_name: s
 
 
 class TestImportFailureLogs(TestInfrahubApp):
-    """A failed branch import is logged once, without a Prefect traceback, and stays on its branch."""
+    """A failed branch import logs one error and a summary of its steps, without a traceback, and stays on its branch."""
 
     @pytest.fixture(autouse=True)
     def traceback_suppression_installed(self) -> Generator[None, None, None]:
@@ -381,8 +381,8 @@ class TestImportFailureLogs(TestInfrahubApp):
         git_repos_dir: Path,
         test_case: TransformReferenceCase,
     ) -> None:
-        name = f"transform-reference-repo-{len(test_case.expected_reason)}"
-        branch_name = f"transform-reference-{len(test_case.expected_reason)}"
+        name = f"transform-reference-{test_case.name.replace('_', '-')}-repo"
+        branch_name = f"transform-reference-{test_case.name.replace('_', '-')}"
         remote, node = await self._connect(db=db, tmp_path=tmp_path, name=name)
         await create_branch(branch_name=branch_name, db=db)
         remote.commit(
@@ -395,16 +395,20 @@ class TestImportFailureLogs(TestInfrahubApp):
 
         assert state.is_failed()
         assert await sync_status(client, node.id, branch_name) == RepositorySyncStatus.ERROR_IMPORT.value
-        import_entry, _ = run_log_errors(caplog, state)
+        *entries, finished_entry = run_log_warnings_and_errors(caplog, state)
         reason = f"Python transform 'interfaces' (transform.py): {test_case.expected_reason}"
-        assert import_entry.getMessage() == f"Failed to import branch '{branch_name}': {reason}"
-        assert {key: vars(import_entry)[key] for key in ("repository", "branch", "step", "reason")} == {
+        assert [(entry.levelno, entry.getMessage()) for entry in entries] == [
+            (logging.ERROR, f"Failed to import branch '{branch_name}': {reason}"),
+            (logging.WARNING, f"Import of branch '{branch_name}' {test_case.expected_summary}"),
+        ]
+        assert {key: vars(entries[0])[key] for key in ("repository", "branch", "step", "reason")} == {
             "repository": name,
             "branch": branch_name,
             "step": "import",
             "reason": reason,
         }
-        assert run_log_warnings(caplog, state) == [f"Import of branch '{branch_name}' {test_case.expected_summary}"]
+        assert finished_entry.levelno == logging.ERROR
+        assert finished_entry.getMessage().startswith(FINISHED_FAILED_PREFIX)
         assert records_with_traceback(caplog) == []
 
     async def test_syntax_error_names_the_file_relative_to_the_repository(
@@ -456,9 +460,13 @@ class TestImportFailureLogs(TestInfrahubApp):
 
         assert state.is_failed()
         assert await sync_status(client, node.id, branch_name) == RepositorySyncStatus.ERROR_IMPORT.value
-        import_entry, _ = [record.getMessage() for record in run_log_errors(caplog, state)]
-        assert import_entry == f"Failed to import branch '{branch_name}': File 'devices.yml': The file does not exist"
-        assert run_log_warnings(caplog, state) == [f"Import of branch '{branch_name}' {OBJECTS_STEP_SUMMARY}"]
+        *entries, finished_entry = run_log_warnings_and_errors(caplog, state)
+        assert [(entry.levelno, entry.getMessage()) for entry in entries] == [
+            (logging.ERROR, f"Failed to import branch '{branch_name}': File 'devices.yml': The file does not exist"),
+            (logging.WARNING, f"Import of branch '{branch_name}' {OBJECTS_STEP_SUMMARY}"),
+        ]
+        assert finished_entry.levelno == logging.ERROR
+        assert finished_entry.getMessage().startswith(FINISHED_FAILED_PREFIX)
         assert records_with_traceback(caplog) == []
 
     @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in ENTRY_FAILURE_CASES])
@@ -483,9 +491,13 @@ class TestImportFailureLogs(TestInfrahubApp):
 
         assert state.is_failed()
         assert await sync_status(client, node.id, branch_name) == RepositorySyncStatus.ERROR_IMPORT.value
-        import_entry, _ = [record.getMessage() for record in run_log_errors(caplog, state)]
-        assert import_entry == f"Failed to import branch '{branch_name}': {test_case.expected_reason}"
-        assert run_log_warnings(caplog, state) == [f"Import of branch '{branch_name}' {test_case.expected_summary}"]
+        *entries, finished_entry = run_log_warnings_and_errors(caplog, state)
+        assert [(entry.levelno, entry.getMessage()) for entry in entries] == [
+            (logging.ERROR, f"Failed to import branch '{branch_name}': {test_case.expected_reason}"),
+            (logging.WARNING, f"Import of branch '{branch_name}' {test_case.expected_summary}"),
+        ]
+        assert finished_entry.levelno == logging.ERROR
+        assert finished_entry.getMessage().startswith(FINISHED_FAILED_PREFIX)
         assert records_with_traceback(caplog) == []
 
     async def _import_then_break(

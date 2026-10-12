@@ -45,6 +45,15 @@ def flow_run_errors(caplog: pytest.LogCaptureFixture) -> list[tuple[str, BaseExc
     ]
 
 
+def flow_run_warnings_and_errors(caplog: pytest.LogCaptureFixture) -> list[tuple[int, str]]:
+    """Return the level and message of each warning- and error-level entry of the flow run logger, in order."""
+    return [
+        (record.levelno, record.getMessage())
+        for record in caplog.records
+        if record.name == FLOW_RUN_LOGGER and record.levelno >= logging.WARNING
+    ]
+
+
 def pending_main_import(repo: InfrahubRepository) -> PendingObjectImport:
     return PendingObjectImport(infrahub_branch_name="main", commit=repo.get_commit_value(branch_name="main"))
 
@@ -144,10 +153,12 @@ async def test_failed_status_write_does_not_replace_the_import_failure(
     with pytest.raises(RepositoryImportError, match=rf"^{REJECTED_REQUEST_MESSAGE}$"):
         await call_in_flow(lambda: git_repo_04.build_import_plan(infrahub_branch_name="main", commit=commit))
 
-    *entries, finished_entry = [message for message, _ in flow_run_errors(caplog)]
+    *entries, (finished_level, finished_message) = flow_run_warnings_and_errors(caplog)
     assert entries == [
-        f"Failed to import branch 'main': {REJECTED_REQUEST_MESSAGE}",
-        "Failed to set the sync status of branch 'main' to ERROR_IMPORT",
+        (logging.ERROR, f"Failed to import branch 'main': {REJECTED_REQUEST_MESSAGE}"),
+        (logging.WARNING, "Import of branch 'main' stopped before any import step ran, so nothing was imported."),
+        (logging.ERROR, "Failed to set the sync status of branch 'main' to ERROR_IMPORT"),
     ]
     # Prefect's own closing entry is matched by its prefix, which is the part of its wording it owns.
-    assert finished_entry.startswith("Finished in state Failed(")
+    assert finished_level == logging.ERROR
+    assert finished_message.startswith("Finished in state Failed(")
