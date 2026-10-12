@@ -19,11 +19,6 @@ if TYPE_CHECKING:
 def build_attribute_pool_applier(
     db: InfrahubDatabase, schema_branch: SchemaBranch, profiles_applier: NodeProfilesApplier
 ) -> AttributePoolApplier:
-    """Build the component that gives attributes their numbers from number pools, reading and writing through `db`.
-
-    `schema_branch` is the schema of the branch the write runs on, where a scoped pool's division is read, and
-    `profiles_applier` gives the node the profile values it will hold once saved before that division is read.
-    """
     return AttributePoolApplier(
         pool_finder=NumberPoolLookup(db=db, node_manager=registry.manager),
         number_allocator=NumberPoolAttributeAllocator(db=db),
