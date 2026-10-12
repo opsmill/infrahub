@@ -1379,6 +1379,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         dependency_provider: Provider,
         tmp_path: Path,
         synced_branch_repository: Callable[[str], Awaitable[SyncedBranchRepository]],
+        reject_pushes_to_main: Callable[[str], Callable[[], None]],
     ) -> None:
         """A merge that conflicts with the remote pushes nothing, and its abandonment records who dropped it.
 
@@ -1386,12 +1387,20 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         on a worker with no clone and makes none, so it works when the remote is gone.
         """
         repository = await synced_branch_repository("delivery-conflict-abandon")
+        lift_rejection = reject_pushes_to_main(repository.name)
+        await client.branch.merge(branch_name=repository.branch_name)
+        lift_rejection()
+        # Someone else pushes a conflicting change to the default branch of the remote while the merge waits.
         remote_head = commit_to_remote_branch(
             gogs_server.container, repository.name, branch="main", files={f"{repository.branch_name}.txt": "remote\n"}
         )
 
-        await client.branch.merge(branch_name=repository.branch_name)
+        with pytest.raises(GraphQLError) as exc:
+            await self._retry_delivery(client=client, repository=repository)
 
+        assert [error["message"] for error in exc.value.errors] == [
+            f"The delivery to repository {repository.name} ended with the outcome unreplayable."
+        ]
         # A blanket regeneration of the default branch holds this marker under each repository with queued merges.
         await (await _delivery_store(db=db)).hold(
             repository_id=repository.node_id,
@@ -1474,13 +1483,18 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         gogs_server: GogsServer,
         caplog: pytest.LogCaptureFixture,
         synced_branch_repository: Callable[[str], Awaitable[SyncedBranchRepository]],
+        reject_pushes_to_main: Callable[[str], Callable[[], None]],
     ) -> None:
         """A retry clears a conflicting merge that a user merged by hand on the remote, with no replay and no push."""
         repository = await synced_branch_repository("delivery-conflict-resolved")
+        lift_rejection = reject_pushes_to_main(repository.name)
+        await client.branch.merge(branch_name=repository.branch_name)
+        lift_rejection()
         commit_to_remote_branch(
             gogs_server.container, repository.name, branch="main", files={f"{repository.branch_name}.txt": "remote\n"}
         )
-        await client.branch.merge(branch_name=repository.branch_name)
+        with pytest.raises(GraphQLError):
+            await self._retry_delivery(client=client, repository=repository)
         conflicting = await _delivery_state(db=db, repository_id=repository.node_id)
         assert conflicting.cause == RepositoryDeliveryFailureCause.REPLAY_CONFLICT
         merged = _merge_on_remote(gogs_server.container, repository.name, branch=repository.branch_name)
@@ -1488,7 +1502,10 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         with caplog.at_level(logging.INFO, logger=SYNC_LOGGER):
             await self._retry_delivery(client=client, repository=repository)
 
-        assert await _retry_states(client=client, repository_id=repository.node_id) == [TaskState.COMPLETED]
+        assert sorted(await _retry_states(client=client, repository_id=repository.node_id)) == [
+            TaskState.COMPLETED,
+            TaskState.FAILED,
+        ]
         assert [
             record.getMessage()
             for record in caplog.records
