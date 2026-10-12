@@ -66,7 +66,8 @@ same until the receiving service confirms it accepts the new fields.
   The snapshot is stored locally even when the deployment does not send telemetry.
 - A figure never overstates the allocation: an unreadable limit is unknown, and an assigned figure
   is never invented.
-- A live limit change reaches the cache within about 5 minutes, well before the next daily report.
+- A live limit change reaches the cache within about 5 minutes, or later while the main loop is busy
+  with a long task, still well before the next daily report.
 - A worker busy with a long task keeps reporting for as long as it is alive, and a stopped worker's
   reading disappears within 15 seconds, so the counts and the figures describe the same processes.
 - No existing field changes, so current ingestion keeps working.
