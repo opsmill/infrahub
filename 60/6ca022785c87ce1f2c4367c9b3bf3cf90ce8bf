@@ -1,0 +1,25 @@
+backend/infrahub/core/schema/attribute_parameters.py
+  s_04e9c61d1d4032::t_72cd008715c1eb 250-251
+dev/specs/ifc-3185-number-pool-scopes/plan.md
+  s_04e9c61d1d4032::t_72cd008715c1eb 78,165
+dev/specs/ifc-3185-number-pool-scopes/research.md
+  s_04e9c61d1d4032::t_72cd008715c1eb 103
+dev/specs/ifc-3185-number-pool-scopes/contracts/number-pool-parameters.md
+  s_04e9c61d1d4032::t_72cd008715c1eb 38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "606ca022785c87ce1f2c4367c9b3bf3cf90ce8bf",
+  "prompts": {},
+  "sessions": {
+    "s_04e9c61d1d4032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7cd7a867-c728-45f2-af2b-cf1bc4f2f88a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
