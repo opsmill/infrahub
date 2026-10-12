@@ -1,0 +1,25 @@
+backend/infrahub/pools/schema_number_pool_synchronizer.py
+  s_9a65b7e7908928::t_2e9fe1c189221f 18-19,74,77-97
+backend/infrahub/pools/scoped_number_pool_reader.py
+  s_9a65b7e7908928::t_73601a95ae957d 43-54
+backend/tests/component/pools/test_schema_number_pool_synchronizer.py
+  s_9a65b7e7908928::t_9a109c532b9363 7,19,21-22,211-335
+backend/tests/integration/schema_lifecycle/test_number_pool_scope_schema.py
+  s_9a65b7e7908928::t_047874d52527a2 10,20,107-158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bdd7c3f76d2561eaf699c203ca0110c453488913",
+  "prompts": {},
+  "sessions": {
+    "s_9a65b7e7908928": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "60976836-eea3-41a5-9ac8-f10bf4fbc0fc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

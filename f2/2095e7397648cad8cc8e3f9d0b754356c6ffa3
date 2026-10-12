@@ -1,0 +1,19 @@
+backend/infrahub/core/query/resource_manager.py
+  s_760cbcf248de37::t_a004b42abde103 17-18,23,644,646,661,665,667,673,684-685,689,692-698,710,715-716,718-721,725-737
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f22095e7397648cad8cc8e3f9d0b754356c6ffa3",
+  "prompts": {},
+  "sessions": {
+    "s_760cbcf248de37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9796f03b-7c77-4706-bad0-f6d8a85686f0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
