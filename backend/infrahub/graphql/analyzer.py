@@ -397,20 +397,31 @@ class GraphQLQueryReport:
 
     @cached_property
     def filtered_fields_by_kind(self) -> dict[str, set[str]]:
-        """Return, per kind, the attributes and relationships the query's filter arguments select on.
+        """Return, per kind, the fields the query's filter arguments select on.
 
         A filter argument is named after the field it applies to, followed by ``__`` and the filtered
-        property (``name__value``, ``owner__name__value``). Arguments without that form, such as ``ids``,
-        ``hfid`` or pagination, select on no field and are left out.
+        property (``name__value``, ``owner__name__value``, ``display_label__value``). ``any__value``
+        matches every attribute of the kind and ``hfid`` selects on ``human_friendly_id``. Other
+        arguments, such as ``ids`` or pagination, select on no field and are left out.
         """
         filtered: dict[str, set[str]] = {}
         for query in self.queries:
             for query_model in query.get_models():
-                field_names = set(query_model.model.attribute_names) | set(query_model.model.relationship_names)
+                attribute_names = set(query_model.model.attribute_names)
+                field_names = attribute_names | set(query_model.model.relationship_names) | {"display_label"}
                 for argument in query_model.arguments:
                     field_name, separator, _ = argument.name.partition("__")
-                    if separator and field_name in field_names:
-                        filtered.setdefault(query_model.model.kind, set()).add(field_name)
+                    if argument.name == "hfid":
+                        selected = {"human_friendly_id"}
+                    elif not separator:
+                        continue
+                    elif field_name == "any":
+                        selected = attribute_names
+                    elif field_name in field_names:
+                        selected = {field_name}
+                    else:
+                        continue
+                    filtered.setdefault(query_model.model.kind, set()).update(selected)
 
         return filtered
 
