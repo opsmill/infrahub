@@ -53,6 +53,7 @@ from tests.component.core.node.test_branch_agnostic_edges import assert_no_globa
 from tests.db_snapshot import DbSnapshotter
 from tests.helpers.agnostic_edges import pool_reservation_edges
 from tests.helpers.edge_timestamps import assert_edge_timestamps
+from tests.helpers.schema import load_schema
 
 
 @pytest.fixture
@@ -1091,3 +1092,128 @@ async def test_local_attribute_of_generic_follows_each_node_kind(
 
     await assert_no_global_edges_with_wrong_branch_level(db=db)
     await verify_graph(db=db)
+
+
+async def _add_attribute_on_a_worker_holding_the_previous_schema(
+    db: InfrahubDatabase, default_branch: Branch, previous: SchemaRoot, loaded: SchemaRoot, kind: str, field_name: str
+) -> list[str]:
+    """Run the migration as a task worker does during a load.
+
+    The load saves the new schema before it runs the migrations, while the worker reloads its registry only after them,
+    so the migration runs with the registry put back to the previous schema.
+    """
+    await load_schema(db=db, schema=previous, update_db=True)
+    previous_schema_branch = registry.schema.get_schema_branch(name=default_branch.name).duplicate()
+    previous_branch = registry.get_branch_from_registry(default_branch.name).model_copy(deep=True)
+    await load_schema(db=db, schema=loaded, update_db=True)
+    new_schema = registry.schema.get_node_schema(name=kind, branch=default_branch, duplicate=True)
+    registry.schema.set_schema_branch(name=default_branch.name, schema=previous_schema_branch)
+    registry.branch[default_branch.name] = previous_branch
+    migration = NodeAttributeAddMigration(
+        previous_node_schema=previous_schema_branch.get_node(name=kind),
+        new_node_schema=new_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind=kind, field_name=field_name),
+    )
+    execution_result = await migration.execute(
+        migration_input=MigrationInput(db=db, at=Timestamp()),
+        branch=await Branch.get_by_name(db=db, name=default_branch.name),
+    )
+    return execution_result.errors
+
+
+async def _stored_scope(db: InfrahubDatabase, kind: str, attribute_name: str) -> list[object]:
+    pools = await NodeManager.query(
+        db=db,
+        schema=CoreNumberPoolProtocol,
+        filters={"node__value": kind, "node_attribute__value": attribute_name},
+        branch_agnostic=True,
+    )
+    return [pool.allocation_scope.value for pool in pools]
+
+
+def _scoped_counter(name: str, scope: list[str]) -> AttributeSchema:
+    return AttributeSchema(
+        name=name,
+        kind="NumberPool",
+        optional=False,
+        read_only=True,
+        parameters=NumberPoolParameters(start_range=1, end_range=100, allocation_scope=scope),
+    )
+
+
+async def test_migration_numberpool_attribute_resolves_its_scope_on_a_field_the_same_load_adds(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    server_schema_without_numberpool: NodeSchema,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The worker running the migration can still hold the schema from before the load that adds the scoped field."""
+    monkeypatch.setitem(registry.node, InfrahubKind.NUMBERPOOL, CoreNumberPool)
+    loaded = server_schema_without_numberpool.duplicate()
+    loaded.attributes.extend(
+        [AttributeSchema(name="zone", kind="Text", optional=False), _scoped_counter(name="rack_unit", scope=["zone"])]
+    )
+
+    errors = await _add_attribute_on_a_worker_holding_the_previous_schema(
+        db=db,
+        default_branch=default_branch,
+        previous=SchemaRoot(nodes=[server_schema_without_numberpool]),
+        loaded=SchemaRoot(nodes=[loaded]),
+        kind="TestServer",
+        field_name="rack_unit",
+    )
+
+    zone_id = (
+        registry.schema.get_schema_branch(name=default_branch.name)
+        .get_node(name="TestServer")
+        .get_attribute(name="zone")
+        .id
+    )
+    assert errors == []
+    assert await _stored_scope(db=db, kind="TestServer", attribute_name="rack_unit") == [
+        [{"id": zone_id, "name": "zone"}]
+    ]
+
+
+async def test_migration_numberpool_attribute_resolves_its_scope_on_a_generic_field_the_same_load_adds(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The worker running the migration can still hold the generic from before the load that adds the scoped field."""
+    monkeypatch.setitem(registry.node, InfrahubKind.NUMBERPOOL, CoreNumberPool)
+    holder = GenericSchema(
+        name="Holder", namespace="Testscope", attributes=[AttributeSchema(name="label", kind="Text", optional=True)]
+    )
+    rack = NodeSchema(
+        name="Rack",
+        namespace="Testscope",
+        inherit_from=["TestscopeHolder"],
+        attributes=[AttributeSchema(name="name", kind="Text")],
+    )
+    holder_with_zone = holder.duplicate()
+    holder_with_zone.attributes.append(AttributeSchema(name="zone", kind="Text", optional=False))
+    rack_with_counter = rack.duplicate()
+    rack_with_counter.attributes.append(_scoped_counter(name="counter", scope=["zone"]))
+
+    errors = await _add_attribute_on_a_worker_holding_the_previous_schema(
+        db=db,
+        default_branch=default_branch,
+        previous=SchemaRoot(generics=[holder], nodes=[rack]),
+        loaded=SchemaRoot(generics=[holder_with_zone], nodes=[rack_with_counter]),
+        kind="TestscopeRack",
+        field_name="counter",
+    )
+
+    zone_id = (
+        registry.schema.get_schema_branch(name=default_branch.name)
+        .get_generic(name="TestscopeHolder")
+        .get_attribute(name="zone")
+        .id
+    )
+    assert errors == []
+    assert await _stored_scope(db=db, kind="TestscopeRack", attribute_name="counter") == [
+        [{"id": zone_id, "name": "zone"}]
+    ]
