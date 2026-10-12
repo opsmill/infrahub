@@ -360,6 +360,11 @@ Two rules cover a Git command past the time limit that its caller passes as `kil
   remote, so it raises `RepositoryConnectionError` instead. The watchdog finds the child processes of
   Git with `ps`, which the runtime image does not have, so there it cannot stop a direct call.
 
+A fetch that runs through `git/bounded_command.py::run_git_with_deadline` does not rely on GitPython
+for its limit. Git runs in a process group of its own, and the group is stopped at the deadline,
+`FETCH_TIMEOUT_SECONDS` by default. The error says "git did not finish within", and it raises the same
+`RepositoryConnectionError` as a fetch past its `kill_after_timeout`.
+
 `git/base.py::operational_status_for_error` turns the typed error into the operational status, most
 specific class first: every `RepositoryConnectionError` gives `ERROR_CONNECTION`, a credential or
 permission error gives `ERROR_CRED`, and any other error gives `ERROR`. The permission and credential

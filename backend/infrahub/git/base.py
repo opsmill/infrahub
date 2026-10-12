@@ -36,8 +36,8 @@ from infrahub.git.bounded_command import run_git_with_deadline
 from infrahub.git.constants import (
     BRANCHES_DIRECTORY_NAME,
     COMMITS_DIRECTORY_NAME,
-    READ_ONLY_FETCH_STOP_GRACE_SECONDS,
-    READ_ONLY_FETCH_TIMEOUT_SECONDS,
+    FETCH_STOP_GRACE_SECONDS,
+    FETCH_TIMEOUT_SECONDS,
     REMOTE_TRANSPORT_ENVIRONMENT,
     TEMPORARY_DIRECTORY_NAME,
 )
@@ -685,13 +685,20 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         in file content.
 
         Raises:
-            GitCommandError: When ``git merge-tree`` fails for a reason other than detecting conflicts.
+            GitCommandError: When the fetch of the source branch fails or runs out of time, or when
+                ``git merge-tree`` fails for a reason other than detecting conflicts.
 
         """
         repo = self.get_git_repo_main()
 
         if repo.remotes:
-            repo.remotes.origin.fetch(source_branch)
+            run_git_with_deadline(
+                ["fetch", "--", "origin", source_branch],
+                working_directory=repo.working_dir,
+                environment=REMOTE_TRANSPORT_ENVIRONMENT,
+                timeout_seconds=FETCH_TIMEOUT_SECONDS,
+                stop_grace_seconds=FETCH_STOP_GRACE_SECONDS,
+            )
             source_ref = f"origin/{source_branch}"
         else:
             source_ref = source_branch
@@ -955,8 +962,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             ["fetch", "--prune", "--tags", "--prune-tags", "--force", "origin"],
             working_directory=git_repo.working_dir,
             environment=REMOTE_TRANSPORT_ENVIRONMENT,
-            timeout_seconds=READ_ONLY_FETCH_TIMEOUT_SECONDS if timeout_seconds is None else timeout_seconds,
-            stop_grace_seconds=READ_ONLY_FETCH_STOP_GRACE_SECONDS,
+            timeout_seconds=FETCH_TIMEOUT_SECONDS if timeout_seconds is None else timeout_seconds,
+            stop_grace_seconds=FETCH_STOP_GRACE_SECONDS,
         )
 
     async def get_filtered_remote_branches(self) -> dict[str, BranchInRemote]:
@@ -1067,6 +1074,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         Raises:
             ValueError: When no worktree exists for the branch and ``branch_id`` is not provided to create one.
+            RepositoryConnectionError: When the remote is unreachable, or the fetch of the branch runs past its
+                time limit.
             RepositoryError: When git cannot fetch the branch, compare the two heads or move the worktree.
 
         """
@@ -1079,7 +1088,13 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             try:
                 commit_before = str(repo.head.commit)
                 # The leading plus lets the remote-tracking ref follow a remote that was rewritten.
-                repo.remotes.origin.fetch(f"+refs/heads/{remote_branch}:refs/remotes/origin/{remote_branch}")
+                run_git_with_deadline(
+                    ["fetch", "--", "origin", f"+refs/heads/{remote_branch}:refs/remotes/origin/{remote_branch}"],
+                    working_directory=repo.working_dir,
+                    environment=REMOTE_TRANSPORT_ENVIRONMENT,
+                    timeout_seconds=FETCH_TIMEOUT_SECONDS,
+                    stop_grace_seconds=FETCH_STOP_GRACE_SECONDS,
+                )
                 remote_head = str(repo.commit(f"refs/remotes/origin/{remote_branch}"))
             except GitCommandError as exc:
                 await self._raise_enriched_error(error=exc, branch_name=branch_name)
@@ -1260,7 +1275,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             "The requested URL returned error: 5xx" (git http.c) plus
             "RPC failed; HTTP 5xx" (git remote-curl.c); and "does not appear to be a git".
           - time limit: "process killed because it timed out", the line GitPython adds to the error
-            lines of a fetch or a push when Git ran past its ``kill_after_timeout``; and for a direct
+            lines of a fetch or a push when Git ran past its ``kill_after_timeout``; "git did not finish
+            within", the line of a fetch that its process-group deadline stopped; and for a direct
             Git call stopped at its limit, "Timeout: the command ... did not complete"
             (``GIT_CALL_TIME_LIMIT``), whose message keeps the Git command and the limit but not the
             arguments, which can name worker paths. A write operation is a push to the remote, so past
@@ -1313,7 +1329,11 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             raise RepositoryConnectionError(identifier=name) from error
 
         time_limit = GIT_CALL_TIME_LIMIT.search(error.stderr)
-        if "process killed because it timed out" in error.stderr or (time_limit and is_write_operation):
+        if (
+            "process killed because it timed out" in error.stderr
+            or "git did not finish within" in error.stderr
+            or (time_limit and is_write_operation)
+        ):
             raise RepositoryConnectionError(
                 identifier=name,
                 message=(

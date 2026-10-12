@@ -1,10 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-import socket
 import subprocess  # noqa: S404
-import threading
-from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 import pytest
@@ -12,43 +9,15 @@ from git import Repo
 from git.exc import GitCommandError
 
 from infrahub.git.bounded_command import run_git_with_deadline
+from tests.helpers.git import silent_remote
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
     from pathlib import Path
 
 TIMEOUT_SECONDS = 1.0
 STOP_GRACE_SECONDS = 1.0
 WAIT_SECONDS = 30
 """Bounds each test's wait, far above the deadline, so a regression fails instead of hanging the suite."""
-
-
-@contextmanager
-def silent_remote() -> Iterator[int]:
-    """Accept connections on a loopback port and never answer, the way a hung remote host behaves."""
-    server = socket.socket()
-    server.bind(("127.0.0.1", 0))
-    server.listen()
-    held: list[socket.socket] = []
-    stopped = threading.Event()
-
-    def accept() -> None:
-        while not stopped.is_set():
-            try:
-                connection, _ = server.accept()
-            except OSError:
-                return
-            held.append(connection)
-
-    thread = threading.Thread(target=accept, daemon=True)
-    thread.start()
-    try:
-        yield server.getsockname()[1]
-    finally:
-        stopped.set()
-        server.close()
-        for connection in held:
-            connection.close()
 
 
 def running_commands_containing(marker: str) -> list[str]:
