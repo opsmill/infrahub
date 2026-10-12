@@ -456,7 +456,9 @@ class HashableModel(BaseModel):
     def _get_field_signature(self, field_name: str, value: Any) -> list[bytes]:
         """Return the signature of one field's value, which keeps the order of a list named in `_ordered_in_hash`."""
         if field_name in self._ordered_in_hash and isinstance(value, list):
-            return [self._get_hash_value(item) for item in value]
+            item_hashes = [self._get_hash_value(item) for item in value]
+            # The hash reads the items end to end, so each one carries its length to keep two orders apart.
+            return [f"{len(item_hash)}:".encode() + item_hash for item_hash in item_hashes]
         return self._get_signature_field(value)
 
     @classmethod

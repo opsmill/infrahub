@@ -341,3 +341,11 @@ def test_model_hashes_and_diffs_a_list_named_as_ordered_in_its_order() -> None:
     assert element.diff(ordered_reversed).model_dump() == {"added": {}, "changed": {"ordered": None}, "removed": {}}
     assert element.get_hash() == unordered_reversed.get_hash()
     assert element.diff(unordered_reversed).has_diff is False
+
+
+def test_model_hashes_apart_two_orders_of_items_that_read_the_same_end_to_end() -> None:
+    class MyElement(HashableModel):
+        _ordered_in_hash: list[str] = ["ordered"]
+        ordered: list[str]
+
+    assert MyElement(ordered=["ab", "abab"]).get_hash() != MyElement(ordered=["abab", "ab"]).get_hash()
