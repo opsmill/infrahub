@@ -102,9 +102,9 @@ Each entry gives the decision, why it was chosen, and what else was considered. 
 ## R9. Number and percentage display
 
 - **Decision**:
-  - Numbers and range bounds use `formatNumberDisplay` from `shared/utils/number.ts`. A range reads "<start> – <end>", built from `start` and `end`, not from `display_label` ("1 - 50").
+  - Every number on the page uses `formatNumberDisplay` from `shared/utils/number.ts`: the allocated numbers, the range bounds, the count of numbers and the used and size figures. A pool's values are user-defined (identifiers, room numbers, serials, counts), so the page formats them all the same way rather than guessing which ones are identifiers. A range reads "<start> – <end>", built from `start` and `end`, not from `display_label` ("1 - 50").
   - The percentage uses the API's `utilization` with a local formatter. It shows "0%" for zero, "<0.1%" below 0.1, one decimal below 10, and whole numbers above.
-- **Rationale**: the prototype's display was approved. `formatNumberDisplay` already wraps `Intl.NumberFormat`.
+- **Rationale**: the prototype's display was approved, and one format everywhere keeps the card and the table consistent. `formatNumberDisplay` already wraps `Intl.NumberFormat`.
 
 ## R10. Usage bar
 
@@ -153,5 +153,5 @@ Each entry gives the decision, why it was chosen, and what else was considered. 
   - The Branch options come from the branch list (`useGetBranches`).
 - **Rationale**: the backend query already accepts `branch` and `provenance`, and the backend's fixed dataset applies them, so the filters need no backend change. Filters must be preserved and shareable, so they are URL state, and the URL gives them to every component that reads them.
 - **Not done**: number search. The query has no argument to search by value, and filtering the loaded page on the client would miss numbers on pages not loaded yet.
-- **Known limit**: selecting another range builds its link with `constructPath`, which keeps only the global query parameters, so the filters reset when the range changes.
+- **Range links keep the filters**: the ranges card and the "View all ranges" link build their URLs with `getNumberPoolRangeUrl` (`entities/resource-manager/ui/routing/number-pool-urls.ts`), which tells `constructPath` to keep the two filter parameters from the current URL. Links to a pool from elsewhere in the app do not keep them, so another pool does not inherit the filters.
 

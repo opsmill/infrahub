@@ -143,7 +143,7 @@ All frontend paths are relative to `frontend/app/`. `src/` paths use the `@/` al
   - `MultipleProgressBar` with two segments: `usedDefaultBranch / size * 100` and `usedBranches / size * 100`, guarding against `size === 0`
   - segment tooltips "Default branch: X of Y" and "Other branches only: X of Y"
   - a percentage label from a local `formatPercent(value)`: "0%", "<0.1%", one decimal below 10 with a trailing ".0" removed, otherwise a whole number, with a `Tooltip` "X of Y"
-  - numbers formatted with `formatNumberDisplay` from `@/shared/utils/number`
+  - numbers formatted with `formatNumberDisplay` from `@/shared/utils/number`, like every number on the page (research R9)
 
   Add `number-pool-usage-bar.test.tsx`: `used 30`, `size 50` shows "60%".
 - [X] T018 [US1] Create `src/entities/resource-manager/ui/number-pool/number-pool-ranges-card.tsx`, exporting `NumberPoolRangesCard({ poolId, poolType, utilization, selectedRangeId })` per [contracts/ui.md](./contracts/ui.md):

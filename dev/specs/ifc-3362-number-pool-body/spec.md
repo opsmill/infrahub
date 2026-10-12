@@ -92,7 +92,7 @@ A user who works with the keyboard selects a range, moves through the table and 
 
 - **FR-005**: The ranges card MUST list an "All ranges" row first, then each range in fill order: highest weight first, then lowest start. This is the order in which the pool allocates.
 - **FR-006**: Each range row MUST show:
-  - the range, with thousands separators, for example "64,512 – 65,000"
+  - the range, with thousands separators like every number on the page, for example "64,512 – 65,000"
   - "Weight N" on the right
   - a usage bar that shows the share used on the default branch and the share used only on other branches, with the percentage used
   - a tooltip on the usage that shows "<used> of <size>"
@@ -103,7 +103,7 @@ A user who works with the keyboard selects a range, moves through the table and 
 
 - **FR-009**: The table MUST list only the numbers in the selected range, or in every range when "All ranges" is selected.
 - **FR-010**: The table MUST show these columns, in this order:
-  - **Number**: right-aligned, with thousands separators
+  - **Number**: right-aligned, with thousands separators like every number on the page
   - **Object**: the holder node's label, linked to the node on the row's branch
   - **Kind**: the holder node's kind
   - **Branch**: the branch name, with a branch icon when it is not the default branch

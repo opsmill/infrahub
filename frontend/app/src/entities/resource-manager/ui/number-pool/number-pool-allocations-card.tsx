@@ -3,10 +3,9 @@ import { SearchXIcon } from "lucide-react";
 
 import { Col } from "@/shared/components/container";
 
-import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import type { NumberPoolRange } from "@/entities/resource-manager/domain/model/number-pool";
-import { NUMBER_POOL_KIND } from "@/entities/resource-manager/domain/model/pool";
 import { NumberPoolAllocationsTable } from "@/entities/resource-manager/ui/number-pool/number-pool-allocations-table";
+import { getNumberPoolRangeUrl } from "@/entities/resource-manager/ui/routing/number-pool-urls";
 
 interface UnknownRangeProps {
   poolId: string;
@@ -25,7 +24,7 @@ function UnknownRange({ poolId }: UnknownRangeProps) {
           may belong to another pool.
         </p>
       </Col>
-      <LinkButton variant="outline" size="sm" href={getObjectDetailsUrl(NUMBER_POOL_KIND, poolId)}>
+      <LinkButton variant="outline" size="sm" href={getNumberPoolRangeUrl(poolId)}>
         View all ranges
       </LinkButton>
     </Col>

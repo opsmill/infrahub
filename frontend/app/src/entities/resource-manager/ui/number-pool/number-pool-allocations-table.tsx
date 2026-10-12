@@ -31,6 +31,7 @@ import {
 } from "@/entities/resource-manager/domain/model/number-pool";
 import { useNumberPoolAllocationFilters } from "@/entities/resource-manager/ui/hooks/use-number-pool-allocation-filters";
 import { NumberPoolAllocationFiltersBar } from "@/entities/resource-manager/ui/number-pool/number-pool-allocation-filters-bar";
+import { formatRangeLabel } from "@/entities/resource-manager/ui/number-pool/number-pool-ranges-card";
 import { useGetNumberPoolAllocationCount } from "@/entities/resource-manager/ui/queries/get-number-pool-allocation-count.query";
 import { useGetNumberPoolAllocations } from "@/entities/resource-manager/ui/queries/get-number-pool-allocations.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -52,10 +53,6 @@ const plainLinkStyle = "no-underline decoration-solid underline-offset-2 hover:u
 
 const allocationKey = ({ value, branch, holder }: NumberPoolAllocation) =>
   `${value}:${branch}:${holder.id}`;
-
-// pool values are identifiers such as ASNs and VLAN IDs, which are written without separators
-const formatSpan = ({ start, end }: Pick<NumberPoolRange, "start" | "end">) =>
-  `${start.value} – ${end.value}`;
 
 interface SourceTagProps {
   provenance: NumberPoolProvenance;
@@ -145,7 +142,7 @@ export function NumberPoolAllocationsTable({
   const objectHeader = nodeSchema?.label ?? "Object";
   const isFiltered = filters.branch !== undefined || filters.provenance !== undefined;
   const rangeEmptyMessage = selectedRange
-    ? `No allocations in ${formatSpan(selectedRange)}`
+    ? `No allocations in ${formatRangeLabel(selectedRange)}`
     : "No allocations yet";
   const emptyMessage = isFiltered ? "No allocations match these filters" : rangeEmptyMessage;
 
@@ -229,7 +226,7 @@ export function NumberPoolAllocationsTable({
                     )}
                   >
                     <Cell className={classNames(cellStyle, "font-medium tabular-nums")}>
-                      {allocation.value}
+                      {formatNumberDisplay(allocation.value)}
                     </Cell>
                     <Cell className={cellStyle}>
                       <Link
@@ -265,7 +262,7 @@ export function NumberPoolAllocationsTable({
                     </Cell>
                     {showRangeColumn && (
                       <Cell className={classNames(cellStyle, "text-foreground-muted tabular-nums")}>
-                        {range ? formatSpan(range) : ""}
+                        {range ? formatRangeLabel(range) : ""}
                       </Cell>
                     )}
                     <Cell className={cellStyle}>

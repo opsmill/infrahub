@@ -129,4 +129,22 @@ describe("NumberPoolRangesCard", () => {
       .poll(() => window.location.pathname)
       .toBe(`/resource-manager/pool-id/ranges/${firstRange?.id}`);
   });
+
+  it("keeps the allocation filters when opening another range", async () => {
+    // GIVEN
+    window.history.pushState(null, "", "/?allocation_branch=b1&allocation_source=PROVIDED");
+    await renderCard();
+    await userEvent.keyboard("{Tab}");
+
+    // WHEN
+    await userEvent.keyboard("{ArrowDown}{Enter}");
+
+    // THEN
+    await expect
+      .poll(() => window.location.pathname)
+      .toBe(`/resource-manager/pool-id/ranges/${firstRange?.id}`);
+    const params = new URLSearchParams(window.location.search);
+    expect(params.get("allocation_branch")).toBe("b1");
+    expect(params.get("allocation_source")).toBe("PROVIDED");
+  });
 });

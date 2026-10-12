@@ -5,18 +5,17 @@ import { Row } from "@/shared/components/container";
 import { formatNumberDisplay } from "@/shared/utils/number";
 import { pluralize } from "@/shared/utils/string";
 
-import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import type {
   NumberPoolRange,
   NumberPoolUsage,
   NumberPoolUtilization,
 } from "@/entities/resource-manager/domain/model/number-pool";
 import {
-  NUMBER_POOL_KIND,
   NUMBER_POOL_TYPE_SCHEMA,
   type NumberPoolType,
 } from "@/entities/resource-manager/domain/model/pool";
 import { NumberPoolUsageBar } from "@/entities/resource-manager/ui/number-pool/number-pool-usage-bar";
+import { getNumberPoolRangeUrl } from "@/entities/resource-manager/ui/routing/number-pool-urls";
 
 const ALL_RANGES_KEY = "all";
 
@@ -45,14 +44,14 @@ const getRangeItems = (poolId: string, utilization: NumberPoolUtilization): Rang
       title: "All ranges",
       subtitle: pluralize(ranges.length, "range"),
       usage,
-      href: getObjectDetailsUrl(NUMBER_POOL_KIND, poolId),
+      href: getNumberPoolRangeUrl(poolId),
     },
     ...ranges.map((range) => ({
       id: range.id,
       title: formatRangeLabel(range),
       subtitle: `Weight ${range.allocation_weight.value}`,
       usage: range.usage,
-      href: getObjectDetailsUrl(NUMBER_POOL_KIND, poolId, undefined, `ranges/${range.id}`),
+      href: getNumberPoolRangeUrl(poolId, range.id),
     })),
   ];
 };

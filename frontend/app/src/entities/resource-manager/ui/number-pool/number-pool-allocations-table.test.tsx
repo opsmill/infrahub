@@ -182,7 +182,7 @@ describe("NumberPoolAllocationsTable", () => {
     await expect.element(component.getByRole("columnheader", { name: "Object" })).toBeVisible();
   });
 
-  it("shows a number without thousands separators", async () => {
+  it("shows a number with thousands separators, like every number on the page", async () => {
     // GIVEN
     mockAllocations({ allocations: [generateNumberPoolAllocation({ value: 4_200_000_000 })] });
 
@@ -191,7 +191,7 @@ describe("NumberPoolAllocationsTable", () => {
 
     // THEN
     await expect
-      .element(component.getByRole("rowheader", { name: "4200000000", exact: true }))
+      .element(component.getByRole("rowheader", { name: "4,200,000,000", exact: true }))
       .toBeVisible();
   });
 
