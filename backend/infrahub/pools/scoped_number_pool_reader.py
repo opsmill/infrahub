@@ -47,9 +47,8 @@ class ScopedNumberPoolReader:
             ValidationError: When a pool stores an allocation scope that is not a list of elements.
 
         """
-        pools = await NodeManager.query(
-            db=self.db, schema=CoreNumberPool, filters={"allocation_scope__isnull": False}, branch_agnostic=True
-        )
+        # An `isnull` filter on a List attribute matches no node, so the unscoped pools are dropped after the read.
+        pools = await NodeManager.query(db=self.db, schema=CoreNumberPool, branch_agnostic=True)
         return self._scoped(pools=pools)
 
     def _scoped(self, pools: Iterable[CoreNumberPool]) -> list[ScopedNumberPool]:
