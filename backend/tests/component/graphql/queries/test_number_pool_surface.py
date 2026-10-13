@@ -800,24 +800,6 @@ async def test_a_number_and_a_boolean_scope_element_keep_their_type_from_the_div
 async def test_the_bounds_and_exclusions_of_the_attribute_narrow_the_space_of_every_dedicated_query(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
-    await save_schema_kinds(db=db, schema=SCOPED_POOL_SCHEMA)
-    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
-    pool_id, _, _ = await two_range_pool(db=db, name="bounded", scope=["site"])
-    site = await Node.init(db=db, schema=SCOPED_SITE.kind, branch=default_branch)
-    await site.new(db=db, name="site-a")
-    await site.save(db=db)
-    for name, number in (("D3", 3), ("D8", 8), ("D30", 30), ("D60", 60)):
-        device = await Node.init(db=db, schema=SCOPED_DEVICE.kind, branch=default_branch)
-        await device.new(
-            db=db,
-            name=name,
-            role="leaf",
-            tags=["red"],
-            site=site.id,
-            vlan_id={"value": number, "from_pool": {"id": pool_id}},
-        )
-        await device.save(db=db)
-    # The numbers given before the attribute was narrowed stay in the database, outside the new domain.
     bounded_device = deepcopy(SCOPED_DEVICE)
     bounded_device.attributes = [
         NumberAttributeSchema(
@@ -837,6 +819,22 @@ async def test_the_bounds_and_exclusions_of_the_attribute_narrow_the_space_of_ev
             nodes=[bounded_device if node.kind == SCOPED_DEVICE.kind else node for node in SCOPED_POOL_SCHEMA.nodes],
         ),
     )
+    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+    pool_id, _, _ = await two_range_pool(db=db, name="bounded", scope=["site"])
+    site = await Node.init(db=db, schema=SCOPED_SITE.kind, branch=default_branch)
+    await site.new(db=db, name="site-a")
+    await site.save(db=db)
+    for name, number in (("D3", 3), ("D30", 30)):
+        device = await Node.init(db=db, schema=SCOPED_DEVICE.kind, branch=default_branch)
+        await device.new(
+            db=db,
+            name=name,
+            role="leaf",
+            tags=["red"],
+            site=site.id,
+            vlan_id={"value": number, "from_pool": {"id": pool_id}},
+        )
+        await device.save(db=db)
     params = await prepare_graphql_params(db=db, branch=default_branch)
     division = [{"path": "site", "value": site.id}]
 
