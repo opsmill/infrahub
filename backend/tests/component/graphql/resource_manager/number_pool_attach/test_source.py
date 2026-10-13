@@ -1,3 +1,6 @@
+from collections import Counter
+from typing import Any
+
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.initialization import create_account, create_branch
@@ -5,6 +8,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from tests.helpers.db_query_counter import CountingInfrahubDatabase
 
 from .helpers import (
     AttributeRead,
@@ -51,6 +55,74 @@ query TicketSequence($id: ID!) {
     }
 }
 """
+
+TICKETS_WITH_SOURCE = """
+query TicketsWithSource($ids: [ID]) {
+    TestingTicket(ids: $ids) {
+        edges { node { ticket_id { value source { id display_label } } } }
+    }
+}
+"""
+
+TICKETS_WITHOUT_SOURCE = """
+query TicketsWithoutSource($ids: [ID]) {
+    TestingTicket(ids: $ids) {
+        edges { node { ticket_id { value } } }
+    }
+}
+"""
+
+TITLES_WITH_SOURCE = """
+query TitlesWithSource($ids: [ID]) {
+    TestingTicket(ids: $ids) {
+        edges { node { title { value source { id display_label } } } }
+    }
+}
+"""
+
+TITLES_WITHOUT_SOURCE = """
+query TitlesWithoutSource($ids: [ID]) {
+    TestingTicket(ids: $ids) {
+        edges { node { title { value } } }
+    }
+}
+"""
+
+TITLES_WITH_OWNER = """
+query TitlesWithOwner($ids: [ID]) {
+    TestingTicket(ids: $ids) {
+        edges { node { title { value owner { id display_label } } } }
+    }
+}
+"""
+
+TITLES_WITH_SOURCE_AND_OWNER = """
+query TitlesWithSourceAndOwner($ids: [ID]) {
+    TestingTicket(ids: $ids) {
+        edges { node { title { value source { id display_label } owner { id display_label } } } }
+    }
+}
+"""
+
+CREATE_TICKET_WITH_TITLE_SOURCE = """
+mutation CreateTicket($title: TextAttributeCreate!, $ticket_id: NumberAttributeCreate) {
+    TestingTicketCreate(data: { title: $title, ticket_id: $ticket_id }) {
+        ok
+        object { id }
+    }
+}
+"""
+
+ONE_BATCHED_OBJECT_READ = {"node_list_get_info": 1, "node_list_get_attribute": 1, "node_list_get_relationship": 1}
+
+
+async def count_queries(
+    db: InfrahubDatabase, branch: Branch, source: str, object_ids: list[str]
+) -> tuple[Counter[str], list[dict[str, Any]]]:
+    counting_db = CountingInfrahubDatabase.from_db(db=db)
+    data = await execute(db=counting_db, branch=branch, source=source, variables={"ids": object_ids})
+    assert data
+    return counting_db.query_counts, data["TestingTicket"]["edges"]
 
 
 class TestPooledSourceRead:
@@ -204,6 +276,7 @@ class TestPooledSourceRead:
         self, db: InfrahubDatabase, main_branch: Branch
     ) -> None:
         pool = await new_pool(db=db, name="read-mutation", start_range=4900, end_range=4909)
+        second_pool = await new_pool(db=db, name="read-mutation-2", start_range=4910, end_range=4919)
 
         created = await execute(
             db=db,
@@ -235,6 +308,17 @@ class TestPooledSourceRead:
             "a write naming no pool still reports the pool tracking the number"
         )
 
+        re_pooled = await execute(
+            db=db,
+            branch=main_branch,
+            source=UPDATE_TICKET_READING_SOURCE,
+            variables={"id": ticket["id"], "ticket_id": {"value": 4915, "from_pool": {"id": second_pool.id}}},
+        )
+        assert re_pooled
+        assert attribute_read(re_pooled["TestingTicketUpdate"]["object"]["ticket_id"]) == pool_source(
+            4915, second_pool
+        ), "a write naming another pool reports that pool"
+
         detached = await execute(
             db=db,
             branch=main_branch,
@@ -242,4 +326,168 @@ class TestPooledSourceRead:
             variables={"id": ticket["id"], "ticket_id": {"from_pool": None}},
         )
         assert detached
-        assert attribute_read(detached["TestingTicketUpdate"]["object"]["ticket_id"]) == AttributeRead(4906, None, None)
+        assert attribute_read(detached["TestingTicketUpdate"]["object"]["ticket_id"]) == AttributeRead(4915, None, None)
+
+    async def test_mutation_responses_report_the_pool_ahead_of_a_source_the_user_set(
+        self, db: InfrahubDatabase, main_branch: Branch
+    ) -> None:
+        pool = await new_pool(db=db, name="read-mutation-user-source", start_range=4920, end_range=4929)
+        second_pool = await new_pool(db=db, name="read-mutation-user-source-2", start_range=4930, end_range=4939)
+        account = await create_account(db=db, name="read-mutation-user-source", password="read-mutation-user-source")
+
+        created = await execute(
+            db=db,
+            branch=main_branch,
+            source=CREATE_TICKET_READING_SOURCE,
+            variables={
+                "title": "read-mutation-user-source",
+                "ticket_id": {"value": 4923, "from_pool": {"id": pool.id}, "source": account.id},
+            },
+        )
+        assert created
+        ticket = created["TestingTicketCreate"]["object"]
+        assert attribute_read(ticket["ticket_id"]) == pool_source(4923, pool)
+
+        re_pooled = await execute(
+            db=db,
+            branch=main_branch,
+            source=UPDATE_TICKET_READING_SOURCE,
+            variables={"id": ticket["id"], "ticket_id": {"value": 4933, "from_pool": {"id": second_pool.id}}},
+        )
+        assert re_pooled
+        assert attribute_read(re_pooled["TestingTicketUpdate"]["object"]["ticket_id"]) == pool_source(4933, second_pool)
+
+        detached = await execute(
+            db=db,
+            branch=main_branch,
+            source=UPDATE_TICKET_READING_SOURCE,
+            variables={"id": ticket["id"], "ticket_id": {"from_pool": None}},
+        )
+        assert detached
+        assert attribute_read(detached["TestingTicketUpdate"]["object"]["ticket_id"]) == AttributeRead(
+            4933, account.id, InfrahubKind.ACCOUNT
+        ), "once no pool tracks the number, the source the user set is what the response reports"
+
+    async def test_reading_the_sources_of_a_page_of_numbers_costs_one_batched_object_read(
+        self, db: InfrahubDatabase, main_branch: Branch
+    ) -> None:
+        """The tracking pool comes with the attribute read, and the pools a page names are loaded in one batch."""
+        pool_a = await new_pool(db=db, name="read-count-a", start_range=5000, end_range=5009)
+        pool_b = await new_pool(db=db, name="read-count-b", start_range=5010, end_range=5019)
+        tickets: list[dict[str, Any]] = []
+        for index, pool in enumerate((pool_a, pool_a, pool_b)):
+            tickets.append(
+                await create_ticket(
+                    db=db, branch=main_branch, title=f"read-count-{index}", ticket_id={"from_pool": {"id": pool.id}}
+                )
+            )
+        ids = [ticket["id"] for ticket in tickets]
+
+        with_source, edges = await count_queries(db=db, branch=main_branch, source=TICKETS_WITH_SOURCE, object_ids=ids)
+        without_source, _ = await count_queries(
+            db=db, branch=main_branch, source=TICKETS_WITHOUT_SOURCE, object_ids=ids
+        )
+        with_source_one_ticket, _ = await count_queries(
+            db=db, branch=main_branch, source=TICKETS_WITH_SOURCE, object_ids=ids[:1]
+        )
+
+        assert sorted(
+            (edge["node"]["ticket_id"]["value"], edge["node"]["ticket_id"]["source"]["display_label"]) for edge in edges
+        ) == [(5000, "read-count-a"), (5001, "read-count-a"), (5010, "read-count-b")]
+        assert dict(with_source - without_source) == ONE_BATCHED_OBJECT_READ, (
+            "the pools of the page are loaded with one batched object read"
+        )
+        assert with_source == with_source_one_ticket, "the cost does not grow with the number of tickets"
+
+    async def test_reading_the_sources_of_a_page_of_text_values_costs_one_batched_object_read(
+        self, db: InfrahubDatabase, main_branch: Branch
+    ) -> None:
+        """A stored source on any attribute kind goes through the same batched load as a pool."""
+        account = await create_account(db=db, name="read-count-text", password="read-count-text")
+        ids: list[str] = []
+        for index in range(3):
+            created = await execute(
+                db=db,
+                branch=main_branch,
+                source=CREATE_TICKET_WITH_TITLE_SOURCE,
+                variables={
+                    "title": {"value": f"read-count-text-{index}", "source": account.id},
+                    "ticket_id": {"value": 5100 + index},
+                },
+            )
+            assert created
+            ids.append(created["TestingTicketCreate"]["object"]["id"])
+
+        with_source, edges = await count_queries(db=db, branch=main_branch, source=TITLES_WITH_SOURCE, object_ids=ids)
+        without_source, _ = await count_queries(db=db, branch=main_branch, source=TITLES_WITHOUT_SOURCE, object_ids=ids)
+        with_source_one_ticket, _ = await count_queries(
+            db=db, branch=main_branch, source=TITLES_WITH_SOURCE, object_ids=ids[:1]
+        )
+
+        assert {edge["node"]["title"]["source"]["id"] for edge in edges} == {account.id}
+        assert dict(with_source - without_source) == ONE_BATCHED_OBJECT_READ, (
+            "the sources of the page are loaded with one batched object read"
+        )
+        assert with_source == with_source_one_ticket, "the cost does not grow with the number of tickets"
+
+    async def test_reading_the_owners_of_a_page_costs_one_batched_object_read(
+        self, db: InfrahubDatabase, main_branch: Branch
+    ) -> None:
+        """An owner goes through the same batched load as a source."""
+        account = await create_account(db=db, name="read-count-owner", password="read-count-owner")
+        ids: list[str] = []
+        for index in range(3):
+            created = await execute(
+                db=db,
+                branch=main_branch,
+                source=CREATE_TICKET_WITH_TITLE_SOURCE,
+                variables={
+                    "title": {"value": f"read-count-owner-{index}", "owner": account.id},
+                    "ticket_id": {"value": 5200 + index},
+                },
+            )
+            assert created
+            ids.append(created["TestingTicketCreate"]["object"]["id"])
+
+        with_owner, edges = await count_queries(db=db, branch=main_branch, source=TITLES_WITH_OWNER, object_ids=ids)
+        without_owner, _ = await count_queries(db=db, branch=main_branch, source=TITLES_WITHOUT_SOURCE, object_ids=ids)
+        with_owner_one_ticket, _ = await count_queries(
+            db=db, branch=main_branch, source=TITLES_WITH_OWNER, object_ids=ids[:1]
+        )
+
+        assert {edge["node"]["title"]["owner"]["id"] for edge in edges} == {account.id}
+        assert dict(with_owner - without_owner) == ONE_BATCHED_OBJECT_READ, (
+            "the owners of the page are loaded with one batched object read"
+        )
+        assert with_owner == with_owner_one_ticket, "the cost does not grow with the number of tickets"
+
+    async def test_an_object_that_is_both_source_and_owner_is_loaded_once_for_a_page(
+        self, db: InfrahubDatabase, main_branch: Branch
+    ) -> None:
+        """Both fields share one loader, so the same sub-selection on both costs one read for the page."""
+        account = await create_account(db=db, name="read-count-both", password="read-count-both")
+        ids: list[str] = []
+        for index in range(3):
+            created = await execute(
+                db=db,
+                branch=main_branch,
+                source=CREATE_TICKET_WITH_TITLE_SOURCE,
+                variables={
+                    "title": {"value": f"read-count-both-{index}", "source": account.id, "owner": account.id},
+                    "ticket_id": {"value": 5300 + index},
+                },
+            )
+            assert created
+            ids.append(created["TestingTicketCreate"]["object"]["id"])
+
+        with_both, edges = await count_queries(
+            db=db, branch=main_branch, source=TITLES_WITH_SOURCE_AND_OWNER, object_ids=ids
+        )
+        without, _ = await count_queries(db=db, branch=main_branch, source=TITLES_WITHOUT_SOURCE, object_ids=ids)
+
+        assert {(edge["node"]["title"]["source"]["id"], edge["node"]["title"]["owner"]["id"]) for edge in edges} == {
+            (account.id, account.id)
+        }
+        assert dict(with_both - without) == ONE_BATCHED_OBJECT_READ, (
+            "the sources and owners of the page are loaded together, with one batched object read"
+        )
