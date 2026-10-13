@@ -19,7 +19,7 @@ from ..interface import ConstraintCheckerInterface
 from .scope_dependency import ChangedField, PoolDependency, ScopeBreakage
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable
+    from collections.abc import Iterable
 
     from infrahub.core.path import GroupedDataPaths
     from infrahub.core.schema import MainSchemaTypes
@@ -55,6 +55,35 @@ class DeclaringAttribute:
     entries: list[str] | None
 
 
+RENAME_CONSTRAINTS = frozenset({"attribute.name.update", "relationship.name.update"})
+REMOVE_CONSTRAINTS = frozenset({"node.attribute.remove", "node.relationship.remove"})
+ALLOCATION_SCOPE_CONSTRAINT = ConstraintIdentifier.ATTRIBUTE_PARAMETERS_ALLOCATION_SCOPE_UPDATE.value
+UNIQUENESS_CONSTRAINTS = ConstraintIdentifier.NODE_UNIQUENESS_CONSTRAINTS_UPDATE.value
+UNIQUE_CONSTRAINT = "attribute.unique.update"
+
+# What a change reports when it gives a scope element, or the tracked attribute, the property its constraint names.
+PROPERTY_BREAKAGES = {
+    "attribute.optional.update": ScopeBreakage(
+        dependency=PoolDependency.SCOPE_ELEMENT, reason="a scope element must stay required"
+    ),
+    "relationship.optional.update": ScopeBreakage(
+        dependency=PoolDependency.SCOPE_ELEMENT, reason="a scope element must stay required"
+    ),
+    "relationship.cardinality.update": ScopeBreakage(
+        dependency=PoolDependency.SCOPE_ELEMENT, reason="a scope element must stay a relationship of cardinality one"
+    ),
+    UNIQUE_CONSTRAINT: ScopeBreakage(
+        dependency=PoolDependency.TRACKED_ATTRIBUTE, reason="a globally unique number cannot be allocated per division"
+    ),
+    "attribute.kind.update": ScopeBreakage(
+        dependency=PoolDependency.SCOPE_ELEMENT, reason="a scope element must hold a single scalar value"
+    ),
+}
+REMOVAL_BREAKAGE = ScopeBreakage(
+    dependency=PoolDependency.SCOPE_ELEMENT, reason="a scope element cannot be removed while the pool exists"
+)
+
+
 class NumberPoolScopeChecker(ConstraintCheckerInterface):
     """Refuses a schema change that stops a field from giving the one value per node that a pool's scope needs."""
 
@@ -78,49 +107,6 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         self.default_branch_name = default_branch_name
         self.pool_finder = pool_finder
         self.violation_builder = violation_builder
-        made_optional = self._gained_property_rule(
-            predicate=lambda field: field.optional,
-            breakage=ScopeBreakage(
-                dependency=PoolDependency.SCOPE_ELEMENT, reason="a scope element must stay required"
-            ),
-        )
-        made_unique = self._gained_property_rule(
-            predicate=lambda field: isinstance(field, AttributeSchema) and field.unique,
-            breakage=ScopeBreakage(
-                dependency=PoolDependency.TRACKED_ATTRIBUTE,
-                reason="a globally unique number cannot be allocated per division",
-            ),
-        )
-        self._made_unique = made_unique
-        self._rules: dict[str, Callable[[SchemaConstraintValidatorRequest, str], ScopeBreakage | None]] = {
-            "attribute.optional.update": made_optional,
-            "relationship.optional.update": made_optional,
-            "relationship.cardinality.update": self._gained_property_rule(
-                predicate=lambda field: (
-                    isinstance(field, RelationshipSchema) and field.cardinality != RelationshipCardinality.ONE
-                ),
-                breakage=ScopeBreakage(
-                    dependency=PoolDependency.SCOPE_ELEMENT,
-                    reason="a scope element must stay a relationship of cardinality one",
-                ),
-            ),
-            "attribute.unique.update": made_unique,
-            "attribute.kind.update": self._gained_property_rule(
-                predicate=lambda field: isinstance(field, AttributeSchema) and field.kind in NON_SCALAR_ATTRIBUTE_KINDS,
-                breakage=ScopeBreakage(
-                    dependency=PoolDependency.SCOPE_ELEMENT, reason="a scope element must hold a single scalar value"
-                ),
-            ),
-            "node.attribute.remove": self._removed,
-            "node.relationship.remove": self._removed,
-        }
-        self._declaration_rules: dict[
-            str, Callable[[SchemaConstraintValidatorRequest, str], list[DeclaringAttribute]]
-        ] = {
-            "attribute.name.update": self._declarations_reaching_renamed_field,
-            "relationship.name.update": self._declarations_reaching_renamed_field,
-            ConstraintIdentifier.ATTRIBUTE_PARAMETERS_ALLOCATION_SCOPE_UPDATE.value: self._changed_declaration,
-        }
 
     @property
     def name(self) -> str:
@@ -132,9 +118,10 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         They include the node uniqueness constraint, which another checker is registered for.
         """
         return (
-            request.constraint_name in self._rules
-            or request.constraint_name in self._declaration_rules
-            or request.constraint_name == ConstraintIdentifier.NODE_UNIQUENESS_CONSTRAINTS_UPDATE.value
+            request.constraint_name in PROPERTY_BREAKAGES
+            or request.constraint_name in RENAME_CONSTRAINTS
+            or request.constraint_name in REMOVE_CONSTRAINTS
+            or request.constraint_name in {ALLOCATION_SCOPE_CONSTRAINT, UNIQUENESS_CONSTRAINTS}
         )
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
@@ -152,18 +139,28 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         if not field_name:
             raise ValueError("field_name is not defined")
 
-        if declaration_rule := self._declaration_rules.get(request.constraint_name):
+        constraint_name = request.constraint_name
+        if constraint_name in RENAME_CONSTRAINTS:
             return await self._check_declarations(
-                request=request, field_name=field_name, declarations=declaration_rule(request, field_name)
+                request=request,
+                field_name=field_name,
+                declarations=self._declarations_reaching_renamed_field(request=request),
             )
-
-        if request.constraint_name == ConstraintIdentifier.NODE_UNIQUENESS_CONSTRAINTS_UPDATE.value:
+        if constraint_name == ALLOCATION_SCOPE_CONSTRAINT:
+            return await self._check_declarations(
+                request=request,
+                field_name=field_name,
+                declarations=self._changed_declaration(request=request, field_name=field_name),
+            )
+        if constraint_name == UNIQUENESS_CONSTRAINTS:
             return await self._check_attributes_made_unique(request=request)
-
-        breakage = self._rules[request.constraint_name](request, field_name)
-        if breakage is None:
+        if constraint_name in REMOVE_CONSTRAINTS:
+            return await self._check_breakage(request=request, field_name=field_name, breakage=REMOVAL_BREAKAGE)
+        if not self._gained_property(request=request, field_name=field_name, constraint_name=constraint_name):
             return []
-        return await self._check_breakage(request=request, field_name=field_name, breakage=breakage)
+        return await self._check_breakage(
+            request=request, field_name=field_name, breakage=PROPERTY_BREAKAGES[constraint_name]
+        )
 
     async def _check_attributes_made_unique(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
         """Return the violations of each attribute of the node that the uniqueness constraint change makes unique.
@@ -179,10 +176,11 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         for attribute in request.schema_branch.get(name=kind, duplicate=False).attributes:
             if not attribute.inherited:
                 continue
-            breakage = self._made_unique(request, attribute.name)
-            if breakage is not None:
+            if self._gained_property(request=request, field_name=attribute.name, constraint_name=UNIQUE_CONSTRAINT):
                 results.extend(
-                    await self._check_breakage(request=request, field_name=attribute.name, breakage=breakage)
+                    await self._check_breakage(
+                        request=request, field_name=attribute.name, breakage=PROPERTY_BREAKAGES[UNIQUE_CONSTRAINT]
+                    )
                 )
         return results
 
@@ -262,42 +260,37 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         # A field renamed by the same load keeps its id.
         return previous.id == field.id if field.id else previous.name == field.name
 
-    def _gained_property_rule(
-        self, predicate: Callable[[AttributeSchema | RelationshipSchema], bool], breakage: ScopeBreakage
-    ) -> Callable[[SchemaConstraintValidatorRequest, str], ScopeBreakage | None]:
-        """Build the rule of a constraint that can break a scope by giving a field a property.
+    def _gained_property(
+        self, request: SchemaConstraintValidatorRequest, field_name: str, constraint_name: str
+    ) -> bool:
+        """Tell whether the change gives the field the property the constraint names, which it did not have before.
 
-        A proposed change or a merge raises the constraint for every field whose data changed, so the rule compares
-        the field with the same field before the change and reports nothing when it already had the property.
-
-        Args:
-            predicate: Whether a field has the property that breaks a scope, such as being optional.
-            breakage: What the rule reports when the change gives the field that property.
-
-        Returns:
-            A rule that returns the breakage when the field has the property and did not have it before the change,
-            and None otherwise.
-
+        A proposed change or a merge raises the constraint for every field whose data changed, so the field is compared
+        with the same field before the change, and a property it already had is not a gain.
         """
-
-        def rule(request: SchemaConstraintValidatorRequest, field_name: str) -> ScopeBreakage | None:
-            field = self._candidate_field(request=request, field_name=field_name)
-            if field is None or not predicate(field):
-                return None
-            previous_fields = self._previous_fields(
-                request=request, field=field, previous_schemas=self._previous_schemas(request=request)
-            )
-            if all(predicate(previous) for previous in previous_fields):
-                return None
-            return breakage
-
-        return rule
-
-    def _removed(self, request: SchemaConstraintValidatorRequest, field_name: str) -> ScopeBreakage | None:  # noqa: ARG002
-        """Report that removing the field breaks the pools whose scope holds it."""
-        return ScopeBreakage(
-            dependency=PoolDependency.SCOPE_ELEMENT, reason="a scope element cannot be removed while the pool exists"
+        field = self._candidate_field(request=request, field_name=field_name)
+        if field is None or not self._has_property(constraint_name=constraint_name, field=field):
+            return False
+        previous_fields = self._previous_fields(
+            request=request, field=field, previous_schemas=self._previous_schemas(request=request)
         )
+        return not all(
+            self._has_property(constraint_name=constraint_name, field=previous) for previous in previous_fields
+        )
+
+    @staticmethod
+    def _has_property(constraint_name: str, field: AttributeSchema | RelationshipSchema) -> bool:
+        """Tell whether the field has the property that the constraint names and that breaks a scope."""
+        match constraint_name:
+            case "attribute.optional.update" | "relationship.optional.update":
+                return field.optional
+            case "relationship.cardinality.update":
+                return isinstance(field, RelationshipSchema) and field.cardinality != RelationshipCardinality.ONE
+            case "attribute.unique.update":
+                return isinstance(field, AttributeSchema) and field.unique
+            case "attribute.kind.update":
+                return isinstance(field, AttributeSchema) and field.kind in NON_SCALAR_ATTRIBUTE_KINDS
+        return False
 
     async def _check_declarations(
         self, request: SchemaConstraintValidatorRequest, field_name: str, declarations: list[DeclaringAttribute]
@@ -379,9 +372,7 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         return [declaration] if declaration is not None else []
 
     def _declarations_reaching_renamed_field(
-        self,
-        request: SchemaConstraintValidatorRequest,
-        field_name: str,  # noqa: ARG002
+        self, request: SchemaConstraintValidatorRequest
     ) -> list[DeclaringAttribute]:
         """Return the declarations of the kinds sharing the renamed field's fields that the same load leaves as is."""
         kind = request.schema_path.schema_kind
