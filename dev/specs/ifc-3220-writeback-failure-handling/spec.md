@@ -615,8 +615,11 @@ state from the repository node.
 - **SC-003**: A delivery failure caused by a transient network fault, or by a lost worker, needs
   zero user actions. A failure caused by a permission or branch-protection problem needs exactly one
   user action after the cause is fixed, however many merges accumulated while it failed.
-- **SC-004**: A recovery produces exactly one regeneration release per repository. It covers only
-  the definitions that the repository owns. Outside the widened fallback, it covers only the
+- **SC-004**: A recovery produces exactly one regeneration release per repository. It covers the
+  definitions that the repository owns. As on a merge, it also covers the artifacts of another
+  repository that the output of the released generators selects (the generator cascade), when that
+  repository has nothing pending; when it is pending, they are held under it. Outside the widened
+  fallback, it covers only the
   definitions that the affected merges touched. No artifact, generator or transform-based computed
   attribute on the merge follow-up path runs against a commit other than the one that is finally on
   the remote. Two exceptions are logged at error level. First, the barrier cannot read the delivery

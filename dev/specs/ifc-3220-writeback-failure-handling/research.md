@@ -868,7 +868,8 @@ which keeps the promise of ADR 0012 that the flag-off path is the blanket path e
 `git/tasks.py::generate_artifact_definition` and `generators/tasks.py::run_generator_definition`
 gain `exclude_repository_ids` and `include_repository_ids`, both `list[str] | None = None`. A
 definition is skipped when its repository is excluded, or when an include list is given and its
-repository is not in it.
+repository is not in it. An empty include list counts as not given, so a run never skips a
+definition by mistake.
 
 ### The atomic hold, with sequence numbers
 
