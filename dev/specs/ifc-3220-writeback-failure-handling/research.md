@@ -1029,9 +1029,10 @@ The rules:
    `release`, R5). For an abandonment, or when every retry fails, it is the run that the recovery
    check starts (rule 3). A failed release of a delivery never sets `action-required`: the merges
    are on the remote already, so no user has to act. A release that dispatched part of its window
-   before it failed dispatches that part again. That over-executes, which is the accepted direction (FR-015). If the store
-   cannot set the expiry, the lease expires at its own time. A retry before then finds the lease
-   live and does nothing, and the recovery check releases the items after the expiry.
+   before it failed dispatches that part again. That over-executes, which is the accepted direction
+   (FR-015). If the store cannot set the expiry, the lease expires at its own time. A retry before
+   then finds the lease live and does nothing, and the recovery check releases the items after the
+   expiry.
 5. Expired leases are cleaned up in the save that takes or clears a lease. When a new lease takes an
    item that an expired lease names, the item moves to the new lease. An expired lease also drops
    each item that the held set no longer holds at the named sequence. An expired lease that names no
