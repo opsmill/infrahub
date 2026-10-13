@@ -1040,7 +1040,11 @@ async def test_a_branch_deletion_keeps_the_remote_branch_while_a_queued_merge_co
             repository_location=str(repository.remote.directory),
         )
 
-    state_lock = held_state_lock(repository_id=repository.id) if case.state_lock_held else nullcontext()
+    state_lock = (
+        held_lock(lock.registry.get(name=repository.id, namespace=STATE_LOCK_NAMESPACE, ttl=STATE_LOCK_TTL_SECONDS))
+        if case.state_lock_held
+        else nullcontext()
+    )
     with (
         override_dependency(build_message_bus, lambda: bus, dependency_provider=dependency_provider),
         caplog.at_level(logging.WARNING, logger=TASK_LOGGER),
