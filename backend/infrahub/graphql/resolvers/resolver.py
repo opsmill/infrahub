@@ -7,8 +7,9 @@ from graphql import GraphQLError
 from graphql.type.definition import GraphQLNonNull
 from opentelemetry import trace
 
-from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipHierarchyDirection
+from infrahub.core.constants import BranchSupportType, InfrahubKind, MetadataOptions, RelationshipHierarchyDirection
 from infrahub.core.manager import NodeManager
+from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.order import OrderModel
 from infrahub.database import retry_db_transaction
 from infrahub.exceptions import NodeNotFoundError
@@ -250,6 +251,8 @@ async def default_paginated_list_resolver(
         include_metadata = build_metadata_query_options(
             node_metadata_fields=node_metadata_fields,
             node_fields=node_fields,
+            schema=schema,
+            schema_branch=graphql_context.db.schema.get_schema_branch(name=graphql_context.branch.name),
         )
         if "hfid" in node_fields:
             node_fields["human_friendly_id"] = None
@@ -400,12 +403,21 @@ async def hierarchy_resolver(
         if not node_fields:
             return response
 
+        # The nodes read may be of any kind in the hierarchy, so the metadata is built against its generic.
+        schema_branch = graphql_context.db.schema.get_schema_branch(name=graphql_context.branch.name)
+        hierarchy_schema = (
+            schema_branch.get(name=node_schema.hierarchy, duplicate=False) if node_schema.hierarchy else node_schema
+        )
+        include_metadata = build_metadata_query_options(
+            node_fields=node_fields, schema=hierarchy_schema, schema_branch=schema_branch
+        ) | MetadataQueryOptions.at_every_level(MetadataOptions.LINKED_NODES)
         objs = await NodeManager.query_hierarchy(
             db=db,
             id=parent["id"],
             direction=direction,
             node_schema=node_schema,
             filters=filters,
+            include_metadata=include_metadata,
             fields=node_fields,
             offset=offset,
             limit=limit,

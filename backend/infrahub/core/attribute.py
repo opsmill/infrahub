@@ -17,6 +17,7 @@ from infrahub.core import registry
 from infrahub.core.changelog.models import AttributeChangelog
 from infrahub.core.constants import (
     NULL_VALUE,
+    POOL_TRACKED_ATTRIBUTE_KINDS,
     SYSTEM_USER_ID,
     AttributeDBNodeType,
     BranchSupportType,
@@ -48,6 +49,7 @@ from .schema.attribute_parameters import NumberAttributeParameters
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
+    from infrahub.core.query.resource_manager import TrackingPool
     from infrahub.core.schema import AttributeSchema, MainSchemaTypes
     from infrahub.database import InfrahubDatabase
     from infrahub.pools.attribute_pool_applier import AttributePoolApplierInterface
@@ -147,7 +149,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         self.from_pool: dict | None = None
         self.value_presence = PayloadPresence.ABSENT
         self.from_pool_presence = PayloadPresence.ABSENT
-        self.pool_provenance = PoolRecordProvenance.ALLOCATED
+        self.tracking_pool: TrackingPool | None = None
 
         self._init_node_property_mixin(kwargs)
         self._init_flag_property_mixin(kwargs)
@@ -367,6 +369,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         self.value = self.value_from_db(data=data)
         self.is_default = data.is_default
         self.is_from_profile = data.is_from_profile
+        self.tracking_pool = data.tracking_pool
 
         self.id = data.attr_uuid
         self.db_id = data.attr_id
@@ -623,8 +626,10 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 continue
 
             if field_name in ["source", "owner"]:
-                node_attr_getter = getattr(self, f"get_{field_name}")
-                node_attr = await node_attr_getter(db=db)
+                if field_name == "source":
+                    node_attr = await self._get_source_for_graphql(db=db)
+                else:
+                    node_attr = await self.get_owner(db=db)
                 if not node_attr:
                     response[field_name] = None
                 elif fields and isinstance(fields, dict):
@@ -658,6 +663,12 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 related_node_ids.add(self.source_id)
 
         return response
+
+    async def _get_source_for_graphql(self, db: InfrahubDatabase) -> Node | None:
+        """The node `source` reports: the pool tracking a number attribute ahead of a source the user set."""
+        if self.schema.kind in POOL_TRACKED_ATTRIBUTE_KINDS and (tracking_pool := self.tracking_pool) is not None:
+            return await registry.manager.get_one(db=db, id=tracking_pool.pool_id, branch=self.branch, at=self.at)
+        return await self.get_source(db=db)
 
     def _filter_sensitive(self, value: str, filter_sensitive: bool) -> str:
         if filter_sensitive and self.schema.kind in ["HashedPassword", "Password"]:
@@ -722,17 +733,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
             return AttributeDBNodeType.DEFAULT
         return AttributeDBNodeType.INDEXED
 
-    async def get_source(self, db: InfrahubDatabase) -> Node | None:
-        """Return what the value came from: a caller-set source, or the pool that allocated it.
-
-        An attribute still in memory reports the same source a later read of it will report.
-        """
-        if source := await super().get_source(db=db):
-            return source
-        if self.from_pool and (pool_id := self.from_pool.get("id")):
-            return await registry.manager.get_one(db=db, id=pool_id, branch=self.branch, at=self.at)
-        return None
-
     def get_create_data(self, node_schema: MainSchemaTypes) -> AttributeCreateData:
         branch = self.branch
         hierarchy_level = branch.hierarchy_level
@@ -760,10 +760,11 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         if self.owner_id:
             data.owner_prop.append(NodePropertyData(name="owner", peer_id=self.owner_id))
 
-        # Add the pool ID if this attribute came from a pool.
-        if self.from_pool and self.value is not None and (pool_id := self.from_pool.get("id")):
-            allocated_value = self.value if self.pool_provenance is PoolRecordProvenance.ALLOCATED else None
-            data.pool_prop.append(PoolPropertyData(name="pool", peer_id=pool_id, allocated_value=allocated_value))
+        if (tracking_pool := self.tracking_pool) is not None and self.value is not None:
+            allocated_value = self.value if tracking_pool.provenance is PoolRecordProvenance.ALLOCATED else None
+            data.pool_prop.append(
+                PoolPropertyData(name="pool", peer_id=tracking_pool.pool_id, allocated_value=allocated_value)
+            )
 
         return data
 
@@ -818,7 +819,6 @@ class HashedPasswordOptional(HashedPassword):
 class Integer(BaseAttribute):
     type = int
     value: int
-    from_pool: str | None = None
 
     @classmethod
     def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:

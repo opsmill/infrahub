@@ -192,9 +192,10 @@ reachable only through a database, which is how the current value-discard bug we
 
 ### D5 — The pool leaves `HAS_SOURCE`; `source` is derived
 
-**Decision**: the pool is never written to `HAS_SOURCE`. `source` resolves to the user's edge when
-one exists, and otherwise to the pool reached by the inbound `-global-` `IS_RESERVED` edge on the
-same `Attribute` vertex.
+**Decision**: the pool is never written to `HAS_SOURCE`. `source` resolves to the pool reached by
+the inbound `-global-` `IS_RESERVED` edge on the same `Attribute` vertex while one is live, and
+otherwise to the user's edge when one exists. The pool is read into a property of its own on the
+attribute, so no save path can write it back as a source.
 
 **Why this is cheap**: `core/query/node.py::NodeListGetAttributeQuery._add_source_to_query` is
 already a `CALL (a) { … }` subquery hanging off the very `Attribute` vertex the record is being

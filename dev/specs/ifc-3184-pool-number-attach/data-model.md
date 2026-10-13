@@ -192,7 +192,7 @@ This is a cost of the move, not an independent feature.
 |---|---|---|
 | Pool written to `HAS_SOURCE` | yes, branch-aware, inheriting the attribute's branch | **never** |
 | User may set `source` on a pooled attribute | refused (FR-030a) | **allowed** (FR-030a deleted) |
-| `source` read resolution | the stored `HAS_SOURCE` edge | user's `HAS_SOURCE` if one resolves active, else the pool reached by the inbound `-global-` `IS_RESERVED` edge on the same attribute |
+| `source` read resolution | the stored `HAS_SOURCE` edge | the pool reached by the inbound `-global-` `IS_RESERVED` edge on the same attribute while one is live, else the user's `HAS_SOURCE` if one resolves active |
 | GraphQL field and type | `source: LineageSource` | **unchanged** — only what populates it moves |
 | Appears in branch diffs | yes | **no** — accepted cost, changelog entry required |
 
