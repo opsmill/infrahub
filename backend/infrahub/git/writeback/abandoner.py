@@ -50,8 +50,8 @@ class WritebackAbandoner:
             NothingPendingError: The queue is empty.
             DeliveryStateUnavailableError: The lock of the delivery state was not acquired in time.
             RuntimeError: The state saved no record of the abandonment.
-            Exception: The release of the held regeneration failed after the abandonment was saved; the items stay
-                held, and a later delivery run of the repository releases them.
+            Exception: The release of the held regeneration, or the clear of its lease, failed after the abandonment
+                was saved; the items stay held, and a later delivery run of the repository releases them.
 
         """
         async with self.lock_registry.get(name=self.repository.name, namespace=REPOSITORY_LOCK_NAMESPACE):
@@ -64,7 +64,7 @@ class WritebackAbandoner:
                     account_id=actor.account_id,
                     account_name=actor.account_name,
                     queue_version=queue_version,
-                    # A repository that records no commit can still queue merges, and a user must be able to drop them.
+                    # A repository that records no readable commit can still queue merges, and a user must be able to drop them.
                     recorded_commit=recorded or "",
                 ),
                 actor=actor,
@@ -93,6 +93,22 @@ class WritebackAbandoner:
                     self.repository.name,
                 )
                 raise
+            try:
+                await self.state.clear_released(repository_id=self.repository.id, lease_id=lease.lease_id)
+            except Exception:
+                # The items stay held under the lease, so a later run releases them again once it expires.
+                log.error(
+                    "The merges %s of repository %s are abandoned and their held regeneration is released, but the "
+                    "release lease %s was not cleared; a later delivery run of the repository releases it again once "
+                    "the lease expires.",
+                    sorted(record.entry_ids),
+                    self.repository.name,
+                    lease.lease_id,
+                )
+                raise
+            log.info(
+                "Released the held regeneration of lease %s for repository %s.", lease.lease_id, self.repository.name
+            )
         return record
 
     async def _notify_deleted_branches(self, *, record: AbandonmentRecord) -> None:
@@ -121,8 +137,6 @@ class WritebackAbandoner:
             # Nothing cleared the items, so the next lease takes them and its run releases every one.
             await self._expire(lease=lease)
             raise
-        await self.state.clear_released(repository_id=repository_id, lease_id=lease.lease_id)
-        log.info("Released the held regeneration of lease %s for repository %s.", lease.lease_id, self.repository.name)
 
     async def _expire(self, *, lease: ReleaseLease) -> None:
         try:

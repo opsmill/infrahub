@@ -405,6 +405,30 @@ async def test_failed_release_expires_the_lease_now_and_keeps_the_items_held(
     assert rig.releaser.releases == [Release(repository_id=REPOSITORY.id, held=_held(held))]
 
 
+async def test_failed_clear_says_that_the_release_ran_and_keeps_the_lease(
+    rig: Rig, caplog: pytest.LogCaptureFixture
+) -> None:
+    await rig.queue(_merge())
+    await rig.hold("definition-1")
+    rig.state.failures["clear_released"] = [DatabaseError(message="database is down")]
+    rig.clear_calls()
+
+    with caplog.at_level(logging.ERROR, logger=RUN_LOGGER), pytest.raises(DatabaseError, match=r"^database is down$"):
+        await rig.abandon(queue_version=1)
+
+    assert [record.getMessage() for record in caplog.records if record.levelno == logging.ERROR] == [
+        "The merges ['merge-1'] of repository net-repo are abandoned and their held regeneration is released, but "
+        "the release lease lease-1 was not cleared; a later delivery run of the repository releases it again once "
+        "the lease expires."
+    ]
+    held = HeldItem(id="definition-1", hold_seq=1)
+    assert rig.state.calls == ["abandon", "renew_lease", "clear_released"]
+    assert rig.releaser.releases == [Release(repository_id=REPOSITORY.id, held=_held(held))]
+    assert rig.intent.held.release_leases == (
+        ReleaseLease(lease_id="lease-1", expires_at=LEASE_EXPIRY, artifact_definitions=(held,)),
+    )
+
+
 async def test_failed_expiry_keeps_the_error_of_the_release(rig: Rig, caplog: pytest.LogCaptureFixture) -> None:
     await rig.queue(_merge())
     await rig.hold("definition-1")
