@@ -12,6 +12,7 @@ from infrahub.core.constants import (
     ComputedAttributeKind,
     InfrahubKind,
     RelationshipCardinality,
+    RelationshipDirection,
 )
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
@@ -253,6 +254,40 @@ SCOPED_POOL_SCHEMA = SchemaRoot(
     generics=[SCOPED_HOLDER], nodes=[SCOPED_SITE, SCOPED_RACK, SCOPED_LINK, SCOPED_DEVICE, SCOPED_POD_HOLDER]
 )
 
+# Both site relationships share one identifier, so a circuit links to its two sites through Relationship vertices
+# of the same name and only the direction of the edges tells its A site from its Z site.
+SCOPED_CIRCUIT = NodeSchema(
+    name="Circuit",
+    namespace="Scope",
+    label="Circuit",
+    human_friendly_id=["name__value"],
+    display_label="{{ name__value }}",
+    attributes=[
+        AttributeSchema(name="name", kind="Text", unique=True),
+        AttributeSchema(name="vlan_id", kind="Number", optional=True),
+    ],
+    relationships=[
+        RelationshipSchema(
+            name="a_site",
+            peer="ScopeSite",
+            identifier="scope_circuit__site",
+            direction=RelationshipDirection.OUTBOUND,
+            cardinality=RelationshipCardinality.ONE,
+            optional=False,
+        ),
+        RelationshipSchema(
+            name="z_site",
+            peer="ScopeSite",
+            identifier="scope_circuit__site",
+            direction=RelationshipDirection.INBOUND,
+            cardinality=RelationshipCardinality.ONE,
+            optional=False,
+        ),
+    ],
+)
+
+SCOPED_CIRCUIT_SCHEMA = SchemaRoot(nodes=[SCOPED_SITE, SCOPED_CIRCUIT])
+
 
 async def save_schema_kinds(db: InfrahubDatabase, schema: SchemaRoot, branch_name: str | None = None) -> None:
     """Load the schema and save only its own kinds with their profiles and templates to save time."""
@@ -266,25 +301,27 @@ SCOPED_POOL_END = 10
 SCOPED_ATTRIBUTE_NAME = "vlan_id"
 
 
-def stored_scope(names: list[str] | None) -> list[dict[str, str]] | None:
-    """Return the stored form of a device scope naming the given fields, or None for an unscoped pool."""
+def stored_scope(names: list[str] | None, kind: str = SCOPED_DEVICE.kind) -> list[dict[str, str]] | None:
+    """Return the stored form of a scope of `kind` naming the given fields, or None for an unscoped pool."""
     scope = AllocationScopeResolver(
         schema_branch=registry.schema.get_schema_branch(name=registry.default_branch)
-    ).resolve(kind=SCOPED_DEVICE.kind, entries=names)
+    ).resolve(kind=kind, entries=names)
     return None if scope.is_empty else scope.to_stored()
 
 
-async def scoped_pool(db: InfrahubDatabase, name: str, allocation_scope: list[str] | None) -> CoreNumberPool:
-    """A pool over the device's `vlan_id` with the scope naming the given fields, allocating from one range."""
+async def scoped_pool(
+    db: InfrahubDatabase, name: str, allocation_scope: list[str] | None, kind: str = SCOPED_DEVICE.kind
+) -> CoreNumberPool:
+    """A pool over the `vlan_id` of `kind` with the scope naming the given fields, allocating from one range."""
     pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
     await pool.new(
         db=db,
         name=name,
-        node=SCOPED_DEVICE.kind,
+        node=kind,
         node_attribute=SCOPED_ATTRIBUTE_NAME,
         start_range=SCOPED_POOL_START,
         end_range=SCOPED_POOL_END,
-        allocation_scope=stored_scope(names=allocation_scope),
+        allocation_scope=stored_scope(names=allocation_scope, kind=kind),
     )
     await pool.save(db=db)
     await add_pool_range(db=db, pool=pool, start=SCOPED_POOL_START, end=SCOPED_POOL_END)
@@ -350,6 +387,33 @@ async def scoped_device_holding(
         == IsReservedEdge.OPEN
     )
     return device
+
+
+async def scoped_circuit(
+    db: InfrahubDatabase,
+    branch: Branch,
+    pool: CoreNumberPool,
+    name: str,
+    a_site: Node,
+    z_site: Node,
+    number: int | None = None,
+) -> Node:
+    """A circuit between two sites holding a `vlan_id` the pool allocated, or tracks when `number` is given."""
+    from_pool = {"from_pool": {"id": pool.id}}
+    circuit = await Node.init(db=db, schema=SCOPED_CIRCUIT.kind, branch=branch)
+    await circuit.new(
+        db=db,
+        name=name,
+        a_site=a_site,
+        z_site=z_site,
+        vlan_id=from_pool if number is None else {"value": number, **from_pool},
+    )
+    await circuit.save(db=db)
+    assert (
+        await is_reserved_edge_on(db=db, pool_id=pool.id, node_id=circuit.id, attribute_name=SCOPED_ATTRIBUTE_NAME)
+        == IsReservedEdge.OPEN
+    )
+    return circuit
 
 
 def vlan_id(node: Node) -> int:

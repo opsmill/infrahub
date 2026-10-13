@@ -15,9 +15,11 @@ from infrahub.pools.number_ranges import EffectiveSpace, NumberDomain
 from infrahub.pools.scope import Division, DivisionElementPath
 from tests.component.core.resource_manager.conftest import delete_branch
 from tests.helpers.number_pool import (
+    SCOPED_CIRCUIT,
     SCOPED_DEVICE,
     SCOPED_POOL_END,
     SCOPED_POOL_START,
+    scoped_circuit,
     scoped_device,
     scoped_device_holding,
     scoped_pool,
@@ -32,6 +34,8 @@ if TYPE_CHECKING:
 
 SITE_PATH = DivisionElementPath(name="scope_device__site", relationship_direction=RelationshipDirection.BIDIR)
 ROLE_PATH = DivisionElementPath(name="role")
+A_SITE_PATH = DivisionElementPath(name="scope_circuit__site", relationship_direction=RelationshipDirection.OUTBOUND)
+Z_SITE_PATH = DivisionElementPath(name="scope_circuit__site", relationship_direction=RelationshipDirection.INBOUND)
 
 
 @dataclass(frozen=True)
@@ -112,6 +116,36 @@ async def test_a_division_reads_only_the_numbers_of_its_nodes(
     assert await used_numbers(db=db, pool=site_scoped_pool, branch=default_branch, division=division_b) == [1]
     assert await lowest_free_number(db=db, pool=site_scoped_pool, branch=default_branch, division=division_a) == 3
     assert await lowest_free_number(db=db, pool=site_scoped_pool, branch=default_branch, division=division_b) == 2
+
+
+async def test_a_directional_scope_element_reads_only_the_peer_on_its_side(
+    db: InfrahubDatabase, default_branch: Branch, circuit_schema: None
+) -> None:
+    """Each circuit links to site A and site B through Relationship vertices of one name, in opposite directions."""
+    pool = await scoped_pool(db=db, name="vlan-per-a-site", allocation_scope=["a_site"], kind=SCOPED_CIRCUIT.kind)
+    site_a = await scoped_site(db=db, branch=default_branch, name="site-a")
+    site_b = await scoped_site(db=db, branch=default_branch, name="site-b")
+    await scoped_circuit(
+        db=db, branch=default_branch, pool=pool, name="circuit-a-to-b", a_site=site_a, z_site=site_b, number=1
+    )
+    await scoped_circuit(
+        db=db, branch=default_branch, pool=pool, name="circuit-b-to-a", a_site=site_b, z_site=site_a, number=2
+    )
+
+    used_per_division = {
+        (end, site_name): await used_numbers(
+            db=db, pool=pool, branch=default_branch, division=Division(elements=(path,), values=(site.id,))
+        )
+        for end, path in (("a_site", A_SITE_PATH), ("z_site", Z_SITE_PATH))
+        for site_name, site in (("site-a", site_a), ("site-b", site_b))
+    }
+
+    assert used_per_division == {
+        ("a_site", "site-a"): [1],
+        ("a_site", "site-b"): [2],
+        ("z_site", "site-a"): [2],
+        ("z_site", "site-b"): [1],
+    }
 
 
 async def test_a_two_element_division_matches_both_values(

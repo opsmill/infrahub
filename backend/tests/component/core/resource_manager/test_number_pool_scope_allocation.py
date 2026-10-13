@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import re
 from copy import deepcopy
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -20,6 +21,7 @@ from infrahub.pools.scope import Division, DivisionElementPath
 from tests.adapters.lock.timeline import LockAction
 from tests.helpers.number_pool import (
     SCOPED_ATTRIBUTE_NAME,
+    SCOPED_CIRCUIT,
     SCOPED_DEVICE,
     SCOPED_POOL_SCHEMA,
     SCOPED_SITE,
@@ -178,6 +180,66 @@ async def test_two_writers_in_two_divisions_take_different_locks(
         if action is LockAction.ACQUIRE
     ]
     assert sorted(acquired) == sorted([lock_name_a, lock_name_b])
+
+
+@dataclass(frozen=True)
+class DirectionalScopeCase:
+    name: str
+    scope_field: str
+
+
+DIRECTIONAL_SCOPE_CASES = [
+    DirectionalScopeCase(name="outbound", scope_field="a_site"),
+    DirectionalScopeCase(name="inbound", scope_field="z_site"),
+]
+
+
+@pytest.mark.parametrize("case", DIRECTIONAL_SCOPE_CASES, ids=[case.name for case in DIRECTIONAL_SCOPE_CASES])
+async def test_a_directional_scope_element_divides_by_the_peer_on_its_side(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    circuit_schema: None,
+    recording_lock_timeline: LockTimeline,
+    case: DirectionalScopeCase,
+) -> None:
+    """A circuit links to its other site through the same relationship identifier, in the opposite direction."""
+    pool = await scoped_pool(
+        db=db, name=f"vlan-per-{case.scope_field}", allocation_scope=[case.scope_field], kind=SCOPED_CIRCUIT.kind
+    )
+    site_a = await scoped_site(db=db, branch=default_branch, name="site-a")
+    site_b = await scoped_site(db=db, branch=default_branch, name="site-b")
+    site_c = await scoped_site(db=db, branch=default_branch, name="site-c")
+
+    async def create_circuit(name: str, scoped_end: Node, other_end: Node) -> tuple[int, list[str]]:
+        a_site, z_site = (scoped_end, other_end) if case.scope_field == "a_site" else (other_end, scoped_end)
+        start = recording_lock_timeline.checkpoint(name)
+        circuit = await create_node(
+            data={
+                "name": {"value": name},
+                "a_site": {"id": a_site.id},
+                "z_site": {"id": z_site.id},
+                "vlan_id": {"from_pool": {"id": pool.id}},
+            },
+            db=db,
+            branch=default_branch,
+            schema=db.schema.get(name=SCOPED_CIRCUIT.kind, branch=default_branch, duplicate=False),
+        )
+        acquired = [
+            lock_name
+            for lock_name, action in pool_lock_events(timeline=recording_lock_timeline, pool=pool, after=start)
+            if action is LockAction.ACQUIRE
+        ]
+        return vlan_id(circuit), acquired
+
+    first = await create_circuit(name="circuit-1", scoped_end=site_a, other_end=site_b)
+    second = await create_circuit(name="circuit-2", scoped_end=site_b, other_end=site_a)
+    third = await create_circuit(name="circuit-3", scoped_end=site_a, other_end=site_c)
+
+    assert [first, second, third] == [
+        (1, [f"resource_pool.{pool.id}.{site_a.id}"]),
+        (1, [f"resource_pool.{pool.id}.{site_b.id}"]),
+        (2, [f"resource_pool.{pool.id}.{site_a.id}"]),
+    ]
 
 
 async def test_a_full_division_is_refused_while_another_division_allocates(
