@@ -567,6 +567,7 @@ class RepositoryDeliveryAbandon(Mutation):
         repository, intent = await _read_pending_delivery(graphql_context=graphql_context, repository_id=str(data.id))
 
         name = repository.name.value
+        # The input types this attribute as the graphene field, so only the dict read gives the type checker an int.
         queue_version: int = data["queue_version"]
         if queue_version != intent.queue.version:
             raise DeliveryQueueChangedError(repository_name=name, queue_version=queue_version)
