@@ -48,6 +48,7 @@ and no database code, so their tests need neither. `recovery.py` reads the orche
 class DeliveryStatePort(Protocol):
     async def read(self, *, repository_id: str) -> WritebackIntent: ...
     async def pending_repository_ids(self) -> frozenset[str]: ...
+    def locked(self, *, repository_id: str) -> AbstractAsyncContextManager[None]: ...
 
     async def enqueue(self, *, repository_id: str, entry: PendingMerge, widen: bool) -> WritebackIntent: ...
     async def start_attempt(self, *, repository_id: str) -> WritebackIntent: ...
@@ -70,7 +71,8 @@ class DeliveryStatePort(Protocol):
     async def expire_lease(self, *, repository_id: str, lease_id: str) -> None: ...
     async def clear_released(self, *, repository_id: str, lease_id: str) -> None: ...
     async def touch(self, *, repository_id: str) -> None: ...
-    async def record_reverted(self, *, repository_id: str, reverted: RevertedDelivery) -> None: ...
+    async def forget_delivered_commit(self, *, repository_id: str) -> None: ...
+    async def record_reverted(self, *, repository_id: str, delivered_commit: str, new_head: str) -> bool: ...
 
 
 class WritebackIntentStore:  # implements DeliveryStatePort
@@ -106,6 +108,7 @@ Neo4j driver would refuse the second transaction anyway, but only after the lock
 | Method | Contract |
 |---|---|
 | `read` | A consistent snapshot of one node on the default branch. |
+| `locked` | Holds the delivery-state lock of the repository for a block, with the same bounded acquire, so that no state change of the repository runs in it. A timed-out acquire raises `DeliveryStateUnavailableError`. The repository conversion uses it. |
 | `pending_repository_ids` | One query on the scalar `delivery_status`: every `CoreRepository` on the default branch whose status is not `none`. The barrier's fast path. An owed import implies a non-empty queue, so the status covers it. |
 | `enqueue` | Appends unless the id is present, in `removed_entry_ids`, or in the last abandonment record. Bumps the version. Sets `pending` and `last_progress_at`. Idempotent. The refusals are the second guard of FR-005b. The first guard is the flag `pending_merge_enqueued` of section 10. With `widen=True`, and only when it appends, the same save holds a `widen` marker of scope `all`, with the reason `UNHELD_FOLLOW_UP` and the next hold sequence, as `hold` does. `merge_git_repository` passes `True`, and the dispatcher passes `False` (`research.md` R3). `widen` has no default, so a caller cannot forget it. Raises `ValueError` when the entry's `source_git_branch` is the repository's `default_branch`, the branch that the delivery pushes to. |
 | `start_attempt` | Returns the snapshot. Stamps `attempt_started_at` and `last_progress_at`, and clears `retry_due_at`. Sets `pending` only when the queue is non-empty. Keeps the cause, so a waiting retry still shows the last failure. |
@@ -122,7 +125,8 @@ Neo4j driver would refuse the second transaction anyway, but only after the lock
 | `expire_lease` | Sets the lease's `expires_at` to now, and keeps the items of its window held. The lease then protects nothing, the same as the lease of a dead worker (`research.md` R10, rules 3 and 4). The next lease takes those items, and they move to it. The run that took the lease calls it when its release fails. Does nothing when the lease is gone. |
 | `clear_released` | Removes each item that the lease names and that still has the named `hold_seq`, then the lease itself. An item held again after the lease was taken has a higher `hold_seq`, so it stays. Does nothing when the lease is gone, because a newer lease then owns its items. When the queue is empty, the same save clears the cause and the error, which only a failed release can have left. |
 | `touch` | Moves `last_progress_at`. The recovery check calls it after it submits. |
-| `record_reverted` | Overwrites `delivery_reverted`. |
+| `forget_delivered_commit` | Clears `delivery_last_delivered_commit`. Writes nothing when it is already empty. |
+| `record_reverted` | Writes `delivery_reverted` with the store's time and returns `True`. Writes nothing and returns `False` when the record already names the delivered commit, so the first record keeps its new head and its time. |
 
 Every method that adds or clears a lease also cleans up the expired leases in the same save
 (`research.md` R10, rule 5):
@@ -149,8 +153,8 @@ classifier. The table of `research.md` R5 is the contract of `classify_delivery_
 `replay-conflict` row: the service sets that cause from `ReplayResult`, and the classifier gives
 `unclassified` for every exception at the replay stage. A
 `RepositoryPushRejectedError` gives its `remote_message` and ref summary as the message. Any other
-error gives its typed message, unless the message repeats the text of the error that it was raised
-`from`, as every raise of the Git error enrichment does: then it gives a sentence that names the step
+error gives its typed message, unless the message repeats the text of a `GitCommandError` in its chain of
+causes, as every raise of the Git error enrichment does, also under the wrapper of a failed import: then it gives a sentence that names the step
 and the error type, so raw stderr does not reach the repository. The guard sees only that case. A
 message that wraps Git output in a longer sentence, or an error raised without `from`, keeps its
 text, with the credentials removed. Every message passes through `scrub_credentials`,
@@ -590,7 +594,7 @@ Contract:
 | `git/base.py::InfrahubRepositoryBase._raise_enriched_error_static` | Raises `RepositoryTLSError` for the TLS markers, `RepositoryNotFoundError` for "Repository not found" and for Git's own HTTP 404 line (`GIT_HTTP_REPOSITORY_NOT_FOUND`), and `RepositoryConnectionError` for GitPython's "process killed because it timed out". For GitPython's "Timeout: the command ... did not complete" text of a direct Git call, raises `RepositoryError` with the Git command and the limit, not the arguments, or `RepositoryConnectionError` for a write operation. |
 | `git/base.py::InfrahubRepositoryBase._raise_enriched_error` | Resolves the status through `git/base.py::operational_status_for_error`, which matches with `isinstance`, most specific first. |
 | `message_bus/operations/git/repository.py::connectivity` | Resolves the status through the same function. |
-| `git/repository.py::InfrahubRepository.collect_pending_imports` | In the active loop, skips the default branch, and every new or updated remote branch that a pending entry names, while the state is not `none`. Takes the state port as a parameter from the sync flow. `_collect_staging_imports` is unchanged. |
+| `git/repository.py::InfrahubRepository.collect_pending_imports` | In the active loop, skips the default branch, and every new or updated remote branch that a pending entry names, while the state is not `none`. Takes the state port as a required parameter from the sync flow. `_collect_staging_imports` is unchanged. |
 | `git/tasks.py::bootstrap_local_repository` | Skips the seed import of the default branch while the state is not `none`. |
 | `git/tasks.py::sync_remote_repositories` | Runs `DeliveryRecoveryCheck.run` for every repository in its loop, before the bootstrap and whatever the sync outcome, under its own guard. |
 | `git/tasks.py::merge_git_repository` | The default path builds the service and calls `deliver_pending_merges`. The read-only path and the staging path are unchanged. No path merges and records locally: a clone with no `origin` fails the attempt at the fetch and keeps the queue (`research.md` R3). Only when `pending_merge_enqueued` is `False`, the default path passes an entry to the task: `pending_merge`, or, when that is `None`, the entry it builds from the source branch's graph commit, after the content test of `research.md` R3 (no entry for a merge that carries no content). The task enqueues it as step 0 of each attempt, with `widen=True` (section 5): the save that appends the entry also holds a `widen` marker of scope `all`, with the reason `UNHELD_FOLLOW_UP`, because the follow-ups of that merge ran without a hold. When `enqueue` refuses the id, no marker is held. When every attempt fails to enqueue, the run ends `Failed` with an error-level log line. When the flag is `True`, it passes `entry=None` and only delivers (`research.md` R3). When `pending_merge` is `None` and the source branch is already deleted, the flow builds the entry from `model.source_commit`, which the dispatcher reads at the dispatch, and builds none when the default branch records that commit. With no `source_commit` either, the run logs at error level what to merge by hand on the remote and ends `Failed`. |
@@ -603,5 +607,6 @@ Contract:
 | `git/tasks.py::generate_artifact_definition`, `generators/tasks.py::run_generator_definition` | Accept `exclude_repository_ids` and `include_repository_ids`. |
 | `computed_attribute/tasks.py::computed_attribute_setup_python` | On the default branch, passes the selected pairs through the barrier. |
 | `graphql/mutations/repository.py::ProcessRepository` | Refuses on every branch while the state is not `none`. |
-| `core/convert_object_type/repository_conversion.py::convert_repository_type` | Takes the state port, `delivery_state: DeliveryStatePort`, which the `ConvertObjectType` mutation builds. Under the repository lock, before it deletes the node, it refuses the conversion of a `CoreRepository` with `DeliveryPendingError` while the status is not `none`, and while held regeneration waits, which can stay after a settle or an abandonment with the status `none`. The deletion would drop the queue or the held regeneration with no abandonment record. The read takes no state lock, so a merge that enqueues between the read and the deletion is still dropped. Before it takes the lock, it also refuses, with `ValidationError`, a mapping that sets a read-only attribute of the target kind through `source_field` or `data`, so a conversion from a read-only repository cannot write the delivery state around the store. The check covers the repository conversion only: other kinds have read-only attributes that the automatic mapping copies. |
-| IFC-3210's reconciliation | Calls `state.record_reverted` when the condition of `research.md` R13 holds. Gated on IFC-3210. |
+| `git/tasks.py::import_objects_from_git_repository` | For a `CoreRepository`, reads the state again under the repository lock, right before it applies, and fails with the refusal message of `ProcessRepository` while the state is not `none`. A merge queued after the mutation checked then still stops the import. |
+| `core/convert_object_type/repository_conversion.py::convert_repository_type` | Takes the state port, `delivery_state: DeliveryStatePort`, which the `ConvertObjectType` mutation builds. Under the repository lock, before it deletes the node, it refuses the conversion of a `CoreRepository` with `DeliveryPendingError` while the status is not `none`, and while held regeneration waits, which can stay after a settle or an abandonment with the status `none`. The deletion would drop the queue or the held regeneration with no abandonment record. It reads the state and deletes the node in one `delivery_state.locked(...)` block, taken inside the repository lock, the order of `research.md` R2. A merge that enqueues meanwhile waits for the block, then fails because the node is gone. Before it takes the lock, it also refuses, with `ValidationError`, a mapping that sets a read-only attribute of the target kind through `source_field` or `data`, so a conversion from a read-only repository cannot write the delivery state around the store. The check covers the repository conversion only: other kinds have read-only attributes that the automatic mapping copies. |
+| IFC-3210's reconciliation | Calls `state.record_reverted` when the condition of `research.md` R13 holds, and `state.forget_delivered_commit` on a re-target of the default branch. Gated on IFC-3210. |

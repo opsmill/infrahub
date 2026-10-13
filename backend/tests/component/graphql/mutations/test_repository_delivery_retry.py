@@ -74,6 +74,7 @@ class RepositorySetup(StrEnum):
     EMPTY_QUEUE = "empty-queue"
     STAGING_PENDING = "staging-pending"
     READ_ONLY = "read-only"
+    OTHER_KIND = "other-kind"
 
 
 def build_store(db: InfrahubDatabase, default_branch: Branch, now: datetime) -> WritebackIntentStore:
@@ -83,6 +84,14 @@ def build_store(db: InfrahubDatabase, default_branch: Branch, now: datetime) -> 
 async def create_repository(
     db: InfrahubDatabase, store: WritebackIntentStore, default_branch: Branch, setup: RepositorySetup
 ) -> Node:
+    if setup == RepositorySetup.OTHER_KIND:
+        # A node with no name attribute, so a read of the name before the kind check fails.
+        permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION, branch=default_branch)
+        await permission.new(
+            db=db, action=GlobalPermissions.MANAGE_REPOSITORIES.value, decision=PermissionDecision.ALLOW_ALL.value
+        )
+        await permission.save(db=db)
+        return permission
     if setup == RepositorySetup.READ_ONLY:
         repository = await Node.init(db=db, schema=InfrahubKind.READONLYREPOSITORY, branch=default_branch)
         await repository.new(
@@ -186,6 +195,11 @@ REFUSAL_CASES: list[RefusalCase] = [
         expected_error=f"Repository {REPOSITORY_NAME} is read-only and never pushes to its remote.",
     ),
     RefusalCase(
+        name="node_of_another_kind",
+        repository=RepositorySetup.OTHER_KIND,
+        expected_error="Unable to find the node {id} / CoreGenericRepository in the database.",
+    ),
+    RefusalCase(
         name="staging_repository",
         repository=RepositorySetup.STAGING_PENDING,
         expected_error=(
@@ -227,7 +241,7 @@ async def test_retry_is_refused(
     )
 
     assert result.errors
-    assert [error.message for error in result.errors] == [test_case.expected_error]
+    assert [error.message for error in result.errors] == [test_case.expected_error.format(id=repository.id)]
     assert recorder.submit_calls == []
     assert await read_delivery_state(store=store, repository=repository) == before
 

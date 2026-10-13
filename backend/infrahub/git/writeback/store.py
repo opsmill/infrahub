@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from datetime import UTC, datetime
+from functools import partial
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
@@ -17,6 +19,7 @@ from infrahub.core.constants import (
 )
 from infrahub.core.manager import NodeManager
 from infrahub.core.query.node import NodeGetListQuery
+from infrahub.core.registry import registry
 from infrahub.exceptions import DeliveryStateUnavailableError, DeliveryStateUnreadableError
 from infrahub.git.writeback.constants import STATE_LOCK_ACQUIRE_SECONDS, STATE_LOCK_TTL_SECONDS
 from infrahub.git.writeback.models import (
@@ -31,7 +34,7 @@ from infrahub.git.writeback.queries import RepositoryWriteLockQuery
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Callable, Mapping
-    from datetime import datetime
+    from contextlib import AbstractAsyncContextManager
 
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
@@ -119,6 +122,9 @@ class WritebackIntentStore:
         )
         await query.execute(db=self.db)
         return frozenset(query.get_node_ids())
+
+    def locked(self, *, repository_id: str) -> AbstractAsyncContextManager[None]:
+        return self._state_lock(repository_id=repository_id)
 
     async def enqueue(self, *, repository_id: str, entry: PendingMerge, widen: bool) -> WritebackIntent:
         def transition(state: _LockedState) -> tuple[WritebackIntent, WritebackIntent]:
@@ -239,11 +245,20 @@ class WritebackIntentStore:
     async def touch(self, *, repository_id: str) -> None:
         await self._move_progress(repository_id=repository_id)
 
-    async def record_reverted(self, *, repository_id: str, reverted: RevertedDelivery) -> None:
+    async def forget_delivered_commit(self, *, repository_id: str) -> None:
         def transition(state: _LockedState) -> tuple[WritebackIntent, None]:
-            return state.intent.with_reverted(reverted=reverted), None
+            return state.intent.without_delivered_commit(), None
 
         await self._transition(repository_id=repository_id, transition=transition)
+
+    async def record_reverted(self, *, repository_id: str, delivered_commit: str, new_head: str) -> bool:
+        def transition(state: _LockedState) -> tuple[WritebackIntent, bool]:
+            recorded = state.intent.with_reverted(delivered_commit=delivered_commit, new_head=new_head, now=state.now)
+            if recorded is None:
+                return state.intent, False
+            return recorded, True
+
+        return await self._transition(repository_id=repository_id, transition=transition)
 
     async def _move_progress(self, *, repository_id: str) -> None:
         def transition(state: _LockedState) -> tuple[WritebackIntent, None]:
@@ -367,7 +382,7 @@ def _stored_member[EnumT: InfrahubStringEnum](
 
     """
     value = stored[attribute]
-    if not value:
+    if value is None:
         return None
     try:
         return enum(value)
@@ -385,9 +400,20 @@ def _stored[ModelT: BaseModel](
 
     """
     value = stored[attribute]
-    if not value:
+    if value is None:
         return None
     try:
         return model.model_validate(value)
     except PydanticValidationError as exc:
         raise DeliveryStateUnreadableError(repository_name=repository_name, attribute_name=attribute) from exc
+
+
+async def build_intent_store(db: InfrahubDatabase, lock_registry: InfrahubLockRegistry) -> WritebackIntentStore:
+    """Build the store on the default branch, with a timezone-aware wall clock.
+
+    The store reads and writes through `db`, so that session must stay open while the store is in use.
+    """
+    default_branch = await registry.get_branch(db=db, branch=registry.default_branch)
+    return WritebackIntentStore(
+        db=db, lock_registry=lock_registry, default_branch=default_branch, clock=partial(datetime.now, UTC)
+    )

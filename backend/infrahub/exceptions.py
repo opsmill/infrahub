@@ -100,6 +100,10 @@ class ServiceUnavailableError(Error):
         super().__init__(self.message)
 
 
+class WorkflowOrchestrationError(ServiceUnavailableError):
+    """Raised when the task manager cannot start a workflow run or follow it to a final state."""
+
+
 class LockError(Error):
     pass
 
@@ -493,6 +497,16 @@ class NothingPendingError(ValidationError):
 
     def __init__(self, repository_name: str) -> None:
         super().__init__(f"Repository {repository_name} has nothing pending to push.")
+
+
+class ReimportPendingPushesError(ValidationError):
+    """Raised when a reimport of a repository would remove the objects that its pending pushes added."""
+
+    def __init__(self, repository_name: str) -> None:
+        super().__init__(
+            f"Repository {repository_name} has pending pushes; a reimport now would remove the objects they added. "
+            "Retry or abandon the pending pushes first."
+        )
 
 
 class DeliveryPendingError(ValidationError):

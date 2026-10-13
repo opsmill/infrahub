@@ -3,15 +3,12 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import TYPE_CHECKING, Literal, assert_never
 
-import httpx
-from prefect.exceptions import ObjectNotFound
-
 from infrahub import config
 from infrahub.core.constants import FullRegenerationReason
 from infrahub.core.merge.regeneration_barrier import OwnedRegeneration
 from infrahub.core.merge.selective_regen.models import CascadeRole, PlannedRegeneration, SelectiveRegenerationPlan
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import ResourceNotFoundError
+from infrahub.exceptions import ResourceNotFoundError, WorkflowOrchestrationError
 from infrahub.generators.constants import GeneratorDefinitionRunSource
 from infrahub.generators.models import RequestGeneratorDefinitionRun
 from infrahub.git.models import RequestArtifactDefinitionGenerate
@@ -37,11 +34,6 @@ if TYPE_CHECKING:
     from .regeneration_barrier import RegenerationBarrier
     from .selective_regen.models import RegenerationRequest
     from .selective_regen.orchestrator import RegenerationPlanner
-
-
-# ponytail: the run's own error of these types also raises, which only repeats the run; a typed error from the
-# workflow adapter would separate a failed start from a failed run.
-_ORCHESTRATOR_ERRORS = (httpx.HTTPError, ObjectNotFound, OSError)
 
 
 async def submit_full_regeneration(
@@ -190,11 +182,15 @@ class PostMergeRegenerationDispatcher:
     ) -> None:
         """Dispatch the requests as a merge plan, so the generator cascade runs and every dispatch passes the barrier.
 
-        A generator run that fails falls back to the regeneration of every terminal, as on a merge. A generator
-        run that the orchestrator cannot start or follow raises, and so does a failed fire-and-forget submission.
+        A generator run that fails falls back to the regeneration of every terminal, as on a merge, whatever the
+        error its flow raised. A generator run that the task manager cannot start or follow raises, and so does a
+        failed fire-and-forget submission.
 
         Args:
             renew: Called after each generator run and after the last submissions.
+
+        Raises:
+            WorkflowOrchestrationError: The task manager could not start a generator run or follow it to a final state.
 
         """
         entries = [
@@ -299,8 +295,8 @@ class PostMergeRegenerationDispatcher:
                         workflow=entry.workflow, context=context, parameters={"model": run}
                     )
                 except Exception as exc:
-                    # A release must keep a held run that may not have run, so the next release of its items runs it.
-                    if releasing is not None and isinstance(exc, _ORCHESTRATOR_ERRORS):
+                    # A release keeps a held run the task manager may not have started, so its next release runs it.
+                    if releasing is not None and isinstance(exc, WorkflowOrchestrationError):
                         raise
                     generator_failed = True
                     self.log.exception("Post-merge generator run failed")

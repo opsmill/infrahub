@@ -70,6 +70,7 @@ from infrahub.workflows.catalogue import (
     TRIGGER_ARTIFACT_DEFINITION_GENERATE,
     TRIGGER_GENERATOR_DEFINITION_RUN,
 )
+from tests.adapters.delivery_state import build_idle_delivery_state
 from tests.constants import TestKind
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp, TestInfrahubAppHoldingWorkflows
@@ -1701,6 +1702,7 @@ async def _collect_one_repository(
     clone = await _open_clone(client=client, tracked=tracked)
     async with lock.registry.get(name=tracked.name, namespace="repository"):
         return await clone.collect_pending_imports(
+            state=build_idle_delivery_state(repository_id=str(clone.id)),
             graph_commits=select_writable_branch_commits(
                 branch_commits=repositories[tracked.name].branches, branches=branches
             ),
