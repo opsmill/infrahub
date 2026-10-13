@@ -5,15 +5,24 @@ from typing import TYPE_CHECKING
 from graphene import BigInt, Field, Float, InputObjectType, Int, List, NonNull, ObjectType, String
 from graphene.types.generic import GenericScalar
 
+from infrahub.core.registry import registry
 from infrahub.graphql.types.enums import PoolRecordProvenance as PoolRecordProvenanceType
-from infrahub.pools.number_pool_usage import NumberPoolUsageReader
+from infrahub.pools.number_pool_allocations_reader import AllocationFilters
+from infrahub.pools.number_pool_usage_factory import (
+    build_number_pool_allocations_reader,
+    build_number_pool_divisions_reader,
+    build_number_pool_utilization_reader,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
     from graphql import GraphQLResolveInfo
 
+    from infrahub.core.branch import Branch
     from infrahub.core.constants import PoolRecordProvenance
+    from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.database import InfrahubDatabase
     from infrahub.graphql.initialization import GraphqlContext
     from infrahub.pools.number_pool_usage import PoolDivisions, PoolUsage, TrackedNumbersPage
 
@@ -24,9 +33,10 @@ def _division_entries(division: Sequence[Mapping[str, object]] | None) -> list[t
     return [(str(entry["path"]), entry["value"]) for entry in division]
 
 
-def _reader(info: GraphQLResolveInfo) -> NumberPoolUsageReader:
+def _context(info: GraphQLResolveInfo) -> tuple[InfrahubDatabase, Branch, SchemaBranch]:
     graphql_context: GraphqlContext = info.context
-    return NumberPoolUsageReader(db=graphql_context.db, branch=graphql_context.branch)
+    branch = graphql_context.branch
+    return graphql_context.db, branch, registry.schema.get_schema_branch(name=branch.name)
 
 
 class NumberPoolUtilizationFigures(ObjectType):
@@ -130,7 +140,9 @@ class NumberPoolUtilization(ObjectType):
         pool_id: str,
         division: list[dict[str, str]] | None = None,
     ) -> PoolUsage:
-        return await _reader(info).utilization(pool_id=pool_id, division=_division_entries(division))
+        db, branch, schema_branch = _context(info)
+        reader = build_number_pool_utilization_reader(db=db, branch=branch, schema_branch=schema_branch)
+        return await reader.read(pool_id=pool_id, division=_division_entries(division))
 
 
 class NumberPoolDivisionEntry(ObjectType):
@@ -228,7 +240,9 @@ class NumberPoolDivisions(ObjectType):
         info: GraphQLResolveInfo,
         pool_id: str,
     ) -> PoolDivisions:
-        return await _reader(info).divisions(pool_id=pool_id)
+        db, branch, schema_branch = _context(info)
+        reader = build_number_pool_divisions_reader(db=db, branch=branch, schema_branch=schema_branch)
+        return await reader.read(pool_id=pool_id)
 
 
 class NumberPoolHolder(ObjectType):
@@ -298,8 +312,7 @@ class NumberPoolAllocations(ObjectType):
         offset: int | None = None,
         limit: int | None = None,
     ) -> TrackedNumbersPage:
-        return await _reader(info).tracked_numbers(
-            pool_id=pool_id,
+        filters = AllocationFilters(
             division=_division_entries(division),
             range_id=range_id,
             branch_name=branch,
@@ -307,6 +320,9 @@ class NumberPoolAllocations(ObjectType):
             offset=offset,
             limit=limit,
         )
+        db, request_branch, schema_branch = _context(info)
+        reader = build_number_pool_allocations_reader(db=db, branch=request_branch, schema_branch=schema_branch)
+        return await reader.read(pool_id=pool_id, filters=filters)
 
 
 InfrahubNumberPoolUtilization = Field(
