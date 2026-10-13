@@ -13,6 +13,7 @@ from infrahub.exceptions import (
     RepositoryPushRejectedError,
     RepositoryTLSError,
 )
+from infrahub.git.import_errors import RepositoryImportError
 from infrahub.git.models import PushRejectionReason
 from infrahub.git.writeback.credentials import scrub_credentials
 from infrahub.git.writeback.models import DeliveryFailure, DeliveryStage
@@ -79,10 +80,12 @@ def _remote_cause(*, error: BaseException) -> RepositoryDeliveryFailureCause:
 
 
 def _import_cause(*, error: BaseException) -> RepositoryDeliveryFailureCause:
+    # The import wraps every error but a connection or credentials error, and keeps the original as the cause.
+    original = error.__cause__ if isinstance(error, RepositoryImportError) else error
     # A missing repository or a refused certificate is a connection error that no retry fixes, at any stage.
-    if isinstance(error, (RepositoryNotFoundError, RepositoryTLSError)):
-        return _remote_cause(error=error)
-    if isinstance(error, IMPORT_INTERRUPTIONS):
+    if isinstance(original, (RepositoryNotFoundError, RepositoryTLSError)):
+        return _remote_cause(error=original)
+    if isinstance(original, IMPORT_INTERRUPTIONS):
         return RepositoryDeliveryFailureCause.IMPORT_INTERRUPTED
     return RepositoryDeliveryFailureCause.IMPORT_FAILED
 

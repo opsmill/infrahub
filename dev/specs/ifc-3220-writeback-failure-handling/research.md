@@ -529,7 +529,7 @@ error whose reason comes from GitPython's `PushInfo` flags, not from text.
 | push | `RepositoryPushRejectedError`, reason `unknown` | `unclassified` | no |
 | record | any | `record-failed` | yes. The remote has the content (FR-004). |
 | import | `RepositoryNotFoundError`, `RepositoryTLSError` | `not-found`, `certificate` | no. Both are subtypes of `RepositoryConnectionError`, but a retry cannot fix them, as at the fetch. |
-| import | `DatabaseError`, any other `RepositoryConnectionError`, a GraphQL transport error | `import-interrupted` | yes |
+| import | `DatabaseError`, any other `RepositoryConnectionError`, a GraphQL transport error. The import raises a connection error as it is and wraps any other error in `RepositoryImportError`, so the classifier reads the cause of that wrapper. | `import-interrupted` | yes |
 | import | any other, for example a configuration or validation error of the content | `import-failed` | no |
 | replay | a merge conflict. Not a row of the classifier: `replay` reports a conflict in `ReplayResult`, not as an exception, and the service sets this cause (R4, step 6). The classifier gives `unclassified` for every exception at this stage. | `replay-conflict` | no |
 | replay | a killed local Git command (`LOCAL_GIT_TIMEOUT_SECONDS`) | `unclassified` | no. The message names the command. |

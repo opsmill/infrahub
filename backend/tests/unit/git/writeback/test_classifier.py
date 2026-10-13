@@ -20,6 +20,7 @@ from infrahub.exceptions import (
     RepositoryTLSError,
 )
 from infrahub.git.base import InfrahubRepositoryBase
+from infrahub.git.import_errors import RepositoryImportError
 from infrahub.git.models import PushRejectionReason
 from infrahub.git.writeback.classifier import classify_delivery_failure
 from infrahub.git.writeback.models import DeliveryFailure, DeliveryStage
@@ -40,6 +41,12 @@ WORKER_PATH = "/var/lib/infrahub/repositories/net-repo"
 def _caused_by(*, error: RepositoryError, cause: Exception) -> RepositoryError:
     error.__cause__ = cause
     return error
+
+
+def _wrapped_by_the_import(*, error: Exception, message: str) -> RepositoryError:
+    return _caused_by(
+        error=RepositoryImportError(identifier=REPOSITORY, branch_name="main", message=message), cause=error
+    )
 
 
 def _enriched_error(*, stderr: str, command: list[str], is_write_operation: bool) -> RepositoryError:
@@ -241,9 +248,13 @@ CLASSIFY_CASES: list[ClassifyCase] = [
     ClassifyCase(
         name="database_outage_at_the_import_is_retried",
         stages=(DeliveryStage.IMPORT,),
-        error=DatabaseError(message=DATABASE_MESSAGE),
+        error=_wrapped_by_the_import(
+            error=DatabaseError(message=DATABASE_MESSAGE), message=f"DatabaseError: {DATABASE_MESSAGE}"
+        ),
         expected=DeliveryFailure(
-            cause=RepositoryDeliveryFailureCause.IMPORT_INTERRUPTED, retryable=True, message=DATABASE_MESSAGE
+            cause=RepositoryDeliveryFailureCause.IMPORT_INTERRUPTED,
+            retryable=True,
+            message=f"DatabaseError: {DATABASE_MESSAGE}",
         ),
     ),
     ClassifyCase(
@@ -257,21 +268,27 @@ CLASSIFY_CASES: list[ClassifyCase] = [
     ClassifyCase(
         name="unreachable_api_server_at_the_import_is_retried",
         stages=(DeliveryStage.IMPORT,),
-        error=ServerNotReachableError(address="http://infrahub-server:8000"),
+        error=_wrapped_by_the_import(
+            error=ServerNotReachableError(address="http://infrahub-server:8000"),
+            message="ServerNotReachableError: Unable to connect to 'http://infrahub-server:8000'.",
+        ),
         expected=DeliveryFailure(
             cause=RepositoryDeliveryFailureCause.IMPORT_INTERRUPTED,
             retryable=True,
-            message="The import step of the delivery failed with ServerNotReachableError.",
+            message="ServerNotReachableError: Unable to connect to 'http://infrahub-server:8000'.",
         ),
     ),
     ClassifyCase(
         name="unresponsive_api_server_at_the_import_is_retried",
         stages=(DeliveryStage.IMPORT,),
-        error=ServerNotResponsiveError(url="http://infrahub-server:8000/graphql/main", timeout=60),
+        error=_wrapped_by_the_import(
+            error=ServerNotResponsiveError(url="http://infrahub-server:8000/graphql/main", timeout=60),
+            message="ServerNotResponsiveError: Unable to read from 'http://infrahub-server:8000/graphql/main'. (timeout: 60 sec)",
+        ),
         expected=DeliveryFailure(
             cause=RepositoryDeliveryFailureCause.IMPORT_INTERRUPTED,
             retryable=True,
-            message="The import step of the delivery failed with ServerNotResponsiveError.",
+            message="ServerNotResponsiveError: Unable to read from 'http://infrahub-server:8000/graphql/main'. (timeout: 60 sec)",
         ),
     ),
     ClassifyCase(
