@@ -1178,6 +1178,16 @@ class AnalyticsSettings(BaseSettings):
     api_key: str | None = None
 
 
+class GraphQLCostSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_GRAPHQL_COST_")
+    high_cost_database_rows: int = Field(
+        default=250_000,
+        ge=1,
+        description="Worst-case database rows, estimated for one run of a GraphQL query, above which the query has "
+        "the high cost level",
+    )
+
+
 class ExperimentalFeaturesSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_EXPERIMENTAL_")
     graphql_enums: bool = False
@@ -2080,6 +2090,10 @@ class ConfiguredSettings:
         return self.active_settings.experimental_features
 
     @property
+    def graphql_cost(self) -> GraphQLCostSettings:
+        return self.active_settings.graphql_cost
+
+    @property
     def enterprise_features(self) -> list[EnterpriseFeatures]:
         """Returns a list of enterprise features that are enabled based on the settings."""
         return self.active_settings.enterprise_features
@@ -2109,6 +2123,7 @@ class Settings(BaseSettings):
     trace: TraceSettings = TraceSettings()
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
     log_forwarding: LogForwardingSettings = LogForwardingSettings()
+    graphql_cost: GraphQLCostSettings = GraphQLCostSettings()
 
     @model_validator(mode="after")
     def validate_git_branch_deletion_requires_branch_deletion(self) -> Self:

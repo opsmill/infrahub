@@ -1,5 +1,6 @@
 from infrahub.core.constants import (
     BranchSupportType,
+    GraphQLQueryCostLevel,
     InfrahubKind,
     RelationshipDeleteBehavior,
 )
@@ -62,6 +63,23 @@ core_graphql_query = NodeSchema(
             name="height",
             kind="Number",
             description="total number of fields requested in the query",
+            read_only=True,
+            optional=True,
+        ),
+        Attr(
+            name="cost_level",
+            kind="Text",
+            description="Estimated cost of one run of the query: high above the configured database rows limit, "
+            "unknown when not estimated",
+            enum=GraphQLQueryCostLevel.available_types(),
+            read_only=True,
+            optional=True,
+        ),
+        Attr(
+            name="cost_estimate",
+            kind="JSON",
+            description="Estimated nodes, resolver calls and database rows of one run of the query, "
+            "from the GraphQL query cost statistics",
             read_only=True,
             optional=True,
         ),

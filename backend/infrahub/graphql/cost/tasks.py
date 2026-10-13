@@ -10,12 +10,16 @@ from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.graphql.cost.collector import StatisticsCollector
 from infrahub.graphql.cost.statistics_store import StatisticsStore
+from infrahub.graphql.cost.stored_query import refresh_stored_query_costs
 from infrahub.workers.dependencies import get_cache, get_database
 
 
 @flow(name="graphql-cost-statistics-refresh", flow_run_name="Refresh GraphQL query cost statistics")
 async def refresh_query_cost_statistics() -> None:
-    """Read the spread of peers of every relationship on the default branch and publish it as a new version."""
+    """Read the spread of peers of every relationship on the default branch and publish it as a new version.
+
+    Then estimate every stored query of the default branch again with the new version.
+    """
     log = get_run_logger()
     started = time.monotonic()
     at = Timestamp()
@@ -24,7 +28,8 @@ async def refresh_query_cost_statistics() -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     schema_hash = schema_branch.get_hash()
     database = await get_database()
-    store = StatisticsStore(cache=await get_cache())
+    cache = await get_cache()
+    store = StatisticsStore(cache=cache)
 
     async with database.start_session(read_only=True) as db:
         collector = StatisticsCollector(
@@ -43,3 +48,7 @@ async def refresh_query_cost_statistics() -> None:
         f"{time.monotonic() - started:.1f} seconds: {len(collected.kinds)} kinds, "
         f"{collected.side_count} relationship sides, {collected.query_count} database queries"
     )
+
+    async with database.start_session() as db:
+        updated = await refresh_stored_query_costs(db=db, branch=default_branch, cache=cache)
+    log.info(f"Updated the estimated cost of {updated} stored GraphQL queries")

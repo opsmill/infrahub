@@ -9,7 +9,9 @@ from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
+from infrahub.graphql.cost.stored_query import estimate_stored_query_cost
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
+from infrahub.workers.dependencies import get_cache
 
 from .main import InfrahubMutationOptions
 
@@ -40,7 +42,7 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
         if query_value is None:
             return {}
 
-        query_info = {}
+        query_info: dict[str, dict[str, Any]] = {}
         schema_branch = db.schema.get_schema_branch(name=branch.name)
 
         analyzer = InfrahubGraphQLQueryAnalyzer(
@@ -58,6 +60,17 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
             "value": sorted([operation.operation_type.value for operation in analyzer.operations])
         }
         query_info["variables"] = {"value": [variable.model_dump() for variable in analyzer.variables]}
+
+        cost = await estimate_stored_query_cost(
+            db=db,
+            branch=branch,
+            schema_branch=schema_branch,
+            graphql_schema=info.schema,
+            query=query_value,
+            cache=await get_cache(),
+        )
+        query_info["cost_level"] = {"value": cost.level.value}
+        query_info["cost_estimate"] = {"value": cost.model_dump(mode="json")}
 
         return query_info
 

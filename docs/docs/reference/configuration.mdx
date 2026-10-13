@@ -431,6 +431,12 @@ LDAP authentication configuration.
 | `FORWARD_APPLICATION_LOGS` | Forward application log messages to this destination. | boolean | False |
 | `MIN_LOG_SEVERITY` | Minimum Python log severity to forward when application log forwarding is enabled. | string (CRITICAL, ERROR, WARNING, INFO, DEBUG) | WARNING |
 
+## Graphql cost
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `INFRAHUB_GRAPHQL_COST_HIGH_COST_DATABASE_ROWS` | Worst-case database rows, estimated for one run of a GraphQL query, above which the query has the high cost level | integer | 250000 |
+
 ## Logging
 
 These variables configure logging at process startup. They are read directly from the environment and are not part of a `.toml` configuration file.
