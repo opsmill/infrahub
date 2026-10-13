@@ -193,6 +193,7 @@ class RegenerationReleasePort(Protocol):
 
 class DeliveryRunQuery(Protocol):
     async def has_queued_run(self, *, repository_id: str) -> bool: ...
+    async def has_active_run(self, *, repository_id: str) -> bool: ...
 ```
 
 `held` holds the window of one lease: the items that it names, each with the named `hold_seq`,
@@ -249,13 +250,14 @@ shapes the service defines, so neither the Git adapter nor the merge layer is im
 
 `has_queued_run` returns whether the orchestrator holds a delivery run of the repository that waits
 to start: a run that carries both delivery tags and has a state of type `SCHEDULED` or `PENDING`
-(`research.md` R20, condition 5). It raises when the orchestrator does not answer.
-`PrefectDeliveryRunQuery`, in `runs.py`, implements `DeliveryRunQuery` with one `read_flow_runs`
-call with `limit=1`, over a client that implements
+(`research.md` R20, condition 5). `has_active_run` returns whether it holds such a run that waits
+to start or runs: the state type can also be `RUNNING`. Both raise when the orchestrator does not
+answer. `PrefectDeliveryRunQuery`, in `runs.py`, implements `DeliveryRunQuery` with one
+`read_flow_runs` call with `limit=1` for each question, over a client that implements
 `task_manager/flow_run/prefect_client.py::FlowRunQuerying`. The filter is
 `FlowRunFilterTags(all_=delivery_run_tags(repository_id))` and
-`FlowRunFilterStateType(any_=[SCHEDULED, PENDING])`. It is the only orchestrator query of the
-package, so the recovery check's unit tests use a fake.
+`FlowRunFilterStateType(any_=[SCHEDULED, PENDING])`, with `RUNNING` added for `has_active_run`.
+It is the only orchestrator query of the package, so the recovery check's unit tests use a fake.
 
 ```python
 def delivery_run_tags(repository_id: str) -> list[str]: ...
@@ -410,11 +412,12 @@ class WritebackAbandoner:
 Runs `research.md` R8: under the repository lock, `state.abandon(...)`, then
 `git.notify_branch_deleted(...)` for every abandoned entry that carried the deletion flag; then,
 with the lock released, `releaser.release(...)` on the lease window, then
-`state.clear_released(...)`. If the release raises, it calls `state.expire_lease(...)` on its lease
-and re-raises, so the recovery check releases the held items (`research.md` R10, rule 4). It uses
-the Git port only for that notification: it changes no Git state, deletes no remote branch and
-imports nothing. `DeliveryQueueChangedError` and `NothingPendingError` subclass `ValidationError`,
-so the task run fails with the message of the GraphQL contract.
+`state.clear_released(...)`. While the release runs, it renews the lease on a timer, as section 5
+says. If the release raises, it calls `state.expire_lease(...)` on its lease and re-raises, so the
+recovery check releases the held items (`research.md` R10, rule 4). It uses the Git port only for
+that notification: it changes no Git state, deletes no remote branch and imports nothing.
+`DeliveryQueueChangedError` and `NothingPendingError` subclass `ValidationError`, so the task run
+fails with the message of the GraphQL contract.
 
 ---
 
@@ -442,7 +445,7 @@ then calls `state.touch(...)`, when:
 
 - the delivery is stale (five conditions, `research.md` R20); or
 - the queue is empty, held items that no live lease covers wait, `last_progress_at` is older than
-  `STALE_AFTER`, and no delivery run of the repository waits to start.
+  `STALE_AFTER`, and no delivery run of the repository waits to start or runs.
 
 The second trigger needs an empty queue. A queue with merges is the stale check's case: while it is
 `pending`, the first trigger covers it. While it is `action-required`, a submission every
@@ -453,13 +456,15 @@ takes both in its constructor. The retry flow requires a context, so the check a
 system context that it submits with: the default branch and an anonymous account. It reads the
 state and the lock first, and evaluates the first trigger with
 `WritebackIntent.is_stale(now, lock_free, run_queued=False)` and the second with
-`WritebackIntent.release_waits(now)`. It calls `runs.has_queued_run(...)` last, only when one
-trigger holds, and submits only when no run waits. A repository with no work to recover, or with
-recent progress, costs no orchestrator query. When `has_queued_run` raises an `httpx.HTTPError` or
-an `OSError`, the check submits nothing, does not call `state.touch(...)`, logs the failure at
-warning level, and returns `False`. Another error gives the same result, but the guard of `run`
-logs it at error level, with its traceback. It returns whether it submitted. It never raises: a
-failure is logged and the next cycle checks again.
+`WritebackIntent.release_waits(now)`. Last, and only when one trigger holds, it asks the question
+of that trigger: `runs.has_queued_run(...)` for the first trigger, and `runs.has_active_run(...)`
+for the second. It submits only when the answer is no. A release holds no lock and writes no
+progress, so the second trigger also counts a run that runs (`research.md` R20). A repository with
+no work to recover, or with recent progress, costs no orchestrator query. When the question raises
+an `httpx.HTTPError` or an `OSError`, the check submits nothing, does not call `state.touch(...)`,
+logs the failure at warning level, and returns `False`. Another error gives the same result, but
+the guard of `run` logs it at error level, with its traceback. It returns whether it submitted. It
+never raises: a failure is logged and the next cycle checks again.
 
 `build_recovery_check` builds `PrefectDeliveryRunQuery` over
 `task_manager/flow_run/prefect_client.py::PrefectClientAdapter`, and the system context with

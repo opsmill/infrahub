@@ -57,18 +57,25 @@ def next_retry_delay(
 
 
 class PrefectDeliveryRunQuery:
-    """Answer from Prefect whether a delivery run of a repository waits to start."""
+    """Answer from Prefect whether a delivery run of a repository waits to start, or runs."""
 
     def __init__(self, client: FlowRunQuerying) -> None:
         self.client = client
 
     async def has_queued_run(self, *, repository_id: str) -> bool:
         # A running run is left out, because its worker can be dead and the lock and the progress time judge it.
-        queued = FlowRunFilterStateType(any_=[StateType.SCHEDULED, StateType.PENDING])
+        return await self._has_run(repository_id=repository_id, states=[StateType.SCHEDULED, StateType.PENDING])
+
+    async def has_active_run(self, *, repository_id: str) -> bool:
+        return await self._has_run(
+            repository_id=repository_id, states=[StateType.SCHEDULED, StateType.PENDING, StateType.RUNNING]
+        )
+
+    async def _has_run(self, *, repository_id: str, states: list[StateType]) -> bool:
         runs = await self.client.read_flow_runs(
             flow_run_filter=FlowRunFilter(
                 tags=FlowRunFilterTags(all_=delivery_run_tags(repository_id)),
-                state=FlowRunFilterState(type=queued),
+                state=FlowRunFilterState(type=FlowRunFilterStateType(any_=states)),
             ),
             limit=1,
         )

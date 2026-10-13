@@ -214,3 +214,12 @@ class DeliveryRunQuery(Protocol):
             OSError: The connection to the orchestrator failed.
 
         """
+
+    async def has_active_run(self, *, repository_id: str) -> bool:
+        """Return whether a delivery run of the repository waits to start or runs.
+
+        Raises:
+            httpx.HTTPError: The orchestrator answered with an error, or its connection failed.
+            OSError: The connection to the orchestrator failed.
+
+        """

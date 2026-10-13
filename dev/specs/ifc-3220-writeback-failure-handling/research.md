@@ -1038,7 +1038,8 @@ The rules:
    check starts (rule 3). A release that dispatched part of its window before it failed dispatches
    that part again. That over-executes, which is the accepted direction (FR-015). If the store
    cannot set the expiry, the lease expires at its own time. A retry before then finds the lease
-   live and does nothing, and the recovery check releases the items after the expiry.
+   live and does nothing. The recovery check releases the items after the expiry, once no delivery
+   run of the repository waits to start or runs (R20).
 5. Expired leases are cleaned up in the save that takes or clears a lease. When a new lease takes an
    item that an expired lease names, the item moves to the new lease. An expired lease also drops
    each item that the held set no longer holds at the named sequence. An expired lease that names no
@@ -1429,6 +1430,13 @@ Conditions 3 and 4 judge a run that a worker took, so condition 5 leaves out the
   not end such a run, because it watches a run only after a heartbeat or an `AwaitingRetry` event
   (`trigger/system.py::TRIGGER_CRASH_ZOMBIE_FLOWS`). A manual retry still works: it submits a new
   run, which does not wait for the stuck one (R7).
+- **A release whose generator run never ends.** The release renews its lease on a timer (R10), so
+  it keeps its lease for as long as its worker lives. No other run releases its items in that
+  time.
+- **A release run that stays in `RUNNING`.** The second trigger below counts a `RUNNING` delivery
+  run as live. A run whose worker died while it released stops that trigger until the
+  `crash-zombie-flows` automation marks it `CRASHED`. Its lease expires all the same, so a manual
+  retry after the expiry releases the items (R7).
 
 **The recovery check.** It runs from the loop of `git/tasks.py::sync_remote_repositories`, for every
 repository, before the bootstrap and whatever the outcome of the sync, under its own guard. A check
@@ -1439,9 +1447,15 @@ because that function catches the error that a failing branch raises. The check 
 
 - the delivery is stale; or
 - the queue is empty, held items wait that no live release lease covers, `last_progress_at` is
-  older than `STALE_AFTER`, and no delivery run of the repository waits to start (condition 5).
-  A queue with merges is left to the first trigger. While the status is `action-required`, a
-  submission would retry a policy failure every `STALE_AFTER`, which FR-004 forbids.
+  older than `STALE_AFTER`, and no delivery run of the repository waits to start or runs, that is,
+  no run in a state of type `SCHEDULED`, `PENDING` or `RUNNING`. A queue with merges is left to
+  the first trigger. While the status is `action-required`, a submission would retry a policy
+  failure every `STALE_AFTER`, which FR-004 forbids.
+
+The second trigger counts a `RUNNING` run as live, unlike condition 5. A release holds no lock and
+writes no progress, so only its run shows that it still works. Its timer keeps its lease live
+(R10). If the lease expires all the same, for example because the renewals fail for 15 minutes,
+the `RUNNING` run still stops a second release of the same items.
 
 The `touch` after a submission bounds it to one submission per `STALE_AFTER` per repository. While
 the submitted run waits to start, condition 5 also stops a second submission. A submission that
@@ -1466,12 +1480,15 @@ when it starts is too late, because a run that waits in the queue has not starte
 `run_deployment`. `WorkflowLocalExecution` ignores them, but it runs the flow at once, so no run
 waits.
 
-**The query.** The port `DeliveryRunQuery.has_queued_run(repository_id)` answers condition 5. Its
-Prefect adapter makes one `read_flow_runs` call with `limit=1`, for the runs that carry both tags
-and have a state of type `SCHEDULED` or `PENDING`. The check asks it last, and only when every other
-condition of a trigger holds. A repository with no work to recover, or with recent progress, costs
-no query. If the query fails, the check submits nothing for that repository in this cycle, logs
-the failure at warning level, and asks again at the next cycle. It never submits without an answer.
+**The query.** The port `DeliveryRunQuery.has_queued_run(repository_id)` answers condition 5 for
+the first trigger. `DeliveryRunQuery.has_active_run(repository_id)` answers for the second trigger.
+For each question, the Prefect adapter makes one `read_flow_runs` call with `limit=1`, for the runs
+that carry both tags and have a state of type `SCHEDULED` or `PENDING`, and `RUNNING` too for
+`has_active_run`. The check asks the question of its trigger last, and only when every other
+condition of that trigger holds. A repository with no work to recover, or with recent progress,
+costs no query. If the query fails, the check submits nothing for that repository in this cycle,
+logs the failure at warning level, and asks again at the next cycle. It never submits without an
+answer.
 
 **Why this is not an unbounded retry.** A stale delivery has no failure to retry: its attempt was
 lost to a worker restart, a lost submission or a killed process. The new attempt is a first attempt
@@ -1484,10 +1501,11 @@ check stops.
 `import_objects_from_files`, a large unrelated method. The lock condition covers the same case with
 one read.
 
-**Rejected: a `RUNNING` run counts as live too.** A run whose worker died would then stop the
-recovery until the `crash-zombie-flows` automation (`trigger/system.py::TRIGGER_CRASH_ZOMBIE_FLOWS`)
-marks it `CRASHED`. Conditions 3 and 4 already judge a run that a worker took, with no such
-dependency.
+**Rejected: a `RUNNING` run counts as live for the first trigger too.** A run whose worker died
+would then stop the recovery until the `crash-zombie-flows` automation
+(`trigger/system.py::TRIGGER_CRASH_ZOMBIE_FLOWS`) marks it `CRASHED`. Conditions 3 and 4 already
+judge a run that a worker took, with no such dependency. The second trigger accepts that
+dependency, because no lock and no progress time judge a release.
 
 ---
 

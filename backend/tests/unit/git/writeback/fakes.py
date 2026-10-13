@@ -366,30 +366,40 @@ class RecordingRegenerationReleaser:
 
 
 class InMemoryDeliveryRunQuery:
-    """Answers that a delivery run waits for each repository id that a test adds to `queued`, and for no other.
+    """Answers from the delivery runs that a test adds by repository id, to `queued` or to `running`.
 
-    Every repository id that it is asked about is recorded in `asked`, in order.
+    A run in `queued` waits to start, and a run in `running` runs. Every question is recorded in `asked` as the
+    method name and the repository id, in order.
     """
 
     def __init__(self) -> None:
         self.queued: set[str] = set()
-        self.asked: list[str] = []
+        self.running: set[str] = set()
+        self.asked: list[tuple[str, str]] = []
 
     async def has_queued_run(self, *, repository_id: str) -> bool:
-        self.asked.append(repository_id)
+        self.asked.append(("has_queued_run", repository_id))
         return repository_id in self.queued
+
+    async def has_active_run(self, *, repository_id: str) -> bool:
+        self.asked.append(("has_active_run", repository_id))
+        return repository_id in self.queued or repository_id in self.running
 
 
 class FailingDeliveryRunQuery:
     """Raises the error on every query, as when the orchestrator does not answer.
 
-    Every repository id that it is asked about is recorded in `asked`, in order, before it raises.
+    Every question is recorded in `asked` as the method name and the repository id, in order, before it raises.
     """
 
     def __init__(self, *, error: Exception) -> None:
         self.error = error
-        self.asked: list[str] = []
+        self.asked: list[tuple[str, str]] = []
 
     async def has_queued_run(self, *, repository_id: str) -> bool:
-        self.asked.append(repository_id)
+        self.asked.append(("has_queued_run", repository_id))
+        raise self.error
+
+    async def has_active_run(self, *, repository_id: str) -> bool:
+        self.asked.append(("has_active_run", repository_id))
         raise self.error

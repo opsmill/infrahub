@@ -518,33 +518,56 @@ class RecordingFlowRunClient:
 
 
 @dataclass
-class QueuedRunCase:
+class RunQueryCase:
     name: str
+    active: bool
+    """Whether the case asks for a run that waits to start or runs, and not only for a run that waits."""
     runs: list[FlowRun]
+    states: list[StateType]
+    """The state types that the read asks for."""
     expected: bool
 
 
-QUEUED_RUN_CASES: list[QueuedRunCase] = [
-    QueuedRunCase(name="returned_run_waits", runs=[FlowRun(flow_id=uuid4(), name="deliver")], expected=True),
-    QueuedRunCase(name="no_returned_run_means_none_waits", runs=[], expected=False),
+WAITING_STATES = [StateType.SCHEDULED, StateType.PENDING]
+ACTIVE_STATES = [StateType.SCHEDULED, StateType.PENDING, StateType.RUNNING]
+RUN_QUERY_CASES: list[RunQueryCase] = [
+    RunQueryCase(
+        name="returned_run_waits",
+        active=False,
+        runs=[FlowRun(flow_id=uuid4(), name="deliver")],
+        states=WAITING_STATES,
+        expected=True,
+    ),
+    RunQueryCase(name="no_returned_run_means_none_waits", active=False, runs=[], states=WAITING_STATES, expected=False),
+    RunQueryCase(
+        name="returned_run_waits_or_runs",
+        active=True,
+        runs=[FlowRun(flow_id=uuid4(), name="deliver")],
+        states=ACTIVE_STATES,
+        expected=True,
+    ),
+    RunQueryCase(
+        name="no_returned_run_means_none_waits_or_runs", active=True, runs=[], states=ACTIVE_STATES, expected=False
+    ),
 ]
 
 
-@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in QUEUED_RUN_CASES])
-async def test_the_queued_run_query_asks_once_for_a_run_with_both_delivery_tags_that_waits_to_start(
-    case: QueuedRunCase,
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in RUN_QUERY_CASES])
+async def test_the_run_query_asks_once_for_a_run_with_both_delivery_tags_in_the_states_of_its_question(
+    case: RunQueryCase,
 ) -> None:
     client = RecordingFlowRunClient(runs=case.runs)
+    query = PrefectDeliveryRunQuery(client=client)
 
-    queued = await PrefectDeliveryRunQuery(client=client).has_queued_run(repository_id=REPOSITORY.id)
+    found = await (query.has_active_run if case.active else query.has_queued_run)(repository_id=REPOSITORY.id)
 
-    assert queued is case.expected
+    assert found is case.expected
     assert client.reads == [
         FlowRunsRead(
             flow_filter=None,
             flow_run_filter=FlowRunFilter(
                 tags=FlowRunFilterTags(all_=["infrahub.app/node/repository-1", "infrahub.app/repository-delivery"]),
-                state=FlowRunFilterState(type=FlowRunFilterStateType(any_=[StateType.SCHEDULED, StateType.PENDING])),
+                state=FlowRunFilterState(type=FlowRunFilterStateType(any_=case.states)),
             ),
             limit=1,
             offset=0,
@@ -646,10 +669,11 @@ class RecoveryCase:
     name: str
     intent: WritebackIntent
     submits: bool
-    asks: bool
-    """Whether the check asks the orchestrator for a delivery run that waits to start."""
+    asks: str | None
+    """The method of the run query that the check asks, None when it asks none."""
     lock_held: bool = False
     run_queued: bool = False
+    run_running: bool = False
     submission_log: str | None = None
     """The info line that names why the check submitted."""
 
@@ -659,14 +683,14 @@ RECOVERY_CASES: list[RecoveryCase] = [
         name="stale_delivery_is_recovered",
         intent=delivery_state(status=RepositoryDeliveryStatus.PENDING, entries=(ENTRY,), last_progress_at=LONG_AGO),
         submits=True,
-        asks=True,
+        asks="has_queued_run",
         submission_log=STALE_SUBMISSION_LOG,
     ),
     RecoveryCase(
         name="repository_with_nothing_pending_makes_no_query",
         intent=delivery_state(status=RepositoryDeliveryStatus.NONE, entries=(), last_progress_at=None),
         submits=False,
-        asks=False,
+        asks=None,
     ),
     RecoveryCase(
         name="delivery_that_waits_for_a_user_action_is_not_stale",
@@ -674,7 +698,7 @@ RECOVERY_CASES: list[RecoveryCase] = [
             status=RepositoryDeliveryStatus.ACTION_REQUIRED, entries=(ENTRY,), last_progress_at=LONG_AGO
         ),
         submits=False,
-        asks=False,
+        asks=None,
     ),
     RecoveryCase(
         name="retry_due_in_the_future_owns_the_delivery",
@@ -685,7 +709,7 @@ RECOVERY_CASES: list[RecoveryCase] = [
             retry_due_at=CHECK_NOW + timedelta(seconds=60),
         ),
         submits=False,
-        asks=False,
+        asks=None,
     ),
     RecoveryCase(
         name="progress_at_the_stale_bound_is_recent",
@@ -693,28 +717,29 @@ RECOVERY_CASES: list[RecoveryCase] = [
             status=RepositoryDeliveryStatus.PENDING, entries=(ENTRY,), last_progress_at=AT_THE_STALE_BOUND
         ),
         submits=False,
-        asks=False,
+        asks=None,
     ),
     RecoveryCase(
         name="held_repository_lock_means_an_attempt_still_works",
         intent=delivery_state(status=RepositoryDeliveryStatus.PENDING, entries=(ENTRY,), last_progress_at=LONG_AGO),
         lock_held=True,
         submits=False,
-        asks=False,
+        asks=None,
     ),
     RecoveryCase(
         name="run_that_waits_in_the_queue_gets_no_second_submission",
         intent=delivery_state(status=RepositoryDeliveryStatus.PENDING, entries=(ENTRY,), last_progress_at=LONG_AGO),
         run_queued=True,
         submits=False,
-        asks=True,
+        asks="has_queued_run",
     ),
     RecoveryCase(
         # The orchestrator still shows the run as running, which the query does not count as waiting.
         name="running_run_with_no_progress_and_a_free_lock_is_stale",
         intent=delivery_state(status=RepositoryDeliveryStatus.PENDING, entries=(ENTRY,), last_progress_at=LONG_AGO),
         submits=True,
-        asks=True,
+        asks="has_queued_run",
+        run_running=True,
         submission_log=STALE_SUBMISSION_LOG,
     ),
     RecoveryCase(
@@ -726,7 +751,7 @@ RECOVERY_CASES: list[RecoveryCase] = [
             retry_due_at=LONG_AGO + timedelta(seconds=30),
         ),
         submits=True,
-        asks=True,
+        asks="has_queued_run",
         submission_log=STALE_SUBMISSION_LOG,
     ),
     RecoveryCase(
@@ -738,7 +763,7 @@ RECOVERY_CASES: list[RecoveryCase] = [
             held=held_definition(lease_expires_at=CHECK_NOW - timedelta(seconds=1)),
         ),
         submits=True,
-        asks=True,
+        asks="has_active_run",
         submission_log=HELD_SUBMISSION_LOG,
     ),
     RecoveryCase(
@@ -748,7 +773,7 @@ RECOVERY_CASES: list[RecoveryCase] = [
             status=RepositoryDeliveryStatus.NONE, entries=(), last_progress_at=None, held=held_definition()
         ),
         submits=True,
-        asks=True,
+        asks="has_active_run",
         submission_log=HELD_SUBMISSION_LOG,
     ),
     RecoveryCase(
@@ -760,7 +785,7 @@ RECOVERY_CASES: list[RecoveryCase] = [
             held=held_definition(lease_expires_at=CHECK_NOW + timedelta(seconds=60)),
         ),
         submits=False,
-        asks=False,
+        asks=None,
     ),
     RecoveryCase(
         name="held_work_with_recent_progress_waits",
@@ -771,7 +796,7 @@ RECOVERY_CASES: list[RecoveryCase] = [
             held=held_definition(),
         ),
         submits=False,
-        asks=False,
+        asks=None,
     ),
     RecoveryCase(
         name="held_work_behind_a_queue_that_waits_for_a_user_action_gets_no_submission",
@@ -782,7 +807,7 @@ RECOVERY_CASES: list[RecoveryCase] = [
             held=held_definition(),
         ),
         submits=False,
-        asks=False,
+        asks=None,
     ),
     RecoveryCase(
         name="held_work_with_a_run_that_waits_in_the_queue_gets_no_submission",
@@ -791,7 +816,16 @@ RECOVERY_CASES: list[RecoveryCase] = [
         ),
         run_queued=True,
         submits=False,
-        asks=True,
+        asks="has_active_run",
+    ),
+    RecoveryCase(
+        name="held_work_with_a_running_delivery_run_gets_no_submission",
+        intent=delivery_state(
+            status=RepositoryDeliveryStatus.NONE, entries=(), last_progress_at=LONG_AGO, held=held_definition()
+        ),
+        run_running=True,
+        submits=False,
+        asks="has_active_run",
     ),
 ]
 
@@ -803,6 +837,8 @@ async def test_the_recovery_check_submits_one_delivery_run_only_when_nothing_els
     check_rig.state.intents[REPOSITORY.id] = case.intent
     if case.run_queued:
         check_rig.runs.queued.add(REPOSITORY.id)
+    if case.run_running:
+        check_rig.runs.running.add(REPOSITORY.id)
 
     with caplog.at_level(logging.INFO, logger=RUN_LOGGER):
         submitted = await run_check(check_rig, lock_held=case.lock_held)
@@ -811,7 +847,7 @@ async def test_the_recovery_check_submits_one_delivery_run_only_when_nothing_els
     assert [record.getMessage() for record in caplog.records if record.name == RUN_LOGGER] == (
         [case.submission_log] if case.submits else []
     )
-    assert check_rig.runs.asked == ([REPOSITORY.id] if case.asks else [])
+    assert check_rig.runs.asked == ([(case.asks, REPOSITORY.id)] if case.asks else [])
     intent = check_rig.state.intents[REPOSITORY.id]
     if case.submits:
         assert check_rig.workflow.submit_calls == [EXPECTED_SUBMISSION]
@@ -827,6 +863,9 @@ async def test_the_recovery_check_submits_one_delivery_run_only_when_nothing_els
 
 
 STALE_INTENT = delivery_state(status=RepositoryDeliveryStatus.PENDING, entries=(ENTRY,), last_progress_at=LONG_AGO)
+HELD_INTENT = delivery_state(
+    status=RepositoryDeliveryStatus.NONE, entries=(), last_progress_at=LONG_AGO, held=held_definition()
+)
 
 
 @dataclass
@@ -837,10 +876,13 @@ class QueryFailureCase:
     log_message: str
     traceback: type[Exception] | None
     """The type of the error whose traceback the log line carries, None when it carries none."""
+    intent: WritebackIntent = STALE_INTENT
+    asks: str = "has_queued_run"
+    """The method of the run query that the check asks."""
 
 
 ORCHESTRATOR_WARNING = (
-    "Could not ask the orchestrator whether a delivery run of repository net-repo waits, so none is submitted: "
+    "Could not ask the orchestrator for the delivery runs of repository net-repo, so none is submitted: "
     "The orchestrator does not answer"
 )
 QUERY_FAILURE_CASES: list[QueryFailureCase] = [
@@ -865,6 +907,15 @@ QUERY_FAILURE_CASES: list[QueryFailureCase] = [
         log_message="The delivery recovery check of repository net-repo failed; the next cycle checks again.",
         traceback=TypeError,
     ),
+    QueryFailureCase(
+        name="orchestrator_error_on_the_held_release_question_is_a_warning",
+        error=httpx.ConnectError("The orchestrator does not answer"),
+        log_level=logging.WARNING,
+        log_message=ORCHESTRATOR_WARNING,
+        traceback=None,
+        intent=HELD_INTENT,
+        asks="has_active_run",
+    ),
 ]
 
 
@@ -881,16 +932,16 @@ async def test_a_query_that_raises_submits_nothing_and_leaves_the_progress_time(
         clock=FixedClock(now=CHECK_NOW),
         context=RECOVERY_CONTEXT,
     )
-    check_rig.state.intents[REPOSITORY.id] = STALE_INTENT
+    check_rig.state.intents[REPOSITORY.id] = case.intent
 
     with caplog.at_level(logging.WARNING, logger=RUN_LOGGER):
         submitted = await check.run(repository=REPOSITORY)
 
     assert submitted is False
-    assert runs.asked == [REPOSITORY.id]
+    assert runs.asked == [(case.asks, REPOSITORY.id)]
     assert check_rig.workflow.submit_calls == []
     assert check_rig.state.calls == ["read"]
-    assert check_rig.state.intents[REPOSITORY.id] == STALE_INTENT
+    assert check_rig.state.intents[REPOSITORY.id] == case.intent
     assert [
         (record.levelno, record.getMessage(), record.exc_info[0] if record.exc_info else None)
         for record in caplog.records

@@ -86,20 +86,21 @@ class DeliveryRecoveryCheck:
         lock_free = not await lock.locked()
         now = self.clock()
         if intent.is_stale(now=now, lock_free=lock_free, run_queued=False):
-            trigger = _Trigger.STALE
+            trigger, has_live_run = _Trigger.STALE, self.runs.has_queued_run
         elif intent.release_waits(now=now):
-            trigger = _Trigger.HELD_RELEASE
+            # A release holds no lock and writes no progress, so only its run shows that it still works.
+            trigger, has_live_run = _Trigger.HELD_RELEASE, self.runs.has_active_run
         else:
             return None
 
         try:
-            run_queued = await self.runs.has_queued_run(repository_id=repository.id)
+            run_live = await has_live_run(repository_id=repository.id)
         # Without an answer, a run that waits to start looks lost, and a submission would only add to the queue.
         except (httpx.HTTPError, OSError) as exc:
             log.warning(
-                "Could not ask the orchestrator whether a delivery run of repository %s waits, so none is submitted: %s",
+                "Could not ask the orchestrator for the delivery runs of repository %s, so none is submitted: %s",
                 repository.name,
                 exc,
             )
             return None
-        return None if run_queued else trigger
+        return None if run_live else trigger
