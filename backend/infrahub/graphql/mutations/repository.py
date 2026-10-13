@@ -475,6 +475,11 @@ class RepositoryDeliveryRetry(Mutation):
         repo = await NodeManager.get_one_by_id_or_default_filter(
             db=graphql_context.db, kind=CoreGenericRepository, id=str(data.id), branch=branch
         )
+        # The lookup does not enforce the kind it is given, so a node of another kind answers as an unknown id.
+        if repo.get_kind() not in {InfrahubKind.REPOSITORY, InfrahubKind.READONLYREPOSITORY}:
+            raise NodeNotFoundError(
+                branch_name=branch.name, node_type=InfrahubKind.GENERICREPOSITORY, identifier=str(data.id)
+            )
         repository_name = repo.name.value
         if repo.get_kind() != InfrahubKind.REPOSITORY:
             raise ValidationError(f"Repository {repository_name} is read-only and never pushes to its remote.")
