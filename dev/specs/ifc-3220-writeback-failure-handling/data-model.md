@@ -260,7 +260,7 @@ Not persisted in the graph (FR-014). Written by the barrier at a hold, read by t
 | Property | Value |
 |---|---|
 | Key | `repository-delivery:held:<repository id>:<hold_seq>:<identifier>` |
-| Value | The narrowed request model of the candidate, serialised: `RequestArtifactDefinitionGenerate`, `RequestGeneratorDefinitionRun`, or the coalesced Python submission. |
+| Value | The narrowed request model of the candidate, serialised: `RequestArtifactDefinitionGenerate`, `RequestGeneratorDefinitionRun`, or `PythonTargetRequest`, the narrowed target of one Python computed attribute. The release builds the coalesced submission from that target, as the merge does. |
 | Time to live | `NARROWED_HOLD_TTL_SECONDS`, derived from the retry delays and the fetch and push timeouts: about 45 minutes (`research.md` R9). A chain with a hung fetch or push can outlast it, because the time limit does not stop those commands (`research.md` R6); the release then only widens. |
 | Size bound | 512 KiB. A larger value is not written, and the release then uses the identifier alone. |
 | Repeated hold | The new entry holds the union of the previous entry and the new request. When the previous entry is missing, expired or too large, no new entry is written. |
@@ -301,6 +301,7 @@ its progress timestamps and never changes the status.
 | any | release clears | unchanged | remove each item of the lease's window that still has the named `hold_seq`, then the lease; an item held again since stays; clear the cause and the error when the queue is empty |
 | any | recovery check submits | unchanged | `last_progress_at` |
 | any | rewrite discards the last delivered commit (FR-021) | unchanged | `delivery_reverted` |
+| any | re-target of the default branch | unchanged | clear the last delivered commit |
 | any | guard refuses a branch deletion | unchanged | `delete_source_git_branch` on every entry that names the branch; the version does not move |
 
 Every row that takes or clears a lease also cleans up the expired leases in the same save, as

@@ -2,8 +2,6 @@ import asyncio
 import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime
-from functools import partial
 from typing import Any, assert_never
 
 from git.exc import InvalidGitRepositoryError
@@ -32,8 +30,10 @@ from prefect.runtime import flow_run
 from prefect.states import Completed, Failed
 
 from infrahub import config, lock
-from infrahub.context import InfrahubContext
+from infrahub.auth.session import AnonymousSession
+from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import (
+    GLOBAL_BRANCH_NAME,
     InfrahubKind,
     RepositoryDeliveryStatus,
     RepositoryInternalStatus,
@@ -43,12 +43,14 @@ from infrahub.core.constants import (
     ValidatorConclusion,
 )
 from infrahub.core.manager import NodeManager
+from infrahub.core.regeneration.definitions import selects_repository
 from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import (
     BranchNotFoundError,
     CheckError,
     CommitNotFoundError,
+    ReimportPendingPushesError,
     RepositoryConnectionError,
     RepositoryCredentialsError,
     RepositoryError,
@@ -114,7 +116,13 @@ from .refs_check.constants import REFS_CHECK_CONCURRENCY
 from .refs_check.factory import build_check_refs_model, build_refs_checker, build_refs_scheduler
 from .refs_check.models import RefsCheckCycleSummary, RefsCheckOutcome, RefsCheckResult
 from .refs_check.tracked_commit import GraphTrackedCommitReader
-from .repository import InfrahubReadOnlyRepository, InfrahubRepository, PendingObjectImport, get_initialized_repo
+from .repository import (
+    ImportStep,
+    InfrahubReadOnlyRepository,
+    InfrahubRepository,
+    PendingObjectImport,
+    get_initialized_repo,
+)
 from .state.warm_up import RepositoryWarmUp
 from .sync import (
     RepositoryAdder,
@@ -133,7 +141,7 @@ from .writeback.factory import build_writeback_service
 from .writeback.models import DeliveryOutcome, PendingMerge
 from .writeback.ports import DeliveryStatePort
 from .writeback.service import RepositoryWritebackService
-from .writeback.store import WritebackIntentStore, build_intent_store
+from .writeback.store import build_intent_store
 
 
 def log_skipped_branches(repo: InfrahubRepository, report: SyncReport) -> None:
@@ -371,8 +379,9 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
 ) -> SyncOutcome:
     """Synchronize one repository, linking the run to it when there is something to see there.
 
-    A run is linked when it imports a branch, when it reports a skipped branch, or when it fails while
-    the repository is online. A successful run where nothing moved on the remote is not linked.
+    A run is linked when it reports a skipped branch and, while the repository is online, when a branch
+    fails before its import or the synchronization fails. Each branch import is shown by a run of its
+    own, so it does not link this one. A successful run where nothing moved on the remote is not linked.
 
     Raises:
         RepositoryBranchesFailedError: When at least one branch failed to synchronize.
@@ -411,23 +420,26 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
             if online:
                 await add_tags(branches=[infrahub_branch], nodes=[str(repository_id)])
             raise
-    await report_sync_run(
-        repo=repo, report=outcome.report, infrahub_branch=infrahub_branch, link_run=online and bool(outcome.failed)
-    )
+    await report_sync_run(repo=repo, outcome=outcome, infrahub_branch=infrahub_branch, online=online)
     raise_if_branches_failed(repo=repo, outcome=outcome)
     return outcome
 
 
-async def report_sync_run(repo: InfrahubRepository, report: SyncReport, infrahub_branch: str, link_run: bool) -> None:
-    """Log the run's skipped branches when it moved something, and link the run when there is a reason to.
+async def report_sync_run(repo: InfrahubRepository, outcome: SyncOutcome, infrahub_branch: str, online: bool) -> None:
+    """Log the run's skipped branches when it moved something, and link the run to the branches it reports on.
 
-    Every tag update is rebuilt from the tags the run started with, so the call carries the branches
-    the imports tagged the run with as well, or it would drop them.
+    The run is linked to its own branch when it reports skipped branches, and, while the repository is
+    online, to each branch that failed before its import. A failed import is not one of them, because it
+    is shown on its branch by its own flow run.
     """
+    report = outcome.report
+    branches = [infrahub_branch] if report.reports_skipped_branches else []
     if report.reports_skipped_branches:
         log_skipped_branches(repo=repo, report=report)
-    if report.reports_skipped_branches or link_run:
-        await add_tags(branches=[infrahub_branch, *report.attempted_import_branches], nodes=[str(repo.id)])
+    if online:
+        branches.extend(failed.branch_name for failed in outcome.failed if failed.step is not ImportStep.IMPORT)
+    if branches:
+        await add_tags(branches=branches, nodes=[str(repo.id)])
 
 
 def select_writable_branch_commits(
@@ -477,8 +489,8 @@ async def bootstrap_local_repository(
     default-branch import cannot reach the remote or its credentials are invalid. Any other failed
     default-branch import is already logged and recorded on the branch, so the repository is still
     returned and its other branches still synchronize. While the repository has pending pushes, a
-    fresh clone records no commit and the seed import is skipped, because the import would remove
-    the objects of the pending merges.
+    fresh clone that seeds the default branch records no commit and skips the seed import, because
+    the import would remove the objects of the pending merges.
     """
     log = get_run_logger()
     pending_import: PendingObjectImport | None = None
@@ -496,9 +508,13 @@ async def bootstrap_local_repository(
             get_logger().error(str(exc))
             init_failed = True
 
+        # A seed into a staging branch keeps its path, as the staging sync does.
+        seeds_default_branch = infrahub_branch == registry.default_branch
         delivery_pending = False
         if init_failed:
-            delivery_pending = await has_pending_pushes(state=state, repository_id=repository.id)
+            delivery_pending = seeds_default_branch and await has_pending_pushes(
+                state=state, repository_id=repository.id
+            )
             try:
                 repo = await InfrahubRepository.new(
                     id=repository.id,
@@ -513,7 +529,9 @@ async def bootstrap_local_repository(
                 log.info(exc.message)
                 return None
         elif repo.reinitialized:
-            delivery_pending = await has_pending_pushes(state=state, repository_id=repository.id)
+            delivery_pending = seeds_default_branch and await has_pending_pushes(
+                state=state, repository_id=repository.id
+            )
 
         default_import_git_branch = resolve_initial_import_branch(repo, init_failed=init_failed)
 
@@ -821,13 +839,8 @@ async def git_branch_delete(
         try:
             database = await get_database()
             async with database.start_session() as db:
-                store = WritebackIntentStore(
-                    db=db,
-                    lock_registry=lock.registry,
-                    default_branch=await registry.get_branch(db=db),
-                    clock=partial(datetime.now, UTC),
-                )
-                needed = await store.request_branch_deletion(repository_id=repository_id, git_branch=branch)
+                store = await build_intent_store(db=db, lock_registry=lock.registry)
+                kept = await store.request_branch_deletion(repository_id=repository_id, git_branch=branch)
         except Exception:
             # One repository must not stop the deletion in the others, and keeping the branch loses no content.
             log.exception(
@@ -836,7 +849,7 @@ async def git_branch_delete(
                 "repository has no pending delivery."
             )
             return
-        if needed:
+        if kept:
             log.warning(
                 f"Did not delete the Git branch '{branch}' from repository '{repository_name}', because a pending "
                 "delivery of the repository needs it. The delivery deletes the branch after it pushes the merge, unless "
@@ -863,14 +876,25 @@ async def git_branch_delete(
 
 
 @flow(name="artifact-definition-generate", flow_run_name="Generate all artifacts")
-async def generate_artifact_definition(branch: str, context: InfrahubContext) -> None:
+async def generate_artifact_definition(
+    branch: str,
+    context: InfrahubContext,
+    exclude_repository_ids: list[str] | None = None,
+    include_repository_ids: list[str] | None = None,
+) -> None:
     await add_branch_tag(branch_name=branch)
 
     client = get_client()
     client.request_context = context.to_request_context()
-    artifact_definitions = await client.all(kind=CoreArtifactDefinition, branch=branch, include=["id"])
+    artifact_definitions = await client.all(kind=CoreArtifactDefinition, branch=branch, include=["transformation"])
 
     for artifact_definition in artifact_definitions:
+        if not selects_repository(
+            repository_id=artifact_definition.transformation.peer.repository.id,
+            exclude_repository_ids=exclude_repository_ids,
+            include_repository_ids=include_repository_ids,
+        ):
+            continue
         model = RequestArtifactDefinitionGenerate(
             branch=branch,
             artifact_definition_id=artifact_definition.id,
@@ -1089,11 +1113,15 @@ async def pull_read_only(model: GitRepositoryPullReadOnly) -> None:
         await message_bus.send(message=message)
 
 
+# A run queued before the flow took a context carries none, and must still push its merge.
+_NO_MERGE_CONTEXT = InfrahubContext(branch=BranchContext(name=GLOBAL_BRANCH_NAME), account=AnonymousSession())
+
+
 @flow(
     name="git-repository-merge",
     flow_run_name="Merge {model.source_branch} > {model.destination_branch} in git repository",
 )
-async def merge_git_repository(model: GitRepositoryMerge) -> State | None:
+async def merge_git_repository(model: GitRepositoryMerge, context: InfrahubContext = _NO_MERGE_CONTEXT) -> State | None:
     log = get_run_logger()
     await add_tags(branches=[model.source_branch, model.destination_branch], nodes=[model.repository_id])
 
@@ -1158,7 +1186,7 @@ async def merge_git_repository(model: GitRepositoryMerge) -> State | None:
             except BranchNotFoundError:
                 lost_merge = _describe_lost_merge(repo=repo, model=model)
                 log.error(lost_merge)
-        service = await build_writeback_service(db=db, repository=repo)
+        service = await build_writeback_service(db=db, repository=repo, context=context, log=log)
         outcome = await deliver_pending_merges(service=service, manual=False, entry=entry)
 
     message = f"The delivery to repository {model.repository_name} ended with the outcome {outcome.value}."
@@ -1234,7 +1262,7 @@ async def deliver_pending_merges(
     name="git-repository-delivery-retry",
     flow_run_name="Retry the delivery of the pending merges of repository {model.repository_name}",
 )
-async def retry_repository_delivery(model: GitRepositoryDeliveryRetry) -> State:
+async def retry_repository_delivery(model: GitRepositoryDeliveryRetry, context: InfrahubContext) -> State:
     log = get_run_logger()
     await add_tags(branches=[registry.default_branch], nodes=[model.repository_id])
 
@@ -1246,7 +1274,7 @@ async def retry_repository_delivery(model: GitRepositoryDeliveryRetry) -> State:
     )
     database = await get_database()
     async with database.start_session() as db:
-        service = await build_writeback_service(db=db, repository=repo)
+        service = await build_writeback_service(db=db, repository=repo, context=context, log=log)
         outcome = await deliver_pending_merges(service=service, manual=model.manual, entry=None)
 
     message = f"The delivery to repository {model.repository_name} ended with the outcome {outcome.value}."
@@ -1272,6 +1300,13 @@ async def import_objects_from_git_repository(model: GitRepositoryImportObjects) 
     )
     plan = await repo.build_import_plan(infrahub_branch_name=model.infrahub_branch_name, commit=model.commit)
     async with lock.registry.get(name=model.repository_name, namespace="repository"):
+        # A merge queued after the reimport was accepted must still stop it.
+        if model.repository_kind == InfrahubKind.REPOSITORY:
+            database = await get_database()
+            async with database.start_session() as db:
+                state = await build_intent_store(db=db, lock_registry=lock.registry)
+                if await has_pending_pushes(state=state, repository_id=model.repository_id):
+                    raise ReimportPendingPushesError(repository_name=model.repository_name)
         await repo.apply_import_plan(plan)
 
 

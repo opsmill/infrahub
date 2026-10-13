@@ -71,6 +71,7 @@ class DeliveryStatePort(Protocol):
     async def expire_lease(self, *, repository_id: str, lease_id: str) -> None: ...
     async def clear_released(self, *, repository_id: str, lease_id: str) -> None: ...
     async def touch(self, *, repository_id: str) -> None: ...
+    async def forget_delivered_commit(self, *, repository_id: str) -> None: ...
     async def record_reverted(self, *, repository_id: str, delivered_commit: str, new_head: str) -> bool: ...
 
 
@@ -124,6 +125,7 @@ Neo4j driver would refuse the second transaction anyway, but only after the lock
 | `expire_lease` | Sets the lease's `expires_at` to now, and keeps the items of its window held. The lease then protects nothing, the same as the lease of a dead worker (`research.md` R10, rules 3 and 4). The next lease takes those items, and they move to it. The run that took the lease calls it when its release fails. Does nothing when the lease is gone. |
 | `clear_released` | Removes each item that the lease names and that still has the named `hold_seq`, then the lease itself. An item held again after the lease was taken has a higher `hold_seq`, so it stays. Does nothing when the lease is gone, because a newer lease then owns its items. When the queue is empty, the same save clears the cause and the error, which only a failed release can have left. |
 | `touch` | Moves `last_progress_at`. The recovery check calls it after it submits. |
+| `forget_delivered_commit` | Clears `delivery_last_delivered_commit`. Writes nothing when it is already empty. |
 | `record_reverted` | Writes `delivery_reverted` with the store's time and returns `True`. Writes nothing and returns `False` when the record already names the delivered commit, so the first record keeps its new head and its time. |
 
 Every method that adds or clears a lease also cleans up the expired leases in the same save
@@ -151,8 +153,8 @@ classifier. The table of `research.md` R5 is the contract of `classify_delivery_
 `replay-conflict` row: the service sets that cause from `ReplayResult`, and the classifier gives
 `unclassified` for every exception at the replay stage. A
 `RepositoryPushRejectedError` gives its `remote_message` and ref summary as the message. Any other
-error gives its typed message, unless the message repeats the text of the `GitCommandError` that it was
-raised `from`, as every raise of the Git error enrichment does: then it gives a sentence that names the step
+error gives its typed message, unless the message repeats the text of a `GitCommandError` in its chain of
+causes, as every raise of the Git error enrichment does, also under the wrapper of a failed import: then it gives a sentence that names the step
 and the error type, so raw stderr does not reach the repository. The guard sees only that case. A
 message that wraps Git output in a longer sentence, or an error raised without `from`, keeps its
 text, with the credentials removed. Every message passes through `scrub_credentials`,
@@ -522,12 +524,14 @@ cannot forget it.
 |---|---|---|
 | `PostMergeRegenerationDispatcher.dispatch`, on the built plan | `RequestGeneratorDefinitionRun`, `RequestArtifactDefinitionGenerate` | `generator_definition.repository_id`, `repository_id` |
 | `PostMergeRegenerationDispatcher._submit`, after the cascade | `RequestArtifactDefinitionGenerate` | `repository_id` |
-| `PostMergeRegenerationDispatcher._full_regeneration`, `_submit_full_terminal_regeneration`, and the flag-off path of `post_process_branch_merge` | a `widen` marker per pending repository, with the reason of the fallback (data model, "New fallback reasons"), then the blanket triggers with `exclude_repository_ids` | the repository |
-| `recompute_coalescing.py::_resolve_python_targets` | `AffectedTarget` of the Python family | `PythonTargetSource.owner_of(kind, attribute)` |
-| `computed_attribute/tasks.py::computed_attribute_setup_python`, on the default branch | the selected `(kind, attribute)` pairs | the same owner map |
+| `PostMergeRegenerationDispatcher._full_regeneration`, `_submit_full_terminal_regeneration`, and the flag-off path of `post_process_branch_merge` | a `widen` marker per pending repository, with the reason of the fallback (data model, "New fallback reasons"), then the blanket triggers with `exclude_repository_ids`. In a release, `_submit_full_terminal_regeneration` holds nothing and submits the terminal trigger with `include_repository_ids=[releasing]`, because a release covers only the definitions of its repository (SC-004) | the repository |
+| `recompute_coalescing.py::_resolve_python_targets` | `AffectedTarget` of the Python family | `PythonTargetResolver.owner_of(kind, attribute_name, branch)` |
+| `computed_attribute/tasks.py::computed_attribute_setup_python`, on the default branch | the selected `(kind, attribute)` pairs | the repository of each gathered trigger |
+| `HeldRegenerationReleaser`, the Python submissions of a release, with `releasing` set | `PythonTargetRequest` | the released repository when it owns the attribute, else `None` |
 
-`PostMergeRegenerationDispatcher`, `MergeRecomputeCoordinator`, `RecomputeChainSubmitter` and the
-schema-scoped recompute each gain a required `barrier: RegenerationBarrier` constructor parameter.
+`PostMergeRegenerationDispatcher`, `MergeRecomputeCoordinator`, `RecomputeChainSubmitter` and
+`HeldRegenerationReleaser` each gain a required `barrier: RegenerationBarrier` constructor parameter.
+The schema-scoped recompute builds its barrier inside its flow.
 The rebase builder and every test pass one too: on a non-default branch it admits everything without
 a read.
 
@@ -541,6 +545,7 @@ class HeldRegenerationReleaser:
         self,
         dispatcher: PostMergeRegenerationDispatcher,
         python_submitter: CoalescedRecomputeSubmitter,
+        barrier: RegenerationBarrier,
         definitions: HeldDefinitionResolver,
         narrowed: NarrowedHoldCache,
         default_branch_name: str,
@@ -560,10 +565,11 @@ Contract:
 1. If `held.widen` has scope `all`, run the full `widen` release of the repository, log the
    marker's own `reason`, and stop. Else, if any held identifier does not resolve, run the same
    release, log `HELD_SET_UNRESOLVED`, and stop. `HELD_SET_UNRESOLVED` is only for an identifier
-   that does not resolve. The full release submits both blanket triggers with
-   `include_repository_ids=[repository_id]`, plus a whole-kind recompute of every Python computed
-   attribute whose transform the repository owns. It covers every held item, so the other steps have
-   nothing to dispatch.
+   that does not resolve. A held generator definition that exists but no longer runs after a merge
+   resolves: the release logs it and runs nothing for it. The full release submits both blanket
+   triggers with `include_repository_ids=[repository_id]`, plus a whole-kind recompute of every
+   Python computed attribute whose transform the repository owns. It covers every held item, so the
+   other steps have nothing to dispatch.
 2. If `held.widen` has scope `terminals`, log the marker's `reason`, submit the artifact trigger
    with `include_repository_ids=[repository_id]`, then continue at step 3. The trigger covers the
    artifact items of the window, so steps 3 and 4 skip them. It does not cover the generator items or the
@@ -574,8 +580,10 @@ Contract:
 4. Dispatch the generator and artifact requests through `PostMergeRegenerationDispatcher`, with
    `releasing=repository_id`, so the cascade runs as on a merge and every dispatch passes through the
    barrier.
-5. Submit each Python attribute: the cached narrowed submission, or a whole-kind recompute with
-   `coalesced=True` and `widened=True`.
+5. Submit each Python attribute: the cached narrowed target (`PythonTargetRequest`), or a
+   whole-kind recompute with `coalesced=True` and `widened=True`. Each target first passes the
+   barrier with `releasing=repository_id`. An attribute that the repository owns is admitted. Any
+   other attribute has no known owner, so it stays held under every other pending repository.
 6. Renew the lease after each awaited step, through a callback the caller passes.
 7. Raise on a dispatch failure. The releaser only raises. Its caller, the service or the
    abandoner, sets the lease's expiry to now through `expire_lease`, then handles the failure.
@@ -603,10 +611,11 @@ Contract:
 | `core/merge/repository_merge_dispatcher.py::RepositoryMergeDispatcher.merge_core_repositories` | For an `active` repository, on a branch that syncs with Git, whose source commit carries content (`research.md` R3): builds the `PendingMerge`, enqueues it under its own guard with `widen=False`, passes it in the model, and passes the merge's `context`. Retries a failed enqueue `ENQUEUE_RETRIES` times, after the delays of `ENQUEUE_RETRY_DELAYS_SECONDS`. If the last retry fails too, it logs at error level and still submits the merge. Retries any error, because the graph merge is done and no failure may stop the merge flows. Takes two new required constructor parameters: `state_for_session: Callable[[InfrahubDatabase], DeliveryStatePort]`, which builds the state port on a database session, and a `sleep` callable, as the barrier does, so a unit test records the delays and returns at once. The enqueues of all repositories run at the same time (`asyncio.gather`), because the branch merge holds the global merge lock meanwhile, so the worst wait is one retry chain. A session serves one coroutine at a time, so each try opens its own session and builds the state port on it. `core/merge/builder.py` and every test that builds the dispatcher pass both. When the content read fails, it submits the merge of each active repository with no entry, and the merge flow reads the content itself. The entry's `source_git_branch` is the Infrahub source branch name: `_get_mapped_remote_branch` changes only Infrahub's default branch, and a merge never comes from it. It queues no merge whose source branch is the remote branch that a delivery pushes to, and logs it: source and destination are then the same Git branch, so there is nothing to push, and the queue refuses such an entry. Sets `pending_merge_enqueued` to `True` only when one of its tries returned. Submits no merge workflow for an `active` repository whose source commit carries no content. Passes `tags=delivery_run_tags(repository_id)` when it submits the merge of an `active` repository, so a run that waits in the queue counts as a waiting delivery run (`research.md` R20). |
 | `workflows/constants.py::WorkflowTag` | Gains `REPOSITORY_DELIVERY = "repository-delivery"`, which renders as `infrahub.app/repository-delivery`. It marks a delivery run (`research.md` R20). |
 | `core/merge/regeneration_dispatcher.py::PostMergeRegenerationDispatcher` | Consults the barrier at the sites of section 8. `dispatch` and `_dispatch_plan` take `releasing`. |
-| `core/merge/python_target_sources.py::GatheredPythonReadSets` | Keeps the repository id per attribute and exposes `owner_of`. |
+| `core/merge/python_target_sources.py::GatheredPythonReadSets` | Keeps the repository id per attribute. It reaches `PythonAttributeReadSet.repository_id`, and the resolver exposes it through `owner_of`. |
 | `core/merge/selective_regen/definition_selector/artifact_selector.py::ArtifactSelector._build_request` | Fills `repository_id`. |
 | `git/tasks.py::generate_artifact_definition`, `generators/tasks.py::run_generator_definition` | Accept `exclude_repository_ids` and `include_repository_ids`. |
 | `computed_attribute/tasks.py::computed_attribute_setup_python` | On the default branch, passes the selected pairs through the barrier. |
 | `graphql/mutations/repository.py::ProcessRepository` | Refuses on every branch while the state is not `none`. |
+| `git/tasks.py::import_objects_from_git_repository` | For a `CoreRepository`, reads the state again under the repository lock, right before it applies, and fails with the refusal message of `ProcessRepository` while the state is not `none`. A merge queued after the mutation checked then still stops the import. |
 | `core/convert_object_type/repository_conversion.py::convert_repository_type` | Takes the state port, `delivery_state: DeliveryStatePort`, which the `ConvertObjectType` mutation builds. Under the repository lock, before it deletes the node, it refuses the conversion of a `CoreRepository` with `DeliveryPendingError` while the status is not `none`, and while held regeneration waits, which can stay after a settle or an abandonment with the status `none`. The deletion would drop the queue or the held regeneration with no abandonment record. It reads the state and deletes the node in one `delivery_state.locked(...)` block, taken inside the repository lock, the order of `research.md` R2. A merge that enqueues meanwhile waits for the block, then fails because the node is gone. Before it takes the lock, it also refuses, with `ValidationError`, a mapping that sets a read-only attribute of the target kind through `source_field` or `data`, so a conversion from a read-only repository cannot write the delivery state around the store. The check covers the repository conversion only: other kinds have read-only attributes that the automatic mapping copies. |
-| IFC-3210's reconciliation | Calls `state.record_reverted` when the condition of `research.md` R13 holds. Gated on IFC-3210. When the read of the state or the record fails, it logs a warning, fails the default branch at the record step and keeps its import. It catches every exception on purpose, because an error that escapes would lose the imports of the cycle. Accepted on 2026-10-13. |
+| IFC-3210's reconciliation | Calls `state.record_reverted` when the condition of `research.md` R13 holds, and `state.forget_delivered_commit` on a re-target of the default branch. Gated on IFC-3210. When the read of the state, the record or the forget fails, it logs a warning, fails the default branch at the record step and keeps its import. It catches every exception on purpose, because an error that escapes would lose the imports of the cycle. Accepted on 2026-10-13. |

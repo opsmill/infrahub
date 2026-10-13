@@ -828,11 +828,13 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         return reason
 
     async def _record_reverted_delivery(self, collected: CollectedImports, state: DeliveryStatePort) -> None:
-        """Record the last pushed commit when the rewrite of the default branch discarded it.
+        """Record the last pushed commit when the default branch no longer holds it after a rewrite.
 
-        Each push fast-forwards the remote, so every earlier pushed commit survived when the last one did.
-        A failure fails the default branch at the record step and keeps its import, as a failed rewrite
-        record does.
+        Each push fast-forwards the remote, so every earlier pushed commit survived when the last one did. A
+        pushed commit that an earlier rewrite discarded is recorded too, as its own record may have failed. A
+        re-target forgets the pushed commit, because it names a commit of the previous default branch. A
+        failure fails the default branch at the record step and keeps its import, as a failed rewrite record
+        does.
         """
         rewrite = next(
             (
@@ -842,23 +844,22 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             ),
             None,
         )
-        # A rewrite always carries both commits, so the last two checks only narrow their types.
+        # Both classifications always carry the remote head, so the last check only narrows its type.
         if (
             rewrite is None
-            or rewrite.classification is not RefClassification.REWRITE
-            or rewrite.imported_commit is None
+            or rewrite.classification not in {RefClassification.REWRITE, RefClassification.RETARGET}
             or rewrite.remote_head is None
         ):
             return
 
         repository_id = str(self.id)
-        discarded_commit = rewrite.imported_commit
         new_head = rewrite.remote_head
         try:
+            if rewrite.classification is RefClassification.RETARGET:
+                await state.forget_delivered_commit(repository_id=repository_id)
+                return
             pushed_commit = (await state.read(repository_id=repository_id)).last_delivered_commit
-            if pushed_commit is None or not self._rewrite_discarded(
-                commit=pushed_commit, discarded_commit=discarded_commit, new_head=new_head
-            ):
+            if pushed_commit is None or self._head_holds(head=new_head, commit=pushed_commit):
                 return
             if not await state.record_reverted(
                 repository_id=repository_id, delivered_commit=pushed_commit, new_head=new_head
@@ -868,7 +869,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         except Exception as exc:
             reason = exc.message if isinstance(exc, Error) else f"{type(exc).__name__}: {exc}"
             log.warning(
-                "Failed to record the reverted push of branch %s of repository %s: %s",
+                "Failed to update the reverted push record of branch %s of repository %s: %s",
                 rewrite.branch_name,
                 self.name,
                 reason,
@@ -901,25 +902,17 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             },
         )
 
-    def _rewrite_discarded(self, commit: str, discarded_commit: str, new_head: str) -> bool:
-        """Whether the rewrite from the discarded commit to the new head discarded the commit.
+    def _head_holds(self, head: str, commit: str) -> bool:
+        """Whether the commit is in the history of the head.
 
-        A fetch brings every ancestor of the new head, so a commit that this clone lacks is off the remote.
-        A commit outside the discarded history left the remote in an earlier rewrite, which git can tell
-        only while this clone holds the discarded commit.
+        A fetch brings every ancestor of the head, so a commit that this clone lacks is not in it.
 
         Raises:
             RepositoryError: When git could not answer.
 
         """
         gateway = self._get_ancestry_gateway()
-        if not gateway.has_commit(commit=commit):
-            return True
-        if gateway.is_ancestor(ancestor_commit=commit, descendant_commit=new_head):
-            return False
-        return not gateway.has_commit(commit=discarded_commit) or gateway.is_ancestor(
-            ancestor_commit=commit, descendant_commit=discarded_commit
-        )
+        return gateway.has_commit(commit=commit) and gateway.is_ancestor(ancestor_commit=commit, descendant_commit=head)
 
     async def _find_branches_behind_in_graph(self, graph_commits: Mapping[str, str | None]) -> list[str]:
         """Return the local branches whose commit in the graph is not the remote head.
@@ -1128,6 +1121,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 RepositoryTLSError name a missing repository and a refused certificate.
             RepositoryCredentialsError: When authentication fails at push time.
             RepositoryPermissionError: When the credentials authenticate but lack write access.
+            RepositoryError: When the lookup of the worktree fails or runs past ``timeout_seconds``.
 
         """
         if not self.has_origin:
@@ -1139,7 +1133,11 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             self.name,
         )
 
-        repo = self.get_git_repo_worktree(identifier=branch_name, timeout_seconds=timeout_seconds)
+        try:
+            repo = self.get_git_repo_worktree(identifier=branch_name, timeout_seconds=timeout_seconds)
+        except GitCommandError as exc:
+            # The lookup is local, so a lookup past its limit does not mean that the remote is unreachable.
+            self._raise_enriched_error_static(error=exc, name=self.name, location=self.location)
         remote_branch = self._get_mapped_remote_branch(branch_name=branch_name)
         # The server explains a refusal only in its "remote:" lines.
         progress = _RemoteLineCollector()

@@ -21,6 +21,8 @@ from infrahub_sdk.task.models import TaskFilter, TaskState
 from prefect.client.schemas.objects import StateType
 
 from infrahub import config, lock
+from infrahub.auth.session import AnonymousSession
+from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import (
     InfrahubKind,
     RepositoryDeliveryFailureCause,
@@ -1323,6 +1325,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         # A retry sent while the merge was queued waits for the repository lock, so it runs after the merge's attempt.
         final_state = await retry_repository_delivery(
             model=GitRepositoryDeliveryRetry(repository_id=repository.node_id, repository_name=repository.name),
+            context=InfrahubContext(branch=BranchContext(name=registry.default_branch), account=AnonymousSession()),
             return_state=True,
         )
 

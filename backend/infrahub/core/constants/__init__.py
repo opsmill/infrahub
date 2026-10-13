@@ -266,6 +266,8 @@ class FullRegenerationReason(StrEnum):
     SUMMARY_UNAVAILABLE = "Merge diff summary unavailable"
     SELECTION_FAILED = "Selective post-merge regeneration failed"
     UNHELD_FOLLOW_UP = "Merge follow-ups ran without a hold"
+    TERMINAL_SELECTION_FAILED = "Terminals could not be targeted from the cascade output"
+    HELD_SET_UNRESOLVED = "Held regeneration could not be resolved"
 
 
 class RepositoryOperationalStatus(InfrahubStringEnum):

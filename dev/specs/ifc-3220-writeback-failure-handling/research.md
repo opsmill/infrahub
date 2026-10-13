@@ -599,9 +599,10 @@ stderr line that is not a progress line in `other_lines`, and lines that start w
 **Decision**: `push` passes a `RemoteProgress` and joins the `remote:` lines, in order, into the
 typed error. The delivery stores, verbatim, those lines and the ref summary. For any other error it
 stores the typed message, not raw stderr, which can name worker paths. The classifier detects raw
-stderr only as a message that repeats the `GitCommandError` it was raised `from`, which every raise of
-the Git error enrichment does. A message that repeats another error, such as the wrapper of a failed
-import, keeps its text. A message that wraps Git output in a longer sentence, or an error raised
+stderr only as a message that repeats a `GitCommandError` in its chain of causes. Every raise of the Git
+error enrichment is `from` one, and the wrapper of a failed import can copy such a message one level
+up. A message that repeats an error with no Git error under it, such as the wrapper of a failed import
+of invalid content, keeps its text. A message that wraps Git output in a longer sentence, or an error raised
 without `from`, keeps its text. Every stored message passes
 through one scrubber that removes `user:password@` from URLs, since a location can embed a token
 (Constitution VI).
@@ -822,8 +823,8 @@ every candidate after one read.
 | `PostMergeRegenerationDispatcher.dispatch`, on the plan, before `_dispatch_plan` | generator runs, artifact generations | `generator_definition.repository_id`; a new `RequestArtifactDefinitionGenerate.repository_id` |
 | `PostMergeRegenerationDispatcher._submit`, after the generator cascade reselects artifacts | artifact generations | as above |
 | `PostMergeRegenerationDispatcher._full_regeneration`, `_submit_full_terminal_regeneration`, and the flag-off path of `post_process_branch_merge` | "every definition of a repository" | see below |
-| `core/merge/recompute_coalescing.py::_resolve_python_targets`, used by `MergeRecomputeCoordinator` and `RecomputeChainSubmitter` | Python computed attributes as `(kind, attribute)` | the owner map of the Python target source |
-| `computed_attribute/tasks.py::computed_attribute_setup_python`, on the default branch | the `(kind, attribute)` pairs it selected | the same owner map |
+| `core/merge/recompute_coalescing.py::_resolve_python_targets`, used by `MergeRecomputeCoordinator` and `RecomputeChainSubmitter` | Python computed attributes as `(kind, attribute)` | the owner map of the Python target resolver |
+| `computed_attribute/tasks.py::computed_attribute_setup_python`, on the default branch | the `(kind, attribute)` pairs it selected | the repository of each gathered trigger, from the same gather |
 
 ### The artifact request gains its repository
 
@@ -834,9 +835,11 @@ validates.
 
 ### The Python owner map
 
-`GatheredPythonReadSets` drops the repository of each transform. It keeps it instead, and the
-Python target source exposes `owner_of(kind, attribute) -> str | None`. The barrier consults it
-after `_resolve_python_targets`, so it filters both a resolved result and the widened failsafe.
+`GatheredPythonReadSets` drops the repository of each transform. It keeps it instead, the read set
+of each attribute carries it, and the Python target resolver exposes
+`owner_of(kind, attribute_name, branch) -> str | None`. The owner is known once a resolution on the
+branch has loaded the read sets. The barrier consults it after `_resolve_python_targets`, so it
+filters both a resolved result and the widened failsafe.
 
 When the owner of a target is unknown while some repository has a pending delivery, the barrier
 holds the target under every pending repository. Each release then runs it, which over-executes and
@@ -1039,7 +1042,7 @@ The rules:
 |---|---|
 | Artifact definition | The cached narrowed request if present, else `RequestArtifactDefinitionGenerate` with no `members` and no `limit`, through `_dispatch_plan`. |
 | Generator definition | The cached narrowed request if present, else `RequestGeneratorDefinitionRun` with no `target_members`, through `_dispatch_plan`, so the generator-to-artifact cascade runs as on a merge. |
-| Python `(kind, attribute)` | The cached narrowed submission if present, else `TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES` with `coalesced=True` and `widened=True`, as the coalesced pass submits a widened target, so the chain continues. |
+| Python `(kind, attribute)` | The submission of the cached narrowed target if present, else `TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES` with `coalesced=True` and `widened=True`, as the coalesced pass submits a widened target, so the chain continues. |
 | `widen` marker, scope `all` | Full regeneration of that repository's definitions: both blanket triggers with `include_repository_ids=[repository]`, plus every Python computed attribute whose transform that repository owns, over its whole kind. |
 | `widen` marker, scope `terminals` | The artifact blanket trigger, with `include_repository_ids=[repository]`. The release then continues: it dispatches the generator items and the Python items of the window as the rows above say. The trigger covers the artifact items of the window, so they need no separate dispatch. |
 
@@ -1049,7 +1052,9 @@ scope `terminals` covers only the artifact definitions. If its release stopped a
 the clear would remove the held generator items and Python items without a dispatch (FR-016).
 
 An identifier that no longer resolves, for example a deleted definition, turns the release into the
-full `widen` release of that repository, as for scope `all` (FR-016). The PRD names this as "a
+full `widen` release of that repository, as for scope `all` (FR-016). A held generator definition
+that exists but no longer runs after a merge resolves: the merge path would not run it either, so
+the release logs it and runs nothing for it. The PRD names this as "a
 further named fallback reason": `FullRegenerationReason.HELD_SET_UNRESOLVED` is added beside the
 four that exist.
 
@@ -1084,8 +1089,8 @@ crash cases of the inline release.
 | Path | Change |
 |---|---|
 | `InfrahubRepository.collect_pending_imports`, the active loop | Removes the repository's default branch from the branches to pull. Removes from the new **and** the updated branches every remote branch that a pending entry names as its source. Logs both once per cycle. The staging path of the same method keeps the full list, because a staging repository is never queued. A state that cannot be read fails closed: the sync of that repository stops for the cycle, and the other repositories go on (accepted on 2026-10-13). |
-| `git/tasks.py::bootstrap_local_repository` | Skips the seed import of the default branch after a fresh clone, and logs it. The clone itself proceeds. |
-| `graphql/mutations/repository.py::ProcessRepository` | Refuses on **every** branch, with a message that names the pending delivery. |
+| `git/tasks.py::bootstrap_local_repository` | Skips the seed import of the default branch after a fresh clone, and logs it. The clone itself proceeds. A seed into a staging branch is not skipped, as for the staging path of the synchronisation. |
+| `graphql/mutations/repository.py::ProcessRepository` | Refuses on **every** branch, with a message that names the pending delivery. The import flow it submits checks again under the repository lock before it applies, because a merge can be queued in between. |
 
 **Why the default branch.** The import is desired-state: it deletes the repository-owned objects
 that are not in the imported commit. If the remote destination advanced during an outage, an import
@@ -1175,10 +1180,15 @@ the branch on the remote only.
 ## R13. The reverted-delivery record (FR-021)
 
 **Decision**: the store keeps `delivery_last_delivered_commit`, set at each delivery that pushed.
-When the IFC-3210 reconciliation classifies the default branch as a rewrite, it asks the store
-whether the last delivered commit is an ancestor of the commit it discards and not an ancestor of
-the new head. When it is, it writes `delivery_reverted` with the delivered commit, the new head and
-the time, and logs it.
+When the IFC-3210 reconciliation classifies the default branch as a rewrite, it reads the last
+delivered commit from the store and asks Git whether the new head holds it. A fetch brings every
+ancestor of the new head, so a delivered commit that the clone lacks is not in it either. When the
+new head does not hold the commit, the store writes `delivery_reverted` with the delivered commit,
+the new head and its own time, and the reconciliation logs it. The check does not ask whether the
+commit it discards holds the delivered commit: a delivered commit that an earlier rewrite discarded,
+whose own record failed, is recorded at the next rewrite. When the reconciliation classifies the
+default branch as a re-target, it clears `delivery_last_delivered_commit`, because that commit
+belongs to the previous default branch, which a later rewrite of the new one cannot discard.
 
 **Why the last delivered commit is enough.** Each delivery pushes a fast-forward of the previous
 remote head, since Infrahub never force-pushes. Every earlier delivered commit is therefore an
@@ -1188,17 +1198,11 @@ did too.
 **Gate.** Plan part L waits for the rewrite classification of IFC-3210. Without it, a rewrite of the
 default branch makes the synchronisation fail, and nothing reaches the check.
 
-**A clone that lacks a commit.** A worker that cloned after the rewrite never fetched the
-discarded history, and Git cannot compare an absent commit. A fetch brings every ancestor of the
-new head, so a delivered commit that the clone lacks is off the remote, and the reconciliation
-records it. When the clone lacks only the commit it discards, it cannot tell whether an earlier
-rewrite discarded the delivered commit, and it records it too.
-
-**A record that fails.** When the read of the state or the write of the record fails, the
-synchronisation logs a warning and fails the default branch at the record step, as a failed rewrite
-record does. The import of the default branch is kept, because the graph already records the new
-commit. The call catches every exception on purpose: an error that escapes would lose the imports
-of the cycle. Accepted on 2026-10-13.
+**A record that fails.** When the read of the state, the write of the record or the clear of the
+delivered commit fails, the synchronisation logs a warning and fails the default branch at the
+record step, as a failed rewrite record does. The import of the default branch is kept, because the
+graph already records the new commit. The call catches every exception on purpose: an error that
+escapes would lose the imports of the cycle. Accepted on 2026-10-13.
 
 **Not cleared.** Like the sibling's rewrite record, it is a fact and not an alert. A later
 reverted delivery of another commit overwrites it. A record of the same delivered commit is kept,
