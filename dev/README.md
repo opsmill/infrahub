@@ -70,12 +70,14 @@ Backend architecture documentation in [knowledge/backend/](knowledge/backend/):
 - [telemetry.md](knowledge/backend/telemetry.md) - Anonymous usage telemetry (categories, windowing, retention, degradation)
 - [graphql-execution.md](knowledge/backend/graphql-execution.md) - Sync vs async field completion and why middleware must stay synchronous
 - [tls.md](knowledge/backend/tls.md) - How the CA bundle of every outbound TLS connection is resolved and where each component applies it
+- [repository-git-state.md](knowledge/backend/repository-git-state.md) - How the API server reads a repository's commit log and branch drift from a worker's clone
 
 Frontend architecture documentation in [knowledge/frontend/](knowledge/frontend/):
 
 - [architecture.md](knowledge/frontend/architecture.md) - Frontend architecture overview
 - [entities-structure.md](knowledge/frontend/entities-structure.md) - Entity layers (`ui → domain → api`)
 - [request-priority.md](knowledge/frontend/request-priority.md) - The `X-Priority` header the frontend emits
+- [repository-commits.md](knowledge/frontend/repository-commits.md) - The repository Commits tab: retry while unavailable, stale rows, freshness values
 
 ## Current ADRs
 
