@@ -9,9 +9,7 @@ import pytest
 from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
-from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.schema_branch import SchemaBranch
-from infrahub.core.validators.schema_branch.number_pool_scope_validator import DefaultBranchSchema
 from infrahub.exceptions import ValidationError
 from tests.helpers.number_pool import (
     SCOPED_DEVICE,
@@ -204,22 +202,18 @@ def test_declared_scope_is_accepted(case: AcceptedDeclarationCase) -> None:
     schema_branch.validate_attribute_parameters()
 
 
-def _default_branch_source(schema: SchemaRoot) -> DefaultBranchSchema:
-    schema_manager = SchemaManager()
-    schema_manager.set_schema_branch(
-        name=registry.default_branch, schema=_unvalidated_schema_branch(name="main", schema=schema)
-    )
-    return DefaultBranchSchema(source=schema_manager, name=registry.default_branch)
+def _default_branch_schema(schema: SchemaRoot) -> SchemaBranch:
+    return _unvalidated_schema_branch(name=registry.default_branch, schema=schema)
 
 
 class TestDeclaredScopeOnABranch:
     """On a branch, the declared names resolve against the schema of the default branch."""
 
     @pytest.fixture
-    def default_branch_schema(self) -> DefaultBranchSchema:
-        return _default_branch_source(schema=_schema())
+    def default_branch_schema(self) -> SchemaBranch:
+        return _default_branch_schema(schema=_schema())
 
-    def test_element_only_on_the_branch_is_refused(self, default_branch_schema: DefaultBranchSchema) -> None:
+    def test_element_only_on_the_branch_is_refused(self, default_branch_schema: SchemaBranch) -> None:
         device = _with_pooled_vlan_id(SCOPED_DEVICE, scope=["zone"])
         device.attributes.append(AttributeSchema(name="zone", kind="Text", optional=False))
         schema_branch = _unvalidated_schema_branch(name="branch1", schema=_schema(device=device))
@@ -231,16 +225,14 @@ class TestDeclaredScopeOnABranch:
                 " on branch main"
             ),
         ):
-            schema_branch.validate_attribute_parameters(default_branch_source=default_branch_schema)
+            schema_branch.validate_attribute_parameters(default_branch_schema=default_branch_schema)
 
-    def test_element_of_the_default_branch_is_accepted(self, default_branch_schema: DefaultBranchSchema) -> None:
+    def test_element_of_the_default_branch_is_accepted(self, default_branch_schema: SchemaBranch) -> None:
         schema_branch = _unvalidated_schema_branch(name="branch1", schema=_device_schema(scope=["site"]))
 
-        schema_branch.validate_attribute_parameters(default_branch_source=default_branch_schema)
+        schema_branch.validate_attribute_parameters(default_branch_schema=default_branch_schema)
 
-    def test_element_made_optional_by_the_same_load_is_refused(
-        self, default_branch_schema: DefaultBranchSchema
-    ) -> None:
+    def test_element_made_optional_by_the_same_load_is_refused(self, default_branch_schema: SchemaBranch) -> None:
         # The element resolves on the default branch, where it is required, and must also divide the pool on the branch.
         device = _with_pooled_vlan_id(SCOPED_DEVICE, scope=["site"])
         device.get_relationship(name="site").optional = True
@@ -253,11 +245,11 @@ class TestDeclaredScopeOnABranch:
                 " ScopeDevice"
             ),
         ):
-            schema_branch.validate_attribute_parameters(default_branch_source=default_branch_schema)
+            schema_branch.validate_attribute_parameters(default_branch_schema=default_branch_schema)
 
     def test_existing_pool_on_a_kind_the_default_branch_no_longer_defines_is_accepted(self) -> None:
         # A declaration whose pool exists is checked on the branch's schema only, so the default branch is not read.
-        default_branch_schema = _default_branch_source(
+        default_branch_schema = _default_branch_schema(
             schema=SchemaRoot(
                 generics=[SCOPED_HOLDER], nodes=[SCOPED_SITE, SCOPED_RACK, SCOPED_LINK, SCOPED_POD_HOLDER]
             ),
@@ -266,7 +258,7 @@ class TestDeclaredScopeOnABranch:
             name="branch1", schema=_device_schema(scope=["site"], number_pool_id=EXISTING_POOL_ID)
         )
 
-        schema_branch.validate_attribute_parameters(default_branch_source=default_branch_schema)
+        schema_branch.validate_attribute_parameters(default_branch_schema=default_branch_schema)
 
 
 def _device_with_site_id(site_id: str, scope: list[str] | None = None) -> NodeSchema:
@@ -276,7 +268,7 @@ def _device_with_site_id(site_id: str, scope: list[str] | None = None) -> NodeSc
 
 
 def test_a_name_that_holds_another_field_on_the_branch_than_on_the_default_branch_is_refused() -> None:
-    default_branch_source = _default_branch_source(schema=_schema(device=_device_with_site_id(site_id="main-site")))
+    default_branch_schema = _default_branch_schema(schema=_schema(device=_device_with_site_id(site_id="main-site")))
     schema_branch = _unvalidated_schema_branch(
         name="branch1", schema=_schema(device=_device_with_site_id(site_id="branch-site", scope=["site"]))
     )
@@ -288,13 +280,13 @@ def test_a_name_that_holds_another_field_on_the_branch_than_on_the_default_branc
             " branch main; declare the scope once the field is the same on both branches"
         ),
     ):
-        schema_branch.validate_attribute_parameters(default_branch_source=default_branch_source)
+        schema_branch.validate_attribute_parameters(default_branch_schema=default_branch_schema)
 
 
 def test_a_name_that_holds_the_same_field_on_both_branches_is_accepted() -> None:
-    default_branch_source = _default_branch_source(schema=_schema(device=_device_with_site_id(site_id="site-id")))
+    default_branch_schema = _default_branch_schema(schema=_schema(device=_device_with_site_id(site_id="site-id")))
     schema_branch = _unvalidated_schema_branch(
         name="branch1", schema=_schema(device=_device_with_site_id(site_id="site-id", scope=["site"]))
     )
 
-    schema_branch.validate_attribute_parameters(default_branch_source=default_branch_source)
+    schema_branch.validate_attribute_parameters(default_branch_schema=default_branch_schema)

@@ -10,8 +10,6 @@ from infrahub.core.validators.enum import ConstraintIdentifier
 from infrahub.core.validators.schema_branch.number_pool_scope_validator import (
     DeclaredScopeComparator,
     DeclaredScopeValidator,
-    DefaultBranchSchema,
-    SchemaBranchSource,
     scope_refusal_reason,
 )
 from infrahub.exceptions import ValidationError
@@ -30,6 +28,10 @@ if TYPE_CHECKING:
 
     from ..model import SchemaConstraintValidatorRequest
     from .scope_dependency import DependentPoolFinder, ScopeViolationBuilder
+
+
+class SchemaBranchSource(Protocol):
+    def get_schema_branch(self, name: str) -> SchemaBranch: ...
 
 
 class ScopedNumberPoolSource(Protocol):
@@ -73,7 +75,7 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         self.declared_scope_validator = declared_scope_validator
         self.declared_scope_comparator = declared_scope_comparator
         self.schema_source = schema_source
-        self.default_branch = DefaultBranchSchema(source=schema_source, name=default_branch_name)
+        self.default_branch_name = default_branch_name
         self.pool_finder = pool_finder
         self.violation_builder = violation_builder
         made_optional = self._gained_property_rule(
@@ -345,7 +347,7 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         try:
             self.declared_scope_validator.validate(
                 candidate=request.schema_branch,
-                default_branch_schema=self.default_branch.for_candidate(candidate=request.schema_branch),
+                default_branch_schema=self._default_branch_schema(candidate=request.schema_branch),
                 kind=declaration.kind,
                 tracked_attribute=declaration.attribute_name,
                 entries=declaration.entries,
@@ -354,6 +356,12 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         except ValidationError as exc:
             return f"{SCOPE_FIELD}: {scope_refusal_reason(error=exc)}"
         return None
+
+    def _default_branch_schema(self, candidate: SchemaBranch) -> SchemaBranch:
+        """Return the schema of the default branch, which is the candidate itself when the candidate is that branch."""
+        if candidate.name == self.default_branch_name:
+            return candidate
+        return self.schema_source.get_schema_branch(name=self.default_branch_name)
 
     def _changed_declaration(
         self, request: SchemaConstraintValidatorRequest, field_name: str

@@ -9,7 +9,6 @@ from infrahub.core import registry
 from infrahub.core.constants import RESTRICTED_NAMESPACES, GlobalPermissions
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import DropdownChoice, GenericSchema, NodeSchema
-from infrahub.core.validators.schema_branch.number_pool_scope_validator import DefaultBranchSchema
 from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.events import EventMeta
 from infrahub.events.schema_action import SchemaUpdatedEvent, build_changed_elements_payload
@@ -322,9 +321,7 @@ async def update_registry(
         tmp_schema = branch_schema.duplicate()
 
         tmp_schema.set(name=kind.kind, schema=kind)
-        tmp_schema.process(
-            default_branch_source=DefaultBranchSchema(source=registry.schema, name=registry.default_branch)
-        )
+        tmp_schema.process(default_branch_schema=registry.schema.get_schema_branch(name=registry.default_branch))
 
         diff = tmp_schema.diff(branch_schema)
 

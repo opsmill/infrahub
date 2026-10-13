@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Protocol, override
+from typing import TYPE_CHECKING, override
 
 from infrahub.exceptions import ValidationError
 from infrahub.pools.scope import (
@@ -33,24 +32,6 @@ class _DeclaredScopeResolver(AllocationScopeResolver):
         return super()._element_id(node_schema=node_schema, field=field) or (
             f"{UNSAVED_ELEMENT_ID_PREFIX}{node_schema.kind}.{field.name}"
         )
-
-
-class SchemaBranchSource(Protocol):
-    def get_schema_branch(self, name: str) -> SchemaBranch: ...
-
-
-@dataclass(frozen=True)
-class DefaultBranchSchema:
-    """Where a worker reads the schema of the default branch, and the name of that branch."""
-
-    source: SchemaBranchSource
-    name: str
-
-    def for_candidate(self, candidate: SchemaBranch) -> SchemaBranch:
-        """Return the schema of the default branch, which is the candidate itself when the candidate is that branch."""
-        if candidate.name == self.name:
-            return candidate
-        return self.source.get_schema_branch(name=self.name)
 
 
 class DeclaredScopeValidator:
