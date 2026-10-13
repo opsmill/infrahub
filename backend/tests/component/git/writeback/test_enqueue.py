@@ -1059,7 +1059,7 @@ BRANCH_DELETION_CASES: list[BranchDeletionCase] = [
         queued_git_branch=SOURCE_BRANCH,
         state_lock_held=False,
         flagged=True,
-        remote_branches=[SOURCE_BRANCH, "main"],
+        remote_branches=[SOURCE_BRANCH, "main", "parking"],
         notified=[],
         logged=[
             (
@@ -1076,7 +1076,7 @@ BRANCH_DELETION_CASES: list[BranchDeletionCase] = [
         queued_git_branch="other-feature",
         state_lock_held=False,
         flagged=False,
-        remote_branches=["main"],
+        remote_branches=["main", "parking"],
         notified=[SOURCE_BRANCH],
         logged=[],
     ),
@@ -1085,7 +1085,7 @@ BRANCH_DELETION_CASES: list[BranchDeletionCase] = [
         queued_git_branch=SOURCE_BRANCH,
         state_lock_held=True,
         flagged=False,
-        remote_branches=[SOURCE_BRANCH, "main"],
+        remote_branches=[SOURCE_BRANCH, "main", "parking"],
         notified=[],
         logged=[
             (
