@@ -27,11 +27,15 @@ nodes:
 
 - Names are resolved against the schema of the default branch. On the default branch, the candidate schema being loaded is the reference.
 - The rules of [pool-allocation-scope.md](pool-allocation-scope.md) apply unchanged. A refusal fails the schema load with a message of the form `<kind>.<attribute>: allocation_scope: <reason>`.
-- A schema loaded on a branch whose declared scope names an element absent from the default branch's schema is refused with `<kind>.<attribute>: allocation_scope: "<entry>" does not exist on <kind> on branch <default branch>`.
+- A schema loaded on a branch whose declared scope names an element absent from the default branch's schema is refused with the messages of [pool-allocation-scope.md](pool-allocation-scope.md), each prefixed with `<kind>.<attribute>:` and a space:
+  - `<kind>.<attribute>: allocation_scope: "<entry>" is not an attribute or a relationship of <kind> on branch <default branch>`
+  - `<kind>.<attribute>: allocation_scope: "<entry>" is not declared on the generic <kind>`, when the attribute is declared on a generic and only an implementing node declares the entry
+  - `<kind>.<attribute>: allocation_scope: <kind> is not defined on branch <default branch>`, when the default branch's schema does not define the kind
+- A schema loaded on a branch whose declared name reaches another field on that branch than on the default branch (the same name added on both branches independently) is refused with `<kind>.<attribute>: allocation_scope: "<entry>" is a different field on branch <branch> than on the default branch <default branch>; declare the scope once the field is the same on both branches`.
 
 ## Comparison with the pool the schema already created
 
-On every load, for an attribute whose pool exists, each declared name is resolved to an element id on the candidate schema and the list of ids is compared to the pool's stored scope. With a pool storing `[{id: X, name: "site"}]`:
+On a load that changes the declaration, or that renames an attribute or a relationship a declaration names, for an attribute whose pool exists, each declared name is resolved to an element id on the candidate schema and the ids are compared to the pool's stored scope, in any order. With a pool storing `[{id: X, name: "site"}]`:
 
 | Schema change | Declaration | Outcome |
 |---------------|-------------|---------|
@@ -39,8 +43,11 @@ On every load, for an attribute whose pool exists, each declared name is resolve
 | `site` renamed to `location` | `["site"]` | Refused: `<kind>.<attribute>: allocation_scope: "site" was renamed to "location"; update allocation_scope to the new name` |
 | `site` renamed to `location` | `["location"]` | Accepted: same ids; the stored name becomes `location` in the same load |
 | None | `["role"]` | Refused: `<kind>.<attribute>: allocation_scope can't be changed after the pool is created` |
-| None | `[]` or absent | Refused with the same message |
+| None | `[]` | Refused with the same message |
+| None | key absent | Accepted, nothing changes: a schema load keeps the stored value of a parameter it leaves out |
 | None | `["site", "role"]` | Refused with the same message |
+
+A declaration that names the stored elements in another order is accepted, and the pool keeps its stored order, because reordering the elements keeps the same divisions. A reorder alone changes nothing in the schema hash, so it does not reach the comparison.
 
 The comparison runs in the schema constraint checker on the schema load and schema check endpoints, on every branch. A rename is a rename only when the loaded schema carries the element's id with its new name; without the id, the old element is removed and a new one added, which the removal rule refuses.
 

@@ -58,6 +58,7 @@ from infrahub.core.schema import (
 )
 from infrahub.core.schema.attribute_parameters import (
     ListAttributeParameters,
+    NumberPoolParameters,
     TextAttributeParameters,
 )
 from infrahub.core.schema.attribute_schema import get_attribute_schema_class_for_kind
@@ -67,6 +68,10 @@ from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
 from infrahub.core.validators.schema_branch.display_label_validator import DisplayLabelValidator
 from infrahub.core.validators.schema_branch.hierarchical_nodes_restricted_words_validator import (
     HierarchicalNodesRestrictedWords,
+)
+from infrahub.core.validators.schema_branch.number_pool_scope_validator import (
+    DeclaredScopeValidator,
+    scope_refusal_reason,
 )
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from infrahub.log import get_logger
@@ -732,10 +737,15 @@ class SchemaBranch:
             new_item.update(node_extension)
             self.set(name=node_extension.kind, schema=new_item)
 
-    def process(self, validate_schema: bool = True) -> None:
+    def process(self, validate_schema: bool = True, default_branch_schema: SchemaBranch | None = None) -> None:
+        """Prepare the schema and validate it unless told otherwise.
+
+        A newly declared allocation scope resolves against the default branch's schema when it is given, and on this
+        schema alone otherwise.
+        """
         self.process_pre_validation()
         if validate_schema:
-            self.process_validate()
+            self.process_validate(default_branch_schema=default_branch_schema)
         self.process_post_validation()
 
     def process_pre_validation(self) -> None:
@@ -779,7 +789,7 @@ class SchemaBranch:
         self._reconcile_legacy_attribute_parameters()
         self.process_branch_support()
 
-    def process_validate(self) -> None:
+    def process_validate(self, default_branch_schema: SchemaBranch | None = None) -> None:
         for validator in self.validators:
             validator.check(schema_branch=self)
 
@@ -788,7 +798,7 @@ class SchemaBranch:
         self.validate_kinds()
         self.validate_restricted_namespaces_from_generic()
         self.validate_computed_attributes()
-        self.validate_attribute_parameters()
+        self.validate_attribute_parameters(default_branch_schema=default_branch_schema)
         self.validate_default_values()
         self.validate_count_against_cardinality()
         self.validate_identifiers()
@@ -1383,12 +1393,61 @@ class SchemaBranch:
                                 f"{node.kind}: Relationship {rel.name!r} set 'common_relatives' with invalid relationship from '{rel.peer}'"
                             ) from None
 
-    def validate_attribute_parameters(self) -> None:
+    def validate_attribute_parameters(self, default_branch_schema: SchemaBranch | None = None) -> None:
+        for name in self.generics.keys():
+            generic_schema = self.get_generic(name=name, duplicate=False)
+            for attribute in generic_schema.attributes:
+                if attribute.kind == "NumberPool":
+                    self._validate_number_pool_scope(
+                        kind_schema=generic_schema,
+                        attribute=attribute,
+                        default_branch_schema=default_branch_schema,
+                    )
+
         for name in self.nodes.keys():
             node_schema = self.get_node(name=name, duplicate=False)
             for attribute in node_schema.attributes:
                 if attribute.kind == "NumberPool":
                     self._validate_number_pool_parameters(node_schema=node_schema, attribute=attribute)
+                    # The generic's declaration resolves once on the generic, while each implementing node can still
+                    # make an element optional or the tracked attribute unique on its own.
+                    self._validate_number_pool_scope(
+                        kind_schema=node_schema,
+                        attribute=attribute,
+                        default_branch_schema=default_branch_schema,
+                        on_implementing_node=attribute.inherited,
+                    )
+
+    def _validate_number_pool_scope(
+        self,
+        kind_schema: NodeSchema | GenericSchema,
+        attribute: AttributeSchema,
+        default_branch_schema: SchemaBranch | None,
+        on_implementing_node: bool = False,
+    ) -> None:
+        if not isinstance(attribute.parameters, NumberPoolParameters) or not attribute.parameters.allocation_scope:
+            return
+        pool_exists = on_implementing_node or attribute.parameters.number_pool_id is not None
+        # Only a new declaration resolves against the default branch.
+        # The candidate is the default branch's schema when the change is made on the default branch itself.
+        resolving_schema = (
+            self
+            if pool_exists or default_branch_schema is None or default_branch_schema.name == self.name
+            else default_branch_schema
+        )
+        try:
+            DeclaredScopeValidator().validate(
+                candidate=self,
+                default_branch_schema=resolving_schema,
+                kind=kind_schema.kind,
+                tracked_attribute=attribute.name,
+                entries=attribute.parameters.allocation_scope,
+                pool_exists=pool_exists,
+            )
+        except ValidationError as exc:
+            raise ValidationError(
+                f"{kind_schema.kind}.{attribute.name}: allocation_scope: {scope_refusal_reason(error=exc)}"
+            ) from exc
 
     def _validate_number_pool_parameters(self, node_schema: NodeSchema, attribute: AttributeSchema) -> None:
         if attribute.optional:

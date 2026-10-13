@@ -64,7 +64,7 @@ Unchanged: pool to the holding object's attribute, on the global branch, with `i
 |-------|------|----------------|--------|
 | `start_range`, `end_range`, `ranges` | int, list | validate constraint | unchanged |
 | `number_pool_id` | str or None | not supported | unchanged |
-| `allocation_scope` | list of str or None | **validate constraint** (was not supported) | Exists today. Element names, resolved and validated against the default branch's schema at load; stored on the pool the schema creates as ids and names; compared by id to the stored scope on every later load |
+| `allocation_scope` | list of str or None | **validate constraint** (was not supported) | Exists today. Element names, resolved and validated against the default branch's schema at load; stored on the pool the schema creates as ids and names; compared by id, in any order, to the stored scope on a later load that changes the declaration or renames an element it names |
 
 ## Figures (returned by the dedicated queries)
 

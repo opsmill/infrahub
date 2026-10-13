@@ -88,6 +88,8 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
         db = migration_input.db
         at = migration_input.at
 
+        # A migration can run on a worker still holding the schema from before the load, which the load already saved.
+        await update_branch_registry(db=db, branch=branch)
         upserter = SchemaNumberPoolUpserter(
             db=db,
             schema_manager=registry.schema,
