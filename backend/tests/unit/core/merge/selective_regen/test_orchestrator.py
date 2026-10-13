@@ -9,7 +9,12 @@ from infrahub.generators.models import ProposedChangeGeneratorDefinition, Reques
 from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.message_bus.types import ProposedChangeArtifactDefinition
 from tests.helpers.diff_summary import node_diff
-from tests.helpers.selective_regen import ArtifactForcingSelector, GeneratorForcingSelector
+from tests.helpers.selective_regen import (
+    AppendingExpander,
+    ArtifactForcingSelector,
+    GeneratorForcingSelector,
+    PassthroughExpander,
+)
 
 if TYPE_CHECKING:
     from infrahub_sdk.diff import NodeDiff
@@ -72,7 +77,9 @@ async def test_build_plan_shares_modified_kinds_and_assembles_plan() -> None:
     )
 
     plan = await MergeSelectiveRegeneration(
-        generator_selector=generator_selector, artifact_selector=artifact_selector
+        generator_selector=generator_selector,
+        artifact_selector=artifact_selector,
+        kinds_expander=PassthroughExpander(),
     ).build_plan(diff_summary=diff_summary, target_branch=TARGET_BRANCH)
 
     # Each selector's output lands in its own field of the plan.
@@ -130,6 +137,44 @@ def _artifact(*, fingerprint: str | None) -> ProposedChangeArtifactDefinition:
     )
 
 
+async def test_build_plan_passes_expanded_kinds_to_selectors() -> None:
+    """The kinds the expander widens the diff to are the kinds every selector receives."""
+    diff_summary = [_node_diff(node_id="n1", kind="TestDevice")]
+    generator_selector = _RecordingSelector[ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun](result=[])
+    artifact_selector = _RecordingSelector[ProposedChangeArtifactDefinition, RequestArtifactDefinitionGenerate](
+        result=[]
+    )
+
+    await MergeSelectiveRegeneration(
+        generator_selector=generator_selector,
+        artifact_selector=artifact_selector,
+        kinds_expander=AppendingExpander(extra_kind="TestProfiled"),
+    ).build_plan(diff_summary=diff_summary, target_branch=TARGET_BRANCH)
+
+    for selector in (generator_selector, artifact_selector):
+        _, _, recorded_kinds = selector.calls[0]
+        assert set(recorded_kinds) == {"TestDevice", "TestProfiled"}
+
+
+async def test_select_artifacts_passes_expanded_kinds_to_the_artifact_selector() -> None:
+    """The artifact-only reselection widens the changed kinds the same way as the full plan."""
+    diff_summary = [_node_diff(node_id="n1", kind="TestDevice")]
+    generator_selector = _RecordingSelector[ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun](result=[])
+    artifact_selector = _RecordingSelector[ProposedChangeArtifactDefinition, RequestArtifactDefinitionGenerate](
+        result=[]
+    )
+
+    await MergeSelectiveRegeneration(
+        generator_selector=generator_selector,
+        artifact_selector=artifact_selector,
+        kinds_expander=AppendingExpander(extra_kind="TestProfiled"),
+    ).select_artifacts(diff_summary=diff_summary, target_branch=TARGET_BRANCH)
+
+    assert generator_selector.calls == []
+    _, _, recorded_kinds = artifact_selector.calls[0]
+    assert set(recorded_kinds) == {"TestDevice", "TestProfiled"}
+
+
 async def test_missing_generator_fingerprint_escalates_a_sibling_artifact_in_the_same_repository() -> None:
     # A null-fingerprint generator and a populated-fingerprint artifact share a repository. The forced
     # set spans both kinds, so the repository is escalated as a whole: both the generator and the
@@ -146,7 +191,9 @@ async def test_missing_generator_fingerprint_escalates_a_sibling_artifact_in_the
     )
 
     plan = await MergeSelectiveRegeneration(
-        generator_selector=generator_selector, artifact_selector=artifact_selector
+        generator_selector=generator_selector,
+        artifact_selector=artifact_selector,
+        kinds_expander=PassthroughExpander(),
     ).build_plan(diff_summary=[], target_branch=TARGET_BRANCH)
 
     assert [run.target_members for run in plan.generator_runs] == [[]]

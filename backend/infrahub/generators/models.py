@@ -103,10 +103,6 @@ class ProposedChangeGeneratorDefinition(GeneratorDefinitionModel):
     def instance_noun(self) -> str:
         return "instances"
 
-    def reads_kind(self, kind: str) -> bool:
-        """Whether a data change to ``kind`` is relevant because the query reads that kind."""
-        return kind in self.query_models
-
 
 def build_generator_definition(generator: CoreGeneratorDefinition) -> ProposedChangeGeneratorDefinition:
     """Map a fetched generator definition node onto the model the run pipeline carries.
