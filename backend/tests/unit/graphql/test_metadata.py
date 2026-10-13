@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
 from infrahub.core.constants import MetadataOptions
-from infrahub.core.schema import MainSchemaTypes
 from infrahub.graphql.metadata import build_metadata_query_options
 from tests.helpers.schema import TICKET
+
+if TYPE_CHECKING:
+    from infrahub.core.schema import MainSchemaTypes
 
 
 @dataclass(frozen=True)

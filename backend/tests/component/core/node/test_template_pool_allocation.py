@@ -734,5 +734,9 @@ async def test_a_component_created_from_a_subtemplate_is_tracked_by_the_pool_tha
         raise_on_error=True,
     )
     assert interface.get_attribute("slot").value == 1
-    assert await interface.get_attribute("slot").get_source(db=db) is None, "the pool is never reported as the attribute's source"
-    assert interface.get_attribute("slot").tracking_pool == TrackingPool(pool_id=slot_pool.id, provenance=PoolRecordProvenance.ALLOCATED)
+    assert await interface.get_attribute("slot").get_source(db=db) is None, (
+        "the pool is never reported as the attribute's source"
+    )
+    assert interface.get_attribute("slot").tracking_pool == TrackingPool(
+        pool_id=slot_pool.id, provenance=PoolRecordProvenance.ALLOCATED
+    )
