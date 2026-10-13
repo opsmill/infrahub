@@ -92,7 +92,8 @@ def _any_subtype_has_count_constraint(
 
 def _attribute_pool_lock_name(from_pool: dict[str, Any]) -> str:
     """Return the pool's lock name, divided by the writer's division when the pool has a scope."""
-    if division_key := from_pool.get("division"):
+    division_key = from_pool.get("division")
+    if division_key is not None:
         return f"{RESOURCE_POOL_LOCK_NAMESPACE}.{from_pool['id']}.{division_key}"
     return f"{RESOURCE_POOL_LOCK_NAMESPACE}.{from_pool['id']}"
 
