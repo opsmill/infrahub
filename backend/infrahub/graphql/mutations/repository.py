@@ -505,6 +505,11 @@ async def _read_pending_delivery(
     repository = await NodeManager.get_one_by_id_or_default_filter(
         db=graphql_context.db, kind=CoreGenericRepository, id=repository_id, branch=graphql_context.branch
     )
+    # The lookup does not enforce the kind it is given, so a node of another kind answers as an unknown id.
+    if repository.get_kind() not in {InfrahubKind.REPOSITORY, InfrahubKind.READONLYREPOSITORY}:
+        raise NodeNotFoundError(
+            branch_name=graphql_context.branch.name, node_type=InfrahubKind.GENERICREPOSITORY, identifier=repository_id
+        )
     name = repository.name.value
     if repository.get_kind() != InfrahubKind.REPOSITORY:
         raise ValidationError(f"Repository {name} is read-only and never pushes to its remote.")
