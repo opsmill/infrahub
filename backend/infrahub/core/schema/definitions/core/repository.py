@@ -60,10 +60,7 @@ core_repository = NodeSchema(
             name="delivery_status",
             kind="Dropdown",
             label="Push to remote",
-            description=(
-                "Whether merged changes wait to be pushed to the remote, and whether a user must act. "
-                "Live on the default branch only."
-            ),
+            description="Whether merged changes wait to be pushed to the remote, and whether a user must act.",
             choices=[
                 DropdownChoice(
                     name=RepositoryDeliveryStatus.NONE.value,
@@ -95,10 +92,7 @@ core_repository = NodeSchema(
             name="delivery_failure_cause",
             kind="Dropdown",
             label="Push failure cause",
-            description=(
-                "Why the last push to the remote, or the import that follows it, failed. "
-                "Live on the default branch only."
-            ),
+            description="Why the last push to the remote, or the import that follows it, failed.",
             choices=[
                 DropdownChoice(
                     name=RepositoryDeliveryFailureCause.REMOTE_UNREACHABLE.value, label="Remote unreachable"
@@ -150,10 +144,7 @@ core_repository = NodeSchema(
             name="delivery_error",
             kind="TextArea",
             label="Push error",
-            description=(
-                "Message of the last failed push, import or release step, with credentials removed. "
-                "Live on the default branch only."
-            ),
+            description="Message of the last failed push, import or release step, with credentials removed.",
             optional=True,
             read_only=True,
             branch=BranchSupportType.LOCAL,
@@ -165,9 +156,7 @@ core_repository = NodeSchema(
             name="delivery_queue",
             kind="JSON",
             label="Pending pushes",
-            description=(
-                "Merged changes that wait to be pushed to the remote, in merge order. Live on the default branch only."
-            ),
+            description="Merged changes that wait to be pushed to the remote, in merge order.",
             optional=True,
             read_only=True,
             branch=BranchSupportType.LOCAL,
@@ -180,8 +169,7 @@ core_repository = NodeSchema(
             kind="JSON",
             label="Held regeneration",
             description=(
-                "Definitions and Python computed attributes held until a release after a push or an abandonment. "
-                "Live on the default branch only."
+                "Definitions and Python computed attributes held until a release after a push or an abandonment."
             ),
             optional=True,
             read_only=True,
@@ -194,10 +182,7 @@ core_repository = NodeSchema(
             name="delivery_last_abandonment",
             kind="JSON",
             label="Last abandoned push",
-            description=(
-                "Who abandoned the last pending pushes, when, and which merged changes were dropped. "
-                "Live on the default branch only."
-            ),
+            description="Who abandoned the last pending pushes, when, and which merged changes were dropped.",
             optional=True,
             read_only=True,
             branch=BranchSupportType.LOCAL,
@@ -209,7 +194,7 @@ core_repository = NodeSchema(
             name="delivery_last_delivered_commit",
             kind="Text",
             label="Last pushed commit",
-            description="Commit of the last push that reached the remote. Live on the default branch only.",
+            description="Commit of the last push that reached the remote.",
             optional=True,
             read_only=True,
             branch=BranchSupportType.LOCAL,
@@ -221,10 +206,7 @@ core_repository = NodeSchema(
             name="delivery_reverted",
             kind="JSON",
             label="Reverted push",
-            description=(
-                "A pushed commit that a rewrite of the remote branch history discarded. "
-                "Live on the default branch only."
-            ),
+            description="A pushed commit that a rewrite of the remote branch history discarded.",
             optional=True,
             read_only=True,
             branch=BranchSupportType.LOCAL,
@@ -237,8 +219,7 @@ core_repository = NodeSchema(
             kind="JSON",
             label="Push progress",
             description=(
-                "Times when the push attempt started and last moved, and when the next automatic retry is due. "
-                "Live on the default branch only."
+                "Times when the push attempt started and last moved, and when the next automatic retry is due."
             ),
             optional=True,
             read_only=True,

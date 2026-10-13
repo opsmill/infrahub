@@ -31,6 +31,7 @@ from infrahub.git.writeback.queries import RepositoryWriteLockQuery
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Callable, Mapping
+    from contextlib import AbstractAsyncContextManager
     from datetime import datetime
 
     from infrahub.core.branch import Branch
@@ -119,6 +120,9 @@ class WritebackIntentStore:
         )
         await query.execute(db=self.db)
         return frozenset(query.get_node_ids())
+
+    def locked(self, *, repository_id: str) -> AbstractAsyncContextManager[None]:
+        return self._state_lock(repository_id=repository_id)
 
     async def enqueue(self, *, repository_id: str, entry: PendingMerge, widen: bool) -> WritebackIntent:
         def transition(state: _LockedState) -> tuple[WritebackIntent, WritebackIntent]:
@@ -367,7 +371,7 @@ def _stored_member[EnumT: InfrahubStringEnum](
 
     """
     value = stored[attribute]
-    if not value:
+    if value is None:
         return None
     try:
         return enum(value)
@@ -385,7 +389,7 @@ def _stored[ModelT: BaseModel](
 
     """
     value = stored[attribute]
-    if not value:
+    if value is None:
         return None
     try:
         return model.model_validate(value)
