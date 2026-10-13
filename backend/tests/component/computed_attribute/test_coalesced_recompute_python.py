@@ -52,6 +52,7 @@ from tests.component.computed_attribute._base import (
     ScopedRecomputeTestBase,
     create_transform01,
 )
+from tests.helpers.regeneration_barrier import regeneration_barrier
 from tests.helpers.schema import load_schema
 
 if TYPE_CHECKING:
@@ -211,6 +212,12 @@ class CoalescedPythonTestBase(ScopedRecomputeTestBase):
             builder=CoalescedRecomputeBuilder(schema_branch=registry.schema.get_schema_branch(name=branch.name)),
             submitter=CoalescedRecomputeSubmitter(workflow=recorder),
             python_resolver=python_resolver or await build_python_target_resolver(db=db),
+            barrier=regeneration_barrier(
+                state=WritebackIntentStore(
+                    db=db, lock_registry=lock.registry, default_branch=branch, clock=partial(datetime.now, UTC)
+                ),
+                default_branch_name=branch.name,
+            ),
         )
 
         await coordinator.run(
@@ -393,6 +400,9 @@ class TestCoalescedRecomputePython(CoalescedPythonTestBase):
         """A merge that also changes the schema still recomputes the readers of its data change."""
         source_branch = await create_branch(branch_name="schema_and_data", db=db)
         event_service = MemoryInfrahubEvent()
+        state = WritebackIntentStore(
+            db=db, lock_registry=lock.registry, default_branch=default_branch, clock=partial(datetime.now, UTC)
+        )
         dispatcher = PostMergeDispatcher(
             repository_merge_dispatcher=RepositoryMergeDispatcher(
                 db=db,
@@ -411,6 +421,7 @@ class TestCoalescedRecomputePython(CoalescedPythonTestBase):
             event_service=event_service,
             default_branch=default_branch,
             python_resolver=await build_python_target_resolver(db=db),
+            barrier=regeneration_barrier(state=state, default_branch_name=default_branch.name),
         )
         schema_diff, schema_hash = _person_name_schema_diff(default_branch)
 
