@@ -193,8 +193,8 @@ class TestImportDeferral(TestInfrahubApp):
         repository = await client.get(kind=CoreRepository, id=node.id, branch=branch_name)
         return repository.commit.value
 
-    async def _query_names(self, client: InfrahubClient, node: Node) -> set[str]:
-        queries = await client.filters(kind=CoreGraphQLQuery, repository__ids=[node.id])
+    async def _query_names(self, client: InfrahubClient, node: Node, branch_name: str | None = None) -> set[str]:
+        queries = await client.filters(kind=CoreGraphQLQuery, repository__ids=[node.id], branch=branch_name)
         return {query.name.value for query in queries}
 
     @pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in DELIVERY_STATE_CASES])
@@ -368,3 +368,47 @@ class TestImportDeferral(TestInfrahubApp):
             if case.pending
             else []
         )
+
+    async def test_a_fresh_clone_seeds_a_staging_branch_while_a_push_is_pending(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        caplog: pytest.LogCaptureFixture,
+        tmp_path: Path,
+        git_repos_dir: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        caplog.set_level(logging.INFO, logger=FLOW_RUN_LOGGER)
+        name = "clone-staging"
+        staging_branch = "clone-staging-branch"
+        remote = LocalRemote.create(directory=tmp_path / name, trunk=TRUNK, branches=[])
+        remote.commit(branch_name=TRUNK, files=query_files("clone_staging"))
+        node = await self._add(db=db, remote=remote, name=name)
+        await create_branch(branch_name=staging_branch, db=db)
+        remote.commit(branch_name=TRUNK, files={".infrahub.yml": EMPTY_CONFIG})
+        await queue_merge(db=db, repository_id=node.id, source_git_branch="merged-feature")
+        fresh_worker_dir = tmp_path / "fresh-worker-repositories"
+        fresh_worker_dir.mkdir()
+        monkeypatch.setattr(config.SETTINGS.git, "repositories_directory", str(fresh_worker_dir))
+        repository = await client.get(kind=CoreRepository, id=node.id)
+        delivery_state = await build_intent_store(db=db, lock_registry=lock.registry)
+
+        repo = await call_in_flow(
+            lambda: bootstrap_local_repository(
+                repo_name=name,
+                repository=repository,
+                infrahub_branch=staging_branch,
+                client=client,
+                state=delivery_state,
+            )
+        )
+
+        assert repo is not None
+        assert await self._query_names(client=client, node=node, branch_name=staging_branch) == set()
+        assert await self._query_names(client=client, node=node) == {"clone_staging"}
+        assert [
+            record.getMessage()
+            for record in caplog.records
+            if record.name == FLOW_RUN_LOGGER and record.getMessage().startswith("Deferred")
+        ] == []

@@ -467,8 +467,8 @@ async def bootstrap_local_repository(
     default-branch import cannot reach the remote or its credentials are invalid. Any other failed
     default-branch import is already logged and recorded on the branch, so the repository is still
     returned and its other branches still synchronize. While the repository has pending pushes, a
-    fresh clone records no commit and the seed import is skipped, because the import would remove
-    the objects of the pending merges.
+    fresh clone that seeds the default branch records no commit and skips the seed import, because
+    the import would remove the objects of the pending merges.
     """
     log = get_run_logger()
     pending_import: PendingObjectImport | None = None
@@ -486,9 +486,13 @@ async def bootstrap_local_repository(
             get_logger().error(str(exc))
             init_failed = True
 
+        # A seed into a staging branch keeps its path, as the staging sync does.
+        seeds_default_branch = infrahub_branch == registry.default_branch
         delivery_pending = False
         if init_failed:
-            delivery_pending = await has_pending_pushes(state=state, repository_id=repository.id)
+            delivery_pending = seeds_default_branch and await has_pending_pushes(
+                state=state, repository_id=repository.id
+            )
             try:
                 repo = await InfrahubRepository.new(
                     id=repository.id,
@@ -503,7 +507,9 @@ async def bootstrap_local_repository(
                 log.info(exc.message)
                 return None
         elif repo.reinitialized:
-            delivery_pending = await has_pending_pushes(state=state, repository_id=repository.id)
+            delivery_pending = seeds_default_branch and await has_pending_pushes(
+                state=state, repository_id=repository.id
+            )
 
         default_import_git_branch = resolve_initial_import_branch(repo, init_failed=init_failed)
 
