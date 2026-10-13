@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, assert_never
 from infrahub.core.constants import MetadataOptions, RepositoryInternalStatus, RepositorySyncStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.order import OrderModel
-from infrahub.core.protocols import CoreGenericRepository
+from infrahub.core.protocols import CoreGenericRepository, CoreReadOnlyRepository
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
@@ -79,6 +79,9 @@ class RepositoryBranchSyncStatus:
     sync_status: RepositorySyncStatus | None
     """The status written on the branch itself, or None when the branch only inherits one."""
 
+    tracked_ref: str | None = None
+    """The ref a read-only repository tracks on the branch, read only when the status reports that ref missing."""
+
     @property
     def verdict(self) -> BranchImportVerdict:
         return classify_branch_import(sync_status=self.sync_status, internal_status=self.internal_status)
@@ -118,14 +121,44 @@ class RepositoryBranchSyncStatusReader:
             include_metadata=MetadataOptions.UPDATED_AT,
             order=OrderModel(disable=True),
         )
+        written = {
+            repository.id: self._get_written_status(repository=repository, branch=branch) for repository in repositories
+        }
+        tracked_refs = await self._read_tracked_refs(
+            repository_ids=[
+                repository_id
+                for repository_id, sync_status in written.items()
+                if sync_status == RepositorySyncStatus.ERROR_REF_MISSING
+            ],
+            branch=branch,
+        )
         return [
             RepositoryBranchSyncStatus(
                 repository_name=repository.name.value,
                 internal_status=RepositoryInternalStatus(repository.internal_status.value),
-                sync_status=self._get_written_status(repository=repository, branch=branch),
+                sync_status=written[repository.id],
+                tracked_ref=tracked_refs.get(repository.id),
             )
             for repository in repositories
         ]
+
+    async def get_tracked_ref(self, repository_id: str, branch: Branch) -> str | None:
+        """Return the ref the read-only repository tracks on `branch`, or None for any other repository."""
+        tracked_refs = await self._read_tracked_refs(repository_ids=[repository_id], branch=branch)
+        return tracked_refs.get(repository_id)
+
+    async def _read_tracked_refs(self, repository_ids: list[str], branch: Branch) -> dict[str, str]:
+        if not repository_ids:
+            return {}
+        repositories = await NodeManager.query(
+            db=self.db,
+            schema=CoreReadOnlyRepository,
+            branch=branch,
+            filters={"ids": repository_ids},
+            fields={"ref": None},
+            order=OrderModel(disable=True),
+        )
+        return {repository.id: repository.ref.value for repository in repositories if repository.ref.value}
 
     def _get_written_status(self, repository: CoreGenericRepository, branch: Branch) -> RepositorySyncStatus | None:
         if not is_written_on_branch(updated_at=repository.sync_status._get_updated_at(), branch=branch):

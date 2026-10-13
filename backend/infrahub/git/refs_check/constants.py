@@ -23,6 +23,9 @@ REFS_CHECK_LISTED_ABSENT: Final = "absent"
 """Recorded as the listed head of a tracked ref the remote no longer carries. Not hexadecimal, so no
 commit hash can be mistaken for it."""
 
+MIN_ABBREVIATED_HASH_LENGTH: Final = 4
+"""The shortest prefix git accepts as an abbreviated commit hash."""
+
 REFS_CHECK_RETRY_SECONDS: Final = 300
 """How soon a failed repository becomes due again. Clamped to the configured interval when that is
 shorter, so a failure is never made to wait longer than a healthy check would."""

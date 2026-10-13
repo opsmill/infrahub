@@ -83,7 +83,9 @@ ERROR_PICKLE_CASES = [
     ErrorPickleCase(
         name="merge_repository_import",
         error=MergeRepositoryImportError(
-            failed_repositories=["repo-1"], incomplete_repositories=["repo-2"], ref_missing_repositories=["repo-3"]
+            failed_repositories=["repo-1"],
+            incomplete_repositories=["repo-2"],
+            ref_missing_repositories={"repo-3": "v1.0"},
         ),
     ),
     ErrorPickleCase(
@@ -135,7 +137,7 @@ class MergeRepositoryImportMessageCase:
     failed_repositories: list[str]
     incomplete_repositories: list[str]
     expected: str
-    ref_missing_repositories: list[str] = field(default_factory=list)
+    ref_missing_repositories: dict[str, str | None] = field(default_factory=dict)
 
 
 MERGE_REPOSITORY_IMPORT_MESSAGE_CASES = [
@@ -143,31 +145,43 @@ MERGE_REPOSITORY_IMPORT_MESSAGE_CASES = [
         name="one_ref_missing",
         failed_repositories=[],
         incomplete_repositories=[],
-        ref_missing_repositories=["repo-1"],
+        ref_missing_repositories={"repo-1": "v1.0"},
+        expected=(
+            "Cannot merge. The tracked ref 'v1.0' of repository 'repo-1' was missing from the remote when last "
+            "checked: restore the ref or edit the ref of the repository, then reimport the current commit."
+        ),
+    ),
+    MergeRepositoryImportMessageCase(
+        name="one_ref_missing_with_an_unknown_ref",
+        failed_repositories=[],
+        incomplete_repositories=[],
+        ref_missing_repositories={"repo-1": None},
         expected=(
             "Cannot merge. The tracked ref of repository 'repo-1' was missing from the remote when last checked: "
             "restore the ref or edit the ref of the repository, then reimport the current commit."
         ),
     ),
     MergeRepositoryImportMessageCase(
-        name="two_ref_missing",
+        name="two_ref_missing_sorted_by_repository",
         failed_repositories=[],
         incomplete_repositories=[],
-        ref_missing_repositories=["repo-1", "repo-2"],
+        ref_missing_repositories={"repo-2": "release", "repo-1": "v1.0"},
         expected=(
-            "Cannot merge. The tracked ref of repositories 'repo-1', 'repo-2' was missing from the remote when "
-            "last checked: restore the ref or edit the ref of the repositories, then reimport the current commit."
+            "Cannot merge. The tracked ref 'v1.0' of repository 'repo-1', ref 'release' of repository 'repo-2' were "
+            "missing from the remote when last checked: restore the ref or edit the ref of the repositories, then "
+            "reimport the current commit."
         ),
     ),
     MergeRepositoryImportMessageCase(
         name="failed_and_ref_missing",
         failed_repositories=["repo-1"],
         incomplete_repositories=[],
-        ref_missing_repositories=["repo-2"],
+        ref_missing_repositories={"repo-2": "v1.0"},
         expected=(
             "Cannot merge. The last import of repository 'repo-1' failed: push a fix, reimport the current commit, "
-            "or set the repository to inactive. The tracked ref of repository 'repo-2' was missing from the remote "
-            "when last checked: restore the ref or edit the ref of the repository, then reimport the current commit."
+            "or set the repository to inactive. The tracked ref 'v1.0' of repository 'repo-2' was missing from the "
+            "remote when last checked: restore the ref or edit the ref of the repository, then reimport the current "
+            "commit."
         ),
     ),
     MergeRepositoryImportMessageCase(
@@ -235,7 +249,7 @@ def test_merge_repository_import_error_requires_a_repository() -> None:
         ValueError,
         match=r"^A repository import refusal needs at least one failed, incomplete or ref-missing repository$",
     ):
-        MergeRepositoryImportError(failed_repositories=[], incomplete_repositories=[], ref_missing_repositories=[])
+        MergeRepositoryImportError(failed_repositories=[], incomplete_repositories=[], ref_missing_repositories={})
 
 
 def test_reconstructed_error_can_be_raised_and_caught() -> None:

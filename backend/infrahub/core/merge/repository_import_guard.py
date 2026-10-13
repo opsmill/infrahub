@@ -34,5 +34,9 @@ class RepositoryImportGuard:
         raise MergeRepositoryImportError(
             failed_repositories=named(BranchImportVerdict.FAILED),
             incomplete_repositories=named(BranchImportVerdict.INCOMPLETE),
-            ref_missing_repositories=named(BranchImportVerdict.REF_MISSING),
+            ref_missing_repositories={
+                status.repository_name: status.tracked_ref
+                for status in blocking
+                if status.verdict == BranchImportVerdict.REF_MISSING
+            },
         )

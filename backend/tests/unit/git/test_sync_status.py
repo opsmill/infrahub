@@ -109,6 +109,7 @@ def test_the_proposed_change_check_fails_exactly_the_statuses_whose_verdict_bloc
         internal_status=RepositoryInternalStatus.ACTIVE,
         repository_name="repo",
         branch_name="feature",
+        tracked_ref=None,
     )
 
     assert (outcome.conclusion is ValidatorConclusion.FAILURE) is case.blocks_merge
@@ -116,14 +117,23 @@ def test_the_proposed_change_check_fails_exactly_the_statuses_whose_verdict_bloc
 
 async def test_the_merge_guard_refuses_a_branch_marked_ref_missing_with_the_ref_missing_message() -> None:
     guard = RepositoryImportGuard(
-        status_reader=StaticStatusReader([active("readonly-repo", RepositorySyncStatus.ERROR_REF_MISSING)])
+        status_reader=StaticStatusReader(
+            [
+                RepositoryBranchSyncStatus(
+                    repository_name="readonly-repo",
+                    internal_status=RepositoryInternalStatus.ACTIVE,
+                    sync_status=RepositorySyncStatus.ERROR_REF_MISSING,
+                    tracked_ref="v1.0",
+                )
+            ]
+        )
     )
 
     with pytest.raises(
         MergeRepositoryImportError,
         match=(
-            r"^Cannot merge\. The tracked ref of repository 'readonly-repo' was missing from the remote when last "
-            r"checked: restore the ref or edit the ref of the repository, then reimport the current commit\.$"
+            r"^Cannot merge\. The tracked ref 'v1\.0' of repository 'readonly-repo' was missing from the remote when "
+            r"last checked: restore the ref or edit the ref of the repository, then reimport the current commit\.$"
         ),
     ):
         await guard.verify(branch=feature_branch())

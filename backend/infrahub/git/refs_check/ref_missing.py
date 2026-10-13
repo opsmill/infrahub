@@ -13,6 +13,7 @@ from infrahub.log import get_run_logger
 
 from ..constants import UPDATE_SYNC_STATUS_MUTATION
 from ..sync_status import is_written_on_branch
+from .constants import MIN_ABBREVIATED_HASH_LENGTH
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -148,7 +149,11 @@ class RefMissingImportGate:
         branch_name = model.infrahub_branch_name
         states = await self._store.read(repository_id=model.repository_id, branch_names=[branch_name])
         state = states.get(branch_name)
-        if state is None or state.written_sync_status != RepositorySyncStatus.ERROR_REF_MISSING:
+        if (
+            state is None
+            or not state.holds_own_ref
+            or state.written_sync_status != RepositorySyncStatus.ERROR_REF_MISSING
+        ):
             return RepositorySyncStatus.IN_SYNC
 
         reason = await self._reason_to_keep_mark(model=model, location=location, ref=state.ref)
@@ -165,7 +170,11 @@ class RefMissingImportGate:
     async def _reason_to_keep_mark(
         self, *, model: GitRepositoryImportObjects, location: str | None, ref: str
     ) -> str | None:
-        """Return why the remote cannot be shown to carry `ref`, or None when it carries it."""
+        """Return why the remote cannot be shown to carry `ref`, or None when it carries it or `ref` is the commit."""
+        # Compared with the imported commit rather than resolved in the clone, where a deleted ref named in hex
+        # can match an unrelated commit as an abbreviated hash.
+        if len(ref) >= MIN_ABBREVIATED_HASH_LENGTH and model.commit.startswith(ref.lower()):
+            return None
         if not location:
             return "the repository has no location to list"
 
@@ -178,6 +187,6 @@ class RefMissingImportGate:
         except RepositoryError as exc:
             return f"the remote could not be listed: {exc.message}"
 
-        if all(head.remote_head is None and not head.pinned_commit for head in heads):
+        if all(head.remote_head is None for head in heads):
             return f"ref {ref} is still missing from the remote"
         return None

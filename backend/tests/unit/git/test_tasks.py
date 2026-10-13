@@ -184,6 +184,7 @@ def test_evaluate_import_status_passes_without_import_error(case: ImportStatusCa
         internal_status=case.internal_status,
         repository_name="dealership-car",
         branch_name="remove-ca",
+        tracked_ref=None,
     )
 
     assert outcome == ImportStatusOutcome(conclusion=ValidatorConclusion.SUCCESS, severity=Severity.INFO, message="")
@@ -196,6 +197,7 @@ def test_evaluate_import_status_fails_on_import_error(internal_status: Repositor
         internal_status=internal_status,
         repository_name="dealership-car",
         branch_name="remove-ca",
+        tracked_ref=None,
     )
 
     assert outcome == ImportStatusOutcome(
@@ -219,6 +221,7 @@ def test_evaluate_import_status_fails_without_a_completed_import(case: ImportSta
         internal_status=case.internal_status,
         repository_name="dealership-car",
         branch_name="remove-ca",
+        tracked_ref=None,
     )
 
     assert outcome == ImportStatusOutcome(
@@ -233,22 +236,45 @@ def test_evaluate_import_status_fails_without_a_completed_import(case: ImportSta
     )
 
 
-def test_evaluate_import_status_fails_when_the_tracked_ref_is_missing() -> None:
+@dataclass(frozen=True, kw_only=True)
+class RefMissingMessageCase:
+    name: str
+    tracked_ref: str | None
+    expected_opening: str
+
+
+REF_MISSING_MESSAGE_CASES = [
+    RefMissingMessageCase(
+        name="names_the_tracked_ref",
+        tracked_ref="v1.0",
+        expected_opening="The ref 'v1.0' that repository 'dealership-car' tracks",
+    ),
+    RefMissingMessageCase(
+        name="unknown_ref_is_not_named",
+        tracked_ref=None,
+        expected_opening="The ref that repository 'dealership-car' tracks",
+    ),
+]
+
+
+@pytest.mark.parametrize("case", REF_MISSING_MESSAGE_CASES, ids=[case.name for case in REF_MISSING_MESSAGE_CASES])
+def test_evaluate_import_status_fails_when_the_tracked_ref_is_missing(case: RefMissingMessageCase) -> None:
     outcome = evaluate_import_status(
         sync_status=RepositorySyncStatus.ERROR_REF_MISSING,
         internal_status=RepositoryInternalStatus.ACTIVE,
         repository_name="dealership-car",
         branch_name="remove-ca",
+        tracked_ref=case.tracked_ref,
     )
 
     assert outcome == ImportStatusOutcome(
         conclusion=ValidatorConclusion.FAILURE,
         severity=Severity.CRITICAL,
         message=(
-            "The ref that repository 'dealership-car' tracks on branch 'remove-ca' was missing from the remote when "
-            "Infrahub last checked it, so Infrahub keeps running the commit it imported last. Restore the ref on the "
-            "remote or edit the ref of the repository, then run 'Reimport current commit' for this repository on the "
-            "branch and run the checks again."
+            f"{case.expected_opening} on branch 'remove-ca' was missing from the remote when Infrahub last checked "
+            "it, so Infrahub keeps running the commit it imported last. Restore the ref on the remote or edit the "
+            "ref of the repository, then run 'Reimport current commit' for this repository on the branch and run "
+            "the checks again."
         ),
     )
 

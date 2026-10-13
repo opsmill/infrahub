@@ -316,11 +316,13 @@ ref and on every other Infrahub branch that holds its own `ref` naming it. A bra
 default branch's `ref` is never marked. The check writes only on a change and never clears the value.
 Only a successful import clears it, which a reimport of the current commit achieves once the ref is
 restored or `ref` is edited: that reimport lists the ref the branch tracks on the remote and keeps the
-value while the remote does not list it or cannot be listed. "Import latest commit" fails for a tag
+value while the remote does not list it or cannot be listed, unless the ref is the hash, whole or
+abbreviated, of the commit being imported. "Import latest commit" fails for a tag
 while the tag is still missing; for a branch it can succeed from the worker's own copy of the branch
 (FR-030). A ref that is a commit hash is never marked. `error-ref-missing`
 and `error-import` may replace each other. The value fails the proposed-change check and blocks the
-merge, decided through the same verdict property as a failed import. Never touches `commit` or `ref`.
+merge, decided through the same verdict property as a failed import, and both messages name the ref.
+Never touches `commit` or `ref`.
 
 ## Error catalogue addition
 

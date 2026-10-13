@@ -868,6 +868,8 @@ class ImportGateCase:
     remote_head: str | None
     expected_status: RepositorySyncStatus
     expected_listings: list[list[str]]
+    ref: str = "stable"
+    holds_own_ref: bool = True
     pinned_commit: bool = False
 
 
@@ -894,12 +896,29 @@ IMPORT_GATE_CASES: list[ImportGateCase] = [
         expected_listings=[["stable"]],
     ),
     ImportGateCase(
-        name="marked_branch_pinned_to_a_commit_is_cleared",
+        name="marked_branch_pinned_to_the_imported_commit_is_cleared_without_listing",
         written_sync_status=RepositorySyncStatus.ERROR_REF_MISSING,
+        ref=IMPORTED_COMMIT[:7].upper(),
+        remote_head=None,
+        expected_status=RepositorySyncStatus.IN_SYNC,
+        expected_listings=[],
+    ),
+    ImportGateCase(
+        name="marked_branch_whose_hex_named_ref_matches_another_commit_keeps_the_mark",
+        written_sync_status=RepositorySyncStatus.ERROR_REF_MISSING,
+        ref="beef",
         remote_head=None,
         pinned_commit=True,
+        expected_status=RepositorySyncStatus.ERROR_REF_MISSING,
+        expected_listings=[["beef"]],
+    ),
+    ImportGateCase(
+        name="marked_branch_inheriting_its_ref_is_cleared_without_listing",
+        written_sync_status=RepositorySyncStatus.ERROR_REF_MISSING,
+        holds_own_ref=False,
+        remote_head=None,
         expected_status=RepositorySyncStatus.IN_SYNC,
-        expected_listings=[["stable"]],
+        expected_listings=[],
     ),
 ]
 
@@ -910,10 +929,11 @@ async def test_an_import_leaves_the_missing_ref_status_only_while_the_ref_is_mis
     gateway = RecordingRefsGateway(
         timeline=timeline,
         local_heads={},
-        remote_heads={"stable": case.remote_head},
-        pinned_commits=frozenset({"stable"}) if case.pinned_commit else frozenset(),
+        remote_heads={case.ref: case.remote_head},
+        pinned_commits=frozenset({case.ref}) if case.pinned_commit else frozenset(),
     )
-    gate = build_gate(store=RecordingRefMissingStore({"main": own_ref(case.written_sync_status)}), gateway=gateway)
+    state = BranchRefState(ref=case.ref, holds_own_ref=case.holds_own_ref, written_sync_status=case.written_sync_status)
+    gate = build_gate(store=RecordingRefMissingStore({"main": state}), gateway=gateway)
 
     status = await gate.status_after_import(model=build_import_model(), location=LOCATION)
 

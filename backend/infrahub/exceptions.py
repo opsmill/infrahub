@@ -569,8 +569,14 @@ class MergeRepositoryImportError(ValidationError):
         self,
         failed_repositories: list[str],
         incomplete_repositories: list[str],
-        ref_missing_repositories: list[str],
+        ref_missing_repositories: dict[str, str | None],
     ) -> None:
+        """`ref_missing_repositories` maps each repository name to the ref it tracks, or None when it is not known.
+
+        Raises:
+            ValueError: When no repository is given.
+
+        """
         if not failed_repositories and not incomplete_repositories and not ref_missing_repositories:
             raise ValueError(
                 "A repository import refusal needs at least one failed, incomplete or ref-missing repository"
@@ -592,12 +598,19 @@ class MergeRepositoryImportError(ValidationError):
                 f"finished importing: wait for the import, or reimport the current commit if it does not finish."
             )
         if ref_missing_repositories:
+            names = sorted(ref_missing_repositories)
+            verb = "was" if len(names) == 1 else "were"
+            tracked_refs = ", ".join(self._name_tracked_ref(name, ref_missing_repositories[name]) for name in names)
             reasons.append(
-                f"The tracked ref of {self._name_repositories(ref_missing_repositories)} was missing from the "
-                f"remote when last checked: restore the ref or edit the ref of the "
-                f"{self._label(ref_missing_repositories)}, then reimport the current commit."
+                f"The tracked {tracked_refs} {verb} missing from the remote when last checked: restore the ref or "
+                f"edit the ref of the {self._label(names)}, then reimport the current commit."
             )
         super().__init__(" ".join(reasons))
+
+    def _name_tracked_ref(self, repository_name: str, ref: str | None) -> str:
+        if ref is None:
+            return f"ref of repository '{repository_name}'"
+        return f"ref '{ref}' of repository '{repository_name}'"
 
     def _label(self, names: list[str]) -> str:
         return "repository" if len(names) == 1 else "repositories"
