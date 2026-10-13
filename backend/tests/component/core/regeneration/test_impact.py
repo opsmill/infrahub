@@ -7,7 +7,7 @@ import pytest
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.core.regeneration.impact import get_field_level_impacted_subscribers
-from infrahub.core.regeneration.models import TargetSelection
+from infrahub.core.regeneration.models import TargetSelection, Widening, WideningReason
 from tests.constants import TestKind
 from tests.helpers.diff_summary import node_diff
 from tests.helpers.schema import CAR_SCHEMA, RACK_SCHEMA, load_schema
@@ -45,6 +45,34 @@ query GetImpactCarLabel($ids: [ID!]!) {
         edges {
             node {
                 display_label
+            }
+        }
+    }
+}
+"""
+
+# The cars are selected by their owner's name, a filter argument the query never reads back: which cars
+# answer the query moves when a car's ``owner`` relationship changes.
+QUERY_CARS_BY_OWNER_NAME = """
+query GetImpactCarsByOwner($owner: String!) {
+    TestingCar(owner__name__value: $owner) {
+        edges {
+            node {
+                name { value }
+            }
+        }
+    }
+}
+"""
+
+# ``any__value`` matches a car on any of its attributes, so a change to an attribute the query never
+# reads can still move which cars answer it.
+QUERY_CARS_BY_ANY_VALUE = """
+query GetImpactCarsByAnyValue($value: String!) {
+    TestingCar(any__value: $value) {
+        edges {
+            node {
+                name { value }
             }
         }
     }
@@ -247,6 +275,70 @@ class TestFieldLevelImpact(TestInfrahubApp):
             ],
         )
         assert resolved == TargetSelection(ids=[])
+
+    async def test_change_to_a_filtered_relationship_selects_every_target(
+        self,
+        dataset: dict[str, Any],
+        default_branch: Branch,
+        client: InfrahubClient,
+    ) -> None:
+        """A change to a relationship the query filters on selects every target.
+
+        The query selects cars by their owner's name and reads only the car's ``name``. Moving a car to
+        another owner changes which cars answer the query for both owners, so every target has to run
+        even though no field the query reads back changed.
+        """
+        resolved = await get_field_level_impacted_subscribers(
+            query_payload=QUERY_CARS_BY_OWNER_NAME,
+            diff_summary=[
+                node_diff(
+                    node_id=dataset["car_id"],
+                    kind=TestKind.CAR,
+                    branch=default_branch.name,
+                    field_names=["owner"],
+                    element_type="RELATIONSHIP_ONE",
+                )
+            ],
+            query_branch=default_branch.name,
+            subscriber_kind=SUBSCRIBER_KIND,
+            every_target=[dataset["subscriber_id"]],
+            client=client,
+        )
+        assert resolved == TargetSelection(
+            ids=[dataset["subscriber_id"]],
+            widening=Widening(reason=WideningReason.NON_UNIQUE_TARGETS),
+        )
+
+    async def test_change_to_an_attribute_matched_by_any_value_selects_every_target(
+        self,
+        dataset: dict[str, Any],
+        default_branch: Branch,
+        client: InfrahubClient,
+    ) -> None:
+        """A change to any attribute selects every target when the query filters on ``any__value``.
+
+        The query reads only the car's ``name``, but its filter matches on every attribute, so a
+        change to ``color`` can move which cars answer the query.
+        """
+        resolved = await get_field_level_impacted_subscribers(
+            query_payload=QUERY_CARS_BY_ANY_VALUE,
+            diff_summary=[
+                node_diff(
+                    node_id=dataset["car_id"],
+                    kind=TestKind.CAR,
+                    branch=default_branch.name,
+                    field_names=["color"],
+                )
+            ],
+            query_branch=default_branch.name,
+            subscriber_kind=SUBSCRIBER_KIND,
+            every_target=[dataset["subscriber_id"]],
+            client=client,
+        )
+        assert resolved == TargetSelection(
+            ids=[dataset["subscriber_id"]],
+            widening=Widening(reason=WideningReason.NON_UNIQUE_TARGETS),
+        )
 
 
 QUERY_RACK_WITH_CARD = """

@@ -24,6 +24,7 @@ class _FakeAnalyzedQuery:
     only_has_unique_targets: bool = True
     traversed_kinds: set[str] = field(default_factory=set)
     relationship_reached_paths_by_kind: dict[str, tuple[ReachedPath, ...]] = field(default_factory=dict)
+    filtered_fields_by_kind: dict[str, set[str]] = field(default_factory=dict)
 
 
 def _node(
@@ -99,6 +100,26 @@ def test_build_passes_a_plain_read_through_unchanged() -> None:
         only_has_unique_targets=False,
         traversed_kinds=set(),
         readable_fields_by_kind={"TestReader": {"name"}},
+        reached_paths_by_kind={},
+        depends_on_everything=False,
+    )
+
+
+def test_build_counts_a_filtered_field_as_read() -> None:
+    """A field the query only filters on is matched against the diff like a field it reads."""
+    report = _FakeAnalyzedQuery(
+        requested_read={"TestReader": ObjectAccess(attributes={"name"})},
+        only_has_unique_targets=False,
+        filtered_fields_by_kind={"TestReader": {"owner"}},
+    )
+
+    classifier = _builder().build(report)
+
+    assert classifier == QueryImpactClassifier(
+        query_branch=QUERY_BRANCH,
+        only_has_unique_targets=False,
+        traversed_kinds=set(),
+        readable_fields_by_kind={"TestReader": {"name", "owner"}},
         reached_paths_by_kind={},
         depends_on_everything=False,
     )

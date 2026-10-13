@@ -22,10 +22,14 @@ class AnalyzedQuery(Protocol):
     it; ``traversed_kinds`` are the kinds reached through a relationship, including any also read at
     a root, so the overlap stays visible; ``relationship_reached_paths_by_kind`` the chains back from
     each to a root. ``only_has_unique_targets`` is true when the query pins one object per root.
+    ``filtered_fields_by_kind`` maps each kind to the fields its filter arguments select on.
     """
 
     @property
     def requested_read(self) -> Mapping[str, ObjectAccess]: ...
+
+    @property
+    def filtered_fields_by_kind(self) -> Mapping[str, set[str]]: ...
 
     @property
     def only_has_unique_targets(self) -> bool: ...
@@ -45,7 +49,10 @@ class QueryClassifierBuilder:
         self._dependency_resolver = DerivedFieldDependencyResolver(schema_branch=schema_branch)
 
     def build(self, query_report: AnalyzedQuery) -> QueryImpactClassifier:
-        readable_fields_by_kind = {kind: access.fields for kind, access in query_report.requested_read.items()}
+        readable_fields_by_kind = {kind: set(access.fields) for kind, access in query_report.requested_read.items()}
+        # A change to a filtered field moves which objects answer the query, so it counts as a read.
+        for kind, fields in query_report.filtered_fields_by_kind.items():
+            readable_fields_by_kind.setdefault(kind, set()).update(fields)
         dependencies = self._dependency_resolver.resolve(readable_fields_by_kind)
         return self.build_query_classifier(
             only_has_unique_targets=query_report.only_has_unique_targets,
