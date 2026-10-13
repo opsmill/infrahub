@@ -29,6 +29,7 @@ from infrahub.core.registry import registry
 from infrahub.exceptions import (
     BranchNotFoundError,
     CommitNotFoundError,
+    Error,
     RepositoryError,
     RepositoryPushRejectedError,
 )
@@ -133,7 +134,7 @@ class ImportStep(StrEnum):
     COLLECTION = "collection"
     IMPORT = "import"
     RECORD = "record"
-    """The rewrite record of the branch failed, while its import still runs."""
+    """A record of the rewrite that the branch reconciled failed, while its import still runs."""
 
 
 @dataclass
@@ -418,7 +419,8 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         Args:
             state: While an active repository has pending pushes, its default branch and the source
-                branch of each pending merge are left out.
+                branch of each pending merge are left out. When a rewrite of the default branch
+                discards the last pushed commit, the reverted push is recorded in it.
             graph_commits: The commit the graph records for this repository, per Infrahub branch that
                 can still record one. Without it no branch is classified, and a branch whose worktree
                 already matches the remote is left alone even when the graph records another commit.
@@ -572,6 +574,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 git_branch_name=self.default_branch,
             )
 
+        await self._record_reverted_delivery(collected=collected, state=state)
         return collected
 
     def _read_graph_commits(self, graph_commits: Mapping[str, str | None]) -> dict[str, str | None]:
@@ -823,6 +826,93 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             extra={"repository": self.name, "branch": branch_name, "step": ImportStep.RECORD.value, "reason": reason},
         )
         return reason
+
+    async def _record_reverted_delivery(self, collected: CollectedImports, state: DeliveryStatePort) -> None:
+        """Record the last pushed commit when the default branch no longer holds it after a rewrite.
+
+        Each push fast-forwards the remote, so every earlier pushed commit survived when the last one did. A
+        pushed commit that an earlier rewrite discarded is recorded too, as its own record may have failed. A
+        re-target forgets the pushed commit, because it names a commit of the previous default branch. A
+        failure fails the default branch at the record step and keeps its import, as a failed rewrite record
+        does.
+        """
+        rewrite = next(
+            (
+                pending_import.reconciled.divergence
+                for pending_import in collected.imports
+                if pending_import.on_default_branch and pending_import.reconciled is not None
+            ),
+            None,
+        )
+        # Both classifications always carry the remote head, so the last check only narrows its type.
+        if (
+            rewrite is None
+            or rewrite.classification not in {RefClassification.REWRITE, RefClassification.RETARGET}
+            or rewrite.remote_head is None
+        ):
+            return
+
+        repository_id = str(self.id)
+        new_head = rewrite.remote_head
+        try:
+            if rewrite.classification is RefClassification.RETARGET:
+                await state.forget_delivered_commit(repository_id=repository_id)
+                return
+            pushed_commit = (await state.read(repository_id=repository_id)).last_delivered_commit
+            if pushed_commit is None or self._head_holds(head=new_head, commit=pushed_commit):
+                return
+            if not await state.record_reverted(
+                repository_id=repository_id, delivered_commit=pushed_commit, new_head=new_head
+            ):
+                return
+        # The graph already records the new commit, so an error that escapes would lose the imports of the cycle.
+        except Exception as exc:
+            reason = exc.message if isinstance(exc, Error) else f"{type(exc).__name__}: {exc}"
+            log.warning(
+                "Failed to update the reverted push record of branch %s of repository %s: %s",
+                rewrite.branch_name,
+                self.name,
+                reason,
+                exc_info=None if isinstance(exc, Error) else exc,
+                extra={
+                    "repository": self.name,
+                    "branch": rewrite.branch_name,
+                    "step": ImportStep.RECORD.value,
+                    "reason": reason,
+                },
+            )
+            collected.failed_imports.append(
+                FailedImport(
+                    branch_name=rewrite.branch_name, step=ImportStep.RECORD, reason=reason, on_default_branch=True
+                )
+            )
+            return
+
+        log.warning(
+            "The rewrite of branch %s of repository %s discarded the pushed commit %s, the branch now points to %s",
+            rewrite.branch_name,
+            self.name,
+            pushed_commit,
+            new_head,
+            extra={
+                "repository": self.name,
+                "branch": rewrite.branch_name,
+                "pushed_commit": pushed_commit,
+                "commit": new_head,
+            },
+        )
+
+    def _head_holds(self, head: str, commit: str) -> bool:
+        """Whether the commit is in the history of the head.
+
+        A fetch brings every ancestor of the head, so a commit that this clone lacks is not in it.
+
+        Raises:
+            RepositoryError: When git could not answer.
+
+        """
+        gateway = self._get_ancestry_gateway()
+        return gateway.has_commit(commit=commit) and gateway.is_ancestor(ancestor_commit=commit, descendant_commit=head)
 
     async def _find_branches_behind_in_graph(self, graph_commits: Mapping[str, str | None]) -> list[str]:
         """Return the local branches whose commit in the graph is not the remote head.

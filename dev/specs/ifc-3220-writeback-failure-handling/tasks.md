@@ -649,17 +649,17 @@ and is not re-imported; retry; the branch is gone.
 
 **Maps to**: FR-010, FR-011. **In the deployment rule.**
 
-- [ ] T095 [US6] Change `git_branch_delete` in `backend/infrahub/git/tasks.py`: call
+- [X] T095 [US6] Change `git_branch_delete` in `backend/infrahub/git/tasks.py`: call
       `request_branch_deletion`, and when it returns true, skip the remote deletion, log why, and do
       not send `RefreshGitRepositoryBranchDeleted`.
-- [ ] T096 [US6] Confirm step 13 of `RepositoryWritebackService.deliver` deletes a flagged branch that no
+- [X] T096 [US6] Confirm step 13 of `RepositoryWritebackService.deliver` deletes a flagged branch that no
       remaining entry names, and add the case to `backend/tests/unit/git/writeback/test_service.py`.
 - [ ] T097 [US6] Add `test_remote_branch_kept_while_pending` to
       `backend/tests/integration/git/test_git_live_remote.py`, with
       `delete_branch_after_merge_reset_config` and `delete_git_branch_after_merge_reset_config`:
       kept, not re-imported by the sync as new or as updated, deleted after the retry; and, after an
       abandonment instead, kept on the remote and imported again as a new Infrahub branch.
-- [ ] T098 [P] [US6] Add a case to `backend/tests/component/git/writeback/test_enqueue.py`: a merge of
+- [X] T098 [P] [US6] Add a case to `backend/tests/component/git/writeback/test_enqueue.py`: a merge of
       another branch is not blocked while repository X has a pending delivery (FR-010).
 
 ---
@@ -675,7 +675,7 @@ and is not re-imported; retry; the branch is gone.
       cause `source-discarded`, the remote never holds the discarded commit.
 - [X] T100 [US7] Add `test_a_merge_onto_a_rewritten_trunk_is_refused` to the same module: force-push the
       remote default branch, retry, cause `destination-rewritten`, nothing pushed.
-- [ ] T101 [US7] Call `record_reverted` from IFC-3210's reconciliation of the default branch, per
+- [X] T101 [US7] Call `record_reverted` from IFC-3210's reconciliation of the default branch, per
       [research.md](research.md) R13, and add a test beside the sibling's reconciliation tests.
       **Gate: IFC-3210 rewrite classification on `develop`.**
 
