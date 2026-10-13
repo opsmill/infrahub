@@ -7,7 +7,7 @@ import pytest
 
 from infrahub.core.constants import RepositoryDeliveryFailureCause, RepositoryDeliveryStatus
 from infrahub.exceptions import DeliveryStateUnreadableError
-from infrahub.git.writeback.models import DeliveryQueue, HeldRegeneration
+from infrahub.git.writeback.models import AbandonmentRecord, DeliveryQueue, HeldRegeneration
 from infrahub.git.writeback.store import _stored, _stored_member
 
 
@@ -15,7 +15,7 @@ from infrahub.git.writeback.store import _stored, _stored_member
 class UnreadableJsonTestCase:
     name: str
     attribute: str
-    model: type[DeliveryQueue | HeldRegeneration]
+    model: type[AbandonmentRecord | DeliveryQueue | HeldRegeneration]
     value: dict[str, Any]
 
 
@@ -31,6 +31,9 @@ UNREADABLE_JSON_TEST_CASES: list[UnreadableJsonTestCase] = [
         attribute="delivery_held_regeneration",
         model=HeldRegeneration,
         value={"format": 2},
+    ),
+    UnreadableJsonTestCase(
+        name="empty_record", attribute="delivery_last_abandonment", model=AbandonmentRecord, value={}
     ),
 ]
 
@@ -69,6 +72,7 @@ UNKNOWN_MEMBER_TEST_CASES: list[UnknownMemberTestCase] = [
         enum=RepositoryDeliveryFailureCause,
         value="mirror-lagging",
     ),
+    UnknownMemberTestCase(name="empty", attribute="delivery_status", enum=RepositoryDeliveryStatus, value=""),
 ]
 
 
