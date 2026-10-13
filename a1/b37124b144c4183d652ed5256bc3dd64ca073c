@@ -1,0 +1,27 @@
+backend/tests/component/core/resource_manager/test_number_pool_divisions.py
+  h_7ec9b28dd2a5ab 636
+  s_444ee2e3371d46::t_7407604da72757 653,659,662,671
+  s_444ee2e3371d46::t_598d609ecdb168 619-635,637-642,644-652,654-658,660-661,663-670,672-673
+  s_444ee2e3371d46::t_e363a1d0cc0fa7 643
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a1b37124b144c4183d652ed5256bc3dd64ca073c",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_444ee2e3371d46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b5d92f59-5b54-4830-8b07-14f7415f43d8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
