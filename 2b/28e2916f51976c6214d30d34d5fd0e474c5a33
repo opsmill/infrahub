@@ -1,0 +1,19 @@
+backend/infrahub/pools/number.py
+  s_760cbcf248de37::t_d86bb858e84a55 16,53-56,65,68,87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2b28e2916f51976c6214d30d34d5fd0e474c5a33",
+  "prompts": {},
+  "sessions": {
+    "s_760cbcf248de37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9796f03b-7c77-4706-bad0-f6d8a85686f0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
