@@ -151,10 +151,12 @@ while the merge still reported success; sending HEAD is what closed that gap.
 
 ### The push queue
 
-Each merge of a git-synced branch that changes the content of a read-write repository becomes an
-entry in the push queue of that repository (`git/writeback/`). The branch merge writes the entry
-before it submits `merge_git_repository`, and the flow delivers the whole queue through
-`git/writeback/service.py::RepositoryWritebackService.deliver`. Under the repository lock, an attempt:
+Each merge of a git-synced branch that changes the content of an active read-write repository
+becomes an entry in the push queue of that repository (`git/writeback/`). A staging repository has
+no queue: its merge makes it active and records its commit, and pushes nothing. The branch merge
+writes the entry before it submits `merge_git_repository`, and the flow delivers the whole queue
+through `git/writeback/service.py::RepositoryWritebackService.deliver`. Under the repository lock, an
+attempt:
 
 - fetches, and checks the queue against the remote, as the next section describes;
 - resets the destination worktree to the remote head, replays each queued source commit by its id,
