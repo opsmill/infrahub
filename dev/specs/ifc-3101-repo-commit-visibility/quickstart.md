@@ -266,6 +266,50 @@ commit with hash, summary, author and relative date, the head and imported marke
 copy button places the full hash on the clipboard. The push-then-observe transition is covered at
 component level on `FileRepo` instead of end to end, so no test waits out the one-minute sync tick.
 
+## Measurement: first commit page on a 10,000-commit history
+
+SC-004 requires the first page of commits to appear in under 2 seconds for a repository with 10,000
+commits of history. Measured 2026-10-13 against the worker-side read, `_read_commit_log` in
+`backend/infrahub/git/state/log_reader.py`, because it is the only part of the request whose cost
+depends on the length of the history. The API server's graph read and the RPC round trip do not
+read the history, so they add the same time whatever its length. They were not measured here.
+
+To repeat the measurement:
+
+```bash
+uv run python dev/specs/ifc-3101-repo-commit-visibility/measure_first_page.py
+```
+
+Method:
+
+- A bare remote with a linear history of 10,000 commits built with `git fast-import`, each commit
+  changing one of 50 files, then a plain `git clone` of it standing in for a worker's main clone
+- The request the Commits tab sends: page size 20 (`REPOSITORY_COMMITS_PAGE_SIZE`), offset 0, and
+  `include_pending_count` set
+- Each case run 10 times. Each run opens the clone with `Repo()` and closes it, as the worker does
+  per request
+- An Apple silicon Mac, macOS 26.5, Python 3.14.7, git 2.55.0
+
+| Case | Condition | Pending | Median | Slowest |
+| --- | --- | --- | --- | --- |
+| Imported commit is the head | `IN_SYNC` | none | 33 ms | 59 ms |
+| Imported commit 2 behind the head | `BEHIND` | 2 | 53 ms | 67 ms |
+| Imported commit 5,000 behind the head | `BEHIND` | 5,000 | 76 ms | 116 ms |
+| Imported commit is the root, 9,999 behind | `BEHIND` | 9,999 | 111 ms | 303 ms |
+| Nothing imported | `NOT_TRACKED` | none | 42 ms | 68 ms |
+| Imported commit not in the clone | `ORPHANED` | none | 35 ms | 38 ms |
+| Last page, offset 9,980 | `IN_SYNC` | none | 55 ms | 57 ms |
+
+Result: SC-004 holds for the worker-side read with a wide margin. The slowest single run, 303 ms,
+leaves about 1.7 seconds for the graph read, the RPC round trip and rendering. The cost under
+`BEHIND` grows with the number of pending commits, because every page lists the whole
+`imported..head` range to mark which rows are pending (T106). At 9,999 pending commits that adds
+about 80 ms to the median, so bounding that walk is not needed to meet SC-004 at this size.
+
+Limits of this measurement: the history is a single packed file with a linear history, so a clone
+with many loose objects or a history with many merges was not measured, and no end-to-end timing
+on a running stack was taken.
+
 ## Before pushing
 
 ```bash

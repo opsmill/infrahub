@@ -270,6 +270,8 @@ Unlike fully integrated repositories which sync automatically, read-only reposit
 
 For more details on how each repository type tracks changes, refer to the [Repository Topic](./overview.mdx#read-only-vs-core).
 
+To find out whether the remote has new commits before you import them, open the repository's **Commits** tab. The tab labels the newest commit **Remote head**, and the commits between it and the imported commit **Pending import**. To check the remote immediately instead of waiting for the next scheduled check, select **Check remote now**. The check does not import anything: the imported commit stays the same until you take one of the two actions below. For what each label and warning on the tab means, see [The Commits tab and commits not yet imported](./overview.mdx#commits-tab).
+
 #### Change the ref
 
 <Tabs groupId="method" queryString>

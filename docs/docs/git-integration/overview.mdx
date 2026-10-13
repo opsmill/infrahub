@@ -74,7 +74,7 @@ The **Read-only Repository** type offers a simpler, unidirectional integration d
 **Design principles:**
 
 - **Single reference tracking**: links one specific Git ref (branch, tag, or commit)
-- **Manual synchronization**: Infrahub does not poll a read-only repository; you update it by changing the `ref` or using the **Import latest commit** action
+- **Manual synchronization**: Infrahub does not import from a read-only repository on its own; you update it by changing the `ref` or using the **Import latest commit** action. On a schedule, the [read-only refs check](#read-only-refs-check) reads the commit that each tracked `ref` points to on the remote, but it never imports
 - **Protection of external resources**: guarantees no modifications to the external repository
 
 **How it works internally:**
@@ -82,7 +82,7 @@ The **Read-only Repository** type offers a simpler, unidirectional integration d
 Read-only repositories:
 
 1. Track a single Git reference rather than all branches
-2. Import changes only when you change the `ref` or run **Import latest commit** — Infrahub does not poll read-only repositories
+2. Import changes only when you change the `ref` or run **Import latest commit**. The read-only refs check finds new commits on the remote, but it does not import them
 3. Import resources according to the `.infrahub.yml` configuration
 4. Maintain a simpler state model without complex branch synchronization logic
 
@@ -114,7 +114,7 @@ This separation ensures that Git operations don't block API requests and enables
 
 **For Read-only Repositories:**
 
-- No automatic synchronization occurs
+- No automatic import occurs. On a schedule, the [read-only refs check](#read-only-refs-check) reads the commit that each tracked `ref` points to on the remote, so that the **Commits** tab can list new commits, but it does not import them
 - Updates can be triggered by modifying the `ref` property to point to a different branch, tag, or commit
 - Alternatively, use the **Import latest commit** action to fetch the latest commit for the current ref from the remote without changing the ref
 - Each update fetches the specified commit and imports resources according to configuration
@@ -193,6 +193,97 @@ Beyond basic synchronization, repositories support administrative actions for tr
 - **Retry and abandon pending pushes** (read-write repositories only, through GraphQL): The `InfrahubRepositoryDeliveryRetry` mutation pushes the pending merges of the repository to the remote again. The `InfrahubRepositoryDeliveryAbandon` mutation drops every pending merge of the repository without a push, and keeps a record of them. See [retry the pending pushes](./branch-synchronization.mdx#retry-the-pending-pushes) and [what an abandonment leaves behind](./branch-synchronization.mdx#what-an-abandonment-leaves-behind)
 - **Import latest commit** (read-only repositories only): Fetches the latest commit from the remote for the tracked ref and imports its resources. This is useful when the remote repository has new changes and you want to pull them without manually updating the `ref` property. Unlike changing the `ref`, this operation keeps the same ref but updates to whatever commit that ref currently points to on the remote
 
+## The Commits tab and commits not yet imported {#commits-tab}
+
+Every repository page has a **Commits** tab. It lists, newest first, the commits of the Git branch or ref that Infrahub reads for the repository on the Infrahub branch you are viewing, and marks the commit that Infrahub has imported. Use it to find out whether the remote has commits that Infrahub has not imported yet.
+
+Which Git branch or ref the tab lists depends on the repository type:
+
+- **Repository** (read-write): on Infrahub's default branch, the Git branch named by the repository's `default_branch`; on any other Infrahub branch, the Git branch with the same name. When [selective branch synchronization](./branch-synchronization.mdx) is configured and Infrahub would not import that Git branch, the tab shows **No commit log**. Without selective branch synchronization, the tab lists the commits of that Git branch whether or not the Infrahub branch syncs with Git.
+- **Read-only Repository**: the repository's `ref` on the Infrahub branch you are viewing.
+
+### Infrahub reads the commit list on each request
+
+Infrahub does not store the commit list. Each time the tab requests the list, Infrahub asks a task worker to read the commits from its local copy of the repository and returns the answer. To answer, the task worker does not fetch from the remote, clone the repository, or import anything, so the list is only as recent as the last time that task worker's copy was fetched from the remote.
+
+Any task worker can answer a request. When you run more than one task worker, two requests can be answered from copies that were fetched at different times.
+
+When the task worker that answers has no local copy of the repository yet, the tab shows **Commit log not available yet**. For a read-only repository, or for a read-write repository that has already imported a commit on the branch, Infrahub starts a separate task that creates the copy. For a read-write repository that has not imported a commit on the branch, Infrahub creates the copy during the repository's next sync. In both cases, the tab requests the list again every 10 seconds for up to 5 minutes. To request it again yourself, select the refresh button at the top of the tab.
+
+### Commit labels and the comparison with the remote head
+
+Each commit row shows its hash, summary, author, and date. The labels show how a commit relates to the imported commit:
+
+- **Remote head**: the latest commit of the Git branch or ref, as last fetched into the copy of the task worker that answered
+- **Imported**: the commit Infrahub has imported on this Infrahub branch. When the imported commit is also the remote head, the row shows both labels
+- **Pending import**: a commit after the imported commit that Infrahub has not imported, other than the remote head
+- **Not on current history**: a commit that cannot be placed relative to the imported commit, because the history was rewritten, the imported commit was not found, or nothing has been imported on this Infrahub branch yet
+
+Commits older than the imported commit have no label. Use the row menu to copy the full commit hash or, for a repository hosted on GitHub, to open the commit on GitHub.
+
+Infrahub also compares the remote head with the imported commit, and the tab shows the result:
+
+| Comparison | When it applies | What the tab shows |
+|---|---|---|
+| In sync | The remote head is the imported commit. | A count of **0** on the tab. |
+| Behind | The imported commit is an ancestor of the remote head. | The number of commits pending import, on the tab and above the list. The number includes the remote head. |
+| Rewritten | The imported commit is no longer part of the history of the Git branch or ref, for example after a force push. | A warning that the tracked ref was rewritten, and nothing marked as pending. |
+| Imported commit not found | The task worker's copy does not contain the imported commit. | A warning that the imported commit could not be found on the remote. |
+| Ref missing | Read-only repositories only: the `ref` does not resolve in the task worker's copy, for example after it was deleted on the remote and a later fetch removed it from the copy. | A warning that the tracked ref no longer exists on the remote. When a commit has been imported, the list starts at that commit and Infrahub still uses it. When nothing has been imported, the list is empty. |
+| Nothing imported | No commit has been imported on this Infrahub branch yet. | The commits, with every commit except the remote head labeled **Not on current history**. For a read-write repository with no Git branch to read, or a read-only repository with no `ref`, **No commit log**. |
+| No remote branch | Read-write repositories only: the Git branch does not exist in the task worker's copy, but the Infrahub branch has an imported commit. | **No commit log**. |
+
+### Updated and Checked times {#commits-freshness}
+
+The line at the top of the tab names the Git branch or ref after **Tracking**, and shows up to two times:
+
+- **Updated** is when the task worker that answered last fetched its copy of the repository from the remote. It is not shown when that time is not known, for example after the last fetch failed. The GraphQL API returns it as `fetched_at`.
+- **Checked** is shown for read-only repositories only. It is when the [read-only refs check](#read-only-refs-check) last ran for the repository, on any task worker, including a check that failed. Infrahub records one **Checked** time per repository, not per branch: a check you start with **Check remote now** compares only the `ref` of the branch you are viewing, but it updates the **Checked** time shown on every branch. When the repository tracks a different `ref` on another branch, that branch can show a recent **Checked** time even though Infrahub last compared its `ref` at the last scheduled check. The GraphQL API returns **Checked** as `checked_at`.
+
+An **Updated** time older than the **Checked** time does not mean the list is out of date: a check fetches only when the commit that a tracked `ref` points to on the remote differs from the commit in the copy of the task worker that runs the check.
+
+Infrahub keeps the **Checked** time in its cache for up to 30 days. It is not shown when no check has run in that time, when the cache was cleared, or when the cache cannot be read. Read-write repositories have no **Checked** time, because their regular sync fetches the remote and **Updated** already shows when that happened.
+
+### Read-only refs check {#read-only-refs-check}
+
+Infrahub does not import from a read-only repository on its own, so without this check it would not fetch new commits for the **Commits** tab to list. The read-only refs check reads the commit that each tracked `ref` of a read-only repository points to on the remote, and compares it with two other commits:
+
+- When the commit differs from the commit in the copy of the task worker that runs the check, that task worker fetches from the remote. The fetch updates every branch and tag in its copy.
+- When the commit differs from the commit the previous check found, or no previous check recorded one, Infrahub asks the other task workers to fetch too. It asks for each Infrahub branch that tracks that `ref` and has imported a commit. A check started with **Check remote now** asks only for the Infrahub branch you are viewing.
+
+After the task workers have fetched, the **Commits** tab lists the new commits whichever task worker answers.
+
+:::info The check never changes the imported commit
+The read-only refs check never imports and never writes the repository's `commit` or `ref`. Task workers that fetch new commits keep the imported commit checked out. The imported commit changes only when you change the `ref` or select **Import latest commit**, as described in [How to connect external Git repositories](./connect-repository.mdx#update-a-read-only-repository-with-remote-changes).
+:::
+
+The check runs in two ways:
+
+- **On a schedule**: a task runs every minute and checks each read-only repository at most once per interval. Set the interval in minutes with [`INFRAHUB_GIT_READ_ONLY_REFS_CHECK_INTERVAL_MINS`](../reference/configuration.mdx), from 1 to 1440 (default 15). After a failed check, the repository is checked again after 5 minutes, or after the interval when the interval is shorter. The check covers each Infrahub branch on which the repository is active and has a `ref`, for repositories that have a location.
+- **On request**: select **Check remote now** on the **Commits** tab of a read-only repository. The check compares only the `ref` of the Infrahub branch you are viewing. You need permission to update read-only repositories on that branch, and the repository must have a location and a `ref` and be active on that branch. After you select the button, the tab in your browser shows **Check running.** with a **View task** link until the check ends. The GraphQL mutation `InfrahubReadOnlyRepositoryCheckRefs` starts the same check and returns the task ID.
+
+### Reading commits from the GraphQL API
+
+The **Commits** tab uses the `InfrahubRepositoryCommits` query, which takes the repository ID or name, a `limit` from 1 to 100 (default 10), and an `offset`. It returns the commits for the branch the query is sent to, along with `condition`, `pending_count`, `fetched_at`, and `checked_at`.
+
+```graphql
+query RepositoryCommits($id: String!) {
+  InfrahubRepositoryCommits(repository_id: $id, limit: 20) {
+    git_ref
+    condition
+    imported_commit
+    remote_head
+    pending_count
+    fetched_at
+    checked_at
+    unavailable { reason message }
+    edges {
+      node { short_hash summary author_name authored_at state }
+    }
+  }
+}
+```
+
 ## Design trade-offs and constraints
 
 The current architecture makes several important trade-offs:
@@ -217,7 +308,8 @@ The polling-based synchronization approach:
 
 - **Merging a change in Infrahub pushes data to Git.** It does not. A data merge is applied to the graph. The only thing a merge writes to Git is the code-intent branch of a read-write repository, updated on a Proposed Change merge.
 - **`sync_with_git` controls importing Git branches into Infrahub.** It does not. It controls whether a branch created in Infrahub is extended out to Git. Import always runs from Git to Infrahub.
-- **A read-write repository has an "Import latest commit" button.** It does not. Read-write repositories import automatically in the background; **Import latest commit** is a read-only repository action, used because read-only repositories are not polled.
+- **A read-write repository has an "Import latest commit" button.** It does not. Read-write repositories import automatically in the background; **Import latest commit** is a read-only repository action, used because Infrahub does not import from read-only repositories on its own.
+- **The read-only refs check updates a read-only repository.** It does not. It fetches new commits from the remote so that the **Commits** tab lists them, but the imported commit changes only when you change the `ref` or run **Import latest commit**.
 
 ## Further reading
 

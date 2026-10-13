@@ -1,6 +1,6 @@
 # Git Sync
 
-> Part of: `dev/knowledge/backend/` | Related: [Architecture](architecture.md), [Git Push Queue](git-push-queue.md)
+> Part of: `dev/knowledge/backend/` | Related: [Architecture](architecture.md), [Git Push Queue](git-push-queue.md), [Repository Git-State Read](repository-git-state.md)
 
 How Infrahub maps and imports branches from external git repositories, how the sync flow reads the
 per-branch state of each repository, and how git and import errors surface. Read this before
@@ -91,7 +91,11 @@ The read-write kind implements the mapping described below; the read-only kind r
   `registry.default_branch`; code that has no repository object — the API server, which must never
   build one — calls the function directly. The function takes all three inputs as required
   parameters, so no caller can fall back to Infrahub's default branch by omitting the repository's
-  trunk.
+  trunk. The API server's caller is the git-state read described in
+  [Repository Git-State Read](repository-git-state.md).
+- Change how an Infrahub branch maps onto the repository's configured default branch only in
+  `get_mapped_remote_branch`, so the workers and the API server apply one rule instead of two copies
+  that can differ.
 - `git.import_sync_branch_names` (settings) is a list of names or regex patterns selecting which
   other remote branches are imported during sync; branches created in Infrahub with
   `sync_with_git` are imported regardless. **The list is empty by default, and an empty list
