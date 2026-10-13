@@ -995,6 +995,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 RepositoryTLSError name a missing repository and a refused certificate.
             RepositoryCredentialsError: When authentication fails at push time.
             RepositoryPermissionError: When the credentials authenticate but lack write access.
+            RepositoryError: When the lookup of the worktree fails or runs past ``timeout_seconds``.
 
         """
         if not self.has_origin:
@@ -1006,7 +1007,11 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             self.name,
         )
 
-        repo = self.get_git_repo_worktree(identifier=branch_name, timeout_seconds=timeout_seconds)
+        try:
+            repo = self.get_git_repo_worktree(identifier=branch_name, timeout_seconds=timeout_seconds)
+        except GitCommandError as exc:
+            # The lookup is local, so a lookup past its limit does not mean that the remote is unreachable.
+            self._raise_enriched_error_static(error=exc, name=self.name, location=self.location)
         remote_branch = self._get_mapped_remote_branch(branch_name=branch_name)
         # The server explains a refusal only in its "remote:" lines.
         progress = _RemoteLineCollector()
