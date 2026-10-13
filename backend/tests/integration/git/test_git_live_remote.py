@@ -1261,6 +1261,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         gogs_server: GogsServer,
         caplog: pytest.LogCaptureFixture,
         fast_forward_merges: None,
+        immediate_delivery_retries: None,
         synced_branch_repository: Callable[[str], Awaitable[SyncedBranchRepository]],
         block_commit_worktree: Callable[[Path], Callable[[], None]],
     ) -> None:
