@@ -19,7 +19,7 @@ Scenarios that prove the feature end to end, with the commands that run them. Co
 | The fixed dataset of PR #10932 on the `{id, name}` contract (until the resolvers read the database) | FR-018 | `uv run pytest backend/tests/component/graphql/queries/test_number_pool_surface.py` |
 | The three dedicated queries on real pools and their refusals | FR-017 to FR-023 | `uv run pytest backend/tests/component/graphql/queries/test_number_pool_surface.py` |
 | Declared scope on a schema-created pool | FR-024 to FR-027 | `uv run pytest backend/tests/component/pools/test_schema_number_pool_scope.py` |
-| Schema checker decision table, without a database | FR-026, FR-028 | `uv run pytest backend/tests/unit/core/validators/test_number_pool_scope_checker.py` |
+| Schema checker decision table, without a database | FR-026, FR-028 | `uv run pytest backend/tests/unit/core/validators/number_pool_scope` |
 | Schema checker against a database: refusals, rename accepted, declaration compared by id | FR-026, FR-028, FR-029 | `uv run pytest backend/tests/component/core/constraint_validators/test_number_pool_scope.py` |
 | Declared scope, rename and refusals through the schema load API, on the default branch and on a branch | FR-026 to FR-029 | `uv run pytest backend/tests/integration/schema_lifecycle/test_number_pool_scope_schema.py` |
 | Two-branch scenarios | FR-011, FR-022 | `uv run pytest backend/tests/functional/pools/test_numberpool_scoped_branch.py` |

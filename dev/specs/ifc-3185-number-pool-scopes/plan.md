@@ -109,7 +109,7 @@ backend/infrahub/
 
 backend/tests/
 ├── unit/pools/test_scope.py                          # NEW: resolver rules, division values, division key
-├── unit/core/validators/test_number_pool_scope_checker.py   # NEW: the checker's decision table
+├── unit/core/validators/number_pool_scope/            # NEW: the checker's decision table, one module per test type
 ├── unit/core/test_resource_manager_query.py          # NEW: unscoped rendering of the shared fragment
 ├── helpers/number_pool.py                            # PR #10932: SCOPED_POOL_SCHEMA, extended here
 ├── component/core/resource_manager/conftest.py       # existing: scoped pool fixture added
@@ -164,7 +164,7 @@ docs/docs/resource-manager/
 - `NumberPoolParameters.allocation_scope` moves from `UpdateSupport.NOT_SUPPORTED` to `UpdateSupport.VALIDATE_CONSTRAINT`; `ConstraintIdentifier` gains `ATTRIBUTE_PARAMETERS_ALLOCATION_SCOPE_UPDATE = "attribute.parameters.allocation_scope.update"`.
 - `SchemaBranch._validate_number_pool_parameters` applies the structural rules of research R3 to the declaration against the candidate schema; for an attribute whose pool does not exist yet, every declared name must resolve.
 - `SchemaNumberPoolUpserter.upsert_number_pool` creates the pool with the resolved scope in its stored form; `SchemaNumberPoolSynchronizer._update_pool_from_schema` leaves the scope untouched.
-- `backend/infrahub/core/validators/pool/scope.py::NumberPoolScopeChecker`, registered in `CONSTRAINT_VALIDATOR_MAP` under the nine names of research R8 and added to the aggregated checker's list, loads the scoped pools of the kind once, indexes element ids to pools, and returns one violation per dependent pool when the diff makes an element optional, changes a relationship's cardinality, removes an element or sets `unique: true` on the tracked attribute. For `attribute.name.update`, `relationship.name.update` and `attribute.parameters.allocation_scope.update` on a kind with a schema-created pool, it compares the declaration to the stored scope by id (research R9) and names a rename. The relationship `name` field of `backend/infrahub/core/schema/definitions/internal.py` moves to `UpdateSupport.VALIDATE_CONSTRAINT` so that a relationship rename reaches the checker; `backend/infrahub/core/schema/generated/relationship_schema.py` is regenerated.
+- `backend/infrahub/core/validators/pool/scope.py::NumberPoolScopeChecker`, registered in `CONSTRAINT_VALIDATOR_MAP` under the ten names of research R8 and added to the aggregated checker's list, which also runs it for `node.uniqueness_constraints.update` (owned by the uniqueness checker in the map), loads the scoped pools of the kind once, indexes element ids to pools, and returns one violation per dependent pool when the diff makes an element optional, changes a relationship's cardinality, changes an attribute to the kind `List`, `JSON` or `Any`, removes an element or makes the tracked attribute unique, through `unique: true` or a node uniqueness constraint naming it alone. For `attribute.name.update`, `relationship.name.update` and `attribute.parameters.allocation_scope.update` on a kind with a schema-created pool, it compares the declaration to the stored scope by id (research R9) and names a rename. The relationship `name` field of `backend/infrahub/core/schema/definitions/internal.py` moves to `UpdateSupport.VALIDATE_CONSTRAINT` so that a relationship rename reaches the checker; `backend/infrahub/core/schema/generated/relationship_schema.py` is regenerated.
 
 ## Complexity Tracking
 

@@ -21,7 +21,7 @@ These thirteen decisions were taken by the product owner after the sources were 
 3. An allocation scope element is not a plain string holding the attribute name. It stores the unique identifier of the attribute or relationship (the schema element id), so that it can be referenced.
 4. The user views each element with a readable name. When a query returns the allocation scope, each element is an object holding both the identifier and the name (`id` and `name`), not a string.
 5. The structure described in PR #10932 was communicated to the frontend team. It changes only to apply decision 4 (a list of `{id, name}` objects where it listed strings). This is a breaking change relative to the PR description. The rest of that structure stays unless a reason to change it is documented in this spec or the plan.
-6. Renaming a scoped attribute or relationship is allowed. Removing it, making it optional, or changing its cardinality is refused while a pool's scope depends on it.
+6. Renaming a scoped attribute or relationship is allowed. Removing it, making it optional, changing its cardinality, or changing an attribute to the kind `List`, `JSON` or `Any` (decision 10) is refused while a pool's scope depends on it.
 7. The division of the node being written is read on the branch the request runs on. A holding object of a number the pool already tracks counts in every division it occupies on any live branch.
    - The division is the set of values of the node's scope elements: the peer id of a relationship, the value of an attribute.
    - For the node being written, it is a normal branch read: a node not changed on that branch reads as on the default branch.
@@ -112,7 +112,7 @@ A schema author who changes a field that a pool's scope references is refused wh
 
 **Why this priority**: Without this guard a scope can silently stop dividing the pool (PRD FR-019). It depends on User Story 1.
 
-**Independent Test**: Create a scoped pool, then load schema changes that make the field optional, many, removed, or renamed, and check each outcome.
+**Independent Test**: Create a scoped pool, then load schema changes that make the field optional, many, removed, renamed, or of the kind `List`, `JSON` or `Any`, and check each outcome.
 
 **Acceptance Scenarios**:
 
@@ -120,6 +120,7 @@ A schema author who changes a field that a pool's scope references is refused wh
 2. **Given** a pool scoped by `site`, **When** a schema load makes the pool's tracked attribute `unique: true`, **Then** the load is refused and the error names the pool, because a globally unique number cannot repeat per division.
 3. **Given** a user-created pool scoped by `site`, **When** a schema load renames the `site` relationship to `location`, **Then** the load succeeds, the pool keeps allocating per site, and the scope reads `location` as the element's name (decision 6).
 4. **Given** a pool scoped by `site`, **When** the schema change is loaded on a branch other than the default branch, **Then** it is refused on that branch as well, so that the refusal does not wait for the merge.
+5. **Given** a pool scoped by `role`, **When** a schema load changes the `role` attribute to the kind `List`, `JSON` or `Any`, **Then** the load is refused and the error names the pool and the field, because a scope element must hold a single scalar value (decision 10).
 
 ---
 
@@ -187,7 +188,7 @@ A schema author who changes a field that a pool's scope references is refused wh
 
 #### Keeping a scope valid when the schema changes
 
-- **FR-028**: A schema change that would make a scoped element optional, remove it, change its cardinality, or make the pool's tracked attribute `unique: true` MUST be refused while a pool's scope depends on it, on every branch, and the error MUST name every dependent pool and the element. (PRD FR-019; Jira IFC-3352; decision 6.)
+- **FR-028**: A schema change that would make a scoped element optional, remove it, change its cardinality, change a scoped attribute to the kind `List`, `JSON` or `Any`, or make the pool's tracked attribute `unique: true` MUST be refused while a pool's scope depends on it, on every branch, and the error MUST name every dependent pool and the element. (PRD FR-019; Jira IFC-3352; decision 6.)
 - **FR-029**: Renaming a scoped element MUST be allowed. After the rename the stored readable name of the element MUST match the new name, on every pool that references it, and allocation and the queries MUST keep working without any change to the pools. (Decisions 3 and 6.)
 
 #### Behaviour that does not change

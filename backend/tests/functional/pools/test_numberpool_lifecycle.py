@@ -18,6 +18,7 @@ from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.registration import get_branches_with_schema_number_pool
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
+from infrahub.pools.scoped_number_pool_reader import ScopedNumberPoolReader
 from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.workers.dependencies import build_cache
 from tests.helpers.dependency_override import override_dependency
@@ -89,7 +90,11 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
             db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository
         )
         snps = SchemaNumberPoolSynchronizer(
-            db=db, schema_manager=registry.schema, upserter=upserter, range_store_factory=NumberPoolRepository
+            db=db,
+            scope_reader=ScopedNumberPoolReader(db=db),
+            schema_manager=registry.schema,
+            upserter=upserter,
+            range_store_factory=NumberPoolRepository,
         )
         await snps.run()
         graphql_registry.clear_cache()
