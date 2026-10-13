@@ -6,12 +6,7 @@ import {
   NUMBER_POOL_TYPE_USER,
 } from "@/entities/resource-manager/domain/model/pool";
 
-const isFieldNameList = (value: unknown): value is string[] =>
-  Array.isArray(value) && value.every((item) => typeof item === "string");
-
 export const mapToNumberPoolData = (node: NumberPoolNode): NumberPoolData => {
-  const allocationScope = node.allocation_scope?.value;
-
   return {
     id: node.id,
     hfid: node.hfid,
@@ -27,6 +22,25 @@ export const mapToNumberPoolData = (node: NumberPoolNode): NumberPoolData => {
     },
     node: { value: node.node?.value ?? "" },
     node_attribute: { value: node.node_attribute?.value ?? "" },
-    allocation_scope: { value: isFieldNameList(allocationScope) ? allocationScope : [] },
+    allocation_scope: {
+      value:
+        (
+          node.allocation_scope?.value as Array<{
+            id: string;
+            name: string;
+          }> | null
+        )?.map(({ name }) => name) ?? [],
+    },
+    ranges: (node.ranges?.edges ?? []).flatMap(({ node: range }) =>
+      range?.start?.value == null || range.end?.value == null
+        ? []
+        : [
+            {
+              start: range.start.value,
+              end: range.end.value,
+              allocation_weight: range.allocation_weight?.value ?? null,
+            },
+          ]
+    ),
   };
 };

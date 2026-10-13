@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import type { NumberPoolUtilizationNode } from "./get-number-pool-utilization-from-api";
-import { mapToNumberPoolUtilization, toNumber } from "./number-pool-utilization.mappers";
+import { mapToNumberPoolUtilization } from "./number-pool-utilization.mappers";
 
-const figures = (used: unknown, size: unknown) => ({
+const figures = (used: number, size: number) => ({
   size,
   used,
   used_default_branch: used,
@@ -11,30 +11,12 @@ const figures = (used: unknown, size: unknown) => ({
   utilization: 0,
 });
 
-describe("toNumber", () => {
-  it("reads a number sent as a string", () => {
-    // WHEN
-    const value = toNumber("4294967295");
-
-    // THEN
-    expect(value).toBe(4_294_967_295);
-  });
-
-  it("returns 0 for a value that is not a number", () => {
-    // WHEN
-    const value = toNumber("not a number");
-
-    // THEN
-    expect(value).toBe(0);
-  });
-});
-
 describe("mapToNumberPoolUtilization", () => {
   it("maps the pool and range figures", () => {
     // GIVEN
     const node = {
       figures: { size: 100, used: 30, used_default_branch: 28, used_branches: 2, utilization: 30 },
-      ranges: [{ id: "range-1", start: "1", end: "50", weight: 10, figures: figures(30, 50) }],
+      ranges: [{ id: "range-1", start: 1, end: 50, weight: 10, figures: figures(30, 50) }],
     } as NumberPoolUtilizationNode;
 
     // WHEN

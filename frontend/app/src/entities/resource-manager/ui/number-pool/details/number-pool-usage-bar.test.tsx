@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { page } from "vitest/browser";
 
-import { render } from "../../../../../tests/components/render";
-import { initPointerTracking } from "../../../../../tests/components/utils";
-import { generateNumberPoolUsage } from "../../../../../tests/fake/number-pool";
+import { render } from "../../../../../../tests/components/render";
+import { initPointerTracking } from "../../../../../../tests/components/utils";
+import { generateNumberPoolUsage } from "../../../../../../tests/fake/number-pool";
 import { formatUsagePercent, NumberPoolUsageBar } from "./number-pool-usage-bar";
 
 describe("NumberPoolUsageBar", () => {

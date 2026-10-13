@@ -4,7 +4,7 @@ import { SearchXIcon } from "lucide-react";
 import { Col } from "@/shared/components/container";
 
 import type { NumberPoolRange } from "@/entities/resource-manager/domain/model/number-pool";
-import { NumberPoolAllocationsTable } from "@/entities/resource-manager/ui/number-pool/number-pool-allocations-table";
+import { NumberPoolAllocationsTable } from "@/entities/resource-manager/ui/number-pool/details/number-pool-allocations-table";
 import { getNumberPoolRangeUrl } from "@/entities/resource-manager/ui/routing/number-pool-urls";
 
 interface UnknownRangeProps {

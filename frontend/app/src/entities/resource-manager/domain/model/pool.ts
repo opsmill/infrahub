@@ -5,8 +5,6 @@ export const NUMBER_POOL_KIND = "CoreNumberPool";
 export const NUMBER_POOL_RANGE_KIND = "CoreNumberPoolRange";
 export const NUMBER_POOL_TYPE_SCHEMA = "Schema";
 export const NUMBER_POOL_TYPE_USER = "User";
-export const NUMBER_POOL_NODE_FIELD = "node";
-export const NUMBER_POOL_NODE_ATTRIBUTE_FIELD = "node_attribute";
 export const MIN_PREFIX_LENGTH = 1;
 export const MAX_PREFIX_LENGTH = 128;
 

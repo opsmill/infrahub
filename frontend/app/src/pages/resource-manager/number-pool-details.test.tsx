@@ -5,7 +5,7 @@ import { store } from "@/shared/stores";
 
 import type { NumberPoolUtilization } from "@/entities/resource-manager/domain/model/number-pool";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/domain/model/pool";
-import type { NumberPoolAllocationsCardProps } from "@/entities/resource-manager/ui/number-pool/number-pool-allocations-card";
+import type { NumberPoolAllocationsCardProps } from "@/entities/resource-manager/ui/number-pool/details/number-pool-allocations-card";
 import { useGetNumberPool } from "@/entities/resource-manager/ui/queries/get-number-pool.query";
 import { useGetNumberPoolUtilization } from "@/entities/resource-manager/ui/queries/get-number-pool-utilization.query";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
@@ -27,7 +27,7 @@ vi.mock("@/entities/resource-manager/ui/queries/get-number-pool-utilization.quer
   useGetNumberPoolUtilization: vi.fn(),
 }));
 
-vi.mock("@/entities/resource-manager/ui/number-pool/number-pool-allocations-card", () => ({
+vi.mock("@/entities/resource-manager/ui/number-pool/details/number-pool-allocations-card", () => ({
   NumberPoolAllocationsCard: ({ selectedRangeId }: NumberPoolAllocationsCardProps) => (
     <p>Numbers of {selectedRangeId ?? "every range"}</p>
   ),

@@ -7,12 +7,12 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 
 import type { Permission } from "@/entities/permission/domain/model/permission";
 import type { NumberPoolData } from "@/entities/resource-manager/domain/model/number-pool";
-import { NumberPoolAllocationsCard } from "@/entities/resource-manager/ui/number-pool/number-pool-allocations-card";
+import { NumberPoolAllocationsCard } from "@/entities/resource-manager/ui/number-pool/details/number-pool-allocations-card";
 import {
   NumberPoolHeader,
   NumberPoolHeaderSkeleton,
-} from "@/entities/resource-manager/ui/number-pool/number-pool-header";
-import { NumberPoolRangesCard } from "@/entities/resource-manager/ui/number-pool/number-pool-ranges-card";
+} from "@/entities/resource-manager/ui/number-pool/details/number-pool-header";
+import { NumberPoolRangesCard } from "@/entities/resource-manager/ui/number-pool/details/number-pool-ranges-card";
 import { useGetNumberPool } from "@/entities/resource-manager/ui/queries/get-number-pool.query";
 import { useGetNumberPoolUtilization } from "@/entities/resource-manager/ui/queries/get-number-pool-utilization.query";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";

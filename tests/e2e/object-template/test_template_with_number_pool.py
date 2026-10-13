@@ -9,6 +9,7 @@ pool/template (uniform fixtures keep definition order).
 from __future__ import annotations
 
 import contextlib
+import re
 from typing import TYPE_CHECKING
 
 import pytest
@@ -44,11 +45,12 @@ class TestTemplateWithNumberPool:
         await admin_page.get_by_label("Select an object type").click()
         await admin_page.get_by_role("option", name="Number Pool Core").click()
         await admin_page.get_by_label("Name *").fill("module capacity pool")
-        await admin_page.get_by_label("Node *").click()
-        await admin_page.get_by_role("option", name="Patch Panel Infra").click()
-        await expect(admin_page.get_by_label("Number Attribute *")).to_contain_text("Module Capacity")
-        await admin_page.get_by_label("Start range *").fill("100")
-        await admin_page.get_by_label("End range *").fill("200")
+        await admin_page.get_by_role("button", name=re.compile(r"Node$")).click()
+        await admin_page.get_by_role("option", name=re.compile(r"^Patch Panel InfraPatchPanel$")).click()
+        await admin_page.get_by_role("button", name=re.compile(r"Attribute$")).click()
+        await admin_page.get_by_role("option", name="Module Capacity").click()
+        await admin_page.get_by_label("Start of range 1").fill("100")
+        await admin_page.get_by_label("End of range 1").fill("200")
         await admin_page.get_by_role("button", name="Save").click()
         await expect(admin_page.get_by_text("Number pool created")).to_be_visible()
 

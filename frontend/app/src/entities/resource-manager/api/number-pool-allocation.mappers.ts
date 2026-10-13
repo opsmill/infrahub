@@ -1,5 +1,4 @@
 import type { NumberPoolAllocationNode } from "@/entities/resource-manager/api/get-number-pool-allocations-from-api";
-import { toNumber } from "@/entities/resource-manager/api/number-pool-utilization.mappers";
 import {
   NUMBER_POOL_PROVENANCE_ALLOCATED,
   NUMBER_POOL_PROVENANCE_PROVIDED,
@@ -15,7 +14,7 @@ const toProvenance = (value: unknown): NumberPoolProvenance =>
 export const mapToNumberPoolAllocation = (
   node: NumberPoolAllocationNode
 ): NumberPoolAllocation => ({
-  value: toNumber(node.value),
+  value: node.value,
   branch: node.branch,
   holder: {
     id: node.holder.id,

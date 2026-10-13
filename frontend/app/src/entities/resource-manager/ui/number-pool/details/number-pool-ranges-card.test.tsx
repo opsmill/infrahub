@@ -8,9 +8,9 @@ import { store } from "@/shared/stores";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/domain/model/pool";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
-import { render } from "../../../../../tests/components/render";
-import { generateNumberPoolUtilization } from "../../../../../tests/fake/number-pool";
-import { generateNodeSchema } from "../../../../../tests/fake/schema";
+import { render } from "../../../../../../tests/components/render";
+import { generateNumberPoolUtilization } from "../../../../../../tests/fake/number-pool";
+import { generateNodeSchema } from "../../../../../../tests/fake/schema";
 import { NumberPoolRangesCard, type NumberPoolRangesCardProps } from "./number-pool-ranges-card";
 
 const initialNodeSchemas = store.get(nodeSchemasAtom);

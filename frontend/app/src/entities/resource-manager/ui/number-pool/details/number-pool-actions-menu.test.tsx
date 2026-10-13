@@ -5,11 +5,11 @@ import type { Permission } from "@/entities/permission/domain/model/permission";
 import type { NumberPoolData } from "@/entities/resource-manager/domain/model/number-pool";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
-import { render } from "../../../../../tests/components/render";
-import { initPointerTracking } from "../../../../../tests/components/utils";
-import { generateNumberPoolData } from "../../../../../tests/fake/number-pool";
-import { generatePermission } from "../../../../../tests/fake/permission";
-import { generateNodeSchema } from "../../../../../tests/fake/schema";
+import { render } from "../../../../../../tests/components/render";
+import { initPointerTracking } from "../../../../../../tests/components/utils";
+import { generateNumberPoolData } from "../../../../../../tests/fake/number-pool";
+import { generatePermission } from "../../../../../../tests/fake/permission";
+import { generateNodeSchema } from "../../../../../../tests/fake/schema";
 import { NumberPoolActionsMenu } from "./number-pool-actions-menu";
 
 const numberPoolSchema = generateNodeSchema({ kind: "CoreNumberPool", documentation: null });

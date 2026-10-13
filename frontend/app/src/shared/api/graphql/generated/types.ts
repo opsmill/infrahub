@@ -12,7 +12,7 @@ export type Scalars = {
    * `BigInt` is not constrained to 32-bit like the `Int` type and thus is a less
    * compatible type.
    */
-  BigInt: { input: string; output: string; }
+  BigInt: { input: number; output: number; }
   /**
    * The `DateTime` scalar type represents a DateTime
    * value as specified by
