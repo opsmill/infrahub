@@ -1,0 +1,19 @@
+backend/infrahub/pools/number_pool_mock.py
+  s_bb840c84eedb2c::t_9c4969d9f38592 31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e02f41c758b35681b927a0e9a5947f5a2b2fe357",
+  "prompts": {},
+  "sessions": {
+    "s_bb840c84eedb2c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "951ca1fd-b4cd-42b0-b61a-2fb65fe22bcd",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
