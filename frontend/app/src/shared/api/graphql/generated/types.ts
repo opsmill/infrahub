@@ -12812,23 +12812,23 @@ export type CoreRepository = CoreGenericRepository & CoreNode & CoreTaskTarget &
   credential: NestedEdgedCoreCredential;
   /** Remote branch that Infrahub maps onto its own default branch. Need not be the remote default branch. */
   default_branch: Maybe<TextAttribute>;
-  /** Message of the last failed push, import or release step, with credentials removed. Live on the default branch only. */
+  /** Message of the last failed push, import or release step, with credentials removed. */
   delivery_error: Maybe<TextAttribute>;
-  /** Why the last push to the remote, or the import that follows it, failed. Live on the default branch only. */
+  /** Why the last push to the remote, or the import that follows it, failed. */
   delivery_failure_cause: Maybe<Dropdown>;
-  /** Definitions and Python computed attributes held until a release after a push or an abandonment. Live on the default branch only. */
+  /** Definitions and Python computed attributes held until a release after a push or an abandonment. */
   delivery_held_regeneration: Maybe<JsonAttribute>;
-  /** Who abandoned the last pending pushes, when, and which merged changes were dropped. Live on the default branch only. */
+  /** Who abandoned the last pending pushes, when, and which merged changes were dropped. */
   delivery_last_abandonment: Maybe<JsonAttribute>;
-  /** Commit of the last push that reached the remote. Live on the default branch only. */
+  /** Commit of the last push that reached the remote. */
   delivery_last_delivered_commit: Maybe<TextAttribute>;
-  /** Times when the push attempt started and last moved, and when the next automatic retry is due. Live on the default branch only. */
+  /** Times when the push attempt started and last moved, and when the next automatic retry is due. */
   delivery_progress: Maybe<JsonAttribute>;
-  /** Merged changes that wait to be pushed to the remote, in merge order. Live on the default branch only. */
+  /** Merged changes that wait to be pushed to the remote, in merge order. */
   delivery_queue: Maybe<JsonAttribute>;
-  /** A pushed commit that a rewrite of the remote branch history discarded. Live on the default branch only. */
+  /** A pushed commit that a rewrite of the remote branch history discarded. */
   delivery_reverted: Maybe<JsonAttribute>;
-  /** Whether merged changes wait to be pushed to the remote, and whether a user must act. Live on the default branch only. */
+  /** Whether merged changes wait to be pushed to the remote, and whether a user must act. */
   delivery_status: Maybe<Dropdown>;
   /** Description of the repository */
   description: Maybe<TextAttribute>;

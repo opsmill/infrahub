@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable, Sequence
+    from contextlib import AbstractAsyncContextManager
     from datetime import datetime
 
     from infrahub.git.writeback.models import (
@@ -54,6 +55,14 @@ class DeliveryStatePort(Protocol):
 
     async def pending_repository_ids(self) -> frozenset[str]:
         """Return the id of every repository whose delivery status is not `none`."""
+
+    def locked(self, *, repository_id: str) -> AbstractAsyncContextManager[None]:
+        """Hold the lock of the delivery state of the repository, so that no change of the state runs in the block.
+
+        Raises:
+            DeliveryStateUnavailableError: The lock is not acquired in time.
+
+        """
 
     async def enqueue(self, *, repository_id: str, entry: PendingMerge, widen: bool) -> WritebackIntent:
         """Append the merge, unless its id is queued, was removed, or was in the last abandonment.

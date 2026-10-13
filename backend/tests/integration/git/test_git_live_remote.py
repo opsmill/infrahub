@@ -46,6 +46,7 @@ from infrahub.git.utils import get_repositories_commit_per_branch
 from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
 from infrahub.workflows.catalogue import GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT, GIT_REPOSITORIES_PULL_READ_ONLY
+from tests.adapters.delivery_state import build_idle_delivery_state
 from tests.helpers.test_app import TestInfrahubApp, TestInfrahubAppHoldingWorkflows
 from tests.integration.git.conftest import (
     GOGS_ADMIN,
@@ -1060,6 +1061,7 @@ async def _collect_one_repository(
     clone = await _open_clone(client=client, tracked=tracked)
     async with lock.registry.get(name=tracked.name, namespace="repository"):
         return await clone.collect_pending_imports(
+            state=build_idle_delivery_state(repository_id=str(clone.id)),
             graph_commits=select_writable_branch_commits(
                 branch_commits=repositories[tracked.name].branches, branches=branches
             ),
