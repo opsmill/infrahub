@@ -303,11 +303,12 @@ class AllocationScopeResolver:
         )
 
     def element_fields(
-        self, kind: str, scope: AllocationScope, pool: str, attribute: str
+        self, kind: str, scope: AllocationScope, pool: str, attribute: str | None = None
     ) -> list[tuple[ScopeElement, AttributeSchema | RelationshipSchema]]:
         """Return each scope element with the attribute or relationship that holds it on `kind`, in scope order.
 
-        `pool` names the pool and `attribute` the pooled attribute in the refusal.
+        `pool` names the pool in the refusal, and `attribute` the pooled attribute whose field the refusal is keyed
+        on; without `attribute` the refusal is a plain message.
 
         Raises:
             ValidationError: When the schema branch does not define a scope element on `kind`.
@@ -318,12 +319,13 @@ class AllocationScopeResolver:
         for element in scope.elements:
             field = self.find_element_field(node_schema=node_schema, element=element) if node_schema else None
             if field is None:
-                raise ValidationError(
-                    {
-                        f"{attribute}.from_pool": f'the scope element "{element.name}" of pool {pool} does not exist'
-                        f" on {kind} on branch {self.schema_branch.name}; rebase the branch to get it"
-                    }
+                message = (
+                    f'scope element "{element.name}" of pool {pool} does not exist on {kind} on branch'
+                    f" {self.schema_branch.name}; rebase the branch to get it"
                 )
+                if attribute is None:
+                    raise ValidationError(f"The {message}")
+                raise ValidationError({f"{attribute}.from_pool": f"the {message}"})
             element_fields.append((element, field))
         return element_fields
 
