@@ -343,14 +343,14 @@ SC-002, SC-007.
 
 ### No other import of the pending destination
 
-- [ ] T039 [US1] Change `InfrahubRepository.collect_pending_imports` in
+- [X] T039 [US1] Change `InfrahubRepository.collect_pending_imports` in
       `backend/infrahub/git/repository.py`: in the active loop, skip the default branch, and every new
       or updated remote branch that a pending entry names, while the state is not `none`. Leave
       `_collect_staging_imports` unchanged. Pass the state port in from the sync flow in
       `backend/infrahub/git/tasks.py` and `backend/infrahub/git/sync.py`.
-- [ ] T040 [US1] Change `bootstrap_local_repository` in `backend/infrahub/git/tasks.py`: skip the seed
+- [X] T040 [US1] Change `bootstrap_local_repository` in `backend/infrahub/git/tasks.py`: skip the seed
       import of the default branch while the state is not `none`, and log it.
-- [ ] T041 [US1] Change `ProcessRepository.mutate` in `backend/infrahub/graphql/mutations/repository.py`:
+- [X] T041 [US1] Change `ProcessRepository.mutate` in `backend/infrahub/graphql/mutations/repository.py`:
       refuse on every branch while the state is not `none`, with the message of the GraphQL
       contract section 3.
 
@@ -381,7 +381,7 @@ SC-002, SC-007.
       workflow; and a run with no `pending_merge` and no content queues nothing. The case of a flow
       whose own enqueue fails once and then delivers moved to T077, because it needs the retries of
       the task.
-- [ ] T046 [P] [US1] Write `backend/tests/component/git/writeback/test_import_deferral.py`: the sync skips
+- [X] T046 [P] [US1] Write `backend/tests/component/git/writeback/test_import_deferral.py`: the sync skips
       the default branch and a named source branch, as new and as updated, while pending; the seed
       import skips the default branch; and `ProcessRepository` refuses on two branches.
 
@@ -675,7 +675,7 @@ and is not re-imported; retry; the branch is gone.
       cause `source-discarded`, the remote never holds the discarded commit.
 - [X] T100 [US7] Add `test_a_merge_onto_a_rewritten_trunk_is_refused` to the same module: force-push the
       remote default branch, retry, cause `destination-rewritten`, nothing pushed.
-- [ ] T101 [US7] Call `record_reverted` from IFC-3210's reconciliation of the default branch, per
+- [X] T101 [US7] Call `record_reverted` from IFC-3210's reconciliation of the default branch, per
       [research.md](research.md) R13, and add a test beside the sibling's reconciliation tests.
       **Gate: IFC-3210 rewrite classification on `develop`.**
 
