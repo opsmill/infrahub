@@ -23,6 +23,7 @@ from infrahub.auth.session import AnonymousSession
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
+from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase
@@ -53,17 +54,33 @@ from infrahub.git.tasks import merge_git_repository
 from infrahub.git.worktree import Worktree
 from infrahub.lock import InfrahubLockRegistry
 from infrahub.utils import find_first_file_in_directory
-from infrahub.workers.dependencies import build_client, build_event_service, build_message_bus
-from tests.adapters.cache import MemoryCache
+from infrahub.workers.dependencies import build_cache, build_client, build_event_service, build_message_bus
+from tests.adapters.cache import MemoryCache, RecordingCache
 from tests.adapters.event import MemoryInfrahubEvent
 from tests.adapters.lock import FailingImporter, LockTimeline, RecordingImporter
+from tests.adapters.message_bus import FailingBus
 from tests.adapters.repository_record_store import build_in_memory_recorder
+from tests.adapters.workflow import HoldingWorkflowExecution
 from tests.conftest import TestHelper
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.file_repo import MultipleStagesFileRepo
 from tests.helpers.flow import call_in_flow
-from tests.helpers.git import GraphRecordingClient, build_repository_client, clone_repository, open_repository
-from tests.helpers.repository_activity import activity_run
+from tests.helpers.git import (
+    GraphRecordingClient,
+    LocalRemote,
+    build_repository_client,
+    clone_repository,
+    open_repository,
+)
+from tests.helpers.repository_activity import (
+    activity_run,
+    last_run_branches,
+    run_record_operations,
+    run_record_writes,
+    stored_run_keys,
+)
+from tests.helpers.repository_sync import run_flow_for_state
+from tests.helpers.test_app import TestInfrahubAppHoldingWorkflows
 from tests.helpers.test_client import dummy_async_request
 
 
@@ -711,6 +728,114 @@ async def test_merge_flow_advances_the_trunk_without_a_trunk_on_the_model(
         await merge_git_repository(model=model)
 
     assert Repo(upstream_path).commit("develop").hexsha != develop_before
+
+
+@dataclass
+class MergeActivityCase:
+    name: str
+    source_branch: str
+    create_source_branch: bool
+    """Create the source branch in the local clone; a branch absent from the upstream starts at the trunk."""
+
+    failure: str | None
+    """The exception the flow raises, as its type name and message; None when the merge completes."""
+
+    expected_branches: list[dict[str, str]]
+    broadcast_fails: bool = False
+
+
+MERGE_ACTIVITY_CASES: list[MergeActivityCase] = [
+    MergeActivityCase(
+        name="merged_destination_is_imported",
+        source_branch="branch01",
+        create_source_branch=True,
+        failure=None,
+        expected_branches=[{"branch_name": "main", "outcome": "imported"}],
+    ),
+    MergeActivityCase(
+        name="merged_destination_stays_imported_when_the_broadcast_fails",
+        source_branch="branch01",
+        create_source_branch=True,
+        failure="ConnectionError: The message bus cannot be reached",
+        expected_branches=[{"branch_name": "main", "outcome": "imported"}],
+        broadcast_fails=True,
+    ),
+    MergeActivityCase(
+        name="merge_that_moves_nothing_lists_no_branch",
+        source_branch="copy-of-the-trunk",
+        create_source_branch=True,
+        failure=None,
+        expected_branches=[],
+    ),
+    MergeActivityCase(
+        name="merge_that_raises_fails_the_destination",
+        source_branch="branch01",
+        create_source_branch=False,
+        failure=(
+            "RepositoryDivergentHistoryError: Unable to merge branch01 into main in the Git repository "
+            "infrahub-test-fixture-01. This clone has no branch branch01, and the remote history of branch01 does "
+            "not contain the commit Infrahub records for it (no commit). The branch is merged in Infrahub and not in "
+            "Git. To finish the merge, merge branch01 into main in the Git repository. The next synchronization "
+            "imports the result."
+        ),
+        expected_branches=[{"branch_name": "main", "outcome": "failed"}],
+    ),
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in MERGE_ACTIVITY_CASES])
+async def test_a_merge_records_its_run_on_the_destination_branch(
+    case: MergeActivityCase,
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    dependency_provider: Provider,
+    prefect_test_fixture: None,
+    git_upstream_repo_01: dict[str, str | Path],
+    git_repos_dir: Path,
+    helper: TestHelper,
+) -> None:
+    upstream_path = str(git_upstream_repo_01["path"])
+    repo_node = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
+    await repo_node.new(db=db, name=git_upstream_repo_01["name"], location=upstream_path, default_branch="main")
+    await repo_node.save(db=db)
+    client = build_repository_client(
+        repository_id=repo_node.id,
+        name=str(git_upstream_repo_01["name"]),
+        location=upstream_path,
+        default_branch="main",
+        commit=Repo(upstream_path).commit("main").hexsha,
+    )
+    repo = await clone_repository(
+        id=repo_node.id, name=git_upstream_repo_01["name"], location=upstream_path, default_branch="main", client=client
+    )
+    if case.create_source_branch:
+        await repo.create_branch_in_git(branch_name=case.source_branch, branch_id=case.source_branch)
+    model = GitRepositoryMerge(
+        repository_id=repo_node.id,
+        repository_name=str(git_upstream_repo_01["name"]),
+        source_branch=case.source_branch,
+        destination_branch=default_branch.name,
+        destination_branch_id=str(default_branch.get_uuid()),
+        internal_status=RepositoryInternalStatus.ACTIVE.value,
+        repository_kind=InfrahubKind.REPOSITORY,
+    )
+    cache = RecordingCache()
+    message_bus = FailingBus() if case.broadcast_fails else await helper.get_message_bus_simulator()
+
+    with (
+        override_dependency(build_client, lambda: client, dependency_provider=dependency_provider),
+        override_dependency(build_message_bus, lambda: message_bus, dependency_provider=dependency_provider),
+        override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider),
+    ):
+        state = await run_flow_for_state(merge_git_repository, parameters={"model": model})
+
+    raised = None if state.is_completed() else await state.aresult(raise_on_failure=False)
+    assert (f"{type(raised).__name__}: {raised}" if raised else None) == case.failure
+    assert run_record_operations(cache=cache, repository_id=repo_node.id) == {"merge"}
+    assert run_record_writes(cache=cache, repository_id=repo_node.id) == [(None, None)]
+    assert stored_run_keys(cache=cache, repository_id=repo_node.id) == []
+    assert last_run_branches(cache=cache, repository_id=repo_node.id, operation="merge") == case.expected_branches
 
 
 async def test_rebase(git_repo_01: InfrahubRepository, branch01: BranchData) -> None:
@@ -1747,3 +1872,119 @@ async def test_init_reinitialized_after_missing_directory(
     new_branches, updated_branches = await recovered.compare_local_remote()
     assert not new_branches
     assert not updated_branches
+
+
+@dataclass
+class ReadOnlyMergeActivityCase:
+    name: str
+    source_commit: str
+    expected_branches: list[dict[str, str]]
+
+
+READ_ONLY_DESTINATION_COMMIT = "1111111111111111111111111111111111111111"
+READ_ONLY_MERGE_ACTIVITY_CASES: list[ReadOnlyMergeActivityCase] = [
+    ReadOnlyMergeActivityCase(
+        name="destination_already_holds_the_source",
+        source_commit=READ_ONLY_DESTINATION_COMMIT,
+        expected_branches=[],
+    ),
+    ReadOnlyMergeActivityCase(
+        name="source_is_copied_to_the_destination",
+        source_commit="2222222222222222222222222222222222222222",
+        expected_branches=[{"branch_name": "main", "outcome": "imported"}],
+    ),
+]
+
+
+class TestGraphMergeActivity(TestInfrahubAppHoldingWorkflows):
+    """Merges that read and write the repository node on several branches, so they need a real server.
+
+    A commit written by the merge submits workflows of its own, which are held.
+    """
+
+    async def test_a_staging_merge_records_the_destination_as_imported(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        dependency_provider: Provider,
+        workflow_local: HoldingWorkflowExecution,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """The repository was added on a branch, and merging that branch makes it active on the default branch."""
+        name = "staging-merge-repo"
+        source_branch = "staging-merge-source"
+        remote = LocalRemote.create(directory=tmp_path / name, trunk="main", branches=[])
+        await create_branch(branch_name=source_branch, db=db)
+        node = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
+        await node.new(
+            db=db,
+            name=name,
+            location=str(remote.directory),
+            default_branch="main",
+            internal_status=RepositoryInternalStatus.STAGING.value,
+        )
+        await node.save(db=db)
+        model = GitRepositoryMerge(
+            repository_id=node.id,
+            repository_name=name,
+            source_branch=source_branch,
+            destination_branch=registry.default_branch,
+            destination_branch_id=str(UUIDT()),
+            internal_status=RepositoryInternalStatus.STAGING.value,
+            repository_kind=InfrahubKind.REPOSITORY,
+        )
+        cache = RecordingCache()
+
+        with (
+            override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider),
+            workflow_local.hold(),
+        ):
+            await merge_git_repository(model=model)
+
+        merged = await client.get(kind=InfrahubKind.REPOSITORY, id=node.id)
+        assert merged.internal_status.value == RepositoryInternalStatus.ACTIVE.value
+        assert stored_run_keys(cache=cache, repository_id=node.id) == []
+        assert last_run_branches(cache=cache, repository_id=node.id, operation="merge") == [
+            {"branch_name": registry.default_branch, "outcome": "imported"}
+        ]
+
+    @pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in READ_ONLY_MERGE_ACTIVITY_CASES])
+    async def test_a_read_only_merge_lists_the_destination_only_when_it_changes(
+        self,
+        case: ReadOnlyMergeActivityCase,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        dependency_provider: Provider,
+        workflow_local: HoldingWorkflowExecution,
+    ) -> None:
+        node = await Node.init(db=db, schema=InfrahubKind.READONLYREPOSITORY)
+        await node.new(
+            db=db,
+            name=f"read-only-merge-{case.name.replace('_', '-')}",
+            location="/read-only/merge",
+            ref="main",
+            commit=READ_ONLY_DESTINATION_COMMIT,
+        )
+        await node.save(db=db)
+        model = GitRepositoryMerge(
+            repository_id=node.id,
+            repository_name=node.get_attribute("name").value,
+            source_branch="read-only-source",
+            destination_branch=registry.default_branch,
+            destination_branch_id=str(UUIDT()),
+            internal_status=RepositoryInternalStatus.ACTIVE.value,
+            repository_kind=InfrahubKind.READONLYREPOSITORY,
+            source_ref="main",
+            source_commit=case.source_commit,
+        )
+        cache = RecordingCache()
+
+        with (
+            override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider),
+            workflow_local.hold(),
+        ):
+            await merge_git_repository(model=model)
+
+        assert stored_run_keys(cache=cache, repository_id=node.id) == []
+        assert last_run_branches(cache=cache, repository_id=node.id, operation="merge") == case.expected_branches
