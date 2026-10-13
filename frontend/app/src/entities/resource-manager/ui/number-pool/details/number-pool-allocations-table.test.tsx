@@ -9,12 +9,12 @@ import { useGetNumberPoolAllocationCount } from "@/entities/resource-manager/ui/
 import { useGetNumberPoolAllocations } from "@/entities/resource-manager/ui/queries/get-number-pool-allocations.query";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
-import { render } from "../../../../../tests/components/render";
+import { render } from "../../../../../../tests/components/render";
 import {
   generateNumberPoolAllocation,
   generateNumberPoolUtilization,
-} from "../../../../../tests/fake/number-pool";
-import { generateAttributeSchema, generateNodeSchema } from "../../../../../tests/fake/schema";
+} from "../../../../../../tests/fake/number-pool";
+import { generateAttributeSchema, generateNodeSchema } from "../../../../../../tests/fake/schema";
 import {
   NumberPoolAllocationsTable,
   type NumberPoolAllocationsTableProps,

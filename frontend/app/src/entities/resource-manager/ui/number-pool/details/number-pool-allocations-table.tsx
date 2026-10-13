@@ -30,8 +30,8 @@ import {
   type NumberPoolProvenance,
 } from "@/entities/resource-manager/domain/model/number-pool";
 import { useNumberPoolAllocationFilters } from "@/entities/resource-manager/ui/hooks/use-number-pool-allocation-filters";
-import { NumberPoolAllocationFiltersBar } from "@/entities/resource-manager/ui/number-pool/number-pool-allocation-filters-bar";
-import { formatRangeLabel } from "@/entities/resource-manager/ui/number-pool/number-pool-ranges-card";
+import { NumberPoolAllocationFiltersBar } from "@/entities/resource-manager/ui/number-pool/details/number-pool-allocation-filters-bar";
+import { formatRangeLabel } from "@/entities/resource-manager/ui/number-pool/details/number-pool-ranges-card";
 import { useGetNumberPoolAllocationCount } from "@/entities/resource-manager/ui/queries/get-number-pool-allocation-count.query";
 import { useGetNumberPoolAllocations } from "@/entities/resource-manager/ui/queries/get-number-pool-allocations.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";

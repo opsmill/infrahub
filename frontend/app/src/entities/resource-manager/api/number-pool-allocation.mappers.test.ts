@@ -5,7 +5,7 @@ import { mapToNumberPoolAllocation } from "./number-pool-allocation.mappers";
 
 const buildNode = (overrides: Partial<Record<keyof NumberPoolAllocationNode, unknown>> = {}) =>
   ({
-    value: "64512",
+    value: 64_512,
     branch: "b1",
     provenance: "ALLOCATED",
     holder: { id: "device-1", kind: "InfraDevice", display_label: "leaf-par1-01" },

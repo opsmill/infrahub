@@ -6,17 +6,17 @@ import { store } from "@/shared/stores";
 import type { NumberPoolData } from "@/entities/resource-manager/domain/model/number-pool";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
-import { render } from "../../../../../tests/components/render";
-import { generateNumberPoolData } from "../../../../../tests/fake/number-pool";
-import { generatePermission } from "../../../../../tests/fake/permission";
+import { render } from "../../../../../../tests/components/render";
+import { generateNumberPoolData } from "../../../../../../tests/fake/number-pool";
+import { generatePermission } from "../../../../../../tests/fake/permission";
 import {
   generateAttributeSchema,
   generateNodeSchema,
   generateRelationshipSchema,
-} from "../../../../../tests/fake/schema";
+} from "../../../../../../tests/fake/schema";
 import { NumberPoolHeader, NumberPoolHeaderSkeleton } from "./number-pool-header";
 
-vi.mock("@/entities/resource-manager/ui/number-pool/number-pool-actions-menu", () => ({
+vi.mock("@/entities/resource-manager/ui/number-pool/details/number-pool-actions-menu", () => ({
   NumberPoolActionsMenu: () => <button type="button">Actions</button>,
 }));
 

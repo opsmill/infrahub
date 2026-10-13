@@ -14,7 +14,7 @@ import {
   NUMBER_POOL_TYPE_SCHEMA,
   type NumberPoolType,
 } from "@/entities/resource-manager/domain/model/pool";
-import { NumberPoolUsageBar } from "@/entities/resource-manager/ui/number-pool/number-pool-usage-bar";
+import { NumberPoolUsageBar } from "@/entities/resource-manager/ui/number-pool/details/number-pool-usage-bar";
 import { getNumberPoolRangeUrl } from "@/entities/resource-manager/ui/routing/number-pool-urls";
 
 const ALL_RANGES_KEY = "all";

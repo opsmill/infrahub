@@ -1,0 +1,1 @@
+Changed the number pool form so that creating a pool sets its node, number attribute, optional allocation scope and several weighted ranges in one save, and editing a pool changes its name, description and ranges while its node, attribute and scope stay read-only.

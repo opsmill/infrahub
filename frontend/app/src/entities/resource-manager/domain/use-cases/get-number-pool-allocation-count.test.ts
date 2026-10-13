@@ -20,7 +20,7 @@ describe("getNumberPoolAllocationCount", () => {
   it("returns the number of allocations as a number", async () => {
     // GIVEN
     vi.mocked(getNumberPoolAllocationCountFromApi).mockResolvedValue({
-      data: { InfrahubNumberPoolAllocations: { count: "250" } },
+      data: { InfrahubNumberPoolAllocations: { count: 250 } },
     } as unknown as ApiResult);
 
     // WHEN
