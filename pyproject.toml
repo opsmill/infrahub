@@ -63,7 +63,7 @@ dependencies = [
     "puremagic>=1.30,<2",
     # Dependencies specific to the SDK
     "rich>=13,<14",
-    "dulwich==1.2.6",
+    "dulwich==1.2.9",
     "whenever==0.9.3",
     "netutils==1.12.0",
     "ariadne-codegen==0.18.0",

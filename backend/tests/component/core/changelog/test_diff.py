@@ -317,7 +317,9 @@ async def test_changelog_of_a_relationship_missing_from_the_schema(
         name="removed_relationship",
         cardinality=RelationshipCardinality.MANY,
         action=DiffAction.UPDATED,
-        relationships={EnrichedRelationshipElementFactory.build(peer_id=peer_id, action=DiffAction.ADDED)},
+        relationships={
+            EnrichedRelationshipElementFactory.build(peer_id=peer_id, action=DiffAction.ADDED, properties=set())
+        },
         nodes=set(),
     )
     node = EnrichedNodeFactory.build(

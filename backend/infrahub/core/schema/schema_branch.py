@@ -1774,6 +1774,8 @@ class SchemaBranch:
     def _propagate_human_friendly_id_to_constraints(self, name: str, raise_parsing_errors: bool) -> None:
         """Append the HFID-derived constraint to node.uniqueness_constraints if not already present.
 
+        Presence is the set of fields, so an existing constraint with the same fields in a
+        different order is kept as-is. A subset or superset does not count as the same constraint.
         No-op if the node has no HFID or the conversion produces an empty constraint.
         Path-parsing failures from `convert_hfid_to_uniqueness_constraint` are re-raised
         when `raise_parsing_errors=True` and silently skipped otherwise.
@@ -1794,8 +1796,9 @@ class SchemaBranch:
 
         node = self.get(name=name, duplicate=True)
         # Make sure there is no duplicate regarding generics values.
+        hfid_fields = set(hfid_uniqueness_constraint)
         if node.uniqueness_constraints:
-            if hfid_uniqueness_constraint not in node.uniqueness_constraints:
+            if not any(set(constraint) == hfid_fields for constraint in node.uniqueness_constraints):
                 node.uniqueness_constraints.append(hfid_uniqueness_constraint)
         else:
             node.uniqueness_constraints = [hfid_uniqueness_constraint]
