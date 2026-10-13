@@ -99,6 +99,7 @@ For what the merge checks, how writes are blocked while it runs, and merging a b
 - Infrahub does not indicate when the default branch has changed since you created or last rebased your branch. To see what changed on the default branch, compare it over time as described in [What changes when another branch merges](#what-changes-when-another-branch-merges).
 - A rebase has no dry run. A refused rebase changes no data on the branch, so running the rebase is the check.
 - Infrahub does not reserve an object for one branch. You can change the same object on two branches, and Infrahub reports the conflict on the second branch after the first one merges.
+- Changes on two branches to different objects do not conflict, even when the same artifact reads both. If you merge the second branch without rebasing it and re-running its checks after the first merge, each Proposed Change showed the artifact with only its own change, and Infrahub regenerates the artifact on the default branch with both changes, a version that neither Proposed Change showed. See [How artifacts reach the default branch](../artifacts/overview.mdx#how-artifacts-reach-the-default-branch).
 
 ## Related
 

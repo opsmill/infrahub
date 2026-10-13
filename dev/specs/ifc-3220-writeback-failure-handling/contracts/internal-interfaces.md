@@ -71,6 +71,7 @@ class DeliveryStatePort(Protocol):
     async def expire_lease(self, *, repository_id: str, lease_id: str) -> None: ...
     async def clear_released(self, *, repository_id: str, lease_id: str) -> None: ...
     async def touch(self, *, repository_id: str) -> None: ...
+    async def forget_delivered_commit(self, *, repository_id: str) -> None: ...
     async def record_reverted(self, *, repository_id: str, delivered_commit: str, new_head: str) -> bool: ...
 
 
@@ -124,6 +125,7 @@ Neo4j driver would refuse the second transaction anyway, but only after the lock
 | `expire_lease` | Sets the lease's `expires_at` to now, and keeps the items of its window held. The lease then protects nothing, the same as the lease of a dead worker (`research.md` R10, rules 3 and 4). The next lease takes those items, and they move to it. The run that took the lease calls it when its release fails. Does nothing when the lease is gone. |
 | `clear_released` | Removes each item that the lease names and that still has the named `hold_seq`, then the lease itself. An item held again after the lease was taken has a higher `hold_seq`, so it stays. Does nothing when the lease is gone, because a newer lease then owns its items. When the queue is empty, the same save clears the cause and the error, which only a failed release can have left. |
 | `touch` | Moves `last_progress_at`. The recovery check calls it after it submits. |
+| `forget_delivered_commit` | Clears `delivery_last_delivered_commit`. Writes nothing when it is already empty. |
 | `record_reverted` | Writes `delivery_reverted` with the store's time and returns `True`. Writes nothing and returns `False` when the record already names the delivered commit, so the first record keeps its new head and its time. |
 
 Every method that adds or clears a lease also cleans up the expired leases in the same save
@@ -637,5 +639,6 @@ Contract:
 | `git/tasks.py::generate_artifact_definition`, `generators/tasks.py::run_generator_definition` | Accept `exclude_repository_ids` and `include_repository_ids`. |
 | `computed_attribute/tasks.py::computed_attribute_setup_python` | On the default branch, passes the selected pairs through the barrier. |
 | `graphql/mutations/repository.py::ProcessRepository` | Refuses on every branch while the state is not `none`. |
+| `git/tasks.py::import_objects_from_git_repository` | For a `CoreRepository`, reads the state again under the repository lock, right before it applies, and fails with the refusal message of `ProcessRepository` while the state is not `none`. A merge queued after the mutation checked then still stops the import. |
 | `core/convert_object_type/repository_conversion.py::convert_repository_type` | Takes the state port, `delivery_state: DeliveryStatePort`, which the `ConvertObjectType` mutation builds. Under the repository lock, before it deletes the node, it refuses the conversion of a `CoreRepository` with `DeliveryPendingError` while the status is not `none`, and while held regeneration waits, which can stay after a settle or an abandonment with the status `none`. The deletion would drop the queue or the held regeneration with no abandonment record. It reads the state and deletes the node in one `delivery_state.locked(...)` block, taken inside the repository lock, the order of `research.md` R2. A merge that enqueues meanwhile waits for the block, then fails because the node is gone. Before it takes the lock, it also refuses, with `ValidationError`, a mapping that sets a read-only attribute of the target kind through `source_field` or `data`, so a conversion from a read-only repository cannot write the delivery state around the store. The check covers the repository conversion only: other kinds have read-only attributes that the automatic mapping copies. |
-| IFC-3210's reconciliation | Calls `state.record_reverted` when the condition of `research.md` R13 holds. Gated on IFC-3210. |
+| IFC-3210's reconciliation | Calls `state.record_reverted` when the condition of `research.md` R13 holds, and `state.forget_delivered_commit` on a re-target of the default branch. Gated on IFC-3210. |

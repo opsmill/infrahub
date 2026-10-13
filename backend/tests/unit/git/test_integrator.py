@@ -1,3 +1,6 @@
+import ast
+import inspect
+import textwrap
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -16,6 +19,9 @@ from infrahub.core.constants import ContentType
 from infrahub.exceptions import TransformError
 from infrahub.git.import_errors import describe_import_error
 from infrahub.git.integrator import (
+    ImportProgress,
+    ImportSummaryStep,
+    InfrahubRepositoryIntegrator,
     collect_artifact_definitions,
     serialize_artifact_content,
     validate_jinja2_transform_against_schema,
@@ -116,6 +122,77 @@ def test_serialize_artifact_content_without_payload() -> None:
             commit="d9b3b6f9e2c0a1d4e5f60718293a4b5c6d7e8f90",
             location="transform01.py::Transform01",
         )
+
+
+@dataclass
+class ImportSummaryCase:
+    name: str
+    step: ImportSummaryStep | None
+    expected: str
+
+
+IMPORT_SUMMARY_CASES = [
+    ImportSummaryCase(
+        name="before_any_step",
+        step=None,
+        expected="Import of branch 'feature-x' stopped before any import step ran, so nothing was imported.",
+    ),
+    ImportSummaryCase(
+        name="first_step",
+        step=ImportSummaryStep.SCHEMA,
+        expected=(
+            "Import of branch 'feature-x' stopped while importing the schema. Completed: none. "
+            "Not run: GraphQL queries; Python transforms; Jinja2 transforms; objects and menus; check definitions; "
+            "generator definitions; artifact definitions; generator actions and trigger rules from object files; "
+            "deletion of removed GraphQL queries, transforms, checks and generators."
+        ),
+    ),
+    ImportSummaryCase(
+        name="middle_step",
+        step=ImportSummaryStep.OBJECTS,
+        expected=(
+            "Import of branch 'feature-x' stopped while importing objects and menus. "
+            "Completed: schema; GraphQL queries; Python transforms; Jinja2 transforms. "
+            "Not run: check definitions; generator definitions; artifact definitions; "
+            "generator actions and trigger rules from object files; "
+            "deletion of removed GraphQL queries, transforms, checks and generators."
+        ),
+    ),
+    ImportSummaryCase(
+        name="last_step",
+        step=ImportSummaryStep.STALE_NODE_DELETION,
+        expected=(
+            "Import of branch 'feature-x' stopped while deleting removed GraphQL queries, transforms, checks and "
+            "generators. Completed: schema; GraphQL queries; Python transforms; Jinja2 transforms; objects and menus; "
+            "check definitions; generator definitions; artifact definitions; "
+            "generator actions and trigger rules from object files. Not run: none."
+        ),
+    ),
+]
+
+
+@pytest.mark.parametrize("case", IMPORT_SUMMARY_CASES, ids=lambda c: c.name)
+def test_import_summary_names_completed_and_skipped_steps(case: ImportSummaryCase) -> None:
+    assert ImportProgress(step=case.step).summary(branch_name="feature-x") == case.expected
+
+
+def test_apply_sets_every_summary_step_in_the_order_the_summary_lists_them() -> None:
+    tree = ast.parse(textwrap.dedent(inspect.getsource(InfrahubRepositoryIntegrator.apply_import_plan)))
+    assignments = sorted(
+        (
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Attribute)
+            and node.targets[0].attr == "step"
+        ),
+        key=lambda node: node.lineno,
+    )
+
+    assert [ast.unparse(node.value) for node in assignments] == [
+        f"ImportSummaryStep.{step.name}" for step in ImportSummaryStep
+    ]
 
 
 def test_jinja2_transform_entry_matches_its_core_schema() -> None:

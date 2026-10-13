@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import re
-from datetime import UTC, datetime
-from functools import partial
 from typing import TYPE_CHECKING, Any, Self, cast
 
 import httpx
@@ -21,7 +19,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreGenericRepository, CoreReadOnlyRepository
 from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema
-from infrahub.exceptions import NodeNotFoundError, NothingPendingError, ValidationError
+from infrahub.exceptions import NodeNotFoundError, NothingPendingError, ReimportPendingPushesError, ValidationError
 from infrahub.git.divergence.suppression import RetargetMarkers
 from infrahub.git.models import (
     GitReadOnlyRepositoryCheckRefs,
@@ -32,7 +30,7 @@ from infrahub.git.models import (
     TrackedRef,
 )
 from infrahub.git.writeback.runs import delivery_run_tags
-from infrahub.git.writeback.store import WritebackIntentStore, build_intent_store
+from infrahub.git.writeback.store import build_intent_store
 from infrahub.graphql.types.common import IdentifierInput
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
@@ -284,8 +282,8 @@ class ProcessRepository(Mutation):
         """Reimport the objects of the repository at its current commit.
 
         Raises:
-            ValidationError: On every branch, while merged changes of a read-write repository wait for
-                their push to the remote, because the reimport would remove the objects of those merges.
+            ReimportPendingPushesError: On every branch, while merged changes of a read-write repository
+                wait for their push to the remote, because the reimport would remove the objects of those merges.
 
         """
         graphql_context: GraphqlContext = info.context
@@ -300,10 +298,7 @@ class ProcessRepository(Mutation):
         if repo.get_kind() == InfrahubKind.REPOSITORY:
             state = await build_intent_store(db=graphql_context.db, lock_registry=lock.registry)
             if (await state.read(repository_id=repo.id)).status is not RepositoryDeliveryStatus.NONE:
-                raise ValidationError(
-                    f"Repository {repo.name.value} has pending pushes; a reimport now would remove the objects "
-                    "they added. Retry or abandon the pending pushes first."
-                )
+                raise ReimportPendingPushesError(repository_name=str(repo.name.value))
 
         model = GitRepositoryImportObjects(
             repository_id=repository_id,
@@ -490,6 +485,11 @@ class RepositoryDeliveryRetry(Mutation):
         repo = await NodeManager.get_one_by_id_or_default_filter(
             db=graphql_context.db, kind=CoreGenericRepository, id=str(data.id), branch=branch
         )
+        # The lookup does not enforce the kind it is given, so a node of another kind answers as an unknown id.
+        if repo.get_kind() not in {InfrahubKind.REPOSITORY, InfrahubKind.READONLYREPOSITORY}:
+            raise NodeNotFoundError(
+                branch_name=branch.name, node_type=InfrahubKind.GENERICREPOSITORY, identifier=str(data.id)
+            )
         repository_name = repo.name.value
         if repo.get_kind() != InfrahubKind.REPOSITORY:
             raise ValidationError(f"Repository {repository_name} is read-only and never pushes to its remote.")
@@ -498,9 +498,7 @@ class RepositoryDeliveryRetry(Mutation):
                 f"Repository {repository_name} is staging; its changes are pushed when its proposed change merges."
             )
 
-        store = WritebackIntentStore(
-            db=graphql_context.db, lock_registry=lock.registry, default_branch=branch, clock=partial(datetime.now, UTC)
-        )
+        store = await build_intent_store(db=graphql_context.db, lock_registry=lock.registry)
         intent = await store.read(repository_id=repo.id)
         if not intent.queue.entries:
             raise NothingPendingError(repository_name=repository_name)

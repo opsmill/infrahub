@@ -35,7 +35,7 @@ from infrahub.core.merge.selective_regen.gate import DefinitionGate
 from infrahub.core.merge.selective_regen.models import CascadeRole, PlannedRegeneration
 from infrahub.core.merge.selective_regen.orchestrator import MergeSelectiveRegeneration
 from infrahub.core.merge.selective_regen.participant import CascadeSource, CascadeTerminal
-from infrahub.exceptions import ServiceUnavailableError
+from infrahub.exceptions import ServiceUnavailableError, WorkflowOrchestrationError
 from infrahub.generators.constants import GeneratorDefinitionRunSource
 from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
 from infrahub.git.models import RequestArtifactDefinitionGenerate
@@ -876,8 +876,8 @@ DISPATCH_FAILURE_TEST_CASES: list[DispatchFailureTestCase] = [
         name="a_held_generator_run_that_the_orchestrator_cannot_start",
         failing=REQUEST_GENERATOR_DEFINITION_RUN,
         held=HeldRegeneration(generator_definitions=(HeldItem(id="gd-x", hold_seq=1),)),
-        run_error=httpx.ConnectError,
-        error=httpx.ConnectError,
+        run_error=WorkflowOrchestrationError,
+        error=WorkflowOrchestrationError,
         match=r"^Could not run request-generator-definition-run$",
         expected_calls=[("execute", REQUEST_GENERATOR_DEFINITION_RUN, {"model": _generator_run(definition_id="gd-x")})],
         expected_renewals=[0, 0],
@@ -935,9 +935,24 @@ async def test_a_failed_dispatch_raises_with_no_renewal_after_it(test_case: Disp
     assert renew.after_calls == test_case.expected_renewals
 
 
-async def test_a_failed_generator_run_regenerates_the_terminals_of_its_repository_and_does_not_raise() -> None:
+@dataclass
+class FailedGeneratorRunTestCase:
+    name: str
+    run_error: type[Exception]
+
+
+FAILED_GENERATOR_RUN_TEST_CASES: list[FailedGeneratorRunTestCase] = [
+    FailedGeneratorRunTestCase(name="a_runtime_error_of_the_flow", run_error=RuntimeError),
+    FailedGeneratorRunTestCase(name="an_http_error_of_the_flow", run_error=httpx.ConnectError),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in FAILED_GENERATOR_RUN_TEST_CASES])
+async def test_a_failed_generator_run_regenerates_the_terminals_of_its_repository_and_does_not_raise(
+    test_case: FailedGeneratorRunTestCase,
+) -> None:
     state = await _delivery_state(REPOSITORY_X, REPOSITORY_Y)
-    recorder = FailingWorkflowRecorder(failing=REQUEST_GENERATOR_DEFINITION_RUN)
+    recorder = FailingWorkflowRecorder(failing=REQUEST_GENERATOR_DEFINITION_RUN, run_error=test_case.run_error)
     renew = RecordedRenewals(recorder=recorder)
     releaser = _releaser(
         recorder=recorder,

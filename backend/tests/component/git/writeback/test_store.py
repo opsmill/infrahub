@@ -687,6 +687,21 @@ async def test_clear_released_keeps_an_item_held_again_after_the_lease(subject: 
     )
 
 
+async def test_forget_delivered_commit_clears_it_once(subject: StoreUnderTest) -> None:
+    await _enqueue(subject, pending_merge("e1"))
+    snapshot = await subject.store.start_attempt(repository_id=subject.repository_id)
+    await subject.store.settle_delivery(
+        repository_id=subject.repository_id, snapshot=snapshot, delivered_commit=DELIVERED_COMMIT
+    )
+
+    async with subject.expect_transition(saved={LAST_DELIVERED_COMMIT}):
+        await subject.store.forget_delivered_commit(repository_id=subject.repository_id)
+    async with subject.expect_transition(saved=set()):
+        await subject.store.forget_delivered_commit(repository_id=subject.repository_id)
+
+    assert (await subject.read()).last_delivered_commit is None
+
+
 async def test_record_reverted_keeps_the_record_of_the_same_commit_and_overwrites_another(
     subject: StoreUnderTest,
 ) -> None:

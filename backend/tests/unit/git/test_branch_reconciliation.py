@@ -1331,15 +1331,16 @@ async def test_a_rewrite_of_the_default_branch_that_keeps_the_pushed_commit_reco
     assert reverted_push(state, tracked) is None
 
 
-async def test_a_pushed_commit_that_an_earlier_rewrite_discarded_is_not_recorded_again(
+async def test_a_pushed_commit_that_an_earlier_rewrite_discarded_is_recorded_at_the_next_rewrite(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """The record of the earlier rewrite failed, and nothing selects that rewrite again."""
     tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
     pushed = tracked.remote.commit(branch_name="main", files={"data.txt": "main v2\n"})
     await tracked.repository.fetch()
     imported_trunk = tracked.remote.commit(branch_name="main", files={"data.txt": "main v3\n"}, amend=True)
     await tracked.repository.fetch()
-    tracked.remote.commit(branch_name="main", files={"data.txt": "main v4\n"}, amend=True)
+    rewritten_trunk = tracked.remote.commit(branch_name="main", files={"data.txt": "main v4\n"}, amend=True)
     state = pushed_state(tracked, last_delivered_commit=pushed)
 
     collected = await tracked.repository.collect_pending_imports(
@@ -1347,13 +1348,15 @@ async def test_a_pushed_commit_that_an_earlier_rewrite_discarded_is_not_recorded
     )
 
     assert collected.failed_imports == []
-    assert reverted_push(state, tracked) is None
+    assert reverted_push(state, tracked) == RevertedDelivery(
+        delivered_commit=pushed, new_head=rewritten_trunk, detected_at=REWRITTEN_AT
+    )
 
 
-async def test_a_trunk_re_pointed_on_purpose_records_no_reverted_push(
+async def test_a_trunk_re_pointed_on_purpose_forgets_the_pushed_commit(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The pushed commit stays on the branch that the trunk tracked before."""
+    """The pushed commit stays on the branch that the trunk tracked before, so a later rewrite must not report it."""
     re_pointed = await re_point_the_trunk(tmp_path=tmp_path, monkeypatch=monkeypatch)
     state = pushed_state(re_pointed.tracked, last_delivered_commit=re_pointed.discarded_commit)
 
@@ -1364,28 +1367,59 @@ async def test_a_trunk_re_pointed_on_purpose_records_no_reverted_push(
     )
 
     assert collected.failed_imports == []
-    assert reverted_push(state, re_pointed.tracked) is None
+    intent = state.intents[str(re_pointed.tracked.repository.id)]
+    assert (intent.last_delivered_commit, intent.reverted) == (None, None)
 
 
+@dataclass
+class FailedRevertedPushCase:
+    name: str
+    error: Exception
+    reason: str
+    keeps_traceback: bool
+
+
+FAILED_REVERTED_PUSH_CASES: list[FailedRevertedPushCase] = [
+    FailedRevertedPushCase(
+        name="infrahub_error_gives_its_message",
+        error=RepositoryError(identifier="tracked-repo", message="The database is down"),
+        reason="The database is down",
+        keeps_traceback=False,
+    ),
+    FailedRevertedPushCase(
+        name="other_error_keeps_its_type_and_traceback",
+        error=ValueError("The stored record is not valid"),
+        reason="ValueError: The stored record is not valid",
+        keeps_traceback=True,
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in FAILED_REVERTED_PUSH_CASES])
 async def test_a_reverted_push_that_fails_to_record_fails_the_default_branch_and_keeps_its_import(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, test_case: FailedRevertedPushCase
 ) -> None:
     """The graph already records the new commit, so no later cycle would select the branch to import it."""
     tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
     rewritten_trunk = tracked.remote.commit(branch_name="main", files={"data.txt": "main rewritten\n"}, amend=True)
     state = pushed_state(tracked, last_delivered_commit=tracked.trunk_commit)
-    state.failures["record_reverted"] = [RepositoryError(identifier="tracked-repo", message="The database is down")]
+    state.failures["record_reverted"] = [test_case.error]
 
     collected = await tracked.repository.collect_pending_imports(graph_commits=tracked.graph_commits(), state=state)
 
     assert collected.failed_imports == [
-        FailedImport(
-            branch_name="main",
-            step=ImportStep.RECORD,
-            reason="The database is down",
-            on_default_branch=True,
-        )
+        FailedImport(branch_name="main", step=ImportStep.RECORD, reason=test_case.reason, on_default_branch=True)
     ]
     assert [(pending_import.infrahub_branch_name, pending_import.commit) for pending_import in collected.imports] == [
         ("main", rewritten_trunk)
     ]
+    failure_logs = [
+        record
+        for record in caplog.records
+        if record.name == SYNC_LOGGER and record.getMessage().startswith("Failed to update the reverted push")
+    ]
+    assert [record.getMessage() for record in failure_logs] == [
+        f"Failed to update the reverted push record of branch main of repository tracked-repo: {test_case.reason}"
+    ]
+    logged_error = failure_logs[0].exc_info[1] if failure_logs[0].exc_info else None
+    assert logged_error is (test_case.error if test_case.keeps_traceback else None)
