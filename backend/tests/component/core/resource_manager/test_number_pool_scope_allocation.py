@@ -16,17 +16,22 @@ from infrahub.core.node import Node
 from infrahub.core.node.create import create_node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.schema import AttributeSchema, SchemaRoot
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.pools.scope import Division, DivisionElementPath
 from tests.adapters.lock.timeline import LockAction
+from tests.helpers.agnostic_edges import IsReservedEdge, is_reserved_edge_on
 from tests.helpers.number_pool import (
     SCOPED_ATTRIBUTE_NAME,
     SCOPED_CIRCUIT,
     SCOPED_DEVICE,
+    SCOPED_POOL_END,
     SCOPED_POOL_SCHEMA,
+    SCOPED_POOL_START,
     SCOPED_SITE,
     add_pool_range,
     pool_lock_events,
+    provision_schema_number_pools,
     save_schema_kinds,
     scoped_device,
     scoped_device_holding,
@@ -97,6 +102,64 @@ async def test_devices_of_two_sites_each_receive_the_first_number(
     device_a1 = await scoped_device(db=db, branch=default_branch, pool=site_scoped_pool, name="device-a1", site=site_a)
     device_b1 = await scoped_device(db=db, branch=default_branch, pool=site_scoped_pool, name="device-b1", site=site_b)
     device_a2 = await scoped_device(db=db, branch=default_branch, pool=site_scoped_pool, name="device-a2", site=site_a)
+
+    assert (vlan_id(device_a1), vlan_id(device_b1), vlan_id(device_a2)) == (1, 1, 2)
+
+
+@pytest.fixture
+async def site_declared_pool(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> CoreNumberPool:
+    """The pool the schema creates for a device `vlan_id` that declares the scope `site`."""
+    schema = deepcopy(SCOPED_POOL_SCHEMA)
+    device = next(node for node in schema.nodes if node.kind == SCOPED_DEVICE.kind)
+    device.attributes = [attribute for attribute in device.attributes if attribute.name != SCOPED_ATTRIBUTE_NAME]
+    device.attributes.append(
+        AttributeSchema(
+            name=SCOPED_ATTRIBUTE_NAME,
+            kind="NumberPool",
+            optional=False,
+            read_only=True,
+            parameters=NumberPoolParameters(
+                start_range=SCOPED_POOL_START, end_range=SCOPED_POOL_END, allocation_scope=["site"]
+            ),
+        )
+    )
+    await save_schema_kinds(db=db, schema=schema)
+    await provision_schema_number_pools(db=db)
+    pools = await NodeManager.query(
+        db=db,
+        schema=InfrahubKind.NUMBERPOOL,
+        filters={"node__value": SCOPED_DEVICE.kind, "node_attribute__value": SCOPED_ATTRIBUTE_NAME},
+    )
+    assert len(pools) == 1
+    pool = pools[0]
+    assert isinstance(pool, CoreNumberPool)
+    assert pool.get_attribute("allocation_scope").value == stored_scope(names=["site"])
+    return pool
+
+
+async def test_devices_of_two_sites_each_receive_the_first_number_of_a_pool_the_schema_declares(
+    db: InfrahubDatabase, default_branch: Branch, site_declared_pool: CoreNumberPool
+) -> None:
+    site_a = await scoped_site(db=db, branch=default_branch, name="site-a")
+    site_b = await scoped_site(db=db, branch=default_branch, name="site-b")
+
+    async def create_device(name: str, site: Node) -> Node:
+        device = await Node.init(db=db, schema=SCOPED_DEVICE.kind, branch=default_branch)
+        await device.new(db=db, name=name, role="leaf", tags=["red"], site=site)
+        await device.save(db=db)
+        assert (
+            await is_reserved_edge_on(
+                db=db, pool_id=site_declared_pool.id, node_id=device.id, attribute_name=SCOPED_ATTRIBUTE_NAME
+            )
+            == IsReservedEdge.OPEN
+        )
+        return device
+
+    device_a1 = await create_device(name="device-a1", site=site_a)
+    device_b1 = await create_device(name="device-b1", site=site_b)
+    device_a2 = await create_device(name="device-a2", site=site_a)
 
     assert (vlan_id(device_a1), vlan_id(device_b1), vlan_id(device_a2)) == (1, 1, 2)
 

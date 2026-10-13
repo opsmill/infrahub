@@ -60,6 +60,11 @@ def snow_schema_with_format_identifier(
 async def register_and_provision_number_pools(db: InfrahubDatabase, branch: Branch, schema: SchemaRoot) -> None:
     """Register the schema and provision the number pools defined by its NumberPool attributes."""
     registry.schema.register_schema(schema=schema, branch=branch.name)
+    await provision_schema_number_pools(db=db)
+
+
+async def provision_schema_number_pools(db: InfrahubDatabase) -> None:
+    """Create or update the number pools that the NumberPool attributes of the registered schema declare."""
     registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
     upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository)
     synchronizer = SchemaNumberPoolSynchronizer(
