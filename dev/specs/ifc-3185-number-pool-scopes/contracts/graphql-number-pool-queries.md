@@ -8,6 +8,7 @@ The surface is the one described in PR #10932, served from the database. This fi
 |-------|-----------|---------------|----------------|
 | `NumberPoolUtilization.allocation_scope`, `NumberPoolDivisions.allocation_scope` | `[String!]!` (element names) | `[NumberPoolScopeElement!]!` with `id` and `name` | Breaking (decision 4 and 5) |
 | `NumberPoolDivisionEntry` | `path`, `value`, `display_label`, `peer_kind` | adds `id: String!`, the schema element id of the entry | Additive |
+| `NumberPoolDivisionEntry.value`, `NumberPoolDivisionEntryInput.value` | `String!`, the value as text | `GenericScalar!`, the value as the attribute stores it (a number for a Number, NumberPool or Bandwidth attribute, a boolean for a Boolean or Checkbox attribute, a text for any other kind); a filter value of another type is refused | Breaking for a client that sends a number or a boolean element as text |
 | Descriptions mentioning "the scope in force on the request's branch" | scope could be partial on a branch | the scope is the pool's scope on every branch; a query on a branch whose schema lacks an element is refused | Wording and one refusal (decisions 1 and 7) |
 | Division of a holding object | counted under every division the object occupies on any live branch | the same | Unchanged (decision 7, revised on 2026-10-12) |
 | Enum of `NumberPoolAllocation.provenance` and of the `provenance` argument | `NumberPoolProvenance`, a type of its own | `PoolRecordProvenance`, the enum that `InfrahubResourcePoolAllocated` already returns, with the same values `ALLOCATED` and `PROVIDED` | Breaking for a client that names the type in a query variable |
@@ -110,10 +111,10 @@ type NumberPoolDivisionEntry {
   """The name of the scope attribute or relationship."""
   path: String!
   """
-  For a relationship, the peer's id. For an attribute, the value as text. An empty string when the
-  holding object has no value for it.
+  For a relationship, the peer's id. For an attribute, the value with the type the attribute stores: a
+  number, a boolean or a text. An empty string when the holding object has no value for it.
   """
-  value: String!
+  value: GenericScalar!
   """
   For a relationship, the peer's display label read on any branch, or the peer's id when the peer
   cannot be read. For an attribute, the value as text.
@@ -127,8 +128,11 @@ type NumberPoolDivisionEntry {
 input NumberPoolDivisionEntryInput {
   """The name of the scope attribute or relationship."""
   path: String!
-  """For a relationship, the peer's id. For an attribute, the value as text."""
-  value: String!
+  """
+  For a relationship, the peer's id. For an attribute, a value with the type the attribute stores: a
+  number, a boolean or a text. An empty string names the objects that hold no value for it.
+  """
+  value: GenericScalar!
 }
 
 """A page of the numbers a pool tracks."""
@@ -222,6 +226,8 @@ All are `ValidationError`.
 | Scoped pool, `division` omitted or missing an element | `InfrahubNumberPoolUtilization` | `The pool <pool_id> has an allocation scope; give a division with a value for every element to read its utilization` |
 | Unscoped pool, `division` given | `InfrahubNumberPoolUtilization`, `InfrahubNumberPoolAllocations` | `The pool <pool_id> has no allocation scope; the division filter cannot be applied` |
 | `division` names a path that is not a scope element, or names one twice | all three with `division` | `The division entry "<path>" is not an element of the pool's allocation scope` |
+| A `division` value does not have the type its attribute stores, for example `"1"` for a `Number` or `"true"` for a `Boolean` | `InfrahubNumberPoolUtilization`, `InfrahubNumberPoolAllocations` | `<value> is not a valid <kind> at <path>`, the message of an attribute mutation |
+| A `division` value of a relationship element is not text | `InfrahubNumberPoolUtilization`, `InfrahubNumberPoolAllocations` | `<value> is not the id of a peer at <path>` |
 | `pool_id` is not a number pool | all three | `NodeNotFoundError` for `CoreNumberPool` |
 | `range_id` is not a range of the pool | `InfrahubNumberPoolAllocations` | `The range <range_id> does not belong to the pool <pool_id>` |
 | Negative `offset` or `limit` | `InfrahubNumberPoolAllocations` | `<argument> must be 0 or greater` |

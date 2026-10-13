@@ -11884,9 +11884,9 @@ type NumberPoolDivisionEntry {
   """
   peer_kind: String
   """
-  For a relationship, the peer's id. For an attribute, the value as text. An empty string when the holding object has no value for it.
+  For a relationship, the peer's id. For an attribute, the value as the attribute stores it: a number for a Number, NumberPool or Bandwidth attribute, a boolean for a Boolean or Checkbox attribute, and a text for any other kind. An empty string when the holding object has no value for it.
   """
-  value: String!
+  value: GenericScalar!
 }
 
 """
@@ -11896,9 +11896,9 @@ input NumberPoolDivisionEntryInput {
   """The name of the scope attribute or relationship."""
   path: String!
   """
-  For a relationship, the peer's id. For an attribute, the value as text.
+  For a relationship, the peer's id. For an attribute, a value as the attribute stores it: a number for a Number, NumberPool or Bandwidth attribute, a boolean for a Boolean or Checkbox attribute, and a text for any other kind. An empty string names the objects that hold no value for it.
   """
-  value: String!
+  value: GenericScalar!
 }
 
 """The divisions of one number pool, each with its figures."""
