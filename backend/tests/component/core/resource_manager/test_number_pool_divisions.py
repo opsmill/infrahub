@@ -5,10 +5,23 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from infrahub.core import registry
 from infrahub.core.constants import PoolRecordProvenance
 from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.query.resource_manager import NumberPoolGetAllocated
+from infrahub.pools.number_pool_repository import NumberPoolRepository
+from infrahub.pools.number_ranges import EffectiveSpace, NumberDomain
+from infrahub.pools.scope import (
+    AllocationScope,
+    AllocationScopeResolver,
+    ScopeElement,
+    division_element_path,
+)
+from tests.component.core.resource_manager.conftest import delete_branch
 from tests.helpers.number_pool import (
+    SCOPED_ATTRIBUTE_NAME,
+    SCOPED_DEVICE,
     SCOPED_POOL_END,
     SCOPED_POOL_START,
     scoped_device,
@@ -20,6 +33,7 @@ from tests.helpers.number_pool import (
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
+    from infrahub.core.schema import AttributeSchema, RelationshipSchema
     from infrahub.database import InfrahubDatabase
 
 OTHER_BRANCH = "branch1"
@@ -200,3 +214,183 @@ class TestNumberPoolGetAllocated:
 
         assert await query.count(db=db) == 2
         assert [(row.value, dataset.name_of(row.id)) for row in query.get_data()] == [(2, "allocated-2")]
+
+
+@dataclass
+class DivisionsDataset:
+    """Two pools over the device's `vlan_id` whose numbers were all provided by a user.
+
+    The pool scoped by `site`: on the default branch a1 holds 1 and a2 holds 2 in site-a, b1 holds 3 in
+    site-b, and site-d holds nothing; on the other branch a2 sits in site-c, b1 holds 5, and x, which exists
+    only there, holds 4 in site-a. a2 occupies site-a and site-c, each on a live branch.
+
+    The pool scoped by `site` and `role`: on the default branch leaf-1 holds 1 and leaf-2 holds 2 as leaves
+    of site-a, and spine-1 holds 1 as a spine of site-a.
+    """
+
+    default_branch: Branch
+    site_pool: CoreNumberPool
+    site_role_pool: CoreNumberPool
+    sites: dict[str, str]
+    other_branch: Branch = field(init=False)
+    names_by_id: dict[str, str] = field(default_factory=dict)
+
+
+def element_fields_of(
+    pool: CoreNumberPool, branch: Branch
+) -> list[tuple[ScopeElement, AttributeSchema | RelationshipSchema]]:
+    scope = AllocationScope.from_stored(pool.get_attribute("allocation_scope").value, pool=pool.id)
+    return AllocationScopeResolver(schema_branch=registry.schema.get_schema_branch(name=branch.name)).element_fields(
+        kind=SCOPED_DEVICE.kind, scope=scope, pool=pool.id, attribute=SCOPED_ATTRIBUTE_NAME
+    )
+
+
+async def division_figures(
+    db: InfrahubDatabase, pool: CoreNumberPool, branch: Branch
+) -> dict[tuple[str | int | float | bool, ...], tuple[int, int, int]]:
+    """The used, used on the default branch and used only on other branches figures of each division."""
+    element_fields = element_fields_of(pool=pool, branch=branch)
+    repository = NumberPoolRepository(db=db)
+    divisions = await repository.get_divisions(
+        pool=pool,
+        branch=branch,
+        space=EffectiveSpace(ranges=await repository.get_pool_ranges(pool_id=pool.id), domain=NumberDomain()),
+        elements=[division_element_path(field=field) for _, field in element_fields],
+    )
+    return {
+        division.values: (division.used, division.used_default_branch, division.used_branches) for division in divisions
+    }
+
+
+class TestScopedPoolQueries:
+    """Every test reads the one dataset of the class and writes nothing."""
+
+    @pytest.fixture(scope="class")
+    async def dataset(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, scoped_schema_scope_class: None
+    ) -> DivisionsDataset:
+        main = default_branch_scope_class
+        sites = {
+            name: await scoped_site(db=db, branch=main, name=name) for name in ("site-a", "site-b", "site-c", "site-d")
+        }
+        dataset = DivisionsDataset(
+            default_branch=main,
+            site_pool=await scoped_pool(db=db, name="vlan-per-site", allocation_scope=["site"]),
+            site_role_pool=await scoped_pool(db=db, name="vlan-per-site-and-role", allocation_scope=["site", "role"]),
+            sites={name: site.id for name, site in sites.items()},
+        )
+
+        devices = {}
+        for name, site, number in (("a1", "site-a", 1), ("a2", "site-a", 2), ("b1", "site-b", 3)):
+            devices[name] = await scoped_device_holding(
+                db=db, branch=main, pool=dataset.site_pool, name=name, site=sites[site], number=number
+            )
+        for name, role, number in (("leaf-1", "leaf", 1), ("leaf-2", "leaf", 2), ("spine-1", "spine", 1)):
+            devices[name] = await scoped_device_holding(
+                db=db,
+                branch=main,
+                pool=dataset.site_role_pool,
+                name=name,
+                site=sites["site-a"],
+                number=number,
+                role=role,
+            )
+
+        branch = dataset.other_branch = await create_branch(db=db, branch_name=OTHER_BRANCH)
+        moved = await NodeManager.get_one(db=db, branch=branch, id=devices["a2"].id, raise_on_error=True)
+        await moved.get_relationship("site").update(db=db, data=sites["site-c"])
+        await moved.save(db=db)
+        renumbered = await NodeManager.get_one(db=db, branch=branch, id=devices["b1"].id, raise_on_error=True)
+        renumbered.get_attribute("vlan_id").value = 5
+        await renumbered.save(db=db)
+        devices["x"] = await scoped_device_holding(
+            db=db, branch=branch, pool=dataset.site_pool, name="x", site=sites["site-a"], number=4
+        )
+        dataset.names_by_id = {device.id: name for name, device in devices.items()}
+        return dataset
+
+    @pytest.mark.parametrize("on_other_branch", [False, True], ids=["default-branch", "other-branch"])
+    async def test_a_holding_object_counts_in_every_division_it_occupies_on_a_live_branch(
+        self, db: InfrahubDatabase, dataset: DivisionsDataset, on_other_branch: bool
+    ) -> None:
+        branch = dataset.other_branch if on_other_branch else dataset.default_branch
+
+        figures = await division_figures(db=db, pool=dataset.site_pool, branch=branch)
+
+        assert figures == {
+            (dataset.sites["site-a"],): (3, 2, 1),
+            (dataset.sites["site-b"],): (2, 1, 1),
+            (dataset.sites["site-c"],): (1, 1, 0),
+        }
+
+    async def test_divisions_read_one_row_at_a_time_are_each_counted_once(
+        self, db: InfrahubDatabase, dataset: DivisionsDataset, query_limit_of_one: None
+    ) -> None:
+        figures = await division_figures(db=db, pool=dataset.site_pool, branch=dataset.other_branch)
+
+        assert figures == {
+            (dataset.sites["site-a"],): (3, 2, 1),
+            (dataset.sites["site-b"],): (2, 1, 1),
+            (dataset.sites["site-c"],): (1, 1, 0),
+        }
+
+    async def test_a_division_of_two_elements(self, db: InfrahubDatabase, dataset: DivisionsDataset) -> None:
+        figures = await division_figures(db=db, pool=dataset.site_role_pool, branch=dataset.default_branch)
+
+        assert figures == {
+            (dataset.sites["site-a"], "leaf"): (2, 2, 0),
+            (dataset.sites["site-a"], "spine"): (1, 1, 0),
+        }
+
+
+async def test_a_node_moved_on_the_default_branch_counts_in_the_site_an_older_branch_reads(
+    db: InfrahubDatabase, default_branch: Branch, site_scoped_pool: CoreNumberPool
+) -> None:
+    site_a = await scoped_site(db=db, branch=default_branch, name="site-a")
+    site_c = await scoped_site(db=db, branch=default_branch, name="site-c")
+    device = await scoped_device_holding(
+        db=db, branch=default_branch, pool=site_scoped_pool, name="device-1", site=site_a, number=5
+    )
+    await create_branch(branch_name="forked-in-site-a", db=db)
+    moved = await NodeManager.get_one(db=db, branch=default_branch, id=device.id, raise_on_error=True)
+    await moved.get_relationship(name="site").update(db=db, data=site_c)
+    await moved.save(db=db)
+
+    figures = await division_figures(db=db, pool=site_scoped_pool, branch=default_branch)
+
+    assert figures == {(site_a.id,): (1, 1, 0), (site_c.id,): (1, 1, 0)}
+
+
+async def test_deleting_the_branch_that_moved_a_node_removes_it_from_the_new_site(
+    db: InfrahubDatabase, default_branch: Branch, site_scoped_pool: CoreNumberPool
+) -> None:
+    site_a = await scoped_site(db=db, branch=default_branch, name="site-a")
+    site_c = await scoped_site(db=db, branch=default_branch, name="site-c")
+    device = await scoped_device_holding(
+        db=db, branch=default_branch, pool=site_scoped_pool, name="device-1", site=site_a, number=5
+    )
+    branch = await create_branch(branch_name="moves-device-1", db=db)
+    moved = await NodeManager.get_one(db=db, branch=branch, id=device.id, raise_on_error=True)
+    await moved.get_relationship(name="site").update(db=db, data=site_c)
+    await moved.save(db=db)
+
+    await delete_branch(db=db, branch=branch)
+
+    assert await division_figures(db=db, pool=site_scoped_pool, branch=default_branch) == {(site_a.id,): (1, 1, 0)}
+
+
+async def test_a_role_changed_on_a_branch_counts_in_the_division_of_each_role(
+    db: InfrahubDatabase, default_branch: Branch, site_role_scoped_pool: CoreNumberPool
+) -> None:
+    site_a = await scoped_site(db=db, branch=default_branch, name="site-a")
+    device = await scoped_device_holding(
+        db=db, branch=default_branch, pool=site_role_scoped_pool, name="device-1", site=site_a, number=3, role="leaf"
+    )
+    branch = await create_branch(branch_name="makes-device-1-a-spine", db=db)
+    changed = await NodeManager.get_one(db=db, branch=branch, id=device.id, raise_on_error=True)
+    changed.get_attribute("role").value = "spine"
+    await changed.save(db=db)
+
+    figures = await division_figures(db=db, pool=site_role_scoped_pool, branch=default_branch)
+
+    assert figures == {(site_a.id, "leaf"): (1, 1, 0), (site_a.id, "spine"): (1, 1, 0)}

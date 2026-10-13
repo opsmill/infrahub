@@ -15,10 +15,12 @@ from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
 from infrahub.exceptions import InitializationError
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.core.protocols import CoreNumberPool
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
-    from infrahub.pools.scope import Division
+    from infrahub.pools.scope import Division, DivisionElementPath
 
 
 @dataclass(frozen=True)
@@ -743,6 +745,167 @@ def division_filter_query(division: Division) -> tuple[str, dict[str, Any]]:
         ],
         "null_value": NULL_VALUE,
     }
+
+
+LIVE_DIVISIONS_QUERY = """
+    // --------------
+    // Every division a Node of the reserved Attribute occupies on some live branch, each scope element taking any
+    // value or peer that some live branch gives it
+    // --------------
+    CALL (attr, deleting_branches, branch_windows) {
+        MATCH (node:Node)-[ha:HAS_ATTRIBUTE]->(attr)
+        WHERE %(node_is_live)s
+        %(elements)s
+        RETURN DISTINCT %(division_values)s AS division_values
+    }"""
+
+LIVE_ATTRIBUTE_ELEMENT_QUERY = """
+        CALL (node, deleting_branches, branch_windows) {
+            WITH node, $division_elements[%(idx)s] AS element
+            MATCH (node)-[:HAS_ATTRIBUTE]->(element_attr:Attribute { name: element.name })-[hv:HAS_VALUE]->(av)
+            WHERE %(value_is_live)s
+            RETURN DISTINCT CASE WHEN av.value = $null_value THEN "" ELSE av.value END AS division_value_%(idx)s
+        }"""
+
+# A schema migration can link another vertex of the same Node to the Relationship vertex, which is not a peer.
+LIVE_RELATIONSHIP_ELEMENT_QUERY = """
+        CALL (node, deleting_branches, branch_windows) {
+            WITH node, $division_elements[%(idx)s] AS element
+            MATCH (node)-[r1:IS_RELATED]-(rel:Relationship { name: element.name })-[r2:IS_RELATED]-(peer:Node)
+            WHERE %(direction_matches)s
+            AND peer.uuid <> node.uuid
+            AND r2.status = "active"
+            AND %(peer_is_live)s
+            RETURN DISTINCT peer.uuid AS division_value_%(idx)s
+        }"""
+
+
+def live_divisions_query(elements: Sequence[DivisionElementPath]) -> tuple[str, dict[str, Any]]:
+    """Return the Cypher that gives each reserved `attr` one row per division its Node occupies on any live branch.
+
+    A Node with no live value for an element of the scope occupies no division. The fragment reads the
+    `deleting_branches`, `branch_windows`, `$at` and `$default_branch_name` that the enclosing query provides.
+    """
+    element_queries = [
+        (LIVE_ATTRIBUTE_ELEMENT_QUERY if element.relationship_direction is None else LIVE_RELATIONSHIP_ELEMENT_QUERY)
+        % {**_LIVE_EDGES, "idx": idx}
+        for idx, element in enumerate(elements)
+    ]
+    query = LIVE_DIVISIONS_QUERY % {
+        "node_is_live": _LIVE_EDGES["node_is_live"],
+        "elements": "".join(element_queries),
+        "division_values": "[%s]" % ", ".join(f"division_value_{idx}" for idx in range(len(elements))),
+    }
+    return query, {
+        "division_elements": [
+            {
+                "name": element.name,
+                "direction": element.relationship_direction.value
+                if element.relationship_direction is not None
+                else None,
+            }
+            for element in elements
+        ],
+        "null_value": NULL_VALUE,
+    }
+
+
+@dataclass(frozen=True)
+class NumberPoolDivisionResult:
+    """How many numbers one division of a scoped pool holds."""
+
+    values: tuple[str | int | float | bool, ...]
+    """The division's value for each scope element, in scope order."""
+
+    used: int
+    """Numbers in use on any branch; a number used on several branches counts once."""
+
+    used_default_branch: int
+    """Numbers in use on the default branch."""
+
+    @property
+    def used_branches(self) -> int:
+        """Numbers in use only on other branches than the default branch."""
+        return self.used - self.used_default_branch
+
+
+class NumberPoolGetDivisions(Query):
+    """Count the numbers each division of a scoped pool holds, for every division that holds at least one.
+
+    A number counts while any branch holds it, as for the pool's figures, and in every division its holding object
+    occupies on any live branch. `elements` says where a Node keeps each scope element, in scope order.
+    """
+
+    name = "numberpool_get_divisions"
+    type = QueryType.READ
+
+    def __init__(
+        self,
+        pool: CoreNumberPool,
+        ranges: list[list[int]],
+        elements: Sequence[DivisionElementPath],
+        **kwargs: Unpack[QueryInitKwargs],
+    ) -> None:
+        self.pool = pool
+        self.ranges = ranges
+        self.elements = elements
+
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["node_attribute"] = self.pool.node_attribute.value
+        self.params["ranges"] = self.ranges
+        self.params["pool_id"] = self.pool.get_id()
+        self.params["at"] = self.at.to_string()
+        self.params["default_branch_name"] = registry.default_branch
+
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+        )
+        self.params.update(branch_params)
+        divisions_query, divisions_params = live_divisions_query(elements=self.elements)
+        self.params.update(divisions_params)
+
+        query = """
+        %(live_branches)s
+        MATCH (pool:Node:%(number_pool_kind)s { uuid: $pool_id })-[ir:IS_RESERVED]->(attr:Attribute {name: $node_attribute})
+        MATCH (n:%(node)s)-[ha:HAS_ATTRIBUTE]->(attr)-[hv:HAS_VALUE]->(av:AttributeValueIndexed)
+        WHERE
+            any(r IN $ranges WHERE av.value >= r[0] AND av.value <= r[1])
+            AND all(r in [ha, hv, ir] WHERE (%(branch_filter)s))
+            AND ha.status = "active"
+            AND hv.status = "active"
+            AND ir.status = "active"
+        WITH DISTINCT attr, av.value AS value, hv.branch AS branch, deleting_branches, branch_windows
+        %(divisions)s
+        WITH division_values, value, collect(DISTINCT branch) AS branches
+        WITH division_values, value, $default_branch_name IN branches AS on_default_branch
+        """ % {
+            "live_branches": LIVE_BRANCHES_QUERY,
+            "node": self.pool.node.value,
+            "number_pool_kind": InfrahubKind.NUMBERPOOL,
+            "branch_filter": branch_filter,
+            "divisions": divisions_query,
+        }
+        self.add_to_query(query)
+
+        self.return_labels = [
+            "division_values",
+            "count(value) AS used",
+            "sum(CASE WHEN on_default_branch THEN 1 ELSE 0 END) AS used_default_branch",
+        ]
+        # The rows are read in pages when no limit is given, so each page needs one stable order.
+        self.order_by = ["division_values"]
+
+    def get_data(self) -> list[NumberPoolDivisionResult]:
+        return [
+            NumberPoolDivisionResult(
+                values=tuple(result.get_as_type("division_values", list)),
+                used=result.get_as_type("used", int),
+                used_default_branch=result.get_as_type("used_default_branch", int),
+            )
+            for result in self.get_results()
+        ]
 
 
 def reserved_values_query(
