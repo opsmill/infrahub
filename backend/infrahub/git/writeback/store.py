@@ -245,6 +245,12 @@ class WritebackIntentStore:
     async def touch(self, *, repository_id: str) -> None:
         await self._move_progress(repository_id=repository_id)
 
+    async def forget_delivered_commit(self, *, repository_id: str) -> None:
+        def transition(state: _LockedState) -> tuple[WritebackIntent, None]:
+            return state.intent.without_delivered_commit(), None
+
+        await self._transition(repository_id=repository_id, transition=transition)
+
     async def record_reverted(self, *, repository_id: str, delivered_commit: str, new_head: str) -> bool:
         def transition(state: _LockedState) -> tuple[WritebackIntent, bool]:
             recorded = state.intent.with_reverted(delivered_commit=delivered_commit, new_head=new_head, now=state.now)

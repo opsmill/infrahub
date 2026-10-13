@@ -604,6 +604,9 @@ class WritebackIntent:
             return cleared
         return replace(cleared, cause=None, error=None)
 
+    def without_delivered_commit(self) -> WritebackIntent:
+        return replace(self, last_delivered_commit=None)
+
     def with_reverted(self, *, delivered_commit: str, new_head: str, now: datetime) -> WritebackIntent | None:
         """Record the delivered commit that a rewrite discarded, or return None when the record already names it.
 

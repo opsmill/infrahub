@@ -38,7 +38,8 @@ class FixedClock:
         self.now += timedelta(seconds=seconds)
 
 
-class InMemoryDeliveryState:
+# The fake implements every method of the delivery state port.
+class InMemoryDeliveryState:  # noqa: PLR0904
     """The delivery state of each repository in memory, changed by the same transitions as the persisted state.
 
     Every call is recorded in `calls` by its method name, in order. An error that a test appends to
@@ -190,6 +191,10 @@ class InMemoryDeliveryState:
     async def touch(self, *, repository_id: str) -> None:
         intent = self._enter(method="touch", repository_id=repository_id)
         self._save(intent=intent.with_progress(now=self.clock()))
+
+    async def forget_delivered_commit(self, *, repository_id: str) -> None:
+        intent = self._enter(method="forget_delivered_commit", repository_id=repository_id)
+        self._save(intent=intent.without_delivered_commit())
 
     async def record_reverted(self, *, repository_id: str, delivered_commit: str, new_head: str) -> bool:
         intent = self._enter(method="record_reverted", repository_id=repository_id)

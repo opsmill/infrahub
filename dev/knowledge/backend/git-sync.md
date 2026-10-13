@@ -260,6 +260,11 @@ worktree records nothing.
 - **A failed record is logged once, where it is caught, the way a failed import is.** The store
   chains the SDK error, so the reason is the API's own message for a known failure, and the
   traceback is kept only for an error that is not recognised, such as a lost connection.
+- **A rewrite of the default branch also records a reverted push.** When the new head does not hold
+  the last pushed commit, the delivery state records it in `delivery_reverted`, through
+  `WritebackIntentStore.record_reverted`; a re-target clears the last pushed commit instead. A
+  failure fails the default branch at step `record` and keeps its import, as above. A later rewrite
+  records a pushed commit that is still unrecorded.
 - **The count is what the branch reads, not what it did.** A branch-local read falls back to the
   origin branch, so a branch created after a trunk record reads that record and counts on from it.
 

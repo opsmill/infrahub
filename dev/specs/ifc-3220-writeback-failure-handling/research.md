@@ -1167,10 +1167,15 @@ the branch on the remote only.
 ## R13. The reverted-delivery record (FR-021)
 
 **Decision**: the store keeps `delivery_last_delivered_commit`, set at each delivery that pushed.
-When the IFC-3210 reconciliation classifies the default branch as a rewrite, it asks the store
-whether the last delivered commit is an ancestor of the commit it discards and not an ancestor of
-the new head. When it is, it writes `delivery_reverted` with the delivered commit, the new head and
-the time, and logs it.
+When the IFC-3210 reconciliation classifies the default branch as a rewrite, it reads the last
+delivered commit from the store and asks Git whether the new head holds it. A fetch brings every
+ancestor of the new head, so a delivered commit that the clone lacks is not in it either. When the
+new head does not hold the commit, the store writes `delivery_reverted` with the delivered commit,
+the new head and its own time, and the reconciliation logs it. The check does not ask whether the
+commit it discards holds the delivered commit: a delivered commit that an earlier rewrite discarded,
+whose own record failed, is recorded at the next rewrite. When the reconciliation classifies the
+default branch as a re-target, it clears `delivery_last_delivered_commit`, because that commit
+belongs to the previous default branch, which a later rewrite of the new one cannot discard.
 
 **Why the last delivered commit is enough.** Each delivery pushes a fast-forward of the previous
 remote head, since Infrahub never force-pushes. Every earlier delivered commit is therefore an
@@ -1179,12 +1184,6 @@ did too.
 
 **Gate.** Plan part L waits for the rewrite classification of IFC-3210. Without it, a rewrite of the
 default branch makes the synchronisation fail, and nothing reaches the check.
-
-**A clone that lacks a commit.** A worker that cloned after the rewrite never fetched the
-discarded history, and Git cannot compare an absent commit. A fetch brings every ancestor of the
-new head, so a delivered commit that the clone lacks is off the remote, and the reconciliation
-records it. When the clone lacks only the commit it discards, it cannot tell whether an earlier
-rewrite discarded the delivered commit, and it records it too.
 
 **Not cleared.** Like the sibling's rewrite record, it is a fact and not an alert. A later
 reverted delivery of another commit overwrites it. A record of the same delivered commit is kept,
