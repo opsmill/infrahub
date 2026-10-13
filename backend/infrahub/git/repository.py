@@ -399,11 +399,11 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
     async def collect_pending_imports(
         self,
+        state: DeliveryStatePort,
         staging_branch: str | None = None,
         graph_commits: Mapping[str, str | None] | None = None,
         recorder: HistoryRewriteRecorder | None = None,
         retarget_markers: RetargetMarkers | None = None,
-        state: DeliveryStatePort | None = None,
     ) -> CollectedImports:
         """Run the git and branch-setup side of a sync and return the imports it produced.
 
@@ -418,6 +418,9 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         apart from a fast-forward.
 
         Args:
+            state: While an active repository has pending pushes, its default branch and the source
+                branch of each pending merge are left out. When a rewrite of the default branch
+                discards the last pushed commit, the reverted push is recorded in it.
             graph_commits: The commit the graph records for this repository, per Infrahub branch that
                 can still record one. Without it no branch is classified, and a branch whose worktree
                 already matches the remote is left alone even when the graph records another commit.
@@ -427,10 +430,6 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 the trunk. A marker that applied to this cycle is cleared when the collection ends with
                 the trunk on the remote head of the default branch. Without them, every lineage break of
                 the trunk is a rewrite.
-            state: While an active repository has pending pushes, its default branch and the source
-                branch of each pending merge are left out. When a rewrite of the default branch
-                discards the last pushed commit, the reverted push is recorded in it. Without it, no
-                branch is left out for a pending push and no reverted push is recorded.
 
         Raises:
             RepositoryConnectionError: When the remote repository is unreachable.
@@ -486,7 +485,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         graph_commits: Mapping[str, str | None] | None,
         recorder: HistoryRewriteRecorder | None,
         trunk_retargeted: bool,
-        state: DeliveryStatePort | None,
+        state: DeliveryStatePort,
     ) -> CollectedImports:
         log.info("Starting the synchronization of %s.", self.name)
 
@@ -535,10 +534,9 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             new_branches, updated_branches = self._exclude_read_only_branches(
                 new_branches=new_branches, updated_branches=updated_branches, graph_branches=graph_branches
             )
-            if state is not None:
-                new_branches, updated_branches = await self._exclude_pending_delivery_branches(
-                    state=state, new_branches=new_branches, updated_branches=updated_branches
-                )
+            new_branches, updated_branches = await self._exclude_pending_delivery_branches(
+                state=state, new_branches=new_branches, updated_branches=updated_branches
+            )
 
             for branch_name in new_branches:
                 if self.validate_remote_branch(branch_name=branch_name):
@@ -576,8 +574,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 git_branch_name=self.default_branch,
             )
 
-        if state is not None:
-            await self._record_reverted_delivery(collected=collected, state=state)
+        await self._record_reverted_delivery(collected=collected, state=state)
         return collected
 
     def _read_graph_commits(self, graph_commits: Mapping[str, str | None]) -> dict[str, str | None]:
