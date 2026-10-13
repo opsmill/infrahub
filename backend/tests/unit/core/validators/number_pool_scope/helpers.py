@@ -13,6 +13,10 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.core.validators.pool.scope import NumberPoolScopeChecker, SchemaBranchSource, ScopedNumberPoolSource
 from infrahub.core.validators.pool.scope_dependency import DependentPoolFinder, ScopeViolationBuilder
+from infrahub.core.validators.schema_branch.number_pool_scope_validator import (
+    DeclaredScopeComparator,
+    DeclaredScopeValidator,
+)
 from infrahub.pools.scope import AllocationScope, ScopeElement
 from infrahub.pools.scoped_number_pool_reader import ScopedNumberPool
 from tests.helpers.number_pool import (
@@ -234,5 +238,7 @@ def build_checker(pool_source: ScopedNumberPoolSource, schema_source: SchemaBran
         schema_source=schema_source,
         pool_finder=DependentPoolFinder(),
         violation_builder=ScopeViolationBuilder(),
+        declared_scope_validator=DeclaredScopeValidator(),
+        declared_scope_comparator=DeclaredScopeComparator(),
         default_branch_name=registry.default_branch,
     )

@@ -65,9 +65,13 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         schema_source: SchemaBranchSource,
         pool_finder: DependentPoolFinder,
         violation_builder: ScopeViolationBuilder,
+        declared_scope_validator: DeclaredScopeValidator,
+        declared_scope_comparator: DeclaredScopeComparator,
         default_branch_name: str,
     ) -> None:
         self.pool_source = pool_source
+        self.declared_scope_validator = declared_scope_validator
+        self.declared_scope_comparator = declared_scope_comparator
         self.schema_source = schema_source
         self.default_branch = DefaultBranchSchema(source=schema_source, name=default_branch_name)
         self.pool_finder = pool_finder
@@ -309,14 +313,7 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
             pool.id: pool
             for pool in await self.pool_source.get_by_ids(ids={pool_id for pool_id, _ in declarations_by_pool})
         }
-        comparator = DeclaredScopeComparator(
-            schema_branch=request.schema_branch,
-            previous_schemas=self._previous_schemas(request=request),
-        )
-        validator = DeclaredScopeValidator(
-            candidate=request.schema_branch,
-            default_branch_schema=lambda: self.default_branch.for_candidate(candidate=request.schema_branch),
-        )
+        previous_schemas = self._previous_schemas(request=request)
 
         refusals: list[tuple[str, str]] = []
         for pool_id, declaration in declarations_by_pool:
@@ -324,9 +321,15 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
             if pool is None:
                 # The load accepted the names it could not resolve as a possible rename, which only a stored scope
                 # can confirm, so a declaration without its pool is checked as a new one.
-                reason = self._new_declaration_refusal(validator=validator, declaration=declaration)
+                reason = self._new_declaration_refusal(request=request, declaration=declaration)
             else:
-                reason = comparator.refusal(kind=declaration.kind, entries=declaration.entries, stored=pool.scope)
+                reason = self.declared_scope_comparator.refusal(
+                    schema_branch=request.schema_branch,
+                    previous_schemas=previous_schemas,
+                    kind=declaration.kind,
+                    entries=declaration.entries,
+                    stored=pool.scope,
+                )
             if reason is not None:
                 refusals.append((pool_id, f"{declaration.kind}.{declaration.attribute_name}: {reason}"))
         return [
@@ -335,11 +338,14 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
             )
         ]
 
-    @staticmethod
-    def _new_declaration_refusal(validator: DeclaredScopeValidator, declaration: DeclaringAttribute) -> str | None:
+    def _new_declaration_refusal(
+        self, request: SchemaConstraintValidatorRequest, declaration: DeclaringAttribute
+    ) -> str | None:
         """Return why the declaration cannot scope a new pool, or None when it can."""
         try:
-            validator.validate(
+            self.declared_scope_validator.validate(
+                candidate=request.schema_branch,
+                default_branch_schema=self.default_branch.for_candidate(candidate=request.schema_branch),
                 kind=declaration.kind,
                 tracked_attribute=declaration.attribute_name,
                 entries=declaration.entries,

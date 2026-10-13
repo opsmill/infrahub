@@ -1428,18 +1428,21 @@ class SchemaBranch:
     ) -> None:
         if not isinstance(attribute.parameters, NumberPoolParameters) or not attribute.parameters.allocation_scope:
             return
-        validator = DeclaredScopeValidator(
-            candidate=self,
-            default_branch_schema=lambda: (
-                default_branch_source.for_candidate(candidate=self) if default_branch_source is not None else self
-            ),
+        pool_exists = on_implementing_node or attribute.parameters.number_pool_id is not None
+        # Only a new declaration resolves against the default branch.
+        default_branch_schema = (
+            self
+            if pool_exists or default_branch_source is None
+            else default_branch_source.for_candidate(candidate=self)
         )
         try:
-            validator.validate(
+            DeclaredScopeValidator().validate(
+                candidate=self,
+                default_branch_schema=default_branch_schema,
                 kind=kind_schema.kind,
                 tracked_attribute=attribute.name,
                 entries=attribute.parameters.allocation_scope,
-                pool_exists=on_implementing_node or attribute.parameters.number_pool_id is not None,
+                pool_exists=pool_exists,
             )
         except ValidationError as exc:
             raise ValidationError(

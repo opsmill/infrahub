@@ -239,8 +239,12 @@ class SchemaNumberPoolUpserter:
         default_branch_schema: SchemaBranch,
     ) -> None:
         stored = AllocationScope.from_stored(value=pool.allocation_scope.value, pool=pool.name.value)
-        reason = DeclaredScopeComparator(schema_branch=default_branch_schema, previous_schemas=[]).refusal(
-            kind=kind, entries=parameters.allocation_scope, stored=stored
+        reason = DeclaredScopeComparator().refusal(
+            schema_branch=default_branch_schema,
+            previous_schemas=[],
+            kind=kind,
+            entries=parameters.allocation_scope,
+            stored=stored,
         )
         if reason is not None:
             raise ValidationError(

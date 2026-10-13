@@ -169,15 +169,16 @@ def test_the_comparator_names_a_rename_when_a_previous_schema_does_not_define_th
     # One schema before the change does not define the kind, as when the kind was added on the branch only.
     schema_without_device = declared_schema()
     without_device(schema_without_device)
-    comparator = DeclaredScopeComparator(
+    refusal = DeclaredScopeComparator().refusal(
         schema_branch=unvalidated_schema_branch(candidate_schema),
         previous_schemas=[
             unvalidated_schema_branch(schema_without_device, name=registry.default_branch),
             unvalidated_schema_branch(declared_schema()),
         ],
+        kind=DEVICE,
+        entries=["site", "role"],
+        stored=DEVICE_SCHEMA_POOL.scope,
     )
-
-    refusal = comparator.refusal(kind=DEVICE, entries=["site", "role"], stored=DEVICE_SCHEMA_POOL.scope)
 
     assert refusal == 'allocation_scope: "site" was renamed to "location"; update allocation_scope to the new name'
 

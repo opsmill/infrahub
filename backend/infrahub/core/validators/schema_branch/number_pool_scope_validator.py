@@ -15,8 +15,6 @@ from infrahub.pools.scope import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     from infrahub.core.schema import AttributeSchema, MainSchemaTypes, RelationshipSchema
     from infrahub.core.schema.schema_branch import SchemaBranch
 
@@ -58,11 +56,15 @@ class DefaultBranchSchema:
 class DeclaredScopeValidator:
     """Checks the allocation scope a NumberPool attribute declares on a candidate schema."""
 
-    def __init__(self, candidate: SchemaBranch, default_branch_schema: Callable[[], SchemaBranch]) -> None:
-        self.candidate = candidate
-        self.default_branch_schema = default_branch_schema
-
-    def validate(self, kind: str, tracked_attribute: str, entries: list[str] | None, pool_exists: bool) -> None:
+    def validate(
+        self,
+        candidate: SchemaBranch,
+        default_branch_schema: SchemaBranch,
+        kind: str,
+        tracked_attribute: str,
+        entries: list[str] | None,
+        pool_exists: bool,
+    ) -> None:
         """Refuse a declaration whose elements cannot divide the pool over the kind's tracked attribute.
 
         A new declaration resolves against the schema of the default branch, and its elements must also divide the
@@ -77,35 +79,35 @@ class DeclaredScopeValidator:
 
         """
         if pool_exists:
-            scope = self._resolve_known_entries(kind=kind, entries=entries)
+            scope = self._resolve_known_entries(candidate=candidate, kind=kind, entries=entries)
         else:
-            default_branch_schema = self.default_branch_schema()
             default_scope = _DeclaredScopeResolver(schema_branch=default_branch_schema).resolve(
                 kind=kind, entries=entries
             )
             AllocationScopeValidator(schema_branch=default_branch_schema).validate(
                 kind=kind, tracked_attribute=tracked_attribute, scope=default_scope
             )
-            if default_branch_schema is self.candidate:
+            if default_branch_schema is candidate:
                 return
-            scope = _DeclaredScopeResolver(schema_branch=self.candidate).resolve(kind=kind, entries=entries)
+            scope = _DeclaredScopeResolver(schema_branch=candidate).resolve(kind=kind, entries=entries)
             # The pool stores the default branch's ids, so a name must reach the same field on the branch.
             for default_element, element in zip(default_scope.elements, scope.elements, strict=True):
                 if default_element.id != element.id:
                     raise ValidationError(
                         {
-                            SCOPE_FIELD: f'"{element.name}" is a different field on branch {self.candidate.name} than'
+                            SCOPE_FIELD: f'"{element.name}" is a different field on branch {candidate.name} than'
                             f" on the default branch {default_branch_schema.name}; declare the scope once the field is"
                             " the same on both branches"
                         }
                     )
 
-        AllocationScopeValidator(schema_branch=self.candidate).validate(
+        AllocationScopeValidator(schema_branch=candidate).validate(
             kind=kind, tracked_attribute=tracked_attribute, scope=scope
         )
 
-    def _resolve_known_entries(self, kind: str, entries: list[str] | None) -> AllocationScope:
-        resolver = _DeclaredScopeResolver(schema_branch=self.candidate)
+    @staticmethod
+    def _resolve_known_entries(candidate: SchemaBranch, kind: str, entries: list[str] | None) -> AllocationScope:
+        resolver = _DeclaredScopeResolver(schema_branch=candidate)
         elements: list[ScopeElement] = []
         for entry in entries or []:
             try:
@@ -124,11 +126,14 @@ class DeclaredScopeComparator:
     default branch while a branch can still name an element its own way.
     """
 
-    def __init__(self, schema_branch: SchemaBranch, previous_schemas: list[SchemaBranch]) -> None:
-        self.schema_branch = schema_branch
-        self.previous_schemas = previous_schemas
-
-    def refusal(self, kind: str, entries: list[str] | None, stored: AllocationScope) -> str | None:
+    def refusal(
+        self,
+        schema_branch: SchemaBranch,
+        previous_schemas: list[SchemaBranch],
+        kind: str,
+        entries: list[str] | None,
+        stored: AllocationScope,
+    ) -> str | None:
         """Return why the declaration cannot stand for the stored scope, or None when both hold the same element ids.
 
         Names resolve on the schema branch, so a declaration that follows a renamed element keeps the stored ids.
@@ -137,13 +142,15 @@ class DeclaredScopeComparator:
             ValidationError: When the schema branch does not define the kind.
 
         """
-        resolver = _DeclaredScopeResolver(schema_branch=self.schema_branch)
+        resolver = _DeclaredScopeResolver(schema_branch=schema_branch)
         declared_ids: list[str | None] = []
         for entry in entries or []:
             try:
                 declared_ids.append(resolver.resolve(kind=kind, entries=[entry]).elements[0].id)
             except UnknownScopeElementError:
-                if new_name := self._new_name(resolver=resolver, kind=kind, entry=entry, stored=stored):
+                if new_name := self._new_name(
+                    resolver=resolver, previous_schemas=previous_schemas, kind=kind, entry=entry, stored=stored
+                ):
                     return f'{SCOPE_FIELD}: "{entry}" was renamed to "{new_name}"; update {SCOPE_FIELD} to the new name'
                 declared_ids.append(None)
 
@@ -152,10 +159,15 @@ class DeclaredScopeComparator:
         return f"{SCOPE_FIELD} can't be changed after the pool is created"
 
     def _new_name(
-        self, resolver: AllocationScopeResolver, kind: str, entry: str, stored: AllocationScope
+        self,
+        resolver: AllocationScopeResolver,
+        previous_schemas: list[SchemaBranch],
+        kind: str,
+        entry: str,
+        stored: AllocationScope,
     ) -> str | None:
         stored_ids = [element.id for element in stored.elements]
-        for previous_schema in self.previous_schemas:
+        for previous_schema in previous_schemas:
             if not previous_schema.has(name=kind):
                 continue
             try:
