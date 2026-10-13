@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 from typing import TYPE_CHECKING, override
 
 from infrahub.exceptions import ValidationError
@@ -117,6 +118,8 @@ class DeclaredScopeComparator:
     ) -> str | None:
         """Return why the declaration cannot stand for the stored scope, or None when both hold the same element ids.
 
+        The order of the ids does not matter, because reordering the elements keeps the same divisions.
+
         Names resolve on the schema branch, so a declaration that follows a renamed element keeps the stored ids.
 
         Raises:
@@ -135,7 +138,7 @@ class DeclaredScopeComparator:
                     return f'{SCOPE_FIELD}: "{entry}" was renamed to "{new_name}"; update {SCOPE_FIELD} to the new name'
                 declared_ids.append(None)
 
-        if declared_ids == [element.id for element in stored.elements]:
+        if Counter(declared_ids) == Counter(element.id for element in stored.elements):
             return None
         return f"{SCOPE_FIELD} can't be changed after the pool is created"
 

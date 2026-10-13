@@ -54,10 +54,6 @@ REFUSED_DECLARATION_CASES = [
     declaration_change(
         name="declaration-dropping-an-element", scope=["site"], expected=[(DEVICE_SCHEMA_POOL_ID, CANNOT_CHANGE)]
     ),
-    # The order of the elements is the order of each division's values, so reordering is a change.
-    declaration_change(
-        name="declaration-reordered", scope=["role", "site"], expected=[(DEVICE_SCHEMA_POOL_ID, CANNOT_CHANGE)]
-    ),
     declaration_change(name="declaration-cleared", scope=[], expected=[(DEVICE_SCHEMA_POOL_ID, CANNOT_CHANGE)]),
     # A name matching no field and no stored element cannot be a rename, so it is a change.
     declaration_change(

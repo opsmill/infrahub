@@ -142,8 +142,8 @@ REORDERED_SCOPE_CASES = [
 
 
 @pytest.mark.parametrize("case", REORDERED_SCOPE_CASES, ids=[case.name for case in REORDERED_SCOPE_CASES])
-async def test_number_pool_allocation_scope_reordered_emits_its_constraint(case: ReorderedScopeCase) -> None:
-    """The order of a declared allocation scope orders the values of each division, so reordering it is a change."""
+async def test_number_pool_allocation_scope_reordered_is_not_a_change(case: ReorderedScopeCase) -> None:
+    """Reordering a declared allocation scope keeps the same divisions, so it is not a change."""
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(
         schema=SchemaRoot(
@@ -182,7 +182,6 @@ async def test_number_pool_allocation_scope_reordered_emits_its_constraint(case:
     diff = schema.diff(other=candidate)
     result = schema.validate_update(other=candidate, diff=diff)
 
+    assert diff.all == []
     assert result.errors == []
-    assert [(c.constraint_name, c.path.field_name, c.path.property_name) for c in result.constraints] == [
-        ("attribute.parameters.allocation_scope.update", "number", "parameters.allocation_scope")
-    ]
+    assert result.constraints == []

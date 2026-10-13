@@ -66,6 +66,8 @@ def device_declaration_change(name: str, scope: list[str]) -> AcceptedDeclaratio
 
 MATCHING_DECLARATION_CASES = [
     device_declaration_change(name="declaration-unchanged", scope=["site", "role"]),
+    # Reordering the declaration keeps the same divisions, so its ids match the stored scope.
+    device_declaration_change(name="declaration-reordered", scope=["role", "site"]),
     # The declaration already names the renamed field, so its ids match the stored scope.
     AcceptedDeclarationCase(
         name="relationship-renamed-declaration-following-under-the-declaration",
