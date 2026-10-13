@@ -294,8 +294,11 @@ CLASSIFY_CASES: list[ClassifyCase] = [
     ClassifyCase(
         name="invalid_content_at_the_import_is_not_retried",
         stages=(DeliveryStage.IMPORT,),
-        error=RepositoryConfigurationError(
-            identifier=REPOSITORY, message="The repository configuration file .infrahub.yml is not valid."
+        error=_wrapped_by_the_import(
+            error=RepositoryConfigurationError(
+                identifier=REPOSITORY, message="The repository configuration file .infrahub.yml is not valid."
+            ),
+            message="The repository configuration file .infrahub.yml is not valid.",
         ),
         expected=DeliveryFailure(
             cause=RepositoryDeliveryFailureCause.IMPORT_FAILED,
@@ -306,11 +309,13 @@ CLASSIFY_CASES: list[ClassifyCase] = [
     ClassifyCase(
         name="unexpected_error_at_the_import_is_not_retried",
         stages=(DeliveryStage.IMPORT,),
-        error=KeyError("artifact_definitions"),
+        error=_wrapped_by_the_import(
+            error=KeyError("artifact_definitions"), message="KeyError: 'artifact_definitions'"
+        ),
         expected=DeliveryFailure(
             cause=RepositoryDeliveryFailureCause.IMPORT_FAILED,
             retryable=False,
-            message="The import step of the delivery failed with KeyError.",
+            message="KeyError: 'artifact_definitions'",
         ),
     ),
     ClassifyCase(

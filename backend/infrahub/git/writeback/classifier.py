@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from git.exc import GitCommandError
 from infrahub_sdk.exceptions import ServerNotReachableError, ServerNotResponsiveError
 
 from infrahub.core.constants import RepositoryDeliveryFailureCause
@@ -108,4 +109,4 @@ def _describe(*, error: BaseException, stage: DeliveryStage) -> str:
 
 def _repeats_its_cause(*, error: Error) -> bool:
     # Git output can name worker paths; this catches only an error raised from it with that output as its message.
-    return error.__cause__ is not None and error.message in str(error.__cause__)
+    return isinstance(error.__cause__, GitCommandError) and error.message in str(error.__cause__)
