@@ -1,0 +1,25 @@
+backend/tests/component/core/test_attribute.py
+  s_2fdf558427eaa2::t_7eeaffe25b58d5 23
+  s_2fdf558427eaa2::t_40651c26d2e3f2 1503,1548
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1c6bfdddf2ae8e9d6c56c18c90a422d7a10b6349",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_2fdf558427eaa2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "abafed1e-c4e8-407e-9a07-14cf48e361b4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
