@@ -97,7 +97,13 @@ backend/infrahub/
 │   ├── number.py                                     # existing: NumberUtilizationGetter
 │   ├── schema_number_pool_upserter.py                # existing: upsert_number_pool
 │   ├── schema_number_pool_synchronizer.py            # existing: run, _update_pool_from_schema
-│   └── number_pool_usage.py                          # NEW: NumberPoolUsageReader, the figures the three queries return
+│   ├── number_pool_usage.py                          # NEW: the figures the three queries return
+│   ├── number_pool_usage_state.py                    # NEW: NumberPoolStateLoader, PoolScopeFields (division filters)
+│   ├── number_pool_usage_nodes.py                    # NEW: PeerSummaryReader, HoldingObjectReader
+│   ├── number_pool_utilization_reader.py             # NEW: NumberPoolUtilizationReader
+│   ├── number_pool_divisions_reader.py               # NEW: NumberPoolDivisionsReader, build_division_usages
+│   ├── number_pool_allocations_reader.py             # NEW: NumberPoolAllocationsReader, AllocationFilters
+│   └── number_pool_usage_factory.py                  # NEW: builders of the three readers
 ├── graphql/
 │   ├── mutations/resource_manager/number_pools/
 │   │   ├── pool.py                                   # existing: InfrahubNumberPoolMutation
