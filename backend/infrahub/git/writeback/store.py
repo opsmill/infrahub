@@ -373,7 +373,7 @@ def _stored_member[EnumT: InfrahubStringEnum](
 
     """
     value = stored[attribute]
-    if not value:
+    if value is None:
         return None
     try:
         return enum(value)
@@ -391,7 +391,7 @@ def _stored[ModelT: BaseModel](
 
     """
     value = stored[attribute]
-    if not value:
+    if value is None:
         return None
     try:
         return model.model_validate(value)
