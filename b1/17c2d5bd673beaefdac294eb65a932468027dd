@@ -1,0 +1,19 @@
+backend/tests/unit/computed_attribute/test_read_sets.py
+  s_e41a8ead08f4d1::t_e34c6f610c8869 1-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b117c2d5bd673beaefdac294eb65a932468027dd",
+  "prompts": {},
+  "sessions": {
+    "s_e41a8ead08f4d1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "58ee136a-804c-4772-b183-6243f59e5b5c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
