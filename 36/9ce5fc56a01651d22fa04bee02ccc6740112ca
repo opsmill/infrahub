@@ -1,0 +1,31 @@
+backend/tests/helpers/number_pool.py
+  s_0e6589ba6b4589::t_bf187e8d2426b0 63-67
+backend/tests/component/core/resource_manager/test_number_pool_scope_allocation.py
+  s_0e6589ba6b4589::t_5d999de74ca9da 19,23,28,30,34,109-137,139-162
+  s_0e6589ba6b4589::t_1016bd56430bc2 138
+  s_0e6589ba6b4589::t_d8ea4ba48b6350 163-166
+dev/specs/ifc-3185-number-pool-scopes/tasks.md
+  s_0e6589ba6b4589::t_d96cdb719a6c8a 114
+  s_0e6589ba6b4589::t_af52ce914cb23b 62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "369ce5fc56a01651d22fa04bee02ccc6740112ca",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_0e6589ba6b4589": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1057a2bb-95a9-4b87-a22a-785993e193b1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
