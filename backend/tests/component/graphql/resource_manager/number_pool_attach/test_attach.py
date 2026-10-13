@@ -27,6 +27,7 @@ from .helpers import (
     is_reserved_edges,
     new_pool,
     open_is_reserved_edges,
+    pool_source,
     pooled_numbers,
     session_for,
     tracking_pool_id,
@@ -84,7 +85,7 @@ class TestNumberPoolAttach:
         assert await used_numbers(db=db, branch=main_branch, pool=pool) == [105, 107]
         for ticket, value in ((hand_set, 105), (allocated, 107)):
             reads = await pooled_numbers(db=db, branch=main_branch, node_id=ticket["id"])
-            assert reads["ticket_id"] == AttributeRead(value, None, pool.get_id(), "PROVIDED")
+            assert reads["ticket_id"] == pool_source(value, pool)
 
     async def test_a_number_a_uniqueness_constraint_holds_is_refused_by_the_constraint(
         self, db: InfrahubDatabase, main_branch: Branch
@@ -221,7 +222,7 @@ class TestNumberPoolAttach:
         ]
         assert await tracking_pool_id(db=db, node_id=ticket["id"]) == pool_b.get_id()
         reads = await pooled_numbers(db=db, branch=main_branch, node_id=ticket["id"])
-        assert reads["ticket_id"] == AttributeRead(601, None, pool_b.get_id(), "ALLOCATED")
+        assert reads["ticket_id"] == pool_source(601, pool_b)
 
     async def test_naming_another_pool_with_a_number_outside_the_first_pool_moves_the_attribute(
         self, db: InfrahubDatabase, main_branch: Branch
@@ -244,7 +245,7 @@ class TestNumberPoolAttach:
         assert await used_numbers(db=db, branch=main_branch, pool=pool_c) == [755]
         assert await tracking_pool_id(db=db, node_id=ticket["id"]) == pool_c.get_id()
         reads = await pooled_numbers(db=db, branch=main_branch, node_id=ticket["id"])
-        assert reads["ticket_id"] == AttributeRead(755, None, pool_c.get_id(), "PROVIDED")
+        assert reads["ticket_id"] == pool_source(755, pool_c)
 
     @pytest.mark.parametrize(
         "case",
@@ -379,9 +380,9 @@ class TestNumberPoolAttach:
         assert (closed.status, closed.is_open) == ("active", False), "the IS_RESERVED edge is ended, not deleted"
         assert await tracking_pool_id(db=db, node_id=detached["id"], attribute_name="sequence") is None
         reads = await pooled_numbers(db=db, branch=main_branch, node_id=detached["id"])
-        assert reads["sequence"] == AttributeRead(1200, None, None, None)
+        assert reads["sequence"] == AttributeRead(1200, None, None)
         reads = await pooled_numbers(db=db, branch=main_branch, node_id=kept["id"])
-        assert reads["sequence"] == AttributeRead(1201, None, pool.get_id(), "ALLOCATED")
+        assert reads["sequence"] == pool_source(1201, pool)
         following = await create_ticket(
             db=db,
             branch=main_branch,
@@ -480,9 +481,7 @@ class TestNumberPoolAttach:
         ]
         assert await tracking_pool_id(db=db, node_id=ticket["id"]) == pool.get_id()
         reads = await pooled_numbers(db=db, branch=main_branch, node_id=ticket["id"])
-        assert reads["ticket_id"] == AttributeRead(
-            case.expected_value, None, pool.get_id(), case.expected_provenance.upper()
-        )
+        assert reads["ticket_id"] == pool_source(case.expected_value, pool)
 
     async def test_a_detach_on_a_deleted_branch_stays_in_effect_on_every_branch(
         self, db: InfrahubDatabase, main_branch: Branch
@@ -500,7 +499,7 @@ class TestNumberPoolAttach:
 
         for branch in (main_branch, other_branch):
             reads = await pooled_numbers(db=db, branch=branch, node_id=ticket["id"])
-            assert reads["ticket_id"] == AttributeRead(1400, None, None, None), f"{branch.name} reports a pool"
+            assert reads["ticket_id"] == AttributeRead(1400, None, None), f"{branch.name} reports a pool"
         assert await open_is_reserved_edges(db=db, pool=pool) == set()
         assert await allocated_rows(db=db, branch=main_branch, pool=pool) == []
         assert await used_numbers(db=db, branch=main_branch, pool=pool) == []
@@ -539,7 +538,7 @@ class TestNumberPoolAttach:
             assert await tracking_pool_id(db=db, node_id=ticket["id"]) is None
             for branch in (main_branch, other_branch):
                 reads = await pooled_numbers(db=db, branch=branch, node_id=ticket["id"])
-                assert reads["ticket_id"] == AttributeRead(value, None, None, None), (
+                assert reads["ticket_id"] == AttributeRead(value, None, None), (
                     f"{branch.name} lost the number or reports a pool"
                 )
 
@@ -553,7 +552,7 @@ class TestNumberPoolAttach:
             assert changed["ticket_id"]["value"] == value
             for branch in (main_branch, other_branch):
                 reads = await pooled_numbers(db=db, branch=branch, node_id=ticket["id"])
-                assert reads["ticket_id"] == AttributeRead(value, None, successor.get_id(), "PROVIDED")
+                assert reads["ticket_id"] == pool_source(value, successor)
         assert await allocated_rows(db=db, branch=main_branch, pool=successor) == sorted(
             [
                 (first["id"], "main", 1700, "provided"),

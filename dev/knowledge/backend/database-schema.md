@@ -196,8 +196,9 @@ number the attribute no longer holds stays listed and stays inert. The label is 
 not per branch, so it cannot tell a number the pool allocated on one branch from the same number a user
 provided on another: both rows read `"allocated"`.
 
-A number attribute reports the pool tracking it through the `from_pool` output field, and nowhere
-else. When a read asks for it (`MetadataOptions.TRACKING_POOL`), the attribute query follows the
+A number attribute reports the pool tracking it as its GraphQL `source`, ahead of any source the
+user stored. When a read asks for it (`MetadataOptions.TRACKING_POOL`, requested whenever `source` is
+selected on a `Number` or `NumberPool` attribute), the attribute query follows the
 attribute's active `-global-` `IS_RESERVED` edge and returns the pool's uuid with the provenance of the
 value the branch holds, read from `allocated_values` as above. The read does not check that the pool
 node is live: a live edge implies a live pool, because deleting a pool ends every edge it holds. The
@@ -206,8 +207,10 @@ is never re-read on demand: the pool write that opens, moves or ends it sets it 
 memory, and a node loaded for a mutation (`NodeManager.find_object`, the upsert lookups) loads it with
 the attribute, so a value-only update keeps reporting the pool. An attribute loaded without the flag
 reports no pool.
-`source` is populated only by a stored `HAS_SOURCE` edge: the pool is never written there, and the
-read never puts it there, so a save after a re-pool or a detach cannot store the pool as a source.
+The attribute's stored source is populated only by a stored `HAS_SOURCE` edge: the pool is never
+written there, and the read never puts it there, so a save after a re-pool or a detach cannot store
+the pool as a source. `get_source()` reports that stored source only; the GraphQL render reports
+`tracking_pool` first.
 
 Deleting a number pool ends every live `IS_RESERVED` edge it holds in the same transaction as the
 delete (`pools/number_pool_repository.py::NumberPoolRepository.delete_pool`): each edge gets `to` and

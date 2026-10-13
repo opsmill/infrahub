@@ -139,12 +139,14 @@ class SingleRelationshipResolver:
 
         relationship: Relationship | None = None
         peer_node: Node | None = None
+        peer_schema = graphql_context.db.schema.get(name=node_rel.peer, branch=graphql_context.branch, duplicate=False)
 
         if requires_relationship_properties or requires_relationship_metadata:
             include_metadata = build_metadata_query_options(
                 node_metadata_fields=metadata_fields.get("node_metadata"),
                 relationship_metadata_fields=metadata_fields.get("relationship_metadata"),
                 node_fields=node_fields,
+                schema=peer_schema,
             )
             # Add relationship properties metadata to relationship_level
             include_metadata |= MetadataQueryOptions(
@@ -166,6 +168,7 @@ class SingleRelationshipResolver:
             include_metadata = build_metadata_query_options(
                 node_metadata_fields=metadata_fields.get("node_metadata"),
                 node_fields=node_fields,
+                schema=peer_schema,
             )
             peer_node = await self._get_entities_with_data_loader(
                 db=graphql_context.db,

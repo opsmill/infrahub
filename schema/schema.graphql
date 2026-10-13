@@ -5069,7 +5069,7 @@ input CoreNodeUpdateInput {
 """A pool of number resources"""
 type CoreNumberPool implements CoreNode & CoreResourcePool & LineageSource {
   """
-  Fields of the kind that divide the pool's space; allocation returns the lowest free number within the writer's division
+  Ordered fields that divide the pool's space, each as {id, name}: the field's schema id on the default branch and its name
   """
   allocation_scope: ListAttribute
   description: TextAttribute
@@ -5108,7 +5108,7 @@ type CoreNumberPoolCreate {
 
 input CoreNumberPoolCreateInput {
   """
-  Fields of the kind that divide the pool's space; allocation returns the lowest free number within the writer's division
+  Ordered fields that divide the pool's space, each as {id, name}: the field's schema id on the default branch and its name
   """
   allocation_scope: ListAttributeCreate
   description: TextAttributeCreate
@@ -5234,7 +5234,7 @@ type CoreNumberPoolUpdate {
 
 input CoreNumberPoolUpdateInput {
   """
-  Fields of the kind that divide the pool's space; allocation returns the lowest free number within the writer's division
+  Ordered fields that divide the pool's space, each as {id, name}: the field's schema id on the default branch and its name
   """
   allocation_scope: ListAttributeUpdate
   description: TextAttributeUpdate
@@ -5266,7 +5266,7 @@ type CoreNumberPoolUpsert {
 
 input CoreNumberPoolUpsertInput {
   """
-  Fields of the kind that divide the pool's space; allocation returns the lowest free number within the writer's division
+  Ordered fields that divide the pool's space, each as {id, name}: the field's schema id on the default branch and its name
   """
   allocation_scope: ListAttributeUpdate
   description: TextAttributeUpdate
@@ -11795,7 +11795,6 @@ type NonRequiredStringValueField {
 
 """Attribute of type Number"""
 type NumberAttribute implements AttributeInterface {
-  from_pool: NumberAttributeFromPool
   id: String
   is_default: Boolean
   is_from_profile: Boolean
@@ -11817,14 +11816,6 @@ input NumberAttributeCreate {
   owner: String
   source: String
   value: BigInt
-}
-
-"""
-The number pool tracking a number attribute and how the value it holds got there
-"""
-type NumberAttributeFromPool {
-  pool: CoreNumberPool!
-  provenance: PoolRecordProvenance!
 }
 
 input NumberAttributeUpdate {

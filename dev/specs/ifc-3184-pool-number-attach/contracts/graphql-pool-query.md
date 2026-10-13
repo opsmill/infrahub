@@ -3,8 +3,7 @@
 **Status**: **published contract change** — governed by
 [ADR 0010](../../../adr/0010-generated-user-facing-schema-contract.md).
 
-**Owner**: `backend/infrahub/graphql/queries/resource_manager.py` (pool query),
-`backend/infrahub/graphql/manager.py` (the `from_pool` field on `NumberAttribute`)
+**Owner**: `backend/infrahub/graphql/queries/resource_manager.py`
 
 ---
 
@@ -13,18 +12,17 @@
 This slice **must be named explicitly in the published-contract review**, alongside P1's and P3's
 `NumberPoolParameters` changes. One review, one SDK type regeneration — not three.
 
-Three kinds of change are in scope, and the third is the dangerous one:
+Two distinct kinds of change are in scope, and the second is the dangerous one:
 
 | Change | Visible in the generated schema? |
 |---|---|
 | `provenance` on each in-use row | **yes** |
 | The out-of-space bucket | **yes** |
-| `from_pool` on `NumberAttribute` | **yes** |
-| `source` no longer names the tracking pool (FR-030b) | **no** — the field name and type are unchanged; only what populates it changes |
+| `source` populated by derivation instead of a stored edge (FR-030b) | **no** — the field name and type are unchanged; only its provenance moves |
 
 FR-030b **must be named in the review in words**, because nothing in the generated artefacts will
-surface it. A reviewer diffing `schema/schema.graphql` will see the new `from_pool` field and no
-trace of the change that removes the pool from what every pooled attribute reports as its source.
+surface it. A reviewer diffing `schema/schema.graphql` will see no trace of a change that alters what
+every pooled attribute reports as its source.
 
 Generated files are regenerated, never hand-edited:
 `uv run invoke backend.generate`, `schema.generate-graphqlschema`, `schema.generate-jsonschema`,
@@ -99,114 +97,50 @@ is a silent no-op — the operator learns nothing. It is also one published-cont
 
 ---
 
-## 3. `source` — populated only by a stored user-set edge
+## 3. `source` — same shape, different provenance
 
 | | Before | After |
 |---|---|---|
 | Field | `source: LineageSource` | **unchanged** |
-| Populated by | a stored `HAS_SOURCE` edge written by the pool | a stored `HAS_SOURCE` edge the user set; **never the pool** |
-| Display for an attribute with no user source | the pool | **null** |
-| Display for an attribute with a user source | previously impossible (refused) | the user's source |
+| Populated by | a stored `HAS_SOURCE` edge written by the pool | the pool reached by the inbound `-global-` `IS_RESERVED` edge while one is live, else the user's `HAS_SOURCE` if one resolves active |
+| Display for an attribute with no user source | the pool | **the pool** — unchanged |
+| Display for an attribute with a user source | previously impossible (refused) | the pool while it tracks the attribute; the user's source once it is detached |
 | Appears in branch diffs | yes | **no** |
 
-The pool that tracks the attribute is reported by `from_pool` (section 4), never by `source`. The
-read loads the pool into a property of its own (`tracking_pool` on the attribute), not into the
-source property, so a save after a re-pool or a detach cannot write the pool back as a `HAS_SOURCE`
-edge. The migration deletes every legacy `HAS_SOURCE` edge from an attribute to a number pool, so an
-upgraded database reads the same way.
+`CoreNumberPool` already inherits `LineageSource`
+(`core/schema/definitions/core/resource_pool.py`), so it is already a legal occupant of the slot.
 
 **Behaviour changes a client can observe:**
 
-1. A pool-allocated number with no user-set source reads `source: null` where every released version
-   reported the pool. A client that read the pool from `source` reads `from_pool` instead. Needs a
-   changelog entry.
-2. A user may set `source` on a pool-tracked attribute (FR-030a deleted). The pool stays visible
-   through `from_pool`. Nothing the pool computes is affected — utilization, the in-use list and
-   next-value read the record only.
-3. Allocating or attaching on a branch no longer shows a source change in the diff, only a value
-   change. The pool's claim is branch-agnostic, so diffing it per branch was always a fiction — but
-   user-visible, and it needs a changelog entry.
+1. A user may now set `source` on a pool-tracked attribute (FR-030a deleted). The edge is stored,
+   but `source` keeps reporting the pool while the pool tracks the attribute; the user's source is
+   what a read reports once the attribute is detached. Nothing the pool computes is affected —
+   utilization, the in-use list and next-value read the record only.
+2. Allocating or attaching on a branch no longer shows a source change in the diff, only a value
+   change. Defensible — the pool's claim is branch-agnostic, so diffing it per branch was always a
+   fiction — but user-visible, and it needs a changelog entry.
+
+### Implementation constraint
+
+The pool is read apart from the stored source: the attribute query returns the tracking pool's uuid
+with the provenance of the value held (`MetadataOptions.TRACKING_POOL`, requested whenever `source` is
+selected on a `Number` or `NumberPool` attribute) into the attribute's `tracking_pool` property, and
+the GraphQL render loads that pool node and renders it in the `source` slot ahead of the stored
+source. The concrete GraphQL type comes from the loaded node, so assert the resolved kind in a test,
+not just the uuid. The stored source never holds the pool, so a save after a re-pool or a detach
+cannot write the pool back as a `HAS_SOURCE` edge. Python callers reading `get_source()` get the
+stored source only; the pool is reported by `tracking_pool`.
 
 ---
 
-## 4. `from_pool` on `NumberAttribute`
+## 4. Not in this slice
 
-A read-only output field on `NumberAttribute`, the GraphQL type shared by the `Number`, `NumberPool`
-and `Bandwidth` attribute kinds. A `Bandwidth` attribute carries the field and reads null. The input
-field of the same name on the mutation keeps its meaning
-([`from-pool-intent.md`](./from-pool-intent.md)); the two share a name only.
-
-```graphql
-type NumberAttributeFromPool {
-  pool: CoreNumberPool!
-  provenance: PoolRecordProvenance!
-}
-
-type NumberAttribute {
-  # existing fields unchanged
-  from_pool: NumberAttributeFromPool
-}
-```
-
-### Null semantics
-
-`from_pool` is null when no pool tracks the attribute: no `IS_RESERVED` edge on the global branch
-from a `CoreNumberPool` to the attribute is active at the read's time. The read does not check the
-pool node itself: a live edge implies a live pool, because deleting a pool ends every edge it holds.
-
-### `pool`
-
-The pool reached by the active global `IS_RESERVED` edge on the attribute. The edge is global, so
-**the same pool is reported on every branch**, including a branch created before the attach.
-
-The `pool` sub-selection is served by one batched load per request, not one read per attribute.
-If the pool is deleted between the attribute read and that load, GraphQL nulls `from_pool`.
-
-### `provenance`
-
-Reuses the `PoolRecordProvenance` enum of section 1:
-
-| Value | Meaning |
-|---|---|
-| `ALLOCATED` | The value the branch holds is in the record's `allocated_values` list, or the record has no list |
-| `PROVIDED` | The value the branch holds is not in the record's `allocated_values` list |
-
-It is read from the value the branch resolves for the attribute, so one attribute can read
-`ALLOCATED` on a branch where the pool allocated its value and `PROVIDED` on a branch where a user set
-a different value under the same pool.
-
-### Cases
-
-| Case | `from_pool` |
-|---|---|
-| Value inherited from a profile | The pool, with the provenance of the inherited value. The edge is on the object's own attribute and the read resolves the value the branch holds, inherited or not |
-| Value outside the pool's ranges, or null, on the branch read | The pool and its provenance. Tracking is independent of the value |
-| Read at a past time | The pool tracking the attribute at that time, with the provenance of the value the branch held then against the list the record had then |
-| Mutation response (create, update, attach, detach) | The state after the write: `ALLOCATED` after an allocation, `PROVIDED` after an attach, null after a detach |
-| Attribute with a user-set `source` | The pool; `source` reports the user's node. The two are independent |
-
-### Pool delete ends tracking
-
-Deleting a number pool ends every live `IS_RESERVED` edge the pool holds, in the same transaction as
-the delete. Every attribute it tracked keeps its number, reads `from_pool: null` on every branch, and
-can be attached to another pool afterwards — the same outcome as a detach. Both delete paths behave
-this way: the `CoreNumberPoolDelete` mutation and the schema synchronizer removing the pool of a
-`NumberPool` attribute kind.
-
-### Consumers
-
-- The frontend edit form reads `from_pool` to show the pool chip; it read `source.__typename` before.
-  No other UI reads the field in this slice.
-- The SDK does not select the field yet; see the SDK ticket.
-
----
-
-## 5. Not in this slice
-
+- **A dedicated `from_pool` output field.** Built in PR #11000 and dropped on review in October
+  2026: `source` stays the single slot that names the pool, ahead of a user-set source. A user source
+  on a pooled attribute is stored and reported once the attribute is detached. Per-attribute user
+  sources on pooled attributes are rare (automatic source assignment applies only to
+  repository-managed core objects, not the user data nodes FR-030 scopes this to).
 - **Bulk attach** and the pool-level mutation it would need. All-or-nothing cannot be built from N
   update calls. Deferred with the frontend.
-- **Input shape changes.** No new input fields. The `from_pool` input changes meaning only — see
+- **Input shape changes.** No new input fields. `from_pool` changes meaning only — see
   [`from-pool-intent.md`](./from-pool-intent.md).
-- **The tracking record's identifier on `from_pool`.** The nested shape leaves room for it later.
-- **Rendering `from_pool` in the UI** beyond the edit form's pool chip, and **reading it from the
-  SDK**.

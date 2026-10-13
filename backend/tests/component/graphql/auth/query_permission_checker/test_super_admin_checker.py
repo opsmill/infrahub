@@ -15,7 +15,6 @@ from infrahub.graphql.auth.query_permission_checker.interface import CheckerReso
 from infrahub.graphql.auth.query_permission_checker.super_admin_checker import SuperAdminPermissionChecker
 from infrahub.graphql.initialization import GraphqlContext, GraphqlParams
 from infrahub.graphql.resolvers.account_metadata import AccountMetadataResolver
-from infrahub.graphql.resolvers.tracking_pool import TrackingPoolResolver
 from infrahub.permissions import PermissionManager
 
 if TYPE_CHECKING:
@@ -122,7 +121,6 @@ class TestSuperAdminPermission:
             single_relationship_resolver=MagicMock(),
             many_relationship_resolver=MagicMock(),
             account_metadata_resolver=AccountMetadataResolver(),
-            tracking_pool_resolver=TrackingPoolResolver(),
             account_session=session,
             permissions=permission_manager,
         )

@@ -17,6 +17,7 @@ from infrahub.core import registry
 from infrahub.core.changelog.models import AttributeChangelog
 from infrahub.core.constants import (
     NULL_VALUE,
+    POOL_TRACKED_ATTRIBUTE_KINDS,
     SYSTEM_USER_ID,
     AttributeDBNodeType,
     BranchSupportType,
@@ -624,13 +625,11 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 response[field_name] = {"update_value": permissions["update"]} if permissions else None
                 continue
 
-            if field_name == "from_pool":
-                response[field_name] = self._from_pool_to_graphql(related_node_ids=related_node_ids)
-                continue
-
             if field_name in ["source", "owner"]:
-                node_attr_getter = getattr(self, f"get_{field_name}")
-                node_attr = await node_attr_getter(db=db)
+                if field_name == "source":
+                    node_attr = await self._get_source_for_graphql(db=db)
+                else:
+                    node_attr = await self.get_owner(db=db)
                 if not node_attr:
                     response[field_name] = None
                 elif fields and isinstance(fields, dict):
@@ -665,17 +664,11 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
         return response
 
-    def _from_pool_to_graphql(self, related_node_ids: set | None) -> dict[str, Any] | None:
-        """Render the `from_pool` output field from the tracking pool record, never from the `from_pool` input."""
-        tracking_pool = self.tracking_pool
-        if tracking_pool is None:
-            return None
-        if related_node_ids is not None:
-            related_node_ids.add(tracking_pool.pool_id)
-        return {
-            "pool": {"id": tracking_pool.pool_id, "__kind__": InfrahubKind.NUMBERPOOL},
-            "provenance": tracking_pool.provenance,
-        }
+    async def _get_source_for_graphql(self, db: InfrahubDatabase) -> Node | None:
+        """The node `source` reports: the pool tracking a number attribute ahead of a source the user set."""
+        if self.schema.kind in POOL_TRACKED_ATTRIBUTE_KINDS and (tracking_pool := self.tracking_pool) is not None:
+            return await registry.manager.get_one(db=db, id=tracking_pool.pool_id, branch=self.branch, at=self.at)
+        return await self.get_source(db=db)
 
     def _filter_sensitive(self, value: str, filter_sensitive: bool) -> str:
         if filter_sensitive and self.schema.kind in ["HashedPassword", "Password"]:

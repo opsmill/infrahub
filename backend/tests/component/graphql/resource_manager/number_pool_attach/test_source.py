@@ -1,12 +1,10 @@
-from collections import Counter
-from typing import Any
-
 from infrahub.core.branch import Branch
+from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.initialization import create_account, create_branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-from tests.helpers.db_query_counter import CountingInfrahubDatabase
 
 from .helpers import (
     AttributeRead,
@@ -14,24 +12,25 @@ from .helpers import (
     create_ticket,
     execute,
     new_pool,
+    pool_source,
     pooled_numbers,
     update_ticket,
 )
 
-CREATE_TICKET_READING_POOL = """
+CREATE_TICKET_READING_SOURCE = """
 mutation CreateTicket($title: String!, $ticket_id: NumberAttributeCreate) {
     TestingTicketCreate(data: { title: { value: $title }, ticket_id: $ticket_id }) {
         ok
-        object { id ticket_id { value source { id } from_pool { pool { id } provenance } } }
+        object { id ticket_id { value source { id __typename } } }
     }
 }
 """
 
-UPDATE_TICKET_READING_POOL = """
+UPDATE_TICKET_READING_SOURCE = """
 mutation UpdateTicket($id: String!, $ticket_id: NumberAttributeUpdate) {
     TestingTicketUpdate(data: { id: $id, ticket_id: $ticket_id }) {
         ok
-        object { ticket_id { value source { id } from_pool { pool { id } provenance } } }
+        object { ticket_id { value source { id __typename } } }
     }
 }
 """
@@ -48,38 +47,20 @@ mutation UpdateTicketProfile($id: String!, $profile_id: String!) {
 TICKET_SEQUENCE_WITH_PROFILE = """
 query TicketSequence($id: ID!) {
     TestingTicket(ids: [$id]) {
-        edges {
-            node { sequence { value is_from_profile source { id } from_pool { pool { id } provenance } } }
-        }
-    }
-}
-"""
-
-TICKETS_WITH_POOL = """
-query TicketsWithPool($ids: [ID]) {
-    TestingTicket(ids: $ids) {
-        edges { node { ticket_id { value from_pool { pool { id display_label } provenance } } } }
-    }
-}
-"""
-
-TICKETS_WITH_PROVENANCE_ONLY = """
-query TicketsWithProvenance($ids: [ID]) {
-    TestingTicket(ids: $ids) {
-        edges { node { ticket_id { value from_pool { provenance } } } }
+        edges { node { sequence { value is_from_profile source { id __typename } } } }
     }
 }
 """
 
 
-class TestFromPoolRead:
-    """What the `from_pool` output of a number attribute reports, and what `source` no longer reports.
+class TestPooledSourceRead:
+    """What `source` reports on a number attribute: the pool tracking it ahead of any source the user set.
 
     The schema is loaded once for the class and tickets accumulate across tests, so every test uses its own
     pools over a number range no other test uses.
     """
 
-    async def test_an_allocated_number_reports_its_pool_as_allocated_and_no_source(
+    async def test_an_allocated_number_reports_its_pool_as_source(
         self, db: InfrahubDatabase, main_branch: Branch
     ) -> None:
         pool = await new_pool(db=db, name="read-allocated", start_range=4000, end_range=4009)
@@ -89,9 +70,9 @@ class TestFromPoolRead:
         )
 
         reads = await pooled_numbers(db=db, branch=main_branch, node_id=ticket["id"])
-        assert reads["ticket_id"] == AttributeRead(4000, None, pool.get_id(), "ALLOCATED")
+        assert reads["ticket_id"] == pool_source(4000, pool)
 
-    async def test_a_provided_number_reports_the_source_the_user_set_beside_its_pool(
+    async def test_the_pool_is_reported_ahead_of_a_source_the_user_set(
         self, db: InfrahubDatabase, main_branch: Branch
     ) -> None:
         pool = await new_pool(db=db, name="read-user-source", start_range=4100, end_range=4109)
@@ -105,16 +86,32 @@ class TestFromPoolRead:
         )
 
         reads = await pooled_numbers(db=db, branch=main_branch, node_id=ticket["id"])
-        assert reads["ticket_id"] == AttributeRead(4105, account.id, pool.get_id(), "PROVIDED")
+        assert reads["ticket_id"] == pool_source(4105, pool)
+        stored = await NodeManager.get_one(
+            db=db, id=ticket["id"], branch=main_branch, include_metadata=MetadataOptions.SOURCE, raise_on_error=True
+        )
+        stored_source = await stored.get_attribute("ticket_id").get_source(db=db)
+        assert stored_source is not None
+        assert stored_source.id == account.id, "the source the user set is kept, and is what the node reports"
 
-    async def test_a_number_no_pool_tracks_reports_no_pool(self, db: InfrahubDatabase, main_branch: Branch) -> None:
+    async def test_a_number_no_pool_tracks_reports_the_source_the_user_set_or_none(
+        self, db: InfrahubDatabase, main_branch: Branch
+    ) -> None:
         await new_pool(db=db, name="read-untracked", start_range=4200, end_range=4209)
+        account = await create_account(db=db, name="read-untracked", password="read-untracked")
 
-        ticket = await create_ticket(db=db, branch=main_branch, title="read-untracked", ticket_id={"value": 4205})
+        with_source = await create_ticket(
+            db=db, branch=main_branch, title="read-untracked", ticket_id={"value": 4205, "source": account.id}
+        )
+        without_source = await create_ticket(
+            db=db, branch=main_branch, title="read-untracked-2", ticket_id={"value": 4206}
+        )
 
-        reads = await pooled_numbers(db=db, branch=main_branch, node_id=ticket["id"])
-        assert reads["ticket_id"] == AttributeRead(4205, None, None, None)
-        assert reads["sequence"] == AttributeRead(None, None, None, None)
+        reads = await pooled_numbers(db=db, branch=main_branch, node_id=with_source["id"])
+        assert reads["ticket_id"] == AttributeRead(4205, account.id, InfrahubKind.ACCOUNT)
+        reads = await pooled_numbers(db=db, branch=main_branch, node_id=without_source["id"])
+        assert reads["ticket_id"] == AttributeRead(4206, None, None)
+        assert reads["sequence"] == AttributeRead(None, None, None)
 
     async def test_every_branch_reports_the_pool_whenever_the_branch_was_created(
         self, db: InfrahubDatabase, main_branch: Branch
@@ -130,7 +127,7 @@ class TestFromPoolRead:
 
         for branch in (main_branch, before, after):
             reads = await pooled_numbers(db=db, branch=branch, node_id=ticket["id"])
-            assert reads["ticket_id"] == AttributeRead(4305, None, pool.get_id(), "PROVIDED"), branch.name
+            assert reads["ticket_id"] == pool_source(4305, pool), branch.name
 
     async def test_a_read_at_a_past_time_reports_the_pool_tracking_the_number_then(
         self, db: InfrahubDatabase, main_branch: Branch
@@ -145,11 +142,11 @@ class TestFromPoolRead:
         await update_ticket(db=db, branch=main_branch, node_id=ticket["id"], ticket_id={"from_pool": None})
 
         now = await pooled_numbers(db=db, branch=main_branch, node_id=ticket["id"])
-        assert now["ticket_id"] == AttributeRead(4405, None, None, None)
+        assert now["ticket_id"] == AttributeRead(4405, None, None)
         attached = await pooled_numbers(db=db, branch=main_branch, node_id=ticket["id"], at=while_attached)
-        assert attached["ticket_id"] == AttributeRead(4405, None, pool.get_id(), "PROVIDED")
+        assert attached["ticket_id"] == pool_source(4405, pool)
         untracked = await pooled_numbers(db=db, branch=main_branch, node_id=ticket["id"], at=before_attach)
-        assert untracked["ticket_id"] == AttributeRead(4405, None, None, None)
+        assert untracked["ticket_id"] == AttributeRead(4405, None, None)
 
     async def test_a_number_outside_the_range_or_null_still_reports_the_pool(
         self, db: InfrahubDatabase, main_branch: Branch
@@ -165,14 +162,14 @@ class TestFromPoolRead:
         await update_ticket(db=db, branch=branch, node_id=ticket["id"], ticket_id={"value": None})
 
         on_main = await pooled_numbers(db=db, branch=main_branch, node_id=ticket["id"])
-        assert on_main["ticket_id"] == AttributeRead(4590, None, pool.get_id(), "PROVIDED")
+        assert on_main["ticket_id"] == pool_source(4590, pool)
         on_branch = await pooled_numbers(db=db, branch=branch, node_id=ticket["id"])
-        assert on_branch["ticket_id"] == AttributeRead(None, None, pool.get_id(), "PROVIDED")
+        assert on_branch["ticket_id"] == pool_source(None, pool)
 
     async def test_a_number_inherited_from_a_profile_still_reports_the_pool(
         self, db: InfrahubDatabase, main_branch: Branch
     ) -> None:
-        """The profile becomes the number's source while the pool's record on the attribute stays open."""
+        """The profile becomes the stored source while the pool's record on the attribute stays open and wins."""
         pool = await new_pool(db=db, name="read-profile", start_range=4700, end_range=4709, node_attribute="sequence")
         profile = await Node.init(db=db, schema="ProfileTestingTicket", branch=main_branch)
         await profile.new(db=db, profile_name="read-profile", profile_priority=1000, sequence=4705)
@@ -201,9 +198,9 @@ class TestFromPoolRead:
         assert data
         [edge] = data["TestingTicket"]["edges"]
         assert edge["node"]["sequence"]["is_from_profile"] is True
-        assert attribute_read(edge["node"]["sequence"]) == AttributeRead(4705, profile.id, pool.get_id(), "PROVIDED")
+        assert attribute_read(edge["node"]["sequence"]) == pool_source(4705, pool)
 
-    async def test_mutation_responses_report_the_record_the_mutation_wrote(
+    async def test_mutation_responses_report_the_pool_the_mutation_left_tracking_the_number(
         self, db: InfrahubDatabase, main_branch: Branch
     ) -> None:
         pool = await new_pool(db=db, name="read-mutation", start_range=4900, end_range=4909)
@@ -211,67 +208,38 @@ class TestFromPoolRead:
         created = await execute(
             db=db,
             branch=main_branch,
-            source=CREATE_TICKET_READING_POOL,
+            source=CREATE_TICKET_READING_SOURCE,
             variables={"title": "read-mutation", "ticket_id": {"from_pool": {"id": pool.id}}},
         )
         assert created
         ticket = created["TestingTicketCreate"]["object"]
-        assert attribute_read(ticket["ticket_id"]) == AttributeRead(4900, None, pool.get_id(), "ALLOCATED")
+        assert attribute_read(ticket["ticket_id"]) == pool_source(4900, pool)
 
         attached = await execute(
             db=db,
             branch=main_branch,
-            source=UPDATE_TICKET_READING_POOL,
+            source=UPDATE_TICKET_READING_SOURCE,
             variables={"id": ticket["id"], "ticket_id": {"value": 4905, "from_pool": {"id": pool.id}}},
         )
         assert attached
-        assert attribute_read(attached["TestingTicketUpdate"]["object"]["ticket_id"]) == AttributeRead(
-            4905, None, pool.get_id(), "PROVIDED"
+        assert attribute_read(attached["TestingTicketUpdate"]["object"]["ticket_id"]) == pool_source(4905, pool)
+
+        value_only = await execute(
+            db=db,
+            branch=main_branch,
+            source=UPDATE_TICKET_READING_SOURCE,
+            variables={"id": ticket["id"], "ticket_id": {"value": 4906}},
+        )
+        assert value_only
+        assert attribute_read(value_only["TestingTicketUpdate"]["object"]["ticket_id"]) == pool_source(4906, pool), (
+            "a write naming no pool still reports the pool tracking the number"
         )
 
         detached = await execute(
             db=db,
             branch=main_branch,
-            source=UPDATE_TICKET_READING_POOL,
+            source=UPDATE_TICKET_READING_SOURCE,
             variables={"id": ticket["id"], "ticket_id": {"from_pool": None}},
         )
         assert detached
-        assert attribute_read(detached["TestingTicketUpdate"]["object"]["ticket_id"]) == AttributeRead(
-            4905, None, None, None
-        )
-
-    async def test_reading_the_pools_of_a_page_of_numbers_costs_one_batched_pool_read(
-        self, db: InfrahubDatabase, main_branch: Branch
-    ) -> None:
-        """The tracking record comes with the attribute read, and the pools it names are then loaded in one batch."""
-        pool_a = await new_pool(db=db, name="read-count-a", start_range=5000, end_range=5009)
-        pool_b = await new_pool(db=db, name="read-count-b", start_range=5010, end_range=5019)
-        tickets: list[dict[str, Any]] = []
-        for index, pool in enumerate((pool_a, pool_a, pool_b)):
-            tickets.append(
-                await create_ticket(
-                    db=db, branch=main_branch, title=f"read-count-{index}", ticket_id={"from_pool": {"id": pool.id}}
-                )
-            )
-        ids = [ticket["id"] for ticket in tickets]
-
-        async def count_queries(source: str, node_ids: list[str]) -> tuple[Counter[str], list[dict[str, Any]]]:
-            counting_db = CountingInfrahubDatabase.from_db(db=db)
-            data = await execute(db=counting_db, branch=main_branch, source=source, variables={"ids": node_ids})
-            assert data
-            return counting_db.query_counts, data["TestingTicket"]["edges"]
-
-        with_pools, edges = await count_queries(source=TICKETS_WITH_POOL, node_ids=ids)
-        provenance_only, _ = await count_queries(source=TICKETS_WITH_PROVENANCE_ONLY, node_ids=ids)
-        with_pools_one_ticket, _ = await count_queries(source=TICKETS_WITH_POOL, node_ids=ids[:1])
-
-        assert sorted(
-            (edge["node"]["ticket_id"]["value"], edge["node"]["ticket_id"]["from_pool"]["pool"]["display_label"])
-            for edge in edges
-        ) == [(5000, "read-count-a"), (5001, "read-count-a"), (5010, "read-count-b")]
-        assert dict(with_pools - provenance_only) == {
-            "node_list_get_info": 1,
-            "node_list_get_attribute": 1,
-            "node_list_get_relationship": 1,
-        }, "the pools of the page are loaded with one batched node read"
-        assert with_pools == with_pools_one_ticket, "the cost does not grow with the number of tickets"
+        assert attribute_read(detached["TestingTicketUpdate"]["object"]["ticket_id"]) == AttributeRead(4906, None, None)

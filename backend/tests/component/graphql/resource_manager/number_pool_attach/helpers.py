@@ -43,8 +43,8 @@ query TicketSources($id: ID!) {
     TestingTicket(ids: [$id]) {
         edges {
             node {
-                ticket_id { value source { id } from_pool { pool { id } provenance } }
-                sequence { value source { id } from_pool { pool { id } provenance } }
+                ticket_id { value source { id __typename } }
+                sequence { value source { id __typename } }
             }
         }
     }
@@ -182,22 +182,21 @@ async def is_reserved_edges(db: InfrahubDatabase, node_id: str, attribute_name: 
 
 @dataclass(frozen=True)
 class AttributeRead:
-    """What a GraphQL read of one pooled number reports: its value, its source and the pool tracking it."""
+    """What a GraphQL read of one pooled number reports: its value and the node its `source` names."""
 
     value: int | None
     source_id: str | None
-    pool_id: str | None
-    pool_provenance: str | None
+    source_kind: str | None
 
 
 def attribute_read(field: dict[str, Any]) -> AttributeRead:
-    from_pool = field["from_pool"] or {}
-    return AttributeRead(
-        value=field["value"],
-        source_id=(field["source"] or {}).get("id"),
-        pool_id=(from_pool.get("pool") or {}).get("id"),
-        pool_provenance=from_pool.get("provenance"),
-    )
+    source = field["source"] or {}
+    return AttributeRead(value=field["value"], source_id=source.get("id"), source_kind=source.get("__typename"))
+
+
+def pool_source(value: int | None, pool: CoreNumberPool) -> AttributeRead:
+    """The read of a number the pool tracks, whatever source the user set."""
+    return AttributeRead(value=value, source_id=pool.get_id(), source_kind=InfrahubKind.NUMBERPOOL)
 
 
 async def pooled_numbers(

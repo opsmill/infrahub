@@ -250,6 +250,7 @@ async def default_paginated_list_resolver(
         include_metadata = build_metadata_query_options(
             node_metadata_fields=node_metadata_fields,
             node_fields=node_fields,
+            schema=schema,
         )
         if "hfid" in node_fields:
             node_fields["human_friendly_id"] = None

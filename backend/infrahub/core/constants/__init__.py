@@ -399,6 +399,10 @@ class AttributeDBNodeType(Flag):
     IPNETWORK = DEFAULT | INDEX_ONLY | IPNETWORK_ONLY
 
 
+# The attribute kinds a number pool can track, which report the pool as their GraphQL `source`
+POOL_TRACKED_ATTRIBUTE_KINDS = frozenset({"Number", "NumberPool"})
+
+
 class MetadataOptions(Flag):
     NONE = 0
     SOURCE = auto()

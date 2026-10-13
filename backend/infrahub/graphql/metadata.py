@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from infrahub.core.constants import MetadataOptions
+from infrahub.core.constants import POOL_TRACKED_ATTRIBUTE_KINDS, MetadataOptions
 from infrahub.core.metadata.model import MetadataQueryOptions
+
+if TYPE_CHECKING:
+    from infrahub.core.schema import MainSchemaTypes
 
 
 def get_metadata_options_from_fields(fields: dict[str, Any]) -> MetadataOptions:
@@ -26,7 +29,9 @@ def get_metadata_options_from_fields(fields: dict[str, Any]) -> MetadataOptions:
     return options
 
 
-def _extract_attribute_metadata_from_node_fields(node_fields: dict[str, Any]) -> MetadataOptions:
+def _extract_attribute_metadata_from_node_fields(
+    node_fields: dict[str, Any], schema: MainSchemaTypes | None = None
+) -> MetadataOptions:
     """Extract attribute-level metadata options from nested node fields.
 
     This handles GraphQL query structures like:
@@ -36,11 +41,12 @@ def _extract_attribute_metadata_from_node_fields(node_fields: dict[str, Any]) ->
             updated_at
         }
 
-    Where `updated_by` and `updated_at` are attribute-level metadata.
+    Where `updated_by` and `updated_at` are attribute-level metadata. A `source` selection on an attribute a
+    number pool can track also asks for the tracking pool; without the schema, any `source` selection does.
     """
     attribute_metadata_options = MetadataOptions.NONE
 
-    for field_properties_dict in node_fields.values():
+    for field_name, field_properties_dict in node_fields.items():
         if not field_properties_dict or not isinstance(field_properties_dict, dict):
             continue
 
@@ -59,18 +65,26 @@ def _extract_attribute_metadata_from_node_fields(node_fields: dict[str, Any]) ->
             attribute_metadata_options |= MetadataOptions.CREATED_BY
         if "source" in metadata_properties_dict or "_relation__source" in metadata_properties_dict:
             attribute_metadata_options |= MetadataOptions.SOURCE
+            if _may_be_pool_tracked(field_name=field_name, schema=schema):
+                attribute_metadata_options |= MetadataOptions.TRACKING_POOL
         if "owner" in metadata_properties_dict or "_relation__owner" in metadata_properties_dict:
             attribute_metadata_options |= MetadataOptions.OWNER
-        if "from_pool" in metadata_properties_dict:
-            attribute_metadata_options |= MetadataOptions.TRACKING_POOL
 
     return attribute_metadata_options
+
+
+def _may_be_pool_tracked(field_name: str, schema: MainSchemaTypes | None) -> bool:
+    if schema is None:
+        return True
+    attribute = schema.get_attribute_or_none(name=field_name)
+    return attribute is not None and attribute.kind in POOL_TRACKED_ATTRIBUTE_KINDS
 
 
 def build_metadata_query_options(
     node_metadata_fields: dict[str, Any] | None = None,
     relationship_metadata_fields: dict[str, Any] | None = None,
     node_fields: dict[str, Any] | None = None,
+    schema: MainSchemaTypes | None = None,
 ) -> MetadataQueryOptions:
     """Build MetadataQueryOptions from GraphQL extracted fields.
 
@@ -78,6 +92,8 @@ def build_metadata_query_options(
         node_metadata_fields: Fields from the node_metadata section of a GraphQL query.
         relationship_metadata_fields: Fields from the relationship_metadata section.
         node_fields: The node fields dict to extract attribute-level metadata from.
+        schema: The schema of the nodes the fields are read on, which scopes the tracking pool read to the
+            attributes a number pool can track.
 
     Returns:
         MetadataQueryOptions with appropriate flags set for each level.
@@ -85,7 +101,7 @@ def build_metadata_query_options(
     """
     node_level = get_metadata_options_from_fields(node_metadata_fields or {})
     relationship_level = get_metadata_options_from_fields(relationship_metadata_fields or {})
-    attribute_level = _extract_attribute_metadata_from_node_fields(node_fields or {})
+    attribute_level = _extract_attribute_metadata_from_node_fields(node_fields or {}, schema=schema)
 
     return MetadataQueryOptions(
         node_level=node_level,

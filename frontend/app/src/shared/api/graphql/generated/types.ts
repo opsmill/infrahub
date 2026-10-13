@@ -10931,7 +10931,7 @@ export type CoreNodeUpdateInput = {
 /** A pool of number resources */
 export type CoreNumberPool = CoreNode & CoreResourcePool & LineageSource & {
   __typename: 'CoreNumberPool';
-  /** Fields of the kind that divide the pool's space; allocation returns the lowest free number within the writer's division */
+  /** Ordered fields that divide the pool's space, each as {id, name}: the field's schema id on the default branch and its name */
   allocation_scope: Maybe<ListAttribute>;
   description: Maybe<TextAttribute>;
   display_label: Maybe<Scalars['String']['output']>;
@@ -11063,7 +11063,7 @@ export type CoreNumberPoolCreate = {
 };
 
 export type CoreNumberPoolCreateInput = {
-  /** Fields of the kind that divide the pool's space; allocation returns the lowest free number within the writer's division */
+  /** Ordered fields that divide the pool's space, each as {id, name}: the field's schema id on the default branch and its name */
   allocation_scope?: InputMaybe<ListAttributeCreate>;
   description?: InputMaybe<TextAttributeCreate>;
   /**
@@ -11254,7 +11254,7 @@ export type CoreNumberPoolUpdate = {
 };
 
 export type CoreNumberPoolUpdateInput = {
-  /** Fields of the kind that divide the pool's space; allocation returns the lowest free number within the writer's division */
+  /** Ordered fields that divide the pool's space, each as {id, name}: the field's schema id on the default branch and its name */
   allocation_scope?: InputMaybe<ListAttributeUpdate>;
   description?: InputMaybe<TextAttributeUpdate>;
   /**
@@ -11287,7 +11287,7 @@ export type CoreNumberPoolUpsert = {
 };
 
 export type CoreNumberPoolUpsertInput = {
-  /** Fields of the kind that divide the pool's space; allocation returns the lowest free number within the writer's division */
+  /** Ordered fields that divide the pool's space, each as {id, name}: the field's schema id on the default branch and its name */
   allocation_scope?: InputMaybe<ListAttributeUpdate>;
   description?: InputMaybe<TextAttributeUpdate>;
   /**
@@ -23850,7 +23850,6 @@ export type NonRequiredStringValueField = {
 /** Attribute of type Number */
 export type NumberAttribute = AttributeInterface & {
   __typename: 'NumberAttribute';
-  from_pool: Maybe<NumberAttributeFromPool>;
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
@@ -23870,13 +23869,6 @@ export type NumberAttributeCreate = {
   owner?: InputMaybe<Scalars['String']['input']>;
   source?: InputMaybe<Scalars['String']['input']>;
   value?: InputMaybe<Scalars['BigInt']['input']>;
-};
-
-/** The number pool tracking a number attribute and how the value it holds got there */
-export type NumberAttributeFromPool = {
-  __typename: 'NumberAttributeFromPool';
-  pool: CoreNumberPool;
-  provenance: PoolRecordProvenance;
 };
 
 export type NumberAttributeUpdate = {
