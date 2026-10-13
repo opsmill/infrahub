@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import itertools
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
@@ -11,7 +12,7 @@ from infrahub.git.writeback.models import DeliveryProgress, DeliveryQueue, HeldR
 from infrahub.git.writeback.ports import ReplayResult
 
 if TYPE_CHECKING:
-    from collections.abc import Awaitable, Callable, Mapping, Sequence
+    from collections.abc import AsyncIterator, Awaitable, Callable, Mapping, Sequence
 
     from infrahub.git.writeback.models import (
         AbandonmentRecord,
@@ -82,6 +83,11 @@ class InMemoryDeliveryState:
             for repository_id, intent in self.intents.items()
             if intent.status != RepositoryDeliveryStatus.NONE
         )
+
+    @asynccontextmanager
+    async def locked(self, *, repository_id: str) -> AsyncIterator[None]:
+        self._record_call(method="locked")
+        yield
 
     async def enqueue(self, *, repository_id: str, entry: PendingMerge, widen: bool) -> WritebackIntent:
         intent = self._enter(method="enqueue", repository_id=repository_id)
