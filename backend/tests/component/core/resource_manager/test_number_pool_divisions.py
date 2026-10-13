@@ -616,6 +616,61 @@ async def test_a_node_deleted_on_the_default_branch_counts_on_the_older_branch_t
     assert rows == [(5, older.name)]
 
 
+async def test_a_number_counts_in_every_site_its_node_occupies_on_any_branch_in_allocation_and_reporting(
+    db: InfrahubDatabase, default_branch: Branch, site_scoped_pool: CoreNumberPool
+) -> None:
+    """Pin how a division pairs a number with the sites of its holding Node across branches.
+
+    Division membership is read across every live branch, independently of the branch that holds the number.
+    The default branch holds 5 in site-b, and the other branch moves the device to site-c with a number outside
+    the pool's range, so no branch holds 5 in site-c. The allocation and reporting queries still count 5 in
+    site-c. For allocation this is deliberate: merging both branches would put 5 in site-c, so the pool must not
+    hand 5 to another site-c device. The reporting queries apply the same rule, so they agree with allocation.
+    """
+    site_b = await scoped_site(db=db, branch=default_branch, name="site-b")
+    site_c = await scoped_site(db=db, branch=default_branch, name="site-c")
+    device = await scoped_device_holding(
+        db=db, branch=default_branch, pool=site_scoped_pool, name="device-a", site=site_b, number=5
+    )
+    branch = await create_branch(branch_name="moves-device-a-out-of-range", db=db)
+    # on the branch, move device from site-b to site-c and move the value our of the pool range
+    on_branch = await NodeManager.get_one(db=db, branch=branch, id=device.id, raise_on_error=True)
+    await on_branch.get_relationship(name="site").update(db=db, data=site_c)
+    on_branch.get_attribute(SCOPED_ATTRIBUTE_NAME).value = SCOPED_POOL_END + 40
+    await on_branch.save(db=db)
+
+    repository = NumberPoolRepository(db=db)
+    space = EffectiveSpace(ranges=await repository.get_pool_ranges(pool_id=site_scoped_pool.id), domain=NumberDomain())
+    element_fields = element_fields_of(pool=site_scoped_pool, branch=default_branch)
+
+    # The branch's out-of-range number is outside every figure, so only the default branch's 5 is counted.
+    # 5 is counted in site-c too, because the Node is in site-c on the other branch.
+    assert await division_figures(db=db, pool=site_scoped_pool, branch=default_branch) == {
+        (site_b.id,): (1, 1, 0),
+        (site_c.id,): (1, 1, 0),
+    }
+
+    for site_name, site in (("site-b", site_b), ("site-c", site_c)):
+        division = Division.from_entries(entries=[("site", site.id)], element_fields=element_fields)
+        # Reporting: the allocated numbers list 5 in both sites, on the default branch that holds it.
+        reported = await allocated_rows_in_division(
+            db=db, pool=site_scoped_pool, branch=default_branch, entries=[("site", site.id)]
+        )
+        assert reported == [(5, default_branch.name)], site_name
+        # Allocation: the used numbers of the division match the reported ones.
+        used = await repository.get_used(pool=site_scoped_pool, branch=default_branch, space=space, division=division)
+        assert used == [value for value, _ in reported], site_name
+        # Allocation: the lowest free number skips 5, so the pool never hands 5 to another device in either site.
+        free_from_5 = await repository.get_free(
+            pool=site_scoped_pool,
+            branch=default_branch,
+            min_value=5,
+            max_value=SCOPED_POOL_END,
+            division=division,
+        )
+        assert free_from_5 == 6, site_name
+
+
 async def test_deleting_the_branch_that_moved_a_node_removes_it_from_the_new_site(
     db: InfrahubDatabase, default_branch: Branch, site_scoped_pool: CoreNumberPool
 ) -> None:
