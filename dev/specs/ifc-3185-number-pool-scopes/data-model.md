@@ -84,6 +84,6 @@ The denominators keep the rule of today's `NumberUtilizationGetter`: `EffectiveS
 
 - Pool creation: scope resolved, validated, stored. No later transition of the scope.
 - Schema update on the default branch: stored names refreshed from the ids (no change of ids or order).
-- Schema update that breaks an element (optional, cardinality, removal, `unique: true` on the tracked attribute), or that changes a declared scope to other ids, or that renames an element without updating the declaration: refused, no transition.
+- Schema update that breaks an element (optional, cardinality, an attribute changed to the kind `List`, `JSON` or `Any`, removal, `unique: true` on the tracked attribute), or that changes a declared scope to other ids, or that renames an element without updating the declaration: refused, no transition.
 - Schema update that renames an element and declares its new name: accepted; the stored name follows.
 - Pool deletion: the scope goes with the pool; no record changes.

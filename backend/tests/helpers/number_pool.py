@@ -25,6 +25,7 @@ from infrahub.pools.number_pool_space import SchemaAttributeDomains
 from infrahub.pools.number_ranges import EffectiveSpace, NumberDomain
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
+from infrahub.pools.scoped_number_pool_reader import ScopedNumberPoolReader
 from infrahub.schema.tasks import schema_updated
 from tests.helpers.schema import TICKET
 from tests.helpers.schema.snow import SNOW_INCIDENT, SNOW_TASK
@@ -57,7 +58,11 @@ async def register_and_provision_number_pools(db: InfrahubDatabase, branch: Bran
     registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
     upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository)
     synchronizer = SchemaNumberPoolSynchronizer(
-        db=db, schema_manager=registry.schema, upserter=upserter, range_store_factory=NumberPoolRepository
+        db=db,
+        scope_reader=ScopedNumberPoolReader(db=db),
+        schema_manager=registry.schema,
+        upserter=upserter,
+        range_store_factory=NumberPoolRepository,
     )
     await synchronizer.run()
 

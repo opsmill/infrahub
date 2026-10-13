@@ -5,6 +5,7 @@ from typing import Any
 import pytest
 from graphql import ExecutionResult
 
+from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
@@ -18,6 +19,8 @@ from infrahub.graphql.manager import registry as graphql_registry
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
+from infrahub.pools.scoped_number_pool_reader import ScopedNumberPoolReader
+from tests.adapters.lock import LockAction, LockTimeline
 from tests.helpers.number_pool import (
     SCOPED_DEVICE,
     SCOPED_HOLDER,
@@ -27,7 +30,7 @@ from tests.helpers.number_pool import (
     SCOPED_RACK,
     SCOPED_SITE,
 )
-from tests.helpers.schema import SNOW_TICKET_SCHEMA, load_schema
+from tests.helpers.schema import SNOW_TICKET_SCHEMA, load_schema, save_schema
 
 from .helpers import bounds_input, execute, load_pool
 
@@ -188,12 +191,6 @@ def device_schema_on_branch(device: NodeSchema) -> SchemaRoot:
     return SchemaRoot(nodes=[device])
 
 
-async def save_schema(db: InfrahubDatabase, schema: SchemaRoot, branch_name: str | None = None) -> None:
-    """Load the schema and save only its own kinds, because saving the whole core schema takes about 25 seconds."""
-    kinds = [element.kind for element in [*schema.generics, *schema.nodes]]
-    await load_schema(db=db, schema=schema, branch_name=branch_name, update_db=True, limit=kinds)
-
-
 @dataclass
 class ScopeRefusalTestCase:
     name: str
@@ -315,6 +312,34 @@ class TestNumberPoolAllocationScope:
         assert pool["allocation_scope"]["value"] == expected
         assert await read_scope(db=db, branch=default_branch_scope_class, pool_id=pool["id"]) == expected
         assert await read_stored_scope(db=db, pool_id=pool["id"]) == expected
+
+    async def test_create_with_a_scope_holds_the_schema_lock(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        device_schema: None,
+        recording_lock_timeline: LockTimeline,
+    ) -> None:
+        pool = await create_device_pool(
+            db=db, branch=default_branch_scope_class, name="holds-schema-lock", scope={"value": ["site"]}
+        )
+
+        local_lock, global_lock = (
+            lock.registry.get(name=name).name for name in (lock.LOCAL_SCHEMA_LOCK, lock.GLOBAL_SCHEMA_LOCK)
+        )
+        assert [
+            (event.name, event.action)
+            for event in recording_lock_timeline.events
+            if event.name in {local_lock, global_lock}
+        ] == [
+            (local_lock, LockAction.ACQUIRE),
+            (global_lock, LockAction.ACQUIRE),
+            (global_lock, LockAction.RELEASE),
+            (local_lock, LockAction.RELEASE),
+        ]
+        assert await read_stored_scope(db=db, pool_id=pool["id"]) == expected_scope(
+            kind=SCOPED_DEVICE_KIND, names=["site"]
+        )
 
     @pytest.mark.parametrize("scope", [None, {"value": None}, {"value": []}], ids=["absent", "null", "empty-list"])
     async def test_create_without_elements_creates_an_unscoped_pool(
@@ -672,7 +697,11 @@ class TestSchemaNumberPoolScope:
             db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository
         )
         synchronizer = SchemaNumberPoolSynchronizer(
-            db=db, schema_manager=registry.schema, upserter=upserter, range_store_factory=NumberPoolRepository
+            db=db,
+            scope_reader=ScopedNumberPoolReader(db=db),
+            schema_manager=registry.schema,
+            upserter=upserter,
+            range_store_factory=NumberPoolRepository,
         )
         await synchronizer.run()
         registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
@@ -770,3 +799,40 @@ class TestNumberPoolScopeAfterTheSchemaChangesAnElement:
         assert await read_stored_scope(db=db, pool_id=pool["id"]) == expected_scope(
             kind=SCOPED_DEVICE_KIND, names=["site", "role"]
         )
+
+
+class TestNumberPoolAllocationScopeOnAStaleWorker:
+    """A worker that holds the default branch's schema from before a load validates a new scope against that load."""
+
+    @pytest.fixture(scope="class")
+    async def device_schema(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        register_core_models_schema_scope_class: SchemaBranch,
+    ) -> None:
+        await save_schema(db=db, schema=_default_branch_schema())
+        default_branch_scope_class.update_schema_hash()
+
+    async def test_create_refuses_an_element_that_a_load_the_worker_missed_made_optional(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, device_schema: None
+    ) -> None:
+        stale_schema = registry.schema.get_schema_branch(name=registry.default_branch).duplicate()
+        stale_branch = registry.get_branch_from_registry(registry.default_branch).model_copy(deep=True)
+        loaded_schema = _default_branch_schema()
+        device = next(node for node in loaded_schema.nodes if node.kind == SCOPED_DEVICE_KIND)
+        device.get_attribute(name="role").optional = True
+        await save_schema(db=db, schema=loaded_schema)
+        registry.schema.set_schema_branch(name=registry.default_branch, schema=stale_schema)
+        registry.branch[registry.default_branch] = stale_branch
+
+        result = await execute(
+            db=db,
+            branch=default_branch_scope_class,
+            source=CREATE_SCOPED_POOL,
+            variables={"data": device_pool_input(name="stale-worker", scope={"value": ["role"]})},
+        )
+
+        assert error_messages(result) == [
+            create_refusal(f'"role" is optional; a scope element must be required on {SCOPED_DEVICE_KIND}')
+        ]
