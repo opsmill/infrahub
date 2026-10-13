@@ -169,11 +169,13 @@ class ManyRelationshipResolver:
         if not node_fields:
             return response
 
+        schema_branch = graphql_context.db.schema.get_schema_branch(name=graphql_context.branch.name)
         include_metadata = build_metadata_query_options(
             node_metadata_fields=metadata_fields.get("node_metadata"),
             relationship_metadata_fields=metadata_fields.get("relationship_metadata"),
             node_fields=node_fields,
-            schema=graphql_context.db.schema.get(name=node_rel.peer, branch=graphql_context.branch, duplicate=False),
+            schema=schema_branch.get(name=node_rel.peer, duplicate=False),
+            schema_branch=schema_branch,
         )
         # Add relationship properties metadata to relationship_level
         include_metadata |= MetadataQueryOptions(relationship_level=get_metadata_options_from_fields(property_fields))

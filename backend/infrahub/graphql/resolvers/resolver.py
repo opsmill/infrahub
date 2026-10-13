@@ -251,6 +251,7 @@ async def default_paginated_list_resolver(
             node_metadata_fields=node_metadata_fields,
             node_fields=node_fields,
             schema=schema,
+            schema_branch=graphql_context.db.schema.get_schema_branch(name=graphql_context.branch.name),
         )
         if "hfid" in node_fields:
             node_fields["human_friendly_id"] = None
