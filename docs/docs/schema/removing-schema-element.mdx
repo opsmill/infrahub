@@ -18,6 +18,12 @@ To view the deleted data after you merge the branch, see [View the data of a rem
 
 :::
 
+:::warning
+
+Nodes, attributes and relationships can be referenced in GraphQL queries, Transformations, Generators and checks, so these fail after a remove. Change them at the same time as you remove the element. To detect this kind of failure before a schema change reaches production, set up integration tests that run your automation against the new schema. See [Make schema changes in a controlled way](./operations#make-schema-changes-in-a-controlled-way).
+
+:::
+
 ## Remove an element
 
 1. **Mark the element `state: absent`.** Add the property to the element in your schema file:
@@ -43,11 +49,11 @@ So you state each removal on the element itself, with `state: absent`. `infrahub
 
 ## Remove an attribute or a relationship
 
-Properties of the same node and of other nodes can name an attribute or a relationship. Infrahub refuses to load a schema in which a property names an element that does not exist.
+Properties of the same node and of other nodes can name an attribute or a relationship. When you remove the element, Infrahub removes it from some of these properties, and refuses the load when another property still names it.
 
 ### Check what refers to the element
 
-- **Properties of the same node.** `human_friendly_id`, `uniqueness_constraints` and `order_by` name attributes and relationships of the node.
+- **`human_friendly_id`, `uniqueness_constraints` and `order_by` of the same node.**
   - If your file does not set the property, Infrahub removes the element from the loaded value of the property. When nothing is left, the property is empty: a node whose `human_friendly_id` was only the removed attribute has no `human_friendly_id`.
   - If your file sets the property and still names the element, Infrahub refuses the load. The message names the property:
 
@@ -57,7 +63,15 @@ Properties of the same node and of other nodes can name an attribute or a relati
     ```
 
     Remove the element from the property in your file. If the removed attribute was the whole `human_friendly_id`, give the node a new `human_friendly_id`, or clear it with an empty list (`[]`). See [Clear a property](./change-nodes-and-attributes#clear-a-property).
-- **Properties of other nodes, through a relationship.** In the `human_friendly_id` and `order_by` of a node, a path such as `rack__name__value` names an attribute of the node's peer. In this example, `InfraDevice` has the path `rack__name__value`, which names the attribute `name` of its peer `InfraRack`. If you remove `name` from `InfraRack`, Infrahub refuses the load, even when your file does not contain `InfraDevice`:
+- **`display_label` of the same node.** Infrahub does not remove the element from `display_label`, even when your file does not set it, so it refuses the load while `display_label` names the element:
+
+  ```text
+  Unable to load the schema:
+    InfraRack.display_label: name__value is invalid on schema InfraRack
+  ```
+
+  Set `display_label` in your file, without the removed element, such as `"{{ code__value }}"`.
+- **Properties of other nodes, through a relationship.** In the `human_friendly_id`, `order_by` and `display_label` of a node, a path such as `rack__name__value` names an attribute of the node's peer. In this example, `InfraDevice` has the path `rack__name__value`, which names the attribute `name` of its peer `InfraRack`. If you remove `name` from `InfraRack`, Infrahub refuses the load, even when your file does not contain `InfraDevice`:
 
   ```text
   Unable to load the schema:
@@ -65,7 +79,8 @@ Properties of the same node and of other nodes can name an attribute or a relati
   ```
 
   Change the property of `InfraDevice` in the same load as the removal.
-- **For a relationship**, the same three properties of the node can name the relationship alone, such as `rack` in `uniqueness_constraints`, or followed by an attribute of its peer, such as `rack__name__value`. The same two outcomes apply: Infrahub removes the name from a property that your file does not set, and refuses the load when a property in your file still names the relationship.
+
+The same properties can name a relationship, either alone, such as `rack` in `uniqueness_constraints`, or followed by an attribute of its peer, such as `rack__name__value`. When you remove a relationship, Infrahub removes its name from `human_friendly_id`, `uniqueness_constraints` and `order_by` when your file does not set them. It refuses the load when one of these properties in your file, or a `display_label`, still names it.
 
 ### Number pools and branch-agnostic fields
 

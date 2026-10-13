@@ -5,26 +5,20 @@ description: Rename a node, attribute or relationship on an instance that holds 
 
 # Rename schema elements
 
-To rename a node, an attribute or a relationship and keep its objects and values, add the element's `id` to your schema file next to the new name. Without the `id`, Infrahub does not rename anything: it creates a second element under the new name.
+To rename a node, an attribute or a relationship and keep its objects and values, add the element's `id` to your schema file next to the new name. Infrahub then renames the element on the branch where you load the change.
 
-## Why a rename needs the element's id
+:::warning
 
-Infrahub matches each element in your schema file with an existing element by its name, unless the file includes the element's `id`. When you change only the name, Infrahub finds no element with the new name and treats it as a new one:
+GraphQL queries, Transformations, Generators and checks refer to nodes, attributes and relationships by their name, and Infrahub does not update them when you rename an element. Those that still use the old name fail after the rename, so change them to the new name at the same time as you rename the element. To find these failures before a schema change reaches production, run integration tests of your automation against the new schema. See [Make schema changes in a controlled way](./operations#make-schema-changes-in-a-controlled-way).
 
-- **Attribute**: Infrahub adds a new attribute with no values, and the attribute with the old name keeps every value. If the new attribute is mandatory and has no `default_value`, Infrahub refuses the load instead.
-- **Node**: Infrahub creates a new node kind with no objects, and the node with the old name keeps every object.
-- **Relationship**: Infrahub adds a new relationship, and the relationship with the old name is left in place.
-
-The element with the old name is not in your file anymore, so Infrahub leaves it unchanged. `infrahubctl schema check` shows the mistake before you load: the new name appears under `added`, and nothing appears under `removed`.
-
-With the `id`, Infrahub matches the element in the file with the existing element, so it renames the existing element and keeps its data.
+:::
 
 ## Rename an element
 
-1. **Find the element's `id`.** In the web interface, open **Object Management > Schemas**, select the node, and read the **ID** row of the node, or of the attribute or relationship. The `id` is also in the `id` field of each element returned by the REST API at `/api/schema?branch=<branch>`.
+1. **Find the element's `id`.** In the web interface, open **Object Management > Schemas**, select the node, and read the **ID** row of the node, or of the attribute or relationship.
 2. **Add the `id` and change the name.** Put the `id` on the element you rename, next to the new name:
 
-   ```yaml
+   ```yaml {5-6}
    nodes:
      - name: Rack
        namespace: Infra
@@ -34,65 +28,112 @@ With the `id`, Infrahub matches the element in the file with the existing elemen
            kind: Text
    ```
 
-3. **Check the change.** Run `infrahubctl schema check <file> --branch <branch>`. A rename appears under `changed`, with `name` as the changed property:
+   Keep every other property that the element already has: Infrahub resets a property you leave out to its default. See [Write each changed element in full](./operations#write-each-changed-element-in-full).
+3. **Check the change.** Run `infrahubctl schema check <file> --branch <branch>`. A rename appears under `changed`, as a change to the `name` property of `rack_name`. The output, without the empty `added: {}` and `removed: {}` lines:
 
    ```yaml
-   changed:
-     InfraRack:
+   diff:
        changed:
-         attributes:
-           changed:
-             rack_name:
+           InfraRack:
                changed:
-                 name: null
+                   attributes:
+                       changed:
+                           rack_name:
+                               changed:
+                                   name: null
    ```
 
    If the new name appears under `added`, the `id` is missing or does not match an element on this instance. Correct it before you load.
 4. **Load the change on a branch**, and merge it through a Proposed Change.
 5. **Remove the `id` from the file once the rename is merged.** The `id` is valid only on this instance. See [The id belongs to one instance](#the-id-belongs-to-one-instance).
 
-## Rename by element type
+## Why a rename needs the element's id
 
-### Attribute
+Loading a schema file adds the elements in the file to the loaded schema and updates the ones that already exist. Infrahub matches each element in your file with an existing element by its name, unless the file includes the element's `id`. See [How a load works](./operations#how-a-load-works).
 
-Infrahub renames the attribute on every object and keeps the values.
+When you change only the name, Infrahub finds no element with the new name and treats it as a new one:
 
-### Attribute inherited from a generic
+- **Attribute**: Infrahub adds a new attribute with no values, and the attribute with the old name keeps every value.
+- **Node**: Infrahub creates a new node kind with no objects, and the node with the old name keeps every object.
+- **Relationship**: Infrahub adds a new relationship, and the relationship with the old name is left in place.
 
-An inherited attribute has no `id` of its own on the node. Rename it on the generic, with the `id` of the generic's attribute. Every node that inherits it receives the new name, and the values are kept. Properties that refer to the attribute by name, such as `order_by` and `human_friendly_id`, are updated. See [Change generics](./change-generics).
+The element with the old name is not in your file anymore, so Infrahub leaves it unchanged. `infrahubctl schema check` shows the mistake before you load: the new name appears under `added`, not under `changed`.
 
-### Node, including a change of namespace
+With the `id`, Infrahub matches the element in the file with the existing element, so it renames the existing element and keeps its data.
+
+## Rename an attribute or a relationship
+
+- **For an attribute**, Infrahub renames the attribute on every object and keeps the values.
+- **For a relationship**, Infrahub stores the links between objects under the relationship's `identifier`, not its name. Renaming a relationship with its `id` changes the name in the schema and in the GraphQL API, and the existing links are kept.
+
+### Check what refers to the element
+
+Properties of the same node and of other nodes can name an attribute or a relationship. After a rename, the old name no longer exists. Infrahub replaces it in some of these properties, and refuses the load when another property still names it.
+
+- **`human_friendly_id`, `uniqueness_constraints` and `order_by` of the same node.**
+  - If your file does not set the property, Infrahub replaces the old name with the new name in the loaded value of the property.
+  - If your file sets the property and still names the old name, Infrahub refuses the load. The message names the property:
+
+    ```text
+    Unable to load the schema:
+      InfraRack.human_friendly_id: name__value is invalid on schema InfraRack
+    ```
+
+    Replace the old name with the new name in the property in your file.
+- **`display_label` of the same node.** Infrahub does not replace the old name in `display_label`, even when your file does not set it, so it refuses the load while `display_label` names the old name:
+
+  ```text
+  Unable to load the schema:
+    InfraRack.display_label: name__value is invalid on schema InfraRack
+  ```
+
+  Set `display_label` in your file, with the new name, such as `"{{ rack_name__value }}"`.
+- **Properties of other nodes, through a relationship.** In the `human_friendly_id`, `order_by` and `display_label` of a node, a path such as `rack__name__value` names an attribute of the node's peer. In this example, `InfraDevice` has the path `rack__name__value`, which names the attribute `name` of its peer `InfraRack`. If you rename `name` to `rack_name` in `InfraRack`, Infrahub refuses the load, even when your file does not contain `InfraDevice`:
+
+  ```text
+  Unable to load the schema:
+    InfraDevice.human_friendly_id: name is not a valid attribute of InfraRack
+  ```
+
+  Change the property of `InfraDevice` in the same load as the rename.
+
+The same properties can name a relationship, either alone, such as `rack` in `uniqueness_constraints`, or followed by an attribute of its peer, such as `rack__name__value`. When you rename a relationship, Infrahub replaces the old name in `human_friendly_id`, `uniqueness_constraints` and `order_by` when your file does not set them. It refuses the load when one of these properties in your file, or a `display_label`, still names the old name.
+
+## Rename an attribute of a generic
+
+A node that inherits an attribute from a generic has no `id` for it on the node. Rename the attribute on the generic, with the `id` of the generic's attribute. Every node that inherits the attribute receives the new name, and the values are kept. Infrahub also replaces the old name in `human_friendly_id`, `uniqueness_constraints` and `order_by`, but not in `display_label`. See [Check what refers to the element](#check-what-refers-to-the-element) and [Change generics](./change-generics).
+
+## Rename a node or change its namespace
 
 Changing the `name` or the `namespace` of a node changes its kind, for example from `InfraFirewall` to `SecurityFirewall`. With the node's `id`, Infrahub changes every existing object to the new kind and keeps its values and relationships.
 
-In the same load, change every relationship that has the old kind as its `peer`. Infrahub refuses the load while a relationship refers to a kind that no longer exists:
+Infrahub cannot resolve a relationship whose `peer` is a kind that no longer exists. So it refuses the load while a relationship still has the old kind as its `peer`:
 
 ```text
 Unable to load the schema:
   InfraDevice: Relationship 'firewall' is referring an invalid peer 'InfraFirewall'
 ```
 
-GraphQL queries, Transformations, Generators and checks that use the old kind name do not change with the schema. Update them to the new kind name.
+Rename the node and the references to it in your schema file:
 
-### Relationship
+- Add the node's `id` and change its `name` or its `namespace`.
+- Change the `peer` of each relationship that has the old kind as its `peer`.
 
-Infrahub stores the links between objects under the relationship's `identifier`, not its name. Renaming a relationship with its `id` changes the name in the schema and in the GraphQL API, and the existing links are kept.
+Load these changes together, in one load, even when they are in different files.
 
 ## The id belongs to one instance
 
-:::warning
-
 Infrahub generates the `id` of an element when it first loads the element, so the same element has a different `id` on each instance. If you load a schema file with an `id` from one instance into another instance, Infrahub does not rename the element there: it creates a second element, as when the `id` is missing.
-
-:::
 
 To apply the same rename to several instances, for example development, staging and production, look up the `id` on each instance and load a file with that instance's `id`. This also applies to a schema loaded from a [Git repository](../git-integration/overview): a repository connected to several instances cannot contain an `id` that is valid on all of them.
 
-## If you already have two elements
+## Recover from a rename that created a second element
 
-If a rename without the `id` already created a second element, see [Two elements after a rename](./troubleshooting#two-elements-after-a-rename) to remove the new element and rename the original one.
+After a rename without the `id`, the element with the old name still has all its data. To remove the new element and rename the original one, see [Two elements after a rename](./troubleshooting#two-elements-after-a-rename).
 
 ## Next
 
 - [Remove schema elements](./removing-schema-element) — Remove a node, attribute, relationship or dropdown choice
-- [Troubleshooting schema updates](./troubleshooting) — Recover from a rename that created a second element
+- [Change generics](./change-generics) — Which changes on a generic apply to the nodes that inherit from it, and how to remove an override
+- [Schema operations](./operations) — How Infrahub applies a schema file, and how to plan a change to an instance that holds objects
+- [Troubleshooting schema updates](./troubleshooting) — Recover from a rename that created a second element, a change on a generic that does not apply to some nodes, a load that seems to hang, and a refused load
