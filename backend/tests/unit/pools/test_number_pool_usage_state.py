@@ -73,6 +73,7 @@ COMPLETE_DIVISION_CASES = [
 
 REFUSED_COMPLETE_DIVISION_CASES = [
     RefusedDivisionCase(name="no-entries", scope=SCOPED, entries=None, message=INCOMPLETE_DIVISION),
+    RefusedDivisionCase(name="empty-entries", scope=SCOPED, entries=[], message=INCOMPLETE_DIVISION),
     RefusedDivisionCase(
         name="one-element-of-two", scope=SCOPED, entries=[("role", "leaf")], message=INCOMPLETE_DIVISION
     ),

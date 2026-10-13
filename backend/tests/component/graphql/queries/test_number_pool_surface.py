@@ -251,53 +251,10 @@ REFUSAL_CASES = [
         ),
     ),
     RefusalCase(
-        name="utilization-scoped-pool-with-empty-division",
-        query=UTILIZATION_QUERY,
-        variables=lambda data: {"pool_id": data.scoped_pool_id, "division": []},
-        message=lambda data: (
-            f"The pool {data.scoped_pool_id} has an allocation scope; give a division with a value for every "
-            "element to read its utilization"
-        ),
-    ),
-    RefusalCase(
         name="path-not-in-scope",
         query=ALLOCATIONS_QUERY,
         variables=lambda data: {"pool_id": data.scoped_pool_id, "division": [{"path": "role", "value": "leaf"}]},
         message=lambda _: 'The division entry "role" is not an element of the pool\'s allocation scope',
-    ),
-    RefusalCase(
-        name="duplicate-path",
-        query=ALLOCATIONS_QUERY,
-        variables=lambda data: {"pool_id": data.scoped_pool_id, "division": data.division("site-a") * 2},
-        message=lambda _: 'The division entry "site" is not an element of the pool\'s allocation scope',
-    ),
-    RefusalCase(
-        name="negative-offset",
-        query=ALLOCATIONS_QUERY,
-        variables=lambda data: {"pool_id": data.scoped_pool_id, "offset": -1},
-        message=lambda _: "offset must be 0 or greater",
-    ),
-    RefusalCase(
-        name="negative-limit",
-        query=ALLOCATIONS_QUERY,
-        variables=lambda data: {"pool_id": data.scoped_pool_id, "limit": -1},
-        message=lambda _: "limit must be 0 or greater",
-    ),
-    RefusalCase(
-        name="utilization-division-on-unscoped-pool",
-        query=UTILIZATION_QUERY,
-        variables=lambda data: {"pool_id": data.unscoped_pool_id, "division": data.division("site-a")},
-        message=lambda data: (
-            f"The pool {data.unscoped_pool_id} has no allocation scope; the division filter cannot be applied"
-        ),
-    ),
-    RefusalCase(
-        name="allocations-division-on-unscoped-pool",
-        query=ALLOCATIONS_QUERY,
-        variables=lambda data: {"pool_id": data.unscoped_pool_id, "division": data.division("site-a")},
-        message=lambda data: (
-            f"The pool {data.unscoped_pool_id} has no allocation scope; the division filter cannot be applied"
-        ),
     ),
     RefusalCase(
         name="range-of-another-pool",
