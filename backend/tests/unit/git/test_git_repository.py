@@ -38,6 +38,7 @@ from infrahub.git.divergence.models import ReconciledBranch
 from infrahub.git.models import GitRepositoryAdd, GitRepositoryMerge, PushRejectionReason
 from infrahub.git.repository import FailedImport, ImportStep, InfrahubReadOnlyRepository, PendingObjectImport
 from infrahub.git.worktree import Worktree
+from tests.adapters.delivery_state import build_idle_delivery_state
 from tests.helpers.file_repo import MultipleStagesFileRepo
 from tests.helpers.git import LocalRemote, clone_repository, open_repository
 from tests.helpers.test_client import dummy_async_request
@@ -1250,7 +1251,9 @@ async def test_collect_pending_imports_isolates_per_branch_push_failure() -> Non
         connection_error_branch="branch01",
     )
 
-    collected = await repository.collect_pending_imports()
+    collected = await repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(repository.id))
+    )
 
     assert collected.imports == [
         PendingObjectImport(
@@ -1435,7 +1438,9 @@ async def test_collect_pending_imports_records_a_new_colliding_branch_as_skipped
     remote = LocalRemote.create(directory=tmp_path / "source-repo", trunk=TRUNK, branches=["main", "ab"])
     repository = await clone_trunk_repository(tmp_path, monkeypatch, remote)
 
-    collected = await repository.collect_pending_imports()
+    collected = await repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(repository.id))
+    )
 
     assert collected.skipped_branches == ["main"]
     assert collected.imports == []
@@ -1454,7 +1459,9 @@ async def test_collect_pending_imports_records_an_updated_colliding_branch_as_sk
     new_branches, updated_branches = await repository.compare_local_remote()
     assert (new_branches, updated_branches) == ([], [])
 
-    collected = await repository.collect_pending_imports()
+    collected = await repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(repository.id))
+    )
 
     assert collected.skipped_branches == ["main"]
     assert collected.imports == []
@@ -1470,7 +1477,9 @@ async def test_collect_pending_imports_records_the_colliding_remote_head_as_skip
     new_branches, updated_branches = await repository.compare_local_remote()
     assert (new_branches, updated_branches) == ([], [])
 
-    collected = await repository.collect_pending_imports()
+    collected = await repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(repository.id))
+    )
 
     assert collected.skipped_branches == ["main"]
     assert collected.advanced_skipped_branches == []
@@ -1528,7 +1537,9 @@ async def test_collect_pending_imports_detects_a_skipped_branch_that_advanced(
     if case.push_to_colliding_branch:
         remote.commit(branch_name="main", files={"data.txt": "main v2\n"})
 
-    collected = await repository.collect_pending_imports()
+    collected = await repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(repository.id))
+    )
 
     assert collected.skipped_branches == ["main"]
     assert collected.advanced_skipped_branches == case.expected_advanced
@@ -1542,8 +1553,8 @@ async def test_collect_pending_imports_reports_an_advance_once(
     repository = await clone_trunk_repository(tmp_path, monkeypatch, remote)
     remote.commit(branch_name="main", files={"data.txt": "main v2\n"})
 
-    first = await repository.collect_pending_imports()
-    second = await repository.collect_pending_imports()
+    first = await repository.collect_pending_imports(state=build_idle_delivery_state(repository_id=str(repository.id)))
+    second = await repository.collect_pending_imports(state=build_idle_delivery_state(repository_id=str(repository.id)))
 
     assert first.advanced_skipped_branches == ["main"]
     assert second.skipped_branches == ["main"]

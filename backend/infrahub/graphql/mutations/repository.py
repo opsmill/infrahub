@@ -6,13 +6,19 @@ from typing import TYPE_CHECKING, Any, Self, cast
 import httpx
 from graphene import Boolean, Field, InputObjectType, Mutation, String
 
-from infrahub import config
-from infrahub.core.constants import InfrahubKind, MetadataOptions, PermissionAction, RepositoryInternalStatus
+from infrahub import config, lock
+from infrahub.core.constants import (
+    InfrahubKind,
+    MetadataOptions,
+    PermissionAction,
+    RepositoryDeliveryStatus,
+    RepositoryInternalStatus,
+)
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreReadOnlyRepository
 from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema
-from infrahub.exceptions import NodeNotFoundError, ValidationError
+from infrahub.exceptions import NodeNotFoundError, ReimportPendingPushesError, ValidationError
 from infrahub.git.divergence.suppression import RetargetMarkers
 from infrahub.git.models import (
     GitReadOnlyRepositoryCheckRefs,
@@ -21,6 +27,7 @@ from infrahub.git.models import (
     GitRepositoryPullReadOnly,
     TrackedRef,
 )
+from infrahub.git.writeback.store import build_intent_store
 from infrahub.graphql.types.common import IdentifierInput
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
@@ -267,6 +274,13 @@ class ProcessRepository(Mutation):
         info: GraphQLResolveInfo,
         data: IdentifierInput,
     ) -> dict[str, bool]:
+        """Reimport the objects of the repository at its current commit.
+
+        Raises:
+            ReimportPendingPushesError: On every branch, while merged changes of a read-write repository
+                wait for their push to the remote, because the reimport would remove the objects of those merges.
+
+        """
         graphql_context: GraphqlContext = info.context
         branch = graphql_context.branch
         repository_id = str(data.id)
@@ -276,6 +290,10 @@ class ProcessRepository(Mutation):
             id=str(data.id),
             branch=branch,
         )
+        if repo.get_kind() == InfrahubKind.REPOSITORY:
+            state = await build_intent_store(db=graphql_context.db, lock_registry=lock.registry)
+            if (await state.read(repository_id=repo.id)).status is not RepositoryDeliveryStatus.NONE:
+                raise ReimportPendingPushesError(repository_name=str(repo.name.value))
 
         model = GitRepositoryImportObjects(
             repository_id=repository_id,
