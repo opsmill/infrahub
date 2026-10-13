@@ -685,6 +685,19 @@ class TestDivisionFromNode:
             _from_node(node=node, scope=scope, schema_branch=saved_schema_branch)
 
 
+class TestElementFields:
+    def test_an_element_the_branch_does_not_define_is_refused_without_a_field_key(
+        self, saved_schema_branch: SchemaBranch
+    ) -> None:
+        scope = AllocationScope(elements=(_element(name="role"), ScopeElement(id=UNKNOWN_FIELD_ID, name="zone")))
+        expected = f'The scope element "zone" of pool vlan-per-site does not exist on {DEVICE_KIND} on branch main'
+
+        with pytest.raises(ValidationError, match=f"^{re.escape(expected)}$"):
+            AllocationScopeResolver(schema_branch=saved_schema_branch).element_fields(
+                kind=DEVICE_KIND, scope=scope, pool="vlan-per-site"
+            )
+
+
 def _from_entries(
     entries: Sequence[tuple[str, object]], scope: AllocationScope, schema_branch: SchemaBranch, kind: str = DEVICE_KIND
 ) -> Division:
