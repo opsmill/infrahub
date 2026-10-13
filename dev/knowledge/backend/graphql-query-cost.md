@@ -203,6 +203,33 @@ stored query has no variable values, and stores the result in two read-only attr
   The save goes through `Node.save`, which emits no event, so it starts no trigger.
 - Stored queries changed on another branch keep the estimate of their last change until they are merged.
 
+## High-cost renders
+
+`config.SETTINGS.graphql_cost.limit_high_cost_renders` and `skip_high_cost_artifact_checks` (which requires
+the first) change how artifact renders run. All the logic runs in the task workers.
+
+- `RenderCostClassifier` (`infrahub.graphql.cost.render_cost`) classifies the renders of one stored query.
+  For a query whose stored `cost_level` is not `high`, or with the limit disabled, every render is light and
+  nothing is estimated. Otherwise it builds the GraphQL schema and the analyzer once, then estimates each
+  render with the target's variables (counted first step) and compares the worst-case rows with
+  `high_cost_database_rows`. A render without an estimate counts as high-cost.
+- The flows that start renders (`validate_artifacts_generation`, `generate_request_artifact_definition`)
+  set `high_cost` on the render model. They start the light renders as before and run the high-cost ones
+  in `high_cost_renders_at_once` sequences: the validator runs the sequences next to the light checks, and
+  the generation flow runs them after it submitted the light renders. A render waiting for a slot holds a
+  task worker slot, so starting them all at once would hold the workers that light renders need.
+- The render flows (`git-repository-check-artifact-create`, `artifact-generate`) hold a slot of
+  `RenderSlots` (`infrahub.graphql.cost.render_slots`) around the query and the Transformation when
+  `high_cost` is set. A slot is a cache key set with `not_exists` and a one-hour expiry, so it works with
+  the Redis and NATS caches and frees itself when a worker stops; the release deletes the key only when it
+  still holds the holder's token. `high_cost_render_slot` logs to the flow run when it takes the slot (with
+  the time it waited) and when it releases it; the performance tests read these log lines to measure how
+  many high-cost renders ran at once.
+- With `skip_high_cost_artifact_checks`, the validator saves a `CoreArtifactCheck` with the `skipped`
+  conclusion instead of starting the render. `run_checks_and_update_validator` concludes `skipped` when no
+  check failed and one was skipped, and sends the passed event. The merge accepts `success` and `skipped`
+  validators. After the merge, the regeneration of the affected definitions renders the skipped artifacts.
+
 ## Known limits
 
 - **Shared `NodeDataLoader` batches**: `NodeDataLoader` is keyed without the relationship name, so

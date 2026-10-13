@@ -86,6 +86,18 @@ CASES = [
         expected_events=[ValidatorFailedEvent],
         expected_conclusion=ValidatorConclusion.FAILURE.value,
     ),
+    CheckRunnerCase(
+        name="a_skipped_check_concludes_skipped",
+        check_results=[ValidatorConclusion.SUCCESS, ValidatorConclusion.SKIPPED],
+        expected_events=[ValidatorPassedEvent],
+        expected_conclusion=ValidatorConclusion.SKIPPED.value,
+    ),
+    CheckRunnerCase(
+        name="a_failing_check_wins_over_a_skipped_check",
+        check_results=[ValidatorConclusion.SKIPPED, ValidatorConclusion.FAILURE],
+        expected_events=[ValidatorFailedEvent],
+        expected_conclusion=ValidatorConclusion.FAILURE.value,
+    ),
 ]
 
 

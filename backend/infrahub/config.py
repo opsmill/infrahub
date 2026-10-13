@@ -1186,6 +1186,30 @@ class GraphQLCostSettings(BaseSettings):
         description="Worst-case database rows, estimated for one run of a GraphQL query, above which the query has "
         "the high cost level",
     )
+    limit_high_cost_renders: bool = Field(
+        default=False,
+        description="Run the artifact renders estimated above the high cost limit at most "
+        "`high_cost_renders_at_once` at a time across every task worker, in the artifact checks of proposed changes "
+        "and in artifact generation",
+    )
+    high_cost_renders_at_once: int = Field(
+        default=1,
+        ge=1,
+        description="Number of artifact renders estimated above the high cost limit that run at the same time, when "
+        "`limit_high_cost_renders` is enabled",
+    )
+    skip_high_cost_artifact_checks: bool = Field(
+        default=False,
+        description="Do not render the artifacts estimated above the high cost limit in the artifact checks of a "
+        "proposed change: their checks conclude as skipped, and the artifacts are generated after the merge. "
+        "Requires `limit_high_cost_renders`",
+    )
+
+    @model_validator(mode="after")
+    def validate_skip_requires_limit(self) -> Self:
+        if self.skip_high_cost_artifact_checks and not self.limit_high_cost_renders:
+            raise ValueError("'skip_high_cost_artifact_checks' requires 'limit_high_cost_renders' to be enabled")
+        return self
 
 
 class ExperimentalFeaturesSettings(BaseSettings):

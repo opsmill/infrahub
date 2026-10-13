@@ -88,6 +88,10 @@ class RequestArtifactGenerate(BaseModel):
         default=False,
         description="Store the file again when the content is unchanged but the stored copy is missing or refused",
     )
+    high_cost: bool = Field(
+        default=False,
+        description="The render is estimated above the high cost limit and waits for a slot of the high-cost renders",
+    )
 
 
 class GitRepositoryAdd(BaseModel):

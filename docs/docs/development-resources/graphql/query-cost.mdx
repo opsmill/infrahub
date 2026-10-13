@@ -277,6 +277,26 @@ To choose the limit for your data, run the report with the variables of your lar
 
 Infrahub saves a new estimate only when the level or one of the figures changes, so a refresh that finds the same figures does not change the stored query.
 
+## Limit the renders of high-cost queries
+
+Two settings, both off by default, change how Infrahub renders the artifacts of a stored query with the `high` cost level. For such a query, Infrahub estimates each render with the variables of its target, as the report does with `variables`, so it counts the top-level nodes and their peers for that target. A render is high-cost when its worst-case `database_rows` are above `INFRAHUB_GRAPHQL_COST_HIGH_COST_DATABASE_ROWS`. A render that Infrahub cannot estimate, for example before the first refresh of the statistics, counts as high-cost. The renders of a query with the `low` or `unknown` level are not estimated and run as before.
+
+With `INFRAHUB_GRAPHQL_COST_LIMIT_HIGH_COST_RENDERS` set to `true`:
+
+- At most `INFRAHUB_GRAPHQL_COST_HIGH_COST_RENDERS_AT_ONCE` high-cost renders run at the same time, 1 by default, across every task worker. This applies to the artifact checks of proposed changes and to artifact generation: after a merge, after a change to an artifact definition, and when you regenerate artifacts.
+- Each high-cost render holds a slot in the cache while it runs the query and the Transformation. When a task worker stops during a render, its slot is free again after one hour. The logs of the render's task show when it took the slot, how long it waited for it, and when it released it.
+- Infrahub runs the high-cost renders one after the other, in as many sequences as slots, while the other renders start at once as before. Renders that wait for a slot then do not take the task workers that the other renders need.
+
+With `INFRAHUB_GRAPHQL_COST_SKIP_HIGH_COST_ARTIFACT_CHECKS` also set to `true`, the artifact checks of a proposed change do not render the high-cost artifacts:
+
+- The check of each high-cost artifact concludes as `skipped`. Its message gives the estimated worst-case database rows and the limit.
+- An artifact validator with a skipped check concludes as `skipped` when none of its checks failed. A `skipped` validator does not block the merge.
+- After the merge, Infrahub generates the artifacts that the merge affects on the default branch, the high-cost ones one at a time.
+
+A skipped check does not tell you whether the artifact renders. When the Transformation fails for that target, you view the error after the merge, on the artifact of the default branch, which has the `Error` status.
+
+Infrahub refuses to start when `INFRAHUB_GRAPHQL_COST_SKIP_HIGH_COST_ARTIFACT_CHECKS` is `true` and `INFRAHUB_GRAPHQL_COST_LIMIT_HIGH_COST_RENDERS` is not: without the limit, the renders skipped in the proposed change would all run at the same time after the merge.
+
 ## Refresh the statistics
 
 The `graphql-cost-statistics-refresh` workflow reads the default branch and stores, for each kind, its number of nodes and, for each relationship, the number of peers of its nodes: the total, a histogram of peers per node, and the 20 nodes with the most peers. Infrahub stores the statistics in the cache, Redis by default. The workflow reads the IDs of the nodes of each kind in chunks of `INFRAHUB_DB_QUERY_SIZE_LIMIT` IDs, and each query that counts peers reads one chunk of IDs, so no query returns more than one chunk. To return each chunk of IDs, the database sorts all the nodes of the kind, and the queries that count the nodes of each kind read every kind.

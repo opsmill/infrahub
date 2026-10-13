@@ -11,8 +11,10 @@ from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
+from infrahub.git import tasks as git_tasks
 from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.git.tasks import generate_request_artifact_definition
+from infrahub.graphql.cost.render_cost import LIGHT_RENDER, RenderCost
 from infrahub.server import app
 from infrahub.workers.dependencies import build_client
 from infrahub.workflows.catalogue import REQUEST_ARTIFACT_GENERATE
@@ -33,6 +35,20 @@ if TYPE_CHECKING:
     from infrahub.services import InfrahubServices
     from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
     from tests.helpers.test_client import InfrahubTestClient
+
+
+class StubRenderCostClassifier:
+    """Classifies the render for the device named dev1 as high-cost."""
+
+    @classmethod
+    async def for_stored_query(cls, **_: Any) -> StubRenderCostClassifier:
+        return cls()
+
+    async def classify(self, variables: dict[str, Any]) -> RenderCost:
+        if variables.get("name") == "dev1":
+            return RenderCost(high_cost=True, worst_case_database_rows=900_000)
+        return LIGHT_RENDER
+
 
 DEVICE_QUERY = """
 query GetDevice($ids: [ID!]!) {
@@ -247,3 +263,33 @@ class TestArtifactDefinitionGenerateMembers(TestInfrahubAppWithoutLocalWorkflow)
         limited, *whole_definition = requests
         assert limited == (dataset["device2_id"], True)
         assert sorted(whole_definition) == sorted([(dataset["device1_id"], False), (dataset["device2_id"], False)])
+
+    async def test_high_cost_artifacts_are_generated_one_after_the_other(
+        self,
+        dataset: dict[str, Any],
+        default_branch: Branch,
+        admin_account: CoreAccount,
+        workflow_recorder: WorkflowRecorder,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """The high-cost render for dev1 is executed and awaited; the light render for dev2 is submitted."""
+        monkeypatch.setattr(git_tasks, "RenderCostClassifier", StubRenderCostClassifier)
+        model = RequestArtifactDefinitionGenerate(
+            artifact_definition_id=dataset["artifact_definition_id"],
+            artifact_definition_name="device-artifact",
+            branch=default_branch.name,
+            members=[],
+        )
+
+        await generate_request_artifact_definition(model=model, context=self._context(admin_account, default_branch))
+
+        executed = [
+            (call["parameters"]["model"].target_id, call["parameters"]["model"].high_cost)
+            for call in workflow_recorder.get_execute_calls_for(REQUEST_ARTIFACT_GENERATE)
+        ]
+        submitted = [
+            (call["parameters"]["model"].target_id, call["parameters"]["model"].high_cost)
+            for call in workflow_recorder.get_submit_calls_for(REQUEST_ARTIFACT_GENERATE)
+        ]
+        assert executed == [(dataset["device1_id"], True)]
+        assert submitted == [(dataset["device2_id"], False)]

@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any
 
 from git.exc import InvalidGitRepositoryError
@@ -15,7 +16,7 @@ from prefect import flow, task
 from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
 
-from infrahub import lock
+from infrahub import config, lock
 from infrahub.context import InfrahubContext
 from infrahub.core.constants import (
     InfrahubKind,
@@ -27,6 +28,8 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.registry import registry
 from infrahub.exceptions import CheckError, CommitNotFoundError, RepositoryError
 from infrahub.git.graphql_queries import GitRepositoryNodeQuery
+from infrahub.graphql.cost.render_cost import RenderCostClassifier
+from infrahub.graphql.cost.render_slots import high_cost_render_slot
 from infrahub.message_bus import Meta, messages
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.validators.tasks import start_validator
@@ -527,7 +530,8 @@ async def generate_artifact(model: RequestArtifactGenerate) -> None:
     artifact, artifact_created = await define_artifact(model=model)
 
     try:
-        result = await repo.render_artifact(artifact=artifact, artifact_created=artifact_created, message=model)
+        async with high_cost_render_slot(high_cost=model.high_cost):
+            result = await repo.render_artifact(artifact=artifact, artifact_created=artifact_created, message=model)
         log.debug(
             f"Generated artifact | changed: {result.changed} | {result.checksum} | {result.storage_id}",
         )
@@ -598,6 +602,10 @@ async def generate_request_artifact_definition(
         transform_location = f"{transform.file_path.value}::{transform.class_name.value}"
         convert_query_response = transform.convert_query_response.value
 
+    classifier = await RenderCostClassifier.for_stored_query(
+        branch_name=model.branch, query=query.query.value, cost_level=query.cost_level.value
+    )
+    high_cost_requests: list[RequestArtifactGenerate] = []
     batch = await client.create_batch()
     for relationship in group.members.peers:
         member = relationship.peer
@@ -605,6 +613,8 @@ async def generate_request_artifact_definition(
         if not model.selects_member(member_id=member.id, artifact_id=artifact_id):
             continue
 
+        variables = await member.extract(params=artifact_definition.parameters.value)
+        render_cost = await classifier.classify(variables=variables)
         request_artifact_generate_model = RequestArtifactGenerate(
             artifact_name=artifact_definition.artifact_name.value,
             artifact_id=artifact_id,
@@ -620,7 +630,7 @@ async def generate_request_artifact_definition(
             branch_name=model.branch,
             query=query.name.value,
             query_id=query.id,
-            variables=await member.extract(params=artifact_definition.parameters.value),
+            variables=variables,
             target_id=member.id,
             target_name=member.display_label,
             target_kind=member.get_kind(),
@@ -628,7 +638,11 @@ async def generate_request_artifact_definition(
             convert_query_response=convert_query_response,
             context=context,
             check_stored_file=bool(model.limit),
+            high_cost=render_cost.high_cost,
         )
+        if render_cost.high_cost:
+            high_cost_requests.append(request_artifact_generate_model)
+            continue
 
         batch.add(
             task=get_workflow().submit_workflow,
@@ -640,6 +654,8 @@ async def generate_request_artifact_definition(
     async for _, _ in batch.execute():
         pass
 
+    await _generate_high_cost_artifacts(requests=high_cost_requests, context=context)
+
     # A full pass over the definition also cleans up artifacts whose target is no
     # longer a member of the target group; a limited run only regenerates the
     # requested artifacts and must not delete anything else. The cleanup runs
@@ -647,19 +663,49 @@ async def generate_request_artifact_definition(
     # a stale artifact that cannot be deleted must not block the regeneration
     # of current members.
     if model.evaluates_every_member:
-        log = get_run_logger()
-        for artifact in stale_artifacts:
-            try:
-                await artifact.delete()
-                log.info(
-                    f"Deleted artifact {artifact.id} ({artifact.name.value}) on branch {model.branch}: "
-                    f"its target {artifact.object.id} is no longer a member of the definition's targets"
-                )
-            except Exception:
-                log.warning(
-                    f"Failed to delete stale artifact {artifact.id} ({artifact.name.value}) on branch {model.branch}",
-                    exc_info=True,
-                )
+        await _delete_stale_artifacts(artifacts=stale_artifacts, branch=model.branch)
+
+
+async def _delete_stale_artifacts(artifacts: list[CoreArtifact], branch: str) -> None:
+    log = get_run_logger()
+    for artifact in artifacts:
+        try:
+            await artifact.delete()
+            log.info(
+                f"Deleted artifact {artifact.id} ({artifact.name.value}) on branch {branch}: "
+                f"its target {artifact.object.id} is no longer a member of the definition's targets"
+            )
+        except Exception:
+            log.warning(
+                f"Failed to delete stale artifact {artifact.id} ({artifact.name.value}) on branch {branch}",
+                exc_info=True,
+            )
+
+
+async def _generate_high_cost_artifacts(requests: list[RequestArtifactGenerate], context: InfrahubContext) -> None:
+    """Generate the high-cost artifacts in as many sequences as renders that can hold a slot at once.
+
+    Each render waits for a slot of the high-cost renders; running them in sequences keeps the renders that wait
+    for a slot from taking the task workers that the other renders need.
+    """
+    if not requests:
+        return
+    sequences = config.SETTINGS.graphql_cost.high_cost_renders_at_once
+    await asyncio.gather(
+        *(_generate_in_sequence(requests=requests[index::sequences], context=context) for index in range(sequences))
+    )
+
+
+async def _generate_in_sequence(requests: list[RequestArtifactGenerate], context: InfrahubContext) -> None:
+    log = get_run_logger()
+    for request in requests:
+        try:
+            await get_workflow().execute_workflow(
+                workflow=REQUEST_ARTIFACT_GENERATE, context=context, parameters={"model": request}
+            )
+        except Exception:
+            # The generation records its failure on the artifact; the next artifacts of the sequence still run.
+            log.warning(f"Failed to generate artifact {request.artifact_name} for {request.target_name}", exc_info=True)
 
 
 @flow(name="git-repository-pull-read-only", flow_run_name="Pull latest commit on {model.repository_name}")

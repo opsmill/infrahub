@@ -4,7 +4,7 @@ import asyncio
 import os
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from infrahub_sdk.exceptions import ModuleImportError, NodeNotFoundError, URLNotFoundError
@@ -27,6 +27,7 @@ from prefect.states import Completed, Failed
 from pydantic import BaseModel
 
 from infrahub import config, lock
+from infrahub.artifacts.high_cost import build_render_cost_classifier, checks_in_sequences, start_artifact_check
 from infrahub.artifacts.models import CheckArtifactCreate
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core import registry
@@ -111,7 +112,6 @@ from infrahub.pytest_plugin import InfrahubBackendPlugin
 from infrahub.validators.tasks import start_validator
 from infrahub.workers.dependencies import get_cache, get_client, get_database, get_event_service, get_workflow
 from infrahub.workflows.catalogue import (
-    GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE,
     GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER,
     GIT_REPOSITORY_USER_CHECKS_TRIGGER,
     REQUEST_ARTIFACT_DEFINITION_CHECK,
@@ -130,12 +130,18 @@ from .branch_diff import get_diff_summary_cache, get_modified_kinds
 from .checker import verify_proposed_change_is_mergeable
 
 if TYPE_CHECKING:
+    from collections.abc import Coroutine
+
     from infrahub_sdk.client import InfrahubClient
     from infrahub_sdk.diff import NodeDiff
 
     from infrahub.core.models import SchemaUpdateConstraintInfo
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
+
+
+# A skipped check rendered nothing: its artifact is generated after the merge.
+MERGEABLE_CONCLUSIONS = frozenset({ValidatorConclusion.SUCCESS.value, ValidatorConclusion.SKIPPED.value})
 
 
 async def _proposed_change_transition_state(
@@ -281,7 +287,7 @@ async def merge_proposed_change(
             validator_kind = validation.get_kind()
             if (
                 validator_kind != InfrahubKind.DATAVALIDATOR
-                and validation.conclusion.value.value != ValidatorConclusion.SUCCESS.value
+                and validation.conclusion.value.value not in MERGEABLE_CONCLUSIONS
             ):
                 # Ignoring Data integrity checks as they are handled again later
                 await _proposed_change_transition_state(
@@ -839,7 +845,15 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
     if managed_branch:
         log.info("Query, definition or repository file change detected, all artifacts will be processed")
 
-    checks = []
+    classifier = await build_render_cost_classifier(
+        client=client,
+        branch_name=model.source_branch,
+        query_id=model.artifact_definition.query_id,
+        query=model.artifact_definition.query_payload,
+    )
+
+    checks: list[Coroutine[Any, None, ValidatorConclusion]] = []
+    high_cost_checks: list[Coroutine[Any, None, ValidatorConclusion]] = []
 
     for relationship in group.members.peers:
         member = relationship.peer
@@ -851,6 +865,8 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
         ):
             log.info(f"Trigger Artifact processing for {member.display_label}")
 
+            variables = await member.extract(params=artifact_definition.parameters.value)
+            render_cost = await classifier.classify(variables=variables)
             check_model = CheckArtifactCreate(
                 context=context,
                 artifact_name=model.artifact_definition.artifact_name,
@@ -868,22 +884,19 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
                 branch_name=model.source_branch,
                 query=model.artifact_definition.query_name,
                 query_id=model.artifact_definition.query_id,
-                variables=await member.extract(params=artifact_definition.parameters.value),
+                variables=variables,
                 target_id=member.id,
                 target_kind=member.get_kind(),
                 target_name=member.display_label,
                 timeout=model.artifact_definition.timeout,
                 validator_id=validator.id,
+                high_cost=render_cost.high_cost,
             )
 
-            checks.append(
-                get_workflow().execute_workflow(
-                    workflow=GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE,
-                    context=context,
-                    parameters={"model": check_model},
-                    expected_return=ValidatorConclusion,
-                )
-            )
+            check = start_artifact_check(client=client, model=check_model, render_cost=render_cost, context=context)
+            (high_cost_checks if check.in_sequence else checks).append(check.conclusion)
+
+    checks.extend(checks_in_sequences(checks=high_cost_checks))
 
     await run_checks_and_update_validator(
         event_service=await get_event_service(),
