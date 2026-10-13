@@ -608,8 +608,11 @@ Contract:
    released recompute is a coalesced submission, so its writes carry the `recompute` origin, and a
    released target of a recompute chain starts again at depth 0.
 6. Renew the lease after each awaited step, through a callback the caller passes.
-7. Raise on a dispatch failure. The releaser only raises. Its caller, the service or the
-   abandoner, sets the lease's expiry to now through `expire_lease`, then handles the failure.
+7. Raise on a dispatch failure. A held generator run that fails is not one: it falls back to the
+   terminal regeneration of the released repository (section 8, row 3). Only a run that the task
+   manager cannot start or follow to a final state raises, as `WorkflowOrchestrationError`. The
+   releaser only raises. Its caller, the service or the abandoner, sets the lease's expiry to now
+   through `expire_lease`, then handles the failure.
    The caller has not cleared anything yet, so the items stay held, and the next run releases them
    under a new lease (`research.md` R10, rule 4).
 
