@@ -35,6 +35,7 @@ from .mutations.repository import (
     ProcessRepository,
     ReadOnlyRepositoryCheckRefs,
     ReadOnlyRepositoryImportLastCommit,
+    RepositoryDeliveryRetry,
     ValidateRepositoryConnectivity,
 )
 from .mutations.resource_manager import IPAddressPoolGetResource, IPPrefixPoolGetResource
@@ -149,6 +150,9 @@ class InfrahubBaseMutation(ObjectType):
     InfrahubReadOnlyRepositoryCheckRefs = ReadOnlyRepositoryCheckRefs.Field()
     InfrahubReadOnlyRepositoryImportLastCommit = ReadOnlyRepositoryImportLastCommit.Field()
     InfrahubRepositoryProcess = ProcessRepository.Field()
+    InfrahubRepositoryDeliveryRetry = RepositoryDeliveryRetry.Field(
+        description="Push every pending merge of a repository to its remote, in order, in a single push."
+    )
     InfrahubRepositoryConnectivity = ValidateRepositoryConnectivity.Field()
     InfrahubUpdateComputedAttribute = UpdateComputedAttribute.Field()
     InfrahubUpdateDisplayLabel = UpdateDisplayLabel.Field()
