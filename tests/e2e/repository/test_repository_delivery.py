@@ -140,9 +140,13 @@ class TestRepositoryDelivery:
         deadline = Deadline(f"the import of the branch {branch_name}")
         while branch_name not in await infrahub_client.branch.all():
             await deadline.tick(pause=2)
-        while (
-            await infrahub_client.get(kind="CoreRepository", id=repository.id, branch=branch_name)
-        ).commit.value != branch_commit:
+        # The merge is refused until the import of the branch ends, which comes after the commit is written.
+        while True:
+            on_branch = await infrahub_client.get(kind="CoreRepository", id=repository.id, branch=branch_name)
+            if on_branch.sync_status.value == "error-import":
+                raise RuntimeError(f"The import of the branch {branch_name} failed")
+            if on_branch.commit.value == branch_commit and on_branch.sync_status.value == "in-sync":
+                break
             await deadline.tick(pause=2)
 
         await branch_api.create(view_branch)
