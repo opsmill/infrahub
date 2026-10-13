@@ -410,7 +410,9 @@ Under the repository lock:
     before and after it. On success, clear the obligation, unless the queue grew past the snapshot
     meanwhile. On a failure, classify it (R5) and stop: the obligation stays, the entries stay, and
     the held work stays held.
-12. **Broadcast** `RefreshGitFetch` pinned to M, as `merge_git_repository` does today.
+12. **Broadcast** `RefreshGitFetch` pinned to M, as `merge_git_repository` does today. A broadcast
+    that fails is logged at warning level and does not fail the attempt: a worker that missed the
+    message fetches M when it needs it. Accepted on 2026-10-13.
 13. **Delete source branches.** For each delivered entry with `delete_source_git_branch` set, and
     that no remaining entry names, delete the remote branch and send
     `RefreshGitRepositoryBranchDeleted` (R12). A branch that is already gone counts as deleted. A
@@ -428,7 +430,9 @@ Then, outside the repository lock:
 
 16. **Release** the held items of the lease window (R10). The releaser renews the lease after each
     awaited step. If the release fails, set the lease's expiry to now, then classify the failure
-    (stage `release`, R5) and stop. The held items stay (R10, rule 4).
+    (stage `release`, R5) and stop. The held items stay (R10, rule 4). The record of that failure
+    never sets `action-required`, also on the final attempt, because the merges are on the remote
+    already. Accepted on 2026-10-13.
 17. **Clear.** Under the state lock: remove each held item of the lease window that still has the
     sequence that the lease names, and end the lease. An item held again meanwhile stays.
 
@@ -1021,8 +1025,9 @@ The rules:
    then handles the failure. Nothing cleared the items, so they stay held. The next run takes a new
    lease over them and releases every one. For a delivery, that run is the retry of its task (stage
    `release`, R5). For an abandonment, or when every retry fails, it is the run that the recovery
-   check starts (rule 3). A release that dispatched part of its window before it failed dispatches
-   that part again. That over-executes, which is the accepted direction (FR-015). If the store
+   check starts (rule 3). A failed release of a delivery never sets `action-required`: the merges
+   are on the remote already, so no user has to act. A release that dispatched part of its window
+   before it failed dispatches that part again. That over-executes, which is the accepted direction (FR-015). If the store
    cannot set the expiry, the lease expires at its own time. A retry before then finds the lease
    live and does nothing, and the recovery check releases the items after the expiry.
 5. Expired leases are cleaned up in the save that takes or clears a lease. When a new lease takes an
@@ -1081,7 +1086,7 @@ crash cases of the inline release.
 
 | Path | Change |
 |---|---|
-| `InfrahubRepository.collect_pending_imports`, the active loop | Removes the repository's default branch from the branches to pull. Removes from the new **and** the updated branches every remote branch that a pending entry names as its source. Logs both once per cycle. `_collect_staging_imports` keeps the full list, because a staging repository is never queued. |
+| `InfrahubRepository.collect_pending_imports`, the active loop | Removes the repository's default branch from the branches to pull. Removes from the new **and** the updated branches every remote branch that a pending entry names as its source. Logs both once per cycle. The staging path of the same method keeps the full list, because a staging repository is never queued. A state that cannot be read fails closed: the sync of that repository stops for the cycle, and the other repositories go on (accepted on 2026-10-13). |
 | `git/tasks.py::bootstrap_local_repository` | Skips the seed import of the default branch after a fresh clone, and logs it. The clone itself proceeds. |
 | `graphql/mutations/repository.py::ProcessRepository` | Refuses on **every** branch, with a message that names the pending delivery. |
 
@@ -1122,6 +1127,10 @@ names the branch as `source_git_branch`, and returns whether one did. When one d
 
 1. skips the remote deletion and logs a warning that names the pending delivery;
 2. does **not** send `RefreshGitRepositoryBranchDeleted`, so every worker keeps its local branch.
+
+When the call itself fails, the task keeps the remote branch too, logs at error level that the
+user can delete it by hand once nothing is pending, and does not raise, so the deletion goes on in
+the other repositories. Keeping a branch loses no content. Accepted on 2026-10-13.
 
 A separate read before the call would add nothing: the call already answers under the lock, and a read
 outside the lock could disagree with it.
@@ -1187,6 +1196,12 @@ discarded history, and Git cannot compare an absent commit. A fetch brings every
 new head, so a delivered commit that the clone lacks is off the remote, and the reconciliation
 records it. When the clone lacks only the commit it discards, it cannot tell whether an earlier
 rewrite discarded the delivered commit, and it records it too.
+
+**A record that fails.** When the read of the state or the write of the record fails, the
+synchronisation logs a warning and fails the default branch at the record step, as a failed rewrite
+record does. The import of the default branch is kept, because the graph already records the new
+commit. The call catches every exception on purpose: an error that escapes would lose the imports
+of the cycle. Accepted on 2026-10-13.
 
 **Not cleared.** Like the sibling's rewrite record, it is a fact and not an alert. A later
 reverted delivery of another commit overwrites it. A record of the same delivered commit is kept,
