@@ -9,6 +9,7 @@ from infrahub.core.attribute import Integer
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, PoolRecordProvenance
 from infrahub.core.node import Node
+from infrahub.core.query.resource_manager import TrackingPool
 from infrahub.core.schema import AttributeSchema, NodeSchema
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.timestamp import Timestamp
@@ -61,6 +62,8 @@ class RecordingNumberAllocator:
 
     number: int = 42
     exhausted: bool = False
+    attach_provenance: PoolRecordProvenance = PoolRecordProvenance.PROVIDED
+    """What the pool's record says about the held number once attached, as the write reports it."""
     calls: list[PoolCall] = field(default_factory=list)
 
     async def allocate(self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute, user_id: str) -> int:
@@ -77,7 +80,9 @@ class RecordingNumberAllocator:
             raise PoolExhaustedError(f"Pool tickets ({pool.get_id()}) has no free number left in its ranges.")
         return self.number
 
-    async def attach(self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute, user_id: str) -> None:
+    async def attach(
+        self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute, user_id: str
+    ) -> PoolRecordProvenance:
         self.calls.append(
             PoolCall(
                 action="attach",
@@ -87,6 +92,7 @@ class RecordingNumberAllocator:
                 user_id=user_id,
             )
         )
+        return self.attach_provenance
 
     async def release(self, attribute: BaseAttribute, user_id: str) -> None:
         self.calls.append(
@@ -154,7 +160,7 @@ async def test_pool_named_by_id_gives_the_attribute_its_number(
 
     assert ticket_id.value == 42
     assert ticket_id.from_pool == {"id": POOL_ID}
-    assert ticket_id.pool_provenance is PoolRecordProvenance.ALLOCATED
+    assert ticket_id.tracking_pool == TrackingPool(pool_id=POOL_ID, provenance=PoolRecordProvenance.ALLOCATED)
     assert allocator.calls == [
         PoolCall(action="allocate", pool_id=POOL_ID, node_id=NODE_ID, attribute_name="ticket_id")
     ]
@@ -215,7 +221,7 @@ async def test_a_number_provided_on_create_is_kept_and_tracked_as_provided(
     await _apply_on_create(applier=applier, attribute=ticket_id)
 
     assert ticket_id.value == 7
-    assert ticket_id.pool_provenance is PoolRecordProvenance.PROVIDED
+    assert ticket_id.tracking_pool == TrackingPool(pool_id=POOL_ID, provenance=PoolRecordProvenance.PROVIDED)
     assert allocator.calls == [], "an attribute not saved yet is attached when the node is created"
 
 
@@ -227,7 +233,20 @@ async def test_a_number_provided_on_update_is_attached_to_the_pool(
     await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True, user_id=ACTOR_ID)
 
     assert ticket_id.value == 7
-    assert ticket_id.pool_provenance is PoolRecordProvenance.PROVIDED
+    assert ticket_id.tracking_pool == TrackingPool(pool_id=POOL_ID, provenance=PoolRecordProvenance.PROVIDED)
+    assert allocator.calls == [PoolCall(action="attach", pool_id=POOL_ID, node_id=NODE_ID, attribute_name="ticket_id")]
+
+
+async def test_a_number_the_pool_reports_as_allocated_stays_allocated_when_attached(
+    applier: AttributePoolApplier, finder: InMemoryNumberPoolFinder, allocator: RecordingNumberAllocator
+) -> None:
+    finder.tracking_pool_ids[ATTRIBUTE_ID] = POOL_ID
+    allocator.attach_provenance = PoolRecordProvenance.ALLOCATED
+    ticket_id = _ticket_id(payload={"value": 7, "from_pool": {"id": POOL_ID}}, saved=True)
+
+    await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True, user_id=ACTOR_ID)
+
+    assert ticket_id.tracking_pool == TrackingPool(pool_id=POOL_ID, provenance=PoolRecordProvenance.ALLOCATED)
     assert allocator.calls == [PoolCall(action="attach", pool_id=POOL_ID, node_id=NODE_ID, attribute_name="ticket_id")]
 
 
@@ -259,7 +278,7 @@ async def test_naming_another_pool_with_a_null_value_moves_the_attribute_to_it(
     await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True, user_id=ACTOR_ID)
 
     assert ticket_id.value == 42
-    assert ticket_id.pool_provenance is PoolRecordProvenance.ALLOCATED
+    assert ticket_id.tracking_pool == TrackingPool(pool_id=POOL_ID, provenance=PoolRecordProvenance.ALLOCATED)
     assert allocator.calls == [
         PoolCall(action="allocate", pool_id=POOL_ID, node_id=NODE_ID, attribute_name="ticket_id")
     ]
@@ -277,6 +296,7 @@ async def test_a_null_pool_on_a_tracked_number_releases_it_and_keeps_the_number(
 
     assert ticket_id.value == 3
     assert ticket_id.from_pool is None
+    assert ticket_id.tracking_pool is None
     assert allocator.calls == [PoolCall(action="release", pool_id=None, node_id=NODE_ID, attribute_name="ticket_id")]
 
 

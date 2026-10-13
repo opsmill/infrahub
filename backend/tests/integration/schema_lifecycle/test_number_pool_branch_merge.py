@@ -11,7 +11,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreNumberPool
-from infrahub.core.query.resource_manager import TrackingPoolRecord
+from infrahub.core.query.resource_manager import TrackingPool
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.exceptions import ValidationError
 from infrahub.log import get_logger
@@ -578,7 +578,7 @@ class TestInheritedNumberPoolReusesExistingPool(TestInfrahubApp):
         )
         ticket_number = incident.get_attribute("ticket_number")
         assert await ticket_number.get_source(db=db) is None, "the pool is never reported as the attribute's source"
-        assert await ticket_number.get_tracking_pool(db=db) == TrackingPoolRecord(
+        assert ticket_number.tracking_pool == TrackingPool(
             pool_id=run_synchronizer_for_generic, provenance=PoolRecordProvenance.ALLOCATED
         )
 
@@ -776,6 +776,6 @@ class TestAddNumberPoolToExistingGenericWithInheritingNode(TestInfrahubApp):
         )
         asset_tag = device.get_attribute("asset_tag")
         assert await asset_tag.get_source(db=db) is None, "the pool is never reported as the attribute's source"
-        assert await asset_tag.get_tracking_pool(db=db) == TrackingPoolRecord(
+        assert asset_tag.tracking_pool == TrackingPool(
             pool_id=expected_pool_id, provenance=PoolRecordProvenance.ALLOCATED
         )

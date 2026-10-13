@@ -37,7 +37,7 @@ from infrahub.core.order import (
     OrderModel,
 )
 from infrahub.core.query import Query, QueryResult, QueryType
-from infrahub.core.query.resource_manager import TRACKING_POOL_UNREAD, TrackingPoolRecord, TrackingPoolUnread
+from infrahub.core.query.resource_manager import TrackingPool
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order, build_subquery_order_metadata
 from infrahub.core.query.utils import find_node_schema
 from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
@@ -115,7 +115,7 @@ class AttributeFromDB:
 
     is_default: bool
     is_from_profile: bool = dataclass_field(default=False)
-    tracking_pool: TrackingPoolRecord | TrackingPoolUnread | None = TRACKING_POOL_UNREAD
+    tracking_pool: TrackingPool | None = None
 
     updated_at: Timestamp | None = None
     updated_by: str | None = None
@@ -1050,7 +1050,7 @@ CALL (a) {
             data.tracking_pool = None
             if tracking_pool_uuid := result.get_as_optional_type("tracking_pool_uuid", return_type=str):
                 is_provided = result.get_as_type("tracking_pool_is_provided", return_type=bool)
-                data.tracking_pool = TrackingPoolRecord(
+                data.tracking_pool = TrackingPool(
                     pool_id=tracking_pool_uuid,
                     provenance=PoolRecordProvenance.PROVIDED if is_provided else PoolRecordProvenance.ALLOCATED,
                 )

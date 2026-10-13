@@ -32,7 +32,7 @@ from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.path import SchemaPath
 from infrahub.core.protocols import CoreNumberPool as CoreNumberPoolProtocol
-from infrahub.core.query.resource_manager import TrackingPoolRecord
+from infrahub.core.query.resource_manager import TrackingPool
 from infrahub.core.query.rollback import RollbackScope
 from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
@@ -621,7 +621,7 @@ async def test_migration_numberpool_attribute(
     for server in servers_map.values():
         rack_unit = server.get_attribute("rack_unit")
         assert await rack_unit.get_source(db=db) is None, "the pool is never reported as the attribute's source"
-        assert await rack_unit.get_tracking_pool(db=db) == TrackingPoolRecord(
+        assert rack_unit.tracking_pool == TrackingPool(
             pool_id=number_pool.id, provenance=PoolRecordProvenance.ALLOCATED
         )
 

@@ -132,7 +132,7 @@ class TestNumberPoolHeal:
         for node in nodes.values():
             rack_unit = node.get_attribute(name="rack_unit")
             assert rack_unit.source_id is None
-            tracking_pool = await rack_unit.get_tracking_pool(db=db)
+            tracking_pool = rack_unit.tracking_pool
             assert tracking_pool is not None
             assert tracking_pool.pool_id == seeded.pool_uuid
 

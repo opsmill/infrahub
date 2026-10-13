@@ -140,7 +140,7 @@ class TestMigration066:
             )
             serial_number = device.get_attribute("serial_number")
             assert serial_number.source_id is None
-            tracking_pool = await serial_number.get_tracking_pool(db=db)
+            tracking_pool = serial_number.tracking_pool
             assert tracking_pool is not None
             assert tracking_pool.pool_id == oldest_uuid
 

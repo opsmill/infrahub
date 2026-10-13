@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Protocol, assert_never
 from infrahub.core.attribute import PayloadPresence
 from infrahub.core.constants import PoolRecordProvenance
 from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX
+from infrahub.core.query.resource_manager import TrackingPool
 from infrahub.core.schema import TemplateSchema
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExhaustedError, ValidationError
@@ -42,8 +43,10 @@ class AttributeNumberAllocator(Protocol):
         """
         ...
 
-    async def attach(self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute, user_id: str) -> None:
-        """Have the pool track the number the saved attribute already holds."""
+    async def attach(
+        self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute, user_id: str
+    ) -> PoolRecordProvenance:
+        """Have the pool track the number the saved attribute already holds, and say what its record makes of it."""
         ...
 
     async def release(self, attribute: BaseAttribute, user_id: str) -> None:
@@ -188,6 +191,7 @@ class AttributePoolApplier:
                 return
             case FromPoolIntent.DETACH:
                 await self.number_allocator.release(attribute=attribute, user_id=user_id)
+                attribute.tracking_pool = None
             case FromPoolIntent.ATTACH:
                 await self._attach(
                     node=node, pool=self._require_pool(pool=pool, intent=intent), attribute=attribute, user_id=user_id
@@ -221,10 +225,11 @@ class AttributePoolApplier:
         await self._allocate(node=node, pool=pool, attribute=attribute, user_id=user_id)
 
     async def _attach(self, node: Node, pool: CoreNumberPool, attribute: BaseAttribute, user_id: str) -> None:
-        attribute.pool_provenance = PoolRecordProvenance.PROVIDED
         # An attribute not saved yet is attached to the pool when the node is created.
+        provenance = PoolRecordProvenance.PROVIDED
         if attribute.id is not None:
-            await self.number_allocator.attach(pool=pool, node=node, attribute=attribute, user_id=user_id)
+            provenance = await self.number_allocator.attach(pool=pool, node=node, attribute=attribute, user_id=user_id)
+        attribute.tracking_pool = TrackingPool(pool_id=pool.get_id(), provenance=provenance)
 
     async def _allocate(self, node: Node, pool: CoreNumberPool, attribute: BaseAttribute, user_id: str) -> None:
         """Set the attribute's value from the pool.
@@ -233,7 +238,6 @@ class AttributePoolApplier:
             ValidationError: When the pool is exhausted.
 
         """
-        attribute.pool_provenance = PoolRecordProvenance.ALLOCATED
         try:
             attribute.value = await self.number_allocator.allocate(
                 pool=pool, node=node, attribute=attribute, user_id=user_id
@@ -241,6 +245,7 @@ class AttributePoolApplier:
         except PoolExhaustedError as exc:
             raise ValidationError({f"{attribute.name}.from_pool": exc.message}) from exc
         attribute.is_default = False
+        attribute.tracking_pool = TrackingPool(pool_id=pool.get_id(), provenance=PoolRecordProvenance.ALLOCATED)
 
     async def _find_pool(self, attribute: BaseAttribute, pool_ref: str) -> CoreNumberPool:
         """Return the pool `pool_ref` names.

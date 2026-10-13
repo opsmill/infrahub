@@ -9,6 +9,7 @@ from infrahub.core.constants import (
     PROFILES_RELATIONSHIP_NAME,
     SYSTEM_USER_ID,
     MetadataOptions,
+    PoolRecordProvenance,
     RelationshipKind,
 )
 from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX
@@ -17,6 +18,7 @@ from infrahub.core.creation_context import NodeCreationContext
 from infrahub.core.node import Node
 from infrahub.core.node.lock_utils import get_lock_names_on_object_mutation
 from infrahub.core.protocols_base import CoreNode
+from infrahub.core.query.resource_manager import TrackingPool
 from infrahub.core.relationship.model import PeerWithRelationshipMetadata
 from infrahub.core.schema import GenericSchema
 from infrahub.dependencies.registry import get_component_registry
@@ -273,6 +275,7 @@ async def allocate_from_resource_pools(
             attribute.is_default = False
             # Naming the pool records which one accounts for the number; the value is already drawn.
             attribute.from_pool = {"id": pool.id}
+            attribute.tracking_pool = TrackingPool(pool_id=pool.id, provenance=PoolRecordProvenance.ALLOCATED)
         elif original_name in obj_schema.relationship_names:
             # IP pool: allocate a node and set it as the relationship peer
             allocated_resource = await pool.get_resource(  # type: ignore[attr-defined]

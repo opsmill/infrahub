@@ -17,7 +17,7 @@ from infrahub.core.constants import InfrahubKind, MetadataOptions, PoolRecordPro
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
-from infrahub.core.query.resource_manager import TrackingPoolRecord
+from infrahub.core.query.resource_manager import TrackingPool
 from infrahub.core.schema import SchemaRoot
 from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
 from tests.helpers.number_pool import add_pool_range, pool_lowest_free_number, pool_used_numbers
@@ -92,11 +92,14 @@ async def test_a_pooled_attribute_with_no_user_source_reports_no_source_and_the_
     await ticket.new(db=db, title="pooled", ticket_id={"from_pool": {"id": ticket_pool.id}})
     await ticket.save(db=db)
 
+    expected_record = TrackingPool(pool_id=ticket_pool.id, provenance=PoolRecordProvenance.ALLOCATED)
     assert ticket.get_attribute(TRACKED_ATTRIBUTE_NAME).value == POOL_START
+    assert ticket.get_attribute(TRACKED_ATTRIBUTE_NAME).tracking_pool == expected_record, (
+        "the attribute still in memory reports the record the allocation set on it"
+    )
     assert await stored_source_edge_count(db=db, node_id=ticket.id) == 0, (
         "the pool must not be written to the attribute's source storage"
     )
-    expected_record = TrackingPoolRecord(pool_id=ticket_pool.id, provenance=PoolRecordProvenance.ALLOCATED)
 
     read_with_record = await reload_ticket(
         db=db,
@@ -106,14 +109,14 @@ async def test_a_pooled_attribute_with_no_user_source_reports_no_source_and_the_
     )
     attribute = read_with_record.get_attribute(TRACKED_ATTRIBUTE_NAME)
     assert await attribute.get_source(db=db) is None, "a pool is never reported as the attribute's source"
-    assert await attribute.get_tracking_pool(db=db) == expected_record
+    assert attribute.tracking_pool == expected_record
 
     read_without_record = await reload_ticket(
         db=db, branch=default_branch, node_id=ticket.id, include_metadata=MetadataOptions.NONE
     )
-    assert (
-        await read_without_record.get_attribute(TRACKED_ATTRIBUTE_NAME).get_tracking_pool(db=db) == expected_record
-    ), "an attribute loaded without the record reads it on demand"
+    assert read_without_record.get_attribute(TRACKED_ATTRIBUTE_NAME).tracking_pool is None, (
+        "an attribute loaded without the record reports no pool"
+    )
 
 
 async def test_a_user_source_on_a_pooled_attribute_is_reported_beside_the_pool(
@@ -143,9 +146,7 @@ async def test_a_user_source_on_a_pooled_attribute_is_reported_beside_the_pool(
     source = await attribute.get_source(db=db)
     assert source is not None
     assert source.get_id() == first_account.id, "a source the user set is what the attribute reports"
-    assert await attribute.get_tracking_pool(db=db) == TrackingPoolRecord(
-        pool_id=ticket_pool.id, provenance=PoolRecordProvenance.ALLOCATED
-    )
+    assert attribute.tracking_pool == TrackingPool(pool_id=ticket_pool.id, provenance=PoolRecordProvenance.ALLOCATED)
     assert await stored_source_edge_count(db=db, node_id=ticket.id) == 1
 
     assert await pool_used_numbers(db=db, pool=ticket_pool, branch=default_branch) == used_before, (
@@ -215,11 +216,19 @@ async def test_a_save_naming_a_pool_stores_no_source_and_updates_the_tracking_po
     if data.get("from_pool"):
         data["from_pool"] = {"id": pools[data["from_pool"]["id"]].id}
 
+    expected_record = (
+        TrackingPool(pool_id=pools[test_case.expected_pool].id, provenance=test_case.expected_provenance)
+        if test_case.expected_pool is not None and test_case.expected_provenance is not None
+        else None
+    )
     loaded = await reload_ticket(
         db=db, branch=default_branch, node_id=ticket.id, include_metadata=MetadataOptions.SOURCE
     )
     await loaded.get_attribute(TRACKED_ATTRIBUTE_NAME).from_graphql(
         data=data, pool_applier=build_attribute_pool_applier(db=db)
+    )
+    assert loaded.get_attribute(TRACKED_ATTRIBUTE_NAME).tracking_pool == expected_record, (
+        "the attribute still in memory reports the record the pool write set on it"
     )
     await loaded.save(db=db)
 
@@ -235,9 +244,4 @@ async def test_a_save_naming_a_pool_stores_no_source_and_updates_the_tracking_po
     attribute = reloaded.get_attribute(TRACKED_ATTRIBUTE_NAME)
     assert attribute.value == test_case.expected_value
     assert await attribute.get_source(db=db) is None
-    expected_record = (
-        TrackingPoolRecord(pool_id=pools[test_case.expected_pool].id, provenance=test_case.expected_provenance)
-        if test_case.expected_pool is not None and test_case.expected_provenance is not None
-        else None
-    )
-    assert await attribute.get_tracking_pool(db=db) == expected_record
+    assert attribute.tracking_pool == expected_record

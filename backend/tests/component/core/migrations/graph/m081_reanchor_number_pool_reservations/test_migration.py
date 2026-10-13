@@ -17,7 +17,7 @@ from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, MetadataOptions, PoolRecordProvenance
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.query.resource_manager import NumberPoolGetAllocated, TrackingPoolRecord
+from infrahub.core.query.resource_manager import NumberPoolGetAllocated, TrackingPool
 from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import GraphCheck, collect_graph_violations
 from infrahub.pools.number import NumberUtilizationGetter
@@ -939,7 +939,7 @@ class TestMigration081:
         )
         attribute = ticket.get_attribute(TRACKED_ATTRIBUTE_NAME)
         assert await attribute.get_source(db=db) is None
-        assert await attribute.get_tracking_pool(db=db) == TrackingPoolRecord(
+        assert attribute.tracking_pool == TrackingPool(
             pool_id=migrated.pools["alpha"].id, provenance=PoolRecordProvenance.ALLOCATED
         )
 

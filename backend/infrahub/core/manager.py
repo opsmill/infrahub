@@ -462,7 +462,7 @@ class NodeManager:
                 id=id,
                 branch=branch,
                 at=at,
-                include_metadata=MetadataOptions.LINKED_NODES,
+                include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.TRACKING_POOL,
                 raise_on_error=True,
             )
 
@@ -473,7 +473,7 @@ class NodeManager:
                 hfid=hfid,
                 branch=branch,
                 at=at,
-                include_metadata=MetadataOptions.LINKED_NODES,
+                include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.TRACKING_POOL,
                 raise_on_error=True,
             )
 
@@ -484,7 +484,7 @@ class NodeManager:
                 id=id,
                 branch=branch,
                 at=at,
-                include_metadata=MetadataOptions.LINKED_NODES,
+                include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.TRACKING_POOL,
                 raise_on_error=True,
             )
 

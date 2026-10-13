@@ -8,14 +8,14 @@ from uuid import uuid4
 import pytest
 
 from infrahub.core import registry
-from infrahub.core.constants import InfrahubKind, PoolRecordProvenance, RelationshipCardinality
+from infrahub.core.constants import InfrahubKind, MetadataOptions, PoolRecordProvenance, RelationshipCardinality
 from infrahub.core.initialization import initialize_registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.create import create_node
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
-from infrahub.core.query.resource_manager import TrackingPoolRecord
+from infrahub.core.query.resource_manager import TrackingPool
 from infrahub.core.schema import AttributeSchema, RelationshipSchema
 from infrahub.exceptions import NodeNotFoundError, PoolExhaustedError, ValidationError
 from tests.constants import TestKind
@@ -404,7 +404,7 @@ async def test_object_from_template_with_number_pool_allocates_value(
     assert 1 <= device.rack_unit.value <= 48
 
     assert await device.rack_unit.get_source(db=db) is None, "the pool is never reported as the attribute's source"
-    assert await device.rack_unit.get_tracking_pool(db=db) == TrackingPoolRecord(
+    assert device.rack_unit.tracking_pool == TrackingPool(
         pool_id=number_pool.id, provenance=PoolRecordProvenance.ALLOCATED
     )
 
@@ -441,7 +441,7 @@ async def test_object_from_template_with_explicit_value_uses_explicit(
     assert device.id is not None
     assert device.rack_unit.value == 99
     assert await device.rack_unit.get_source(db=db) is None
-    assert await device.rack_unit.get_tracking_pool(db=db) is None, "an explicit value is not drawn from the pool"
+    assert device.rack_unit.tracking_pool is None, "an explicit value is not drawn from the pool"
 
 
 async def test_object_from_template_raises_error_when_number_pool_exhausted(
@@ -668,3 +668,71 @@ async def test_one_pool_shared_by_two_component_levels_allocates_depth_first(
             f"{name} took {interface_address} and its SFP took {sfp_address}: the SFP is no longer "
             f"allocated right after the interface holding it"
         )
+
+
+@pytest.fixture
+async def interface_with_slot_schema(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, init_nodes_registry: None
+) -> None:
+    """Put a pool-fed number on the interface component, so a pool allocates one level below the device."""
+    schema = copy.deepcopy(DEVICE_SCHEMA)
+    interface = next(n for n in schema.nodes if n.kind == TestKind.PHYSICAL_INTERFACE)
+    interface.attributes.append(AttributeSchema(name="slot", kind="Number", optional=True))
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    await initialize_registry(db=db)
+
+
+@pytest.fixture
+async def slot_pool(db: InfrahubDatabase, default_branch: Branch, interface_with_slot_schema: None) -> CoreNumberPool:
+    pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
+    await pool.new(
+        db=db, name="slot-pool", node=TestKind.PHYSICAL_INTERFACE, node_attribute="slot", start_range=1, end_range=8
+    )
+    await pool.save(db=db)
+    await add_pool_range(db=db, pool=pool, start=1, end=8)
+    return pool
+
+
+async def test_a_component_created_from_a_subtemplate_is_tracked_by_the_pool_that_fed_it(
+    db: InfrahubDatabase, default_branch: Branch, interface_with_slot_schema: None, slot_pool: CoreNumberPool
+) -> None:
+    """The subtemplate draws the number before the component is saved, and the save still writes the record."""
+    template_schema = registry.schema.get_template_schema(name=f"Template{TestKind.DEVICE}", branch=default_branch)
+    interface_template_schema = registry.schema.get_template_schema(
+        name=f"Template{TestKind.PHYSICAL_INTERFACE}", branch=default_branch
+    )
+    node_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
+
+    template = await Node.init(schema=template_schema, db=db, branch=default_branch)
+    await template.new(db=db, template_name="slot-template", manufacturer="Acme", weight=1, airflow="Passive")
+    await template.save(db=db)
+    interface_template = await Node.init(schema=interface_template_schema, db=db, branch=default_branch)
+    await interface_template.new(
+        db=db,
+        template_name="slot-eth0",
+        name="eth0",
+        phys_type="SFP+ (10GE)",
+        device=template.id,
+        slot_from_resource_pool={"id": slot_pool.id},
+    )
+    await interface_template.save(db=db)
+
+    device = await create_node(
+        data={"name": "slot-device", "object_template": {"id": template.id}},
+        db=db,
+        branch=default_branch,
+        schema=node_schema,
+    )
+
+    reloaded = await NodeManager.get_one(db=db, id=device.id, branch=default_branch, raise_on_error=True)
+    [created_interface] = (await reloaded.interfaces.get_peers(db=db)).values()
+    interface = await NodeManager.get_one(
+        db=db,
+        id=created_interface.id,
+        branch=default_branch,
+        include_metadata=MetadataOptions.SOURCE | MetadataOptions.TRACKING_POOL,
+        raise_on_error=True,
+    )
+    assert interface.get_attribute("slot").value == 1
+    assert await interface.get_attribute("slot").get_source(db=db) is None, "the pool is never reported as the attribute's source"
+    assert interface.get_attribute("slot").tracking_pool == TrackingPool(pool_id=slot_pool.id, provenance=PoolRecordProvenance.ALLOCATED)

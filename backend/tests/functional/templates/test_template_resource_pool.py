@@ -605,7 +605,7 @@ class TestTemplateNumberPoolAttributes(TestInfrahubApp):
         assert rack.slot_id.value is not None
         assert 1 <= rack.slot_id.value <= 100
         assert rack.slot_id.source_id is None
-        tracking_pool = await rack.slot_id.get_tracking_pool(db=db)
+        tracking_pool = rack.slot_id.tracking_pool
         assert tracking_pool is not None
         assert tracking_pool.pool_id == slot_pool.id
 

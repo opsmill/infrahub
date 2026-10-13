@@ -35,7 +35,6 @@ from infrahub.core.query.attribute import (
     AttributeUpdateValueQuery,
 )
 from infrahub.core.query.node import AttributeFromDB, NodeListGetAttributeQuery
-from infrahub.core.query.resource_manager import TRACKING_POOL_UNREAD, TrackingPoolRecord, TrackingPoolUnread
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import convert_ip_to_binary_str
 from infrahub.exceptions import ValidationError
@@ -49,6 +48,7 @@ from .schema.attribute_parameters import NumberAttributeParameters
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
+    from infrahub.core.query.resource_manager import TrackingPool
     from infrahub.core.schema import AttributeSchema, MainSchemaTypes
     from infrahub.database import InfrahubDatabase
     from infrahub.pools.attribute_pool_applier import AttributePoolApplierInterface
@@ -148,8 +148,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         self.from_pool: dict | None = None
         self.value_presence = PayloadPresence.ABSENT
         self.from_pool_presence = PayloadPresence.ABSENT
-        self.pool_provenance = PoolRecordProvenance.ALLOCATED
-        self._tracking_pool: TrackingPoolRecord | TrackingPoolUnread | None = TRACKING_POOL_UNREAD
+        self.tracking_pool: TrackingPool | None = None
 
         self._init_node_property_mixin(kwargs)
         self._init_flag_property_mixin(kwargs)
@@ -369,7 +368,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         self.value = self.value_from_db(data=data)
         self.is_default = data.is_default
         self.is_from_profile = data.is_from_profile
-        self._tracking_pool = data.tracking_pool
+        self.tracking_pool = data.tracking_pool
 
         self.id = data.attr_uuid
         self.db_id = data.attr_id
@@ -626,7 +625,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 continue
 
             if field_name == "from_pool":
-                response[field_name] = await self._from_pool_to_graphql(db=db, related_node_ids=related_node_ids)
+                response[field_name] = self._from_pool_to_graphql(related_node_ids=related_node_ids)
                 continue
 
             if field_name in ["source", "owner"]:
@@ -666,9 +665,9 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
         return response
 
-    async def _from_pool_to_graphql(self, db: InfrahubDatabase, related_node_ids: set | None) -> dict[str, Any] | None:
+    def _from_pool_to_graphql(self, related_node_ids: set | None) -> dict[str, Any] | None:
         """Render the `from_pool` output field from the tracking pool record, never from the `from_pool` input."""
-        tracking_pool = await self.get_tracking_pool(db=db)
+        tracking_pool = self.tracking_pool
         if tracking_pool is None:
             return None
         if related_node_ids is not None:
@@ -708,7 +707,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 changed = True
         if "from_pool" in data:
             self.from_pool = data["from_pool"]
-            self._tracking_pool = TRACKING_POOL_UNREAD
             if process_pools:
                 await pool_applier.apply(node=self.node, attribute=self, allocate=True, user_id=user_id)
             changed = True
@@ -742,35 +740,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
             return AttributeDBNodeType.DEFAULT
         return AttributeDBNodeType.INDEXED
 
-    async def get_tracking_pool(self, db: InfrahubDatabase) -> TrackingPoolRecord | None:
-        """Return the number pool tracking this attribute and the provenance of its value, or None.
-
-        The record is read with the attribute when the caller asks for it; otherwise it is read here at the
-        current time, so an attribute still in memory after a mutation reports the record that mutation wrote.
-        """
-        if self._tracking_pool is not TRACKING_POOL_UNREAD:
-            return self._tracking_pool
-        if not self.id:
-            return None
-
-        query = await NodeListGetAttributeQuery.init(
-            db=db,
-            ids=[self.node.id],
-            fields={self.name: True},
-            branch=self.branch,
-            at=Timestamp(),
-            include_metadata=MetadataOptions.TRACKING_POOL,
-        )
-        await query.execute(db=db)
-        try:
-            data, _ = query.get_result_by_id_and_name(self.node.id, self.name)
-        except IndexError:
-            return None
-        if isinstance(data.tracking_pool, TrackingPoolUnread):
-            return None
-        self._tracking_pool = data.tracking_pool
-        return self._tracking_pool
-
     def get_create_data(self, node_schema: MainSchemaTypes) -> AttributeCreateData:
         branch = self.branch
         hierarchy_level = branch.hierarchy_level
@@ -798,10 +767,11 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         if self.owner_id:
             data.owner_prop.append(NodePropertyData(name="owner", peer_id=self.owner_id))
 
-        # Add the pool ID if this attribute came from a pool.
-        if self.from_pool and self.value is not None and (pool_id := self.from_pool.get("id")):
-            allocated_value = self.value if self.pool_provenance is PoolRecordProvenance.ALLOCATED else None
-            data.pool_prop.append(PoolPropertyData(name="pool", peer_id=pool_id, allocated_value=allocated_value))
+        if (tracking_pool := self.tracking_pool) is not None and self.value is not None:
+            allocated_value = self.value if tracking_pool.provenance is PoolRecordProvenance.ALLOCATED else None
+            data.pool_prop.append(
+                PoolPropertyData(name="pool", peer_id=tracking_pool.pool_id, allocated_value=allocated_value)
+            )
 
         return data
 
