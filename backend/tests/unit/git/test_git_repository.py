@@ -636,8 +636,10 @@ class _ScriptedPushRepository(InfrahubRepository):
 
     origin: _ScriptedOrigin
     recorded_statuses: list[RepositoryOperationalStatus] = Field(default_factory=list)
+    worktree_lookup_timeouts: list[float | None] = Field(default_factory=list)
 
-    def get_git_repo_worktree(self, identifier: str) -> Any:
+    def get_git_repo_worktree(self, identifier: str, timeout_seconds: float | None = None) -> Any:
+        self.worktree_lookup_timeouts.append(timeout_seconds)
         return SimpleNamespace(remotes=SimpleNamespace(origin=self.origin))
 
     async def _update_operational_status(self, status: RepositoryOperationalStatus) -> None:
@@ -928,6 +930,7 @@ async def test_push_passes_its_timeout_to_git(case: PushTimeoutCase) -> None:
     assert await repository.push("main", **case.push_kwargs) is True
 
     assert origin.kill_after_timeouts == [case.kill_after_timeout]
+    assert repository.worktree_lookup_timeouts == [case.kill_after_timeout]
 
 
 class _GitWrappedRepository(InfrahubRepository):
@@ -984,17 +987,39 @@ class _TimeLimitGit(Git):
         )
 
 
-async def test_create_commit_worktree_reports_a_worktree_listing_past_its_time_limit(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+async def _create_a_commit_worktree_within_7_seconds(repository: _GitWrappedRepository) -> None:
+    repository.create_commit_worktree(commit="abc", timeout_seconds=7)
+
+
+async def _push_within_7_seconds(repository: _GitWrappedRepository) -> None:
+    await repository.push("main", timeout_seconds=7)
+
+
+@dataclass
+class WorktreeListingCase:
+    name: str
+    run: Callable[[_GitWrappedRepository], Awaitable[None]]
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        WorktreeListingCase(name="create_commit_worktree", run=_create_a_commit_worktree_within_7_seconds),
+        WorktreeListingCase(name="push", run=_push_within_7_seconds),
+    ],
+    ids=lambda c: c.name,
+)
+async def test_a_worktree_listing_past_its_time_limit_names_no_argument_or_worker_path(
+    case: WorktreeListingCase, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A `git worktree list` past its time limit raises a RepositoryError that names no argument or worker path."""
+    """A `git worktree list` past its time limit raises a RepositoryError, not a connection error: it is local."""
     repository = await clone_with_git_wrapper(tmp_path=tmp_path, monkeypatch=monkeypatch, git_wrapper=_TimeLimitGit)
 
     with pytest.raises(
         RepositoryError,
         match=r"^The command git worktree for repository local-repo did not complete within 7 seconds\.$",
     ) as raised:
-        repository.create_commit_worktree(commit="abc", timeout_seconds=7)
+        await case.run(repository)
 
     assert type(raised.value) is RepositoryError
 

@@ -18,7 +18,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreReadOnlyRepository
 from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema
-from infrahub.exceptions import NodeNotFoundError, ValidationError
+from infrahub.exceptions import NodeNotFoundError, ReimportPendingPushesError, ValidationError
 from infrahub.git.divergence.suppression import RetargetMarkers
 from infrahub.git.models import (
     GitReadOnlyRepositoryCheckRefs,
@@ -277,8 +277,8 @@ class ProcessRepository(Mutation):
         """Reimport the objects of the repository at its current commit.
 
         Raises:
-            ValidationError: On every branch, while merged changes of a read-write repository wait for
-                their push to the remote, because the reimport would remove the objects of those merges.
+            ReimportPendingPushesError: On every branch, while merged changes of a read-write repository
+                wait for their push to the remote, because the reimport would remove the objects of those merges.
 
         """
         graphql_context: GraphqlContext = info.context
@@ -293,10 +293,7 @@ class ProcessRepository(Mutation):
         if repo.get_kind() == InfrahubKind.REPOSITORY:
             state = await build_intent_store(db=graphql_context.db, lock_registry=lock.registry)
             if (await state.read(repository_id=repo.id)).status is not RepositoryDeliveryStatus.NONE:
-                raise ValidationError(
-                    f"Repository {repo.name.value} has pending pushes; a reimport now would remove the objects "
-                    "they added. Retry or abandon the pending pushes first."
-                )
+                raise ReimportPendingPushesError(repository_name=str(repo.name.value))
 
         model = GitRepositoryImportObjects(
             repository_id=repository_id,

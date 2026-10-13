@@ -108,5 +108,8 @@ def _describe(*, error: BaseException, stage: DeliveryStage) -> str:
 
 
 def _repeats_its_cause(*, error: Error) -> bool:
-    # Git output can name worker paths; this catches only an error raised from it with that output as its message.
-    return isinstance(error.__cause__, GitCommandError) and error.message in str(error.__cause__)
+    # Git output can name worker paths, and a wrapper can copy it, so this looks for the Git error down the causes.
+    cause = error.__cause__
+    while cause is not None and not isinstance(cause, GitCommandError):
+        cause = cause.__cause__
+    return cause is not None and error.message in str(cause)

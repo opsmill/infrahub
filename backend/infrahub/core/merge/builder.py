@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import asyncio
+from datetime import UTC, datetime
+from functools import partial
 from typing import TYPE_CHECKING
 
+from infrahub import lock
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.diff_locker import DiffLocker
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
@@ -17,6 +21,7 @@ from infrahub.core.validators.determiner import build_constraint_validator_deter
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.git.sync_status import RepositoryBranchSyncStatusReader
+from infrahub.git.writeback.store import WritebackIntentStore
 from infrahub.workers.dependencies import get_cache, get_event_service, get_workflow
 
 from .constraints import MergeConstraintValidator
@@ -98,6 +103,10 @@ async def build_branch_merge_orchestrator(
         source_branch=source_branch,
         destination_branch=destination_branch,
         workflow=workflow,
+        state_for_session=lambda session: WritebackIntentStore(
+            db=session, lock_registry=lock.registry, default_branch=destination_branch, clock=partial(datetime.now, UTC)
+        ),
+        sleep=asyncio.sleep,
         logger=logger,
     )
     schema_update_coordinator = SchemaUpdateCoordinator(

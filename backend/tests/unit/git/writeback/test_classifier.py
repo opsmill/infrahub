@@ -429,6 +429,21 @@ def test_unmatched_git_failure_gives_its_type_and_not_the_git_output() -> None:
     )
 
 
+def test_git_failure_inside_the_import_gives_its_type_and_not_the_git_output() -> None:
+    stderr = f"fatal: '{WORKER_PATH}/0123456789abcdef' already exists"
+    enriched = _enriched_error(stderr=stderr, command=["git", "worktree", "add"], is_write_operation=False)
+    error = _wrapped_by_the_import(error=enriched, message=enriched.message)
+    assert stderr in error.message
+
+    failure = classify_delivery_failure(error=error, stage=DeliveryStage.IMPORT)
+
+    assert failure == DeliveryFailure(
+        cause=RepositoryDeliveryFailureCause.IMPORT_FAILED,
+        retryable=False,
+        message="The import step of the delivery failed with RepositoryImportError.",
+    )
+
+
 def test_git_error_gives_its_type_and_not_the_git_output() -> None:
     error = GitCommandError(
         command=["git", "fetch", "origin"],

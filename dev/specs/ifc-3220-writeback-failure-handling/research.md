@@ -261,7 +261,7 @@ such a run would queue an entry that FR-005 forbids.
 |---|---|
 | `entry_id` | A new UUID. |
 | `source_branch` | The Infrahub source branch name. |
-| `source_git_branch` | The remote branch, through `_get_mapped_remote_branch`. |
+| `source_git_branch` | The remote branch, through `_get_mapped_remote_branch`. For a merge source it is the Infrahub branch name, because the mapping changes only Infrahub's default branch and a merge never comes from it. |
 | `source_commit` | `CoreRepository.commit` read on the **source** branch, which is what Infrahub imported and merged. |
 | `merged_at` | The merge time. |
 | `delete_source_git_branch` | `False`. The branch-deletion guard sets it (R12). |
@@ -595,9 +595,10 @@ stderr line that is not a progress line in `other_lines`, and lines that start w
 **Decision**: `push` passes a `RemoteProgress` and joins the `remote:` lines, in order, into the
 typed error. The delivery stores, verbatim, those lines and the ref summary. For any other error it
 stores the typed message, not raw stderr, which can name worker paths. The classifier detects raw
-stderr only as a message that repeats the `GitCommandError` it was raised `from`, which every raise of
-the Git error enrichment does. A message that repeats another error, such as the wrapper of a failed
-import, keeps its text. A message that wraps Git output in a longer sentence, or an error raised
+stderr only as a message that repeats a `GitCommandError` in its chain of causes. Every raise of the Git
+error enrichment is `from` one, and the wrapper of a failed import can copy such a message one level
+up. A message that repeats an error with no Git error under it, such as the wrapper of a failed import
+of invalid content, keeps its text. A message that wraps Git output in a longer sentence, or an error raised
 without `from`, keeps its text. Every stored message passes
 through one scrubber that removes `user:password@` from URLs, since a location can embed a token
 (Constitution VI).
@@ -1079,8 +1080,8 @@ crash cases of the inline release.
 | Path | Change |
 |---|---|
 | `InfrahubRepository.collect_pending_imports`, the active loop | Removes the repository's default branch from the branches to pull. Removes from the new **and** the updated branches every remote branch that a pending entry names as its source. Logs both once per cycle. `_collect_staging_imports` keeps the full list, because a staging repository is never queued. |
-| `git/tasks.py::bootstrap_local_repository` | Skips the seed import of the default branch after a fresh clone, and logs it. The clone itself proceeds. |
-| `graphql/mutations/repository.py::ProcessRepository` | Refuses on **every** branch, with a message that names the pending delivery. |
+| `git/tasks.py::bootstrap_local_repository` | Skips the seed import of the default branch after a fresh clone, and logs it. The clone itself proceeds. A seed into a staging branch is not skipped, as for the staging path of the synchronisation. |
+| `graphql/mutations/repository.py::ProcessRepository` | Refuses on **every** branch, with a message that names the pending delivery. The import flow it submits checks again under the repository lock before it applies, because a merge can be queued in between. |
 
 **Why the default branch.** The import is desired-state: it deletes the repository-owned objects
 that are not in the imported commit. If the remote destination advanced during an outage, an import

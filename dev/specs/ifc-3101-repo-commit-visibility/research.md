@@ -67,7 +67,7 @@ git from the API server (rejected: the API server has no clone and must never ac
 **Decision**: Add a `timeout` parameter to `InfrahubMessageBus.rpc` (abstract in
 `infrahub.services.adapters.message_bus::InfrahubMessageBus`, implemented in `rabbitmq.py`,
 `nats.py`, `local.py`), wrapping the reply future in `asyncio.timeout`. The default comes from a new
-`config::BrokerSettings.rpc_timeout` (seconds, default 30, env `INFRAHUB_BROKER_RPC_TIMEOUT`).
+`config::BrokerSettings.rpc_timeout` (seconds, default 120, env `INFRAHUB_BROKER_RPC_TIMEOUT`).
 On expiry the adapter raises `infrahub.exceptions::WorkerTimeoutError` (HTTP 504), catalogued as
 `WORKER_TIMEOUT` with payload `WorkerTimeoutData(operation, timeout_seconds, retry_after_seconds)`.
 This lands as its own pull request before the read path, because it changes behaviour for every
@@ -467,7 +467,7 @@ User Story 3's UI waits for that card while its query ships now.
 
 | Setting | Default | Env var | Consumer |
 | --- | --- | --- | --- |
-| `BrokerSettings.rpc_timeout` | 30 s | `INFRAHUB_BROKER_RPC_TIMEOUT` | every `InfrahubMessageBus.rpc` call |
+| `BrokerSettings.rpc_timeout` | 120 s | `INFRAHUB_BROKER_RPC_TIMEOUT` | every `InfrahubMessageBus.rpc` call |
 | `GitSettings.read_only_refs_check_interval_mins` | 15 | `INFRAHUB_GIT_READ_ONLY_REFS_CHECK_INTERVAL_MINS` | `check_read_only_repositories_refs` due check |
 
 Each requires `uv run invoke docs.generate` (configuration reference),
