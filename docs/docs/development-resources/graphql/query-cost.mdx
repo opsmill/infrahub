@@ -271,6 +271,8 @@ query {
 }
 ```
 
+In the web UI, the list of stored queries under **Object Management → GraphQL Queries** has a column with the cost level of each query. When you open a stored query with the `high` level, a warning above the query shows the worst-case and expected database rows, the limit, the time of the statistics and the fields with the most worst-case database rows.
+
 To choose the limit for your data, run the report with the variables of your largest target, as described in [Estimate the cost without running the query](#estimate-the-cost-without-running-the-query), and compare its worst-case `database_rows` with the duration of one render for that target. On a test data set, a cabling plan query took 80 seconds for a logical network of 938 devices, estimated at 991,262 worst-case database rows, and 4 seconds for a network of 80 devices, estimated at 112,806.
 
 Infrahub saves a new estimate only when the level or one of the figures changes, so a refresh that finds the same figures does not change the stored query.

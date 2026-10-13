@@ -1,0 +1,1 @@
+Added a warning on the page of a stored GraphQL query with the `high` cost level: it shows the worst-case and expected database rows of one run, the limit, the time of the statistics and the fields with the most worst-case database rows. The list of stored queries shows the cost level of each query.
