@@ -406,8 +406,8 @@ auto-gc runs during fetch, and it respects worktree roots. Today's fetch flags
 (`prune=True, tags=True, prune_tags=True`) already force-update tags, so the check adds no new
 object-deletion risk. Residual risks to pin with an integration test against a fixture remote whose
 tag is moved: the old commit stays readable through its worktree on every worker, and a deleted
-upstream tag makes the commit view report `REF_MISSING` (FR-029) and the check mark the pinning
-branches' `sync_status` (FR-030) rather than raise
+upstream tag makes the commit view report `REF_MISSING` (FR-029) and the check mark `sync_status` on
+the default branch and the branches that hold their own `ref` naming the tag (FR-030) rather than raise
 (`update_latest_commit` raises `ValueError("Ref ... not found")` in that case and must not be
 reused).
 

@@ -21,6 +21,19 @@ class BranchImportVerdict(StrEnum):
     USABLE = "usable"
     FAILED = "failed"
     INCOMPLETE = "incomplete"
+    REF_MISSING = "ref-missing"
+    """The tracked ref is gone from the remote, so a fix pushed to it cannot be imported."""
+
+    @property
+    def blocks_merge(self) -> bool:
+        """Whether a branch with this verdict fails its proposed-change check and is refused a merge."""
+        match self:
+            case BranchImportVerdict.USABLE:
+                return False
+            case BranchImportVerdict.FAILED | BranchImportVerdict.INCOMPLETE | BranchImportVerdict.REF_MISSING:
+                return True
+            case _:
+                assert_never(self)
 
 
 def classify_branch_import(
@@ -39,10 +52,23 @@ def classify_branch_import(
             return BranchImportVerdict.USABLE
         case RepositorySyncStatus.ERROR_IMPORT:
             return BranchImportVerdict.FAILED
+        case RepositorySyncStatus.ERROR_REF_MISSING:
+            return BranchImportVerdict.REF_MISSING
         case RepositorySyncStatus.SYNCING | RepositorySyncStatus.UNKNOWN:
             return BranchImportVerdict.INCOMPLETE
         case _:
             assert_never(sync_status)
+
+
+def is_written_on_branch(updated_at: Timestamp | None, branch: Branch) -> bool:
+    """Return whether a `sync_status` value updated at `updated_at` was written on `branch` rather than inherited.
+
+    A value the branch wrote is at least as recent as `branched_from`: a rebase moves both the branch's own edges
+    and `branched_from` to the rebase time, so the two are equal afterwards and the comparison must not be strict.
+    An inherited value is frozen before `branched_from`. A value whose update time is unknown counts as written, so
+    a check fails closed rather than passing on missing metadata.
+    """
+    return updated_at is None or updated_at >= Timestamp(branch.get_branched_from())
 
 
 @dataclass(frozen=True)
@@ -64,11 +90,6 @@ class RepositoryBranchSyncStatusReader:
     `sync_status` is branch-local, and an isolated branch that never imported a repository reads the value
     its base branch held when the branch was created. That inherited value says nothing about the branch, so
     it is not reported.
-
-    A value the branch wrote is at least as recent as `branched_from`: a rebase moves both the branch's own edges
-    and `branched_from` to the rebase time, so the two are equal afterwards and the comparison must not be strict.
-    An inherited value is frozen before `branched_from`. A value whose update time is unknown is reported, so a
-    check fails closed rather than passing on missing metadata.
     """
 
     def __init__(self, db: InfrahubDatabase) -> None:
@@ -107,7 +128,6 @@ class RepositoryBranchSyncStatusReader:
         ]
 
     def _get_written_status(self, repository: CoreGenericRepository, branch: Branch) -> RepositorySyncStatus | None:
-        updated_at = repository.sync_status._get_updated_at()
-        if updated_at is not None and updated_at < Timestamp(branch.get_branched_from()):
+        if not is_written_on_branch(updated_at=repository.sync_status._get_updated_at(), branch=branch):
             return None
         return RepositorySyncStatus(repository.sync_status.value)

@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RepositorySyncStatus
 from infrahub.exceptions import RepositoryError
 from infrahub.git.state.cache_keys import (
     REFS_CHECK_LAST_TTL_SECONDS,
@@ -27,6 +27,7 @@ from infrahub.log import get_log_data, get_run_logger
 from infrahub.message_bus import Meta, messages
 from infrahub.worker import WORKER_IDENTITY
 
+from .constants import REFS_CHECK_LISTED_ABSENT
 from .models import RefMovement, RefsCheckOutcome, RefsCheckResult
 
 if TYPE_CHECKING:
@@ -39,6 +40,7 @@ if TYPE_CHECKING:
     from ..models import GitReadOnlyRepositoryCheckRefs
     from .gateway import CheckRefFormat, RepositoryRefsGateway
     from .models import RefHeads
+    from .ref_missing import RefMissingStatusStore
     from .tracked_commit import TrackedCommitReader
 
 log = get_run_logger()
@@ -52,16 +54,21 @@ class _Convergence:
     """Whether this worker's copy is behind the remote on any tracked ref."""
 
     announce: frozenset[str]
-    """The refs the pool has to be told about: the moved ones, and any with no earlier listing."""
+    """The refs the pool has to be told about: the moved, vanished and returned ones, and any with no earlier listing."""
 
     movements: tuple[RefMovement, ...]
 
     listed: Mapping[str, str]
-    """Every remote head this listing found, by ref."""
+    """Every remote head this listing found by ref, and the absent marker for a ref the remote no longer carries."""
 
     @property
     def needed(self) -> bool:
         return self.fetch or bool(self.announce)
+
+    @property
+    def missing(self) -> frozenset[str]:
+        """The refs the remote no longer carries."""
+        return frozenset(ref for ref, head in self.listed.items() if head == REFS_CHECK_LISTED_ABSENT)
 
 
 class RefNameValidator:
@@ -123,8 +130,8 @@ class RefsCheckScheduler:
 class ReadOnlyRepositoryRefsChecker:
     """Checks one read-only repository's remote for movement of the refs it tracks.
 
-    The claim, the listing and the convergence are the whole of the check: nothing here writes the
-    tracked commit and nothing here imports.
+    The claim, the listing, the convergence and marking a tracked ref the remote no longer carries are
+    the whole of the check: nothing here writes the tracked commit or the ref, and nothing here imports.
     """
 
     def __init__(
@@ -137,6 +144,7 @@ class ReadOnlyRepositoryRefsChecker:
         ref_validator: RefNameValidator,
         scheduler: RefsCheckScheduler,
         tracked_commit_reader: TrackedCommitReader,
+        ref_missing_store: RefMissingStatusStore,
         claim_ttl_seconds: int,
         detect_timeout_seconds: float,
     ) -> None:
@@ -147,6 +155,7 @@ class ReadOnlyRepositoryRefsChecker:
         self._ref_validator = ref_validator
         self._scheduler = scheduler
         self._tracked_commit_reader = tracked_commit_reader
+        self._ref_missing_store = ref_missing_store
         self._claim_ttl_seconds = claim_ttl_seconds
         self._detect_timeout_seconds = detect_timeout_seconds
 
@@ -192,6 +201,7 @@ class ReadOnlyRepositoryRefsChecker:
                 await self._converge(model, convergence)
             # Only once every broadcast has gone out, so one that failed is seen again and retried by the next check.
             await self._record_listed(model, convergence.listed)
+            await self._mark_missing_refs(model, convergence.missing)
         except RepositoryError as exc:
             reason = str(exc)
             log.warning("Refs check of repository %s failed: %s", model.repository_name, reason)
@@ -272,26 +282,48 @@ class ReadOnlyRepositoryRefsChecker:
     async def _plan_convergence(
         self, model: GitReadOnlyRepositoryCheckRefs, heads: tuple[RefHeads, ...]
     ) -> _Convergence:
-        remote_heads: dict[str, str] = {}
+        listed: dict[str, str] = {}
         fetch = False
         for ref_heads in heads:
+            if ref_heads.remote_head is None and ref_heads.pinned_commit:
+                log.debug(
+                    "Tracked ref %s of repository %s is a commit, which cannot move",
+                    ref_heads.ref,
+                    model.repository_name,
+                )
+                continue
             if ref_heads.remote_head is None:
                 log.info(
                     "Tracked ref %s of repository %s is absent from the remote", ref_heads.ref, model.repository_name
                 )
+                listed[ref_heads.ref] = REFS_CHECK_LISTED_ABSENT
+                # Only a pruning fetch removes the stale local ref that keeps the deletion out of the commit view.
+                if ref_heads.local_head is not None:
+                    fetch = True
                 continue
-            remote_heads[ref_heads.ref] = ref_heads.remote_head
+            listed[ref_heads.ref] = ref_heads.remote_head
             if ref_heads.remote_head != ref_heads.local_head:
                 fetch = True
 
-        previous_heads = await self._read_listed(model, refs=tuple(remote_heads))
+        previous_heads = await self._read_listed(model, refs=tuple(listed))
         announce: set[str] = set()
         movements: list[RefMovement] = []
-        for ref, new_head in remote_heads.items():
+        for ref, new_head in listed.items():
             previous_head = previous_heads[ref]
             if previous_head == new_head:
                 continue
             announce.add(ref)
+            if new_head == REFS_CHECK_LISTED_ABSENT:
+                log.info("Announcing that tracked ref %s of repository %s is gone", ref, model.repository_name)
+                continue
+            if previous_head == REFS_CHECK_LISTED_ABSENT:
+                log.info(
+                    "Announcing tracked ref %s of repository %s at %s, it is back on the remote",
+                    ref,
+                    model.repository_name,
+                    new_head,
+                )
+                continue
             if previous_head is None:
                 # A missing listing says nothing about whether the remote moved, so the pool is told
                 # without the ref being reported as moved.
@@ -312,7 +344,50 @@ class ReadOnlyRepositoryRefsChecker:
             )
             movements.append(RefMovement(ref=ref, previous_head=previous_head, new_head=new_head))
 
-        return _Convergence(fetch=fetch, announce=frozenset(announce), movements=tuple(movements), listed=remote_heads)
+        return _Convergence(
+            fetch=fetch,
+            announce=frozenset(announce),
+            movements=tuple(movements),
+            listed=listed,
+        )
+
+    async def _mark_missing_refs(self, model: GitReadOnlyRepositoryCheckRefs, missing: frozenset[str]) -> None:
+        """Mark the branches tracking a ref the remote no longer carries, writing only where the status changes.
+
+        A branch that inherits its ref from the branch it was created from changed nothing, so marking it
+        would refuse a merge that is valid; the default branch always holds its own ref. A branch whose ref
+        was edited since the check began tracks something else and is left alone. The mark is never cleared
+        here: only a successful import clears it.
+
+        Raises:
+            Exception: The first failure to write a mark, once every other branch has been tried.
+
+        """
+        missing_refs = {tracked.infrahub_branch_name: tracked.ref for tracked in model.refs if tracked.ref in missing}
+        if not missing_refs:
+            return
+
+        states = await self._ref_missing_store.read(repository_id=model.repository_id, branch_names=list(missing_refs))
+        first_failure: Exception | None = None
+        for branch_name, ref in missing_refs.items():
+            state = states.get(branch_name)
+            if state is None or not state.holds_own_ref or state.ref != ref:
+                continue
+            if state.written_sync_status == RepositorySyncStatus.ERROR_REF_MISSING:
+                continue
+            log.info(
+                "Marking repository %s on branch %s, the ref it tracks is gone from the remote",
+                model.repository_name,
+                branch_name,
+            )
+            try:
+                await self._ref_missing_store.mark(repository_id=model.repository_id, branch_name=branch_name)
+            # Re-raised after the loop, so one branch that cannot be written does not leave the others unmarked.
+            except Exception as exc:  # noqa: BLE001
+                log.warning("Could not mark repository %s on branch %s: %s", model.repository_name, branch_name, exc)
+                first_failure = first_failure or exc
+        if first_failure is not None:
+            raise first_failure
 
     async def _read_listed(
         self, model: GitReadOnlyRepositoryCheckRefs, *, refs: tuple[str, ...]

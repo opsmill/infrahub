@@ -565,11 +565,19 @@ class MergeConflictsUnresolvedError(ValidationError):
 class MergeRepositoryImportError(ValidationError):
     """Raised when a branch cannot be merged because the objects a repository registered on it may not match it."""
 
-    def __init__(self, failed_repositories: list[str], incomplete_repositories: list[str]) -> None:
-        if not failed_repositories and not incomplete_repositories:
-            raise ValueError("A repository import refusal needs at least one failed or incomplete repository")
+    def __init__(
+        self,
+        failed_repositories: list[str],
+        incomplete_repositories: list[str],
+        ref_missing_repositories: list[str],
+    ) -> None:
+        if not failed_repositories and not incomplete_repositories and not ref_missing_repositories:
+            raise ValueError(
+                "A repository import refusal needs at least one failed, incomplete or ref-missing repository"
+            )
         self.failed_repositories = failed_repositories
         self.incomplete_repositories = incomplete_repositories
+        self.ref_missing_repositories = ref_missing_repositories
 
         reasons = ["Cannot merge."]
         if failed_repositories:
@@ -582,6 +590,12 @@ class MergeRepositoryImportError(ValidationError):
             reasons.append(
                 f"{self._label(incomplete_repositories).title()} {self._quote(incomplete_repositories)} {verb} not "
                 f"finished importing: wait for the import, or reimport the current commit if it does not finish."
+            )
+        if ref_missing_repositories:
+            reasons.append(
+                f"The tracked ref of {self._name_repositories(ref_missing_repositories)} was missing from the "
+                f"remote when last checked: restore the ref or edit the ref of the "
+                f"{self._label(ref_missing_repositories)}, then reimport the current commit."
             )
         super().__init__(" ".join(reasons))
 

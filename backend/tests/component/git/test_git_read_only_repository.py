@@ -56,6 +56,46 @@ async def test_new_invalid_branch(
         )
 
 
+async def test_a_cold_clone_after_the_tracked_tag_was_deleted_upstream_leaves_a_usable_copy(
+    git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path
+) -> None:
+    """The worker still has to answer for the commit Infrahub keeps running, so its copy must open."""
+    upstream = Repo(git_upstream_repo_01["path"])
+    upstream.create_tag("v1.0.0", ref="branch01")
+    upstream.delete_tag(upstream.tags["v1.0.0"])
+    assert upstream.commit("branch01") != upstream.commit("main")
+
+    repo = await InfrahubReadOnlyRepository.init(
+        id=UUIDT.new(),
+        name=git_upstream_repo_01["name"],
+        location=str(git_upstream_repo_01["path"]),
+        ref="v1.0.0",
+        infrahub_branch_name="main",
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+    )
+
+    assert repo.validate_local_directories() is True
+    assert str(repo.get_git_repo_main().head.commit) == str(upstream.commit("main"))
+
+
+async def test_a_cold_clone_checks_out_a_tracked_tag_the_remote_still_carries(
+    git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path
+) -> None:
+    upstream = Repo(git_upstream_repo_01["path"])
+    upstream.create_tag("v1.0.0", ref="branch01")
+
+    repo = await InfrahubReadOnlyRepository.init(
+        id=UUIDT.new(),
+        name=git_upstream_repo_01["name"],
+        location=str(git_upstream_repo_01["path"]),
+        ref="v1.0.0",
+        infrahub_branch_name="main",
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+    )
+
+    assert str(repo.get_git_repo_main().head.commit) == str(upstream.commit("branch01"))
+
+
 async def test_get_commit_value(
     git_repo_01_read_only: InfrahubReadOnlyRepository, git_upstream_repo_01: dict[str, str | Path]
 ) -> None:

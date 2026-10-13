@@ -4,7 +4,7 @@ Prefect rebuilds errors using pickle.
 """
 
 import pickle  # noqa: S403
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import pytest
 
@@ -82,7 +82,9 @@ ERROR_PICKLE_CASES = [
     ),
     ErrorPickleCase(
         name="merge_repository_import",
-        error=MergeRepositoryImportError(failed_repositories=["repo-1"], incomplete_repositories=["repo-2"]),
+        error=MergeRepositoryImportError(
+            failed_repositories=["repo-1"], incomplete_repositories=["repo-2"], ref_missing_repositories=["repo-3"]
+        ),
     ),
     ErrorPickleCase(
         name="push_rejection_with_its_reason_and_remote_lines",
@@ -133,9 +135,41 @@ class MergeRepositoryImportMessageCase:
     failed_repositories: list[str]
     incomplete_repositories: list[str]
     expected: str
+    ref_missing_repositories: list[str] = field(default_factory=list)
 
 
 MERGE_REPOSITORY_IMPORT_MESSAGE_CASES = [
+    MergeRepositoryImportMessageCase(
+        name="one_ref_missing",
+        failed_repositories=[],
+        incomplete_repositories=[],
+        ref_missing_repositories=["repo-1"],
+        expected=(
+            "Cannot merge. The tracked ref of repository 'repo-1' was missing from the remote when last checked: "
+            "restore the ref or edit the ref of the repository, then reimport the current commit."
+        ),
+    ),
+    MergeRepositoryImportMessageCase(
+        name="two_ref_missing",
+        failed_repositories=[],
+        incomplete_repositories=[],
+        ref_missing_repositories=["repo-1", "repo-2"],
+        expected=(
+            "Cannot merge. The tracked ref of repositories 'repo-1', 'repo-2' was missing from the remote when "
+            "last checked: restore the ref or edit the ref of the repositories, then reimport the current commit."
+        ),
+    ),
+    MergeRepositoryImportMessageCase(
+        name="failed_and_ref_missing",
+        failed_repositories=["repo-1"],
+        incomplete_repositories=[],
+        ref_missing_repositories=["repo-2"],
+        expected=(
+            "Cannot merge. The last import of repository 'repo-1' failed: push a fix, reimport the current commit, "
+            "or set the repository to inactive. The tracked ref of repository 'repo-2' was missing from the remote "
+            "when last checked: restore the ref or edit the ref of the repository, then reimport the current commit."
+        ),
+    ),
     MergeRepositoryImportMessageCase(
         name="one_failed",
         failed_repositories=["repo-1"],
@@ -190,6 +224,7 @@ def test_merge_repository_import_error_names_each_repository(case: MergeReposito
     error = MergeRepositoryImportError(
         failed_repositories=case.failed_repositories,
         incomplete_repositories=case.incomplete_repositories,
+        ref_missing_repositories=case.ref_missing_repositories,
     )
 
     assert error.message == case.expected
@@ -197,9 +232,10 @@ def test_merge_repository_import_error_names_each_repository(case: MergeReposito
 
 def test_merge_repository_import_error_requires_a_repository() -> None:
     with pytest.raises(
-        ValueError, match=r"^A repository import refusal needs at least one failed or incomplete repository$"
+        ValueError,
+        match=r"^A repository import refusal needs at least one failed, incomplete or ref-missing repository$",
     ):
-        MergeRepositoryImportError(failed_repositories=[], incomplete_repositories=[])
+        MergeRepositoryImportError(failed_repositories=[], incomplete_repositories=[], ref_missing_repositories=[])
 
 
 def test_reconstructed_error_can_be_raised_and_caught() -> None:

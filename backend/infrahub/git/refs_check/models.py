@@ -18,6 +18,9 @@ class RefHeads:
     remote_head: str | None
     """What the remote publishes for the ref, absent when the remote carries no such ref."""
 
+    pinned_commit: bool = False
+    """Whether the ref is a commit hash this worker's copy holds, which a remote never lists as a ref."""
+
 
 @dataclass(frozen=True)
 class RefMovement:

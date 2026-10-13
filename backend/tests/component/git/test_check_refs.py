@@ -2,15 +2,16 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RepositorySyncStatus
 from infrahub.exceptions import RepositoryError
-from infrahub.git.models import GitReadOnlyRepositoryCheckRefs, TrackedRef
+from infrahub.git.models import GitReadOnlyRepositoryCheckRefs, GitRepositoryImportObjects, TrackedRef
 from infrahub.git.refs_check.checker import ReadOnlyRepositoryRefsChecker, RefNameValidator, RefsCheckScheduler
+from infrahub.git.refs_check.constants import REFS_CHECK_LISTED_ABSENT
 from infrahub.git.refs_check.models import (
     RefHeads,
     RefMovement,
@@ -18,6 +19,7 @@ from infrahub.git.refs_check.models import (
     RefsCheckOutcome,
     RefsCheckResult,
 )
+from infrahub.git.refs_check.ref_missing import BranchRefState, RefMissingImportGate
 from infrahub.git.state.cache_keys import (
     REFS_CHECK_LISTED_TTL_SECONDS,
     refs_check_due_key,
@@ -33,6 +35,7 @@ from tests.adapters.message_bus import BusRecorder, PublishFailingBus
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from infrahub.git.refs_check.gateway import RemoteRepository
     from infrahub.message_bus.types import MessageTTL
 
 REPOSITORY_ID = "1f2e3d4c-5b6a-4978-8765-4321abcdef00"
@@ -55,25 +58,32 @@ class RecordingRefsGateway:
         local_heads: dict[str, str | None],
         remote_heads: dict[str, str | None],
         remote_error: Exception | None = None,
+        pinned_commits: frozenset[str] = frozenset(),
     ) -> None:
         self.timeline = timeline
         self.local_heads = local_heads
         self.remote_heads = remote_heads
         self.remote_error = remote_error
+        self.pinned_commits = pinned_commits
         self.listings: list[list[str]] = []
         self.fetches: list[str] = []
 
-    async def read_heads(self, model: GitReadOnlyRepositoryCheckRefs, refs: Sequence[str]) -> tuple[RefHeads, ...]:
+    async def read_heads(self, model: RemoteRepository, refs: Sequence[str]) -> tuple[RefHeads, ...]:
         self.timeline.checkpoint("ls-remote")
         self.listings.append(list(refs))
         if self.remote_error is not None:
             raise self.remote_error
         return tuple(
-            RefHeads(ref=ref, local_head=self.local_heads.get(ref), remote_head=self.remote_heads.get(ref))
+            RefHeads(
+                ref=ref,
+                local_head=self.local_heads.get(ref),
+                remote_head=self.remote_heads.get(ref),
+                pinned_commit=ref in self.pinned_commits,
+            )
             for ref in refs
         )
 
-    async def fetch(self, model: GitReadOnlyRepositoryCheckRefs) -> None:
+    async def fetch(self, model: RemoteRepository) -> None:
         self.timeline.checkpoint("fetch")
         self.fetches.append(model.repository_name)
 
@@ -85,11 +95,11 @@ class HangingRefsGateway:
         self.timeline = timeline
         self.fetches: list[str] = []
 
-    async def read_heads(self, model: GitReadOnlyRepositoryCheckRefs, refs: Sequence[str]) -> tuple[RefHeads, ...]:
+    async def read_heads(self, model: RemoteRepository, refs: Sequence[str]) -> tuple[RefHeads, ...]:
         await asyncio.sleep(30)
         return tuple(RefHeads(ref=ref, local_head=LOCAL_HEAD, remote_head=REMOTE_HEAD) for ref in refs)
 
-    async def fetch(self, model: GitReadOnlyRepositoryCheckRefs) -> None:
+    async def fetch(self, model: RemoteRepository) -> None:
         self.timeline.checkpoint("fetch")
         self.fetches.append(model.repository_name)
 
@@ -158,11 +168,45 @@ class HangingListedReadCache(ClaimAwareCache):
 
 
 class CrashingRefsGateway:
-    async def read_heads(self, model: GitReadOnlyRepositoryCheckRefs, refs: Sequence[str]) -> tuple[RefHeads, ...]:
+    async def read_heads(self, model: RemoteRepository, refs: Sequence[str]) -> tuple[RefHeads, ...]:
         raise RuntimeError("the worker died mid-check")
 
-    async def fetch(self, model: GitReadOnlyRepositoryCheckRefs) -> None:
+    async def fetch(self, model: RemoteRepository) -> None:
         raise RuntimeError("the worker died mid-check")
+
+
+class RecordingRefMissingStore:
+    """Answers with scripted branch states, recording every read and every status written."""
+
+    def __init__(self, states: dict[str, BranchRefState] | None = None) -> None:
+        self.states = {} if states is None else states
+        self.reads: list[list[str]] = []
+        self.marks: list[str] = []
+
+    async def read(self, *, repository_id: str, branch_names: list[str]) -> dict[str, BranchRefState]:
+        self.reads.append(list(branch_names))
+        return {name: self.states[name] for name in branch_names if name in self.states}
+
+    async def mark(self, *, repository_id: str, branch_name: str) -> None:
+        self.marks.append(branch_name)
+        self.states[branch_name] = replace(
+            self.states[branch_name], written_sync_status=RepositorySyncStatus.ERROR_REF_MISSING
+        )
+
+
+class FailingRefMissingStore(RecordingRefMissingStore):
+    """Fails every write on the given branches, or on every branch when none are given."""
+
+    def __init__(
+        self, states: dict[str, BranchRefState] | None = None, failing_branches: frozenset[str] = frozenset()
+    ) -> None:
+        super().__init__(states)
+        self.failing_branches = failing_branches
+
+    async def mark(self, *, repository_id: str, branch_name: str) -> None:
+        if not self.failing_branches or branch_name in self.failing_branches:
+            raise ConnectionError("the API is unreachable")
+        await super().mark(repository_id=repository_id, branch_name=branch_name)
 
 
 class RecordingTrackedCommitReader:
@@ -210,6 +254,7 @@ def build_checker(
     timeline: LockTimeline,
     gateway: RecordingRefsGateway | CrashingRefsGateway,
     tracked_commit_reader: RecordingTrackedCommitReader | None = None,
+    ref_missing_store: RecordingRefMissingStore | None = None,
     detect_timeout_seconds: float = 30,
 ) -> ReadOnlyRepositoryRefsChecker:
     return ReadOnlyRepositoryRefsChecker(
@@ -220,6 +265,7 @@ def build_checker(
         ref_validator=RefNameValidator(check_ref_format=lambda _: True),
         scheduler=build_scheduler(cache),
         tracked_commit_reader=tracked_commit_reader or RecordingTrackedCommitReader(),
+        ref_missing_store=ref_missing_store or RecordingRefMissingStore(),
         claim_ttl_seconds=180,
         detect_timeout_seconds=detect_timeout_seconds,
     )
@@ -579,6 +625,388 @@ async def test_every_distinct_tracked_ref_is_read_in_one_listing() -> None:
     assert gateway.listings == [["stable", "release"]]
 
 
+def own_ref(
+    written_sync_status: RepositorySyncStatus | None = RepositorySyncStatus.IN_SYNC, ref: str = "stable"
+) -> BranchRefState:
+    return BranchRefState(ref=ref, holds_own_ref=True, written_sync_status=written_sync_status)
+
+
+def deleted_stable_gateway(timeline: LockTimeline, local_head: str | None = None) -> RecordingRefsGateway:
+    return RecordingRefsGateway(timeline=timeline, local_heads={"stable": local_head}, remote_heads={"stable": None})
+
+
+async def test_a_missing_ref_marks_the_default_branch_and_the_branches_holding_their_own_ref() -> None:
+    timeline = LockTimeline()
+    store = RecordingRefMissingStore(
+        {
+            "main": own_ref(),
+            "feature": own_ref(),
+            "inherits": BranchRefState(ref="stable", holds_own_ref=False, written_sync_status=None),
+            "elsewhere": own_ref(ref="release"),
+        }
+    )
+    gateway = RecordingRefsGateway(
+        timeline=timeline,
+        local_heads={"stable": None, "release": REMOTE_HEAD},
+        remote_heads={"stable": None, "release": REMOTE_HEAD},
+    )
+    model = build_model(
+        refs=[
+            TrackedRef(infrahub_branch_name="main", infrahub_branch_id="main-branch-id", ref="stable"),
+            TrackedRef(infrahub_branch_name="feature", infrahub_branch_id="feature-branch-id", ref="stable"),
+            TrackedRef(infrahub_branch_name="inherits", infrahub_branch_id="inherits-branch-id", ref="stable"),
+            TrackedRef(infrahub_branch_name="elsewhere", infrahub_branch_id="elsewhere-branch-id", ref="release"),
+        ]
+    )
+    checker = build_checker(
+        cache=ClaimAwareCache(), bus=BusRecorder(), timeline=timeline, gateway=gateway, ref_missing_store=store
+    )
+
+    result = await checker.check(model, run_id="run-1")
+
+    assert result.outcome is RefsCheckOutcome.COMPLETED
+    assert store.reads == [["main", "feature", "inherits"]]
+    assert store.marks == ["main", "feature"]
+
+
+async def test_a_branch_whose_ref_was_edited_during_the_check_is_not_marked() -> None:
+    """No later check revisits a branch that now tracks a ref the remote carries, so a wrong mark would stay."""
+    timeline = LockTimeline()
+    store = RecordingRefMissingStore({"main": own_ref(), "feature": own_ref(ref="stable-v2")})
+    model = build_model(
+        refs=[
+            TrackedRef(infrahub_branch_name="main", infrahub_branch_id="main-branch-id", ref="stable"),
+            TrackedRef(infrahub_branch_name="feature", infrahub_branch_id="feature-branch-id", ref="stable"),
+        ]
+    )
+    checker = build_checker(
+        cache=ClaimAwareCache(),
+        bus=BusRecorder(),
+        timeline=timeline,
+        gateway=deleted_stable_gateway(timeline),
+        ref_missing_store=store,
+    )
+
+    await checker.check(model, run_id="run-1")
+
+    assert store.marks == ["main"]
+
+
+async def test_a_ref_pinned_to_a_commit_is_neither_marked_nor_recorded_as_absent() -> None:
+    """A remote lists branches and tags only, so a commit hash is never in its listing."""
+    timeline = LockTimeline()
+    cache = ClaimAwareCache()
+    bus = BusRecorder()
+    store = RecordingRefMissingStore({"main": own_ref(ref=IMPORTED_COMMIT)})
+    gateway = RecordingRefsGateway(
+        timeline=timeline,
+        local_heads={IMPORTED_COMMIT: None},
+        remote_heads={IMPORTED_COMMIT: None},
+        pinned_commits=frozenset({IMPORTED_COMMIT}),
+    )
+    model = build_model(
+        refs=[TrackedRef(infrahub_branch_name="main", infrahub_branch_id="main-branch-id", ref=IMPORTED_COMMIT)]
+    )
+    checker = build_checker(cache=cache, bus=bus, timeline=timeline, gateway=gateway, ref_missing_store=store)
+
+    result = await checker.check(model, run_id="run-1")
+
+    assert result.outcome is RefsCheckOutcome.COMPLETED
+    assert store.reads == []
+    assert store.marks == []
+    assert gateway.fetches == []
+    assert bus.messages == []
+    assert refs_check_listed_key(REPOSITORY_ID, ref=IMPORTED_COMMIT) not in cache.storage
+
+
+async def test_a_branch_whose_mark_cannot_be_written_does_not_keep_the_others_unmarked() -> None:
+    timeline = LockTimeline()
+    store = FailingRefMissingStore(
+        {"main": own_ref(), "feature-a": own_ref(), "feature-b": own_ref()}, failing_branches=frozenset({"feature-a"})
+    )
+    model = build_model(
+        refs=[
+            TrackedRef(infrahub_branch_name="main", infrahub_branch_id="main-branch-id", ref="stable"),
+            TrackedRef(infrahub_branch_name="feature-a", infrahub_branch_id="feature-a-branch-id", ref="stable"),
+            TrackedRef(infrahub_branch_name="feature-b", infrahub_branch_id="feature-b-branch-id", ref="stable"),
+        ]
+    )
+    checker = build_checker(
+        cache=ClaimAwareCache(),
+        bus=BusRecorder(),
+        timeline=timeline,
+        gateway=deleted_stable_gateway(timeline),
+        ref_missing_store=store,
+    )
+
+    with pytest.raises(ConnectionError, match=r"^the API is unreachable$"):
+        await checker.check(model, run_id="run-1")
+
+    assert store.marks == ["main", "feature-b"]
+
+
+async def test_a_second_check_with_the_ref_still_missing_writes_nothing() -> None:
+    timeline = LockTimeline()
+    cache = ClaimAwareCache()
+    store = RecordingRefMissingStore({"main": own_ref()})
+    checker = build_checker(
+        cache=cache,
+        bus=BusRecorder(),
+        timeline=timeline,
+        gateway=deleted_stable_gateway(timeline),
+        ref_missing_store=store,
+    )
+
+    await checker.check(build_model(), run_id="run-1")
+    await checker.check(build_model(), run_id="run-2")
+
+    assert store.marks == ["main"]
+
+
+async def test_the_ref_returning_writes_nothing() -> None:
+    """Only a successful import clears the mark, so a check that finds the ref again leaves it in place."""
+    timeline = LockTimeline()
+    cache = ClaimAwareCache()
+    await cache.set(key=LISTED_KEY, value=REFS_CHECK_LISTED_ABSENT)
+    store = RecordingRefMissingStore({"main": own_ref(RepositorySyncStatus.ERROR_REF_MISSING)})
+    gateway = RecordingRefsGateway(
+        timeline=timeline, local_heads={"stable": None}, remote_heads={"stable": IMPORTED_COMMIT}
+    )
+    checker = build_checker(cache=cache, bus=BusRecorder(), timeline=timeline, gateway=gateway, ref_missing_store=store)
+
+    await checker.check(build_model(), run_id="run-1")
+
+    assert store.reads == []
+    assert store.marks == []
+
+
+async def test_a_branch_whose_import_failed_is_marked_again() -> None:
+    """A failed reimport replaces the mark with an import error, and the next check that finds the ref missing puts it back."""
+    timeline = LockTimeline()
+    store = RecordingRefMissingStore({"main": own_ref(RepositorySyncStatus.ERROR_IMPORT)})
+    checker = build_checker(
+        cache=ClaimAwareCache(),
+        bus=BusRecorder(),
+        timeline=timeline,
+        gateway=deleted_stable_gateway(timeline),
+        ref_missing_store=store,
+    )
+
+    await checker.check(build_model(), run_id="run-1")
+
+    assert store.marks == ["main"]
+
+
+async def test_a_branch_on_which_the_repository_resolves_no_ref_is_not_marked() -> None:
+    timeline = LockTimeline()
+    store = RecordingRefMissingStore({})
+    checker = build_checker(
+        cache=ClaimAwareCache(),
+        bus=BusRecorder(),
+        timeline=timeline,
+        gateway=deleted_stable_gateway(timeline),
+        ref_missing_store=store,
+    )
+
+    await checker.check(build_model(), run_id="run-1")
+
+    assert store.reads == [["main"]]
+    assert store.marks == []
+
+
+async def test_a_failed_status_write_fails_the_check_after_the_pool_was_told() -> None:
+    """The listing is recorded first, so the next check retries the write without repeating the broadcast."""
+    timeline = LockTimeline()
+    cache = ClaimAwareCache()
+    await cache.set(key=LISTED_KEY, value=IMPORTED_COMMIT)
+    bus = BusRecorder()
+    gateway = deleted_stable_gateway(timeline, local_head=IMPORTED_COMMIT)
+    failing = build_checker(
+        cache=cache,
+        bus=bus,
+        timeline=timeline,
+        gateway=gateway,
+        ref_missing_store=FailingRefMissingStore({"main": own_ref()}),
+    )
+
+    with pytest.raises(ConnectionError, match=r"^the API is unreachable$"):
+        await failing.check(build_model(), run_id="run-1")
+
+    assert [message.commit for message in bus.messages] == [IMPORTED_COMMIT]
+    assert cache.storage[LISTED_KEY] == REFS_CHECK_LISTED_ABSENT
+    assert refs_check_running_key(REPOSITORY_ID) not in cache.storage
+
+    gateway.local_heads["stable"] = None
+    store = RecordingRefMissingStore({"main": own_ref()})
+    retrying = build_checker(cache=cache, bus=bus, timeline=timeline, gateway=gateway, ref_missing_store=store)
+
+    await retrying.check(build_model(), run_id="run-2")
+
+    assert store.marks == ["main"]
+    assert [message.commit for message in bus.messages] == [IMPORTED_COMMIT]
+    assert gateway.fetches == [REPOSITORY_NAME]
+
+
+def build_gate(*, store: RecordingRefMissingStore, gateway: RecordingRefsGateway) -> RefMissingImportGate:
+    return RefMissingImportGate(store=store, gateway=gateway)
+
+
+def build_import_model(repository_kind: str = InfrahubKind.READONLYREPOSITORY) -> GitRepositoryImportObjects:
+    return GitRepositoryImportObjects(
+        repository_id=REPOSITORY_ID,
+        repository_name=REPOSITORY_NAME,
+        repository_kind=repository_kind,
+        commit=IMPORTED_COMMIT,
+        infrahub_branch_name="main",
+    )
+
+
+@dataclass(frozen=True, kw_only=True)
+class ImportGateCase:
+    name: str
+    written_sync_status: RepositorySyncStatus | None
+    remote_head: str | None
+    expected_status: RepositorySyncStatus
+    expected_listings: list[list[str]]
+    pinned_commit: bool = False
+
+
+IMPORT_GATE_CASES: list[ImportGateCase] = [
+    ImportGateCase(
+        name="unmarked_branch_is_set_in_sync_without_listing",
+        written_sync_status=RepositorySyncStatus.ERROR_IMPORT,
+        remote_head=None,
+        expected_status=RepositorySyncStatus.IN_SYNC,
+        expected_listings=[],
+    ),
+    ImportGateCase(
+        name="marked_branch_keeps_the_mark_while_the_ref_is_missing",
+        written_sync_status=RepositorySyncStatus.ERROR_REF_MISSING,
+        remote_head=None,
+        expected_status=RepositorySyncStatus.ERROR_REF_MISSING,
+        expected_listings=[["stable"]],
+    ),
+    ImportGateCase(
+        name="marked_branch_is_cleared_once_the_ref_is_back",
+        written_sync_status=RepositorySyncStatus.ERROR_REF_MISSING,
+        remote_head=REMOTE_HEAD,
+        expected_status=RepositorySyncStatus.IN_SYNC,
+        expected_listings=[["stable"]],
+    ),
+    ImportGateCase(
+        name="marked_branch_pinned_to_a_commit_is_cleared",
+        written_sync_status=RepositorySyncStatus.ERROR_REF_MISSING,
+        remote_head=None,
+        pinned_commit=True,
+        expected_status=RepositorySyncStatus.IN_SYNC,
+        expected_listings=[["stable"]],
+    ),
+]
+
+
+@pytest.mark.parametrize("case", IMPORT_GATE_CASES, ids=[case.name for case in IMPORT_GATE_CASES])
+async def test_an_import_leaves_the_missing_ref_status_only_while_the_ref_is_missing(case: ImportGateCase) -> None:
+    timeline = LockTimeline()
+    gateway = RecordingRefsGateway(
+        timeline=timeline,
+        local_heads={},
+        remote_heads={"stable": case.remote_head},
+        pinned_commits=frozenset({"stable"}) if case.pinned_commit else frozenset(),
+    )
+    gate = build_gate(store=RecordingRefMissingStore({"main": own_ref(case.written_sync_status)}), gateway=gateway)
+
+    status = await gate.status_after_import(model=build_import_model(), location=LOCATION)
+
+    assert status is case.expected_status
+    assert gateway.listings == case.expected_listings
+
+
+async def test_an_import_keeps_the_missing_ref_status_when_the_remote_cannot_be_listed() -> None:
+    timeline = LockTimeline()
+    gateway = RecordingRefsGateway(
+        timeline=timeline,
+        local_heads={},
+        remote_heads={},
+        remote_error=RepositoryError(identifier=REPOSITORY_NAME, message="unreachable"),
+    )
+    gate = build_gate(
+        store=RecordingRefMissingStore({"main": own_ref(RepositorySyncStatus.ERROR_REF_MISSING)}), gateway=gateway
+    )
+
+    status = await gate.status_after_import(model=build_import_model(), location=LOCATION)
+
+    assert status is RepositorySyncStatus.ERROR_REF_MISSING
+    assert gateway.listings == [["stable"]]
+
+
+async def test_an_import_lists_the_ref_the_branch_tracks_now() -> None:
+    """A user who edited the ref recovers through the import, so the edited ref is the one looked up."""
+    timeline = LockTimeline()
+    gateway = RecordingRefsGateway(timeline=timeline, local_heads={}, remote_heads={"stable-v2": REMOTE_HEAD})
+    gate = build_gate(
+        store=RecordingRefMissingStore({"main": own_ref(RepositorySyncStatus.ERROR_REF_MISSING, ref="stable-v2")}),
+        gateway=gateway,
+    )
+
+    status = await gate.status_after_import(model=build_import_model(), location=LOCATION)
+
+    assert status is RepositorySyncStatus.IN_SYNC
+    assert gateway.listings == [["stable-v2"]]
+
+
+async def test_an_import_of_a_read_write_repository_reads_nothing_and_is_set_in_sync() -> None:
+    timeline = LockTimeline()
+    gateway = RecordingRefsGateway(timeline=timeline, local_heads={}, remote_heads={})
+    store = RecordingRefMissingStore({"main": own_ref(RepositorySyncStatus.ERROR_REF_MISSING)})
+    gate = build_gate(store=store, gateway=gateway)
+
+    status = await gate.status_after_import(
+        model=build_import_model(repository_kind=InfrahubKind.REPOSITORY), location=LOCATION
+    )
+
+    assert status is RepositorySyncStatus.IN_SYNC
+    assert store.reads == []
+    assert gateway.listings == []
+
+
+async def test_a_ref_that_disappears_is_pruned_here_and_announced_to_the_pool_once() -> None:
+    """Without the announcement each worker keeps its stale copy of the ref until a fetch of its own prunes it."""
+    timeline = LockTimeline()
+    cache = ClaimAwareCache()
+    await cache.set(key=LISTED_KEY, value=IMPORTED_COMMIT)
+    bus = BusRecorder()
+    gateway = deleted_stable_gateway(timeline, local_head=IMPORTED_COMMIT)
+    checker = build_checker(cache=cache, bus=bus, timeline=timeline, gateway=gateway)
+
+    first = await checker.check(build_model(), run_id="run-1")
+    gateway.local_heads["stable"] = None
+    second = await checker.check(build_model(), run_id="run-2")
+
+    assert gateway.fetches == [REPOSITORY_NAME]
+    assert [(message.infrahub_branch_name, message.commit) for message in bus.messages] == [("main", IMPORTED_COMMIT)]
+    assert first.movements == ()
+    assert second.movements == ()
+    assert cache.storage[LISTED_KEY] == REFS_CHECK_LISTED_ABSENT
+
+
+async def test_a_ref_that_returns_is_announced_to_the_pool_without_being_reported_as_moved() -> None:
+    timeline = LockTimeline()
+    cache = ClaimAwareCache()
+    await cache.set(key=LISTED_KEY, value=REFS_CHECK_LISTED_ABSENT)
+    bus = BusRecorder()
+    gateway = RecordingRefsGateway(
+        timeline=timeline, local_heads={"stable": None}, remote_heads={"stable": IMPORTED_COMMIT}
+    )
+    checker = build_checker(cache=cache, bus=bus, timeline=timeline, gateway=gateway)
+
+    result = await checker.check(build_model(), run_id="run-1")
+
+    assert gateway.fetches == [REPOSITORY_NAME]
+    assert [message.commit for message in bus.messages] == [IMPORTED_COMMIT]
+    assert result.movements == ()
+    assert cache.storage[LISTED_KEY] == IMPORTED_COMMIT
+
+
 async def test_a_second_trigger_while_one_is_in_flight_reports_the_claim_and_contacts_nothing() -> None:
     cache = ClaimAwareCache()
     timeline = LockTimeline()
@@ -615,7 +1043,7 @@ async def test_a_check_that_outlived_its_claim_leaves_the_later_run_s_claim_alon
     model = build_model()
 
     # Stand in for the claim expiring mid-run and a later run taking it.
-    async def take_over(_model: GitReadOnlyRepositoryCheckRefs, refs: Sequence[str]) -> tuple[RefHeads, ...]:
+    async def take_over(_model: RemoteRepository, refs: Sequence[str]) -> tuple[RefHeads, ...]:
         await cache.set(key=refs_check_running_key(REPOSITORY_ID), value="run-2")
         return tuple(RefHeads(ref=ref, local_head=IMPORTED_COMMIT, remote_head=IMPORTED_COMMIT) for ref in refs)
 
@@ -836,6 +1264,7 @@ async def test_an_unresponsive_remote_is_abandoned_without_taking_the_repository
         ref_validator=RefNameValidator(check_ref_format=lambda _: True),
         scheduler=build_scheduler(cache),
         tracked_commit_reader=RecordingTrackedCommitReader(),
+        ref_missing_store=RecordingRefMissingStore(),
         claim_ttl_seconds=180,
         detect_timeout_seconds=0.05,
     )
@@ -993,6 +1422,7 @@ async def test_an_invalid_ref_is_refused_before_the_remote_is_contacted() -> Non
         ref_validator=RefNameValidator(check_ref_format=lambda _: False),
         scheduler=build_scheduler(cache),
         tracked_commit_reader=RecordingTrackedCommitReader(),
+        ref_missing_store=RecordingRefMissingStore(),
         claim_ttl_seconds=180,
         detect_timeout_seconds=30,
     )
