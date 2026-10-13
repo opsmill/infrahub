@@ -6,7 +6,8 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from infrahub_sdk.uuidt import UUIDT
-from prefect.client.schemas.objects import State
+from prefect.client.schemas.filters import FlowFilter, FlowFilterName, FlowRunFilter, FlowRunFilterParentFlowRunId
+from prefect.client.schemas.objects import State, StateType
 from prefect.flow_engine import run_flow_async
 
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, RepositoryOperationalStatus
@@ -29,6 +30,7 @@ if TYPE_CHECKING:
 FLOW_RUN_LOGGER = "prefect.flow_runs"
 SKIPPED_BRANCH_WARNING_PREFIX = "Skipped remote branch"
 INVALID_YAML_CONFIG = "schemas: [unclosed\n"
+BRANCH_IMPORT_FLOW_NAME = "import-branch-objects"
 
 
 def invalid_yaml_config_message(repository_name: str) -> str:
@@ -151,3 +153,14 @@ async def flow_run_tags(prefect_client: PrefectClient, state: State) -> set[str]
 
 async def is_linked_to_node(prefect_client: PrefectClient, state: State, node_id: str) -> bool:
     return WorkflowTag.RELATED_NODE.render(identifier=node_id) in await flow_run_tags(prefect_client, state)
+
+
+async def branch_import_runs(
+    prefect_client: PrefectClient, state: State
+) -> dict[str, tuple[StateType | None, set[str]]]:
+    """Return the branch import runs the flow run started, by branch, with the final state type and tags of each."""
+    flow_runs = await prefect_client.read_flow_runs(
+        flow_filter=FlowFilter(name=FlowFilterName(any_=[BRANCH_IMPORT_FLOW_NAME])),
+        flow_run_filter=FlowRunFilter(parent_flow_run_id=FlowRunFilterParentFlowRunId(any_=[flow_run_id_of(state)])),
+    )
+    return {flow_run.parameters["branch_name"]: (flow_run.state_type, set(flow_run.tags)) for flow_run in flow_runs}
