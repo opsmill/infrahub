@@ -40,11 +40,13 @@ Anything the mapping file cannot place is listed in a coverage report rather tha
 
 ## Import device types
 
+The steps below show the commands your assistant runs, so you can also run them yourself. `$SKILL` stands for the directory your installer put the skill in. Your assistant names each script by its full path and runs it from your own working directory, so the export, the cloned library, the generated files, and any mapping file you write stay with you. Keep them out of the skill directory: reinstalling or updating the skill can replace that directory, and anything inside it is lost.
+
 ### 1. Check that your schema generates templates
 
 Template kinds such as `TemplateDcimDevice` exist only for nodes that declare `generate_template: true`. When the flag is missing, the conversion produces files that have nothing to load into.
 
-The `infrahub/dcim` schema on the [Infrahub Marketplace](../schema/marketplace/index.mdx) already sets it on `DcimDevice`, and the default mapping file targets that schema together with `infrahub/organization`. To convert module types and module bays as well, use the [schema-library `main` branch](https://github.com/opsmill/schema-library/tree/main) with its `device_module` and `module_port` extensions loaded.
+The `infrahub/dcim` schema on the [Infrahub Marketplace](../schema/marketplace/index.mdx) already sets it on `DcimDevice`, and the default mapping file targets that schema together with `infrahub/organization`. To convert module types and module bays as well, use the [schema-library `main` branch](https://github.com/opsmill/schema-library/tree/main) with its `device_module` and `module_port` extensions loaded. To also keep each module's ports, set `generate_template: true` on `DcimModule`, which schema-library does not set; see [Module ports](#module-ports) below.
 
 For a custom schema, your assistant checks the schema files, shows you the one-line change if the flag is missing, and waits for you to apply it. See [Enable template support within the schema](./use.mdx#enable-template-support-within-the-schema) for what the flag generates.
 
@@ -53,89 +55,110 @@ For a custom schema, your assistant checks the schema files, shows you the one-l
 <Tabs groupId="netbox-source" queryString>
   <TabItem value="netbox" label="From your NetBox" default>
 
-  Export the device types you run from your own instance. The exporter reads the API token from `NETBOX_TOKEN` by default:
+Export the device types you run from your own instance. The exporter reads the API token from `NETBOX_TOKEN` by default:
 
-  ```bash
-  export NETBOX_TOKEN=<your NetBox API token>
-  ```
+```bash
+export NETBOX_TOKEN=<your NetBox API token>
+```
 
-  ```text title="Example prompt"
-  Export the device types we use from https://netbox.example.com, including module types, and convert them into Infrahub object templates.
-  ```
+```text title="Example prompt"
+Export the device types we use from https://netbox.example.com, including module types, and convert them into Infrahub object templates.
+```
 
-  Your assistant runs the exporter from the skill's directory:
+Your assistant runs the exporter:
 
-  ```bash
-  python scripts/netbox_export_device_types.py \
-    --url https://netbox.example.com \
-    --in-use \
-    --module-types \
-    --output-dir ./netbox-export
-  ```
+```bash
+SKILL=/path/to/infrahub-converting-netbox-device-types
 
-  `--in-use` keeps only device types with at least one device, which on most instances is a far smaller set than the full catalogue. `--manufacturer` and `--slug` restrict the export further. `--insecure` skips TLS verification for an instance with a self-signed certificate.
+python "$SKILL/scripts/netbox_export_device_types.py" \
+  --url https://netbox.example.com \
+  --in-use \
+  --module-types \
+  --output-dir ./netbox-export
+```
 
-  The export ends with a list of anything that did not transfer cleanly:
+The options control what the export includes and how it connects:
 
-  ```text
-  19 file(s) written to netbox-export
+- `--in-use` keeps only device types with at least one device, and module types with at least one module, going by the counts NetBox reports. On most instances this is a far smaller set than the full catalogue. A record for which NetBox reports no count is kept, and the report says how many.
+- `--manufacturer` restricts both device types and module types to a manufacturer slug. `--slug` restricts device types only, because module types have no slug.
+- `--timeout` sets the per-request timeout in seconds (default 30).
+- `--insecure` skips TLS verification for an instance with a self-signed certificate.
 
-  Not carried into the library format:
-    - AP7901: power-ports: 1 of 1 unset 'type', which the library schema requires
-  ```
+The export ends with a list of anything that did not transfer cleanly:
 
-  The list covers fields NetBox holds that the file format has no field for, required fields left empty in NetBox, component endpoints your NetBox version does not have, file names that collided, and NetBox versions older than 4.5, which store front-port mappings differently. None of these stops the export.
+```text
+19 file(s) written to netbox-export
+
+Not carried into the library format:
+  - AP7901: power-ports: 1 of 1 unset 'type', which the library schema requires
+```
+
+The list names:
+
+- Populated fields NetBox holds that the file format has no field for, such as a device type's `default_platform` or `tags`, or a custom module-type profile.
+- Fields the file format requires that NetBox left empty. The file is still written.
+- Component endpoints your NetBox version does not have. That list is skipped and the rest of the export continues.
+- Records whose file names collided. The second is written with a numeric suffix.
+- NetBox versions older than 4.5, which store front-port mappings differently.
+- Files that an earlier, wider export left in `device-types/` or `module-types/`. These are removed and counted, so the converter reads only this export.
+
+A failed run leaves the output directory unchanged.
 
   </TabItem>
   <TabItem value="library" label="From the published library">
 
-  Seed Infrahub with vendor models from [netbox-community/devicetype-library](https://github.com/netbox-community/devicetype-library). You can browse it first at the [NetBox Data Exchange](https://netboxlabs.com/ndx/).
+Seed Infrahub with vendor models from [netbox-community/devicetype-library](https://github.com/netbox-community/devicetype-library). You can browse it first at the [NetBox Data Exchange](https://netboxlabs.com/ndx/).
 
-  ```text title="Example prompt"
-  Convert the Juniper device types from the NetBox devicetype-library into Infrahub object templates.
-  ```
+```text title="Example prompt"
+Convert the Juniper device types from the NetBox devicetype-library into Infrahub object templates.
+```
 
-  Your assistant clones only the definitions. A full clone is about 1.6 GB, almost all of it rack elevation images the converter does not read; the device type definitions alone are about 29 MB:
+Your assistant clones only the definitions. A full clone is about 1.6 GB, almost all of it rack elevation images the converter does not read; the definitions alone, more than 11,500 device types and 2,000 module types, are about 60 MB:
 
-  ```bash
-  git clone --depth 1 --filter=blob:none --sparse \
-    https://github.com/netbox-community/devicetype-library.git
-  git -C devicetype-library sparse-checkout set device-types module-types
-  ```
+```bash
+git clone --depth 1 --filter=blob:none --sparse \
+  https://github.com/netbox-community/devicetype-library.git
+git -C devicetype-library sparse-checkout set device-types module-types
+```
 
   </TabItem>
 </Tabs>
 
 ### 3. Convert to object YAML
 
-Your assistant picks the mapping file that matches your schema. `schema-library.yml` converts device types with their interfaces. `schema-library-modules.yml` also converts module bays and module types, and needs the schema-library `main` schema from step 1. For a custom schema, your assistant copies the annotated `_template.yml` and fills it in from your schema files.
+Your assistant picks the mapping file that matches your schema. The skill includes four:
+
+- `schema-library.yml` converts device types with their interfaces.
+- `schema-library-modules.yml` also converts module bays and module types, and needs the schema-library `main` schema from step 1.
+- `schema-library-module-ports.yml` also gives each module type a module template that holds its ports. See [Module ports](#module-ports).
+- `_template.yml` is an annotated starting point for a custom schema. Your assistant copies it into your working directory, for example as `./mappings/my-schema.yml`, and fills it in from your schema files. The converter refuses `_template.yml` until every placeholder kind is replaced.
 
 <Tabs groupId="netbox-source" queryString>
   <TabItem value="netbox" label="From your NetBox" default>
 
-  ```bash
-  python scripts/netbox_to_infrahub_templates.py \
-    ./netbox-export/device-types ./netbox-export/module-types \
-    --mapping scripts/mappings/schema-library-modules.yml \
-    --output-dir ./generated \
-    --report ./generated/coverage-report.md
-  ```
+```bash
+python "$SKILL/scripts/netbox_to_infrahub_templates.py" \
+  ./netbox-export/ \
+  --mapping "$SKILL/scripts/mappings/schema-library-modules.yml" \
+  --output-dir ./generated \
+  --report ./generated/coverage-report.md
+```
 
   </TabItem>
   <TabItem value="library" label="From the published library">
 
-  ```bash
-  python scripts/netbox_to_infrahub_templates.py \
-    devicetype-library/device-types/Juniper/ \
-    --mapping scripts/mappings/schema-library.yml \
-    --output-dir ./generated \
-    --report ./generated/coverage-report.md
-  ```
+```bash
+python "$SKILL/scripts/netbox_to_infrahub_templates.py" \
+  devicetype-library/device-types/Juniper/ \
+  --mapping "$SKILL/scripts/mappings/schema-library.yml" \
+  --output-dir ./generated \
+  --report ./generated/coverage-report.md
+```
 
   </TabItem>
 </Tabs>
 
-The converter writes one file per kind, numbered in dependency order. Files with no content are not written:
+Pointed at the export directory, the converter reads `device-types/` and `module-types/` together, which is why that tab uses the mapping file that maps both. It writes one file per kind, numbered in dependency order. Files with no content are not written:
 
 ```text
 generated/01_manufacturers.yml     OrganizationManufacturer   rows=7
@@ -182,7 +205,7 @@ The coverage report lists, per device type, what the mapping file had nowhere to
 
 A skipped list or dropped field has one of two causes: the mapping file has no entry for it, or your schema has no node or attribute to hold it. A console port, for example, often needs only a mapping entry, because many schemas already model it as an interface.
 
-Against the default schema, no device type in the published library converts without loss. Your assistant names the largest losses, explains why each one could not be placed, and offers the mapping or schema change that closes it. Decide which gaps matter before you load; closing one later means extending the schema and running the conversion again.
+Against the default `schema-library.yml` mapping file, most NetBox component lists have no matching node, so a report full of unmapped entries is normal rather than an error. Your assistant names the largest losses, explains why each one could not be placed, and offers the mapping or schema change that closes it. Decide which gaps matter before you load; closing one later means extending the schema and running the conversion again.
 
 ### 5. Load onto a branch
 
@@ -222,9 +245,22 @@ The device is created with the 48 interfaces from its template. When the templat
 
 - **Weights are whole numbers.** Infrahub has no decimal attribute kind, so the default mapping file rounds weight to whole kilograms, and hardware under 500 g becomes `0`. Each one is named in the coverage report. Map weight to an attribute in grams instead if light hardware matters to you.
 - **Modular chassis need the module mapping file.** Their ports live in module bays, so with `schema-library.yml` they convert to templates with no interfaces. `schema-library-modules.yml` converts the bays themselves.
-- **Module ports are not converted by default.** NetBox names module ports with a `{module}` token that depends on the bay the module is installed in, and `schema-library-modules.yml` reports them as skipped. The skill includes a [Generator](../generators/overview.mdx) that resolves the token and creates the device interfaces, but it needs a schema and mapping file that give modules port templates. See the [skill reference](https://docs.infrahub.app/skills/skills-reference/converting-netbox-device-types) for details.
+- **Two device types cannot share a model.** A device template references its device type by model, so loading two device types with the same model would overwrite one with the other without an error. The converter refuses the run and lists every pair. Leave one of each pair out of the input. The published library has a few such pairs, shared between vendors.
 - **Changing a template does not change existing devices.** Changes to a template do not apply to devices already created from it, so loading a later conversion affects only the devices you create afterwards.
 - **Loading is not transactional across files.** If a file fails partway through, the branch keeps the earlier files and whatever part of the failing file loaded. [Delete the branch](../branches/delete.mdx) and load again onto a new one.
+
+## Module ports
+
+NetBox names module ports with a `{module}` token, such as `Ethernet{module}/1`, that depends on the bay the module is installed in. No conversion can resolve it, so with `schema-library-modules.yml` module ports are reported as skipped.
+
+To keep them, your schema needs a module template, and the conversion needs the mapping file that fills it:
+
+1. Load the schema-library `device_module` and `module_port` extensions, then a schema extension that sets `generate_template: true` on `DcimModule`. This generates `TemplateDcimModule` and `TemplateDcimModulePort`.
+2. Convert with `schema-library-module-ports.yml`. Each module type gets a module template that holds its interfaces, console ports, and power ports as `DcimModulePort` declarations, with the `{module}` token kept in their names.
+3. Create each module from its template with `object_template`, and install it by setting its `module_bay`. A module created without `object_template` has no ports.
+4. Run the [Generator](../generators/overview.mdx) bundled with the skill. For each installed module, it replaces `{module}` with the bay position and creates the device interfaces.
+
+Only interface ports become device interfaces. Console ports need a console interface kind in your schema, and power ports stay declarations on the module. The [skill reference](https://docs.infrahub.app/skills/skills-reference/converting-netbox-device-types) covers the schema extension, the Generator setup, and how to install a module.
 
 ## Related
 
