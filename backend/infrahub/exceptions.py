@@ -503,6 +503,16 @@ class NothingPendingError(ValidationError):
         super().__init__(f"Repository {repository_name} has nothing pending to push.")
 
 
+class ReimportPendingPushesError(ValidationError):
+    """Raised when a reimport of a repository would remove the objects that its pending pushes added."""
+
+    def __init__(self, repository_name: str) -> None:
+        super().__init__(
+            f"Repository {repository_name} has pending pushes; a reimport now would remove the objects they added. "
+            "Retry or abandon the pending pushes first."
+        )
+
+
 class DeliveryPendingError(ValidationError):
     """Raised when a repository with pending pushes or held regeneration would be converted, which would drop them."""
 

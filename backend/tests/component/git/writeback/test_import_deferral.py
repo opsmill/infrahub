@@ -10,15 +10,22 @@ from infrahub_sdk.uuidt import UUIDT
 
 from infrahub import config, lock
 from infrahub.core.constants import (
+    InfrahubKind,
     RepositoryDeliveryFailureCause,
     RepositoryDeliveryStatus,
     RepositoryOperationalStatus,
 )
 from infrahub.core.initialization import create_branch
 from infrahub.core.registry import registry
+from infrahub.exceptions import ReimportPendingPushesError
 from infrahub.git import InfrahubRepository
 from infrahub.git.constants import BRANCHES_DIRECTORY_NAME, COMMITS_DIRECTORY_NAME, TEMPORARY_DIRECTORY_NAME
-from infrahub.git.tasks import bootstrap_local_repository, sync_repository_from_origin
+from infrahub.git.models import GitRepositoryImportObjects
+from infrahub.git.tasks import (
+    bootstrap_local_repository,
+    import_objects_from_git_repository,
+    sync_repository_from_origin,
+)
 from infrahub.git.writeback.models import DeliveryFailure
 from infrahub.git.writeback.store import build_intent_store
 from infrahub.services import InfrahubServices
@@ -26,7 +33,13 @@ from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.flow import call_in_flow
 from tests.helpers.git import LocalRemote
 from tests.helpers.graphql import graphql_mutation
-from tests.helpers.repository_sync import FLOW_RUN_LOGGER, create_repository_node, run_add_flow, run_sync_flow
+from tests.helpers.repository_sync import (
+    FLOW_RUN_LOGGER,
+    create_repository_node,
+    run_add_flow,
+    run_flow_for_state,
+    run_sync_flow,
+)
 from tests.helpers.test_app import TestInfrahubApp
 
 from .conftest import create_repository, pending_merge
@@ -412,3 +425,45 @@ class TestImportDeferral(TestInfrahubApp):
             for record in caplog.records
             if record.name == FLOW_RUN_LOGGER and record.getMessage().startswith("Deferred")
         ] == []
+
+    @pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in DELIVERY_STATE_CASES])
+    async def test_reimport_stops_at_the_import_while_a_push_is_pending(
+        self,
+        case: DeliveryStateCase,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        name = f"reimport-{case.name}"
+        query_name = f"reimport_{case.name.replace('-', '_')}"
+        remote = LocalRemote.create(directory=tmp_path / name, trunk=TRUNK, branches=[])
+        remote.commit(branch_name=TRUNK, files=query_files(query_name))
+        node = await self._add(db=db, remote=remote, name=name)
+        emptied = remote.commit(branch_name=TRUNK, files={".infrahub.yml": EMPTY_CONFIG})
+        if case.pending:
+            await queue_merge(db=db, repository_id=node.id, source_git_branch="merged-feature")
+
+        state = await run_flow_for_state(
+            import_objects_from_git_repository,
+            parameters={
+                "model": GitRepositoryImportObjects(
+                    repository_id=node.id,
+                    repository_name=name,
+                    repository_kind=InfrahubKind.REPOSITORY,
+                    commit=emptied,
+                    infrahub_branch_name=registry.default_branch,
+                )
+            },
+        )
+
+        assert state.is_failed() is case.pending
+        assert await self._query_names(client=client, node=node) == ({query_name} if case.pending else set())
+        if case.pending:
+            error = await state.aresult(raise_on_failure=False)
+            assert isinstance(error, ReimportPendingPushesError)
+            assert error.message == (
+                f"Repository {name} has pending pushes; a reimport now would remove the objects they added. "
+                "Retry or abandon the pending pushes first."
+            )

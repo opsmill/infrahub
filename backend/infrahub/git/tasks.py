@@ -43,6 +43,7 @@ from infrahub.core.registry import registry
 from infrahub.exceptions import (
     CheckError,
     CommitNotFoundError,
+    ReimportPendingPushesError,
     RepositoryConnectionError,
     RepositoryCredentialsError,
     RepositoryError,
@@ -1190,6 +1191,13 @@ async def import_objects_from_git_repository(model: GitRepositoryImportObjects) 
     )
     plan = await repo.build_import_plan(infrahub_branch_name=model.infrahub_branch_name, commit=model.commit)
     async with lock.registry.get(name=model.repository_name, namespace="repository"):
+        # A merge queued after the reimport was accepted must still stop it.
+        if model.repository_kind == InfrahubKind.REPOSITORY:
+            database = await get_database()
+            async with database.start_session() as db:
+                state = await build_intent_store(db=db, lock_registry=lock.registry)
+                if await has_pending_pushes(state=state, repository_id=model.repository_id):
+                    raise ReimportPendingPushesError(repository_name=model.repository_name)
         await repo.apply_import_plan(plan)
 
 
