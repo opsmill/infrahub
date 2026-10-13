@@ -59,16 +59,15 @@ When you open a Proposed Change, Infrahub runs built-in checks against the propo
 
 Open the **Checks** tab to see which checks ran and whether each one passed or failed.
 
-The built-in checks include:
+The built-in checks are:
 
-- **Data integrity** — checks that the branch remains consistent with `main` and that references between objects still resolve.
-- **Merge conflict detection** — identifies attributes that have been changed on both `add-locations` and `main`.
-- **Schema validation** — validates changes to the data model.
+- **Data Integrity** — records each conflict between `add-locations` and `main`. A conflict is an attribute value or a relationship that was changed on both branches.
+- **Schema Integrity** — checks that the schema changes on the branch are valid, and that the branch's data meets uniqueness and other constraints.
 - **Git repository integration** — reports conflicts in a connected Git repository when one is configured.
 
-You do not need a Git repository for the other built-in checks to run.
+You do not need a Git repository for the other two checks to run.
 
-If a check fails, use the failure information to identify what needs to change and update the branch before continuing. A failed check prevents the Proposed Change from being merged.
+Denver DC1 and Paris DC1 exist only on `add-locations`, so nothing on `main` has changed them and both integrity checks pass. If a check does fail, open it to read what it reports. A conflict blocks the merge until you choose which branch's version to keep for each one. [Proposed Changes](../../proposed-changes/overview) describes what each check reports and when it blocks a merge.
 
 You can also add custom checks for technical or business requirements in your environment. For example, you might check that device names follow a naming convention or that certain devices have connections to two separate network devices.
 
@@ -93,9 +92,7 @@ If you are following this tutorial on the local instance you created in the Quic
 
 If you want to see an approval recorded as part of the workflow:
 
-1. [Create a second account](../../deploy-manage/user-management/permissions-roles/manage-accounts-and-permissions#creating-a-new-account)
-   and add it to the **Infrahub Users** group. That group carries the role that allows an account to
-   review a Proposed Change, and assigning a group is optional when you create an account.
+1. [Create a second account](../../deploy-manage/user-management/permissions-roles/manage-accounts-and-permissions#creating-a-new-account) and add it to the **Infrahub Users** group. That group carries the role that allows an account to review a Proposed Change, and assigning a group is optional when you create an account.
 2. Sign out of your original account and sign in with the second account.
 3. Open the Proposed Change.
 4. Review the changes and check results.
