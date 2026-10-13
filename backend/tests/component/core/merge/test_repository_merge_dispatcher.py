@@ -2,11 +2,19 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
+from datetime import UTC, datetime
+from functools import partial
 from typing import TYPE_CHECKING, Any
+from uuid import uuid4
 
 import pytest
 
+from infrahub import lock
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
+from infrahub.context import InfrahubContext
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -14,6 +22,8 @@ from infrahub.core.merge.repository_merge_dispatcher import RepositoryMergeDispa
 from infrahub.core.node import Node
 from infrahub.git.merge_readiness import GitMergeTarget
 from infrahub.git.models import GitRepositoryMerge
+from infrahub.git.writeback.models import PendingMerge
+from infrahub.git.writeback.store import WritebackIntentStore
 from infrahub.workflows.catalogue import GIT_REPOSITORIES_MERGE
 from tests.adapters.workflow import WorkflowRecorder
 
@@ -41,6 +51,32 @@ async def update_on_branch(db: InfrahubDatabase, repository: Node, branch: Branc
     for name, value in values.items():
         getattr(on_branch, name).value = value
     await on_branch.save(db=db)
+
+
+def build_dispatcher(
+    db: InfrahubDatabase,
+    source_branch: Branch,
+    default_branch: Branch,
+    workflow: WorkflowRecorder,
+    logger: logging.Logger | None = None,
+) -> RepositoryMergeDispatcher:
+    return RepositoryMergeDispatcher(
+        db=db,
+        source_branch=source_branch,
+        destination_branch=default_branch,
+        workflow=workflow,
+        state_for_session=lambda session: WritebackIntentStore(
+            db=session, lock_registry=lock.registry, default_branch=default_branch, clock=partial(datetime.now, UTC)
+        ),
+        sleep=asyncio.sleep,
+        logger=logger,
+    )
+
+
+def build_context(default_branch: Branch) -> InfrahubContext:
+    return InfrahubContext.init(
+        branch=default_branch, account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE)
+    )
 
 
 async def create_feature_branch(db: InfrahubDatabase, sync_with_git: bool) -> Branch:
@@ -95,24 +131,30 @@ async def test_the_git_merge_carries_the_commits_the_graph_records_at_dispatch(
     await update_on_branch(db=db, repository=repository, branch=feature, commit=BRANCH_COMMIT)
     workflow = WorkflowRecorder()
 
-    await RepositoryMergeDispatcher(
-        db=db, source_branch=feature, destination_branch=default_branch, workflow=workflow
-    ).merge_core_repositories()
+    await build_dispatcher(
+        db=db, source_branch=feature, default_branch=default_branch, workflow=workflow
+    ).merge_core_repositories(context=build_context(default_branch=default_branch))
 
-    assert [call["parameters"] for call in workflow.get_submit_calls_for(GIT_REPOSITORIES_MERGE)] == [
-        {
-            "model": GitRepositoryMerge(
-                repository_id=repository.id,
-                repository_name="active-repo",
-                internal_status=RepositoryInternalStatus.ACTIVE.value,
-                source_branch="feature",
-                destination_branch=default_branch.name,
-                destination_branch_id=str(default_branch.get_uuid()),
-                repository_kind=InfrahubKind.REPOSITORY,
-                source_commit=BRANCH_COMMIT,
-            )
-        }
-    ]
+    [submitted] = [call["parameters"]["model"] for call in workflow.get_submit_calls_for(GIT_REPOSITORIES_MERGE)]
+    assert submitted.pending_merge is not None
+    assert submitted == GitRepositoryMerge(
+        repository_id=repository.id,
+        repository_name="active-repo",
+        internal_status=RepositoryInternalStatus.ACTIVE.value,
+        source_branch="feature",
+        destination_branch=default_branch.name,
+        destination_branch_id=str(default_branch.get_uuid()),
+        repository_kind=InfrahubKind.REPOSITORY,
+        source_commit=BRANCH_COMMIT,
+        pending_merge=PendingMerge(
+            entry_id=submitted.pending_merge.entry_id,
+            source_branch="feature",
+            source_git_branch="feature",
+            source_commit=BRANCH_COMMIT,
+            merged_at=submitted.pending_merge.merged_at,
+        ),
+        pending_merge_enqueued=True,
+    )
 
 
 async def test_a_repository_whose_branch_records_the_trunk_commit_gets_no_git_merge(
@@ -135,19 +177,20 @@ async def test_a_repository_whose_branch_records_the_trunk_commit_gets_no_git_me
     workflow = WorkflowRecorder()
     caplog.set_level(logging.INFO, logger=LOGGER_NAME)
 
-    await RepositoryMergeDispatcher(
+    await build_dispatcher(
         db=db,
         source_branch=feature,
-        destination_branch=default_branch,
+        default_branch=default_branch,
         workflow=workflow,
         logger=logging.getLogger(LOGGER_NAME),
-    ).merge_core_repositories()
+    ).merge_core_repositories(context=build_context(default_branch=default_branch))
 
     assert sorted(record.getMessage() for record in caplog.records if record.name == LOGGER_NAME) == [
-        "Skipped the Git merge of repository never-cloned-repo: neither branch feature nor the default branch "
-        "records a commit, so there is nothing to push",
-        f"Skipped the Git merge of repository unchanged-repo: branch feature records commit {TRUNK_COMMIT}, which "
-        "the default branch records too, so there is nothing to push",
+        "The merge of branch feature changes no content of repository never-cloned-repo, so nothing is pushed to "
+        "its remote.",
+        "The merge of branch feature changes no content of repository unchanged-repo, so nothing is pushed to its "
+        "remote.",
+        "The merge of branch feature waits for its push to repository changed-repo.",
     ]
     assert sorted(
         call["parameters"]["model"].repository_name for call in workflow.get_submit_calls_for(GIT_REPOSITORIES_MERGE)
@@ -178,8 +221,8 @@ async def test_the_git_merge_of_a_read_only_repository_carries_the_ref_and_commi
     await update_on_branch(db=db, repository=repository, branch=feature, ref="v2", commit=commit)
     workflow = WorkflowRecorder()
 
-    await RepositoryMergeDispatcher(
-        db=db, source_branch=feature, destination_branch=default_branch, workflow=workflow
+    await build_dispatcher(
+        db=db, source_branch=feature, default_branch=default_branch, workflow=workflow
     ).merge_core_read_only_repositories()
 
     assert [call["parameters"] for call in workflow.get_submit_calls_for(GIT_REPOSITORIES_MERGE)] == [

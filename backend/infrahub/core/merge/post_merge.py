@@ -74,16 +74,16 @@ class PostMergeDispatcher:
         ipam_node_details: list[IpamNodeDetails] | None,
         merge_diff_cache_key: str | None = None,
     ) -> None:
-        # The repository merge issues a GraphQL write to the default branch, so it must run after the
-        # write block is lifted; while protected it would be rejected as a write to the merging branch.
-        with log_exception_guard(self.log, "Repository merge failed after branch merge committed"):
-            await self.repository_merge_dispatcher.merge_repositories()
-
         # The user-visible merge is already done, so the follow-up trees must not inherit its
         # priority from the caller's context: each runs from a context stamped with its own lane,
         # which trickles down to all of its subtasks.
         medium_context = context.model_copy(update={"priority": WorkflowPriority.MEDIUM})
         low_context = context.model_copy(update={"priority": WorkflowPriority.LOW})
+
+        # The repository merge issues a GraphQL write to the default branch, so it must run after the
+        # write block is lifted; while protected it would be rejected as a write to the merging branch.
+        with log_exception_guard(self.log, "Repository merge failed after branch merge committed"):
+            await self.repository_merge_dispatcher.merge_repositories(context=medium_context)
 
         # Trigger the reconciliation of IPAM data now that the graph merge is complete.
         if ipam_node_details:
