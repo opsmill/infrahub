@@ -503,6 +503,47 @@ class NothingPendingError(ValidationError):
         super().__init__(f"Repository {repository_name} has nothing pending to push.")
 
 
+class DeliveryPendingError(ValidationError):
+    """Raised when a repository with pending pushes or held regeneration would be converted, which would drop them."""
+
+    def __init__(self, repository_name: str, *, regeneration_held: bool = False) -> None:
+        if regeneration_held:
+            super().__init__(
+                f"Repository {repository_name} has a regeneration that waits to be released after a push; wait "
+                "for the release, then convert the repository."
+            )
+            return
+        super().__init__(
+            f"Repository {repository_name} has pending pushes to its remote; retry or abandon them before you "
+            "convert the repository."
+        )
+
+
+class DeliveryStateUnavailableError(ServiceUnavailableError):
+    """Raised when the lock of the delivery state of a repository is not acquired in time."""
+
+    def __init__(self, repository_id: str, acquire_seconds: float) -> None:
+        self.repository_id = repository_id
+        super().__init__(
+            message=(
+                f"The lock of the delivery state of repository {repository_id} "
+                f"was not acquired within {acquire_seconds} seconds; try again."
+            )
+        )
+
+
+class DeliveryStateUnreadableError(Error):
+    """Raised when a stored value of the delivery state of a repository does not match its model."""
+
+    def __init__(self, repository_name: str, attribute_name: str) -> None:
+        self.repository_name = repository_name
+        self.attribute_name = attribute_name
+        self.message = (
+            f"The stored value of {attribute_name} on repository {repository_name} does not match its expected shape."
+        )
+        super().__init__(self.message)
+
+
 class DiffRangeValidationError(DiffError): ...
 
 

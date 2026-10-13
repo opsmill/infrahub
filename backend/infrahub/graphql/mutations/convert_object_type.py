@@ -1,9 +1,12 @@
+from datetime import UTC, datetime
+from functools import partial
 from typing import TYPE_CHECKING, Any, Self
 
 from graphene import Boolean, InputObjectType, Mutation, String
 from graphene.types.generic import GenericScalar
 from graphql import GraphQLResolveInfo
 
+from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.constants.infrahubkind import READONLYREPOSITORY, REPOSITORY
 from infrahub.core.convert_object_type.object_conversion import ConversionFieldInput, convert_and_validate_object_type
@@ -11,6 +14,7 @@ from infrahub.core.convert_object_type.repository_conversion import convert_repo
 from infrahub.core.convert_object_type.schema_mapping import get_schema_mapping
 from infrahub.core.manager import NodeManager
 from infrahub.exceptions import ValidationError
+from infrahub.git.writeback.store import WritebackIntentStore
 from infrahub.repositories.create_repository import RepositoryFinalizer
 
 if TYPE_CHECKING:
@@ -90,6 +94,12 @@ class ConvertObjectType(Mutation):
                     account_session=graphql_context.active_account_session,
                     services=graphql_context.active_service,
                     context=graphql_context.get_context(),
+                ),
+                delivery_state=WritebackIntentStore(
+                    db=graphql_context.db,
+                    lock_registry=lock.registry,
+                    default_branch=registry.get_branch_from_registry(branch=registry.default_branch),
+                    clock=partial(datetime.now, tz=UTC),
                 ),
             )
         else:
