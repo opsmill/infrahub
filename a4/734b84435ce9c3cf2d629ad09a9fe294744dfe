@@ -1,0 +1,12 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a4734b84435ce9c3cf2d629ad09a9fe294744dfe",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

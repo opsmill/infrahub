@@ -1,0 +1,35 @@
+backend/infrahub/graphql/resolvers/many_relationship.py
+  s_2fdf558427eaa2::t_43ab12e86e66cd 172,177-178
+backend/infrahub/graphql/resolvers/resolver.py
+  s_2fdf558427eaa2::t_43ab12e86e66cd 254
+backend/tests/unit/graphql/test_metadata.py
+  s_2fdf558427eaa2::t_373252192d64e3 3,10-11,13,18-29,69,84-131
+  s_2fdf558427eaa2::t_47e21b42f2abde 64-68
+  s_2fdf558427eaa2::t_e0bd5118c34a23 132-133
+backend/infrahub/graphql/resolvers/single_relationship.py
+  s_2fdf558427eaa2::t_43ab12e86e66cd 142-143,151,174
+backend/infrahub/graphql/metadata.py
+  s_2fdf558427eaa2::t_43ab12e86e66cd 11,35,47-48,71,79-85,89-101,109,119,127-129
+  s_2fdf558427eaa2::t_eabb835d1ba168 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "35e67fadf521c157dafd2f7cfb730c93ab2706fb",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_2fdf558427eaa2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "abafed1e-c4e8-407e-9a07-14cf48e361b4",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
