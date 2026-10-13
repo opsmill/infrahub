@@ -193,7 +193,9 @@ class NumberPoolGetAllocated(Query):
 
     Reports any active value on any branch for the given NumberPool along with its parent object ID,
     branch, and reservation identifier, ordered by value, then branch, then the holding object's id. `branch_name`
-    keeps the values held on that branch and `provenance` the values of that provenance.
+    keeps the values held on that branch and `provenance` the values of that provenance. With a division, which may
+    give a value for only some of the scope elements, only the values whose holding object is in the division on some
+    live branch are reported.
     """
 
     name = "numberpool_get_allocated"
@@ -205,12 +207,14 @@ class NumberPoolGetAllocated(Query):
         ranges: list[list[int]],
         branch_name: str | None = None,
         provenance: PoolRecordProvenance | None = None,
+        division: Division | None = None,
         **kwargs: Unpack[QueryInitKwargs],
     ) -> None:
         self.pool = pool
         self.ranges = ranges
         self.branch_name = branch_name
         self.provenance = provenance
+        self.division = division
 
         super().__init__(**kwargs)
 
@@ -224,19 +228,33 @@ class NumberPoolGetAllocated(Query):
         )
         self.params.update(branch_params)
 
+        live_branches = ""
+        division_filter = ""
+        if self.division is not None:
+            live_branches = LIVE_BRANCHES_QUERY
+            division_filter, division_params = division_filter_query(division=self.division)
+            self.params.update(division_params)
+            self.params["at"] = self.at.to_string()
+            self.params["default_branch_name"] = registry.default_branch
+
+        # The division filter binds any outer `ha`, `hv` or `av`, so the holding object's edges take other names.
         query = """
-        MATCH (pool:Node:%(number_pool_kind)s { uuid: $pool_id })-[ir:IS_RESERVED]->(a:Attribute {name: $node_attribute})
-        MATCH (n:%(node)s)-[ha:HAS_ATTRIBUTE]->(a)-[hv:HAS_VALUE]->(av:AttributeValueIndexed)
+        %(live_branches)s
+        MATCH (pool:Node:%(number_pool_kind)s { uuid: $pool_id })-[ir:IS_RESERVED]->(attr:Attribute {name: $node_attribute})
+        MATCH (n:%(node)s)-[holder_ha:HAS_ATTRIBUTE]->(attr)-[holder_hv:HAS_VALUE]->(holder_av:AttributeValueIndexed)
         WHERE
-            any(r IN $ranges WHERE av.value >= r[0] AND av.value <= r[1])
-            AND all(r in [ha, hv, ir] WHERE (%(branch_filter)s))
-            AND ha.status = "active"
-            AND hv.status = "active"
+            any(r IN $ranges WHERE holder_av.value >= r[0] AND holder_av.value <= r[1])
+            AND all(r in [holder_ha, holder_hv, ir] WHERE (%(branch_filter)s))
+            AND holder_ha.status = "active"
+            AND holder_hv.status = "active"
             AND ir.status = "active"
+        %(division)s
         """ % {
             "node": self.pool.node.value,
             "number_pool_kind": InfrahubKind.NUMBERPOOL,
             "branch_filter": branch_filter,
+            "live_branches": live_branches,
+            "division": division_filter,
         }
         self.add_to_query(query)
 
@@ -244,8 +262,8 @@ class NumberPoolGetAllocated(Query):
         # A record without a list predates the list and reads as allocated for every value it accounts for.
         self.add_to_query(
             """
-        WITH DISTINCT n.uuid AS id, hv.branch AS branch, av.value AS value, ir.identifier AS identifier,
-            ir.allocated_values IS NOT NULL AND NOT toInteger(av.value) IN ir.allocated_values AS is_provided
+        WITH DISTINCT n.uuid AS id, holder_hv.branch AS branch, holder_av.value AS value, ir.identifier AS identifier,
+            ir.allocated_values IS NOT NULL AND NOT toInteger(holder_av.value) IN ir.allocated_values AS is_provided
         """
         )
 

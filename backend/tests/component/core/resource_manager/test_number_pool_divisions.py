@@ -15,6 +15,7 @@ from infrahub.pools.number_ranges import EffectiveSpace, NumberDomain
 from infrahub.pools.scope import (
     AllocationScope,
     AllocationScopeResolver,
+    Division,
     ScopeElement,
     division_element_path,
 )
@@ -262,6 +263,49 @@ async def division_figures(
     }
 
 
+async def allocated_in_division(
+    db: InfrahubDatabase,
+    dataset: DivisionsDataset,
+    pool: CoreNumberPool,
+    branch: Branch,
+    entries: list[tuple[str, str]],
+) -> list[tuple[int, str, str]]:
+    """The value, branch and holding object name of each row the allocated numbers query reports for the division."""
+    query = await NumberPoolGetAllocated.init(
+        db=db,
+        pool=pool,
+        ranges=[[SCOPED_POOL_START, SCOPED_POOL_END]],
+        division=Division.from_entries(entries=entries, element_fields=element_fields_of(pool=pool, branch=branch)),
+        branch=branch,
+        branch_agnostic=True,
+    )
+    await query.execute(db=db)
+    return [(row.value, row.branch, dataset.names_by_id[row.id]) for row in query.get_data()]
+
+
+@dataclass(frozen=True)
+class SiteDivisionCase:
+    name: str
+    site: str
+    expected: list[tuple[int, str, str]]
+
+
+SITE_DIVISION_CASES = [
+    SiteDivisionCase(
+        name="two-sites-and-one-branch-only",
+        site="site-a",
+        expected=[(1, "main", "a1"), (2, "main", "a2"), (4, OTHER_BRANCH, "x")],
+    ),
+    SiteDivisionCase(
+        name="renumbered-on-a-branch",
+        site="site-b",
+        expected=[(3, "main", "b1"), (5, OTHER_BRANCH, "b1")],
+    ),
+    SiteDivisionCase(name="moved-on-a-branch", site="site-c", expected=[(2, "main", "a2")]),
+    SiteDivisionCase(name="no-number", site="site-d", expected=[]),
+]
+
+
 class TestScopedPoolQueries:
     """Every test reads the one dataset of the class and writes nothing."""
 
@@ -341,6 +385,40 @@ class TestScopedPoolQueries:
             (dataset.sites["site-a"], "leaf"): (2, 2, 0),
             (dataset.sites["site-a"], "spine"): (1, 1, 0),
         }
+
+    @pytest.mark.parametrize("on_other_branch", [False, True], ids=["default-branch", "other-branch"])
+    @pytest.mark.parametrize("case", SITE_DIVISION_CASES, ids=[case.name for case in SITE_DIVISION_CASES])
+    async def test_allocated_numbers_of_a_division_count_every_division_a_holding_object_occupies(
+        self, db: InfrahubDatabase, dataset: DivisionsDataset, case: SiteDivisionCase, on_other_branch: bool
+    ) -> None:
+        branch = dataset.other_branch if on_other_branch else dataset.default_branch
+
+        rows = await allocated_in_division(
+            db=db, dataset=dataset, pool=dataset.site_pool, branch=branch, entries=[("site", dataset.sites[case.site])]
+        )
+
+        assert rows == case.expected
+
+    async def test_allocated_numbers_of_a_division_naming_some_of_the_elements(
+        self, db: InfrahubDatabase, dataset: DivisionsDataset
+    ) -> None:
+        site_only = await allocated_in_division(
+            db=db,
+            dataset=dataset,
+            pool=dataset.site_role_pool,
+            branch=dataset.default_branch,
+            entries=[("site", dataset.sites["site-a"])],
+        )
+        role_only = await allocated_in_division(
+            db=db,
+            dataset=dataset,
+            pool=dataset.site_role_pool,
+            branch=dataset.default_branch,
+            entries=[("role", "spine")],
+        )
+
+        assert sorted(site_only) == [(1, "main", "leaf-1"), (1, "main", "spine-1"), (2, "main", "leaf-2")]
+        assert role_only == [(1, "main", "spine-1")]
 
 
 async def test_a_node_moved_on_the_default_branch_counts_in_the_site_an_older_branch_reads(
