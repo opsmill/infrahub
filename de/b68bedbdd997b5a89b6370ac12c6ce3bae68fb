@@ -1,0 +1,24 @@
+backend/infrahub/core/node/lock_utils.py
+  s_0e6589ba6b4589::t_18b9069d707d04 95-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "deb68bedbdd997b5a89b6370ac12c6ce3bae68fb",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_0e6589ba6b4589": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1057a2bb-95a9-4b87-a22a-785993e193b1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
