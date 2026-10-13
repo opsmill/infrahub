@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from git.exc import GitCommandError
 from infrahub_sdk.exceptions import ServerNotReachableError, ServerNotResponsiveError
 
 from infrahub.core.constants import RepositoryDeliveryFailureCause
@@ -13,6 +14,7 @@ from infrahub.exceptions import (
     RepositoryPushRejectedError,
     RepositoryTLSError,
 )
+from infrahub.git.import_errors import RepositoryImportError
 from infrahub.git.models import PushRejectionReason
 from infrahub.git.writeback.credentials import scrub_credentials
 from infrahub.git.writeback.models import DeliveryFailure, DeliveryStage
@@ -79,10 +81,12 @@ def _remote_cause(*, error: BaseException) -> RepositoryDeliveryFailureCause:
 
 
 def _import_cause(*, error: BaseException) -> RepositoryDeliveryFailureCause:
+    # The import wraps every error but a connection or credentials error, and keeps the original as the cause.
+    original = error.__cause__ if isinstance(error, RepositoryImportError) else error
     # A missing repository or a refused certificate is a connection error that no retry fixes, at any stage.
-    if isinstance(error, (RepositoryNotFoundError, RepositoryTLSError)):
-        return _remote_cause(error=error)
-    if isinstance(error, IMPORT_INTERRUPTIONS):
+    if isinstance(original, (RepositoryNotFoundError, RepositoryTLSError)):
+        return _remote_cause(error=original)
+    if isinstance(original, IMPORT_INTERRUPTIONS):
         return RepositoryDeliveryFailureCause.IMPORT_INTERRUPTED
     return RepositoryDeliveryFailureCause.IMPORT_FAILED
 
@@ -104,5 +108,8 @@ def _describe(*, error: BaseException, stage: DeliveryStage) -> str:
 
 
 def _repeats_its_cause(*, error: Error) -> bool:
-    # Git output can name worker paths; this catches only an error raised from it with that output as its message.
-    return error.__cause__ is not None and error.message in str(error.__cause__)
+    # Git output can name worker paths, and a wrapper can copy it, so this looks for the Git error down the causes.
+    cause = error.__cause__
+    while cause is not None and not isinstance(cause, GitCommandError):
+        cause = cause.__cause__
+    return cause is not None and error.message in str(cause)
