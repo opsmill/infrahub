@@ -17,7 +17,15 @@ from infrahub.core.constants import FullRegenerationReason
 from infrahub.core.diff.summary_cache import DiffSummaryCache
 from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 from infrahub.core.merge.python_target_sources import DeclaredAttribute
-from infrahub.core.merge.recompute_coalescing import CoalescedRecomputeSubmitter
+from infrahub.core.merge.recompute_coalescing import (
+    PYTHON_COMPUTED_ATTRIBUTE,
+    SELF_FILTER,
+    AffectedTarget,
+    CoalescedRecomputeSubmitter,
+    PythonTargetRequest,
+    ReaderLookup,
+    whole_kind_python_target,
+)
 from infrahub.core.merge.regeneration_barrier import NarrowedHoldCache, RegenerationBarrier
 from infrahub.core.merge.regeneration_dispatcher import PostMergeRegenerationDispatcher
 from infrahub.core.merge.regeneration_release import HeldRegenerationReleaser
@@ -34,6 +42,7 @@ from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.git.writeback.constants import NARROWED_HOLD_MAX_BYTES, NARROWED_HOLD_TTL_SECONDS
 from infrahub.git.writeback.models import HeldItem, HeldPythonAttribute, HeldRegeneration, HeldWiden, PendingMerge
 from infrahub.workflows.catalogue import (
+    COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
     REQUEST_ARTIFACT_DEFINITION_GENERATE,
     REQUEST_GENERATOR_DEFINITION_RUN,
     TRIGGER_ARTIFACT_DEFINITION_GENERATE,
@@ -283,18 +292,20 @@ def _releaser(
     narrowed: NarrowedHoldCache,
     reselected: Sequence[RequestArtifactDefinitionGenerate] = (),
 ) -> HeldRegenerationReleaser:
+    barrier = RegenerationBarrier(state=state, narrowed=narrowed, default_branch_name=DEFAULT_BRANCH, sleep=_no_wait)
     dispatcher = PostMergeRegenerationDispatcher(
         workflow=recorder,
         planner=ReselectingPlanner(reselected=reselected),
         summary_cache=DiffSummaryCache(
             cache=MemoryCache(), serializer=DiffSummarySerializer(), key_namespace="branch_merge"
         ),
-        barrier=RegenerationBarrier(state=state, narrowed=narrowed, default_branch_name=DEFAULT_BRANCH, sleep=_no_wait),
+        barrier=barrier,
         log=LOG,
     )
     return HeldRegenerationReleaser(
         dispatcher=dispatcher,
         python_submitter=CoalescedRecomputeSubmitter(workflow=recorder),
+        barrier=barrier,
         definitions=definitions,
         narrowed=narrowed,
         default_branch_name=DEFAULT_BRANCH,
@@ -405,6 +416,79 @@ async def test_a_held_definition_is_released_with_the_narrowing_kept_at_its_hold
     ]
     assert renew.after_calls == [0, 0, 1, 2]
     assert records == []
+
+
+@dataclass
+class PythonNarrowingTestCase:
+    name: str
+    kept: PythonTargetRequest | None
+    expected_calls: list[tuple[str, WorkflowDefinition, dict[str, Any]]]
+
+
+PYTHON_NARROWING_TEST_CASES: list[PythonNarrowingTestCase] = [
+    PythonNarrowingTestCase(
+        name="a_kept_target_submits_the_nodes_of_its_hold",
+        kept=PythonTargetRequest(
+            target=AffectedTarget(
+                family=PYTHON_COMPUTED_ATTRIBUTE,
+                target_kind="TestCar",
+                attribute_name="description",
+                reads_across_relationship=False,
+                reader_lookups=frozenset(
+                    {ReaderLookup(source_kind="TestCar", filter_key=SELF_FILTER, source_node_ids=frozenset({"car-1"}))}
+                ),
+            )
+        ),
+        expected_calls=[
+            (
+                "submit",
+                COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
+                {
+                    "branch_name": DEFAULT_BRANCH,
+                    "node_kind": "TestCar",
+                    "object_ids": ["car-1"],
+                    "context": CONTEXT.to_event_context(),
+                    "computed_attribute_name": "description",
+                    "computed_attribute_kind": "TestCar",
+                    "coalesced": True,
+                    "recompute_depth": 0,
+                },
+            )
+        ],
+    ),
+    PythonNarrowingTestCase(
+        name="a_missing_target_submits_the_whole_kind",
+        kept=None,
+        expected_calls=[_python_recompute(CAR_DESCRIPTION)],
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in PYTHON_NARROWING_TEST_CASES])
+async def test_a_held_python_attribute_is_released_with_the_target_kept_at_its_hold(
+    test_case: PythonNarrowingTestCase,
+) -> None:
+    recorder = WorkflowRecorder()
+    renew = RecordedRenewals(recorder=recorder)
+    narrowed = _narrowed()
+    if test_case.kept is not None:
+        await narrowed.put(
+            repository_id=REPOSITORY_X, hold_seq=5, identifier="TestCar.description", request=test_case.kept
+        )
+    releaser = _releaser(
+        recorder=recorder, definitions=FakeHeldDefinitions(), state=await _delivery_state(), narrowed=narrowed
+    )
+
+    await releaser.release(
+        repository_id=REPOSITORY_X,
+        held=HeldRegeneration(
+            python_attributes=(HeldPythonAttribute(kind="TestCar", attribute="description", hold_seq=5),)
+        ),
+        renew=renew,
+    )
+
+    assert _calls(recorder) == test_case.expected_calls
+    assert renew.after_calls == [0, 0, 1]
 
 
 @dataclass
@@ -634,11 +718,53 @@ async def test_a_marker_of_scope_terminals_still_releases_the_held_generators_an
         ("execute", REQUEST_GENERATOR_DEFINITION_RUN, {"model": _generator_run(definition_id="gd-x")}),
         _python_recompute(CAR_DESCRIPTION),
     ]
-    assert renew.after_calls == [0, 1, 1, 2, 2, 3]
+    assert renew.after_calls == [0, 1, 1, 2, 2, 2, 3]
 
 
-async def test_the_released_repository_dispatches_its_work_while_another_pending_repository_holds() -> None:
-    state = await _delivery_state(REPOSITORY_X, REPOSITORY_Y)
+@dataclass
+class ReleaseCascadeTestCase:
+    name: str
+    pending: tuple[str, ...]
+    expected_reselected: list[RequestArtifactDefinitionGenerate]
+    """The artifacts reselected from the generator output that the release submits after the held ones."""
+    expected_renewals: list[int]
+    expected_state_calls: list[str]
+    expected_held: dict[str, HeldRegeneration]
+
+
+RELEASE_CASCADE_TEST_CASES: list[ReleaseCascadeTestCase] = [
+    ReleaseCascadeTestCase(
+        name="another_pending_repository_holds_its_reselected_artifact",
+        pending=(REPOSITORY_X, REPOSITORY_Y),
+        expected_reselected=[_artifact_generate(definition_id="ad-x-reselected")],
+        expected_renewals=[0, 0, 1, 3],
+        expected_state_calls=["pending_repository_ids", "pending_repository_ids", "hold"],
+        expected_held={
+            REPOSITORY_X: HeldRegeneration(),
+            REPOSITORY_Y: HeldRegeneration(
+                next_hold_seq=2, artifact_definitions=(HeldItem(id="ad-y-reselected", hold_seq=1),)
+            ),
+        },
+    ),
+    ReleaseCascadeTestCase(
+        name="another_repository_with_nothing_pending_regenerates_its_reselected_artifact",
+        pending=(REPOSITORY_X,),
+        expected_reselected=[
+            _artifact_generate(definition_id="ad-x-reselected"),
+            _artifact_generate(definition_id="ad-y-reselected", repository_id=REPOSITORY_Y),
+        ],
+        expected_renewals=[0, 0, 1, 4],
+        expected_state_calls=["pending_repository_ids", "pending_repository_ids"],
+        expected_held={REPOSITORY_X: HeldRegeneration(), REPOSITORY_Y: HeldRegeneration()},
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in RELEASE_CASCADE_TEST_CASES])
+async def test_a_release_holds_the_reselected_artifact_of_another_repository_only_while_it_is_pending(
+    test_case: ReleaseCascadeTestCase,
+) -> None:
+    state = await _delivery_state(*test_case.pending)
     recorder = WorkflowRecorder()
     renew = RecordedRenewals(recorder=recorder)
     releaser = _releaser(
@@ -666,20 +792,70 @@ async def test_the_released_repository_dispatches_its_work_while_another_pending
     assert _calls(recorder) == [
         ("execute", REQUEST_GENERATOR_DEFINITION_RUN, {"model": _generator_run(definition_id="gd-x")}),
         ("submit", REQUEST_ARTIFACT_DEFINITION_GENERATE, {"model": _artifact_generate(definition_id="ad-x")}),
-        (
-            "submit",
-            REQUEST_ARTIFACT_DEFINITION_GENERATE,
-            {"model": _artifact_generate(definition_id="ad-x-reselected")},
+        *(
+            ("submit", REQUEST_ARTIFACT_DEFINITION_GENERATE, {"model": request})
+            for request in test_case.expected_reselected
         ),
     ]
-    assert renew.after_calls == [0, 0, 1, 3]
-    assert state.calls == ["pending_repository_ids", "pending_repository_ids", "hold"]
-    assert {repository_id: intent.held for repository_id, intent in state.intents.items()} == {
-        REPOSITORY_X: HeldRegeneration(),
-        REPOSITORY_Y: HeldRegeneration(
-            next_hold_seq=2, artifact_definitions=(HeldItem(id="ad-y-reselected", hold_seq=1),)
+    assert renew.after_calls == test_case.expected_renewals
+    assert state.calls == test_case.expected_state_calls
+    assert {repository_id: intent.held for repository_id, intent in state.intents.items()} == test_case.expected_held
+
+
+@dataclass
+class ReleaseOfAnotherOwnerTestCase:
+    name: str
+    widen: HeldWiden | None
+    expected_calls: list[tuple[str, WorkflowDefinition, dict[str, Any]]]
+
+
+RELEASE_OF_ANOTHER_OWNER_TEST_CASES: list[ReleaseOfAnotherOwnerTestCase] = [
+    ReleaseOfAnotherOwnerTestCase(
+        name="a_release_of_the_held_items",
+        widen=None,
+        expected_calls=[_python_recompute(PERSON_SUMMARY)],
+    ),
+    ReleaseOfAnotherOwnerTestCase(
+        name="a_full_release",
+        widen=HeldWiden(scope="all", reason=FullRegenerationReason.UNHELD_FOLLOW_UP, hold_seq=3),
+        expected_calls=[ARTIFACT_TRIGGER_OF_X, GENERATOR_TRIGGER_OF_X, _python_recompute(PERSON_SUMMARY)],
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in RELEASE_OF_ANOTHER_OWNER_TEST_CASES])
+async def test_a_released_python_attribute_that_the_repository_does_not_own_stays_held_by_another_pending_one(
+    test_case: ReleaseOfAnotherOwnerTestCase,
+) -> None:
+    state = await _delivery_state(REPOSITORY_Y)
+    recorder = WorkflowRecorder()
+    narrowed = _narrowed()
+    releaser = _releaser(
+        recorder=recorder,
+        definitions=FakeHeldDefinitions(python_attributes={REPOSITORY_X: [PERSON_SUMMARY]}),
+        state=state,
+        narrowed=narrowed,
+    )
+
+    await releaser.release(
+        repository_id=REPOSITORY_X,
+        held=HeldRegeneration(
+            python_attributes=(
+                HeldPythonAttribute(kind="TestCar", attribute="description", hold_seq=1),
+                HeldPythonAttribute(kind="TestPerson", attribute="summary", hold_seq=2),
+            ),
+            widen=test_case.widen,
         ),
-    }
+        renew=RecordedRenewals(recorder=recorder),
+    )
+
+    assert _calls(recorder) == test_case.expected_calls
+    assert state.intents[REPOSITORY_Y].held == HeldRegeneration(
+        next_hold_seq=2, python_attributes=(HeldPythonAttribute(kind="TestCar", attribute="description", hold_seq=1),)
+    )
+    assert await narrowed.get(
+        repository_id=REPOSITORY_Y, hold_seq=1, identifier="TestCar.description", model=PythonTargetRequest
+    ) == PythonTargetRequest(target=whole_kind_python_target(kind="TestCar", attribute_name="description"))
 
 
 @dataclass
@@ -734,7 +910,7 @@ DISPATCH_FAILURE_TEST_CASES: list[DispatchFailureTestCase] = [
         error=ServiceUnavailableError,
         match=r"^The recompute of the Python computed attributes TestCar\.description could not be submitted\.$",
         expected_calls=[_python_recompute(CAR_DESCRIPTION)],
-        expected_renewals=[0],
+        expected_renewals=[0, 0],
     ),
 ]
 

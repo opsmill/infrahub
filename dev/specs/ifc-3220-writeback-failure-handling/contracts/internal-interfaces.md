@@ -448,11 +448,12 @@ cycle checks again.
 ## 8. `RegenerationBarrier`
 
 ```python
-@dataclass(frozen=True)
+@dataclass(frozen=True, eq=False)
 class OwnedRegeneration(Generic[RequestT]):
     repository_id: str | None
     held: HeldRegeneration
     request: RequestT
+    union: Callable[[BaseModel, BaseModel], BaseModel] | None
 
 
 class NarrowedHoldCache:
@@ -490,7 +491,28 @@ class RegenerationBarrier:
         candidates: Sequence[OwnedRegeneration[RequestT]],
         releasing: str | None,
     ) -> list[OwnedRegeneration[RequestT]]: ...
+
+    async def hold_widen(
+        self,
+        *,
+        branch: str,
+        scope: Literal["all", "terminals"],
+        reason: FullRegenerationReason,
+        releasing: str | None,
+    ) -> list[str]: ...
 ```
+
+`union` joins the narrowed requests of two holds of one item, for `merge_put`. `None` keeps no
+narrowed request for a repeated hold, so its release runs the item with no narrowing. The dispatcher
+passes the consolidation of the selector that owns the kind, through the planner:
+`ArtifactSelector.consolidate` joins `members` and `limit`, and `GeneratorSelector.consolidate` joins
+`target_members`. An empty list means every member, so it wins over a specific list.
+
+`hold_widen` serves the blanket fallbacks of the call-site table (row 3). It holds a `widen` marker
+of the scope and the reason under each pending repository except `releasing`, and returns the sorted
+ids of the repositories that now hold it, which the blanket triggers then exclude. It follows rules
+1, 2 and 7 of `admit`: on a non-default branch it returns `[]` with no read, and when the state stays
+unreadable it returns `[]`, so the triggers run for every repository.
 
 Contract of `admit`:
 
@@ -524,12 +546,14 @@ cannot forget it.
 |---|---|---|
 | `PostMergeRegenerationDispatcher.dispatch`, on the built plan | `RequestGeneratorDefinitionRun`, `RequestArtifactDefinitionGenerate` | `generator_definition.repository_id`, `repository_id` |
 | `PostMergeRegenerationDispatcher._submit`, after the cascade | `RequestArtifactDefinitionGenerate` | `repository_id` |
-| `PostMergeRegenerationDispatcher._full_regeneration`, `_submit_full_terminal_regeneration`, and the flag-off path of `post_process_branch_merge` | a `widen` marker per pending repository, with the reason of the fallback (data model, "New fallback reasons"), then the blanket triggers with `exclude_repository_ids`. In a release, `_submit_full_terminal_regeneration` holds nothing and submits the terminal trigger with `include_repository_ids=[releasing]`, because a release covers only the definitions of its repository (SC-004) | the repository |
-| `recompute_coalescing.py::_resolve_python_targets` | `AffectedTarget` of the Python family | `PythonTargetSource.owner_of(kind, attribute)` |
-| `computed_attribute/tasks.py::computed_attribute_setup_python`, on the default branch | the selected `(kind, attribute)` pairs | the same owner map |
+| `PostMergeRegenerationDispatcher._full_regeneration`, `_submit_full_terminal_regeneration`, and the flag-off path of `post_process_branch_merge` | a `widen` marker per pending repository, with the reason of the fallback (data model, "New fallback reasons"), then the blanket triggers with `exclude_repository_ids`. In a release, `_submit_full_terminal_regeneration` holds nothing and submits the terminal trigger with `include_repository_ids=[releasing]`: a failed generator gives no output from which the cascade could select the terminals of other repositories, so the fallback stays in the released repository | the repository |
+| `recompute_coalescing.py::_resolve_python_targets` | `AffectedTarget` of the Python family | `PythonTargetResolver.owner_of(kind, attribute_name, branch)` |
+| `computed_attribute/tasks.py::computed_attribute_setup_python`, on the default branch | the selected `(kind, attribute)` pairs | the repository of each gathered trigger |
+| `HeldRegenerationReleaser`, the Python submissions of a release, with `releasing` set | `PythonTargetRequest` | the released repository when it owns the attribute, else `None` |
 
-`PostMergeRegenerationDispatcher`, `MergeRecomputeCoordinator`, `RecomputeChainSubmitter` and the
-schema-scoped recompute each gain a required `barrier: RegenerationBarrier` constructor parameter.
+`PostMergeRegenerationDispatcher`, `MergeRecomputeCoordinator`, `RecomputeChainSubmitter` and
+`HeldRegenerationReleaser` each gain a required `barrier: RegenerationBarrier` constructor parameter.
+The schema-scoped recompute builds its barrier inside its flow.
 The rebase builder and every test pass one too: on a non-default branch it admits everything without
 a read.
 
@@ -543,7 +567,8 @@ class HeldRegenerationReleaser:
         self,
         dispatcher: PostMergeRegenerationDispatcher,
         python_submitter: CoalescedRecomputeSubmitter,
-        definitions: HeldDefinitionResolver,
+        barrier: RegenerationBarrier,
+        definitions: HeldDefinitionSource,
         narrowed: NarrowedHoldCache,
         default_branch_name: str,
         context: InfrahubContext,
@@ -554,8 +579,11 @@ class HeldRegenerationReleaser:
     ) -> None: ...
 ```
 
-`HeldDefinitionResolver` loads the held definitions by id on the default branch, with the same
-queries the selectors use (`GATHER_ARTIFACT_DEFINITIONS`, `client.filters(kind=CoreGeneratorDefinition)`).
+`HeldDefinitionSource` is a Protocol, so the releaser's unit tests pass a fake.
+`HeldDefinitionResolver` implements it: it loads the held definitions by id on the default branch,
+with the same queries the selectors use (`GATHER_ARTIFACT_DEFINITIONS`,
+`client.filters(kind=CoreGeneratorDefinition)`), builds the request with no narrowing through the
+selector, and lists the Python computed attributes whose transform the repository owns.
 
 Contract:
 
@@ -572,13 +600,19 @@ Contract:
    artifact items of the window, so steps 3 and 4 skip them. It does not cover the generator items or the
    Python items, so steps 3 to 5 still dispatch them. If the release stopped here, the clear would
    remove those items without a dispatch (FR-016).
-3. For each held item, take the narrowed request from the cache under its `hold_seq`, or build the
-   request with no member or target narrowing when the cache misses.
+3. For each held item, build the request from the definition as it is now, because the delivery's
+   import can change the definition after the hold. On a cache hit under its `hold_seq`, copy only
+   the narrowing of the kept request onto it: `members` and `limit` of an artifact, `target_members`
+   of a generator. On a miss, keep the request with no member or target narrowing.
 4. Dispatch the generator and artifact requests through `PostMergeRegenerationDispatcher`, with
    `releasing=repository_id`, so the cascade runs as on a merge and every dispatch passes through the
    barrier.
-5. Submit each Python attribute: the cached narrowed submission, or a whole-kind recompute with
-   `coalesced=True` and `widened=True`.
+5. Submit each Python attribute: the cached narrowed target (`PythonTargetRequest`), or a
+   whole-kind recompute with `coalesced=True` and `widened=True`. Each target first passes the
+   barrier with `releasing=repository_id`. An attribute that the repository owns is admitted. Any
+   other attribute has no known owner, so it stays held under every other pending repository. A
+   released recompute is a coalesced submission, so its writes carry the `recompute` origin, and a
+   released target of a recompute chain starts again at depth 0.
 6. Renew the lease after each awaited step, through a callback the caller passes.
 7. Raise on a dispatch failure. The releaser only raises. Its caller, the service or the
    abandoner, sets the lease's expiry to now through `expire_lease`, then handles the failure.
@@ -606,7 +640,7 @@ Contract:
 | `core/merge/repository_merge_dispatcher.py::RepositoryMergeDispatcher.merge_core_repositories` | For an `active` repository, on a branch that syncs with Git, whose source commit carries content (`research.md` R3): builds the `PendingMerge`, enqueues it under its own guard with `widen=False`, passes it in the model, and passes the merge's `context`. Retries a failed enqueue `ENQUEUE_RETRIES` times, after the delays of `ENQUEUE_RETRY_DELAYS_SECONDS`. If the last retry fails too, it logs at error level and still submits the merge. Retries any error, because the graph merge is done and no failure may stop the merge flows. Takes two new required constructor parameters: `state_for_session: Callable[[InfrahubDatabase], DeliveryStatePort]`, which builds the state port on a database session, and a `sleep` callable, as the barrier does, so a unit test records the delays and returns at once. The enqueues of all repositories run at the same time (`asyncio.gather`), because the branch merge holds the global merge lock meanwhile, so the worst wait is one retry chain. A session serves one coroutine at a time, so each try opens its own session and builds the state port on it. `core/merge/builder.py` and every test that builds the dispatcher pass both. When the content read fails, it submits the merge of each active repository with no entry, and the merge flow reads the content itself. The entry's `source_git_branch` is the Infrahub source branch name: `_get_mapped_remote_branch` changes only Infrahub's default branch, and a merge never comes from it. It queues no merge whose source branch is the remote branch that a delivery pushes to, and logs it: source and destination are then the same Git branch, so there is nothing to push, and the queue refuses such an entry. Sets `pending_merge_enqueued` to `True` only when one of its tries returned. Submits no merge workflow for an `active` repository whose source commit carries no content. Passes `tags=delivery_run_tags(repository_id)` when it submits the merge of an `active` repository, so a run that waits in the queue counts as a waiting delivery run (`research.md` R20). |
 | `workflows/constants.py::WorkflowTag` | Gains `REPOSITORY_DELIVERY = "repository-delivery"`, which renders as `infrahub.app/repository-delivery`. It marks a delivery run (`research.md` R20). |
 | `core/merge/regeneration_dispatcher.py::PostMergeRegenerationDispatcher` | Consults the barrier at the sites of section 8. `dispatch` and `_dispatch_plan` take `releasing`. |
-| `core/merge/python_target_sources.py::GatheredPythonReadSets` | Keeps the repository id per attribute and exposes `owner_of`. |
+| `core/merge/python_target_sources.py::GatheredPythonReadSets` | Keeps the repository id per attribute. It reaches `PythonAttributeReadSet.repository_id`, and the resolver exposes it through `owner_of`. |
 | `core/merge/selective_regen/definition_selector/artifact_selector.py::ArtifactSelector._build_request` | Fills `repository_id`. |
 | `git/tasks.py::generate_artifact_definition`, `generators/tasks.py::run_generator_definition` | Accept `exclude_repository_ids` and `include_repository_ids`. |
 | `computed_attribute/tasks.py::computed_attribute_setup_python` | On the default branch, passes the selected pairs through the barrier. |
