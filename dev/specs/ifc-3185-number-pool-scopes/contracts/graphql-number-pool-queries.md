@@ -13,7 +13,7 @@ The surface is the one described in PR #10932, served from the database. This fi
 | Division of a holding object | counted under every division the object occupies on any live branch | the same | Unchanged (decision 7, revised on 2026-10-12) |
 | Enum of `NumberPoolAllocation.provenance` and of the `provenance` argument | `NumberPoolProvenance`, a type of its own | `PoolRecordProvenance`, the enum that `InfrahubResourcePoolAllocated` already returns, with the same values `ALLOCATED` and `PROVIDED` | Breaking for a client that names the type in a query variable |
 
-Everything else (root fields, arguments, defaults, ordering, pagination, holder and range references) is unchanged. PR #10932 is open against another branch; it is rebased onto `feature-number-pools-1.12`, and its fixed dataset and tests are updated to this contract before the resolvers read the database.
+Everything else (root fields, arguments, defaults, ordering, pagination, holder and range references) is unchanged. The resolvers read the database; the fixed dataset of PR #10932 is removed.
 
 ## SDL
 
