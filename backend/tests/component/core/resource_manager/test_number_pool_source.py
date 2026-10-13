@@ -17,6 +17,7 @@ from infrahub.core.constants import InfrahubKind, MetadataOptions, PoolRecordPro
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
+from infrahub.core.query.node import NodeListGetAttributeQuery
 from infrahub.core.query.resource_manager import TrackingPool
 from infrahub.core.schema import SchemaRoot
 from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
@@ -245,3 +246,46 @@ async def test_a_save_naming_a_pool_stores_no_source_and_updates_the_tracking_po
     assert attribute.value == test_case.expected_value
     assert await attribute.get_source(db=db) is None
     assert attribute.tracking_pool == expected_record
+
+
+@dataclass(frozen=True)
+class TrackingPoolReadScopeCase:
+    name: str
+    attribute_names: frozenset[str] | None
+    """The attributes the read is told a pool can track; None places no limit."""
+    expects_pool: bool
+
+
+TRACKING_POOL_READ_SCOPE_CASES: list[TrackingPoolReadScopeCase] = [
+    TrackingPoolReadScopeCase(name="unlimited", attribute_names=None, expects_pool=True),
+    TrackingPoolReadScopeCase(
+        name="naming_the_tracked_attribute", attribute_names=frozenset({"ticket_id"}), expects_pool=True
+    ),
+    TrackingPoolReadScopeCase(
+        name="naming_another_attribute", attribute_names=frozenset({"title"}), expects_pool=False
+    ),
+    TrackingPoolReadScopeCase(name="naming_no_attribute", attribute_names=frozenset(), expects_pool=False),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(case, id=case.name) for case in TRACKING_POOL_READ_SCOPE_CASES])
+async def test_the_attribute_read_looks_for_a_tracking_pool_only_on_the_attributes_it_is_told_about(
+    db: InfrahubDatabase, default_branch: Branch, ticket_pool: CoreNumberPool, test_case: TrackingPoolReadScopeCase
+) -> None:
+    ticket = await Node.init(db=db, schema=TICKET.kind, branch=default_branch)
+    await ticket.new(db=db, title="scoped", ticket_id={"from_pool": {"id": ticket_pool.id}})
+    await ticket.save(db=db)
+
+    query = await NodeListGetAttributeQuery.init(
+        db=db,
+        ids=[ticket.id],
+        branch=default_branch,
+        include_metadata=MetadataOptions.TRACKING_POOL,
+        tracking_pool_attribute_names=test_case.attribute_names,
+    )
+    await query.execute(db=db)
+
+    attributes = query.get_attributes_group_by_node()[ticket.id].attrs
+    expected = TrackingPool(pool_id=ticket_pool.id, provenance=PoolRecordProvenance.ALLOCATED)
+    assert attributes[TRACKED_ATTRIBUTE_NAME].tracking_pool == (expected if test_case.expects_pool else None)
+    assert attributes["title"].tracking_pool is None

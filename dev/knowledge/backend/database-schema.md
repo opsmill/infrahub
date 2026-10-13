@@ -200,7 +200,9 @@ A number attribute reports the pool tracking it as its GraphQL `source`, ahead o
 user stored. When a read asks for it (`MetadataOptions.TRACKING_POOL`, requested whenever `source` is
 selected on a `Number` or `NumberPool` attribute), the attribute query follows the
 attribute's active `-global-` `IS_RESERVED` edge and returns the pool's uuid with the provenance of the
-value the branch holds, read from `allocated_values` as above. The read does not check that the pool
+value the branch holds, read from `allocated_values` as above. The read looks for the edge only on
+attributes of those kinds: `NodeManager.get_many` names them from the schemas of the nodes it loads, so
+a load of a kind with no such attribute runs no `IS_RESERVED` lookup. The read does not check that the pool
 node is live: a live edge implies a live pool, because deleting a pool ends every edge it holds. The
 result is loaded into the attribute's `tracking_pool` property, which no save path reads. The record
 is never re-read on demand: the pool write that opens, moves or ends it sets it on the attribute in

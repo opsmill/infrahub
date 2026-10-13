@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Iterable, Literal, TypeVar, overload
 from infrahub_sdk.utils import is_valid_uuid
 
 from infrahub.core.constants import (
+    POOL_TRACKED_ATTRIBUTE_KINDS,
     SYSTEM_USER_ID,
     MetadataOptions,
     RelationshipCardinality,
@@ -1091,6 +1092,21 @@ class NodeManager:
 
         return node
 
+    @staticmethod
+    def _pool_tracked_attribute_names(
+        schemas: Iterable[NodeSchema | ProfileSchema | TemplateSchema], fields: dict | None
+    ) -> frozenset[str]:
+        """The attributes a number pool can track among those the read returns, across the nodes' schemas."""
+        names = {
+            attribute.name
+            for schema in schemas
+            for attribute in schema.attributes
+            if attribute.kind in POOL_TRACKED_ATTRIBUTE_KINDS
+        }
+        if fields:
+            names &= set(fields.keys())
+        return frozenset(names)
+
     @classmethod
     async def get_many(
         cls,
@@ -1134,12 +1150,18 @@ class NodeManager:
         attribute_metadata_options = (
             include_metadata.attribute_level if isinstance(include_metadata, MetadataQueryOptions) else include_metadata
         )
+        tracking_pool_attribute_names: frozenset[str] | None = None
+        if attribute_metadata_options & MetadataOptions.TRACKING_POOL:
+            tracking_pool_attribute_names = cls._pool_tracked_attribute_names(
+                schemas=[node.schema for node in nodes_info_by_id.values() if node.schema is not None], fields=fields
+            )
         query = await NodeListGetAttributeQuery.init(
             db=db,
             ids=list(nodes_info_by_id.keys()),
             fields=fields,
             branch=branch,
             include_metadata=attribute_metadata_options,
+            tracking_pool_attribute_names=tracking_pool_attribute_names,
             at=at,
             branch_agnostic=branch_agnostic,
         )

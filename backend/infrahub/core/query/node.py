@@ -57,6 +57,8 @@ from infrahub.core.utils import build_regex_attrs, extract_field_filters
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from neo4j.graph import Node as Neo4jNode
 
     from infrahub.core.attribute import AttributeCreateData, BaseAttribute
@@ -748,11 +750,20 @@ class NodeListGetAttributeQuery(Query):
         ids: list[str],
         fields: dict | None = None,
         include_metadata: MetadataOptions = MetadataOptions.NONE,
+        tracking_pool_attribute_names: Iterable[str] | None = None,
         **kwargs: Any,
     ) -> None:
+        """Read the attributes of the nodes `ids` name.
+
+        `tracking_pool_attribute_names` limits the tracking pool read to the attributes it names; None reads
+        it on every attribute, and an empty collection skips it.
+        """
         self.ids = ids
         self.fields = fields
         self.include_metadata = include_metadata
+        self.tracking_pool_attribute_names = (
+            frozenset(tracking_pool_attribute_names) if tracking_pool_attribute_names is not None else None
+        )
         super().__init__(order_by=["n.uuid", "a.name"], **kwargs)
 
     @property
@@ -765,7 +776,9 @@ class NodeListGetAttributeQuery(Query):
 
     @property
     def _include_tracking_pool(self) -> bool:
-        return bool(self.include_metadata & MetadataOptions.TRACKING_POOL)
+        if not self.include_metadata & MetadataOptions.TRACKING_POOL:
+            return False
+        return self.tracking_pool_attribute_names is None or bool(self.tracking_pool_attribute_names)
 
     @property
     def _include_updated_metadata(self) -> bool:
@@ -820,10 +833,14 @@ WITH *,
         """
         if not self._include_tracking_pool:
             return
+        attribute_filter = ""
+        if self.tracking_pool_attribute_names is not None:
+            attribute_filter = "a.name IN $tracking_pool_attribute_names AND "
+            self.params["tracking_pool_attribute_names"] = sorted(self.tracking_pool_attribute_names)
         tracking_pool_query = """
 CALL (a, av) {
     OPTIONAL MATCH (tracking_pool:Node:%(number_pool)s)-[reserved:IS_RESERVED]->(a)
-    WHERE reserved.branch = $global_branch_name
+    WHERE %(attribute_filter)sreserved.branch = $global_branch_name
       AND reserved.status = "active"
       AND reserved.from <= $tracking_pool_at
       AND (reserved.to IS NULL OR reserved.to > $tracking_pool_at)
@@ -835,7 +852,7 @@ CALL (a, av) {
     ORDER BY reserved.from DESC
     LIMIT 1
 }
-        """ % {"number_pool": InfrahubKind.NUMBERPOOL}
+        """ % {"number_pool": InfrahubKind.NUMBERPOOL, "attribute_filter": attribute_filter}
         self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
         self.params["tracking_pool_at"] = self.at.to_string()
         self.add_to_query(tracking_pool_query)
