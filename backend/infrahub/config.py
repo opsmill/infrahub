@@ -573,7 +573,7 @@ class BrokerSettings(BaseSettings):
     )
     virtualhost: str = Field(default="/", description="The virtual host to connect to")
     rpc_timeout: int = Field(
-        default=30, ge=1, description="The maximum number of seconds to wait for a worker to answer an RPC request"
+        default=120, ge=1, description="The maximum number of seconds to wait for a worker to answer an RPC request"
     )
     driver: BrokerDriver = Field(
         default=BrokerDriver.RabbitMQ,

@@ -54,8 +54,9 @@ Responses are correlated using `correlation_id` in message metadata.
 
 `rpc()` never waits indefinitely. Both the publish and the wait for the reply run under a single
 timeout, so a broker that withholds its publish confirmation is bounded the same way a worker that
-never answers is. The bound defaults to `INFRAHUB_BROKER_RPC_TIMEOUT` (30 seconds, minimum 1); an
-individual call can override it with `timeout=`.
+never answers is. The bound defaults to `INFRAHUB_BROKER_RPC_TIMEOUT` (120 seconds, minimum 1); an
+individual call can override it with `timeout=`. The default leaves room for a worker without a
+local copy to clone the repository before it answers a file fetch.
 
 When the bound elapses, `rpc()` raises `WorkerTimeoutError`. Callers must decide what that means for
 their operation. The GraphQL layer surfaces it as HTTP 504 with the `WORKER_TIMEOUT` error code and
