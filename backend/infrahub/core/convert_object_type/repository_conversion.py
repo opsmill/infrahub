@@ -1,3 +1,5 @@
+from contextlib import nullcontext
+
 from infrahub import lock
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, RepositoryDeliveryStatus
@@ -36,6 +38,7 @@ async def convert_repository_type(
         ValidationError: The mapping sets a read-only attribute of the target kind.
         DeliveryPendingError: The repository has pending pushes or held regeneration, which the deletion of the
             node would drop.
+        DeliveryStateUnavailableError: The lock of the delivery state is not acquired in time.
 
     """
     read_only_inputs = sorted(
@@ -54,49 +57,55 @@ async def convert_repository_type(
         )
 
     repo_name = repository.name.value
+    has_delivery_state = repository.get_kind() == InfrahubKind.REPOSITORY
     async with lock.registry.get(name=repo_name, namespace="repository"):
-        if repository.get_kind() == InfrahubKind.REPOSITORY:
-            delivery = await delivery_state.read(repository_id=repository.id)
-            if delivery.status != RepositoryDeliveryStatus.NONE:
-                raise DeliveryPendingError(repository_name=repo_name)
-            if not delivery.held.is_empty:
-                raise DeliveryPendingError(repository_name=repo_name, regeneration_held=True)
+        # The state lock spans the check and the deletion, so no merge is queued between them.
+        async with delivery_state.locked(repository_id=repository.id) if has_delivery_state else nullcontext():
+            if has_delivery_state:
+                delivery = await delivery_state.read(repository_id=repository.id)
+                if delivery.status != RepositoryDeliveryStatus.NONE:
+                    raise DeliveryPendingError(repository_name=repo_name)
+                if not delivery.held.is_empty:
+                    raise DeliveryPendingError(repository_name=repo_name, regeneration_held=True)
 
-        async with db.start_transaction() as dbt:
-            timestamp_before_conversion = Timestamp()
+            async with db.start_transaction() as dbt:
+                timestamp_before_conversion = Timestamp()
 
-            # Fetch validators before deleting the repository otherwise validator-repository would no longer exist
-            user_validators = await NodeManager.query(
-                db=dbt, schema=CoreUserValidator, prefetch_relationships=True, filters={"repository__id": repository.id}
-            )
-            repository_validators = await NodeManager.query(
-                db=dbt,
-                schema=CoreRepositoryValidator,
-                prefetch_relationships=True,
-                filters={"repository__id": repository.id},
-            )
-            new_repository = await convert_object_type(
-                node=repository,  # type: ignore[arg-type]
-                target_schema=target_schema,
-                mapping=mapping,
-                branch=branch,
-                db=dbt,
-            )
+                # Fetch validators before deleting the repository otherwise validator-repository would no longer exist
+                user_validators = await NodeManager.query(
+                    db=dbt,
+                    schema=CoreUserValidator,
+                    prefetch_relationships=True,
+                    filters={"repository__id": repository.id},
+                )
+                repository_validators = await NodeManager.query(
+                    db=dbt,
+                    schema=CoreRepositoryValidator,
+                    prefetch_relationships=True,
+                    filters={"repository__id": repository.id},
+                )
+                new_repository = await convert_object_type(
+                    node=repository,  # type: ignore[arg-type]
+                    target_schema=target_schema,
+                    mapping=mapping,
+                    branch=branch,
+                    db=dbt,
+                )
 
-            for user_validator in user_validators:
-                await user_validator.repository.update(db=dbt, data=new_repository)
-                await user_validator.repository.save(db=dbt)
+                for user_validator in user_validators:
+                    await user_validator.repository.update(db=dbt, data=new_repository)
+                    await user_validator.repository.save(db=dbt)
 
-            for repository_validator in repository_validators:
-                await repository_validator.repository.update(db=dbt, data=new_repository)
-                await repository_validator.repository.save(db=dbt)
+                for repository_validator in repository_validators:
+                    await repository_validator.repository.update(db=dbt, data=new_repository)
+                    await repository_validator.repository.save(db=dbt)
 
-            await validate_conversion(
-                deleted_node=repository,  # type: ignore[arg-type]
-                branch=branch,
-                db=dbt,
-                timestamp_before_conversion=timestamp_before_conversion,
-            )
+                await validate_conversion(
+                    deleted_node=repository,  # type: ignore[arg-type]
+                    branch=branch,
+                    db=dbt,
+                    timestamp_before_conversion=timestamp_before_conversion,
+                )
 
         # Refresh outside the transaction otherwise other workers would pull outdated branch objects.
         message_bus = await get_message_bus()

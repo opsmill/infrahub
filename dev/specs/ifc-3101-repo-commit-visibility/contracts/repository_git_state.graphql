@@ -174,12 +174,12 @@ extend type Mutation {
 #
 # {
 #   "errors": [{
-#     "message": "No worker answered git.commit_log.get within 30 seconds",
+#     "message": "No worker answered git.commit_log.get within 120 seconds",
 #     "path": ["InfrahubRepositoryCommits"],
 #     "extensions": {
 #       "code": "WORKER_TIMEOUT",
 #       "http_status": 504,
-#       "data": { "operation": "git.commit_log.get", "timeout_seconds": 30, "retry_after_seconds": 30 }
+#       "data": { "operation": "git.commit_log.get", "timeout_seconds": 120, "retry_after_seconds": 120 }
 #     }
 #   }]
 # }

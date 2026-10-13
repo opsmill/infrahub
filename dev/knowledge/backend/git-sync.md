@@ -75,11 +75,12 @@ The read-write kind implements the mapping described below; the read-only kind r
   Prefect's run logger. The add flow writes it whenever its first sync skips a branch. The
   per-repository sync flow writes it only when the run imported a branch or saw a skipped branch
   advance (`SyncReport.reports_skipped_branches`).
-- That sync flow's run is linked to the repository node when it imports a branch (the import tags the
-  run itself), when it writes the warning, or when it fails while the repository is online. A
-  successful run where nothing moved adds nothing to the repository's task history. Every tag update
-  is rebuilt from the tags the run started with, so a later `add_tags` call must repeat the branches
-  the imports tagged, or it drops them.
+- Each branch import runs as a flow run of its own (`git/sync.py::import_branch`), linked to the
+  repository node and tagged only with the branch it imports into, so its logs and failure show on
+  that branch. The sync flow's run is linked to its own branch when it writes the warning and, while
+  the repository is online, to each branch that failed before its import. A failed import does not
+  link the sync run, because its own run already shows it. A successful run where nothing moved adds
+  nothing to the repository's task history.
 - The reverse mapping — from an Infrahub branch name to the remote git branch — is the pure
   function `get_mapped_remote_branch` in `backend/infrahub/git/branch_mapping.py`. Any git
   operation that names a remote ref (`pull`, `push`) must route the branch name through it: when
@@ -349,10 +350,16 @@ read-only flows through `import_objects_from_files`.
   that the function needs a new entry. Both become `RepositoryImportError`. To make a new error
   type expected, add a `case` to that function and nothing else. The SDK `Error` base class is
   deliberately not mapped, because it also covers connection errors.
-- **One log entry per failure.** The error entry carries `repository`, `branch`, `step` (`import`)
+- **One error entry per failure.** The error entry carries `repository`, `branch`, `step` (`import`)
   and `reason` as log record fields for log shippers and alert rules. `raise_if_branches_failed`
   logs its warning with the same fields only for branches that failed before the import (step
-  `collection`), so each failure appears once in the task log.
+  `collection`), so each failure appears once in the task log as an entry with these fields.
+- **Summary of the import steps.** After the error entry, and before the branch is set to
+  `ERROR_IMPORT`, the boundary logs a warning without these fields that names the import step that was running, the steps that ran before it and the steps
+  that did not run, in the order of `ImportSummaryStep` in `backend/infrahub/git/integrator.py`.
+  A step with nothing to import is still listed as completed. When the build step fails, the
+  warning states that no import step ran. Connection and credential errors, and failures outside
+  the boundary, are logged without this warning.
 - **Naming the `.infrahub.yml` entry.** The mapping function only receives the exception, so the
   loops over `.infrahub.yml` entries, in the build and in the apply step, wrap their body in
   `import_entry(label)`. That context manager adds the entry's name and file as an exception note,

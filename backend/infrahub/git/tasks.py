@@ -2,8 +2,6 @@ import asyncio
 import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime
-from functools import partial
 from typing import Any, assert_never
 
 from git.exc import InvalidGitRepositoryError
@@ -35,6 +33,7 @@ from infrahub import config, lock
 from infrahub.context import InfrahubContext
 from infrahub.core.constants import (
     InfrahubKind,
+    RepositoryDeliveryStatus,
     RepositoryInternalStatus,
     RepositoryOperationalStatus,
     RepositorySyncStatus,
@@ -48,6 +47,7 @@ from infrahub.exceptions import (
     BranchNotFoundError,
     CheckError,
     CommitNotFoundError,
+    ReimportPendingPushesError,
     RepositoryConnectionError,
     RepositoryCredentialsError,
     RepositoryError,
@@ -112,7 +112,13 @@ from .refs_check.constants import REFS_CHECK_CONCURRENCY
 from .refs_check.factory import build_check_refs_model, build_refs_checker, build_refs_scheduler
 from .refs_check.models import RefsCheckCycleSummary, RefsCheckOutcome, RefsCheckResult
 from .refs_check.tracked_commit import GraphTrackedCommitReader
-from .repository import InfrahubReadOnlyRepository, InfrahubRepository, PendingObjectImport, get_initialized_repo
+from .repository import (
+    ImportStep,
+    InfrahubReadOnlyRepository,
+    InfrahubRepository,
+    PendingObjectImport,
+    get_initialized_repo,
+)
 from .state.warm_up import RepositoryWarmUp
 from .sync import (
     RepositoryAdder,
@@ -129,8 +135,9 @@ from .utils import fetch_artifact_definition_targets, fetch_check_definition_tar
 from .writeback.content import read_pending_merge_of_commit, read_pending_merges
 from .writeback.factory import build_writeback_service
 from .writeback.models import DeliveryOutcome, PendingMerge
+from .writeback.ports import DeliveryStatePort
 from .writeback.service import RepositoryWritebackService
-from .writeback.store import WritebackIntentStore
+from .writeback.store import build_intent_store
 
 
 def log_skipped_branches(repo: InfrahubRepository, report: SyncReport) -> None:
@@ -221,22 +228,25 @@ async def add_git_repository(model: GitRepositoryAdd) -> None:
     await add_tags(branches=[model.infrahub_branch_name], nodes=[model.repository_id])
 
     client = get_client()
+    database = await get_database()
     importer = RepositoryFileImporter()
-    syncer = RepositorySyncer(
-        lock_registry=lock.registry,
-        importer=importer,
-        recorder=HistoryRewriteRecorder(store=SdkRepositoryRecordStore(client=client)),
-        retarget_markers=RetargetMarkers(cache=await get_cache()),
-    )
-    added = await RepositoryAdder(lock_registry=lock.registry, importer=importer, client=client).add(model)
-    repo = added.repository
+    async with database.start_session() as db:
+        syncer = RepositorySyncer(
+            lock_registry=lock.registry,
+            importer=importer,
+            recorder=HistoryRewriteRecorder(store=SdkRepositoryRecordStore(client=client)),
+            retarget_markers=RetargetMarkers(cache=await get_cache()),
+            state=await build_intent_store(db=db, lock_registry=lock.registry),
+        )
+        added = await RepositoryAdder(lock_registry=lock.registry, importer=importer, client=client).add(model)
+        repo = added.repository
 
-    if model.internal_status != RepositoryInternalStatus.ACTIVE.value:
-        if added.import_error:
-            raise added.import_error
-        return
+        if model.internal_status != RepositoryInternalStatus.ACTIVE.value:
+            if added.import_error:
+                raise added.import_error
+            return
 
-    outcome = await syncer.sync(repo)
+        outcome = await syncer.sync(repo)
     log_skipped_branches(repo=repo, report=outcome.report)
     raise_if_branches_failed(repo=repo, outcome=outcome)
 
@@ -365,8 +375,9 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
 ) -> SyncOutcome:
     """Synchronize one repository, linking the run to it when there is something to see there.
 
-    A run is linked when it imports a branch, when it reports a skipped branch, or when it fails while
-    the repository is online. A successful run where nothing moved on the remote is not linked.
+    A run is linked when it reports a skipped branch and, while the repository is online, when a branch
+    fails before its import or the synchronization fails. Each branch import is shown by a run of its
+    own, so it does not link this one. A successful run where nothing moved on the remote is not linked.
 
     Raises:
         RepositoryBranchesFailedError: When at least one branch failed to synchronize.
@@ -374,51 +385,57 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
         CommitNotFoundError: When a commit the sync needs cannot be found.
 
     """
-    syncer = RepositorySyncer(
-        lock_registry=lock.registry,
-        importer=RepositoryFileImporter(),
-        recorder=HistoryRewriteRecorder(store=SdkRepositoryRecordStore(client=client)),
-        retarget_markers=RetargetMarkers(cache=await get_cache()),
-    )
-    online = operational_status == RepositoryOperationalStatus.ONLINE.value
-    try:
-        # Constructed inside the handler: it reads the repository node, so a failing read has to be
-        # tagged with the repository like any other sync failure.
-        repo = await InfrahubRepository.init(
-            id=repository_id,
-            name=repository_name,
-            location=repository_location,
-            client=client,
-            infrahub_branch_name=infrahub_branch,
+    database = await get_database()
+    async with database.start_session() as db:
+        syncer = RepositorySyncer(
+            lock_registry=lock.registry,
+            importer=RepositoryFileImporter(),
+            recorder=HistoryRewriteRecorder(store=SdkRepositoryRecordStore(client=client)),
+            retarget_markers=RetargetMarkers(cache=await get_cache()),
+            state=await build_intent_store(db=db, lock_registry=lock.registry),
         )
-    except (RepositoryError, CommitNotFoundError):
-        if online:
-            await add_tags(branches=[infrahub_branch], nodes=[str(repository_id)])
-        raise
+        online = operational_status == RepositoryOperationalStatus.ONLINE.value
+        try:
+            # Constructed inside the handler: it reads the repository node, so a failing read has to be
+            # tagged with the repository like any other sync failure.
+            repo = await InfrahubRepository.init(
+                id=repository_id,
+                name=repository_name,
+                location=repository_location,
+                client=client,
+                infrahub_branch_name=infrahub_branch,
+            )
+        except (RepositoryError, CommitNotFoundError):
+            if online:
+                await add_tags(branches=[infrahub_branch], nodes=[str(repository_id)])
+            raise
 
-    try:
-        outcome = await syncer.sync(repo, staging_branch=staging_branch, graph_commits=graph_commits)
-    except (RepositoryError, CommitNotFoundError):
-        if online:
-            await add_tags(branches=[infrahub_branch], nodes=[str(repository_id)])
-        raise
-    await report_sync_run(
-        repo=repo, report=outcome.report, infrahub_branch=infrahub_branch, link_run=online and bool(outcome.failed)
-    )
+        try:
+            outcome = await syncer.sync(repo, staging_branch=staging_branch, graph_commits=graph_commits)
+        except (RepositoryError, CommitNotFoundError):
+            if online:
+                await add_tags(branches=[infrahub_branch], nodes=[str(repository_id)])
+            raise
+    await report_sync_run(repo=repo, outcome=outcome, infrahub_branch=infrahub_branch, online=online)
     raise_if_branches_failed(repo=repo, outcome=outcome)
     return outcome
 
 
-async def report_sync_run(repo: InfrahubRepository, report: SyncReport, infrahub_branch: str, link_run: bool) -> None:
-    """Log the run's skipped branches when it moved something, and link the run when there is a reason to.
+async def report_sync_run(repo: InfrahubRepository, outcome: SyncOutcome, infrahub_branch: str, online: bool) -> None:
+    """Log the run's skipped branches when it moved something, and link the run to the branches it reports on.
 
-    Every tag update is rebuilt from the tags the run started with, so the call carries the branches
-    the imports tagged the run with as well, or it would drop them.
+    The run is linked to its own branch when it reports skipped branches, and, while the repository is
+    online, to each branch that failed before its import. A failed import is not one of them, because it
+    is shown on its branch by its own flow run.
     """
+    report = outcome.report
+    branches = [infrahub_branch] if report.reports_skipped_branches else []
     if report.reports_skipped_branches:
         log_skipped_branches(repo=repo, report=report)
-    if report.reports_skipped_branches or link_run:
-        await add_tags(branches=[infrahub_branch, *report.attempted_import_branches], nodes=[str(repo.id)])
+    if online:
+        branches.extend(failed.branch_name for failed in outcome.failed if failed.step is not ImportStep.IMPORT)
+    if branches:
+        await add_tags(branches=branches, nodes=[str(repo.id)])
 
 
 def select_writable_branch_commits(
@@ -449,11 +466,17 @@ def resolve_initial_import_branch(repo: InfrahubRepository, init_failed: bool) -
     return None
 
 
+async def has_pending_pushes(state: DeliveryStatePort, repository_id: str) -> bool:
+    """Return whether merged changes of the repository wait for their push to the remote."""
+    return (await state.read(repository_id=repository_id)).status is not RepositoryDeliveryStatus.NONE
+
+
 async def bootstrap_local_repository(
     repo_name: str,
     repository: CoreRepository,
     infrahub_branch: str,
     client: InfrahubClient,
+    state: DeliveryStatePort,
 ) -> InfrahubRepository | None:
     """Ensure this worker has a usable local clone and seed the graph for a freshly created repo.
 
@@ -461,7 +484,9 @@ async def bootstrap_local_repository(
     Returns None when the repository should be skipped for this cycle: the clone fails, or the
     default-branch import cannot reach the remote or its credentials are invalid. Any other failed
     default-branch import is already logged and recorded on the branch, so the repository is still
-    returned and its other branches still synchronize.
+    returned and its other branches still synchronize. While the repository has pending pushes, a
+    fresh clone that seeds the default branch records no commit and skips the seed import, because
+    the import would remove the objects of the pending merges.
     """
     log = get_run_logger()
     pending_import: PendingObjectImport | None = None
@@ -479,7 +504,13 @@ async def bootstrap_local_repository(
             get_logger().error(str(exc))
             init_failed = True
 
+        # A seed into a staging branch keeps its path, as the staging sync does.
+        seeds_default_branch = infrahub_branch == registry.default_branch
+        delivery_pending = False
         if init_failed:
+            delivery_pending = seeds_default_branch and await has_pending_pushes(
+                state=state, repository_id=repository.id
+            )
             try:
                 repo = await InfrahubRepository.new(
                     id=repository.id,
@@ -487,14 +518,25 @@ async def bootstrap_local_repository(
                     location=repository.location.value,
                     client=client,
                     infrahub_branch_name=infrahub_branch,
+                    # With the seed import skipped, the graph would record a commit whose objects it lacks.
+                    update_commit_value=not delivery_pending,
                 )
             except RepositoryError as exc:
                 log.info(exc.message)
                 return None
+        elif repo.reinitialized:
+            delivery_pending = seeds_default_branch and await has_pending_pushes(
+                state=state, repository_id=repository.id
+            )
 
         default_import_git_branch = resolve_initial_import_branch(repo, init_failed=init_failed)
 
-        if default_import_git_branch is not None:
+        if default_import_git_branch is not None and delivery_pending:
+            log.info(
+                f"Deferred the import of the default branch {default_import_git_branch} of repository "
+                f"{repo.name} until its pending pushes reach the remote"
+            )
+        elif default_import_git_branch is not None:
             # Pin the commit while the lock is held so the import below reads an immutable
             # worktree even though it is built after the lock is released.
             pending_import = PendingObjectImport(
@@ -637,7 +679,11 @@ async def report_failed_branches(
 
 
 async def sync_remote_repository(
-    repo_name: str, repository_data: RepositoryData, branches: dict[str, BranchData], client: InfrahubClient
+    repo_name: str,
+    repository_data: RepositoryData,
+    branches: dict[str, BranchData],
+    client: InfrahubClient,
+    state: DeliveryStatePort,
 ) -> None:
     """Synchronize one repository with its origin, cloning it on this worker first when needed."""
     repository: CoreRepository = repository_data.repository
@@ -654,6 +700,7 @@ async def sync_remote_repository(
         repository=repository,
         infrahub_branch=infrahub_branch,
         client=client,
+        state=state,
     )
     if repo is None:
         return
@@ -679,15 +726,16 @@ async def sync_remote_repositories() -> None:
     branches = await client.branch.all()
     async with db.start_session() as dbs:
         repositories = await get_repositories_commit_per_branch(db=dbs, kind=InfrahubKind.REPOSITORY)
+        state = await build_intent_store(db=dbs, lock_registry=lock.registry)
 
-    for repo_name, repository_data in repositories.items():
-        try:
-            await sync_remote_repository(
-                repo_name=repo_name, repository_data=repository_data, branches=branches, client=client
-            )
-        # One repository that fails must not stop the cycle for the repositories after it.
-        except Exception:
-            log.exception(f"Unable to synchronize repository {repo_name}, continuing with the other repositories")
+        for repo_name, repository_data in repositories.items():
+            try:
+                await sync_remote_repository(
+                    repo_name=repo_name, repository_data=repository_data, branches=branches, client=client, state=state
+                )
+            # One repository that fails must not stop the cycle for the repositories after it.
+            except Exception:
+                log.exception(f"Unable to synchronize repository {repo_name}, continuing with the other repositories")
 
 
 @task(
@@ -787,12 +835,7 @@ async def git_branch_delete(
         try:
             database = await get_database()
             async with database.start_session() as db:
-                store = WritebackIntentStore(
-                    db=db,
-                    lock_registry=lock.registry,
-                    default_branch=await registry.get_branch(db=db),
-                    clock=partial(datetime.now, UTC),
-                )
+                store = await build_intent_store(db=db, lock_registry=lock.registry)
                 kept = await store.request_branch_deletion(repository_id=repository_id, git_branch=branch)
         except Exception:
             # One repository must not stop the deletion in the others, and keeping the branch loses no content.
@@ -1212,6 +1255,13 @@ async def import_objects_from_git_repository(model: GitRepositoryImportObjects) 
     )
     plan = await repo.build_import_plan(infrahub_branch_name=model.infrahub_branch_name, commit=model.commit)
     async with lock.registry.get(name=model.repository_name, namespace="repository"):
+        # A merge queued after the reimport was accepted must still stop it.
+        if model.repository_kind == InfrahubKind.REPOSITORY:
+            database = await get_database()
+            async with database.start_session() as db:
+                state = await build_intent_store(db=db, lock_registry=lock.registry)
+                if await has_pending_pushes(state=state, repository_id=model.repository_id):
+                    raise ReimportPendingPushesError(repository_name=model.repository_name)
         await repo.apply_import_plan(plan)
 
 

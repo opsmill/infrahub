@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pytest
-from infrahub_sdk.exceptions import ServerNotReachableError
+from infrahub_sdk.exceptions import ServerNotReachableError, ValidationError
 
 from infrahub.core.constants import FullRegenerationReason, RepositoryDeliveryFailureCause, RepositoryDeliveryStatus
 from infrahub.exceptions import (
@@ -17,8 +17,8 @@ from infrahub.exceptions import (
     DeliveryStateUnavailableError,
     RepositoryConnectionError,
     RepositoryCredentialsError,
-    ValidationError,
 )
+from infrahub.git.import_errors import RepositoryImportError
 from infrahub.git.writeback.models import (
     AbandonmentRecord,
     Actor,
@@ -792,20 +792,45 @@ class ImportFailureCase:
     failure: DeliveryFailure
 
 
+def _raised_by_the_import(*, error: Exception, message: str) -> RepositoryImportError:
+    """Wrap the error as the import does for every error but a connection or credentials error."""
+    wrapped = RepositoryImportError(identifier=REPOSITORY.name, branch_name="main", message=message)
+    wrapped.__cause__ = error
+    return wrapped
+
+
 IMPORT_FAILURE_CASES: list[ImportFailureCase] = [
     ImportFailureCase(
         name="interrupted_import_on_the_final_attempt",
-        error=DatabaseError(message="Unable to connect to the database"),
+        error=_raised_by_the_import(
+            error=DatabaseError(message="Unable to connect to the database"),
+            message="DatabaseError: Unable to connect to the database",
+        ),
         final_attempt=True,
         failure=DeliveryFailure(
             cause=RepositoryDeliveryFailureCause.IMPORT_INTERRUPTED,
             retryable=True,
-            message="Unable to connect to the database",
+            message="DatabaseError: Unable to connect to the database",
+        ),
+    ),
+    ImportFailureCase(
+        name="unreachable_remote_on_the_final_attempt",
+        error=RepositoryConnectionError(identifier="net-repo"),
+        final_attempt=True,
+        failure=DeliveryFailure(
+            cause=RepositoryDeliveryFailureCause.IMPORT_INTERRUPTED,
+            retryable=True,
+            message="Unable to clone the repository net-repo, please check the address and the credential",
         ),
     ),
     ImportFailureCase(
         name="invalid_content_before_the_final_attempt",
-        error=ValidationError(input_value="The artifact definition net-config has no target group."),
+        error=_raised_by_the_import(
+            error=ValidationError(
+                identifier="net-config", message="The artifact definition net-config has no target group."
+            ),
+            message="The artifact definition net-config has no target group.",
+        ),
         final_attempt=False,
         failure=DeliveryFailure(
             cause=RepositoryDeliveryFailureCause.IMPORT_FAILED,
