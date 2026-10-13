@@ -30,8 +30,10 @@ from prefect.runtime import flow_run
 from prefect.states import Completed, Failed
 
 from infrahub import config, lock
-from infrahub.context import InfrahubContext
+from infrahub.auth.session import AnonymousSession
+from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import (
+    GLOBAL_BRANCH_NAME,
     InfrahubKind,
     RepositoryDeliveryStatus,
     RepositoryInternalStatus,
@@ -41,6 +43,7 @@ from infrahub.core.constants import (
     ValidatorConclusion,
 )
 from infrahub.core.manager import NodeManager
+from infrahub.core.regeneration.definitions import selects_repository
 from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import (
@@ -873,14 +876,25 @@ async def git_branch_delete(
 
 
 @flow(name="artifact-definition-generate", flow_run_name="Generate all artifacts")
-async def generate_artifact_definition(branch: str, context: InfrahubContext) -> None:
+async def generate_artifact_definition(
+    branch: str,
+    context: InfrahubContext,
+    exclude_repository_ids: list[str] | None = None,
+    include_repository_ids: list[str] | None = None,
+) -> None:
     await add_branch_tag(branch_name=branch)
 
     client = get_client()
     client.request_context = context.to_request_context()
-    artifact_definitions = await client.all(kind=CoreArtifactDefinition, branch=branch, include=["id"])
+    artifact_definitions = await client.all(kind=CoreArtifactDefinition, branch=branch, include=["transformation"])
 
     for artifact_definition in artifact_definitions:
+        if not selects_repository(
+            repository_id=artifact_definition.transformation.peer.repository.id,
+            exclude_repository_ids=exclude_repository_ids,
+            include_repository_ids=include_repository_ids,
+        ):
+            continue
         model = RequestArtifactDefinitionGenerate(
             branch=branch,
             artifact_definition_id=artifact_definition.id,
@@ -1099,11 +1113,15 @@ async def pull_read_only(model: GitRepositoryPullReadOnly) -> None:
         await message_bus.send(message=message)
 
 
+# A run queued before the flow took a context carries none, and must still push its merge.
+_NO_MERGE_CONTEXT = InfrahubContext(branch=BranchContext(name=GLOBAL_BRANCH_NAME), account=AnonymousSession())
+
+
 @flow(
     name="git-repository-merge",
     flow_run_name="Merge {model.source_branch} > {model.destination_branch} in git repository",
 )
-async def merge_git_repository(model: GitRepositoryMerge) -> State | None:
+async def merge_git_repository(model: GitRepositoryMerge, context: InfrahubContext = _NO_MERGE_CONTEXT) -> State | None:
     log = get_run_logger()
     await add_tags(branches=[model.source_branch, model.destination_branch], nodes=[model.repository_id])
 
@@ -1168,7 +1186,7 @@ async def merge_git_repository(model: GitRepositoryMerge) -> State | None:
             except BranchNotFoundError:
                 lost_merge = _describe_lost_merge(repo=repo, model=model)
                 log.error(lost_merge)
-        service = await build_writeback_service(db=db, repository=repo)
+        service = await build_writeback_service(db=db, repository=repo, context=context, log=log)
         outcome = await deliver_pending_merges(service=service, manual=False, entry=entry)
 
     message = f"The delivery to repository {model.repository_name} ended with the outcome {outcome.value}."
@@ -1244,7 +1262,7 @@ async def deliver_pending_merges(
     name="git-repository-delivery-retry",
     flow_run_name="Retry the delivery of the pending merges of repository {model.repository_name}",
 )
-async def retry_repository_delivery(model: GitRepositoryDeliveryRetry) -> State:
+async def retry_repository_delivery(model: GitRepositoryDeliveryRetry, context: InfrahubContext) -> State:
     log = get_run_logger()
     await add_tags(branches=[registry.default_branch], nodes=[model.repository_id])
 
@@ -1256,7 +1274,7 @@ async def retry_repository_delivery(model: GitRepositoryDeliveryRetry) -> State:
     )
     database = await get_database()
     async with database.start_session() as db:
-        service = await build_writeback_service(db=db, repository=repo)
+        service = await build_writeback_service(db=db, repository=repo, context=context, log=log)
         outcome = await deliver_pending_merges(service=service, manual=model.manual, entry=None)
 
     message = f"The delivery to repository {model.repository_name} ended with the outcome {outcome.value}."

@@ -17,7 +17,7 @@ from structlog.testing import capture_logs
 from infrahub import lock
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
-from infrahub.context import InfrahubContext
+from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.constants import (
     FullRegenerationReason,
@@ -30,6 +30,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.merge.repository_merge_dispatcher import RepositoryMergeDispatcher
 from infrahub.core.node import Node
+from infrahub.core.registry import registry
 from infrahub.exceptions import DeliveryStateUnavailableError
 from infrahub.git.models import GitRepositoryDeliveryRetry, GitRepositoryMerge
 from infrahub.git.tasks import git_branch_delete, merge_git_repository, retry_repository_delivery
@@ -257,6 +258,10 @@ async def run_retry_flow(dependency_provider: Provider, client: InfrahubClient, 
     ):
         return await retry_repository_delivery(
             model=GitRepositoryDeliveryRetry(repository_id=repository_id, repository_name=REPOSITORY_NAME),
+            context=InfrahubContext(
+                branch=BranchContext(name=registry.default_branch),
+                account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
+            ),
             return_state=True,
         )
 

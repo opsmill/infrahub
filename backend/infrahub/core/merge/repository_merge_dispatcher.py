@@ -61,10 +61,10 @@ class RepositoryMergeDispatcher:
         self.log = logger or get_logger()
 
     async def merge_repositories(self, *, context: InfrahubContext) -> None:
-        await self.merge_core_read_only_repositories()
+        await self.merge_core_read_only_repositories(context=context)
         await self.merge_core_repositories(context=context)
 
-    async def merge_core_read_only_repositories(self) -> None:
+    async def merge_core_read_only_repositories(self, *, context: InfrahubContext) -> None:
         repos_in_main_list = await NodeManager.query(schema=CoreReadOnlyRepository, db=self.db)
         repos_in_main = {repo.id: repo for repo in repos_in_main_list}
 
@@ -87,7 +87,9 @@ class RepositoryMergeDispatcher:
                 source_commit=repo.commit.value,
                 source_ref=repo.ref.value,
             )
-            await self.workflow.submit_workflow(workflow=GIT_REPOSITORIES_MERGE, parameters={"model": model})
+            await self.workflow.submit_workflow(
+                workflow=GIT_REPOSITORIES_MERGE, context=context, parameters={"model": model}
+            )
 
     async def merge_core_repositories(self, *, context: InfrahubContext) -> None:
         repos = [
@@ -118,7 +120,9 @@ class RepositoryMergeDispatcher:
                 source_commit=readable_commit(repo.commit.value),
             )
             if repo.internal_status.value == RepositoryInternalStatus.STAGING.value:
-                await self.workflow.submit_workflow(workflow=GIT_REPOSITORIES_MERGE, parameters={"model": model})
+                await self.workflow.submit_workflow(
+                    workflow=GIT_REPOSITORIES_MERGE, context=context, parameters={"model": model}
+                )
                 continue
 
             if pending_merges is not None:

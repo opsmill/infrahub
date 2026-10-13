@@ -100,6 +100,10 @@ class ServiceUnavailableError(Error):
         super().__init__(self.message)
 
 
+class WorkflowOrchestrationError(ServiceUnavailableError):
+    """Raised when the task manager cannot start a workflow run or follow it to a final state."""
+
+
 class LockError(Error):
     pass
 
