@@ -11,6 +11,18 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.11.6](https://github.com/opsmill/infrahub/tree/infrahub-v1.11.6) - 2026-10-13
+
+### Changed
+
+- Post-merge and proposed-change regeneration now regenerate only the affected members when a Generator or artifact query reads a `display_label` or `human_friendly_id` built from a related node's attribute and that related node changes. A query that does not target unique objects, or whose `display_label` or `human_friendly_id` path cannot be resolved, still regenerates every member of the definition.
+- Post-merge regeneration now narrows to the affected members when the changed data is read through a relationship (for example an owner's name rendered by an artifact, or an interface's field on a device), instead of regenerating every member of the definition. Changes that cannot be attributed to specific members unambiguously still regenerate the whole group.
+
+### Fixed
+
+- Fixed artifacts and Generators not being regenerated after a merge or in a proposed change when the change was to a field their query filters on, such as moving an object to the related node the query selects by. ([#11024](https://github.com/opsmill/infrahub/issues/11024))
+- Fixed Generators not running in a proposed change or after a merge when the only change was to a Profile of a kind their query reads.
+
 ## [Infrahub - v1.11.5](https://github.com/opsmill/infrahub/tree/infrahub-v1.11.5) - 2026-10-08
 
 ### Security
