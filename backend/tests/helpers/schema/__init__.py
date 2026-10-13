@@ -58,6 +58,12 @@ async def load_schema(
     graphql_registry.clear_cache()
 
 
+async def save_schema(db: InfrahubDatabase, schema: SchemaRoot, branch_name: str | None = None) -> None:
+    """Load the schema and save only its own kinds, because saving the whole core schema takes about 25 seconds."""
+    kinds = [element.kind for element in [*schema.generics, *schema.nodes]]
+    await load_schema(db=db, schema=schema, branch_name=branch_name, update_db=True, limit=kinds)
+
+
 test_generics: list[GenericSchema] = [SNOW_TASK, INTERFACE, INTERFACE_HOLDER]
 test_nodes: list[NodeSchema] = [
     CAR,

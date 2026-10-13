@@ -20,7 +20,7 @@ from infrahub.pools.scope import AllocationScopeResolver
 from infrahub.pools.scoped_number_pool_reader import ScopedNumberPoolReader
 from tests.component.pools.helpers import NumberPoolRepositoryFailingOnDelete
 from tests.helpers.number_pool import SCOPED_DEVICE, SCOPED_POOL_SCHEMA, register_and_provision_number_pools
-from tests.helpers.schema import load_schema
+from tests.helpers.schema import save_schema
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -271,7 +271,7 @@ async def test_renaming_scope_elements_rewrites_their_stored_names(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     """A renamed relationship and a renamed attribute keep their ids and the stored names follow the new names."""
-    await load_schema(db=db, schema=SCOPED_POOL_SCHEMA, update_db=True)
+    await save_schema(db=db, schema=SCOPED_POOL_SCHEMA)
     scoped_pool_id = await create_device_pool(db=db, name="vlan-per-site-and-role", scope=["site", "role"])
     unscoped_pool_id = await create_device_pool(db=db, name="vlan", scope=[])
     device = default_device()
@@ -281,7 +281,7 @@ async def test_renaming_scope_elements_rewrites_their_stored_names(
 
     device.get_relationship(name="site").name = "location"
     device.get_attribute(name="role").name = "function"
-    await load_schema(db=db, schema=SchemaRoot(nodes=[device]), update_db=True)
+    await save_schema(db=db, schema=SchemaRoot(nodes=[device]))
     await run_synchronizer(db=db)
 
     assert await stored_scope_of(db=db, pool_id=scoped_pool_id) == [
@@ -296,7 +296,7 @@ async def test_current_scope_names_are_not_rewritten(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     """A pool whose stored names match the default branch keeps its stored scope without a new write."""
-    await load_schema(db=db, schema=SCOPED_POOL_SCHEMA, update_db=True)
+    await save_schema(db=db, schema=SCOPED_POOL_SCHEMA)
     pool_id = await create_device_pool(db=db, name="vlan-per-site", scope=["site"])
     before = await stored_scope_of(db=db, pool_id=pool_id)
     writes = await scope_writes_of(db=db, pool_id=pool_id)
@@ -311,14 +311,14 @@ async def test_renaming_on_another_branch_keeps_the_stored_names(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     """Only the default branch names the scope elements, so a rename on another branch leaves the stored names."""
-    await load_schema(db=db, schema=SCOPED_POOL_SCHEMA, update_db=True)
+    await save_schema(db=db, schema=SCOPED_POOL_SCHEMA)
     pool_id = await create_device_pool(db=db, name="vlan-per-site", scope=["site"])
     before = await stored_scope_of(db=db, pool_id=pool_id)
     other_branch = await create_branch(db=db, branch_name="scope-rename")
     device = registry.schema.get_schema_branch(name=other_branch.name).get_node(name=SCOPED_DEVICE.kind)
     device.get_relationship(name="site").name = "location"
 
-    await load_schema(db=db, schema=SchemaRoot(nodes=[device]), branch_name=other_branch.name, update_db=True)
+    await save_schema(db=db, schema=SchemaRoot(nodes=[device]), branch_name=other_branch.name)
     await run_synchronizer(db=db)
 
     assert await stored_scope_of(db=db, pool_id=pool_id) == before

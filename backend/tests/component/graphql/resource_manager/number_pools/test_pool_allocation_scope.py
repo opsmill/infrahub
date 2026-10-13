@@ -30,7 +30,7 @@ from tests.helpers.number_pool import (
     SCOPED_RACK,
     SCOPED_SITE,
 )
-from tests.helpers.schema import SNOW_TICKET_SCHEMA, load_schema
+from tests.helpers.schema import SNOW_TICKET_SCHEMA, load_schema, save_schema
 
 from .helpers import bounds_input, execute, load_pool
 
@@ -189,12 +189,6 @@ def device_schema_on_branch(device: NodeSchema) -> SchemaRoot:
     device.get_attribute(name="role").name = "function"
     device.attributes.append(AttributeSchema(name="pod", kind="Text", optional=False))
     return SchemaRoot(nodes=[device])
-
-
-async def save_schema(db: InfrahubDatabase, schema: SchemaRoot, branch_name: str | None = None) -> None:
-    """Load the schema and save only its own kinds, because saving the whole core schema takes about 25 seconds."""
-    kinds = [element.kind for element in [*schema.generics, *schema.nodes]]
-    await load_schema(db=db, schema=schema, branch_name=branch_name, update_db=True, limit=kinds)
 
 
 @dataclass
