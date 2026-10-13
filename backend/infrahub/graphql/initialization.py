@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any
 
 from starlette.background import BackgroundTasks
 
@@ -17,7 +17,7 @@ from infrahub.graphql.resolvers.single_relationship import SingleRelationshipRes
 from infrahub.permissions import PermissionManager
 
 if TYPE_CHECKING:
-    from graphql import GraphQLSchema
+    from graphql import FieldNode, GraphQLSchema
     from starlette.requests import HTTPConnection
 
     from infrahub.auth.session import AccountSession
@@ -48,6 +48,8 @@ class GraphqlContext:
     permissions: PermissionManager | None = None
     background: BackgroundTasks | None = None
     request: HTTPConnection | None = None
+    # Fields requested below each field of the query, by field node: see extract_graphql_fields_for_request
+    extracted_fields: dict[int, tuple[FieldNode, dict[str, Any], dict[str, Any]]] = field(default_factory=dict)
 
     @property
     def active_account_session(self) -> AccountSession:
