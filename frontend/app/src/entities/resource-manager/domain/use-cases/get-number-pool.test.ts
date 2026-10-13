@@ -53,6 +53,7 @@ describe("getNumberPool", () => {
       node: { value: "InfraInterface" },
       node_attribute: { value: "speed" },
       allocation_scope: { value: [] },
+      ranges: [],
     });
   });
 

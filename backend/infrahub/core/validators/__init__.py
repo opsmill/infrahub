@@ -54,4 +54,7 @@ CONSTRAINT_VALIDATOR_MAP: dict[str, type[ConstraintCheckerInterface] | None] = {
     "node.relationship.add": NodeRelationshipAddChecker,
     "node.attribute.remove": NumberPoolScopeChecker,
     "node.relationship.remove": NumberPoolScopeChecker,
+    "attribute.name.update": NumberPoolScopeChecker,
+    "relationship.name.update": NumberPoolScopeChecker,
+    ConstraintIdentifier.ATTRIBUTE_PARAMETERS_ALLOCATION_SCOPE_UPDATE.value: NumberPoolScopeChecker,
 }

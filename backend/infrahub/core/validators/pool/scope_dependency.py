@@ -70,16 +70,25 @@ class ScopeViolationBuilder:
         pools: list[ScopedNumberPool],
     ) -> GroupedDataPaths:
         """Return one violation per pool, set on the pool and the changed field, that says what the change breaks."""
+        return self.build_refusals(
+            branch_name=branch_name,
+            field_name=field.name,
+            refusals=[(pool.id, self._describe(pool=pool, field=field, breakage=breakage)) for pool in pools],
+        )
+
+    @staticmethod
+    def build_refusals(branch_name: str, field_name: str, refusals: list[tuple[str, str]]) -> GroupedDataPaths:
+        """Return one violation per pool id, set on the pool and the changed field, carrying the refusal given."""
         grouped_data_paths = GroupedDataPaths()
-        for pool in pools:
+        for pool_id, refusal in refusals:
             grouped_data_paths.add_data_path(
                 DataPath(
                     branch=branch_name,
                     path_type=PathType.NODE,
-                    node_id=pool.id,
+                    node_id=pool_id,
                     kind=InfrahubKind.NUMBERPOOL,
-                    field_name=field.name,
-                    value=self._describe(pool=pool, field=field, breakage=breakage),
+                    field_name=field_name,
+                    value=refusal,
                 )
             )
         return grouped_data_paths

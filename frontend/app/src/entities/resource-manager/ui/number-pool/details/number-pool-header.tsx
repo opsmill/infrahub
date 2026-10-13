@@ -16,7 +16,7 @@ import {
   NUMBER_POOL_KIND,
   NUMBER_POOL_TYPE_SCHEMA,
 } from "@/entities/resource-manager/domain/model/pool";
-import { NumberPoolActionsMenu } from "@/entities/resource-manager/ui/number-pool/number-pool-actions-menu";
+import { NumberPoolActionsMenu } from "@/entities/resource-manager/ui/number-pool/details/number-pool-actions-menu";
 import { resourceManagerQueryKeys } from "@/entities/resource-manager/ui/queries/resource-manager.query-keys";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";

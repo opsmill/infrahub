@@ -17,6 +17,7 @@ export const generateNumberPoolData = (overrides?: Partial<NumberPoolData>): Num
   node: { value: "InfraInterface" },
   node_attribute: { value: "speed" },
   allocation_scope: { value: [] },
+  ranges: [],
   ...overrides,
 });
 

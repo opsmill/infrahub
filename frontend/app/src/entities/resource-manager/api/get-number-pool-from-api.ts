@@ -28,6 +28,21 @@ const GET_NUMBER_POOL = graphql(`
           allocation_scope {
             value
           }
+          ranges {
+            edges {
+              node {
+                start {
+                  value
+                }
+                end {
+                  value
+                }
+                allocation_weight {
+                  value
+                }
+              }
+            }
+          }
         }
       }
     }

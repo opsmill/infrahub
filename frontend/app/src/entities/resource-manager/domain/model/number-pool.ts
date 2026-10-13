@@ -18,6 +18,7 @@ export interface NumberPoolData extends NodeCore {
   node: NodeAttribute<string>;
   node_attribute: NodeAttribute<string>;
   allocation_scope: NodeAttribute<string[]>;
+  ranges: Array<{ start: number; end: number; allocation_weight: number | null }>;
 }
 
 export interface NumberPoolUsage {

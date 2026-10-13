@@ -526,7 +526,9 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
     candidate_schema.update(schema=source_schema)
 
     try:
-        candidate_schema.duplicate().process()
+        candidate_schema.duplicate().process(
+            default_branch_schema=registry.schema.get_schema_branch(name=registry.default_branch)
+        )
     except (ValueError, ValidationError, SchemaNotFoundError) as exc:
         error_msg = str(exc)
         parts = error_msg.split(":", 1)
