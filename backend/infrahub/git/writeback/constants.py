@@ -21,6 +21,8 @@ NARROWED_HOLD_TTL_SECONDS: int = (
 NARROWED_HOLD_MAX_BYTES: int = 512 * 1024
 
 RELEASE_LEASE_SECONDS: int = 15 * 60
+# A third of the lease, so a release that runs keeps its lease when one renewal fails.
+RELEASE_RENEW_SECONDS: int = RELEASE_LEASE_SECONDS // 3
 
 # An acquire that its time limit cancels after the lock key is set leaves the lock held until this time ends.
 STATE_LOCK_TTL_SECONDS: int = 30

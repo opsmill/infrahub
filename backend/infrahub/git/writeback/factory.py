@@ -9,7 +9,7 @@ from infrahub.auth.session import AnonymousSession
 from infrahub.context import InfrahubContext
 from infrahub.core.merge.builder import build_held_regeneration_releaser
 from infrahub.core.registry import registry
-from infrahub.git.writeback.constants import LOCAL_GIT_TIMEOUT_SECONDS
+from infrahub.git.writeback.constants import LOCAL_GIT_TIMEOUT_SECONDS, RELEASE_RENEW_SECONDS
 from infrahub.git.writeback.git_adapter import RepositoryDeliveryGitAdapter
 from infrahub.git.writeback.ports import RepositoryRef
 from infrahub.git.writeback.recovery import DeliveryRecoveryCheck
@@ -67,6 +67,7 @@ async def build_writeback_service(
         ),
         lock_registry=lock.registry,
         clock=clock,
+        release_renew_seconds=RELEASE_RENEW_SECONDS,
     )
 
 

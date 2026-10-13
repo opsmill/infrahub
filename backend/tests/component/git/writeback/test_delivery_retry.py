@@ -7,6 +7,7 @@ from prefect import flow
 from infrahub.core.constants import RepositoryDeliveryFailureCause
 from infrahub.exceptions import RepositoryConnectionError
 from infrahub.git.tasks import deliver_pending_merges
+from infrahub.git.writeback.constants import RELEASE_RENEW_SECONDS
 from infrahub.git.writeback.models import DeliveryFailure, DeliveryOutcome, PendingMerge
 from infrahub.git.writeback.ports import RepositoryRef
 from infrahub.git.writeback.service import RepositoryWritebackService
@@ -43,6 +44,7 @@ async def test_the_delivery_task_records_when_its_retry_is_due_before_it_waits(p
         releaser=RecordingRegenerationReleaser(),
         lock_registry=InfrahubLockRegistry(local_only=True),
         clock=clock,
+        release_renew_seconds=RELEASE_RENEW_SECONDS,
     )
     deliver = deliver_pending_merges.with_options(retries=1, retry_delay_seconds=[0.05])
 

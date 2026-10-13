@@ -296,7 +296,7 @@ its progress timestamps and never changes the status.
 | any but `none` | delivery settles, under the repository lock | `none`, or `pending` if entries remain | remove snapshot entries into `removed_entry_ids`, bump version, last delivered commit, a release lease that names the uncovered held items whose `hold_seq` is not above the snapshot's highest, clear cause and error when `none` |
 | any but `none` | abandonment, under the repository lock | `none` | remove every entry into `removed_entry_ids`, bump version, clear the owed import, the abandonment record, a release lease that names every uncovered held item |
 | `none` | held-only run takes a lease, through `lease_owed_release` | unchanged | a release lease that names every uncovered held item; nothing when a live lease covers them all |
-| any | release renews | unchanged | the lease's `expires_at` |
+| any | release renews, after each awaited step and on a timer (`research.md` R10) | unchanged | the lease's `expires_at` |
 | any | release fails, so the lease expires | unchanged | the lease's `expires_at`, set to now; the items of its window stay held, and the next lease takes them (`research.md` R10, rule 4) |
 | any | release clears | unchanged | remove each item of the lease's window that still has the named `hold_seq`, then the lease; an item held again since stays; clear the cause and the error when the queue is empty |
 | any | recovery check submits | unchanged | `last_progress_at` |

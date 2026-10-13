@@ -281,6 +281,7 @@ class RepositoryWritebackService:
         releaser: RegenerationReleasePort,
         lock_registry: InfrahubLockRegistry,
         clock: Clock,
+        release_renew_seconds: float,
     ) -> None: ...
 
     async def deliver(
@@ -308,6 +309,12 @@ disagree.
   refused id is not a failure.
 - Steps 1 to 15 under the repository lock, the settle included. Steps 16 and 17, the release and
   the clear, after it is released, under the lease that the settle returned.
+- While the release runs, a timer renews the lease every `release_renew_seconds`, with the `renew`
+  callback that the releaser also gets. `build_writeback_service` passes `RELEASE_RENEW_SECONDS`, a
+  third of `RELEASE_LEASE_SECONDS`, and tests pass a small value. A failed renewal of the timer is
+  logged at warning level with the lease and the repository, and the timer goes on. The timer
+  stops when the release returns or raises, after a renewal that runs then, so no renewal follows
+  `expire_lease` or `clear_released` (`research.md` R10).
 - If the release raises, `deliver` calls `state.expire_lease(...)` on its lease first. Then it
   handles the failure as the bullets below say, with the stage `release`. The clear does not run,
   so the held items stay. The task retry takes a new lease over them and releases every one. After
@@ -594,7 +601,8 @@ Contract:
    barrier.
 5. Submit each Python attribute: the cached narrowed submission, or a whole-kind recompute with
    `coalesced=True` and `widened=True`.
-6. Renew the lease after each awaited step, through a callback the caller passes.
+6. Renew the lease after each awaited step, through a callback the caller passes. The caller also
+   renews the lease on a timer while the release runs (section 5).
 7. Raise on a dispatch failure. The releaser only raises. Its caller, the service or the
    abandoner, sets the lease's expiry to now through `expire_lease`, then handles the failure.
    The caller has not cleared anything yet, so the items stay held, and the next run releases them

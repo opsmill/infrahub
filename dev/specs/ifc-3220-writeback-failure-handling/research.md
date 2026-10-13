@@ -1006,7 +1006,14 @@ A new lease takes every held item that no live lease covers, up to a bound:
   belongs to an entry that has left it.
 
 The releaser renews the expiry after each awaited step, because a release awaits generator runs and
-can take minutes. Each renewal adds 15 minutes.
+can take minutes. Each renewal adds 15 minutes. One generator run can take hours, which is longer
+than the lease. So while the release runs, the service also renews the lease on a timer, every
+`RELEASE_RENEW_SECONDS`, 5 minutes. A failed renewal of the timer is logged at warning level, and
+the timer goes on. The lease then expires at its own time, unless a later renewal succeeds. The
+timer stops when the release returns or raises. A renewal that runs then ends first, so no renewal
+follows the clear or the expiry of the lease. A worker that dies stops its timer, so its lease
+still expires. Known limit: a release whose generator run never ends keeps its lease for as long
+as its worker lives, and no other run releases its items in that time.
 
 **Why a set and not a range.** The items that no live lease covers can have gaps. For example, lease
 A expired, lease B is live, and new holds came after B was taken. A range from A's items to the new

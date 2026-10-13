@@ -35,7 +35,7 @@ from infrahub.exceptions import (
 )
 from infrahub.git.models import GitRepositoryDeliveryRetry, PushRejectionReason
 from infrahub.git.tasks import deliver_pending_merges
-from infrahub.git.writeback.constants import STALE_AFTER_SECONDS
+from infrahub.git.writeback.constants import RELEASE_RENEW_SECONDS, STALE_AFTER_SECONDS
 from infrahub.git.writeback.models import (
     DeliveryAttemptResult,
     DeliveryFailure,
@@ -114,6 +114,7 @@ def rig() -> Rig:
         releaser=releaser,
         lock_registry=InfrahubLockRegistry(local_only=True),
         clock=clock,
+        release_renew_seconds=RELEASE_RENEW_SECONDS,
     )
     return Rig(state=state, git=git, releaser=releaser, service=service)
 
