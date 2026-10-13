@@ -128,7 +128,7 @@ Two things manage the class, and one way reads it:
 
 ## Content that carries its own colours
 
-Four renderers bake colours into their output and cannot be themed by CSS tokens:
+Three renderers bake colours into their output and cannot be themed by CSS tokens:
 
 - **Mermaid diagrams** — themed through `mermaid.initialize({ theme })`, called from a small rehype
   plugin sequenced before the rendering plugin
@@ -145,8 +145,9 @@ Four renderers bake colours into their output and cannot be themed by CSS tokens
 - **Schema visualizer** — takes a `theme` prop, passed from `pages/schema/graph.tsx`. It is a git
   submodule (`opsmill/infrahub-schema-visualizer`), so a fix to its palette lands upstream first and
   arrives here as a pointer bump; nothing about its styling is editable in this repository.
-- **Schema-defined colours** (role badges, kind palettes, user-picked hex values) — data, not
-  style. Rendered as-is in both themes; out of scope for tokens.
+
+Schema-defined colours (role badges, kind palettes, user-picked hex values) are data, not style:
+they render as-is in both themes and are out of scope for tokens.
 
 ## When a `dark:` variant is acceptable
 

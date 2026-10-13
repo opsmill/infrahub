@@ -146,6 +146,7 @@ query, but the Cypher type system is closed, and the wrapper does know it.
 def _get(self, label: str) -> Any: ...
 
 # ✅ Good - the closed set the column can hold, narrowed where a caller needs one member
+# (abridged: a full alias also lists the driver's temporal and spatial types)
 CypherValue = Node | Relationship | Path | str | int | float | bool | None | list["CypherValue"] | dict[str, "CypherValue"]
 
 def _get(self, label: str) -> CypherValue: ...

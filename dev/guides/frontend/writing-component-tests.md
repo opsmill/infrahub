@@ -426,7 +426,7 @@ assuming it:
 
 ```ts
 // Vitest serves through Vite in dev mode, so the dev branch is the only one reachable here.
-expect(systemPrefersDark()).toBe(false); // stated, so a passing assertion cannot be a coincidence
+expect(import.meta.env.DEV).toBe(true); // stated, so a passing assertion cannot be a coincidence
 ```
 
 ## Troubleshooting

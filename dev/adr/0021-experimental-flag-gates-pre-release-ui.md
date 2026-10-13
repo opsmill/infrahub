@@ -1,6 +1,6 @@
 # 21. A pre-release UI feature is gated by an experimental settings flag, not by the running version
 
-**Status:** Accepted
+**Status:** Deprecated — the `dark_theme` flag has been removed and the dark theme is offered to every deployment. The decision stands as the pattern for gating a future pre-release UI feature.
 **Date:** 2026-08-24
 **Author:** @opsmill-team
 

@@ -22,19 +22,21 @@ The same question arises for the application's own components: any of them could
 
 ## Decision
 
-The theme is resolved in exactly one place — the application's `ThemeProvider` — and every consumer
-receives the resolved answer, `"light"` or `"dark"`.
+At runtime the theme is resolved in one place — the application's `ThemeProvider` — and every
+consumer receives the resolved answer, `"light"` or `"dark"`. The inline script in `index.html` mirrors
+the same rule before the first paint, so the page does not flash the wrong palette before React
+mounts.
 
 Three rules follow:
 
 1. **`"system"` is never passed down.** The resolved theme type is the two-value union
    `ResolvedTheme = "light" | "dark"`; there is no third value to leak.
-2. **Components read what is painted, not what is preferred.** `useResolvedTheme` subscribes to the
-   `dark` class on the document element via `MutationObserver`, so a consumer cannot disagree with
-   what is on screen.
+2. **Components read the resolved theme, not the preference.** Consumers read
+   `useTheme().resolvedTheme` from the provider's context, the same value the provider paints, so a
+   consumer cannot disagree with what is on screen.
 3. **Reading the operating system's preference is separate from acting on it.** `useSystemTheme`
    reports `prefers-color-scheme` and holds no opinion; whether that preference wins is the
-   application's policy, expressed in `entities/config/domain/rules/`.
+   application's policy, applied in `ThemeProvider`.
 
 ## Consequences
 
