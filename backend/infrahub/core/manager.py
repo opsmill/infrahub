@@ -384,6 +384,7 @@ class NodeManager:
         direction: RelationshipHierarchyDirection,
         node_schema: NodeSchema,
         filters: dict,
+        include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.LINKED_NODES,
         fields: dict | None = None,
         offset: int | None = None,
         limit: int | None = None,
@@ -419,7 +420,7 @@ class NodeManager:
             fields=fields,
             at=at,
             branch=branch,
-            include_metadata=MetadataOptions.LINKED_NODES,
+            include_metadata=include_metadata,
         )
 
     @overload
