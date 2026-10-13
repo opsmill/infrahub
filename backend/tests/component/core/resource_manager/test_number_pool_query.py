@@ -133,9 +133,7 @@ async def get_reservations(db: InfrahubDatabase, pool: CoreNumberPoolProtocol, b
 
 
 async def get_allocated_values(db: InfrahubDatabase, pool: CoreNumberPoolProtocol, branch: Branch) -> list[int]:
-    query = await NumberPoolGetAllocated.init(
-        db=db, pool=pool, ranges=whole_pool_ranges(pool), branch=branch, branch_agnostic=True
-    )
+    query = await NumberPoolGetAllocated.init(db=db, pool=pool, ranges=whole_pool_ranges(pool), branch=branch)
     await query.execute(db=db)
     return sorted(result.value for result in query.get_data())
 
@@ -232,7 +230,6 @@ class TestNumberPoolGetAllocated:
             pool=incident_pool,
             ranges=whole_pool_ranges(incident_pool),
             branch=default_branch,
-            branch_agnostic=True,
         )
 
         # Act
@@ -275,7 +272,6 @@ class TestNumberPoolGetAllocated:
             pool=incident_pool,
             ranges=whole_pool_ranges(incident_pool),
             branch=default_branch,
-            branch_agnostic=True,
         )
         await query.execute(db=db)
         results = query.get_data()
@@ -307,7 +303,7 @@ class TestNumberPoolGetAllocated:
 
         # Query on branch2 — the allocation is still active on main, so it should appear
         query = await NumberPoolGetAllocated.init(
-            db=db, pool=incident_pool, ranges=whole_pool_ranges(incident_pool), branch=branch2, branch_agnostic=True
+            db=db, pool=incident_pool, ranges=whole_pool_ranges(incident_pool), branch=branch2
         )
         await query.execute(db=db)
         results = query.get_data()
@@ -434,7 +430,7 @@ class TestNumberPoolGetAllocated:
         await incident2_on_main.save(db=db)
 
         query = await NumberPoolGetAllocated.init(
-            db=db, pool=incident_pool, ranges=whole_pool_ranges(incident_pool), branch=br1, branch_agnostic=True
+            db=db, pool=incident_pool, ranges=whole_pool_ranges(incident_pool), branch=br1
         )
         await query.execute(db=db)
 
@@ -517,7 +513,6 @@ class TestRangeListFiltering:
             branch=default_branch,
             pool=incident_pool_holding_one_to_ten,
             ranges=GAPPED_RANGES,
-            branch_agnostic=True,
         )
         taken = await NumberPoolGetTaken.init(
             db=db, branch=default_branch, pool=incident_pool_holding_one_to_ten, ranges=GAPPED_RANGES

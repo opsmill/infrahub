@@ -83,7 +83,6 @@ class NumberUtilizationGetter:
                 pool=self.pool,
                 ranges=self.space.as_query_ranges(),
                 branch=self.branch,
-                branch_agnostic=True,
                 division=self.division,
             )
             await query.execute(db=self.db)

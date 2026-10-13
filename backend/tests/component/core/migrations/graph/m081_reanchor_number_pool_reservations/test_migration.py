@@ -740,15 +740,19 @@ class TestMigration081:
 
         [record] = live_records(await self.records_for(db=db, migrated=migrated, ticket=ticket))
         assert record.properties["allocated_values"] == [reserved]
-        for branch_name, (value, provenance) in rows.items():
-            branch = await registry.get_branch(db=db, branch=branch_name)
-            query = await NumberPoolGetAllocated.init(
-                db=db, pool=migrated.pools[pool], ranges=[[POOL_START, POOL_END]], branch=branch
-            )
-            await query.execute(db=db)
-            row = next(row for row in query.get_data() if row.id == migrated.tickets[ticket].id)
-            expected_value = reserved if value == "reserved" else value
-            assert (row.value, row.provenance) == (expected_value, provenance), branch_name
+        query = await NumberPoolGetAllocated.init(
+            db=db,
+            pool=migrated.pools[pool],
+            ranges=[[POOL_START, POOL_END]],
+            branch=await registry.get_branch(db=db),
+        )
+        await query.execute(db=db)
+        assert {
+            (row.branch, row.value, row.provenance) for row in query.get_data() if row.id == migrated.tickets[ticket].id
+        } == {
+            (branch_name, reserved if value == "reserved" else value, provenance)
+            for branch_name, (value, provenance) in rows.items()
+        }
 
     async def test_a_record_reserved_after_its_attribute_existed_moves(
         self, db: InfrahubDatabase, migrated: MigratedDatabase

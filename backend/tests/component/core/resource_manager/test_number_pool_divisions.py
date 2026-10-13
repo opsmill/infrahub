@@ -110,7 +110,6 @@ async def allocated_rows(
         offset=offset,
         limit=limit,
         branch=dataset.default_branch,
-        branch_agnostic=True,
     )
     await query.execute(db=db)
     return [(row.value, row.branch, dataset.name_of(row.id), row.provenance) for row in query.get_data()]
@@ -221,7 +220,6 @@ class TestNumberPoolGetAllocated:
             offset=1,
             limit=1,
             branch=dataset.default_branch,
-            branch_agnostic=True,
         )
 
         await query.execute(db=db)
@@ -294,7 +292,6 @@ async def allocated_in_division(
         branch_name=branch_name,
         provenance=provenance,
         branch=branch,
-        branch_agnostic=True,
     )
     await query.execute(db=db)
     return [(row.value, row.branch, dataset.names_by_id[row.id]) for row in query.get_data()]
@@ -489,7 +486,6 @@ class TestScopedPoolQueries:
             offset=1,
             limit=1,
             branch=branch,
-            branch_agnostic=True,
         )
 
         await query.execute(db=db)
@@ -579,6 +575,47 @@ async def test_a_node_moved_on_the_default_branch_counts_in_the_site_an_older_br
     assert figures == {(site_a.id,): (1, 1, 0), (site_c.id,): (1, 1, 0)}
 
 
+async def test_a_number_changed_on_the_default_branch_counts_on_the_older_branch_that_still_holds_it(
+    db: InfrahubDatabase, default_branch: Branch, site_scoped_pool: CoreNumberPool
+) -> None:
+    site_a = await scoped_site(db=db, branch=default_branch, name="site-a")
+    device = await scoped_device_holding(
+        db=db, branch=default_branch, pool=site_scoped_pool, name="device-1", site=site_a, number=5
+    )
+    older = await create_branch(branch_name="holds-the-old-number", db=db)
+    changed = await NodeManager.get_one(db=db, branch=default_branch, id=device.id, raise_on_error=True)
+    changed.get_attribute(SCOPED_ATTRIBUTE_NAME).value = 6
+    await changed.save(db=db)
+
+    figures = await division_figures(db=db, pool=site_scoped_pool, branch=default_branch)
+    rows = await allocated_rows_in_division(
+        db=db, pool=site_scoped_pool, branch=default_branch, entries=[("site", site_a.id)]
+    )
+
+    assert figures == {(site_a.id,): (2, 1, 1)}
+    assert rows == [(5, older.name), (6, default_branch.name)]
+
+
+async def test_a_node_deleted_on_the_default_branch_counts_on_the_older_branch_that_still_holds_it(
+    db: InfrahubDatabase, default_branch: Branch, site_scoped_pool: CoreNumberPool
+) -> None:
+    site_a = await scoped_site(db=db, branch=default_branch, name="site-a")
+    device = await scoped_device_holding(
+        db=db, branch=default_branch, pool=site_scoped_pool, name="device-1", site=site_a, number=5
+    )
+    older = await create_branch(branch_name="holds-the-deleted-node", db=db)
+    deleted = await NodeManager.get_one(db=db, branch=default_branch, id=device.id, raise_on_error=True)
+    await deleted.delete(db=db)
+
+    figures = await division_figures(db=db, pool=site_scoped_pool, branch=default_branch)
+    rows = await allocated_rows_in_division(
+        db=db, pool=site_scoped_pool, branch=default_branch, entries=[("site", site_a.id)]
+    )
+
+    assert figures == {(site_a.id,): (1, 0, 1)}
+    assert rows == [(5, older.name)]
+
+
 async def test_deleting_the_branch_that_moved_a_node_removes_it_from_the_new_site(
     db: InfrahubDatabase, default_branch: Branch, site_scoped_pool: CoreNumberPool
 ) -> None:
@@ -614,19 +651,26 @@ async def test_a_role_changed_on_a_branch_counts_in_the_division_of_each_role(
     assert figures == {(site_a.id, "leaf"): (1, 1, 0), (site_a.id, "spine"): (1, 1, 0)}
 
 
-async def allocated_values_in_division(
+async def allocated_rows_in_division(
     db: InfrahubDatabase, pool: CoreNumberPool, branch: Branch, entries: list[tuple[str, object]]
-) -> list[int]:
+) -> list[tuple[int, str]]:
+    """The value and holding branch of each row the allocated numbers query reports for the division."""
     query = await NumberPoolGetAllocated.init(
         db=db,
         pool=pool,
         ranges=[[SCOPED_POOL_START, SCOPED_POOL_END]],
         division=Division.from_entries(entries=entries, element_fields=element_fields_of(pool=pool, branch=branch)),
         branch=branch,
-        branch_agnostic=True,
     )
     await query.execute(db=db)
-    return [row.value for row in query.get_data()]
+    return [(row.value, row.branch) for row in query.get_data()]
+
+
+async def allocated_values_in_division(
+    db: InfrahubDatabase, pool: CoreNumberPool, branch: Branch, entries: list[tuple[str, object]]
+) -> list[int]:
+    rows = await allocated_rows_in_division(db=db, pool=pool, branch=branch, entries=entries)
+    return [value for value, _ in rows]
 
 
 async def test_a_number_held_on_the_default_branch_and_on_a_branch_counts_once_in_its_division(

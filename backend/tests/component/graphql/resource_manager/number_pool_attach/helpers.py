@@ -164,9 +164,7 @@ async def allocated_rows(db: InfrahubDatabase, branch: Branch, pool: CoreNumberP
     space = EffectiveSpace(
         ranges=await NumberPoolRepository(db=db).get_pool_ranges(pool_id=pool.get_id()), domain=NumberDomain()
     )
-    query = await NumberPoolGetAllocated.init(
-        db=db, pool=pool, ranges=space.as_query_ranges(), branch=branch, branch_agnostic=True
-    )
+    query = await NumberPoolGetAllocated.init(db=db, pool=pool, ranges=space.as_query_ranges(), branch=branch)
     await query.execute(db=db)
     return sorted((row.id, row.branch, row.value, row.provenance.value) for row in query.get_data())
 

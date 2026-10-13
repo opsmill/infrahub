@@ -189,7 +189,6 @@ class NumberPoolRepository(NumberPoolRangeStore):
             pool=pool,
             ranges=space.as_query_ranges(),
             elements=elements,
-            branch_agnostic=True,
         )
         await query.execute(db=self.db)
         return query.get_data()

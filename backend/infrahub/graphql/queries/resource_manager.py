@@ -354,7 +354,6 @@ async def resolve_number_pool_allocation(
         offset=offset,
         limit=limit,
         branch=graphql_context.branch,
-        branch_agnostic=True,
     )
 
     if "count" in fields:

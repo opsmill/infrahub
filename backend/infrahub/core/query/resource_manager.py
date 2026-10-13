@@ -200,8 +200,8 @@ class IPAddressPoolSetReserved(Query):
 class NumberPoolGetAllocated(Query):
     """Report each number the pool has allocated together with the branch that holds it.
 
-    Reports any active value on any branch for the given NumberPool along with its parent object ID,
-    branch, and reservation identifier, ordered by value, then branch, then the holding object's id. `branch_name`
+    Reports every value a live branch holds for the given NumberPool along with its parent object ID,
+    the holding branch, and reservation identifier, ordered by value, then branch, then the holding object's id. `branch_name`
     keeps the values held on that branch and `provenance` the values of that provenance. With a division, which may
     give a value for only some of the scope elements, only the values whose holding object is in the division on some
     live branch are reported.
@@ -228,51 +228,38 @@ class NumberPoolGetAllocated(Query):
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        self.params["node_attribute"] = self.pool.node_attribute.value
         self.params["ranges"] = self.ranges
-        self.params["pool_id"] = self.pool.get_id()
 
-        branch_filter, branch_params = self.branch.get_query_filter_path(
-            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
-        )
-        self.params.update(branch_params)
-
-        live_branches = ""
         division_filter = ""
         if self.division is not None:
-            live_branches = LIVE_BRANCHES_QUERY
             division_filter, division_params = division_filter_query(division=self.division)
             self.params.update(division_params)
-            self.params["at"] = self.at.to_string()
-            self.params["default_branch_name"] = registry.default_branch
+        reserved_values, reserved_values_params = reserved_values_query(
+            pool_id=self.pool.get_id(),
+            attribute_name=self.pool.node_attribute.value,
+            at=self.at.to_string(),
+            default_branch_name=registry.default_branch,
+            division_filter=division_filter,
+        )
+        self.params.update(reserved_values_params)
 
-        # The division filter binds any outer `ha`, `hv` or `av`, so the holding object's edges take other names.
         query = """
-        %(live_branches)s
-        MATCH (pool:Node:%(number_pool_kind)s { uuid: $pool_id })-[ir:IS_RESERVED]->(attr:Attribute {name: $node_attribute})
-        MATCH (n:%(node)s)-[holder_ha:HAS_ATTRIBUTE]->(attr)-[holder_hv:HAS_VALUE]->(holder_av:AttributeValueIndexed)
-        WHERE
-            any(r IN $ranges WHERE holder_av.value >= r[0] AND holder_av.value <= r[1])
-            AND all(r in [holder_ha, holder_hv, ir] WHERE (%(branch_filter)s))
-            AND holder_ha.status = "active"
-            AND holder_hv.status = "active"
-            AND ir.status = "active"
-        %(division)s
-        """ % {
-            "node": self.pool.node.value,
-            "number_pool_kind": InfrahubKind.NUMBERPOOL,
-            "branch_filter": branch_filter,
-            "live_branches": live_branches,
-            "division": division_filter,
+        %(reserved_values)s
+        WHERE any(r IN $ranges WHERE toInteger(value) >= r[0] AND toInteger(value) <= r[1])
+        CALL (attr) {
+            MATCH (node:%(node)s)-[:HAS_ATTRIBUTE]->(attr)
+            RETURN node.uuid AS id
+            LIMIT 1
         }
+        """ % {"reserved_values": reserved_values, "node": self.pool.node.value}
         self.add_to_query(query)
 
         # The rows are made distinct before the filters so that the count query counts the rows returned.
         # A record without a list predates the list and reads as allocated for every value it accounts for.
         self.add_to_query(
             """
-        WITH DISTINCT n.uuid AS id, holder_hv.branch AS branch, holder_av.value AS value, ir.identifier AS identifier,
-            ir.allocated_values IS NOT NULL AND NOT toInteger(holder_av.value) IN ir.allocated_values AS is_provided
+        WITH DISTINCT id, branch, value, res.identifier AS identifier,
+            res.allocated_values IS NOT NULL AND NOT toInteger(value) IN res.allocated_values AS is_provided
         """
         )
 
@@ -871,38 +858,27 @@ class NumberPoolGetDivisions(Query):
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        self.params["node_attribute"] = self.pool.node_attribute.value
         self.params["ranges"] = self.ranges
-        self.params["pool_id"] = self.pool.get_id()
-        self.params["at"] = self.at.to_string()
-        self.params["default_branch_name"] = registry.default_branch
 
-        branch_filter, branch_params = self.branch.get_query_filter_path(
-            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+        reserved_values, reserved_values_params = reserved_values_query(
+            pool_id=self.pool.get_id(),
+            attribute_name=self.pool.node_attribute.value,
+            at=self.at.to_string(),
+            default_branch_name=registry.default_branch,
         )
-        self.params.update(branch_params)
+        self.params.update(reserved_values_params)
         divisions_query, divisions_params = live_divisions_query(elements=self.elements)
         self.params.update(divisions_params)
 
         query = """
-        %(live_branches)s
-        MATCH (pool:Node:%(number_pool_kind)s { uuid: $pool_id })-[ir:IS_RESERVED]->(attr:Attribute {name: $node_attribute})
-        MATCH (n:%(node)s)-[ha:HAS_ATTRIBUTE]->(attr)-[hv:HAS_VALUE]->(av:AttributeValueIndexed)
-        WHERE
-            any(r IN $ranges WHERE av.value >= r[0] AND av.value <= r[1])
-            AND all(r in [ha, hv, ir] WHERE (%(branch_filter)s))
-            AND ha.status = "active"
-            AND hv.status = "active"
-            AND ir.status = "active"
-        WITH DISTINCT attr, av.value AS value, hv.branch AS branch, deleting_branches, branch_windows
+        %(reserved_values)s
+        WHERE any(r IN $ranges WHERE toInteger(value) >= r[0] AND toInteger(value) <= r[1])
+        WITH DISTINCT attr, value, branch, deleting_branches, branch_windows
         %(divisions)s
         WITH division_values, value, collect(DISTINCT branch) AS branches
         WITH division_values, value, $default_branch_name IN branches AS on_default_branch
         """ % {
-            "live_branches": LIVE_BRANCHES_QUERY,
-            "node": self.pool.node.value,
-            "number_pool_kind": InfrahubKind.NUMBERPOOL,
-            "branch_filter": branch_filter,
+            "reserved_values": reserved_values,
             "divisions": divisions_query,
         }
         self.add_to_query(query)
@@ -935,13 +911,14 @@ def reserved_values_query(
 ) -> tuple[str, dict[str, Any]]:
     """Cypher fragment to find all Attributes reserved for a given NumberPool, with the parameters it reads.
 
-    Finds every value some non-deleting branch holds on each reserved Attribute. A value counts when
-    its HAS_VALUE edge is open now, or when a branch forked from the edge's branch while the edge was
-    open and has written no edge of its own that hides the default-branch version.
+    Finds every value some non-deleting branch holds on each reserved Attribute, with the branch that holds it. A
+    value counts on the edge's branch when its HAS_VALUE edge is open now, and on each branch that forked from the
+    edge's branch while the edge was open and has written no edge of its own that hides the default-branch version.
 
     `division_filter` is inserted after the reserved Attributes are matched, to keep only those of a division.
 
-    Final values are res (IS_RESERVED edge) and value (an active Attribute value).
+    Final values are res (IS_RESERVED edge), attr (the reserved Attribute), value (an active Attribute value),
+    branch (a branch holding the value), deleting_branches and branch_windows.
     """
     params: dict[str, Any] = {
         "pool_id": pool_id,
@@ -964,7 +941,7 @@ def reserved_values_query(
         WHERE hv.status = "active"
           AND hv.from <= $at AND (hv.to IS NULL OR hv.to > $at)
           AND NOT hv.branch IN deleting_branches
-        RETURN av.value AS value
+        RETURN av.value AS value, hv.branch AS branch
         UNION
         // --------------
         // For any edges closed on the default branch, check if they are still reachable
@@ -978,7 +955,7 @@ def reserved_values_query(
             window IN branch_windows WHERE window.origin_name = hv.branch
             AND hv.from <= window.fork_at AND window.fork_at < hv.to
         )
-        WITH hv, av, COLLECT {
+        WITH hv, av, branch_windows, COLLECT {
             // --------------
             // Find any branches with edges that override the default branch HAS_VALUE edge.
             // Any value edge the branch wrote that is open now hides the origin's value: an active one
@@ -989,15 +966,14 @@ def reserved_values_query(
             RETURN hiding.branch AS branch_name
         } AS hiding_branches
         // --------------
-        // If all the branches that this HAS_VALUE edge are visible on have overridden the value,
-        // then leave it out b/c it is no longer active.
+        // The value is held by each branch this HAS_VALUE edge is visible on that has not overridden it
         // --------------
-        WHERE any(window IN branch_windows WHERE window.origin_name = hv.branch
+        UNWIND [window IN branch_windows WHERE window.origin_name = hv.branch
             AND hv.from <= window.fork_at AND window.fork_at < hv.to
-            AND NOT window.name IN hiding_branches)
-        RETURN av.value AS value
+            AND NOT window.name IN hiding_branches | window.name] AS branch
+        RETURN av.value AS value, branch
     }
-    WITH DISTINCT res, value
+    WITH DISTINCT res, attr, value, branch, deleting_branches, branch_windows
     """ % {"number_pool": InfrahubKind.NUMBERPOOL, "division": division_filter, "live_branches": LIVE_BRANCHES_QUERY}
     return query, params
 

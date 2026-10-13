@@ -16,6 +16,7 @@ from infrahub.core.constants import (
 )
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
+from infrahub.core.query.resource_manager import NumberPoolGetAllocated
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters, NumberPoolParameters
 from infrahub.core.schema.attribute_schema import NumberAttributeSchema
@@ -112,6 +113,22 @@ async def pool_used_numbers(db: InfrahubDatabase, pool: CoreNumberPool, branch: 
     repository = NumberPoolRepository(db=db)
     space = await _whole_space(repository=repository, pool=pool)
     return await repository.get_used(pool=pool, branch=branch, space=space)
+
+
+async def pool_allocated_rows(
+    db: InfrahubDatabase, pool: CoreNumberPool, branch: Branch, branch_name: str | None = None
+) -> list[tuple[int, str]]:
+    """Return the value and holding branch of each row the pool's in-use list reports across its ranges."""
+    space = await _whole_space(repository=NumberPoolRepository(db=db), pool=pool)
+    query = await NumberPoolGetAllocated.init(
+        db=db,
+        pool=pool,
+        ranges=space.as_query_ranges(),
+        branch_name=branch_name,
+        branch=branch,
+    )
+    await query.execute(db=db)
+    return [(row.value, row.branch) for row in query.get_data()]
 
 
 async def pool_lowest_free_number(db: InfrahubDatabase, pool: CoreNumberPool, branch: Branch) -> int | None:
