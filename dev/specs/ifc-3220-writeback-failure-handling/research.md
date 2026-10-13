@@ -759,7 +759,8 @@ repository's queue, which outlives every task run, so the action belongs on the 
    items stay.
 2. For each abandoned entry with `delete_source_git_branch` set, send
    `RefreshGitRepositoryBranchDeleted`, so that every worker drops its local branch. The remote
-   branch stays (R12).
+   branch stays (R12). A send that fails is only logged, and the abandonment goes on to step 3: the
+   queue is already dropped. Accepted on 2026-10-13.
 3. Leave both locks. Release the held items of the lease window (R10). If the release fails, set
    the lease's expiry to now and raise. The held items stay, and the recovery check of R20 releases
    them (R10, rule 4).

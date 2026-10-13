@@ -397,8 +397,13 @@ and re-raises, so the recovery check releases the held items (`research.md` R10,
 the Git port only for these two calls, and neither runs a Git command: `recorded_commit` reads
 Infrahub, and the notification is a message to the workers. It changes no Git state, deletes no
 remote branch and imports nothing, so its flow builds the repository object without a clone.
+When the repository records no readable commit, the record stores an empty `recorded_commit`. A
+failed branch-deleted notification is only logged, as a warning, and the release still runs,
+because the queue is already dropped. Both accepted on 2026-10-13.
 `DeliveryQueueChangedError` and `NothingPendingError` subclass `ValidationError`, so the task run
-fails with the message of the GraphQL contract.
+fails with the message of the GraphQL contract. If the clear fails after a release that worked, the
+run logs that the release ran and raises. The items stay held under the lease, which is not
+expired at once, so a later run releases them again once the lease expires.
 
 ---
 
