@@ -665,15 +665,20 @@ and is not re-imported; retry; the branch is gone.
       not send `RefreshGitRepositoryBranchDeleted`.
 - [X] T096 [US6] Confirm step 13 of `RepositoryWritebackService.deliver` deletes a flagged branch that no
       remaining entry names, and add the case to `backend/tests/unit/git/writeback/test_service.py`.
-- [ ] T097 [US6] Add `test_remote_branch_kept_while_pending` to
+- [X] T097 [US6] Add `test_remote_branch_kept_while_pending` to
       `backend/tests/integration/git/test_git_live_remote.py`, with
       `delete_branch_after_merge_reset_config` and `delete_git_branch_after_merge_reset_config`:
       kept, not re-imported by the sync as new or as updated, deleted after the retry; and, after an
       abandonment instead, kept on the remote and imported again as a new Infrahub branch.
-      Partial: `test_a_remote_branch_kept_while_pending_is_not_imported_and_is_deleted_after_the_delivery`
+      `test_a_remote_branch_kept_while_pending_is_not_imported_and_is_deleted_after_the_delivery`
       covers the delivery part, on a worker that does not hold the branch, so the sync reads it as
       new. On the worker that ran the merge, the sync ignores an updated branch with no Infrahub
-      branch anyway. The abandonment part needs the abandonment mutation of T087.
+      branch anyway.
+      `test_an_abandonment_lets_the_repository_sync_and_merge_again_and_its_kept_branch_comes_back`
+      covers the abandonment part. The test stack has one worker: the test shows that this worker
+      drops its local branch and that the next sync imports the branch again. The drop on the other
+      workers is covered only by the unit test of the branch-deleted message
+      (`test_branch_deletion_is_broadcast_for_flagged_entries_only`).
 - [X] T098 [P] [US6] Add a case to `backend/tests/component/git/writeback/test_enqueue.py`: a merge of
       another branch is not blocked while repository X has a pending delivery (FR-010). The case
       calls the dispatcher, so the merge check does not run: T112 covers the refusal of the merge
