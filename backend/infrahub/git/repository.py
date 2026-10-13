@@ -141,6 +141,10 @@ class FailedImport:
     """A branch that could not be synchronized, with the phase that failed and why."""
 
     branch_name: str
+    infrahub_branch_name: str
+    """The Infrahub branch the objects go to, which differs from a git branch name for a trunk named unlike
+    Infrahub's default branch and for a repository in staging."""
+
     step: ImportStep
     reason: str
     on_default_branch: bool = False
@@ -650,6 +654,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             collected.failed_imports.append(
                 FailedImport(
                     branch_name=branch_name,
+                    infrahub_branch_name=infrahub_branch,
                     step=ImportStep.COLLECTION,
                     reason=str(exc),
                     on_default_branch=branch_name == self.default_branch,
@@ -699,11 +704,12 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 onto when not given.
 
         """
+        target_branch = import_branch or self._get_mapped_target_branch(branch_name=branch_name)
         try:
             await self._queue_advanced_branch(
                 collected=collected,
                 branch_name=branch_name,
-                import_branch=import_branch or self._get_mapped_target_branch(branch_name=branch_name),
+                import_branch=target_branch,
                 remote_heads=remote_heads,
                 graph_commits=graph_commits,
                 graph_branches=graph_branches,
@@ -723,6 +729,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             collected.failed_imports.append(
                 FailedImport(
                     branch_name=branch_name,
+                    infrahub_branch_name=target_branch,
                     step=ImportStep.COLLECTION,
                     reason=str(exc),
                     on_default_branch=branch_name == self.default_branch,
@@ -800,6 +807,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             collected.failed_imports.append(
                 FailedImport(
                     branch_name=divergence.branch_name,
+                    infrahub_branch_name=pending_import.infrahub_branch_name,
                     step=ImportStep.RECORD,
                     reason=self._log_record_failure(branch_name=divergence.branch_name, exc=exc),
                     on_default_branch=pending_import.on_default_branch,

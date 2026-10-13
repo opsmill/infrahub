@@ -75,6 +75,9 @@ from ..workflows.catalogue import (
     REQUEST_ARTIFACT_GENERATE,
 )
 from ..workflows.utils import add_branch_tag, add_tags
+from .activity.factory import ACTIVE_RUNS, build_repository_activity
+from .activity.models import RepositoryActivityOperation, RepositoryActivityPhase
+from .activity.recorder import ActivityRun, RepositoryActivity
 from .branch_status import accepts_commit_write
 from .constants import IMPORT_STATUS_CHECK_KIND, IMPORT_STATUS_CHECK_NAME, MERGE_CONFLICT_CHECK_KIND
 from .divergence.models import ReconciledBranch
@@ -217,22 +220,27 @@ async def add_git_repository(model: GitRepositoryAdd) -> None:
     await add_tags(branches=[model.infrahub_branch_name], nodes=[model.repository_id])
 
     client = get_client()
+    cache = await get_cache()
     importer = RepositoryFileImporter()
     syncer = RepositorySyncer(
         lock_registry=lock.registry,
         importer=importer,
         recorder=HistoryRewriteRecorder(store=SdkRepositoryRecordStore(client=client)),
-        retarget_markers=RetargetMarkers(cache=await get_cache()),
+        retarget_markers=RetargetMarkers(cache=cache),
     )
-    added = await RepositoryAdder(lock_registry=lock.registry, importer=importer, client=client).add(model)
-    repo = added.repository
+    activity = build_repository_activity(cache=cache)
+    async with activity.track(repository_id=model.repository_id, operation=RepositoryActivityOperation.ADD) as run:
+        added = await RepositoryAdder(lock_registry=lock.registry, importer=importer, client=client).add(
+            model, activity=run
+        )
+        repo = added.repository
 
-    if model.internal_status != RepositoryInternalStatus.ACTIVE.value:
-        if added.import_error:
-            raise added.import_error
-        return
+        if model.internal_status != RepositoryInternalStatus.ACTIVE.value:
+            if added.import_error:
+                raise added.import_error
+            return
 
-    outcome = await syncer.sync(repo)
+        outcome = await syncer.sync(repo, activity=run)
     log_skipped_branches(repo=repo, report=outcome.report)
     raise_if_branches_failed(repo=repo, outcome=outcome)
 
@@ -356,6 +364,7 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
     repository_location: str,
     operational_status: str,
     infrahub_branch: str,
+    activity_run_id: str,
     staging_branch: str | None = None,
     graph_commits: dict[str, str | None] | None = None,
 ) -> SyncOutcome:
@@ -365,10 +374,14 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
     fails before its import or the synchronization fails. Each branch import is shown by a run of its
     own, so it does not link this one. A successful run where nothing moved on the remote is not linked.
 
+    Args:
+        activity_run_id: The run, started by the caller in this process, that the synchronization reports to.
+
     Raises:
         RepositoryBranchesFailedError: When at least one branch failed to synchronize.
         RepositoryError: When the repository cannot be read or synchronized.
         CommitNotFoundError: When a commit the sync needs cannot be found.
+        ActiveRunNotFoundError: When this process tracks no activity run with that id.
 
     """
     syncer = RepositorySyncer(
@@ -377,6 +390,7 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
         recorder=HistoryRewriteRecorder(store=SdkRepositoryRecordStore(client=client)),
         retarget_markers=RetargetMarkers(cache=await get_cache()),
     )
+    activity = ACTIVE_RUNS.get(run_id=activity_run_id)
     online = operational_status == RepositoryOperationalStatus.ONLINE.value
     try:
         # Constructed inside the handler: it reads the repository node, so a failing read has to be
@@ -394,7 +408,7 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
         raise
 
     try:
-        outcome = await syncer.sync(repo, staging_branch=staging_branch, graph_commits=graph_commits)
+        outcome = await syncer.sync(repo, activity=activity, staging_branch=staging_branch, graph_commits=graph_commits)
     except (RepositoryError, CommitNotFoundError):
         if online:
             await add_tags(branches=[infrahub_branch], nodes=[str(repository_id)])
@@ -454,6 +468,7 @@ async def bootstrap_local_repository(
     repository: CoreRepository,
     infrahub_branch: str,
     client: InfrahubClient,
+    activity: ActivityRun,
 ) -> InfrahubRepository | None:
     """Ensure this worker has a usable local clone and seed the graph for a freshly created repo.
 
@@ -466,6 +481,7 @@ async def bootstrap_local_repository(
     log = get_run_logger()
     pending_import: PendingObjectImport | None = None
     async with lock.registry.get(name=repo_name, namespace="repository"):
+        await activity.set_phase(phase=RepositoryActivityPhase.FETCHING)
         init_failed = False
         try:
             repo = await InfrahubRepository.init(
@@ -506,7 +522,11 @@ async def bootstrap_local_repository(
     if pending_import is not None:
         try:
             await import_branch(
-                lock_registry=lock.registry, importer=RepositoryFileImporter(), repo=repo, pending_import=pending_import
+                lock_registry=lock.registry,
+                importer=RepositoryFileImporter(),
+                repo=repo,
+                pending_import=pending_import,
+                activity=activity,
             )
         except (RepositoryConnectionError, RepositoryCredentialsError) as exc:
             log.info(exc.message)
@@ -561,6 +581,7 @@ async def sync_repository_from_origin(
     infrahub_branch: str,
     default_branch_id: str,
     client: InfrahubClient,
+    activity: ActivityRun,
     graph_commits: dict[str, str | None] | None = None,
 ) -> None:
     """Sync the repository from its origin and send the worker pool the commits of the cycle.
@@ -581,6 +602,7 @@ async def sync_repository_from_origin(
             operational_status=repository.operational_status.value,
             staging_branch=staging_branch,
             infrahub_branch=infrahub_branch,
+            activity_run_id=activity.run_id,
             graph_commits=graph_commits,
         )
     except RepositoryBranchesFailedError as exc:
@@ -637,7 +659,11 @@ async def report_failed_branches(
 
 
 async def sync_remote_repository(
-    repo_name: str, repository_data: RepositoryData, branches: dict[str, BranchData], client: InfrahubClient
+    repo_name: str,
+    repository_data: RepositoryData,
+    branches: dict[str, BranchData],
+    client: InfrahubClient,
+    activity: RepositoryActivity,
 ) -> None:
     """Synchronize one repository with its origin, cloning it on this worker first when needed."""
     repository: CoreRepository = repository_data.repository
@@ -649,24 +675,27 @@ async def sync_remote_repository(
 
     infrahub_branch = staging_branch or registry.default_branch
 
-    repo = await bootstrap_local_repository(
-        repo_name=repo_name,
-        repository=repository,
-        infrahub_branch=infrahub_branch,
-        client=client,
-    )
-    if repo is None:
-        return
+    async with activity.track(repository_id=repository.id, operation=RepositoryActivityOperation.SYNC) as run:
+        repo = await bootstrap_local_repository(
+            repo_name=repo_name,
+            repository=repository,
+            infrahub_branch=infrahub_branch,
+            client=client,
+            activity=run,
+        )
+        if repo is None:
+            return
 
-    await sync_repository_from_origin(
-        repository=repository,
-        repo=repo,
-        staging_branch=staging_branch,
-        infrahub_branch=infrahub_branch,
-        default_branch_id=branches[registry.default_branch].id,
-        client=client,
-        graph_commits=select_writable_branch_commits(branch_commits=repository_data.branches, branches=branches),
-    )
+        await sync_repository_from_origin(
+            repository=repository,
+            repo=repo,
+            staging_branch=staging_branch,
+            infrahub_branch=infrahub_branch,
+            default_branch_id=branches[registry.default_branch].id,
+            client=client,
+            activity=run,
+            graph_commits=select_writable_branch_commits(branch_commits=repository_data.branches, branches=branches),
+        )
 
 
 @flow(name="git_repositories_sync", flow_run_name="Sync Git Repositories")
@@ -674,6 +703,7 @@ async def sync_remote_repositories() -> None:
     db = await get_database()
 
     client = get_client()
+    activity = build_repository_activity(cache=await get_cache())
     log = get_run_logger()
 
     branches = await client.branch.all()
@@ -683,7 +713,11 @@ async def sync_remote_repositories() -> None:
     for repo_name, repository_data in repositories.items():
         try:
             await sync_remote_repository(
-                repo_name=repo_name, repository_data=repository_data, branches=branches, client=client
+                repo_name=repo_name,
+                repository_data=repository_data,
+                branches=branches,
+                client=client,
+                activity=activity,
             )
         # One repository that fails must not stop the cycle for the repositories after it.
         except Exception:

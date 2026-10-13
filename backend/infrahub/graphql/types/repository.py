@@ -1,8 +1,14 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any
+
 from graphene import DateTime, Enum, Field, Int, List, NonNull, ObjectType, String
 
 from infrahub.core import constants
+from infrahub.git.activity import models as activity_models
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 RepositoryGitCondition = Enum.from_enum(
     constants.RepositoryGitCondition,
@@ -108,4 +114,175 @@ class RepositoryBranchDrifts(ObjectType):
         description="One row per open branch the caller may view, and for a read-write repository only those "
         "synchronised with Git. The set is the branch list as it stands now: an `at` in the past changes the "
         "values each row reports, never which branches are listed.",
+    )
+
+
+def _value_descriptions(type_description: str, values: dict[Any, str]) -> Callable[[Any], str]:
+    """Return the description callable graphene calls with each enum value, and with None for the type."""
+
+    def describe(value: Any) -> str:
+        if value is None:
+            return type_description
+        return values[value]
+
+    return describe
+
+
+RepositoryActivityOperation = Enum.from_enum(
+    activity_models.RepositoryActivityOperation,
+    description=_value_descriptions(
+        type_description="Operation that a repository run performs.",
+        values={
+            activity_models.RepositoryActivityOperation.SYNC: (
+                "Periodic check of every tracked branch for new commits, and import of those commits."
+            ),
+            activity_models.RepositoryActivityOperation.REIMPORT: "Import of one branch requested by a user.",
+            activity_models.RepositoryActivityOperation.PULL: (
+                "Import of the latest commit of the ref a read-only repository tracks."
+            ),
+            activity_models.RepositoryActivityOperation.ADD: "First clone and import after the repository was added.",
+            activity_models.RepositoryActivityOperation.BRANCH_CREATE: (
+                "Creation of the git branch for a new Infrahub branch."
+            ),
+            activity_models.RepositoryActivityOperation.MERGE: "Merge of a branch's git changes into its target branch.",
+        },
+    ),
+)
+
+RepositoryActivityPhase = Enum.from_enum(
+    activity_models.RepositoryActivityPhase,
+    description=_value_descriptions(
+        type_description="Step of a run.",
+        values={
+            activity_models.RepositoryActivityPhase.FETCHING: "Fetching from the remote. Covers every branch.",
+            activity_models.RepositoryActivityPhase.BUILDING: (
+                "Reading and validating the repository files for one branch."
+            ),
+            activity_models.RepositoryActivityPhase.APPLYING: (
+                "Writing the imported objects to Infrahub for one branch."
+            ),
+        },
+    ),
+)
+
+RepositoryActivityBranchOutcome = Enum.from_enum(
+    activity_models.RepositoryActivityBranchOutcome,
+    description=_value_descriptions(
+        type_description="Result of a run for one branch.",
+        values={
+            activity_models.RepositoryActivityBranchOutcome.IMPORTED: (
+                "The run changed the branch: it imported objects into it, created it in Git, or merged into it."
+            ),
+            activity_models.RepositoryActivityBranchOutcome.FAILED: (
+                "The run failed on this branch. The task log shows why."
+            ),
+        },
+    ),
+)
+
+
+class RepositoryActivityRunNode(ObjectType):
+    """A run that is working on a repository now."""
+
+    run_id = String(required=True, description="Identifier of the run, unique while the run is active.")
+    operation = RepositoryActivityOperation(required=True, description="What the run is doing.")
+    phase = RepositoryActivityPhase(
+        description="Step the run is in. Null until the run reports its first step, and for an operation without "
+        "separate steps."
+    )
+    branch_name = String(
+        description="Infrahub branch being built or applied. Null while fetching, because a fetch covers every branch."
+    )
+    worker_id = String(required=True, description="Worker running the run, as listed by InfrahubStatus.")
+    started_at = DateTime(required=True, description="When the run started, by the worker's clock.")
+    updated_at = DateTime(required=True, description="When the worker last confirmed that the run is still active.")
+
+
+class RepositoryActivityRunEdge(ObjectType):
+    """One entry in the list of active runs."""
+
+    node = Field(RepositoryActivityRunNode, required=True, description="One active run.")
+
+
+class RepositoryActivityRuns(ObjectType):
+    """The runs working on a repository now."""
+
+    edges = List(NonNull(RepositoryActivityRunEdge), required=True, description="The active runs, oldest first.")
+
+
+class RepositoryActivityBranchNode(ObjectType):
+    """The result of a run for one branch."""
+
+    branch_name = String(required=True, description="Infrahub branch.")
+    outcome = RepositoryActivityBranchOutcome(required=True, description="Result of the run for this branch.")
+
+
+class RepositoryActivityBranchEdge(ObjectType):
+    """One entry in the list of branch results."""
+
+    node = Field(RepositoryActivityBranchNode, required=True, description="One branch result.")
+
+
+class RepositoryActivityBranches(ObjectType):
+    """The branches the run changed or failed on."""
+
+    edges = List(NonNull(RepositoryActivityBranchEdge), required=True, description="The branch results of the run.")
+
+
+class RepositoryActivityLastRunNode(ObjectType):
+    """The most recent finished run of one operation."""
+
+    operation = RepositoryActivityOperation(required=True, description="What the run did.")
+    started_at = DateTime(required=True, description="When the run started, by the worker's clock.")
+    finished_at = DateTime(required=True, description="When the run ended, whether it succeeded or failed.")
+    branches = Field(
+        RepositoryActivityBranches,
+        required=True,
+        description="Branches that the run changed or failed on. Branches without a change are left out.",
+    )
+
+
+class RepositoryActivityLastRunEdge(ObjectType):
+    """One entry in the list of last runs."""
+
+    node = Field(RepositoryActivityLastRunNode, required=True, description="The last run of one operation.")
+
+
+class RepositoryActivityLastRuns(ObjectType):
+    """The most recent finished run of each operation."""
+
+    edges = List(
+        NonNull(RepositoryActivityLastRunEdge), required=True, description="One last run per operation, newest first."
+    )
+
+
+class RepositoryActivityLock(ObjectType):
+    """The holder of a repository lock."""
+
+    worker_id = String(required=True, description="Worker holding the lock, as listed by InfrahubStatus.")
+    requested_at = DateTime(
+        description="When the worker asked for the lock, by its clock. It can have waited for the lock after that. "
+        "Null when it cannot be read."
+    )
+
+
+class RepositoryActivity(ObjectType):
+    """What is running on a repository now, across every branch."""
+
+    repository_id = String(required=True, description="ID of the repository the answer is for.")
+    active_runs = Field(
+        RepositoryActivityRuns,
+        required=True,
+        description="Runs working on this repository now. Empty when nothing is running. A run whose worker "
+        "stopped without cleaning up disappears within 5 minutes.",
+    )
+    last_runs = Field(
+        RepositoryActivityLastRuns,
+        required=True,
+        description="The most recent finished run of each operation in the last 30 days, newest first.",
+    )
+    lock = Field(
+        RepositoryActivityLock,
+        description="Holder of the repository lock. Null when the lock is not held. Short tasks such as fetches "
+        "also hold the lock, so a held lock does not mean that a run is active.",
     )

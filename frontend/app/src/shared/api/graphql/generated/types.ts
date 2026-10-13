@@ -25824,6 +25824,8 @@ export type Query = {
   InfrahubPermissions: AccountPermissionsEdges;
   /** Find all nodes of specified kinds reachable from a source node */
   InfrahubReachableNodes: ReachableNodesResultType;
+  /** What is running on a repository now, the last run of each operation, and which worker holds the repository lock. The answer is the same on every branch. */
+  InfrahubRepositoryActivity: RepositoryActivity;
   /** Per-branch drift for a repository. */
   InfrahubRepositoryBranchDrift: RepositoryBranchDrifts;
   /** Status of one repository as seen from every relevant branch, one row per branch. Resolved entirely from the graph; never contacts a task worker. Requires view permission on the repository's kind covering both the default and non-default branches (ALLOW_ALL, or ALLOW_DEFAULT plus ALLOW_OTHER). Always reports the present: a request carrying an 'at' query parameter is rejected, because the branch list this query builds its rows from has no historical form. */
@@ -38109,6 +38111,11 @@ export type QueryInfrahubReachableNodesArgs = {
 };
 
 
+export type QueryInfrahubRepositoryActivityArgs = {
+  id: Scalars['String']['input'];
+};
+
+
 export type QueryInfrahubRepositoryBranchDriftArgs = {
   repository_id: Scalars['String']['input'];
 };
@@ -39065,6 +39072,148 @@ export type Relationships = {
   __typename: 'Relationships';
   count: Scalars['Int']['output'];
   edges: Array<RelationshipNode>;
+};
+
+/** What is running on a repository now, across every branch. */
+export type RepositoryActivity = {
+  __typename: 'RepositoryActivity';
+  /** Runs working on this repository now. Empty when nothing is running. A run whose worker stopped without cleaning up disappears within 5 minutes. */
+  active_runs: RepositoryActivityRuns;
+  /** The most recent finished run of each operation in the last 30 days, newest first. */
+  last_runs: RepositoryActivityLastRuns;
+  /** Holder of the repository lock. Null when the lock is not held. Short tasks such as fetches also hold the lock, so a held lock does not mean that a run is active. */
+  lock: Maybe<RepositoryActivityLock>;
+  /** ID of the repository the answer is for. */
+  repository_id: Scalars['String']['output'];
+};
+
+/** One entry in the list of branch results. */
+export type RepositoryActivityBranchEdge = {
+  __typename: 'RepositoryActivityBranchEdge';
+  /** One branch result. */
+  node: RepositoryActivityBranchNode;
+};
+
+/** The result of a run for one branch. */
+export type RepositoryActivityBranchNode = {
+  __typename: 'RepositoryActivityBranchNode';
+  /** Infrahub branch. */
+  branch_name: Scalars['String']['output'];
+  /** Result of the run for this branch. */
+  outcome: RepositoryActivityBranchOutcome;
+};
+
+/** Result of a run for one branch. */
+export const RepositoryActivityBranchOutcome = {
+  /** The run failed on this branch. The task log shows why. */
+  FAILED: 'FAILED',
+  /** The run changed the branch: it imported objects into it, created it in Git, or merged into it. */
+  IMPORTED: 'IMPORTED'
+} as const;
+
+export type RepositoryActivityBranchOutcome = typeof RepositoryActivityBranchOutcome[keyof typeof RepositoryActivityBranchOutcome];
+/** The branches the run changed or failed on. */
+export type RepositoryActivityBranches = {
+  __typename: 'RepositoryActivityBranches';
+  /** The branch results of the run. */
+  edges: Array<RepositoryActivityBranchEdge>;
+};
+
+/** One entry in the list of last runs. */
+export type RepositoryActivityLastRunEdge = {
+  __typename: 'RepositoryActivityLastRunEdge';
+  /** The last run of one operation. */
+  node: RepositoryActivityLastRunNode;
+};
+
+/** The most recent finished run of one operation. */
+export type RepositoryActivityLastRunNode = {
+  __typename: 'RepositoryActivityLastRunNode';
+  /** Branches that the run changed or failed on. Branches without a change are left out. */
+  branches: RepositoryActivityBranches;
+  /** When the run ended, whether it succeeded or failed. */
+  finished_at: Scalars['DateTime']['output'];
+  /** What the run did. */
+  operation: RepositoryActivityOperation;
+  /** When the run started, by the worker's clock. */
+  started_at: Scalars['DateTime']['output'];
+};
+
+/** The most recent finished run of each operation. */
+export type RepositoryActivityLastRuns = {
+  __typename: 'RepositoryActivityLastRuns';
+  /** One last run per operation, newest first. */
+  edges: Array<RepositoryActivityLastRunEdge>;
+};
+
+/** The holder of a repository lock. */
+export type RepositoryActivityLock = {
+  __typename: 'RepositoryActivityLock';
+  /** When the worker asked for the lock, by its clock. It can have waited for the lock after that. Null when it cannot be read. */
+  requested_at: Maybe<Scalars['DateTime']['output']>;
+  /** Worker holding the lock, as listed by InfrahubStatus. */
+  worker_id: Scalars['String']['output'];
+};
+
+/** Operation that a repository run performs. */
+export const RepositoryActivityOperation = {
+  /** First clone and import after the repository was added. */
+  ADD: 'ADD',
+  /** Creation of the git branch for a new Infrahub branch. */
+  BRANCH_CREATE: 'BRANCH_CREATE',
+  /** Merge of a branch's git changes into its target branch. */
+  MERGE: 'MERGE',
+  /** Import of the latest commit of the ref a read-only repository tracks. */
+  PULL: 'PULL',
+  /** Import of one branch requested by a user. */
+  REIMPORT: 'REIMPORT',
+  /** Periodic check of every tracked branch for new commits, and import of those commits. */
+  SYNC: 'SYNC'
+} as const;
+
+export type RepositoryActivityOperation = typeof RepositoryActivityOperation[keyof typeof RepositoryActivityOperation];
+/** Step of a run. */
+export const RepositoryActivityPhase = {
+  /** Writing the imported objects to Infrahub for one branch. */
+  APPLYING: 'APPLYING',
+  /** Reading and validating the repository files for one branch. */
+  BUILDING: 'BUILDING',
+  /** Fetching from the remote. Covers every branch. */
+  FETCHING: 'FETCHING'
+} as const;
+
+export type RepositoryActivityPhase = typeof RepositoryActivityPhase[keyof typeof RepositoryActivityPhase];
+/** One entry in the list of active runs. */
+export type RepositoryActivityRunEdge = {
+  __typename: 'RepositoryActivityRunEdge';
+  /** One active run. */
+  node: RepositoryActivityRunNode;
+};
+
+/** A run that is working on a repository now. */
+export type RepositoryActivityRunNode = {
+  __typename: 'RepositoryActivityRunNode';
+  /** Infrahub branch being built or applied. Null while fetching, because a fetch covers every branch. */
+  branch_name: Maybe<Scalars['String']['output']>;
+  /** What the run is doing. */
+  operation: RepositoryActivityOperation;
+  /** Step the run is in. Null until the run reports its first step, and for an operation without separate steps. */
+  phase: Maybe<RepositoryActivityPhase>;
+  /** Identifier of the run, unique while the run is active. */
+  run_id: Scalars['String']['output'];
+  /** When the run started, by the worker's clock. */
+  started_at: Scalars['DateTime']['output'];
+  /** When the worker last confirmed that the run is still active. */
+  updated_at: Scalars['DateTime']['output'];
+  /** Worker running the run, as listed by InfrahubStatus. */
+  worker_id: Scalars['String']['output'];
+};
+
+/** The runs working on a repository now. */
+export type RepositoryActivityRuns = {
+  __typename: 'RepositoryActivityRuns';
+  /** The active runs, oldest first. */
+  edges: Array<RepositoryActivityRunEdge>;
 };
 
 /** Drift of one Infrahub branch of a repository. */
