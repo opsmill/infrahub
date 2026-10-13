@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-from infrahub.core.constants import SYSTEM_USER_ID
+from infrahub.core.constants import SYSTEM_USER_ID, PoolRecordProvenance
 from infrahub.core.query.resource_manager import (
     NumberPoolReleaseReserved,
     NumberPoolSetReserved,
@@ -68,8 +68,10 @@ class NumberPoolAttributeAllocator:
             division=division,
         )
 
-    async def attach(self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute, user_id: str) -> None:
-        """Have the pool track the number the saved attribute already holds.
+    async def attach(
+        self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute, user_id: str
+    ) -> PoolRecordProvenance:
+        """Have the pool track the number the saved attribute already holds, and say what its record makes of it.
 
         Raises:
             InitializationError: When the attribute has not been saved yet.
@@ -83,9 +85,11 @@ class NumberPoolAttributeAllocator:
             identifier=node.get_id(),
             attribute_id=attribute.id,
             allocated_value=None,
+            held_value=attribute.value,
             user_id=user_id,
         )
         await query.execute(db=self.db)
+        return query.get_provenance()
 
     async def release(self, attribute: BaseAttribute, user_id: str) -> None:
         """Have every pool stop tracking the saved attribute, which keeps the number it holds.

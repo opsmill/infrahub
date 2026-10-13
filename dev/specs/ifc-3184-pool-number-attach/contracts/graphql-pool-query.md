@@ -102,9 +102,9 @@ is a silent no-op — the operator learns nothing. It is also one published-cont
 | | Before | After |
 |---|---|---|
 | Field | `source: LineageSource` | **unchanged** |
-| Populated by | a stored `HAS_SOURCE` edge written by the pool | the user's `HAS_SOURCE` if one resolves active, else the pool reached by the inbound `-global-` `IS_RESERVED` edge |
+| Populated by | a stored `HAS_SOURCE` edge written by the pool | the pool reached by the inbound `-global-` `IS_RESERVED` edge while one is live, else the user's `HAS_SOURCE` if one resolves active |
 | Display for an attribute with no user source | the pool | **the pool** — unchanged |
-| Display for an attribute with a user source | previously impossible (refused) | the user's source |
+| Display for an attribute with a user source | previously impossible (refused) | the pool while it tracks the attribute; the user's source once it is detached |
 | Appears in branch diffs | yes | **no** |
 
 `CoreNumberPool` already inherits `LineageSource`
@@ -112,30 +112,34 @@ is a silent no-op — the operator learns nothing. It is also one published-cont
 
 **Behaviour changes a client can observe:**
 
-1. A user may now set `source` on a pool-tracked attribute (FR-030a deleted). Doing so hides *which*
-   pool tracks it until the deferred `from_pool` output field lands. Nothing the pool computes is
-   affected — utilization, the in-use list and next-value read the record only.
+1. A user may now set `source` on a pool-tracked attribute (FR-030a deleted). The edge is stored,
+   but `source` keeps reporting the pool while the pool tracks the attribute; the user's source is
+   what a read reports once the attribute is detached. Nothing the pool computes is affected —
+   utilization, the in-use list and next-value read the record only.
 2. Allocating or attaching on a branch no longer shows a source change in the diff, only a value
    change. Defensible — the pool's claim is branch-agnostic, so diffing it per branch was always a
    fiction — but user-visible, and it needs a changelog entry.
 
 ### Implementation constraint
 
-The derivation must return the **pool vertex**, not its uuid. Extraction builds
-`AttributeNodePropertyFromDB(uuid=…, labels=…)` from the returned node's labels, and those labels are
-what `graphql/types/interface.py::InfrahubInterface.resolve_type` uses to select the concrete GraphQL
-type. Returning an id alone breaks `__kind__` resolution — assert the resolved kind in a test, not
-just the uuid.
+The pool is read apart from the stored source: the attribute query returns the tracking pool's uuid
+with the provenance of the value held (`MetadataOptions.TRACKING_POOL`, requested whenever `source` is
+selected on a `Number` or `NumberPool` attribute) into the attribute's `tracking_pool` property, and
+the GraphQL render loads that pool node and renders it in the `source` slot ahead of the stored
+source. The concrete GraphQL type comes from the loaded node, so assert the resolved kind in a test,
+not just the uuid. The stored source never holds the pool, so a save after a re-pool or a detach
+cannot write the pool back as a `HAS_SOURCE` edge. Python callers reading `get_source()` get the
+stored source only; the pool is reported by `tracking_pool`.
 
 ---
 
 ## 4. Not in this slice
 
-- **A dedicated `from_pool` output field.** It is the end state and the only way to show a pool and a
-  user source together. FR-030b makes it *cheaper* to add later, not harder — it would remove a
-  branch in the source resolver rather than change a contract. Deferred: per-attribute user sources
-  on pooled attributes are rare (automatic source assignment applies only to repository-managed core
-  objects, not the user data nodes FR-030 scopes this to).
+- **A dedicated `from_pool` output field.** Built in PR #11000 and dropped on review in October
+  2026: `source` stays the single slot that names the pool, ahead of a user-set source. A user source
+  on a pooled attribute is stored and reported once the attribute is detached. Per-attribute user
+  sources on pooled attributes are rare (automatic source assignment applies only to
+  repository-managed core objects, not the user data nodes FR-030 scopes this to).
 - **Bulk attach** and the pool-level mutation it would need. All-or-nothing cannot be built from N
   update calls. Deferred with the frontend.
 - **Input shape changes.** No new input fields. `from_pool` changes meaning only — see

@@ -9,7 +9,7 @@ from infrahub_sdk.utils import extract_fields_first_node
 from typing_extensions import Self
 
 from infrahub import lock
-from infrahub.core.constants import InfrahubKind, MutationAction
+from infrahub.core.constants import InfrahubKind, MetadataOptions, MutationAction
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.file_processor import FileUploadProcessor
 from infrahub.core.manager import NodeManager
@@ -430,7 +430,12 @@ class InfrahubMutationMixin:
 
         if "id" in dict_data:
             node = await NodeManager.get_one(
-                db=db, id=dict_data["id"], kind=schema_name, branch=branch, raise_on_error=True
+                db=db,
+                id=dict_data["id"],
+                kind=schema_name,
+                branch=branch,
+                include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.TRACKING_POOL,
+                raise_on_error=True,
             )
             file_stored = await cls._process_file(file_processor=file_processor, data=data, node=node)
             updated_obj, mutation = await cls._call_mutate_update(
@@ -446,7 +451,13 @@ class InfrahubMutationMixin:
             node = await node_getter_default_filter.get_node(node_schema=schema, data=data, branch=branch)
 
         if "hfid" in data:
-            node = await NodeManager.get_one_by_hfid(db=db, hfid=dict_data["hfid"], kind=schema_name, branch=branch)
+            node = await NodeManager.get_one_by_hfid(
+                db=db,
+                hfid=dict_data["hfid"],
+                kind=schema_name,
+                branch=branch,
+                include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.TRACKING_POOL,
+            )
 
         file_stored = await cls._process_file(file_processor=file_processor, data=data, node=node)
 
@@ -477,7 +488,12 @@ class InfrahubMutationMixin:
 
             try:
                 node = await NodeManager.get_one(
-                    db=db, id=node_id, kind=schema_name, branch=branch, raise_on_error=True
+                    db=db,
+                    id=node_id,
+                    kind=schema_name,
+                    branch=branch,
+                    include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.TRACKING_POOL,
+                    raise_on_error=True,
                 )
             except NodeNotFoundError as exc:
                 if branch.is_default:

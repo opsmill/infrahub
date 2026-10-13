@@ -167,8 +167,9 @@ by the pool.
    resolved GraphQL **kind**, not only the uuid: the concrete type is selected from the returned
    node's labels, so an implementation returning an id alone passes a uuid assertion and still breaks.
 3. Set a user source on that attribute.
-4. **Expected**: the reported source becomes the user's, and **nothing the pool reports changes** —
-   utilization, the in-use list and the next number are all unaffected.
+4. **Expected**: `source` still reports the **pool** while it tracks the attribute, the user's source
+   is stored behind it, and **nothing the pool reports changes** — utilization, the in-use list and
+   the next number are all unaffected.
 5. Detach on a branch, then delete that branch.
 6. **Expected**: no branch reports a pool source for that attribute, and the pool reports nothing for
    it.

@@ -584,11 +584,16 @@ class TestTemplateNumberPoolAttributes(TestInfrahubApp):
         )
         rack_id = create_result["InfraRackCreate"]["object"]["id"]
 
-        rack = await NodeManager.get_one(id=rack_id, db=db, include_metadata=MetadataOptions.SOURCE)
+        rack = await NodeManager.get_one(
+            id=rack_id, db=db, include_metadata=MetadataOptions.SOURCE | MetadataOptions.TRACKING_POOL
+        )
         assert rack.name.value == "rack-from-pool-template"
         assert rack.slot_id.value is not None
         assert 1 <= rack.slot_id.value <= 100
-        assert rack.slot_id.source_id == slot_pool.id
+        assert rack.slot_id.source_id is None
+        tracking_pool = rack.slot_id.tracking_pool
+        assert tracking_pool is not None
+        assert tracking_pool.pool_id == slot_pool.id
 
     async def test_rack_explicit_slot_overrides_pool_template(
         self, db: InfrahubDatabase, template_with_pool_slot: InfrahubNode, client: InfrahubClient

@@ -12,12 +12,21 @@ from infrahub.core.constants import (
 )
 from infrahub.core.query import Query, QueryInitKwargs, QueryResult, QueryType
 from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
+from infrahub.exceptions import InitializationError
 
 if TYPE_CHECKING:
     from infrahub.core.protocols import CoreNumberPool
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
     from infrahub.pools.scope import Division
+
+
+@dataclass(frozen=True)
+class TrackingPool:
+    """The number pool whose live record covers an attribute, and what that record says about one value."""
+
+    pool_id: str
+    provenance: PoolRecordProvenance
 
 
 @dataclass(frozen=True)
@@ -1022,6 +1031,9 @@ class NumberPoolSetReserved(Query):
     The list is never changed in place: extending it closes the record and creates a new one, which keeps the
     history and stamps the pool like any other record change. The list is only ever tested for membership, so
     its order carries no meaning.
+
+    The row returned says whether `held_value`, the number the attribute holds after the write, is one the
+    live record lists as allocated; `held_value` defaults to the number allocated now.
     """
 
     name = "numberpool_set_reserved"
@@ -1033,12 +1045,14 @@ class NumberPoolSetReserved(Query):
         identifier: str,
         attribute_id: str,
         allocated_value: int | None,
+        held_value: int | None = None,
         **kwargs: Unpack[QueryInitKwargs],
     ) -> None:
         self.pool_id = pool_id
         self.identifier = identifier
         self.attribute_id = attribute_id
         self.allocated_value = allocated_value
+        self.held_value = held_value
 
         super().__init__(**kwargs)
 
@@ -1048,6 +1062,7 @@ class NumberPoolSetReserved(Query):
         self.params["at"] = self.at.to_string()
         self.params["user_id"] = self.user_id
         self.params["allocated_value"] = self.allocated_value
+        self.params["held_value"] = self.held_value if self.held_value is not None else self.allocated_value
         self.params["attribute_id"] = self.attribute_id
 
         global_branch = registry.get_global_branch()
@@ -1088,7 +1103,7 @@ class NumberPoolSetReserved(Query):
         WITH pool, attr, own
         ORDER BY own.from DESC
         LIMIT 1
-        WITH pool, attr,
+        WITH pool, attr, own,
             CASE
                 WHEN own IS NULL THEN []
                 WHEN $allocated_value IS NULL OR $allocated_value IN coalesce(own.allocated_values, []) THEN [own]
@@ -1112,11 +1127,20 @@ class NumberPoolSetReserved(Query):
         // ----------
         // Create the expected IS_RESERVED edge unless one was kept, which is the only case the pool changes
         // ----------
-        WITH pool, attr, kept_edges, allocated_values
-        WHERE size(kept_edges) = 0
-        CREATE (pool)-[rel:IS_RESERVED $rel_prop]->(attr)
-        SET rel.allocated_values = allocated_values
-        %(stamp_pool)s
+        WITH pool, attr, own, kept_edges, allocated_values
+        CALL (pool, attr, kept_edges, allocated_values) {
+            WITH *
+            WHERE size(kept_edges) = 0
+            CREATE (pool)-[rel:IS_RESERVED $rel_prop]->(attr)
+            SET rel.allocated_values = allocated_values
+            %(stamp_pool)s
+        }
+        // ----------
+        // Report whether the number the attribute holds is one the live record lists as allocated
+        // ----------
+        WITH CASE WHEN size(kept_edges) = 0 THEN allocated_values ELSE own.allocated_values END AS live_allocated_values
+        WITH live_allocated_values IS NOT NULL
+            AND NOT coalesce($held_value IN live_allocated_values, FALSE) AS is_provided
         """ % {
             "number_pool": InfrahubKind.NUMBERPOOL,
             "stamp_other_pool": stamp_vertex_metadata("other_pool"),
@@ -1124,7 +1148,23 @@ class NumberPoolSetReserved(Query):
         }
 
         self.add_to_query(query)
-        self.return_labels = ["attr.uuid AS attribute_id", "rel"]
+        self.return_labels = ["is_provided"]
+
+    def get_provenance(self) -> PoolRecordProvenance:
+        """What the live record says about the number the attribute holds after the write.
+
+        Raises:
+            InitializationError: When the write matched no pool and attribute, so no record was written.
+
+        """
+        result = self.get_result()
+        if result is None:
+            raise InitializationError(
+                f"No record was written for attribute {self.attribute_id} and pool {self.pool_id}"
+            )
+        if result.get_as_type("is_provided", return_type=bool):
+            return PoolRecordProvenance.PROVIDED
+        return PoolRecordProvenance.ALLOCATED
 
 
 class NumberPoolReleaseReserved(Query):

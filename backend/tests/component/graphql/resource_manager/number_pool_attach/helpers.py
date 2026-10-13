@@ -1,4 +1,5 @@
 from copy import deepcopy
+from dataclasses import dataclass
 from typing import Any
 
 from infrahub.auth.session import AccountSession
@@ -9,6 +10,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.query.resource_manager import NumberPoolGetAllocated, NumberPoolGetTrackingPool
 from infrahub.core.schema.attribute_schema import AttributeSchema
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.pools.number_pool_repository import NumberPoolRepository
@@ -39,7 +41,12 @@ mutation UpdateTicket($id: String!, $ticket_id: NumberAttributeUpdate, $sequence
 TICKET_SOURCES = """
 query TicketSources($id: ID!) {
     TestingTicket(ids: [$id]) {
-        edges { node { ticket_id { value source { id } } sequence { value source { id } } } }
+        edges {
+            node {
+                ticket_id { value source { id __typename } }
+                sequence { value source { id __typename } }
+            }
+        }
     }
 }
 """
@@ -81,8 +88,9 @@ async def execute(
     source: str,
     variables: dict[str, Any],
     account_session: AccountSession | None = None,
+    at: Timestamp | None = None,
 ) -> dict[str, Any] | None:
-    gql_params = await prepare_graphql_params(db=db, branch=branch, account_session=account_session)
+    gql_params = await prepare_graphql_params(db=db, branch=branch, at=at, account_session=account_session)
     result = await graphql(
         schema=gql_params.schema,
         source=source,
@@ -172,17 +180,33 @@ async def is_reserved_edges(db: InfrahubDatabase, node_id: str, attribute_name: 
     return sorted((edge for edge in edges if edge.edge_type == "IS_RESERVED"), key=lambda edge: edge.edge_id or "")
 
 
-async def pooled_sources(
-    db: InfrahubDatabase, branch: Branch, node_id: str
-) -> dict[str, tuple[int | None, str | None]]:
-    """The value of each pooled number on the ticket, with the id of the source a read of it reports."""
-    data = await execute(db=db, branch=branch, source=TICKET_SOURCES, variables={"id": node_id})
+@dataclass(frozen=True)
+class AttributeRead:
+    """What a GraphQL read of one pooled number reports: its value and the node its `source` names."""
+
+    value: int | None
+    source_id: str | None
+    source_kind: str | None
+
+
+def attribute_read(field: dict[str, Any]) -> AttributeRead:
+    source = field["source"] or {}
+    return AttributeRead(value=field["value"], source_id=source.get("id"), source_kind=source.get("__typename"))
+
+
+def pool_source(value: int | None, pool: CoreNumberPool) -> AttributeRead:
+    """The read of a number the pool tracks, whatever source the user set."""
+    return AttributeRead(value=value, source_id=pool.get_id(), source_kind=InfrahubKind.NUMBERPOOL)
+
+
+async def pooled_numbers(
+    db: InfrahubDatabase, branch: Branch, node_id: str, at: Timestamp | None = None
+) -> dict[str, AttributeRead]:
+    """What a read of each pooled number on the ticket reports, keyed by attribute name."""
+    data = await execute(db=db, branch=branch, source=TICKET_SOURCES, variables={"id": node_id}, at=at)
     assert data
     [edge] = data["TestingTicket"]["edges"]
-    return {
-        name: (edge["node"][name]["value"], (edge["node"][name]["source"] or {}).get("id"))
-        for name in ("ticket_id", "sequence")
-    }
+    return {name: attribute_read(edge["node"][name]) for name in ("ticket_id", "sequence")}
 
 
 async def tracking_pool_id(db: InfrahubDatabase, node_id: str, attribute_name: str = "ticket_id") -> str | None:

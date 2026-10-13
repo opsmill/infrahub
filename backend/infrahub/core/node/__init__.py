@@ -16,6 +16,7 @@ from infrahub.core.constants import (
     BranchSupportType,
     ComputedAttributeKind,
     MetadataOptions,
+    PoolRecordProvenance,
     RelationshipCardinality,
     RelationshipKind,
 )
@@ -26,6 +27,7 @@ from infrahub.core.metadata.model import MetadataInfo
 from infrahub.core.protocols_base import CoreNode
 from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery, NodeUpdateMetadataQuery
 from infrahub.core.query.node_agnostic_retirement import RetireNodeAgnosticFieldsQuery
+from infrahub.core.query.resource_manager import TrackingPool
 from infrahub.core.schema import (
     AttributeSchema,
     NodeSchema,
@@ -685,6 +687,9 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                         # The template drew the number already; naming the pool here records which
                         # one accounts for it, it does not ask for a second number.
                         attribute.from_pool = {"id": allocated_pool_id}
+                        attribute.tracking_pool = TrackingPool(
+                            pool_id=allocated_pool_id, provenance=PoolRecordProvenance.ALLOCATED
+                        )
                     elif attribute.from_pool is not None or attribute.schema.kind == "NumberPool":
                         pooled_attributes.append(attribute)
                         continue

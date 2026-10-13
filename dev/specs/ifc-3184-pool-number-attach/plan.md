@@ -298,18 +298,19 @@ unchanged — omitting a filter can only add numbers to the taken set.
 
 ### 5. Source derivation (FR-030b)
 
-`NodeListGetAttributeQuery._add_source_to_query` gains an `OPTIONAL MATCH` for the inbound `-global-`
-`IS_RESERVED` edge on the already-bound `Attribute` vertex, plus a `CASE` preferring the user's
-`HAS_SOURCE` when one resolves active.
+`NodeListGetAttributeQuery` reads the inbound `-global-` `IS_RESERVED` edge on the already-bound
+`Attribute` vertex in a subquery of its own (`MetadataOptions.TRACKING_POOL`), returning the pool's
+uuid and the provenance of the value held, into the attribute's `tracking_pool` property. The stored
+source read is untouched. The GraphQL render puts the tracking pool in the `source` slot ahead of the
+stored source.
 
 Two constraints that decide whether this works:
 
-1. It must return the **pool vertex**, not its uuid. Extraction builds
-   `AttributeNodePropertyFromDB(uuid=…, labels=…)` from `result.get_node("source").labels`, and those
-   labels are what `graphql/types/interface.py::InfrahubInterface.resolve_type` uses to select the
-   concrete GraphQL type. Returning only an id breaks `__kind__` resolution. This is the single most
+1. The render must load the **pool node** before rendering it: the concrete GraphQL type is selected
+   from the loaded node's kind, so an id alone breaks `__kind__` resolution. This is the single most
    likely way to get FR-030b subtly wrong.
-2. It stays inside the `_include_source` gate, so reads that ask for no metadata pay nothing.
+2. The pool read is requested only when `source` is selected on a `Number` or `NumberPool`
+   attribute, so reads that ask for no metadata, and reads of other attribute kinds, pay nothing.
 
 The existing subquery already matches undirected and unlabelled, and `CoreNumberPool` is already
 declared a `LineageSource`, so no contract shape changes — only what populates the slot.

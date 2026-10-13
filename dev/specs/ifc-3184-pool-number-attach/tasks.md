@@ -602,12 +602,11 @@ count dropped by one, and the number is offered again.
       allocated list. The NumberPool attribute kind is read-only, so the release is driven through the
       query rather than a `from_pool: null` mutation.*
 
-      *Found while wiring T055, not fixed here: a read puts the pool that tracks an attribute into
-      the attribute's in-memory source when the user set none. Saving the attribute after a detach
-      or a re-pool ends that pool's IS_RESERVED edge therefore stores a `HAS_SOURCE` edge to the
-      pool, which contradicts FR-030b. The fix is left to IFC-3328, which reads the tracking pool
-      into its own property for a dedicated `from_pool` output field. Until then, the detach
-      component test does not assert the source after a detach on the default branch.*
+      *Found while wiring T055 and fixed in PR #11000: a read put the pool that tracks an attribute
+      into the attribute's in-memory source when the user set none, so saving the attribute after a
+      detach or a re-pool stored a `HAS_SOURCE` edge to the pool, which contradicts FR-030b. The
+      tracking pool is now read into a property of its own (`tracking_pool`), which no save path
+      reads, and the GraphQL `source` slot renders it from there.*
 
 **Checkpoint**: detach works and is permanent, symmetric with allocation.
 
@@ -695,8 +694,8 @@ These need someone outside the development team.
 
       What "cleared" means under FR-030b, so P1 is not amended into a different misunderstanding: the
       pool is never in `HAS_SOURCE`, so there is no pool-owned source to clear. A user clears **their
-      own** source edge, and the slot then falls back to the derived pool — clearing *reveals* the
-      pool rather than emptying the field. Covered by SC-019 and T023.
+      own** source edge, and the slot names the derived pool before and after, so clearing changes
+      nothing displayed while the pool tracks the field. Covered by SC-019 and T023.
       *(Critique E13, risks R2/R14.)*
 - [x] **OQ2 — RESOLVED 2026-09-16: out of scope.** Operators manually name the values they want a
       pool to track. P1 deletes the hand-set-value scan outright per its FR-011, unchanged, and this
