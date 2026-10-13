@@ -143,9 +143,6 @@ class TestNumberPoolScopeCheckerSchemaLifecycle(TestInfrahubApp):
         pool = await client.get(kind=InfrahubKind.NUMBERPOOL, id=scoped_pool.id)
         assert pool.allocation_scope.value == [{"id": site_id, "name": "location"}]
 
-    @pytest.mark.xfail(
-        reason="per-division allocation lands with the allocation ticket", raises=AssertionError, strict=True
-    )
     async def test_step05_new_device_allocates_per_site_after_the_rename(
         self, client: InfrahubClient, default_branch: Branch, scoped_pool: InfrahubNode
     ) -> None:

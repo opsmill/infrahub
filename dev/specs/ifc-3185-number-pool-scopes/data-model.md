@@ -41,16 +41,18 @@ Order inside the list is the scope order; division tuples follow it.
 |-------|------|-------|
 | `values` | ordered list | One value per scope element, in scope order |
 
-Value of an element for a holding object, read on the branch of the request with the normal branch filter:
+Value of an element for the node being written: read on the branch of the request, from the node as it will be saved.
 
-- relationship element: the peer's id, or an empty string when the holding object has no peer on that branch;
+Values of an element for a holding object: every value that a branch not being deleted gives it, including a value a branch still reads from the default branch as it was when the branch was created:
+
+- relationship element: the peer's id; a holding object with no peer matches no division;
 - attribute element: the scalar attribute value as stored, compared with no normalisation, or an empty string when the holding object has no value.
 
-A holding object that does not exist on the request branch has no division there and is not counted.
+A holding object counts in every division whose value, for each element, is one of its values for that element. A holding object that exists only on another branch counts.
 
-`key`: a stable hash of the JSON form of `values`, used in lock names (`<pool id>.<key>`).
+`key`: the values joined by dots, used in lock names (`<pool id>.<key>`). Two divisions may share a key, for example when a text value contains a dot; they then share a lock, which delays writers but never gives a wrong number.
 
-Equality: two divisions are equal when their values are equal element by element. The values of one element are peer ids or come from one scalar attribute, so they share a type.
+Equality: two divisions are equal when their element paths and their values are equal element by element. A division also records where a Node keeps each value on the branch it was read on (`elements`: an attribute name, or a relationship identifier and direction), which the queries read. The values of one element are peer ids or come from one scalar attribute, so they share a type.
 
 **Refusal**: when the schema of the request branch does not define an element on the pool's kind, the division cannot be read; the request is refused naming the element and the branch.
 
@@ -73,7 +75,7 @@ For one space (the pool, one range, or one division over the pool or over a rang
 | Figure | Definition |
 |--------|------------|
 | `size` | Number of values the space holds: the effective space (ranges clipped to the attribute's bounds, minus its excluded values), or the part of it one range contributes. 0 when the pool has no range |
-| `used` | Distinct values of the space held on any live branch by a holding object whose division, read on the request branch, is the one measured |
+| `used` | Distinct values of the space held on any live branch by a holding object that occupies the measured division on some live branch |
 | `used_default_branch` | Those values held on the default branch |
 | `used_branches` | Those values held on other branches and not on the default branch |
 | `utilization`, `utilization_default_branch`, `utilization_branches` | The three counts as a percentage of `size`; 0 when `size` is 0 |

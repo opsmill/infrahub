@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
     from infrahub.database import InfrahubDatabase
     from infrahub.pools.number_ranges import EffectiveSpace, PoolRange
+    from infrahub.pools.scope import Division
 
 
 class NumberPoolRangeStore(Protocol):
@@ -147,21 +148,47 @@ class NumberPoolRepository(NumberPoolRangeStore):
         pool.get_attribute("end_range").value = end
         await pool.save(db=self.db, at=at, user_id=user_id, fields=["start_range", "end_range"])
 
-    async def get_used(self, pool: CoreNumberPool, branch: Branch, space: EffectiveSpace) -> list[int]:
-        """Return the numbers inside `space` the pool currently accounts for."""
+    async def get_used(
+        self, pool: CoreNumberPool, branch: Branch, space: EffectiveSpace, division: Division | None = None
+    ) -> list[int]:
+        """Return the numbers inside `space` the pool currently accounts for, only in `division` when one is given.
+
+        With a division, each reserved Attribute's Node and its scope values are read on `branch`.
+        """
         if space.is_empty:
             return []
         query = await NumberPoolGetUsed.init(
-            db=self.db, branch=branch, pool=pool, ranges=space.as_query_ranges(), branch_agnostic=True
+            db=self.db,
+            branch=branch,
+            pool=pool,
+            ranges=space.as_query_ranges(),
+            branch_agnostic=True,
+            division=division,
         )
         await query.execute(db=self.db)
         used = [result.value for result in query.iter_results()]
         return [item for item in used if item is not None]
 
-    async def get_free(self, pool: CoreNumberPool, branch: Branch, min_value: int, max_value: int) -> int | None:
-        """Return the lowest number in `[min_value, max_value]` the pool does not account for, or None."""
+    async def get_free(
+        self,
+        pool: CoreNumberPool,
+        branch: Branch,
+        min_value: int,
+        max_value: int,
+        division: Division | None = None,
+    ) -> int | None:
+        """Return the lowest number in `[min_value, max_value]` the pool does not account for, or None.
+
+        With a division, only the numbers whose Attribute's Node is in the division on `branch` are accounted for.
+        """
         query = await NumberPoolGetFree.init(
-            db=self.db, branch=branch, pool=pool, branch_agnostic=True, min_value=min_value, max_value=max_value
+            db=self.db,
+            branch=branch,
+            pool=pool,
+            branch_agnostic=True,
+            min_value=min_value,
+            max_value=max_value,
+            division=division,
         )
         await query.execute(db=self.db)
         return query.get_result_value()
@@ -174,9 +201,21 @@ class NumberPoolRepository(NumberPoolRangeStore):
         await query.execute(db=self.db)
         return query.get_taken_values()
 
-    async def get_reservation(self, pool_id: str, branch: Branch, identifier: str) -> int | None:
-        """Return the number the pool reserved for `identifier`, or None when it holds no reservation."""
-        query = await NumberPoolGetReserved.init(db=self.db, branch=branch, pool_id=pool_id, identifier=identifier)
+    async def get_reservation(
+        self,
+        pool_id: str,
+        branch: Branch,
+        identifier: str,
+        division: Division | None = None,
+    ) -> int | None:
+        """Return the number the pool reserved for `identifier`, or None when it holds no reservation.
+
+        With a division, the reservation is returned only when its Attribute's Node has the division's scope values
+        on `branch`.
+        """
+        query = await NumberPoolGetReserved.init(
+            db=self.db, branch=branch, pool_id=pool_id, identifier=identifier, division=division
+        )
         await query.execute(db=self.db)
         return query.get_reservation()
 

@@ -4,7 +4,12 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Generator, Unpack
 
 from infrahub.core import registry
-from infrahub.core.constants import NULL_VALUE, InfrahubKind, PoolRecordProvenance, RelationshipStatus
+from infrahub.core.constants import (
+    NULL_VALUE,
+    InfrahubKind,
+    PoolRecordProvenance,
+    RelationshipStatus,
+)
 from infrahub.core.query import Query, QueryInitKwargs, QueryResult, QueryType
 from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
 from infrahub.exceptions import InitializationError
@@ -13,6 +18,7 @@ if TYPE_CHECKING:
     from infrahub.core.protocols import CoreNumberPool
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
+    from infrahub.pools.scope import Division
 
 
 @dataclass(frozen=True)
@@ -270,8 +276,9 @@ class NumberPoolGetAllocated(Query):
 class NumberPoolGetReserved(Query):
     """Resolve a pool's reservation(s) to the value(s) on this branch.
 
-    Returns the values and identifiers for a given NumberPools reservations on a given branch. Can
-    optionally be filtered by identifier.
+    Returns the values and identifiers for a given NumberPool's reservations on a given branch. Can
+    optionally be filtered by identifier. With a division, only the reservations whose Attribute's Node is in
+    the division on some live branch are returned.
     """
 
     name = "numberpool_get_reserved"
@@ -281,10 +288,12 @@ class NumberPoolGetReserved(Query):
         self,
         pool_id: str,
         identifier: str | None = None,
+        division: Division | None = None,
         **kwargs: Unpack[QueryInitKwargs],
     ) -> None:
         self.pool_id = pool_id
         self.identifier = identifier
+        self.division = division
 
         super().__init__(**kwargs)
 
@@ -298,10 +307,23 @@ class NumberPoolGetReserved(Query):
         )
         self.params.update(branch_params)
 
+        live_branches = ""
+        branch_variables = ""
+        division_filter = ""
+        if self.division is not None:
+            live_branches = LIVE_BRANCHES_QUERY
+            branch_variables = ", deleting_branches, branch_windows"
+            division_filter, division_params = division_filter_query(division=self.division)
+            self.params.update(division_params)
+            self.params["default_branch_name"] = registry.default_branch
+
         query = """
+        %(live_branches)s
         MATCH (pool:Node:%(number_pool)s { uuid: $pool_id })-[r_edge:IS_RESERVED]->(attr:Attribute)
         WHERE ($identifier IS NULL OR r_edge.identifier = $identifier)
-        WITH DISTINCT pool, attr
+        WITH DISTINCT pool, attr%(branch_variables)s
+        %(division)s
+        WITH pool, attr
         CALL (pool, attr) {
             // --------
             // assumes IS_RESERVED is on the global branch
@@ -327,6 +349,9 @@ class NumberPoolGetReserved(Query):
         """ % {
             "branch_filter": branch_filter,
             "number_pool": InfrahubKind.NUMBERPOOL,
+            "division": division_filter,
+            "live_branches": live_branches,
+            "branch_variables": branch_variables,
         }
         self.add_to_query(query)
         self.return_labels = ["value", "identifier"]
@@ -596,14 +621,121 @@ class NumberPoolChangeReserved(Query):
         self.return_labels = ["pool.uuid AS pool_id", "new_attr.uuid AS attribute_id", "new_rel"]
 
 
+LIVE_BRANCHES_QUERY = """
+    // --------------
+    // Read the branches once: the ones being deleted, and the fork window of every other user branch
+    // --------------
+    MATCH (branch:Branch)
+    WITH collect(branch) AS branches
+    WITH
+        [b IN branches WHERE b.status = "DELETING" | b.name] AS deleting_branches,
+        [b IN branches
+            WHERE b.status <> "DELETING" AND NOT b.is_default AND NOT b.is_global
+            | {name: b.name, origin_name: b.origin_branch, fork_at: b.branched_from}] AS branch_windows"""
+
+
+def _live_on_some_branch(edge: str, hiding_pattern: str) -> str:
+    """Return a Cypher predicate that is true when `edge` is visible now from at least one live branch.
+
+    The edge is visible when it is open now on a branch not being deleted, or when it was closed on the default branch
+    after a user branch forked and that branch has written no edge of its own matching `hiding_pattern` since.
+    """
+    return f"""{edge}.status = "active"
+            AND {edge}.from <= $at
+            AND NOT {edge}.branch IN deleting_branches
+            AND (
+                {edge}.to IS NULL OR {edge}.to > $at
+                OR (
+                    {edge}.branch = $default_branch_name
+                    AND any(window IN branch_windows WHERE window.origin_name = {edge}.branch
+                        AND {edge}.from <= window.fork_at AND window.fork_at < {edge}.to
+                        AND NOT window.name IN COLLECT {{
+                            MATCH {hiding_pattern}
+                            WHERE hiding.from <= $at AND (hiding.to IS NULL OR hiding.to > $at)
+                            RETURN hiding.branch
+                        }})
+                )
+            )"""
+
+
+# A schema migration can leave several Node vertices linked to one Attribute, each live on different branches.
+DIVISION_FILTER_QUERY = """
+    // --------------
+    // Keep the reserved Attribute when one of its Nodes is in the division on some live branch, each scope element
+    // matching any value or peer that some live branch gives it
+    // --------------
+    WITH *
+    WHERE EXISTS {
+        MATCH (node:Node)-[ha:HAS_ATTRIBUTE]->(attr)
+        WHERE %(node_is_live)s
+        AND all(element IN $division_elements WHERE
+            (
+                element.direction IS NULL
+                AND EXISTS {
+                    MATCH (node)-[:HAS_ATTRIBUTE]->(element_attr:Attribute { name: element.name })-[hv:HAS_VALUE]->(av)
+                    WHERE (av.value = element.value OR (element.value = "" AND av.value = $null_value))
+                    AND %(value_is_live)s
+                }
+            )
+            OR (
+                element.direction IS NOT NULL
+                AND EXISTS {
+                    MATCH (node)-[r1:IS_RELATED]-(rel:Relationship { name: element.name })
+                        -[r2:IS_RELATED]-(peer:Node { uuid: element.value })
+                    WHERE (
+                        (element.direction = "outbound" AND startNode(r1) = node AND startNode(r2) = rel)
+                        OR (element.direction = "inbound" AND endNode(r1) = node AND endNode(r2) = rel)
+                        OR (element.direction = "bidirectional" AND endNode(r1) = rel AND endNode(r2) = rel)
+                    )
+                    AND r2.status = "active"
+                    AND %(peer_is_live)s
+                }
+            )
+        )
+    }
+""" % {
+    "node_is_live": _live_on_some_branch(edge="ha", hiding_pattern="(node)-[hiding:HAS_ATTRIBUTE]->(attr)"),
+    "value_is_live": _live_on_some_branch(edge="hv", hiding_pattern="(element_attr)-[hiding:HAS_VALUE]->()"),
+    "peer_is_live": _live_on_some_branch(edge="r1", hiding_pattern="(node)-[hiding:IS_RELATED]-(rel)"),
+}
+
+
+def division_filter_query(division: Division) -> tuple[str, dict[str, Any]]:
+    """Return the Cypher that keeps the reserved `attr` whose Node is in `division` on any live branch, with its parameters.
+
+    A Node counts in every division it occupies on some branch, each scope element checked on its own, so a number is
+    never handed out twice in one division whatever branches the two Nodes are on. The fragment reads the
+    `deleting_branches`, `branch_windows`, `$at` and `$default_branch_name` that the enclosing query provides.
+    """
+    return DIVISION_FILTER_QUERY, {
+        "division_elements": [
+            {
+                "name": element.name,
+                "direction": element.relationship_direction.value
+                if element.relationship_direction is not None
+                else None,
+                "value": value,
+            }
+            for element, value in zip(division.elements, division.values, strict=True)
+        ],
+        "null_value": NULL_VALUE,
+    }
+
+
 def reserved_values_query(
-    pool_id: str, attribute_name: str, at: str, default_branch_name: str
+    pool_id: str,
+    attribute_name: str,
+    at: str,
+    default_branch_name: str,
+    division_filter: str = "",
 ) -> tuple[str, dict[str, Any]]:
     """Cypher fragment to find all Attributes reserved for a given NumberPool, with the parameters it reads.
 
     Finds every value some non-deleting branch holds on each reserved Attribute. A value counts when
     its HAS_VALUE edge is open now, or when a branch forked from the edge's branch while the edge was
     open and has written no edge of its own that hides the default-branch version.
+
+    `division_filter` is inserted after the reserved Attributes are matched, to keep only those of a division.
 
     Final values are res (IS_RESERVED edge) and value (an active Attribute value).
     """
@@ -614,22 +746,13 @@ def reserved_values_query(
         "default_branch_name": default_branch_name,
     }
     query = """
-    // --------------
-    // Read the branches once: the ones being deleted, and the fork window of every other user branch
-    // --------------
-    MATCH (branch:Branch)
-    WITH collect(branch) AS branches
-    WITH
-        [b IN branches WHERE b.status = "DELETING" | b.name] AS deleting_branches,
-        [b IN branches
-            WHERE b.status <> "DELETING" AND NOT b.is_default AND NOT b.is_global
-            | {name: b.name, origin_name: b.origin_branch, fork_at: b.branched_from}] AS branch_windows
+%(live_branches)s
     // --------------
     // Start with all the Attributes currently reserved for this pool
     // --------------
     MATCH (pool:Node:%(number_pool)s { uuid: $pool_id })-[res:IS_RESERVED]->(attr:Attribute { name: $attribute_name })
     WHERE res.status = "active" AND res.from <= $at AND (res.to IS NULL OR res.to > $at)
-    CALL (attr, deleting_branches, branch_windows) {
+%(division)s    CALL (attr, deleting_branches, branch_windows) {
         // --------------
         // Every value edge open now, on any branch that is not being deleted
         // --------------
@@ -671,15 +794,15 @@ def reserved_values_query(
         RETURN av.value AS value
     }
     WITH DISTINCT res, value
-    """ % {"number_pool": InfrahubKind.NUMBERPOOL}
+    """ % {"number_pool": InfrahubKind.NUMBERPOOL, "division": division_filter, "live_branches": LIVE_BRANCHES_QUERY}
     return query, params
 
 
 class NumberPoolGetUsed(Query):
     """A pool is branch-agnostic, and so is the set of numbers it accounts for.
 
-    The read carries no branch filter at all: the IS_RESERVED edge is global, and a value counts while any
-    branch holds it.
+    The read of the IS_RESERVED edges carries no branch filter: the edge is global, and a value counts while any
+    branch holds it. For a division, a value counts when its Node is in the division on any branch.
     """
 
     name = "number_pool_get_used"
@@ -689,21 +812,28 @@ class NumberPoolGetUsed(Query):
         self,
         pool: CoreNumberPool,
         ranges: list[list[int]],
+        division: Division | None = None,
         **kwargs: Unpack[QueryInitKwargs],
     ) -> None:
         self.pool = pool
         self.ranges = ranges
+        self.division = division
 
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["ranges"] = self.ranges
 
+        division_filter = ""
+        if self.division is not None:
+            division_filter, division_params = division_filter_query(division=self.division)
+            self.params.update(division_params)
         reserved_values, reserved_values_params = reserved_values_query(
             pool_id=self.pool.get_id(),
             attribute_name=self.pool.node_attribute.value,
             at=self.at.to_string(),
             default_branch_name=registry.default_branch,
+            division_filter=division_filter,
         )
         self.params.update(reserved_values_params)
 
@@ -735,8 +865,8 @@ class NumberPoolGetUsed(Query):
 class NumberPoolGetFree(Query):
     """A pool is branch-agnostic, and so is the set of numbers it accounts for.
 
-    The read carries no branch filter at all: the IS_RESERVED edge is global, and a value counts while any
-    branch holds it.
+    The read of the IS_RESERVED edges carries no branch filter: the edge is global, and a value counts while any
+    branch holds it. For a division, a value counts when its Node is in the division on any branch.
     """
 
     name = "number_pool_get_free"
@@ -747,11 +877,13 @@ class NumberPoolGetFree(Query):
         pool: CoreNumberPool,
         min_value: int,
         max_value: int,
+        division: Division | None = None,
         **kwargs: Unpack[QueryInitKwargs],
     ) -> None:
         self.pool = pool
         self.min_value = min_value
         self.max_value = max_value
+        self.division = division
 
         super().__init__(**kwargs)
 
@@ -760,11 +892,16 @@ class NumberPoolGetFree(Query):
         self.params["end_range"] = self.max_value
         self.limit = 1  # Query only works at returning a single, free entry
 
+        division_filter = ""
+        if self.division is not None:
+            division_filter, division_params = division_filter_query(division=self.division)
+            self.params.update(division_params)
         reserved_values, reserved_values_params = reserved_values_query(
             pool_id=self.pool.get_id(),
             attribute_name=self.pool.node_attribute.value,
             at=self.at.to_string(),
             default_branch_name=registry.default_branch,
+            division_filter=division_filter,
         )
         self.params.update(reserved_values_params)
 
@@ -886,10 +1023,10 @@ class NumberPoolGetTaken(Query):
 class NumberPoolSetReserved(Query):
     """Record that a number pool accounts for an attribute.
 
-    Takes a write lock on the Attribute vertex, then keeps this pool's live IS_RESERVED edge unless the write
-    allocates a number the record does not list yet. When no edge is kept, it ends every live IS_RESERVED edge
-    on the attribute and creates this pool's record, whose `allocated_values` carries every number the pool
-    allocated to the attribute so far plus the one allocated now, if any.
+    Takes a write lock on the Attribute vertex and then on the pool's vertex, then keeps this pool's live
+    IS_RESERVED edge unless the write allocates a number the record does not list yet. When no edge is kept, it
+    ends every live IS_RESERVED edge on the attribute and creates this pool's record, whose `allocated_values`
+    carries every number the pool allocated to the attribute so far plus the one allocated now, if any.
 
     The list is never changed in place: extending it closes the record and creates a new one, which keeps the
     history and stamps the pool like any other record change. The list is only ever tested for membership, so
@@ -947,11 +1084,15 @@ class NumberPoolSetReserved(Query):
         WITH pool, attr
         LIMIT 1
         // ----------
-        // Lock the Attribute vertex until the transaction ends, so a concurrent write to this attribute waits
-        // and then reads the IS_RESERVED edges this one commits
+        // Lock the Attribute vertex, so a concurrent write waits to read the new IS_RESERVED edge
         // ----------
         SET attr._number_pool_lock = TRUE
         REMOVE attr._number_pool_lock
+        // ----------
+        // Lock the NumberPool vertex, so concurrent writes do not deadlock adding IS_RESERVED
+        // ----------
+        SET pool._number_pool_lock = TRUE
+        REMOVE pool._number_pool_lock
         WITH pool, attr
         // ----------
         // Keep this pool's live IS_RESERVED edge unless the write allocates a number it does not list yet

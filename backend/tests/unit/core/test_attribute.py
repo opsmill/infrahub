@@ -10,7 +10,6 @@ from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError
-from infrahub.pools.attribute_pool_applier import LoadedNodePoolApplier
 
 
 @pytest.fixture
@@ -143,7 +142,7 @@ def build_iphost_attribute(branch: Branch, data: str) -> IPHost:
 async def test_from_graphql_stores_canonical_iphost_value(branch: Branch) -> None:
     attr = build_iphost_attribute(branch=branch, data="192.0.2.10/32")
 
-    changed = await attr.from_graphql(data={"value": "192.0.2.20"}, pool_applier=LoadedNodePoolApplier())
+    changed = await attr.from_graphql(data={"value": "192.0.2.20"})
 
     assert changed is True
     assert attr.value == "192.0.2.20/32"
@@ -152,7 +151,7 @@ async def test_from_graphql_stores_canonical_iphost_value(branch: Branch) -> Non
 async def test_from_graphql_reports_no_change_for_equivalent_iphost_value(branch: Branch) -> None:
     attr = build_iphost_attribute(branch=branch, data="192.0.2.10/32")
 
-    changed = await attr.from_graphql(data={"value": "192.0.2.10"}, pool_applier=LoadedNodePoolApplier())
+    changed = await attr.from_graphql(data={"value": "192.0.2.10"})
 
     assert changed is False
     assert attr.value == "192.0.2.10/32"
@@ -162,7 +161,7 @@ async def test_from_graphql_rejects_invalid_iphost_value(branch: Branch) -> None
     attr = build_iphost_attribute(branch=branch, data="192.0.2.10/32")
 
     with pytest.raises(ValidationError, match=r"^not-an-ip is not a valid IPHost at address$"):
-        await attr.from_graphql(data={"value": "not-an-ip"}, pool_applier=LoadedNodePoolApplier())
+        await attr.from_graphql(data={"value": "not-an-ip"})
     assert attr.value == "192.0.2.10/32"
 
 
@@ -205,7 +204,7 @@ async def test_from_graphql_records_whether_value_and_from_pool_were_sent(
     node = Node(schema=NodeSchema(name="Ticket", namespace="Test", attributes=[schema]), branch=branch, at=at)
     attr = Integer(name=schema.name, schema=schema, branch=branch, at=at, node=node, data={"value": 3})
 
-    await attr.from_graphql(data=test_case.payload, pool_applier=LoadedNodePoolApplier(), process_pools=False)
+    await attr.from_graphql(data=test_case.payload)
 
     assert attr.value_presence is test_case.value_presence
     assert attr.from_pool_presence is test_case.from_pool_presence
