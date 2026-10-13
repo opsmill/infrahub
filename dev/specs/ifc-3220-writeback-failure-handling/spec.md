@@ -195,10 +195,9 @@ must become "action required" after one attempt, with no automatic retry.
 5. **Given** a delivery attempt lost to a worker restart, **When** the next synchronisation cycle
    runs after the attempt went stale, **Then** a new attempt starts with no user action, and a user
    can also retry at once.
-6. **Given** a push to a remote that stops answering, **When** the bound of the Git command expires,
-   **Then** the attempt fails as transient and does not hang. Note: the current design does not meet
-   this yet, because its time limit does not stop a hung push. This is the open point of
-   `research.md` R6.
+6. **Given** a fetch or a push to an HTTP(S) remote that stops answering, **When** the transfer sends
+   no data for the bound of the Git command, **Then** the attempt fails as transient and does not
+   hang. A fetch or a push over SSH has no such bound.
 
 ---
 
@@ -470,9 +469,9 @@ system, and the new delivery path must keep them true.*
   MUST NOT automatically retry a credential, permission or branch-protection failure. A failure
   after the remote accepted the push counts as transient. Every Git command of a delivery attempt,
   outside the repository import, MUST be bounded in time, so that a remote that stops answering
-  produces a transient failure. FR-027 covers the import. Note: the time limit of the current design
-  does not yet stop a hung fetch or push, or a direct Git call in the runtime image. This is the open
-  point of `research.md` R6.
+  produces a transient failure. FR-027 covers the import. Note: the bound holds for a fetch, a push
+  and a remote branch deletion over HTTP(S). A transfer over SSH has no bound. A local Git command
+  is bounded where `ps` exists, and the backend image installs it (`research.md` R6).
 - **FR-005**: The system MUST keep, per repository and destination branch, an ordered queue of
   merges awaiting delivery. A later merge MUST be appended and MUST NOT displace an earlier one. An
   entry MUST hold the merge inputs, the remote source branch and the source commit that Infrahub
@@ -764,9 +763,11 @@ These were settled without asking. Three of them need confirmation, and say so.
     state. Without the rule, the view of that branch would show "action required" for ever.
 11. **FR-026 is added.** The PRD's further notes say that "delivery bookkeeping writes should carry a
     non-live mutation origin per 0016". This states the observable outcome instead of the mechanism.
-12. **FR-027 is added.** A worker restart, a lost workflow submission or a hung push would otherwise
-    leave a delivery pending for ever, with its regeneration held, and with no action available to a
-    user. SC-003 counts a lost worker as transient.
+12. **FR-027 is added.** A worker restart or a lost workflow submission would otherwise leave a
+    delivery pending for ever, with its regeneration held, and with no action available to a user.
+    SC-003 counts a lost worker as transient. A push that stops answering ends at its bound over
+    HTTP(S) (FR-004). Over SSH it has no bound and holds the repository lock, so the recovery waits
+    for it.
 13. **SC-008 and the second sentence of FR-014 are added.** A merge of a git-synced branch nearly
     always reaches the coalesced recompute before its first delivery attempt completes, so the hold
     is the normal path for such a merge. Without a short-lived narrowed selection, every such merge

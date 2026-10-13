@@ -356,10 +356,10 @@ after the merge (`delete_branch_after_merge`), while the remote branch is protec
 ## R4. The delivery attempt
 
 **Decision**: one component, `RepositoryWritebackService`, built per repository at the top of each
-flow, with one entry point, `deliver(final_attempt, manual, entry)`. `merge_git_repository`, the
-retry flow and the recovery check (R20) all call it (FR-007). Its end has the same shape as the
-abandonment of R8: the entries leave the queue under the repository lock, and the release runs
-after the lock is released, under a lease.
+flow, with one entry point, `deliver(final_attempt, manual, entry, retry_delay, first_attempt)`.
+`merge_git_repository`, the retry flow and the recovery check (R20) all call it (FR-007). Its end
+has the same shape as the abandonment of R8: the entries leave the queue under the repository lock,
+and the release runs after the lock is released, under a lease.
 
 ### The algorithm
 
@@ -574,7 +574,8 @@ failed, GitPython adds "process killed because it timed out" to the error lines
 (`git/cmd.py::handle_process_output`). `_raise_enriched_error_static` raises
 `RepositoryConnectionError` for that text, with a message of its own, so the attempt is retried.
 GitPython does not stop the command at the limit, so this classification comes only after Git ends
-(R6).
+(R6). Over HTTP(S), Git's low-speed limit ends a stalled transfer, and libcurl's "Operation too slow"
+text maps to the same error (R6).
 
 **A killed local Git command.** It is not a remote fault, so it must not become
 `remote-unreachable`. GitPython reports it with a different text, "Timeout: the command ... did not
@@ -617,7 +618,9 @@ through one scrubber that removes `user:password@` from URLs, since a location c
 `retry_delay_seconds=[30, 120, 300]` and a `retry_condition_fn` that retries only a failure
 classified as automatically retryable (R5). The task reads its attempt number from
 `task_run.run_count` and passes `final_attempt` to `deliver`, which records `action-required` only on
-the final attempt. Tests override the delays with `with_options(retry_delay_seconds=...)`.
+the final attempt. The task also passes the wait before the next retry to `deliver`, which records
+`retry_due_at` as the failure time plus that wait. Tests override the delays with
+`with_options(retry_delay_seconds=...)`.
 
 **Why a task.** Prefect 3.8 supports `retry_condition_fn` on tasks only, not on flows.
 
@@ -641,17 +644,20 @@ command that it runs. The limit does not stop every command; see "What the limit
   the pipes before it kills Git, and the close waits until Git ends. When Git then fails, GitPython
   adds "process killed because it timed out" to the error lines, and R5 makes it
   `remote-unreachable`, which the chain retries. When Git then succeeds, the call returns normally.
-- **A hung fetch or push is not stopped.** A remote that accepts the connection and never answers
-  keeps the fetch or the push running, with the repository lock and the worker slot, until the
-  connection ends.
+- **A hung fetch or push is not stopped by GitPython.** A remote that accepts the connection and
+  never answers keeps `Remote.fetch` and `Remote.push` running past their limit. So the fetch, the
+  push and the deletion also set Git's low-speed limit, in the environment of that one command:
+  `GIT_HTTP_LOW_SPEED_LIMIT` is 1 byte per second, and `GIT_HTTP_LOW_SPEED_TIME` is the bound,
+  rounded up. Git then ends a stalled HTTP(S) transfer itself, libcurl reports "Operation too slow",
+  and R5 makes it `remote-unreachable`, which the chain retries. An SSH transfer has no such bound.
 - **A direct Git call is stopped by a watchdog that needs `ps`.** Every other command, the deletion
   of a source branch included, runs through `Git.execute`. There a watchdog kills Git when the limit
   passes, and GitPython reports "Timeout: the command ... did not complete". The watchdog finds the
-  child processes of Git with `ps`. The runtime image has no `ps`, so there the watchdog cannot stop
-  a direct Git call either.
+  child processes of Git with `ps --ppid`, so the backend image installs `procps`. On a host without
+  that `ps`, the watchdog cannot stop a direct Git call.
 
-**Open point for a later story**: a bound that stops a hung fetch or push, and a direct Git call in
-the runtime image. Until it ships, FR-004 holds for these commands only when Git ends by itself.
+**Open point for a later story**: a bound on an SSH transfer. Until it ships, FR-004 holds for a
+fetch, a push or a deletion over SSH only when Git ends by itself.
 
 A local command normally ends in seconds, so its limit matters only for a command that is stuck. A
 killed local command raises a `RepositoryError` that names the command and the limit, and R5
@@ -659,7 +665,8 @@ classifies it. A killed `worktree add` leaves a worktree that Git keeps locked a
 `create_commit_worktree` removes it with `git worktree remove -f -f` before it raises. After any
 other failure, it removes nothing. The deletion of a source branch is a push, so
 `delete_remote_branch` types its errors as `push` does. Past its limit it raises
-`RepositoryConnectionError`, but only where the watchdog can stop Git, which needs `ps` (see above).
+`RepositoryConnectionError`. Where the watchdog cannot stop Git, on a host without `ps --ppid` (see
+above), the low-speed limit still stops a stalled HTTP(S) deletion.
 `reset` never raises: a killed reset is logged like any failed reset, and the failure of the attempt
 still propagates. The limits live in `git/writeback/constants.py`.
 
@@ -675,10 +682,13 @@ FR-027 covers it instead: while it runs, it holds the repository lock, so the de
 (R20, condition 4), and the recovery check starts no second attempt.
 
 **One retry chain per repository.** Before it waits, a retryable failure stores `retry_due_at`. A
-run of `merge_git_repository` whose first attempt finds a retry already due in the future returns
-at once, after its enqueue of R4 step 0 when it has one: that chain snapshots the queue at its next
-attempt and delivers the new entry too. A manual retry never returns early, because a user asked
-for it now. A chain that wakes after a manual retry delivered finds nothing and does nothing.
+delivery run (`manual=False`) whose first attempt finds a retry already due in the future returns
+`deferred` at once, after its enqueue of R4 step 0 when it has one and before the repository lock:
+that chain snapshots the queue at its next attempt and delivers the new entry too. Only a first
+attempt defers, because a chain's own retry must never defer itself: after the wait, the wall clock
+can still read earlier than the recorded due time. A manual retry never returns early, because a
+user asked for it now. A chain that wakes after a manual retry delivered finds nothing and does
+nothing.
 
 **Status while waiting**: `pending`, with the last cause and message, so a user sees "pending, last
 attempt failed: remote unreachable".
@@ -973,9 +983,8 @@ delays, plus the fetch and push timeouts times the number of attempts, plus a 10
 the import and the settle. With the constants of R6 that is 450 + 4 × 420 + 600 = 2,730 seconds,
 about 45 minutes. A merge whose delivery succeeds within its automatic retry chain regenerates as
 precisely as today. A miss only widens. The derivation leaves out the local timeouts, because a local
-command normally ends in seconds. It counts the fetch and push timeouts as if they stopped the
-command, which they do not for a hung fetch or push (R6). A chain that runs longer than the cache,
-for example after retried record failures or a hung fetch or push, only widens its release.
+command normally ends in seconds. A chain that runs longer than the cache, for example after
+retried record failures or a stalled SSH transfer, which has no bound (R6), only widens its release.
 
 **Rejected: waiting for the first attempt before the follow-ups.** It would delay every git-synced
 merge by the Git round trip, and by minutes when the remote is down.
@@ -1412,10 +1421,10 @@ Conditions 3 and 4 judge a run that a worker took, so condition 5 leaves out the
 
 **Known limitations of the recovery.** These cases delay or stop it:
 
-- **A fetch or a push that hangs.** Its time limit does not stop it (R6). The attempt keeps the
+- **A fetch or a push over SSH that hangs.** It has no bound (R6). The attempt keeps the
   repository lock, so condition 4 fails, the recovery check submits nothing, and a manual retry
   waits for the lock too. The delivery stays `pending` until the connection ends. This is the open
-  point of R6, for a later story.
+  point of R6, for a later story. Over HTTP(S), Git's low-speed limit ends a stalled transfer.
 
 - **A repository lock that a dead worker held.** The repository lock has no time to live
   (`lock.py::InfrahubLockRegistry.get`, R2). A worker that dies while it holds the lock leaves it
@@ -1450,8 +1459,10 @@ because that function catches the error that a failing branch raises. The check 
 `last_progress_at`, when:
 
 - the delivery is stale; or
-- held items wait that no live release lease covers, `last_progress_at` is older than
-  `STALE_AFTER`, and no delivery run of the repository waits to start (condition 5).
+- the queue is empty, held items wait that no live release lease covers, `last_progress_at` is
+  older than `STALE_AFTER`, and no delivery run of the repository waits to start (condition 5).
+  A queue with merges is left to the first trigger. While the status is `action-required`, a
+  submission would retry a policy failure every `STALE_AFTER`, which FR-004 forbids.
 
 The `touch` after a submission bounds it to one submission per `STALE_AFTER` per repository. While
 the submitted run waits to start, condition 5 also stops a second submission. A submission that
