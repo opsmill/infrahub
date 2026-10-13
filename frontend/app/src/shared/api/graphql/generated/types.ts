@@ -23928,16 +23928,16 @@ export type NumberPoolDivisionEntry = {
   path: Scalars['String']['output'];
   /** For a relationship, the peer's kind when the peer can be read. Null otherwise. */
   peer_kind: Maybe<Scalars['String']['output']>;
-  /** For a relationship, the peer's id. For an attribute, the value as text. An empty string when the holding object has no value for it. */
-  value: Scalars['String']['output'];
+  /** For a relationship, the peer's id. For an attribute, the value as the attribute stores it: a number for a Number, NumberPool or Bandwidth attribute, a boolean for a Boolean or Checkbox attribute, and a text for any other kind. An empty string when the holding object has no value for it. */
+  value: Scalars['GenericScalar']['output'];
 };
 
 /** One attribute or relationship of the allocation scope and the value the requested division holds for it. */
 export type NumberPoolDivisionEntryInput = {
   /** The name of the scope attribute or relationship. */
   path: Scalars['String']['input'];
-  /** For a relationship, the peer's id. For an attribute, the value as text. */
-  value: Scalars['String']['input'];
+  /** For a relationship, the peer's id. For an attribute, a value as the attribute stores it: a number for a Number, NumberPool or Bandwidth attribute, a boolean for a Boolean or Checkbox attribute, and a text for any other kind. An empty string names the objects that hold no value for it. */
+  value: Scalars['GenericScalar']['input'];
 };
 
 /** The divisions of one number pool, each with its figures. */
