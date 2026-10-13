@@ -585,17 +585,20 @@ T081 to T084 are not.
       attempt, open it, short delays through `with_options`. One case blocks the port before the
       fetch, the other after the fetch, so that the push fails.
 - [X] T082 [US4] Add `test_lost_attempt_recovers` to the same module: kill the flow after the snapshot,
-      free the repository lock in the test, as the deadlock cleanup does for a dead worker (R20),
-      age the state past the stale bound, run one sync cycle, and assert the delivery.
+      age the state past the stale bound, run one sync cycle, and assert the delivery. The test does
+      not free the repository lock itself: the kill unwinds through the lock and frees it, as the
+      deadlock cleanup frees the lock of a dead worker (R20). Accepted on 2026-10-13.
 - [X] T083 [P] [US4] Add `test_policy_failure_is_not_retried` to the same module: one attempt only, then
       `action-required`.
 - [X] T084 [P] [US4] Add two timeout cases to `backend/tests/unit/git/writeback/test_git_adapter.py`.
       A local TCP server that accepts and never answers makes the push fail as `remote-unreachable`
-      within the bound. A `merge` of `replay` that stalls, through a `pre-merge-commit` hook of the
-      temporary repository that `exec`s a long `sleep`, is killed within `LOCAL_GIT_TIMEOUT_SECONDS`,
-      lowered for the test. It raises a `RepositoryError` that names the command, which the
-      classifier gives `unclassified`, and no `index.lock` stays behind in the worktree. The hook uses
-      `exec` because GitPython kills only the direct children of the Git process.
+      within the bound. A `merge` of `replay` that stalls, through a merge driver of the temporary
+      repository that `exec`s a long `sleep`, is killed within `LOCAL_GIT_TIMEOUT_SECONDS`, lowered
+      for the test. It raises a `RepositoryError` that names the command, which the classifier gives
+      `unclassified`, and no `index.lock` stays behind in the worktree. The driver uses `exec`
+      because GitPython kills only the direct children of the Git process. The test keeps the
+      existing stalled-merge test, with a merge driver and not a `pre-merge-commit` hook. Accepted on
+      2026-10-13.
 
 ---
 

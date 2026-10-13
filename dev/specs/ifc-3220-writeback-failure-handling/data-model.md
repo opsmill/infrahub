@@ -234,7 +234,7 @@ the queued merges touched, not with the data.
 | `account_id` | `str` | The account that requested it. |
 | `account_name` | `str` | Its name at that time. |
 | `queue_version` | `int` | The version the request named. |
-| `recorded_commit` | `str` | The commit the default branch kept. |
+| `recorded_commit` | `str` | The commit the default branch kept. Empty when the repository records no commit, so the abandonment still runs (accepted on 2026-10-13). |
 | `import_owed_commit` | `str \| None` | An import that was still owed and was dropped with the queue. |
 | `entries` | `tuple[PendingMerge, ...]` | What was dropped. |
 

@@ -230,7 +230,8 @@ Every port method that runs Git gives each of its Git commands a bound, as GitPy
   `RepositoryConnectionError`, because `_raise_enriched_error_static` maps libcurl's "Operation too
   slow" text and GitPython's "process killed because it timed out" text to it (section 10).
   `delete_remote_branch` is a push too: it types its errors as `push` does, so a stalled deletion
-  raises `RepositoryConnectionError` as well.
+  raises `RepositoryConnectionError` as well. A transfer that sends data and then stalls can take up
+  to about twice the bound (known limit, accepted on 2026-10-13).
   `push` also passes `PUSH_TIMEOUT_SECONDS` (300 s) to the lookup of the worktree that it pushes from
   (`git worktree list`), not `LOCAL_GIT_TIMEOUT_SECONDS`. Accepted on 2026-10-13.
 - `remote_head`, `is_ancestor`, `replay`, `reset` and `record` by `LOCAL_GIT_TIMEOUT_SECONDS`, for
@@ -416,6 +417,9 @@ and re-raises, so the recovery check releases the held items (`research.md` R10,
 the Git port only for these two calls, and neither runs a Git command: `recorded_commit` reads
 Infrahub, and the notification is a message to the workers. It changes no Git state, deletes no
 remote branch and imports nothing, so its flow builds the repository object without a clone.
+When the repository records no commit, the record stores an empty `recorded_commit`. A failed
+branch-deleted notification is only logged, as a warning, and the release still runs, because the
+queue is already dropped. Both accepted on 2026-10-13.
 `DeliveryQueueChangedError` and `NothingPendingError` subclass `ValidationError`, so the task run
 fails with the message of the GraphQL contract.
 
