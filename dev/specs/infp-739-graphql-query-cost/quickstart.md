@@ -6,9 +6,9 @@ This guide checks the feature end to end on a local instance. It links to the co
 
 ## Prerequisites
 
-- A development stack: `uv run invoke dev.start`
-- Demo data loaded: `uv run invoke demo.load-infra-schema` and `uv run invoke demo.load-infra-data`
-- An API token in `$TOKEN` and the server address in `$INFRAHUB` (for example `http://localhost:8000`)
+- A development stack that runs this branch: `uv run invoke dev.build`, then `uv run invoke dev.start`
+- Demo data loaded with the tasks of the same stack: `uv run invoke dev.load-infra-schema` and `uv run invoke dev.load-infra-data`. The `demo.*` tasks address the `demo` profile, not the development stack.
+- An API token in `$TOKEN` and the server address in `$INFRAHUB` (for example `http://localhost:8000`). A development stack creates the admin token set in `INFRAHUB_INITIAL_ADMIN_TOKEN` in `development/docker-compose.yml`.
 
 ## 1. Before the first refresh: fields have the reason "no statistics"
 
@@ -26,11 +26,13 @@ Expected:
 
 ## 2. Run the statistics refresh
 
-Run the `graphql-cost-statistics-refresh` deployment from the task manager, or call the flow from a shell inside the server container:
+Run the `graphql-cost-statistics-refresh` deployment from the task manager, or from a shell inside the server container (for example `docker exec -it <build name>-server-1 sh`):
 
 ```bash
-uv run python -c "import asyncio; from infrahub.graphql.cost.tasks import refresh_query_cost_statistics; asyncio.run(refresh_query_cost_statistics())"
+prefect deployment run "graphql-cost-statistics-refresh/graphql-cost-statistics-refresh" --watch
 ```
+
+Do not call the flow function from a new Python process: the flow reads the default branch from the registry that a task worker initializes, so it fails with `InitializationError`. Do not run `uv run` in the server container of a development stack either: `/source` is the mounted repository, and `uv run` replaces its `.venv` with one built for the container.
 
 Expected: the flow run completes, and the cache key `graphql_cost:statistics:current` holds version 1 with `branch = main`.
 
@@ -40,7 +42,7 @@ Repeat the request from step 1.
 
 Expected (see [contracts/cost-details.schema.json](contracts/cost-details.schema.json)):
 
-- `statistics.branch = "main"` and `statistics.computed_at` is the time of the refresh.
+- `statistics.branch = "main"` and `statistics.computed_at` is the time the refresh started reading main.
 - `estimate_mode = "counted_first_step"`, because a request that runs always has its variable values.
 - The top-level field and `InfraDevice/interfaces` have `estimate.source = "counted"`.
 - For each field, `estimate.expected` and `estimate.worst_case` are filled, with `worst_case ≥ expected`.
@@ -51,6 +53,8 @@ Expected (see [contracts/cost-details.schema.json](contracts/cost-details.schema
 Expected: the response has no `extensions` key and is otherwise identical to step 3 (FR-001, FR-002).
 
 ## 5. Run a stored query through `/api/query`
+
+The demo data has no stored query. Create one first, for example with `CoreGraphQLQueryCreate` and the query `query device_interfaces($device: String!) { InfraDevice(name__value: $device) { edges { node { name { value } interfaces { edges { node { name { value } } } } } } } }`.
 
 ```bash
 curl -s "$INFRAHUB/api/query/<stored_query_name>?<variable>=<value>" \
@@ -81,7 +85,13 @@ Expected: `mode = COUNTED_FIRST_STEP`. Without the `variables` argument, `mode =
 
 ## 7. Permission check
 
-Call the report from step 6 with an account that cannot view `InfraInterface`.
+Call the report from step 6 with an account that cannot view `InfraInterface`. To create one with the admin token:
+
+- an object permission `CoreObjectPermission` with namespace `Infra`, name `Device`, action `view` and decision 6 (allow on every branch)
+- an account role `CoreAccountRole` with that permission only
+- an account `CoreAccount` with a password, and an account group `CoreAccountGroup` with that role and that account as its member
+
+Then log in as that account with `POST /api/auth/login` and send the report with `Authorization: Bearer <access_token>`.
 
 Expected: the request fails with the same `PermissionDeniedError` message that running the query returns, and no counts (FR-010).
 
@@ -93,7 +103,10 @@ Expected: no `extensions` key (FR-015).
 
 ## Automated checks
 
+Run them from `backend/`, because the component tests fail at setup when started from the repository root:
+
 ```bash
-uv run pytest backend/tests/unit/graphql/cost/
-uv run pytest backend/tests/component/graphql/cost/
+cd backend
+uv run pytest tests/unit/graphql/cost/
+uv run pytest tests/component/graphql/cost/
 ```

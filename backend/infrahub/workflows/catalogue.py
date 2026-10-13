@@ -325,6 +325,17 @@ PROPOSED_CHANGE_MERGE = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
+GRAPHQL_COST_STATISTICS_REFRESH = WorkflowDefinition(
+    name="graphql-cost-statistics-refresh",
+    type=WorkflowType.INTERNAL,
+    cron=f"{random.randint(0, 59)} 4 * * *",
+    module="infrahub.graphql.cost.tasks",
+    function="refresh_query_cost_statistics",
+    concurrency_limit=1,
+    concurrency_limit_strategy=ConcurrencyLimitStrategy.CANCEL_NEW,
+    default_priority=WorkflowPriority.LOW,
+)
+
 GRAPHQL_QUERY_GROUP_UPDATE = WorkflowDefinition(
     name="graphql-query-group-update",
     type=WorkflowType.INTERNAL,
@@ -728,6 +739,7 @@ WORKFLOWS = [
     GIT_REPOSITORY_USER_CHECKS_DEFINITIONS_TRIGGER,
     GIT_REPOSITORY_USER_CHECKS_TRIGGER,
     GIT_REPOSITORY_USER_CHECK_RUN,
+    GRAPHQL_COST_STATISTICS_REFRESH,
     GRAPHQL_QUERY_GROUP_UPDATE,
     HFID_PROCESS,
     HFID_SETUP,

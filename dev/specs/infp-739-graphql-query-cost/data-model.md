@@ -73,9 +73,8 @@ The median, the 95th percentile and the maximum are read from the histogram: the
 
 | Field | Type | Rule |
 | --- | --- | --- |
-| `version` | integer | Version loaded. |
-| `branch`, `computed_at`, `schema_hash` | as in the pointer | |
-| `kinds` | map of kind to `KindStatistics` | |
+| `pointer` | `StatisticsPointer` | The pointer of the version loaded: version, branch, computed time and schema hash. |
+| `kinds` | map of kind to `KindStatistics` | Kinds whose entry was loaded. |
 
 Lookup: `snapshot.side(identifier, direction, kind) -> RelationshipSideStatistics | None`.
 
@@ -89,13 +88,16 @@ Built from `GraphQLQueryNode` (the analyzer tree) and the coerced argument value
 | --- | --- | --- |
 | `path` | string | Response keys from the top-level field joined by `/`, without `edges`, `node` and list indexes (research D4). |
 | `kind` | string | Peer kind of the field, or the kind of a top-level field. |
-| `concrete_kinds` | list of strings | `kind` itself, or the concrete kinds behind a generic. An inline fragment narrows it. |
+| `concrete_kinds` | list of strings | `kind` itself, or the concrete kinds behind a generic. |
+| `parent_kinds` | list of strings | Concrete kinds of the parent nodes the field is selected on. An inline fragment around the field narrows them. The fragment does not change which nodes the field returns, so it does not narrow `concrete_kinds`. Empty for a top-level field. |
 | `relationship` | `RelationshipRef` or none | None for a top-level field. |
 | `cardinality` | `one` or `many` | `many` for a top-level field. |
 | `selected_attribute_count` | integer | Attributes selected on the peer, used by the rows model. |
 | `selected_cardinality_one_count` | integer | Cardinality-one relationships selected on the peer, used by the rows model. |
 | `selects_count` | boolean | `count` is selected on a many-cardinality field. |
+| `selects_nodes` | boolean | False for a many-cardinality field that selects only `count`: its resolver returns before it reads a node. |
 | `id_only` | boolean | A cardinality-one field that selects only `node { id }`; it reads nothing. |
+| `max_matching_nodes` | integer or none | For a top-level field: the number of IDs given, or 1 when the filters pin one node (the analyzer's single-target check). None otherwise. |
 | `arguments` | map | Coerced argument values (filters, `limit`, `offset`, `ids`). |
 | `children` | list of `CostTreeField` | |
 
@@ -105,22 +107,55 @@ Tree rules (critique E2):
 
 - Fields with the same path are merged into one `CostTreeField`, the way graphql-core merges selections with the same response key, for example a field selected directly and through a fragment.
 - Root fields that do not map to a schema kind, such as `InfrahubSearchAnywhere` or `InfrahubGraphQLQueryReport`, have no tree field and no entry in the cost details.
+- Nothing below `ancestors` and `descendants` is in the tree. Those fields have no statistics, and the fields recorded below them are listed from the actual counts.
+- A field whose alias is `edges` or `node` gets the path of its parent, as the recorded paths do. The estimate adds its figures to the entry of that path.
+
+## First-step counts (inside one request)
+
+`FirstStepCounts` (frozen) holds what the counted first step reads on the request's branch and `at` time. It is defined in `models.py`, so that the estimator imports nothing from the code that runs the queries. `None` in its place means a statistics-only estimate.
+
+| Field | Type | Rule |
+| --- | --- | --- |
+| `top_level` | map of path to `FirstStepTopLevelCount` | One entry for each counted top-level field. A top-level field filtered by `hfid` is not counted. |
+| `relationships` | map of path to `FirstStepRelationshipCount` | One entry for each relationship field directly under a counted top-level field. Only the top-level nodes of the field's `parent_kinds` are counted, with the field's filters, and with its `offset` and `limit` applied to the peers of each top-level node. A field under a top-level field that exceeds `query_size_limit` has no entry, and neither do `ancestors`, `descendants` and a field with `include_descendants: true`. |
+| `label_counts` | map of kind to integer | Current label count of each kind in the query, read by the same queries. |
+
+`FirstStepTopLevelCount`: `kinds` (one `FirstStepKindCount` for each concrete kind with nodes) and `exceeds_size_limit` (the field returns more than `query_size_limit` nodes, so nothing under it is counted).
+
+`FirstStepKindCount`: `kind`, `node_count` (after the filters, `offset` and `limit`) and `node_ids` (at most `query_size_limit` of them).
+
+`FirstStepRelationshipCount`: `returned_paths` (pairs of a top-level node and one of its peers that the field returns after its `offset` and `limit`, exact) and `peer_kinds` (one `FirstStepPeerCount` for each concrete peer kind). `returned_paths` is at most the sum of the `max_returned_paths` of the peer kinds.
+
+`FirstStepPeerCount`:
+
+- `peer_kind`
+- `paths`: pairs of a top-level node and one of its peers of that kind, without the `offset` and `limit`
+- `expected_returned_paths`: the pairs of that kind that the field returns, when the peers each top-level node returns are split between the peer kinds in proportion to its peers of each kind; exact when the peers of each top-level node are all of one kind
+- `max_returned_paths`: for each top-level node, the smaller of its peers of that kind and the peers it returns, added up; at most `paths`
+- `distinct_peers` and `max_parents` (the largest number of top-level nodes that reach one peer), both without the `offset` and `limit`
 
 ## Estimate and actual counts
 
 `CostFigures` (frozen): `nodes: int`, `resolver_calls: int`, `database_rows: int`.
 
+`FieldDescription` (frozen): `kind`, `relationship_identifier` (none for a top-level field) and `cardinality`. The cost details show it for every field. The resolvers fill it from the schema objects they already hold, and the estimation tree must give the same values for the same path:
+
+- a relationship field: the peer kind declared on the relationship (the generic, for a generic peer), the relationship identifier and the relationship's cardinality
+- a top-level field: the kind of the field, no identifier and `many`
+- `ancestors` and `descendants`: the hierarchy kind that the field returns, `parent__child` and `many`
+
 `FieldEstimate`:
 
 | Field | Type | Rule |
 | --- | --- | --- |
+| `field` | `FieldDescription` | The field the estimate is for. |
 | `expected` | `CostFigures` or none | None when `reason` is set. |
 | `worst_case` | `CostFigures` or none | None when `reason` is set. `worst_case ≥ expected` for each figure. |
 | `source` | `counted`, `statistics` or none | `counted` only for top-level fields and the fields directly under them, when the first step is counted. |
 | `worst_case_is_bound` | boolean | True only when the statistics describe the request's branch (main) and the request has no `at` time. Otherwise the worst case promises nothing (FR-008). |
-| `reason` | `no statistics` or none | Set when a kind or relationship side has no statistics (FR-012). |
+| `reason` | `no statistics` (`EstimateReason`) or none | Set when a kind or relationship side has no statistics (FR-012). When it is set, `source` is none and `worst_case_is_bound` is false. |
 
-`FieldActual`: `nodes`, `resolver_calls`, `database_rows` (integers, start at 0).
+`FieldActual`: `field` (the `FieldDescription` given by the resolver calls of the path, none until the first call), `nodes`, `resolver_calls`, `database_rows` (integers, start at 0). A path with rows and no resolver call has no description, so a resolver records its call even when its body raises.
 
 `QueryCostRecorder` (mutable, one for each request with the header): a map of field path to `FieldActual`. It records separately the queries and rows of the counted first step (`estimate_queries`), and the queries and rows that run while no field is set (`unattributed`).
 
@@ -130,7 +165,7 @@ Tree rules (critique E2):
 - `statistics`: branch, computed time, version, or `null` when no statistics exist
 - `fields`: one entry for each field of the estimation tree, in tree order, with its estimate and its actual counts
 - `estimate_queries`: database queries and rows that the counted first step ran, or the label-count read in statistics-only mode
-- `unattributed`: database queries and rows that ran while no field was set
+- `unattributed`: database queries and rows that ran while no field was set, from the point where the request handler starts the recorder
 
 ## Rules taken from the requirements
 

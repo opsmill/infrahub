@@ -16,6 +16,8 @@ Without single-target queries, Infrahub cannot determine which specific actions 
 
 **Real-world impact:** In one production scenario, a proposed change pipeline generated 600 artifact regenerations when only 5 actually required execution. Properly using single-target queries resolved this issue.
 
+A single-target query limits how many artifacts Infrahub regenerates, not how much work each render does. To find the relationship field that causes the most work in the query of one target, view the nodes, resolver calls and database rows of each field as described in [Check the cost of a GraphQL query](query-cost.mdx).
+
 ## Requirements for a valid single-target query
 
 For a query to be recognized as single-target, it must meet **all** of these criteria:

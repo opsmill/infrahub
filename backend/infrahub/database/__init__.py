@@ -36,6 +36,7 @@ from infrahub.core.constants import (
 )
 from infrahub.core.query import QueryType
 from infrahub.exceptions import DatabaseError, QueryTimeoutError
+from infrahub.graphql.cost.recorder import get_cost_recorder, get_current_field
 from infrahub.log import get_logger
 from infrahub.utils import InfrahubStringEnum
 
@@ -415,6 +416,9 @@ class InfrahubDatabase:
                 # cannot pollute the floor or the window.
                 if name == REFERENCE_QUERY_NAME and type == QueryType.READ:
                     get_reference_query_load_tracker().record(time.monotonic() - execution_start)
+                cost_recorder = get_cost_recorder()
+                if cost_recorder is not None:
+                    cost_recorder.record_query(path=get_current_field(), rows=len(results))
                 metadata = response._metadata or {}
                 span.set_attribute("rows", len(results))
                 return results, metadata

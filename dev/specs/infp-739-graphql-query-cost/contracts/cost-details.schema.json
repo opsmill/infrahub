@@ -35,7 +35,7 @@
       "$ref": "#/$defs/query_totals"
     },
     "unattributed": {
-      "description": "Queries and rows that ran while no field was being resolved.",
+      "description": "Queries and rows that ran while no field was being resolved, from the point where the request handler starts counting.",
       "$ref": "#/$defs/query_totals"
     }
   },

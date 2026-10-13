@@ -9,7 +9,7 @@ from netaddr import IPSet
 from opentelemetry import trace
 
 from infrahub.core import registry
-from infrahub.core.constants import InfrahubKind, MetadataOptions
+from infrahub.core.constants import InfrahubKind, MetadataOptions, RelationshipCardinality
 from infrahub.core.ipam.constants import PrefixMemberType
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -17,6 +17,8 @@ from infrahub.core.protocols import BuiltinIPNamespace, BuiltinIPPrefix
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.database import retry_db_transaction
 from infrahub.exceptions import ValidationError
+from infrahub.graphql.cost.models import FieldDescription
+from infrahub.graphql.cost.recorder import field_path_from_info, get_cost_recorder, record_resolver_call
 from infrahub.graphql.parser import extract_selection
 from infrahub.graphql.permissions import get_permissions
 
@@ -324,7 +326,37 @@ def _resolve_parent_prefix_id(schema: GenericSchema, filters: dict[str, Any]) ->
 
 @trace.get_tracer(__name__).start_as_current_span("ipam_paginated_list_resolver")
 @retry_db_transaction(name="ipam_paginated_list_resolver")
-async def ipam_paginated_list_resolver(  # noqa: PLR0915
+async def ipam_paginated_list_resolver(
+    root: dict,
+    info: GraphQLResolveInfo,
+    offset: int | None = None,
+    limit: int | None = None,
+    order: dict[str, Any] | None = None,
+    partial_match: bool = False,
+    **kwargs: dict[str, Any],
+) -> dict[str, Any]:
+    body = _resolve_ipam_paginated_list(
+        root=root, info=info, offset=offset, limit=limit, order=order, partial_match=partial_match, **kwargs
+    )
+    cost_recorder = get_cost_recorder()
+    if cost_recorder is None:
+        return await body
+    schema: NodeSchema | GenericSchema = (
+        info.return_type.of_type.graphene_type._meta.schema
+        if isinstance(info.return_type, GraphQLNonNull)
+        else info.return_type.graphene_type._meta.schema
+    )
+    return await record_resolver_call(
+        recorder=cost_recorder,
+        path=field_path_from_info(info=info),
+        field=FieldDescription(
+            kind=schema.kind, relationship_identifier=None, cardinality=RelationshipCardinality.MANY
+        ),
+        body=body,
+    )
+
+
+async def _resolve_ipam_paginated_list(  # noqa: PLR0915
     root: dict,  # noqa: ARG001
     info: GraphQLResolveInfo,
     offset: int | None = None,

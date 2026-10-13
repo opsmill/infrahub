@@ -45,8 +45,10 @@ from infrahub.exceptions import SchemaNotFoundError
 from infrahub.graphql.utils import extract_schema_models
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from infrahub.core.branch import Branch
-    from infrahub.core.schema import MainSchemaTypes, SchemaAttributePath
+    from infrahub.core.schema import MainSchemaTypes, RelationshipSchema, SchemaAttributePath
     from infrahub.core.schema.schema_branch import SchemaBranch
 
 # Selectable like attributes but absent from a model's attribute list. Values are the schema names.
@@ -174,7 +176,26 @@ class GraphQLQueryNode:
     infrahub_attributes: set[str] = field(default_factory=set)
     infrahub_relationships: set[str] = field(default_factory=set)
     field_node: FieldNode | None = field(default=None)
+    """None for a fragment."""
+
+    relationship: RelationshipSchema | None = field(default=None)
+    """Schema of the relationship the field reads, None for any other field."""
+
     mutate_actions: list[MutateAction] = field(default_factory=list)
+
+    @property
+    def response_key(self) -> str | None:
+        """Key of the field in the response: its alias, or its name; None for a fragment."""
+        if self.field_node is None:
+            return None
+        return self.field_node.alias.value if self.field_node.alias else self.field_node.name.value
+
+    @property
+    def selects_count(self) -> bool:
+        """Indicate whether the field selects `count`, which a paginated field returns next to its edges."""
+        return self.field_node is not None and any(
+            child.field_node is not None and child.path == "count" for child in self.children
+        )
 
     def context_model(self) -> MainSchemaTypes | None:
         """Return the closest Infrahub object by going up in the tree."""
@@ -270,6 +291,13 @@ class GraphQLQueryNode:
         for child in self.children:
             models.extend(child.get_models())
         return models
+
+
+def _field_nodes(node: GraphQLQueryNode) -> Iterator[FieldNode]:
+    if node.field_node is not None:
+        yield node.field_node
+    for child in node.children:
+        yield from _field_nodes(node=child)
 
 
 @dataclass
@@ -408,9 +436,9 @@ class GraphQLQueryReport:
     @property
     def only_has_unique_targets(self) -> bool:
         """Indicate if the query document is defined so that every root query returns a single object."""
-        return all(self._query_targets_single_object(query=query) for query in self.queries)
+        return all(self.query_targets_single_object(query=query) for query in self.queries)
 
-    def _query_targets_single_object(self, query: GraphQLQueryNode) -> bool:
+    def query_targets_single_object(self, query: GraphQLQueryNode) -> bool:
         """Indicate whether a single root query is guaranteed to resolve to one object.
 
         A query pins a single object when it filters by a required, single ``ids`` or ``hfid``
@@ -516,7 +544,10 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
         generally working with references to objects we wouldn't want to override the parent of a previously
         assigned object
         """
-        named_fragment = deepcopy(self._named_fragments[name])
+        fragment = self._named_fragments[name]
+        # Syntax tree nodes are never modified, and copying them would double the cost of each fragment spread.
+        shared_field_nodes: dict[int, Any] = {id(field_node): field_node for field_node in _field_nodes(node=fragment)}
+        named_fragment = deepcopy(fragment, shared_field_nodes)
         named_fragment.parent = parent
         return named_fragment
 
@@ -598,6 +629,7 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
                     context_type=ContextType.from_operation(operation=operation_definition.operation),
                     arguments=self._parse_arguments(field_node=field_node),
                     variables=self._get_variables(operation=operation_definition),
+                    field_node=field_node,
                 )
 
                 if field_node.selection_set:
@@ -708,6 +740,7 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
         context_type = query_node.context_type
         infrahub_model = None
         infrahub_node_models: list[MainSchemaTypes] = []
+        relationship: RelationshipSchema | None = None
         if query_node.in_property_level:
             if model := query_node.context_model():
                 if node.name.value in model.attribute_names:
@@ -717,6 +750,7 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
                 elif node.name.value in model.relationship_names:
                     rel = model.get_relationship_or_none(name=node.name.value)
                     if rel:
+                        relationship = rel
                         infrahub_model = self.schema_branch.get(name=rel.peer, duplicate=False)
                         if isinstance(infrahub_model, GenericSchema):
                             infrahub_node_models = [
@@ -734,6 +768,8 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
             infrahub_model=infrahub_model,
             infrahub_node_models=infrahub_node_models,
             arguments=self._parse_arguments(field_node=node),
+            field_node=node,
+            relationship=relationship,
         )
 
         if node.selection_set:
