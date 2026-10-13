@@ -140,7 +140,7 @@ A schema author who changes a field that a pool's scope references is refused wh
 - Two user-created pools on the same kind and attribute carry different scopes: allowed; each pool tracks only its own records, and a number is checked against the scope of the pool named in the request.
 - The pool's kind is a generic: the scope elements must be declared on the generic itself, so that every implementing kind carries them.
 - A query names a division entry that is not in the pool's scope, or gives a value for an entry the pool does not have: refused, the error names the entry.
-- A request runs on a branch whose schema does not define a scope element on the pool's kind (a branch created before the element was added on the default branch, and not rebased since): the request is refused and nothing is allocated or returned (decision 7). Once the branch is rebased, the element exists there and the request works.
+- A request runs on a branch whose schema does not define a scope element on the pool's kind (for example a branch created before the element was added on the default branch and not rebased since, or a branch that removed the element from its schema): the request is refused and nothing is allocated or returned (decision 7).
 - The whole range of one division is full while other divisions have free numbers: the request from the full division is refused with the pool-exhausted error; other divisions keep allocating.
 
 ## Requirements *(mandatory)*

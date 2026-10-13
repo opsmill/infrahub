@@ -396,7 +396,7 @@ async def test_an_allocation_on_a_branch_whose_schema_lacks_a_scope_element_is_r
         ValidationError,
         match=re.escape(
             'the scope element "zone" of pool vlan-per-zone does not exist on ScopeDevice on branch'
-            " predates-the-zone; rebase the branch to get it at vlan_id.from_pool"
+            " predates-the-zone at vlan_id.from_pool"
         ),
     ):
         await scoped_device(db=db, branch=branch, pool=pool, name="device-1", site=site)

@@ -646,8 +646,8 @@ class TestDivisionFromNode:
         node = _node(schema_branch=saved_schema_branch, attributes={"role": "leaf"})
         scope = AllocationScope(elements=(_element(name="role"), ScopeElement(id=UNKNOWN_FIELD_ID, name="zone")))
         expected = (
-            f'the scope element "zone" of pool vlan-per-site does not exist on {DEVICE_KIND} on branch main;'
-            f" rebase the branch to get it at {TRACKED_ATTRIBUTE}.from_pool"
+            f'the scope element "zone" of pool vlan-per-site does not exist on {DEVICE_KIND} on branch main'
+            f" at {TRACKED_ATTRIBUTE}.from_pool"
         )
 
         with pytest.raises(ValidationError, match=f"^{re.escape(expected)}$"):

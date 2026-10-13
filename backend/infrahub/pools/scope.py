@@ -108,10 +108,10 @@ class DivisionElementPath:
 
 @dataclass(frozen=True)
 class Division:
-    """The values a Node has for the scope elements, in scope order; one division is one space of the pool.
+    """The values an object has for the scope elements, in scope order; one division is one space of the pool.
 
     A scope element is a relationship or a scalar attribute, so each value is a peer id or a scalar as stored.
-    `elements` says where a Node keeps each value on the branch the division was read on.
+    `elements` says where an object keeps each value on the branch the division was read on.
     """
 
     elements: tuple[DivisionElementPath, ...]
@@ -262,7 +262,7 @@ class AllocationScopeResolver:
                 raise ValidationError(
                     {
                         f"{attribute}.from_pool": f'the scope element "{element.name}" of pool {pool} does not exist'
-                        f" on {kind} on branch {self.schema_branch.name}; rebase the branch to get it"
+                        f" on {kind} on branch {self.schema_branch.name}"
                     }
                 )
             element_fields.append((element, field))
