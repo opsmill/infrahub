@@ -53,7 +53,7 @@ from tests.component.core.node.test_branch_agnostic_edges import assert_no_globa
 from tests.db_snapshot import DbSnapshotter
 from tests.helpers.agnostic_edges import pool_reservation_edges
 from tests.helpers.edge_timestamps import assert_edge_timestamps
-from tests.helpers.schema import load_schema
+from tests.helpers.schema import save_schema
 
 
 @pytest.fixture
@@ -1102,10 +1102,10 @@ async def _add_attribute_on_a_worker_holding_the_previous_schema(
     The load saves the new schema before it runs the migrations, while the worker reloads its registry only after them,
     so the migration runs with the registry put back to the previous schema.
     """
-    await load_schema(db=db, schema=previous, update_db=True)
+    await save_schema(db=db, schema=previous)
     previous_schema_branch = registry.schema.get_schema_branch(name=default_branch.name).duplicate()
     previous_branch = registry.get_branch_from_registry(default_branch.name).model_copy(deep=True)
-    await load_schema(db=db, schema=loaded, update_db=True)
+    await save_schema(db=db, schema=loaded)
     new_schema = registry.schema.get_node_schema(name=kind, branch=default_branch, duplicate=True)
     registry.schema.set_schema_branch(name=default_branch.name, schema=previous_schema_branch)
     registry.branch[default_branch.name] = previous_branch
