@@ -9,6 +9,7 @@ from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.git import InfrahubRepository
+from tests.adapters.delivery_state import build_idle_delivery_state
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -63,6 +64,6 @@ class TestSyncMergedBranch(TestInfrahubApp):
         # local clone does not have it, making the sync treat it as a new branch to record.
         Repo(git_repo_car_dealership.path).git.branch(MERGED_BRANCH, "main")
 
-        collected = await repo.collect_pending_imports()
+        collected = await repo.collect_pending_imports(state=build_idle_delivery_state(repository_id=str(repo.id)))
 
         assert MERGED_BRANCH not in [pending.infrahub_branch_name for pending in collected.imports]
