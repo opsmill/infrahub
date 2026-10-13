@@ -238,8 +238,9 @@ Parts A and B of the plan.
       mapping that sets a read-only attribute of the target kind, and refuse the conversion of a
       `CoreRepository` while its status is not `none` or held regeneration waits. The
       `ConvertObjectType` mutation passes the store. Test each refusal through the mutation in
-      `backend/tests/component/git/writeback/test_repository_conversion.py`. The check takes no state
-      lock, so a merge queued between the check and the deletion is still dropped (spec edge case).
+      `backend/tests/component/git/writeback/test_repository_conversion.py`. The check and the deletion
+      hold the delivery-state lock, inside the repository lock, so a merge queued during a conversion
+      waits for it and then fails on the deleted repository.
 
 **Checkpoint**: the state can be read and written, by one store, on the default branch only.
 
