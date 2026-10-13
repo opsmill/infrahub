@@ -15,7 +15,7 @@ from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.pools.scope import AllocationScopeResolver
 from tests.component.pools.schema_number_pool_synchronizer.helpers import COUNTER_KIND, provision_pool, run_synchronizer
 from tests.helpers.number_pool import SCOPED_DEVICE, SCOPED_POOL_SCHEMA
-from tests.helpers.schema import load_schema, save_schema
+from tests.helpers.schema import save_schema
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -161,7 +161,7 @@ async def test_a_pool_whose_kind_is_gone_keeps_its_scope_while_a_stale_name_is_r
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     """A pool whose kind the default branch does not define keeps its scope as written while a rename is applied."""
-    await load_schema(db=db, schema=SCOPED_POOL_SCHEMA, update_db=True)
+    await save_schema(db=db, schema=SCOPED_POOL_SCHEMA)
     renamed_pool_id = await create_device_pool(db=db, name="vlan-per-site", scope=["site"])
     undefined_kind_pool_id = await create_pool_with_stored_scope(
         db=db, name="vlan-undefined-kind", kind="ScopeGone", stored_scope=[{"id": "gone-site-id", "name": "site"}]
@@ -170,7 +170,7 @@ async def test_a_pool_whose_kind_is_gone_keeps_its_scope_while_a_stale_name_is_r
     device = default_device()
     site_id = device.get_relationship(name="site").id
     device.get_relationship(name="site").name = "location"
-    await load_schema(db=db, schema=SchemaRoot(nodes=[device]), update_db=True)
+    await save_schema(db=db, schema=SchemaRoot(nodes=[device]))
 
     await run_synchronizer(db=db)
 

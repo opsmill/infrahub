@@ -14,7 +14,7 @@ from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from tests.component.pools.schema_number_pool_synchronizer.helpers import COUNTER_KIND, counter_schema, run_synchronizer
 from tests.helpers.number_pool import SCOPED_DEVICE, SCOPED_POOL_SCHEMA
-from tests.helpers.schema import load_schema
+from tests.helpers.schema import save_schema
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -26,7 +26,7 @@ async def test_declaration_the_default_branch_cannot_resolve_leaves_later_pools_
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     """A declared scope the default branch no longer resolves creates no pool, and the other declarations get theirs."""
-    await load_schema(db=db, schema=SCOPED_POOL_SCHEMA, update_db=True)
+    await save_schema(db=db, schema=SCOPED_POOL_SCHEMA)
     scoped_branch = await create_branch(db=db, branch_name="scope-gone")
     device = copy.deepcopy(SCOPED_DEVICE)
     device.attributes.append(
@@ -69,7 +69,7 @@ async def test_saving_a_branch_schema_holding_a_declaration_the_default_branch_c
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     """The branch schema saved for another pool, and reloaded later, keeps a declaration the default branch lost."""
-    await load_schema(db=db, schema=SCOPED_POOL_SCHEMA, update_db=True)
+    await save_schema(db=db, schema=SCOPED_POOL_SCHEMA)
     scoped_branch = await create_branch(db=db, branch_name="scope-gone")
     device = copy.deepcopy(SCOPED_DEVICE)
     device.attributes.extend(

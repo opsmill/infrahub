@@ -27,7 +27,7 @@ from tests.helpers.number_pool import (
     SCOPED_RACK,
     SCOPED_SITE,
 )
-from tests.helpers.schema import load_schema
+from tests.helpers.schema import save_schema
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -58,7 +58,7 @@ def _schema(device: NodeSchema = SCOPED_DEVICE, holder: GenericSchema = SCOPED_H
 
 async def _load_and_provision(db: InfrahubDatabase, schema: SchemaRoot, branch_name: str | None = None) -> None:
     """Save the schema on the branch, the default one when none is named, then let the synchronizer create the pools it declares."""
-    await load_schema(db=db, schema=schema, branch_name=branch_name, update_db=True)
+    await save_schema(db=db, schema=schema, branch_name=branch_name)
     registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
     upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository)
     await SchemaNumberPoolSynchronizer(
@@ -103,7 +103,7 @@ async def test_declared_scope_is_stored_as_ids_and_names(
 async def test_declared_scope_naming_a_field_the_same_load_adds_stores_its_saved_id(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
-    await load_schema(db=db, schema=SCOPED_POOL_SCHEMA, update_db=True)
+    await save_schema(db=db, schema=SCOPED_POOL_SCHEMA)
     device = copy.deepcopy(SCOPED_DEVICE)
     device.attributes.extend(
         [
@@ -135,7 +135,7 @@ async def test_declared_scope_of_an_inherited_attribute_resolves_on_the_generic(
 async def test_declared_scope_on_another_branch_stores_the_default_branch_ids_and_names(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
-    await load_schema(db=db, schema=SCOPED_POOL_SCHEMA, update_db=True)
+    await save_schema(db=db, schema=SCOPED_POOL_SCHEMA)
     branch = await create_branch(db=db, branch_name="declared-scope")
     device = copy.deepcopy(SCOPED_DEVICE)
     device.attributes.append(_pooled_attribute(name="vlan_index", scope=["site"]))
@@ -151,7 +151,7 @@ async def test_declared_scope_on_another_branch_stores_the_default_branch_ids_an
 async def test_declared_scope_on_a_branch_differing_from_the_existing_pool_is_not_attached(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
-    await load_schema(db=db, schema=SCOPED_POOL_SCHEMA, update_db=True)
+    await save_schema(db=db, schema=SCOPED_POOL_SCHEMA)
     branch = await create_branch(db=db, branch_name="other-scope")
     main_device = copy.deepcopy(SCOPED_DEVICE)
     main_device.attributes.append(_pooled_attribute(name="vlan_index", scope=["role"]))
