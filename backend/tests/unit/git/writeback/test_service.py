@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pytest
-from infrahub_sdk.exceptions import ServerNotReachableError
+from infrahub_sdk.exceptions import ServerNotReachableError, ValidationError
 
 from infrahub.core.constants import FullRegenerationReason, RepositoryDeliveryFailureCause, RepositoryDeliveryStatus
 from infrahub.exceptions import (
@@ -17,8 +17,8 @@ from infrahub.exceptions import (
     DeliveryStateUnavailableError,
     RepositoryConnectionError,
     RepositoryCredentialsError,
-    ValidationError,
 )
+from infrahub.git.import_errors import RepositoryImportError
 from infrahub.git.writeback.constants import RELEASE_RENEW_SECONDS
 from infrahub.git.writeback.models import (
     AbandonmentRecord,
@@ -814,20 +814,45 @@ class ImportFailureCase:
     failure: DeliveryFailure
 
 
+def _raised_by_the_import(*, error: Exception, message: str) -> RepositoryImportError:
+    """Wrap the error as the import does for every error but a connection or credentials error."""
+    wrapped = RepositoryImportError(identifier=REPOSITORY.name, branch_name="main", message=message)
+    wrapped.__cause__ = error
+    return wrapped
+
+
 IMPORT_FAILURE_CASES: list[ImportFailureCase] = [
     ImportFailureCase(
         name="interrupted_import_on_the_final_attempt",
-        error=DatabaseError(message="Unable to connect to the database"),
+        error=_raised_by_the_import(
+            error=DatabaseError(message="Unable to connect to the database"),
+            message="DatabaseError: Unable to connect to the database",
+        ),
         final_attempt=True,
         failure=DeliveryFailure(
             cause=RepositoryDeliveryFailureCause.IMPORT_INTERRUPTED,
             retryable=True,
-            message="Unable to connect to the database",
+            message="DatabaseError: Unable to connect to the database",
+        ),
+    ),
+    ImportFailureCase(
+        name="unreachable_remote_on_the_final_attempt",
+        error=RepositoryConnectionError(identifier="net-repo"),
+        final_attempt=True,
+        failure=DeliveryFailure(
+            cause=RepositoryDeliveryFailureCause.IMPORT_INTERRUPTED,
+            retryable=True,
+            message="Unable to clone the repository net-repo, please check the address and the credential",
         ),
     ),
     ImportFailureCase(
         name="invalid_content_before_the_final_attempt",
-        error=ValidationError(input_value="The artifact definition net-config has no target group."),
+        error=_raised_by_the_import(
+            error=ValidationError(
+                identifier="net-config", message="The artifact definition net-config has no target group."
+            ),
+            message="The artifact definition net-config has no target group.",
+        ),
         final_attempt=False,
         failure=DeliveryFailure(
             cause=RepositoryDeliveryFailureCause.IMPORT_FAILED,
@@ -1144,6 +1169,7 @@ SOURCE_BRANCH_CASES: list[SourceBranchCase] = [
         deleted=[],
         joining=_merge(entry_id="merge-3", source_branch="add-vlan-again", source_commit=OTHER),
     ),
+    SourceBranchCase(name="a_merge_that_joined_comes_from_another_branch", deleted=["feature"], joining=OTHER_MERGE),
     SourceBranchCase(
         name="a_failed_deletion_keeps_the_branch",
         deleted=[],
@@ -1169,6 +1195,7 @@ async def test_delivered_source_branch_is_deleted_when_no_queued_merge_needs_it(
     result = await rig.deliver()
 
     assert result.outcome == DeliveryOutcome.DELIVERED
+    assert rig.intent.queue.entries == (() if joining is None else (joining,))
     assert rig.git.deleted_branches == case.deleted
     assert rig.git.notified_branches == case.deleted
 
