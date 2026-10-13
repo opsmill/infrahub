@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -8,15 +9,18 @@ import yaml
 from infrahub_sdk.protocols import (
     CoreArtifact,
     CoreArtifactDefinition,
+    CoreCheckDefinition,
     CoreGeneratorDefinition,
     CoreGraphQLQuery,
     CoreReadOnlyRepository,
+    CoreStandardGroup,
     CoreTransformJinja2,
     CoreTransformPython,
 )
 
 from infrahub.core.constants import InfrahubKind, RepositorySyncStatus
 from infrahub.core.node import Node
+from infrahub.exceptions import RepositoryConfigurationError
 from infrahub.git.models import GitReadOnlyRepositoryImportCommit
 from infrahub.workflows.catalogue import GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT
 from tests.constants import TestKind
@@ -61,6 +65,33 @@ class PeopleReport(InfrahubTransform):
 
     async def transform(self, data: dict[str, Any]) -> dict[str, Any]:
         return {"people": len(data["TestingPerson"]["edges"])}
+
+
+class PeopleNames(InfrahubTransform):
+    query = "people_report"
+
+    async def transform(self, data: dict[str, Any]) -> dict[str, Any]:
+        return {"names": [edge["node"]["name"]["value"] for edge in data["TestingPerson"]["edges"]]}
+"""
+
+PEOPLE_CHECK = """from infrahub_sdk.checks import InfrahubCheck
+
+
+class PeopleExist(InfrahubCheck):
+    query = "people_report"
+
+    def validate(self, data: dict) -> None:
+        if not data["TestingPerson"]["edges"]:
+            self.log_error(message="No people found")
+
+
+class PeopleNamed(InfrahubCheck):
+    query = "people_report"
+
+    def validate(self, data: dict) -> None:
+        for edge in data["TestingPerson"]["edges"]:
+            if not edge["node"]["name"]["value"]:
+                self.log_error(message="A person has no name")
 """
 
 PEOPLE_TEMPLATE = "{{ data.TestingPerson.edges | length }}\n"
@@ -73,6 +104,7 @@ BASE_FILES: dict[str, str] = {
         for name in ("people_base", "people_report", "people_card", "people_old", "people_new", "people_generator")
     },
     "transforms/people_report.py": PEOPLE_REPORT_TRANSFORM,
+    "checks/people_check.py": PEOPLE_CHECK,
     "templates/people.j2": PEOPLE_TEMPLATE,
 }
 
@@ -90,8 +122,31 @@ def _jinja2_transform_config(name: str, query: str) -> dict[str, str]:
     return {"name": name, "query": query, "template_path": "templates/people.j2"}
 
 
+def _people_report_transform_config(name: str, class_name: str = "PeopleReport") -> dict[str, str]:
+    return {"name": name, "class_name": class_name, "file_path": "transforms/people_report.py"}
+
+
+def _people_check_config(class_name: str, targets: str | None = None) -> dict[str, Any]:
+    config: dict[str, Any] = {"name": "people check", "class_name": class_name, "file_path": "checks/people_check.py"}
+    if targets:
+        config["targets"] = targets
+        config["parameters"] = {"name": "name__value"}
+    return config
+
+
+def _people_report_artifact_definition_config(transformation: str) -> dict[str, Any]:
+    return {
+        "name": "people report",
+        "artifact_name": "people-report",
+        "parameters": {"name": "name__value"},
+        "content_type": "application/json",
+        "targets": "people",
+        "transformation": transformation,
+    }
+
+
 class TestImportRemovedDefinitions(TestInfrahubApp):
-    """Removing objects from the repository config deletes them, whatever else in the commit references them."""
+    """Changing objects in the repository config updates them, and removing them deletes them whatever else references them."""
 
     @pytest.fixture(scope="class")
     def file_repo(self, git_repos_source_dir_module_scope: Path) -> FileRepo:
@@ -113,6 +168,9 @@ class TestImportRemovedDefinitions(TestInfrahubApp):
         people = await Node.init(schema=InfrahubKind.STANDARDGROUP, db=db)
         await people.new(db=db, name="people", members=[john])
         await people.save(db=db)
+        adults = await Node.init(schema=InfrahubKind.STANDARDGROUP, db=db)
+        await adults.new(db=db, name="adults", members=[john])
+        await adults.save(db=db)
 
     @pytest.fixture(scope="class")
     async def repository_id(
@@ -138,7 +196,13 @@ class TestImportRemovedDefinitions(TestInfrahubApp):
     ) -> None:
         """Commit a new repository config, import it, and check the repository advanced to that commit."""
         commit = _commit_config(file_repo=file_repo, config=config)
+        await self._import_last_commit(service=service, repository_id=repository_id)
 
+        repository = await client.get(kind=CoreReadOnlyRepository, id=repository_id)
+        assert repository.commit.value == commit
+        assert repository.sync_status.value == RepositorySyncStatus.IN_SYNC.value
+
+    async def _import_last_commit(self, service: InfrahubServices, repository_id: str) -> None:
         await service.workflow.execute_workflow(
             workflow=GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT,
             parameters={
@@ -151,10 +215,6 @@ class TestImportRemovedDefinitions(TestInfrahubApp):
                 )
             },
         )
-
-        repository = await client.get(kind=CoreReadOnlyRepository, id=repository_id)
-        assert repository.commit.value == commit
-        assert repository.sync_status.value == RepositorySyncStatus.IN_SYNC.value
 
     @pytest.fixture(autouse=True)
     async def restore_base_config(
@@ -268,6 +328,118 @@ class TestImportRemovedDefinitions(TestInfrahubApp):
         assert moved_transform.query.id == new_query.id
         assert await client.filters(kind=CoreGraphQLQuery, ids=[old_query.id]) == []
 
+    async def test_repoint_artifact_definition_to_new_transform_and_keep_old_transform(
+        self, client: InfrahubClient, service: InfrahubServices, repository_id: str, file_repo: FileRepo
+    ) -> None:
+        await self._commit_and_sync(
+            client=client,
+            service=service,
+            repository_id=repository_id,
+            file_repo=file_repo,
+            config={
+                "queries": [BASE_QUERY, _query_config(name="people_report")],
+                "python_transforms": [_people_report_transform_config(name="PeopleReport")],
+                "artifact_definitions": [_people_report_artifact_definition_config(transformation="PeopleReport")],
+            },
+        )
+        old_transform = await client.get(kind=CoreTransformPython, name__value="PeopleReport")
+        artifact_definition = await client.get(kind=CoreArtifactDefinition, name__value="people report")
+        assert artifact_definition.transformation.id == old_transform.id
+
+        repointed_config: dict[str, Any] = {
+            "queries": [BASE_QUERY, _query_config(name="people_report")],
+            "python_transforms": [
+                _people_report_transform_config(name="PeopleReport"),
+                _people_report_transform_config(name="PeopleSummary"),
+            ],
+            "artifact_definitions": [_people_report_artifact_definition_config(transformation="PeopleSummary")],
+        }
+        await self._commit_and_sync(
+            client=client, service=service, repository_id=repository_id, file_repo=file_repo, config=repointed_config
+        )
+        new_transform = await client.get(kind=CoreTransformPython, name__value="PeopleSummary")
+        moved_artifact_definition = await client.get(
+            kind=CoreArtifactDefinition, id=artifact_definition.id, property=True
+        )
+        assert moved_artifact_definition.transformation.id == new_transform.id
+        assert moved_artifact_definition.transformation.source == repository_id
+        assert moved_artifact_definition.transformation.is_protected is True
+        kept_transform = await client.get(kind=CoreTransformPython, id=old_transform.id)
+        assert kept_transform.name.value == "PeopleReport"
+
+    async def test_resync_repoints_artifact_definition_whose_fingerprint_is_current(
+        self, client: InfrahubClient, service: InfrahubServices, repository_id: str, file_repo: FileRepo
+    ) -> None:
+        # Watching the source file keeps the fingerprints the same across commits.
+        watch = {"watch": {"files": ["transforms/people_report.py"]}}
+        config: dict[str, Any] = {
+            "queries": [BASE_QUERY, _query_config(name="people_report")],
+            "python_transforms": [
+                {**_people_report_transform_config(name="PeopleReport"), **watch},
+                {**_people_report_transform_config(name="PeopleSummary"), **watch},
+            ],
+            "artifact_definitions": [_people_report_artifact_definition_config(transformation="PeopleSummary")],
+        }
+        await self._commit_and_sync(
+            client=client, service=service, repository_id=repository_id, file_repo=file_repo, config=config
+        )
+        declared_transform = await client.get(kind=CoreTransformPython, name__value="PeopleSummary")
+        other_transform = await client.get(kind=CoreTransformPython, name__value="PeopleReport")
+        artifact_definition = await client.get(kind=CoreArtifactDefinition, name__value="people report")
+        fingerprint = artifact_definition.fingerprint.value
+        artifact_definition.transformation = other_transform.id
+        await artifact_definition.save()
+        drifted_artifact_definition = await client.get(kind=CoreArtifactDefinition, id=artifact_definition.id)
+        assert drifted_artifact_definition.transformation.id == other_transform.id
+        assert drifted_artifact_definition.fingerprint.value == fingerprint
+
+        await self._commit_and_sync(
+            client=client, service=service, repository_id=repository_id, file_repo=file_repo, config=config
+        )
+
+        resynced_artifact_definition = await client.get(kind=CoreArtifactDefinition, id=artifact_definition.id)
+        assert resynced_artifact_definition.fingerprint.value == fingerprint
+        assert resynced_artifact_definition.transformation.id == declared_transform.id
+
+    async def test_rename_transform_of_artifact_definition_and_remove_old_transform(
+        self, client: InfrahubClient, service: InfrahubServices, repository_id: str, file_repo: FileRepo
+    ) -> None:
+        await self._commit_and_sync(
+            client=client,
+            service=service,
+            repository_id=repository_id,
+            file_repo=file_repo,
+            config={
+                "queries": [BASE_QUERY, _query_config(name="people_report")],
+                "python_transforms": [_people_report_transform_config(name="PeopleReport")],
+                "artifact_definitions": [_people_report_artifact_definition_config(transformation="PeopleReport")],
+            },
+        )
+        old_transform = await client.get(kind=CoreTransformPython, name__value="PeopleReport")
+        artifact_definition = await client.get(kind=CoreArtifactDefinition, name__value="people report")
+        assert artifact_definition.transformation.id == old_transform.id
+
+        await self._commit_and_sync(
+            client=client,
+            service=service,
+            repository_id=repository_id,
+            file_repo=file_repo,
+            config={
+                "queries": [BASE_QUERY, _query_config(name="people_report")],
+                "python_transforms": [_people_report_transform_config(name="PeopleSummary")],
+                "artifact_definitions": [_people_report_artifact_definition_config(transformation="PeopleSummary")],
+            },
+        )
+
+        renamed_transform = await client.get(kind=CoreTransformPython, name__value="PeopleSummary")
+        moved_artifact_definition = await client.get(
+            kind=CoreArtifactDefinition, id=artifact_definition.id, property=True
+        )
+        assert moved_artifact_definition.transformation.id == renamed_transform.id
+        assert moved_artifact_definition.transformation.source == repository_id
+        assert moved_artifact_definition.transformation.is_protected is True
+        assert await client.filters(kind=CoreTransformPython, ids=[old_transform.id]) == []
+
     async def test_remove_generator_definition_with_its_query(
         self, client: InfrahubClient, service: InfrahubServices, repository_id: str, file_repo: FileRepo
     ) -> None:
@@ -300,6 +472,139 @@ class TestImportRemovedDefinitions(TestInfrahubApp):
 
         assert await client.filters(kind=CoreGraphQLQuery, ids=[query.id]) == []
         assert await client.filters(kind=CoreGeneratorDefinition, ids=[generator.id]) == []
+
+    async def test_change_class_name_of_python_transform(
+        self, client: InfrahubClient, service: InfrahubServices, repository_id: str, file_repo: FileRepo
+    ) -> None:
+        await self._commit_and_sync(
+            client=client,
+            service=service,
+            repository_id=repository_id,
+            file_repo=file_repo,
+            config={
+                "queries": [BASE_QUERY, _query_config(name="people_report")],
+                "python_transforms": [_people_report_transform_config(name="PeopleReport")],
+            },
+        )
+        transform = await client.get(kind=CoreTransformPython, name__value="PeopleReport")
+        assert transform.class_name.value == "PeopleReport"
+
+        await self._commit_and_sync(
+            client=client,
+            service=service,
+            repository_id=repository_id,
+            file_repo=file_repo,
+            config={
+                "queries": [BASE_QUERY, _query_config(name="people_report")],
+                "python_transforms": [_people_report_transform_config(name="PeopleReport", class_name="PeopleNames")],
+            },
+        )
+
+        updated_transform = await client.get(kind=CoreTransformPython, id=transform.id)
+        assert updated_transform.class_name.value == "PeopleNames"
+
+    async def test_change_class_name_of_check_definition(
+        self, client: InfrahubClient, service: InfrahubServices, repository_id: str, file_repo: FileRepo
+    ) -> None:
+        await self._commit_and_sync(
+            client=client,
+            service=service,
+            repository_id=repository_id,
+            file_repo=file_repo,
+            config={
+                "queries": [BASE_QUERY, _query_config(name="people_report")],
+                "check_definitions": [_people_check_config(class_name="PeopleExist")],
+            },
+        )
+        check_definition = await client.get(kind=CoreCheckDefinition, name__value="people check")
+        assert check_definition.class_name.value == "PeopleExist"
+
+        await self._commit_and_sync(
+            client=client,
+            service=service,
+            repository_id=repository_id,
+            file_repo=file_repo,
+            config={
+                "queries": [BASE_QUERY, _query_config(name="people_report")],
+                "check_definitions": [_people_check_config(class_name="PeopleNamed")],
+            },
+        )
+
+        updated_check_definition = await client.get(kind=CoreCheckDefinition, id=check_definition.id)
+        assert updated_check_definition.class_name.value == "PeopleNamed"
+
+    async def test_change_targets_of_check_definition(
+        self, client: InfrahubClient, service: InfrahubServices, repository_id: str, file_repo: FileRepo
+    ) -> None:
+        people = await client.get(kind=CoreStandardGroup, name__value="people")
+        adults = await client.get(kind=CoreStandardGroup, name__value="adults")
+        await self._commit_and_sync(
+            client=client,
+            service=service,
+            repository_id=repository_id,
+            file_repo=file_repo,
+            config={
+                "queries": [BASE_QUERY, _query_config(name="people_report")],
+                "check_definitions": [_people_check_config(class_name="PeopleExist")],
+            },
+        )
+        check_definition = await client.get(kind=CoreCheckDefinition, name__value="people check")
+        assert check_definition.targets.id is None
+
+        for targets, expected_target_id in (("people", people.id), ("adults", adults.id), (None, None)):
+            await self._commit_and_sync(
+                client=client,
+                service=service,
+                repository_id=repository_id,
+                file_repo=file_repo,
+                config={
+                    "queries": [BASE_QUERY, _query_config(name="people_report")],
+                    "check_definitions": [_people_check_config(class_name="PeopleExist", targets=targets)],
+                },
+            )
+            updated_check_definition = await client.get(kind=CoreCheckDefinition, id=check_definition.id)
+            assert updated_check_definition.targets.id == expected_target_id, f"targets={targets}"
+
+    async def test_check_definition_targeting_missing_group_fails_import(
+        self,
+        client: InfrahubClient,
+        service: InfrahubServices,
+        repository_id: str,
+        file_repo: FileRepo,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        await self._commit_and_sync(
+            client=client,
+            service=service,
+            repository_id=repository_id,
+            file_repo=file_repo,
+            config={
+                "queries": [BASE_QUERY, _query_config(name="people_report")],
+                "check_definitions": [_people_check_config(class_name="PeopleExist")],
+            },
+        )
+        check_definition = await client.get(kind=CoreCheckDefinition, name__value="people check")
+        assert check_definition.targets.id is None
+
+        _commit_config(
+            file_repo=file_repo,
+            config={
+                "queries": [BASE_QUERY, _query_config(name="people_report")],
+                "check_definitions": [_people_check_config(class_name="PeopleExist", targets="missing")],
+            },
+        )
+        expected_message = (
+            f"Check definition 'people check' in repository '{REPOSITORY_NAME}' targets the group 'missing', "
+            "but no group named 'missing' exists on branch 'main'."
+        )
+        with pytest.raises(RepositoryConfigurationError, match=rf"^{re.escape(expected_message)}$"):
+            await self._import_last_commit(service=service, repository_id=repository_id)
+
+        assert expected_message in [record.getMessage() for record in caplog.records if record.levelname == "ERROR"]
+        repository = await client.get(kind=CoreReadOnlyRepository, id=repository_id)
+        assert repository.sync_status.value == RepositorySyncStatus.ERROR_IMPORT.value
+        unchanged_check_definition = await client.get(kind=CoreCheckDefinition, id=check_definition.id)
+        assert unchanged_check_definition.targets.id is None
 
     async def test_remove_last_remaining_query(
         self, client: InfrahubClient, service: InfrahubServices, repository_id: str, file_repo: FileRepo
