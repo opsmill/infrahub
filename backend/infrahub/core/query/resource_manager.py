@@ -666,8 +666,20 @@ def _live_on_some_branch(edge: str, hiding_pattern: str) -> str:
             )"""
 
 
+_LIVE_EDGES = {
+    "node_is_live": _live_on_some_branch(edge="ha", hiding_pattern="(node)-[hiding:HAS_ATTRIBUTE]->(attr)"),
+    "value_is_live": _live_on_some_branch(edge="hv", hiding_pattern="(element_attr)-[hiding:HAS_VALUE]->()"),
+    "peer_is_live": _live_on_some_branch(edge="r1", hiding_pattern="(node)-[hiding:IS_RELATED]-(rel)"),
+    "direction_matches": """(
+                        (element.direction = "outbound" AND startNode(r1) = node AND startNode(r2) = rel)
+                        OR (element.direction = "inbound" AND endNode(r1) = node AND endNode(r2) = rel)
+                        OR (element.direction = "bidirectional" AND endNode(r1) = rel AND endNode(r2) = rel)
+                    )""",
+}
+
 # A schema migration can leave several Node vertices linked to one Attribute, each live on different branches.
-DIVISION_FILTER_QUERY = """
+DIVISION_FILTER_QUERY = (
+    """
     // --------------
     // Keep the reserved Attribute when one of its Nodes is in the division on some live branch, each scope element
     // matching any value or peer that some live branch gives it
@@ -690,22 +702,16 @@ DIVISION_FILTER_QUERY = """
                 AND EXISTS {
                     MATCH (node)-[r1:IS_RELATED]-(rel:Relationship { name: element.name })
                         -[r2:IS_RELATED]-(peer:Node { uuid: element.value })
-                    WHERE (
-                        (element.direction = "outbound" AND startNode(r1) = node AND startNode(r2) = rel)
-                        OR (element.direction = "inbound" AND endNode(r1) = node AND endNode(r2) = rel)
-                        OR (element.direction = "bidirectional" AND endNode(r1) = rel AND endNode(r2) = rel)
-                    )
+                    WHERE %(direction_matches)s
                     AND r2.status = "active"
                     AND %(peer_is_live)s
                 }
             )
         )
     }
-""" % {
-    "node_is_live": _live_on_some_branch(edge="ha", hiding_pattern="(node)-[hiding:HAS_ATTRIBUTE]->(attr)"),
-    "value_is_live": _live_on_some_branch(edge="hv", hiding_pattern="(element_attr)-[hiding:HAS_VALUE]->()"),
-    "peer_is_live": _live_on_some_branch(edge="r1", hiding_pattern="(node)-[hiding:IS_RELATED]-(rel)"),
-}
+"""
+    % _LIVE_EDGES
+)
 
 
 def division_filter_query(division: Division) -> tuple[str, dict[str, Any]]:
