@@ -150,8 +150,8 @@ classifier. The table of `research.md` R5 is the contract of `classify_delivery_
 `replay-conflict` row: the service sets that cause from `ReplayResult`, and the classifier gives
 `unclassified` for every exception at the replay stage. A
 `RepositoryPushRejectedError` gives its `remote_message` and ref summary as the message. Any other
-error gives its typed message, unless the message repeats the text of the `GitCommandError` that it was
-raised `from`, as every raise of the Git error enrichment does: then it gives a sentence that names the step
+error gives its typed message, unless the message repeats the text of a `GitCommandError` in its chain of
+causes, as every raise of the Git error enrichment does, also under the wrapper of a failed import: then it gives a sentence that names the step
 and the error type, so raw stderr does not reach the repository. The guard sees only that case. A
 message that wraps Git output in a longer sentence, or an error raised without `from`, keeps its
 text, with the credentials removed. Every message passes through `scrub_credentials`,
