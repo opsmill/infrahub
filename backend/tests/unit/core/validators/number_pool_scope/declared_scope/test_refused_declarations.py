@@ -26,6 +26,7 @@ from tests.unit.core.validators.number_pool_scope.declared_scope.helpers import 
     declared_checker,
     declared_request,
     declared_schema,
+    device_role_renamed_and_declaration_reordered,
     holder_declaration_cleared,
     holder_site_renamed,
     unvalidated_schema_branch,
@@ -96,6 +97,23 @@ REFUSED_DECLARATION_CASES = [
         field_name="function",
         path_type=SchemaPathType.ATTRIBUTE,
         change=device_role_renamed,
+        expected=[
+            (
+                DEVICE_SCHEMA_POOL_ID,
+                'ScopeDevice.vlan_id: allocation_scope: "role" was renamed to "function";'
+                " update allocation_scope to the new name",
+            )
+        ],
+        expected_ids_read=[{DEVICE_SCHEMA_POOL_ID}],
+    ),
+    # The reorder alone is not a change of the declaration, so the rename is still compared with the stored scope.
+    DeclarationCase(
+        name="attribute-renamed-declaration-reordered",
+        constraint_name="attribute.name.update",
+        kind=DEVICE,
+        field_name="function",
+        path_type=SchemaPathType.ATTRIBUTE,
+        change=device_role_renamed_and_declaration_reordered,
         expected=[
             (
                 DEVICE_SCHEMA_POOL_ID,

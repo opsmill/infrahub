@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
@@ -448,7 +449,12 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         )
         if previous is None or not isinstance(previous.parameters, NumberPoolParameters):
             return False
-        return previous.parameters.allocation_scope != attribute.parameters.allocation_scope
+        previous_entries = previous.parameters.allocation_scope
+        entries = attribute.parameters.allocation_scope
+        if previous_entries is None or entries is None:
+            return previous_entries != entries
+        # A reorder keeps the same divisions, so it does not change the declaration.
+        return Counter(previous_entries) != Counter(entries)
 
     def _kinds_sharing_fields(self, kind_schema: MainSchemaTypes) -> set[str]:
         """Return the kind and the kinds it shares fields with through inheritance.

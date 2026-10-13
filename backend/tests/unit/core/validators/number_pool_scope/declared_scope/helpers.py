@@ -34,6 +34,7 @@ from tests.unit.core.validators.number_pool_scope.helpers import (
     StaticSchemaSource,
     build_checker,
     device_of,
+    device_role_renamed,
     device_site_renamed,
     holder_of,
     scoped_pool,
@@ -124,6 +125,11 @@ def device_tags_renamed(schema: SchemaRoot) -> None:
 
 def holder_site_renamed(schema: SchemaRoot) -> None:
     holder_of(schema).get_relationship(name="site").name = "location"
+
+
+def device_role_renamed_and_declaration_reordered(schema: SchemaRoot) -> None:
+    device_role_renamed(schema)
+    declare_on_device(["role", "site"])(schema)
 
 
 def device_vlan_id_renamed_and_declared(schema: SchemaRoot) -> None:
