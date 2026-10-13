@@ -12,7 +12,7 @@ from infrahub_sdk.protocols import CoreRepository
 from infrahub_sdk.uuidt import UUIDT
 from prefect import flow
 from prefect.client.orchestration import PrefectClient, get_client
-from prefect.client.schemas.objects import State
+from prefect.client.schemas.objects import State, StateType
 
 from infrahub import config, lock
 from infrahub.core.constants import (
@@ -31,6 +31,7 @@ from infrahub.exceptions import RepositoryError
 from infrahub.git import InfrahubRepository
 from infrahub.git.divergence.recorder import HistoryRewriteRecorder
 from infrahub.git.divergence.suppression import RetargetMarkers
+from infrahub.git.repository import ImportStep
 from infrahub.git.sync import (
     RepositoryBranchesFailedError,
     RepositoryFileImporter,
@@ -54,6 +55,7 @@ from tests.helpers.git import LocalRemote, build_repository_client, clone_reposi
 from tests.helpers.repository_sync import (
     FLOW_RUN_LOGGER,
     INVALID_YAML_CONFIG,
+    branch_import_runs,
     create_repository_node,
     flow_run_tags,
     invalid_yaml_config_message,
@@ -366,7 +368,6 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
         assert error.outcome.report == SyncReport(
             skipped_branches=("main",),
             imported_branches=(),
-            failed_import_branches=("broken",),
             advanced_skipped_branches=(),
         )
         assert skipped_branch_warnings(caplog, state) == [
@@ -490,7 +491,6 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
             report=SyncReport(
                 skipped_branches=("main",),
                 imported_branches=(),
-                failed_import_branches=(),
                 advanced_skipped_branches=(),
             ),
             reconciled=(),
@@ -516,8 +516,11 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
 
         assert state.is_completed()
         assert skipped_branch_warnings(caplog, state) == []
-        # The import links the run by itself, which shows the silence is not an idle cycle's.
-        assert await is_linked_to_node(prefect_client, state, node.id)
+        assert not await is_linked_to_node(prefect_client, state, node.id)
+        # The trunk was imported, which shows the silence is not an idle cycle's.
+        assert await branch_import_runs(prefect_client, state) == {
+            "main": (StateType.COMPLETED, run_tags(branches=["main"], node_id=node.id))
+        }
 
     async def test_no_warning_once_the_trunk_is_the_infrahub_default_branch(
         self,
@@ -554,7 +557,11 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
 
         assert state.is_completed()
         assert skipped_branch_warnings(caplog, state) == []
-        assert await is_linked_to_node(prefect_client, state, node.id)
+        assert not await is_linked_to_node(prefect_client, state, node.id)
+        assert (await branch_import_runs(prefect_client, state))["main"] == (
+            StateType.COMPLETED,
+            run_tags(branches=["main"], node_id=node.id),
+        )
 
     async def test_no_warning_without_a_colliding_branch(
         self,
@@ -575,7 +582,10 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
         assert state.is_completed()
         assert skipped_branch_warnings(caplog, connect) == []
         assert skipped_branch_warnings(caplog, state) == []
-        assert await is_linked_to_node(prefect_client, state, node.id)
+        assert not await is_linked_to_node(prefect_client, state, node.id)
+        assert await branch_import_runs(prefect_client, state) == {
+            "main": (StateType.COMPLETED, run_tags(branches=["main"], node_id=node.id))
+        }
 
     @pytest.mark.parametrize("operational_status", OPERATIONAL_STATUSES)
     async def test_cycle_that_imports_one_branch_and_fails_another_reports_the_skipped_branch(
@@ -589,7 +599,7 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
         tmp_path: Path,
         git_repos_dir: Path,
     ) -> None:
-        """The warning does not depend on the repository being online, and no branch loses its tag.
+        """The warning does not depend on the repository being online, and each import is shown on its own branch.
 
         One branch fails with an expected error and another with an unrecognised one, and neither
         stops the import of the trunk.
@@ -623,7 +633,6 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
         assert isinstance(error, RepositoryBranchesFailedError)
         assert error.outcome.report.skipped_branches == ("main",)
         assert error.outcome.report.imported_branches == ("main",)
-        assert sorted(error.outcome.report.failed_import_branches) == sorted([failing_branch, unexpected_branch])
         assert error.outcome.report.advanced_skipped_branches == ()
         assert error.message == (
             f"Unable to synchronize the following branches of repository {name}: "
@@ -646,9 +655,13 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
         assert skipped_branch_warnings(caplog, state) == [
             skipped_branch_warning(branch_name="main", repository_name=name, default_branch=TRUNK)
         ]
-        assert await flow_run_tags(prefect_client, state) == run_tags(
-            branches=["main", failing_branch, unexpected_branch], node_id=node.id
-        )
+        # The failed imports are shown by their own runs, so the run carries only the branch it reports on.
+        assert await flow_run_tags(prefect_client, state) == run_tags(branches=["main"], node_id=node.id)
+        assert await branch_import_runs(prefect_client, state) == {
+            "main": (StateType.COMPLETED, run_tags(branches=["main"], node_id=node.id)),
+            failing_branch: (StateType.FAILED, run_tags(branches=[failing_branch], node_id=node.id)),
+            unexpected_branch: (StateType.FAILED, run_tags(branches=[unexpected_branch], node_id=node.id)),
+        }
 
     async def test_failed_cycle_where_nothing_else_moved_does_not_report_the_skipped_branch(
         self,
@@ -660,7 +673,7 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
         tmp_path: Path,
         git_repos_dir: Path,
     ) -> None:
-        """The failure links the run while the repository is online, but it is not a reason to report."""
+        """The failed import is shown by its own run, and it is not a reason to report the skipped branch."""
         name = "failing-trunk-cycle-repo"
         remote, node, _ = await self._connect(db=db, tmp_path=tmp_path, name=name, branches=["main"])
         remote.commit(branch_name=TRUNK, files={".infrahub.yml": "schemas: [unclosed\n"})
@@ -673,13 +686,61 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
         assert error.outcome.report == SyncReport(
             skipped_branches=("main",),
             imported_branches=(),
-            failed_import_branches=("main",),
             advanced_skipped_branches=(),
         )
         # The trunk is git branch develop, which imports into the Infrahub default branch.
         assert [(failed.branch_name, failed.on_default_branch) for failed in error.outcome.failed] == [("main", True)]
         assert skipped_branch_warnings(caplog, state) == []
-        assert await flow_run_tags(prefect_client, state) == run_tags(branches=["main"], node_id=node.id)
+        assert not await is_linked_to_node(prefect_client, state, node.id)
+        assert await branch_import_runs(prefect_client, state) == {
+            "main": (StateType.FAILED, run_tags(branches=["main"], node_id=node.id))
+        }
+
+    @pytest.mark.parametrize("case", FAILED_READ_CASES, ids=[case.name for case in FAILED_READ_CASES])
+    async def test_branch_that_fails_before_its_import_is_shown_on_the_run_while_online(
+        self,
+        case: FailedReadCase,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        prefect_client: PrefectClient,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """No import run starts for a branch that fails while it is collected, so the sync run shows it."""
+        name = f"blocked-collection-repo-{case.name}"
+        blocked_branch = f"blocked-on-collection-{case.name}"
+        remote, node, _ = await self._connect(db=db, tmp_path=tmp_path, name=name, branches=[])
+        repo = await InfrahubRepository.init(
+            id=node.id,
+            name=name,
+            location=str(remote.directory),
+            client=client,
+            infrahub_branch_name=registry.default_branch,
+        )
+        await create_branch(branch_name=blocked_branch, db=db)
+        commit = remote.commit(branch_name=blocked_branch, files={"data.txt": "blocked\n"})
+        # An occupied commit worktree directory makes the branch fail while it is collected.
+        (repo.directory_commits / commit).mkdir()
+        (repo.directory_commits / commit / "blocker.txt").write_text("blocking worktree creation\n")
+
+        state = await run_sync_flow(
+            client=client,
+            repository_id=node.id,
+            name=name,
+            location=str(remote.directory),
+            operational_status=case.operational_status,
+        )
+
+        assert state.is_failed()
+        error = await state.aresult(raise_on_failure=False)
+        assert isinstance(error, RepositoryBranchesFailedError)
+        assert [(failed.branch_name, failed.step) for failed in error.outcome.failed] == [
+            (blocked_branch, ImportStep.COLLECTION)
+        ]
+        assert await branch_import_runs(prefect_client, state) == {}
+        expected_tags = run_tags(branches=[blocked_branch], node_id=node.id) if case.expected_linked else set()
+        assert await flow_run_tags(prefect_client, state) == expected_tags
 
     @pytest.mark.parametrize("case", FAILED_READ_CASES, ids=[case.name for case in FAILED_READ_CASES])
     async def test_failed_fetch_links_the_run_while_online(
@@ -713,7 +774,7 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
         assert skipped_branch_warnings(caplog, state) == []
         assert await is_linked_to_node(prefect_client, state, node.id) is case.expected_linked
 
-    async def test_reporting_the_skipped_branch_keeps_the_tags_of_the_imported_branches(
+    async def test_reporting_the_skipped_branch_leaves_the_imported_branch_to_its_own_run(
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
@@ -734,9 +795,10 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
         assert skipped_branch_warnings(caplog, state) == [
             skipped_branch_warning(branch_name="main", repository_name=name, default_branch=TRUNK)
         ]
-        assert await flow_run_tags(prefect_client, state) == run_tags(
-            branches=["main", "feature-import"], node_id=node.id
-        )
+        assert await flow_run_tags(prefect_client, state) == run_tags(branches=["main"], node_id=node.id)
+        assert await branch_import_runs(prefect_client, state) == {
+            "feature-import": (StateType.COMPLETED, run_tags(branches=["feature-import"], node_id=node.id))
+        }
 
     @pytest.mark.parametrize("case", FAILED_READ_CASES, ids=[case.name for case in FAILED_READ_CASES])
     async def test_failing_node_read_links_the_run_while_online(
