@@ -165,11 +165,14 @@ attempt:
   of the recorded commit;
 - removes the delivered entries from the queue in the save that ends the attempt.
 
-A failed attempt resets the worktree to the commit recorded before the attempt. The repository
-records the cause, and for a refused push the remote's own `remote:` lines
-(`git/writeback/classifier.py`). The entries stay in the queue, and the next merge flow of the
-repository delivers them with its own. A clone with no `origin` fails the attempt and keeps the
-queue. The periodic sync still only reads from the remote: it never pushes a queued merge.
+When the replay conflicts or fails, or the push or the record fails, the attempt resets the worktree
+to the commit recorded before the attempt. A failed fetch or a refused check stops before the
+worktree moves. A failed import, or a failed write of the delivery state after the push, leaves the
+worktree at the delivered commit, which the remote holds. The repository records the cause, and for
+a refused push the remote's own `remote:` lines (`git/writeback/classifier.py`). The entries stay in
+the queue, and the next merge flow of the repository delivers them with its own. A clone with no
+`origin` fails the attempt and keeps the queue. The periodic sync still only reads from the remote:
+it never pushes a queued merge.
 
 With `git.use_explicit_merge_commit` at its default of `False` a replay fast-forwards where it can,
 and the resulting SHA is the source commit, which the remote already has. When the remote head has
