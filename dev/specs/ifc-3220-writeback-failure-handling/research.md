@@ -1079,8 +1079,8 @@ crash cases of the inline release.
 | Path | Change |
 |---|---|
 | `InfrahubRepository.collect_pending_imports`, the active loop | Removes the repository's default branch from the branches to pull. Removes from the new **and** the updated branches every remote branch that a pending entry names as its source. Logs both once per cycle. `_collect_staging_imports` keeps the full list, because a staging repository is never queued. |
-| `git/tasks.py::bootstrap_local_repository` | Skips the seed import of the default branch after a fresh clone, and logs it. The clone itself proceeds. |
-| `graphql/mutations/repository.py::ProcessRepository` | Refuses on **every** branch, with a message that names the pending delivery. |
+| `git/tasks.py::bootstrap_local_repository` | Skips the seed import of the default branch after a fresh clone, and logs it. The clone itself proceeds. A seed into a staging branch is not skipped, as for the staging path of the synchronisation. |
+| `graphql/mutations/repository.py::ProcessRepository` | Refuses on **every** branch, with a message that names the pending delivery. The import flow it submits checks again under the repository lock before it applies, because a merge can be queued in between. |
 
 **Why the default branch.** The import is desired-state: it deletes the repository-owned objects
 that are not in the imported commit. If the remote destination advanced during an outage, an import
