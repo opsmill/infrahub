@@ -14,6 +14,7 @@ from infrahub.core.constants import (
     InfrahubKind,
     MetadataOptions,
     PermissionAction,
+    RepositoryDeliveryStatus,
     RepositoryInternalStatus,
 )
 from infrahub.core.manager import NodeManager
@@ -31,7 +32,7 @@ from infrahub.git.models import (
     TrackedRef,
 )
 from infrahub.git.writeback.runs import delivery_run_tags
-from infrahub.git.writeback.store import WritebackIntentStore
+from infrahub.git.writeback.store import WritebackIntentStore, build_intent_store
 from infrahub.graphql.types.common import IdentifierInput
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
@@ -280,6 +281,13 @@ class ProcessRepository(Mutation):
         info: GraphQLResolveInfo,
         data: IdentifierInput,
     ) -> dict[str, bool]:
+        """Reimport the objects of the repository at its current commit.
+
+        Raises:
+            ValidationError: On every branch, while merged changes of a read-write repository wait for
+                their push to the remote, because the reimport would remove the objects of those merges.
+
+        """
         graphql_context: GraphqlContext = info.context
         branch = graphql_context.branch
         repository_id = str(data.id)
@@ -289,6 +297,13 @@ class ProcessRepository(Mutation):
             id=str(data.id),
             branch=branch,
         )
+        if repo.get_kind() == InfrahubKind.REPOSITORY:
+            state = await build_intent_store(db=graphql_context.db, lock_registry=lock.registry)
+            if (await state.read(repository_id=repo.id)).status is not RepositoryDeliveryStatus.NONE:
+                raise ValidationError(
+                    f"Repository {repo.name.value} has pending pushes; a reimport now would remove the objects "
+                    "they added. Retry or abandon the pending pushes first."
+                )
 
         model = GitRepositoryImportObjects(
             repository_id=repository_id,

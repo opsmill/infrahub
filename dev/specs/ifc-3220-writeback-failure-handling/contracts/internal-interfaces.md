@@ -71,7 +71,7 @@ class DeliveryStatePort(Protocol):
     async def expire_lease(self, *, repository_id: str, lease_id: str) -> None: ...
     async def clear_released(self, *, repository_id: str, lease_id: str) -> None: ...
     async def touch(self, *, repository_id: str) -> None: ...
-    async def record_reverted(self, *, repository_id: str, reverted: RevertedDelivery) -> None: ...
+    async def record_reverted(self, *, repository_id: str, delivered_commit: str, new_head: str) -> bool: ...
 
 
 class WritebackIntentStore:  # implements DeliveryStatePort
@@ -124,7 +124,7 @@ Neo4j driver would refuse the second transaction anyway, but only after the lock
 | `expire_lease` | Sets the lease's `expires_at` to now, and keeps the items of its window held. The lease then protects nothing, the same as the lease of a dead worker (`research.md` R10, rules 3 and 4). The next lease takes those items, and they move to it. The run that took the lease calls it when its release fails. Does nothing when the lease is gone. |
 | `clear_released` | Removes each item that the lease names and that still has the named `hold_seq`, then the lease itself. An item held again after the lease was taken has a higher `hold_seq`, so it stays. Does nothing when the lease is gone, because a newer lease then owns its items. When the queue is empty, the same save clears the cause and the error, which only a failed release can have left. |
 | `touch` | Moves `last_progress_at`. The recovery check calls it after it submits. |
-| `record_reverted` | Overwrites `delivery_reverted`. |
+| `record_reverted` | Writes `delivery_reverted` with the store's time and returns `True`. Writes nothing and returns `False` when the record already names the delivered commit, so the first record keeps its new head and its time. |
 
 Every method that adds or clears a lease also cleans up the expired leases in the same save
 (`research.md` R10, rule 5):
@@ -595,7 +595,7 @@ Contract:
 | `git/base.py::InfrahubRepositoryBase._raise_enriched_error_static` | Raises `RepositoryTLSError` for the TLS markers, `RepositoryNotFoundError` for "Repository not found" and for Git's own HTTP 404 line (`GIT_HTTP_REPOSITORY_NOT_FOUND`), and `RepositoryConnectionError` for GitPython's "process killed because it timed out". For GitPython's "Timeout: the command ... did not complete" text of a direct Git call, raises `RepositoryError` with the Git command and the limit, not the arguments, or `RepositoryConnectionError` for a write operation. |
 | `git/base.py::InfrahubRepositoryBase._raise_enriched_error` | Resolves the status through `git/base.py::operational_status_for_error`, which matches with `isinstance`, most specific first. |
 | `message_bus/operations/git/repository.py::connectivity` | Resolves the status through the same function. |
-| `git/repository.py::InfrahubRepository.collect_pending_imports` | In the active loop, skips the default branch, and every new or updated remote branch that a pending entry names, while the state is not `none`. Takes the state port as a parameter from the sync flow. `_collect_staging_imports` is unchanged. |
+| `git/repository.py::InfrahubRepository.collect_pending_imports` | In the active loop, skips the default branch, and every new or updated remote branch that a pending entry names, while the state is not `none`. Takes the state port as a required parameter from the sync flow. `_collect_staging_imports` is unchanged. |
 | `git/tasks.py::bootstrap_local_repository` | Skips the seed import of the default branch while the state is not `none`. |
 | `git/tasks.py::sync_remote_repositories` | Runs `DeliveryRecoveryCheck.run` for every repository in its loop, before the bootstrap and whatever the sync outcome, under its own guard. |
 | `git/tasks.py::merge_git_repository` | The default path builds the service and calls `deliver_pending_merges`. The read-only path and the staging path are unchanged. No path merges and records locally: a clone with no `origin` fails the attempt at the fetch and keeps the queue (`research.md` R3). Only when `pending_merge_enqueued` is `False`, the default path passes an entry to the task: `pending_merge`, or, when that is `None`, the entry it builds from the source branch's graph commit, after the content test of `research.md` R3 (no entry for a merge that carries no content). The task enqueues it as step 0 of each attempt, with `widen=True` (section 5): the save that appends the entry also holds a `widen` marker of scope `all`, with the reason `UNHELD_FOLLOW_UP`, because the follow-ups of that merge ran without a hold. When `enqueue` refuses the id, no marker is held. When every attempt fails to enqueue, the run ends `Failed` with an error-level log line. When the flag is `True`, it passes `entry=None` and only delivers (`research.md` R3). When `pending_merge` is `None` and the source branch is already deleted, the flow builds the entry from `model.source_commit`, which the dispatcher reads at the dispatch, and builds none when the default branch records that commit. With no `source_commit` either, the run logs at error level what to merge by hand on the remote and ends `Failed`. |
