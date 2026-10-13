@@ -21,7 +21,6 @@ if TYPE_CHECKING:
         HoldReceipt,
         PendingMerge,
         ReleaseLease,
-        RevertedDelivery,
     )
     from infrahub.git.writeback.ports import Clock
 
@@ -39,7 +38,8 @@ class FixedClock:
         self.now += timedelta(seconds=seconds)
 
 
-class InMemoryDeliveryState:
+# The fake implements every method of the delivery state port.
+class InMemoryDeliveryState:  # noqa: PLR0904
     """The delivery state of each repository in memory, changed by the same transitions as the persisted state.
 
     Every call is recorded in `calls` by its method name, in order. An error that a test appends to
@@ -192,9 +192,17 @@ class InMemoryDeliveryState:
         intent = self._enter(method="touch", repository_id=repository_id)
         self._save(intent=intent.with_progress(now=self.clock()))
 
-    async def record_reverted(self, *, repository_id: str, reverted: RevertedDelivery) -> None:
+    async def forget_delivered_commit(self, *, repository_id: str) -> None:
+        intent = self._enter(method="forget_delivered_commit", repository_id=repository_id)
+        self._save(intent=intent.without_delivered_commit())
+
+    async def record_reverted(self, *, repository_id: str, delivered_commit: str, new_head: str) -> bool:
         intent = self._enter(method="record_reverted", repository_id=repository_id)
-        self._save(intent=intent.with_reverted(reverted=reverted))
+        recorded = intent.with_reverted(delivered_commit=delivered_commit, new_head=new_head, now=self.clock())
+        if recorded is None:
+            return False
+        self._save(intent=recorded)
+        return True
 
     def _enter(self, *, method: str, repository_id: str) -> WritebackIntent:
         self._record_call(method=method)

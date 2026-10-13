@@ -674,7 +674,7 @@ and is not re-imported; retry; the branch is gone.
       cause `source-discarded`, the remote never holds the discarded commit.
 - [X] T100 [US7] Add `test_a_merge_onto_a_rewritten_trunk_is_refused` to the same module: force-push the
       remote default branch, retry, cause `destination-rewritten`, nothing pushed.
-- [ ] T101 [US7] Call `record_reverted` from IFC-3210's reconciliation of the default branch, per
+- [X] T101 [US7] Call `record_reverted` from IFC-3210's reconciliation of the default branch, per
       [research.md](research.md) R13, and add a test beside the sibling's reconciliation tests.
       **Gate: IFC-3210 rewrite classification on `develop`.**
 

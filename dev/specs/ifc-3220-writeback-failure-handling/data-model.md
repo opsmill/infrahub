@@ -301,6 +301,7 @@ its progress timestamps and never changes the status.
 | any | release clears | unchanged | remove each item of the lease's window that still has the named `hold_seq`, then the lease; an item held again since stays; clear the cause and the error when the queue is empty |
 | any | recovery check submits | unchanged | `last_progress_at` |
 | any | rewrite discards the last delivered commit (FR-021) | unchanged | `delivery_reverted` |
+| any | re-target of the default branch | unchanged | clear the last delivered commit |
 | any | guard refuses a branch deletion | unchanged | `delete_source_git_branch` on every entry that names the branch; the version does not move |
 
 Every row that takes or clears a lease also cleans up the expired leases in the same save, as
