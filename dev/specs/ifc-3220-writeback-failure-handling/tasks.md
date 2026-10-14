@@ -624,9 +624,8 @@ rule.** T094 is not.
       for flagged entries only; the release runs after the lock is released; `clear_released` keeps a
       later hold; a crash between the removal and the clear leaves a lease that expires, and the
       recovery check then releases the work; a release that fails sets the lease's expiry to now and
-      keeps the items held. Until the recovery check of T079 is on the same branch, the crash case
-      runs the held-only delivery run that the recovery check submits. The merge with T079 changes
-      the case to run the check itself.
+      keeps the items held. The crash case runs the recovery check of T079: once the lease expires,
+      the check submits a delivery run, and that run releases the work.
 - [X] T089 [US5] Write `backend/tests/component/graphql/mutations/test_repository_delivery_abandon.py`: off
       the default branch, each permission missing, a stale version, nothing pending.
 - [X] T090 [US5] Add `test_conflict_then_abandon` to

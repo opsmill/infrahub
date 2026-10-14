@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from infrahub.auth.session import AnonymousSession
+from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import RepositoryDeliveryStatus
 from infrahub.exceptions import (
     DatabaseError,
@@ -16,8 +18,9 @@ from infrahub.exceptions import (
     RepositoryConnectionError,
     ValidationError,
 )
+from infrahub.git.models import GitRepositoryDeliveryRetry
 from infrahub.git.writeback.abandoner import WritebackAbandoner
-from infrahub.git.writeback.constants import RELEASE_RENEW_SECONDS
+from infrahub.git.writeback.constants import RELEASE_RENEW_SECONDS, STALE_AFTER_SECONDS
 from infrahub.git.writeback.models import (
     AbandonmentRecord,
     Actor,
@@ -29,11 +32,15 @@ from infrahub.git.writeback.models import (
     ReleaseLease,
 )
 from infrahub.git.writeback.ports import RepositoryRef
+from infrahub.git.writeback.recovery import DeliveryRecoveryCheck
 from infrahub.git.writeback.service import RepositoryWritebackService
 from infrahub.lock import InfrahubLockRegistry
+from infrahub.workflows.catalogue import GIT_REPOSITORY_DELIVERY_RETRY
+from tests.adapters.workflow import ContextRecordingWorkflow
 from tests.unit.git.writeback.fakes import (
     FixedClock,
     InMemoryDeliveryGit,
+    InMemoryDeliveryRunQuery,
     InMemoryDeliveryState,
     RecordingLeaseRenewal,
     RecordingRegenerationReleaser,
@@ -52,6 +59,9 @@ REPOSITORY = RepositoryRef(id="repository-1", name="net-repo", destination_git_b
 NOW = datetime(2026, 10, 7, 12, 0, tzinfo=UTC)
 LEASE_EXPIRY = datetime(2026, 10, 7, 12, 15, tzinfo=UTC)
 ACTOR = Actor(account_id="account-1", account_name="admin")
+RECOVERY_CONTEXT = InfrahubContext(
+    branch=BranchContext(name="main", id="default-branch-id"), account=AnonymousSession()
+)
 RUN_LOGGER = "infrahub.tasks"
 
 TRUNK = "a" * 40
@@ -402,10 +412,19 @@ async def test_clear_keeps_a_hold_made_during_the_release(rig: Rig) -> None:
     assert rig.intent.queue.entries == (OTHER_MERGE,)
 
 
-async def test_crash_before_the_clear_leaves_a_lease_that_a_held_only_run_releases_once_expired(rig: Rig) -> None:
+async def test_crash_before_the_clear_leaves_a_lease_that_the_recovery_check_releases_once_expired(rig: Rig) -> None:
     await rig.queue(_merge())
     await rig.hold("definition-1")
     rig.releaser.failures.append(WorkerStoppedError())
+    workflow = ContextRecordingWorkflow()
+    check = DeliveryRecoveryCheck(
+        state=rig.state,
+        workflow=workflow,
+        runs=InMemoryDeliveryRunQuery(),
+        lock_registry=InfrahubLockRegistry(local_only=True),
+        clock=rig.clock,
+        context=RECOVERY_CONTEXT,
+    )
 
     with pytest.raises(WorkerStoppedError):
         await rig.abandon(queue_version=1)
@@ -416,10 +435,25 @@ async def test_crash_before_the_clear_leaves_a_lease_that_a_held_only_run_releas
     assert rig.intent.held.release_leases == (
         ReleaseLease(lease_id="lease-1", expires_at=LEASE_EXPIRY, artifact_definitions=(held,)),
     )
-    assert await rig.deliver() == DeliveryAttemptResult(outcome=DeliveryOutcome.NOTHING_PENDING)
-    assert rig.releaser.releases == []
+    assert await check.run(repository=REPOSITORY) is False
+    assert workflow.submit_calls == []
 
-    rig.clock.advance(seconds=15 * 60)
+    rig.clock.advance(seconds=STALE_AFTER_SECONDS + 60)
+
+    assert await check.run(repository=REPOSITORY) is True
+    assert workflow.submit_calls == [
+        {
+            "kind": "submit",
+            "workflow": GIT_REPOSITORY_DELIVERY_RETRY,
+            "parameters": {
+                "model": GitRepositoryDeliveryRetry(
+                    repository_id=REPOSITORY.id, repository_name=REPOSITORY.name, manual=False
+                )
+            },
+            "tags": ["infrahub.app/node/repository-1", "infrahub.app/repository-delivery"],
+        }
+    ]
+    # The submitted run is a delivery run of the empty queue, which releases the held items.
     result = await rig.deliver()
 
     assert result == DeliveryAttemptResult(outcome=DeliveryOutcome.RELEASED)
