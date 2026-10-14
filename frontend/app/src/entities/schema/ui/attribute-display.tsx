@@ -113,6 +113,9 @@ const ChoicesRow = ({
   );
 };
 
+const formatBound = (bound: number | null | undefined) =>
+  typeof bound === "number" ? formatNumberDisplay(bound) : bound;
+
 const AttributeParameters = ({ attribute }: { attribute: AttributeSchema }) => {
   if (attribute.kind === "Text") {
     const parameters = attribute.parameters as components["schemas"]["TextAttributeParametersRead"];
@@ -160,8 +163,8 @@ const AttributeParameters = ({ attribute }: { attribute: AttributeSchema }) => {
               </Link>
             }
           />
-          <PropertyRow title="Start range" value={formatNumberDisplay(parameters.start_range)} />
-          <PropertyRow title="End range" value={formatNumberDisplay(parameters.end_range)} />
+          <PropertyRow title="Start range" value={formatBound(parameters.start_range)} />
+          <PropertyRow title="End range" value={formatBound(parameters.end_range)} />
         </div>
       </div>
     );

@@ -7,6 +7,7 @@ from infrahub import __version__, config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, SchemaPathType
+from infrahub.core.initialization import create_account
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
 from infrahub.core.migrations.shared import MigrationInput
@@ -1609,6 +1610,67 @@ async def test_query_attribute_node_property_owner(
     ] == await first_account.get_display_label(db=db)
     assert result2.data["TestCar"]["edges"][0]["node"]["owner"]["node"]["name"]["is_from_profile"] is False
     assert gql_params.context.related_node_ids == {c1.id, p1.id, first_account.id}
+
+
+async def test_query_attribute_node_property_deleted_source_and_owner(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    person_tag_schema: None,
+    first_account: Node,
+) -> None:
+    """A query group saves the related objects as its members, and refuses a member that was deleted."""
+    deleted_account = await create_account(db=db, name="deleted-account", password="deleted-account")
+    p1 = await Node.init(db=db, schema="TestPerson")
+    await p1.new(
+        db=db,
+        firstname={"value": "John", "source": deleted_account},
+        lastname={"value": "Doe", "owner": deleted_account},
+    )
+    await p1.save(db=db)
+    p2 = await Node.init(db=db, schema="TestPerson")
+    await p2.new(db=db, firstname={"value": "Jane", "source": first_account}, lastname="Doe")
+    await p2.save(db=db)
+    await deleted_account.delete(db=db)
+
+    query = """
+    query {
+        TestPerson {
+            edges {
+                node {
+                    firstname { value source { id } owner { id } }
+                    lastname { value source { id } owner { id } }
+                }
+            }
+        }
+    }
+    """
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data
+    assert {
+        edge["node"]["firstname"]["value"]: (edge["node"]["firstname"], edge["node"]["lastname"])
+        for edge in result.data["TestPerson"]["edges"]
+    } == {
+        "John": (
+            {"value": "John", "source": None, "owner": None},
+            {"value": "Doe", "source": None, "owner": None},
+        ),
+        "Jane": (
+            {"value": "Jane", "source": {"id": first_account.id}, "owner": None},
+            {"value": "Doe", "source": None, "owner": None},
+        ),
+    }
+    assert gql_params.context.related_node_ids == {p1.id, p2.id, first_account.id}
 
 
 async def test_query_attribute_flag_property(

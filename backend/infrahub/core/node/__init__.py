@@ -15,18 +15,19 @@ from infrahub.core.constants import (
     SYSTEM_USER_ID,
     BranchSupportType,
     ComputedAttributeKind,
-    InfrahubKind,
     MetadataOptions,
+    PoolRecordProvenance,
     RelationshipCardinality,
     RelationshipKind,
 )
-from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX, SchemaElementPathType
+from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX as RESOURCE_POOL_REL_SUFFIX
+from infrahub.core.constants.schema import SchemaElementPathType
 from infrahub.core.metadata.interface import MetadataInterface
 from infrahub.core.metadata.model import MetadataInfo
-from infrahub.core.protocols import CoreNumberPool, CoreObjectTemplate
 from infrahub.core.protocols_base import CoreNode
 from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery, NodeUpdateMetadataQuery
 from infrahub.core.query.node_agnostic_retirement import RetireNodeAgnosticFieldsQuery
+from infrahub.core.query.resource_manager import TrackingPool
 from infrahub.core.schema import (
     AttributeSchema,
     NodeSchema,
@@ -35,13 +36,17 @@ from infrahub.core.schema import (
     RelationshipSchema,
     TemplateSchema,
 )
-from infrahub.core.schema.attribute_parameters import NumberPoolParameters
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters as NumberPoolParameters
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExhaustedError, ValidationError
+from infrahub.exceptions import InitializationError, NodeNotFoundError, ValidationError
+from infrahub.exceptions import PoolExhaustedError as PoolExhaustedError
+from infrahub.pools.attribute_pool_applier import LoadedNodePoolApplier
+from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
 from infrahub.pools.default_allocator import DefaultPoolAllocator
 from infrahub.pools.noop_allocator import NoOpPoolAllocator
 from infrahub.profiles.mandatory_fields_checker import ProfilesMandatoryFieldGetter
-from infrahub.templates.node_applier import NodeTemplateApplier, get_relationship_names_to_read
+from infrahub.profiles.node_applier import NodeProfilesApplier
+from infrahub.templates.node_applier import NodeTemplateApplier, TemplatePoolFields, get_relationship_names_to_read
 from infrahub.types import ATTRIBUTE_TYPES
 
 from ...graphql.constants import KIND_GRAPHQL_FIELD_NAME
@@ -57,9 +62,11 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.creation_context import NodeCreationContext
+    from infrahub.core.protocols import CoreObjectTemplate
     from infrahub.core.relationship import Relationship
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
+    from infrahub.pools.attribute_pool_applier import AttributePoolApplierInterface
 
 SchemaProtocol = TypeVar("SchemaProtocol")
 
@@ -403,105 +410,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         return cls(**attrs)
 
-    async def handle_pool(
-        self,
-        db: InfrahubDatabase,
-        attribute: BaseAttribute,
-        allocate_resources: bool = True,
-    ) -> None:
-        """Evaluate if a resource has been requested from a pool and apply the resource.
-
-        This method only works on number pools, currently Integer is the only type that has the from_pool
-        within the create code.
-
-        Supports two cases:
-        1. Schema-defined NumberPool attributes (kind="NumberPool" with number_pool_id in parameters)
-        2. User-specified from_pool (user explicitly passes {"from_pool": {"id": pool_id}} to a Number attribute)
-
-        Raises:
-            ValidationError: When `from_pool` is used on a template, when no pool ID is provided,
-                when the pool cannot be used for the attribute, or when the pool is exhausted.
-            NodeNotFoundError: When the requested number pool cannot be located by id or name.
-
-        """
-        number_pool_id: str | None = None
-        # Templates must use _from_resource_pool relationships, not from_pool
-        if isinstance(self._schema, TemplateSchema) and attribute.from_pool:
-            pool_rel_name = f"{attribute.name}{RESOURCE_POOL_REL_SUFFIX}"
-            raise ValidationError(
-                {
-                    f"{attribute.name}.from_pool": (
-                        f"'from_pool' is not supported on template attributes. Set the '{pool_rel_name}' relationship on this template instead."
-                    )
-                }
-            )
-
-        # Case 1: Schema-defined NumberPool attribute
-        if (
-            not number_pool_id
-            and attribute.schema.kind == "NumberPool"
-            and isinstance(attribute.schema.parameters, NumberPoolParameters)
-        ):
-            number_pool_id = attribute.schema.parameters.number_pool_id
-            if not number_pool_id:
-                raise ValidationError(
-                    {f"{attribute.name}": f"The pool for {attribute.name} has not been provisioned yet."}
-                )
-            attribute.from_pool = {"id": number_pool_id}
-            attribute.is_default = False
-        # Case 2: User-specified from_pool on a regular Number attribute
-        elif not number_pool_id and attribute.from_pool:
-            number_pool_id = attribute.from_pool.get("id")
-            if not number_pool_id:
-                raise ValidationError({f"{attribute.name}.from_pool": "No pool ID specified in from_pool."})
-
-        if not number_pool_id:
-            # no pool allocation necessary
-            return
-
-        try:
-            if is_valid_uuid(number_pool_id):
-                number_pool = await registry.manager.get_one(
-                    db=db, id=number_pool_id, kind=CoreNumberPool, raise_on_error=True
-                )
-            else:
-                results = await registry.manager.query(
-                    db=db, schema=InfrahubKind.NUMBERPOOL, filters={"name__value": number_pool_id}
-                )
-                if not results:
-                    raise NodeNotFoundError(node_type=InfrahubKind.NUMBERPOOL, identifier=number_pool_id)
-                number_pool = results[0]
-        except NodeNotFoundError as exc:
-            raise ValidationError(
-                {f"{attribute.name}.from_pool": f"The pool requested {attribute.from_pool} was not found."}
-            ) from exc
-
-        if not allocate_resources:
-            attribute.source = number_pool.id
-            return
-
-        if (
-            number_pool.node.value in [self._schema.kind] + self._schema.inherit_from
-            and number_pool.node_attribute.value == attribute.name
-        ):
-            try:
-                next_free = await number_pool.get_resource(
-                    db=db, branch=self._branch, identifier=self.get_id(), attribute=attribute.schema
-                )
-            except PoolExhaustedError as exc:
-                raise ValidationError(
-                    {f"{attribute.name}.from_pool": f"The pool {number_pool.node.value} is exhausted."}
-                ) from exc
-
-            attribute.value = next_free
-            attribute.source = number_pool.id
-        else:
-            raise ValidationError(
-                {
-                    f"{attribute.name}.from_pool": f"The {number_pool.name.value} pool can't be used for '{attribute.name}'."
-                }
-            )
-
     async def _read_object_template(self, db: InfrahubDatabase, object_template_field: dict) -> CoreObjectTemplate:
         """Read the template this node is created from, together with the relationships it is read for."""
         branch = self.get_branch_based_on_support_type()
@@ -523,16 +431,16 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
     async def handle_object_template(
         self, fields: dict, db: InfrahubDatabase, errors: list, process_pools: bool = True
-    ) -> set[str]:
+    ) -> TemplatePoolFields:
         """Fill the `fields` parameters with values from an object template if one is in use.
 
         The template is read from the database unless `_object_template` already holds the one to apply.
 
-        Returns the set of field names that have pending pool allocations (deferred in preview mode).
+        Returns which fields the template left for a pool, allocated and pending.
         """
         object_template_field = fields.get(OBJECT_TEMPLATE_RELATIONSHIP_NAME)
         if not object_template_field:
-            return set()
+            return TemplatePoolFields()
 
         try:
             template: CoreObjectTemplate = self._object_template or await self._read_object_template(
@@ -549,7 +457,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                     }
                 )
             )
-            return set()
+            return TemplatePoolFields()
 
         self._object_template = template
         # Hand the template over as the node it is: it has just been read, and the relationship layer
@@ -558,17 +466,17 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         fields[OBJECT_TEMPLATE_RELATIONSHIP_NAME] = {**object_template_field, "id": template}
         pool_allocator = DefaultPoolAllocator(db=db, branch=self._branch) if process_pools else NoOpPoolAllocator()
         applier = NodeTemplateApplier(db=db, branch=self._branch, pool_allocator=pool_allocator)
-        applied_fields = await applier.apply(
+        applied = await applier.apply(
             template=template, target_schema=self._schema, target_id=self.id, user_fields=fields
         )
 
         # Update fields dict in-place with applied values
         # Only add new keys, don't overwrite existing ones (user fields take precedence)
-        for key, value in applied_fields.items():
+        for key, value in applied.fields.items():
             if key not in fields:
                 fields[key] = value
 
-        return applier.pool_pending_fields
+        return applied.pools
 
     async def _get_profile_provided_mandatory_fields(
         self, db: InfrahubDatabase, fields: dict[str, Any]
@@ -589,7 +497,14 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             mandatory_rel_names=mandatory_rels_to_check,
         )
 
-    async def _process_fields(self, fields: dict, db: InfrahubDatabase, process_pools: bool = True) -> None:
+    async def _process_fields(
+        self,
+        fields: dict,
+        db: InfrahubDatabase,
+        pool_applier: AttributePoolApplierInterface,
+        process_pools: bool = True,
+        user_id: str = SYSTEM_USER_ID,
+    ) -> None:
         if "_source" in fields.keys():
             self._source = fields["_source"]
         if "_owner" in fields.keys():
@@ -607,7 +522,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         errors = []
         # Backfill fields with the ones from the template if there's one
-        pool_pending_fields = await self.handle_object_template(
+        template_pools = await self.handle_object_template(
             fields=fields, db=db, errors=errors, process_pools=process_pools
         )
 
@@ -617,9 +532,11 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 self._profile_provided_rels,
             ) = await self._get_profile_provided_mandatory_fields(db=db, fields=fields)
 
-            errors.extend(self._validate_mandatory_attributes(fields=fields, pool_pending_fields=pool_pending_fields))
             errors.extend(
-                self._validate_mandatory_relationships(fields=fields, pool_pending_fields=pool_pending_fields)
+                self._validate_mandatory_attributes(fields=fields, pool_pending_fields=template_pools.pending)
+            )
+            errors.extend(
+                self._validate_mandatory_relationships(fields=fields, pool_pending_fields=template_pools.pending)
             )
 
             if errors:
@@ -633,10 +550,28 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         # -------------------------------------------
         # Generate Attribute and Relationship and assign them
         # -------------------------------------------
+        pooled_attributes: list[BaseAttribute] = []
         errors.extend(await self._process_fields_relationships(fields=fields, db=db))
         errors.extend(
             await self._process_fields_attributes(
-                fields=fields, db=db, process_pools=process_pools, pool_pending_fields=pool_pending_fields
+                fields=fields,
+                db=db,
+                process_pools=process_pools,
+                pooled_attributes=pooled_attributes,
+                template_pools=template_pools,
+            )
+        )
+
+        if errors:
+            raise ValidationError(errors)
+
+        errors.extend(
+            await self._apply_pools(
+                attributes=pooled_attributes,
+                pool_applier=pool_applier,
+                process_pools=process_pools,
+                template_pools=template_pools,
+                user_id=user_id,
             )
         )
 
@@ -711,8 +646,18 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         return errors
 
     async def _process_fields_attributes(
-        self, fields: dict, db: InfrahubDatabase, process_pools: bool, pool_pending_fields: set[str] | None = None
+        self,
+        fields: dict,
+        db: InfrahubDatabase,
+        process_pools: bool,
+        pooled_attributes: list[BaseAttribute],
+        template_pools: TemplatePoolFields | None = None,
     ) -> list[ValidationError]:
+        """Set each attribute from the fields, leaving any number pool to be applied afterwards.
+
+        A new node's attributes that name a pool are added to `pooled_attributes`, for the pool to be applied once
+        every field is set.
+        """
         errors: list[ValidationError] = []
 
         for attr_schema in self._schema.attributes:
@@ -737,12 +682,19 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 )
                 if not self._existing:
                     attribute: BaseAttribute = getattr(self, attr_schema.name)
-                    await self.handle_pool(db=db, attribute=attribute, allocate_resources=process_pools)
-
-                    if attr_schema.name in self._profile_provided_attrs:
+                    allocated_pool_id = template_pools.allocated.get(attr_schema.name) if template_pools else None
+                    if allocated_pool_id is not None:
+                        # The template drew the number already; naming the pool here records which
+                        # one accounts for it, it does not ask for a second number.
+                        attribute.from_pool = {"id": allocated_pool_id}
+                        attribute.tracking_pool = TrackingPool(
+                            pool_id=allocated_pool_id, provenance=PoolRecordProvenance.ALLOCATED
+                        )
+                    elif attribute.from_pool is not None or attribute.schema.kind == "NumberPool":
+                        pooled_attributes.append(attribute)
                         continue
 
-                    if pool_pending_fields and attr_schema.name in pool_pending_fields:
+                    if self._skips_validation(attribute=attribute, template_pools=template_pools):
                         continue
 
                     if process_pools or attribute.from_pool is None:
@@ -751,6 +703,34 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 errors.append(exc)
 
         return errors
+
+    async def _apply_pools(
+        self,
+        attributes: list[BaseAttribute],
+        pool_applier: AttributePoolApplierInterface,
+        process_pools: bool,
+        template_pools: TemplatePoolFields | None,
+        user_id: str,
+    ) -> list[ValidationError]:
+        """Apply the pool each attribute names, now that every field of the node is set, then validate its value.
+
+        The division of a scoped pool is read from the other fields, which is why this waits for all of them.
+        """
+        errors: list[ValidationError] = []
+        for attribute in attributes:
+            try:
+                await pool_applier.apply(node=self, attribute=attribute, allocate=process_pools, user_id=user_id)
+                if process_pools and not self._skips_validation(attribute=attribute, template_pools=template_pools):
+                    attribute.validate(value=attribute.value, name=attribute.name, schema=attribute.schema)
+            except ValidationError as exc:
+                errors.append(exc)
+        return errors
+
+    def _skips_validation(self, attribute: BaseAttribute, template_pools: TemplatePoolFields | None) -> bool:
+        """Whether the attribute's value is left unvalidated because a profile or a template pool provides it later."""
+        return attribute.name in self._profile_provided_attrs or bool(
+            template_pools and attribute.name in template_pools.pending
+        )
 
     def _has_pending_pool_dependency(self, schema_branch: SchemaBranch, jinja_template: InfrahubJinja2Template) -> bool:
         """Whether the template reads a local pool-sourced attribute whose value is not allocated yet.
@@ -1020,7 +1000,15 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             self.label.value = " ".join([word.title() for word in self.name.value.split("_")])
             self.label.is_default = False
 
-    async def new(self, db: InfrahubDatabase, id: str | None = None, process_pools: bool = True, **kwargs: Any) -> Self:
+    async def new(
+        self,
+        db: InfrahubDatabase,
+        id: str | None = None,
+        process_pools: bool = True,
+        pool_applier: AttributePoolApplierInterface | None = None,
+        user_id: str = SYSTEM_USER_ID,
+        **kwargs: Any,
+    ) -> Self:
         if id and not is_valid_uuid(id):
             raise ValidationError({"id": f"{id} is not a valid UUID"})
         if id:
@@ -1030,7 +1018,19 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         self.id = id or str(UUIDT())
 
-        await self._process_fields(db=db, fields=kwargs, process_pools=process_pools)
+        # Callers that create nodes outside the mutation entry points rely on the applier being built here.
+        await self._process_fields(
+            db=db,
+            fields=kwargs,
+            pool_applier=pool_applier
+            or build_attribute_pool_applier(
+                profiles_applier=NodeProfilesApplier(db=db, branch=self.get_branch()),
+                db=db,
+                schema_branch=db.schema.get_schema_branch(name=self.get_branch().name),
+            ),
+            process_pools=process_pools,
+            user_id=user_id,
+        )
         await self._process_macros(db=db)
 
         return self
@@ -1103,7 +1103,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                     node_schema=self._schema, template=self._schema.display_label, value=display_label
                 )
 
-        await self._process_fields(db=db, fields=kwargs)
+        await self._process_fields(db=db, fields=kwargs, pool_applier=LoadedNodePoolApplier())
         return self
 
     async def _create(self, db: InfrahubDatabase, user_id: str, at: Timestamp | None = None) -> NodeChangelog:
@@ -1421,18 +1421,36 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 data["updated_at"] = updated_at.to_datetime() if updated_at else None
         return data
 
-    async def from_graphql(self, data: dict, db: InfrahubDatabase, process_pools: bool = True) -> bool:
-        """Update object from a GraphQL payload."""
+    async def from_graphql(
+        self,
+        data: dict,
+        db: InfrahubDatabase,
+        pool_applier: AttributePoolApplierInterface,
+        process_pools: bool = True,
+        user_id: str = SYSTEM_USER_ID,
+    ) -> bool:
+        """Update object from a GraphQL payload, drawing from or releasing to number pools as `user_id`.
+
+        The pools are applied once every key of the payload is applied, since the division of a scoped pool is read
+        from the node's other fields; without `process_pools` nothing is drawn: each pool is resolved, and the key of
+        the node's division of a scoped pool is stored beside the pool id.
+        """
         changed = False
+        pooled_attributes: list[BaseAttribute] = []
 
         for key, value in data.items():
             if key in self._attributes and isinstance(value, dict):
-                attribute = getattr(self, key)
-                changed |= await attribute.from_graphql(data=value, db=db, process_pools=process_pools)
+                attribute: BaseAttribute = getattr(self, key)
+                changed |= await attribute.from_graphql(data=value)
+                if "from_pool" in value:
+                    pooled_attributes.append(attribute)
 
             if key in self._relationships:
                 rel: RelationshipManager = getattr(self, key)
                 changed |= await rel.update(db=db, data=value, process_delete=process_pools)
+
+        for attribute in pooled_attributes:
+            await pool_applier.apply(node=self, attribute=attribute, allocate=process_pools, user_id=user_id)
 
         return changed
 

@@ -8,21 +8,17 @@ import {
   Popover,
   Sheet,
 } from "@infrahub/ui";
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
 import { BookTextIcon, ChevronDownIcon, GroupIcon, PencilLineIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 
 import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
 
-import { nodeCoreFragment } from "@/shared/api/graphql/fragments";
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Icon } from "@/shared/components/display/icon";
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { CopyToClipboardMenuItem } from "@/shared/components/menu/copy-to-clipboard-menu-item";
-import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
-import { QSP } from "@/shared/config/qsp";
 
 import { GroupsManager } from "@/entities/groups/ui/groups-manager";
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
@@ -31,7 +27,12 @@ import { isNodeRelationshipOne } from "@/entities/nodes/object/domain/rules/is-n
 import ModalDeleteObject from "@/entities/nodes/object/ui/modal-delete-object";
 import ObjectEdit from "@/entities/nodes/object/ui/object-edit/object-item-edit-paginated";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
+import {
+  getDocumentationUrl,
+  getObjectDetailsUrl,
+  getObjectGraphqlSandboxUrl,
+  getObjectTasksUrl,
+} from "@/entities/nodes/object/ui/routing/object-urls";
 import type { Permission } from "@/entities/permission/domain/model/permission";
 import { GENERIC_REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
 import { CheckConnectivityModal } from "@/entities/repository/ui/check-connectivity-modal";
@@ -83,11 +84,7 @@ export function ObjectDetailsMenu({
             </MenuSection>
 
             <MenuSection title="Go to">
-              <MenuItem
-                href={constructPath(
-                  `/tasks?${QSP.FILTER}=[{"name":"node__value","value":"${objectData.id}"}]`
-                )}
-              >
+              <MenuItem href={getObjectTasksUrl(objectData.id)}>
                 <TasksStatusIcon width="12" height="12" className="ml-0.5" />
                 Tasks
               </MenuItem>
@@ -103,40 +100,13 @@ export function ObjectDetailsMenu({
                 <Icon icon="mdi:code-json" />
                 View schema
               </MenuItem>
-              <MenuItem
-                href={constructPath("/graphql", [
-                  {
-                    name: "query",
-                    value: jsonToGraphQLQuery(
-                      {
-                        query: {
-                          [objectData.__typename]: {
-                            __args: {
-                              ids: [objectData.id],
-                            },
-                            edges: {
-                              node: nodeCoreFragment,
-                            },
-                          },
-                        },
-                      },
-                      {
-                        pretty: true,
-                      }
-                    ),
-                  },
-                ])}
-              >
+              <MenuItem href={getObjectGraphqlSandboxUrl(objectData.__typename, objectData.id)}>
                 <Icon icon="mdi:graphql" />
                 GraphQL sandbox
               </MenuItem>
               {objectSchema.documentation && (
                 <MenuItem
-                  href={
-                    objectSchema.documentation.startsWith("http")
-                      ? objectSchema.documentation
-                      : `${INFRAHUB_DOC_LOCAL}${objectSchema.documentation}`
-                  }
+                  href={getDocumentationUrl(objectSchema.documentation)}
                   target="_blank"
                   rel="noreferrer"
                 >

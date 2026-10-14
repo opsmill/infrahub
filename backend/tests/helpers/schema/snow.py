@@ -1,5 +1,8 @@
+import sys
+
 from infrahub.core.constants import ComputedAttributeKind
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.schema.computed_attribute import ComputedAttribute
 
 SNOW_TASK = GenericSchema(
@@ -9,7 +12,14 @@ SNOW_TASK = GenericSchema(
     label="Task",
     attributes=[
         AttributeSchema(name="title", kind="Text", unique=False, optional=False),
-        AttributeSchema(name="number", kind="NumberPool", optional=False, read_only=True, unique=True),
+        AttributeSchema(
+            name="number",
+            kind="NumberPool",
+            optional=False,
+            read_only=True,
+            unique=True,
+            parameters=NumberPoolParameters(start_range=1, end_range=sys.maxsize),
+        ),
         AttributeSchema(
             name="identifier",
             kind="Text",

@@ -20,7 +20,7 @@ from infrahub.core.attribute import (
     String,
 )
 from infrahub.core.branch import Branch
-from infrahub.core.constants import SYSTEM_USER_ID, InfrahubKind, MetadataOptions
+from infrahub.core.constants import SYSTEM_USER_ID, MetadataOptions
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import MetadataQueryOptions, NodeManager
 from infrahub.core.node import Node
@@ -30,7 +30,8 @@ from infrahub.core.timestamp import Timestamp, current_timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
 from infrahub.exceptions import ValidationError
-from infrahub.graphql.constants import KIND_GRAPHQL_FIELD_NAME
+from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
+from infrahub.profiles.node_applier import NodeProfilesApplier
 
 
 async def test_init(
@@ -452,7 +453,15 @@ async def test_update_stores_normalized_value(
     assert stored_after_create == test_case.initial_value
 
     reloaded = await NodeManager.get_one(id=obj.id, db=db, branch=default_branch)
-    await reloaded.from_graphql(db=db, data={test_case.attribute_name: {"value": test_case.update_value}})
+    await reloaded.from_graphql(
+        db=db,
+        data={test_case.attribute_name: {"value": test_case.update_value}},
+        pool_applier=build_attribute_pool_applier(
+            profiles_applier=NodeProfilesApplier(db=db, branch=default_branch),
+            db=db,
+            schema_branch=db.schema.get_schema_branch(name=default_branch.name),
+        ),
+    )
     await reloaded.save(db=db)
 
     stored_after_update = await _read_stored_attribute_value(
@@ -1496,11 +1505,7 @@ async def test_to_graphql(
     )
     expected_data = {
         "id": attr2.id,
-        "source": {
-            "id": first_account.id,
-            "display_label": "First Account",
-            KIND_GRAPHQL_FIELD_NAME: InfrahubKind.ACCOUNT,
-        },
+        "source": {"id": first_account.id},
         "value": "mystring",
     }
     assert await attr2.to_graphql(db=db, fields={"value": None, "source": {"display_label": None}}) == expected_data
@@ -1545,12 +1550,7 @@ async def test_to_graphql_no_fields(
         "id": attr2.id,
         "is_protected": False,
         "owner": None,
-        "source": {
-            "__typename": InfrahubKind.ACCOUNT,
-            "display_label": "First Account",
-            "id": first_account.id,
-            KIND_GRAPHQL_FIELD_NAME: InfrahubKind.ACCOUNT,
-        },
+        "source": {"id": first_account.id},
         "value": "mystring",
     }
     assert await attr2.to_graphql(db=db) == expected_data

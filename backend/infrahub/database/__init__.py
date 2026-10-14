@@ -4,6 +4,7 @@ import asyncio
 import functools
 import random
 import time
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable, Coroutine, TypeVar
 
@@ -49,6 +50,7 @@ from .metrics import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
     from types import TracebackType
 
     # neo4j only exports the concrete trust stores, not the base class the driver accepts.
@@ -94,10 +96,14 @@ class DatabaseSchemaManager:
     def __init__(self, db: InfrahubDatabase) -> None:
         self._db = db
 
-    def get(self, name: str, branch: Branch | str | None = None, duplicate: bool = True) -> MainSchemaTypes:
+    def get(
+        self, name: str, branch: Branch | str | None = None, duplicate: bool = True, check_branch_only: bool = False
+    ) -> MainSchemaTypes:
         branch_name = get_branch_name(branch=branch)
         if branch_name not in self._db._schemas:
-            return registry.schema.get(name=name, branch=branch, duplicate=duplicate)
+            return registry.schema.get(
+                name=name, branch=branch, duplicate=duplicate, check_branch_only=check_branch_only
+            )
         return self._db._schemas[branch_name].get(name=name, duplicate=duplicate)
 
     def get_node_schema(self, name: str, branch: Branch | str | None = None, duplicate: bool = True) -> NodeSchema:
@@ -614,6 +620,16 @@ def is_retriable_db_error(exc: BaseException) -> bool:
     if isinstance(exc, ClientError):
         return exc.code == "Neo.ClientError.Statement.EntityNotFound"
     return False
+
+
+@asynccontextmanager
+async def within_transaction(db: InfrahubDatabase) -> AsyncIterator[InfrahubDatabase]:
+    """Yield a database running a transaction, joining the one already open rather than nesting a second one."""
+    if db.is_transaction:
+        yield db
+        return
+    async with db.start_transaction() as dbt:
+        yield dbt
 
 
 def retry_db_transaction(

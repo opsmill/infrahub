@@ -1,14 +1,20 @@
-from typing import Any
+from __future__ import annotations
 
-from infrahub.core.attribute import BaseAttribute
-from infrahub.core.branch import Branch
+from typing import TYPE_CHECKING, Any
+
+from infrahub_sdk.utils import is_valid_uuid
+
 from infrahub.core.constants import InfrahubKind
-from infrahub.core.node import Node
-from infrahub.core.relationship import RelationshipManager
 from infrahub.core.relationship.model import Relationship
-from infrahub.database import InfrahubDatabase
 
 from .queries.get_profile_data import GetProfileDataQuery, ProfileData, RelationshipFilter
+
+if TYPE_CHECKING:
+    from infrahub.core.attribute import BaseAttribute
+    from infrahub.core.branch import Branch
+    from infrahub.core.node import Node
+    from infrahub.core.relationship import RelationshipManager
+    from infrahub.database import InfrahubDatabase
 
 
 class NodeProfilesApplier:
@@ -30,8 +36,14 @@ class NodeProfilesApplier:
             profiles_rel = node.get_relationship("profiles")
         except ValueError:
             return []
-        profile_rels = await profiles_rel.get_relationships(db=self.db)
-        return [pr.peer_id for pr in profile_rels if pr.peer_id]
+        profile_ids: list[str] = []
+        for profile_rel in await profiles_rel.get_relationships(db=self.db):
+            # A node not saved yet can name a profile by its human-friendly id.
+            if not profile_rel.peer_id or not is_valid_uuid(profile_rel.peer_id):
+                await profile_rel.resolve(db=self.db)
+            if profile_rel.peer_id:
+                profile_ids.append(profile_rel.peer_id)
+        return profile_ids
 
     async def _get_attr_names_for_profiles(self, node: Node) -> list[str]:
         node_schema = node.get_schema()
@@ -41,9 +53,13 @@ class NodeProfilesApplier:
         for attr_schema in node_schema.attributes:
             attr_name = attr_schema.name
             node_attr: BaseAttribute = getattr(node, attr_name)
-            if node_attr.is_from_profile or node_attr.is_default:
+            if self._takes_profile_value(node_attr=node_attr):
                 attr_names_for_profiles.append(attr_name)
         return attr_names_for_profiles
+
+    @staticmethod
+    def _takes_profile_value(node_attr: BaseAttribute) -> bool:
+        return bool(node_attr.is_from_profile or node_attr.is_default)
 
     async def _get_rel_names_for_profiles(self, node: Node) -> list[str]:
         node_schema = node.get_schema()
@@ -192,6 +208,36 @@ class NodeProfilesApplier:
     async def _remove_profile_from_relationship(self, relationship_manager: RelationshipManager) -> None:
         relationship_manager.is_from_profile = False
         await relationship_manager.delete(db=self.db)
+
+    async def apply_attribute_values(self, node: Node, attr_names: list[str]) -> list[str]:
+        """Give the named attributes the values of the node's profiles, changing the node in memory only.
+
+        Each named attribute left at its default or set by a profile takes the value of the profile of highest
+        priority that sets it; an attribute no profile sets keeps its value.
+
+        Returns the names of the attributes this method changed.
+        """
+        candidate_names = [
+            attr_name for attr_name in attr_names if self._takes_profile_value(node_attr=node.get_attribute(attr_name))
+        ]
+        if not candidate_names:
+            return []
+        sorted_profile_data = await self._get_sorted_profile_data(
+            profile_ids=await self._get_profile_ids(node=node), attr_names_for_profiles=candidate_names
+        )
+
+        updated_attr_names: list[str] = []
+        for attr_name in candidate_names:
+            for profile_data in sorted_profile_data:
+                profile_value = profile_data.attribute_values.get(attr_name)
+                if profile_value is None:
+                    continue
+                if self._apply_profile_to_attribute(
+                    node_attr=node.get_attribute(attr_name), profile_value=profile_value, profile_id=profile_data.uuid
+                ):
+                    updated_attr_names.append(attr_name)
+                break
+        return updated_attr_names
 
     async def apply_profiles(self, node: Node) -> list[str]:
         """Reconcile a node's profile-sourced attributes and relationships with its assigned profiles.

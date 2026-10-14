@@ -9,14 +9,20 @@ because the shape they produce is one no current code path can reach.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 from typing import TYPE_CHECKING, Any
 
-from infrahub.core.constants import GLOBAL_BRANCH_NAME
+from infrahub.core import registry
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, HashableModelState, SchemaPathType
+from infrahub.core.migrations.schema.node_attribute_remove import NodeAttributeRemoveMigration
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
+from infrahub.core.path import SchemaPath
 from tests.helpers.schema.agnostic_retirement import GADGET_KIND, WIDGET_KIND
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.migrations.shared import MigrationResult
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
@@ -53,6 +59,15 @@ class EdgeState:
     to_time: str | None
     to_user_id: str | None = None
     """Who closed the edge. `None` on an open edge, and on one closed before the actor was recorded."""
+    from_user_id: str | None = None
+    """Who opened the edge, where a query reports it. `None` on an edge written before the actor was recorded."""
+    direction: str | None = None
+    """`"outbound"` or `"inbound"` relative to the vertex the query anchored on, where a query
+    reports it. Copying an edge onto a new vertex is direction-specific, so a test that cannot see
+    the direction cannot say which half of a copy went wrong."""
+    edge_id: str | None = None
+    """The edge's element id, where a query reports it, so an edge deleted and recreated with the same
+    properties does not compare equal to the original."""
 
     @property
     def is_open(self) -> bool:
@@ -219,6 +234,23 @@ async def global_edges_by_vertex_uuid(db: InfrahubDatabase, vertex_uuid: str) ->
     return [EdgeState(**dict(result)) for result in results]
 
 
+async def attribute_edges(db: InfrahubDatabase, node_id: str, attribute_name: str) -> list[EdgeState]:
+    """Every edge touching the named attribute vertex of this node, whichever branch it sits on."""
+    results = await db.execute_query(
+        query="""
+        MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(a:Attribute {name: $attribute_name})
+        WITH DISTINCT a
+        MATCH (a)-[e]-()
+        RETURN type(e) AS edge_type, e.branch AS branch, e.status AS status,
+               e.from AS from_time, e.to AS to_time, e.to_user_id AS to_user_id, e.from_user_id AS from_user_id,
+               CASE WHEN startNode(e) = a THEN "outbound" ELSE "inbound" END AS direction,
+               elementId(e) AS edge_id
+        """,
+        params={"node_id": node_id, "attribute_name": attribute_name},
+    )
+    return [EdgeState(**dict(result)) for result in results]
+
+
 async def attribute_owning_edges(db: InfrahubDatabase, node_id: str, attribute_name: str) -> list[EdgeState]:
     """Every owning edge of the attribute vertex, on any branch."""
     results = await db.execute_query(
@@ -353,6 +385,36 @@ async def tombstone_relationship_peer_edge(
     assert results[0]["tombstoned"] == 1
 
 
+async def remove_attribute_from_schema(
+    db: InfrahubDatabase,
+    branch: Branch,
+    at: Timestamp,
+    kind: str = WIDGET_KIND,
+    attribute_name: str = "serial",
+    user_id: str = TEST_ACTOR_ID,
+) -> MigrationResult:
+    """Run the attribute-removal migration on `branch` the way a schema update would.
+
+    The attribute is marked absent in the registered schema first, which is what the schema update
+    pipeline has already done by the time migrations run.
+    """
+    schema_branch = registry.schema.get_schema_branch(name=branch.name)
+    previous_node = schema_branch.get(name=kind)
+
+    candidate = schema_branch.duplicate()
+    node_schema = candidate.get(name=kind)
+    node_schema.get_attribute(name=attribute_name).state = HashableModelState.ABSENT
+    candidate.set(name=kind, schema=node_schema)
+    registry.schema.set_schema_branch(name=branch.name, schema=candidate)
+
+    migration = NodeAttributeRemoveMigration(
+        previous_node_schema=previous_node,
+        new_node_schema=node_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind=kind, field_name=attribute_name),
+    )
+    return await migration.execute(migration_input=MigrationInput(db=db, at=at, user_id=user_id), branch=branch)
+
+
 async def remove_attribute_on_branch(
     db: InfrahubDatabase, node_id: str, attribute_name: str, branch: Branch, at: Timestamp
 ) -> None:
@@ -379,17 +441,125 @@ async def remove_attribute_on_branch(
     )
 
 
-async def pool_reservation_edges(db: InfrahubDatabase, pool_id: str, identifier: str) -> list[EdgeState]:
-    """Every reservation edge a pool holds under one identifier, on any branch."""
+async def pool_reservation_edges(db: InfrahubDatabase, pool_id: str, attribute_id: str) -> list[EdgeState]:
+    """Every reservation edge a pool holds on one attribute, on any branch.
+
+    Keyed on the attribute vertex: the record hangs off it, and a pool holds a record on the
+    same-named attribute of every object it has served, so the name alone would return them all.
+    """
     results = await db.execute_query(
         query="""
-        MATCH (:Node {uuid: $pool_id})-[e:IS_RESERVED {identifier: $identifier}]->(:AttributeValue)
+        MATCH (:Node {uuid: $pool_id})-[e:IS_RESERVED]->(:Attribute {uuid: $attribute_id})
         RETURN type(e) AS edge_type, e.branch AS branch, e.status AS status,
-               e.from AS from_time, e.to AS to_time, e.to_user_id AS to_user_id
+               e.from AS from_time, e.to AS to_time, e.to_user_id AS to_user_id, e.from_user_id AS from_user_id
         """,
-        params={"pool_id": pool_id, "identifier": identifier},
+        params={"pool_id": pool_id, "attribute_id": attribute_id},
     )
     return [EdgeState(**dict(result)) for result in results]
+
+
+async def active_is_reserved_edges_on(
+    db: InfrahubDatabase, node_id: str, attribute_name: str, pool_id: str | None = None, open_only: bool = False
+) -> list[dict[str, Any]]:
+    """Every property of each active IS_RESERVED edge on this object's named attribute vertex.
+
+    Limited to one pool's edges when `pool_id` is given, and to open edges when `open_only` is set.
+    An open edge carries no `to` property.
+    """
+    results = await db.execute_query(
+        query="""
+        MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(a:Attribute {name: $attribute_name})
+        WITH DISTINCT a
+        MATCH (pool:Node)-[is_reserved:IS_RESERVED]->(a)
+        WHERE ($pool_id IS NULL OR pool.uuid = $pool_id)
+          AND is_reserved.status = "active"
+          AND (NOT $open_only OR is_reserved.to IS NULL)
+        RETURN properties(is_reserved) AS is_reserved
+        """,
+        params={"node_id": node_id, "attribute_name": attribute_name, "pool_id": pool_id, "open_only": open_only},
+    )
+    return [dict(result["is_reserved"]) for result in results]
+
+
+async def open_is_reserved_edge_on(
+    db: InfrahubDatabase, node_id: str, attribute_name: str, pool_id: str | None = None
+) -> dict[str, Any]:
+    """Every property of the one open IS_RESERVED edge on this object's named attribute vertex."""
+    edges = await active_is_reserved_edges_on(
+        db=db, node_id=node_id, attribute_name=attribute_name, pool_id=pool_id, open_only=True
+    )
+    assert len(edges) == 1, f"expected one open IS_RESERVED edge, found {len(edges)}"
+    return edges[0]
+
+
+class IsReservedEdge(Enum):
+    """The state of the one active IS_RESERVED edge a pool may hold on an attribute."""
+
+    OPEN = "open"
+    CLOSED = "closed"
+    ABSENT = "absent"
+
+
+def single_is_reserved_edge(edges: list[dict[str, Any]]) -> IsReservedEdge:
+    """Reduce the active IS_RESERVED edges to one state, failing if the pool holds more than one."""
+    assert len(edges) <= 1, f"expected at most one active IS_RESERVED edge, found {len(edges)}"
+    if not edges:
+        return IsReservedEdge.ABSENT
+    return IsReservedEdge.OPEN if "to" not in edges[0] else IsReservedEdge.CLOSED
+
+
+async def is_reserved_edge_on(db: InfrahubDatabase, pool_id: str, node_id: str, attribute_name: str) -> IsReservedEdge:
+    """The state of the pool's active IS_RESERVED edge on this object's named attribute."""
+    return single_is_reserved_edge(
+        await active_is_reserved_edges_on(db=db, node_id=node_id, attribute_name=attribute_name, pool_id=pool_id)
+    )
+
+
+async def set_open_is_reserved_edge_allocated_values(
+    db: InfrahubDatabase, node_id: str, attribute_name: str, values: list[int]
+) -> None:
+    """Overwrite the allocated values on the open IS_RESERVED edges of this object's named attribute vertex."""
+    await db.execute_query(
+        query="""
+        MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(a:Attribute {name: $attribute_name})
+        WITH DISTINCT a
+        MATCH ()-[is_reserved:IS_RESERVED]->(a)
+        WHERE is_reserved.status = "active" AND is_reserved.to IS NULL
+        SET is_reserved.allocated_values = $values
+        """,
+        params={"node_id": node_id, "attribute_name": attribute_name, "values": values},
+    )
+
+
+async def attributes_holding_only_is_reserved_edges(db: InfrahubDatabase, pool_id: str) -> int:
+    """How many of the pool's Attribute vertices have no edge but IS_RESERVED ones, a shape no write may leave."""
+    results = await db.execute_query(
+        query="""
+        MATCH (:Node {uuid: $pool_id})-[:IS_RESERVED]->(a:Attribute)
+        WITH DISTINCT a
+        WHERE NOT EXISTS {
+            MATCH (a)-[other]-()
+            WHERE type(other) <> "IS_RESERVED"
+        }
+        RETURN count(a) AS nbr
+        """,
+        params={"pool_id": pool_id},
+    )
+    return results[0]["nbr"]
+
+
+async def node_metadata(db: InfrahubDatabase, node_id: str) -> VertexMetadata:
+    """The audit stamps on the one `:Node` vertex carrying this uuid."""
+    results = await db.execute_query(
+        query="""
+        MATCH (v:Node {uuid: $node_id})
+        RETURN v.updated_at AS updated_at, v.updated_by AS updated_by,
+           v.previous_updated_at AS previous_updated_at, v.previous_updated_by AS previous_updated_by
+        """,
+        params={"node_id": node_id},
+    )
+    assert len(results) == 1, f"Expected a single Node vertex for {node_id}, found {len(results)}"
+    return VertexMetadata(**dict(results[0]))
 
 
 async def attribute_metadata(db: InfrahubDatabase, node_id: str, attribute_name: str) -> VertexMetadata:

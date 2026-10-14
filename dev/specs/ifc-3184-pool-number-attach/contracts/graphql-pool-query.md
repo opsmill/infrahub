@@ -1,0 +1,147 @@
+# Contract: pool query surface
+
+**Status**: **published contract change** — governed by
+[ADR 0010](../../../adr/0010-generated-user-facing-schema-contract.md).
+
+**Owner**: `backend/infrahub/graphql/queries/resource_manager.py`
+
+---
+
+## Governance
+
+This slice **must be named explicitly in the published-contract review**, alongside P1's and P3's
+`NumberPoolParameters` changes. One review, one SDK type regeneration — not three.
+
+Two distinct kinds of change are in scope, and the second is the dangerous one:
+
+| Change | Visible in the generated schema? |
+|---|---|
+| `provenance` on each in-use row | **yes** |
+| The out-of-space bucket | **yes** |
+| `source` populated by derivation instead of a stored edge (FR-030b) | **no** — the field name and type are unchanged; only its provenance moves |
+
+FR-030b **must be named in the review in words**, because nothing in the generated artefacts will
+surface it. A reviewer diffing `schema/schema.graphql` will see no trace of a change that alters what
+every pooled attribute reports as its source.
+
+Generated files are regenerated, never hand-edited:
+`uv run invoke backend.generate`, `schema.generate-graphqlschema`, `schema.generate-jsonschema`,
+`docs.generate`. CI's `validate-generated-documentation` job fails on stale output.
+
+---
+
+## 1. `provenance` on in-use rows
+
+**Shipped 2026-10-07** as `PoolAllocatedNode.provenance`, a nullable `PoolRecordProvenance` enum
+(`ALLOCATED` / `PROVIDED`). It is nullable because the type is shared with the IP address and prefix
+pool rows, which carry none.
+
+Each row of a number pool's allocated/in-use list reports `provenance`, a closed set:
+
+| Value | Meaning |
+|---|---|
+| `ALLOCATED` | The pool allocated the number this row's branch holds |
+| `PROVIDED` | The user gave the pool the number this row's branch holds |
+
+Two values, not three. Under FR-021/FR-024, "provided" and "attached" are the same request made on
+create and on update, so they do not merit separate values. The label is not stored: it is read per
+row from the record's `allocated_values` against the row's branch-resolved value, so it is correct
+on every branch (FR-026). A record with no list reads `ALLOCATED` for every value.
+
+**Row cardinality (FR-028a)**: one row per **(record, branch-resolved value)**. A record whose object
+holds `1` on the default branch and `5` on another contributes **two rows**. Several objects holding
+the same number under one pool contribute one row each, each naming its own holder and its own
+`provenance`.
+
+**Utilization is unaffected by row count.** It counts distinct elements of the effective space
+consumed — a number held by three objects consumes one element. Counting rows would let utilization
+exceed 100%.
+
+---
+
+## 2. The out-of-space bucket
+
+A tracked number outside the pool's effective space is reported in a **separate bucket**, not folded
+into the utilization fraction.
+
+**Row shape matches the in-use row**: `value`, `holder`, `branch` (FR-027a).
+
+### The bucket is a flat list, not per-branch buckets
+
+The three utilization *figures* are split by branch because a fraction cannot carry per-item detail.
+A bucket is already a list of rows and can, so grouping by branch is a client concern and the count
+stays derivable.
+
+### The branch is load-bearing, not cosmetic
+
+Under FR-028a one record can straddle the boundary: an object holding `50` on the default branch and
+`500` on another, under a pool over 1–100, appears in the utilization fraction **and** in the bucket
+at once. Without the branch on the row, the operator reads "500 is out of range, held by X" while the
+UI shows X holding 50, with nothing to explain the contradiction.
+
+### Semantics
+
+- A number outside the ranges, or inside the attribute's excluded values, is **accepted and tracked**
+  (FR-029 deleted — the pool refuses no provided value).
+- It is invisible to allocation and consumes nothing.
+- If the effective space later covers it — a range widened, a range re-added — it moves into the
+  in-use fraction **with no re-attach** (FR-002a).
+- Two paths reach this state: attached there, or a range removed under it. Both must be tested; the
+  resulting state is identical.
+
+### Why it ships now rather than with the frontend
+
+Deleting FR-029 makes an out-of-space attach reachable from day one. Without the bucket that attach
+is a silent no-op — the operator learns nothing. It is also one published-contract review with
+`provenance`, not two.
+
+---
+
+## 3. `source` — same shape, different provenance
+
+| | Before | After |
+|---|---|---|
+| Field | `source: LineageSource` | **unchanged** |
+| Populated by | a stored `HAS_SOURCE` edge written by the pool | the pool reached by the inbound `-global-` `IS_RESERVED` edge while one is live, else the user's `HAS_SOURCE` if one resolves active |
+| Display for an attribute with no user source | the pool | **the pool** — unchanged |
+| Display for an attribute with a user source | previously impossible (refused) | the pool while it tracks the attribute; the user's source once it is detached |
+| Appears in branch diffs | yes | **no** |
+
+`CoreNumberPool` already inherits `LineageSource`
+(`core/schema/definitions/core/resource_pool.py`), so it is already a legal occupant of the slot.
+
+**Behaviour changes a client can observe:**
+
+1. A user may now set `source` on a pool-tracked attribute (FR-030a deleted). The edge is stored,
+   but `source` keeps reporting the pool while the pool tracks the attribute; the user's source is
+   what a read reports once the attribute is detached. Nothing the pool computes is affected —
+   utilization, the in-use list and next-value read the record only.
+2. Allocating or attaching on a branch no longer shows a source change in the diff, only a value
+   change. Defensible — the pool's claim is branch-agnostic, so diffing it per branch was always a
+   fiction — but user-visible, and it needs a changelog entry.
+
+### Implementation constraint
+
+The pool is read apart from the stored source: the attribute query returns the tracking pool's uuid
+with the provenance of the value held (`MetadataOptions.TRACKING_POOL`, requested whenever `source` is
+selected on a `Number` or `NumberPool` attribute) into the attribute's `tracking_pool` property, and
+the attribute's `source` field resolver renders that pool in the `source` slot ahead of the stored
+source. The resolver, shared with `owner`, loads the objects a page's attributes name as their source or
+owner in one batch, pools and stored sources alike. The concrete GraphQL type comes from the loaded node, so assert the resolved
+kind in a test, not just the uuid. The stored source never holds the pool, so a save after a re-pool or a detach
+cannot write the pool back as a `HAS_SOURCE` edge. Python callers reading `get_source()` get the
+stored source only; the pool is reported by `tracking_pool`.
+
+---
+
+## 4. Not in this slice
+
+- **A dedicated `from_pool` output field.** Built in PR #11000 and dropped on review in October
+  2026: `source` stays the single slot that names the pool, ahead of a user-set source. A user source
+  on a pooled attribute is stored and reported once the attribute is detached. Per-attribute user
+  sources on pooled attributes are rare (automatic source assignment applies only to
+  repository-managed core objects, not the user data nodes FR-030 scopes this to).
+- **Bulk attach** and the pool-level mutation it would need. All-or-nothing cannot be built from N
+  update calls. Deferred with the frontend.
+- **Input shape changes.** No new input fields. `from_pool` changes meaning only — see
+  [`from-pool-intent.md`](./from-pool-intent.md).

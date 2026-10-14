@@ -445,6 +445,13 @@ class ValidatorState(InfrahubStringEnum):
     COMPLETED = "completed"
 
 
+class PoolRecordProvenance(InfrahubStringEnum):
+    """Whether the pool allocated a value or a user provided it."""
+
+    ALLOCATED = "allocated"
+    PROVIDED = "provided"
+
+
 class AttributeDBNodeType(Flag):
     DEFAULT = auto()
     INDEX_ONLY = auto()
@@ -453,6 +460,10 @@ class AttributeDBNodeType(Flag):
     INDEXED = DEFAULT | INDEX_ONLY
     IPHOST = DEFAULT | INDEX_ONLY | IPHOST_ONLY
     IPNETWORK = DEFAULT | INDEX_ONLY | IPNETWORK_ONLY
+
+
+# The attribute kinds a number pool can track, which report the pool as their GraphQL `source`
+POOL_TRACKED_ATTRIBUTE_KINDS = frozenset({"Number", "NumberPool"})
 
 
 class MetadataOptions(Flag):
@@ -468,6 +479,7 @@ class MetadataOptions(Flag):
     TIMESTAMPS = CREATED_AT | UPDATED_AT
     USERS = CREATED_BY | UPDATED_BY
     USER_TIMESTAMPS = TIMESTAMPS | USERS
+    TRACKING_POOL = auto()
 
 
 INTERNAL_NAMESPACE = "Internal"

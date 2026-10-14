@@ -3,6 +3,7 @@ from .branch import BranchQueryList, InfrahubBranchQueryList
 from .graphql_query_report import InfrahubGraphQLQueryReport
 from .internal import InfrahubInfo
 from .ipam import InfrahubIPAddressGetNextAvailable, InfrahubIPPrefixGetNextAvailable
+from .number_pool import InfrahubNumberPoolAllocations, InfrahubNumberPoolDivisions, InfrahubNumberPoolUtilization
 from .path import InfrahubPathTraversal
 from .preferences import (
     InfrahubEffectivePreferences,
@@ -33,6 +34,9 @@ __all__ = [
     "InfrahubIPAddressGetNextAvailable",
     "InfrahubIPPrefixGetNextAvailable",
     "InfrahubInfo",
+    "InfrahubNumberPoolAllocations",
+    "InfrahubNumberPoolDivisions",
+    "InfrahubNumberPoolUtilization",
     "InfrahubPathTraversal",
     "InfrahubReachableNodes",
     "InfrahubRepositoryActivity",

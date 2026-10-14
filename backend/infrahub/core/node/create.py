@@ -9,6 +9,7 @@ from infrahub.core.constants import (
     PROFILES_RELATIONSHIP_NAME,
     SYSTEM_USER_ID,
     MetadataOptions,
+    PoolRecordProvenance,
     RelationshipKind,
 )
 from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX
@@ -17,10 +18,12 @@ from infrahub.core.creation_context import NodeCreationContext
 from infrahub.core.node import Node
 from infrahub.core.node.lock_utils import get_lock_names_on_object_mutation
 from infrahub.core.protocols_base import CoreNode
+from infrahub.core.query.resource_manager import TrackingPool
 from infrahub.core.relationship.model import PeerWithRelationshipMetadata
 from infrahub.core.schema import GenericSchema
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.lock import InfrahubMultiLock
+from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
 from infrahub.profiles.node_applier import NodeProfilesApplier
 from infrahub.templates.node_applier import get_relationship_names_to_read
 
@@ -32,6 +35,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema import MainSchemaTypes, NonGenericSchemaTypes
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
+    from infrahub.pools.attribute_pool_applier import AttributePoolApplierInterface
 
 
 @dataclass
@@ -243,7 +247,8 @@ async def allocate_from_resource_pools(
     Handles two cases:
     - Relationship pools (IP address/prefix): allocates a new node and sets it as the relationship peer
     - Attribute pools (Number): allocates a value and sets it on the attribute
-    The pool is set as the source of the attribute/relationship in either case
+    An IP pool is recorded as the source of the relationship. A number pool is not written to the
+    attribute's source: it is derived from the reservation record the allocation leaves behind.
     """
     template_schema = template.get_schema()
     obj_schema = obj.get_schema()
@@ -268,7 +273,9 @@ async def allocate_from_resource_pools(
             attribute = obj.get_attribute(name=original_name)
             attribute.value = allocated_value
             attribute.is_default = False
-            attribute.source = pool.id  # type: ignore[assignment]
+            # Naming the pool records which one accounts for the number; the value is already drawn.
+            attribute.from_pool = {"id": pool.id}
+            attribute.tracking_pool = TrackingPool(pool_id=pool.id, provenance=PoolRecordProvenance.ALLOCATED)
         elif original_name in obj_schema.relationship_names:
             # IP pool: allocate a node and set it as the relationship peer
             allocated_resource = await pool.get_resource(  # type: ignore[attr-defined]
@@ -421,6 +428,7 @@ def _has_profiles_set(node: Node) -> bool:
 async def _do_create_node(
     node_class: type[Node],
     node_constraint_runner: NodeConstraintRunner,
+    pool_applier: AttributePoolApplierInterface,
     creation_context: NodeCreationContext,
     db: InfrahubDatabase,
     schema: NonGenericSchemaTypes,
@@ -434,7 +442,7 @@ async def _do_create_node(
     with creation_context:
         obj = await node_class.init(db=db, schema=schema, branch=branch)
         obj._object_template = object_template
-        await obj.new(db=db, **data)
+        await obj.new(db=db, pool_applier=pool_applier, user_id=user_id, **data)
         await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
         await obj.save(db=db, at=at, user_id=user_id)
 
@@ -507,9 +515,14 @@ async def create_node(
 
     fields_to_validate = list(data)
 
-    preview_obj = await node_class.init(db=db, schema=schema, branch=branch)
-    await preview_obj.new(db=db, process_pools=False, **data)
+    # A node created in a transaction this function opens draws its numbers through that transaction, so it
+    # gets an applier of its own.
     schema_branch = db.schema.get_schema_branch(name=branch.name)
+    pool_applier = build_attribute_pool_applier(
+        profiles_applier=NodeProfilesApplier(db=db, branch=branch), db=db, schema_branch=schema_branch
+    )
+    preview_obj = await node_class.init(db=db, schema=schema, branch=branch)
+    await preview_obj.new(db=db, process_pools=False, pool_applier=pool_applier, **data)
     lock_names = get_lock_names_on_object_mutation(node=preview_obj, schema_branch=schema_branch)
     # The preview read the object template to work out the lock names; the node created under the
     # lock is built from that same template rather than reading it again.
@@ -524,6 +537,7 @@ async def create_node(
             obj = await _do_create_node(
                 node_class=node_class,
                 node_constraint_runner=node_constraint_runner,
+                pool_applier=pool_applier,
                 creation_context=creation_context,
                 db=db,
                 schema=schema,
@@ -543,6 +557,9 @@ async def create_node(
                 obj = await _do_create_node(
                     node_class=node_class,
                     node_constraint_runner=node_constraint_runner,
+                    pool_applier=build_attribute_pool_applier(
+                        profiles_applier=NodeProfilesApplier(db=dbt, branch=branch), db=dbt, schema_branch=schema_branch
+                    ),
                     creation_context=creation_context,
                     db=dbt,
                     schema=schema,

@@ -405,3 +405,30 @@ def test_load_request_reports_one_error_per_violation_located_on_the_field() -> 
             "Unknown field, it is not part of the schema",
         ),
     ]
+
+
+def test_number_pool_allocation_scope_reaches_the_internal_schema() -> None:
+    payload = {
+        "version": "1.0",
+        "nodes": [
+            {
+                "namespace": "Test",
+                "name": "Widget",
+                "attributes": [
+                    {"name": "site", "kind": "Text"},
+                    {
+                        "name": "site_index",
+                        "kind": "NumberPool",
+                        "optional": True,
+                        "parameters": {"start_range": 1, "end_range": 100, "allocation_scope": ["site"]},
+                    },
+                ],
+            }
+        ],
+    }
+
+    loaded = SchemaLoadAPI.model_validate(payload)
+
+    parameters = loaded.internal_schema.nodes[0].attributes[1].parameters
+    assert parameters is not None
+    assert parameters.allocation_scope == ["site"]

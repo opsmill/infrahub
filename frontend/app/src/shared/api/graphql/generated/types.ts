@@ -12,7 +12,7 @@ export type Scalars = {
    * `BigInt` is not constrained to 32-bit like the `Int` type and thus is a less
    * compatible type.
    */
-  BigInt: { input: string; output: string; }
+  BigInt: { input: number; output: number; }
   /**
    * The `DateTime` scalar type represents a DateTime
    * value as specified by
@@ -10931,9 +10931,14 @@ export type CoreNodeUpdateInput = {
 /** A pool of number resources */
 export type CoreNumberPool = CoreNode & CoreResourcePool & LineageSource & {
   __typename: 'CoreNumberPool';
+  /** Ordered fields that divide the pool's space, each as {id, name}: the field's schema id on the default branch and its name */
+  allocation_scope: Maybe<ListAttribute>;
   description: Maybe<TextAttribute>;
   display_label: Maybe<Scalars['String']['output']>;
-  /** The end range for the pool (required) */
+  /**
+   * The end of the pool's single range. Null unless the pool holds exactly one range.
+   * @deprecated end_range is deprecated, use ranges instead
+   */
   end_range: Maybe<NumberAttribute>;
   /** Human friendly identifier */
   hfid: Maybe<Array<Scalars['String']['output']>>;
@@ -10947,7 +10952,11 @@ export type CoreNumberPool = CoreNode & CoreResourcePool & LineageSource & {
   node_attribute: Maybe<TextAttribute>;
   /** Defines how this number pool was created */
   pool_type: Maybe<TextAttribute>;
-  /** The start range for the pool (required) */
+  ranges: NestedPaginatedCoreNumberPoolRange;
+  /**
+   * The start of the pool's single range. Null unless the pool holds exactly one range.
+   * @deprecated start_range is deprecated, use ranges instead
+   */
   start_range: Maybe<NumberAttribute>;
   subscriber_of_groups: NestedPaginatedCoreGroup;
 };
@@ -10983,6 +10992,34 @@ export type CoreNumberPoolMember_Of_GroupsArgs = {
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
+};
+
+
+/** A pool of number resources */
+export type CoreNumberPoolRangesArgs = {
+  allocation_weight__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  allocation_weight__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  allocation_weight__source__id?: InputMaybe<Scalars['ID']['input']>;
+  allocation_weight__value?: InputMaybe<Scalars['BigInt']['input']>;
+  allocation_weight__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
+  display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  display_label__value?: InputMaybe<Scalars['String']['input']>;
+  display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  end__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  end__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  end__source__id?: InputMaybe<Scalars['ID']['input']>;
+  end__value?: InputMaybe<Scalars['BigInt']['input']>;
+  end__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<OrderInput>;
+  start__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  start__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  start__source__id?: InputMaybe<Scalars['ID']['input']>;
+  start__value?: InputMaybe<Scalars['BigInt']['input']>;
+  start__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
 };
 
 
@@ -11026,8 +11063,13 @@ export type CoreNumberPoolCreate = {
 };
 
 export type CoreNumberPoolCreateInput = {
+  /** Ordered fields that divide the pool's space, each as {id, name}: the field's schema id on the default branch and its name */
+  allocation_scope?: InputMaybe<ListAttributeCreate>;
   description?: InputMaybe<TextAttributeCreate>;
-  /** The end range for the pool */
+  /**
+   * The end of the pool's single range. Null unless the pool holds exactly one range.
+   * @deprecated end_range is deprecated, use ranges instead
+   */
   end_range?: InputMaybe<NumberAttributeCreate>;
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -11036,7 +11078,11 @@ export type CoreNumberPoolCreateInput = {
   node?: InputMaybe<TextAttributeCreate>;
   /** The attribute of the selected model */
   node_attribute?: InputMaybe<TextAttributeCreate>;
-  /** The start range for the pool */
+  ranges?: InputMaybe<Array<NumberPoolRangeInput>>;
+  /**
+   * The start of the pool's single range. Null unless the pool holds exactly one range.
+   * @deprecated start_range is deprecated, use ranges instead
+   */
   start_range?: InputMaybe<NumberAttributeCreate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -11047,6 +11093,159 @@ export type CoreNumberPoolDelete = {
   ok: Maybe<Scalars['Boolean']['output']>;
 };
 
+/** A range of numbers a number pool allocates from */
+export type CoreNumberPoolRange = CoreNode & CoreWeightedPoolResource & {
+  __typename: 'CoreNumberPoolRange';
+  /** Weight determines allocation priority, resources with higher values are selected first. */
+  allocation_weight: Maybe<NumberAttribute>;
+  display_label: Maybe<Scalars['String']['output']>;
+  /** The last number of the range, included (required) */
+  end: Maybe<NumberAttribute>;
+  /** Human friendly identifier */
+  hfid: Maybe<Array<Scalars['String']['output']>>;
+  /** Unique identifier */
+  id: Scalars['String']['output'];
+  member_of_groups: NestedPaginatedCoreGroup;
+  pool: NestedEdgedCoreNumberPool;
+  /** The first number of the range, included (required) */
+  start: Maybe<NumberAttribute>;
+  subscriber_of_groups: NestedPaginatedCoreGroup;
+};
+
+
+/** A range of numbers a number pool allocates from */
+export type CoreNumberPoolRangeMember_Of_GroupsArgs = {
+  description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  description__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  description__source__id?: InputMaybe<Scalars['ID']['input']>;
+  description__value?: InputMaybe<Scalars['String']['input']>;
+  description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  display_label__value?: InputMaybe<Scalars['String']['input']>;
+  display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  group_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  group_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  group_type__source__id?: InputMaybe<Scalars['ID']['input']>;
+  group_type__value?: InputMaybe<Scalars['String']['input']>;
+  group_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  label__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  label__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  label__source__id?: InputMaybe<Scalars['ID']['input']>;
+  label__value?: InputMaybe<Scalars['String']['input']>;
+  label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  name__value?: InputMaybe<Scalars['String']['input']>;
+  name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<OrderInput>;
+};
+
+
+/** A range of numbers a number pool allocates from */
+export type CoreNumberPoolRangeSubscriber_Of_GroupsArgs = {
+  description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  description__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  description__source__id?: InputMaybe<Scalars['ID']['input']>;
+  description__value?: InputMaybe<Scalars['String']['input']>;
+  description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  display_label__value?: InputMaybe<Scalars['String']['input']>;
+  display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  group_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  group_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  group_type__source__id?: InputMaybe<Scalars['ID']['input']>;
+  group_type__value?: InputMaybe<Scalars['String']['input']>;
+  group_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  label__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  label__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  label__source__id?: InputMaybe<Scalars['ID']['input']>;
+  label__value?: InputMaybe<Scalars['String']['input']>;
+  label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  name__value?: InputMaybe<Scalars['String']['input']>;
+  name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<OrderInput>;
+};
+
+/** A range of numbers a number pool allocates from */
+export type CoreNumberPoolRangeCreate = {
+  __typename: 'CoreNumberPoolRangeCreate';
+  object: Maybe<CoreNumberPoolRange>;
+  ok: Maybe<Scalars['Boolean']['output']>;
+};
+
+export type CoreNumberPoolRangeCreateInput = {
+  /** Weight determines allocation priority, resources with higher values are selected first. */
+  allocation_weight?: InputMaybe<NumberAttributeCreate>;
+  /** The last number of the range, included */
+  end?: InputMaybe<NumberAttributeCreate>;
+  id?: InputMaybe<Scalars['String']['input']>;
+  member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  pool?: InputMaybe<RelatedNodeInput>;
+  /** The first number of the range, included */
+  start?: InputMaybe<NumberAttributeCreate>;
+  subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+};
+
+/** A range of numbers a number pool allocates from */
+export type CoreNumberPoolRangeDelete = {
+  __typename: 'CoreNumberPoolRangeDelete';
+  ok: Maybe<Scalars['Boolean']['output']>;
+};
+
+/** A range of numbers a number pool allocates from */
+export type CoreNumberPoolRangeUpdate = {
+  __typename: 'CoreNumberPoolRangeUpdate';
+  object: Maybe<CoreNumberPoolRange>;
+  ok: Maybe<Scalars['Boolean']['output']>;
+};
+
+export type CoreNumberPoolRangeUpdateInput = {
+  /** Weight determines allocation priority, resources with higher values are selected first. */
+  allocation_weight?: InputMaybe<NumberAttributeUpdate>;
+  /** The last number of the range, included */
+  end?: InputMaybe<NumberAttributeUpdate>;
+  hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  id?: InputMaybe<Scalars['String']['input']>;
+  member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  pool?: InputMaybe<RelatedNodeInput>;
+  /** The first number of the range, included */
+  start?: InputMaybe<NumberAttributeUpdate>;
+  subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+};
+
+/** A range of numbers a number pool allocates from */
+export type CoreNumberPoolRangeUpsert = {
+  __typename: 'CoreNumberPoolRangeUpsert';
+  object: Maybe<CoreNumberPoolRange>;
+  ok: Maybe<Scalars['Boolean']['output']>;
+};
+
+export type CoreNumberPoolRangeUpsertInput = {
+  /** Weight determines allocation priority, resources with higher values are selected first. */
+  allocation_weight?: InputMaybe<NumberAttributeUpdate>;
+  /** The last number of the range, included */
+  end?: InputMaybe<NumberAttributeUpdate>;
+  hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  id?: InputMaybe<Scalars['String']['input']>;
+  member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  pool?: InputMaybe<RelatedNodeInput>;
+  /** The first number of the range, included */
+  start?: InputMaybe<NumberAttributeUpdate>;
+  subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+};
+
 /** A pool of number resources */
 export type CoreNumberPoolUpdate = {
   __typename: 'CoreNumberPoolUpdate';
@@ -11055,8 +11254,13 @@ export type CoreNumberPoolUpdate = {
 };
 
 export type CoreNumberPoolUpdateInput = {
+  /** Ordered fields that divide the pool's space, each as {id, name}: the field's schema id on the default branch and its name */
+  allocation_scope?: InputMaybe<ListAttributeUpdate>;
   description?: InputMaybe<TextAttributeUpdate>;
-  /** The end range for the pool */
+  /**
+   * The end of the pool's single range. Null unless the pool holds exactly one range.
+   * @deprecated end_range is deprecated, use ranges instead
+   */
   end_range?: InputMaybe<NumberAttributeUpdate>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
@@ -11066,7 +11270,11 @@ export type CoreNumberPoolUpdateInput = {
   node?: InputMaybe<TextAttributeUpdate>;
   /** The attribute of the selected model */
   node_attribute?: InputMaybe<TextAttributeUpdate>;
-  /** The start range for the pool */
+  ranges?: InputMaybe<Array<NumberPoolRangeInput>>;
+  /**
+   * The start of the pool's single range. Null unless the pool holds exactly one range.
+   * @deprecated start_range is deprecated, use ranges instead
+   */
   start_range?: InputMaybe<NumberAttributeUpdate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -11079,8 +11287,13 @@ export type CoreNumberPoolUpsert = {
 };
 
 export type CoreNumberPoolUpsertInput = {
+  /** Ordered fields that divide the pool's space, each as {id, name}: the field's schema id on the default branch and its name */
+  allocation_scope?: InputMaybe<ListAttributeUpdate>;
   description?: InputMaybe<TextAttributeUpdate>;
-  /** The end range for the pool */
+  /**
+   * The end of the pool's single range. Null unless the pool holds exactly one range.
+   * @deprecated end_range is deprecated, use ranges instead
+   */
   end_range?: InputMaybe<NumberAttributeUpdate>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
@@ -11090,7 +11303,11 @@ export type CoreNumberPoolUpsertInput = {
   node?: InputMaybe<TextAttributeUpdate>;
   /** The attribute of the selected model */
   node_attribute?: InputMaybe<TextAttributeUpdate>;
-  /** The start range for the pool */
+  ranges?: InputMaybe<Array<NumberPoolRangeInput>>;
+  /**
+   * The start of the pool's single range. Null unless the pool holds exactly one range.
+   * @deprecated start_range is deprecated, use ranges instead
+   */
   start_range?: InputMaybe<NumberAttributeUpdate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -17494,6 +17711,13 @@ export type EdgedCoreNumberPool = {
   node_metadata: Maybe<InfrahubNodeMetadata>;
 };
 
+/** A range of numbers a number pool allocates from */
+export type EdgedCoreNumberPoolRange = {
+  __typename: 'EdgedCoreNumberPoolRange';
+  node: Maybe<CoreNumberPoolRange>;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
+};
+
 /** Component template to create pre-shaped objects. */
 export type EdgedCoreObjectComponentTemplate = {
   __typename: 'EdgedCoreObjectComponentTemplate';
@@ -19890,6 +20114,14 @@ export type Mutation = {
   CoreNumberPoolCreate: Maybe<CoreNumberPoolCreate>;
   /** A pool of number resources */
   CoreNumberPoolDelete: Maybe<CoreNumberPoolDelete>;
+  /** A range of numbers a number pool allocates from */
+  CoreNumberPoolRangeCreate: Maybe<CoreNumberPoolRangeCreate>;
+  /** A range of numbers a number pool allocates from */
+  CoreNumberPoolRangeDelete: Maybe<CoreNumberPoolRangeDelete>;
+  /** A range of numbers a number pool allocates from */
+  CoreNumberPoolRangeUpdate: Maybe<CoreNumberPoolRangeUpdate>;
+  /** A range of numbers a number pool allocates from */
+  CoreNumberPoolRangeUpsert: Maybe<CoreNumberPoolRangeUpsert>;
   /** A pool of number resources */
   CoreNumberPoolUpdate: Maybe<CoreNumberPoolUpdate>;
   /** A pool of number resources */
@@ -21185,6 +21417,30 @@ export type MutationCoreNumberPoolCreateArgs = {
 export type MutationCoreNumberPoolDeleteArgs = {
   context?: InputMaybe<ContextInput>;
   data: DeleteInput;
+};
+
+
+export type MutationCoreNumberPoolRangeCreateArgs = {
+  context?: InputMaybe<ContextInput>;
+  data: CoreNumberPoolRangeCreateInput;
+};
+
+
+export type MutationCoreNumberPoolRangeDeleteArgs = {
+  context?: InputMaybe<ContextInput>;
+  data: DeleteInput;
+};
+
+
+export type MutationCoreNumberPoolRangeUpdateArgs = {
+  context?: InputMaybe<ContextInput>;
+  data: CoreNumberPoolRangeUpdateInput;
+};
+
+
+export type MutationCoreNumberPoolRangeUpsertArgs = {
+  context?: InputMaybe<ContextInput>;
+  data: CoreNumberPoolRangeUpsertInput;
 };
 
 
@@ -22484,6 +22740,15 @@ export type NestedEdgedCoreNumberPool = {
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
 
+/** A range of numbers a number pool allocates from */
+export type NestedEdgedCoreNumberPoolRange = {
+  __typename: 'NestedEdgedCoreNumberPoolRange';
+  node: Maybe<CoreNumberPoolRange>;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
+  properties: Maybe<RelationshipProperty>;
+  relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
+};
+
 /** Component template to create pre-shaped objects. */
 export type NestedEdgedCoreObjectComponentTemplate = {
   __typename: 'NestedEdgedCoreObjectComponentTemplate';
@@ -23275,6 +23540,14 @@ export type NestedPaginatedCoreNumberPool = {
   permissions: PaginatedObjectPermission;
 };
 
+/** A range of numbers a number pool allocates from */
+export type NestedPaginatedCoreNumberPoolRange = {
+  __typename: 'NestedPaginatedCoreNumberPoolRange';
+  count: Scalars['Int']['output'];
+  edges: Array<NestedEdgedCoreNumberPoolRange>;
+  permissions: PaginatedObjectPermission;
+};
+
 /** Component template to create pre-shaped objects. */
 export type NestedPaginatedCoreObjectComponentTemplate = {
   __typename: 'NestedPaginatedCoreObjectComponentTemplate';
@@ -23682,6 +23955,163 @@ export type NumberAttributeUpdate = {
   owner?: InputMaybe<Scalars['String']['input']>;
   source?: InputMaybe<Scalars['String']['input']>;
   value?: InputMaybe<Scalars['BigInt']['input']>;
+};
+
+/** One tracked number as held on one branch. A number held on several branches gives one row per branch. */
+export type NumberPoolAllocation = {
+  __typename: 'NumberPoolAllocation';
+  /** The branch on which the holding object's attribute holds this value. */
+  branch: Scalars['String']['output'];
+  /** The object whose attribute holds the value, read on the row's branch. */
+  holder: NumberPoolHolder;
+  /** The identifier given when the number was allocated, if any. */
+  identifier: Maybe<Scalars['String']['output']>;
+  /** ALLOCATED when the pool picked the number, PROVIDED when a user gave it. */
+  provenance: PoolRecordProvenance;
+  /** The range whose bounds hold the value. */
+  range: NumberPoolRangeRef;
+  /** The number held. */
+  value: Scalars['BigInt']['output'];
+};
+
+/** A page of the numbers a pool tracks. */
+export type NumberPoolAllocations = {
+  __typename: 'NumberPoolAllocations';
+  /** The page, ordered by value, then branch, then the holding object's id. */
+  allocations: Array<NumberPoolAllocation>;
+  /** Number of rows matching the filters, before offset and limit. */
+  count: Scalars['BigInt']['output'];
+};
+
+/** One combination of values of the allocation scope, with its own number space. */
+export type NumberPoolDivision = {
+  __typename: 'NumberPoolDivision';
+  /** The entries' display labels joined with " / ". */
+  display_label: Scalars['String']['output'];
+  /** One entry per scope element, in scope order. */
+  entries: Array<NumberPoolDivisionEntry>;
+  /** Figures for this division, over all the values the pool can allocate. */
+  figures: NumberPoolUtilizationFigures;
+};
+
+/** One attribute or relationship of the allocation scope and the value a division holds for it. */
+export type NumberPoolDivisionEntry = {
+  __typename: 'NumberPoolDivisionEntry';
+  /** For a relationship, the peer's display label read on any branch, or the peer's id when the peer cannot be read. For an attribute, the value as text. */
+  display_label: Scalars['String']['output'];
+  /** The schema element id of the attribute or relationship. */
+  id: Scalars['String']['output'];
+  /** The name of the scope attribute or relationship. */
+  path: Scalars['String']['output'];
+  /** For a relationship, the peer's kind when the peer can be read. Null otherwise. */
+  peer_kind: Maybe<Scalars['String']['output']>;
+  /** For a relationship, the peer's id. For an attribute, the value as the attribute stores it: a number for a Number, NumberPool or Bandwidth attribute, a boolean for a Boolean or Checkbox attribute, and a text for any other kind. An empty string when the holding object has no value for it. */
+  value: Scalars['GenericScalar']['output'];
+};
+
+/** One attribute or relationship of the allocation scope and the value the requested division holds for it. */
+export type NumberPoolDivisionEntryInput = {
+  /** The name of the scope attribute or relationship. */
+  path: Scalars['String']['input'];
+  /** For a relationship, the peer's id. For an attribute, a value as the attribute stores it: a number for a Number, NumberPool or Bandwidth attribute, a boolean for a Boolean or Checkbox attribute, and a text for any other kind. An empty string names the objects that hold no value for it. */
+  value: Scalars['GenericScalar']['input'];
+};
+
+/** The divisions of one number pool, each with its figures. */
+export type NumberPoolDivisions = {
+  __typename: 'NumberPoolDivisions';
+  /** The pool's allocation scope, in scope order. */
+  allocation_scope: Array<NumberPoolScopeElement>;
+  /** Number of divisions listed. */
+  count: Scalars['Int']['output'];
+  /** Every division that holds at least one value the pool tracks on any live branch. Each holding object counts under every division it occupies on any live branch. Ordered by utilization descending, then by display_label. Empty for an unscoped pool. */
+  divisions: Array<NumberPoolDivision>;
+};
+
+/** The object holding a tracked number. */
+export type NumberPoolHolder = {
+  __typename: 'NumberPoolHolder';
+  display_label: Scalars['String']['output'];
+  /** The holding object's human-friendly id. Null when its kind declares none. */
+  hfid: Maybe<Array<Scalars['String']['output']>>;
+  id: Scalars['String']['output'];
+  kind: Scalars['String']['output'];
+};
+
+export type NumberPoolRangeInput = {
+  /** Ranges with a higher weight are allocated from first. Left out, a range declared with the bounds of a stored range keeps the stored range's weight; null removes it. */
+  allocation_weight?: InputMaybe<Scalars['BigInt']['input']>;
+  /** The last number of the range, included */
+  end: Scalars['BigInt']['input'];
+  /** The first number of the range, included */
+  start: Scalars['BigInt']['input'];
+};
+
+/** A reference to one range of the pool. */
+export type NumberPoolRangeRef = {
+  __typename: 'NumberPoolRangeRef';
+  display_label: Scalars['String']['output'];
+  id: Scalars['String']['output'];
+};
+
+/** One range of a number pool with its own figures. */
+export type NumberPoolRangeUtilization = {
+  __typename: 'NumberPoolRangeUtilization';
+  /** The range node's display label. */
+  display_label: Scalars['String']['output'];
+  /** Last value of the range, included. */
+  end: Scalars['BigInt']['output'];
+  /** Figures over the range's values. On a scoped pool, only the values held in the division passed in the division argument. */
+  figures: NumberPoolUtilizationFigures;
+  /** The range node's id. */
+  id: Scalars['String']['output'];
+  /** First value of the range, included. */
+  start: Scalars['BigInt']['output'];
+  /** The range's allocation weight. 0 when the range declares none. */
+  weight: Scalars['BigInt']['output'];
+};
+
+/** One attribute or relationship of a pool's allocation scope. */
+export type NumberPoolScopeElement = {
+  __typename: 'NumberPoolScopeElement';
+  /** The schema element id of the attribute or relationship, on the default branch. */
+  id: Scalars['String']['output'];
+  /** The attribute or relationship name, as currently declared on the default branch. */
+  name: Scalars['String']['output'];
+};
+
+/** Utilization of one number pool and of each of its ranges. For a number pool, prefer this over InfrahubResourcePoolUtilization. */
+export type NumberPoolUtilization = {
+  __typename: 'NumberPoolUtilization';
+  /** The pool's allocation scope, in scope order. Empty for an unscoped pool. */
+  allocation_scope: Array<NumberPoolScopeElement>;
+  /** The pool's display label. */
+  display_label: Scalars['String']['output'];
+  /** Figures over all the values the pool can allocate. On a scoped pool, only the values held in the division passed in the division argument, which is required. */
+  figures: NumberPoolUtilizationFigures;
+  /** The pool's id, as given in pool_id. */
+  id: Scalars['String']['output'];
+  /** The pool's ranges ordered by start, each with its own figures. */
+  ranges: Array<NumberPoolRangeUtilization>;
+};
+
+/** Absolute and relative utilization of a pool, a range or a division. */
+export type NumberPoolUtilizationFigures = {
+  __typename: 'NumberPoolUtilizationFigures';
+  /** Number of values the pool, range or division can allocate. 0 when the pool has no range. */
+  size: Scalars['BigInt']['output'];
+  /** Number of these values in use on any branch. A value used on several branches counts once. */
+  used: Scalars['BigInt']['output'];
+  /** Number of these values in use only on other branches, not on the default branch. */
+  used_branches: Scalars['BigInt']['output'];
+  /** Number of these values in use on the default branch. */
+  used_default_branch: Scalars['BigInt']['output'];
+  /** used as a percentage of size. 0 when size is 0. */
+  utilization: Scalars['Float']['output'];
+  /** used_branches as a percentage of size. 0 when size is 0. */
+  utilization_branches: Scalars['Float']['output'];
+  /** used_default_branch as a percentage of size. 0 when size is 0. */
+  utilization_default_branch: Scalars['Float']['output'];
 };
 
 export type ObjectPermission = {
@@ -24168,6 +24598,14 @@ export type PaginatedCoreNumberPool = {
   permissions: PaginatedObjectPermission;
 };
 
+/** A range of numbers a number pool allocates from */
+export type PaginatedCoreNumberPoolRange = {
+  __typename: 'PaginatedCoreNumberPoolRange';
+  count: Scalars['Int']['output'];
+  edges: Array<EdgedCoreNumberPoolRange>;
+  permissions: PaginatedObjectPermission;
+};
+
 /** Component template to create pre-shaped objects. */
 export type PaginatedCoreObjectComponentTemplate = {
   __typename: 'PaginatedCoreObjectComponentTemplate';
@@ -24615,8 +25053,17 @@ export type PoolAllocatedNode = {
   identifier: Maybe<Scalars['String']['output']>;
   /** The node kind */
   kind: Scalars['String']['output'];
+  /** Whether the number pool allocated the value the branch holds or a user provided it; null for IP pools */
+  provenance: Maybe<PoolRecordProvenance>;
 };
 
+/** Whether the pool allocated a value or a user provided it. */
+export const PoolRecordProvenance = {
+  ALLOCATED: 'ALLOCATED',
+  PROVIDED: 'PROVIDED'
+} as const;
+
+export type PoolRecordProvenance = typeof PoolRecordProvenance[keyof typeof PoolRecordProvenance];
 export type PoolUtilization = {
   __typename: 'PoolUtilization';
   /** The number of resources within the selected pool. */
@@ -25806,6 +26253,7 @@ export type Query = {
   CoreNodeTriggerRelationshipMatch: PaginatedCoreNodeTriggerRelationshipMatch;
   CoreNodeTriggerRule: PaginatedCoreNodeTriggerRule;
   CoreNumberPool: PaginatedCoreNumberPool;
+  CoreNumberPoolRange: PaginatedCoreNumberPoolRange;
   CoreObjectComponentTemplate: PaginatedCoreObjectComponentTemplate;
   CoreObjectPermission: PaginatedCoreObjectPermission;
   CoreObjectTemplate: PaginatedCoreObjectTemplate;
@@ -25851,6 +26299,12 @@ export type Query = {
   InfrahubIPAddressGetNextAvailable: IpAddressGetNextAvailable;
   InfrahubIPPrefixGetNextAvailable: IpPrefixGetNextAvailable;
   InfrahubInfo: Info;
+  /** The numbers one number pool tracks, filtered and paginated. */
+  InfrahubNumberPoolAllocations: NumberPoolAllocations;
+  /** The divisions of one number pool that hold at least one value, with their figures over the whole pool. */
+  InfrahubNumberPoolDivisions: NumberPoolDivisions;
+  /** Utilization of one number pool and of its ranges. On a scoped pool, division is required and the figures are those of that division. */
+  InfrahubNumberPoolUtilization: NumberPoolUtilization;
   /** Find all shortest paths between two nodes in the graph */
   InfrahubPathTraversal: PathTraversalResultType;
   InfrahubPermissions: AccountPermissionsEdges;
@@ -25864,7 +26318,9 @@ export type Query = {
   InfrahubRepositoryBranchStatus: InfrahubRepositoryBranchStatusType;
   /** Paged commit log for a repository on the request branch. */
   InfrahubRepositoryCommits: RepositoryCommits;
+  /** The IP prefixes or IP addresses inside one resource of a pool, paginated. For a number pool, resource_id and the allocation scope are ignored, every value the pool tracks inside its bounds is listed and display_label is the value itself; read InfrahubNumberPoolAllocations instead. */
   InfrahubResourcePoolAllocated: PoolAllocated;
+  /** Utilization of one resource pool and of each of its resources. For a number pool, the figures cover the whole pool and ignore its allocation scope; read InfrahubNumberPoolUtilization and InfrahubNumberPoolDivisions instead. */
   InfrahubResourcePoolUtilization: PoolUtilization;
   InfrahubSearchAnywhere: NodeEdges;
   /** Retrieve the status of all infrahub workers. */
@@ -33540,6 +33996,12 @@ export type QueryCoreNodeTriggerRuleArgs = {
 
 
 export type QueryCoreNumberPoolArgs = {
+  allocation_scope__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  allocation_scope__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  allocation_scope__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  allocation_scope__source__id?: InputMaybe<Scalars['ID']['input']>;
+  allocation_scope__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  allocation_scope__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
   any__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   any__owner__id?: InputMaybe<Scalars['ID']['input']>;
   any__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -33613,12 +34075,148 @@ export type QueryCoreNumberPoolArgs = {
   pool_type__source__id?: InputMaybe<Scalars['ID']['input']>;
   pool_type__value?: InputMaybe<Scalars['String']['input']>;
   pool_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ranges__allocation_weight__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  ranges__allocation_weight__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  ranges__allocation_weight__source__id?: InputMaybe<Scalars['ID']['input']>;
+  ranges__allocation_weight__value?: InputMaybe<Scalars['BigInt']['input']>;
+  ranges__allocation_weight__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
+  ranges__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  ranges__display_label__value?: InputMaybe<Scalars['String']['input']>;
+  ranges__display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ranges__end__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  ranges__end__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  ranges__end__source__id?: InputMaybe<Scalars['ID']['input']>;
+  ranges__end__value?: InputMaybe<Scalars['BigInt']['input']>;
+  ranges__end__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
+  ranges__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  ranges__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  ranges__start__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  ranges__start__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  ranges__start__source__id?: InputMaybe<Scalars['ID']['input']>;
+  ranges__start__value?: InputMaybe<Scalars['BigInt']['input']>;
+  ranges__start__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
   start_range__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   start_range__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   start_range__owner__id?: InputMaybe<Scalars['ID']['input']>;
   start_range__source__id?: InputMaybe<Scalars['ID']['input']>;
   start_range__value?: InputMaybe<Scalars['BigInt']['input']>;
   start_range__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
+  subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
+  subscriber_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  subscriber_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  subscriber_of_groups__display_label__value?: InputMaybe<Scalars['String']['input']>;
+  subscriber_of_groups__display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  subscriber_of_groups__group_type__value?: InputMaybe<Scalars['String']['input']>;
+  subscriber_of_groups__group_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  subscriber_of_groups__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  subscriber_of_groups__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  subscriber_of_groups__label__value?: InputMaybe<Scalars['String']['input']>;
+  subscriber_of_groups__label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  subscriber_of_groups__name__value?: InputMaybe<Scalars['String']['input']>;
+  subscriber_of_groups__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+};
+
+
+export type QueryCoreNumberPoolRangeArgs = {
+  allocation_weight__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  allocation_weight__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  allocation_weight__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  allocation_weight__source__id?: InputMaybe<Scalars['ID']['input']>;
+  allocation_weight__value?: InputMaybe<Scalars['BigInt']['input']>;
+  allocation_weight__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
+  any__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  any__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  any__source__id?: InputMaybe<Scalars['ID']['input']>;
+  any__value?: InputMaybe<Scalars['String']['input']>;
+  any__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  display_label__value?: InputMaybe<Scalars['String']['input']>;
+  display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  end__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  end__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  end__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  end__source__id?: InputMaybe<Scalars['ID']['input']>;
+  end__value?: InputMaybe<Scalars['BigInt']['input']>;
+  end__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
+  member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  member_of_groups__display_label__value?: InputMaybe<Scalars['String']['input']>;
+  member_of_groups__display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  member_of_groups__group_type__value?: InputMaybe<Scalars['String']['input']>;
+  member_of_groups__group_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  member_of_groups__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  member_of_groups__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  member_of_groups__label__value?: InputMaybe<Scalars['String']['input']>;
+  member_of_groups__label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  member_of_groups__name__value?: InputMaybe<Scalars['String']['input']>;
+  member_of_groups__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  node_metadata__created_at?: InputMaybe<Scalars['DateTime']['input']>;
+  node_metadata__created_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
+  node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
+  node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
+  node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
+  node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
+  node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<OrderInput>;
+  partial_match?: InputMaybe<Scalars['Boolean']['input']>;
+  pool__allocation_scope__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  pool__allocation_scope__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  pool__allocation_scope__source__id?: InputMaybe<Scalars['ID']['input']>;
+  pool__allocation_scope__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  pool__allocation_scope__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  pool__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  pool__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  pool__description__source__id?: InputMaybe<Scalars['ID']['input']>;
+  pool__description__value?: InputMaybe<Scalars['String']['input']>;
+  pool__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  pool__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  pool__display_label__value?: InputMaybe<Scalars['String']['input']>;
+  pool__display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  pool__end_range__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  pool__end_range__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  pool__end_range__source__id?: InputMaybe<Scalars['ID']['input']>;
+  pool__end_range__value?: InputMaybe<Scalars['BigInt']['input']>;
+  pool__end_range__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
+  pool__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  pool__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  pool__name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  pool__name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  pool__name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  pool__name__value?: InputMaybe<Scalars['String']['input']>;
+  pool__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  pool__node__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  pool__node__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  pool__node__source__id?: InputMaybe<Scalars['ID']['input']>;
+  pool__node__value?: InputMaybe<Scalars['String']['input']>;
+  pool__node__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  pool__node_attribute__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  pool__node_attribute__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  pool__node_attribute__source__id?: InputMaybe<Scalars['ID']['input']>;
+  pool__node_attribute__value?: InputMaybe<Scalars['String']['input']>;
+  pool__node_attribute__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  pool__pool_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  pool__pool_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  pool__pool_type__source__id?: InputMaybe<Scalars['ID']['input']>;
+  pool__pool_type__value?: InputMaybe<Scalars['String']['input']>;
+  pool__pool_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  pool__start_range__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  pool__start_range__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  pool__start_range__source__id?: InputMaybe<Scalars['ID']['input']>;
+  pool__start_range__value?: InputMaybe<Scalars['BigInt']['input']>;
+  pool__start_range__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
+  start__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  start__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  start__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  start__source__id?: InputMaybe<Scalars['ID']['input']>;
+  start__value?: InputMaybe<Scalars['BigInt']['input']>;
+  start__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
   subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   subscriber_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   subscriber_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -38229,6 +38827,28 @@ export type QueryInfrahubIpAddressGetNextAvailableArgs = {
 export type QueryInfrahubIpPrefixGetNextAvailableArgs = {
   prefix_id: Scalars['String']['input'];
   prefix_length?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryInfrahubNumberPoolAllocationsArgs = {
+  branch?: InputMaybe<Scalars['String']['input']>;
+  division?: InputMaybe<Array<NumberPoolDivisionEntryInput>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  pool_id: Scalars['String']['input'];
+  provenance?: InputMaybe<PoolRecordProvenance>;
+  range_id?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryInfrahubNumberPoolDivisionsArgs = {
+  pool_id: Scalars['String']['input'];
+};
+
+
+export type QueryInfrahubNumberPoolUtilizationArgs = {
+  division?: InputMaybe<Array<NumberPoolDivisionEntryInput>>;
+  pool_id: Scalars['String']['input'];
 };
 
 

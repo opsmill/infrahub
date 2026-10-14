@@ -86,6 +86,50 @@ CALL (n) {
         self.add_to_query(query)
 
 
+class DeleteBranchReservedAttributesQuery(Query):
+    """Delete the Attribute vertices a number pool reserves that exist only on this branch.
+
+    A pool's IS_RESERVED edge is global, so the branch edge deletion never removes it, and an
+    attribute whose every other edge is on this branch would be left holding only that edge: an
+    object created on the branch, or the new vertex of an attribute renamed on it. Must run before
+    the branch's edges are deleted, because it reads the attribute's owning edge on the branch.
+    """
+
+    name: str = "delete_branch_reserved_attributes"
+    insert_return: bool = False
+    insert_limit: bool = False
+
+    type: QueryType = QueryType.WRITE
+
+    def __init__(self, branch_name: str, batch_size: int, **kwargs: Any) -> None:
+        self.branch_name = branch_name
+        self.batch_size = batch_size
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        query = """
+MATCH ()-[:IS_RESERVED {branch: $global_branch_name}]->(attr:Attribute)
+WITH DISTINCT attr
+WHERE EXISTS {
+    MATCH (:Node)-[:HAS_ATTRIBUTE {branch: $branch_name}]->(attr)
+}
+// --------------
+// Every edge other than an IS_RESERVED edge must be on this branch. A global owning or value edge is
+// real data on every branch.
+// --------------
+AND NOT EXISTS {
+    MATCH (attr)-[kept]-()
+    WHERE kept.branch <> $branch_name AND type(kept) <> "IS_RESERVED"
+}
+CALL (attr) {
+    DETACH DELETE attr
+} IN TRANSACTIONS OF %(batch_size)s ROWS
+        """ % {"batch_size": self.batch_size}
+        self.params["branch_name"] = self.branch_name
+        self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
+        self.add_to_query(query)
+
+
 class DeleteBranchEdgesQuery(Query):
     """Delete one batch of edges of a single type belonging to a branch, plus any vertex left bare.
 

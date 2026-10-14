@@ -2677,41 +2677,93 @@ export interface components {
         NumberPoolParametersRead: {
             /**
              * End Range
-             * @description End range for numbers for the associated NumberPool
-             * @default 9223372036854776000
+             * @description Deprecated, use ranges instead. End of the single range, defaults to the largest supported number when only start_range is set
              */
-            end_range: number;
+            end_range?: number | null;
             /**
              * Start Range
-             * @description Start range for numbers for the associated NumberPool
-             * @default 1
+             * @description Deprecated, use ranges instead. Start of the single range, defaults to 1 when only end_range is set
              */
-            start_range: number;
+            start_range?: number | null;
+            /**
+             * Ranges
+             * @description Ranges of numbers the associated NumberPool allocates from, they must not overlap
+             */
+            ranges?: components["schemas"]["NumberPoolRangeRead"][];
             /**
              * Number Pool Id
              * @description The ID of the numberpool associated with this attribute. Only set after the number pool has been provisioned.
              */
             number_pool_id?: string | null;
+            /**
+             * Allocation Scope
+             * @description Fields of the kind that divide the pool's space; allocation returns the lowest free number within the writer's division
+             */
+            allocation_scope?: string[] | null;
         };
         /** NumberPoolParametersWrite */
         NumberPoolParametersWrite: {
             /**
              * End Range
-             * @description End range for numbers for the associated NumberPool
-             * @default 9223372036854776000
+             * @description Deprecated, use ranges instead. End of the single range, defaults to the largest supported number when only start_range is set
              */
-            end_range: number;
+            end_range?: number | null;
             /**
              * Start Range
-             * @description Start range for numbers for the associated NumberPool
-             * @default 1
+             * @description Deprecated, use ranges instead. Start of the single range, defaults to 1 when only end_range is set
              */
-            start_range: number;
+            start_range?: number | null;
+            /**
+             * Ranges
+             * @description Ranges of numbers the associated NumberPool allocates from, they must not overlap
+             */
+            ranges?: components["schemas"]["NumberPoolRangeWrite"][];
             /**
              * Number Pool Id
              * @description The ID of the numberpool associated with this attribute. Only set after the number pool has been provisioned.
              */
             number_pool_id?: string | null;
+            /**
+             * Allocation Scope
+             * @description Fields of the kind that divide the pool's space; allocation returns the lowest free number within the writer's division
+             */
+            allocation_scope?: string[] | null;
+        };
+        /** NumberPoolRangeRead */
+        NumberPoolRangeRead: {
+            /**
+             * Start
+             * @description First number of the range
+             */
+            start: number;
+            /**
+             * End
+             * @description Last number of the range
+             */
+            end: number;
+            /**
+             * Weight
+             * @description Ranges with a higher weight are allocated from first
+             */
+            weight?: number | null;
+        };
+        /** NumberPoolRangeWrite */
+        NumberPoolRangeWrite: {
+            /**
+             * Start
+             * @description First number of the range
+             */
+            start: number;
+            /**
+             * End
+             * @description Last number of the range
+             */
+            end: number;
+            /**
+             * Weight
+             * @description Ranges with a higher weight are allocated from first
+             */
+            weight?: number | null;
         };
         /** PasswordCredential */
         PasswordCredential: {

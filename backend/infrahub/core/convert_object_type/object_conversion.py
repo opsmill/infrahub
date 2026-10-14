@@ -10,12 +10,12 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.create import create_node
 from infrahub.core.query.relationship import GetAllPeersIds
-from infrahub.core.query.resource_manager import PoolChangeReserved
+from infrahub.core.query.resource_manager import IPPoolChangeReserved, NumberPoolChangeReserved
 from infrahub.core.relationship import RelationshipManager
 from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-from infrahub.message_bus.messages import RefreshRegistryBranches
+from infrahub.message_bus.messages.refresh_registry_branches import RefreshRegistryBranches
 from infrahub.tasks.registry import update_branch_registry
 from infrahub.workers.dependencies import get_message_bus
 
@@ -158,6 +158,7 @@ async def convert_object_type(
     if not isinstance(node_schema, NodeSchema):
         raise ValueError(f"Only a node with a NodeSchema can be converted, got {type(node_schema)}")
 
+    conversion_timestamp = Timestamp()
     # Delete the node, so we delete relationships with peers as well, which might temporarily break cardinality constraints
     # but they should be restored when creating the new node.
     deleted_nodes = await NodeManager.delete(db=db, branch=branch, nodes=[node], cascade_delete=False)
@@ -192,13 +193,25 @@ async def convert_object_type(
         schema=target_schema,
     )
 
-    # If the node had some value reserved in any Pools / Resource Manager, we need to change the identifier of the reservation(s)
-    query = await PoolChangeReserved.init(
+    # Update reservations from IP pools
+    query = await IPPoolChangeReserved.init(
         db=db,
         existing_identifier=node.get_id(),
         new_identifier=node_created.get_id(),
         branch=branch,
     )
     await query.execute(db=db)
+
+    # Update reservations from Number pools
+    number_pool_query = await NumberPoolChangeReserved.init(
+        db=db,
+        existing_node_id=node.get_id(),
+        new_node_id=node_created.get_id(),
+        existing_identifier=node.get_id(),
+        new_identifier=node_created.get_id(),
+        not_closed_before=conversion_timestamp,
+        branch=branch,
+    )
+    await number_pool_query.execute(db=db)
 
     return node_created

@@ -130,6 +130,7 @@ All edges have:
 | `IS_PROTECTED` | `(:Attribute)-[:IS_PROTECTED]->(:Boolean)` | Protection flag for Attribute or Relationship (default: `false`) |
 | `HAS_SOURCE` | `(:Attribute)-[:HAS_SOURCE]->(:Node)` | Links Attribute or Relationship to its source Node (optional, for provenance) |
 | `HAS_OWNER` | `(:Attribute)-[:HAS_OWNER]->(:Node)` | Links Attribute or Relationship to its owner Node (optional) |
+| `IS_RESERVED` | `(:Node)-[:IS_RESERVED]->(:Attribute)` | Links a resource pool to what it accounts for (see [Resource Pool Reservations](#resource-pool-reservations)) |
 
 ### Attribute/Relationship Metadata Edges
 
@@ -157,6 +158,100 @@ Same patterns apply to `Relationship` vertices:
 | `IS_PROTECTED` | `Boolean` | `false` | Prevents modification when `true` |
 | `HAS_SOURCE` | `Node` | none | Tracks data provenance (where data came from) |
 | `HAS_OWNER` | `Node` | none | Tracks ownership (who is responsible for data) |
+
+### Resource Pool Reservations
+
+A resource pool records what it accounts for with an `IS_RESERVED` edge. There are three target
+shapes, one per pool kind:
+
+| Pool kind | Pattern | What the record claims |
+|-----------|---------|------------------------|
+| `CoreNumberPool` | `(pool)-[:IS_RESERVED]->(:Attribute)` | The pool accounts for whatever number that attribute holds |
+| `CoreIPAddressPool` | `(pool)-[:IS_RESERVED]->(:BuiltinIPAddress)` | The pool allocated that address object |
+| `CoreIPPrefixPool` | `(pool)-[:IS_RESERVED]->(:BuiltinIPPrefix)` | The pool allocated that prefix object |
+
+Write every record on the global branch (`-global-`), whichever branch the allocation was made on: an
+allocation consumes the resource for the whole graph, so no other branch can be handed the same one.
+On top of the common edge properties a record carries:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `identifier` | string | UUID of the object the allocation was made for |
+| `allocated_values` | list of integers? | Number pools only: every number the pool allocated to that attribute, on any branch. A row of the in-use list reads `"allocated"` when its branch-resolved value is in the list and `"provided"` otherwise; an absent list reads `"allocated"` for every value |
+
+A number pool's record carries the account that wrote it like any other edge: `from_user_id` when it
+opens, `to_user_id` when it closes. Because the record is global, every write that opens or closes one
+of a pool's records is a global-branch change to that pool, so the write also stamps the pool's `Node`
+vertex (`updated_at` / `updated_by`) and moves the stamp it replaces into `previous_updated_at` /
+`previous_updated_by` (`core/query/vertex_metadata.py`). The snapshot is what lets a merge rollback
+restore the pool when a schema migration allocates numbers inside a merge window — invariant 5 in
+[Merge Failure Recovery](merge-failure-recovery.md). A write that keeps a pool's live record unchanged
+stamps nothing; one that closes another pool's record stamps that pool too.
+
+Never change `allocated_values` in place: the list grows only when the pool holding the record
+allocates a number it does not list yet, and that write closes the record and creates one with the
+longer list, so the history is kept and the pool is stamped like any other record change. Nothing
+removes a member, because the label is read only for a row whose branch-resolved value matches, so a
+number the attribute no longer holds stays listed and stays inert. The label is per record and value,
+not per branch, so it cannot tell a number the pool allocated on one branch from the same number a user
+provided on another: both rows read `"allocated"`.
+
+A read of the pool tracking an attribute follows the attribute's active `-global-` `IS_RESERVED` edge
+and takes the pool's uuid from it, with the provenance of the value the branch holds read from
+`allocated_values` as above. The read does not check that the pool node is live: a live edge implies a
+live pool, because deleting a pool ends every edge it holds.
+
+Deleting a number pool ends every live `IS_RESERVED` edge it holds in the same transaction as the
+delete (`pools/number_pool_repository.py::NumberPoolRepository.delete_pool`): each edge gets `to` and
+`to_user_id` set and keeps `status = "active"`, the attribute keeps its number, and no branch reports
+the pool any more. Both delete paths use it, the pool delete mutation under the pool lock and the
+schema synchronizer removing the pool of a `NumberPool` attribute kind. The IP pools keep their edges
+on delete.
+
+A number pool's record stores no value. Every read resolves it forward instead — from the attribute
+to the values its object holds — so a record whose object holds no value in range reports nothing.
+The read carries no branch filter, which is what makes a number taken while *any* branch holds it:
+every live value counts, whichever branch wrote it. That forward resolution is also what frees a
+number, not deleting the record — deleting the object, changing the number, or deleting the branch
+that held it each free it with no cleanup write.
+
+A change that moves an object onto a new vertex — a schema rename of the attribute, or an object
+conversion — never closes the record on the old vertex, on any branch, the default branch included.
+Every branch that has not taken the change, including one created before a change on the default
+branch, still holds its value through the old vertex. The change writes a new global record on the new
+vertex, leaves the old one open, and never writes an `IS_RESERVED` edge on a user branch. Each record
+counts while it resolves to a live value, so the old one stops counting once no branch holds a value
+through it.
+
+An attribute vertex carries at most one open record. When an object conversion finds the new vertex
+already held by another pool's open record, it closes that record before writing its own. Records are
+global, so the attribute moves to the converting pool on every branch at once.
+
+A pool's `IS_RESERVED` edge is closed once no branch can reach its attribute vertex — not the default
+branch, not any non-deleting branch, and not a branch created before the change, which reaches the
+vertex through its fork point. No separate query closes the edge: the branch-agnostic retirement queries
+(`RetireNodeAgnosticFieldsQuery`, `RetireBranchAgnosticFieldsQuery`, and `AttributeRenameQuery`,
+which ends with `CLOSE_UNRETAINED_AGNOSTIC_FIELDS`) also take as candidates the attributes carrying an open `-global-`
+`IS_RESERVED` edge, whatever their branch support, and run the same predicate
+(`core/query/agnostic_retention.py`). They close every open `-global-` edge on an unretained field; on
+a branch-aware attribute the `IS_RESERVED` edge is the only one. They run where an attribute can
+become unreachable: an object delete (a conversion included, since it deletes the converted object),
+a merge that carries a delete across, a rebase that carries a delete or a default-branch attribute
+rename across, an attribute rename, and a branch delete.
+
+A branch delete removes only the branch's own edges, so an attribute whose every other edge is on the
+deleted branch would be left holding nothing but its `-global-` `IS_RESERVED` edge: an object created
+on that branch, or the new vertex of an attribute renamed on it. `BranchDataDeleter` therefore deletes
+those attributes outright with `DeleteBranchReservedAttributesQuery`, alongside the other branch-only
+peers and before the branch's edges are removed. Every edge except an `IS_RESERVED` edge must be on the
+deleted branch; a `-global-` owning or value edge is data on every branch and keeps the vertex.
+
+Renaming a
+branch-agnostic attribute is not handled yet: the old vertex's global edges stay open for branches
+that have not taken the rename, and nothing retires it once no branch uses the old name, so its
+`IS_RESERVED` edge stays open. A rename also leaves the pool's `node_attribute` naming the old
+attribute, and the pool's used and free reads match its reserved attributes by that name, so a value
+held through the renamed vertex is unaccounted for until the pool is pointed at the new name.
 
 ## Determining Edge Activity
 
@@ -301,7 +396,7 @@ A `branch_support="agnostic"` Attribute or Relationship writes all of its edges 
 
 The predicate lives once, in `core/query/agnostic_retention.py` (`UNRETAINED_AGNOSTIC_FIELD_PREDICATE`) — reuse it, don't re-derive it. It reads the branches itself, so a query that evaluates candidates in batches (`CALL … IN TRANSACTIONS`) reads them once outside the batches into a `branch_windows` list and runs `UNRETAINED_AGNOSTIC_FIELD_EVALUATION` — the predicate without its branch read — inside each — otherwise every batch re-reads the branches, and collecting every candidate first to call the whole predicate once is what exhausted the transaction memory pool on a large branch delete. Current call sites: `Node.delete`, `AttributeRemoveQuery`, `node_relationship_remove`, `DiffMerger.merge_graph`, branch rebase (`core/branch/tasks.py`), branch delete (`core/branch/data_deleter.py`), plus migration `m078` for the pre-existing backlog. Adding a seventh deletion path means adding a seventh call site.
 
-Take a call site's candidates from the graph unless it applies a diff: merge re-evaluates the removals its own diff carries; rebase queries the nodes whose default-branch `IS_PART_OF` edge turned `deleted` between the branch's previous fork point and the rebase; branch delete queries the nodes live on the deleted branch, plus those it read from the default branch at its fork point whose existence edge has closed since. The base-branch diff is scoped to the fields the branch changed, so it omits the default-branch deletions of any node the branch did not touch.
+Take a call site's candidates from the graph unless it applies a diff: merge re-evaluates the removals its own diff carries; rebase queries the nodes whose default-branch `IS_PART_OF` edge turned `deleted` between the branch's previous fork point and the rebase, plus those owning an attribute with an open `IS_RESERVED` edge whose default-branch `HAS_ATTRIBUTE` edge a schema migration closed in the same window (`NodesToCheckForGlobalEdgesQuery`), since a rename closes that edge in place and deletes no node; branch delete queries the nodes live on the deleted branch, plus those it read from the default branch at its fork point whose existence edge has closed since. The base-branch diff is scoped to the fields the branch changed, so it omits the default-branch deletions of any node the branch did not touch.
 
 Every call site closes edges on the global branch — that is where the field's edges live. `DiffMerger.merge_graph` is the merge-specific call site: it re-evaluates fields for nodes whose deletions the merge carries to the target and closes their global edges at the merge's `$at`. Schema-removal migrations can make the same global-branch closures during the merge window. That is why merge-failure recovery has to roll back the global branch as well as the target, and why it matches the exact `$at` there rather than the merge-start range it uses on the target branch — see [merge-failure-recovery.md](merge-failure-recovery.md).
 

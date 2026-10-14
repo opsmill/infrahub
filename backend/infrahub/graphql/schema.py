@@ -39,7 +39,7 @@ from .mutations.repository import (
     RepositoryDeliveryRetry,
     ValidateRepositoryConnectivity,
 )
-from .mutations.resource_manager import IPAddressPoolGetResource, IPPrefixPoolGetResource
+from .mutations.resource_manager.ip_pools import IPAddressPoolGetResource, IPPrefixPoolGetResource
 from .mutations.schema import SchemaDropdownAdd, SchemaDropdownRemove, SchemaEnumAdd, SchemaEnumRemove
 from .mutations.task import InfrahubTaskCancel, InfrahubTaskRetry
 from .queries import (
@@ -53,6 +53,9 @@ from .queries import (
     InfrahubInfo,
     InfrahubIPAddressGetNextAvailable,
     InfrahubIPPrefixGetNextAvailable,
+    InfrahubNumberPoolAllocations,
+    InfrahubNumberPoolDivisions,
+    InfrahubNumberPoolUtilization,
     InfrahubPathTraversal,
     InfrahubReachableNodes,
     InfrahubRepositoryActivity,
@@ -122,6 +125,9 @@ class InfrahubBaseQuery(ObjectType):
     InfrahubIPPrefixGetNextAvailable = InfrahubIPPrefixGetNextAvailable
     InfrahubResourcePoolAllocated = InfrahubResourcePoolAllocated
     InfrahubResourcePoolUtilization = InfrahubResourcePoolUtilization
+    InfrahubNumberPoolUtilization = InfrahubNumberPoolUtilization
+    InfrahubNumberPoolDivisions = InfrahubNumberPoolDivisions
+    InfrahubNumberPoolAllocations = InfrahubNumberPoolAllocations
 
     FieldsMappingTypeConversion = FieldsMappingTypeConversion
 

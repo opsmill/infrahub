@@ -25,7 +25,11 @@ ROOT_CLASS_NAME = InfrahubSchemaWrite.__name__
 READ_ONLY_MESSAGE = "'{name}' is a read-only field, the submitted value is ignored"
 """Worded as the load endpoint words the same finding, so both tell the user one story."""
 
-DEPRECATED_MESSAGES: dict[str, str] = {"display_labels": "display_labels are deprecated use display_label instead"}
+DEPRECATED_MESSAGES: dict[str, str] = {
+    "display_labels": "display_labels are deprecated use display_label instead",
+    "start_range": "start_range is deprecated, use ranges instead",
+    "end_range": "end_range is deprecated, use ranges instead",
+}
 """Message for a writable field that is on its way out, keyed by field name wherever it appears."""
 
 

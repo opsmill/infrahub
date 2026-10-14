@@ -9,7 +9,7 @@ from infrahub_sdk.utils import extract_fields_first_node
 from typing_extensions import Self
 
 from infrahub import lock
-from infrahub.core.constants import InfrahubKind, MutationAction
+from infrahub.core.constants import InfrahubKind, MetadataOptions, MutationAction
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.file_processor import FileUploadProcessor
 from infrahub.core.manager import NodeManager
@@ -28,6 +28,7 @@ from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.lock import InfrahubMultiLock
 from infrahub.log import get_log_data, get_logger
+from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
 from infrahub.profiles.node_applier import NodeProfilesApplier
 
 from ...core.node.lock_utils import apply_payload_for_lock_names, get_lock_names_on_object_mutation
@@ -352,7 +353,16 @@ class InfrahubMutationMixin:
         component_registry = get_component_registry()
         node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
 
-        await obj.from_graphql(db=db, data=data)
+        await obj.from_graphql(
+            db=db,
+            data=data,
+            pool_applier=build_attribute_pool_applier(
+                profiles_applier=NodeProfilesApplier(db=db, branch=branch),
+                db=db,
+                schema_branch=db.schema.get_schema_branch(name=branch.name),
+            ),
+            user_id=graphql_context.assigned_user_id,
+        )
         fields_to_validate = list(data)
         await node_constraint_runner.check(
             node=obj, field_filters=fields_to_validate, skip_uniqueness_check=skip_uniqueness_check
@@ -420,7 +430,12 @@ class InfrahubMutationMixin:
 
         if "id" in dict_data:
             node = await NodeManager.get_one(
-                db=db, id=dict_data["id"], kind=schema_name, branch=branch, raise_on_error=True
+                db=db,
+                id=dict_data["id"],
+                kind=schema_name,
+                branch=branch,
+                include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.TRACKING_POOL,
+                raise_on_error=True,
             )
             file_stored = await cls._process_file(file_processor=file_processor, data=data, node=node)
             updated_obj, mutation = await cls._call_mutate_update(
@@ -436,7 +451,13 @@ class InfrahubMutationMixin:
             node = await node_getter_default_filter.get_node(node_schema=schema, data=data, branch=branch)
 
         if "hfid" in data:
-            node = await NodeManager.get_one_by_hfid(db=db, hfid=dict_data["hfid"], kind=schema_name, branch=branch)
+            node = await NodeManager.get_one_by_hfid(
+                db=db,
+                hfid=dict_data["hfid"],
+                kind=schema_name,
+                branch=branch,
+                include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.TRACKING_POOL,
+            )
 
         file_stored = await cls._process_file(file_processor=file_processor, data=data, node=node)
 
@@ -467,7 +488,12 @@ class InfrahubMutationMixin:
 
             try:
                 node = await NodeManager.get_one(
-                    db=db, id=node_id, kind=schema_name, branch=branch, raise_on_error=True
+                    db=db,
+                    id=node_id,
+                    kind=schema_name,
+                    branch=branch,
+                    include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.TRACKING_POOL,
+                    raise_on_error=True,
                 )
             except NodeNotFoundError as exc:
                 if branch.is_default:

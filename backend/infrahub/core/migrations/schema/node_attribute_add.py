@@ -6,6 +6,7 @@ from infrahub.core import registry
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.log import get_logger
+from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from infrahub.tasks.registry import update_branch_registry
 
@@ -87,9 +88,12 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
         db = migration_input.db
         at = migration_input.at
 
+        # A migration can run on a worker still holding the schema from before the load, which the load already saved.
+        await update_branch_registry(db=db, branch=branch)
         upserter = SchemaNumberPoolUpserter(
             db=db,
             schema_manager=registry.schema,
+            range_store_factory=NumberPoolRepository,
         )
         number_pool = await upserter.upsert_number_pool(
             schema_node=self.new_schema,
@@ -107,12 +111,17 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
 
         async def allocate_numbers(db: InfrahubDatabase) -> None:
             for node in nodes:
-                number = await number_pool.get_resource(  # type: ignore[attr-defined]
-                    db=db, branch=branch, identifier=node.get_id(), attribute=self.new_attribute_schema, at=at
-                )
                 attr = node.get_attribute(name=self.new_attribute_schema.name)
+                number = await number_pool.get_resource(  # type: ignore[attr-defined]
+                    db=db,
+                    branch=branch,
+                    identifier=node.get_id(),
+                    attribute=self.new_attribute_schema,
+                    attribute_id=attr.id,
+                    at=at,
+                    user_id=migration_input.user_id,
+                )
                 attr.value = number
-                attr.set_source(number_pool.get_id())
 
                 await node.save(db=db, fields=[self.new_attribute_schema.name], at=at)
 

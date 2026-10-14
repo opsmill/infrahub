@@ -40,10 +40,13 @@ Create a pool for VLAN IDs:
 Navigate to **Object Management** → **Resource Manager** and create a new Number Pool with:
 
 - **Name**: `My VLAN ID Pool`
-- **Node**: `IpamVLAN`
-- **Node attribute**: `vlan_id`
-- **Start range**: `100`
-- **End range**: `1000`
+- **What it allocates**:
+  - **Node**: `IpamVLAN`
+  - **Attribute**: `vlan_id`
+  - **Scoped by**: leave empty, so every VLAN shares one sequence of IDs
+- **Ranges**: one range with **Start** `100` and **End** `1000`
+
+A pool can hold several ranges. Infrahub allocates from the range with the highest **Weight** first, and from the lowest start when weights are equal. Ranges must not overlap.
 
 ![Creating Number Pool](../media/guides/resources-manager/resource_manager_pool_vlan.png)
 
@@ -57,8 +60,7 @@ mutation {
       name: {value: "My VLAN ID Pool"}
       node: {value: "IpamVLAN"}
       node_attribute: {value: "vlan_id"}
-      start_range: {value: 100}
-      end_range: {value: 1000}
+      ranges: [{start: 100, end: 1000}]
     }
   ) {
     ok

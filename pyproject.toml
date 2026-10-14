@@ -1398,7 +1398,7 @@ include = [
     "backend/infrahub/graphql/mutations/profile.py",
     "backend/infrahub/graphql/mutations/proposed_change.py",
     "backend/infrahub/graphql/mutations/repository.py",
-    "backend/infrahub/graphql/mutations/resource_manager.py",
+    "backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py",
 ]
 
 [tool.ty.overrides.rules]
@@ -1416,7 +1416,8 @@ include = [
     "backend/infrahub/graphql/mutations/profile.py",
     "backend/infrahub/graphql/mutations/proposed_change.py",
     "backend/infrahub/graphql/mutations/repository.py",
-    "backend/infrahub/graphql/mutations/resource_manager.py",
+    "backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py",
+    "backend/infrahub/graphql/mutations/resource_manager/number_pools/pool_range.py",
     "backend/infrahub/graphql/mutations/webhook.py",
     "backend/infrahub/graphql/types/node.py",
     "backend/infrahub/graphql/types/standard_node.py",
@@ -1433,7 +1434,7 @@ include = [
     "backend/infrahub/graphql/mutations/main.py",
     "backend/infrahub/graphql/mutations/profile.py",
     "backend/infrahub/graphql/mutations/repository.py",
-    "backend/infrahub/graphql/mutations/resource_manager.py",
+    "backend/infrahub/graphql/mutations/resource_manager/ip_pools.py",
     "backend/infrahub/graphql/queries/diff/tree.py",
     "backend/infrahub/graphql/queries/path.py",
     "backend/infrahub/graphql/queries/reachable.py",

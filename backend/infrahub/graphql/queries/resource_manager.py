@@ -18,16 +18,34 @@ from infrahub.core.query.resource_manager import (
 )
 from infrahub.exceptions import NodeNotFoundError, SchemaNotFoundError, ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
-from infrahub.pools.number import NumberUtilizationGetter
+from infrahub.graphql.types.enums import PoolRecordProvenance
+from infrahub.pools.number import NumberUtilizationGetter, UtilizationFigures
+from infrahub.pools.number_pool_repository import NumberPoolRepository
+from infrahub.pools.number_pool_space import SchemaAttributeDomains, to_pool_ranges
+from infrahub.pools.number_ranges import EffectiveSpace
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
+    from infrahub.core.protocols import CoreNumberPoolRange
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
     from infrahub.graphql.initialization import GraphqlContext
+    from infrahub.pools.number_ranges import NumberDomain
+
+
+RESOURCE_POOL_UTILIZATION_DESCRIPTION = (
+    "Utilization of one resource pool and of each of its resources. For a number pool, the figures cover "
+    "the whole pool and ignore its allocation scope; read InfrahubNumberPoolUtilization and "
+    "InfrahubNumberPoolDivisions instead."
+)
+RESOURCE_POOL_ALLOCATED_DESCRIPTION = (
+    "The IP prefixes or IP addresses inside one resource of a pool, paginated. For a number pool, "
+    "resource_id and the allocation scope are ignored, every value the pool tracks inside its bounds is "
+    "listed and display_label is the value itself; read InfrahubNumberPoolAllocations instead."
+)
 
 
 class IPPoolUtilizationResource(ObjectType):
@@ -54,6 +72,11 @@ class PoolAllocatedNode(ObjectType):
     kind = Field(String, required=True, description="The node kind")
     branch = Field(String, required=True, description="The branch where the node is allocated")
     identifier = Field(String, required=False, description="Identifier used for the allocation")
+    provenance = Field(
+        PoolRecordProvenance,
+        required=False,
+        description="Whether the number pool allocated the value the branch holds or a user provided it; null for IP pools",
+    )
 
 
 class PoolAllocatedEdge(ObjectType):
@@ -95,7 +118,9 @@ class PoolAllocated(ObjectType):
                 return await resolve_number_pool_allocation(
                     db=graphql_context.db,
                     graphql_context=graphql_context,
+                    domains=SchemaAttributeDomains(schema=graphql_context.db.schema, branch=graphql_context.branch),
                     pool=pool,
+                    resource_id=resource_id,
                     fields=fields,
                     offset=offset,
                     limit=limit,
@@ -195,7 +220,11 @@ class PoolUtilization(ObjectType):
         pool = _validate_pool_type(pool_id=pool_id, pool=pool)
         if pool.get_kind() == "CoreNumberPool":
             return await resolve_number_pool_utilization(
-                db=db, at=graphql_context.at, pool=pool, branch=graphql_context.branch
+                db=db,
+                domains=SchemaAttributeDomains(schema=db.schema, branch=graphql_context.branch),
+                at=graphql_context.at,
+                pool=pool,
+                branch=graphql_context.branch,
             )
 
         resources_map: dict[str, Node] = {}
@@ -280,12 +309,51 @@ class PoolUtilization(ObjectType):
         return response
 
 
+def _pool_domain(domains: SchemaAttributeDomains, pool: Node) -> NumberDomain:
+    return domains.domain_of(
+        kind=str(pool.get_attribute("node").value), attribute_name=str(pool.get_attribute("node_attribute").value)
+    )
+
+
 async def resolve_number_pool_allocation(
-    db: InfrahubDatabase, graphql_context: GraphqlContext, pool: Node, fields: dict, offset: int, limit: int
+    db: InfrahubDatabase,
+    graphql_context: GraphqlContext,
+    domains: SchemaAttributeDomains,
+    pool: Node,
+    resource_id: str,
+    fields: dict,
+    offset: int,
+    limit: int,
 ) -> dict:
+    """Returns the numbers the pool allocated, from all its ranges when `resource_id` is the pool, or from one range.
+
+    Raises:
+        ValidationError: when `resource_id` is neither the pool nor one of its ranges.
+
+    """
     response: dict[str, Any] = {}
+    ranges = await NumberPoolRepository(db=db).get_pool_ranges(pool_id=pool.get_id())
+    if resource_id != pool.get_id():
+        ranges = [pool_range for pool_range in ranges if pool_range.id == resource_id]
+        if not ranges:
+            raise ValidationError(
+                input_value=f"The selected pool_id={pool.get_id()} doesn't contain the requested resource_id={resource_id}"
+            )
+    space = EffectiveSpace(ranges=ranges, domain=_pool_domain(domains=domains, pool=pool))
+    if space.is_empty:
+        if "count" in fields:
+            response["count"] = 0
+        if "edges" in fields:
+            response["edges"] = []
+        return response
+
     query = await NumberPoolGetAllocated.init(
-        db=db, pool=pool, offset=offset, limit=limit, branch=graphql_context.branch, branch_agnostic=True
+        db=db,
+        pool=pool,
+        ranges=space.as_query_ranges(),
+        offset=offset,
+        limit=limit,
+        branch=graphql_context.branch,
     )
 
     if "count" in fields:
@@ -302,6 +370,7 @@ async def resolve_number_pool_allocation(
                     "branch": item.branch,
                     "display_label": item.value,
                     "identifier": item.identifier,
+                    "provenance": item.provenance,
                 }
             }
             edges.append(node)
@@ -310,34 +379,46 @@ async def resolve_number_pool_allocation(
     return response
 
 
-async def resolve_number_pool_utilization(
-    db: InfrahubDatabase, pool: Node, at: Timestamp | str | None, branch: Branch
-) -> dict:
-    """Returns a mapping containg utilization info of a number pool.
+async def _range_edge(db: InfrahubDatabase, range_node: CoreNumberPoolRange, figures: UtilizationFigures) -> dict:
+    return {
+        "node": {
+            "id": range_node.get_id(),
+            "kind": InfrahubKind.NUMBERPOOLRANGE,
+            "display_label": await range_node.get_display_label(db=db),
+            "weight": range_node.allocation_weight.value or 0,
+            "utilization": figures.utilization,
+            "utilization_default_branch": figures.utilization_default_branch,
+            "utilization_branches": figures.utilization_branches,
+        }
+    }
 
-    The utilization is calculated as the percentage of the total number of values in the pool that are not excluded for the corresponding attribute.
+
+async def resolve_number_pool_utilization(
+    db: InfrahubDatabase, domains: SchemaAttributeDomains, pool: Node, at: Timestamp | str | None, branch: Branch
+) -> dict:
+    """Returns a mapping containing utilization info of a number pool.
+
+    Every figure is a percentage of the effective space: the pool's ranges clipped to the target
+    attribute's min and max, minus its excluded values. Pool totals measure the whole space and each
+    range reports its own share of it underneath, so a range about to run out is visible on its own.
     """
     core_number_pool = await registry.manager.get_one_by_id_or_default_filter(db=db, id=pool.id, kind=CoreNumberPool)
-    number_pool = NumberUtilizationGetter(db=db, pool=core_number_pool, at=at, branch=branch)
-    await number_pool.load_data()
+    ranges = await NumberPoolRepository(db=db).get_ranges(pool_id=pool.get_id(), at=at)
+    # The range nodes serve the edges too, so the space is built from the ones already read.
+    space = EffectiveSpace(ranges=to_pool_ranges(ranges=ranges), domain=_pool_domain(domains=domains, pool=pool))
+    number_pool = await NumberUtilizationGetter(db=db, branch=branch, at=at).measure(pool=core_number_pool, space=space)
 
+    figures = number_pool.figures
     return {
-        "count": 1,
-        "utilization": number_pool.utilization,
-        "utilization_default_branch": number_pool.utilization_default_branch,
-        "utilization_branches": number_pool.utilization_branches,
+        "count": len(ranges),
+        "utilization": figures.utilization,
+        "utilization_default_branch": figures.utilization_default_branch,
+        "utilization_branches": figures.utilization_branches,
         "edges": [
-            {
-                "node": {
-                    "id": pool.get_id(),
-                    "kind": "CoreNumberPool",
-                    "display_label": pool.name.value,  # type: ignore[attr-defined]
-                    "weight": 1,
-                    "utilization": number_pool.utilization,
-                    "utilization_default_branch": number_pool.utilization_default_branch,
-                    "utilization_branches": number_pool.utilization_branches,
-                }
-            }
+            await _range_edge(
+                db=db, range_node=range_node, figures=number_pool.range_figures(range_id=range_node.get_id())
+            )
+            for range_node in ranges
         ],
     }
 
@@ -350,9 +431,14 @@ InfrahubResourcePoolAllocated = Field(
     offset=Int(required=False),
     resolver=PoolAllocated.resolve,
     required=True,
+    description=RESOURCE_POOL_ALLOCATED_DESCRIPTION,
 )
 
 
 InfrahubResourcePoolUtilization = Field(
-    PoolUtilization, pool_id=String(required=True), resolver=PoolUtilization.resolve, required=True
+    PoolUtilization,
+    pool_id=String(required=True),
+    resolver=PoolUtilization.resolve,
+    required=True,
+    description=RESOURCE_POOL_UTILIZATION_DESCRIPTION,
 )

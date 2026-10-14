@@ -1,0 +1,793 @@
+# Tasks: Numbers you give the pool
+
+**Input**: Design documents from `specs/ifc-3184-pool-number-attach/`
+
+**Prerequisites**: [plan.md](./plan.md), [spec.md](./spec.md), [research.md](./research.md),
+[data-model.md](./data-model.md), [contracts/](./contracts/),
+[critiques/critique-20260916.md](./critiques/critique-20260916.md)
+
+**Tests**: required. The spec mandates them (Constitution IV) and two of this slice's items are
+confirmed defects whose reproductions gate the release.
+
+**Organization**: grouped by user story. US1 is foundational and **blocks everything** — it merges as
+its own change set so SC-022 stays measurable.
+
+## Format: `[ID] [P?] [Story] Description`
+
+- **[P]** — can run in parallel (different files, no dependency on another incomplete task)
+- **[Story]** — US1 (foundation), US2 (attach/re-pool), US3 (detach)
+- Paths are exact. Code citations are `module::Symbol`, never line numbers.
+
+---
+
+## Phase 1: US1 — The ledger stays honest as data moves (Priority: P1, **foundational**)
+
+**Goal**: re-anchor the reservation record from the shared value vertex to the per-object attribute,
+migrate every existing record, take the pool out of `HAS_SOURCE`, and fix the two confirmed defects
+the move exposes — with every reported figure unchanged.
+
+**Independent Test**: run the existing number-pool suites plus the new lifecycle and migration
+coverage against a database populated before the change. Every figure matches (SC-022), the two
+confirmed defects behave, and the migration reports its counts.
+
+**⚠️ This phase merges as its own change set, ahead of Phases 2–4.** Not a release boundary —
+everything ships in one minor — but a review-and-merge boundary, because SC-022 can only be measured
+where nothing else has moved the numbers.
+
+### 1a. Read the ground truth first
+
+- [X] T001 [US1] Read `dev/knowledge/backend/database-schema.md` (edge activity, priority
+      resolution, soft-delete semantics) and `dev/knowledge/backend/query-pattern.md` before touching
+      any Cypher. Architectural intent is often the answer — `AGENTS.md`, *Always Do*.
+- [X] T002 [US1] Read `core/query/agnostic_retention.py::UNRETAINED_AGNOSTIC_FIELD_PREDICATE` and its
+      module docstring in full. Its per-branch-then-max contract is the shape T018 reuses.
+
+### 1b. Tests first — the two confirmed defects
+
+- [X] T003 [P] [US1] Promote `artifacts/test_fr036a_repro.py` into
+      `backend/tests/component/core/resource_manager/test_number_pool_branch_liveness.py`. Keep all
+      four cases; strip the issue references per `dev/guidelines/backend/testing.md` (*"do not
+      describe which bug a test prevents"* — name the behaviour instead). **Must fail** before T018.
+- [X] T004 [US1] Rewrite
+      `backend/tests/functional/convert_object_type/test_convert_object_type.py::TestConvertObjectTypeResourcePool::test_convert_number_pool`
+      to assert the value the pool **reports** (through a query with a liveness join), not that an
+      edge exists. Note it exercises a schema-defined `NumberPool` attribute, which FR-030 excludes
+      from the feature but which the migration still rewrites.
+
+      **Amended 2026-09-16 — the original "Must fail before T016" is struck.** It cannot fail, and
+      that is a property of the scenario rather than of the rewrite. `handle_pool` unconditionally
+      re-allocates a schema-defined `NumberPool` attribute, and in this test's fixture ordering
+      (jack=1, paul=2, pierre=3; jack converted) the freed number is also the lowest free — so
+      re-allocation hands back the same number and writes a valid record on the new attribute.
+      `get_used` then collapses the duplicate row, because `DISTINCT` covers `(value, identifier)`
+      and both rows carry the new id. The defect is structurally invisible here.
+
+      No assertion was weakened to make it pass. The biting coverage T016 needs lives in
+      `backend/tests/component/core/resource_manager/test_number_pool_object_conversion.py`, which
+      exercises the case re-allocation cannot mask — a user-`from_pool` number carried across by
+      field mapping — and was verified to fail without the fix
+      (`AssertionError: the pool must still account for the number… assert [] == [1]`).
+- [X] T005 [P] [US1] Component test: renaming a pool-tracked attribute leaves the record `-global-`
+      and the pool still reporting the number. **Must fail** before T015.
+
+### 1c. Re-anchor the edge
+
+- [ ] T006 [US1] ~~Add the `IS_RESERVED` `branch` range index to `core/graph/index.py::rel_indexes`~~
+      — original rationale: it is the **only** property edge type without one, and FR-030b is about to
+      put it on a read path that runs for every attribute of every kind. *(Critique E7 / risk R11.)*
+
+      **Reverted 2026-09-16 by the PRD owner: the index does not earn its keep.** The premise about
+      the read path holds, but a `branch` range index does not serve it. Every consumer expands
+      `IS_RESERVED` from a bound vertex — `(pool { uuid: $pool_id })-[res:IS_RESERVED]->` and
+      `OPTIONAL MATCH (pool_source:Node)-[rel_reserved:IS_RESERVED]->(a)` — so the planner uses
+      expansion, never a relationship-index seek. And every record is written on `-global-`
+      (`NumberPoolSetReserved`'s `rel_prop`), giving the index exactly one distinct key and zero
+      selectivity. It cost write amplification on every reservation and bought no read. If records
+      ever stop being `-global-`, revisit this **together with** the query shapes — an index alone
+      would still not be reachable. Removed while m079 already owns the `GRAPH_VERSION` 78 → 79 bump,
+      so it needed no migration of its own.
+- [X] T007 [US1] Rewrite `core/query/resource_manager.py::NumberPoolGetUsed` and `::NumberPoolGetFree`
+      to traverse `(pool)-[:IS_RESERVED]->(:Attribute)-[:HAS_VALUE]->(:AttributeValueIndexed)` and
+      `(:Attribute)<-[:HAS_ATTRIBUTE]-(:Node)`. Drop the `n.uuid = res.identifier` join.
+- [X] T008 [US1] Rewrite `::NumberPoolGetReserved` to resolve **forward** through `HAS_VALUE`, so a
+      record pointing at an abandoned `Attribute` reports nothing rather than reporting the edge
+      (FR-030c). Add the missing `status` predicate.
+- [X] T009 [US1] Rewrite `::NumberPoolGetAllocated`: remove the `hs_active` gate entirely (FR-030c),
+      reach the node through the record instead of `HAS_SOURCE`, and **add the branch/time/status
+      predicate on the reservation edge that it does not have today** (risk R8).
+- [X] T010 [US1] Rewrite `::NumberPoolSetReserved` from a bare `CREATE` to match-close-create,
+      targeting the `Attribute` vertex and writing `allocated_values` (first shipped as a single
+      `provenance` label, replaced 2026-10-07). See
+      [`contracts/reservation-ledger.md`](./contracts/reservation-ledger.md).
+- [X] T011 [US1] Thread the `Attribute` vertex id through
+      `core/node/resource_manager/number_pool.py::CoreNumberPool.get_resource` → `::reserve` → the
+      ledger, and restate the idempotency lookup as "is there a live record from this pool on **this
+      attribute**". Without this, T010 has no target to close. *(Critique E2.)*
+
+      **Amended 2026-09-18 — the second clause is struck.** Threading the `Attribute` id into the
+      write shipped, so T010 has its target. Scoping the *lookup* to the attribute did not: the PRD
+      owner dropped `attribute_id` from `::NumberPoolGetReserved`, which stays keyed on the pool and
+      the object's uuid. For the case the ledger serves — one live record per pool per object — the
+      attribute id bought nothing the identifier did not already give.
+
+      What the identifier-scoped lookup costs is a branch that runs `node.attribute.add` after the
+      default branch already ran it. The migration `CREATE`s an attribute vertex per branch run, the
+      branch's own vertex wins branch-priority resolution, the lookup finds no record on it, and a
+      second number is drawn. Measured: `main` holds 1 and the branch holds 2, both records
+      `-global-` and active under the same identifier, `get_used` reporting `[1, 2]`. That
+      over-reports, which I3 permits. Deleting the branch closes its value edges and the number frees
+      again (`[1, 2]` → `[1]`); what survives is an orphaned attribute vertex carrying a dangling
+      record, the leak T017a tracks rather than a wrong answer.
+- [X] T012 [P] [US1] Rewrite the five source-gate tests in
+      `backend/tests/component/core/resource_manager/test_number_pool_query.py::TestNumberPoolGetAllocated`
+      — they pin behaviour FR-030c deletes.
+- [X] T013 [P] [US1] Re-anchor `backend/tests/helpers/agnostic_edges.py::pool_reservation_edges`: the
+      `->(:AttributeValue)` target and the identifier filter both go. Update its callers, including
+      `component/core/agnostic_retirement/test_on_node_delete.py::…::test_a_value_freed_by_retirement_is_allocatable_again_from_its_pool`,
+      which asserts the literal edge tuple.
+- [X] T014 [P] [US1] Re-check `backend/tests/db_snapshot.py::DbSnapshotterDeduplicated` — its
+      docstring says it does not account for `IS_RESERVED`, which changes meaning once the edge hangs
+      off `Attribute`.
+
+### 1d. The two confirmed defects and the rename bug
+
+- [X] T015 [US1] Port the `-global-` `CASE` from
+      `core/migrations/query/node_duplicate.py::NodeDuplicateQuery._render_sub_query_per_rel_type`
+      into `core/migrations/query/attribute_rename.py::AttributeRenameQuery` — both the
+      `SET …branch = CASE WHEN …` on the new edge and the `WHERE rel.branch IN ["-global-", $branch]`
+      close. Makes T005 pass.
+
+      **Amended 2026-09-28 — a move never closes a record.** Only the reservation record is handled:
+      it is copied onto the new attribute as `-global-`, and the record on the old attribute is
+      neither closed nor shadowed, on any branch, so a rename on a user branch writes no
+      `IS_RESERVED` edge on that branch. Every other edge keeps the rename's pre-existing handling,
+      including the demotion of a branch-agnostic attribute's own `-global-` edges onto the renaming
+      branch, which is out of scope here. Covered by two default-branch and two branch-rename tests,
+      one per branch support. Retiring the orphan left behind is handled by T017a.
+
+- [X] T016 [US1] Re-target `::PoolChangeReserved` to the **new node's `Attribute`**, matched by the
+      pool's `node_attribute`. **It is shared by all three pool shapes** (`(pool:Node)` with both ends
+      unlabelled), so branch on shape or split it — the IP shapes keep re-pointing at the same
+      `:Node` and only relabel the identifier. Makes T004 pass.
+
+      **Amended 2026-09-28 — a move never closes a record.** The number-pool move writes the new
+      `-global-` record and leaves the old one open, on every branch. Covered by a branch-conversion
+      test. Retiring the orphan left behind is handled by T017a.
+
+- [X] T017 [P] [US1] Component test: attribute **removal** closes the record via
+      `AttributeRemoveQuery`'s existing `close_unretained_agnostic_fields` call. No code change
+      expected — confirm the inheritance.
+
+      **Amended 2026-09-17: the inheritance holds only for a branch-agnostic attribute.**
+      `core/query/node_agnostic_retirement.py` gates the sweep on `anchor.branch =
+      $global_branch_name`, where `anchor` is the `HAS_ATTRIBUTE` edge. A branch-aware attribute
+      carries that edge on its own branch, so the sweep never reaches it and the record survives.
+      Keep this task scoped to the agnostic case it already covers; the aware case is T017a.
+
+- [X] T017a [US1] **Close the `IS_RESERVED` edges that no branch can reach, whatever the
+      attribute's branch support.** A pool's `IS_RESERVED` edge is written on `-global-` and nothing
+      closes it once its attribute is unreachable, so an orphan accumulates for the lifetime of the
+      pool. Three changes leave one behind:
+
+      - **Object delete, branch-aware attribute.** Measured on a `TestingTicket` whose `ticket_id`
+        inherits `AWARE`: the delete closes `HAS_ATTRIBUTE` and `HAS_VALUE` and leaves the
+        `IS_RESERVED` edge active and open. `core/query/node_agnostic_retirement.py` gates its sweep
+        on `anchor.branch = $global_branch_name`, where `anchor` is the `HAS_ATTRIBUTE` edge, so it
+        never reaches a branch-aware attribute.
+        `component/core/agnostic_retirement/test_on_node_delete.py::…::test_a_value_freed_by_retirement_is_allocatable_again_from_its_pool`
+        uses an agnostic schema, so it passes while the aware case leaks.
+      - **Attribute rename.** The rename copies the `IS_RESERVED` edge onto the new attribute vertex
+        and leaves the one on the old vertex open, on every branch, because a branch that has not
+        taken the rename — including one created before a rename on the default branch — still holds
+        its value through the old vertex. Once no such branch remains, the old edge is an orphan.
+      - **Object conversion.** Same shape: the move writes an `IS_RESERVED` edge on the replacement
+        and leaves the one on the replaced object open for branches that still hold that object.
+
+      None of these is a reporting defect: reads resolve each `IS_RESERVED` edge forward to the values
+      its attribute holds, so an orphan counts nothing and no number is handed out twice. It matters
+      for two reasons. The edge's remaining job is attribution, and an orphan says a pool accounts for
+      a number on an object no branch can see. And every read walks all of a pool's `IS_RESERVED`
+      edges, so read cost grows with the orphans.
+
+      The hard part is the reachability test, not the close. An `IS_RESERVED` edge may be closed only
+      when no branch can reach its attribute vertex: not the default branch, not any non-deleting
+      branch, and not a branch created before the change, which still sees the vertex as of its
+      branch point. Closing it any earlier frees a number a branch still holds.
+
+      Test every source above, with both branch supports and with a branch created before the change,
+      so neither the agnostic case nor a default-branch-only run can stand in for the rest.
+
+      **Amended 2026-09-29 — the existing agnostic retirement queries' candidate set is widened to
+      fields carrying an open `-global-` `IS_RESERVED` edge; no separate query closes the edge; no migration.**
+      `UNRETAINED_AGNOSTIC_FIELD_PREDICATE` already resolves each branch's own view of the owning and
+      existence edges, so it answers the reachability question for a branch-aware attribute too, and
+      its quick filter (an open global edge on the field) already admits one through its
+      `IS_RESERVED` edge. Only the candidate set blocked it. The close ends every open `-global-` edge
+      on an unretained field, and on a branch-aware attribute the `IS_RESERVED` edge is the only one,
+      so the same close is correct; a test asserts the attribute's other edges are untouched.
+
+      - `RetireNodeAgnosticFieldsQuery` (object delete, conversion, merge and rebase of a delete)
+        admits any field of the given nodes that carries an open `-global-` `HAS_ATTRIBUTE`,
+        `IS_RELATED` or `IS_RESERVED` edge.
+      - `RetireBranchAgnosticFieldsQuery` (branch delete) keeps its `-global-` owning-edge arm and adds
+        a second arm that starts from the open `-global-` `IS_RESERVED` edges, which are few: an
+        attribute qualifies when its `HAS_ATTRIBUTE` edge is on the deleted branch or was closed on
+        the origin branch after the fork. Both arms start from rare edges, never from the default
+        branch's owning or existence edges.
+      - `AttributeRenameQuery` ends by handing the old attribute vertices to
+        `CLOSE_UNRETAINED_AGNOSTIC_FIELDS`, the way `AttributeRemoveQuery` does, so the rename and the
+        close are one query and one transaction. Its two branch-dependent tails are one rendering,
+        switched by in-query flags (`$shadow_other_branch_edges`, `$set_metadata`).
+
+      - `DeleteBranchReservedAttributesQuery` (branch delete), run by
+        `BranchDataDeleter._delete_agnostic_peers` before the branch's edges are removed, deletes an
+        attribute that has an owning edge on the deleted branch and no edge outside it apart from
+        `IS_RESERVED` edges. Closing its `IS_RESERVED` edge instead would leave the pool pointing at
+        an otherwise empty vertex once the branch's edges are gone: an object created on the branch,
+        or the new vertex of an attribute renamed on it. It starts from the `IS_RESERVED` edges, and
+        a `-global-` owning or value edge keeps the vertex, so the old vertex of a branch-agnostic
+        attribute renamed on the branch survives.
+
+      No migration: the `(:CoreNumberPool)-[:IS_RESERVED]->(:Attribute)` shape is new in this release,
+      so no upgraded database holds a leaked edge in it.
+
+      **Left out:** renaming a branch-agnostic attribute. The rename copies the attribute's
+      `-global-` edges onto the new vertex as edges of the renaming branch (the demotion T015 left out
+      of scope), and leaves the old vertex's `-global-` edges open, because a branch that has not
+      taken the rename still reads the value through it. Nothing yet detects when no branch uses the
+      old name, so the old vertex and its `IS_RESERVED` edge are never retired. The correct behaviour
+      is undecided and belongs with a follow-up on branch-agnostic renames; no test pins it. A rename
+      on the default branch followed by a rebase of an older branch is T017b's. **Also left out:** a rename
+      leaves the pool's `node_attribute` naming the old attribute, and both pool reads
+      (`reserved_values_query`, used by `get_used` and `get_free`) match the reserved attributes by
+      that name. Verified 2026-10-02: after a rename on the default branch, `get_used` reports the
+      number only while an older branch still reads the old vertex and reports nothing once that
+      branch is deleted, until the pool is pointed at the new name by hand; and a number set on the
+      attribute renamed on a branch is reported on no branch at all, so the pool can hand it out
+      again. Pre-existing, and it belongs with the follow-up on renaming pooled attributes; two
+      strict `xfail` tests in `test_number_pool_attribute_rename.py` pin the goal.
+
+- [X] T017b [US1] **Close the old `IS_RESERVED` edge when an older branch rebases past a rename.**
+      **Blocked:** bring the pending changes on `develop` forward first; do not start before they
+      land on this branch.
+
+      After a rename on the default branch, the old attribute vertex's `IS_RESERVED` edge stays open
+      while a branch created before the rename still reads the old vertex at its fork point. Once
+      that branch rebases past the rename no branch reaches the old vertex, but nothing closes the
+      edge: the rebase hook (`core/branch/tasks.py::_retire_agnostic_fields_of_base_deletions`) hands
+      `RetireNodeAgnosticFieldsQuery` only the nodes the base branch diff marks `REMOVED`
+      (`get_affected_node_uuids(include_actions=[DiffAction.REMOVED])`), and a rename removes no node.
+      A later delete of the rebased branch does not reach it either, because that branch holds no
+      edges on the old vertex.
+
+      Likely fix: widen the hook's candidates to nodes the base diff marks `UPDATED` as well. The
+      retention predicate still decides what closes, so extra candidates are safe. Before changing
+      it:
+
+      - Confirm the base branch diff reports the renamed attribute's node as `UPDATED`; a schema
+        migration writes the graph directly.
+      - Measure the candidate count. `UPDATED` covers every node the default branch changed since the
+        fork, not only renamed ones; if that is too broad, look up nodes with a removed attribute
+        through a field-level diff query instead, which the node-level lookup cannot do today.
+
+      Drop the `xfail` marker from
+      `test_number_pool_attribute_rename.py::test_rebasing_the_last_older_branch_past_a_rename_closes_the_old_is_reserved_edge`,
+      which already asserts the old `IS_RESERVED` edge is closed after the rebase, and drop the
+      rebase-past-rename gap from T017a's *Left out* and from `dev/knowledge/backend/database-schema.md`.
+
+      **Amended 2026-09-30 — the prescribed fix is struck; the edge now closes.** The pending
+      `develop` change (`c64090f63c`) removed the diff from the rebase hook: its candidates now come
+      from a graph query of the nodes whose default-branch `IS_PART_OF` edge turned `deleted` in the
+      rebased window, because the stored base diff is scoped to the fields the branch changed. There
+      is no `UPDATED` action left to widen to.
+
+      That query, renamed `NodesToCheckForGlobalEdgesQuery`, gains a second arm: it starts from the
+      open `-global-` `IS_RESERVED` edges and returns the owning node of each attribute whose
+      default-branch `HAS_ATTRIBUTE` edge was closed in place within the same window, which is how a
+      rename on the default branch ends the old vertex. It mirrors the arm branch delete already uses
+      for the same case, and anchoring on `IS_RESERVED` bounds the scan by the number of pool
+      reservations rather than by every closed owning edge. The hook, renamed
+      `_retire_agnostic_fields_of_base_changes`, is otherwise unchanged; the retention predicate still
+      decides what closes, and a second test pins that an older branch not yet rebased keeps the edge
+      open.
+
+      Only a default-branch change can leave this gap: a branch reads another branch's edges only
+      through the default branch at its fork point, and only a rebase moves a fork point.
+
+- [X] T018 [US1] Implement cross-branch liveness as a **union** (FR-036a) in the queries from T007,
+      reusing the *shape* of `UNRETAINED_AGNOSTIC_FIELD_PREDICATE`: per-branch window
+      `(branch @ $at) ∪ (origin @ min(branched_from,$at)) ∪ (-global- @ $at)`, per-branch resolution
+      `ORDER BY branch_level DESC, from DESC, status ASC LIMIT 1`, `branch.status <> "DELETING"`,
+      `count(DISTINCT … node.uuid)`, then an aggregate across branches. A **new** predicate, not a
+      call to the existing one — that one resolves whether a *field* is retained, this resolves which
+      *values* an attribute holds. Makes T003 pass.
+
+      **Amended 2026-09-18 — the prescribed shape is struck; the invariant it serves is met.** The
+      shipped `reserved_values_query` carries no branch filter at all, and that omission *is* the
+      union: every live `HAS_VALUE` counts whatever branch wrote it, so a number stays taken while
+      any branch holds it. There is no per-branch window to build, no per-branch resolution to order
+      and no aggregate to take across branches.
+
+      The record is `-global-`, so it has no branch of its own to resolve, and liveness reads forward
+      through the value edge instead of back through the object. The only branch predicate left is
+      the `DELETING` exclusion, which the task also called for. FR-036a stays one-sided by the same
+      construction: omitting a filter can only add numbers to the taken set, never remove one.
+
+      **Amended 2026-09-29 — the 2026-09-18 claim was wrong for edges closed on the origin after a
+      fork.** A branch reads its origin's edges as of its fork point, so a `HAS_VALUE` edge the default
+      branch closed after the fork (an object delete, or a new value) is still live for the older
+      branch, but it is not open at `$at` and the unfiltered read dropped it. The pool then reported
+      the number free and could hand it out again.
+
+      `reserved_values_query` now reads the `Branch` vertices once, into the names of the `DELETING`
+      branches and a fork window (`name`, `origin_name`, `fork_at`) for every other user branch, and
+      counts a value two ways:
+
+      - Its `HAS_VALUE` edge is open now and not on a `DELETING` branch, as before.
+      - Its `HAS_VALUE` edge is on the default branch, was closed since some window's branch forked
+        (`hv.from <= fork_at < hv.to`), and that branch has no `HAS_VALUE` edge of its own on the
+        attribute that is open at `$at`, whatever its status. At the fork the default branch's edge was
+        that branch's value; the branch stops holding it only by writing its own edge, which always
+        outranks its origin's: an `active` one when it changes the value (a value update never writes
+        a `deleted` edge to the old value) or a `deleted` one when it deletes the object or renames the
+        attribute. A closed own edge hides nothing, because closing an edge on a branch always writes
+        that branch a new open one.
+
+      The branches that hide a value are gathered in one `COLLECT {}` subquery per closed value edge,
+      and the windows are checked in memory, so the cost does not grow with the number of branches
+      beyond list checks. The per-branch resolution of the object's, the owning edge's and the value
+      edge's latest state is not needed. Owning edges are deliberately not read: a kind or inheritance
+      migration closes or deletes the old `Node` vertex's `HAS_ATTRIBUTE` edges while the attribute
+      stays held through the duplicate vertex. Branches forked from another user branch are not
+      handled, the same limit `UNRETAINED_AGNOSTIC_FIELD_PREDICATE` has.
+
+      T003's cases all changed or deleted on a user branch, which never closes the default branch's
+      edge, so they missed it. `TestOlderBranchLiveness` in `test_number_pool_branch_liveness.py`
+      covers the default-branch direction (a delete and a value change), a rebase past the change, a
+      branch being deleted, and an older branch that moved the number itself.
+- [ ] T019 [P] [US1] Property-style unit test for one-sidedness (invariant I3): for any branch set,
+      the union result is a superset of every single-branch result. *(Critique E10.)* *(Dropped
+      2026-09-30 by the user: T018 put the union in Cypher, so a property test can only be a random
+      database-backed history, and the deterministic cases in `test_number_pool_branch_liveness.py`
+      already cover each shape of I3. A rebase that runs the retirement pass while a second older
+      branch still holds the number was added there instead.)*
+
+### 1e. The pool leaves `HAS_SOURCE`
+
+- [X] T020 [US1] Stop writing the pool to `source`: remove `attribute.source = number_pool.id` from
+      both branches of `core/node/__init__.py::Node.handle_pool` and from the template allocation path
+      in `core/node/create.py`.
+- [X] T021 [US1] Add the derivation to
+      `core/query/node.py::NodeListGetAttributeQuery._add_source_to_query`: one `OPTIONAL MATCH` for
+      the inbound `-global-` `IS_RESERVED` on the already-bound `Attribute`, plus a `CASE` preferring
+      the user's edge. **Return the pool vertex, not its uuid** — extraction reads
+      `result.get_node("source").labels` and those labels select the concrete GraphQL type. Stays
+      inside the `_include_source` gate.
+- [X] T022 [P] [US1] Component test: a pooled attribute with no user source resolves `source` to the
+      pool **and the correct GraphQL kind**, with no stored source edge. Assert the resolved kind, not
+      only the uuid — an implementation returning an id alone passes a uuid assertion and still breaks
+      `__kind__`. *(Risk R7.)*
+- [X] T023 [P] [US1] Component test: a **user-set, non-pool** source on a pooled attribute changes the
+      reported source and changes **nothing** the pool reports. No such test exists today (SC-019).
+- [X] T024 [P] [US1] Fix the inaccurate comment in
+      `graphql/mutations/profile.py::InfrahubProfileMutation._validate_no_resource_pools_in_data`
+      claiming graphene includes unset fields as `None` keys. It does not, and a reviewer will read
+      the new resolver against it. *Correction: it does for that input — `RelatedNodeInput.from_pool`
+      is a mounted `Field` with a `null` default, so the original comment was accurate; see
+      research.md D3.*
+- [X] T024a [US1] Component test: allocating from a pool **named** rather than identified leaves a
+      reservation record. `handle_pool` accepts either — `number_pool_id` is a uuid or a pool name,
+      resolved through `registry.manager.query(filters={"name__value": ...})` — and the name path had
+      no coverage asserting a record at all.
+
+      It was broken and nothing caught it: `from_pool` kept the name the caller gave, so
+      `get_create_data` emitted `pool_prop` carrying a name while `NodeCreateAllQuery` matches the
+      pool vertex on `uuid`. Every by-name allocation wrote no record, and therefore no pool
+      accounting and, once the pool left `HAS_SOURCE`, no source either. The only test that noticed
+      was `component/graphql/resource_manager/test_number_pool_lookup_by_name.py`, and only
+      incidentally, because it happened to assert `source_id`.
+
+      Assert the record directly with `pool_reservation_edges`, as
+      `migrations/schema/test_node_attribute_add.py` and the `m076` heal tests do, rather than
+      inferring it from the source the record produces. Cover both entry points in the same test so
+      the uuid path cannot stand in for the name path.
+
+### 1f. Migration `m081` (planned as `m079`)
+
+- [X] T025 [US1] Create the package
+      `core/migrations/graph/m079_reanchor_number_pool_reservations/` (`__init__.py`, `migration.py`,
+      `queries.py`) exporting `Migration079`, an `ArbitraryMigration` with `minimum_version = 78`.
+      Model on `m078_retire_agnostic_property_edges/`. Registration is filename-driven — **no registry
+      list to edit**.
+      *(Landed as `m081_reanchor_number_pool_reservations` / `Migration081`, `minimum_version =
+      80`: `m079` was taken by `m079_range_diff_indexes` and `m080` by `m080_number_pool_ranges`.)*
+- [X] T026 [US1] Behaviour 1 — re-anchor every record. Resolve `identifier` to the **active** `Node`
+      vertex using the `graph_traversal/_cypher.py::_SOURCE_MATCH` idiom (latest `IS_PART_OF` without
+      pre-filtering status, keep only if active, then `ORDER BY branch_level DESC, from DESC LIMIT 1`);
+      find the `Attribute` by the pool's `node_attribute`; `CREATE … SET new = properties(old) …
+      DELETE old` per `m066::_reassign_has_source`, which preserves `-global-`.
+      *(Landed differently: an edge is re-anchored only when some branch window — its own edges up
+      to now, its origin's up to `branched_from` — reads the attribute as owned and its current
+      value as the reserved one. Closed edges and edges whose number no branch holds are dropped,
+      not moved.)*
+- [X] T027 [US1] Behaviour 2 — drop orphaned `IS_RESERVED` edges whose object no longer exists.
+      **Reports a pre-count and a post-count.** Orphan detection for re-anchored `IS_RESERVED` edges
+      must use the same reachability predicate as T017a (`UNRETAINED_AGNOSTIC_FIELD_PREDICATE`), not
+      existence on the default branch alone: an object deleted on the default branch can still be held
+      by an older branch, and dropping its `IS_RESERVED` edge would free a number that branch holds.
+      *(Folded into the final step, which deletes every edge left on an `AttributeValue`; branch
+      windows give the reachability. No pre-count: counts come from query stats.)*
+- [X] T028 [US1] Behaviour 4 — delete **every** `(attr)-[:HAS_SOURCE]->(:CoreNumberPool)` edge,
+      unconditionally. FR-030b says the pool is never a stored source, so a stored one is legacy
+      whatever state that pool's record for the attribute is in; scoping the sweep to a live record
+      spares a released reservation, a collapsed-away loser, and an attribute renamed out from under
+      its record. Behaviour 4 still runs before behaviour 3 as defence-in-depth against that scoping
+      coming back. Pre- and post-count. *(Critique E3 / risk R10.)*
+      *(No pre-count: counts come from query stats.)*
+- [X] T029 [US1] Behaviour 3 — collapse multi-pool records onto one `Attribute`; survivor is the
+      **greatest `from`**. Pre- and post-count. Note in the code comment that this is *not* `m066`'s
+      rule — `m066` keeps the earliest, and it answers a different question.
+      *(Also sets the survivor's `from` to the earliest `from` among the collapsed edges.)*
+- [X] T030 [US1] One transaction per behaviour, count read back before commit, and **no `return` from
+      inside a transaction context** — the documented `m066` partial-commit hazard. *(Critique E4.)*
+      *(Superseded: every write is batched with `CALL … IN TRANSACTIONS`, and a failed step stops
+      the run so a re-run finishes it.)*
+- [X] T031 [US1] `validate_migration`: re-run a read query and turn leftovers into `result.errors`,
+      following `m077::Migration077.validate_migration`.
+- [X] T032 [US1] Set **both** `result.nbr_migrations_executed` and `console.log(...)` per count.
+      Counts reach an operator **only** through the console — `cli/db.py::migrate_database` never
+      prints `nbr_migrations_executed`. Emit a structured log line alongside. *(Critique E11.)*
+- [X] T033 [US1] Bump `GRAPH_VERSION` 78 → 79 in `core/graph/__init__.py` and run
+      `uv run pytest backend/tests/unit/core/graph/test_graph_version.py`.
+      *(Bumped 79 → 80.)*
+- [X] T034 [P] [US1] Component tests under
+      `backend/tests/component/core/migrations/graph/m079_reanchor_number_pool_reservations/`: one per
+      behaviour, the duplicate-uuid node case, idempotency, and the console counts (assert the logged
+      string, as `m078`'s tests do).
+      *(Under `…/m081_reanchor_number_pool_reservations/`: one shared dataset run twice, plus
+      `test_resume.py` for failures in each step.)*
+- [X] T035 [US1] Component tests for the source sweep: two pools with live records on one attribute,
+      both carrying legacy pool source edges — after migration the attribute reports the surviving
+      pool and has **no** stored source edge; plus the cases with no live record at all (a released
+      reservation, and an attribute renamed out from under its record), whose edges must also be gone.
+      *(The released-reservation case became an object-conversion case: only conversion ever
+      closed a legacy edge.)*
+- [ ] T036 [P] [US1] `backend/tests/integration_docker/test_number_pool_migration.py` — the upgrade
+      path end to end. **Module-level `pytestmark = pytest.mark.shard_a|shard_b` is mandatory**, with a
+      matching entry in the `backend-docker-integration` `shard:` matrix in `.github/workflows/ci.yml`;
+      `conftest.py` validates the whole collection `tryfirst`, so a missing marker fails CI rather than
+      silently never running. *(Dropped 2026-09-16 by the user: component coverage is sufficient; no
+      docker integration test.)*
+
+### 1g. SC-022 evidence
+
+- [X] T037 [US1] Capture every figure a pool reports — utilization, the branch split, the in-use list
+      — on a database populated **before** the change; run the migration; re-capture. Assert identical
+      except where FR-036a corrects a known defect. This is the strongest evidence the migration is
+      safe, and it is only measurable at this boundary.
+      *(Component test `test_every_figure_a_pool_reports_survives_the_re_anchoring`, plus a run on
+      a restored 16,162-edge backup with identical figures on every branch.)*
+
+### 1h. Docs
+
+- [X] T038 [P] [US1] Document `IS_RESERVED` in `dev/knowledge/backend/database-schema.md` — its three
+      target shapes, its `-global-` scope, its properties including `allocated_values`, and the forward
+      liveness resolution. The edge-type table omits it entirely today. Follow
+      `dev/guidelines/documentation.md` (*Writing Style → For Internal Docs* and the *Don't* list).
+
+**Checkpoint**: the ledger is re-anchored, both confirmed defects are fixed, every figure is
+unchanged. **Merge this change set before starting Phase 3.**
+
+---
+
+## Phase 2: US2 — Bring existing numbers under a pool (Priority: P1)
+
+**Goal**: a user provides a number together with the pool that should track it — on create or update
+— and can move an object between pools in one write.
+
+**Independent Test**: create a pool over a partly-used range, attach the objects holding numbers in
+it, and assert what the pool reports in use, in the bucket, and as its next number.
+
+### 2a. Tests first
+
+- [X] T039 [P] [US2] Create `backend/tests/unit/pools/` (with its `__init__.py`, per
+      `dev/knowledge/backend/package-init-files.md`) and write `test_intent.py` — **every cell** of the
+      table in [`contracts/from-pool-intent.md`](./contracts/from-pool-intent.md), both re-pool cells,
+      the idempotent no-op, and an assertion that only the combinations of rows 10 and 12 produce
+      `REFUSE` (assert the exact list, so a future edit cannot quietly add another refusal). No
+      database. *(Revised 2026-10-05: row 12 refuses over a non-default number another pool tracks.)*
+
+### 2b. Payload presence
+
+- [X] T040 [US2] Carry payload **presence** into the create path: `core/attribute.py::BaseAttribute`
+      records whether `value` and `from_pool` were present, not just their values.
+      `BaseAttribute.__init__` uses `data.get(...)` today and drops the distinction;
+      `BaseAttribute.from_graphql` already uses `"from_pool" in data` and keeps it. Add fields
+      alongside the existing ones so nothing reading `attribute.value` / `attribute.from_pool` changes.
+
+### 2c. The resolver
+
+- [X] T041 [US2] Create `backend/infrahub/pools/intent.py` with `FromPoolIntentResolver` — pure, no
+      database, no node access. Intents are an **enum**. Inputs and the full table are in the contract.
+- [X] T042 [US2] Rework `core/node/__init__.py::Node.handle_pool` into an executor driven by the
+      resolver. It keeps the I/O — pool lookup by uuid **or** name, the FR-023 attachment check
+      (`number_pool.node.value in [kind] + inherit_from and node_attribute.value == attribute.name`),
+      the template refusal, the schema-`NumberPool` path. Stop it mutating `attribute.from_pool` and
+      `attribute.is_default` on the preview pass, which is meant to be side-effect-free.
+- [X] T043 [US2] Implement the attach path (FR-021, FR-024): a provided `value` alongside
+      `from_pool` is **kept**, not discarded, and the record created for it lists no allocated value.
+- [X] T044 [US2] Implement the refusal — `from_pool` alone on a non-default value the named pool does
+      not track — naming **both** ways forward: restate the value to attach, or send `value: null` to
+      discard and allocate. Follow `dev/guidelines/backend/exceptions.md`.
+- [X] T045 [US2] Implement re-pool (FR-024a): a write naming pool B on an attribute pool A reserves
+      ends A's record and begins B's in one operation, allocating or attaching. `from_pool: B` alone
+      over a non-default number is refused (T044).
+- [X] T046 [US2] ~~On attach onto an existing record from the same pool, update `provenance` to
+      `provided`~~ **Superseded 2026-10-07**: the record carries `allocated_values` instead of one
+      label, and an attach writes nothing onto the pool's live record; each in-use row's label is
+      read from the list against the value its branch holds (FR-026, FR-026c). *(Critique P5.)*
+
+### 2d. Locking
+
+- [X] T047 [US2] Stop two concurrent re-pools of one attribute into different pools from each
+      closing the other's record and both creating. *(Risk R6.)* **Revised 2026-10-05**: first built
+      as an extra lock name for the pool currently tracking the attribute in
+      `core/node/lock_utils.py::get_lock_names_on_object_mutation`, which needed one tracking-pool read
+      per attribute before the locks were taken. Replaced, at the user's direction, by a write lock on
+      the `Attribute` vertex inside `NumberPoolSetReserved`: the query locks the vertex, ends every
+      live `IS_RESERVED` edge on it unless it is this pool's and already lists the number allocated,
+      and creates the expected edge only if none was kept. The `lock_utils` change and
+      `BaseAttribute.tracking_pool_id` are removed. Without the vertex lock, T048's race test fails 3
+      runs out of 3.
+- [X] T048 [P] [US2] Component test for concurrent re-pool of one attribute into two different pools:
+      one wins, exactly one live record remains (invariant I1).
+
+### 2e. Component coverage
+
+- [X] T049 [P] [US2] The ledger against a database: attach, and attach with duplicates present.
+- [X] T050 [P] [US2] A plain value change writes **nothing** to the ledger and the number tracked
+      follows the attribute (FR-031 deleted, SC-013). **No test exists today.**
+- [X] T051 [P] [US2] Re-pool A→B ends A's record, B reports the number, **and A's out-of-space bucket
+      is empty** (SC-018). The empty-bucket assertion is what catches a half-finished implementation.
+      *Partial: no out-of-space bucket exists until T059+; the tests assert pool A holds no open
+      IS_RESERVED edge on any attribute instead. Add the bucket assertion with T059.*
+- [X] T052 [P] [US2] Idempotent resend: the same `value` + `from_pool` for a number the object already
+      owns is a silent no-op.
+- [X] T053 [P] [US2] Extend `backend/tests/functional/pools/test_numberpool_lifecycle.py` and
+      `test_numberpool_branch.py` with the attach journey. **Extend — do not add parallel modules**:
+      two-branch allocation, branch delete, node delete and allocation over pre-existing nodes are
+      already covered (`research.md` D15).
+      *Written, not run locally — `TestInfrahubApp` wipes the database; runs in CI.*
+
+**Checkpoint**: attach, re-pool and the refusal work. The pool tracks numbers it did not hand out.
+
+---
+
+## Phase 3: US3 — Take a pool back off a number (Priority: P2)
+
+**Goal**: detach a number from a pool; the pool stops reporting it and the object keeps it.
+
+**Independent Test**: attach a number, detach it, assert the object's value is unchanged, the in-use
+count dropped by one, and the number is offered again.
+
+- [X] T054 [US3] Implement the release query in `core/query/resource_manager.py` — end the single
+      `-global-` record between a pool and an `Attribute`. **No identifier matching.** Time-close
+      (`to = $at`), never `status = "deleted"`: a tombstone is terminal per the database-schema doc,
+      which is wrong for a record a later re-attach may recreate. This query is new — nothing releases
+      a reservation today.
+- [X] T055 [US3] Wire the `DETACH` intent through the executor (FR-025). The number on the object is
+      unchanged, and nothing is cleared from `HAS_SOURCE` because the pool was never written there.
+- [X] T056 [P] [US3] Component test: detach leaves the value untouched, drops the in-use count by one,
+      and makes the number allocatable again (SC-014).
+- [X] T057 [P] [US3] Component test: with 50 held by two objects under one pool, detaching one ends
+      only that record; the other still reports 50 (FR-028a).
+- [X] T058 [P] [US3] Component test: detach on a branch, then delete that branch — no branch reports a
+      pool source and the pool reports nothing for it (SC-020).
+- [X] T058a [US3] Revisit
+      `backend/tests/component/core/resource_manager/test_number_pool_query.py::TestNumberPoolGetAllocated`.
+      Its five source-gate tests were inverted in Phase 1: clearing, reassigning or merging a change to
+      an attribute's `source` used to drop the number from what the pool reports, and now leaves it
+      reported, because FR-030c makes the record the only thing that answers. They read as "clearing
+      the source does not detach", which is the whole of what detaching meant before this phase
+      existed.
+
+      Once `DETACH` lands, they are the wrong shape: they still exercise the *only* way a user could
+      previously take a number off a pool, but say nothing about the way that replaces it. Either
+      extend them so each source manipulation is paired with a real detach on the same attribute —
+      proving the two are independent — or move the source-independence assertion to one test and give
+      detach its own, rather than leaving five tests describing a gesture that no longer means
+      anything.
+      *Resolved by pairing: each of the five keeps its source manipulation and then ends the record
+      with `NumberPoolReleaseReserved` on the same attribute, asserting the number leaves the
+      allocated list. The NumberPool attribute kind is read-only, so the release is driven through the
+      query rather than a `from_pool: null` mutation.*
+
+      *Found while wiring T055 and fixed in PR #11000: a read put the pool that tracks an attribute
+      into the attribute's in-memory source when the user set none, so saving the attribute after a
+      detach or a re-pool stored a `HAS_SOURCE` edge to the pool, which contradicts FR-030b. The
+      tracking pool is now read into a property of its own (`tracking_pool`), which no save path
+      reads, and the GraphQL `source` slot renders it from there.*
+
+**Checkpoint**: detach works and is permanent, symmetric with allocation.
+
+---
+
+## Phase 4: Reporting (serves US2; required for SC-015, SC-018)
+
+- [ ] T059 [US2] Create `backend/infrahub/pools/effective_space.py` — the membership/size interface from
+      [`contracts/effective-space.md`](./contracts/effective-space.md), plus the interim single-range
+      adapter over `start_range`/`end_range` ∩ `[min_value, max_value]` minus intersecting exclusions.
+      **Do not reimplement membership** — the adapter lifts arithmetic `get_next` already does inline,
+      and it is deleted when P1's calculator lands.
+- [ ] T060 [P] [US2] Unit suite `backend/tests/unit/pools/test_reporting.py` — distinct-element
+      counting with duplicates, the in-space/out-of-space partition, the branch split, and an **empty**
+      effective space (must not divide by zero).
+- [ ] T061 [US2] Create `backend/infrahub/pools/reporting.py` with `PoolUtilizationReporter` — pure.
+      Takes a record set and an effective space; returns the distinct-element count, the branch split, and the out-of-space
+      bucket. Owns invariant I4: count **distinct elements**, never records, or utilization exceeds
+      100%. Handle a zero-size space without dividing.
+- [ ] T062 [US2] Reduce `pools/number.py::NumberUtilizationGetter` to a fetch-and-delegate seam,
+      owning no arithmetic. Preserve today's distinct-union semantics exactly (the three set
+      comprehensions in `load_data` partition a distinct union).
+- [ ] T063 [US2] Extend the pool query surface in `graphql/queries/resource_manager.py`: ~~`provenance`
+      per in-use row~~ (done 2026-10-07: `PoolAllocatedNode.provenance`, read from the record's
+      `allocated_values` against each row's value), and the out-of-space bucket as a list of rows
+      carrying value, holder **and branch** (FR-027a). One row per **(record, branch-resolved value)**.
+- [ ] T064 [P] [US2] Component test: an attach outside the ranges succeeds, is bucketed not counted,
+      and moves into the utilization fraction when a range is widened — with **no re-attach**
+      (SC-015). Cover both paths into the state: attached out of range, and a range removed under a
+      tracked value.
+- [ ] T065 [P] [US2] Component test: one record straddling the boundary — in space on one branch, out
+      of space on another — appears in the fraction **and** the bucket, told apart by the branch on the
+      row.
+- [ ] T066 [P] [US2] Component test: 50 allocated to A and attached on B with no uniqueness constraint
+      gives **two rows** in the in-use list, one `allocated` and one `provided`, while utilization
+      counts 50 **once** (SC-001).
+
+---
+
+## Phase 5: Polish & release readiness
+
+- [ ] T067 [US1] Benchmark `backend/tests/query_benchmark/test_number_pool_allocation.py` —
+      allocation **and the utilization read** against `develop`, before and after T018, varying live
+      branch count. Needs a new axis: `BenchmarkConfig` has only `neo4j_image`, `neo4j_runtime` and
+      `load_db_indexes`, and the one branch-aware benchmark creates exactly one extra branch. **No
+      numeric gate** (SC-017 withdrawn) — a superlinear curve or a large constant is a release
+      decision.
+- [ ] T068 [US1] Benchmark the FR-030b source derivation on a metadata read over a kind with **no**
+      pool. That is the blast radius — the plan otherwise reasons only about pooled attributes.
+      *(Critique E7.)*
+- [ ] T069 Regenerate every generated artefact — `uv run invoke backend.generate`,
+      `schema.generate-graphqlschema`, `schema.generate-jsonschema`, `docs.generate`. **Never
+      hand-edit.** CI's `validate-generated-documentation` fails on stale output.
+- [ ] T070 [P] Seven towncrier fragments, one per item in spec.md *Behaviour changes needing changelog
+      entries*. Use the `creating-changelog-entries` skill. Item 3 is the deliberate regression: say
+      plainly that identifying which numbers to attach is the operator's job, rather than implying a
+      tool exists.
+- [ ] T071 [P] Update user documentation in `docs/` for the resource-manager pages: providing a number
+      with a pool, detaching, the out-of-space bucket, and the upgrade path. The brownfield section
+      must be honest that adoption is manual and one object at a time.
+- [ ] T072 Name this slice in the **published-contract review** (ADR 0010) alongside P1's and P3's
+      `NumberPoolParameters` changes — one review, one SDK type regeneration. **Name FR-030b in words
+      within it**: the generated schema will not show it, because the field and type are unchanged and
+      only its provenance moves. A reviewer diffing `schema/schema.graphql` sees no trace of a change
+      that alters what every pooled attribute reports as its source.
+- [ ] T073 Run `/pre-ci` (`.agents/commands/pre-ci.md`) — it includes the whole-repo
+      `ruff check . --exclude python_sdk` that `invoke lint` does not, and `docs.validate`.
+- [ ] T074 Run `uv run invoke format` and `uv run invoke lint`.
+
+---
+
+## Open items that are not tasks
+
+These need someone outside the development team.
+
+- [x] **OQ1 — RESOLVED 2026-09-16 by the PRD owner: P2 wins.** `source` can be cleared on
+      pool-sourced attributes. P1's FR-030a / Decision 2 — *"the `source` of a pool-tracked value is
+      the pool … and users cannot clear it"* — is **superseded** by this slice's FR-030b, and P1's
+      FR-030a is deleted.
+
+      Remaining action, now mechanical rather than a decision: **amend `POOL-RANGES-PRD.md` before P1
+      enters spec-kit** — delete FR-030a from its *"Carried from P2"* section, delete Decision 2 from
+      its decisions table, and delete its resolved open question #2 (*"detach clears the pool-owned
+      `source`"*), which cites a P2 clause FR-025 no longer contains.
+
+      What "cleared" means under FR-030b, so P1 is not amended into a different misunderstanding: the
+      pool is never in `HAS_SOURCE`, so there is no pool-owned source to clear. A user clears **their
+      own** source edge, and the slot names the derived pool before and after, so clearing changes
+      nothing displayed while the pool tracks the field. Covered by SC-019 and T023.
+      *(Critique E13, risks R2/R14.)*
+- [x] **OQ2 — RESOLVED 2026-09-16: out of scope.** Operators manually name the values they want a
+      pool to track. P1 deletes the hand-set-value scan outright per its FR-011, unchanged, and this
+      slice adds no enumeration surface. The tasks that carried it are removed; FR-011a and SC-023 are gone
+      from the spec; the ergonomic cost on the brownfield path is accepted knowingly and recorded in
+      *Out of Scope*. A migration tool may be added later if adoption shows it is needed.
+
+---
+
+## Dependencies
+
+```
+Phase 1  US1 — FOUNDATION  ◄── merges as its own change set
+    T001,T002 (read)
+        ▼
+    T003,T004,T005 (failing tests)
+        ▼
+    T006 (index) → T007,T008,T009 (read queries) → T010 → T011 (vertex threading)
+        ▼
+    T012,T013,T014 (test/helper updates)  [P]
+        ▼
+    T015 (rename fix) ‖ T016 (conversion) ‖ T017
+        ▼
+    T018 (FR-036a — after the re-anchoring, or it is written twice) → T019
+        ▼
+    T020,T021 (source) → T022,T023,T024  [P]
+        ▼
+    T025 → T026 → T028 → T029 → T027 → T030,T031,T032,T033
+              (T028 BEFORE T029 — ordering hazard)
+        ▼
+    T034,T035,T036  [P]  →  T037 (SC-022)  →  T038
+        ▼
+    ══════════ MERGE BOUNDARY ══════════
+        ▼
+Phase 2  US2 — attach / re-pool        Phase 4  Reporting
+    T039 (failing unit test)               T059 (effective space)
+        ▼                                      ▼
+    T040 → T041 → T042,T043,T044,T045      T060 (failing unit test) → T061
+        ▼                                      ▼
+    T046 → T047                            T062 → T063
+        ▼                                      ▼
+    T048..T053  [P]                        T064,T065,T066  [P]
+        ▼
+Phase 3  US3 — detach
+    T054 → T055 → T056,T057,T058  [P]
+        ▼
+Phase 5  Polish
+    T067,T068 (benchmarks) → T069 → T070,T071  [P] → T072 → T073 → T074
+```
+
+**Hard orderings, and why:**
+
+- **T018 after T007–T011.** FR-036a is written against the post-move edge chain. Doing it first means
+  writing it twice.
+- **T028 before T029.** Defence-in-depth only: T028's predicate no longer reads the records, so
+  neither order can leave an edge behind. The order holds the line if the predicate is ever narrowed
+  back to a live record, where the collapse would kill a losing pool's record first and its source
+  edge would survive and win the read slot forever.
+- **T011 before T010 can work.** Match-close-create has no target to close until `get_resource` sees
+  the `Attribute` vertex.
+- **T059 before T061.** The reporter takes the effective space as an input and never computes it.
+- **Phase 1 merges before Phase 2 starts.** SC-022 is only measurable where nothing else has moved the
+  numbers.
+
+## Parallel opportunities
+
+- T003 ‖ T005 — independent failing tests.
+- T012 ‖ T013 ‖ T014 — different test files.
+- T022 ‖ T023 ‖ T024 — different files.
+- T034 ‖ T036 — component and integration_docker.
+- T048 ‖ T049 ‖ T050 ‖ T051 ‖ T052 — independent component tests.
+- T064 ‖ T065 ‖ T066 — independent component tests.
+- Phase 2 and Phase 4 are fully independent once Phase 1 has merged; they meet at T063, which is the
+  only task needing both the resolver's output and the reporter.
+
+---
+
+## Summary
+
+**74 tasks** across 5 phases. Both open questions are resolved (see above).
+
+| Phase | Tasks | Story |
+|---|---|---|
+| 1 — Foundation | T001–T038 (38) | US1 |
+| 2 — Attach / re-pool | T039–T053 (15) | US2 |
+| 3 — Detach | T054–T058 (5) | US3 |
+| 4 — Reporting | T059–T066 (8) | US2 |
+| 5 — Polish | T067–T074 (8) | — |
+
+There is no setup phase: every module, package and test tree is created by the first task that needs
+it.
+
+The foundation is half the work and delivers no user-visible capability. That is the shape of the
+problem, not a planning failure: the ledger is anchored somewhere that makes three required
+behaviours unbuildable and two existing behaviours wrong.

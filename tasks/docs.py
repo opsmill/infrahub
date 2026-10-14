@@ -234,13 +234,13 @@ def _generate_infrahub_schema_attribute_kind_parameters_snippet() -> None:
 
     from infrahub.core.schema.attribute_schema import attribute_schema_class_by_kind
 
-    kind_ap_parameters: dict[str, dict] = {}
+    kind_ap_parameters: dict[str, dict[str, str]] = {}
     for kind, schema_cls in attribute_schema_class_by_kind.items():
         # If the schema has a parameters class, add it to the list
         init_schema = schema_cls(name="ignore", kind=kind)
         if hasattr(init_schema, "parameters") and init_schema.parameters is not None:
             params = {
-                param: info
+                param: str(info.get_default(call_default_factory=True))
                 for param, info in init_schema.parameters.__class__.model_fields.items()
                 if info.json_schema_extra and info.json_schema_extra.get("update") == "validate_constraint"
             }
@@ -258,7 +258,8 @@ def _generate_infrahub_schema_attribute_kind_parameters_snippet() -> None:
 
     template_text = template_file.read_text(encoding="utf-8")
 
-    environment = jinja2.Environment()
+    # The markdown linter wants the file to end with exactly one newline, which the default environment strips.
+    environment = jinja2.Environment(keep_trailing_newline=True)
     template = environment.from_string(template_text)
     rendered_file = template.render(kinds=kind_ap_parameters)
 

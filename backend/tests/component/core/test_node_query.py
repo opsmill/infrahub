@@ -1,10 +1,16 @@
+from dataclasses import dataclass
+
+import pytest
+
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
     SYSTEM_USER_ID,
     InfrahubKind,
     MetadataOptions,
+    PoolRecordProvenance,
     RelationshipDirection,
     RelationshipHierarchyDirection,
+    SchemaPathType,
 )
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.node_attribute_remove import (
@@ -16,7 +22,8 @@ from infrahub.core.migrations.schema.node_kind_update import (
     NodeKindUpdateMigrationQuery01,
 )
 from infrahub.core.node import Node
-from infrahub.core.path import SchemaPath, SchemaPathType
+from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
+from infrahub.core.path import SchemaPath
 from infrahub.core.query.node import (
     NodeCreateAllQuery,
     NodeDeleteQuery,
@@ -25,12 +32,15 @@ from infrahub.core.query.node import (
     NodeListGetInfoQuery,
     NodeListGetRelationshipsQuery,
 )
+from infrahub.core.query.resource_manager import TrackingPool
 from infrahub.core.registry import registry
-from infrahub.core.schema import NodeSchema
+from infrahub.core.schema import NodeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_nodes, get_nodes
 from infrahub.database import InfrahubDatabase
+from tests.helpers.number_pool import add_pool_range
+from tests.helpers.schema import TICKET, load_schema
 
 
 async def test_query_NodeCreateAllQuery(
@@ -607,3 +617,59 @@ async def test_query_NodeGetHierarchyQuery_filters(
     descendants_names = [ids_to_names[descendants_id].name.value for descendants_id in descendants_ids]
 
     assert sorted(descendants_names) == ["london", "london-r1", "paris", "paris-r1"]
+
+
+@pytest.fixture
+async def ticket_pool(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> CoreNumberPool:
+    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+    pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
+    await pool.new(db=db, name="ticket-pool", node=TICKET.kind, node_attribute="ticket_id", start_range=1, end_range=10)
+    await pool.save(db=db)
+    await add_pool_range(db=db, pool=pool, start=1, end=10)
+    return pool
+
+
+@dataclass(frozen=True)
+class TrackingPoolReadScopeCase:
+    name: str
+    attribute_names: frozenset[str] | None
+    """The attributes the read is told a pool can track; None places no limit."""
+    expects_pool: bool
+
+
+TRACKING_POOL_READ_SCOPE_CASES: list[TrackingPoolReadScopeCase] = [
+    TrackingPoolReadScopeCase(name="unlimited", attribute_names=None, expects_pool=True),
+    TrackingPoolReadScopeCase(
+        name="naming_the_tracked_attribute", attribute_names=frozenset({"ticket_id"}), expects_pool=True
+    ),
+    TrackingPoolReadScopeCase(
+        name="naming_another_attribute", attribute_names=frozenset({"title"}), expects_pool=False
+    ),
+    TrackingPoolReadScopeCase(name="naming_no_attribute", attribute_names=frozenset(), expects_pool=False),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(case, id=case.name) for case in TRACKING_POOL_READ_SCOPE_CASES])
+async def test_query_NodeListGetAttributeQuery_tracking_pool_only_on_the_attributes_it_is_told_about(
+    db: InfrahubDatabase, default_branch: Branch, ticket_pool: CoreNumberPool, test_case: TrackingPoolReadScopeCase
+) -> None:
+    ticket = await Node.init(db=db, schema=TICKET.kind, branch=default_branch)
+    await ticket.new(db=db, title="scoped", ticket_id={"from_pool": {"id": ticket_pool.id}})
+    await ticket.save(db=db)
+
+    query = await NodeListGetAttributeQuery.init(
+        db=db,
+        ids=[ticket.id],
+        branch=default_branch,
+        include_metadata=MetadataOptions.TRACKING_POOL,
+        tracking_pool_attribute_names=test_case.attribute_names,
+    )
+    await query.execute(db=db)
+
+    attributes = query.get_attributes_group_by_node()[ticket.id].attrs
+    expected = TrackingPool(pool_id=ticket_pool.id, provenance=PoolRecordProvenance.ALLOCATED)
+    assert attributes["ticket_id"].tracking_pool == (expected if test_case.expects_pool else None)
+    assert attributes["title"].tracking_pool is None

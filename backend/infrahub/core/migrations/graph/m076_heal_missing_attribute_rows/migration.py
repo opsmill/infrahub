@@ -20,6 +20,7 @@ from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.schema import NodeSchema, SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.lock import initialize_lock
+from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 
 from .queries import AttributeHealDetectionQuery
@@ -420,7 +421,9 @@ class Migration076(MigrationRequiringRebase):
         db = migration_input.db
         console = migration_input.console
 
-        upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
+        upserter = SchemaNumberPoolUpserter(
+            db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository
+        )
         number_pool = await upserter.upsert_number_pool(
             schema_node=node_schema,
             attribute=attribute,
@@ -452,12 +455,17 @@ class Migration076(MigrationRequiringRebase):
                 nodes = await NodeManager.get_many(db=dbt, branch=branch, ids=list(uuid_batch))
                 for node_uuid in sorted(nodes):
                     node = nodes[node_uuid]
-                    number = await number_pool.get_resource(  # type: ignore[attr-defined]
-                        db=dbt, branch=branch, identifier=node_uuid, attribute=attribute, at=migration_input.at
-                    )
                     node_attribute = node.get_attribute(name=attribute.name)
+                    number = await number_pool.get_resource(  # type: ignore[attr-defined]
+                        db=dbt,
+                        branch=branch,
+                        identifier=node_uuid,
+                        attribute=attribute,
+                        attribute_id=node_attribute.id,
+                        at=migration_input.at,
+                        user_id=migration_input.user_id,
+                    )
                     node_attribute.value = number
-                    node_attribute.set_source(number_pool.get_id())
                     await node.save(db=dbt, fields=[attribute.name], at=migration_input.at)
                     repaired += 1
             if multiple_batches:
