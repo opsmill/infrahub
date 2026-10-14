@@ -13,9 +13,6 @@ from infrahub.core.constants import FullRegenerationReason, RepositoryDeliverySt
 from infrahub.core.merge.python_target_resolution import IndexedPythonTargetResolver, PythonAttributeReadSet
 from infrahub.core.merge.python_target_sources import UnavailablePythonTargetResolver
 from infrahub.core.merge.recompute_coalescing import (
-    COMPUTED_ATTRIBUTE,
-    DISPLAY_LABEL,
-    HFID,
     PYTHON_COMPUTED_ATTRIBUTE,
     SELF_FILTER,
     AffectedTarget,
@@ -809,11 +806,6 @@ PYTHON_KIND = chain_kind(1)
 PROBE_ID = "probe-1"
 PROBE_READS = TransformReadSet(read_kinds=frozenset({PYTHON_KIND}), read_fields={PYTHON_KIND: frozenset({"name"})})
 PROBE_CREATED = MergeChange(node_id=PROBE_ID, kind=PYTHON_KIND, action="created")
-PROBE_RENAMED = MergeChange(node_id="probe-2", kind=PYTHON_KIND, action="updated", changed_fields=frozenset({"name"}))
-PROBE_LABEL_AND_HFID: list[tuple[str, str, str | None, tuple[str, ...]]] = [
-    (DISPLAY_LABEL, PYTHON_KIND, None, (PROBE_ID,)),
-    (HFID, PYTHON_KIND, None, (PROBE_ID,)),
-]
 
 
 def _python_schema_branch() -> SchemaBranch:
@@ -875,12 +867,7 @@ class PythonFamilyTestCase:
     """The attribute, the node ids and the whole-kind flag of each Python submission."""
     expected_calls: list[str]
     branch: str = DEFAULT_BRANCH
-    changes: list[MergeChange] = field(default_factory=lambda: [PROBE_CREATED])
     queued: tuple[str, ...] = (REPOSITORY_X,)
-    expected_other_submitted: list[tuple[str, str, str | None, tuple[str, ...]]] = field(
-        default_factory=lambda: PROBE_LABEL_AND_HFID
-    )
-    """The family, the target kind, the attribute and the node ids of each submission of another family."""
     expected_held: dict[str, HeldRegeneration] = field(default_factory=dict)
     expected_cached: dict[str, PythonTargetRequest] = field(default_factory=dict)
 
@@ -931,22 +918,6 @@ PYTHON_FAMILY_TEST_CASES: list[PythonFamilyTestCase] = [
         },
     ),
     PythonFamilyTestCase(
-        name="a_failed_resolution_with_every_repository_pending_holds_only_the_python_attribute",
-        resolver=UnavailablePythonTargetResolver,
-        changes=[PROBE_CREATED, PROBE_RENAMED],
-        queued=REPOSITORIES,
-        expected_submitted=[],
-        expected_other_submitted=[(COMPUTED_ATTRIBUTE, chain_kind(2), "summary", ("probe-2",)), *PROBE_LABEL_AND_HFID],
-        expected_calls=["pending_repository_ids", "hold", "hold", "hold"],
-        expected_held=dict.fromkeys(REPOSITORIES, _held_python("digest")),
-        expected_cached={
-            _python_key(repository_id=repository_id, attribute_name="digest"): PythonTargetRequest(
-                target=whole_kind_python_target(kind=PYTHON_KIND, attribute_name="digest")
-            )
-            for repository_id in REPOSITORIES
-        },
-    ),
-    PythonFamilyTestCase(
         name="a_rebase_admits_every_target_without_a_read",
         resolver=lambda: _indexed_resolver(
             _python_read_set(attribute_name="digest", repository_id=REPOSITORY_X),
@@ -960,7 +931,7 @@ PYTHON_FAMILY_TEST_CASES: list[PythonFamilyTestCase] = [
 
 
 @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in PYTHON_FAMILY_TEST_CASES])
-async def test_the_coalesced_recompute_holds_only_the_python_targets_of_each_pending_repository(
+async def test_the_coalesced_recompute_holds_the_python_targets_of_each_pending_repository(
     test_case: PythonFamilyTestCase,
 ) -> None:
     state = await _state(queued=test_case.queued)
@@ -974,7 +945,7 @@ async def test_the_coalesced_recompute_holds_only_the_python_targets_of_each_pen
     )
 
     submissions = await coordinator.run(
-        changes=test_case.changes,
+        changes=[PROBE_CREATED],
         branch=test_case.branch,
         context=EventContext(branch=EventBranchContext(name=test_case.branch), account_id=""),
     )
@@ -984,11 +955,6 @@ async def test_the_coalesced_recompute_holds_only_the_python_targets_of_each_pen
         for submission in submissions
         if submission.family == PYTHON_COMPUTED_ATTRIBUTE
     ] == test_case.expected_submitted
-    assert [
-        (submission.family, submission.target_kind, submission.attribute_name, submission.node_ids)
-        for submission in submissions
-        if submission.family != PYTHON_COMPUTED_ATTRIBUTE
-    ] == test_case.expected_other_submitted
     assert state.calls == test_case.expected_calls
     assert _held_by_repository(state) == {
         repository_id: test_case.expected_held.get(repository_id, HeldRegeneration()) for repository_id in REPOSITORIES

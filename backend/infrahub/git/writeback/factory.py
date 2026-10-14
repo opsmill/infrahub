@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import partial
 from typing import TYPE_CHECKING
@@ -10,13 +11,13 @@ from infrahub.context import InfrahubContext
 from infrahub.core.merge.builder import build_held_regeneration_releaser
 from infrahub.core.registry import registry
 from infrahub.git.writeback.abandoner import WritebackAbandoner
-from infrahub.git.writeback.constants import LOCAL_GIT_TIMEOUT_SECONDS
+from infrahub.git.writeback.constants import LOCAL_GIT_TIMEOUT_SECONDS, RELEASE_RENEW_SECONDS
 from infrahub.git.writeback.git_adapter import RepositoryDeliveryGitAdapter
 from infrahub.git.writeback.ports import RepositoryRef
 from infrahub.git.writeback.recovery import DeliveryRecoveryCheck
 from infrahub.git.writeback.runs import PrefectDeliveryRunQuery
 from infrahub.git.writeback.service import RepositoryWritebackService
-from infrahub.git.writeback.store import WritebackIntentStore
+from infrahub.git.writeback.store import LeaseRenewer, WritebackIntentStore
 from infrahub.log import get_log_data
 from infrahub.task_manager.flow_run.prefect_client import PrefectClientAdapter
 from infrahub.worker import WORKER_IDENTITY
@@ -29,6 +30,7 @@ if TYPE_CHECKING:
 
     from infrahub.database import InfrahubDatabase
     from infrahub.git.repository import InfrahubRepository
+    from infrahub.git.writeback.ports import Clock, RegenerationReleasePort
 
 
 async def build_writeback_service(
@@ -45,7 +47,17 @@ async def build_writeback_service(
         context: The context of the regeneration that a delivery releases.
 
     """
-    return await _build(RepositoryWritebackService, db=db, repository=repository, context=context, log=log)
+    parts = await _build_parts(db=db, repository=repository, context=context, log=log)
+    return RepositoryWritebackService(
+        repository=parts.repository,
+        state=parts.state,
+        git=parts.git,
+        releaser=parts.releaser,
+        lease_renewal=parts.lease_renewal,
+        lock_registry=lock.registry,
+        clock=parts.clock,
+        release_renew_seconds=RELEASE_RENEW_SECONDS,
+    )
 
 
 async def build_writeback_abandoner(
@@ -62,21 +74,40 @@ async def build_writeback_abandoner(
         context: The context of the regeneration that an abandonment releases.
 
     """
-    return await _build(WritebackAbandoner, db=db, repository=repository, context=context, log=log)
+    parts = await _build_parts(db=db, repository=repository, context=context, log=log)
+    return WritebackAbandoner(
+        repository=parts.repository,
+        state=parts.state,
+        git=parts.git,
+        releaser=parts.releaser,
+        lease_renewal=parts.lease_renewal,
+        lock_registry=lock.registry,
+        clock=parts.clock,
+        release_renew_seconds=RELEASE_RENEW_SECONDS,
+    )
 
 
-async def _build[ComponentT: (RepositoryWritebackService, WritebackAbandoner)](
-    component: type[ComponentT],
+@dataclass(frozen=True)
+class _DeliveryParts:
+    repository: RepositoryRef
+    state: WritebackIntentStore
+    git: RepositoryDeliveryGitAdapter
+    releaser: RegenerationReleasePort
+    lease_renewal: LeaseRenewer
+    clock: Clock
+
+
+async def _build_parts(
     *,
     db: InfrahubDatabase,
     repository: InfrahubRepository,
     context: InfrahubContext,
     log: Logger | LoggerAdapter[Logger],
-) -> ComponentT:
+) -> _DeliveryParts:
     default_branch = await registry.get_branch(db=db)
     clock = partial(datetime.now, UTC)
     state = WritebackIntentStore(db=db, lock_registry=lock.registry, default_branch=default_branch, clock=clock)
-    return component(
+    return _DeliveryParts(
         repository=RepositoryRef(
             id=str(repository.id), name=repository.name, destination_git_branch=repository.default_branch
         ),
@@ -94,7 +125,7 @@ async def _build[ComponentT: (RepositoryWritebackService, WritebackAbandoner)](
         releaser=await build_held_regeneration_releaser(
             db=db, state=state, default_branch=default_branch, context=context, log=log
         ),
-        lock_registry=lock.registry,
+        lease_renewal=LeaseRenewer(db=db, lock_registry=lock.registry, default_branch=default_branch, clock=clock),
         clock=clock,
     )
 

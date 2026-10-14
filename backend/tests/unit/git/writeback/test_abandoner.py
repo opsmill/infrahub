@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -7,6 +8,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from infrahub.auth.session import AnonymousSession
+from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import RepositoryDeliveryStatus
 from infrahub.exceptions import (
     DatabaseError,
@@ -15,7 +18,9 @@ from infrahub.exceptions import (
     RepositoryConnectionError,
     ValidationError,
 )
+from infrahub.git.models import GitRepositoryDeliveryRetry
 from infrahub.git.writeback.abandoner import WritebackAbandoner
+from infrahub.git.writeback.constants import RELEASE_RENEW_SECONDS, STALE_AFTER_SECONDS
 from infrahub.git.writeback.models import (
     AbandonmentRecord,
     Actor,
@@ -27,14 +32,21 @@ from infrahub.git.writeback.models import (
     ReleaseLease,
 )
 from infrahub.git.writeback.ports import RepositoryRef
+from infrahub.git.writeback.recovery import DeliveryRecoveryCheck
 from infrahub.git.writeback.service import RepositoryWritebackService
 from infrahub.lock import InfrahubLockRegistry
+from infrahub.workflows.catalogue import GIT_REPOSITORY_DELIVERY_RETRY
+from tests.adapters.workflow import ContextRecordingWorkflow
 from tests.unit.git.writeback.fakes import (
     FixedClock,
     InMemoryDeliveryGit,
+    InMemoryDeliveryRunQuery,
     InMemoryDeliveryState,
+    RecordingLeaseRenewal,
     RecordingRegenerationReleaser,
     Release,
+    Renewal,
+    RenewalAwaitingReleaser,
 )
 
 if TYPE_CHECKING:
@@ -47,6 +59,9 @@ REPOSITORY = RepositoryRef(id="repository-1", name="net-repo", destination_git_b
 NOW = datetime(2026, 10, 7, 12, 0, tzinfo=UTC)
 LEASE_EXPIRY = datetime(2026, 10, 7, 12, 15, tzinfo=UTC)
 ACTOR = Actor(account_id="account-1", account_name="admin")
+RECOVERY_CONTEXT = InfrahubContext(
+    branch=BranchContext(name="main", id="default-branch-id"), account=AnonymousSession()
+)
 RUN_LOGGER = "infrahub.tasks"
 
 TRUNK = "a" * 40
@@ -180,10 +195,24 @@ def rig() -> Rig:
     git = ProbedGit(destination_git_branch=REPOSITORY.destination_git_branch, head=TRUNK, probe=probe)
     releaser = SteppedReleaser()
     abandoner = WritebackAbandoner(
-        repository=REPOSITORY, state=state, git=git, releaser=releaser, lock_registry=lock_registry, clock=clock
+        repository=REPOSITORY,
+        state=state,
+        git=git,
+        releaser=releaser,
+        lease_renewal=state,
+        lock_registry=lock_registry,
+        clock=clock,
+        release_renew_seconds=RELEASE_RENEW_SECONDS,
     )
     service = RepositoryWritebackService(
-        repository=REPOSITORY, state=state, git=git, releaser=releaser, lock_registry=lock_registry, clock=clock
+        repository=REPOSITORY,
+        state=state,
+        git=git,
+        releaser=releaser,
+        lease_renewal=state,
+        lock_registry=lock_registry,
+        clock=clock,
+        release_renew_seconds=RELEASE_RENEW_SECONDS,
     )
     return Rig(clock=clock, probe=probe, state=state, git=git, releaser=releaser, abandoner=abandoner, service=service)
 
@@ -271,6 +300,7 @@ async def test_abandonment_with_no_recorded_commit_records_an_empty_commit(rig: 
     entry = _merge()
     await rig.queue(entry)
     rig.git.graph_commit = None
+    rig.clear_calls()
 
     record = await rig.abandon(queue_version=1)
 
@@ -283,6 +313,8 @@ async def test_abandonment_with_no_recorded_commit_records_an_empty_commit(rig: 
         entries=(entry,),
     )
     assert rig.intent.queue.entries == ()
+    assert rig.releaser.releases == []
+    assert rig.state.calls == ["abandon"]
 
 
 async def test_branch_deletion_is_broadcast_for_flagged_entries_only(rig: Rig) -> None:
@@ -312,6 +344,38 @@ async def test_failed_broadcast_still_releases(rig: Rig, caplog: pytest.LogCaptu
     assert rig.releaser.releases == [
         Release(repository_id=REPOSITORY.id, held=_held(HeldItem(id="definition-1", hold_seq=1)))
     ]
+
+
+async def test_a_timer_renews_the_lease_while_the_release_runs_and_stops_before_the_clear(rig: Rig) -> None:
+    await rig.queue(_merge())
+    await rig.hold("definition-1")
+    lease_renewal = RecordingLeaseRenewal()
+    releaser = RenewalAwaitingReleaser(renewed_twice=lease_renewal.renewed_twice)
+    abandoner = WritebackAbandoner(
+        repository=REPOSITORY,
+        state=rig.state,
+        git=rig.git,
+        releaser=releaser,
+        lease_renewal=lease_renewal,
+        lock_registry=InfrahubLockRegistry(local_only=True),
+        clock=rig.clock,
+        release_renew_seconds=0.01,
+    )
+    rig.clear_calls()
+
+    await abandoner.abandon(queue_version=1, actor=ACTOR)
+
+    assert releaser.releases == [
+        Release(repository_id=REPOSITORY.id, held=_held(HeldItem(id="definition-1", hold_seq=1)))
+    ]
+    assert len(lease_renewal.renewals) >= 2
+    assert lease_renewal.renewals == [Renewal(repository_id=REPOSITORY.id, lease_id="lease-1")] * len(
+        lease_renewal.renewals
+    )
+    assert rig.state.calls == ["abandon", "clear_released"]
+    # The timer ended before the abandonment returned, so no renewal can follow the clear.
+    assert asyncio.all_tasks() == {asyncio.current_task()}
+    assert (rig.intent.held.artifact_definitions, rig.intent.held.release_leases) == ((), ())
 
 
 async def test_release_runs_after_the_lock_is_released(rig: Rig) -> None:
@@ -348,10 +412,19 @@ async def test_clear_keeps_a_hold_made_during_the_release(rig: Rig) -> None:
     assert rig.intent.queue.entries == (OTHER_MERGE,)
 
 
-async def test_crash_before_the_clear_leaves_a_lease_that_a_held_only_run_releases_once_expired(rig: Rig) -> None:
+async def test_crash_before_the_clear_leaves_a_lease_that_the_recovery_check_releases_once_expired(rig: Rig) -> None:
     await rig.queue(_merge())
     await rig.hold("definition-1")
     rig.releaser.failures.append(WorkerStoppedError())
+    workflow = ContextRecordingWorkflow()
+    check = DeliveryRecoveryCheck(
+        state=rig.state,
+        workflow=workflow,
+        runs=InMemoryDeliveryRunQuery(),
+        lock_registry=InfrahubLockRegistry(local_only=True),
+        clock=rig.clock,
+        context=RECOVERY_CONTEXT,
+    )
 
     with pytest.raises(WorkerStoppedError):
         await rig.abandon(queue_version=1)
@@ -362,10 +435,25 @@ async def test_crash_before_the_clear_leaves_a_lease_that_a_held_only_run_releas
     assert rig.intent.held.release_leases == (
         ReleaseLease(lease_id="lease-1", expires_at=LEASE_EXPIRY, artifact_definitions=(held,)),
     )
-    assert await rig.deliver() == DeliveryAttemptResult(outcome=DeliveryOutcome.NOTHING_PENDING)
-    assert rig.releaser.releases == []
+    assert await check.run(repository=REPOSITORY) is False
+    assert workflow.submit_calls == []
 
-    rig.clock.advance(seconds=15 * 60)
+    rig.clock.advance(seconds=STALE_AFTER_SECONDS + 60)
+
+    assert await check.run(repository=REPOSITORY) is True
+    assert workflow.submit_calls == [
+        {
+            "kind": "submit",
+            "workflow": GIT_REPOSITORY_DELIVERY_RETRY,
+            "parameters": {
+                "model": GitRepositoryDeliveryRetry(
+                    repository_id=REPOSITORY.id, repository_name=REPOSITORY.name, manual=False
+                )
+            },
+            "tags": ["infrahub.app/node/repository-1", "infrahub.app/repository-delivery"],
+        }
+    ]
+    # The submitted run is a delivery run of the empty queue, which releases the held items.
     result = await rig.deliver()
 
     assert result == DeliveryAttemptResult(outcome=DeliveryOutcome.RELEASED)
@@ -388,7 +476,9 @@ async def test_failed_release_expires_the_lease_now_and_keeps_the_items_held(
 
     assert [record.getMessage() for record in caplog.records if record.levelno == logging.ERROR] == [
         "The merges ['merge-1'] of repository net-repo are abandoned, but the release of their held regeneration "
-        "failed; a later delivery run of the repository releases it."
+        "failed. The barrier no longer holds the repository, so to regenerate now, run its artifact and generator "
+        "definitions and its computed attributes by hand. A later delivery run of the repository also releases the "
+        "held regeneration."
     ]
 
     held = HeldItem(id="definition-1", hold_seq=1)
@@ -403,6 +493,30 @@ async def test_failed_release_expires_the_lease_now_and_keeps_the_items_held(
 
     assert await rig.deliver() == DeliveryAttemptResult(outcome=DeliveryOutcome.RELEASED)
     assert rig.releaser.releases == [Release(repository_id=REPOSITORY.id, held=_held(held))]
+
+
+async def test_failed_clear_says_that_the_release_ran_and_keeps_the_lease(
+    rig: Rig, caplog: pytest.LogCaptureFixture
+) -> None:
+    await rig.queue(_merge())
+    await rig.hold("definition-1")
+    rig.state.failures["clear_released"] = [DatabaseError(message="database is down")]
+    rig.clear_calls()
+
+    with caplog.at_level(logging.ERROR, logger=RUN_LOGGER), pytest.raises(DatabaseError, match=r"^database is down$"):
+        await rig.abandon(queue_version=1)
+
+    assert [record.getMessage() for record in caplog.records if record.levelno == logging.ERROR] == [
+        "The merges ['merge-1'] of repository net-repo are abandoned and their held regeneration is released, but "
+        "the release lease lease-1 was not cleared; a later delivery run of the repository releases it again once "
+        "the lease expires."
+    ]
+    held = HeldItem(id="definition-1", hold_seq=1)
+    assert rig.state.calls == ["abandon", "renew_lease", "clear_released"]
+    assert rig.releaser.releases == [Release(repository_id=REPOSITORY.id, held=_held(held))]
+    assert rig.intent.held.release_leases == (
+        ReleaseLease(lease_id="lease-1", expires_at=LEASE_EXPIRY, artifact_definitions=(held,)),
+    )
 
 
 async def test_failed_expiry_keeps_the_error_of_the_release(rig: Rig, caplog: pytest.LogCaptureFixture) -> None:

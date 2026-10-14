@@ -410,9 +410,7 @@ Under the repository lock:
     before and after it. On success, clear the obligation, unless the queue grew past the snapshot
     meanwhile. On a failure, classify it (R5) and stop: the obligation stays, the entries stay, and
     the held work stays held.
-12. **Broadcast** `RefreshGitFetch` pinned to M, as `merge_git_repository` does today. A broadcast
-    that fails is logged at warning level and does not fail the attempt: a worker that missed the
-    message fetches M when it needs it. Accepted on 2026-10-13.
+12. **Broadcast** `RefreshGitFetch` pinned to M, as `merge_git_repository` does today.
 13. **Delete source branches.** For each delivered entry with `delete_source_git_branch` set, and
     that no remaining entry names, delete the remote branch and send
     `RefreshGitRepositoryBranchDeleted` (R12). A branch that is already gone counts as deleted. A
@@ -430,9 +428,7 @@ Then, outside the repository lock:
 
 16. **Release** the held items of the lease window (R10). The releaser renews the lease after each
     awaited step. If the release fails, set the lease's expiry to now, then classify the failure
-    (stage `release`, R5) and stop. The held items stay (R10, rule 4). The record of that failure
-    never sets `action-required`, also on the final attempt, because the merges are on the remote
-    already. Accepted on 2026-10-13.
+    (stage `release`, R5) and stop. The held items stay (R10, rule 4).
 17. **Clear.** Under the state lock: remove each held item of the lease window that still has the
     sequence that the lease names, and end the lease. An item held again meanwhile stays.
 
@@ -537,7 +533,7 @@ error whose reason comes from GitPython's `PushInfo` flags, not from text.
 | import | any other, for example a configuration or validation error of the content | `import-failed` | no |
 | replay | a merge conflict. Not a row of the classifier: `replay` reports a conflict in `ReplayResult`, not as an exception, and the service sets this cause (R4, step 6). The classifier gives `unclassified` for every exception at this stage. | `replay-conflict` | no |
 | replay | a killed local Git command (`LOCAL_GIT_TIMEOUT_SECONDS`) | `unclassified` | no. The message names the command. |
-| release | any | none. While merges are queued, the repository keeps the cause and the error of its delivery. With an empty queue, the store writes the message with no cause, and the next clear of a lease removes it. | yes, and never a reason for `action-required`. The failed run sets its lease's expiry to now, so the retry takes a new lease and releases again (R10, rule 4). The delivery is done; a release that still fails leaves the held work to the recovery check (R20). |
+| release | any | none. While merges are queued, the repository keeps the cause and the error of its delivery. With an empty queue, the store writes the message with no cause, and the next clear of a lease removes it. | yes, and never a reason for `action-required`. The failed run sets its lease's expiry to now, so the next attempt of the delivery task takes a new lease and releases again (R10, rule 4). The delivery is done; a release that still fails leaves the held work to the recovery check (R20). An abandonment has no task retry, and the retry mutation refuses its empty queue, so its failed release also waits for the recovery check (R8). |
 | any | anything else | `unclassified` | no |
 
 The cause list is closed and is an enum (Principle III). [data-model.md](data-model.md) has it.
@@ -778,7 +774,7 @@ repository's queue, which outlives every task run, so the action belongs on the 
 2. For each abandoned entry with `delete_source_git_branch` set, send
    `RefreshGitRepositoryBranchDeleted`, so that every worker drops its local branch. The remote
    branch stays (R12). A send that fails is only logged, and the abandonment goes on to step 3: the
-   queue is already dropped. Accepted on 2026-10-13.
+   queue is already dropped.
 3. Leave both locks. Release the held items of the lease window (R10). If the release fails, set
    the lease's expiry to now and raise. The held items stay, and the recovery check of R20 releases
    them (R10, rule 4).
@@ -887,8 +883,7 @@ which keeps the promise of ADR 0012 that the flag-off path is the blanket path e
 `git/tasks.py::generate_artifact_definition` and `generators/tasks.py::run_generator_definition`
 gain `exclude_repository_ids` and `include_repository_ids`, both `list[str] | None = None`. A
 definition is skipped when its repository is excluded, or when an include list is given and its
-repository is not in it. An empty include list counts as not given, so a run never skips a
-definition by mistake.
+repository is not in it.
 
 ### The atomic hold, with sequence numbers
 
@@ -1020,7 +1015,18 @@ A new lease takes every held item that no live lease covers, up to a bound:
   belongs to an entry that has left it.
 
 The releaser renews the expiry after each awaited step, because a release awaits generator runs and
-can take minutes. Each renewal adds 15 minutes.
+can take minutes. Each renewal adds 15 minutes. One generator run can take hours, which is longer
+than the lease. So while the release runs, the service and the abandoner also renew the lease on a
+timer, every
+`RELEASE_RENEW_SECONDS`, 5 minutes. Each renewal of the timer runs on a database session of its
+own. The release reads and writes on the session of the flow at the same time, and a session runs
+one query at a time. A renewal that shares that session can break a read of the release, and the
+renewals then fail. A failed renewal of the timer is logged at warning level, and the timer goes
+on. The lease then expires at its own time, unless a later renewal succeeds. The
+timer stops when the release returns or raises. A renewal that runs then ends first, so no renewal
+follows the clear or the expiry of the lease. A worker that dies stops its timer, so its lease
+still expires. Known limit: a release whose generator run never ends keeps its lease for as long
+as its worker lives, and no other run releases its items in that time.
 
 **Why a set and not a range.** The items that no live lease covers can have gaps. For example, lease
 A expired, lease B is live, and new holds came after B was taken. A range from A's items to the new
@@ -1042,11 +1048,11 @@ The rules:
    then handles the failure. Nothing cleared the items, so they stay held. The next run takes a new
    lease over them and releases every one. For a delivery, that run is the retry of its task (stage
    `release`, R5). For an abandonment, or when every retry fails, it is the run that the recovery
-   check starts (rule 3). A failed release of a delivery never sets `action-required`: the merges
-   are on the remote already, so no user has to act. A release that dispatched part of its window
-   before it failed dispatches that part again. That over-executes, which is the accepted direction (FR-015). If the store
+   check starts (rule 3). A release that dispatched part of its window before it failed dispatches
+   that part again. That over-executes, which is the accepted direction (FR-015). If the store
    cannot set the expiry, the lease expires at its own time. A retry before then finds the lease
-   live and does nothing, and the recovery check releases the items after the expiry.
+   live and does nothing. The recovery check releases the items after the expiry, once no delivery
+   run of the repository waits to start or runs (R20).
 5. Expired leases are cleaned up in the save that takes or clears a lease. When a new lease takes an
    item that an expired lease names, the item moves to the new lease. An expired lease also drops
    each item that the held set no longer holds at the named sequence. An expired lease that names no
@@ -1103,9 +1109,9 @@ crash cases of the inline release.
 
 | Path | Change |
 |---|---|
-| `InfrahubRepository.collect_pending_imports`, the active loop | Removes the repository's default branch from the branches to pull. Removes from the new **and** the updated branches every remote branch that a pending entry names as its source. Logs both once per cycle. The staging path of the same method keeps the full list, because a staging repository is never queued. A state that cannot be read fails closed: the sync of that repository stops for the cycle, and the other repositories go on (accepted on 2026-10-13). |
-| `git/tasks.py::bootstrap_local_repository` | Skips the seed import of the default branch after a fresh clone, and logs it. The clone itself proceeds. |
-| `graphql/mutations/repository.py::ProcessRepository` | Refuses on **every** branch, with a message that names the pending delivery. |
+| `InfrahubRepository.collect_pending_imports`, the active loop | Removes the repository's default branch from the branches to pull. Removes from the new **and** the updated branches every remote branch that a pending entry names as its source. Logs both once per cycle. `_collect_staging_imports` keeps the full list, because a staging repository is never queued. |
+| `git/tasks.py::bootstrap_local_repository` | Skips the seed import of the default branch after a fresh clone, and logs it. The clone itself proceeds. A seed into a staging branch is not skipped, as for the staging path of the synchronisation. |
+| `graphql/mutations/repository.py::ProcessRepository` | Refuses on **every** branch, with a message that names the pending delivery. The import flow it submits checks again under the repository lock before it applies, because a merge can be queued in between. |
 
 **Why the default branch.** The import is desired-state: it deletes the repository-owned objects
 that are not in the imported commit. If the remote destination advanced during an outage, an import
@@ -1144,10 +1150,6 @@ names the branch as `source_git_branch`, and returns whether one did. When one d
 
 1. skips the remote deletion and logs a warning that names the pending delivery;
 2. does **not** send `RefreshGitRepositoryBranchDeleted`, so every worker keeps its local branch.
-
-When the call itself fails, the task keeps the remote branch too, logs at error level that the
-user can delete it by hand once nothing is pending, and does not raise, so the deletion goes on in
-the other repositories. Keeping a branch loses no content. Accepted on 2026-10-13.
 
 A separate read before the call would add nothing: the call already answers under the lock, and a read
 outside the lock could disagree with it.
@@ -1195,10 +1197,15 @@ the branch on the remote only.
 ## R13. The reverted-delivery record (FR-021)
 
 **Decision**: the store keeps `delivery_last_delivered_commit`, set at each delivery that pushed.
-When the IFC-3210 reconciliation classifies the default branch as a rewrite, it asks the store
-whether the last delivered commit is an ancestor of the commit it discards and not an ancestor of
-the new head. When it is, it writes `delivery_reverted` with the delivered commit, the new head and
-the time, and logs it.
+When the IFC-3210 reconciliation classifies the default branch as a rewrite, it reads the last
+delivered commit from the store and asks Git whether the new head holds it. A fetch brings every
+ancestor of the new head, so a delivered commit that the clone lacks is not in it either. When the
+new head does not hold the commit, the store writes `delivery_reverted` with the delivered commit,
+the new head and its own time, and the reconciliation logs it. The check does not ask whether the
+commit it discards holds the delivered commit: a delivered commit that an earlier rewrite discarded,
+whose own record failed, is recorded at the next rewrite. When the reconciliation classifies the
+default branch as a re-target, it clears `delivery_last_delivered_commit`, because that commit
+belongs to the previous default branch, which a later rewrite of the new one cannot discard.
 
 **Why the last delivered commit is enough.** Each delivery pushes a fast-forward of the previous
 remote head, since Infrahub never force-pushes. Every earlier delivered commit is therefore an
@@ -1207,18 +1214,6 @@ did too.
 
 **Gate.** Plan part L waits for the rewrite classification of IFC-3210. Without it, a rewrite of the
 default branch makes the synchronisation fail, and nothing reaches the check.
-
-**A clone that lacks a commit.** A worker that cloned after the rewrite never fetched the
-discarded history, and Git cannot compare an absent commit. A fetch brings every ancestor of the
-new head, so a delivered commit that the clone lacks is off the remote, and the reconciliation
-records it. When the clone lacks only the commit it discards, it cannot tell whether an earlier
-rewrite discarded the delivered commit, and it records it too.
-
-**A record that fails.** When the read of the state or the write of the record fails, the
-synchronisation logs a warning and fails the default branch at the record step, as a failed rewrite
-record does. The import of the default branch is kept, because the graph already records the new
-commit. The call catches every exception on purpose: an error that escapes would lose the imports
-of the cycle. Accepted on 2026-10-13.
 
 **Not cleared.** Like the sibling's rewrite record, it is a fact and not an alert. A later
 reverted delivery of another commit overwrites it. A record of the same delivered commit is kept,
@@ -1460,6 +1455,13 @@ Conditions 3 and 4 judge a run that a worker took, so condition 5 leaves out the
   not end such a run, because it watches a run only after a heartbeat or an `AwaitingRetry` event
   (`trigger/system.py::TRIGGER_CRASH_ZOMBIE_FLOWS`). A manual retry still works: it submits a new
   run, which does not wait for the stuck one (R7).
+- **A release whose generator run never ends.** The release renews its lease on a timer (R10), so
+  it keeps its lease for as long as its worker lives. No other run releases its items in that
+  time.
+- **A release run that stays in `RUNNING`.** The second trigger below counts a `RUNNING` delivery
+  run as live. A run whose worker died while it released stops that trigger until the
+  `crash-zombie-flows` automation marks it `CRASHED`. Its lease expires all the same, so a manual
+  retry after the expiry releases the items (R7).
 
 **The recovery check.** It runs from the loop of `git/tasks.py::sync_remote_repositories`, for every
 repository, before the bootstrap and whatever the outcome of the sync, under its own guard. A check
@@ -1470,9 +1472,15 @@ because that function catches the error that a failing branch raises. The check 
 
 - the delivery is stale; or
 - the queue is empty, held items wait that no live release lease covers, `last_progress_at` is
-  older than `STALE_AFTER`, and no delivery run of the repository waits to start (condition 5).
-  A queue with merges is left to the first trigger. While the status is `action-required`, a
-  submission would retry a policy failure every `STALE_AFTER`, which FR-004 forbids.
+  older than `STALE_AFTER`, and no delivery run of the repository waits to start or runs, that is,
+  no run in a state of type `SCHEDULED`, `PENDING` or `RUNNING`. A queue with merges is left to
+  the first trigger. While the status is `action-required`, a submission would retry a policy
+  failure every `STALE_AFTER`, which FR-004 forbids.
+
+The second trigger counts a `RUNNING` run as live, unlike condition 5. A release holds no lock and
+writes no progress, so only its run shows that it still works. Its timer keeps its lease live
+(R10). If the lease expires all the same, for example because the renewals fail for 15 minutes,
+the `RUNNING` run still stops a second release of the same items.
 
 The `touch` after a submission bounds it to one submission per `STALE_AFTER` per repository. While
 the submitted run waits to start, condition 5 also stops a second submission. A submission that
@@ -1497,12 +1505,15 @@ when it starts is too late, because a run that waits in the queue has not starte
 `run_deployment`. `WorkflowLocalExecution` ignores them, but it runs the flow at once, so no run
 waits.
 
-**The query.** The port `DeliveryRunQuery.has_queued_run(repository_id)` answers condition 5. Its
-Prefect adapter makes one `read_flow_runs` call with `limit=1`, for the runs that carry both tags
-and have a state of type `SCHEDULED` or `PENDING`. The check asks it last, and only when every other
-condition of a trigger holds. A repository with no work to recover, or with recent progress, costs
-no query. If the query fails, the check submits nothing for that repository in this cycle, logs
-the failure at warning level, and asks again at the next cycle. It never submits without an answer.
+**The query.** The port `DeliveryRunQuery.has_queued_run(repository_id)` answers condition 5 for
+the first trigger. `DeliveryRunQuery.has_active_run(repository_id)` answers for the second trigger.
+For each question, the Prefect adapter makes one `read_flow_runs` call with `limit=1`, for the runs
+that carry both tags and have a state of type `SCHEDULED` or `PENDING`, and `RUNNING` too for
+`has_active_run`. The check asks the question of its trigger last, and only when every other
+condition of that trigger holds. A repository with no work to recover, or with recent progress,
+costs no query. If the query fails, the check submits nothing for that repository in this cycle,
+logs the failure at warning level, and asks again at the next cycle. It never submits without an
+answer.
 
 **Why this is not an unbounded retry.** A stale delivery has no failure to retry: its attempt was
 lost to a worker restart, a lost submission or a killed process. The new attempt is a first attempt
@@ -1515,10 +1526,11 @@ check stops.
 `import_objects_from_files`, a large unrelated method. The lock condition covers the same case with
 one read.
 
-**Rejected: a `RUNNING` run counts as live too.** A run whose worker died would then stop the
-recovery until the `crash-zombie-flows` automation (`trigger/system.py::TRIGGER_CRASH_ZOMBIE_FLOWS`)
-marks it `CRASHED`. Conditions 3 and 4 already judge a run that a worker took, with no such
-dependency.
+**Rejected: a `RUNNING` run counts as live for the first trigger too.** A run whose worker died
+would then stop the recovery until the `crash-zombie-flows` automation
+(`trigger/system.py::TRIGGER_CRASH_ZOMBIE_FLOWS`) marks it `CRASHED`. Conditions 3 and 4 already
+judge a run that a worker took, with no such dependency. The second trigger accepts that
+dependency, because no lock and no progress time judge a release.
 
 ---
 

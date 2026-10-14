@@ -108,10 +108,7 @@ must equal the remote head, and nothing must be pending.
    **Then** both merges are replayed in order, one push delivers them, the recorded commit advances
    to the delivered commit, and nothing is pending.
 2. **Given** one pending merge, **When** a second branch merges, **Then** the second merge is
-   appended to the queue, and the first one stays in the queue. When the remote default branch
-   moved while the push waits, and the second branch records another commit of that repository
-   than the default branch, as a branch that changes a file of it does, the merge check refuses the
-   merge instead, until a retry delivers (see "Edge Cases"). Accepted on 2026-10-13.
+   appended to the queue, and the first one stays in the queue.
 3. **Given** a remote default branch that advanced during the outage, **When** the retry runs,
    **Then** the replay merges onto the fetched remote head, no force-push happens, the delivered
    commit is recorded, and the repository objects of that commit are imported.
@@ -269,10 +266,7 @@ deleted.
 4. **Given** no pending delivery that references S, **When** Infrahub deletes S, **Then** the
    deletion proceeds as it does today.
 5. **Given** a pending delivery on repository X, **When** a user merges another branch, **Then** the
-   merge is not blocked. One exception: when the remote default branch of X moved while the push
-   waits, the merge check refuses the merge of a branch that records another commit of X than the
-   default branch, as a branch that changes a file of X does, until a retry delivers (see "Edge
-   Cases"). Accepted on 2026-10-13.
+   merge is not blocked.
 
 ---
 
@@ -313,8 +307,7 @@ unreplayable, with a cause that names the discarded source commit.
   a merge is queued either before the check, and the conversion is refused, or after the deletion,
   and the merge fails on the deleted repository.
 - **A second merge lands while a delivery is outstanding.** It is appended to the queue and never
-  replaces an earlier entry. One retry delivers both. The merge check can refuse the second merge
-  first, when the remote default branch moved (see the merge check below).
+  replaces an earlier entry. One retry delivers both.
 - **The pending queue becomes unreplayable.** The remote destination advanced and a replayed merge
   now conflicts. The retry fails at that entry and cannot succeed as it is. Inside Infrahub,
   abandonment is the only exit. Outside Infrahub, a user can merge the source branch on the remote
@@ -435,14 +428,8 @@ unreplayable, with a cause that names the discarded source commit.
 - **The merge check of IFC-3210 while a delivery is pending.** FR-023 keeps the graph on the old
   trunk commit, so when the remote trunk moves, the check that IFC-3210 FR-005d runs before the graph
   merge refuses every merge of a branch that records a commit other than the commit of the trunk of
-  that repository, as a branch that changes a file of it does. The refusal comes before the graph
-  merge, so the branch stays open, and its message asks the user to merge again after Infrahub
-  records the latest commit. The synchronisation does not import the trunk while the push waits, so
-  only a delivery records the new head: after a retry delivers, the same merge goes through. A merge
-  of a branch that records the commit of the trunk, such as a branch that changes no file of that
-  repository, is not refused. Accepted on 2026-10-13: the check stays as it is, and User Story 2
-  scenario 2 and User Story 6 scenario 5 name the exception.
-  The IFC-3210 spec records the conflict in its edge cases.
+  that repository, against User Story 2 scenarios 2 and 3. The decision is open and belongs to this spec. The IFC-3210 spec records the conflict in
+  its edge cases.
 
 ## Requirements *(mandatory)*
 
@@ -506,10 +493,7 @@ system, and the new delivery path must keep them true.*
   holds it. The generic repository create and update operations MUST NOT be able to write the
   delivery state.
 - **FR-010**: The system MUST NOT block a branch merge because a repository's delivery is
-  outstanding. The merge check of the remote heads is a separate rule: when the remote default
-  branch moved while a push waits, it refuses the merge of a branch that records another commit of
-  that repository than the default branch, until a retry delivers (see "Edge Cases", accepted on
-  2026-10-13).
+  outstanding.
 - **FR-011**: The system MUST NOT delete a remote branch while a delivery that references its commit
   is outstanding. When the system refused a deletion that was requested, it MUST delete the branch
   once the referencing entry is delivered, and MUST NOT delete it when the entry is abandoned. While
@@ -634,11 +618,8 @@ state from the repository node.
 - **SC-003**: A delivery failure caused by a transient network fault, or by a lost worker, needs
   zero user actions. A failure caused by a permission or branch-protection problem needs exactly one
   user action after the cause is fixed, however many merges accumulated while it failed.
-- **SC-004**: A recovery produces exactly one regeneration release per repository. It covers the
-  definitions that the repository owns. As on a merge, it also covers the artifacts of another
-  repository that the output of the released generators selects (the generator cascade), when that
-  repository has nothing pending; when it is pending, they are held under it. Outside the widened
-  fallback, it covers only the
+- **SC-004**: A recovery produces exactly one regeneration release per repository. It covers only
+  the definitions that the repository owns. Outside the widened fallback, it covers only the
   definitions that the affected merges touched. No artifact, generator or transform-based computed
   attribute on the merge follow-up path runs against a commit other than the one that is finally on
   the remote. Two exceptions are logged at error level. First, the barrier cannot read the delivery
@@ -783,7 +764,9 @@ These were settled without asking. Three of them need confirmation, and say so.
     automations on repository state, which is a much larger change.
 15. **After an abandonment, a kept source branch comes back as a new Infrahub branch.** The
     abandonment tells every worker to drop its local branch, so the result is the same on every
-    worker. The user then has the undelivered content as a branch and can merge it again, which
+    worker. A failed send is only logged. A worker that misses it keeps its local branch, and a
+    sync on that worker does not import the branch again, because it ignores an updated branch
+    with no Infrahub branch. A sync on any other worker imports it. The user then has the undelivered content as a branch and can merge it again, which
     softens the cost of decision 1. **To confirm with the product owner**: the alternative is to
     keep the branch on the remote only.
 16. **FR-017 accepts a wider hold.** Two consultation points cannot tell a merge-started run from

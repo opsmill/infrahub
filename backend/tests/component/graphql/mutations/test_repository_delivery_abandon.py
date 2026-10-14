@@ -296,6 +296,25 @@ async def test_refuses_a_read_only_repository(subject: AbandonUnderTest, default
     assert subject.workflow.submit_calls == []
 
 
+async def test_refuses_a_node_of_another_kind_as_an_unknown_repository(
+    subject: AbandonUnderTest, default_branch: Branch
+) -> None:
+    await subject.grant_all()
+    # A node with no name attribute, so a read of the name before the kind check fails.
+    permission = await Node.init(db=subject.db, schema=InfrahubKind.GLOBALPERMISSION, branch=default_branch)
+    await permission.new(
+        db=subject.db, action=GlobalPermissions.MANAGE_REPOSITORIES.value, decision=PermissionDecision.ALLOW_ALL.value
+    )
+    await permission.save(db=subject.db)
+
+    result = await subject.abandon(queue_version=0, repository_id=permission.id)
+
+    assert error_messages(result) == [
+        f"Unable to find the node {permission.id} / CoreGenericRepository in the database."
+    ]
+    assert subject.workflow.submit_calls == []
+
+
 async def test_refuses_a_staging_repository(subject: AbandonUnderTest, default_branch: Branch) -> None:
     await subject.grant_all()
     await subject.enqueue(entry_id="merge-1")

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from contextlib import contextmanager
+import asyncio
+from contextlib import asynccontextmanager, contextmanager, suppress
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, NoReturn
 
@@ -12,7 +13,7 @@ from infrahub.git.writeback.models import DeliveryAttemptResult, DeliveryFailure
 from infrahub.log import get_run_logger
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import AsyncIterator, Iterator
     from datetime import datetime, timedelta
 
     from infrahub.git.writeback.models import PendingMerge, ReleaseLease, WritebackIntent
@@ -20,6 +21,7 @@ if TYPE_CHECKING:
         Clock,
         DeliveryGitPort,
         DeliveryStatePort,
+        LeaseRenewalPort,
         RegenerationReleasePort,
         RepositoryRef,
     )
@@ -90,15 +92,19 @@ class RepositoryWritebackService:
         state: DeliveryStatePort,
         git: DeliveryGitPort,
         releaser: RegenerationReleasePort,
+        lease_renewal: LeaseRenewalPort,
         lock_registry: InfrahubLockRegistry,
         clock: Clock,
+        release_renew_seconds: float,
     ) -> None:
         self.repository = repository
         self.state = state
         self.git = git
         self.releaser = releaser
+        self.lease_renewal = lease_renewal
         self.lock_registry = lock_registry
         self.clock = clock
+        self.release_renew_seconds = release_renew_seconds
 
     async def deliver(
         self,
@@ -481,33 +487,21 @@ class RepositoryWritebackService:
     async def _release(
         self, *, lease: ReleaseLease, result: DeliveryAttemptResult, attempt: _Attempt
     ) -> DeliveryAttemptResult:
-        repository_id = self.repository.id
-
-        async def renew() -> None:
-            await self.state.renew_lease(repository_id=repository_id, lease_id=lease.lease_id)
-
         try:
             with _step(DeliveryStage.RELEASE):
-                await self.releaser.release(repository_id=repository_id, held=lease.window, renew=renew)
+                await release_under_lease(
+                    repository=self.repository,
+                    lease=lease,
+                    state=self.state,
+                    releaser=self.releaser,
+                    lease_renewal=self.lease_renewal,
+                    renew_seconds=self.release_renew_seconds,
+                )
         except _StepFailedError as failed:
-            # Nothing cleared the items, so the next lease takes them and the next run releases every one.
-            await self._expire(lease=lease)
             await self._fail(failed=failed, attempt=attempt, commit=result.commit)
-        await self.state.clear_released(repository_id=repository_id, lease_id=lease.lease_id)
+        await self.state.clear_released(repository_id=self.repository.id, lease_id=lease.lease_id)
         log.info("Released the held regeneration of lease %s for repository %s.", lease.lease_id, self.repository.name)
         return result
-
-    async def _expire(self, *, lease: ReleaseLease) -> None:
-        try:
-            await self.state.expire_lease(repository_id=self.repository.id, lease_id=lease.lease_id)
-        except Exception:
-            # The lease then ends at its own expiry, and a later attempt leases its items again.
-            log.warning(
-                "Failed to end the release lease %s of repository %s.",
-                lease.lease_id,
-                self.repository.name,
-                exc_info=True,
-            )
 
     async def _fail(self, *, failed: _StepFailedError, attempt: _Attempt, commit: str | None = None) -> NoReturn:
         """Record the failure of the step, then stop the attempt, or raise to retry it when a retry can fix it.
@@ -574,3 +568,82 @@ class RepositoryWritebackService:
             log.warning(
                 "Failed to record the failure of the delivery to repository %s.", self.repository.name, exc_info=True
             )
+
+
+async def release_under_lease(
+    *,
+    repository: RepositoryRef,
+    lease: ReleaseLease,
+    state: DeliveryStatePort,
+    releaser: RegenerationReleasePort,
+    lease_renewal: LeaseRenewalPort,
+    renew_seconds: float,
+) -> None:
+    """Dispatch the held regeneration of the lease while a timer renews the lease, and leave the clear to the caller.
+
+    Raises:
+        Exception: The release failed; the lease then ends now, so the next lease takes its items.
+
+    """
+
+    async def renew() -> None:
+        await state.renew_lease(repository_id=repository.id, lease_id=lease.lease_id)
+
+    try:
+        async with _renewed_on_timer(
+            repository=repository, lease=lease, lease_renewal=lease_renewal, renew_seconds=renew_seconds
+        ):
+            await releaser.release(repository_id=repository.id, held=lease.window, renew=renew)
+    except Exception:
+        # Nothing cleared the items, so the next lease takes them and the next run releases every one.
+        await _expire(repository=repository, lease=lease, state=state)
+        raise
+
+
+@asynccontextmanager
+async def _renewed_on_timer(
+    *, repository: RepositoryRef, lease: ReleaseLease, lease_renewal: LeaseRenewalPort, renew_seconds: float
+) -> AsyncIterator[None]:
+    """Renew the lease every `renew_seconds` while the block runs, because one step can outlast the lease.
+
+    The timer stops when the block ends, after the renewal that runs then, if one runs.
+    """
+    ended = asyncio.Event()
+
+    async def renew_until_ended() -> None:
+        while True:
+            with suppress(TimeoutError):
+                await asyncio.wait_for(ended.wait(), timeout=renew_seconds)
+            if ended.is_set():
+                return
+            try:
+                await lease_renewal.renew_lease(repository_id=repository.id, lease_id=lease.lease_id)
+            except Exception:
+                # The lease then expires at its own time, unless a later renewal succeeds.
+                log.warning(
+                    "Failed to renew the release lease %s of repository %s.",
+                    lease.lease_id,
+                    repository.name,
+                    exc_info=True,
+                )
+
+    timer = asyncio.create_task(renew_until_ended())
+    try:
+        yield
+    finally:
+        ended.set()
+        # A renewal that runs ends whole, because a cancel inside it can leave the delivery-state lock held.
+        await timer
+
+
+async def _expire(*, repository: RepositoryRef, lease: ReleaseLease, state: DeliveryStatePort) -> None:
+    try:
+        await state.expire_lease(repository_id=repository.id, lease_id=lease.lease_id)
+    except Exception:
+        # The lease then ends at its own expiry, and a later run leases its items again.
+        log.warning(
+            "Failed to end the release lease %s of repository %s.",
+            lease.lease_id,
+            repository.name,
+            exc_info=True,
+        )

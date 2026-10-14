@@ -255,12 +255,8 @@ either case.
   than the commit of the trunk of that repository, until the delivery is done. IFC-3220 expects the
   opposite: in its User Story 2, scenario 2 queues a second merge behind the pending one, and
   scenario 3 replays onto a remote trunk that advanced. The two rules conflict. This spec does not
-  decide which one wins. On 2026-10-13, IFC-3220 accepted the refusal: while a push waits and the
-  remote default branch moved, the merge of a branch that changes files of that repository is
-  refused until a retry delivers. See the edge case "The merge check of IFC-3210 while a delivery is
-  pending" in `dev/specs/ifc-3220-writeback-failure-handling/spec.md`, and the test
-  `test_a_merge_with_files_is_refused_until_a_retry_delivers_onto_the_moved_remote_trunk` in
-  `backend/tests/integration/git/test_git_live_remote.py`.
+  decide which one wins. The decision is open and belongs to IFC-3220
+  (`dev/specs/ifc-3220-writeback-failure-handling/spec.md`).
 - **The commit Infrahub imported is no longer present in the local object database.** Ancestry
   cannot be tested. The branch is treated as diverged, which is the safe classification, and the
   record names the imported commit as the previous commit.

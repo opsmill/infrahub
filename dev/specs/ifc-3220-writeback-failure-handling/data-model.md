@@ -234,7 +234,7 @@ the queued merges touched, not with the data.
 | `account_id` | `str` | The account that requested it. |
 | `account_name` | `str` | Its name at that time. |
 | `queue_version` | `int` | The version the request named. |
-| `recorded_commit` | `str` | The commit the default branch kept. Empty when the repository records no commit, so the abandonment still runs (accepted on 2026-10-13). |
+| `recorded_commit` | `str` | The commit the default branch kept. Empty when the repository records no readable commit, so the abandonment still runs. The repository section then says that no commit was recorded, in place of a commit id. |
 | `import_owed_commit` | `str \| None` | An import that was still owed and was dropped with the queue. |
 | `entries` | `tuple[PendingMerge, ...]` | What was dropped. |
 
@@ -296,11 +296,12 @@ its progress timestamps and never changes the status.
 | any but `none` | delivery settles, under the repository lock | `none`, or `pending` if entries remain | remove snapshot entries into `removed_entry_ids`, bump version, last delivered commit, a release lease that names the uncovered held items whose `hold_seq` is not above the snapshot's highest, clear cause and error when `none` |
 | any but `none` | abandonment, under the repository lock | `none` | remove every entry into `removed_entry_ids`, bump version, clear the owed import, the abandonment record, a release lease that names every uncovered held item |
 | `none` | held-only run takes a lease, through `lease_owed_release` | unchanged | a release lease that names every uncovered held item; nothing when a live lease covers them all |
-| any | release renews | unchanged | the lease's `expires_at` |
+| any | release renews, after each awaited step and on a timer (`research.md` R10) | unchanged | the lease's `expires_at` |
 | any | release fails, so the lease expires | unchanged | the lease's `expires_at`, set to now; the items of its window stay held, and the next lease takes them (`research.md` R10, rule 4) |
 | any | release clears | unchanged | remove each item of the lease's window that still has the named `hold_seq`, then the lease; an item held again since stays; clear the cause and the error when the queue is empty |
 | any | recovery check submits | unchanged | `last_progress_at` |
 | any | rewrite discards the last delivered commit (FR-021) | unchanged | `delivery_reverted` |
+| any | re-target of the default branch | unchanged | clear the last delivered commit |
 | any | guard refuses a branch deletion | unchanged | `delete_source_git_branch` on every entry that names the branch; the version does not move |
 
 Every row that takes or clears a lease also cleans up the expired leases in the same save, as
@@ -394,10 +395,9 @@ Every new field is optional with a default, so a run queued by the previous code
 | `GitRepositoryMerge` | `git/models.py` | `pending_merge` | `PendingMerge \| None = None`. `None` makes the flow build the entry itself. |
 | `GitRepositoryMerge` | `git/models.py` | `pending_merge_enqueued` | `bool = False`. The dispatcher sets `True` only when one of its enqueue tries returned. Only `False` makes `merge_git_repository` write the entry, with a `widen` marker of scope `all`, as the first step of its delivery task (`research.md` R3). |
 | `RequestArtifactDefinitionGenerate` | `git/models.py` | `repository_id` | `str \| None = None` |
-| `generate_artifact_definition` flow | `git/tasks.py` | `exclude_repository_ids`, `include_repository_ids` | `list[str] \| None = None`. An empty list restricts nothing, as `None` does. |
-| `run_generator_definition` flow | `generators/tasks.py` | `exclude_repository_ids`, `include_repository_ids` | `list[str] \| None = None`. An empty list restricts nothing, as `None` does. |
-| `merge_git_repository` flow | `git/tasks.py` | `context` | `InfrahubContext`, the context of the release. A run queued by the previous code has none, so the default is an anonymous context on the global branch. |
-| `GitRepositoryDeliveryRetry` | `git/models.py`, new | `repository_id`, `repository_name`, `manual` | `str`, `str`, `bool = True`. The recovery check sends `manual=False`. |
+| `generate_artifact_definition` flow | `git/tasks.py` | `exclude_repository_ids`, `include_repository_ids` | `list[str] \| None = None` |
+| `run_generator_definition` flow | `generators/tasks.py` | `exclude_repository_ids`, `include_repository_ids` | `list[str] \| None = None` |
+| `GitRepositoryDeliveryRetry` | `git/models.py`, new | `repository_id`, `repository_name` | `str` |
 | `GitRepositoryDeliveryAbandon` | `git/models.py`, new | `repository_id`, `repository_name`, `queue_version` | `str`, `str`, `int` |
 
 The actor of an abandonment comes from the workflow's `InfrahubContext`, not from the payload, so a

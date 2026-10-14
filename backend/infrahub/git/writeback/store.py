@@ -245,6 +245,12 @@ class WritebackIntentStore:
     async def touch(self, *, repository_id: str) -> None:
         await self._move_progress(repository_id=repository_id)
 
+    async def forget_delivered_commit(self, *, repository_id: str) -> None:
+        def transition(state: _LockedState) -> tuple[WritebackIntent, None]:
+            return state.intent.without_delivered_commit(), None
+
+        await self._transition(repository_id=repository_id, transition=transition)
+
     async def record_reverted(self, *, repository_id: str, delivered_commit: str, new_head: str) -> bool:
         def transition(state: _LockedState) -> tuple[WritebackIntent, bool]:
             recorded = state.intent.with_reverted(delivered_commit=delivered_commit, new_head=new_head, now=state.now)
@@ -364,6 +370,26 @@ class WritebackIntentStore:
             _LAST_DELIVERED_COMMIT: intent.last_delivered_commit,
             _REVERTED: intent.reverted.model_dump(mode="json") if intent.reverted else None,
         }
+
+
+class LeaseRenewer:
+    """Renew a release lease on a database session of its own for each renewal."""
+
+    def __init__(
+        self, db: InfrahubDatabase, lock_registry: InfrahubLockRegistry, default_branch: Branch, clock: Clock
+    ) -> None:
+        self.db = db
+        self.lock_registry = lock_registry
+        self.default_branch = default_branch
+        self.clock = clock
+
+    async def renew_lease(self, *, repository_id: str, lease_id: str) -> None:
+        # The release uses the session of the flow at the same time, and a session serves one query at a time.
+        async with self.db.start_session() as session:
+            store = WritebackIntentStore(
+                db=session, lock_registry=self.lock_registry, default_branch=self.default_branch, clock=self.clock
+            )
+            await store.renew_lease(repository_id=repository_id, lease_id=lease_id)
 
 
 def _stored_member[EnumT: InfrahubStringEnum](

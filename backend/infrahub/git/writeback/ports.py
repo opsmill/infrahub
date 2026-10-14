@@ -140,8 +140,11 @@ class DeliveryStatePort(Protocol):
     async def touch(self, *, repository_id: str) -> None:
         """Move the time of the last progress after a recovery submission, as at a step boundary of an attempt."""
 
+    async def forget_delivered_commit(self, *, repository_id: str) -> None:
+        """Clear the last delivered commit, which names a commit of the previous default branch after a re-target."""
+
     async def record_reverted(self, *, repository_id: str, delivered_commit: str, new_head: str) -> bool:
-        """Record now that a rewrite of the remote discarded the delivered commit, and return whether it did.
+        """Record now that a rewrite of the remote discarded the delivered commit, and return whether it wrote a record.
 
         Writes nothing when the record already names the delivered commit.
         """
@@ -203,6 +206,16 @@ class DeliveryGitPort(Protocol):
         """Tell every worker that the remote branch is gone, without deleting it."""
 
 
+class AbandonmentGitPort(Protocol):
+    """The part of the Git work that an abandonment needs, none of which runs a Git command or needs a clone."""
+
+    async def recorded_commit(self) -> str | None:
+        """Return the commit that Infrahub records for the repository on the destination branch, if it records one."""
+
+    async def notify_branch_deleted(self, *, git_branch: str) -> None:
+        """Tell every worker that the remote branch is gone, without deleting it."""
+
+
 class RegenerationReleasePort(Protocol):
     async def release(
         self, *, repository_id: str, held: HeldRegeneration, renew: Callable[[], Awaitable[None]]
@@ -216,9 +229,23 @@ class RegenerationReleasePort(Protocol):
         """
 
 
+class LeaseRenewalPort(Protocol):
+    async def renew_lease(self, *, repository_id: str, lease_id: str) -> None:
+        """Move the expiry of the lease while the release of its items runs."""
+
+
 class DeliveryRunQuery(Protocol):
     async def has_queued_run(self, *, repository_id: str) -> bool:
         """Return whether a delivery run of the repository waits to start.
+
+        Raises:
+            httpx.HTTPError: The orchestrator answered with an error, or its connection failed.
+            OSError: The connection to the orchestrator failed.
+
+        """
+
+    async def has_active_run(self, *, repository_id: str) -> bool:
+        """Return whether a delivery run of the repository waits to start or runs.
 
         Raises:
             httpx.HTTPError: The orchestrator answered with an error, or its connection failed.
