@@ -37,7 +37,8 @@ Deployment has one extra rule, below.
 | **Merge order agreed with IFC-3210** (`collect_pending_imports`, the ancestry primitive, the merge-path check) | T029, T039 | Patrick Ogenstad |
 
 T085 to T092 are done on the provisional answers of spec decisions 1 and 15, which are not
-confirmed yet. A different answer reopens them.
+confirmed yet. A different answer reopens them. The GraphQL and authorization sign-off that T087
+needs is given.
 
 ## Deployment rule
 

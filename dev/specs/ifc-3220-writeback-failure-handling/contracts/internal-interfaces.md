@@ -393,13 +393,16 @@ Runs `research.md` R8: under the repository lock, `git.recorded_commit()` for th
 `state.abandon(...)`, then `git.notify_branch_deleted(...)` for every abandoned entry that carried
 the deletion flag; then, with the lock released, `releaser.release(...)` on the lease window, then
 `state.clear_released(...)`. If the release raises, it calls `state.expire_lease(...)` on its lease
-and re-raises, so the recovery check releases the held items (`research.md` R10, rule 4). It uses
+and re-raises, so the recovery check releases the held items (`research.md` R10, rule 4). The
+queue is empty by then, so the retry mutation refuses, and the barrier no longer holds the
+repository: the error line tells the user to run the artifact and generator definitions and the
+computed attributes by hand to regenerate now. It uses
 the Git port only for these two calls, and neither runs a Git command: `recorded_commit` reads
 Infrahub, and the notification is a message to the workers. It changes no Git state, deletes no
 remote branch and imports nothing, so its flow builds the repository object without a clone.
 When the repository records no readable commit, the record stores an empty `recorded_commit`. A
 failed branch-deleted notification is only logged, as a warning, and the release still runs,
-because the queue is already dropped. Both accepted on 2026-10-13.
+because the queue is already dropped.
 `DeliveryQueueChangedError` and `NothingPendingError` subclass `ValidationError`, so the task run
 fails with the message of the GraphQL contract. If the clear fails after a release that worked, the
 run logs that the release ran and raises. The items stay held under the lease, which is not

@@ -759,7 +759,9 @@ These were settled without asking. Three of them need confirmation, and say so.
     automations on repository state, which is a much larger change.
 15. **After an abandonment, a kept source branch comes back as a new Infrahub branch.** The
     abandonment tells every worker to drop its local branch, so the result is the same on every
-    worker. The user then has the undelivered content as a branch and can merge it again, which
+    worker. A failed send is only logged. A worker that misses it keeps its local branch, and a
+    sync on that worker does not import the branch again, because it ignores an updated branch
+    with no Infrahub branch. A sync on any other worker imports it. The user then has the undelivered content as a branch and can merge it again, which
     softens the cost of decision 1. **To confirm with the product owner**: the alternative is to
     keep the branch on the remote only.
 16. **FR-017 accepts a wider hold.** Two consultation points cannot tell a merge-started run from
