@@ -4,13 +4,13 @@ import { LinkIcon } from "lucide-react";
 import { Col } from "@/shared/components/container";
 import { pluralize } from "@/shared/utils/string";
 
+import type { AllocationScopeField } from "@/entities/resource-manager/ui/hooks/use-allocation-scope-fields";
 import type { NumberPoolDivisionInvalidCause } from "@/entities/resource-manager/ui/hooks/use-number-pool-division";
-import type { NumberPoolScopeField } from "@/entities/resource-manager/ui/hooks/use-number-pool-scope-fields";
 import { getNumberPoolDivisionsUrl } from "@/entities/resource-manager/ui/routing/number-pool-urls";
 
 const fieldList = new Intl.ListFormat("en", { style: "long", type: "conjunction" });
 
-const describeCause = (cause: NumberPoolDivisionInvalidCause, fields: NumberPoolScopeField[]) => {
+const describeCause = (cause: NumberPoolDivisionInvalidCause, fields: AllocationScopeField[]) => {
   if (cause.reason === "unreadable") {
     return "The allocation scope in this link cannot be read. The link may be incomplete or edited by hand.";
   }
@@ -22,7 +22,7 @@ const describeCause = (cause: NumberPoolDivisionInvalidCause, fields: NumberPool
 
 export interface NumberPoolDivisionInvalidProps {
   poolId: string;
-  fields: NumberPoolScopeField[];
+  fields: AllocationScopeField[];
   cause: NumberPoolDivisionInvalidCause;
 }
 

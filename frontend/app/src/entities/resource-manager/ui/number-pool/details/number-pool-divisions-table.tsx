@@ -10,11 +10,11 @@ import type {
   NumberPoolDivision,
   NumberPoolDivisionEntry,
 } from "@/entities/resource-manager/domain/model/number-pool";
+import type { AllocationScopeField } from "@/entities/resource-manager/ui/hooks/use-allocation-scope-fields";
 import {
   NUMBER_POOL_DIVISION_SORT_BY_USAGE,
   type NumberPoolDivisionSort,
 } from "@/entities/resource-manager/ui/hooks/use-number-pool-division-table-state";
-import type { NumberPoolScopeField } from "@/entities/resource-manager/ui/hooks/use-number-pool-scope-fields";
 import { NumberPoolUsageBar } from "@/entities/resource-manager/ui/number-pool/details/number-pool-usage-bar";
 import { getNumberPoolDivisionUrl } from "@/entities/resource-manager/ui/routing/number-pool-urls";
 
@@ -106,7 +106,7 @@ const isOpenedByTheBrowser = (event: React.MouseEvent) =>
 
 export interface NumberPoolDivisionsTableProps {
   poolId: string;
-  fields: NumberPoolScopeField[];
+  fields: AllocationScopeField[];
   divisions: NumberPoolDivision[];
   sort: NumberPoolDivisionSort;
   onSortChange: (sort: NumberPoolDivisionSort) => void;

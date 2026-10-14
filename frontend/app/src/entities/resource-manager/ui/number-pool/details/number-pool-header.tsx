@@ -16,7 +16,7 @@ import {
   NUMBER_POOL_KIND,
   NUMBER_POOL_TYPE_SCHEMA,
 } from "@/entities/resource-manager/domain/model/pool";
-import { useNumberPoolScopeFields } from "@/entities/resource-manager/ui/hooks/use-number-pool-scope-fields";
+import { useAllocationScopeFields } from "@/entities/resource-manager/ui/hooks/use-allocation-scope-fields";
 import { NumberPoolActionsMenu } from "@/entities/resource-manager/ui/number-pool/details/number-pool-actions-menu";
 import { resourceManagerQueryKeys } from "@/entities/resource-manager/ui/queries/resource-manager.query-keys";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
@@ -104,7 +104,7 @@ function AllocationSentence({ pool }: AllocationSentenceProps) {
   const kind = pool.node.value;
   const attribute = pool.node_attribute.value;
   const { schema } = useSchema(kind);
-  const allocationScopeFields = useNumberPoolScopeFields(pool);
+  const allocationScopeFields = useAllocationScopeFields(pool);
 
   return (
     <Row className="flex-wrap gap-1.5 text-sm">

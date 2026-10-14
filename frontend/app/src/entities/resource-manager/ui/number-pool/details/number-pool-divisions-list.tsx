@@ -11,12 +11,12 @@ import type {
   NumberPoolData,
   NumberPoolDivision,
 } from "@/entities/resource-manager/domain/model/number-pool";
+import { useAllocationScopeFields } from "@/entities/resource-manager/ui/hooks/use-allocation-scope-fields";
 import {
   NUMBER_POOL_DIVISION_SORT_BY_USAGE,
   type NumberPoolDivisionSort,
   useNumberPoolDivisionTableState,
 } from "@/entities/resource-manager/ui/hooks/use-number-pool-division-table-state";
-import { useNumberPoolScopeFields } from "@/entities/resource-manager/ui/hooks/use-number-pool-scope-fields";
 import { NumberPoolDivisionsTable } from "@/entities/resource-manager/ui/number-pool/details/number-pool-divisions-table";
 import { useGetNumberPoolDivisions } from "@/entities/resource-manager/ui/queries/get-number-pool-divisions.query";
 
@@ -109,7 +109,7 @@ interface DivisionsContentProps {
 }
 
 function DivisionsContent({ pool, shown }: DivisionsContentProps) {
-  const fields = useNumberPoolScopeFields(pool);
+  const fields = useAllocationScopeFields(pool);
   const [{ sort }, { setSort }] = useNumberPoolDivisionTableState();
 
   if (shown.length === 0) return <EmptyMessage title="No allocation scope matches" />;
