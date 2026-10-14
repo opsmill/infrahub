@@ -8,8 +8,6 @@ from infrahub_sdk.utils import is_valid_uuid
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.relationship.model import Relationship
 
-from .queries.get_profile_data import ProfileData, RelationshipFilter
-
 if TYPE_CHECKING:
     from infrahub.core.attribute import BaseAttribute
     from infrahub.core.branch import Branch
@@ -92,30 +90,6 @@ class NodeProfilesApplier:
                 rel_names_for_profiles.append(rel_name)
 
         return rel_names_for_profiles
-
-    async def _get_rel_filters_for_profiles(self, node: Node, rel_names: list[str]) -> list[RelationshipFilter]:
-        node_schema = node.get_schema()
-
-        identifiers: list[RelationshipFilter] = []
-        for rel_name in rel_names:
-            rel_schema = node_schema.get_relationship(name=rel_name)
-            identifiers.append(
-                RelationshipFilter(
-                    relationship_identifier=f"profile_{rel_schema.get_identifier()}", direction=rel_schema.direction
-                )
-            )
-
-        return identifiers
-
-    async def _get_sorted_profile_data(
-        self,
-        profile_ids: list[str],
-        attr_names_for_profiles: list[str],
-        include_relationships: list[RelationshipFilter] | None = None,
-    ) -> list[ProfileData]:
-        return await self.profile_data_reader.read(
-            profile_ids=profile_ids, attr_names=attr_names_for_profiles, rel_filters=include_relationships or []
-        )
 
     def _apply_profile_to_attribute(self, node_attr: BaseAttribute, profile_value: Any, profile_id: str) -> bool:
         is_changed = False
@@ -235,7 +209,7 @@ class NodeProfilesApplier:
         A named attribute left at its default or set by a profile takes the value of the profile of highest priority
         that sets it, and a named relationship that profiles support and that holds no peer the writer set takes the
         peers of the profile of highest priority that sets it; a field no profile sets is left out. The profiles are
-        read in a single query, and not at all when no named field can take a profile value.
+        read at most once, and not at all when no named field can take a profile value.
         """
         candidate_attr_names = [
             attr_name for attr_name in attr_names if self._takes_profile_value(node_attr=node.get_attribute(attr_name))
@@ -248,13 +222,11 @@ class NodeProfilesApplier:
         field_values = ProfileFieldValues(attribute_values={}, relationship_peers={})
         if not candidate_attr_names and not candidate_rels:
             return field_values
-        rel_filters = await self._get_rel_filters_for_profiles(
-            node=node, rel_names=[node_rel.name for node_rel in candidate_rels]
-        )
-        sorted_profile_data = await self._get_sorted_profile_data(
+        sorted_profile_data = await self.profile_data_reader.read(
+            schema=node.get_schema(),
             profile_ids=await self._get_profile_ids(node=node),
-            attr_names_for_profiles=candidate_attr_names,
-            include_relationships=rel_filters,
+            attr_names=candidate_attr_names,
+            rel_names=[node_rel.name for node_rel in candidate_rels],
         )
         for attr_name in candidate_attr_names:
             profile_value = next(
@@ -267,12 +239,12 @@ class NodeProfilesApplier:
             )
             if profile_value is not None:
                 field_values.attribute_values[attr_name] = profile_value
-        for node_rel, rel_filter in zip(candidate_rels, rel_filters, strict=True):
+        for node_rel in candidate_rels:
             profile_peers = next(
                 (
-                    profile_data.relationship_peers[rel_filter]
+                    profile_data.peers_of(relationship=node_rel.schema)
                     for profile_data in sorted_profile_data
-                    if profile_data.relationship_peers.get(rel_filter)
+                    if profile_data.peers_of(relationship=node_rel.schema)
                 ),
                 None,
             )
@@ -300,15 +272,15 @@ class NodeProfilesApplier:
         profile_ids = await self._get_profile_ids(node=node)
         attr_names_for_profiles = await self._get_attr_names_for_profiles(node=node)
         rel_names_for_profiles = await self._get_rel_names_for_profiles(node=node)
-        rel_filters_for_profiles = await self._get_rel_filters_for_profiles(node=node, rel_names=rel_names_for_profiles)
-        if not attr_names_for_profiles and not rel_filters_for_profiles:
+        if not attr_names_for_profiles and not rel_names_for_profiles:
             return []
 
         # get profiles priorities, attribute values, and relationship peers on branch
-        sorted_profile_data = await self._get_sorted_profile_data(
+        sorted_profile_data = await self.profile_data_reader.read(
+            schema=node.get_schema(),
             profile_ids=profile_ids,
-            attr_names_for_profiles=attr_names_for_profiles,
-            include_relationships=rel_filters_for_profiles,
+            attr_names=attr_names_for_profiles,
+            rel_names=rel_names_for_profiles,
         )
 
         updated_field_names: list[str] = []
@@ -330,12 +302,12 @@ class NodeProfilesApplier:
                 self._remove_profile_from_attribute(node_attr=node_attr)
                 updated_field_names.append(attr_name)
 
-        for rel_filter in rel_filters_for_profiles:
+        for rel_name in rel_names_for_profiles:
             has_profile_rel_data = False
-            node_rel = node.get_relationship_by_identifier(rel_filter.relationship_identifier.removeprefix("profile_"))
+            node_rel = node.get_relationship(name=rel_name)
 
             for profile_data in sorted_profile_data:
-                profile_peers = profile_data.relationship_peers.get(rel_filter)
+                profile_peers = profile_data.peers_of(relationship=node_rel.schema)
                 if profile_peers:
                     has_profile_rel_data = True
                     is_changed = await self._apply_profile_to_relationship(

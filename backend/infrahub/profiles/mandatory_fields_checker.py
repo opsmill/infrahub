@@ -5,8 +5,6 @@ from typing import TYPE_CHECKING, Any
 
 from infrahub.core.query.node import NodeGetByHFIDQuery
 
-from .queries.get_profile_data import RelationshipFilter
-
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
@@ -67,8 +65,12 @@ class ProfilesMandatoryFieldGetter:
         profiles_data: Sequence[Any] | None,
         mandatory_attr_names: list[str],
         mandatory_rel_names: list[str],
+        read_every_field: bool = False,
     ) -> tuple[set[str], set[str]]:
-        """Get mandatory attributes and relationships that are provided by profiles."""
+        """Get mandatory attributes and relationships that are provided by profiles.
+
+        With `read_every_field`, every field the profiles can hold is read, for a later reader of the same profiles.
+        """
         identifiers = _extract_profile_identifiers_from_input(profiles_data=profiles_data)
 
         profile_ids = list(identifiers.ids)
@@ -81,22 +83,12 @@ class ProfilesMandatoryFieldGetter:
         if not profile_ids:
             return set(), set()
 
-        rel_filters: list[RelationshipFilter] = []
-        rel_name_to_filter: dict[str, RelationshipFilter] = {}
-        for rel_name in mandatory_rel_names:
-            rel_schema = schema.get_relationship(name=rel_name)
-            if not rel_schema.support_profiles:
-                continue
-
-            rel_filter = RelationshipFilter(
-                relationship_identifier=f"profile_{rel_schema.get_identifier()}", direction=rel_schema.direction
+        if read_every_field:
+            profile_data_list = await self.profile_data_reader.read_every_field(schema=schema, profile_ids=profile_ids)
+        else:
+            profile_data_list = await self.profile_data_reader.read(
+                schema=schema, profile_ids=profile_ids, attr_names=mandatory_attr_names, rel_names=mandatory_rel_names
             )
-            rel_filters.append(rel_filter)
-            rel_name_to_filter[rel_name] = rel_filter
-
-        profile_data_list = await self.profile_data_reader.read(
-            profile_ids=profile_ids, attr_names=mandatory_attr_names, rel_filters=rel_filters
-        )
 
         provided_attrs: set[str] = set()
         provided_rels: set[str] = set()
@@ -106,8 +98,8 @@ class ProfilesMandatoryFieldGetter:
                 if profile_data.attribute_values.get(attr_name) is not None:
                     provided_attrs.add(attr_name)
 
-            for rel_name, rel_filter in rel_name_to_filter.items():
-                if profile_data.relationship_peers.get(rel_filter):
+            for rel_name in mandatory_rel_names:
+                if profile_data.peers_of(relationship=schema.get_relationship(name=rel_name)):
                     provided_rels.add(rel_name)
 
         return provided_attrs, provided_rels

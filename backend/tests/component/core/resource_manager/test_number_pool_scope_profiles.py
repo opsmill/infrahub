@@ -13,6 +13,7 @@ from tests.adapters.lock.timeline import LockAction
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
 from tests.helpers.number_pool import (
     SCOPED_DEVICE,
+    SCOPED_RACK,
     pool_lock_events,
     scoped_device_holding,
     scoped_pool,
@@ -29,15 +30,17 @@ if TYPE_CHECKING:
 
 @dataclass
 class ProfileDataset:
-    """Two pools over the device's `vlan_id`, the numbers their divisions hold, and three device profiles.
+    """Three pools over the device's `vlan_id`, the numbers their divisions hold, and four device profiles.
 
     The pool scoped by `site`: site-a holds 1, site-b holds 1 to 3 and site-c holds 1. The pool scoped by `site`
-    and `role`: the spines of site-a hold 1. The profiles set site-a, site-b, and site-a with the role spine.
+    and `role`: the spines of site-a hold 1. The pool scoped by the optional `rack`: rack-1 holds 1. The profiles set
+    site-a, site-b, site-a with the role spine, and site-a with rack-1.
     """
 
     default_branch: Branch
     pools: dict[str, CoreNumberPool]
     sites: dict[str, Node]
+    racks: dict[str, Node]
     profiles: dict[str, Node]
 
 
@@ -64,9 +67,9 @@ PROFILE_SCOPE_CASES = [
         expected_site="site-a",
         expected_division=("site-a",),
         expected_number=2,
-        # The preview and the write each read the profiles to check the mandatory fields and to read the division,
+        # The preview and the write each read the profiles once, for the mandatory fields and the division together,
         # and the saved device reads them once more to apply them.
-        expected_profile_reads=5,
+        expected_profile_reads=3,
     ),
     ProfileScopeCase(
         name="site-and-role-set-by-the-profile",
@@ -77,7 +80,7 @@ PROFILE_SCOPE_CASES = [
         expected_site="site-a",
         expected_division=("site-a", "spine"),
         expected_number=2,
-        expected_profile_reads=5,
+        expected_profile_reads=3,
     ),
     ProfileScopeCase(
         name="site-of-the-payload-over-the-site-of-the-profile",
@@ -90,6 +93,18 @@ PROFILE_SCOPE_CASES = [
         expected_number=2,
         # Only the saved device reads the profiles, because the payload sets every element of the scope.
         expected_profile_reads=1,
+    ),
+    ProfileScopeCase(
+        name="optional-rack-set-by-the-profile",
+        pool="rack",
+        profile="site-a-rack-1",
+        payload_site=None,
+        payload_role="leaf",
+        expected_site="site-a",
+        expected_division=("rack-1",),
+        expected_number=2,
+        # The mandatory fields leave the optional rack out, so their read covers it only by reading every field.
+        expected_profile_reads=3,
     ),
 ]
 
@@ -105,6 +120,7 @@ class TestScopeElementSetByAProfile:
         pools = {
             "site": await scoped_pool(db=db, name="vlan-per-site", allocation_scope=["site"]),
             "site-and-role": await scoped_pool(db=db, name="vlan-per-site-and-role", allocation_scope=["site", "role"]),
+            "rack": await scoped_pool(db=db, name="vlan-per-rack", allocation_scope=["rack"]),
         }
         sites = {name: await scoped_site(db=db, branch=branch, name=name) for name in ("site-a", "site-b", "site-c")}
         for site_name, numbers in (("site-a", [1]), ("site-b", [1, 2, 3]), ("site-c", [1])):
@@ -126,17 +142,40 @@ class TestScopeElementSetByAProfile:
             number=1,
             role="spine",
         )
+        rack = await Node.init(db=db, schema=SCOPED_RACK.kind, branch=branch)
+        await rack.new(db=db, name="rack-1")
+        await rack.save(db=db)
+        racks = {"rack-1": rack}
+        rack_holder = await Node.init(db=db, schema=SCOPED_DEVICE.kind, branch=branch)
+        await rack_holder.new(
+            db=db,
+            name="rack-1-holder-1",
+            role="leaf",
+            tags=["red"],
+            site=sites["site-a"],
+            rack=rack,
+            vlan_id={"value": 1, "from_pool": {"id": pools["rack"].id}},
+        )
+        await rack_holder.save(db=db)
         profiles = {}
-        for profile_name, site_name, role in (
-            ("site-a", "site-a", None),
-            ("site-b", "site-b", None),
-            ("site-a-spine", "site-a", "spine"),
+        for profile_name, site_name, role, rack_name in (
+            ("site-a", "site-a", None, None),
+            ("site-b", "site-b", None, None),
+            ("site-a-spine", "site-a", "spine", None),
+            ("site-a-rack-1", "site-a", None, "rack-1"),
         ):
             profile = await Node.init(db=db, schema=f"Profile{SCOPED_DEVICE.kind}", branch=branch)
-            await profile.new(db=db, profile_name=profile_name, profile_priority=1000, site=sites[site_name], role=role)
+            await profile.new(
+                db=db,
+                profile_name=profile_name,
+                profile_priority=1000,
+                site=sites[site_name],
+                role=role,
+                rack=racks[rack_name] if rack_name else None,
+            )
             await profile.save(db=db)
             profiles[profile_name] = profile
-        return ProfileDataset(default_branch=branch, pools=pools, sites=sites, profiles=profiles)
+        return ProfileDataset(default_branch=branch, pools=pools, sites=sites, racks=racks, profiles=profiles)
 
     @pytest.mark.parametrize("case", PROFILE_SCOPE_CASES, ids=[case.name for case in PROFILE_SCOPE_CASES])
     async def test_the_division_includes_the_scope_elements_a_profile_sets(
@@ -158,8 +197,9 @@ class TestScopeElementSetByAProfile:
             payload["site"] = {"id": dataset.sites[case.payload_site].id}
         if case.payload_role is not None:
             payload["role"] = {"value": case.payload_role}
+        peers = {**dataset.sites, **dataset.racks}
         division_key = ".".join(
-            dataset.sites[element].id if element in dataset.sites else element for element in case.expected_division
+            peers[element].id if element in peers else element for element in case.expected_division
         )
         expected_lock_name = f"resource_pool.{pool.id}.{division_key}"
         counting_db = CountingInfrahubDatabase.from_db(db=db)

@@ -499,6 +499,12 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             profiles_data=fields.get("profiles"),
             mandatory_attr_names=mandatory_attrs_to_check,
             mandatory_rel_names=mandatory_rels_to_check,
+            # A number pool may read the profiles again to choose the division, so read them once for both.
+            read_every_field=any(
+                attr_schema.kind == "NumberPool"
+                or (isinstance(fields.get(attr_schema.name), dict) and "from_pool" in fields[attr_schema.name])
+                for attr_schema in self._schema.attributes
+            ),
         )
 
     async def _process_fields(
