@@ -71,15 +71,20 @@ async def create_device_in_own_session(db: InfrahubDatabase, branch: Branch, pay
         )
 
 
+async def save_templated_scoped_schema(db: InfrahubDatabase) -> None:
+    """Save the scoped pool test schema with an object template generated for the device."""
+    schema = deepcopy(SCOPED_POOL_SCHEMA)
+    next(node for node in schema.nodes if node.kind == SCOPED_DEVICE.kind).generate_template = True
+    await save_schema_kinds(db=db, schema=schema)
+    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+
+
 @pytest.fixture
 async def templated_scoped_schema(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     """The scoped pool test schema with an object template generated for the device."""
-    schema = deepcopy(SCOPED_POOL_SCHEMA)
-    next(node for node in schema.nodes if node.kind == SCOPED_DEVICE.kind).generate_template = True
-    await save_schema_kinds(db=db, schema=schema)
-    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+    await save_templated_scoped_schema(db=db)
 
 
 @pytest.fixture
@@ -538,3 +543,121 @@ async def test_a_site_named_by_its_hfid_allocates_in_its_division(
         (expected_lock_name, LockAction.ACQUIRE),
         (expected_lock_name, LockAction.RELEASE),
     ]
+
+
+@dataclass
+class TemplatePoolDataset:
+    """Three pools over the device's `vlan_id` that a device template each names, and the numbers they hold.
+
+    The pool scoped by `site`: site-a holds 1. The unscoped pool: 1 is held. The pool scoped by `role`: the leaves
+    hold 1 and the spines hold 1 to 3. Each template sets the role leaf.
+    """
+
+    default_branch: Branch
+    pools: dict[str, CoreNumberPool]
+    sites: dict[str, Node]
+    templates: dict[str, Node]
+
+
+@dataclass
+class TemplatePoolCase:
+    name: str
+    pool: str
+    site: str
+    expected_number: int
+    expected_division: str | None
+
+
+TEMPLATE_POOL_CASES = [
+    # The device sits in site-b, so the number site-a holds does not count.
+    TemplatePoolCase(name="scoped-by-site", pool="site", site="site-b", expected_number=1, expected_division="site-b"),
+    TemplatePoolCase(name="unscoped", pool="unscoped", site="site-b", expected_number=2, expected_division=None),
+    # Only the template sets the role, and the spines hold 1 to 3, so 2 comes only from the leaf division.
+    TemplatePoolCase(name="scoped-by-role", pool="role", site="site-a", expected_number=2, expected_division="leaf"),
+]
+
+
+class TestObjectTemplateNamingAPool:
+    """Every test writes one device through a pool that no other test of the class writes through."""
+
+    @pytest.fixture(scope="class")
+    async def dataset(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        register_core_models_schema_scope_class: SchemaBranch,
+    ) -> TemplatePoolDataset:
+        branch = default_branch_scope_class
+        await save_templated_scoped_schema(db=db)
+        pools = {
+            "site": await scoped_pool(db=db, name="vlan-per-site", allocation_scope=["site"]),
+            "unscoped": await scoped_pool(db=db, name="vlan", allocation_scope=None),
+            "role": await scoped_pool(db=db, name="vlan-per-role", allocation_scope=["role"]),
+        }
+        sites = {name: await scoped_site(db=db, branch=branch, name=name) for name in ("site-a", "site-b")}
+        for pool_name in ("site", "unscoped"):
+            await scoped_device_holding(
+                db=db,
+                branch=branch,
+                pool=pools[pool_name],
+                name=f"{pool_name}-holder-1",
+                site=sites["site-a"],
+                number=1,
+            )
+        for role, numbers in (("leaf", [1]), ("spine", [1, 2, 3])):
+            for number in numbers:
+                await scoped_device_holding(
+                    db=db,
+                    branch=branch,
+                    pool=pools["role"],
+                    name=f"{role}-holder-{number}",
+                    site=sites["site-a"],
+                    number=number,
+                    role=role,
+                )
+        templates = {}
+        for pool_name, pool in pools.items():
+            template = await Node.init(db=db, schema=f"Template{SCOPED_DEVICE.kind}", branch=branch)
+            await template.new(
+                db=db,
+                template_name=f"template-of-{pool_name}",
+                role="leaf",
+                tags=["red"],
+                vlan_id_from_resource_pool={"id": pool.id},
+            )
+            await template.save(db=db)
+            templates[pool_name] = template
+        return TemplatePoolDataset(default_branch=branch, pools=pools, sites=sites, templates=templates)
+
+    @pytest.mark.parametrize("case", TEMPLATE_POOL_CASES, ids=[case.name for case in TEMPLATE_POOL_CASES])
+    async def test_the_device_allocates_in_its_division_of_the_pool_its_template_names(
+        self,
+        db: InfrahubDatabase,
+        dataset: TemplatePoolDataset,
+        recording_lock_timeline: LockTimeline,
+        case: TemplatePoolCase,
+    ) -> None:
+        branch = dataset.default_branch
+        pool = dataset.pools[case.pool]
+        payload = {
+            "name": {"value": f"device-of-{case.name}"},
+            "site": {"id": dataset.sites[case.site].id},
+            "object_template": {"id": dataset.templates[case.pool].id},
+        }
+        division_key = (
+            dataset.sites[case.expected_division].id
+            if case.expected_division in dataset.sites
+            else case.expected_division
+        )
+        expected_lock_name = f"resource_pool.{pool.id}" + (f".{division_key}" if division_key is not None else "")
+        start = recording_lock_timeline.checkpoint("write")
+
+        device = await create_device_in_own_session(db=db, branch=branch, payload=payload)
+
+        stored = await NodeManager.get_one(db=db, branch=branch, id=device.id, raise_on_error=True)
+        assert stored.get_attribute("role").value == "leaf"
+        assert vlan_id(stored) == case.expected_number
+        assert pool_lock_events(timeline=recording_lock_timeline, pool=pool, after=start) == [
+            (expected_lock_name, LockAction.ACQUIRE),
+            (expected_lock_name, LockAction.RELEASE),
+        ]
