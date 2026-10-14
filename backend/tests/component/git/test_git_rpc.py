@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 from unittest.mock import ANY, AsyncMock, patch
@@ -18,8 +19,11 @@ from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.node import Node
+from infrahub.core.registry import registry
 from infrahub.exceptions import RepositoryError
 from infrahub.git import InfrahubRepository
+from infrahub.git.activity.models import RepositoryActivityOperation
+from infrahub.git.import_errors import RepositoryImportError
 from infrahub.git.models import (
     GitDiffNamesOnly,
     GitRepositoryAdd,
@@ -35,16 +39,27 @@ from infrahub.lock import InfrahubLockRegistry
 from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from infrahub.workers.dependencies import build_client, build_message_bus
+from infrahub.workers.dependencies import build_cache, build_client, build_message_bus
 from infrahub.workflows.catalogue import GIT_REPOSITORIES_DIFF_NAMES_ONLY, GIT_REPOSITORIES_MERGE
+from tests.adapters.cache import RecordingCache
 from tests.adapters.lock import LockTimeline, RecordingImporter, RecordingLockRegistry
-from tests.adapters.message_bus import BusSimulator
+from tests.adapters.message_bus import BusSimulator, FailingBus
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.dependency_override import override_dependency
-from tests.helpers.git import build_repository_client
+from tests.helpers.git import LocalRemote, build_repository_client
+from tests.helpers.repository_activity import (
+    activity_run,
+    last_run_branches,
+    run_record_operations,
+    run_record_writes,
+    stored_run_keys,
+)
+from tests.helpers.repository_sync import INVALID_YAML_CONFIG, invalid_yaml_config_message
+from tests.helpers.test_app import TestInfrahubAppHoldingWorkflows
 from tests.helpers.workflow_override import override_workflow
 
 if TYPE_CHECKING:
+    from pathlib import Path
     from types import TracebackType
 
     from fast_depends import Provider
@@ -52,6 +67,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+    from tests.adapters.workflow import HoldingWorkflowExecution
     from tests.conftest import TestHelper
 
 
@@ -301,8 +317,12 @@ class TestAddReadOnly:
             ref="branch01",
             infrahub_branch_name="read-only-branch",
         )
-        self.mock_repo.import_objects_from_files.assert_awaited_once_with(infrahub_branch_name="read-only-branch")
-        self.mock_repo.sync_from_remote.assert_awaited_once_with(commit="0123456789abcdef0123456789abcdef01234567")
+        self.mock_repo.import_objects_from_files.assert_awaited_once_with(
+            infrahub_branch_name="read-only-branch", activity_run_id=ANY
+        )
+        self.mock_repo.sync_from_remote.assert_awaited_once_with(
+            commit="0123456789abcdef0123456789abcdef01234567", activity=ANY
+        )
 
         assert len(self.recorder.messages) > 0
         broadcast = self.recorder.messages[0]
@@ -378,9 +398,9 @@ class TestPullReadOnly:
             infrahub_branch_name=self.infrahub_branch_name,
         )
         self.mock_repo.import_objects_from_files.assert_awaited_once_with(
-            infrahub_branch_name=self.infrahub_branch_name, commit=self.commit
+            infrahub_branch_name=self.infrahub_branch_name, commit=self.commit, activity_run_id=ANY
         )
-        self.mock_repo.sync_from_remote.assert_awaited_once_with(commit=self.commit)
+        self.mock_repo.sync_from_remote.assert_awaited_once_with(commit=self.commit, activity=ANY)
 
         assert len(self.recorder.messages) > 0
         assert isinstance(self.recorder.messages[0], RefreshGitFetch)
@@ -409,9 +429,9 @@ class TestPullReadOnly:
             infrahub_branch_name=self.infrahub_branch_name,
         )
         self.mock_repo.import_objects_from_files.assert_awaited_once_with(
-            infrahub_branch_name=self.infrahub_branch_name, commit=self.commit
+            infrahub_branch_name=self.infrahub_branch_name, commit=self.commit, activity_run_id=ANY
         )
-        self.mock_repo.sync_from_remote.assert_awaited_once_with(commit=self.commit)
+        self.mock_repo.sync_from_remote.assert_awaited_once_with(commit=self.commit, activity=ANY)
 
         assert len(self.recorder.messages) > 0
         assert isinstance(self.recorder.messages[0], RefreshGitFetch)
@@ -450,7 +470,225 @@ async def test_add_git_repository_scopes_import_build_and_apply(
         importer=RecordingImporter(timeline),
         client=client,
     )
-    await adder.add(model)
+    async with activity_run(operation=RepositoryActivityOperation.ADD) as run:
+        await adder.add(model, activity=run)
 
     timeline.assert_not_held_at_checkpoint(f"repository.{git_upstream_repo_01['name']}", "build")
     timeline.assert_held_at_checkpoint(f"repository.{git_upstream_repo_01['name']}", "apply")
+
+
+TRACKED_REF = "release"
+
+
+class TestReadOnlyRepositoryActivity(TestInfrahubAppHoldingWorkflows):
+    """The runs that adding and pulling a read-only repository record in the cache.
+
+    A commit write submits another pull, so each flow runs while the submitted workflows are held.
+    """
+
+    async def _create_repository(self, db: InfrahubDatabase, tmp_path: Path, name: str) -> tuple[Node, LocalRemote]:
+        """Store a read-only repository whose tracked ref holds one commit of its own, without adding it."""
+        remote = LocalRemote.create(directory=tmp_path / name, trunk="main", branches=[])
+        remote.commit(branch_name=TRACKED_REF, files={"data.txt": "tracked\n"})
+        node = await Node.init(db=db, schema=InfrahubKind.READONLYREPOSITORY)
+        await node.new(db=db, name=name, location=str(remote.directory), ref=TRACKED_REF)
+        await node.save(db=db)
+        return node, remote
+
+    def _add_model(self, node: Node, remote: LocalRemote) -> GitRepositoryAddReadOnly:
+        return GitRepositoryAddReadOnly(
+            repository_id=node.id,
+            repository_name=node.get_attribute("name").value,
+            location=str(remote.directory),
+            ref=TRACKED_REF,
+            infrahub_branch_name=registry.default_branch,
+            infrahub_branch_id=str(UUIDT()),
+            internal_status=RepositoryInternalStatus.ACTIVE.value,
+        )
+
+    def _pull_model(self, node: Node, remote: LocalRemote, ref: str) -> GitRepositoryPullReadOnly:
+        return GitRepositoryPullReadOnly(
+            repository_id=node.id,
+            repository_name=node.get_attribute("name").value,
+            location=str(remote.directory),
+            ref=ref,
+            infrahub_branch_name=registry.default_branch,
+            infrahub_branch_id=str(UUIDT()),
+        )
+
+    async def test_adding_a_read_only_repository_records_an_add_run(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        dependency_provider: Provider,
+        workflow_local: HoldingWorkflowExecution,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        node, remote = await self._create_repository(db=db, tmp_path=tmp_path, name="activity-add-read-only")
+        cache = RecordingCache()
+
+        with (
+            override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider),
+            workflow_local.hold(),
+        ):
+            await add_git_repository_read_only(model=self._add_model(node=node, remote=remote))
+
+        assert run_record_operations(cache=cache, repository_id=node.id) == {"add"}
+        assert run_record_writes(cache=cache, repository_id=node.id) == [
+            (None, None),
+            ("fetching", None),
+            ("building", registry.default_branch),
+            ("applying", registry.default_branch),
+            ("fetching", None),
+        ]
+        assert stored_run_keys(cache=cache, repository_id=node.id) == []
+        assert last_run_branches(cache=cache, repository_id=node.id, operation="add") == [
+            {"branch_name": registry.default_branch, "outcome": "imported"}
+        ]
+
+    async def test_adding_a_read_only_repository_that_fails_records_the_branch_as_failed(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        dependency_provider: Provider,
+        workflow_local: HoldingWorkflowExecution,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        name = "activity-failed-add-read-only"
+        node, remote = await self._create_repository(db=db, tmp_path=tmp_path, name=name)
+        remote.commit(branch_name=TRACKED_REF, files={".infrahub.yml": INVALID_YAML_CONFIG})
+        cache = RecordingCache()
+
+        with (
+            override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider),
+            workflow_local.hold(),
+            pytest.raises(RepositoryImportError, match=rf"^{re.escape(invalid_yaml_config_message(name))}$"),
+        ):
+            await add_git_repository_read_only(model=self._add_model(node=node, remote=remote))
+
+        assert run_record_writes(cache=cache, repository_id=node.id) == [
+            (None, None),
+            ("fetching", None),
+            ("building", registry.default_branch),
+        ]
+        assert stored_run_keys(cache=cache, repository_id=node.id) == []
+        assert last_run_branches(cache=cache, repository_id=node.id, operation="add") == [
+            {"branch_name": registry.default_branch, "outcome": "failed"}
+        ]
+
+    async def test_a_pull_records_its_run_while_it_runs_and_the_branch_as_imported(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        dependency_provider: Provider,
+        workflow_local: HoldingWorkflowExecution,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        node, remote = await self._create_repository(db=db, tmp_path=tmp_path, name="activity-pull")
+        with workflow_local.hold():
+            await add_git_repository_read_only(model=self._add_model(node=node, remote=remote))
+        remote.commit(branch_name=TRACKED_REF, files={"data.txt": "advanced\n"})
+        cache = RecordingCache()
+
+        with (
+            override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider),
+            workflow_local.hold(),
+        ):
+            await pull_read_only(model=self._pull_model(node=node, remote=remote, ref=TRACKED_REF))
+
+        assert run_record_operations(cache=cache, repository_id=node.id) == {"pull"}
+        assert run_record_writes(cache=cache, repository_id=node.id) == [
+            (None, None),
+            ("fetching", None),
+            ("building", registry.default_branch),
+            ("applying", registry.default_branch),
+            ("building", registry.default_branch),
+            ("applying", registry.default_branch),
+        ]
+        assert stored_run_keys(cache=cache, repository_id=node.id) == []
+        assert last_run_branches(cache=cache, repository_id=node.id, operation="pull") == [
+            {"branch_name": registry.default_branch, "outcome": "imported"}
+        ]
+
+    async def test_a_pull_that_fails_records_the_branch_as_failed(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        dependency_provider: Provider,
+        workflow_local: HoldingWorkflowExecution,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        node, remote = await self._create_repository(db=db, tmp_path=tmp_path, name="activity-failed-pull")
+        with workflow_local.hold():
+            await add_git_repository_read_only(model=self._add_model(node=node, remote=remote))
+        cache = RecordingCache()
+
+        with (
+            override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider),
+            workflow_local.hold(),
+            pytest.raises(ValueError, match=r"^Ref missing not found\.$"),
+        ):
+            await pull_read_only(model=self._pull_model(node=node, remote=remote, ref="missing"))
+
+        assert run_record_writes(cache=cache, repository_id=node.id) == [(None, None), ("fetching", None)]
+        assert stored_run_keys(cache=cache, repository_id=node.id) == []
+        assert last_run_branches(cache=cache, repository_id=node.id, operation="pull") == [
+            {"branch_name": registry.default_branch, "outcome": "failed"}
+        ]
+
+    async def test_an_add_whose_broadcast_fails_records_the_branch_as_imported(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        dependency_provider: Provider,
+        workflow_local: HoldingWorkflowExecution,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        node, remote = await self._create_repository(db=db, tmp_path=tmp_path, name="activity-add-failed-broadcast")
+        cache = RecordingCache()
+        failing_bus = FailingBus()
+
+        with (
+            override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider),
+            override_dependency(build_message_bus, lambda: failing_bus, dependency_provider=dependency_provider),
+            workflow_local.hold(),
+            pytest.raises(ConnectionError, match=r"^The message bus cannot be reached$"),
+        ):
+            await add_git_repository_read_only(model=self._add_model(node=node, remote=remote))
+
+        assert last_run_branches(cache=cache, repository_id=node.id, operation="add") == [
+            {"branch_name": registry.default_branch, "outcome": "imported"}
+        ]
+
+    async def test_a_pull_whose_broadcast_fails_records_the_branch_as_imported(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        dependency_provider: Provider,
+        workflow_local: HoldingWorkflowExecution,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        node, remote = await self._create_repository(db=db, tmp_path=tmp_path, name="activity-pull-failed-broadcast")
+        with workflow_local.hold():
+            await add_git_repository_read_only(model=self._add_model(node=node, remote=remote))
+        remote.commit(branch_name=TRACKED_REF, files={"data.txt": "advanced\n"})
+        cache = RecordingCache()
+        failing_bus = FailingBus()
+
+        with (
+            override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider),
+            override_dependency(build_message_bus, lambda: failing_bus, dependency_provider=dependency_provider),
+            workflow_local.hold(),
+            pytest.raises(ConnectionError, match=r"^The message bus cannot be reached$"),
+        ):
+            await pull_read_only(model=self._pull_model(node=node, remote=remote, ref=TRACKED_REF))
+
+        assert last_run_branches(cache=cache, repository_id=node.id, operation="pull") == [
+            {"branch_name": registry.default_branch, "outcome": "imported"}
+        ]

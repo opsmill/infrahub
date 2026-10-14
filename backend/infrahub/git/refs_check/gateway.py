@@ -13,11 +13,12 @@ from typing import TYPE_CHECKING, Protocol
 from uuid import UUID
 
 from git.cmd import Git
-from git.exc import BadName, GitError
+from git.exc import GitError
 
 from infrahub.exceptions import RepositoryError
 
 from ..constants import REMOTE_TRANSPORT_ENVIRONMENT
+from ..ref_resolution import resolve_commit, resolve_pinned_commit
 from ..repository import InfrahubReadOnlyRepository
 from .models import RefHeads
 
@@ -26,8 +27,6 @@ if TYPE_CHECKING:
 
     from git import Repo
     from infrahub_sdk.client import InfrahubClient
-
-    from ..models import GitReadOnlyRepositoryCheckRefs
 
 CheckRefFormat = Callable[[str], bool]
 """Decides whether git would accept a ref name. Must be synchronous: it is run in a worker thread."""
@@ -89,6 +88,19 @@ def _as_repository_error(repository_name: str) -> Iterator[None]:
         raise RepositoryError(identifier=repository_name, message=str(exc)) from exc
 
 
+class RemoteRepository(Protocol):
+    """The repository a gateway call is about: enough to open its local copy and reach its remote."""
+
+    @property
+    def repository_id(self) -> str: ...
+
+    @property
+    def repository_name(self) -> str: ...
+
+    @property
+    def location(self) -> str: ...
+
+
 class RepositoryRefsGateway(Protocol):
     """Every git operation the check performs, so the check itself holds no git code.
 
@@ -97,22 +109,16 @@ class RepositoryRefsGateway(Protocol):
 
     """
 
-    async def read_heads(
-        self, model: GitReadOnlyRepositoryCheckRefs, refs: tuple[str, ...]
-    ) -> tuple[RefHeads, ...]: ...
+    async def read_heads(self, model: RemoteRepository, refs: tuple[str, ...]) -> tuple[RefHeads, ...]: ...
 
-    async def fetch(self, model: GitReadOnlyRepositoryCheckRefs) -> None: ...
+    async def fetch(self, model: RemoteRepository) -> None: ...
 
 
 def _resolve_local_head(git_repo: Repo, ref: str) -> str | None:
-    # Remote-tracking branch before tag, which is the precedence the remote listing also applies;
-    # reordering these two would make the two sides resolve different objects for one name.
-    for candidate in (f"origin/{ref}", ref):
-        try:
-            return str(git_repo.commit(candidate))
-        except (BadName, ValueError):
-            continue
-    return None
+    # Remote-tracking branch before tag, the order the remote listing applies, and never the bare name,
+    # which also matches a local branch that outlives its deleted remote branch.
+    commit = resolve_commit(repo=git_repo, revisions=(f"refs/remotes/origin/{ref}", f"refs/tags/{ref}"))
+    return commit.hexsha if commit is not None else None
 
 
 def _ref_patterns(ref: str) -> tuple[str, str, str]:
@@ -157,7 +163,7 @@ class GitRepositoryRefsGateway:
         self._client = client
         self._list_kill_after_seconds = list_kill_after_seconds
 
-    def _open(self, model: GitReadOnlyRepositoryCheckRefs) -> InfrahubReadOnlyRepository:
+    def _open(self, model: RemoteRepository) -> InfrahubReadOnlyRepository:
         repo = InfrahubReadOnlyRepository(
             id=UUID(model.repository_id),
             name=model.repository_name,
@@ -168,13 +174,22 @@ class GitRepositoryRefsGateway:
         repo.validate_local_directories()
         return repo
 
-    def _read_heads(self, model: GitReadOnlyRepositoryCheckRefs, refs: tuple[str, ...]) -> tuple[RefHeads, ...]:
+    def _read_heads(self, model: RemoteRepository, refs: tuple[str, ...]) -> tuple[RefHeads, ...]:
         git_repo = self._open(model).get_git_repo_main()
         local_heads = {ref: _resolve_local_head(git_repo, ref) for ref in refs}
         remote_heads = _list_remote_heads(_ls_remote(git_repo, kill_after_seconds=self._list_kill_after_seconds), refs)
-        return tuple(RefHeads(ref=ref, local_head=local_heads[ref], remote_head=remote_heads[ref]) for ref in refs)
+        return tuple(
+            RefHeads(
+                ref=ref,
+                local_head=local_heads[ref],
+                remote_head=remote_heads[ref],
+                pinned_commit=remote_heads[ref] is None
+                and resolve_pinned_commit(repo=git_repo, git_ref=ref) is not None,
+            )
+            for ref in refs
+        )
 
-    def _fetch(self, model: GitReadOnlyRepositoryCheckRefs) -> None:
+    def _fetch(self, model: RemoteRepository) -> None:
         repo = self._open(model)
         if not repo.has_origin:
             raise RepositoryError(
@@ -183,10 +198,10 @@ class GitRepositoryRefsGateway:
             )
         repo.fetch_from_origin(git_repo=repo.get_git_repo_main())
 
-    async def read_heads(self, model: GitReadOnlyRepositoryCheckRefs, refs: tuple[str, ...]) -> tuple[RefHeads, ...]:
+    async def read_heads(self, model: RemoteRepository, refs: tuple[str, ...]) -> tuple[RefHeads, ...]:
         with _as_repository_error(model.repository_name):
             return await asyncio.to_thread(self._read_heads, model, refs)
 
-    async def fetch(self, model: GitReadOnlyRepositoryCheckRefs) -> None:
+    async def fetch(self, model: RemoteRepository) -> None:
         with _as_repository_error(model.repository_name):
             await asyncio.to_thread(self._fetch, model)

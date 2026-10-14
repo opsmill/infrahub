@@ -218,6 +218,16 @@ def test_a_ref_missing_from_the_remote_has_no_head(tmp_path: Path) -> None:
     assert list_remote_heads(clone, "never-existed") == {"never-existed": None}
 
 
+def test_a_local_branch_that_outlives_its_deleted_remote_branch_is_not_a_local_head(tmp_path: Path) -> None:
+    """Counting it would keep a ref the remote deleted looking stale here, so every check would fetch again."""
+    clone = build_remote_and_clone(tmp_path)
+    clone.create_head("stable", clone.remotes.origin.refs.stable)
+    Repo(tmp_path / "origin").delete_head("stable")
+    clone.remotes.origin.fetch(prune=True)
+
+    assert _resolve_local_head(clone, "stable") is None
+
+
 def test_every_ref_is_resolved_by_a_single_listing(tmp_path: Path) -> None:
     """One connection answers every tracked ref, each through the namespace its own read applies."""
     clone = build_remote_and_clone(tmp_path)
@@ -333,6 +343,20 @@ async def test_the_gateway_reads_a_local_head_from_a_valid_copy(
 
     assert await build_gateway().read_heads(model, ("no-such-ref",)) == (
         RefHeads(ref="no-such-ref", local_head=None, remote_head=None),
+    )
+
+
+async def test_the_gateway_reports_a_commit_the_copy_holds_as_a_pinned_ref(
+    tmp_path: Path, restore_repositories_directory: None
+) -> None:
+    """A remote never lists a commit hash, so without this a ref pinned to a commit reads as deleted."""
+    model = build_local_copy(tmp_path, origin=str(tmp_path / "origin"))
+    Repo.init(tmp_path / "origin", bare=True)
+    commit = Repo(tmp_path / "repositories" / REPOSITORY_ID / "main").head.commit.hexsha
+
+    assert await build_gateway().read_heads(model, (commit, commit[:12])) == (
+        RefHeads(ref=commit, local_head=None, remote_head=None, pinned_commit=True),
+        RefHeads(ref=commit[:12], local_head=None, remote_head=None, pinned_commit=True),
     )
 
 

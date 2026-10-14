@@ -379,6 +379,7 @@ async def test_a_branch_whose_object_store_cannot_be_read_fails_alone_and_keeps_
     assert collected.failed_imports == [
         FailedImport(
             branch_name=TRACKED,
+            infrahub_branch_name=TRACKED,
             step=ImportStep.COLLECTION,
             reason=f"Unable to read {UNKNOWN_COMMIT} from the object database: {missing_store} is unreadable",
         )
@@ -465,6 +466,7 @@ async def test_a_branch_whose_commit_the_graph_refuses_fails_alone(
     assert collected.failed_imports == [
         FailedImport(
             branch_name=TRACKED,
+            infrahub_branch_name=TRACKED,
             step=ImportStep.COLLECTION,
             reason=(
                 "An error occurred while executing the GraphQL Query None, "
@@ -573,6 +575,7 @@ async def test_a_staging_trunk_whose_commit_the_graph_refuses_fails_without_rais
     assert collected.failed_imports == [
         FailedImport(
             branch_name="main",
+            infrahub_branch_name=STAGING,
             step=ImportStep.COLLECTION,
             reason=(
                 "An error occurred while executing the GraphQL Query None, "
@@ -598,6 +601,7 @@ async def test_a_default_branch_new_to_this_worker_fails_as_the_default_branch(
     assert collected.failed_imports == [
         FailedImport(
             branch_name=TRACKED,
+            infrahub_branch_name="main",
             step=ImportStep.COLLECTION,
             reason=(
                 f"Unable to push the branch {TRACKED} to the remote for repository tracked-repo: "
@@ -748,12 +752,14 @@ async def test_a_record_that_fails_fails_its_branch_alone_and_keeps_its_import(
     assert collected.failed_imports == [
         FailedImport(
             branch_name=TRACKED,
+            infrahub_branch_name=TRACKED,
             step=ImportStep.RECORD,
             reason=f"The API is unreachable from {TRACKED}",
             on_default_branch=False,
         ),
         FailedImport(
             branch_name="main",
+            infrahub_branch_name="main",
             step=ImportStep.RECORD,
             reason="The API is unreachable from main",
             on_default_branch=True,
@@ -1021,6 +1027,7 @@ async def test_a_re_pointed_trunk_that_fails_keeps_its_marker_for_the_next_cycle
     assert failed.failed_imports == [
         FailedImport(
             branch_name=TRACKED,
+            infrahub_branch_name="main",
             step=ImportStep.COLLECTION,
             reason=(
                 "An error occurred while executing the GraphQL Query None, "
@@ -1408,7 +1415,13 @@ async def test_a_reverted_push_that_fails_to_record_fails_the_default_branch_and
     collected = await tracked.repository.collect_pending_imports(graph_commits=tracked.graph_commits(), state=state)
 
     assert collected.failed_imports == [
-        FailedImport(branch_name="main", step=ImportStep.RECORD, reason=test_case.reason, on_default_branch=True)
+        FailedImport(
+            branch_name="main",
+            infrahub_branch_name="main",
+            step=ImportStep.RECORD,
+            reason=test_case.reason,
+            on_default_branch=True,
+        )
     ]
     assert [(pending_import.infrahub_branch_name, pending_import.commit) for pending_import in collected.imports] == [
         ("main", rewritten_trunk)

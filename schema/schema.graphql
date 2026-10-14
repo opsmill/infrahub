@@ -26285,6 +26285,13 @@ type Query {
   InfrahubPermissions: AccountPermissionsEdges!
   """Find all nodes of specified kinds reachable from a source node"""
   InfrahubReachableNodes(data: ReachableNodesInput!): ReachableNodesResultType!
+  """
+  What is running on a repository now, the last run of each operation, and which worker holds the repository lock. The answer is the same on every branch.
+  """
+  InfrahubRepositoryActivity(
+    """ID or name of a read-write or read-only repository."""
+    id: String!
+  ): RepositoryActivity!
   """Per-branch drift for a repository."""
   InfrahubRepositoryBranchDrift(repository_id: String!): RepositoryBranchDrifts!
   """
@@ -27273,6 +27280,152 @@ type RelationshipRemove {
 type Relationships {
   count: Int!
   edges: [RelationshipNode!]!
+}
+
+"""What is running on a repository now, across every branch."""
+type RepositoryActivity {
+  """
+  Runs working on this repository now. Empty when nothing is running. A run whose worker stopped without cleaning up disappears within 5 minutes.
+  """
+  active_runs: RepositoryActivityRuns!
+  """
+  The most recent finished run of each operation in the last 30 days, newest first.
+  """
+  last_runs: RepositoryActivityLastRuns!
+  """
+  Holder of the repository lock. Null when the lock is not held. Short tasks such as fetches also hold the lock, so a held lock does not mean that a run is active.
+  """
+  lock: RepositoryActivityLock
+  """ID of the repository the answer is for."""
+  repository_id: String!
+}
+
+"""One entry in the list of branch results."""
+type RepositoryActivityBranchEdge {
+  """One branch result."""
+  node: RepositoryActivityBranchNode!
+}
+
+"""The result of a run for one branch."""
+type RepositoryActivityBranchNode {
+  """Infrahub branch."""
+  branch_name: String!
+  """Result of the run for this branch."""
+  outcome: RepositoryActivityBranchOutcome!
+}
+
+"""Result of a run for one branch."""
+enum RepositoryActivityBranchOutcome {
+  """The run failed on this branch. The task log shows why."""
+  FAILED
+  """
+  The run changed the branch: it imported objects into it, created it in Git, or merged into it.
+  """
+  IMPORTED
+}
+
+"""The branches the run changed or failed on."""
+type RepositoryActivityBranches {
+  """The branch results of the run."""
+  edges: [RepositoryActivityBranchEdge!]!
+}
+
+"""One entry in the list of last runs."""
+type RepositoryActivityLastRunEdge {
+  """The last run of one operation."""
+  node: RepositoryActivityLastRunNode!
+}
+
+"""The most recent finished run of one operation."""
+type RepositoryActivityLastRunNode {
+  """
+  Branches that the run changed or failed on. Branches without a change are left out.
+  """
+  branches: RepositoryActivityBranches!
+  """When the run ended, whether it succeeded or failed."""
+  finished_at: DateTime!
+  """What the run did."""
+  operation: RepositoryActivityOperation!
+  """When the run started, by the worker's clock."""
+  started_at: DateTime!
+}
+
+"""The most recent finished run of each operation."""
+type RepositoryActivityLastRuns {
+  """One last run per operation, newest first."""
+  edges: [RepositoryActivityLastRunEdge!]!
+}
+
+"""The holder of a repository lock."""
+type RepositoryActivityLock {
+  """
+  When the worker asked for the lock, by its clock. It can have waited for the lock after that. Null when it cannot be read.
+  """
+  requested_at: DateTime
+  """Worker holding the lock, as listed by InfrahubStatus."""
+  worker_id: String!
+}
+
+"""Operation that a repository run performs."""
+enum RepositoryActivityOperation {
+  """First clone and import after the repository was added."""
+  ADD
+  """Creation of the git branch for a new Infrahub branch."""
+  BRANCH_CREATE
+  """Merge of a branch's git changes into its target branch."""
+  MERGE
+  """Import of the latest commit of the ref a read-only repository tracks."""
+  PULL
+  """Import of one branch requested by a user."""
+  REIMPORT
+  """
+  Periodic check of every tracked branch for new commits, and import of those commits.
+  """
+  SYNC
+}
+
+"""Step of a run."""
+enum RepositoryActivityPhase {
+  """Writing the imported objects to Infrahub for one branch."""
+  APPLYING
+  """Reading and validating the repository files for one branch."""
+  BUILDING
+  """Fetching from the remote. Covers every branch."""
+  FETCHING
+}
+
+"""One entry in the list of active runs."""
+type RepositoryActivityRunEdge {
+  """One active run."""
+  node: RepositoryActivityRunNode!
+}
+
+"""A run that is working on a repository now."""
+type RepositoryActivityRunNode {
+  """
+  Infrahub branch being built or applied. Null while fetching, because a fetch covers every branch.
+  """
+  branch_name: String
+  """What the run is doing."""
+  operation: RepositoryActivityOperation!
+  """
+  Step the run is in. Null until the run reports its first step, and for an operation without separate steps.
+  """
+  phase: RepositoryActivityPhase
+  """Identifier of the run, unique while the run is active."""
+  run_id: String!
+  """When the run started, by the worker's clock."""
+  started_at: DateTime!
+  """When the worker last confirmed that the run is still active."""
+  updated_at: DateTime!
+  """Worker running the run, as listed by InfrahubStatus."""
+  worker_id: String!
+}
+
+"""The runs working on a repository now."""
+type RepositoryActivityRuns {
+  """The active runs, oldest first."""
+  edges: [RepositoryActivityRunEdge!]!
 }
 
 """Drift of one Infrahub branch of a repository."""

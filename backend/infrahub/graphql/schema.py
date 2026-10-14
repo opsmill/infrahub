@@ -55,6 +55,7 @@ from .queries import (
     InfrahubIPPrefixGetNextAvailable,
     InfrahubPathTraversal,
     InfrahubReachableNodes,
+    InfrahubRepositoryActivity,
     InfrahubRepositoryBranchDrift,
     InfrahubRepositoryCommits,
     InfrahubResourcePoolAllocated,
@@ -108,6 +109,7 @@ class InfrahubBaseQuery(ObjectType):
 
     InfrahubRepositoryCommits = InfrahubRepositoryCommits
     InfrahubRepositoryBranchDrift = InfrahubRepositoryBranchDrift
+    InfrahubRepositoryActivity = InfrahubRepositoryActivity
 
     InfrahubTask = Task
     InfrahubEvent = Event

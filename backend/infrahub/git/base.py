@@ -41,9 +41,11 @@ from infrahub.git.constants import (
     READ_ONLY_FETCH_TIMEOUT_SECONDS,
     REMOTE_TRANSPORT_ENVIRONMENT,
     TEMPORARY_DIRECTORY_NAME,
+    UPDATE_SYNC_STATUS_MUTATION,
 )
 from infrahub.git.directory import get_repositories_directory, initialize_repositories_directory
 from infrahub.git.divergence.gateway import GitAncestryGateway
+from infrahub.git.ref_resolution import resolve_commit
 from infrahub.git.utils import branch_name_in_import_sync_branches
 from infrahub.git.worktree import Worktree
 from infrahub.log import get_logger
@@ -87,6 +89,11 @@ GIT_HTTP_REPOSITORY_NOT_FOUND = re.compile(r"repository '[^']+' not found")
 GIT_CALL_TIME_LIMIT = re.compile(
     r'Timeout: the command "\S*git (?P<command>\S+)[^"]*" did not complete in (?P<seconds>\S+) secs'
 )
+
+
+def _clone_carries_ref(repo: Repo, ref: str) -> bool:
+    """Return whether a fresh clone can check `ref` out, as a remote branch, a tag or a commit it holds."""
+    return resolve_commit(repo=repo, revisions=(f"refs/remotes/origin/{ref}", ref)) is not None
 
 
 def operational_status_for_error(error: RepositoryError) -> RepositoryOperationalStatus:
@@ -330,25 +337,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         )
 
     async def _update_sync_status(self, branch_name: str, status: RepositorySyncStatus) -> None:
-        update_status = """
-        mutation UpdateRepositoryStatus(
-            $repo_id: String!,
-            $status: String!,
-        ) {
-            CoreGenericRepositoryUpdate(
-                data: {
-                    id: $repo_id,
-                    sync_status: { value: $status },
-                }
-            ) {
-                ok
-            }
-        }
-        """
-
         await self.sdk.execute_graphql(
             branch_name=branch_name,
-            query=update_status,
+            query=UPDATE_SYNC_STATUS_MUTATION,
             variables={"repo_id": str(self.id), "status": status.value},
             tracker="mutation-repository-update-admin-status",
         )
@@ -470,9 +461,17 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         return True
 
     async def create_locally(
-        self, checkout_ref: str, infrahub_branch_name: str | None, update_commit_value: bool = True
+        self,
+        checkout_ref: str,
+        infrahub_branch_name: str | None,
+        update_commit_value: bool = True,
+        allow_missing_checkout_ref: bool = False,
     ) -> bool:
         """Ensure the required directory already exist in the filesystem or create them if needed.
+
+        Args:
+            allow_missing_checkout_ref: Leave the clone on the remote's default branch when the clone does not
+                carry `checkout_ref`, rather than failing and leaving a copy no later read can open.
 
         Returns:
             True if the directory has been created,
@@ -507,7 +506,13 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         try:
             repo = Repo.clone_from(self.location, self.directory_default)
-            repo.git.checkout(checkout_ref)
+            if allow_missing_checkout_ref and not _clone_carries_ref(repo=repo, ref=checkout_ref):
+                log.warning(
+                    f"The remote does not carry {checkout_ref}, leaving the clone on the remote's default branch",
+                    repository=self.name,
+                )
+            else:
+                repo.git.checkout(checkout_ref)
         except GitCommandError as exc:
             await self._raise_enriched_error(error=exc, branch_name=checkout_ref)
 

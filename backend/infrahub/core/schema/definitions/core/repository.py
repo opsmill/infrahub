@@ -409,6 +409,15 @@ core_generic_repository = GenericSchema(
                     color="#f87171",
                 ),
                 DropdownChoice(
+                    name=RepositorySyncStatus.ERROR_REF_MISSING.value,
+                    label="Tracked Ref Missing",
+                    description=(
+                        "The tracked ref was missing from the remote when it was last checked. Infrahub keeps "
+                        "running the commit it imported last."
+                    ),
+                    color="#f87171",
+                ),
+                DropdownChoice(
                     name=RepositorySyncStatus.IN_SYNC.value,
                     label="In Sync",
                     description="The repository is syncing correctly",

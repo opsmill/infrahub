@@ -26,6 +26,14 @@ REPOSITORY_BRANCH_READ_CHUNK_SIZE = 100
 # to hold a branch by this name.
 WRITE_ACCESS_PROBE_REF = "infrahub-write-access-probe-do-not-create"
 
+UPDATE_SYNC_STATUS_MUTATION: Final = """
+mutation UpdateRepositoryStatus($repo_id: String!, $status: String!) {
+    CoreGenericRepositoryUpdate(data: { id: $repo_id, sync_status: { value: $status } }) {
+        ok
+    }
+}
+"""
+
 IMPORT_STATUS_CHECK_KIND = "RepositoryImportCheck"
 IMPORT_STATUS_CHECK_NAME = "Repository Import Check"
 MERGE_CONFLICT_CHECK_KIND = "MergeConflictCheck"

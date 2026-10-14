@@ -33,6 +33,7 @@ from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.flow import call_in_flow
 from tests.helpers.git import LocalRemote
 from tests.helpers.graphql import graphql_mutation
+from tests.helpers.repository_activity import activity_run
 from tests.helpers.repository_sync import (
     FLOW_RUN_LOGGER,
     create_repository_node,
@@ -340,27 +341,30 @@ class TestImportDeferral(TestInfrahubApp):
         repository = await client.get(kind=CoreRepository, id=node.id)
         delivery_state = await build_intent_store(db=db, lock_registry=lock.registry)
 
-        repo = await call_in_flow(
-            lambda: bootstrap_local_repository(
-                repo_name=name,
-                repository=repository,
-                infrahub_branch=registry.default_branch,
-                client=client,
-                state=delivery_state,
+        async with activity_run() as run:
+            repo = await call_in_flow(
+                lambda: bootstrap_local_repository(
+                    repo_name=name,
+                    repository=repository,
+                    infrahub_branch=registry.default_branch,
+                    client=client,
+                    state=delivery_state,
+                    activity=run,
+                )
             )
-        )
-        assert repo is not None
-        await call_in_flow(
-            lambda: sync_repository_from_origin(
-                repository=repository,
-                repo=repo,
-                staging_branch=None,
-                infrahub_branch=registry.default_branch,
-                default_branch_id=str(UUIDT()),
-                client=client,
-                graph_commits={TRUNK: imported},
+            assert repo is not None
+            await call_in_flow(
+                lambda: sync_repository_from_origin(
+                    repository=repository,
+                    repo=repo,
+                    staging_branch=None,
+                    infrahub_branch=registry.default_branch,
+                    default_branch_id=str(UUIDT()),
+                    client=client,
+                    activity=run,
+                    graph_commits={TRUNK: imported},
+                )
             )
-        )
 
         assert repo.get_commit_value(branch_name=TRUNK, remote=False) == advanced
         assert await self._graph_commit(client=client, node=node, branch_name=TRUNK) == (
@@ -407,15 +411,17 @@ class TestImportDeferral(TestInfrahubApp):
         repository = await client.get(kind=CoreRepository, id=node.id)
         delivery_state = await build_intent_store(db=db, lock_registry=lock.registry)
 
-        repo = await call_in_flow(
-            lambda: bootstrap_local_repository(
-                repo_name=name,
-                repository=repository,
-                infrahub_branch=staging_branch,
-                client=client,
-                state=delivery_state,
+        async with activity_run() as run:
+            repo = await call_in_flow(
+                lambda: bootstrap_local_repository(
+                    repo_name=name,
+                    repository=repository,
+                    infrahub_branch=staging_branch,
+                    client=client,
+                    state=delivery_state,
+                    activity=run,
+                )
             )
-        )
 
         assert repo is not None
         assert await self._query_names(client=client, node=node, branch_name=staging_branch) == set()

@@ -45,6 +45,7 @@ from tests.helpers.dependency_override import override_dependency
 from tests.helpers.flow import call_in_flow
 from tests.helpers.git import LocalRemote
 from tests.helpers.log import traceback_suppression
+from tests.helpers.repository_activity import activity_run
 from tests.helpers.repository_sync import (
     FLOW_RUN_LOGGER,
     INVALID_YAML_CONFIG,
@@ -714,26 +715,29 @@ class TestImportFailureLogs(TestInfrahubApp):
         repository = await client.get(kind=CoreRepository, id=node.id)
 
         state = await build_intent_store(db=db, lock_registry=lock.registry)
-        repo = await call_in_flow(
-            lambda: bootstrap_local_repository(
-                repo_name=name,
-                repository=repository,
-                infrahub_branch=registry.default_branch,
-                client=client,
-                state=state,
+        async with activity_run() as run:
+            repo = await call_in_flow(
+                lambda: bootstrap_local_repository(
+                    repo_name=name,
+                    repository=repository,
+                    infrahub_branch=registry.default_branch,
+                    client=client,
+                    state=state,
+                    activity=run,
+                )
             )
-        )
-        assert repo is not None
-        await call_in_flow(
-            lambda: sync_repository_from_origin(
-                repository=repository,
-                repo=repo,
-                staging_branch=None,
-                infrahub_branch=registry.default_branch,
-                default_branch_id=str(UUIDT()),
-                client=client,
+            assert repo is not None
+            await call_in_flow(
+                lambda: sync_repository_from_origin(
+                    repository=repository,
+                    repo=repo,
+                    staging_branch=None,
+                    infrahub_branch=registry.default_branch,
+                    default_branch_id=str(UUIDT()),
+                    client=client,
+                    activity=run,
+                )
             )
-        )
 
         assert await sync_status(client, node.id, TRUNK) == RepositorySyncStatus.ERROR_IMPORT.value
         assert await sync_status(client, node.id, other_branch) == RepositorySyncStatus.IN_SYNC.value

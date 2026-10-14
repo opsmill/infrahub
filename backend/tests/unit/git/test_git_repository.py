@@ -1267,6 +1267,7 @@ async def test_collect_pending_imports_isolates_per_branch_push_failure() -> Non
     assert collected.failed_imports == [
         FailedImport(
             branch_name="branch01",
+            infrahub_branch_name="branch01",
             step=ImportStep.COLLECTION,
             reason=str(RepositoryConnectionError(identifier="sync-repo")),
         )
@@ -1303,7 +1304,12 @@ class RaiseBranchesCase:
         RaiseBranchesCase(
             name="single_failure",
             failed_imports=[
-                FailedImport(branch_name="branch01", step=ImportStep.COLLECTION, reason="schema validation failed"),
+                FailedImport(
+                    branch_name="branch01",
+                    infrahub_branch_name="branch01",
+                    step=ImportStep.COLLECTION,
+                    reason="schema validation failed",
+                ),
             ],
             expectation=pytest.raises(
                 RepositoryError,
@@ -1318,8 +1324,15 @@ class RaiseBranchesCase:
         RaiseBranchesCase(
             name="multiple_failures",
             failed_imports=[
-                FailedImport(branch_name="branch01", step=ImportStep.COLLECTION, reason="error 1"),
-                FailedImport(branch_name="branch02", step=ImportStep.IMPORT, reason="error 2"),
+                FailedImport(
+                    branch_name="branch01",
+                    infrahub_branch_name="branch01",
+                    step=ImportStep.COLLECTION,
+                    reason="error 1",
+                ),
+                FailedImport(
+                    branch_name="branch02", infrahub_branch_name="branch02", step=ImportStep.IMPORT, reason="error 2"
+                ),
             ],
             expectation=pytest.raises(
                 RepositoryError,
@@ -1342,7 +1355,12 @@ def test_raise_if_branches_failed(stub_repo: InfrahubRepository, case: RaiseBran
 def test_raise_if_branches_failed_logs_structured_fields(
     stub_repo: InfrahubRepository, caplog: pytest.LogCaptureFixture
 ) -> None:
-    failed = FailedImport(branch_name="branch01", step=ImportStep.COLLECTION, reason="schema validation failed")
+    failed = FailedImport(
+        branch_name="branch01",
+        infrahub_branch_name="branch01",
+        step=ImportStep.COLLECTION,
+        reason="schema validation failed",
+    )
     with caplog.at_level(logging.WARNING, logger="infrahub.tasks"), pytest.raises(RepositoryError):
         stub_repo.raise_if_branches_failed([failed])
     assert len(caplog.records) == 1
@@ -1357,9 +1375,11 @@ def test_raise_if_branches_failed_does_not_log_a_failed_import_or_record_again(
     stub_repo: InfrahubRepository, caplog: pytest.LogCaptureFixture
 ) -> None:
     failed_imports = [
-        FailedImport(branch_name="branch01", step=ImportStep.COLLECTION, reason="error 1"),
-        FailedImport(branch_name="branch02", step=ImportStep.IMPORT, reason="error 2"),
-        FailedImport(branch_name="branch03", step=ImportStep.RECORD, reason="error 3"),
+        FailedImport(
+            branch_name="branch01", infrahub_branch_name="branch01", step=ImportStep.COLLECTION, reason="error 1"
+        ),
+        FailedImport(branch_name="branch02", infrahub_branch_name="branch02", step=ImportStep.IMPORT, reason="error 2"),
+        FailedImport(branch_name="branch03", infrahub_branch_name="branch03", step=ImportStep.RECORD, reason="error 3"),
     ]
     with (
         caplog.at_level(logging.WARNING, logger="infrahub.tasks"),

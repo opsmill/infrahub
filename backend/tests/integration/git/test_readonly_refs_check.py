@@ -17,6 +17,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.git.models import GitReadOnlyRepositoryCheckRefs, TrackedRef
 from infrahub.git.refs_check.checker import ReadOnlyRepositoryRefsChecker, RefNameValidator, RefsCheckScheduler
+from infrahub.git.refs_check.factory import build_ref_missing_store
 from infrahub.git.refs_check.gateway import GitRepositoryRefsGateway, git_check_ref_format
 from infrahub.git.refs_check.tracked_commit import GraphTrackedCommitReader
 from infrahub.git.repository import InfrahubReadOnlyRepository
@@ -151,6 +152,7 @@ class TestReadOnlyRefsCheck(TestInfrahubApp):
             ref_validator=RefNameValidator(check_ref_format=git_check_ref_format),
             scheduler=RefsCheckScheduler(cache=cache, interval_seconds=900, retry_seconds=300),
             tracked_commit_reader=GraphTrackedCommitReader(db=db),
+            ref_missing_store=build_ref_missing_store(db=db, client=client),
             claim_ttl_seconds=180,
             detect_timeout_seconds=120,
         )
