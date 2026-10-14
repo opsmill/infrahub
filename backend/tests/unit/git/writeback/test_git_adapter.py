@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import logging
 import os
+import re
+import socket
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -11,10 +13,13 @@ from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub import config
+from infrahub.core.constants import RepositoryDeliveryFailureCause
 from infrahub.core.registry import registry
-from infrahub.exceptions import RepositoryError
+from infrahub.exceptions import RepositoryConnectionError, RepositoryError
+from infrahub.git.writeback.classifier import classify_delivery_failure
 from infrahub.git.writeback.constants import LOCAL_GIT_TIMEOUT_SECONDS
 from infrahub.git.writeback.git_adapter import RepositoryDeliveryGitAdapter
+from infrahub.git.writeback.models import DeliveryFailure, DeliveryStage
 from infrahub.git.writeback.ports import ReplayResult
 from infrahub.message_bus.messages import RefreshGitRepositoryBranchDeleted
 from tests.adapters.message_bus import BusRecorder
@@ -22,6 +27,8 @@ from tests.helpers.git import LocalRemote, clone_repository, open_repository
 from tests.helpers.test_client import dummy_async_request
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable, Iterator
+
     from git import Repo
 
     from infrahub.git.repository import InfrahubRepository
@@ -29,6 +36,10 @@ if TYPE_CHECKING:
 REPOSITORY_NAME = "delivery-repo"
 DESTINATION = "main"
 ABSENT = "0" * 40
+TIME_LIMIT_MESSAGE = (
+    f"The Git command for repository {REPOSITORY_NAME} did not complete within its time limit, "
+    "please check that the remote is reachable."
+)
 
 
 @dataclass(frozen=True)
@@ -85,6 +96,13 @@ async def clone(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> DeliveryClon
         left=left,
         right=right,
     )
+
+
+@pytest.fixture
+def silent_remote() -> Iterator[str]:
+    """Return the address of an HTTP remote whose connections the kernel accepts and that never answers."""
+    with socket.create_server(("127.0.0.1", 0)) as server:
+        yield f"http://127.0.0.1:{server.getsockname()[1]}/{REPOSITORY_NAME}.git"
 
 
 def build_adapter(
@@ -218,6 +236,59 @@ def test_a_merge_stopped_at_its_time_bound_frees_the_index_and_names_only_the_co
     assert not Path(clone.worktree.git_dir, "index.lock").exists()
     adapter.reset(commit=clone.trunk)
     assert clone.worktree_head() == clone.trunk
+
+
+@dataclass(frozen=True)
+class StalledTransferCase:
+    name: str
+    transfer: Callable[[InfrahubRepository], Awaitable[object]]
+    error: type[Exception]
+    message: str
+    """The whole message of the error that ends the transfer."""
+    stage: DeliveryStage | None
+    """The stage that classifies the error; None for a branch deletion, whose failure a delivery only logs."""
+
+
+STALLED_TRANSFER_CASES: list[StalledTransferCase] = [
+    StalledTransferCase(
+        name="stalled_fetch",
+        transfer=lambda repository: repository.fetch(timeout_seconds=2),
+        error=RepositoryConnectionError,
+        message=TIME_LIMIT_MESSAGE,
+        stage=DeliveryStage.FETCH,
+    ),
+    StalledTransferCase(
+        name="stalled_push",
+        transfer=lambda repository: repository.push(branch_name=DESTINATION, timeout_seconds=2),
+        error=RepositoryConnectionError,
+        message=TIME_LIMIT_MESSAGE,
+        stage=DeliveryStage.PUSH,
+    ),
+    StalledTransferCase(
+        name="stalled_remote_branch_deletion",
+        transfer=lambda repository: repository.delete_remote_branch(branch_name="feature", timeout_seconds=2),
+        error=RepositoryConnectionError,
+        message=TIME_LIMIT_MESSAGE,
+        stage=None,
+    ),
+]
+
+
+# A hung transfer blocks the main thread in a call that the signal method cannot interrupt.
+@pytest.mark.timeout(60, method="thread")
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in STALLED_TRANSFER_CASES])
+async def test_a_transfer_to_a_remote_that_never_answers_stops_at_its_bound(
+    case: StalledTransferCase, clone: DeliveryClone, silent_remote: str
+) -> None:
+    clone.repository.get_git_repo_main().git.remote("set-url", "origin", silent_remote)
+
+    with pytest.raises(case.error, match=rf"^{re.escape(case.message)}$") as error:
+        await case.transfer(clone.repository)
+
+    if case.stage is not None:
+        assert classify_delivery_failure(error=error.value, stage=case.stage) == DeliveryFailure(
+            cause=RepositoryDeliveryFailureCause.REMOTE_UNREACHABLE, retryable=True, message=TIME_LIMIT_MESSAGE
+        )
 
 
 def test_reset_moves_the_worktree_to_the_commit(clone: DeliveryClone) -> None:
