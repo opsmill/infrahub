@@ -6,15 +6,11 @@ import pytest
 
 from infrahub.core.constants import RelationshipCardinality, RelationshipDirection, RelationshipKind
 from infrahub.core.regeneration.classifier_builder import QueryClassifierBuilder
-<<<<<<< HEAD
 from infrahub.core.regeneration.derived_dependencies import (
     DerivedFieldDependencies,
     PeerDependency,
     SchemaDerivedFieldDependencyResolver,
 )
-=======
-from infrahub.core.regeneration.derived_dependencies import DerivedFieldDependencies, PeerDependency
->>>>>>> origin/stable
 from infrahub.core.regeneration.impact_classifier import QueryImpactClassifier
 from infrahub.core.regeneration.models import ReachedPath, RelationshipHop
 from infrahub.core.schema import AttributeSchema, MainSchemaTypes, NodeSchema, RelationshipSchema
@@ -32,10 +28,7 @@ class _FakeAnalyzedQuery:
     only_has_unique_targets: bool = True
     traversed_kinds: set[str] = field(default_factory=set)
     relationship_reached_paths_by_kind: dict[str, tuple[ReachedPath, ...]] = field(default_factory=dict)
-<<<<<<< HEAD
-=======
     filtered_fields_by_kind: dict[str, set[str]] = field(default_factory=dict)
->>>>>>> origin/stable
 
 
 def _node(
@@ -80,12 +73,8 @@ def _builder() -> QueryClassifierBuilder:
     branch = SchemaBranch(cache={}, name="test")
     for kind, schema in schemas.items():
         branch.set(name=kind, schema=schema)
-<<<<<<< HEAD
     resolver = SchemaDerivedFieldDependencyResolver(schema_branch=branch)
     return QueryClassifierBuilder(query_branch=QUERY_BRANCH, dependency_resolver=resolver)
-=======
-    return QueryClassifierBuilder(query_branch=QUERY_BRANCH, schema_branch=branch)
->>>>>>> origin/stable
 
 
 def test_build_folds_a_derived_peer_into_the_classifier() -> None:
@@ -121,8 +110,6 @@ def test_build_passes_a_plain_read_through_unchanged() -> None:
     )
 
 
-<<<<<<< HEAD
-=======
 def test_build_counts_a_filtered_field_as_read() -> None:
     """A field the query only filters on is matched against the diff like a field it reads."""
     report = _FakeAnalyzedQuery(
@@ -143,7 +130,6 @@ def test_build_counts_a_filtered_field_as_read() -> None:
     )
 
 
->>>>>>> origin/stable
 MAKER_HOP = RelationshipHop(
     node_kind="TestReader",
     relationship_identifier="reader__maker",

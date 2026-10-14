@@ -2,26 +2,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol
 
-<<<<<<< HEAD
-=======
-from .derived_dependencies import DerivedFieldDependencyResolver
->>>>>>> origin/stable
 from .impact_classifier import QueryImpactClassifier
 from .models import ReachedPath
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-<<<<<<< HEAD
     from infrahub.graphql.analyzer import ObjectAccess
 
     from .derived_dependencies import DerivedFieldDependencies, DerivedFieldDependencyResolver
-=======
-    from infrahub.core.schema.schema_branch import SchemaBranch
-    from infrahub.graphql.analyzer import ObjectAccess
-
-    from .derived_dependencies import DerivedFieldDependencies
->>>>>>> origin/stable
 
 
 class AnalyzedQuery(Protocol):
@@ -31,22 +20,16 @@ class AnalyzedQuery(Protocol):
     it; ``traversed_kinds`` are the kinds reached through a relationship, including any also read at
     a root, so the overlap stays visible; ``relationship_reached_paths_by_kind`` the chains back from
     each to a root. ``only_has_unique_targets`` is true when the query pins one object per root.
-<<<<<<< HEAD
-=======
     ``filtered_fields_by_kind`` maps each kind to the fields its filter arguments select on.
->>>>>>> origin/stable
     """
 
     @property
     def requested_read(self) -> Mapping[str, ObjectAccess]: ...
 
     @property
-<<<<<<< HEAD
-=======
     def filtered_fields_by_kind(self) -> Mapping[str, set[str]]: ...
 
     @property
->>>>>>> origin/stable
     def only_has_unique_targets(self) -> bool: ...
 
     @property
@@ -59,24 +42,15 @@ class AnalyzedQuery(Protocol):
 class QueryClassifierBuilder:
     """Build a query's impact classifier from its analyzed read surface, on one branch."""
 
-<<<<<<< HEAD
     def __init__(self, *, query_branch: str, dependency_resolver: DerivedFieldDependencyResolver) -> None:
         self._query_branch = query_branch
         self._dependency_resolver = dependency_resolver
-
-    def build(self, query_report: AnalyzedQuery) -> QueryImpactClassifier:
-        readable_fields_by_kind = {kind: access.fields for kind, access in query_report.requested_read.items()}
-=======
-    def __init__(self, *, query_branch: str, schema_branch: SchemaBranch) -> None:
-        self._query_branch = query_branch
-        self._dependency_resolver = DerivedFieldDependencyResolver(schema_branch=schema_branch)
 
     def build(self, query_report: AnalyzedQuery) -> QueryImpactClassifier:
         readable_fields_by_kind = {kind: set(access.fields) for kind, access in query_report.requested_read.items()}
         # A change to a filtered field moves which objects answer the query, so it counts as a read.
         for kind, fields in query_report.filtered_fields_by_kind.items():
             readable_fields_by_kind.setdefault(kind, set()).update(fields)
->>>>>>> origin/stable
         dependencies = self._dependency_resolver.resolve(readable_fields_by_kind)
         return self.build_query_classifier(
             only_has_unique_targets=query_report.only_has_unique_targets,

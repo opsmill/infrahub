@@ -7,7 +7,7 @@ import pytest
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.core.regeneration.impact import FieldLevelImpactResolver
-from infrahub.core.regeneration.models import TargetSelection
+from infrahub.core.regeneration.models import TargetSelection, Widening, WideningReason
 from tests.constants import TestKind
 from tests.helpers.diff_summary import node_diff
 from tests.helpers.schema import CAR_SCHEMA, RACK_SCHEMA, load_schema
@@ -256,10 +256,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
 
     async def test_unread_related_field_change_selects_nothing(
         self,
-<<<<<<< HEAD
         db: InfrahubDatabase,
-=======
->>>>>>> origin/stable
         dataset: dict[str, Any],
         default_branch: Branch,
         client: InfrahubClient,
@@ -270,10 +267,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
         actually reads off the owner can implicate the cars that read it.
         """
         resolved = await self._resolve(
-<<<<<<< HEAD
             db=db,
-=======
->>>>>>> origin/stable
             dataset=dataset,
             default_branch=default_branch,
             client=client,
@@ -285,15 +279,12 @@ class TestFieldLevelImpact(TestInfrahubApp):
                     field_names=["height"],
                 )
             ],
-<<<<<<< HEAD
-        )
-        assert resolved == TargetSelection(ids=[])
-=======
         )
         assert resolved == TargetSelection(ids=[])
 
     async def test_change_to_a_filtered_relationship_selects_every_target(
         self,
+        db: InfrahubDatabase,
         dataset: dict[str, Any],
         default_branch: Branch,
         client: InfrahubClient,
@@ -304,7 +295,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
         another owner changes which cars answer the query for both owners, so every target has to run
         even though no field the query reads back changed.
         """
-        resolved = await get_field_level_impacted_subscribers(
+        resolved = await FieldLevelImpactResolver(db=db, client=client).resolve(
             query_payload=QUERY_CARS_BY_OWNER_NAME,
             diff_summary=[
                 node_diff(
@@ -318,7 +309,6 @@ class TestFieldLevelImpact(TestInfrahubApp):
             query_branch=default_branch.name,
             subscriber_kind=SUBSCRIBER_KIND,
             every_target=[dataset["subscriber_id"]],
-            client=client,
         )
         assert resolved == TargetSelection(
             ids=[dataset["subscriber_id"]],
@@ -327,6 +317,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
 
     async def test_change_to_an_attribute_matched_by_any_value_selects_every_target(
         self,
+        db: InfrahubDatabase,
         dataset: dict[str, Any],
         default_branch: Branch,
         client: InfrahubClient,
@@ -336,7 +327,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
         The query reads only the car's ``name``, but its filter matches on every attribute, so a
         change to ``color`` can move which cars answer the query.
         """
-        resolved = await get_field_level_impacted_subscribers(
+        resolved = await FieldLevelImpactResolver(db=db, client=client).resolve(
             query_payload=QUERY_CARS_BY_ANY_VALUE,
             diff_summary=[
                 node_diff(
@@ -349,13 +340,11 @@ class TestFieldLevelImpact(TestInfrahubApp):
             query_branch=default_branch.name,
             subscriber_kind=SUBSCRIBER_KIND,
             every_target=[dataset["subscriber_id"]],
-            client=client,
         )
         assert resolved == TargetSelection(
             ids=[dataset["subscriber_id"]],
             widening=Widening(reason=WideningReason.NON_UNIQUE_TARGETS),
         )
->>>>>>> origin/stable
 
 
 QUERY_RACK_WITH_CARD = """
@@ -461,10 +450,7 @@ class TestGenericOwnerFieldLevelImpact(TestInfrahubApp):
 
     async def test_generic_owner_reached_change_narrows_to_the_owning_member(
         self,
-<<<<<<< HEAD
         db: InfrahubDatabase,
-=======
->>>>>>> origin/stable
         dataset: dict[str, Any],
         default_branch: Branch,
         client: InfrahubClient,
@@ -475,11 +461,7 @@ class TestGenericOwnerFieldLevelImpact(TestInfrahubApp):
         traversal keyed on the generic slot label reaches only the slot holding the changed card, and
         through it only the owning rack, so a single subscriber comes back.
         """
-<<<<<<< HEAD
         resolved = await FieldLevelImpactResolver(db=db, client=client).resolve(
-=======
-        resolved = await get_field_level_impacted_subscribers(
->>>>>>> origin/stable
             query_payload=QUERY_RACK_WITH_CARD,
             diff_summary=[
                 node_diff(
@@ -492,9 +474,5 @@ class TestGenericOwnerFieldLevelImpact(TestInfrahubApp):
             query_branch=default_branch.name,
             subscriber_kind=TestKind.TAG,
             every_target=[dataset["subscriber_id"], dataset["other_subscriber_id"]],
-<<<<<<< HEAD
-=======
-            client=client,
->>>>>>> origin/stable
         )
         assert resolved == TargetSelection(ids=[dataset["subscriber_id"]])
