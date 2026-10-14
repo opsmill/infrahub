@@ -1,9 +1,4 @@
-import { LockIcon } from "lucide-react";
-
-import type {
-  RepositoryActiveRun,
-  RepositoryLock,
-} from "@/entities/repository/domain/model/repository-activity";
+import type { RepositoryActiveRun } from "@/entities/repository/domain/model/repository-activity";
 import { LiveMarker } from "@/entities/repository/ui/repository-activity-card/activity-markers";
 import {
   ActivityTime,
@@ -15,13 +10,7 @@ import {
   getRunProgressText,
 } from "@/entities/repository/ui/repository-activity-card/repository-activity.view";
 
-interface ActiveRunRowProps {
-  run: RepositoryActiveRun;
-  /** The repository lock, when this run's worker holds it. */
-  heldLock: RepositoryLock | null;
-}
-
-export function ActiveRunRow({ run, heldLock }: ActiveRunRowProps) {
+export function ActiveRunRow({ run }: { run: RepositoryActiveRun }) {
   const progress = getRunProgressText(run);
 
   return (
@@ -34,23 +23,6 @@ export function ActiveRunRow({ run, heldLock }: ActiveRunRowProps) {
         </span>
         <span className="min-w-0 text-foreground-muted text-xs">
           Started <ActivityTime date={run.startedAt} /> on worker <WorkerId id={run.workerId} />
-          {heldLock && (
-            <>
-              <span aria-hidden className="px-1.5 text-foreground-muted/60">
-                ·
-              </span>
-              <span className="whitespace-nowrap">
-                <LockIcon aria-hidden className="mr-1 inline size-3 align-text-bottom" />
-                Holds the repository lock
-                {heldLock.requestedAt && (
-                  <>
-                    {" "}
-                    (requested <ActivityTime date={heldLock.requestedAt} />)
-                  </>
-                )}
-              </span>
-            </>
-          )}
         </span>
       </div>
       <ElapsedTime since={run.startedAt} />

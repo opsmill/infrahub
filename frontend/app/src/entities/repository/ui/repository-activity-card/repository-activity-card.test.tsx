@@ -33,7 +33,7 @@ describe("RepositoryActivityCard", () => {
     vi.useRealTimers();
   });
 
-  test("shows what a run is doing, and the lock in its line and in a sentence below", async () => {
+  test("shows what a run is doing, and names only the worker that holds the lock", async () => {
     // GIVEN
     getRepositoryActivityMock.mockResolvedValue(
       generateActivity({
@@ -51,10 +51,43 @@ describe("RepositoryActivityCard", () => {
     await expect.element(component.getByText("Applying release-1.12")).toBeVisible();
     const text = await textOf(component, "Current activity");
     expect(text).toContain(`on worker ${WORKER_ID.slice(0, 8)}`);
-    expect(text).toContain("Holds the repository lock (requested");
-    expect(text).toContain(
-      `Repository lock held by worker ${WORKER_ID.slice(0, 8)} for the sync, requested`
+    expect(text).toContain(`Repository lock held by worker ${WORKER_ID.slice(0, 8)}, requested`);
+    expect(text).not.toContain("with no active run");
+    expect(text).not.toContain("Holds the repository lock");
+    expect(text).not.toContain("for the sync");
+  });
+
+  test("names no run as the lock holder when several runs share the lock's worker", async () => {
+    // GIVEN
+    getRepositoryActivityMock.mockResolvedValue(
+      generateActivity({
+        activeRuns: [
+          generateActiveRun({
+            runId: "run-1",
+            operation: "SYNC",
+            phase: "BUILDING",
+            branchName: "main",
+          }),
+          generateActiveRun({
+            runId: "run-2",
+            operation: "REIMPORT",
+            phase: "APPLYING",
+            branchName: "feature-x",
+          }),
+        ],
+        lock: generateLock(),
+      })
     );
+
+    // WHEN
+    const component = await render(<RepositoryActivityCard repositoryId="repository-1" />);
+
+    // THEN
+    await expect.element(component.getByText("Applying feature-x")).toBeVisible();
+    const text = await textOf(component, "Current activity");
+    expect(text).toContain(`Repository lock held by worker ${WORKER_ID.slice(0, 8)}, requested`);
+    expect(text).not.toMatch(/for the (sync|reimport)/);
+    expect(text).not.toContain("with no active run");
   });
 
   test("leaves the time out of the lock when the request time cannot be read", async () => {
@@ -72,7 +105,7 @@ describe("RepositoryActivityCard", () => {
     // THEN
     await expect.element(component.getByText("Applying release-1.12")).toBeVisible();
     const text = await textOf(component, "Current activity");
-    expect(text).toContain("Holds the repository lock");
+    expect(text).toContain(`Repository lock held by worker ${WORKER_ID.slice(0, 8)}`);
     expect(text).not.toContain("requested");
   });
 

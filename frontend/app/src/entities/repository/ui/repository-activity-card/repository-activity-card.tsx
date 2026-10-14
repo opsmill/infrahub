@@ -45,7 +45,6 @@ function ActivitySkeleton() {
 
 function CurrentActivity({ activity }: { activity: RepositoryActivity }) {
   const { activeRuns, lastRuns, lock } = activity;
-  const holder = lock ? activeRuns.find(({ workerId }) => workerId === lock.workerId) : undefined;
 
   return (
     <section aria-label="Current activity" className="py-1">
@@ -55,16 +54,17 @@ function CurrentActivity({ activity }: { activity: RepositoryActivity }) {
         ) : (
           <ul>
             {activeRuns.map((run) => (
-              <ActiveRunRow
-                key={run.runId}
-                run={run}
-                heldLock={run.runId === holder?.runId ? lock : null}
-              />
+              <ActiveRunRow key={run.runId} run={run} />
             ))}
           </ul>
         )}
       </div>
-      {lock && <LockLine lock={lock} holder={holder} />}
+      {lock && (
+        <LockLine
+          lock={lock}
+          isWorkerRunning={activeRuns.some(({ workerId }) => workerId === lock.workerId)}
+        />
+      )}
     </section>
   );
 }
