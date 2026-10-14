@@ -9,10 +9,12 @@ becomes allocatable only once *every* branch has let it go.
 from __future__ import annotations
 
 from copy import deepcopy
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
 
+from infrahub.core.constants import BranchSupportType
 from infrahub.core.initialization import create_branch, initialize_registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -188,8 +190,22 @@ class TestBranchLiveness:
         assert _rows_of(await _in_use_rows(db=db, pool=pool, branch=default_branch_scope_class), 6) == []
 
 
+@dataclass
+class NotUniqueCase:
+    name: str
+    ticket_id_branch_support: BranchSupportType
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        NotUniqueCase(name="branch-aware", ticket_id_branch_support=BranchSupportType.AWARE),
+        NotUniqueCase(name="branch-agnostic", ticket_id_branch_support=BranchSupportType.AGNOSTIC),
+    ],
+    ids=lambda case: case.name,
+)
 async def test_a_held_number_is_never_allocated_when_the_attribute_is_not_unique(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, case: NotUniqueCase
 ) -> None:
     """Without a uniqueness constraint to fall back on, the pool alone must keep the number taken.
 
@@ -197,23 +213,31 @@ async def test_a_held_number_is_never_allocated_when_the_attribute_is_not_unique
     constraint, and the class loads the schema once for every test in it.
     """
     schema = deepcopy(TICKET)
-    next(attribute for attribute in schema.attributes if attribute.name == "ticket_id").unique = False
+    ticket_id = next(attribute for attribute in schema.attributes if attribute.name == "ticket_id")
+    ticket_id.unique = False
+    ticket_id.branch = case.ticket_id_branch_support
     await load_schema(db=db, schema=SchemaRoot(nodes=[schema]))
     await initialize_registry(db=db)
 
     pool = await _make_pool(db=db)
     keeper = await _new_ticket(db=db, pool=pool, title="keeper")
+    assert keeper.get_attribute("ticket_id").value == POOL_START
 
-    branch = await create_branch(branch_name="liveness-not-unique", db=db)
-    on_branch = await NodeManager.get_one(db=db, id=keeper.id, branch=branch, raise_on_error=True)
-    await on_branch.delete(db=db)
+    bystander = await create_branch(branch_name=f"not-unique-bystander-{case.name}", db=db)
+    deleting = await create_branch(branch_name=f"not-unique-deleting-{case.name}", db=db)
+    on_deleting = await NodeManager.get_one(db=db, id=keeper.id, branch=deleting, raise_on_error=True)
+    await on_deleting.delete(db=db)
+
+    assert await NodeManager.get_one(db=db, id=keeper.id, branch=deleting) is None
+    for reader in (default_branch, bystander):
+        still_there = await NodeManager.get_one(db=db, id=keeper.id, branch=reader, raise_on_error=True)
+        assert still_there.get_attribute("ticket_id").value == POOL_START
 
     intruder = await _new_ticket(db=db, pool=pool, title="intruder")
 
-    still_there = await NodeManager.get_one(db=db, id=keeper.id, branch=default_branch, raise_on_error=True)
-    held = still_there.get_attribute("ticket_id").value
-    assert intruder.get_attribute("ticket_id").value != held, (
-        f"the pool allocated ticket_id={held}, which the default branch still holds"
+    assert intruder.get_attribute("ticket_id").value == POOL_START + 1, (
+        f"the pool allocated ticket_id={intruder.get_attribute('ticket_id').value}, "
+        f"but the default branch and {bystander.name} still hold {POOL_START}"
     )
 
 
