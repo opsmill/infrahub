@@ -390,4 +390,19 @@ describe("NumberPoolAllocationsTable", () => {
     // THEN
     await expect.element(component.getByRole("link", { name: "ethernet1" })).toHaveFocus();
   });
+
+  it("reads only the numbers of the allocation scope it is given", async () => {
+    // GIVEN
+    mockAllocations({ allocations: [generateNumberPoolAllocation({ value: 7 })] });
+    const division = [{ path: "device", value: "device-id" }];
+
+    // WHEN
+    await renderTable({ division });
+
+    // THEN
+    expect(useGetNumberPoolAllocations).toHaveBeenCalledWith(expect.objectContaining({ division }));
+    expect(useGetNumberPoolAllocationCount).toHaveBeenCalledWith(
+      expect.objectContaining({ division })
+    );
+  });
 });

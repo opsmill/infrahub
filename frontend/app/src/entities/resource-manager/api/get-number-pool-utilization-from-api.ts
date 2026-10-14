@@ -1,9 +1,11 @@
 import { graphql, graphqlClient, type ResultOf } from "@/shared/api/graphql/client";
 import type { ContextParams } from "@/shared/api/types";
 
+import type { NumberPoolDivisionSelector } from "@/entities/resource-manager/domain/model/number-pool";
+
 const GET_NUMBER_POOL_UTILIZATION = graphql(`
-  query GET_NUMBER_POOL_UTILIZATION($poolId: String!) {
-    InfrahubNumberPoolUtilization(pool_id: $poolId) {
+  query GET_NUMBER_POOL_UTILIZATION($poolId: String!, $division: [NumberPoolDivisionEntryInput!]) {
+    InfrahubNumberPoolUtilization(pool_id: $poolId, division: $division) {
       figures {
         size
         used
@@ -37,16 +39,18 @@ export type NumberPoolUtilizationFiguresNode = NumberPoolUtilizationNode["figure
 
 export interface GetNumberPoolUtilizationFromApiParams extends ContextParams {
   poolId: string;
+  division?: NumberPoolDivisionSelector;
 }
 
 export function getNumberPoolUtilizationFromApi({
   poolId,
+  division,
   branchName,
   atDate,
 }: GetNumberPoolUtilizationFromApiParams) {
   return graphqlClient.query({
     query: GET_NUMBER_POOL_UTILIZATION,
-    variables: { poolId },
+    variables: { poolId, division },
     context: {
       branch: branchName,
       date: atDate,

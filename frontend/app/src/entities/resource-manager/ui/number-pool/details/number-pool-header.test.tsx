@@ -120,14 +120,26 @@ describe("NumberPoolHeader", () => {
       .toBeVisible();
   });
 
-  it("does not show the allocation scope of a scoped pool", async () => {
+  it("names the fields a scoped pool is scoped by, in the pool's order", async () => {
     // WHEN
     const component = await renderHeader(userPool);
 
     // THEN
-    await expect.element(component.getByText(/scope/)).not.toBeInTheDocument();
-    await expect.element(component.getByText("Site", { exact: true })).not.toBeInTheDocument();
-    await expect.element(component.getByText("Role", { exact: true })).not.toBeInTheDocument();
+    await expect.element(component.getByText("scoped by")).toBeVisible();
+    await expect
+      .element(component.getByRole("banner"))
+      .toHaveTextContent(/scoped by\s*Site\s*\+\s*Role/);
+    await expect
+      .element(component.getByRole("button", { name: "Site", exact: true }))
+      .toBeVisible();
+  });
+
+  it("does not say an unscoped pool is scoped", async () => {
+    // WHEN
+    const component = await renderHeader(schemaPool);
+
+    // THEN
+    await expect.element(component.getByText("scoped by")).not.toBeInTheDocument();
   });
 
   it("opens the schema of the kind in a modal", async () => {

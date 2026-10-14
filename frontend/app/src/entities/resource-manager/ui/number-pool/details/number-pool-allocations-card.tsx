@@ -3,7 +3,10 @@ import { SearchXIcon } from "lucide-react";
 
 import { Col } from "@/shared/components/container";
 
-import type { NumberPoolRange } from "@/entities/resource-manager/domain/model/number-pool";
+import type {
+  NumberPoolDivisionSelector,
+  NumberPoolRange,
+} from "@/entities/resource-manager/domain/model/number-pool";
 import { NumberPoolAllocationsTable } from "@/entities/resource-manager/ui/number-pool/details/number-pool-allocations-table";
 import { getNumberPoolRangeUrl } from "@/entities/resource-manager/ui/routing/number-pool-urls";
 
@@ -37,6 +40,7 @@ export interface NumberPoolAllocationsCardProps {
   nodeAttribute: string;
   ranges: NumberPoolRange[];
   selectedRangeId: string | null;
+  division?: NumberPoolDivisionSelector;
 }
 
 function AllocationsCardContent({

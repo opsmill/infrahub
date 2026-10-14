@@ -1,6 +1,9 @@
 import type {
   NumberPoolAllocation,
   NumberPoolData,
+  NumberPoolDivision,
+  NumberPoolDivisionEntry,
+  NumberPoolDivisions,
   NumberPoolRange,
   NumberPoolUsage,
   NumberPoolUtilization,
@@ -75,4 +78,57 @@ export const generateNumberPoolAllocation = (
   provenance: "ALLOCATED",
   rangeId: "c03b91de-0000-4000-8000-0000000000a1",
   ...overrides,
+});
+
+export const generateNumberPoolDivisionEntry = (
+  overrides?: Partial<NumberPoolDivisionEntry>
+): NumberPoolDivisionEntry => ({
+  path: "device",
+  value: "c03b91de-0000-4000-8000-0000000000e1",
+  label: "atl1-core1",
+  peerKind: "InfraDevice",
+  ...overrides,
+});
+
+export const generateNumberPoolDivision = (
+  overrides?: Partial<NumberPoolDivision>
+): NumberPoolDivision => ({
+  label: "atl1-core1",
+  entries: [generateNumberPoolDivisionEntry()],
+  usage: generateNumberPoolUsage(),
+  ...overrides,
+});
+
+const padIndex = (index: number) => String(index + 1).padStart(4, "0");
+
+// usage decreases with the index so the generated list is already in the backend's order
+export const generateNumberPoolDivisions = ({
+  fields = ["device"],
+  count = 3,
+}: {
+  fields?: string[];
+  count?: number;
+} = {}): NumberPoolDivisions => ({
+  fields,
+  divisions: Array.from({ length: count }, (_, index) => {
+    const entries = fields.map((field) =>
+      generateNumberPoolDivisionEntry({
+        path: field,
+        value: `${field}-id-${padIndex(index)}`,
+        label: `${field}-${padIndex(index)}`,
+      })
+    );
+    const used = Math.max(0, count - index);
+    return generateNumberPoolDivision({
+      label: entries.map((entry) => entry.label).join(" / "),
+      entries,
+      usage: generateNumberPoolUsage({
+        size: count,
+        used,
+        usedDefaultBranch: used,
+        usedBranches: 0,
+        utilization: (used / count) * 100,
+      }),
+    });
+  }),
 });

@@ -1,6 +1,6 @@
 import { Tooltip } from "@infrahub/ui";
 import { FileCodeIcon } from "lucide-react";
-import type React from "react";
+import React from "react";
 import { Button as AriaButton, DialogTrigger } from "react-aria-components";
 
 import { CopyToClipboardButton } from "@/shared/components/buttons/copy-to-clipboard-button";
@@ -16,6 +16,7 @@ import {
   NUMBER_POOL_KIND,
   NUMBER_POOL_TYPE_SCHEMA,
 } from "@/entities/resource-manager/domain/model/pool";
+import { useNumberPoolScopeFields } from "@/entities/resource-manager/ui/hooks/use-number-pool-scope-fields";
 import { NumberPoolActionsMenu } from "@/entities/resource-manager/ui/number-pool/details/number-pool-actions-menu";
 import { resourceManagerQueryKeys } from "@/entities/resource-manager/ui/queries/resource-manager.query-keys";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
@@ -103,6 +104,7 @@ function AllocationSentence({ pool }: AllocationSentenceProps) {
   const kind = pool.node.value;
   const attribute = pool.node_attribute.value;
   const { schema } = useSchema(kind);
+  const allocationScopeFields = useNumberPoolScopeFields(pool);
 
   return (
     <Row className="flex-wrap gap-1.5 text-sm">
@@ -114,6 +116,19 @@ function AllocationSentence({ pool }: AllocationSentenceProps) {
       <SchemaReference schema={schema} className={schemaLinkStyle} targetField={attribute}>
         {attribute}
       </SchemaReference>
+      {allocationScopeFields.length > 0 && (
+        <>
+          <span className="text-foreground-muted">scoped by</span>
+          {allocationScopeFields.map((field, index) => (
+            <React.Fragment key={field.name}>
+              {index > 0 && <span className="text-foreground-muted">+</span>}
+              <SchemaReference schema={schema} className={schemaLinkStyle} targetField={field.name}>
+                {field.label}
+              </SchemaReference>
+            </React.Fragment>
+          ))}
+        </>
+      )}
     </Row>
   );
 }

@@ -4,6 +4,7 @@ import { useAtomValue } from "jotai";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import type { NumberPoolDivisionSelector } from "@/entities/resource-manager/domain/model/number-pool";
 import {
   type GetNumberPoolUtilizationParams,
   getNumberPoolUtilization,
@@ -17,13 +18,22 @@ export function getNumberPoolUtilizationQueryOptions(params: GetNumberPoolUtiliz
   });
 }
 
-export function useGetNumberPoolUtilization(poolId: string) {
+export interface UseGetNumberPoolUtilizationParams {
+  poolId: string;
+  division?: NumberPoolDivisionSelector;
+}
+
+export function useGetNumberPoolUtilization({
+  poolId,
+  division,
+}: UseGetNumberPoolUtilizationParams) {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 
   return useQuery(
     getNumberPoolUtilizationQueryOptions({
       poolId,
+      division,
       branchName: currentBranch.name,
       atDate: timeMachineDate,
     })

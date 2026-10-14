@@ -43,4 +43,20 @@ describe("getNumberPoolAllocationCount", () => {
     // THEN
     await expect(result).rejects.toThrow("The pool has no range with this id");
   });
+
+  it("sends the allocation scope to the API", async () => {
+    // GIVEN
+    const division = [{ path: "device", value: "device-id" }];
+    vi.mocked(getNumberPoolAllocationCountFromApi).mockResolvedValue({
+      data: { InfrahubNumberPoolAllocations: { count: 0 } },
+    } as unknown as ApiResult);
+
+    // WHEN
+    await getNumberPoolAllocationCount({ ...params, division });
+
+    // THEN
+    expect(getNumberPoolAllocationCountFromApi).toHaveBeenCalledWith(
+      expect.objectContaining({ division })
+    );
+  });
 });

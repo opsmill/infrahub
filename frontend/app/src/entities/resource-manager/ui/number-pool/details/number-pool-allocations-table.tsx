@@ -23,7 +23,10 @@ import { formatNumberDisplay } from "@/shared/utils/number";
 import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
 import { getBranchDetailsUrl } from "@/entities/branches/ui/routing/branch-urls";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
-import type { NumberPoolRange } from "@/entities/resource-manager/domain/model/number-pool";
+import type {
+  NumberPoolDivisionSelector,
+  NumberPoolRange,
+} from "@/entities/resource-manager/domain/model/number-pool";
 import {
   NUMBER_POOL_PROVENANCE_PROVIDED,
   type NumberPoolAllocation,
@@ -111,6 +114,7 @@ export interface NumberPoolAllocationsTableProps {
   nodeAttribute: string;
   ranges: NumberPoolRange[];
   selectedRange: NumberPoolRange | null;
+  division?: NumberPoolDivisionSelector;
 }
 
 export function NumberPoolAllocationsTable({
@@ -119,13 +123,15 @@ export function NumberPoolAllocationsTable({
   nodeAttribute,
   ranges,
   selectedRange,
+  division,
 }: NumberPoolAllocationsTableProps) {
   const [filters] = useNumberPoolAllocationFilters();
   const { data, error, isPending, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useGetNumberPoolAllocations({ poolId, rangeId: selectedRange?.id, filters });
+    useGetNumberPoolAllocations({ poolId, rangeId: selectedRange?.id, division, filters });
   const { data: count } = useGetNumberPoolAllocationCount({
     poolId,
     rangeId: selectedRange?.id,
+    division,
     filters,
   });
   const { data: branches } = useGetBranches();

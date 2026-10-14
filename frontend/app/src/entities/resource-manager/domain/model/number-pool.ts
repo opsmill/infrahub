@@ -42,6 +42,29 @@ export interface NumberPoolUtilization {
   ranges: NumberPoolRange[];
 }
 
+// a peer id for a relationship; for an attribute, the value with the type the attribute stores
+export type NumberPoolDivisionValue = string | number | boolean;
+
+export interface NumberPoolDivisionEntry {
+  path: string;
+  value: NumberPoolDivisionValue;
+  label: string;
+  peerKind: string | null;
+}
+
+export interface NumberPoolDivision {
+  label: string;
+  entries: NumberPoolDivisionEntry[];
+  usage: NumberPoolUsage;
+}
+
+export interface NumberPoolDivisions {
+  fields: string[];
+  divisions: NumberPoolDivision[];
+}
+
+export type NumberPoolDivisionSelector = Array<{ path: string; value: NumberPoolDivisionValue }>;
+
 export const NUMBER_POOL_PROVENANCE_ALLOCATED = "ALLOCATED";
 export const NUMBER_POOL_PROVENANCE_PROVIDED = "PROVIDED";
 

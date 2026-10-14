@@ -1,6 +1,9 @@
 import type { PaginationParams } from "@/shared/api/types";
 
-import type { NumberPoolAllocationFilters } from "@/entities/resource-manager/domain/model/number-pool";
+import type {
+  NumberPoolAllocationFilters,
+  NumberPoolDivisionSelector,
+} from "@/entities/resource-manager/domain/model/number-pool";
 
 export interface ResourceUtilizationKeysParams {
   poolId: string;
@@ -19,6 +22,13 @@ export interface NumberPoolKeysParams {
 
 export interface NumberPoolUtilizationKeysParams {
   poolId: string;
+  division?: NumberPoolDivisionSelector;
+  branchName: string;
+  atDate?: Date | null;
+}
+
+export interface NumberPoolDivisionsKeysParams {
+  poolId: string;
   branchName: string;
   atDate?: Date | null;
 }
@@ -26,6 +36,7 @@ export interface NumberPoolUtilizationKeysParams {
 export interface NumberPoolAllocationsKeysParams extends NumberPoolAllocationFilters {
   poolId: string;
   rangeId?: string;
+  division?: NumberPoolDivisionSelector;
   branchName: string;
   atDate?: Date | null;
 }
@@ -62,6 +73,15 @@ export const resourceManagerQueryKeys = {
       ...resourceManagerQueryKeys.all,
       "number-pool-utilization",
       params.poolId,
+      params.division ?? null,
+      params.branchName,
+      params.atDate,
+    ] as const,
+  numberPoolDivisions: (params: NumberPoolDivisionsKeysParams) =>
+    [
+      ...resourceManagerQueryKeys.all,
+      "number-pool-divisions",
+      params.poolId,
       params.branchName,
       params.atDate,
     ] as const,
@@ -71,6 +91,7 @@ export const resourceManagerQueryKeys = {
       "number-pool-allocations",
       params.poolId,
       params.rangeId ?? null,
+      params.division ?? null,
       params.branch ?? null,
       params.provenance ?? null,
       params.branchName,
@@ -82,6 +103,7 @@ export const resourceManagerQueryKeys = {
       "number-pool-allocation-count",
       params.poolId,
       params.rangeId ?? null,
+      params.division ?? null,
       params.branch ?? null,
       params.provenance ?? null,
       params.branchName,

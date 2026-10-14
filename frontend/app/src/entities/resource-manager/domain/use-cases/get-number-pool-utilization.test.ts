@@ -53,4 +53,20 @@ describe("getNumberPoolUtilization", () => {
     // THEN
     await expect(result).rejects.toThrow("first; second");
   });
+
+  it("sends the allocation scope to the API", async () => {
+    // GIVEN
+    const division = [{ path: "device", value: "device-id" }];
+    vi.mocked(getNumberPoolUtilizationFromApi).mockResolvedValue({
+      data: { InfrahubNumberPoolUtilization: { figures, ranges: [] } },
+    } as unknown as ApiResult);
+
+    // WHEN
+    await getNumberPoolUtilization({ ...params, division });
+
+    // THEN
+    expect(getNumberPoolUtilizationFromApi).toHaveBeenCalledWith(
+      expect.objectContaining({ division })
+    );
+  });
 });
