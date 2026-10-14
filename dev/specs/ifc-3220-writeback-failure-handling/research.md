@@ -646,10 +646,10 @@ command that it runs. The limit does not stop every command; see "What the limit
   `GIT_HTTP_LOW_SPEED_LIMIT` is 1 byte per second, and `GIT_HTTP_LOW_SPEED_TIME` is the bound,
   rounded up. Git then ends a stalled HTTP(S) transfer itself, libcurl reports "Operation too slow",
   and R5 makes it `remote-unreachable`, which the chain retries. An SSH transfer has no such bound.
-  Known limit, accepted on 2026-10-13: a transfer that sends data and then stalls can take up to
-  about twice the bound. The fetch of a read-only repository sets the same two variables, with
-  values of its own: 1000 bytes per second for 20 seconds (`git/constants.py`). Decided on
-  2026-10-13: the two keep the same variables, each with its own values.
+  Known limit: a transfer that sends data and then stalls can take up to about twice the bound.
+  The fetch of a read-only repository sets the same two variables, with values of its own: 1000
+  bytes per second for 20 seconds (`git/constants.py`). The two keep the same variables, each with
+  its own values.
 - **A direct Git call is stopped by a watchdog that needs `ps`.** Every other command, the deletion
   of a source branch included, runs through `Git.execute`. There a watchdog kills Git when the limit
   passes, and GitPython reports "Timeout: the command ... did not complete". The watchdog finds the
@@ -1446,9 +1446,8 @@ Conditions 3 and 4 judge a run that a worker took, so condition 5 leaves out the
   design.
 - **A release that fails every time.** With an empty queue and held items that no live lease
   covers, the check submits a delivery run every `STALE_AFTER`, with no limit on the number of runs.
-  Each run makes up to four attempts and can dispatch the regeneration again. Decided on
-  2026-10-12: a known limit. FR-004 bounds the retries of one run, not the runs that the check
-  starts.
+  Each run makes up to four attempts and can dispatch the regeneration again. This is a known
+  limit: FR-004 bounds the retries of one run, not the runs that the check starts.
 - **A run that stays in `PENDING`.** Condition 5 counts a run in a state of type `PENDING` as a run
   that waits to start. A delivery run that the orchestrator never starts therefore stops the
   automatic recovery for as long as it stays in that state. The `crash-zombie-flows` automation does

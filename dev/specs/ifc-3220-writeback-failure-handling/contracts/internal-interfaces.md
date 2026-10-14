@@ -246,8 +246,8 @@ Every port method that runs Git gives each of its Git commands a bound, as GitPy
   `RepositoryConnectionError`, because `_raise_enriched_error_static` maps libcurl's "Operation too
   slow" text and GitPython's "process killed because it timed out" text to it (section 10).
   `delete_remote_branch` is a push too: it types its errors as `push` does, so a stalled deletion
-  raises `RepositoryConnectionError` as well. A transfer that sends data and then stalls can take up
-  to about twice the bound (known limit, accepted on 2026-10-13).
+  raises `RepositoryConnectionError` as well. Known limit: a transfer that sends data and then
+  stalls can take up to about twice the bound.
 - `remote_head`, `is_ancestor`, `replay`, `reset` and `record` by `LOCAL_GIT_TIMEOUT_SECONDS`, for
   each local command. GitPython stops a local command at the bound only where `ps` exists, so the
   backend image installs `procps`. `remote_head` reads with `git rev-parse`, not through GitPython's object

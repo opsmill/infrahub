@@ -583,7 +583,7 @@ T081 to T084 are not.
 - [X] T082 [US4] Add `test_lost_attempt_recovers` to the same module: kill the flow after the snapshot,
       age the state past the stale bound, run one sync cycle, and assert the delivery. The test does
       not free the repository lock itself: the kill unwinds through the lock and frees it, as the
-      deadlock cleanup frees the lock of a dead worker (R20). Accepted on 2026-10-13.
+      deadlock cleanup frees the lock of a dead worker (R20).
 - [X] T083 [P] [US4] Add `test_policy_failure_is_not_retried` to the same module: one attempt only, then
       `action-required`.
 - [X] T084 [P] [US4] Add two timeout cases to `backend/tests/unit/git/writeback/test_git_adapter.py`.
@@ -593,8 +593,7 @@ T081 to T084 are not.
       for the test. It raises a `RepositoryError` that names the command, which the classifier gives
       `unclassified`, and no `index.lock` stays behind in the worktree. The driver uses `exec`
       because GitPython kills only the direct children of the Git process. The test keeps the
-      existing stalled-merge test, with a merge driver and not a `pre-merge-commit` hook. Accepted on
-      2026-10-13.
+      existing stalled-merge test, with a merge driver and not a `pre-merge-commit` hook.
 
 ---
 
