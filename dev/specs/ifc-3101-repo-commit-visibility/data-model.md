@@ -337,7 +337,7 @@ Stability `evolving`. Registered in `infrahub.errors.catalogue::CATALOGUE`, buil
 
 | Class | Field | Type | Default | Constraint |
 | --- | --- | --- | --- | --- |
-| `BrokerSettings` | `rpc_timeout` | int (seconds) | 30 | `ge=1` |
+| `BrokerSettings` | `rpc_timeout` | int (seconds) | 120 | `ge=1` |
 | `GitSettings` | `read_only_refs_check_interval_mins` | int | 15 | `ge=1` |
 
 ## Workflow definitions (`infrahub.workflows.catalogue`)

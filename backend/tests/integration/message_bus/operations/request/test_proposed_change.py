@@ -42,6 +42,7 @@ from tests.adapters.message_bus import BusRecorder
 from tests.adapters.repository_record_store import build_in_memory_recorder
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.graphql import graphql_mutation, graphql_query
+from tests.helpers.repository_activity import activity_run
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -110,7 +111,8 @@ async def sync_repository(repo: InfrahubRepository) -> None:
         recorder=build_in_memory_recorder(),
         retarget_markers=RetargetMarkers(cache=MemoryCache()),
     )
-    outcome = await syncer.sync(repo)
+    async with activity_run() as run:
+        outcome = await syncer.sync(repo, activity=run)
     assert outcome.failed == ()
     assert outcome.report.imported_branches == ("change1",)
 

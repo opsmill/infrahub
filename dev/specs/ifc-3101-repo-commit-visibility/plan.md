@@ -77,14 +77,17 @@ GraphQL query and mutation surface (`InfrahubRepositoryCommits`, `InfrahubReposi
 The GraphQL half is definitional rather than a choice: the feature is two new queries and a mutation,
 so the schema necessarily changes. `BrokerSettings.rpc_timeout` is the part of the sign-off with
 substance, because it changes behaviour for all three callers this feature does not add, which go
-from an unbounded wait to a failure at 30 seconds. That is the intended shared-path change and 30
-seconds is the agreed default. For two of them a worker slow enough to have previously answered late
-now returns a catalogued 504 instead: `infrahub.api.file::get_file` and
-`ValidateRepositoryConnectivity`. The third needs code, not just acceptance:
-`InfrahubRepositoryCreate` deletes the repository it just created when the connectivity RPC reports
-failure, and a `WorkerTimeoutError` misses that branch, so the timeout has to be routed into the
-same delete-and-raise path (T099) or a slow remote leaves an uncloned repository behind a 504. All
-of it lands as its own reviewed pull request (Phase B1).
+from an unbounded wait to a failure at the bound. That is the intended shared-path change, and 30
+seconds was the default agreed on 2026-09-04. On 2026-10-08 Patrick and Dimitris agreed in a
+discussion to raise it to 120 seconds, so that a worker without a local copy has time to clone the
+repository before a file fetch answers. Clients and reverse proxies in front of Infrahub set their
+timeouts outside it, so the bound is not chosen to stay below them. For two of the three callers a
+request that no worker answers within the bound now fails instead: `infrahub.api.file::get_file`
+with HTTP 504, and `ValidateRepositoryConnectivity` with a `WORKER_TIMEOUT` GraphQL error. The third
+needs code, not just acceptance: `InfrahubRepositoryCreate` deletes the repository it just created
+when the connectivity RPC reports failure, and a `WorkerTimeoutError` misses that branch, so the
+timeout has to be routed into the same delete-and-raise path (T099) or a slow remote leaves an
+uncloned repository behind a 504. All of it lands as its own reviewed pull request (Phase B1).
 
 ## Project Structure
 

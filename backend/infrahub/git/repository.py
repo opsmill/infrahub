@@ -51,6 +51,7 @@ if TYPE_CHECKING:
     from infrahub_sdk.branch import BranchData
     from infrahub_sdk.client import InfrahubClient
 
+    from infrahub.git.activity.recorder import ActivityRun
     from infrahub.git.divergence.models import RefDivergence
     from infrahub.git.divergence.protocols import TrackedTargetReader
     from infrahub.git.divergence.recorder import HistoryRewriteRecorder
@@ -141,6 +142,10 @@ class FailedImport:
     """A branch that could not be synchronized, with the phase that failed and why."""
 
     branch_name: str
+    infrahub_branch_name: str
+    """The Infrahub branch the objects go to, which differs from a git branch name for a trunk named unlike
+    Infrahub's default branch and for a repository in staging."""
+
     step: ImportStep
     reason: str
     on_default_branch: bool = False
@@ -650,6 +655,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             collected.failed_imports.append(
                 FailedImport(
                     branch_name=branch_name,
+                    infrahub_branch_name=infrahub_branch,
                     step=ImportStep.COLLECTION,
                     reason=str(exc),
                     on_default_branch=branch_name == self.default_branch,
@@ -699,11 +705,12 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 onto when not given.
 
         """
+        target_branch = import_branch or self._get_mapped_target_branch(branch_name=branch_name)
         try:
             await self._queue_advanced_branch(
                 collected=collected,
                 branch_name=branch_name,
-                import_branch=import_branch or self._get_mapped_target_branch(branch_name=branch_name),
+                import_branch=target_branch,
                 remote_heads=remote_heads,
                 graph_commits=graph_commits,
                 graph_branches=graph_branches,
@@ -723,6 +730,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             collected.failed_imports.append(
                 FailedImport(
                     branch_name=branch_name,
+                    infrahub_branch_name=target_branch,
                     step=ImportStep.COLLECTION,
                     reason=str(exc),
                     on_default_branch=branch_name == self.default_branch,
@@ -800,6 +808,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             collected.failed_imports.append(
                 FailedImport(
                     branch_name=divergence.branch_name,
+                    infrahub_branch_name=pending_import.infrahub_branch_name,
                     step=ImportStep.RECORD,
                     reason=self._log_record_failure(branch_name=divergence.branch_name, exc=exc),
                     on_default_branch=pending_import.on_default_branch,
@@ -1423,11 +1432,13 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
 
         return str(commit)
 
-    async def sync_from_remote(self, commit: str | None = None) -> bool:
+    async def sync_from_remote(self, commit: str | None = None, activity: ActivityRun | None = None) -> bool:
         """Synchronize the repository from remote and update operational status.
 
         Args:
             commit: Specific commit to sync to. If None, fetches latest from remote.
+            activity: The run that the build and apply steps of the import are reported to. Nothing is reported
+                without it.
 
         Returns:
             True if synchronization was performed, False if local state was already current.
@@ -1440,7 +1451,11 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
             await self._update_operational_status(status=RepositoryOperationalStatus.ONLINE)
             return False
         self.create_commit_worktree(commit=commit)
-        await self.import_objects_from_files(infrahub_branch_name=self.infrahub_branch_name, commit=commit)
+        await self.import_objects_from_files(
+            infrahub_branch_name=self.infrahub_branch_name,
+            commit=commit,
+            activity_run_id=activity.run_id if activity else None,
+        )
         await self.update_commit_value(branch_name=self.infrahub_branch_name, commit=commit)
         await self._update_operational_status(status=RepositoryOperationalStatus.ONLINE)
         return True
@@ -1450,7 +1465,8 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
         tracked_targets: TrackedTargetReader | None = None,
         recorder: HistoryRewriteRecorder | None = None,
         target_changed: bool = False,
-    ) -> None:
+        activity: ActivityRun | None = None,
+    ) -> bool:
         """Import the commit the tracked ref resolves to, and record it when the history of the ref was rewritten.
 
         The caller holds the repository lock, so a run queued behind this one reads the commit this one writes.
@@ -1461,6 +1477,12 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
                 is classified.
             recorder: Records a rewrite once the new commit is written. Without it nothing is recorded.
             target_changed: Whether the ref or the commit of the repository changed on purpose.
+            activity: The run that the build and apply steps of the import are reported to. Nothing is reported
+                without it.
+
+        Returns:
+            True when the objects of the commit were imported, False when the local ref already pointed at the
+            commit and only the commit was written.
 
         Raises:
             ValueError: When the ref cannot be resolved on the remote.
@@ -1472,11 +1494,12 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
         divergence = await self._classify_latest_commit(
             latest_commit=latest_commit, tracked_targets=tracked_targets, target_changed=target_changed
         )
-        synced_from_remote = await self.sync_from_remote(commit=latest_commit)
+        synced_from_remote = await self.sync_from_remote(commit=latest_commit, activity=activity)
         if not synced_from_remote:
             await self.update_commit_value(branch_name=self.infrahub_branch_name, commit=latest_commit)
         if recorder is not None and divergence is not None:
             await recorder.record(repository_id=str(self.id), divergence=divergence)
+        return synced_from_remote
 
     async def _classify_latest_commit(
         self, latest_commit: str, tracked_targets: TrackedTargetReader | None, target_changed: bool

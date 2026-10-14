@@ -22,6 +22,15 @@ REFS_CHECK_LISTED_TTL_SECONDS = 30 * 24 * 60 * 60
 """Every check writes the value again, so it lapses only for a ref no check has listed for this long,
 such as one of a deleted repository; a lapsed value costs one repeated broadcast."""
 
+ACTIVITY_RUN_TTL_SECONDS = 300
+"""Several renewal intervals, because a synchronous git fetch blocks the event loop and can delay a
+renewal by more than a minute; a worker that is killed leaves a record that expires within this time."""
+
+ACTIVITY_RUN_RENEW_SECONDS = 60
+
+ACTIVITY_LAST_RUN_TTL_SECONDS = 30 * 24 * 60 * 60
+"""Bounded so the last run of a deleted repository does not linger."""
+
 
 def warm_up_key(repository_id: str) -> str:
     return f"{CACHE_KEY_PREFIX}:warmup:{repository_id}"
@@ -41,3 +50,16 @@ def refs_check_last_key(repository_id: str) -> str:
 
 def refs_check_listed_key(repository_id: str, ref: str) -> str:
     return f"{CACHE_KEY_PREFIX}:refs_check:listed:{repository_id}:{ref}"
+
+
+def activity_run_key(repository_id: str, run_id: str) -> str:
+    return f"{CACHE_KEY_PREFIX}:activity:run:{repository_id}:{run_id}"
+
+
+def activity_run_pattern(repository_id: str) -> str:
+    """Return the pattern that matches every run record of one repository."""
+    return f"{CACHE_KEY_PREFIX}:activity:run:{repository_id}:*"
+
+
+def activity_last_run_key(repository_id: str, operation: str) -> str:
+    return f"{CACHE_KEY_PREFIX}:activity:last:{repository_id}:{operation}"
