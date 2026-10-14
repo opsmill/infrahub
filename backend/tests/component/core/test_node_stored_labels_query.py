@@ -1,25 +1,40 @@
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.constants.schema import DISPLAY_LABEL_ATTRIBUTE_NAME, HFID_ATTRIBUTE_NAME
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.query.node_duplicate import NodeDuplicateQuery, SchemaNodeInfo
 from infrahub.core.node import Node
-from infrahub.core.query.node import NodeListGetDisplayLabelQuery
+from infrahub.core.query.node import NodeListGetStoredLabelsQuery, NodeStoredLabels
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from tests.constants import TestKind
 from tests.helpers.schema import CAR_SCHEMA
 
 
-async def run_query(db: InfrahubDatabase, branch: Branch, ids: list[str]) -> NodeListGetDisplayLabelQuery:
-    query = await NodeListGetDisplayLabelQuery.init(db=db, branch=branch, ids=ids)
+async def run_query(
+    db: InfrahubDatabase,
+    branch: Branch,
+    ids: list[str],
+    label_names: list[str] | None = None,
+) -> NodeListGetStoredLabelsQuery:
+    query = await NodeListGetStoredLabelsQuery.init(
+        db=db,
+        branch=branch,
+        ids=ids,
+        label_names=label_names or [DISPLAY_LABEL_ATTRIBUTE_NAME, HFID_ATTRIBUTE_NAME],
+    )
     await query.execute(db=db)
     return query
 
 
 async def get_stored_display_labels(db: InfrahubDatabase, branch: Branch, ids: list[str]) -> dict[str, str]:
     query = await run_query(db=db, branch=branch, ids=ids)
-    return query.get_display_label_map()
+    return {
+        node_id: labels.display_label
+        for node_id, labels in query.get_stored_labels().items()
+        if labels.display_label is not None
+    }
 
 
 async def test_stored_display_labels_follow_the_branch(
@@ -94,7 +109,31 @@ async def test_one_row_per_node_after_a_kind_migration(
         query = await run_query(db=db, branch=query_branch, ids=ids)
 
         assert query.num_of_results == 2
-        assert query.get_display_label_map() == expected
+        assert {node_id: labels.display_label for node_id, labels in query.get_stored_labels().items()} == expected
+
+
+async def test_one_value_per_label_when_two_attributes_share_its_name(
+    db: InfrahubDatabase, default_branch: Branch, person_jane_main: Node
+) -> None:
+    """Of two attributes with the same name active on the branch, only the most recent one is read."""
+    await db.execute_query(
+        query="""
+        MATCH (n:Node {uuid: $uuid})-[r:HAS_ATTRIBUTE]->(:Attribute {name: "display_label"})
+        CREATE (n)-[r2:HAS_ATTRIBUTE]->(duplicate:Attribute {uuid: randomUUID(), name: "display_label"})
+        SET r2 = properties(r), r2.from = "2000-01-01T00:00:00Z"
+        MERGE (av:AttributeValue {value: "Duplicate", is_default: false})
+        CREATE (duplicate)-[r3:HAS_VALUE]->(av)
+        SET r3 = properties(r), r3.from = "2000-01-01T00:00:00Z"
+        """,
+        params={"uuid": person_jane_main.get_id()},
+    )
+
+    query = await run_query(db=db, branch=default_branch, ids=[person_jane_main.get_id()])
+
+    [result] = list(query.get_results())
+    stored_values = result.get_as_type(label="stored_values", return_type=list)
+    assert sorted(name for name, _ in stored_values) == [DISPLAY_LABEL_ATTRIBUTE_NAME, HFID_ATTRIBUTE_NAME]
+    assert query.get_stored_labels()[person_jane_main.get_id()].display_label == "Jane"
 
 
 async def test_kind_without_template_is_left_out(
@@ -116,3 +155,51 @@ async def test_kind_without_template_is_left_out(
     )
 
     assert labels == {person_jane_main.get_id(): "Jane"}
+
+
+async def test_stored_hfid_is_read_with_the_display_label(
+    db: InfrahubDatabase, default_branch: Branch, person_jane_main: Node
+) -> None:
+    query = await run_query(db=db, branch=default_branch, ids=[person_jane_main.get_id()])
+
+    assert query.get_stored_labels() == {
+        person_jane_main.get_id(): NodeStoredLabels(
+            kind=person_jane_main.get_kind(),
+            display_label=await person_jane_main.get_display_label(db=db),
+            hfid=await person_jane_main.get_hfid(db=db),
+        )
+    }
+
+
+async def test_only_the_requested_labels_are_read(
+    db: InfrahubDatabase, default_branch: Branch, person_jane_main: Node
+) -> None:
+    query = await run_query(
+        db=db, branch=default_branch, ids=[person_jane_main.get_id()], label_names=[HFID_ATTRIBUTE_NAME]
+    )
+
+    assert query.get_stored_labels() == {
+        person_jane_main.get_id(): NodeStoredLabels(
+            kind=person_jane_main.get_kind(), display_label=None, hfid=await person_jane_main.get_hfid(db=db)
+        )
+    }
+
+
+async def test_node_without_any_stored_label_is_present_with_its_kind(
+    db: InfrahubDatabase, default_branch: Branch, person_john_main: Node
+) -> None:
+    """An active node is returned even when none of its labels is stored, so its kind is known."""
+    await db.execute_query(
+        query="""
+        MATCH (n:Node {uuid: $uuid})-[:HAS_ATTRIBUTE]->(attr:Attribute)
+        WHERE attr.name IN ["display_label", "human_friendly_id"]
+        DETACH DELETE attr
+        """,
+        params={"uuid": person_john_main.get_id()},
+    )
+
+    query = await run_query(db=db, branch=default_branch, ids=[person_john_main.get_id()])
+
+    assert query.get_stored_labels() == {
+        person_john_main.get_id(): NodeStoredLabels(kind=person_john_main.get_kind(), display_label=None, hfid=None)
+    }

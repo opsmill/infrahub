@@ -2,13 +2,14 @@ from typing import Any
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.changelog.builder import build_relationship_changelog_getter
 from infrahub.core.changelog.models import (
     AttributeChangelog,
+    ChangelogRelatedNode,
     NodeChangelog,
     PropertyChangelog,
     RelationshipCardinalityManyChangelog,
     RelationshipCardinalityOneChangelog,
-    RelationshipChangelogGetter,
     RelationshipPeerChangelog,
 )
 from infrahub.core.constants import DiffAction, InfrahubKind
@@ -39,6 +40,7 @@ async def test_node_changelog_creation(
         node_id=person1.id,
         node_kind="TestPerson",
         display_label="Jack",
+        hfid=["Jack"],
         attributes={
             "human_friendly_id": AttributeChangelog(
                 name="human_friendly_id",
@@ -111,6 +113,7 @@ async def test_node_changelog_creation(
         node_id=dog1.id,
         node_kind="TestDog",
         display_label="Rocky Labrador",
+        hfid=["Jack", "Rocky"],
         attributes={
             "human_friendly_id": AttributeChangelog(
                 name="human_friendly_id",
@@ -172,7 +175,7 @@ async def test_node_changelog_creation(
     )
     assert not dog1.node_changelog.parent
 
-    relationship_changelogs = RelationshipChangelogGetter(db=db, branch=default_branch)
+    relationship_changelogs = build_relationship_changelog_getter(db=db, branch=default_branch)
     secondary_changelogs = await relationship_changelogs.get_changelogs(primary_changelog=dog1.node_changelog)
     assert len(secondary_changelogs) == 1
 
@@ -186,6 +189,8 @@ async def test_node_changelog_creation(
             RelationshipPeerChangelog(
                 peer_id=dog1.id,
                 peer_kind=dog1.get_kind(),
+                peer_display_label="Rocky Labrador",
+                peer_hfid=["Jack", "Rocky"],
                 peer_status=DiffAction.ADDED,
                 properties={},
             )
@@ -209,6 +214,7 @@ async def test_node_changelog_creation_without_display_label(
         node_id=obj.id,
         node_kind=TestKind.TICKET,
         display_label=expected_display_label,
+        hfid=["Something broke", "None"],
         attributes={
             "human_friendly_id": AttributeChangelog(
                 name="human_friendly_id",
@@ -277,6 +283,7 @@ async def test_node_changelog_update_with_cardinality_one_relationship(
         node_id=dog1.id,
         node_kind="TestDog",
         display_label="Rocky Labrador",
+        hfid=["Jill", "Rocky"],
         attributes={
             "color": AttributeChangelog(
                 name="color", value="Brown", value_previous="#444444", properties={}, kind="Color"
@@ -303,13 +310,13 @@ async def test_node_changelog_update_with_cardinality_one_relationship(
                 peer_kind_previous="TestPerson",
                 peer_id=person2.id,
                 peer_kind="TestPerson",
-                properties={},
+                properties={"is_protected": PropertyChangelog(name="is_protected", value=False, value_previous=None)},
             )
         },
     )
     assert not dog1_update.node_changelog.parent
 
-    relationship_changelogs = RelationshipChangelogGetter(db=db, branch=default_branch)
+    relationship_changelogs = build_relationship_changelog_getter(db=db, branch=default_branch)
     secondary_changelogs = await relationship_changelogs.get_changelogs(primary_changelog=dog1_update.node_changelog)
     assert len(secondary_changelogs) == 2
 
@@ -417,7 +424,7 @@ async def test_node_changelog_delete_with_cardinality_many_relationship(
     assert RelationshipPeerChangelog(peer_id=dog1.id, peer_kind="TestDog", peer_status=DiffAction.REMOVED) in animals
     assert RelationshipPeerChangelog(peer_id=dog2.id, peer_kind="TestDog", peer_status=DiffAction.REMOVED) in animals
 
-    relationship_changelogs = RelationshipChangelogGetter(db=db, branch=default_branch)
+    relationship_changelogs = build_relationship_changelog_getter(db=db, branch=default_branch)
     secondary_changelogs = await relationship_changelogs.get_changelogs(primary_changelog=person1_update.node_changelog)
 
     assert len(secondary_changelogs) == 2
@@ -500,7 +507,7 @@ async def test_secondary_changelog_names_the_hierarchy_children_relationship(
     await rack.new(db=db, name="rack-1", parent=site)
     await rack.save(db=db)
 
-    getter = RelationshipChangelogGetter(db=db, branch=default_branch)
+    getter = build_relationship_changelog_getter(db=db, branch=default_branch)
     attached = await getter.get_changelogs(primary_changelog=rack.node_changelog)
 
     assert [changelog.node_id for changelog in attached] == [site.id]
@@ -508,7 +515,15 @@ async def test_secondary_changelog_names_the_hierarchy_children_relationship(
     assert attached[0].relationships == {
         "children": RelationshipCardinalityManyChangelog(
             name="children",
-            peers=[RelationshipPeerChangelog(peer_id=rack.id, peer_kind="LocationRack", peer_status=DiffAction.ADDED)],
+            peers=[
+                RelationshipPeerChangelog(
+                    peer_id=rack.id,
+                    peer_kind="LocationRack",
+                    peer_display_label=rack.node_changelog.display_label,
+                    peer_hfid=rack.node_changelog.hfid,
+                    peer_status=DiffAction.ADDED,
+                )
+            ],
         )
     }
 
@@ -521,7 +536,13 @@ async def test_secondary_changelog_names_the_hierarchy_children_relationship(
         "children": RelationshipCardinalityManyChangelog(
             name="children",
             peers=[
-                RelationshipPeerChangelog(peer_id=rack.id, peer_kind="LocationRack", peer_status=DiffAction.REMOVED)
+                RelationshipPeerChangelog(
+                    peer_id=rack.id,
+                    peer_kind="LocationRack",
+                    peer_display_label=to_delete.node_changelog.display_label,
+                    peer_hfid=to_delete.node_changelog.hfid,
+                    peer_status=DiffAction.REMOVED,
+                )
             ],
         )
     }
@@ -560,7 +581,7 @@ async def test_deleted_middle_node_reports_both_hierarchy_sides(
         ),
     }
 
-    getter = RelationshipChangelogGetter(db=db, branch=default_branch)
+    getter = build_relationship_changelog_getter(db=db, branch=default_branch)
     secondaries = await getter.get_changelogs(primary_changelog=to_delete.node_changelog)
 
     by_node = {changelog.node_id: changelog for changelog in secondaries}
@@ -570,14 +591,24 @@ async def test_deleted_middle_node_reports_both_hierarchy_sides(
             name="children",
             peers=[
                 RelationshipPeerChangelog(
-                    peer_id=mid.id, peer_kind=InfrahubKind.STANDARDGROUP, peer_status=DiffAction.REMOVED
+                    peer_id=mid.id,
+                    peer_kind=InfrahubKind.STANDARDGROUP,
+                    peer_display_label=to_delete.node_changelog.display_label,
+                    peer_hfid=to_delete.node_changelog.hfid,
+                    peer_status=DiffAction.REMOVED,
                 )
             ],
         )
     }
+    # The removed one-cardinality reciprocal carries the previous peer's id but no current-peer
+    # label, since the removal leaves no current peer for those fields to describe.
     assert by_node[leaf.id].relationships == {
         "parent": RelationshipCardinalityOneChangelog(
-            name="parent", peer_id_previous=mid.id, peer_kind_previous=InfrahubKind.STANDARDGROUP
+            name="parent",
+            peer_id_previous=mid.id,
+            peer_kind_previous=InfrahubKind.STANDARDGROUP,
+            peer_display_label=None,
+            peer_hfid=None,
         )
     }
 
@@ -606,7 +637,7 @@ async def test_secondary_changelog_hierarchy_move_reports_both_parents(
     await moved.parent.update(data=site_2, db=db)
     await moved.save(db=db)
 
-    getter = RelationshipChangelogGetter(db=db, branch=default_branch)
+    getter = build_relationship_changelog_getter(db=db, branch=default_branch)
     secondaries = await getter.get_changelogs(primary_changelog=moved.node_changelog)
 
     by_node = {changelog.node_id: changelog for changelog in secondaries}
@@ -615,14 +646,28 @@ async def test_secondary_changelog_hierarchy_move_reports_both_parents(
         "children": RelationshipCardinalityManyChangelog(
             name="children",
             peers=[
-                RelationshipPeerChangelog(peer_id=rack.id, peer_kind="LocationRack", peer_status=DiffAction.REMOVED)
+                RelationshipPeerChangelog(
+                    peer_id=rack.id,
+                    peer_kind="LocationRack",
+                    peer_display_label=moved.node_changelog.display_label,
+                    peer_hfid=moved.node_changelog.hfid,
+                    peer_status=DiffAction.REMOVED,
+                )
             ],
         )
     }
     assert by_node[site_2.id].relationships == {
         "children": RelationshipCardinalityManyChangelog(
             name="children",
-            peers=[RelationshipPeerChangelog(peer_id=rack.id, peer_kind="LocationRack", peer_status=DiffAction.ADDED)],
+            peers=[
+                RelationshipPeerChangelog(
+                    peer_id=rack.id,
+                    peer_kind="LocationRack",
+                    peer_display_label=moved.node_changelog.display_label,
+                    peer_hfid=moved.node_changelog.hfid,
+                    peer_status=DiffAction.ADDED,
+                )
+            ],
         )
     }
 
@@ -710,7 +755,7 @@ async def test_secondary_changelog_names_the_previous_peer_own_relationship(
     await moved.location.update(data=rack, db=db)
     await moved.save(db=db)
 
-    getter = RelationshipChangelogGetter(db=db, branch=default_branch)
+    getter = build_relationship_changelog_getter(db=db, branch=default_branch)
     by_node = {
         changelog.node_id: changelog
         for changelog in await getter.get_changelogs(primary_changelog=moved.node_changelog)
@@ -720,12 +765,122 @@ async def test_secondary_changelog_names_the_previous_peer_own_relationship(
     assert by_node[site.id].relationships == {
         "devices": RelationshipCardinalityManyChangelog(
             name="devices",
-            peers=[RelationshipPeerChangelog(peer_id=device.id, peer_kind="ZzzDevice", peer_status=DiffAction.REMOVED)],
+            peers=[
+                RelationshipPeerChangelog(
+                    peer_id=device.id,
+                    peer_kind="ZzzDevice",
+                    peer_display_label=moved.node_changelog.display_label,
+                    peer_hfid=moved.node_changelog.hfid,
+                    peer_status=DiffAction.REMOVED,
+                )
+            ],
         )
     }
     assert by_node[rack.id].relationships == {
         "equipment": RelationshipCardinalityManyChangelog(
             name="equipment",
-            peers=[RelationshipPeerChangelog(peer_id=device.id, peer_kind="ZzzDevice", peer_status=DiffAction.ADDED)],
+            peers=[
+                RelationshipPeerChangelog(
+                    peer_id=device.id,
+                    peer_kind="ZzzDevice",
+                    peer_display_label=moved.node_changelog.display_label,
+                    peer_hfid=moved.node_changelog.hfid,
+                    peer_status=DiffAction.ADDED,
+                )
+            ],
         )
     }
+
+
+PARENT_SIDE_SCHEMA: dict[str, Any] = {
+    "version": "1.0",
+    "nodes": [
+        {
+            "name": "Site",
+            "namespace": "Yyy",
+            "display_label": "name__value",
+            "attributes": [{"name": "name", "kind": "Text"}],
+            "relationships": [
+                {
+                    "name": "racks",
+                    "peer": "YyyRack",
+                    "identifier": "site__rack",
+                    "cardinality": "many",
+                    "direction": "inbound",
+                    "optional": True,
+                }
+            ],
+        },
+        {
+            "name": "Rack",
+            "namespace": "Yyy",
+            "display_label": "name__value",
+            "attributes": [{"name": "name", "kind": "Text"}],
+            "relationships": [
+                {
+                    "name": "site",
+                    "peer": "YyySite",
+                    "identifier": "site__rack",
+                    "kind": "Parent",
+                    "cardinality": "one",
+                    "direction": "outbound",
+                    "optional": False,
+                }
+            ],
+        },
+    ],
+}
+
+
+async def test_secondary_changelog_records_the_parent_its_reciprocal_relationship_names(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, data_schema: None
+) -> None:
+    """A peer holding the mutated node through a parent relationship reports it as its parent."""
+    registry.schema.register_schema(schema=SchemaRoot(**PARENT_SIDE_SCHEMA), branch=default_branch.name)
+    default_branch.update_schema_hash()
+    await default_branch.save(db=db)
+
+    site = await Node.init(db=db, schema="YyySite", branch=default_branch)
+    await site.new(db=db, name="site-1")
+    await site.save(db=db)
+
+    new_site = await Node.init(db=db, schema="YyySite", branch=default_branch)
+    await new_site.new(db=db, name="site-2")
+    await new_site.save(db=db)
+
+    rack = await Node.init(db=db, schema="YyyRack", branch=default_branch)
+    await rack.new(db=db, name="rack-1", site=site)
+    await rack.save(db=db)
+
+    updated_site = await NodeManager.get_one(id=new_site.id, db=db, raise_on_error=True)
+    await updated_site.racks.update(data=[rack], db=db)
+    await updated_site.save(db=db)
+
+    getter = build_relationship_changelog_getter(db=db, branch=default_branch)
+    secondaries = await getter.get_changelogs(primary_changelog=updated_site.node_changelog)
+
+    assert [changelog.node_id for changelog in secondaries] == [rack.id]
+    secondary = secondaries[0]
+    assert list(secondary.relationships) == ["site"]
+    assert secondary.parent == ChangelogRelatedNode(node_id=new_site.id, node_kind="YyySite")
+    assert secondary.root_node_id == new_site.id
+
+
+async def test_node_changelog_partial_update_reports_the_full_labels(
+    db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch
+) -> None:
+    """A node loaded without the fields its labels read still reports its complete labels on update."""
+    owner = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await owner.new(db=db, name="Jack")
+    await owner.save(db=db)
+    dog = await Node.init(db=db, schema="TestDog", branch=default_branch)
+    await dog.new(db=db, name="Rocky", breed="Labrador", owner=owner)
+    await dog.save(db=db)
+
+    partial = await NodeManager.get_one(db=db, id=dog.id, branch=default_branch, fields={"color": None})
+    assert partial is not None
+    partial.color.value = "#123456"
+    await partial.save(db=db, fields=["color"])
+
+    assert partial.node_changelog.hfid == ["Jack", "Rocky"]
+    assert partial.node_changelog.display_label == "Rocky Labrador"

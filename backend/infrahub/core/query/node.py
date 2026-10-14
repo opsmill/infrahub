@@ -14,7 +14,9 @@ from infrahub import config
 from infrahub.constants.enums import OrderDirection
 from infrahub.core import registry
 from infrahub.core.constants import (
+    DISPLAY_LABEL_ATTRIBUTE_NAME,
     GLOBAL_BRANCH_NAME,
+    HFID_ATTRIBUTE_NAME,
     NULL_VALUE,
     PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
     PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER,
@@ -1373,19 +1375,35 @@ WITH node_id, head(collect(node_kind)) AS node_kind
         return node_kind_map
 
 
-class NodeListGetDisplayLabelQuery(Query):
-    """Read the display label stored on a list of nodes without instantiating the nodes.
+@dataclass(frozen=True)
+class NodeStoredLabels:
+    """The labels stored on a node, read from the graph without instantiating the node."""
 
-    The stored ``display_label`` attribute is what ``Node.get_display_label`` returns when it is
-    populated, so this is the cheap way to label many nodes at once. A node that is not active on
-    the branch, or that has no display label stored, is absent from the result.
+    kind: str
+    """The kind of the node vertex active on the branch."""
+
+    display_label: str | None
+    """The stored display label, or None when it is empty, absent or not requested."""
+
+    hfid: list[str] | None
+    """The stored human-friendly ID, or None when it is empty, absent or not requested."""
+
+
+class NodeListGetStoredLabelsQuery(Query):
+    """Read the labels stored on a list of nodes without instantiating the nodes.
+
+    The stored ``display_label`` and ``human_friendly_id`` attributes are what ``Node`` returns
+    for its labels when they are populated, so this is the cheap way to label many nodes at once.
+    Only the requested label attributes are read. A node that is not active on the branch is absent
+    from the result; an active node is present even when none of its labels is stored.
     """
 
-    name = "node_list_get_display_label"
+    name = "node_list_get_stored_labels"
     type = QueryType.READ
 
-    def __init__(self, ids: list[str], **kwargs: Any) -> None:
+    def __init__(self, ids: list[str], label_names: list[str], **kwargs: Any) -> None:
         self.ids = ids
+        self.label_names = label_names
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
@@ -1394,6 +1412,7 @@ class NodeListGetDisplayLabelQuery(Query):
         )
         self.params.update(branch_params)
         self.params["ids"] = self.ids
+        self.params["label_names"] = self.label_names
 
         query = """
         MATCH (n:Node)
@@ -1411,50 +1430,73 @@ class NodeListGetDisplayLabelQuery(Query):
         }
         WITH n
         WHERE root_edge.status = "active"
-        MATCH (n)-[:HAS_ATTRIBUTE]->(attr:Attribute {name: "display_label"})
-        // a deleted or migrated node holds several edges to the same attribute: resolve each pair once
-        WITH DISTINCT n, attr
-        CALL (n, attr) {
-            MATCH (n)-[r:HAS_ATTRIBUTE]->(attr)
-            WHERE %(branch_filter)s
-            RETURN r AS attr_edge
-            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-            LIMIT 1
-        }
-        WITH n, attr
-        WHERE attr_edge.status = "active"
         // --------------------------
-        // Resolve the value active on the branch at the requested point in time
+        // Collect the value of each requested label attribute active on the branch, one row per node
         // --------------------------
-        CALL (attr) {
-            MATCH (attr)-[r:HAS_VALUE]->(av:AttributeValue)
-            WHERE %(branch_filter)s
-            RETURN r AS value_edge, av
-            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-            LIMIT 1
+        CALL (n) {
+            UNWIND $label_names AS attr_name
+            // resolve each requested name to a single attribute, even if several claim to be active
+            CALL (n, attr_name) {
+                MATCH (n)-[r:HAS_ATTRIBUTE]->(attr:Attribute {name: attr_name})
+                WHERE %(branch_filter)s
+                RETURN attr, r AS attr_edge
+                ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+                LIMIT 1
+            }
+            WITH attr
+            WHERE attr_edge.status = "active"
+            CALL (attr) {
+                MATCH (attr)-[r:HAS_VALUE]->(av:AttributeValue)
+                WHERE %(branch_filter)s
+                RETURN r AS value_edge, av
+                ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+                LIMIT 1
+            }
+            WITH attr, av
+            WHERE value_edge.status = "active"
+            RETURN collect([attr.name, av.value]) AS stored_values
         }
-        WITH n, av
-        WHERE value_edge.status = "active"
         """ % {"branch_filter": branch_filter}
 
         self.add_to_query(query)
-        self.return_labels = ["n.uuid AS node_id", "av.value AS display_label"]
+        self.return_labels = ["n.uuid AS node_id", "n.kind AS node_kind", "stored_values"]
 
-    def get_display_label_map(self) -> dict[str, str]:
-        """Return the stored display label of every node that has a non-empty one, keyed by node id.
+    def get_stored_labels(self) -> dict[str, NodeStoredLabels]:
+        """Return the labels stored on every node active on the branch, keyed by node id.
 
-        An empty stored label, including the ``NULL_VALUE`` sentinel a kind without a template
-        stores, is left out on purpose: whether it should read as an empty string or as the node's
-        default representation depends on the node's schema, which ``Node.get_display_label`` knows
-        and this query does not.
+        An empty stored value, including the ``NULL_VALUE`` sentinel an unset label stores, reads as
+        None on purpose: whether it should read as empty or be computed from the node's fields
+        depends on the node's schema, which ``Node`` knows and this query does not.
         """
-        display_label_map: dict[str, str] = {}
+        stored_labels: dict[str, NodeStoredLabels] = {}
         for result in self.get_results():
-            display_label = result.get("display_label")
-            if not display_label or display_label == NULL_VALUE:
-                continue
-            display_label_map[str(result.get("node_id"))] = str(display_label)
-        return display_label_map
+            stored_values: list[list[Any]] = result.get_as_type(label="stored_values", return_type=list)
+            values = {str(name): value for name, value in stored_values}
+            stored_labels[result.get_as_type(label="node_id", return_type=str)] = NodeStoredLabels(
+                kind=result.get_as_type(label="node_kind", return_type=str),
+                display_label=_stored_display_label(values.get(DISPLAY_LABEL_ATTRIBUTE_NAME)),
+                hfid=_stored_hfid(values.get(HFID_ATTRIBUTE_NAME)),
+            )
+        return stored_labels
+
+
+def _stored_display_label(raw: Any) -> str | None:
+    if not raw or raw == NULL_VALUE:
+        return None
+    return str(raw)
+
+
+def _stored_hfid(raw: Any) -> list[str] | None:
+    """Parse a stored HFID, a JSON-encoded list, keeping its non-null items as ``Node.get_hfid`` does."""
+    if not isinstance(raw, str) or raw == NULL_VALUE:
+        return None
+    try:
+        parsed = ujson.loads(raw)
+    except ujson.JSONDecodeError:
+        return None
+    if not isinstance(parsed, list) or not parsed:
+        return None
+    return [item for item in parsed if item is not None]
 
 
 class NodeListGetInfoQuery(Query):
