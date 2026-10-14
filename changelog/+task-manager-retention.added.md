@@ -2,6 +2,8 @@ Added three settings that control how long the task manager keeps its records: `
 
 Until now, finished task runs were not deleted automatically by age. The task manager now deletes the finished task runs older than the task history retention every hour, together with their logs and artifacts, and the deletion cannot be undone, so set a longer `task_history` before upgrading if you need older runs.
 
+`infrahub upgrade` deletes no task runs. In its task manager step, it prints how much disk space the task history takes, how many task runs are older than the retention, and the command that returns that space, `infrahub tasks flush flow-runs --rewrite`. An instance that already holds a lot of task history can run that command once after the upgrade, with the instance running, on Docker Compose and Kubernetes alike: it deletes the runs older than the retention quickly, which the hourly cleanup would otherwise work through slowly, and rewrites the tables to return their disk space.
+
 The activity log is still kept for 7 days by default. To keep it longer, raise `activity_log`, for example to `365d`, while the events the task manager records for its own use are still deleted after `prefect_own_events`.
 
 A `PREFECT_*` variable already set in the task manager environment, such as `PREFECT_SERVER_EVENTS_RETENTION_PERIOD`, takes precedence over the matching setting, and the task manager logs a warning that names it.
