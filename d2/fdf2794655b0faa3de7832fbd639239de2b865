@@ -1,0 +1,92 @@
+backend/tests/component/core/profiles/test_node_create_with_profiles.py
+  s_90d57abc1cfeb7::t_e97b211f178dbd 59-61,81-83,128-130,167-169,194-196
+  s_90d57abc1cfeb7::t_d49c0cc8516264 12
+backend/infrahub/core/migrations/graph/m042_profile_attrs_in_db.py
+  s_90d57abc1cfeb7::t_b2082047898b1b 14,84
+backend/infrahub/core/node/create.py
+  s_90d57abc1cfeb7::t_c0badcba0b6cae 27-28,41,324-326,433-455,460,474-480,554,556,558-564,579-580,596-598,603-604,619
+  s_90d57abc1cfeb7::t_929061080a57d4 38
+  s_90d57abc1cfeb7::t_2f6f6dd662eb27 620-621
+backend/tests/component/core/profiles/test_create_profile_reads.py
+  s_90d57abc1cfeb7::t_d49c0cc8516264 14
+  s_90d57abc1cfeb7::t_e97b211f178dbd 91-93
+backend/infrahub/profiles/data_reader.py
+  s_90d57abc1cfeb7::t_3c2cab3809635c 1-12,14-18,21-22
+  s_90d57abc1cfeb7::t_d2c01d4b222d02 13,19-20,23-26
+  s_90d57abc1cfeb7::t_e0df3a2f6a6748 27-29
+  s_90d57abc1cfeb7::t_b4689cfa2ac2ac 30-33
+backend/infrahub/profiles/node_applier.py
+  s_90d57abc1cfeb7::t_b3603644fecd73 19-20,32,35
+  s_90d57abc1cfeb7::t_7928ce20a250b8 10
+  s_90d57abc1cfeb7::t_99bfd2b48f93f3 104-105
+backend/infrahub/graphql/mutations/relationship.py
+  s_90d57abc1cfeb7::t_e97b211f178dbd 595-597
+  s_90d57abc1cfeb7::t_b2082047898b1b 35
+backend/tests/component/core/migrations/graph/m081_reanchor_number_pool_reservations/conftest.py
+  s_90d57abc1cfeb7::t_d49c0cc8516264 34
+  s_90d57abc1cfeb7::t_e97b211f178dbd 151-155,184-188
+backend/infrahub/profiles/mandatory_fields_checker.py
+  s_90d57abc1cfeb7::t_b3603644fecd73 17-18,59,62
+  s_90d57abc1cfeb7::t_7928ce20a250b8 8
+  s_90d57abc1cfeb7::t_d69591dfdb088a 97-98
+backend/tests/component/core/test_attribute.py
+  s_90d57abc1cfeb7::t_e97b211f178dbd 462-464
+  s_90d57abc1cfeb7::t_d49c0cc8516264 35
+backend/tests/component/core/constraint_validators/test_node_uniqueness.py
+  s_90d57abc1cfeb7::t_d49c0cc8516264 17
+  s_90d57abc1cfeb7::t_e97b211f178dbd 175-177
+backend/infrahub/core/node/lock_utils.py
+  s_90d57abc1cfeb7::t_e97b211f178dbd 34-36
+  s_90d57abc1cfeb7::t_b2082047898b1b 9
+backend/tests/component/graphql/profiles/test_query.py
+  s_90d57abc1cfeb7::t_e97b211f178dbd 158-160,237-239,410-412,496-498
+  s_90d57abc1cfeb7::t_d49c0cc8516264 12
+backend/infrahub/graphql/mutations/profile.py
+  s_90d57abc1cfeb7::t_b2082047898b1b 18
+  s_90d57abc1cfeb7::t_e97b211f178dbd 234-236
+backend/tests/component/core/constraint_validators/test_relationship_profiles_removal.py
+  s_90d57abc1cfeb7::t_e97b211f178dbd 95-97,140-142,182-184,246-248,291-293,331-333,378-380,417-419,465-467,512-514,561-563
+  s_90d57abc1cfeb7::t_d49c0cc8516264 19
+backend/tests/component/core/profiles/test_node_applier.py
+  s_90d57abc1cfeb7::t_d49c0cc8516264 17
+  s_90d57abc1cfeb7::t_e97b211f178dbd 79-81,112-114,177-179,239-241,379-381,425-427,506-508,575-577,602-604,648-650,675-677,719-721,796-798,856-858,915-917,971-973,1025-1027,1041-1043
+backend/tests/component/core/test_node.py
+  s_90d57abc1cfeb7::t_d49c0cc8516264 25
+  s_90d57abc1cfeb7::t_e97b211f178dbd 1014-1016,1141-1143
+backend/infrahub/graphql/mutations/main.py
+  s_90d57abc1cfeb7::t_b2082047898b1b 32
+  s_90d57abc1cfeb7::t_e97b211f178dbd 361-363,382-384
+backend/tests/component/core/profiles/test_mandatory_fields_checker.py
+  s_90d57abc1cfeb7::t_d49c0cc8516264 11
+  s_90d57abc1cfeb7::t_e97b211f178dbd 92-94,116-118,140-142,168-170,201-203,222-224
+backend/tests/component/core/test_node_get_list_query.py
+  s_90d57abc1cfeb7::t_d49c0cc8516264 24
+  s_90d57abc1cfeb7::t_e97b211f178dbd 599-601,651-653,712-714
+backend/infrahub/core/node/__init__.py
+  s_90d57abc1cfeb7::t_e97b211f178dbd 485-489
+  s_90d57abc1cfeb7::t_07d87d658f6740 47,483,509,538-540,1016,1029-1030,1036-1038,1042-1043,1119-1121
+backend/tests/component/core/resource_manager/test_number_pool.py
+  s_90d57abc1cfeb7::t_e97b211f178dbd 106-110
+  s_90d57abc1cfeb7::t_d49c0cc8516264 25
+backend/tests/component/graphql/profiles/test_mutation_relationship_override.py
+  s_90d57abc1cfeb7::t_d49c0cc8516264 15,139
+backend/tests/component/core/node/test_lock_utils.py
+  s_90d57abc1cfeb7::t_e97b211f178dbd 46-50
+  s_90d57abc1cfeb7::t_d49c0cc8516264 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d2fdf2794655b0faa3de7832fbd639239de2b865",
+  "prompts": {},
+  "sessions": {
+    "s_90d57abc1cfeb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "98b28fc3-cccd-4e87-800f-1b76c5baaacf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
