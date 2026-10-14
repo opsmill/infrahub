@@ -6,11 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-<<<<<<< HEAD
 from infrahub.computed_attribute.read_sets import derived_reads_are_scopable
-=======
-from infrahub.computed_attribute.tasks import _derived_reads_are_scopable
->>>>>>> origin/stable
 from infrahub.core.schema.schema_branch import SchemaBranch
 from tests.helpers.schema.car import CAR
 from tests.helpers.schema.person import PERSON
@@ -59,11 +55,7 @@ CASES = [
 
 @pytest.mark.parametrize("case", CASES, ids=lambda case: case.name)
 def test_derived_reads_are_scopable(case: Case) -> None:
-<<<<<<< HEAD
     result = derived_reads_are_scopable(
-=======
-    result = _derived_reads_are_scopable(
->>>>>>> origin/stable
         schema_branch=_branch_with_car(case.car), kind=CAR.kind, derived_reads=case.derived_reads
     )
     assert result is case.expected
@@ -72,12 +64,6 @@ def test_derived_reads_are_scopable(case: Case) -> None:
 def test_derived_reads_are_scopable_is_false_for_a_kind_absent_from_the_branch() -> None:
     branch = SchemaBranch(cache={}, name="test")
 
-<<<<<<< HEAD
     result = derived_reads_are_scopable(schema_branch=branch, kind=CAR.kind, derived_reads=frozenset({"display_label"}))
-=======
-    result = _derived_reads_are_scopable(
-        schema_branch=branch, kind=CAR.kind, derived_reads=frozenset({"display_label"})
-    )
->>>>>>> origin/stable
 
     assert result is False

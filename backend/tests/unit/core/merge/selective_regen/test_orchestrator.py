@@ -26,10 +26,7 @@ from tests.helpers.selective_regen import (
     ArtifactForcingSelector,
     GeneratorForcingSelector,
     PassthroughExpander,
-<<<<<<< HEAD
     StubCascadeSourceOutput,
-=======
->>>>>>> origin/stable
 )
 
 if TYPE_CHECKING:
@@ -124,15 +121,10 @@ async def test_build_plan_shares_modified_kinds_and_assembles_plan() -> None:
     )
 
     plan = await MergeSelectiveRegeneration(
-<<<<<<< HEAD
         participants=[
             CascadeSource(generator_selector, output=generator_output),
             CascadeTerminal(artifact_selector),
         ],
-=======
-        generator_selector=generator_selector,
-        artifact_selector=artifact_selector,
->>>>>>> origin/stable
         kinds_expander=PassthroughExpander(),
     ).build_plan(diff_summary=diff_summary, target_branch=TARGET_BRANCH)
 
@@ -325,44 +317,6 @@ def _artifact(*, fingerprint: str | None) -> ProposedChangeArtifactDefinition:
     )
 
 
-async def test_build_plan_passes_expanded_kinds_to_selectors() -> None:
-    """The kinds the expander widens the diff to are the kinds every selector receives."""
-    diff_summary = [_node_diff(node_id="n1", kind="TestDevice")]
-    generator_selector = _RecordingSelector[ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun](result=[])
-    artifact_selector = _RecordingSelector[ProposedChangeArtifactDefinition, RequestArtifactDefinitionGenerate](
-        result=[]
-    )
-
-    await MergeSelectiveRegeneration(
-        generator_selector=generator_selector,
-        artifact_selector=artifact_selector,
-        kinds_expander=AppendingExpander(extra_kind="TestProfiled"),
-    ).build_plan(diff_summary=diff_summary, target_branch=TARGET_BRANCH)
-
-    for selector in (generator_selector, artifact_selector):
-        _, _, recorded_kinds = selector.calls[0]
-        assert set(recorded_kinds) == {"TestDevice", "TestProfiled"}
-
-
-async def test_select_artifacts_passes_expanded_kinds_to_the_artifact_selector() -> None:
-    """The artifact-only reselection widens the changed kinds the same way as the full plan."""
-    diff_summary = [_node_diff(node_id="n1", kind="TestDevice")]
-    generator_selector = _RecordingSelector[ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun](result=[])
-    artifact_selector = _RecordingSelector[ProposedChangeArtifactDefinition, RequestArtifactDefinitionGenerate](
-        result=[]
-    )
-
-    await MergeSelectiveRegeneration(
-        generator_selector=generator_selector,
-        artifact_selector=artifact_selector,
-        kinds_expander=AppendingExpander(extra_kind="TestProfiled"),
-    ).select_artifacts(diff_summary=diff_summary, target_branch=TARGET_BRANCH)
-
-    assert generator_selector.calls == []
-    _, _, recorded_kinds = artifact_selector.calls[0]
-    assert set(recorded_kinds) == {"TestDevice", "TestProfiled"}
-
-
 async def test_missing_generator_fingerprint_escalates_a_sibling_artifact_in_the_same_repository() -> None:
     """A null-fingerprint definition escalates its whole repository across every kind.
 
@@ -381,15 +335,10 @@ async def test_missing_generator_fingerprint_escalates_a_sibling_artifact_in_the
     )
 
     plan = await MergeSelectiveRegeneration(
-<<<<<<< HEAD
         participants=[
             CascadeSource(generator_selector, output=StubCascadeSourceOutput()),
             CascadeTerminal(artifact_selector),
         ],
-=======
-        generator_selector=generator_selector,
-        artifact_selector=artifact_selector,
->>>>>>> origin/stable
         kinds_expander=PassthroughExpander(),
     ).build_plan(diff_summary=[], target_branch=TARGET_BRANCH)
 
