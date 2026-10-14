@@ -64,16 +64,16 @@ A proposed-change merge already reflects generator output in its branch diff, so
 
 ## Held regeneration
 
-The regeneration of a repository whose merges wait for their push to the remote would read the commit recorded before the merge, and nothing would run it again after the push. So on the default branch every dispatch of a merge passes `RegenerationBarrier.admit` first (`core/merge/regeneration_barrier.py`). [Git Push Queue](git-push-queue.md#the-regeneration-barrier-and-the-release) describes when the barrier holds and how it fails open.
+The regeneration of a repository whose merges wait for their push to the remote would read the commit recorded before the merge, and nothing would run it again after the push. So on the default branch every dispatch of a merge passes the barrier first (`core/merge/regeneration_barrier.py`): a selective dispatch through `RegenerationBarrier.admit`, a full regeneration through `RegenerationBarrier.hold_widen`. [Git Push Queue](git-push-queue.md#the-regeneration-barrier-and-the-release) describes when the barrier holds and how it fails open.
 
 - A generator run or an artifact generation whose definition a repository with pending pushes owns is held in the push state of that repository, under the next hold sequence. The rest is dispatched at once. A repeated hold of one definition joins the two narrowings, with the `consolidate` rule of the selector of its kind.
 - The barrier keeps the narrowed request of each hold in the cache (`NarrowedHoldCache`) for `NARROWED_HOLD_TTL_SECONDS`, which covers a whole automatic retry chain at its time limits plus ten minutes. A request above `NARROWED_HOLD_MAX_BYTES` is not kept.
-- A blanket regeneration holds a `widen` marker of scope `all` under each pending repository, with the reason of the fallback, and excludes those repositories from the blanket runs. A failed targeting of the terminals holds a marker of scope `terminals` the same way.
+- A blanket regeneration holds a `widen` marker of scope `all` under each pending repository, with the reason of the fallback, and excludes those repositories from the blanket runs. A failed generator run of the cascade, or a failed targeting of the terminals, holds a marker of scope `terminals` the same way.
 - In the cascade, only the artifacts reselected from the generator output pass the barrier after the generators ran: the terminals of the plan passed it already.
 
 The two trigger flows, `generate_artifact_definition` and `run_generator_definition`, take `exclude_repository_ids` and `include_repository_ids`, and skip a definition whose repository the lists do not allow. An empty or missing list allows every repository, and the dispatcher does not send an empty list, so a run with no filter keeps the parameters of a blanket run.
 
-The release (`core/merge/regeneration_release.py::HeldRegenerationReleaser`) runs after a delivery or an abandonment, under a release lease, and dispatches the held items once:
+The release (`core/merge/regeneration_release.py::HeldRegenerationReleaser`) runs after a delivery or an abandonment, under a release lease that each step and a 5-minute timer renew, and dispatches the held items once:
 
 - Each held item gets its request from its definition as it is now, because the import of the delivery can change the definition. Only the narrowing (`members` and `limit` for an artifact, `target_members` for a generator) comes from the cache. A cache miss regenerates every member.
 - It dispatches the requests as a merge plan (`dispatch_requests`), so the generator cascade runs and each dispatch passes the barrier with the released repository admitted. An artifact of another repository that reads the released generator output is reselected and regenerated too, unless that repository has pending pushes itself: then it is held.
@@ -105,7 +105,7 @@ Confirmed live on the demo stack. See [performance-scenarios.md](../../specs/arc
 | `UNHELD_FOLLOW_UP` | the merge flow queued a merge that the dispatcher could not queue, so the follow-ups ran with no hold, and the release regenerates every definition of the repository |
 | `HELD_SET_UNRESOLVED` | a held definition no longer exists at the release |
 
-`RegenerationReason` (`core/regeneration/models.py`) names the widening of one definition or one repository inside a selective plan:
+`RegenerationReason` (`core/regeneration/models.py`) names why a definition was selected. These members name the widening of one definition or one repository inside a selective plan:
 
 | Reason | Trigger |
 |--------|---------|

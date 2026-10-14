@@ -26,18 +26,20 @@ held at its `branched_from`, and nothing acts on that copy.
 | `delivery_queue` | The pending merges in merge order, the queue version, the recently removed entry ids and an owed import |
 | `delivery_held_regeneration` | The regeneration held until a release, and the release leases |
 | `delivery_last_abandonment` | The record of the last abandonment |
-| `delivery_last_delivered_commit` | The commit of the last push that reached the remote |
+| `delivery_last_delivered_commit` | The commit of the last push that an attempt recorded. An attempt that finds the merges on the remote already keeps the old value |
 | `delivery_reverted` | A pushed commit that a later rewrite of the remote default branch discarded |
 | `delivery_progress` | When the delivery last moved, when the attempt started, and when a waiting retry is due |
 
-`pending` means that merges wait and an automatic attempt runs, is about to run, or waits for its
+`pending` means that merges wait and an attempt runs, is about to run, or waits for its automatic
 retry. `action-required` means that merges wait and no automatic retry is due: the next merge flow
 of the repository or a user starts the next attempt. When the queue is empty again, the status goes
 back to `none` and the cause and the error are cleared.
 
 `git/writeback/store.py::WritebackIntentStore`, behind `git/writeback/ports.py::DeliveryStatePort`,
-is the only writer. `backend/tests/unit/git/writeback/test_single_writer.py` fails when another
-module names one of the nine attributes. The transitions are pure functions of `git/writeback/models.py::WritebackIntent`.
+is the only writer. `backend/tests/unit/git/writeback/test_single_writer.py` fails when a module of
+the `infrahub` package names one of the nine attributes, other than the store, the schema definition
+and the generated protocols. The transitions are pure functions of
+`git/writeback/models.py::WritebackIntent`.
 
 - Each transition is one read and at most one save, in its own transaction, under the
   `repository-delivery` lock: 30 s time to live, 10 s to acquire. The first statement of the
@@ -57,7 +59,8 @@ after the graph merge and before the follow-ups submit any regeneration
 
 - `git/writeback/content.py::read_pending_merges` builds one entry for each active repository whose
   content the merge changes. A repository gets no entry when the source branch records no commit,
-  records the commit that the default branch held at the fork or holds now, or has the name of the
+  records the commit that the default branch held at the `branched_from` time of the branch (its
+  creation or its last rebase) or holds now, or has the name of the
   remote branch that a delivery pushes to. A stored commit that is not a full commit id counts as no
   commit, so one repository cannot stop the others.
 - The dispatcher queues all entries at the same time, each try on its own database session, with
@@ -70,9 +73,10 @@ The flow covers what the dispatcher could not do:
 
 - When the content read failed, each active repository gets a merge flow with no entry, and the flow
   reads the content itself.
-- When every enqueue try failed, the flow queues the entry, and holds a regeneration of every
-  definition of the repository with it (`FullRegenerationReason.UNHELD_FOLLOW_UP`), because the
-  follow-ups ran with no hold.
+- When every enqueue try failed, the flow queues the entry.
+- In both cases, the flow holds a regeneration of every definition and Python computed attribute of
+  the repository with the entry (`FullRegenerationReason.UNHELD_FOLLOW_UP`), because the follow-ups
+  ran with no hold.
 - When the source branch is deleted before the flow builds its entry, the flow uses the
   `source_commit` of its payload. With neither, it logs the merge to do by hand and ends `Failed`.
 
@@ -92,19 +96,21 @@ Under the repository lock, it:
 - checks the queue against the remote, as the next list says;
 - resets the destination worktree to the remote head and merges each remaining source commit by its
   id, in queue order;
-- pushes once;
-- owes an import when the remote head moved past the recorded commit, or when an earlier import is
-  still owed, then records the new commit on the default branch and runs the owed import;
+- pushes once, when it replayed at least one merge;
+- owes an import when the remote head differs from the recorded commit, when no commit is recorded,
+  or when an earlier import is still owed, then records the new commit on the default branch and
+  runs the owed import;
 - asks the other workers to fetch the commit, and deletes each flagged remote source branch that no
   later queued merge comes from;
-- removes the delivered merges from the queue and takes a release lease over the held regeneration,
-  in the save that ends the attempt.
+- removes the delivered merges from the queue and takes a release lease over the held items up to
+  the snapshot that no live lease covers, in the save that ends the attempt.
 
 Then, outside the repository lock, it releases the held regeneration under the lease. Generator runs
-take the repository lock to fetch a commit that their worker lacks, so the release cannot run under it.
+take the repository lock to fetch a commit that their worker lacks, so the release cannot run under
+it.
 
-The checks push nothing when they fail, because a replay would put commits that the remote discarded
-back on it:
+The checks push nothing when they fail. After a rewrite or a discarded source, a replay would put
+the discarded commits back on the remote, and a conflict needs a person to resolve it:
 
 - The remote has no destination branch, or its history does not contain the recorded commit:
   `destination-rewritten`.
@@ -114,15 +120,16 @@ back on it:
 - A merge that the remote head already contains is not replayed.
 
 A failed replay, push or record resets the worktree to the commit that the default branch recorded
-before the attempt, or to the remote head when it records none. After a failed record, the remote holds the push, so the
-next attempt finds the merges on the remote and records the commit. A clone with no `origin` fails
-the attempt as `unclassified` and keeps the queue.
+before the attempt, or to the remote head when it records none. After a failed record, the remote
+holds the push, so the next attempt finds the merges on the remote and records the commit. A clone
+with no `origin` fails the attempt as `unclassified` and keeps the queue.
 
 With `git.use_explicit_merge_commit` at its default of `False`, a replay fast-forwards where it can,
-and the new commit is the source commit, which the remote already has. When the remote head has moved
-past the fork of the source, or when that setting is on, Git creates a merge commit whose id contains
-a timestamp. A failed attempt discards it, and the next attempt replays the source commit again, on
-any worker.
+and the new commit is the source commit, which the remote already has. When the worktree head (the
+remote head and the merges replayed before) does not contain the source commit, or when that setting
+is on, Git creates a merge commit. Its id depends on the time of the merge, so each replay gives a
+new id. A failed replay or push discards it, and the next attempt replays the source commit again,
+on any worker. After a successful push, the remote keeps it.
 
 | Outcome | Meaning | Run state |
 |---|---|---|
@@ -137,36 +144,41 @@ any worker.
 ## Failure causes and the automatic retry
 
 `git/writeback/classifier.py::classify_delivery_failure` maps the error and the step to a cause. It
-reads only the error type, which the Git layer sets from Git's output and the push result
-([Git Integration](git-integration.md#how-git-errors-are-classified)).
+reads the error type, which the Git layer sets from Git's output, and the reason of a refused push
+([Git Integration](git-integration.md#how-git-errors-are-classified)). The import wraps most errors
+in `RepositoryImportError`, so for the import step the classifier reads the type of the wrapped
+error: a database error or an unreachable server gives `import-interrupted`.
 
 | Cause | When | Retried |
 |---|---|---|
 | `remote-unreachable` | The fetch or the push cannot reach the remote, or runs past its time limit | Yes |
 | `remote-advanced` | The remote refuses the push as a non-fast-forward, or cannot update the ref | Yes |
-| `record-failed` | Infrahub cannot read the recorded commit, or cannot record the push | Yes |
+| `record-failed` | Infrahub cannot read the recorded commit, cannot record the push, or cannot read or write the push state after the push | Yes |
 | `import-interrupted` | A database or connection error stops the import of the pushed commit | Yes |
 | `not-found` | The remote repository does not exist, at the fetch, the push or the import | No |
 | `certificate` | Git refuses the certificate of the remote, at the fetch, the push or the import | No |
-| `credentials` | The remote refuses the credentials | No |
+| `credentials` | The remote refuses the credentials at the fetch or the push. At the import, this gives `import-failed` | No |
 | `permission` | A hook or a branch protection refuses the push, or the account cannot push | No |
 | `import-failed` | The import of the pushed commit fails for another reason | No |
 | `unclassified` | Any other error, such as a replay merge that fails with no conflict | No |
 | `replay-conflict`, `source-discarded`, `destination-rewritten` | A check refused the queue | No |
 
-The stored message is the remote's own `remote:` lines for a refused push, the typed message of
-another Infrahub error that does not repeat Git output, or a sentence that names the step and the
-error type. `git/writeback/credentials.py::scrub_credentials` removes credentials from it.
+The stored message is the remote's own `remote:` lines and a sentence that names the refusal for a
+refused push, a sentence that names the branch or the merge for a check that refuses the queue, the
+typed message of another Infrahub error that does not repeat Git output, or a sentence that names
+the step and the error type. `git/writeback/credentials.py::scrub_credentials` removes credentials
+from it.
 
 `git.tasks.deliver_pending_merges` is a Prefect task with three retries, after 30, 120 and 300 s
-(`git/writeback/constants.py`). It retries only a `RetryableDeliveryError`. Before the wait, the
-failure records `retry_due_at`. The last attempt records a retried cause as final. A final failure
-with merges queued sets `action-required` and no retry is due. A cause that is not retried is final
-at once.
+(`git/writeback/constants.py`). It retries only a `RetryableDeliveryError`. Before the wait, a
+failed step records `retry_due_at`. A failed enqueue and a failure outside a step record nothing.
+The last attempt records a retried cause as final. A final failure with merges queued sets
+`action-required` and no retry is due. A cause that is not retried is final at once.
 
-- One repository has one retry chain. An automatic first attempt that finds a retry due later
-  returns `deferred`: the waiting retry takes its snapshot when it starts, so it delivers the new
-  merge too. A manual retry never defers.
+- An automatic first attempt that finds a retry due later returns `deferred`: the waiting retry
+  takes its snapshot when it starts, so it delivers the new merge too. So one retry chain usually
+  runs for a repository. A manual retry never defers, and a failure that records no due time lets the
+  next merge flow start its own chain.
 - A failed enqueue or release gives no cause. While merges are queued, the stored cause and error
   stay.
 - A failed release never sets `action-required`: its merges are on the remote already.
@@ -187,29 +199,38 @@ Both refuse, in this order:
 - a request off the default branch, because the permission checks read the branch of the request;
 - an account without `update` on `CoreRepository` and the global `manage_repositories` and
   `edit_default_branch` permissions;
+- an unknown id, and the id of a node that is not a repository, with the same `NodeNotFoundError`;
 - a read-only or staging repository;
 - an empty queue (`NothingPendingError`).
 
 The abandonment also refuses a `queue_version` that is not the current one
-(`DeliveryQueueChangedError`), so a user abandons only the queue that the user saw. A running attempt
-or a waiting retry does not refuse a request: the flow waits for the repository lock. Both mutations
-return the task at once.
+(`DeliveryQueueChangedError`), so a user abandons only the queue that the user saw. A running
+attempt or a waiting retry does not refuse a request: the flow waits for the repository lock. Both
+mutations return the task at once.
 
-The retry flow runs `deliver_pending_merges` with no entry and `manual=True`, so it gets the same
-automatic retries. It checks nothing itself: the first step of the attempt decides whether something
-is left.
+The retry flow runs `deliver_pending_merges` with no entry and the `manual` value of its payload:
+`True` from the mutation, `False` from the recovery check. It gets the same automatic retries. It
+checks nothing itself: the first step of the attempt decides whether something is left.
 
 The abandonment builds the repository from the graph only, with no clone, so it works when the
 remote is gone. Under the repository lock, it reads the recorded commit, then drops the whole queue
 and the owed import in one save, with the record in `delivery_last_abandonment`: the merges, the
 account, the time, the queue version, the recorded commit and the dropped owed import. It tells the
 workers that each source branch flagged for deletion is gone, then releases the held regeneration
-under its lease. A release that fails ends the lease at once, so the items stay held, the run fails,
-and a later delivery run releases them.
+under its lease, outside the repository lock. The run ends `Completed` with a message that names the
+abandoned merges.
+
+- A release that fails ends the lease at once, so the items stay held, and the run fails. Its log
+  says that the merges are abandoned, that the barrier no longer holds the repository, and that a
+  user can run the definitions and the computed attributes of the repository by hand to regenerate
+  now. A later delivery run releases the items.
+- A failed clear of the lease after the release keeps the lease, and the run fails. A later delivery
+  run releases the items again once the lease expires.
 
 An abandonment pushes nothing, deletes no remote branch and imports nothing. The objects of the
-abandoned merges stay on the default branch until a user reimports the current commit. An abandoned
-entry id never joins the queue again.
+abandoned merges stay on the default branch until a user reimports the current commit, or until the
+sync imports a new commit of the remote default branch. The queue refuses an abandoned entry id
+while it is in the last abandonment record or among the last 256 removed ids.
 
 ## Imports that wait for the queue
 
@@ -220,18 +241,29 @@ remove their objects. While the status is not `none`, three paths wait:
 | Path | What it does |
 |---|---|
 | `InfrahubRepository.collect_pending_imports`, the active loop | Leaves out the default branch and the remote source branch of each pending merge, new or updated, before the classification. No worktree moves, no commit is written, no rewrite is recorded. It logs the skipped branches. |
-| `git/tasks.py::bootstrap_local_repository` | After a fresh clone, records no commit and skips the seed import. |
-| `graphql/mutations/repository.py::ProcessRepository` | Refuses the reimport on every branch. |
+| `git/tasks.py::bootstrap_local_repository` | After a fresh clone that seeds the default branch, records no commit and skips the seed import. A seed into a staging branch still imports. |
+| `graphql/mutations/repository.py::ProcessRepository` | Refuses the reimport on every branch, with `ReimportPendingPushesError`. The import flow (`git.tasks.import_objects_from_git_repository`) checks again under the repository lock, so a merge queued after the mutation accepted the reimport still stops it. |
 
 A state that cannot be read fails closed: the sync of that repository stops for the cycle. The
 staging path does not change. The delivery imports the remote head itself when it moved. A rewrite
-of the remote default branch during the wait is reconciled at the first cycle after the queue clears.
-Until then the delivery refuses it with `destination-rewritten`.
+of the remote default branch during the wait is reconciled at the first cycle after the queue
+clears. Until then the delivery refuses it with `destination-rewritten`.
+
+The wait also holds new merges when the remote default branch moves or is rewritten. The graph
+keeps the commit that the default branch recorded before the wait, so
+`git/merge_readiness.py::RemoteHeadsMergeCheck` finds a remote head that the graph did not record.
+When a branch that syncs with Git records another commit than the default branch for that active
+repository, the check refuses its merge with `RepositoryNotSynchronizedError`. The refusal comes
+before the graph merge, so the branch stays open. A branch that records the commit of the default
+branch has nothing to merge in Git, so the check compares only its own remote head. The refusal ends
+when a delivery, automatic or manual, records the pushed commit, or when a user abandons the queue
+and the next cycle imports the remote head.
 
 The repository conversion (`core/convert_object_type/repository_conversion.py`) refuses with
 `DeliveryPendingError` while merges are queued or held regeneration waits, because the conversion
-deletes the node and its push state with it. A conversion also cannot set a read-only attribute of
-the target kind through its mapping.
+deletes the node and its push state with it. Inside the repository lock, it holds the state lock
+from the check to the deletion, so no merge is queued between them while the state lock lives. A
+conversion also cannot set a read-only attribute of the target kind through its mapping.
 
 ## The kept source branch
 
@@ -244,9 +276,9 @@ check fails, the task keeps the branch and logs the manual step. It does not rai
 repositories still delete their branch.
 
 The delivery deletes a flagged branch after the push, unless a later queued merge comes from it. An
-abandonment keeps a flagged branch on the remote and tells the workers to drop their local copy. The next
-sync then imports the branch as a new Infrahub branch, when `git.import_sync_branch_names` allows its
-name, and the user can merge it again.
+abandonment keeps a flagged branch on the remote and tells the workers to drop their local copy. The
+next sync then imports the branch as a new Infrahub branch, when `git.import_sync_branch_names`
+allows its name, and the user can merge it again.
 
 ## The regeneration barrier and the release
 
@@ -267,11 +299,17 @@ admits everything on another branch:
   8 and 20 s), it admits every candidate, and the holds written before the failure stay.
 
 `core/merge/regeneration_release.py::HeldRegenerationReleaser` runs after a delivery or an
-abandonment, under a release lease of 15 minutes that each awaited step renews. Its dispatches pass
-the barrier with the released repository admitted, so work of another pending repository stays held.
-A release that fails ends its lease, keeps every item held, and records no `action-required`. What a
-release runs is in [Selective Post-Merge Regeneration](selective-merge-regeneration.md#held-regeneration)
-and [Coalesced Recompute](merge-recompute.md#held-python-targets).
+abandonment, under a release lease of 15 minutes. Each awaited step renews the lease. A timer also
+renews it every 5 minutes while the release runs, because one step, such as a generator run, can
+last longer than the lease (`git/writeback/service.py::release_under_lease`). The timer renews
+through `git/writeback/store.py::LeaseRenewer`, on a database session of its own, because the
+release uses the session of the flow at the same time. Its dispatches pass the barrier with the
+released repository admitted, so work of another pending repository stays held. A regeneration of
+the whole repository does not pass the barrier, because it runs only the definitions of that
+repository. A release that fails ends its lease, keeps every item held, and records no
+`action-required`. What a release runs is in [Selective Post-Merge
+Regeneration](selective-merge-regeneration.md#held-regeneration) and [Coalesced
+Recompute](merge-recompute.md#held-python-targets).
 
 ## The recovery check
 
@@ -284,14 +322,18 @@ branch and an anonymous account) and the delivery tags, then moves the progress 
 - **The delivery is stale**: the status is `pending`, no retry is due later, the delivery made no
   progress for `STALE_AFTER_SECONDS` (15 minutes), the repository lock is free, and no delivery run
   of the repository waits to start.
-- **Held regeneration waits behind an empty queue**, with no progress for the same time.
+- **Held regeneration waits behind an empty queue**: at least one held item has no live release lease,
+  the delivery made no progress for the same time, and no delivery run of the repository waits to
+  start or runs.
 
 Progress moves at each enqueue, attempt start and recorded failure, after the fetch, the push and
 the record, and before and after the import. The check asks Prefect last, with one `read_flow_runs`
-call for the runs that have both tags of `git/writeback/runs.py::delivery_run_tags` and a state of
-type `SCHEDULED` or `PENDING`. A running run is left out: a live worker holds the lock or writes
-progress. When Prefect does not answer, the check submits nothing. A queue at `action-required` gets
-no automatic run.
+call for the runs that have both tags of `git/writeback/runs.py::delivery_run_tags`
+(`PrefectDeliveryRunQuery`). For a stale delivery, it counts a state of type `SCHEDULED` or
+`PENDING` only: a live worker holds the lock or writes progress, so a running run is left out. For
+held regeneration, it counts `RUNNING` too, because a release holds no lock and writes no progress,
+so only its run shows that it still works. When Prefect does not answer, the check submits nothing.
+A queue at `action-required` gets no automatic run.
 
 ## Time limits on Git commands
 
@@ -307,15 +349,18 @@ no automatic run.
 
 ## The reverted push record
 
-When the sync classifies the default branch as rewritten ([Git Sync](git-sync.md#rewritten-history)),
-it reads `delivery_last_delivered_commit`. When the rewrite discarded that commit, the sync records
-it in `delivery_reverted` and logs a warning. Each push fast-forwards the remote, so every earlier
-pushed commit survived when the last one did. A clone that lacks the pushed commit records it too,
-because a fetch brings every ancestor of the new head.
+When the sync classifies the default branch as rewritten ([Git
+Sync](git-sync.md#rewritten-history)), it reads `delivery_last_delivered_commit`. When the new head
+no longer holds that commit, the sync records it in `delivery_reverted` and logs a warning. Each
+push fast-forwards the remote, so every earlier pushed commit survived when the last one did. A
+clone that lacks the pushed commit records it too, because a fetch brings every ancestor of the new
+head.
 
 - A record that names the same pushed commit stays, so a later rewrite does not replace the first
   record.
 - A change of `default_branch` with a live re-target marker is not a rewrite, so it records nothing.
+  It forgets the last pushed commit instead (`forget_delivered_commit`), because that commit belongs
+  to the previous default branch.
 - A failed record fails the default branch at step `record` and keeps its import, as a failed
   rewrite record does.
 
@@ -324,20 +369,31 @@ The repository page does not show this record. Read it through GraphQL.
 ## Known limitations
 
 - **An SSH remote has no stall limit.** A fetch or a push over SSH that hangs keeps the repository
-  lock until the connection ends, so the recovery check submits nothing and a manual retry waits too.
+  lock until the connection ends, so the recovery check submits nothing, and a manual retry and an
+  abandonment wait too.
 - **A transfer that sends data and then stalls** can take up to about twice its limit.
 - **A repository lock that a dead worker held** has no time to live, so the recovery check and a
   manual retry wait for `locks/tasks.py::clean_up_deadlocks`. It runs every minute and deletes a lock
   whose holder left the active-worker set, once the lock is older than
   `cache.clean_up_deadlocks_interval_mins`.
 - **A delivery run that stays in `PENDING`** counts as a run that waits to start, so the automatic
-  recovery stops while it stays there. The `crash-zombie-flows` automation does not end such a run.
-  A manual retry still works: it submits a new run.
+  recovery stops while it stays there, for a stale delivery and for held regeneration. The
+  `crash-zombie-flows` automation does not end such a run. A manual retry still works while merges
+  are queued: it submits a new run. With an empty queue, the retry mutation refuses.
+- **A release whose generator run never ends** keeps its lease while its worker lives, because the
+  timer renews it. No other run releases its items in that time.
+- **A release run of a dead worker that stays in `RUNNING`** stops the automatic restart of the
+  release until the `crash-zombie-flows` automation marks the run crashed. Its lease still expires,
+  so the next delivery run after the expiry releases the items. A manual retry starts such a run
+  only while merges are queued: the retry mutation refuses an empty queue.
 - **A release that fails every time** gets a new automatic run every `STALE_AFTER_SECONDS`, with no
   limit. Each run makes up to four attempts, and each attempt can dispatch the held regeneration
   again.
-- **One refusal blocks every later merge of the repository.** Each attempt checks the whole queue,
-  so each later merge flow is refused for the same cause until a user abandons the queue.
+- **One refusal blocks every later merge of the repository.** When the remote default branch moved
+  or was rewritten, the merge check refuses each later merge of a branch with something to merge in
+  the repository, before the graph merge. Otherwise each later merge is queued, and each attempt
+  checks the whole queue, so it is refused for the same cause. This lasts until a user abandons the
+  queue or, after `replay-conflict`, merges the source branch on the remote by hand and retries.
 - **An abandonment drops the whole queue.** No mutation drops one merge.
 - **A branch forked from the default branch while pushes are pending** holds the objects of the
   pending merges in its graph. Its Git branch comes from the local trunk head, which lacks their
@@ -345,16 +401,21 @@ The repository page does not show this record. Read it through GraphQL.
   removes them from the default branch. The reimport refuses on every branch, but the sync of such a
   branch does not wait, because that would hold every developer push during an outage.
 - **A remote source branch deleted before its merge is queued** is not kept: the guard finds no
-  merge to flag. This needs every enqueue try of the dispatcher to fail. The delivery then refuses
-  with `source-discarded`, and a user abandons the queue and merges the branch on the remote by hand.
+  merge to flag. This needs the dispatcher to fail to read or to queue the merge. The delivery then
+  refuses with `source-discarded`, and a user abandons the queue and merges the branch on the remote
+  by hand.
 - **A re-target marker stays while pushes are pending**, because the sync skips the default branch.
   After an outage longer than the seven days of the marker, a change of `default_branch` made during
   the outage reads as a rewrite.
 - **A change of `default_branch` whose marker expired before the next sync reads as a rewrite**, so
   the sync can record a reverted push that did not happen. The rewrite record of
   [Git Sync](git-sync.md#the-rewrite-record) has the same limit.
-- **The conversion check reads the state without the state lock**, so a merge queued between the
-  check and the deletion of the node is dropped with no record.
+- **A conversion that takes longer than the state lock lives** can still let a merge in. The state
+  lock has a time to live of 30 s, so a merge can be queued when more than 30 s pass between the
+  check of the conversion and the deletion of the node. That merge is dropped with no record.
+- **A merge queues its entry under the state lock only**, not under the repository lock. So a merge
+  can be queued after the second check of a reimport, or after the sync read the state, and before
+  the import runs. That import then removes the objects of the merge from the default branch.
 - **The history of the queue grows with the square of an outage.** Each change rewrites the whole
   `delivery_queue` value, and the temporal history keeps each version, so N merges during one outage
   store about N²/2 entries.
@@ -372,13 +433,13 @@ ignores them. Two effects remain after a revert:
 | File | What |
 |---|---|
 | `git/writeback/models.py` | `WritebackIntent` and its transitions, the queue, the held regeneration, `DeliveryOutcome` |
-| `git/writeback/store.py` | `WritebackIntentStore`, the only writer of the push state |
+| `git/writeback/store.py` | `WritebackIntentStore`, the only writer of the push state; `LeaseRenewer` |
 | `git/writeback/service.py` | `RepositoryWritebackService`, one delivery attempt |
 | `git/writeback/git_adapter.py` | `RepositoryDeliveryGitAdapter`, the Git work of an attempt, with a time limit on each command |
 | `git/writeback/classifier.py` | `classify_delivery_failure`, the cause and the retry decision |
 | `git/writeback/content.py` | `read_pending_merges`, which merges change content |
 | `git/writeback/abandoner.py` | `WritebackAbandoner` |
-| `git/writeback/recovery.py`, `runs.py` | `DeliveryRecoveryCheck`, the delivery tags, the retry delay |
+| `git/writeback/recovery.py`, `runs.py` | `DeliveryRecoveryCheck`, `PrefectDeliveryRunQuery`, the delivery tags, the retry delay |
 | `git/writeback/constants.py` | Retry delays, time limits, `STALE_AFTER_SECONDS`, lock and lease times |
 | `git/writeback/factory.py` | `build_writeback_service`, `build_writeback_abandoner` |
 | `core/merge/repository_merge_dispatcher.py` | `RepositoryMergeDispatcher`, the enqueue after a merge |
