@@ -15,7 +15,7 @@ from infrahub_sdk.protocols import (
 )
 from infrahub_sdk.uuidt import UUIDT
 
-from infrahub import config
+from infrahub import config, lock
 from infrahub.core.constants import (
     InfrahubKind,
     RepositoryInternalStatus,
@@ -36,6 +36,7 @@ from infrahub.git.tasks import (
     pull_read_only,
     sync_repository_from_origin,
 )
+from infrahub.git.writeback.store import build_intent_store
 from infrahub.log import PREFECT_RUN_LOGGERS
 from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.workers.dependencies import build_event_service
@@ -713,6 +714,7 @@ class TestImportFailureLogs(TestInfrahubApp):
         )
         repository = await client.get(kind=CoreRepository, id=node.id)
 
+        state = await build_intent_store(db=db, lock_registry=lock.registry)
         async with activity_run() as run:
             repo = await call_in_flow(
                 lambda: bootstrap_local_repository(
@@ -720,6 +722,7 @@ class TestImportFailureLogs(TestInfrahubApp):
                     repository=repository,
                     infrahub_branch=registry.default_branch,
                     client=client,
+                    state=state,
                     activity=run,
                 )
             )

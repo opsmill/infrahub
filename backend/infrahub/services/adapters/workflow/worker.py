@@ -2,11 +2,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, overload
 
+import httpx
 from prefect.client.schemas.objects import StateType
 from prefect.context import AsyncClientContext
 from prefect.deployments import run_deployment
+from prefect.exceptions import ObjectNotFound
 
 from infrahub import config, lock
+from infrahub.exceptions import WorkflowOrchestrationError
 from infrahub.workers.utils import inject_context_parameter
 from infrahub.workflows.initialization import (
     setup_task_manager,  # noqa: TID251 - worker startup owns the setup
@@ -81,15 +84,22 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         dispatch_context, work_queue_name = prepare_dispatch(workflow=workflow, context=context, priority=priority)
         inject_context_parameter(func=flow_func, parameters=parameters, context=dispatch_context)
 
-        response: FlowRun = await run_deployment(
-            name=workflow.full_name,
-            poll_interval=1,
-            parameters=parameters or {},
-            tags=tags,
-            work_queue_name=work_queue_name,
-        )  # type: ignore[misc]
+        try:
+            response: FlowRun = await run_deployment(
+                name=workflow.full_name,
+                poll_interval=1,
+                parameters=parameters or {},
+                tags=tags,
+                work_queue_name=work_queue_name,
+            )  # type: ignore[misc]
+        except (httpx.HTTPError, ObjectNotFound, OSError) as exc:
+            raise WorkflowOrchestrationError(
+                f"The task manager could not start the run of workflow {workflow.name} or follow it to a final state."
+            ) from exc
         if not response.state:
-            raise RuntimeError("Unable to read state from the response")
+            raise WorkflowOrchestrationError(
+                f"The task manager returned no state for the run of workflow {workflow.name}."
+            )
 
         if response.state.type == StateType.CRASHED:
             raise RuntimeError(response.state.message)

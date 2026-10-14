@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from enum import Flag, auto
+from enum import Flag, StrEnum, auto
 
 from infrahub.core.constants import infrahubkind as InfrahubKind  # noqa: N812
 from infrahub.exceptions import ValidationError
@@ -232,6 +232,43 @@ class RepositorySyncStatus(InfrahubStringEnum):
     ERROR_IMPORT = "error-import"
     ERROR_REF_MISSING = "error-ref-missing"
     SYNCING = "syncing"
+
+
+class RepositoryDeliveryStatus(InfrahubStringEnum):
+    NONE = "none"
+    PENDING = "pending"
+    ACTION_REQUIRED = "action-required"
+
+
+class RepositoryDeliveryFailureCause(InfrahubStringEnum):
+    REMOTE_UNREACHABLE = "remote-unreachable"
+    REMOTE_ADVANCED = "remote-advanced"
+    RECORD_FAILED = "record-failed"
+    NOT_FOUND = "not-found"
+    CERTIFICATE = "certificate"
+    CREDENTIALS = "credentials"
+    PERMISSION = "permission"
+    IMPORT_INTERRUPTED = "import-interrupted"
+    IMPORT_FAILED = "import-failed"
+    REPLAY_CONFLICT = "replay-conflict"
+    SOURCE_DISCARDED = "source-discarded"
+    DESTINATION_REWRITTEN = "destination-rewritten"
+    UNCLASSIFIED = "unclassified"
+
+
+class FullRegenerationReason(StrEnum):
+    """Why a regeneration covers every definition instead of a selection.
+
+    The delivery state of a repository stores the member names, so a member must not be renamed.
+    """
+
+    FEATURE_DISABLED = "Selective post-merge execution disabled"
+    NO_SUMMARY_CAPTURED = "No merge diff summary captured"
+    SUMMARY_UNAVAILABLE = "Merge diff summary unavailable"
+    SELECTION_FAILED = "Selective post-merge regeneration failed"
+    UNHELD_FOLLOW_UP = "Merge follow-ups ran without a hold"
+    TERMINAL_SELECTION_FAILED = "Terminals could not be targeted from the cascade output"
+    HELD_SET_UNRESOLVED = "Held regeneration could not be resolved"
 
 
 class RepositoryOperationalStatus(InfrahubStringEnum):

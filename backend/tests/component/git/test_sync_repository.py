@@ -3,6 +3,7 @@ import logging
 import shutil
 from collections.abc import AsyncGenerator, Generator
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -16,6 +17,8 @@ from prefect.client.orchestration import PrefectClient, get_client
 from prefect.client.schemas.objects import State, StateType
 
 from infrahub import config, lock
+from infrahub.auth.session import AnonymousSession
+from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import (
     InfrahubKind,
     RepositoryInternalStatus,
@@ -32,6 +35,7 @@ from infrahub.exceptions import RepositoryError
 from infrahub.git import InfrahubRepository
 from infrahub.git.divergence.recorder import HistoryRewriteRecorder
 from infrahub.git.divergence.suppression import RetargetMarkers
+from infrahub.git.models import GitRepositoryDeliveryRetry
 from infrahub.git.repository import ImportStep
 from infrahub.git.sync import (
     RepositoryBranchesFailedError,
@@ -42,13 +46,19 @@ from infrahub.git.sync import (
     raise_if_branches_failed,
 )
 from infrahub.git.tasks import report_failed_branches, sync_remote_repositories, sync_repository_from_origin
+from infrahub.git.writeback.constants import STALE_AFTER_SECONDS
+from infrahub.git.writeback.models import PendingMerge, RevertedDelivery
+from infrahub.git.writeback.store import WritebackIntentStore, build_intent_store
 from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
-from infrahub.workers.dependencies import build_cache, build_message_bus, clear_singletons
+from infrahub.services.adapters.workflow import InfrahubWorkflow
+from infrahub.workers.dependencies import build_cache, build_message_bus, build_workflow, clear_singletons
+from infrahub.workflows.catalogue import GIT_REPOSITORY_DELIVERY_RETRY
 from infrahub.workflows.constants import TAG_NAMESPACE, WorkflowTag
 from tests.adapters.cache import MemoryCache, RecordingCache
 from tests.adapters.message_bus import BusRecorder, BusSimulator, FailingBus, RepositoryFailingBus
 from tests.adapters.repository_record_store import FailingRepositoryRecordStore, build_in_memory_recorder
+from tests.adapters.workflow import ContextRecordingWorkflow
 from tests.conftest import TestHelper
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.git import LocalRemote, build_repository_client, clone_repository
@@ -67,6 +77,7 @@ from tests.helpers.repository_sync import (
     skipped_branch_warnings,
 )
 from tests.helpers.test_app import TestInfrahubApp
+from tests.helpers.workflow_override import override_workflow
 
 
 @dataclass
@@ -488,6 +499,7 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
                 importer=RepositoryFileImporter(),
                 recorder=build_in_memory_recorder(),
                 retarget_markers=RetargetMarkers(cache=MemoryCache()),
+                state=await build_intent_store(db=db, lock_registry=lock.registry),
             ).sync(repo, activity=run)
 
         assert outcome == SyncOutcome(
@@ -835,6 +847,8 @@ class FailedTrunkCase:
     broadcast_fails: bool
 
 
+REVERTED_AT = datetime(2026, 10, 9, 9, 0, tzinfo=UTC)
+
 FAILED_TRUNK_CASES = [
     FailedTrunkCase(name="broadcast_sent", broadcast_fails=False),
     FailedTrunkCase(name="broadcast_fails", broadcast_fails=True),
@@ -984,6 +998,56 @@ class TestSynchronisationCycleFailures(TestInfrahubApp):
         )
         assert recorded.sync_status.value == RepositorySyncStatus.ERROR_IMPORT.value
 
+    async def test_a_rewrite_of_the_trunk_that_discards_the_pushed_commit_records_a_reverted_push(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        name = "reverted-push-repo"
+        remote, node = await self._connect(db=db, tmp_path=tmp_path, name=name)
+        repo = await InfrahubRepository.init(
+            id=node.id,
+            name=name,
+            location=str(remote.directory),
+            client=client,
+            infrahub_branch_name=registry.default_branch,
+        )
+        pushed = repo.get_commit_value(branch_name="main", remote=False)
+        stored = await NodeManager.get_one(
+            db=db, id=node.id, kind=CoreRepositoryNode, branch=registry.default_branch, raise_on_error=True
+        )
+        stored.delivery_last_delivered_commit.value = pushed
+        await stored.save(db=db)
+        rewritten = remote.commit(branch_name="main", files={"data.txt": "trunk rewritten\n"}, amend=True)
+        state = WritebackIntentStore(
+            db=db,
+            lock_registry=lock.registry,
+            default_branch=await registry.get_branch(db=db, branch=registry.default_branch),
+            clock=lambda: REVERTED_AT,
+        )
+        syncer = RepositorySyncer(
+            lock_registry=lock.registry,
+            importer=RepositoryFileImporter(),
+            recorder=build_in_memory_recorder(),
+            retarget_markers=RetargetMarkers(cache=MemoryCache()),
+            state=state,
+        )
+
+        @flow(name="test-sync-a-trunk-that-discards-a-pushed-commit")
+        async def _run_sync() -> SyncOutcome:
+            async with activity_run() as run:
+                return await syncer.sync(repo, activity=run, graph_commits={registry.default_branch: pushed})
+
+        outcome = await _run_sync()
+
+        assert (outcome.report.imported_branches, outcome.failed) == ((registry.default_branch,), ())
+        assert (await state.read(repository_id=node.id)).reverted == RevertedDelivery(
+            delivered_commit=pushed, new_head=rewritten, detected_at=REVERTED_AT
+        )
+
     async def test_a_failed_rewrite_record_of_the_default_branch_leaves_its_sync_status_in_sync(
         self,
         db: InfrahubDatabase,
@@ -1011,6 +1075,7 @@ class TestSynchronisationCycleFailures(TestInfrahubApp):
             importer=RepositoryFileImporter(),
             recorder=HistoryRewriteRecorder(store=FailingRepositoryRecordStore()),
             retarget_markers=RetargetMarkers(cache=MemoryCache()),
+            state=await build_intent_store(db=db, lock_registry=lock.registry),
         )
 
         activity_cache = MemoryCache()
@@ -1046,6 +1111,10 @@ class TestSynchronisationCycleFailures(TestInfrahubApp):
                 "The API is unreachable from main",
             )
         ]
+
+
+def unavailable_workflow() -> InfrahubWorkflow:
+    raise RuntimeError("The workflow adapter cannot be built")
 
 
 class TestSynchronisationCycleIsolation(TestInfrahubApp):
@@ -1089,6 +1158,126 @@ class TestSynchronisationCycleIsolation(TestInfrahubApp):
             for record in caplog.records
             if record.name == FLOW_RUN_LOGGER and record.getMessage().startswith("Unable to synchronize repository")
         ] == ["Unable to synchronize repository unreachable-broadcast-repo, continuing with the other repositories"]
+
+    async def test_a_stale_delivery_gets_one_recovery_run_even_when_its_synchronization_fails(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        caplog: pytest.LogCaptureFixture,
+        dependency_provider: Provider,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        caplog.set_level(logging.ERROR, logger=FLOW_RUN_LOGGER)
+        nodes: dict[str, Node] = {}
+        for name in ("stale-delivery-repo", "idle-delivery-repo"):
+            remote = LocalRemote.create(directory=tmp_path / name, trunk="main", branches=[])
+            nodes[name] = await create_repository_node(
+                db=db,
+                name=name,
+                location=str(remote.directory),
+                default_branch="main",
+                operational_status=RepositoryOperationalStatus.ONLINE.value,
+            )
+        stale = nodes["stale-delivery-repo"]
+        queued_at = datetime.now(UTC) - timedelta(seconds=STALE_AFTER_SECONDS + 60)
+        default_branch = await registry.get_branch(db=db)
+        store = WritebackIntentStore(
+            db=db, lock_registry=lock.registry, default_branch=default_branch, clock=lambda: queued_at
+        )
+        await store.enqueue(
+            repository_id=stale.id,
+            entry=PendingMerge(
+                entry_id="merge-1",
+                source_branch="add-vlan",
+                source_git_branch="add-vlan",
+                source_commit="b" * 40,
+                merged_at=queued_at,
+            ),
+            widen=False,
+        )
+        bus = RepositoryFailingBus(failing_repository_id=stale.id)
+        cycle_started_at = datetime.now(UTC)
+
+        with (
+            override_dependency(build_message_bus, lambda: bus, dependency_provider=dependency_provider),
+            override_workflow(ContextRecordingWorkflow(), dependency_provider=dependency_provider) as workflow,
+        ):
+            await sync_remote_repositories()
+
+        assert workflow.contexts == [
+            InfrahubContext(branch=BranchContext(name="main", id=str(default_branch.uuid)), account=AnonymousSession())
+        ]
+        assert workflow.get_submit_calls_for(GIT_REPOSITORY_DELIVERY_RETRY) == [
+            {
+                "kind": "submit",
+                "workflow": GIT_REPOSITORY_DELIVERY_RETRY,
+                "parameters": {
+                    "model": GitRepositoryDeliveryRetry(
+                        repository_id=stale.id, repository_name="stale-delivery-repo", manual=False
+                    )
+                },
+                "tags": [f"infrahub.app/node/{stale.id}", "infrahub.app/repository-delivery"],
+            }
+        ]
+        last_progress_at = (await store.read(repository_id=stale.id)).progress.last_progress_at
+        assert last_progress_at is not None
+        assert cycle_started_at <= last_progress_at <= datetime.now(UTC)
+        assert [
+            record.getMessage()
+            for record in caplog.records
+            if record.name == FLOW_RUN_LOGGER and record.getMessage().startswith("Unable to synchronize repository")
+        ] == ["Unable to synchronize repository stale-delivery-repo, continuing with the other repositories"]
+
+    async def test_a_recovery_check_that_cannot_be_built_does_not_stop_the_synchronizations(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        caplog: pytest.LogCaptureFixture,
+        dependency_provider: Provider,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        caplog.set_level(logging.ERROR, logger=FLOW_RUN_LOGGER)
+        nodes: dict[str, Node] = {}
+        for name in ("first-unchecked-repo", "second-unchecked-repo"):
+            remote = LocalRemote.create(directory=tmp_path / name, trunk="main", branches=[])
+            nodes[name] = await create_repository_node(
+                db=db,
+                name=name,
+                location=str(remote.directory),
+                default_branch="main",
+                operational_status=RepositoryOperationalStatus.ONLINE.value,
+            )
+        bus = BusRecorder()
+
+        with (
+            override_dependency(build_message_bus, lambda: bus, dependency_provider=dependency_provider),
+            override_dependency(build_workflow, unavailable_workflow, dependency_provider=dependency_provider),
+        ):
+            await sync_remote_repositories()
+
+        assert sorted(
+            message.repository_id
+            for message in bus.messages
+            if isinstance(message, RefreshGitFetch) and message.repository_id in {node.id for node in nodes.values()}
+        ) == sorted(node.id for node in nodes.values())
+        stack_repositories = await NodeManager.query(db=db, schema=CoreRepositoryNode, branch=registry.default_branch)
+        assert sorted(
+            (record.levelno, record.getMessage(), repr(record.exc_info[1]) if record.exc_info else None)
+            for record in caplog.records
+            if record.name == FLOW_RUN_LOGGER and record.getMessage().startswith("Unable to ")
+        ) == sorted(
+            (
+                logging.ERROR,
+                f"Unable to check repository {repository.name.value} for a lost delivery, "
+                "continuing with its synchronization",
+                "RuntimeError('The workflow adapter cannot be built')",
+            )
+            for repository in stack_repositories
+        )
 
 
 @pytest.mark.usefixtures("no_import_sync_filter")
@@ -1209,6 +1398,7 @@ class TestRepositoryActivityRecords(TestInfrahubApp):
             importer=RepositoryFileImporter(),
             recorder=HistoryRewriteRecorder(store=FailingRepositoryRecordStore()),
             retarget_markers=RetargetMarkers(cache=MemoryCache()),
+            state=await build_intent_store(db=db, lock_registry=lock.registry),
         )
         activity_cache = MemoryCache()
 

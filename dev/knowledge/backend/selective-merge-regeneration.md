@@ -1,12 +1,12 @@
 # Selective Post-Merge Regeneration
 
-> Part of: `dev/knowledge/backend/` | Related: [merge-recompute.md](merge-recompute.md), [code-generation.md](code-generation.md), [events.md](events.md)
+> Part of: `dev/knowledge/backend/` | Related: [merge-recompute.md](merge-recompute.md), [code-generation.md](code-generation.md), [events.md](events.md), [git-push-queue.md](git-push-queue.md)
 
 When a branch merges, the follow-up re-runs generators and regenerates artifacts. The blanket behavior ran every Generator and regenerated every artifact for every member regardless of what the merge changed, which on a real dataset spawned thousands of tasks. This path narrows that work to the definitions and members the merge actually affected. The guiding rule is that over-execution is acceptable but under-execution is not: whenever the affected set cannot be determined with confidence, the path regenerates everything for that merge.
 
 This covers generator definitions and artifact definitions. Jinja2 computed attributes, display labels, human-friendly ids and Python-transform computed attributes take the separate coalesced path in [merge-recompute.md](merge-recompute.md); profile refresh is not part of either.
 
-The behavior is gated by `selective_execution_after_merge` (env `INFRAHUB_SELECTIVE_EXECUTION_AFTER_MERGE`), enabled by default. Disabling it restores the blanket path exactly.
+The behavior is gated by `selective_execution_after_merge` (env `INFRAHUB_SELECTIVE_EXECUTION_AFTER_MERGE`), enabled by default. Disabling it restores the blanket path. The barrier of [Held regeneration](#held-regeneration) still applies on that path: the regeneration of a repository whose merges wait for their push is held.
 
 ## The flow
 
@@ -16,16 +16,18 @@ merge (BranchMergeOrchestrator.merge)
   -> after the MERGED transition + write-block lift: cache the summary under the merge key
   -> run_follow_ups threads merge_diff_cache_key + proposed_change_id to post_process_branch_merge
        -> PostMergeRegenerationDispatcher.dispatch(target_branch, merge_diff_cache_key)
-            -> flag off / no key / summary unavailable -> full regeneration (blanket triggers)
-            -> RegenerationSelector.build_plan(diff_summary, target_branch)  -> generator runs + artifact generates
+            -> flag off / no key / summary unavailable -> blanket regeneration (blanket triggers)
+                 -> RegenerationBarrier.hold_widen: a marker under each pending repository, which the triggers exclude
+            -> RegenerationPlanner.build_plan(diff_summary, target_branch)  -> generator runs + artifact generates
             -> _dispatch_plan(plan)
+                 -> RegenerationBarrier.admit: hold the requests of pending repositories, dispatch the rest
 ```
 
-Every uncertain signal short-circuits to `submit_full_regeneration` (the two `TRIGGER_*` workflows), which is the byte-for-byte blanket behavior. The dispatcher builds nothing that can leave an affected definition unselected without falling back.
+Every uncertain signal short-circuits to `submit_blanket_regeneration`, which submits the two `TRIGGER_*` workflows. With no repository waiting for a push, they get the parameters of the blanket behavior. Each repository with pending pushes gets a `widen` marker instead and is passed in `exclude_repository_ids`. The dispatcher builds nothing that can leave an affected definition unselected without falling back.
 
 ## Selection
 
-`RegenerationSelector` (`selective_regen/orchestrator.py`, `MergeSelectiveRegeneration`) turns a `list[NodeDiff]` summary into a plan of generator runs and artifact generations. It loads the generator and artifact definitions on the **target (destination) branch**, then runs each through a definition selector.
+`RegenerationPlanner` (`selective_regen/orchestrator.py`, `MergeSelectiveRegeneration`) turns a `list[NodeDiff]` summary into a plan of generator runs and artifact generations. It loads the generator and artifact definitions on the **target (destination) branch**, then runs each through a definition selector.
 
 The selectors live in `selective_regen/definition_selector/`. The shared loop in `base.py` applies, per definition:
 
@@ -54,12 +56,33 @@ The dependency closure and `fingerprint` are computed at repository import. The 
 Generators dispatched by the follow-up write their output after the merge diff was captured, so those writes are absent from that diff. On a merge that runs at least one generator, `_dispatch_plan` (`regeneration_dispatcher.py`):
 
 1. Awaits each generator run so its writes have landed, isolating failures per generator (one failure does not abort the others or discard the narrowing already computed).
-2. Captures the nodes those generators wrote, scoped to the members each generator tracks, through `GeneratorTrackingGroupDiffCapturer` (`generator_diff_capturer.py`). The capturer reads each generator's per-member tracking group rather than the whole branch timeframe.
-3. Selects only the artifacts that read the captured output (`RegenerationSelector.select_artifacts`), and dispatches those alongside the merge-diff artifacts. Requests selected by both are consolidated into one request per artifact definition (member and limit filters unioned; an empty filter, meaning all members, subsumes a specific one).
+2. Captures the nodes those generators wrote, scoped to the members each generator tracks, through `GeneratorTrackingGroupDiffCapturer` (`generator_output.py`). The capturer reads each generator's per-member tracking group rather than the whole branch timeframe.
+3. Selects only the artifacts that read the captured output (`RegenerationPlanner.reselect_from_cascade_output`), and dispatches those alongside the merge-diff artifacts. Requests selected by both are consolidated into one request per artifact definition (member and limit filters unioned; an empty filter, meaning all members, subsumes a specific one).
 
 The capture widens to regenerating every artifact when any generator's tracked set is unresolved or the output cannot be captured. A generator run failure regenerates every artifact without re-running the generators (which would fail the same way). The merge-diff artifacts are dispatched only after the generator-output capture, so the capture never selects on their own writes.
 
 A proposed-change merge already reflects generator output in its branch diff, so it keeps the plain selective artifact path; the cascade is the direct-merge case, distinguished by `proposed_change_id`.
+
+## Held regeneration
+
+The regeneration of a repository whose merges wait for their push to the remote would read the commit recorded before the merge, and nothing would run it again after the push. So on the default branch every dispatch of a merge passes the barrier first (`core/merge/regeneration_barrier.py`): a selective dispatch through `RegenerationBarrier.admit`, a full regeneration through `RegenerationBarrier.hold_widen`. [Git Push Queue](git-push-queue.md#the-regeneration-barrier-and-the-release) describes when the barrier holds and how it fails open.
+
+- A generator run or an artifact generation whose definition a repository with pending pushes owns is held in the push state of that repository, under the next hold sequence. The rest is dispatched at once. A repeated hold of one definition joins the two narrowings, with the `consolidate` rule of the selector of its kind.
+- The barrier keeps the narrowed request of each hold in the cache (`NarrowedHoldCache`) for `NARROWED_HOLD_TTL_SECONDS`, which covers a whole automatic retry chain at its time limits plus ten minutes. A request above `NARROWED_HOLD_MAX_BYTES` is not kept.
+- A blanket regeneration holds a `widen` marker of scope `all` under each pending repository, with the reason of the fallback, and excludes those repositories from the blanket runs. A failed generator run of the cascade, or a failed targeting of the terminals, holds a marker of scope `terminals` the same way.
+- In the cascade, only the artifacts reselected from the generator output pass the barrier after the generators ran: the terminals of the plan passed it already.
+
+The two trigger flows, `generate_artifact_definition` and `run_generator_definition`, take `exclude_repository_ids` and `include_repository_ids`, and skip a definition whose repository the lists do not allow. An empty or missing list allows every repository, and the dispatcher does not send an empty list, so a run with no filter keeps the parameters of a blanket run.
+
+The release (`core/merge/regeneration_release.py::HeldRegenerationReleaser`) runs after a delivery or an abandonment, under a release lease that each step and a 5-minute timer renew, and dispatches the held items once:
+
+- Each held item gets its request from its definition as it is now, because the import of the delivery can change the definition. Only the narrowing (`members` and `limit` for an artifact, `target_members` for a generator) comes from the cache. A cache miss regenerates every member.
+- It dispatches the requests as a merge plan (`dispatch_requests`), so the generator cascade runs and each dispatch passes the barrier with the released repository admitted. An artifact of another repository that reads the released generator output is reselected and regenerated too, unless that repository has pending pushes itself: then it is held.
+- A marker of scope `all` regenerates every definition of the repository (`include_repository_ids`), and the release logs the reason that the marker stores. A marker of scope `terminals` regenerates every artifact definition of the repository.
+- A held definition that no longer exists widens the release to every definition of the repository (`HELD_SET_UNRESOLVED`). A held generator that exists but no longer runs after a merge counts as resolved: the release logs it and runs nothing for it.
+- A generator run that fails during a release falls back to the terminals of the released repository only. A run that the orchestrator cannot start or follow raises, so the items stay held for the next release.
+
+The push state stores the reason of a marker by its member name, so never rename a member of `FullRegenerationReason`.
 
 ## Known limitation: content composition
 
@@ -71,12 +94,22 @@ Confirmed live on the demo stack. See [performance-scenarios.md](../../specs/arc
 
 ## Fallback reasons
 
+`FullRegenerationReason` (`core/constants/__init__.py`) names why a regeneration covers every definition, or every definition of one repository:
+
 | Reason | Trigger |
 |--------|---------|
 | `FEATURE_DISABLED` | `selective_execution_after_merge` is off |
 | `NO_SUMMARY_CAPTURED` | no merge-diff cache key threaded (capture failed or rolled back) |
 | `SUMMARY_UNAVAILABLE` | the cached summary is missing or unreadable |
 | `SELECTION_FAILED` | building or dispatching the plan raised |
+| `TERMINAL_SELECTION_FAILED` | a generator run of the cascade failed, or the terminals could not be targeted from its output, so every terminal regenerates; the reason of a `terminals` marker |
+| `UNHELD_FOLLOW_UP` | the merge flow queued a merge that the dispatcher could not queue, so the follow-ups ran with no hold, and the release regenerates every definition of the repository |
+| `HELD_SET_UNRESOLVED` | a held definition no longer exists at the release |
+
+`RegenerationReason` (`core/regeneration/models.py`) names why a definition was selected. These members name the widening of one definition or one repository inside a selective plan:
+
+| Reason | Trigger |
+|--------|---------|
 | `MISSING_FINGERPRINT` | a repository has a definition with no computed fingerprint (whole-repository escalation) |
 | `DEPENDENCIES_NULL` / `DEPENDENCIES_INCOMPLETE` | a definition's closure is untrusted (per-definition widening) |
 
@@ -89,15 +122,19 @@ A per-merge line records the path taken (selective, with generator/artifact coun
 | `core/merge/orchestrator.py` | Serialize the enriched diff and cache it after the point of no return |
 | `core/diff/summary_serializer.py` | `DiffSummarySerializer` — the `EnrichedDiffRoot -> list[NodeDiff]` converter |
 | `core/diff/summary_cache.py` | `DiffSummaryCache` — the merge-scoped cache |
-| `core/merge/regeneration_dispatcher.py` | `PostMergeRegenerationDispatcher`, the cascade, `submit_full_regeneration`, `FullRegenerationReason` |
-| `core/merge/selective_regen/orchestrator.py` | `RegenerationSelector` / `MergeSelectiveRegeneration`, `build_merge_selective_regeneration` |
+| `core/merge/regeneration_dispatcher.py` | `PostMergeRegenerationDispatcher`, the cascade, `submit_full_regeneration` |
+| `core/constants/__init__.py` | `FullRegenerationReason`, the reasons of a fallback to a full regeneration |
+| `core/merge/regeneration_barrier.py` | `RegenerationBarrier`, `NarrowedHoldCache`, `OwnedRegeneration` |
+| `core/merge/regeneration_release.py` | `HeldRegenerationReleaser`, `HeldDefinitionResolver` |
+| `core/merge/selective_regen/orchestrator.py` | `RegenerationPlanner` / `MergeSelectiveRegeneration`, `build_merge_selective_regeneration` |
 | `core/merge/selective_regen/definition_selector/` | Shared select loop (`base.py`) and the artifact / generator selectors |
 | `core/merge/selective_regen/gate.py`, `impacted.py`, `fallbacks.py` | Definition gate, member impact, untrusted-closure widening |
-| `core/merge/selective_regen/generator_diff_capturer.py` | `GeneratorTrackingGroupDiffCapturer` (group-scoped output capture) |
+| `core/merge/selective_regen/generator_output.py` | `GeneratorTrackingGroupDiffCapturer` (group-scoped output capture) |
 | `core/regeneration/` | Predicates, member mapping, definition models shared with the proposed-change pipeline |
 | `core/regeneration/derived_dependencies.py`, `classifier_builder.py`, `core/schema/derived_path.py` | Resolve a `display_label` / `human_friendly_id` read's backing peers and fold them into the classifier as traversed kinds |
 | `graphql/analyzer.py` | `ReachedPathResolver` / `relationship_reached_paths_by_kind` — reconstructs the relationship chains reaching each related kind |
-| `core/branch/tasks.py` | `_build_post_merge_regeneration_dispatcher`, `post_process_branch_merge` wiring |
+| `core/merge/builder.py` | `build_post_merge_regeneration_dispatcher`, `build_regeneration_barrier`, `build_held_regeneration_releaser`, `build_default_branch_barrier` |
+| `core/branch/tasks.py` | `post_process_branch_merge` wiring |
 | `config.py` | `selective_execution_after_merge` |
 
 ## See Also

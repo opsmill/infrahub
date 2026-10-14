@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import re
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 from unittest.mock import ANY, AsyncMock, patch
+from uuid import uuid4
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -32,6 +34,7 @@ from infrahub.git.models import (
 from infrahub.git.repository import CollectedImports, InfrahubReadOnlyRepository
 from infrahub.git.sync import RepositoryAdder
 from infrahub.git.tasks import add_git_repository, add_git_repository_read_only, pull_read_only
+from infrahub.git.writeback.models import PendingMerge
 from infrahub.lock import InfrahubLockRegistry
 from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.services import InfrahubServices
@@ -41,6 +44,7 @@ from infrahub.workflows.catalogue import GIT_REPOSITORIES_DIFF_NAMES_ONLY, GIT_R
 from tests.adapters.cache import RecordingCache
 from tests.adapters.lock import LockTimeline, RecordingImporter, RecordingLockRegistry
 from tests.adapters.message_bus import BusSimulator, FailingBus
+from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.git import LocalRemote, build_repository_client
 from tests.helpers.repository_activity import (
@@ -61,6 +65,7 @@ if TYPE_CHECKING:
     from fast_depends import Provider
     from infrahub_sdk.branch import BranchData
 
+    from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
     from tests.adapters.workflow import HoldingWorkflowExecution
     from tests.conftest import TestHelper
@@ -145,6 +150,8 @@ class TestAddRepository:
 
 
 async def test_git_rpc_merge(
+    db: InfrahubDatabase,
+    default_branch: Branch,
     prefect_test_fixture: None,
     dependency_provider: Provider,
     git_repo_01: InfrahubRepository,
@@ -153,20 +160,31 @@ async def test_git_rpc_merge(
     create_test_admin: Node,
 ) -> None:
     repo = git_repo_01
+    repo_node = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
+    await repo_node.new(db=db, id=str(repo.id), name=repo.name, location=repo.get_location())
+    await repo_node.save(db=db)
 
     await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
 
     commit_main_before = repo.get_commit_value(branch_name="main")
+    merged_commit = repo.get_commit_value(branch_name=branch01.name)
 
     model = GitRepositoryMerge(
         repository_id=str(repo.id),
         repository_name=repo.name,
-        source_branch="branch01",
-        destination_branch="main",
-        destination_branch_id="469cd407-0a8f-4d4e-9629-84fa435cf5ad",
+        source_branch=branch01.name,
+        destination_branch=default_branch.name,
+        destination_branch_id=str(default_branch.get_uuid()),
         internal_status=RepositoryInternalStatus.ACTIVE.value,
         repository_kind=InfrahubKind.REPOSITORY,
-        source_commit=repo.get_commit_value(branch_name=branch01.name),
+        source_commit=merged_commit,
+        pending_merge=PendingMerge(
+            entry_id=str(uuid4()),
+            source_branch=branch01.name,
+            source_git_branch=branch01.name,
+            source_commit=merged_commit,
+            merged_at=datetime.now(UTC),
+        ),
     )
 
     client = build_repository_client(
@@ -181,7 +199,7 @@ async def test_git_rpc_merge(
     with (
         override_dependency(build_client, lambda: client, dependency_provider=dependency_provider),
         override_dependency(build_message_bus, lambda: bus_simulator, dependency_provider=dependency_provider),
-        override_workflow(workflow, dependency_provider=dependency_provider),
+        override_workflow(WorkflowRecorder(), dependency_provider=dependency_provider),
     ):
         context = InfrahubContext(
             branch=BranchContext(name=branch01.name, id=branch01.id),
@@ -194,6 +212,7 @@ async def test_git_rpc_merge(
         commit_main_after = repo.get_commit_value(branch_name="main")
 
         assert commit_main_before != commit_main_after
+        assert repo.get_git_repo_main().is_ancestor(merged_commit, commit_main_after)
 
 
 async def test_git_rpc_diff(

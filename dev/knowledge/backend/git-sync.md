@@ -1,6 +1,6 @@
 # Git Sync
 
-> Part of: `dev/knowledge/backend/` | Related: [Architecture](architecture.md)
+> Part of: `dev/knowledge/backend/` | Related: [Architecture](architecture.md), [Git Push Queue](git-push-queue.md)
 
 How Infrahub maps and imports branches from external git repositories, how the sync flow reads the
 per-branch state of each repository, and how git and import errors surface. Read this before
@@ -217,17 +217,24 @@ apart, because they drive different outcomes:
   moves a worktree by a hard reset onto the remote head it classified, so a worktree behind the
   remote fast-forwards and the commit imported is the one classified. A worktree that does not lead
   to the remote head, because the remote was rewritten or rewound, loses the commits it held, and
-  that includes a worktree ahead of the remote. Such a commit is rare: `InfrahubRepository.merge`
-  pushes before it records the commit, and resets the destination worktree when either step fails.
-  Only a failed reset, which `merge` logs as needing manual reconciliation, leaves an unpushed merge
-  commit there, and the sync reset then discards it
-  ([Git Integration](git-integration.md#the-writeback-direction-has-no-reconciliation)). A worktree
-  already on the remote head stays there. When the graph records another commit, the sync resets the
-  worktree onto the same commit, which records it, and imports the branch again: a pull would move
-  nothing, so it would record nothing.
+  that includes a worktree ahead of the remote. Such a commit is rare: a delivery resets the
+  destination worktree when its replay, its push or its record fails. Only a failed reset, which the
+  delivery logs, leaves an unpushed merge commit there. The next delivery attempt discards it,
+  because it resets the worktree onto the remote head before its replay, and once the queue is empty
+  the sync reset discards it too ([Git Push Queue](git-push-queue.md#a-delivery-attempt)). A
+  worktree already on the remote head stays there. When the graph records another commit, the sync
+  resets the worktree onto the same commit, which records it, and imports the branch again: a pull
+  would move nothing, so it would record nothing.
 
 A worker whose graph already holds the remote head can still hold the discarded history on disk. It
 resets and logs the reconciliation, and its classification stays unchanged.
+
+While a read-write repository has pending pushes, the sync leaves out its default branch and the
+remote source branch of each pending merge before the classification, so none of them is
+classified, moved or recorded until the queue clears. When the default branch is classified as a
+rewrite, the sync also checks whether the new head still holds the last pushed commit, and records a
+reverted push when it does not
+([Git Push Queue](git-push-queue.md#the-reverted-push-record)).
 
 The sync considers the branches whose local head differs from the remote, and also the local
 branches whose graph commit differs from the remote head. Only branches that can still record a
@@ -261,6 +268,11 @@ worktree records nothing.
 - **A failed record is logged once, where it is caught, the way a failed import is.** The store
   chains the SDK error, so the reason is the API's own message for a known failure, and the
   traceback is kept only for an error that is not recognised, such as a lost connection.
+- **A rewrite of the default branch also records a reverted push.** When the new head does not hold
+  the last pushed commit, the delivery state records it in `delivery_reverted`, through
+  `WritebackIntentStore.record_reverted`; a re-target clears the last pushed commit instead. A
+  failure fails the default branch at step `record` and keeps its import, as above. A later rewrite
+  records a pushed commit that is still unrecorded.
 - **The count is what the branch reads, not what it did.** A branch-local read falls back to the
   origin branch, so a branch created after a trunk record reads that record and counts on from it.
 
@@ -291,7 +303,8 @@ trunk and records no rewrite.
   stay.
 - **Cleared only by the cycle that reconciles it.** After the collection, the sync clears a marker
   it read once the trunk records the remote head of the branch the marker names. A failed trunk, an
-  inactive repository, or a default branch the remote does not hold yet keeps it.
+  inactive repository, a default branch the remote does not hold yet, or a default branch that the
+  sync skips for pending pushes keeps it.
 - **Expires after seven days**, which only removes a marker that no cycle reconciles.
 
 A read-only repository uses no marker. An update or an upsert that changes its `ref` or `commit`
@@ -386,8 +399,10 @@ The design targets the Redis cache driver.
   - The task `git-branch-create` writes a `branch_create` run per repository, with no phase. A
     branch that already existed in git lists no branch, and a repository skipped because it cannot
     be read lists the branch as failed.
-  - `git-repository-merge` writes a `merge` run on the destination branch, with no phase. A git
-    merge that leaves the destination head where it was, and a read-only repository whose
+  - `git-repository-merge` writes a `merge` run on the destination branch, with no phase. A
+    read-write repository delivers the merge through its push queue, so the run lists the branch as
+    imported only when the delivery pushed, and as failed when the delivery fails or the merge was
+    lost before it was queued. A delivery that pushes nothing, and a read-only repository whose
     destination already holds the source ref and commit, list no branch.
 - **Read-only imports report their steps from inside the import.** `import_objects_from_files` takes
   the run id, like the sync subflow, and sets `building` and `applying` itself, because the read-only
@@ -401,7 +416,8 @@ The design targets the Redis cache driver.
   `git-repository-import-object` run, the lock is held for one phase at a time, never for a whole
   run, and the build phase runs without it. The read-only add, pull and last-commit import runs hold
   it through every phase. The `branch_create` run holds it while it creates and pushes the branch,
-  records its commit and broadcasts it, and the `merge` run while it merges and broadcasts. The
+  records its commit and broadcasts it, and the delivery of a `merge` run while it replays, pushes,
+  records and broadcasts. The
   query reports the lock holder separately, from the lock token (`{timestamp}::{worker_id}`). The
   token is written before the worker waits for the lock, so its time is when the worker asked for
   the lock (`requested_at`). Many flows take the lock without importing anything, so a held lock

@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from infrahub.context import InfrahubContext  # noqa: TC001
 from infrahub.core.node import Node  # noqa: TC001
 from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository  # noqa: TC001
+from infrahub.git.writeback.models import PendingMerge  # noqa: TC001
 from infrahub.message_bus.types import ProposedChangeBranchDiff  # noqa: TC001
 
 
@@ -40,6 +41,10 @@ class RequestArtifactDefinitionGenerate(BaseModel):
     members: list[str] = Field(
         default_factory=list,
         description="Member node ids to generate artifacts for; when populated, only these members are processed.",
+    )
+    repository_id: str | None = Field(
+        default=None,
+        description="The ID of the repository that owns the transformation of the Artifact Definition",
     )
 
     @property
@@ -161,6 +166,28 @@ class GitRepositoryMerge(BaseModel):
     source_ref: str | None = Field(
         default=None, description="The ref the graph records for the source branch of a read-only repository"
     )
+    pending_merge: PendingMerge | None = Field(
+        default=None, description="The queue entry of the merge, when its content waits for the push to the remote."
+    )
+    pending_merge_enqueued: bool = Field(
+        default=False, description="The branch merge wrote the queue entry, so the merge flow does not write it again."
+    )
+
+
+class GitRepositoryDeliveryRetry(BaseModel):
+    """Push every pending merge of a repository to its remote."""
+
+    repository_id: str = Field(..., description="The unique ID of the Repository")
+    repository_name: str = Field(..., description="The name of the repository")
+    manual: bool = Field(default=True, description="A user asked for the retry. False for an automatic retry.")
+
+
+class GitRepositoryDeliveryAbandon(BaseModel):
+    """Abandon every merge that waits for its push to the remote of a repository."""
+
+    repository_id: str = Field(..., description="The unique ID of the Repository")
+    repository_name: str = Field(..., description="The name of the repository")
+    queue_version: int = Field(..., description="The version of the queue that the user saw")
 
 
 class GitRepositoryImportObjects(BaseModel):
