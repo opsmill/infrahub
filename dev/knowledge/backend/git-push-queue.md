@@ -9,7 +9,8 @@ pushes it, and the repository records why the last attempt failed. Read this bef
 `backend/infrahub/git/writeback/`, the merge follow-ups, or any path that imports the default branch
 of a read-write repository.
 
-The code calls one push of the queue a "delivery". The UI and the user docs call it a "push".
+The code calls one push of the queue a "delivery". The schema labels and the user docs call it a
+"push".
 
 ## The push state
 
@@ -364,7 +365,8 @@ head.
 - A failed record fails the default branch at step `record` and keeps its import, as a failed
   rewrite record does.
 
-The repository page does not show this record. Read it through GraphQL.
+Read this record through GraphQL, like the other eight attributes. The generic details page of the
+repository shows the nine attributes only when the user selects **Extra**.
 
 ## Known limitations
 

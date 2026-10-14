@@ -52,7 +52,7 @@ When you create a Repository connection, Infrahub:
 
 When you merge a Proposed Change and the source branch is set to sync with Git, Infrahub merges the corresponding branch in the Git repository and pushes the result to the remote. By default this is a fast-forward when possible, so no merge commit is created (see [merging branches](#merging-branches)). Only the code tracked in Git moves; your infrastructure data stays in the graph.
 
-The push runs after the merge in Infrahub, as a background task, and it can fail, for example when the remote is unreachable or a branch protection refuses it. The merge in Infrahub stays complete, and Infrahub keeps the merge in the push queue of the repository. Infrahub retries the push automatically when the cause can clear by itself, shows the push state in the **Push to remote** section of the repository, and pauses the import of the remote default branch and the regeneration that the repository defines until the queue is empty. To retry or abandon the pending pushes, see [when a push to the remote fails](./branch-synchronization.mdx#when-a-push-to-the-remote-fails).
+The push runs after the merge in Infrahub, as a background task, and it can fail, for example when the remote is unreachable or a branch protection refuses it. The merge in Infrahub stays complete, and Infrahub keeps the merge in the push queue of the repository. Infrahub retries the push automatically when the cause can clear by itself, records the push state in the `delivery_*` attributes of the repository, and pauses the import of the remote default branch and the regeneration that the repository defines until the queue is empty. To retry or abandon the pending pushes, see [when a push to the remote fails](./branch-synchronization.mdx#when-a-push-to-the-remote-fails).
 
 A read-write repository has a `default_branch` attribute (defaulting to `main`) that names the Git branch mapped to Infrahub's default branch. Merges into Infrahub's default branch are pushed back to that Git branch on the remote, and that Git branch is imported as Infrahub's default branch, so a repository can use a non-`main` Git default branch. When `default_branch` is not `main`, a Git branch literally named `main` is not imported.
 
@@ -178,11 +178,11 @@ Indicates the state of data synchronization:
 
 ### Push status: merges waiting for the remote
 
-Shown in the **Push to remote** section of a read-write repository, always as it is on the default branch:
+Stored in the `delivery_status` attribute of a read-write repository. Read it on the default branch:
 
-- **Nothing pending**: No merge waits to be pushed to the remote
-- **Pending**: A push runs, is about to run, or waits for an automatic retry
-- **Action required**: No automatic retry is planned; retry or abandon the pending pushes, as described in [when a push to the remote fails](./branch-synchronization.mdx#when-a-push-to-the-remote-fails)
+- **Nothing pending** (`none`, or no value): No merge waits to be pushed to the remote
+- **Pending** (`pending`): A push runs, is about to run, or waits for an automatic retry
+- **Action required** (`action-required`): No automatic retry is planned; retry or abandon the pending pushes, as described in [when a push to the remote fails](./branch-synchronization.mdx#when-a-push-to-the-remote-fails)
 
 ## Repository actions and operations
 
@@ -190,8 +190,7 @@ Beyond basic synchronization, repositories support administrative actions for tr
 
 - **Check connectivity**: Validates network access and authentication without modifying repository content. For a read-write **Repository** the check also confirms that Infrahub can push to the remote, so credentials that can read but not push are caught here rather than at the first branch creation or merge. The result is recorded in the repository's operational status: a successful check sets it to **Online**, while a failure sets it to the matching error state by cause - a permission or authentication failure to **Credential Error**, a transport failure (unreachable host, timeout, TLS) to **Connectivity Error**, and anything else to **Error**. **Online** confirms repository-level write access only; it does not evaluate branch protection, push rules, or pre-receive hooks, which apply only when a real push is attempted. The write check is also effective only on Git servers that enforce write authorization when advertising the receive-pack service (such as GitHub and GitLab); on servers that defer that check to the actual push, a read-only credential can still be recorded **Online**
 - **Reimport current commit**: Forces re-processing of the current commit without fetching new changes, useful for recovering from import errors. Refused while the repository has pending pushes
-- **Retry push** (read-write repositories only): Pushes the pending merges of the repository to the remote again
-- **Abandon pending push** (read-write repositories only): Drops every pending merge of the repository without a push, and keeps a record of them. See [what an abandonment leaves behind](./branch-synchronization.mdx#what-an-abandonment-leaves-behind)
+- **Retry and abandon pending pushes** (read-write repositories only, through GraphQL): The `InfrahubRepositoryDeliveryRetry` mutation pushes the pending merges of the repository to the remote again. The `InfrahubRepositoryDeliveryAbandon` mutation drops every pending merge of the repository without a push, and keeps a record of them. See [retry the pending pushes](./branch-synchronization.mdx#retry-the-pending-pushes) and [what an abandonment leaves behind](./branch-synchronization.mdx#what-an-abandonment-leaves-behind)
 - **Import latest commit** (read-only repositories only): Fetches the latest commit from the remote for the tracked ref and imports its resources. This is useful when the remote repository has new changes and you want to pull them without manually updating the `ref` property. Unlike changing the `ref`, this operation keeps the same ref but updates to whatever commit that ref currently points to on the remote
 
 ## Design trade-offs and constraints
