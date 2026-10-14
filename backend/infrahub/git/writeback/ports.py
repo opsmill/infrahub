@@ -206,6 +206,16 @@ class DeliveryGitPort(Protocol):
         """Tell every worker that the remote branch is gone, without deleting it."""
 
 
+class AbandonmentGitPort(Protocol):
+    """The part of the Git work that an abandonment needs, none of which runs a Git command or needs a clone."""
+
+    async def recorded_commit(self) -> str | None:
+        """Return the commit that Infrahub records for the repository on the destination branch, if it records one."""
+
+    async def notify_branch_deleted(self, *, git_branch: str) -> None:
+        """Tell every worker that the remote branch is gone, without deleting it."""
+
+
 class RegenerationReleasePort(Protocol):
     async def release(
         self, *, repository_id: str, held: HeldRegeneration, renew: Callable[[], Awaitable[None]]
@@ -219,6 +229,26 @@ class RegenerationReleasePort(Protocol):
         """
 
 
+class LeaseRenewalPort(Protocol):
+    async def renew_lease(self, *, repository_id: str, lease_id: str) -> None:
+        """Move the expiry of the lease while the release of its items runs."""
+
+
 class DeliveryRunQuery(Protocol):
     async def has_queued_run(self, *, repository_id: str) -> bool:
-        """Return whether a delivery run of the repository waits to start; raises when the orchestrator fails."""
+        """Return whether a delivery run of the repository waits to start.
+
+        Raises:
+            httpx.HTTPError: The orchestrator answered with an error, or its connection failed.
+            OSError: The connection to the orchestrator failed.
+
+        """
+
+    async def has_active_run(self, *, repository_id: str) -> bool:
+        """Return whether a delivery run of the repository waits to start or runs.
+
+        Raises:
+            httpx.HTTPError: The orchestrator answered with an error, or its connection failed.
+            OSError: The connection to the orchestrator failed.
+
+        """

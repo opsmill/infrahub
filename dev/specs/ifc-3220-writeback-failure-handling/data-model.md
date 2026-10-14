@@ -234,7 +234,7 @@ the queued merges touched, not with the data.
 | `account_id` | `str` | The account that requested it. |
 | `account_name` | `str` | Its name at that time. |
 | `queue_version` | `int` | The version the request named. |
-| `recorded_commit` | `str` | The commit the default branch kept. |
+| `recorded_commit` | `str` | The commit the default branch kept. Empty when the repository records no readable commit, so the abandonment still runs. The repository section then says that no commit was recorded, in place of a commit id. |
 | `import_owed_commit` | `str \| None` | An import that was still owed and was dropped with the queue. |
 | `entries` | `tuple[PendingMerge, ...]` | What was dropped. |
 
@@ -261,7 +261,7 @@ Not persisted in the graph (FR-014). Written by the barrier at a hold, read by t
 |---|---|
 | Key | `repository-delivery:held:<repository id>:<hold_seq>:<identifier>` |
 | Value | The narrowed request model of the candidate, serialised: `RequestArtifactDefinitionGenerate`, `RequestGeneratorDefinitionRun`, or `PythonTargetRequest`, the narrowed target of one Python computed attribute. The release builds the coalesced submission from that target, as the merge does. |
-| Time to live | `NARROWED_HOLD_TTL_SECONDS`, derived from the retry delays and the fetch and push timeouts: about 45 minutes (`research.md` R9). A chain with a hung fetch or push can outlast it, because the time limit does not stop those commands (`research.md` R6); the release then only widens. |
+| Time to live | `NARROWED_HOLD_TTL_SECONDS`, derived from the retry delays and the fetch and push timeouts: about 45 minutes (`research.md` R9). The derivation holds when the fetch and the push stop at their bounds, which is true over HTTP(S). A stalled SSH transfer has no bound and can outlast the time to live. The release then finds no entry and dispatches with no narrowing. |
 | Size bound | 512 KiB. A larger value is not written, and the release then uses the identifier alone. |
 | Repeated hold | The new entry holds the union of the previous entry and the new request. When the previous entry is missing, expired or too large, no new entry is written. |
 | Miss | The release dispatches the identifier with no narrowing. A miss over-executes and never skips. |
@@ -296,7 +296,7 @@ its progress timestamps and never changes the status.
 | any but `none` | delivery settles, under the repository lock | `none`, or `pending` if entries remain | remove snapshot entries into `removed_entry_ids`, bump version, last delivered commit, a release lease that names the uncovered held items whose `hold_seq` is not above the snapshot's highest, clear cause and error when `none` |
 | any but `none` | abandonment, under the repository lock | `none` | remove every entry into `removed_entry_ids`, bump version, clear the owed import, the abandonment record, a release lease that names every uncovered held item |
 | `none` | held-only run takes a lease, through `lease_owed_release` | unchanged | a release lease that names every uncovered held item; nothing when a live lease covers them all |
-| any | release renews | unchanged | the lease's `expires_at` |
+| any | release renews, after each awaited step and on a timer (`research.md` R10) | unchanged | the lease's `expires_at` |
 | any | release fails, so the lease expires | unchanged | the lease's `expires_at`, set to now; the items of its window stay held, and the next lease takes them (`research.md` R10, rule 4) |
 | any | release clears | unchanged | remove each item of the lease's window that still has the named `hold_seq`, then the lease; an item held again since stays; clear the cause and the error when the queue is empty |
 | any | recovery check submits | unchanged | `last_progress_at` |
