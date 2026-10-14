@@ -330,7 +330,7 @@ class TestNumberPoolAllocationScope:
         assert [
             (event.name, event.action)
             for event in recording_lock_timeline.events
-            if event.name in {local_lock, global_lock}
+            if event.name in {local_lock, global_lock} and event.action in {LockAction.ACQUIRE, LockAction.RELEASE}
         ] == [
             (local_lock, LockAction.ACQUIRE),
             (global_lock, LockAction.ACQUIRE),
