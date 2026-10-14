@@ -206,6 +206,16 @@ class DeliveryGitPort(Protocol):
         """Tell every worker that the remote branch is gone, without deleting it."""
 
 
+class AbandonmentGitPort(Protocol):
+    """The part of the Git work that an abandonment needs, none of which runs a Git command or needs a clone."""
+
+    async def recorded_commit(self) -> str | None:
+        """Return the commit that Infrahub records for the repository on the destination branch, if it records one."""
+
+    async def notify_branch_deleted(self, *, git_branch: str) -> None:
+        """Tell every worker that the remote branch is gone, without deleting it."""
+
+
 class RegenerationReleasePort(Protocol):
     async def release(
         self, *, repository_id: str, held: HeldRegeneration, renew: Callable[[], Awaitable[None]]

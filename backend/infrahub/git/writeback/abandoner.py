@@ -9,8 +9,8 @@ from infrahub.log import get_run_logger
 if TYPE_CHECKING:
     from infrahub.git.writeback.models import Actor, ReleaseLease
     from infrahub.git.writeback.ports import (
+        AbandonmentGitPort,
         Clock,
-        DeliveryGitPort,
         DeliveryStatePort,
         RegenerationReleasePort,
         RepositoryRef,
@@ -27,7 +27,7 @@ class WritebackAbandoner:
         self,
         repository: RepositoryRef,
         state: DeliveryStatePort,
-        git: DeliveryGitPort,
+        git: AbandonmentGitPort,
         releaser: RegenerationReleasePort,
         lock_registry: InfrahubLockRegistry,
         clock: Clock,
