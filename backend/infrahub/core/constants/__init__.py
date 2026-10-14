@@ -230,6 +230,7 @@ class RepositorySyncStatus(InfrahubStringEnum):
     UNKNOWN = "unknown"
     IN_SYNC = "in-sync"
     ERROR_IMPORT = "error-import"
+    ERROR_REF_MISSING = "error-ref-missing"
     SYNCING = "syncing"
 
 

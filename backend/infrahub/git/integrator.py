@@ -417,10 +417,13 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                     if self.cache_repo is not None:
                         self.cache_repo.close()
                         self.cache_repo = None
+                    # A read-only repository's ref can be deleted upstream while Infrahub keeps its imported
+                    # commit, so the clone must succeed for this worker to report the ref missing.
                     await self.create_locally(
                         checkout_ref=await self.resolve_checkout_ref(),
                         infrahub_branch_name=self.infrahub_branch_name,
                         update_commit_value=False,
+                        allow_missing_checkout_ref=self.is_read_only,
                     )
                     self.reinitialized = True
                     log.info(f"Initialized the local directory for {self.name}.")
@@ -538,17 +541,23 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             artifact_definitions=artifact_definitions,
         )
 
-    async def apply_import_plan(self, plan: ObjectImportPlan) -> None:
+    async def apply_import_plan(
+        self, plan: ObjectImportPlan, sync_status: RepositorySyncStatus = RepositorySyncStatus.IN_SYNC
+    ) -> None:
         """Apply a previously built plan to the graph: schema, queries, transforms, objects, definitions.
 
         Performs every graph mutation of the import, so it must run serialized against any concurrent
         import of the same repository.
 
+        Args:
+            plan: The objects to import.
+            sync_status: The status left on the branch once every object is imported.
+
         Raises:
             RepositoryConnectionError: When the remote repository is unreachable.
             RepositoryCredentialsError: When the credentials for the remote repository are invalid.
             RepositoryImportError: When applying the import fails for any other reason.
-            Exception: When setting the branch to `IN_SYNC` or sending the commit event fails after the
+            Exception: When setting the branch's final status or sending the commit event fails after the
                 import completed; the branch is not set to `ERROR_IMPORT` then.
 
         """
@@ -633,7 +642,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 await self._delete_stale_nodes(branch_name=plan.infrahub_branch_name, nodes=stale_nodes)
 
         # Outside the boundary: once every object is imported, a later failure must not mark the branch as failed.
-        await self._update_sync_status(branch_name=plan.infrahub_branch_name, status=RepositorySyncStatus.IN_SYNC)
+        await self._update_sync_status(branch_name=plan.infrahub_branch_name, status=sync_status)
 
         if self.reinitialized:
             return

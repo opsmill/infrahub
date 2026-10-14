@@ -107,7 +107,13 @@ from .models import (
 )
 from .refs_check.checker import ReadOnlyRepositoryRefsChecker
 from .refs_check.constants import REFS_CHECK_CONCURRENCY
-from .refs_check.factory import build_check_refs_model, build_refs_checker, build_refs_scheduler
+from .refs_check.factory import (
+    build_check_refs_model,
+    build_ref_missing_import_gate,
+    build_ref_missing_store,
+    build_refs_checker,
+    build_refs_scheduler,
+)
 from .refs_check.models import RefsCheckCycleSummary, RefsCheckOutcome, RefsCheckResult
 from .refs_check.tracked_commit import GraphTrackedCommitReader
 from .repository import (
@@ -172,14 +178,17 @@ def evaluate_import_status(
     internal_status: RepositoryInternalStatus,
     repository_name: str,
     branch_name: str,
+    tracked_ref: str | None,
 ) -> ImportStatusOutcome:
     """Decide whether the objects of a repository are usable on a branch.
 
     `sync_status` is the status written on the branch itself, or None when the branch only inherits one.
+    `tracked_ref` is the ref a read-only repository tracks on the branch, or None when it is not known.
     """
-    match classify_branch_import(sync_status=sync_status, internal_status=internal_status):
+    verdict = classify_branch_import(sync_status=sync_status, internal_status=internal_status)
+    match verdict:
         case BranchImportVerdict.USABLE:
-            return ImportStatusOutcome(conclusion=ValidatorConclusion.SUCCESS, severity=Severity.INFO, message="")
+            message = ""
         case BranchImportVerdict.FAILED:
             message = (
                 f"The last import of the objects from repository '{repository_name}' on branch '{branch_name}' "
@@ -194,9 +203,19 @@ def evaluate_import_status(
                 f"branch. Wait for the import to complete, or run 'Reimport current commit' for this repository on "
                 f"the branch if it does not, then run the checks again."
             )
+        case BranchImportVerdict.REF_MISSING:
+            named_ref = f"ref '{tracked_ref}'" if tracked_ref else "ref"
+            message = (
+                f"The {named_ref} that repository '{repository_name}' tracks on branch '{branch_name}' was missing from the "
+                f"remote when Infrahub last checked it, so Infrahub keeps running the commit it imported last. "
+                f"Restore the ref on the remote or edit the ref of the repository, then run 'Reimport current "
+                f"commit' for this repository on the branch and run the checks again."
+            )
         case _ as unreachable:
             assert_never(unreachable)
 
+    if not verdict.blocks_merge:
+        return ImportStatusOutcome(conclusion=ValidatorConclusion.SUCCESS, severity=Severity.INFO, message=message)
     return ImportStatusOutcome(conclusion=ValidatorConclusion.FAILURE, severity=Severity.CRITICAL, message=message)
 
 
@@ -1253,6 +1272,7 @@ async def import_objects_from_git_repository(model: GitRepositoryImportObjects) 
 
     client = get_client()
     activity = build_repository_activity(cache=await get_cache())
+    gate = build_ref_missing_import_gate(db=await get_database(), client=client)
 
     async with activity.track(repository_id=model.repository_id, operation=RepositoryActivityOperation.REIMPORT) as run:
         try:
@@ -1264,11 +1284,14 @@ async def import_objects_from_git_repository(model: GitRepositoryImportObjects) 
                 infrahub_branch_name=model.infrahub_branch_name,
                 commit=model.commit,
             )
+            await repo.ensure_location_is_defined()
+            # Read before the plan is built, which replaces the branch's status with a syncing one.
+            sync_status = await gate.status_after_import(model=model, location=repo.location)
             await run.set_phase(phase=RepositoryActivityPhase.BUILDING, branch_name=model.infrahub_branch_name)
             plan = await repo.build_import_plan(infrahub_branch_name=model.infrahub_branch_name, commit=model.commit)
             async with lock.registry.get(name=model.repository_name, namespace="repository"):
                 await run.set_phase(phase=RepositoryActivityPhase.APPLYING, branch_name=model.infrahub_branch_name)
-                await repo.apply_import_plan(plan)
+                await repo.apply_import_plan(plan, sync_status=sync_status)
         except Exception:
             run.record_branch(branch_name=model.infrahub_branch_name, outcome=RepositoryActivityBranchOutcome.FAILED)
             raise
@@ -1359,14 +1382,16 @@ async def check_read_only_repositories_refs() -> RefsCheckCycleSummary:
 
     db = await get_database()
     cache = await get_cache()
+    client = get_client()
     scheduler = build_refs_scheduler(cache=cache, interval_mins=config.SETTINGS.git.read_only_refs_check_interval_mins)
     checker = build_refs_checker(
         cache=cache,
         message_bus=await get_message_bus(),
         lock_registry=lock.registry,
-        client=get_client(),
+        client=client,
         scheduler=scheduler,
         tracked_commit_reader=GraphTrackedCommitReader(db=db),
+        ref_missing_store=build_ref_missing_store(db=db, client=client),
     )
     run_id = flow_run.id or str(UUIDT())
 
@@ -1440,15 +1465,17 @@ async def check_read_only_repository_refs(model: GitReadOnlyRepositoryCheckRefs)
 
     cache = await get_cache()
     db = await get_database()
+    client = get_client()
     checker = build_refs_checker(
         cache=cache,
         message_bus=await get_message_bus(),
         lock_registry=lock.registry,
-        client=get_client(),
+        client=client,
         scheduler=build_refs_scheduler(
             cache=cache, interval_mins=config.SETTINGS.git.read_only_refs_check_interval_mins
         ),
         tracked_commit_reader=GraphTrackedCommitReader(db=db),
+        ref_missing_store=build_ref_missing_store(db=db, client=client),
     )
     return await checker.check(model, run_id=flow_run.id or str(UUIDT()))
 
@@ -1761,15 +1788,20 @@ async def run_check_repository_import_status(model: CheckRepositoryImportStatus)
 
     async with database.start_session(read_only=True) as db:
         source_branch = await registry.get_branch(db=db, branch=model.source_branch)
-        sync_status = await RepositoryBranchSyncStatusReader(db=db).get_status_written_on_branch(
+        status_reader = RepositoryBranchSyncStatusReader(db=db)
+        sync_status = await status_reader.get_status_written_on_branch(
             repository_id=model.repository_id, branch=source_branch
         )
+        tracked_ref = None
+        if sync_status == RepositorySyncStatus.ERROR_REF_MISSING:
+            tracked_ref = await status_reader.get_tracked_ref(repository_id=model.repository_id, branch=source_branch)
 
     outcome = evaluate_import_status(
         sync_status=sync_status,
         internal_status=RepositoryInternalStatus(model.repository_internal_status),
         repository_name=model.repository_name,
         branch_name=model.source_branch,
+        tracked_ref=tracked_ref,
     )
     if outcome.conclusion is ValidatorConclusion.FAILURE:
         log.warning(outcome.message)
