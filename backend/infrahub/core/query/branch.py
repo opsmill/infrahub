@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.branch.enums import TERMINAL_BRANCH_STATUSES, BranchStatus
@@ -10,6 +11,8 @@ from infrahub.core.query.standard_node import StandardNodeGetListQuery
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     from infrahub.core.constants.database import DatabaseEdgeType
     from infrahub.database import InfrahubDatabase
 
@@ -207,6 +210,41 @@ CALL (n) {
 }
         """
         self.add_to_query(query=query)
+
+
+@dataclass(frozen=True)
+class BranchGetIdsByNameQueryResult:
+    """Result from BranchGetIdsByNameQuery."""
+
+    name: str
+    uuid: str
+
+
+class BranchGetIdsByNameQuery(Query):
+    """Read the ID of every branch with one of the names, including a branch whose deletion has started."""
+
+    name: str = "branch_get_ids_by_name"
+    type: QueryType = QueryType.READ
+
+    def __init__(self, names: list[str], **kwargs: Any) -> None:
+        self.names = names
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["names"] = self.names
+        query = """
+        MATCH (n:Branch)
+        WHERE n.name IN $names
+        """
+        self.add_to_query(query)
+        self.return_labels = ["n.name AS name", "n.uuid AS uuid"]
+
+    def get_data(self) -> Generator[BranchGetIdsByNameQueryResult, None, None]:
+        for result in self.get_results():
+            yield BranchGetIdsByNameQueryResult(
+                name=result.get_as_type("name", str),
+                uuid=result.get_as_type("uuid", str),
+            )
 
 
 class BranchNodeGetListQuery(StandardNodeGetListQuery):
