@@ -2146,7 +2146,7 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
             await clone.create_branch_in_git(branch_name=tracked.branch_name, branch_id=healthy.id, push_origin=False)
             assert clone.get_commit_value(branch_name=tracked.branch_name, remote=False) == tracked.imported_commit
 
-        await client.branch.create(branch_name="broken-cycle-branch", sync_with_git=False)
+        await client.branch.create(branch_name="broken-cycle-branch", sync_with_git=True)
         commit_to_remote_branch(
             gogs_server.container,
             tracked.name,

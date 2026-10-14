@@ -327,9 +327,7 @@ async def service_with_cache(db: InfrahubDatabase) -> tuple[InfrahubServices, Me
 
 @pytest.fixture
 async def synced_branch(db: InfrahubDatabase, default_branch: Branch, repository: Node) -> Branch:
-    branch = await create_branch(branch_name="branch2", db=db)
-    branch.sync_with_git = True
-    await branch.save(db=db)
+    branch = await create_branch(branch_name="branch2", db=db, sync_with_git=True)
 
     repo_on_branch = await NodeManager.get_one(db=db, id=repository.id, branch=branch, raise_on_error=True)
     repo_on_branch.commit.value = BRANCH_COMMIT
@@ -347,15 +345,6 @@ async def unsynced_branch(db: InfrahubDatabase, default_branch: Branch, reposito
     await repo_on_branch.save(db=db)
 
     return branch
-
-
-@pytest.fixture
-def no_import_filters() -> Iterator[None]:
-    """Import every remote branch, whatever INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES holds in the ambient environment."""
-    original = config.SETTINGS.git.import_sync_branch_names
-    config.SETTINGS.git.import_sync_branch_names = []
-    yield
-    config.SETTINGS.git.import_sync_branch_names = original
 
 
 @pytest.fixture
@@ -534,16 +523,35 @@ async def test_commit_log_follows_the_infrahub_branch(
     ]
 
 
-async def test_commit_log_tracks_a_branch_that_does_not_sync_with_git(
+@dataclass
+class ImportFiltersCase:
+    name: str
+    import_sync_branch_names: list[str]
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        pytest.param(ImportFiltersCase(name="no_import_filters", import_sync_branch_names=[]), id="no_import_filters"),
+        pytest.param(
+            ImportFiltersCase(name="import_filters_matching_the_branch", import_sync_branch_names=["branch2"]),
+            id="import_filters_matching_the_branch",
+        ),
+    ],
+)
+async def test_commit_log_reports_a_branch_that_does_not_sync_with_git_as_untracked(
+    case: ImportFiltersCase,
     db: InfrahubDatabase,
     default_permission_backend: None,
     session_admin: AccountSession,
     service: InfrahubServices,
     repository: Node,
     unsynced_branch: Branch,
-    no_import_filters: None,
     recording_reader: RecordingRepositoryGitStateReader,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr(config.SETTINGS.git, "import_sync_branch_names", case.import_sync_branch_names)
+
     response = await graphql_query(
         query=COMMITS_QUERY,
         db=db,
@@ -556,17 +564,10 @@ async def test_commit_log_tracks_a_branch_that_does_not_sync_with_git(
     assert not response.errors
     assert response.data
     answer = response.data["InfrahubRepositoryCommits"]
-    assert answer["git_ref"] == unsynced_branch.name
-    assert answer["imported_commit"] == BRANCH_COMMIT
-    assert recording_reader.commit_requests == [
-        _expected_request(
-            repository_id=repository.id,
-            infrahub_branch_name=unsynced_branch.name,
-            git_ref=unsynced_branch.name,
-            imported_commit=BRANCH_COMMIT,
-            include_pending_count=True,
-        )
-    ]
+    assert answer["git_ref"] is None
+    assert answer["condition"] == RepositoryGitCondition.NOT_TRACKED.name
+    assert answer["edges"] == []
+    assert recording_reader.commit_requests == []
 
 
 async def test_commit_log_answers_as_of_the_requested_time(
@@ -605,34 +606,6 @@ async def test_commit_log_answers_as_of_the_requested_time(
         "imported_commit": MAIN_COMMIT,
         "checked_at": None,
     }
-
-
-async def test_commit_log_reports_a_branch_the_import_filters_skip_as_untracked(
-    db: InfrahubDatabase,
-    default_permission_backend: None,
-    session_admin: AccountSession,
-    service: InfrahubServices,
-    repository: Node,
-    unsynced_branch: Branch,
-    import_filters_excluding_branch2: None,
-    recording_reader: RecordingRepositoryGitStateReader,
-) -> None:
-    response = await graphql_query(
-        query=COMMITS_QUERY,
-        db=db,
-        branch=unsynced_branch,
-        service=service,
-        variables={"id": repository.id},
-        account_session=session_admin,
-    )
-
-    assert not response.errors
-    assert response.data
-    answer = response.data["InfrahubRepositoryCommits"]
-    assert answer["git_ref"] is None
-    assert answer["condition"] == RepositoryGitCondition.NOT_TRACKED.name
-    assert answer["edges"] == []
-    assert recording_reader.commit_requests == []
 
 
 @dataclass
@@ -879,7 +852,6 @@ async def test_drift_selecting_only_graph_side_row_fields_makes_no_request(
     session_admin: AccountSession,
     service: InfrahubServices,
     repository: Node,
-    no_import_filters: None,
     uncallable_reader: FailingRepositoryGitStateReader,
 ) -> None:
     response = await graphql_query(
@@ -914,7 +886,6 @@ async def test_drift_selecting_only_the_row_condition_asks_the_reader(
     session_admin: AccountSession,
     service: InfrahubServices,
     repository: Node,
-    no_import_filters: None,
     recording_reader: RecordingRepositoryGitStateReader,
 ) -> None:
     recording_reader.branch_heads_results.append(
@@ -968,7 +939,6 @@ async def test_a_root_field_selected_twice_still_answers_every_selection(
     session_admin: AccountSession,
     service: InfrahubServices,
     repository: Node,
-    no_import_filters: None,
     recording_reader: RecordingRepositoryGitStateReader,
 ) -> None:
     response = await graphql_query(
@@ -1004,7 +974,6 @@ async def test_git_fields_reached_through_a_fragment_still_ask_the_reader(
     session_admin: AccountSession,
     service: InfrahubServices,
     repository: Node,
-    no_import_filters: None,
     recording_reader: RecordingRepositoryGitStateReader,
 ) -> None:
     """A fragment is how a generated client selects fields, and the gate reads the selection."""
@@ -1093,7 +1062,6 @@ async def test_drift_omits_read_write_branches_that_do_not_sync_with_git(
     service: InfrahubServices,
     repository: Node,
     unsynced_branch: Branch,
-    no_import_filters: None,
     unavailable_reader: UnavailableRepositoryGitStateReader,
 ) -> None:
     response = await graphql_query(
@@ -1125,7 +1093,6 @@ async def test_drift_maps_each_synced_read_write_branch_to_its_own_remote_branch
     service: InfrahubServices,
     repository: Node,
     synced_branch: Branch,
-    no_import_filters: None,
     unavailable_reader: UnavailableRepositoryGitStateReader,
 ) -> None:
     response = await graphql_query(

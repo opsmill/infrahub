@@ -362,7 +362,7 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
         name = "connect-failing-repo"
         remote = LocalRemote.create(directory=tmp_path / name, trunk=TRUNK, branches=["main"])
         remote.commit(branch_name="broken", files={".infrahub.yml": "schemas: [unclosed\n"})
-        await create_branch(branch_name="broken", db=db)
+        await create_branch(branch_name="broken", db=db, sync_with_git=True)
         node = await create_repository_node(
             db=db,
             name=name,
@@ -623,8 +623,8 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
         failing_branch = f"broken-on-cycle-{operational_status}"
         unexpected_branch = f"unexpected-on-cycle-{operational_status}"
         remote, node, _ = await self._connect(db=db, tmp_path=tmp_path, name=name, branches=["main"])
-        await create_branch(branch_name=failing_branch, db=db)
-        await create_branch(branch_name=unexpected_branch, db=db)
+        await create_branch(branch_name=failing_branch, db=db, sync_with_git=True)
+        await create_branch(branch_name=unexpected_branch, db=db, sync_with_git=True)
         remote.commit(branch_name=failing_branch, files={".infrahub.yml": INVALID_YAML_CONFIG})
         remote.commit(
             branch_name=unexpected_branch,
@@ -733,7 +733,7 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
             client=client,
             infrahub_branch_name=registry.default_branch,
         )
-        await create_branch(branch_name=blocked_branch, db=db)
+        await create_branch(branch_name=blocked_branch, db=db, sync_with_git=True)
         commit = remote.commit(branch_name=blocked_branch, files={"data.txt": "blocked\n"})
         # An occupied commit worktree directory makes the branch fail while it is collected.
         (repo.directory_commits / commit).mkdir()
@@ -801,7 +801,7 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
     ) -> None:
         name = "feature-import-repo"
         remote, node, _ = await self._connect(db=db, tmp_path=tmp_path, name=name, branches=["main"])
-        await create_branch(branch_name="feature-import", db=db)
+        await create_branch(branch_name="feature-import", db=db, sync_with_git=True)
         remote.commit(branch_name="feature-import", files={"data.txt": "feature\n"})
 
         state = await run_sync_flow(client=client, repository_id=node.id, name=name, location=str(remote.directory))
@@ -883,8 +883,8 @@ class TestSynchronisationCycleFailures(TestInfrahubApp):
     ) -> None:
         name = "partly-failing-broadcast-repo"
         remote, node = await self._connect(db=db, tmp_path=tmp_path, name=name)
-        await create_branch(branch_name="broken-branch", db=db)
-        await create_branch(branch_name="healthy-branch", db=db)
+        await create_branch(branch_name="broken-branch", db=db, sync_with_git=True)
+        await create_branch(branch_name="healthy-branch", db=db, sync_with_git=True)
         remote.commit(branch_name="broken-branch", files={".infrahub.yml": "schemas: [unclosed\n"})
         healthy_commit = remote.commit(branch_name="healthy-branch", files={"data.txt": "healthy\n"})
         branches = await client.branch.all()
@@ -1299,7 +1299,7 @@ class TestRepositoryActivityRecords(TestInfrahubApp):
         name = "activity-cycle-repo"
         remote = LocalRemote.create(directory=tmp_path / name, trunk="main", branches=[])
         remote.commit(branch_name="broken", files={".infrahub.yml": INVALID_YAML_CONFIG})
-        await create_branch(branch_name="broken", db=db)
+        await create_branch(branch_name="broken", db=db, sync_with_git=True)
         node = await create_repository_node(
             db=db,
             name=name,

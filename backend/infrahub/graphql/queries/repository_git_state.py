@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Any, cast
 from graphene import Field, Int, String
 from pydantic import ValidationError as PydanticValidationError
 
-from infrahub import config
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
     InfrahubKind,
@@ -23,7 +22,7 @@ from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import NodeNotFoundError, ValidationError, WorkerTimeoutError
 from infrahub.git.activity.models import ActivityRunRecord, LastRunRecord, RepositoryActivityOperation
-from infrahub.git.branch_mapping import get_mapped_remote_branch, remote_branch_is_imported
+from infrahub.git.branch_mapping import get_mapped_remote_branch, infrahub_branch_receives_imports
 from infrahub.git.state.cache_keys import activity_last_run_key, activity_run_pattern, refs_check_last_key
 from infrahub.git.state.factory import build_repository_git_state_reader
 from infrahub.git.state.models import BranchHeadsRequest, BranchRef, CommitLogRequest
@@ -209,28 +208,22 @@ def _resolve_remote_branch(
 ) -> str | None:
     """Return the remote branch this Infrahub branch reads.
 
-    Returns None when the repository names no default branch, and when a sync would not import the
-    branch this one maps to.
+    Returns None when the repository names no default branch, and when a sync imports no commit into
+    this branch.
     """
     if not repository_default_branch:
         return None
-
-    remote_branch = get_mapped_remote_branch(
+    if not infrahub_branch_receives_imports(
+        infrahub_branch_name=infrahub_branch_name,
+        branch_is_synced_with_git=branch_is_synced_with_git,
+        infrahub_default_branch=registry.default_branch,
+    ):
+        return None
+    return get_mapped_remote_branch(
         branch_name=infrahub_branch_name,
         repository_default_branch=repository_default_branch,
         infrahub_default_branch=registry.default_branch,
     )
-    # Calling a branch untracked that a sync would still import onto would contradict the commit
-    # reported next to it.
-    if not remote_branch_is_imported(
-        remote_branch_name=remote_branch,
-        branch_is_synced_with_git=branch_is_synced_with_git,
-        repository_default_branch=repository_default_branch,
-        infrahub_default_branch=registry.default_branch,
-        import_sync_branch_names=config.SETTINGS.git.import_sync_branch_names,
-    ):
-        return None
-    return remote_branch
 
 
 def _resolve_git_ref(
