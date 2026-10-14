@@ -182,6 +182,14 @@ class GitRepositoryDeliveryRetry(BaseModel):
     manual: bool = Field(default=True, description="A user asked for the retry. False for an automatic retry.")
 
 
+class GitRepositoryDeliveryAbandon(BaseModel):
+    """Abandon every merge that waits for its push to the remote of a repository."""
+
+    repository_id: str = Field(..., description="The unique ID of the Repository")
+    repository_name: str = Field(..., description="The name of the repository")
+    queue_version: int = Field(..., description="The version of the queue that the user saw")
+
+
 class GitRepositoryImportObjects(BaseModel):
     """Re run import job against an existing commit."""
 

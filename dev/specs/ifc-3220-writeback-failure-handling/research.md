@@ -533,7 +533,7 @@ error whose reason comes from GitPython's `PushInfo` flags, not from text.
 | import | any other, for example a configuration or validation error of the content | `import-failed` | no |
 | replay | a merge conflict. Not a row of the classifier: `replay` reports a conflict in `ReplayResult`, not as an exception, and the service sets this cause (R4, step 6). The classifier gives `unclassified` for every exception at this stage. | `replay-conflict` | no |
 | replay | a killed local Git command (`LOCAL_GIT_TIMEOUT_SECONDS`) | `unclassified` | no. The message names the command. |
-| release | any | none. While merges are queued, the repository keeps the cause and the error of its delivery. With an empty queue, the store writes the message with no cause, and the next clear of a lease removes it. | yes, and never a reason for `action-required`. The failed run sets its lease's expiry to now, so the retry takes a new lease and releases again (R10, rule 4). The delivery is done; a release that still fails leaves the held work to the recovery check (R20). |
+| release | any | none. While merges are queued, the repository keeps the cause and the error of its delivery. With an empty queue, the store writes the message with no cause, and the next clear of a lease removes it. | yes, and never a reason for `action-required`. The failed run sets its lease's expiry to now, so the next attempt of the delivery task takes a new lease and releases again (R10, rule 4). The delivery is done; a release that still fails leaves the held work to the recovery check (R20). An abandonment has no task retry, and the retry mutation refuses its empty queue, so its failed release also waits for the recovery check (R8). |
 | any | anything else | `unclassified` | no |
 
 The cause list is closed and is an enum (Principle III). [data-model.md](data-model.md) has it.
@@ -769,7 +769,8 @@ repository's queue, which outlives every task run, so the action belongs on the 
    items stay.
 2. For each abandoned entry with `delete_source_git_branch` set, send
    `RefreshGitRepositoryBranchDeleted`, so that every worker drops its local branch. The remote
-   branch stays (R12).
+   branch stays (R12). A send that fails is only logged, and the abandonment goes on to step 3: the
+   queue is already dropped.
 3. Leave both locks. Release the held items of the lease window (R10). If the release fails, set
    the lease's expiry to now and raise. The held items stay, and the recovery check of R20 releases
    them (R10, rule 4).
@@ -1011,7 +1012,8 @@ A new lease takes every held item that no live lease covers, up to a bound:
 
 The releaser renews the expiry after each awaited step, because a release awaits generator runs and
 can take minutes. Each renewal adds 15 minutes. One generator run can take hours, which is longer
-than the lease. So while the release runs, the service also renews the lease on a timer, every
+than the lease. So while the release runs, the service and the abandoner also renew the lease on a
+timer, every
 `RELEASE_RENEW_SECONDS`, 5 minutes. Each renewal of the timer runs on a database session of its
 own. The release reads and writes on the session of the flow at the same time, and a session runs
 one query at a time. A renewal that shares that session can break a read of the release, and the

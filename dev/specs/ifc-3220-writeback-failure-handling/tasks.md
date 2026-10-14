@@ -36,6 +36,10 @@ Deployment has one extra rule, below.
 | **IFC-3210 rewrite classification on `develop`** | T100 | Patrick Ogenstad |
 | **Merge order agreed with IFC-3210** (`collect_pending_imports`, the ancestry primitive, the merge-path check) | T029, T039 | Patrick Ogenstad |
 
+T085 to T092 are done on the provisional answers of spec decisions 1 and 15, which are not
+confirmed yet. A different answer reopens them. The GraphQL and authorization sign-off that T087
+needs is given.
+
 ## Deployment rule
 
 **No deployment ships Phase 3 without T061 to T069 and T074 to T076 of Phase 5, T077, T079 and
@@ -601,8 +605,8 @@ release.
 **Maps to**: FR-005b, FR-008, FR-009, FR-015, FR-024, SC-006. **T085 to T093 are in the deployment
 rule.** T094 is not.
 
-- [ ] T085 [P] [US5] Add `GitRepositoryDeliveryAbandon` to `backend/infrahub/git/models.py`.
-- [ ] T086 [US5] Write `WritebackAbandoner.abandon` in `backend/infrahub/git/writeback/abandoner.py`, the
+- [X] T085 [P] [US5] Add `GitRepositoryDeliveryAbandon` to `backend/infrahub/git/models.py`.
+- [X] T086 [US5] Write `WritebackAbandoner.abandon` in `backend/infrahub/git/writeback/abandoner.py`, the
       flow `abandon_repository_delivery` in `backend/infrahub/git/tasks.py`, and the catalogue entry
       `GIT_REPOSITORY_DELIVERY_ABANDON`, per [research.md](research.md) R8. The actor comes from the
       workflow context. The abandonment sends `RefreshGitRepositoryBranchDeleted` for every abandoned
@@ -611,24 +615,25 @@ rule.** T094 is not.
       `backend/infrahub/git/writeback/factory.py`, with the same releaser as
       `build_writeback_service`. After T069, that releaser dispatches the held work. **Gate: spec
       decision 15 for the broadcast.**
-- [ ] T087 [US5] Write `InfrahubRepositoryDeliveryAbandon` in
+- [X] T087 [US5] Write `InfrahubRepositoryDeliveryAbandon` in
       `backend/infrahub/graphql/mutations/repository.py` and register it in
       `backend/infrahub/graphql/schema.py`. **Gate: GraphQL and authorization sign-off; spec
       decision 1.**
-- [ ] T088 [US5] Write `backend/tests/unit/git/writeback/test_abandoner.py`: a stale version and an empty
+- [X] T088 [US5] Write `backend/tests/unit/git/writeback/test_abandoner.py`: a stale version and an empty
       queue refuse; the entries leave and the lease is taken before the release; the broadcast is sent
       for flagged entries only; the release runs after the lock is released; `clear_released` keeps a
       later hold; a crash between the removal and the clear leaves a lease that expires, and the
       recovery check then releases the work; a release that fails sets the lease's expiry to now and
-      keeps the items held.
-- [ ] T089 [US5] Write `backend/tests/component/graphql/mutations/test_repository_delivery_abandon.py`: off
+      keeps the items held. The crash case runs the recovery check of T079: once the lease expires,
+      the check submits a delivery run, and that run releases the work.
+- [X] T089 [US5] Write `backend/tests/component/graphql/mutations/test_repository_delivery_abandon.py`: off
       the default branch, each permission missing, a stale version, nothing pending.
-- [ ] T090 [US5] Add `test_conflict_then_abandon` to
+- [X] T090 [US5] Add `test_conflict_then_abandon` to
       `backend/tests/integration/git/test_git_live_remote.py`: cause `replay-conflict`, nothing
       pushed; after the abandonment, the record, the account on the edge, one release, an unchanged
       remote.
-- [ ] T091 [US5] Add `test_conflict_resolved_on_remote` to the same module (US5 #2).
-- [ ] T092 [US5] Add `test_late_first_attempt_does_not_resurrect` to the same module (FR-005b):
+- [X] T091 [US5] Add `test_conflict_resolved_on_remote` to the same module (US5 #2).
+- [X] T092 [US5] Add `test_late_first_attempt_does_not_resurrect` to the same module (FR-005b):
       abandon while a run of `merge_git_repository` with `pending_merge_enqueued` set to `True`
       waits, then let it run. The entry does not come back and the remote is unchanged. A second
       case: a run with the flag `False`, whose entry was never queued, enqueues the entry and

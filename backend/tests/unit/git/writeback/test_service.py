@@ -39,8 +39,11 @@ from tests.unit.git.writeback.fakes import (
     FixedClock,
     InMemoryDeliveryGit,
     InMemoryDeliveryState,
+    RecordingLeaseRenewal,
     RecordingRegenerationReleaser,
     Release,
+    Renewal,
+    RenewalAwaitingReleaser,
 )
 
 if TYPE_CHECKING:
@@ -943,45 +946,6 @@ async def test_release_runs_after_the_lock_is_released_and_renews_the_lease(rig:
 
     assert locked_at_release == [False]
     assert rig.state.calls[-3:] == ["settle_delivery", "renew_lease", "clear_released"]
-
-
-@dataclass(frozen=True)
-class Renewal:
-    repository_id: str
-    lease_id: str
-
-
-class RecordingLeaseRenewal:
-    """Records each renewal of a lease that it is asked for, a failed one included, and sets `renewed_twice` at two.
-
-    An error that a test appends to `failures` is raised by the next renewal, after it is recorded.
-    """
-
-    def __init__(self) -> None:
-        self.renewals: list[Renewal] = []
-        self.failures: list[BaseException] = []
-        self.renewed_twice = asyncio.Event()
-
-    async def renew_lease(self, *, repository_id: str, lease_id: str) -> None:
-        self.renewals.append(Renewal(repository_id=repository_id, lease_id=lease_id))
-        if len(self.renewals) == 2:
-            self.renewed_twice.set()
-        if self.failures:
-            raise self.failures.pop(0)
-
-
-class RenewalAwaitingReleaser(RecordingRegenerationReleaser):
-    """Returns once the lease was renewed twice, and never renews it itself, so each renewal comes from elsewhere."""
-
-    def __init__(self, *, renewed_twice: asyncio.Event) -> None:
-        super().__init__()
-        self.renewed_twice = renewed_twice
-
-    async def release(
-        self, *, repository_id: str, held: HeldRegeneration, renew: Callable[[], Awaitable[None]]
-    ) -> None:
-        await asyncio.wait_for(self.renewed_twice.wait(), timeout=5)
-        self.releases.append(Release(repository_id=repository_id, held=held))
 
 
 @dataclass

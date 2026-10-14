@@ -418,10 +418,12 @@ class WritebackAbandoner:
         self,
         repository: RepositoryRef,
         state: DeliveryStatePort,
-        git: DeliveryGitPort,
+        git: AbandonmentGitPort,
         releaser: RegenerationReleasePort,
+        lease_renewal: LeaseRenewalPort,
         lock_registry: InfrahubLockRegistry,
         clock: Clock,
+        release_renew_seconds: float,
     ) -> None: ...
 
     async def abandon(self, *, queue_version: int, actor: Actor) -> AbandonmentRecord: ...
@@ -429,15 +431,27 @@ class WritebackAbandoner:
 
 `Actor` comes from the workflow's `InfrahubContext`.
 
-Runs `research.md` R8: under the repository lock, `state.abandon(...)`, then
-`git.notify_branch_deleted(...)` for every abandoned entry that carried the deletion flag; then,
-with the lock released, `releaser.release(...)` on the lease window, then
-`state.clear_released(...)`. While the release runs, it renews the lease on a timer, as section 5
-says. If the release raises, it calls `state.expire_lease(...)` on its lease and re-raises, so the
-recovery check releases the held items (`research.md` R10, rule 4). It uses the Git port only for
-that notification: it changes no Git state, deletes no remote branch and imports nothing.
+Runs `research.md` R8: under the repository lock, `git.recorded_commit()` for the record, then
+`state.abandon(...)`, then `git.notify_branch_deleted(...)` for every abandoned entry that carried
+the deletion flag; then, with the lock released, `releaser.release(...)` on the lease window, then
+`state.clear_released(...)`. While the release runs, a timer renews the lease through
+`lease_renewal`, as section 5 says. The service and the abandoner run their release through one
+shared helper, which holds the timer and the expiry of a failed release. `build_writeback_abandoner`
+passes the same `LeaseRenewer` and `RELEASE_RENEW_SECONDS` as `build_writeback_service`. If the release raises, it calls `state.expire_lease(...)` on its lease
+and re-raises, so the recovery check releases the held items (`research.md` R10, rule 4). The
+queue is empty by then, so the retry mutation refuses, and the barrier no longer holds the
+repository: the error line tells the user to run the artifact and generator definitions and the
+computed attributes by hand to regenerate now. It uses
+the Git port only for these two calls, and neither runs a Git command: `recorded_commit` reads
+Infrahub, and the notification is a message to the workers. It changes no Git state, deletes no
+remote branch and imports nothing, so its flow builds the repository object without a clone.
+When the repository records no readable commit, the record stores an empty `recorded_commit`. A
+failed branch-deleted notification is only logged, as a warning, and the release still runs,
+because the queue is already dropped.
 `DeliveryQueueChangedError` and `NothingPendingError` subclass `ValidationError`, so the task run
-fails with the message of the GraphQL contract.
+fails with the message of the GraphQL contract. If the clear fails after a release that worked, the
+run logs that the release ran and raises. The items stay held under the lease, which is not
+expired at once, so a later run releases them again once the lease expires.
 
 ---
 
