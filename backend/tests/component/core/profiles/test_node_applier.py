@@ -14,7 +14,7 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
-from infrahub.profiles.node_applier import NodeProfilesApplier
+from infrahub.profiles.node_applier import NodeProfilesApplier, ProfileFieldValues
 from tests.helpers.schema import CHILD, THING, load_schema
 
 
@@ -49,7 +49,7 @@ async def _validate_node_profile_attrs(
             assert updated_source is None
 
 
-async def test_apply_attribute_values_sets_a_default_attribute_in_memory_only(
+async def test_get_field_values_reads_the_profiles_without_changing_the_node(
     db: InfrahubDatabase, criticality_schema: NodeSchema, branch: Branch
 ) -> None:
     profile_schema = registry.schema.get("ProfileTestCriticality", branch=branch)
@@ -75,18 +75,17 @@ async def test_apply_attribute_values_sets_a_default_attribute_in_memory_only(
         profiles=[{"hfid": ["low-priority"]}, high_priority],
     )
 
-    updated_names = await NodeProfilesApplier(db=db, branch=branch).apply_attribute_values(
-        node=node, attr_names=["color", "is_false", "description"]
+    field_values = await NodeProfilesApplier(db=db, branch=branch).get_field_values(
+        node=node, attr_names=["color", "is_false", "description"], rel_names=[]
     )
 
-    assert updated_names == ["color", "is_false"]
-    assert node.color.value == "blue"
-    assert node.color.is_from_profile is True
-    assert node.color.source_id == high_priority.id
-    assert node.is_false.value is True
-    assert node.is_false.source_id == low_priority.id
-    assert node.description.value == "set-by-user"
-    assert node.description.is_from_profile is False
+    assert field_values == ProfileFieldValues(
+        attribute_values={"color": "blue", "is_false": True}, relationship_peers={}
+    )
+    assert node.get_attribute("color").value != "blue"
+    assert node.get_attribute("color").is_from_profile is False
+    assert node.get_attribute("is_false").is_from_profile is False
+    assert node.get_attribute("description").value == "set-by-user"
     assert await NodeManager.get_many(db=db, branch=branch, ids=[node.id]) == {}
 
 
