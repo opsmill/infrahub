@@ -1,6 +1,7 @@
 import {
   Autocomplete,
   Card,
+  LinkButton,
   ListBox,
   Popover,
   Select,
@@ -9,10 +10,8 @@ import {
 } from "@infrahub/ui";
 import { ArrowLeftIcon } from "lucide-react";
 import React from "react";
-import { useNavigate } from "react-router";
 
 import { Col, Row } from "@/shared/components/container";
-import { Link } from "@/shared/components/ui/link";
 
 import type {
   NumberPoolData,
@@ -20,7 +19,7 @@ import type {
   NumberPoolDivisionSelector,
   NumberPoolDivisionValue,
 } from "@/entities/resource-manager/domain/model/number-pool";
-import { formatUsagePercent } from "@/entities/resource-manager/ui/number-pool/details/number-pool-usage-bar";
+import { NumberPoolUsageBar } from "@/entities/resource-manager/ui/number-pool/details/number-pool-usage-bar";
 import { useGetNumberPoolDivisions } from "@/entities/resource-manager/ui/queries/get-number-pool-divisions.query";
 import {
   getNumberPoolDivisionsUrl,
@@ -52,20 +51,11 @@ function DivisionLabels({ division }: DivisionLabelsProps) {
   ));
 }
 
-interface UsageMeterProps {
-  utilization: number;
-}
-
-function UsageMeter({ utilization }: UsageMeterProps) {
-  return (
-    <span
-      className="inline-flex h-1 w-12 overflow-hidden rounded-full bg-custom-blue-600/10"
-      aria-hidden
-    >
-      <span className="h-full bg-accent-strong" style={{ width: `${utilization}%` }} />
-    </span>
-  );
-}
+const getPlaceholder = ({ isPending, isError }: { isPending: boolean; isError: boolean }) => {
+  if (isPending) return "Loading...";
+  if (isError) return "Allocation scopes unavailable";
+  return "No numbers allocated in this scope";
+};
 
 export interface NumberPoolDivisionCardProps {
   pool: NumberPoolData;
@@ -73,61 +63,57 @@ export interface NumberPoolDivisionCardProps {
 }
 
 export function NumberPoolDivisionCard({ pool, division }: NumberPoolDivisionCardProps) {
-  const navigate = useNavigate();
-  const { data } = useGetNumberPoolDivisions(pool.id);
+  const { data, isPending, isError } = useGetNumberPoolDivisions(pool.id);
   const divisions = [...(data?.divisions ?? [])].sort(
     (a, b) => b.usage.utilization - a.usage.utilization
   );
   const selectedValues = division.map((entry) => entry.value);
 
-  const openDivision = (key: React.Key | null) => {
-    const picked = divisions.find((item) => divisionKey(divisionValues(item)) === key);
-    if (!picked) return;
-    navigate(getNumberPoolDivisionUrl(pool.id, divisionValues(picked)));
-  };
-
   return (
-    <Card className="shrink-0">
+    <Card>
       <Col className="gap-1.5 px-3 py-3 text-sm">
         <Row className="justify-between">
-          <span className="font-medium text-foreground-muted text-xs">Allocation scope</span>
-          <Link
-            to={getNumberPoolDivisionsUrl(pool.id)}
-            className="inline-flex items-center gap-1 text-foreground-muted text-xs no-underline hover:text-foreground hover:underline"
+          <span className="font-medium text-foreground-muted text-sm">Allocation scope</span>
+          <LinkButton
+            size="xxs"
+            variant="ghost"
+            className="text-foreground-muted"
+            href={getNumberPoolDivisionsUrl(pool.id)}
           >
-            <ArrowLeftIcon className="size-3" aria-hidden />
+            <ArrowLeftIcon />
             All allocation scopes
-          </Link>
+          </LinkButton>
         </Row>
+
         <Select
           aria-label="Allocation scope"
-          // a scope that holds no numbers is not listed, so its raw values stand in for its labels
-          placeholder={selectedValues.map((value) => String(value) || NO_VALUE).join(" · ")}
+          placeholder={getPlaceholder({ isPending, isError })}
           value={divisionKey(selectedValues)}
-          onChange={openDivision}
+          isDisabled={isPending}
           className="w-full"
         >
           <SelectTrigger size="sm" />
-          <Popover placement="bottom start" className="w-lg">
+
+          <Popover placement="bottom start" className="max-h-80 w-lg">
             <Autocomplete>
               <ListBox
                 selectionMode="single"
                 items={divisions.map((item) => ({ id: divisionKey(divisionValues(item)), item }))}
-                className="max-h-80"
                 emptyMessage="No matching allocation scope"
               >
                 {({ id, item }) => (
-                  <SelectItem id={id} textValue={divisionText(item)}>
+                  <SelectItem
+                    id={id}
+                    textValue={divisionText(item)}
+                    href={getNumberPoolDivisionUrl(pool.id, divisionValues(item))}
+                  >
                     <Row className="w-full">
-                      <span className="min-w-0 flex-1 truncate">
+                      <span className="min-w-0 grow truncate">
                         <DivisionLabels division={item} />
                       </span>
-                      <Row className="in-[button]:hidden shrink-0 text-xs tabular-nums">
-                        <UsageMeter utilization={item.usage.utilization} />
-                        <span className="w-10 text-right">
-                          {formatUsagePercent(item.usage.utilization)}
-                        </span>
-                      </Row>
+                      <div className="in-[button]:hidden w-28 shrink-0">
+                        <NumberPoolUsageBar usage={item.usage} />
+                      </div>
                     </Row>
                   </SelectItem>
                 )}
