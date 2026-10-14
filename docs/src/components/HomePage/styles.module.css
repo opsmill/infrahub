@@ -12,18 +12,28 @@
   max-height: 540px;
 }
 
-.infrahubVideo {
+.infrahubScreenshot {
   align-self: start;
+}
+
+.infrahubScreenshot img {
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 0.75rem;
 }
 
 @media screen and (max-width: 996px) {
   .heroBanner {
-    padding: 4rem 2rem;
+    flex-wrap: wrap;
+    padding: 2rem 0;
     flex-grow: 0;
+    max-height: none;
+    overflow: visible;
   }
 
-  .infrahubVideo {
-    display: none;
+  .infrahubScreenshot {
+    margin-top: 2rem;
   }
 }
 

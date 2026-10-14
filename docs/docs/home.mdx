@@ -13,87 +13,115 @@ import HomePageCard from "../src/components/HomePage/card.tsx";
 
 <div className="row">
     <HomePageCard
-        title="Overview"
-        svgPath="/img/infrahub-logo.svg"
-        description="An introduction to Infrahub's vision, core features, and infrastructure data management approach."
+        title="Quickstart"
+        description="Run Infrahub locally and load your first data."
+        link="overview/quickstart"
+    />
+    <HomePageCard
+        title="What is Infrahub?"
+        description="What Infrahub does, and where it fits in an automation stack."
         link="overview"
     />
     <HomePageCard
-        title="Quick Start"
-        svgPath="/img/infrahub-logo.svg"
-        description="Want to see Infrahub in action? This guide will help you get started quickly."
-        link="overview/quickstart"
-    />
-    <HomePageCard title="Key Concepts"
-        svgPath="/img/infrahub-logo.svg"
-        description="Learn about Infrahub's core concepts and how to combine them to deliver advanced use cases."
+        title="Key concepts"
+        description="The ideas Infrahub is built on, and how they combine."
         link="overview/concepts"
+    />
+    <HomePageCard
+        title="Explore Infrahub"
+        description="A tour of the web interface, the API, and the command line."
+        link="overview/explore"
+    />
+    <HomePageCard
+        title="Build with AI"
+        description="Connect an AI assistant to Infrahub and work with it."
+        link="overview/build-with-ai"
+    />
+    <HomePageCard
+        title="Community vs Enterprise"
+        description="What each edition includes."
+        link="overview/community-vs-enterprise"
     />
 </div>
 
-## Using Infrahub
+## Schema and data
 
 <div className="row">
     <HomePageCard
-        title="Load Schemas"
-        svgPath="/img/infrahub-logo.svg"
-        description="How to manage and load schemas."
+        title="Create and load a schema"
+        description="Define the objects, attributes, and relationships Infrahub stores."
         link="schema/create-and-load"
     />
     <HomePageCard
-        title="Git Repository"
-        svgPath="/img/infrahub-logo.svg"
-        description="Connect your Git repository to Infrahub."
-        link="git-integration/connect-repository"
+        title="Build your schema with AI"
+        description="Draft and refine a schema with an AI assistant."
+        link="schema/build-your-schema"
     />
-    <HomePageCard title="Resource Manager"
-        svgPath="/img/infrahub-logo.svg"
-        description="Organizing and handling resources within Infrahub."
-        link="resource-manager/overview"
+    <HomePageCard
+        title="Create objects"
+        description="Add data through the web interface, a YAML file, or a CSV import."
+        link="objects/create-objects"
     />
 </div>
 
-## Developing with Infrahub
+## Branches and change control
+
+<div className="row">
+    <HomePageCard
+        title="Branches"
+        description="Make changes in isolation, then merge or rebase them."
+        link="branches/overview"
+    />
+    <HomePageCard
+        title="Proposed changes"
+        description="Put a branch up for review, discussion, and approval before it merges."
+        link="proposed-changes/overview"
+    />
+    <HomePageCard
+        title="Checks and validation"
+        description="Run checks against a branch and block a merge when they fail."
+        link="checks/overview"
+    />
+</div>
+
+## Design and integrate
 
 <div className="row">
     <HomePageCard
         title="Python SDK"
         svgPath="/img/python.svg"
-        description="Develop custom scripts and integrations with Infrahub."
+        description="Write scripts and integrations against the Infrahub API."
         link="$(base_url)python-sdk/introduction"
     />
     <HomePageCard
-        title="Transformations"
-        svgPath="/img/infrahub-logo.svg"
-        description="Transform your data using Python or Jinja."
-        link="transformations/overview"
-    />
-    <HomePageCard title="Generators"
-        svgPath="/img/infrahub-logo.svg"
-        description="Create consistent infrastructure objects using Generators."
+        title="Generators"
+        description="Turn a service model into the objects that implement it."
         link="generators/overview"
+    />
+    <HomePageCard
+        title="Transformations"
+        description="Convert graph data into device configuration with Python or Jinja2."
+        link="transformations/overview"
     />
 </div>
 
-## Managing Infrahub
+## Deployment and management
 
 <div className="row">
     <HomePageCard
-        title="Version Upgrade"
-        svgPath="/img/infrahub-logo.svg"
-        description="Easily upgrade to the latest version of Infrahub."
+        title="Install Infrahub"
+        description="Hardware requirements, installation, and configuration."
+        link="deploy-manage/install-configure/install/community"
+    />
+    <HomePageCard
+        title="Upgrade"
+        description="Move an existing deployment to a newer version."
         link="deploy-manage/maintain-upgrade/upgrade/overview"
     />
     <HomePageCard
-        title="Backup and Restore"
-        svgPath="/img/infrahub-logo.svg"
-        description="Back up your data and restore it when necessary."
+        title="Back up and restore"
+        description="Back up the database and restore it when you need to."
         link="deploy-manage/maintain-upgrade/database-backup/overview"
-    />
-    <HomePageCard title="Configuring SSO"
-        svgPath="/img/infrahub-logo.svg"
-        description="Simplify user access with Single Sign-On integration."
-        link="deploy-manage/user-management/sso/overview"
     />
 </div>
 
@@ -101,21 +129,21 @@ import HomePageCard from "../src/components/HomePage/card.tsx";
 
 <div className="row">
     <HomePageCard
-        title="All Integrations"
+        title="All integrations"
         svgPath="/img/sync.svg"
-        description="Infrahub integrates with a wide range of network management and automation tools to help you synchronize data and automate workflows."
+        description="The tools Infrahub synchronizes data with and automates alongside."
         link="$(base_url)integrations"
     />
     <HomePageCard
         title="Ansible"
         svgPath="/img/ansible.svg"
-        description="OpsMill maintains the `opsmill.infrahub` Ansible Collection."
+        description="The `opsmill.infrahub` Ansible Collection, maintained by OpsMill."
         link="$(base_url)ansible"
     />
     <HomePageCard
         title="Nornir"
         svgPath="/img/nornir.png"
-        description="Infrahub can be used as an inventory source for Nornir."
+        description="Infrahub as an inventory source for Nornir."
         link="$(base_url)nornir"
     />
 </div>
@@ -126,18 +154,18 @@ import HomePageCard from "../src/components/HomePage/card.tsx";
     <HomePageCard
         title="Join Discord"
         svgPath="/img/discord.png"
-        description="Connect with the community and get real-time support."
+        description="Ask the community and the OpsMill team."
         link="https://discord.gg/opsmill"
     />
     <HomePageCard
-        title="Report a Bug on GitHub"
+        title="Report a bug on GitHub"
         svgPath="/img/github.png"
-        description="Submit issues or contribute to improving Infrahub."
+        description="File an issue, or contribute a change."
         link="https://github.com/opsmill/infrahub"
     />
-    <HomePageCard title="Book a Meeting"
-        svgPath="/img/infrahub-logo.svg"
-        description="Schedule a session with the automation experts on the OpsMill team."
+    <HomePageCard
+        title="Book a meeting"
+        description="Talk to the automation engineers at OpsMill."
         link="https://cal.com/team/opsmill/meet"
     />
 </div>
