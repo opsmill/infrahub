@@ -38,15 +38,3 @@ export interface RepositoryActivity {
   lastRuns: RepositoryLastRun[];
   lock: RepositoryLock | null;
 }
-
-export type RepositoryActivityErrorCode = "NO_ACCESS" | "UNKNOWN";
-
-export class RepositoryActivityError extends Error {
-  readonly code: RepositoryActivityErrorCode;
-
-  constructor(code: RepositoryActivityErrorCode, message: string, options?: ErrorOptions) {
-    super(message, options);
-    this.name = "RepositoryActivityError";
-    this.code = code;
-  }
-}

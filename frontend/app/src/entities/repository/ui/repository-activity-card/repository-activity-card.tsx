@@ -1,28 +1,22 @@
 import { Card, CardHeader } from "@infrahub/ui";
-import React from "react";
+import type React from "react";
 import { ErrorBoundary } from "react-error-boundary";
 
 import { Row } from "@/shared/components/container";
 import { Skeleton } from "@/shared/components/loading/skeleton";
 
 import type { RepositoryActivity } from "@/entities/repository/domain/model/repository-activity";
-import { isRepositoryActivityAccessDenied } from "@/entities/repository/domain/rules/repository-activity-error";
 import { useGetRepositoryActivity } from "@/entities/repository/ui/queries/get-repository-activity.query";
 import { ActiveRunRow } from "@/entities/repository/ui/repository-activity-card/active-run-row";
 import { IdleRow } from "@/entities/repository/ui/repository-activity-card/idle-row";
-import { LastRuns } from "@/entities/repository/ui/repository-activity-card/last-runs";
-import { LockLine } from "@/entities/repository/ui/repository-activity-card/lock-line";
+import { RepositoryLastRuns } from "@/entities/repository/ui/repository-activity-card/repository-last-runs";
+import { RepositoryLockRow } from "@/entities/repository/ui/repository-activity-card/repository-lock-row";
 
-export const ACTIVITY_CHECK_FAILED = "The activity of this repository could not be checked.";
-export const ACTIVITY_PERMISSION_DENIED =
-  "You do not have permission to view the activity of this repository.";
+export const ACTIVITY_LOAD_FAILED =
+  "Could not load the repository activity. Reload the page to try again.";
 
 function Message({ children }: { children: React.ReactNode }) {
-  return (
-    <div role="status" className="px-3 py-6 text-center text-foreground-muted text-sm">
-      {children}
-    </div>
-  );
+  return <div className="px-3 py-6 text-center text-foreground-muted text-sm">{children}</div>;
 }
 
 function ActivitySkeleton() {
@@ -43,78 +37,57 @@ function ActivitySkeleton() {
   );
 }
 
-function CurrentActivity({ activity }: { activity: RepositoryActivity }) {
+function RepositoryActiveRuns({ activity }: { activity: RepositoryActivity }) {
   const { activeRuns, lastRuns, lock } = activity;
 
   return (
-    <section aria-label="Current activity" className="py-1">
-      <div role="status">
-        {activeRuns.length === 0 ? (
-          <IdleRow latestRun={lastRuns[0]} />
-        ) : (
-          <ul>
-            {activeRuns.map((run) => (
-              <ActiveRunRow key={run.runId} run={run} />
-            ))}
-          </ul>
-        )}
-      </div>
+    <div className="py-1">
+      {activeRuns.length === 0 ? (
+        <IdleRow latestRun={lastRuns[0]} />
+      ) : (
+        <ul>
+          {activeRuns.map((run) => (
+            <ActiveRunRow key={run.runId} run={run} />
+          ))}
+        </ul>
+      )}
+
       {lock && (
-        <LockLine
+        <RepositoryLockRow
           lock={lock}
           isWorkerRunning={activeRuns.some(({ workerId }) => workerId === lock.workerId)}
         />
       )}
-    </section>
+    </div>
   );
 }
 
-interface RepositoryActivityBodyProps {
-  data: RepositoryActivity | undefined;
-  error: Error | null;
-  isPending: boolean;
-}
+function RepositoryActivityBody({ repositoryId }: { repositoryId: string }) {
+  const { data, error, isPending } = useGetRepositoryActivity({ repositoryId });
 
-function RepositoryActivityBody({ data, error, isPending }: RepositoryActivityBodyProps) {
-  if (isPending) return <ActivitySkeleton />;
-
-  if (isRepositoryActivityAccessDenied(error)) {
-    return <Message>{ACTIVITY_PERMISSION_DENIED}</Message>;
+  if (isPending) {
+    return <ActivitySkeleton />;
   }
 
-  // A failed check drops the running state it can no longer vouch for; finished runs stay true.
-  if (error || !data) {
-    return (
-      <>
-        <Message>{ACTIVITY_CHECK_FAILED}</Message>
-        {data && <LastRuns runs={data.lastRuns} />}
-      </>
-    );
+  if (error) {
+    return <Message>{ACTIVITY_LOAD_FAILED}</Message>;
   }
 
   return (
     <>
-      <CurrentActivity activity={data} />
-      <LastRuns runs={data.lastRuns} />
+      <RepositoryActiveRuns activity={data} />
+      <RepositoryLastRuns runs={data.lastRuns} />
     </>
   );
 }
 
 export function RepositoryActivityCard({ repositoryId }: { repositoryId: string }) {
-  const titleId = React.useId();
-  const { data, error, isPending } = useGetRepositoryActivity({ repositoryId });
-
   return (
-    <Card role="region" aria-labelledby={titleId} className="overflow-hidden">
-      <CardHeader>
-        <h2 id={titleId}>Repository activity</h2>
-      </CardHeader>
+    <Card className="overflow-hidden">
+      <CardHeader>Repository activity</CardHeader>
 
-      <ErrorBoundary
-        fallbackRender={() => <Message>{ACTIVITY_CHECK_FAILED}</Message>}
-        resetKeys={[data]}
-      >
-        <RepositoryActivityBody data={data} error={error} isPending={isPending} />
+      <ErrorBoundary fallbackRender={() => <Message>{ACTIVITY_LOAD_FAILED}</Message>}>
+        <RepositoryActivityBody repositoryId={repositoryId} />
       </ErrorBoundary>
     </Card>
   );

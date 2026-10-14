@@ -1,10 +1,8 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 
-import { RepositoryActivityError } from "@/entities/repository/domain/model/repository-activity";
 import { getRepositoryActivity } from "@/entities/repository/domain/use-cases/get-repository-activity";
 import {
-  ACTIVITY_CHECK_FAILED,
-  ACTIVITY_PERMISSION_DENIED,
+  ACTIVITY_LOAD_FAILED,
   RepositoryActivityCard,
 } from "@/entities/repository/ui/repository-activity-card/repository-activity-card";
 
@@ -19,11 +17,8 @@ import {
 
 vi.mock("@/entities/repository/domain/use-cases/get-repository-activity");
 
-const textOf = async (component: Awaited<ReturnType<typeof render>>, name: string) =>
-  ((await component.getByRole("region", { name }).element()) as HTMLElement).innerText.replace(
-    /\s+/g,
-    " "
-  );
+const textOf = (component: Awaited<ReturnType<typeof render>>) =>
+  component.container.innerText.replace(/\s+/g, " ");
 
 describe("RepositoryActivityCard", () => {
   const getRepositoryActivityMock = vi.mocked(getRepositoryActivity);
@@ -49,9 +44,9 @@ describe("RepositoryActivityCard", () => {
 
     // THEN
     await expect.element(component.getByText("Applying release-1.12")).toBeVisible();
-    const text = await textOf(component, "Current activity");
-    expect(text).toContain(`on worker ${WORKER_ID.slice(0, 8)}`);
-    expect(text).toContain(`Repository lock held by worker ${WORKER_ID.slice(0, 8)}, requested`);
+    const text = textOf(component);
+    expect(text).toContain(`on worker ${WORKER_ID}`);
+    expect(text).toContain(`Repository lock held by worker ${WORKER_ID}, requested`);
     expect(text).not.toContain("with no active run");
     expect(text).not.toContain("Holds the repository lock");
     expect(text).not.toContain("for the sync");
@@ -84,8 +79,8 @@ describe("RepositoryActivityCard", () => {
 
     // THEN
     await expect.element(component.getByText("Applying feature-x")).toBeVisible();
-    const text = await textOf(component, "Current activity");
-    expect(text).toContain(`Repository lock held by worker ${WORKER_ID.slice(0, 8)}, requested`);
+    const text = textOf(component);
+    expect(text).toContain(`Repository lock held by worker ${WORKER_ID}, requested`);
     expect(text).not.toMatch(/for the (sync|reimport)/);
     expect(text).not.toContain("with no active run");
   });
@@ -104,8 +99,8 @@ describe("RepositoryActivityCard", () => {
 
     // THEN
     await expect.element(component.getByText("Applying release-1.12")).toBeVisible();
-    const text = await textOf(component, "Current activity");
-    expect(text).toContain(`Repository lock held by worker ${WORKER_ID.slice(0, 8)}`);
+    const text = textOf(component);
+    expect(text).toContain(`Repository lock held by worker ${WORKER_ID}`);
     expect(text).not.toContain("requested");
   });
 
@@ -123,8 +118,8 @@ describe("RepositoryActivityCard", () => {
 
     // THEN
     await expect.element(component.getByText("No activity")).toBeVisible();
-    expect(await textOf(component, "Current activity")).toMatch(
-      /Repository lock held by worker e2a7c9f0, requested .+, with no active run/
+    expect(textOf(component)).toMatch(
+      /Repository lock held by worker e2a7c9f0-5d13-4b8e-a6f2-91c0d4e8b356, requested .+, with no active run/
     );
   });
 
@@ -139,12 +134,12 @@ describe("RepositoryActivityCard", () => {
 
     // THEN
     await expect.element(component.getByText("No activity")).toBeVisible();
-    const text = await textOf(component, "Current activity");
+    const text = textOf(component);
     expect(text).toContain("Idle since the merge finished");
     expect(text).not.toContain("lock");
   });
 
-  test("says when a repository has not run in the last 30 days", async () => {
+  test("says when no run of the repository is recorded", async () => {
     // GIVEN
     getRepositoryActivityMock.mockResolvedValue(generateActivity());
 
@@ -152,31 +147,20 @@ describe("RepositoryActivityCard", () => {
     const component = await render(<RepositoryActivityCard repositoryId="repository-1" />);
 
     // THEN
-    await expect.element(component.getByText("No run in the last 30 days")).toBeVisible();
-    await expect.element(component.getByText("No run finished in the last 30 days")).toBeVisible();
+    await expect.element(component.getByText("No run recorded")).toBeVisible();
+    await expect.element(component.getByText("No finished run recorded")).toBeVisible();
   });
 
   test("admits a failed check instead of showing the repository as idle", async () => {
     // GIVEN
-    getRepositoryActivityMock.mockRejectedValue(new RepositoryActivityError("UNKNOWN", "Offline"));
+    getRepositoryActivityMock.mockRejectedValue(new Error("Offline"));
 
     // WHEN
     const component = await render(<RepositoryActivityCard repositoryId="repository-1" />);
 
     // THEN
-    await expect.element(component.getByText(ACTIVITY_CHECK_FAILED)).toBeVisible();
+    await expect.element(component.getByText(ACTIVITY_LOAD_FAILED)).toBeVisible();
     await expect.element(component.getByText("No activity")).not.toBeInTheDocument();
-  });
-
-  test("says the viewer has no access when the repository is denied", async () => {
-    // GIVEN
-    getRepositoryActivityMock.mockRejectedValue(new RepositoryActivityError("NO_ACCESS", "Denied"));
-
-    // WHEN
-    const component = await render(<RepositoryActivityCard repositoryId="repository-1" />);
-
-    // THEN
-    await expect.element(component.getByText(ACTIVITY_PERMISSION_DENIED)).toBeVisible();
   });
 
   test("lists the branches a run failed and changed when its line is opened", async () => {
@@ -211,12 +195,12 @@ describe("RepositoryActivityCard", () => {
       generateActivity({ activeRuns: [generateActiveRun({ startedAt: "2026-10-14T14:00:00Z" })] })
     );
     const component = await render(<RepositoryActivityCard repositoryId="repository-1" />);
-    await expect.element(component.getByRole("timer")).toHaveTextContent("1m 04s");
+    await expect.element(component.getByText("1m 04s")).toBeVisible();
 
     // WHEN
     vi.advanceTimersByTime(2000);
 
     // THEN
-    await expect.element(component.getByRole("timer")).toHaveTextContent("1m 06s");
+    await expect.element(component.getByText("1m 06s")).toBeVisible();
   });
 });

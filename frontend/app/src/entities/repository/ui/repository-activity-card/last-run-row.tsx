@@ -1,6 +1,7 @@
 import { ChevronRightIcon } from "lucide-react";
-import React from "react";
+import { Button, Disclosure, DisclosurePanel } from "react-aria-components";
 
+import { DateDisplay } from "@/shared/components/display/date-display";
 import { Link } from "@/shared/components/ui/link";
 import { classNames } from "@/shared/utils/common";
 
@@ -10,7 +11,6 @@ import type {
   RepositoryRunBranchOutcome,
 } from "@/entities/repository/domain/model/repository-activity";
 import { DotMarker } from "@/entities/repository/ui/repository-activity-card/activity-markers";
-import { ActivityTime } from "@/entities/repository/ui/repository-activity-card/activity-values";
 import {
   getOperationLabel,
   getRunOutcomeParts,
@@ -18,7 +18,7 @@ import {
 
 const ROW = "flex h-9 w-full min-w-0 items-center gap-2.5 px-3 text-left text-sm";
 
-function RunSummary({ run, isOpen }: { run: RepositoryLastRun; isOpen?: boolean }) {
+function RunSummary({ run, isExpanded }: { run: RepositoryLastRun; isExpanded?: boolean }) {
   const { failed, changed } = getRunOutcomeParts(run);
 
   return (
@@ -35,17 +35,21 @@ function RunSummary({ run, isOpen }: { run: RepositoryLastRun; isOpen?: boolean 
         {changed && <span className="truncate text-foreground-muted">{changed}</span>}
         {!failed && !changed && <span className="text-foreground-muted">No change</span>}
       </span>
-      {isOpen !== undefined && (
+      {isExpanded !== undefined && (
         <ChevronRightIcon
           aria-hidden
           className={classNames(
             "size-3.5 shrink-0 text-foreground-muted transition-transform duration-150 ease-out motion-reduce:transition-none",
-            isOpen && "rotate-90"
+            isExpanded && "rotate-90"
           )}
         />
       )}
       <span className="ml-auto pl-3 text-xs">
-        <ActivityTime date={run.finishedAt} />
+        <DateDisplay
+          date={run.finishedAt}
+          fullTimestamp
+          containerClassName="inline-flex shrink-0"
+        />
       </span>
     </>
   );
@@ -82,9 +86,6 @@ function BranchLinks({
 }
 
 export function LastRunRow({ run }: { run: RepositoryLastRun }) {
-  const [isOpen, setIsOpen] = React.useState(false);
-  const panelId = React.useId();
-
   if (run.branches.length <= 1) {
     return (
       <li className={ROW}>
@@ -95,32 +96,35 @@ export function LastRunRow({ run }: { run: RepositoryLastRun }) {
 
   return (
     <li>
-      <button
-        type="button"
-        aria-expanded={isOpen}
-        aria-controls={panelId}
-        onClick={() => setIsOpen((open) => !open)}
-        className={classNames(
-          ROW,
-          "hover:bg-content-strong/60 focus-visible:outline-2 focus-visible:outline-ring focus-visible:-outline-offset-2"
+      <Disclosure>
+        {({ isExpanded }) => (
+          <>
+            <Button
+              slot="trigger"
+              className={classNames(
+                ROW,
+                "hover:bg-content-strong/60 focus-visible:outline-2 focus-visible:outline-ring focus-visible:-outline-offset-2"
+              )}
+            >
+              <RunSummary run={run} isExpanded={isExpanded} />
+            </Button>
+            <DisclosurePanel>
+              <div className="flex flex-col gap-1 pt-0.5 pr-3 pb-2.5 pl-7.5 text-sm">
+                <BranchLinks
+                  label="Failed"
+                  branches={run.branches.filter(({ outcome }) => outcome === "FAILED")}
+                  className="text-danger"
+                />
+                <BranchLinks
+                  label="Changed"
+                  branches={run.branches.filter(({ outcome }) => outcome === "IMPORTED")}
+                  className="text-foreground-muted"
+                />
+              </div>
+            </DisclosurePanel>
+          </>
         )}
-      >
-        <RunSummary run={run} isOpen={isOpen} />
-      </button>
-      {isOpen && (
-        <div id={panelId} className="flex flex-col gap-1 pt-0.5 pr-3 pb-2.5 pl-7.5 text-sm">
-          <BranchLinks
-            label="Failed"
-            branches={run.branches.filter(({ outcome }) => outcome === "FAILED")}
-            className="text-danger"
-          />
-          <BranchLinks
-            label="Changed"
-            branches={run.branches.filter(({ outcome }) => outcome === "IMPORTED")}
-            className="text-foreground-muted"
-          />
-        </div>
-      )}
+      </Disclosure>
     </li>
   );
 }

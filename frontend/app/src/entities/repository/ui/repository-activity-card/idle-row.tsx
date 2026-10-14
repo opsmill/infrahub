@@ -1,8 +1,8 @@
 import { Row } from "@/shared/components/container";
+import { DateDisplay } from "@/shared/components/display/date-display";
 
 import type { RepositoryLastRun } from "@/entities/repository/domain/model/repository-activity";
 import { DotMarker } from "@/entities/repository/ui/repository-activity-card/activity-markers";
-import { ActivityTime } from "@/entities/repository/ui/repository-activity-card/activity-values";
 import { getOperationLabel } from "@/entities/repository/ui/repository-activity-card/repository-activity.view";
 
 export function IdleRow({ latestRun }: { latestRun: RepositoryLastRun | undefined }) {
@@ -15,10 +15,14 @@ export function IdleRow({ latestRun }: { latestRun: RepositoryLastRun | undefine
           {latestRun ? (
             <>
               Idle since the {getOperationLabel(latestRun.operation).toLowerCase()} finished{" "}
-              <ActivityTime date={latestRun.finishedAt} />
+              <DateDisplay
+                date={latestRun.finishedAt}
+                fullTimestamp
+                containerClassName="inline-flex shrink-0"
+              />
             </>
           ) : (
-            "No run in the last 30 days"
+            "No run recorded"
           )}
         </span>
       </div>

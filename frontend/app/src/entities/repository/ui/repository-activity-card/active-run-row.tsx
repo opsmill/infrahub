@@ -1,9 +1,7 @@
+import { DateDisplay } from "@/shared/components/display/date-display";
+
 import type { RepositoryActiveRun } from "@/entities/repository/domain/model/repository-activity";
 import { LiveMarker } from "@/entities/repository/ui/repository-activity-card/activity-markers";
-import {
-  ActivityTime,
-  WorkerId,
-} from "@/entities/repository/ui/repository-activity-card/activity-values";
 import { ElapsedTime } from "@/entities/repository/ui/repository-activity-card/elapsed-time";
 import {
   getOperationLabel,
@@ -22,7 +20,13 @@ export function ActiveRunRow({ run }: { run: RepositoryActiveRun }) {
           {progress && <span className="min-w-0 truncate text-foreground-muted">{progress}</span>}
         </span>
         <span className="min-w-0 text-foreground-muted text-xs">
-          Started <ActivityTime date={run.startedAt} /> on worker <WorkerId id={run.workerId} />
+          Started{" "}
+          <DateDisplay
+            date={run.startedAt}
+            fullTimestamp
+            containerClassName="inline-flex shrink-0"
+          />{" "}
+          on worker {run.workerId}
         </span>
       </div>
       <ElapsedTime since={run.startedAt} />
