@@ -196,8 +196,24 @@ seconds. When the acquire times out, the caller acts as when the store raises (R
 reads a non-empty queue; the delivery clears the queue and finds no held set; the barrier then
 writes its held set, which nobody will release.
 
-**Rejected**: a compare-and-set query in Cypher. It is more code than a lock and it is not a pattern
-this codebase uses for node attributes.
+**Why the transaction also locks the repository node.** A lock with a time to live cannot protect a
+commit. If a transition runs longer than 30 seconds, a second writer takes the state lock, reads the
+old state, and both commit, so one enqueue or one lease is lost. The registry also gives one lock
+object per name in each process, so after such an overrun, the release of the first writer can
+remove the key of the second. So the first statement of each transition's transaction takes the
+Neo4j write lock of the repository node: it sets a property and removes it in the same statement,
+because Cypher has no lock statement. Neo4j holds that lock until the commit or the rollback, with
+no time limit, so a second writer waits there and then reads the committed state. The state lock
+stays: it keeps the bounded acquire and `DeliveryStateUnavailableError`, and it keeps the normal
+waits out of Neo4j. A transition can also wait for another open transaction that writes the
+repository node, and if Neo4j detects a deadlock, the transition raises like any database error.
+
+**Rejected**: a compare-and-set query in Cypher. A version compare alone loses updates at Neo4j's
+read-committed isolation, unless the transaction takes the write lock before it reads, and with
+that lock the counter adds nothing. A Neo4j transaction timeout below the time to live does not
+cover the time between the acquire and the start of the transaction, and it leaves the shared lock
+object. A check that the lock is still held before the commit needs an atomic check in both lock
+backends, Redis and NATS.
 
 ---
 
@@ -245,7 +261,7 @@ such a run would queue an entry that FR-005 forbids.
 |---|---|
 | `entry_id` | A new UUID. |
 | `source_branch` | The Infrahub source branch name. |
-| `source_git_branch` | The remote branch, through `_get_mapped_remote_branch`. |
+| `source_git_branch` | The remote branch, through `_get_mapped_remote_branch`. For a merge source it is the Infrahub branch name, because the mapping changes only Infrahub's default branch and a merge never comes from it. |
 | `source_commit` | `CoreRepository.commit` read on the **source** branch, which is what Infrahub imported and merged. |
 | `merged_at` | The merge time. |
 | `delete_source_git_branch` | `False`. The branch-deletion guard sets it (R12). |
@@ -340,10 +356,10 @@ after the merge (`delete_branch_after_merge`), while the remote branch is protec
 ## R4. The delivery attempt
 
 **Decision**: one component, `RepositoryWritebackService`, built per repository at the top of each
-flow, with one entry point, `deliver(final_attempt, manual, entry)`. `merge_git_repository`, the
-retry flow and the recovery check (R20) all call it (FR-007). Its end has the same shape as the
-abandonment of R8: the entries leave the queue under the repository lock, and the release runs
-after the lock is released, under a lease.
+flow, with one entry point, `deliver(final_attempt, manual, entry, retry_delay, first_attempt)`.
+`merge_git_repository`, the retry flow and the recovery check (R20) all call it (FR-007). Its end
+has the same shape as the abandonment of R8: the entries leave the queue under the repository lock,
+and the release runs after the lock is released, under a lease.
 
 ### The algorithm
 
@@ -512,11 +528,12 @@ error whose reason comes from GitPython's `PushInfo` flags, not from text.
 | push | `RepositoryPushRejectedError`, reason `non-fast-forward` (`REJECTED`) | `remote-advanced` | yes. The remote moved between the fetch and the push, and the next attempt fetches again. |
 | push | `RepositoryPushRejectedError`, reason `unknown` | `unclassified` | no |
 | record | any | `record-failed` | yes. The remote has the content (FR-004). |
-| import | `DatabaseError`, `RepositoryConnectionError`, a GraphQL transport error | `import-interrupted` | yes |
+| import | `RepositoryNotFoundError`, `RepositoryTLSError` | `not-found`, `certificate` | no. Both are subtypes of `RepositoryConnectionError`, but a retry cannot fix them, as at the fetch. |
+| import | `DatabaseError`, any other `RepositoryConnectionError`, a GraphQL transport error. The import raises a connection error as it is and wraps any other error in `RepositoryImportError`, so the classifier reads the cause of that wrapper. | `import-interrupted` | yes |
 | import | any other, for example a configuration or validation error of the content | `import-failed` | no |
-| replay | a merge conflict | `replay-conflict` | no |
+| replay | a merge conflict. Not a row of the classifier: `replay` reports a conflict in `ReplayResult`, not as an exception, and the service sets this cause (R4, step 6). The classifier gives `unclassified` for every exception at this stage. | `replay-conflict` | no |
 | replay | a killed local Git command (`LOCAL_GIT_TIMEOUT_SECONDS`) | `unclassified` | no. The message names the command. |
-| release | any | the cause is left unchanged | yes, and never a reason for `action-required`. The failed run sets its lease's expiry to now, so the retry takes a new lease and releases again (R10, rule 4). The delivery is done; a release that still fails leaves the held work to the recovery check (R20). |
+| release | any | none. While merges are queued, the repository keeps the cause and the error of its delivery. With an empty queue, the store writes the message with no cause, and the next clear of a lease removes it. | yes, and never a reason for `action-required`. The failed run sets its lease's expiry to now, so the next attempt of the delivery task takes a new lease and releases again (R10, rule 4). The delivery is done; a release that still fails leaves the held work to the recovery check (R20). An abandonment has no task retry, and the retry mutation refuses its empty queue, so its failed release also waits for the recovery check (R8). |
 | any | anything else | `unclassified` | no |
 
 The cause list is closed and is an enum (Principle III). [data-model.md](data-model.md) has it.
@@ -553,7 +570,8 @@ failed, GitPython adds "process killed because it timed out" to the error lines
 (`git/cmd.py::handle_process_output`). `_raise_enriched_error_static` raises
 `RepositoryConnectionError` for that text, with a message of its own, so the attempt is retried.
 GitPython does not stop the command at the limit, so this classification comes only after Git ends
-(R6).
+(R6). Over HTTP(S), Git's low-speed limit ends a stalled transfer, and libcurl's "Operation too slow"
+text maps to the same error (R6).
 
 **A killed local Git command.** It is not a remote fault, so it must not become
 `remote-unreachable`. GitPython reports it with a different text, "Timeout: the command ... did not
@@ -577,7 +595,12 @@ stderr line that is not a progress line in `other_lines`, and lines that start w
 
 **Decision**: `push` passes a `RemoteProgress` and joins the `remote:` lines, in order, into the
 typed error. The delivery stores, verbatim, those lines and the ref summary. For any other error it
-stores the typed message, never raw stderr, which can name worker paths. Every stored message passes
+stores the typed message, not raw stderr, which can name worker paths. The classifier detects raw
+stderr only as a message that repeats a `GitCommandError` in its chain of causes. Every raise of the Git
+error enrichment is `from` one, and the wrapper of a failed import can copy such a message one level
+up. A message that repeats an error with no Git error under it, such as the wrapper of a failed import
+of invalid content, keeps its text. A message that wraps Git output in a longer sentence, or an error raised
+without `from`, keeps its text. Every stored message passes
 through one scrubber that removes `user:password@` from URLs, since a location can embed a token
 (Constitution VI).
 
@@ -591,7 +614,9 @@ through one scrubber that removes `user:password@` from URLs, since a location c
 `retry_delay_seconds=[30, 120, 300]` and a `retry_condition_fn` that retries only a failure
 classified as automatically retryable (R5). The task reads its attempt number from
 `task_run.run_count` and passes `final_attempt` to `deliver`, which records `action-required` only on
-the final attempt. Tests override the delays with `with_options(retry_delay_seconds=...)`.
+the final attempt. The task also passes the wait before the next retry to `deliver`, which records
+`retry_due_at` as the failure time plus that wait. Tests override the delays with
+`with_options(retry_delay_seconds=...)`.
 
 **Why a task.** Prefect 3.8 supports `retry_condition_fn` on tasks only, not on flows.
 
@@ -615,17 +640,20 @@ command that it runs. The limit does not stop every command; see "What the limit
   the pipes before it kills Git, and the close waits until Git ends. When Git then fails, GitPython
   adds "process killed because it timed out" to the error lines, and R5 makes it
   `remote-unreachable`, which the chain retries. When Git then succeeds, the call returns normally.
-- **A hung fetch or push is not stopped.** A remote that accepts the connection and never answers
-  keeps the fetch or the push running, with the repository lock and the worker slot, until the
-  connection ends.
+- **A hung fetch or push is not stopped by GitPython.** A remote that accepts the connection and
+  never answers keeps `Remote.fetch` and `Remote.push` running past their limit. So the fetch, the
+  push and the deletion also set Git's low-speed limit, in the environment of that one command:
+  `GIT_HTTP_LOW_SPEED_LIMIT` is 1 byte per second, and `GIT_HTTP_LOW_SPEED_TIME` is the bound,
+  rounded up. Git then ends a stalled HTTP(S) transfer itself, libcurl reports "Operation too slow",
+  and R5 makes it `remote-unreachable`, which the chain retries. An SSH transfer has no such bound.
 - **A direct Git call is stopped by a watchdog that needs `ps`.** Every other command, the deletion
   of a source branch included, runs through `Git.execute`. There a watchdog kills Git when the limit
   passes, and GitPython reports "Timeout: the command ... did not complete". The watchdog finds the
-  child processes of Git with `ps`. The runtime image has no `ps`, so there the watchdog cannot stop
-  a direct Git call either.
+  child processes of Git with `ps --ppid`, so the backend image installs `procps`. On a host without
+  that `ps`, the watchdog cannot stop a direct Git call.
 
-**Open point for a later story**: a bound that stops a hung fetch or push, and a direct Git call in
-the runtime image. Until it ships, FR-004 holds for these commands only when Git ends by itself.
+**Open point for a later story**: a bound on an SSH transfer. Until it ships, FR-004 holds for a
+fetch, a push or a deletion over SSH only when Git ends by itself.
 
 A local command normally ends in seconds, so its limit matters only for a command that is stuck. A
 killed local command raises a `RepositoryError` that names the command and the limit, and R5
@@ -633,7 +661,8 @@ classifies it. A killed `worktree add` leaves a worktree that Git keeps locked a
 `create_commit_worktree` removes it with `git worktree remove -f -f` before it raises. After any
 other failure, it removes nothing. The deletion of a source branch is a push, so
 `delete_remote_branch` types its errors as `push` does. Past its limit it raises
-`RepositoryConnectionError`, but only where the watchdog can stop Git, which needs `ps` (see above).
+`RepositoryConnectionError`. Where the watchdog cannot stop Git, on a host without `ps --ppid` (see
+above), the low-speed limit still stops a stalled HTTP(S) deletion.
 `reset` never raises: a killed reset is logged like any failed reset, and the failure of the attempt
 still propagates. The limits live in `git/writeback/constants.py`.
 
@@ -649,10 +678,13 @@ FR-027 covers it instead: while it runs, it holds the repository lock, so the de
 (R20, condition 4), and the recovery check starts no second attempt.
 
 **One retry chain per repository.** Before it waits, a retryable failure stores `retry_due_at`. A
-run of `merge_git_repository` whose first attempt finds a retry already due in the future returns
-at once, after its enqueue of R4 step 0 when it has one: that chain snapshots the queue at its next
-attempt and delivers the new entry too. A manual retry never returns early, because a user asked
-for it now. A chain that wakes after a manual retry delivered finds nothing and does nothing.
+delivery run (`manual=False`) whose first attempt finds a retry already due in the future returns
+`deferred` at once, after its enqueue of R4 step 0 when it has one and before the repository lock:
+that chain snapshots the queue at its next attempt and delivers the new entry too. Only a first
+attempt defers, because a chain's own retry must never defer itself: after the wait, the wall clock
+can still read earlier than the recorded due time. A manual retry never returns early, because a
+user asked for it now. A chain that wakes after a manual retry delivered finds nothing and does
+nothing.
 
 **Status while waiting**: `pending`, with the last cause and message, so a user sees "pending, last
 attempt failed: remote unreachable".
@@ -737,7 +769,8 @@ repository's queue, which outlives every task run, so the action belongs on the 
    items stay.
 2. For each abandoned entry with `delete_source_git_branch` set, send
    `RefreshGitRepositoryBranchDeleted`, so that every worker drops its local branch. The remote
-   branch stays (R12).
+   branch stays (R12). A send that fails is only logged, and the abandonment goes on to step 3: the
+   queue is already dropped.
 3. Leave both locks. Release the held items of the lease window (R10). If the release fails, set
    the lease's expiry to now and raise. The held items stay, and the recovery check of R20 releases
    them (R10, rule 4).
@@ -797,8 +830,8 @@ every candidate after one read.
 | `PostMergeRegenerationDispatcher.dispatch`, on the plan, before `_dispatch_plan` | generator runs, artifact generations | `generator_definition.repository_id`; a new `RequestArtifactDefinitionGenerate.repository_id` |
 | `PostMergeRegenerationDispatcher._submit`, after the generator cascade reselects artifacts | artifact generations | as above |
 | `PostMergeRegenerationDispatcher._full_regeneration`, `_submit_full_terminal_regeneration`, and the flag-off path of `post_process_branch_merge` | "every definition of a repository" | see below |
-| `core/merge/recompute_coalescing.py::_resolve_python_targets`, used by `MergeRecomputeCoordinator` and `RecomputeChainSubmitter` | Python computed attributes as `(kind, attribute)` | the owner map of the Python target source |
-| `computed_attribute/tasks.py::computed_attribute_setup_python`, on the default branch | the `(kind, attribute)` pairs it selected | the same owner map |
+| `core/merge/recompute_coalescing.py::_resolve_python_targets`, used by `MergeRecomputeCoordinator` and `RecomputeChainSubmitter` | Python computed attributes as `(kind, attribute)` | the owner map of the Python target resolver |
+| `computed_attribute/tasks.py::computed_attribute_setup_python`, on the default branch | the `(kind, attribute)` pairs it selected | the repository of each gathered trigger, from the same gather |
 
 ### The artifact request gains its repository
 
@@ -809,9 +842,11 @@ validates.
 
 ### The Python owner map
 
-`GatheredPythonReadSets` drops the repository of each transform. It keeps it instead, and the
-Python target source exposes `owner_of(kind, attribute) -> str | None`. The barrier consults it
-after `_resolve_python_targets`, so it filters both a resolved result and the widened failsafe.
+`GatheredPythonReadSets` drops the repository of each transform. It keeps it instead, the read set
+of each attribute carries it, and the Python target resolver exposes
+`owner_of(kind, attribute_name, branch) -> str | None`. The owner is known once a resolution on the
+branch has loaded the read sets. The barrier consults it after `_resolve_python_targets`, so it
+filters both a resolved result and the widened failsafe.
 
 When the owner of a target is unknown while some repository has a pending delivery, the barrier
 holds the target under every pending repository. Each release then runs it, which over-executes and
@@ -944,9 +979,8 @@ delays, plus the fetch and push timeouts times the number of attempts, plus a 10
 the import and the settle. With the constants of R6 that is 450 + 4 × 420 + 600 = 2,730 seconds,
 about 45 minutes. A merge whose delivery succeeds within its automatic retry chain regenerates as
 precisely as today. A miss only widens. The derivation leaves out the local timeouts, because a local
-command normally ends in seconds. It counts the fetch and push timeouts as if they stopped the
-command, which they do not for a hung fetch or push (R6). A chain that runs longer than the cache,
-for example after retried record failures or a hung fetch or push, only widens its release.
+command normally ends in seconds. A chain that runs longer than the cache, for example after
+retried record failures or a stalled SSH transfer, which has no bound (R6), only widens its release.
 
 **Rejected: waiting for the first attempt before the follow-ups.** It would delay every git-synced
 merge by the Git round trip, and by minutes when the remote is down.
@@ -977,7 +1011,18 @@ A new lease takes every held item that no live lease covers, up to a bound:
   belongs to an entry that has left it.
 
 The releaser renews the expiry after each awaited step, because a release awaits generator runs and
-can take minutes. Each renewal adds 15 minutes.
+can take minutes. Each renewal adds 15 minutes. One generator run can take hours, which is longer
+than the lease. So while the release runs, the service and the abandoner also renew the lease on a
+timer, every
+`RELEASE_RENEW_SECONDS`, 5 minutes. Each renewal of the timer runs on a database session of its
+own. The release reads and writes on the session of the flow at the same time, and a session runs
+one query at a time. A renewal that shares that session can break a read of the release, and the
+renewals then fail. A failed renewal of the timer is logged at warning level, and the timer goes
+on. The lease then expires at its own time, unless a later renewal succeeds. The
+timer stops when the release returns or raises. A renewal that runs then ends first, so no renewal
+follows the clear or the expiry of the lease. A worker that dies stops its timer, so its lease
+still expires. Known limit: a release whose generator run never ends keeps its lease for as long
+as its worker lives, and no other run releases its items in that time.
 
 **Why a set and not a range.** The items that no live lease covers can have gaps. For example, lease
 A expired, lease B is live, and new holds came after B was taken. A range from A's items to the new
@@ -1002,7 +1047,8 @@ The rules:
    check starts (rule 3). A release that dispatched part of its window before it failed dispatches
    that part again. That over-executes, which is the accepted direction (FR-015). If the store
    cannot set the expiry, the lease expires at its own time. A retry before then finds the lease
-   live and does nothing, and the recovery check releases the items after the expiry.
+   live and does nothing. The recovery check releases the items after the expiry, once no delivery
+   run of the repository waits to start or runs (R20).
 5. Expired leases are cleaned up in the save that takes or clears a lease. When a new lease takes an
    item that an expired lease names, the item moves to the new lease. An expired lease also drops
    each item that the held set no longer holds at the named sequence. An expired lease that names no
@@ -1013,7 +1059,7 @@ The rules:
 |---|---|
 | Artifact definition | The cached narrowed request if present, else `RequestArtifactDefinitionGenerate` with no `members` and no `limit`, through `_dispatch_plan`. |
 | Generator definition | The cached narrowed request if present, else `RequestGeneratorDefinitionRun` with no `target_members`, through `_dispatch_plan`, so the generator-to-artifact cascade runs as on a merge. |
-| Python `(kind, attribute)` | The cached narrowed submission if present, else `TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES` with `coalesced=True` and `widened=True`, as the coalesced pass submits a widened target, so the chain continues. |
+| Python `(kind, attribute)` | The submission of the cached narrowed target if present, else `TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES` with `coalesced=True` and `widened=True`, as the coalesced pass submits a widened target, so the chain continues. |
 | `widen` marker, scope `all` | Full regeneration of that repository's definitions: both blanket triggers with `include_repository_ids=[repository]`, plus every Python computed attribute whose transform that repository owns, over its whole kind. |
 | `widen` marker, scope `terminals` | The artifact blanket trigger, with `include_repository_ids=[repository]`. The release then continues: it dispatches the generator items and the Python items of the window as the rows above say. The trigger covers the artifact items of the window, so they need no separate dispatch. |
 
@@ -1023,7 +1069,9 @@ scope `terminals` covers only the artifact definitions. If its release stopped a
 the clear would remove the held generator items and Python items without a dispatch (FR-016).
 
 An identifier that no longer resolves, for example a deleted definition, turns the release into the
-full `widen` release of that repository, as for scope `all` (FR-016). The PRD names this as "a
+full `widen` release of that repository, as for scope `all` (FR-016). A held generator definition
+that exists but no longer runs after a merge resolves: the merge path would not run it either, so
+the release logs it and runs nothing for it. The PRD names this as "a
 further named fallback reason": `FullRegenerationReason.HELD_SET_UNRESOLVED` is added beside the
 four that exist.
 
@@ -1058,8 +1106,8 @@ crash cases of the inline release.
 | Path | Change |
 |---|---|
 | `InfrahubRepository.collect_pending_imports`, the active loop | Removes the repository's default branch from the branches to pull. Removes from the new **and** the updated branches every remote branch that a pending entry names as its source. Logs both once per cycle. `_collect_staging_imports` keeps the full list, because a staging repository is never queued. |
-| `git/tasks.py::bootstrap_local_repository` | Skips the seed import of the default branch after a fresh clone, and logs it. The clone itself proceeds. |
-| `graphql/mutations/repository.py::ProcessRepository` | Refuses on **every** branch, with a message that names the pending delivery. |
+| `git/tasks.py::bootstrap_local_repository` | Skips the seed import of the default branch after a fresh clone, and logs it. The clone itself proceeds. A seed into a staging branch is not skipped, as for the staging path of the synchronisation. |
+| `graphql/mutations/repository.py::ProcessRepository` | Refuses on **every** branch, with a message that names the pending delivery. The import flow it submits checks again under the repository lock before it applies, because a merge can be queued in between. |
 
 **Why the default branch.** The import is desired-state: it deletes the repository-owned objects
 that are not in the imported commit. If the remote destination advanced during an outage, an import
@@ -1092,12 +1140,15 @@ reconciliation runs at the next cycle.
 
 ## R12. The branch-deletion guard (FR-011)
 
-**Decision**: `git/tasks.py::git_branch_delete` asks the store whether any entry of the repository's
-queue names the branch as `source_git_branch`. When one does, it:
+**Decision**: `git/tasks.py::git_branch_delete` calls the store's `request_branch_deletion`. In one call
+under the state lock, it sets `delete_source_git_branch` on every entry of the repository's queue that
+names the branch as `source_git_branch`, and returns whether one did. When one did, the task:
 
-1. sets `delete_source_git_branch` on every such entry, through the store;
-2. skips the remote deletion and logs a warning that names the pending delivery;
-3. does **not** send `RefreshGitRepositoryBranchDeleted`, so every worker keeps its local branch.
+1. skips the remote deletion and logs a warning that names the pending delivery;
+2. does **not** send `RefreshGitRepositoryBranchDeleted`, so every worker keeps its local branch.
+
+A separate read before the call would add nothing: the call already answers under the lock, and a read
+outside the lock could disagree with it.
 
 The delivery then deletes the remote branch once the entry is delivered (R4 step 13), when no other
 entry names it. An abandonment keeps it: its content was not delivered, and the remote branch is
@@ -1142,10 +1193,15 @@ the branch on the remote only.
 ## R13. The reverted-delivery record (FR-021)
 
 **Decision**: the store keeps `delivery_last_delivered_commit`, set at each delivery that pushed.
-When the IFC-3210 reconciliation classifies the default branch as a rewrite, it asks the store
-whether the last delivered commit is an ancestor of the commit it discards and not an ancestor of
-the new head. When it is, it writes `delivery_reverted` with the delivered commit, the new head and
-the time, and logs it.
+When the IFC-3210 reconciliation classifies the default branch as a rewrite, it reads the last
+delivered commit from the store and asks Git whether the new head holds it. A fetch brings every
+ancestor of the new head, so a delivered commit that the clone lacks is not in it either. When the
+new head does not hold the commit, the store writes `delivery_reverted` with the delivered commit,
+the new head and its own time, and the reconciliation logs it. The check does not ask whether the
+commit it discards holds the delivered commit: a delivered commit that an earlier rewrite discarded,
+whose own record failed, is recorded at the next rewrite. When the reconciliation classifies the
+default branch as a re-target, it clears `delivery_last_delivered_commit`, because that commit
+belongs to the previous default branch, which a later rewrite of the new one cannot discard.
 
 **Why the last delivered commit is enough.** Each delivery pushes a fast-forward of the previous
 remote head, since Infrahub never force-pushes. Every earlier delivered commit is therefore an
@@ -1156,7 +1212,9 @@ did too.
 default branch makes the synchronisation fail, and nothing reaches the check.
 
 **Not cleared.** Like the sibling's rewrite record, it is a fact and not an alert. A later
-reverted delivery overwrites it.
+reverted delivery of another commit overwrites it. A record of the same delivered commit is kept,
+with its first new head and time, because a later rewrite only finds that commit off the remote
+again.
 
 ---
 
@@ -1359,10 +1417,10 @@ Conditions 3 and 4 judge a run that a worker took, so condition 5 leaves out the
 
 **Known limitations of the recovery.** These cases delay or stop it:
 
-- **A fetch or a push that hangs.** Its time limit does not stop it (R6). The attempt keeps the
+- **A fetch or a push over SSH that hangs.** It has no bound (R6). The attempt keeps the
   repository lock, so condition 4 fails, the recovery check submits nothing, and a manual retry
   waits for the lock too. The delivery stays `pending` until the connection ends. This is the open
-  point of R6, for a later story.
+  point of R6, for a later story. Over HTTP(S), Git's low-speed limit ends a stalled transfer.
 
 - **A repository lock that a dead worker held.** The repository lock has no time to live
   (`lock.py::InfrahubLockRegistry.get`, R2). A worker that dies while it holds the lock leaves it
@@ -1388,6 +1446,13 @@ Conditions 3 and 4 judge a run that a worker took, so condition 5 leaves out the
   not end such a run, because it watches a run only after a heartbeat or an `AwaitingRetry` event
   (`trigger/system.py::TRIGGER_CRASH_ZOMBIE_FLOWS`). A manual retry still works: it submits a new
   run, which does not wait for the stuck one (R7).
+- **A release whose generator run never ends.** The release renews its lease on a timer (R10), so
+  it keeps its lease for as long as its worker lives. No other run releases its items in that
+  time.
+- **A release run that stays in `RUNNING`.** The second trigger below counts a `RUNNING` delivery
+  run as live. A run whose worker died while it released stops that trigger until the
+  `crash-zombie-flows` automation marks it `CRASHED`. Its lease expires all the same, so a manual
+  retry after the expiry releases the items (R7).
 
 **The recovery check.** It runs from the loop of `git/tasks.py::sync_remote_repositories`, for every
 repository, before the bootstrap and whatever the outcome of the sync, under its own guard. A check
@@ -1397,8 +1462,16 @@ because that function catches the error that a failing branch raises. The check 
 `last_progress_at`, when:
 
 - the delivery is stale; or
-- held items wait that no live release lease covers, `last_progress_at` is older than
-  `STALE_AFTER`, and no delivery run of the repository waits to start (condition 5).
+- the queue is empty, held items wait that no live release lease covers, `last_progress_at` is
+  older than `STALE_AFTER`, and no delivery run of the repository waits to start or runs, that is,
+  no run in a state of type `SCHEDULED`, `PENDING` or `RUNNING`. A queue with merges is left to
+  the first trigger. While the status is `action-required`, a submission would retry a policy
+  failure every `STALE_AFTER`, which FR-004 forbids.
+
+The second trigger counts a `RUNNING` run as live, unlike condition 5. A release holds no lock and
+writes no progress, so only its run shows that it still works. Its timer keeps its lease live
+(R10). If the lease expires all the same, for example because the renewals fail for 15 minutes,
+the `RUNNING` run still stops a second release of the same items.
 
 The `touch` after a submission bounds it to one submission per `STALE_AFTER` per repository. While
 the submitted run waits to start, condition 5 also stops a second submission. A submission that
@@ -1423,12 +1496,15 @@ when it starts is too late, because a run that waits in the queue has not starte
 `run_deployment`. `WorkflowLocalExecution` ignores them, but it runs the flow at once, so no run
 waits.
 
-**The query.** The port `DeliveryRunQuery.has_queued_run(repository_id)` answers condition 5. Its
-Prefect adapter makes one `read_flow_runs` call with `limit=1`, for the runs that carry both tags
-and have a state of type `SCHEDULED` or `PENDING`. The check asks it last, and only when every other
-condition of a trigger holds. A repository with no work to recover, or with recent progress, costs
-no query. If the query fails, the check submits nothing for that repository in this cycle, logs
-the failure at warning level, and asks again at the next cycle. It never submits without an answer.
+**The query.** The port `DeliveryRunQuery.has_queued_run(repository_id)` answers condition 5 for
+the first trigger. `DeliveryRunQuery.has_active_run(repository_id)` answers for the second trigger.
+For each question, the Prefect adapter makes one `read_flow_runs` call with `limit=1`, for the runs
+that carry both tags and have a state of type `SCHEDULED` or `PENDING`, and `RUNNING` too for
+`has_active_run`. The check asks the question of its trigger last, and only when every other
+condition of that trigger holds. A repository with no work to recover, or with recent progress,
+costs no query. If the query fails, the check submits nothing for that repository in this cycle,
+logs the failure at warning level, and asks again at the next cycle. It never submits without an
+answer.
 
 **Why this is not an unbounded retry.** A stale delivery has no failure to retry: its attempt was
 lost to a worker restart, a lost submission or a killed process. The new attempt is a first attempt
@@ -1441,10 +1517,11 @@ check stops.
 `import_objects_from_files`, a large unrelated method. The lock condition covers the same case with
 one read.
 
-**Rejected: a `RUNNING` run counts as live too.** A run whose worker died would then stop the
-recovery until the `crash-zombie-flows` automation (`trigger/system.py::TRIGGER_CRASH_ZOMBIE_FLOWS`)
-marks it `CRASHED`. Conditions 3 and 4 already judge a run that a worker took, with no such
-dependency.
+**Rejected: a `RUNNING` run counts as live for the first trigger too.** A run whose worker died
+would then stop the recovery until the `crash-zombie-flows` automation
+(`trigger/system.py::TRIGGER_CRASH_ZOMBIE_FLOWS`) marks it `CRASHED`. Conditions 3 and 4 already
+judge a run that a worker took, with no such dependency. The second trigger accepts that
+dependency, because no lock and no progress time judge a release.
 
 ---
 

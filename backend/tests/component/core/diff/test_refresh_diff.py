@@ -10,6 +10,7 @@ from infrahub.core.branch.tasks import post_process_branch_merge
 from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRoot, NameTrackingId
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.diff.tasks import refresh_diff_all
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.workflows.catalogue import DIFF_REFRESH, DIFF_UPDATE
 from infrahub.workflows.models import WorkflowDefinition
@@ -101,7 +102,8 @@ class TestRefreshDiffAll:
 
 class TestPostProcessBranchMerge:
     @pytest.fixture(autouse=True)
-    def _setup(self, default_branch: Branch) -> None:
+    def _setup(self, default_branch: Branch, register_core_models_schema: SchemaBranch) -> None:
+        """The follow-up reads the delivery state of the repositories, which needs the core schema."""
         return
 
     async def _call_system_under_test(self, db: InfrahubDatabase, diff_roots: list[EnrichedDiffRoot]) -> MagicMock:

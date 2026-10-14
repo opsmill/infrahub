@@ -74,6 +74,9 @@ class RecordingPythonTargetResolver:
         self.calls.append(ResolveCall(branch=branch, node_ids=tuple(change.node_id for change in changes)))
         return self.targets
 
+    def owner_of(self, *, kind: str, attribute_name: str, branch: str) -> str | None:
+        return None
+
 
 class FailingSubscriberSource:
     """Raises on every lookup, to prove the resolver widens instead of skipping."""
@@ -95,6 +98,9 @@ class FailingPythonTargetResolver:
     async def resolve(self, *, changes: Iterable[MergeChange], branch: str) -> list[AffectedTarget]:
         self.calls.append(branch)
         raise RuntimeError("read set unavailable")
+
+    def owner_of(self, *, kind: str, attribute_name: str, branch: str) -> str | None:
+        return None
 
 
 class StaticDeclaredPythonAttributes:

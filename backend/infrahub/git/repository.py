@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 from uuid import UUID  # noqa: TC003
 
 from cachetools import TTLCache
@@ -17,10 +17,10 @@ from prefect.cache_policies import NONE
 from pydantic import Field
 from pydantic import ValidationError as PydanticValidationError
 
-from infrahub import config
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
     InfrahubKind,
+    RepositoryDeliveryStatus,
     RepositoryInternalStatus,
     RepositoryOperationalStatus,
     RepositorySyncStatus,
@@ -29,10 +29,11 @@ from infrahub.core.registry import registry
 from infrahub.exceptions import (
     BranchNotFoundError,
     CommitNotFoundError,
-    RepositoryDivergentHistoryError,
+    Error,
     RepositoryError,
     RepositoryPushRejectedError,
 )
+from infrahub.git.base import stalled_transfer_limit
 from infrahub.git.branch_mapping import get_mapped_remote_branch
 from infrahub.git.branch_status import accepts_commit_write
 from infrahub.git.commit_id import readable_commit
@@ -55,6 +56,7 @@ if TYPE_CHECKING:
     from infrahub.git.divergence.protocols import TrackedTargetReader
     from infrahub.git.divergence.recorder import HistoryRewriteRecorder
     from infrahub.git.divergence.suppression import RetargetMarkers
+    from infrahub.git.writeback.ports import DeliveryStatePort
 
 log = get_run_logger()
 
@@ -133,7 +135,7 @@ class ImportStep(StrEnum):
     COLLECTION = "collection"
     IMPORT = "import"
     RECORD = "record"
-    """The rewrite record of the branch failed, while its import still runs."""
+    """A record of the rewrite that the branch reconciled failed, while its import still runs."""
 
 
 @dataclass
@@ -145,17 +147,6 @@ class FailedImport:
     reason: str
     on_default_branch: bool = False
     """Whether the branch is the repository's configured default branch."""
-
-
-@dataclass(frozen=True)
-class BranchMove:
-    """A merge branch that the merge guard moves onto the commit the graph records for it."""
-
-    branch_name: str
-    local_head: str | None
-    """None when this clone does not hold the branch, so the move creates it."""
-
-    target: str
 
 
 @dataclass
@@ -212,6 +203,15 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         )
         await self.initialize_local(commit=commit)
         return self
+
+    @classmethod
+    async def from_graph(
+        cls, *, id: str | UUID, name: str, client: InfrahubClient, infrahub_branch_name: str
+    ) -> InfrahubRepository:
+        """Build the repository object without a local clone, for an operation that runs no Git command."""
+        return await cls._build(
+            id=id, name=name, client=client, infrahub_branch_name=infrahub_branch_name, location=None
+        )
 
     @classmethod
     async def new(
@@ -409,6 +409,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
     async def collect_pending_imports(
         self,
+        state: DeliveryStatePort,
         staging_branch: str | None = None,
         graph_commits: Mapping[str, str | None] | None = None,
         recorder: HistoryRewriteRecorder | None = None,
@@ -427,6 +428,9 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         apart from a fast-forward.
 
         Args:
+            state: While an active repository has pending pushes, its default branch and the source
+                branch of each pending merge are left out. When a rewrite of the default branch
+                discards the last pushed commit, the reverted push is recorded in it.
             graph_commits: The commit the graph records for this repository, per Infrahub branch that
                 can still record one. Without it no branch is classified, and a branch whose worktree
                 already matches the remote is left alone even when the graph records another commit.
@@ -454,6 +458,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             graph_commits=graph_commits,
             recorder=recorder,
             trunk_retargeted=trunk_retargeted,
+            state=state,
         )
 
         # A marker written after the read is left alone here, and the next cycle reads it.
@@ -490,6 +495,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         graph_commits: Mapping[str, str | None] | None,
         recorder: HistoryRewriteRecorder | None,
         trunk_retargeted: bool,
+        state: DeliveryStatePort,
     ) -> CollectedImports:
         log.info("Starting the synchronization of %s.", self.name)
 
@@ -538,6 +544,9 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             new_branches, updated_branches = self._exclude_read_only_branches(
                 new_branches=new_branches, updated_branches=updated_branches, graph_branches=graph_branches
             )
+            new_branches, updated_branches = await self._exclude_pending_delivery_branches(
+                state=state, new_branches=new_branches, updated_branches=updated_branches
+            )
 
             for branch_name in new_branches:
                 if self.validate_remote_branch(branch_name=branch_name):
@@ -575,6 +584,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 git_branch_name=self.default_branch,
             )
 
+        await self._record_reverted_delivery(collected=collected, state=state)
         return collected
 
     def _read_graph_commits(self, graph_commits: Mapping[str, str | None]) -> dict[str, str | None]:
@@ -827,6 +837,93 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         )
         return reason
 
+    async def _record_reverted_delivery(self, collected: CollectedImports, state: DeliveryStatePort) -> None:
+        """Record the last pushed commit when the default branch no longer holds it after a rewrite.
+
+        Each push fast-forwards the remote, so every earlier pushed commit survived when the last one did. A
+        pushed commit that an earlier rewrite discarded is recorded too, as its own record may have failed. A
+        re-target forgets the pushed commit, because it names a commit of the previous default branch. A
+        failure fails the default branch at the record step and keeps its import, as a failed rewrite record
+        does.
+        """
+        rewrite = next(
+            (
+                pending_import.reconciled.divergence
+                for pending_import in collected.imports
+                if pending_import.on_default_branch and pending_import.reconciled is not None
+            ),
+            None,
+        )
+        # Both classifications always carry the remote head, so the last check only narrows its type.
+        if (
+            rewrite is None
+            or rewrite.classification not in {RefClassification.REWRITE, RefClassification.RETARGET}
+            or rewrite.remote_head is None
+        ):
+            return
+
+        repository_id = str(self.id)
+        new_head = rewrite.remote_head
+        try:
+            if rewrite.classification is RefClassification.RETARGET:
+                await state.forget_delivered_commit(repository_id=repository_id)
+                return
+            pushed_commit = (await state.read(repository_id=repository_id)).last_delivered_commit
+            if pushed_commit is None or self._head_holds(head=new_head, commit=pushed_commit):
+                return
+            if not await state.record_reverted(
+                repository_id=repository_id, delivered_commit=pushed_commit, new_head=new_head
+            ):
+                return
+        # The graph already records the new commit, so an error that escapes would lose the imports of the cycle.
+        except Exception as exc:
+            reason = exc.message if isinstance(exc, Error) else f"{type(exc).__name__}: {exc}"
+            log.warning(
+                "Failed to update the reverted push record of branch %s of repository %s: %s",
+                rewrite.branch_name,
+                self.name,
+                reason,
+                exc_info=None if isinstance(exc, Error) else exc,
+                extra={
+                    "repository": self.name,
+                    "branch": rewrite.branch_name,
+                    "step": ImportStep.RECORD.value,
+                    "reason": reason,
+                },
+            )
+            collected.failed_imports.append(
+                FailedImport(
+                    branch_name=rewrite.branch_name, step=ImportStep.RECORD, reason=reason, on_default_branch=True
+                )
+            )
+            return
+
+        log.warning(
+            "The rewrite of branch %s of repository %s discarded the pushed commit %s, the branch now points to %s",
+            rewrite.branch_name,
+            self.name,
+            pushed_commit,
+            new_head,
+            extra={
+                "repository": self.name,
+                "branch": rewrite.branch_name,
+                "pushed_commit": pushed_commit,
+                "commit": new_head,
+            },
+        )
+
+    def _head_holds(self, head: str, commit: str) -> bool:
+        """Whether the commit is in the history of the head.
+
+        A fetch brings every ancestor of the head, so a commit that this clone lacks is not in it.
+
+        Raises:
+            RepositoryError: When git could not answer.
+
+        """
+        gateway = self._get_ancestry_gateway()
+        return gateway.has_commit(commit=commit) and gateway.is_ancestor(ancestor_commit=commit, descendant_commit=head)
+
     async def _find_branches_behind_in_graph(self, graph_commits: Mapping[str, str | None]) -> list[str]:
         """Return the local branches whose commit in the graph is not the remote head.
 
@@ -994,11 +1091,38 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             ],
         )
 
+    async def _exclude_pending_delivery_branches(
+        self, state: DeliveryStatePort, new_branches: list[str], updated_branches: list[str]
+    ) -> tuple[list[str], list[str]]:
+        """Drop the default branch and the source branch of each merge while the repository has pending pushes.
+
+        An import of the default branch at the remote head would remove the objects of the pending
+        merges, and a source branch kept on the remote for them would be imported again, as a new
+        Infrahub branch or onto the one still open.
+        """
+        intent = await state.read(repository_id=str(self.id))
+        if intent.status is RepositoryDeliveryStatus.NONE:
+            return new_branches, updated_branches
+
+        deferred = {self.default_branch, *(entry.source_git_branch for entry in intent.queue.entries)}
+        skipped = sorted(deferred.intersection([*new_branches, *updated_branches]))
+        if skipped:
+            log.info(
+                "Deferred the synchronization of %s of repository %s until its pending pushes reach the remote",
+                ", ".join(skipped),
+                self.name,
+            )
+        return (
+            [name for name in new_branches if name not in deferred],
+            [name for name in updated_branches if name not in deferred],
+        )
+
     async def push(self, branch_name: str, timeout_seconds: float | None = None) -> bool:
         """Push a given branch to the remote Origin repository; a failure never writes the operational status.
 
         Args:
-            timeout_seconds: Passed to GitPython as ``kill_after_timeout``; ``None`` sets no limit.
+            timeout_seconds: Passed to GitPython as ``kill_after_timeout``, and ends an HTTP(S) transfer that
+                sends no data for that long; ``None`` sets no limit.
 
         Raises:
             RepositoryPushRejectedError: When the remote rejects the push at the ref level. It carries the
@@ -1008,6 +1132,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 RepositoryTLSError name a missing repository and a refused certificate.
             RepositoryCredentialsError: When authentication fails at push time.
             RepositoryPermissionError: When the credentials authenticate but lack write access.
+            RepositoryError: When the lookup of the worktree fails or runs past ``timeout_seconds``.
 
         """
         if not self.has_origin:
@@ -1019,7 +1144,11 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             self.name,
         )
 
-        repo = self.get_git_repo_worktree(identifier=branch_name)
+        try:
+            repo = self.get_git_repo_worktree(identifier=branch_name, timeout_seconds=timeout_seconds)
+        except GitCommandError as exc:
+            # The lookup is local, so a lookup past its limit does not mean that the remote is unreachable.
+            self._raise_enriched_error_static(error=exc, name=self.name, location=self.location)
         remote_branch = self._get_mapped_remote_branch(branch_name=branch_name)
         # The server explains a refusal only in its "remote:" lines.
         progress = _RemoteLineCollector()
@@ -1027,9 +1156,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         # worktree may not be named after the remote branch (it differs when the repository's
         # default branch is not the Infrahub default), so a bare refspec would have no local source.
         try:
-            push_infos = repo.remotes.origin.push(
-                refspec=f"HEAD:refs/heads/{remote_branch}", progress=progress, kill_after_timeout=timeout_seconds
-            )
+            with stalled_transfer_limit(repo=repo, timeout_seconds=timeout_seconds):
+                push_infos = repo.remotes.origin.push(
+                    refspec=f"HEAD:refs/heads/{remote_branch}", progress=progress, kill_after_timeout=timeout_seconds
+                )
         except GitCommandError as exc:
             # A transport-level failure raises here with no porcelain status line to classify from flags.
             self._raise_enriched_error_static(
@@ -1048,254 +1178,6 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 )
 
         return True
-
-    async def prepare_branches_for_merge(
-        self, source_branch: str, dest_branch: str, source_commit: str | None, destination_commit: str | None
-    ) -> None:
-        """Move a merge branch onto the commit the graph records for it, or refuse the merge.
-
-        The merge reads the source from its local ref and builds on the local destination. A branch that
-        is behind its remote head, or diverged from it, is moved onto that head when the graph records it:
-        the graph imported that head, and only this clone is stale. A diverged branch whose graph commit
-        differs is refused, because the rewrite is not reconciled yet: no branch moves, so the next
-        synchronization still finds the rewrite to record and import. A destination whose remote head the
-        graph does not record is refused too, also when this clone holds that head: the remote rejects a
-        push onto an older trunk, and a merge onto a head the graph never imported hides that head from
-        the next synchronization. A source that leads to its remote head is moved onto the graph commit
-        when the remote history holds it, so the merge holds what the graph merged. It is left as it is
-        when the graph records no commit, or one the remote history no longer holds. A source that this
-        clone does not hold is created at its graph commit when the remote history holds that commit, and
-        refused otherwise, because the merge then has no source to read. When the merge does not use the
-        remote head of the source, a warning names the commits that stay out of the trunk.
-
-        The source commit is the one read when the merge was dispatched, because the source branch can
-        be deleted in Infrahub before this runs. The destination commit must be read under the
-        repository lock, because an earlier merge can move the trunk after the dispatch.
-
-        Raises:
-            RepositoryDivergentHistoryError: When a branch does not lead to a remote head the graph does not record,
-                when the destination is on or behind such a head, or when this clone does not hold the source and
-                the remote history does not hold its graph commit.
-            RepositoryError: When git cannot fetch or compare a branch.
-
-        """
-        if not self.has_origin:
-            return
-        await self._fetch_branch_heads(source_branch=source_branch, dest_branch=dest_branch)
-
-        remote_heads = {name: branch.commit for name, branch in self.get_branches_from_remote().items()}
-        local_source = self.get_branches_from_local(include_worktree=False).get(source_branch)
-        dest_worktree = self._get_branch_worktree(dest_branch)
-        local_heads = {
-            source_branch: local_source.commit if local_source is not None else None,
-            dest_branch: str(dest_worktree.head.commit) if dest_worktree is not None else None,
-        }
-        graph_commits = {source_branch: source_commit, dest_branch: destination_commit}
-
-        moves: dict[str, BranchMove] = {}
-        for branch_name, local_head in local_heads.items():
-            remote_branch = self._get_mapped_remote_branch(branch_name=branch_name)
-            remote_head = remote_heads.get(remote_branch)
-            graph_commit = graph_commits[branch_name]
-            if local_head is None and branch_name == source_branch:
-                if (
-                    graph_commit is None
-                    or remote_head is None
-                    or not self._in_remote_history(commit=graph_commit, remote_head=remote_head)
-                ):
-                    raise self._unfinished_merge(
-                        source_branch=source_branch,
-                        dest_branch=dest_branch,
-                        reason=(
-                            f"This clone has no branch {branch_name}, and the remote history of {remote_branch} does "
-                            f"not contain the commit Infrahub records for it ({graph_commit or 'no commit'})."
-                        ),
-                    )
-                moves[branch_name] = BranchMove(branch_name=branch_name, local_head=None, target=graph_commit)
-                continue
-            if local_head is None or remote_head is None:
-                continue
-            if graph_commit == remote_head:
-                if local_head != remote_head:
-                    moves[branch_name] = BranchMove(branch_name=branch_name, local_head=local_head, target=graph_commit)
-            elif not self._leads_to_remote_head(local_head=local_head, remote_head=remote_head):
-                raise self._unfinished_merge(
-                    source_branch=source_branch,
-                    dest_branch=dest_branch,
-                    reason=(
-                        f"The remote history of {remote_branch} does not contain the local commit {local_head}. "
-                        f"Infrahub records {graph_commit or 'no commit'} for {branch_name}, not the remote head "
-                        f"{remote_head}."
-                    ),
-                )
-            elif branch_name == dest_branch:
-                raise self._unfinished_merge(
-                    source_branch=source_branch,
-                    dest_branch=dest_branch,
-                    reason=(
-                        f"Infrahub records {graph_commit or 'no commit'} for {branch_name}, not the remote head "
-                        f"{remote_head} of {remote_branch}."
-                    ),
-                )
-            elif (
-                graph_commit is not None
-                and graph_commit != local_head
-                and self._in_remote_history(commit=graph_commit, remote_head=remote_head)
-            ):
-                moves[branch_name] = BranchMove(branch_name=branch_name, local_head=local_head, target=graph_commit)
-
-        for move in moves.values():
-            if self._get_branch_worktree(move.branch_name) is None:
-                await self._move_branch_ref(branch_name=move.branch_name, commit=move.target)
-            else:
-                await self.reset_to_commit(branch_name=move.branch_name, commit=move.target, update_commit_value=False)
-            log.info(
-                "Moved branch %s of repository %s from %s onto %s before the merge, which the graph records",
-                move.branch_name,
-                self.name,
-                move.local_head or "no local branch",
-                move.target,
-                extra={"repository": self.name, "branch": move.branch_name, "commit": move.target},
-            )
-
-        source_move = moves.get(source_branch)
-        merged_source = source_move.target if source_move is not None else local_heads[source_branch]
-        remote_source_branch = self._get_mapped_remote_branch(branch_name=source_branch)
-        source_remote_head = remote_heads.get(remote_source_branch)
-        if merged_source is not None and source_remote_head is not None and merged_source != source_remote_head:
-            # The branch is merged in Infrahub already, so a refusal cannot help, and only this shows what stays out.
-            log.warning(
-                "The merge of branch %s of repository %s uses commit %s, not the remote head %s. The commits after %s "
-                "stay on %s and do not reach %s.",
-                source_branch,
-                self.name,
-                merged_source,
-                source_remote_head,
-                merged_source,
-                remote_source_branch,
-                self._get_mapped_remote_branch(branch_name=dest_branch),
-                extra={"repository": self.name, "branch": source_branch, "commit": merged_source},
-            )
-
-    async def _fetch_branch_heads(self, source_branch: str, dest_branch: str) -> None:
-        """Fetch the head of every remote branch, and drop the branches the remote deleted.
-
-        Raises:
-            RepositoryError: When git cannot fetch, with how to finish the merge in Git.
-
-        """
-        self.relocate_directory_root()
-        try:
-            try:
-                # A tag that moved on the remote would fail a fetch of the tags, after the merge in Infrahub.
-                self.get_git_repo_main().remotes.origin.fetch(
-                    "+refs/heads/*:refs/remotes/origin/*", prune=True, no_tags=True
-                )
-            except GitCommandError as exc:
-                await self._raise_enriched_error(error=exc)
-        except RepositoryError as exc:
-            raise RepositoryError(
-                identifier=self.name,
-                message=self.unfinished_merge_message(
-                    source_branch=source_branch,
-                    dest_branch=dest_branch,
-                    reason=f"Infrahub cannot fetch the remote ({exc.message.rstrip('.')}).",
-                ),
-            ) from exc
-        await self._update_operational_status(status=RepositoryOperationalStatus.ONLINE)
-
-    def unfinished_merge_message(self, source_branch: str, dest_branch: str, reason: str) -> str:
-        """Say why a Git merge stopped after the merge in Infrahub, and which remote branches to merge by hand."""
-        return (
-            f"Unable to merge {source_branch} into {dest_branch} in the Git repository {self.name}. {reason} The "
-            f"branch is merged in Infrahub and not in Git. To finish the merge, merge "
-            f"{self._get_mapped_remote_branch(branch_name=source_branch)} into "
-            f"{self._get_mapped_remote_branch(branch_name=dest_branch)} in the Git repository. The next "
-            "synchronization imports the result."
-        )
-
-    def _unfinished_merge(self, source_branch: str, dest_branch: str, reason: str) -> RepositoryDivergentHistoryError:
-        return RepositoryDivergentHistoryError(
-            identifier=self.name,
-            message=self.unfinished_merge_message(source_branch=source_branch, dest_branch=dest_branch, reason=reason),
-        )
-
-    def _in_remote_history(self, commit: str, remote_head: str) -> bool:
-        """Whether the remote head holds the commit in its history.
-
-        Raises:
-            RepositoryError: When git cannot read or compare the commits.
-
-        """
-        gateway = self._get_ancestry_gateway()
-        # A commit absent after the fetch is not in the remote history, and a comparison with it would raise.
-        return gateway.has_commit(commit) and gateway.is_ancestor(ancestor_commit=commit, descendant_commit=remote_head)
-
-    async def _move_branch_ref(self, branch_name: str, commit: str) -> None:
-        # The merge reads its source from this ref, which a branch without a worktree still has.
-        try:
-            self.get_git_repo_main().git.branch("--force", branch_name, commit)
-        except GitCommandError as exc:
-            await self._raise_enriched_error(error=exc, branch_name=branch_name)
-
-    async def merge(self, source_branch: str, dest_branch: str, push_remote: bool = True) -> str | Literal[False]:
-        """Merge the source branch into the destination branch.
-
-        After the rebase we need to resync the data
-
-        On any failure the destination worktree is reset to its pre-merge commit. Whether the remote
-        received the merge is not always knowable, since a push can be accepted just before the
-        connection drops, so the reset leaves the destination either at the pre-merge state, where a
-        later merge attempt re-derives the merge, or trailing the remote, which the periodic
-        synchronization repairs by resetting onto the pushed merge commit and recording it.
-
-        Raises:
-            RepositoryError: When no worktree exists for the destination branch, when the
-                underlying ``git merge`` command fails, or when the remote rejects the push.
-
-        """
-        repo = self.get_git_repo_worktree(identifier=dest_branch)
-
-        commit_before = str(repo.head.commit)
-        commit = self.get_commit_value(branch_name=source_branch, remote=False)
-
-        try:
-            if config.SETTINGS.git.use_explicit_merge_commit:
-                repo.git.merge(commit, "--no-ff", m="Merged by Infrahub")
-            else:
-                repo.git.merge(commit)
-        except GitCommandError as exc:
-            repo.git.merge("--abort")
-            raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
-
-        commit_after = str(repo.head.commit)
-
-        if commit_after == commit_before:
-            return False
-
-        if self.has_origin and push_remote:
-            pushed = False
-            try:
-                await self.push(branch_name=dest_branch)
-                pushed = True
-            finally:
-                if not pushed:
-                    # Left on the unpushed merge commit, a retry would find nothing to merge
-                    # and return before ever reaching the push again.
-                    self._reset_to_pre_merge_commit(repo=repo, dest_branch=dest_branch, commit_before=commit_before)
-
-        recorded = False
-        try:
-            self.create_commit_worktree(commit_after)
-            await self.update_commit_value(branch_name=dest_branch, commit=commit_after)
-            recorded = True
-        finally:
-            if not recorded:
-                # Trailing the remote is a state the periodic synchronization repairs by resetting
-                # onto the missing commit and recording it.
-                self._reset_to_pre_merge_commit(repo=repo, dest_branch=dest_branch, commit_before=commit_before)
-
-        return str(commit_after)
 
     def _reset_to_pre_merge_commit(
         self, repo: Repo, dest_branch: str, commit_before: str, timeout_seconds: float | None = None
@@ -1318,20 +1200,6 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 commit_before,
                 extra={"repository": self.name, "branch": dest_branch},
             )
-
-    async def rebase(
-        self, branch_name: str, source_branch: str = "main", push_remote: bool = True
-    ) -> str | Literal[False]:
-        """Rebase the current branch with main.
-
-        Technically we are not doing a Git rebase because it will change the git history
-        We'll merge the content of the source_branch into branch_name instead to keep the history clear.
-
-        TODO need to see how we manage conflict
-
-        After the rebase we need to resync the data
-        """
-        return await self.merge(dest_branch=branch_name, source_branch=source_branch, push_remote=push_remote)
 
 
 class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):

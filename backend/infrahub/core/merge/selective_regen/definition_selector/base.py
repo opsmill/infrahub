@@ -138,6 +138,10 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
             requests.append(self._build_request(definition=definition, target_branch=target_branch, members=members))
         return requests
 
+    def unnarrowed_request(self, *, definition: DefinitionT, target_branch: str) -> RequestT:
+        """Build the request that regenerates every member of the definition."""
+        return self._build_request(definition=definition, target_branch=target_branch, members=[])
+
     def full_regeneration_parameters(self, *, target_branch: str) -> dict[str, Any]:
         """Parameters for the blanket regeneration of this kind; extended by kinds that need more."""
         return {"branch": target_branch}

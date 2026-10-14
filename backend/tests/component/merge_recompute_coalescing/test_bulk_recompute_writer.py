@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+from functools import partial
 from typing import TYPE_CHECKING
 
 from prefect import flow
 
+from infrahub import lock
 from infrahub.core.manager import NodeManager
 from infrahub.core.merge.recompute_coalescing import (
     COMPUTED_ATTRIBUTE,
@@ -28,6 +31,7 @@ from infrahub.core.registry import registry
 from infrahub.events.constants import NodeMutationOrigin
 from infrahub.events.models import EventBranchContext, EventContext
 from infrahub.events.node_action import NodeUpdatedEvent
+from infrahub.git.writeback.store import WritebackIntentStore
 from infrahub.workflows.catalogue import COMPUTED_ATTRIBUTE_PROCESS_JINJA2
 from tests.adapters.event import MemoryInfrahubEvent
 from tests.adapters.python_target_sources import RecordingPythonTargetResolver
@@ -39,10 +43,12 @@ from tests.helpers.merge_recompute.dataset import (
     load_chain_schema,
     load_profile_schema,
 )
+from tests.helpers.regeneration_barrier import regeneration_barrier
 from tests.helpers.schema import CASCADE_NODE, CASCADE_SCHEMA, CYCLE_A, CYCLE_B, CYCLE_SCHEMA, load_schema
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.merge.regeneration_barrier import RegenerationBarrier
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
     from infrahub.services.adapters.event import InfrahubEventService
@@ -51,6 +57,16 @@ if TYPE_CHECKING:
 
 def _event_context() -> EventContext:
     return EventContext(branch=EventBranchContext(name="main"), account_id="")
+
+
+def _barrier(db: InfrahubDatabase) -> RegenerationBarrier:
+    default_branch = registry.get_branch_from_registry()
+    return regeneration_barrier(
+        state=WritebackIntentStore(
+            db=db, lock_registry=lock.registry, default_branch=default_branch, clock=partial(datetime.now, UTC)
+        ),
+        default_branch_name=default_branch.name,
+    )
 
 
 def _dispatcher(
@@ -66,6 +82,7 @@ def _dispatcher(
             builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
             submitter=CoalescedRecomputeSubmitter(workflow=workflow),
             python_resolver=RecordingPythonTargetResolver(targets=[]),
+            barrier=_barrier(db),
         )
     return BulkRecomputeDispatcher(
         db=db,
@@ -413,6 +430,7 @@ async def test_chain_self_terminates_on_a_cyclic_schema(
             builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
             submitter=CoalescedRecomputeSubmitter(workflow=recorder),
             python_resolver=RecordingPythonTargetResolver(targets=[]),
+            barrier=_barrier(db),
         ).submit(
             written=written,
             branch=default_branch.name,
@@ -435,6 +453,7 @@ async def test_chain_self_terminates_on_a_cyclic_schema(
         builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
         submitter=CoalescedRecomputeSubmitter(workflow=recorder),
         python_resolver=RecordingPythonTargetResolver(targets=[]),
+        barrier=_barrier(db),
     ).submit(
         written=written,
         branch=default_branch.name,
@@ -461,6 +480,7 @@ async def test_chain_coalesces_the_next_level_into_one_submission(
         builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
         submitter=CoalescedRecomputeSubmitter(workflow=recorder),
         python_resolver=RecordingPythonTargetResolver(targets=[]),
+        barrier=_barrier(db),
     ).submit(
         written=written,
         branch=default_branch.name,
@@ -492,6 +512,7 @@ async def test_chain_dispatches_nothing_when_no_values_were_written(
         builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
         submitter=CoalescedRecomputeSubmitter(workflow=recorder),
         python_resolver=RecordingPythonTargetResolver(targets=[]),
+        barrier=_barrier(db),
     ).submit(
         written=[],
         branch=default_branch.name,
@@ -521,6 +542,7 @@ async def test_chain_stops_at_the_depth_bound(
         builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
         submitter=CoalescedRecomputeSubmitter(workflow=recorder),
         python_resolver=RecordingPythonTargetResolver(targets=[]),
+        barrier=_barrier(db),
     ).submit(
         written=written,
         branch=default_branch.name,
@@ -550,6 +572,7 @@ async def test_chain_bound_scales_with_the_schema_so_deep_chains_are_not_truncat
         builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
         submitter=CoalescedRecomputeSubmitter(workflow=recorder),
         python_resolver=RecordingPythonTargetResolver(targets=[]),
+        barrier=_barrier(db),
     ).submit(
         written=written,
         branch=default_branch.name,

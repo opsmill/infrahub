@@ -38,6 +38,7 @@ from infrahub.git.divergence.models import ReconciledBranch
 from infrahub.git.models import GitRepositoryAdd, GitRepositoryMerge, PushRejectionReason
 from infrahub.git.repository import FailedImport, ImportStep, InfrahubReadOnlyRepository, PendingObjectImport
 from infrahub.git.worktree import Worktree
+from tests.adapters.delivery_state import build_idle_delivery_state
 from tests.helpers.file_repo import MultipleStagesFileRepo
 from tests.helpers.git import LocalRemote, clone_repository, open_repository
 from tests.helpers.test_client import dummy_async_request
@@ -635,9 +636,11 @@ class _ScriptedPushRepository(InfrahubRepository):
 
     origin: _ScriptedOrigin
     recorded_statuses: list[RepositoryOperationalStatus] = Field(default_factory=list)
+    worktree_lookup_timeouts: list[float | None] = Field(default_factory=list)
 
-    def get_git_repo_worktree(self, identifier: str) -> Any:
-        return SimpleNamespace(remotes=SimpleNamespace(origin=self.origin))
+    def get_git_repo_worktree(self, identifier: str, timeout_seconds: float | None = None) -> Any:
+        self.worktree_lookup_timeouts.append(timeout_seconds)
+        return SimpleNamespace(remotes=SimpleNamespace(origin=self.origin), git=Git())
 
     async def _update_operational_status(self, status: RepositoryOperationalStatus) -> None:
         self.recorded_statuses.append(status)
@@ -927,6 +930,7 @@ async def test_push_passes_its_timeout_to_git(case: PushTimeoutCase) -> None:
     assert await repository.push("main", **case.push_kwargs) is True
 
     assert origin.kill_after_timeouts == [case.kill_after_timeout]
+    assert repository.worktree_lookup_timeouts == [case.kill_after_timeout]
 
 
 class _GitWrappedRepository(InfrahubRepository):
@@ -983,17 +987,39 @@ class _TimeLimitGit(Git):
         )
 
 
-async def test_create_commit_worktree_reports_a_worktree_listing_past_its_time_limit(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+async def _create_a_commit_worktree_within_7_seconds(repository: _GitWrappedRepository) -> None:
+    repository.create_commit_worktree(commit="abc", timeout_seconds=7)
+
+
+async def _push_within_7_seconds(repository: _GitWrappedRepository) -> None:
+    await repository.push("main", timeout_seconds=7)
+
+
+@dataclass
+class WorktreeListingCase:
+    name: str
+    run: Callable[[_GitWrappedRepository], Awaitable[None]]
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        WorktreeListingCase(name="create_commit_worktree", run=_create_a_commit_worktree_within_7_seconds),
+        WorktreeListingCase(name="push", run=_push_within_7_seconds),
+    ],
+    ids=lambda c: c.name,
+)
+async def test_a_worktree_listing_past_its_time_limit_names_no_argument_or_worker_path(
+    case: WorktreeListingCase, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A `git worktree list` past its time limit raises a RepositoryError that names no argument or worker path."""
+    """A `git worktree list` past its time limit raises a RepositoryError, not a connection error: it is local."""
     repository = await clone_with_git_wrapper(tmp_path=tmp_path, monkeypatch=monkeypatch, git_wrapper=_TimeLimitGit)
 
     with pytest.raises(
         RepositoryError,
         match=r"^The command git worktree for repository local-repo did not complete within 7 seconds\.$",
     ) as raised:
-        repository.create_commit_worktree(commit="abc", timeout_seconds=7)
+        await case.run(repository)
 
     assert type(raised.value) is RepositoryError
 
@@ -1225,7 +1251,9 @@ async def test_collect_pending_imports_isolates_per_branch_push_failure() -> Non
         connection_error_branch="branch01",
     )
 
-    collected = await repository.collect_pending_imports()
+    collected = await repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(repository.id))
+    )
 
     assert collected.imports == [
         PendingObjectImport(
@@ -1410,7 +1438,9 @@ async def test_collect_pending_imports_records_a_new_colliding_branch_as_skipped
     remote = LocalRemote.create(directory=tmp_path / "source-repo", trunk=TRUNK, branches=["main", "ab"])
     repository = await clone_trunk_repository(tmp_path, monkeypatch, remote)
 
-    collected = await repository.collect_pending_imports()
+    collected = await repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(repository.id))
+    )
 
     assert collected.skipped_branches == ["main"]
     assert collected.imports == []
@@ -1429,7 +1459,9 @@ async def test_collect_pending_imports_records_an_updated_colliding_branch_as_sk
     new_branches, updated_branches = await repository.compare_local_remote()
     assert (new_branches, updated_branches) == ([], [])
 
-    collected = await repository.collect_pending_imports()
+    collected = await repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(repository.id))
+    )
 
     assert collected.skipped_branches == ["main"]
     assert collected.imports == []
@@ -1445,7 +1477,9 @@ async def test_collect_pending_imports_records_the_colliding_remote_head_as_skip
     new_branches, updated_branches = await repository.compare_local_remote()
     assert (new_branches, updated_branches) == ([], [])
 
-    collected = await repository.collect_pending_imports()
+    collected = await repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(repository.id))
+    )
 
     assert collected.skipped_branches == ["main"]
     assert collected.advanced_skipped_branches == []
@@ -1503,7 +1537,9 @@ async def test_collect_pending_imports_detects_a_skipped_branch_that_advanced(
     if case.push_to_colliding_branch:
         remote.commit(branch_name="main", files={"data.txt": "main v2\n"})
 
-    collected = await repository.collect_pending_imports()
+    collected = await repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(repository.id))
+    )
 
     assert collected.skipped_branches == ["main"]
     assert collected.advanced_skipped_branches == case.expected_advanced
@@ -1517,8 +1553,8 @@ async def test_collect_pending_imports_reports_an_advance_once(
     repository = await clone_trunk_repository(tmp_path, monkeypatch, remote)
     remote.commit(branch_name="main", files={"data.txt": "main v2\n"})
 
-    first = await repository.collect_pending_imports()
-    second = await repository.collect_pending_imports()
+    first = await repository.collect_pending_imports(state=build_idle_delivery_state(repository_id=str(repository.id)))
+    second = await repository.collect_pending_imports(state=build_idle_delivery_state(repository_id=str(repository.id)))
 
     assert first.advanced_skipped_branches == ["main"]
     assert second.skipped_branches == ["main"]

@@ -131,6 +131,14 @@ ENRICHMENT_CASES = [
         message=TIME_LIMIT_HINT,
     ),
     EnrichmentCase(
+        # libcurl's line when an HTTP(S) transfer sent no data for GIT_HTTP_LOW_SPEED_TIME.
+        name="stalled_transfer_past_its_low_speed_time",
+        stderr="fatal: unable to access 'https://gitlab.example.com/repo.git/': "
+        "Operation too slow. Less than 1 bytes/sec transferred the last 300 seconds",
+        expected=RepositoryConnectionError,
+        message=TIME_LIMIT_HINT,
+    ),
+    EnrichmentCase(
         # GitPython's text when its watchdog kills a direct Git call; the arguments can name worker paths.
         name="direct_git_call_past_its_time_limit",
         stderr='Timeout: the command "git worktree add /opt/infrahub/git/repo/commits/abc abc" did not complete '
