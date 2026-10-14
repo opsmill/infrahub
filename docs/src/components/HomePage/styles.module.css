@@ -16,11 +16,47 @@
   align-self: start;
 }
 
-.infrahubScreenshot img {
-  width: 100%;
-  height: auto;
+/* The full screenshot scaled into this column renders its interface text at
+   under 4px, so it is shown at roughly 57% and cropped to the top left. The
+   offsets skip the 26px white margin and window outline baked into the image,
+   which would otherwise show along the cropped edges only. */
+.infrahubScreenshot {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16 / 11;
   border: 1px solid var(--border-color);
   border-radius: 0.75rem;
+}
+
+.infrahubScreenshot img {
+  position: absolute;
+  display: block;
+  width: 185%;
+  max-width: none;
+  height: auto;
+  top: -4.5%;
+  left: -3.1%;
+}
+
+/* Running the screenshot off the right edge reads as a view into an interface
+   that continues past the window, rather than a picture of one. The left, top
+   and bottom edges keep their frame so it still reads as a panel. */
+@media screen and (min-width: 997px) {
+  .infrahubScreenshot {
+    /* The column caps the box at 50%, so the width is raised by the bleed and
+       the negative margin keeps the space it occupies unchanged. */
+    --ifm-col-width: calc(50% + var(--ifm-spacing-horizontal));
+    max-width: none;
+    margin-right: calc(var(--ifm-spacing-horizontal) * -1);
+    border-right: 0;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+}
+
+.heroTitle {
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 @media screen and (max-width: 996px) {
@@ -60,6 +96,89 @@ html[data-theme='dark'] .heroCard img {
   padding: 1px;
   margin: 2px;
   background-size: contain;
+}
+
+.groupCard {
+  border: 1px solid var(--border-color);
+  box-shadow: none;
+  flex-grow: 1;
+}
+
+html[data-theme='dark'] .groupCard {
+  color: #f5f4f4;
+}
+
+html[data-theme='dark'] .groupCard img {
+  background: #f5f4f4;
+  border-radius: 100%;
+  padding: 1px;
+  margin: 2px;
+  background-size: contain;
+}
+
+/* Four 25% columns leave roughly 200px per card below 1200px, which breaks the
+   longer link labels mid-word. */
+@media screen and (min-width: 997px) and (max-width: 1200px) {
+  .groupCol {
+    --ifm-col-width: 50%;
+  }
+}
+
+.groupCard :global(.card__header) {
+  padding-bottom: 0;
+}
+
+.groupCard :global(.card__body) {
+  padding-top: 0.4rem;
+}
+
+.groupCard :global(.card__body) p {
+  margin-bottom: 0.6rem;
+  line-height: 1.45;
+}
+
+.groupLinks {
+  list-style: none;
+  padding-left: 0;
+  margin-bottom: 0;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+}
+
+.groupLinks li {
+  margin-bottom: 0;
+  padding: 0.1rem 0;
+}
+
+/* The theme spaces consecutive list items apart, which is too loose for a list
+   of link labels. */
+.groupLinks li + li {
+  margin-top: 0;
+}
+
+/* Blue marks text that can be clicked. A card title never is — the card itself
+   carries the link — so titles stay in the heading color and tint on hover. */
+/* --ifm-heading-color is `inherit`, which would take the link color from the
+   anchor wrapping the card, so the base font color is set explicitly. */
+.heroCard :global(.card__header) h3 {
+  color: var(--ifm-font-color-base);
+  transition: color 0.2s ease-in-out;
+}
+
+.heroCard:hover :global(.card__header) h3 {
+  color: var(--ifm-link-color);
+}
+
+.heroCard :global(.card__body),
+.groupCard :global(.card__body) p {
+  color: var(--ifm-color-content-secondary);
+}
+
+/* The dark theme resolves the secondary content color to white, which would
+   make a description brighter than the title above it. */
+html[data-theme='dark'] .heroCard :global(.card__body),
+html[data-theme='dark'] .groupCard :global(.card__body) p {
+  color: #b9bec4;
 }
 
 .heroCard:hover {

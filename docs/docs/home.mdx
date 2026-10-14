@@ -6,6 +6,7 @@ hide_title: true
 ---
 import HomepageHeader from "../src/components/HomePage/header.tsx";
 import HomePageCard from "../src/components/HomePage/card.tsx";
+import HomePageLinkGroup from "../src/components/HomePage/linkGroup.tsx";
 
 <HomepageHeader />
 
@@ -14,158 +15,142 @@ import HomePageCard from "../src/components/HomePage/card.tsx";
 <div className="row">
     <HomePageCard
         title="Quickstart"
-        description="Run Infrahub locally and load your first data."
+        description="Set up a local Infrahub instance, load a data model, create infrastructure data, and work with branches."
         link="overview/quickstart"
     />
     <HomePageCard
         title="What is Infrahub?"
-        description="What Infrahub does, and where it fits in an automation stack."
+        description="A graph-based platform that holds infrastructure data with version control, peer review, CI workflows, and API access."
         link="overview"
     />
     <HomePageCard
-        title="Key concepts"
-        description="The ideas Infrahub is built on, and how they combine."
+        title="Key Concepts"
+        description="The ideas the rest of the documentation builds on: flexible schemas, version control applied to data, Transformations, and Generators."
         link="overview/concepts"
     />
     <HomePageCard
         title="Explore Infrahub"
-        description="A tour of the web interface, the API, and the command line."
+        description="Ways to see Infrahub running without installing it — a hosted sandbox, a 30-minute lab, videos, and full demo environments."
         link="overview/explore"
     />
     <HomePageCard
         title="Build with AI"
-        description="Connect an AI assistant to Infrahub and work with it."
+        description="Describe the network you want to model and have your assistant build the schema, automation, and queries that represent it."
         link="overview/build-with-ai"
     />
     <HomePageCard
         title="Community vs Enterprise"
-        description="What each edition includes."
+        description="What each of the two editions includes, and how to tell which one fits your organization."
         link="overview/community-vs-enterprise"
     />
 </div>
 
-## Schema and data
+## Infrahub
 
 <div className="row">
-    <HomePageCard
-        title="Create and load a schema"
-        description="Define the objects, attributes, and relationships Infrahub stores."
-        link="schema/create-and-load"
+    <HomePageLinkGroup
+        title="Schema & Data"
+        description="Define what Infrahub stores, then load your data into it."
+        links={[
+            { label: "Create and load a schema", to: "schema/create-and-load" },
+            { label: "Build your schema with AI", to: "schema/build-your-schema" },
+            { label: "Create objects", to: "objects/create-objects" },
+            { label: "IPAM", to: "ipam/overview" },
+        ]}
     />
-    <HomePageCard
-        title="Build your schema with AI"
-        description="Draft and refine a schema with an AI assistant."
-        link="schema/build-your-schema"
+    <HomePageLinkGroup
+        title="Branches & Change Control"
+        description="Change data in isolation, then review and validate before merging."
+        links={[
+            { label: "Branches", to: "branches/overview" },
+            { label: "Proposed changes", to: "proposed-changes/overview" },
+            { label: "Checks & validation", to: "checks/overview" },
+            { label: "Git integration", to: "git-integration/overview" },
+        ]}
     />
-    <HomePageCard
-        title="Create objects"
-        description="Add data through the web interface, a YAML file, or a CSV import."
-        link="objects/create-objects"
+    <HomePageLinkGroup
+        title="Design & Integrate"
+        description="Turn your data into configuration, and act when it changes."
+        links={[
+            { label: "Generators", to: "generators/overview" },
+            { label: "Transformations", to: "transformations/overview" },
+            { label: "Artifacts", to: "artifacts/overview" },
+            { label: "Events", to: "events/event-system" },
+        ]}
+    />
+    <HomePageLinkGroup
+        title="Deployment & Management"
+        description="Install Infrahub, keep it running, and control access."
+        links={[
+            { label: "Install Infrahub", to: "deploy-manage/install-configure/install/community" },
+            { label: "Upgrade", to: "deploy-manage/maintain-upgrade/upgrade/overview" },
+            { label: "Back up and restore", to: "deploy-manage/maintain-upgrade/database-backup/overview" },
+            { label: "Single sign-on", to: "deploy-manage/user-management/sso/overview" },
+        ]}
     />
 </div>
 
-## Branches and change control
+## The Infrahub Ecosystem
 
 <div className="row">
-    <HomePageCard
-        title="Branches"
-        description="Make changes in isolation, then merge or rebase them."
-        link="branches/overview"
+    <HomePageLinkGroup
+        title="Tools & SDKs"
+        description="Work with Infrahub from code, your editor, or an assistant."
+        links={[
+            { label: "Python SDK", to: "$(base_url)python-sdk/introduction" },
+            { label: "infrahubctl", to: "$(base_url)infrahubctl/infrahubctl" },
+            { label: "VS Code extension", to: "$(base_url)vscode" },
+            { label: "MCP server", to: "$(base_url)mcp" },
+        ]}
     />
-    <HomePageCard
-        title="Proposed changes"
-        description="Put a branch up for review, discussion, and approval before it merges."
-        link="proposed-changes/overview"
+    <HomePageLinkGroup
+        title="Integrations"
+        description="Exchange data with the tools in your automation stack."
+        links={[
+            { label: "All integrations", to: "$(base_url)integrations" },
+            { label: "Ansible", to: "$(base_url)ansible" },
+            { label: "Nornir", to: "$(base_url)nornir" },
+            { label: "Infrahub Sync", to: "$(base_url)sync" },
+        ]}
     />
-    <HomePageCard
-        title="Checks and validation"
-        description="Run checks against a branch and block a merge when they fail."
-        link="checks/overview"
+    <HomePageLinkGroup
+        title="Demos"
+        description="Complete implementations, each covering one scenario end to end."
+        links={[
+            { label: "Data center", to: "$(base_url)demo-dc" },
+            { label: "Service provider", to: "$(base_url)infrahub-demo-sp" },
+            { label: "Optical transport", to: "$(base_url)demo-otn" },
+            { label: "Service catalog", to: "$(base_url)demo-service-catalog" },
+        ]}
+    />
+    <HomePageLinkGroup
+        title="Reference Designs"
+        description="Architectures OpsMill models in full, with schema and automation."
+        links={[
+            { label: "AI data center", to: "$(base_url)infrahub-solution-ai-dc/solution-ai-dc/overview" },
+            { label: "Arista AVD", to: "$(base_url)arista-avd" },
+        ]}
     />
 </div>
 
-## Design and integrate
-
-<div className="row">
-    <HomePageCard
-        title="Python SDK"
-        svgPath="/img/python.svg"
-        description="Write scripts and integrations against the Infrahub API."
-        link="$(base_url)python-sdk/introduction"
-    />
-    <HomePageCard
-        title="Generators"
-        description="Turn a service model into the objects that implement it."
-        link="generators/overview"
-    />
-    <HomePageCard
-        title="Transformations"
-        description="Convert graph data into device configuration with Python or Jinja2."
-        link="transformations/overview"
-    />
-</div>
-
-## Deployment and management
-
-<div className="row">
-    <HomePageCard
-        title="Install Infrahub"
-        description="Hardware requirements, installation, and configuration."
-        link="deploy-manage/install-configure/install/community"
-    />
-    <HomePageCard
-        title="Upgrade"
-        description="Move an existing deployment to a newer version."
-        link="deploy-manage/maintain-upgrade/upgrade/overview"
-    />
-    <HomePageCard
-        title="Back up and restore"
-        description="Back up the database and restore it when you need to."
-        link="deploy-manage/maintain-upgrade/database-backup/overview"
-    />
-</div>
-
-## Integrations
-
-<div className="row">
-    <HomePageCard
-        title="All integrations"
-        svgPath="/img/sync.svg"
-        description="The tools Infrahub synchronizes data with and automates alongside."
-        link="$(base_url)integrations"
-    />
-    <HomePageCard
-        title="Ansible"
-        svgPath="/img/ansible.svg"
-        description="The `opsmill.infrahub` Ansible Collection, maintained by OpsMill."
-        link="$(base_url)ansible"
-    />
-    <HomePageCard
-        title="Nornir"
-        svgPath="/img/nornir.png"
-        description="Infrahub as an inventory source for Nornir."
-        link="$(base_url)nornir"
-    />
-</div>
-
-## Find support
+## Support
 
 <div className="row">
     <HomePageCard
         title="Join Discord"
         svgPath="/img/discord.png"
-        description="Ask the community and the OpsMill team."
+        description="Questions answered by the community and the OpsMill team."
         link="https://discord.gg/opsmill"
     />
     <HomePageCard
-        title="Report a bug on GitHub"
+        title="Report a Bug on GitHub"
         svgPath="/img/github.png"
         description="File an issue, or contribute a change."
         link="https://github.com/opsmill/infrahub"
     />
     <HomePageCard
-        title="Book a meeting"
-        description="Talk to the automation engineers at OpsMill."
+        title="Book a Meeting"
+        description="Talk through your environment with the OpsMill team."
         link="https://cal.com/team/opsmill/meet"
     />
 </div>

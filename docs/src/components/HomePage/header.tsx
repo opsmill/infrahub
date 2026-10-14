@@ -16,11 +16,16 @@ export default function HomepageHeader() {
     return (
         <header className={clsx('container', styles.heroBanner)}>
             <div className="col col--6">
-                <Heading as="h1" className="hero__title">{siteConfig.title}</Heading>
+                <Heading as="h1" className={clsx("hero__title", styles.heroTitle)}>
+                    {translate({
+                        id: 'home.header.title',
+                        message: 'Infrahub Docs',
+                    })}
+                </Heading>
                 <p className="hero__subtitle">
                     {translate({
                         id: 'home.header.subtitle',
-                        message: "Model your infrastructure in one place, and change it through branches, peer review, and automated checks.",
+                        message: "The data foundation for network, data center, and cloud automation.",
                     })}
                 </p>
 
@@ -37,7 +42,7 @@ export default function HomepageHeader() {
                     </Link>
                     <Link
                         className={clsx(styles.heroButton, "button button--secondary button--lg")}
-                        to="https://opsmill.instruqt.com/pages/labs"
+                        to="https://docs.infrahub.app/labs"
                     >
                         {translate({
                             id: 'home.header.tutorials',
@@ -52,8 +57,6 @@ export default function HomepageHeader() {
                 <img
                     src={screenshotUrl}
                     alt="The Infrahub web interface listing devices, with the branch selector set to main"
-                    width="1800"
-                    height="1034"
                     loading="eager"
                 />
             </div>
