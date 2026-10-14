@@ -24,7 +24,7 @@ Upgrading Infrahub involves pulling the latest container images, running databas
 | 2/6   | Internal schema initialization |
 | 3/6   | Core schema update |
 | 4/6   | Internal objects — menu and permissions |
-| 5/6   | Task manager — workflow blocks, worker pools, deployments |
+| 5/6   | Task manager — workflow blocks, worker pools, deployments; prints the disk space the task history takes and how many task runs are older than the retention (see [Clean up old task history after the upgrade](#clean-up-old-task-history-after-the-upgrade)) |
 | 6/6   | Branch rebase: marks open branches on an older graph version as `NEED_UPGRADE_REBASE`, and rebases them when `--rebase-branches` is set |
 
 The command logs a header for each step, per-migration timing inside Step 1/6, and a final `Upgrade complete SUCCESS` line. Use `--check` to see what the upgrade would do without writing anything.
@@ -72,6 +72,7 @@ Permissions up to date, nothing to update
 
 Step 5/6: Task manager
 Task manager configured
+Task history takes 24.8 GB, with 1,234 runs older than the retention. To get the space back, run: infrahub tasks flush flow-runs --rewrite
 
 Step 6/6: Branch rebase
 Found 2 branches that need to be rebased
@@ -86,6 +87,76 @@ Lines such as `Cleaning up …`, `Recomputing HFID/display_label …`, `Normaliz
 ### What `--verbose` does
 
 `--verbose` does **not** control per-migration progress (that is always shown). It only lifts the suppression on the `infrahub` and `prefect` Python loggers so their schema-loader warnings, validator-determiner messages, and workflow-client logs become visible during Step 1/6 and Step 6/6. Use it when a migration is failing and you want the full internal log trail; in normal operation you do not need it.
+
+## Clean up old task history after the upgrade
+
+The task manager keeps finished task runs, with their logs and artifacts, for the task history retention, 30 days by default, and deletes older runs every hour. An instance that ran a release without this retention can hold months of task history: the large instances that OpsMill knows of hold 20 to 35 GB.
+
+The upgrade deletes no task runs. In step 5/6, it prints how much disk space the task history takes, how many task runs are older than the retention, and the command that gets that space back:
+
+```console
+Task history takes 24.8 GB, with 1,234 runs older than the retention. To get the space back, run: infrahub tasks flush flow-runs --rewrite
+```
+
+The count stops at 100,000, so a larger backlog shows as `more than 100,000 runs`. When it shows `no runs older than the retention`, there is no backlog left to delete, and the cleanup step only shrinks the tables: in OpsMill benchmarks, that took about 20 seconds for 25 GB of task history and 85 seconds for 100 GB.
+
+When the upgrade cannot read the size from the task manager within 10 seconds, for example because the task manager still runs the previous release, it prints `Could not read the task history size from the task manager`, with the reason, then the command, and continues.
+
+:::warning
+
+After the upgrade, the task manager deletes the task runs older than the retention, and the deletion cannot be undone. If you need task runs older than 30 days, set a longer task history retention on the task manager before you upgrade, for example `INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY=90d`. The task manager deletes according to the retention set on the task manager, not on the container that runs `infrahub upgrade`. See [Task history retention](../../run-observe/tasks.mdx#task-history-retention) for the ways to set it.
+
+:::
+
+### Who needs the cleanup step
+
+Run the cleanup step once, right after the upgrade, on an existing instance that holds a lot of task history. New and small instances do not need it.
+
+Without the step, the hourly cleanup works through the old runs in the background, slowly: about 2.5 hours per 25 GB of task history in OpsMill benchmarks. The database stops growing, because new runs reuse the space of the deleted ones, but it does not shrink until the step runs.
+
+### Run the cleanup step
+
+Run the command with the instance running. You do not need to stop anything, and the step is the same for Docker Compose and Helm:
+
+```bash title="Docker Compose"
+docker compose exec infrahub-server infrahub tasks flush flow-runs --rewrite
+```
+
+```bash title="Helm"
+kubectl exec infrahub-infrahub-server-xxxxxx -- infrahub tasks flush flow-runs --rewrite
+```
+
+The command:
+
+- Deletes the finished runs (completed, failed, cancelled, or crashed) whose end time is older than the task history retention, together with their logs and artifacts. Runs that are still running or pending are kept. It deletes one day of end times at a time and prints the day it is working on, so `Deleting the runs that ended on …` lines are progress messages.
+- Then rewrites each task history and activity log table whose live rows hold less than half of its disk space, so that the files of that table shrink and the disk space returns. This includes the space of the records that the hourly cleanup deleted before the command started. A table whose rows mostly hold live data is left as it is, because rewriting it would return little space.
+
+:::tip
+
+On very large instances, tasks may pause for a few seconds while tables are rewritten, because a task that writes to a table waits until the rewrite of that table ends. In OpsMill benchmarks, tasks waited up to 7.4 seconds with the instance running on 25 GB of task history, and the slowest table took about 20 seconds on 100 GB. How long the activity log tables take after you lower a long activity log retention was not measured.
+
+:::
+
+Plan for the time and the disk space the step needs:
+
+- **Time**: almost all of it is spent deleting. In OpsMill benchmarks, the step took about 8.5 minutes for 25 GB of task history and about 2 hours 20 minutes for 100 GB. These are benchmark figures, not a guarantee: the duration depends on the hardware and the data of your instance.
+- **Free disk space**: the rewrite writes a copy of the rows that a table keeps before it removes the old files. In the same benchmarks, that was under 0.5 GB for 25 GB of task history and 2.2 GB for 100 GB. For the activity log tables, the copy holds the events that the activity log retention keeps.
+
+The cleanup runs inside the task manager, so it continues if the session that runs the command ends. Running the command again follows the cleanup that is still running, or starts a new one that continues from the oldest remaining day.
+
+The last lines of the command report the result:
+
+| Output | Meaning |
+|---|---|
+| `Rewrote flow_run, flow_run_state, …` | Infrahub rewrote the listed tables, and their files shrank. |
+| `Left events, event_resources as they are, because their live rows hold at least half of their disk space` | Rewriting the listed tables would return little space, so Infrahub left them as they were. |
+| `Did not rewrite log, which stayed locked by other sessions` | Another session held a lock on the listed table for more than 60 seconds on each of four attempts, so Infrahub left that table as it was. Run the command again later. |
+| `ERROR …`, then `Deleted N runs before the failure` | The cleanup stopped with an error. The days already deleted stay deleted, and a table whose rewrite failed is left as it was. Run the command again. |
+| `The task manager does not provide the task history cleanup yet; skipped.` | The command reached a task manager from a release without the cleanup, and nothing was deleted. |
+
+### After you lower a retention
+
+The same step gets the disk space back after you lower the task history retention or the activity log retention. The hourly cleanup deletes the records older than the new value, and the database stops growing, but it does not shrink on its own. See [Task history retention](../../run-observe/tasks.mdx#task-history-retention) and [Activity log retention](../../run-observe/activity-log.mdx#retention).
 
 ## Database migration commands
 

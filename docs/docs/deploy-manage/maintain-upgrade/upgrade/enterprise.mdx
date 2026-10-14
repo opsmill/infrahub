@@ -23,6 +23,12 @@ In Infrahub 1.2 and later, the upgrade process has been streamlined with a unifi
 For earlier versions, please refer to the [release notes](/release-notes/infrahub) for specific upgrade instructions.
 :::
 
+:::warning Task history older than the retention is deleted
+
+After the upgrade, the task manager deletes finished task runs older than the task history retention, 30 days by default, together with their logs and artifacts, every hour, and this cannot be undone. If you need older runs, set a longer retention on the task manager before you upgrade, for example `INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY=90d` in the `.env` file of a Docker Compose deployment or in the environment of the task manager on Helm.
+
+:::
+
 ## Upgrading to Infrahub Enterprise 1.2 and after
 
 <Tabs groupId="deployment" queryString>
@@ -40,6 +46,12 @@ docker compose run infrahub-server infrahub upgrade
 
 # Restart the instance
 docker compose up -d
+```
+
+On an existing instance that holds a lot of task history, run the cleanup step once the instance runs again. It deletes the old task runs quickly and gets their disk space back, and you do not need to stop anything. New and small instances do not need it. See [Clean up old task history after the upgrade](./overview.mdx#clean-up-old-task-history-after-the-upgrade).
+
+```bash
+docker compose exec infrahub-server infrahub tasks flush flow-runs --rewrite
 ```
 
 :::note
@@ -63,6 +75,12 @@ kubectl exec infrahub-infrahub-server-xxxxxx -- infrahub upgrade
 # Restart deployments to apply changes
 kubectl rollout restart deployment/prefect-server
 kubectl rollout restart deployment/infrahub-infrahub-server
+```
+
+On an existing instance that holds a lot of task history, run the cleanup step once the instance runs again. It deletes the old task runs quickly and gets their disk space back, and you do not need to stop anything. New and small instances do not need it. See [Clean up old task history after the upgrade](./overview.mdx#clean-up-old-task-history-after-the-upgrade).
+
+```bash
+kubectl exec infrahub-infrahub-server-xxxxxx -- infrahub tasks flush flow-runs --rewrite
 ```
 
 </TabItem>

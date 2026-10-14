@@ -39,11 +39,12 @@ Response `200`: the job, same shape as above, with `state` `running`, `completed
 Response `200`:
 
 ```json
-{"size": 23400000000}
+{"size": 23400000000, "old_runs": 1234, "old_runs_limit_reached": false}
 ```
 
 - `size` is the disk space in bytes of the six task-history tables with their indexes, from `pg_total_relation_size`, which reads no table data; `null` on SQLite.
-- The upgrade prints it with the command that returns the space. A task manager without this route answers `404`.
+- `old_runs` is the number of finished top-level runs older than the task history retention, the runs a cleanup would delete now, counted up to 100,000; `old_runs_limit_reached` is `true` when there are more. The count works on SQLite too.
+- The upgrade prints both with the command that returns the space. A task manager without this route answers `404`.
 
 ## `POST /infrahub/events/filter` (changed)
 

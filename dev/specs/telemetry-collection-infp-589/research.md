@@ -142,7 +142,7 @@ Query via the Prefect
 client's flow-run read API filtered by flow name and `start_time` in `[window_start, window_end)`.
 
 **Rationale**: Webhook delivery is a flow run, not an InfrahubEvent, so flow-run state is the
-correct signal. Webhook flow-run retention is 90 days (≫ 24h), so the window is always fully
+correct signal. Webhook flow-run retention is 30 days by default (≫ 24h), so the window is always fully
 covered. Counts are best-effort trend signals (dispatch can drop), framed against windowing
 correctness, not an external ground truth.
 
