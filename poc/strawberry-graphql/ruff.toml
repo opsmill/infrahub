@@ -1,0 +1,5 @@
+# Throwaway proof-of-concept scripts: only basic correctness rules apply here.
+line-length = 120
+
+[lint]
+select = ["E", "F", "I", "W"]
