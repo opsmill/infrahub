@@ -16,4 +16,7 @@ export const QSP = {
   HIGHLIGHT: "highlight",
   POOL_ALLOCATION_BRANCH: "allocation_branch",
   POOL_ALLOCATION_SOURCE: "allocation_source",
+  ALLOCATION_SCOPE: "allocation_scope",
+  ALLOCATION_SCOPE_SEARCH: "allocation_scope_search",
+  ALLOCATION_SCOPE_SORT: "allocation_scope_sort",
 } as const;

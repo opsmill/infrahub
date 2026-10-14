@@ -34,6 +34,24 @@ if TYPE_CHECKING:
     from playwright.async_api import Page
 
 
+CREATE_SCOPED_POOL = """
+mutation CreateScopedNumberPool($name: String!) {
+  CoreNumberPoolCreate(
+    data: {
+      name: { value: $name }
+      node: { value: "InfraInterfaceL3" }
+      node_attribute: { value: "speed" }
+      allocation_scope: { value: ["device"] }
+      ranges: [{ start: 100, end: 199 }]
+    }
+  ) {
+    object {
+      id
+    }
+  }
+}
+"""
+
 NODE_SELECT = re.compile(r"Node$")
 ATTRIBUTE_SELECT = re.compile(r"Attribute$")
 
@@ -273,3 +291,49 @@ class TestNumberPool:
         await expect(
             admin_page.get_by_test_id("metadata-tooltip").get_by_role("link", name="number pool test for generic")
         ).to_be_visible()
+
+    async def test_scoped_pool_lists_and_opens_its_allocation_scopes(
+        self,
+        admin_page: Page,
+        number_pool_branch: str,
+        infrahub_client: InfrahubClient,
+        data_sites: SitesHandle,
+    ) -> None:
+        busy_device, quiet_device = sorted(data_sites.devices)[:2]
+        result = await infrahub_client.execute_graphql(
+            query=CREATE_SCOPED_POOL,
+            variables={"name": "number pool test per device"},
+            branch_name=number_pool_branch,
+        )
+        pool_id = result["CoreNumberPoolCreate"]["object"]["id"]
+        for device, count in ((busy_device, 3), (quiet_device, 1)):
+            for index in range(count):
+                interface = await infrahub_client.create(
+                    kind="InfraInterfaceL3",
+                    branch=number_pool_branch,
+                    name=f"allocation-scope-{index}",
+                    device=data_sites.devices[device],
+                    speed={"from_pool": {"id": pool_id}},
+                )
+                await interface.save()
+
+        await admin_page.goto(f"/resource-manager/{pool_id}?branch={number_pool_branch}")
+        await expect(admin_page.get_by_text("scoped by")).to_be_visible()
+        scope_links = admin_page.get_by_role("table").get_by_role("link")
+        await expect(scope_links).to_have_count(2)
+        await expect(scope_links.first).to_contain_text(busy_device)
+
+        search = admin_page.get_by_role("searchbox")
+        await search.fill(quiet_device)
+        await expect(scope_links).to_have_count(1)
+        await expect(scope_links.first).to_contain_text(quiet_device)
+
+        await search.fill("")
+        await scope_links.filter(has_text=busy_device).click()
+        await expect(admin_page).to_have_url(re.compile(r"allocation_scope="))
+        await expect(admin_page.get_by_role("link", name="All allocation scopes")).to_be_visible()
+        allocation_rows = admin_page.get_by_role("row").filter(has_text="allocation-scope-")
+        await expect(allocation_rows).to_have_count(3)
+
+        await admin_page.reload()
+        await expect(allocation_rows).to_have_count(3)

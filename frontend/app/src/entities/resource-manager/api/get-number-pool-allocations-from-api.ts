@@ -1,12 +1,16 @@
 import { graphql, graphqlClient, type ResultOf } from "@/shared/api/graphql/client";
 import type { ContextParams } from "@/shared/api/types";
 
-import type { NumberPoolAllocationFilters } from "@/entities/resource-manager/domain/model/number-pool";
+import type {
+  NumberPoolAllocationFilters,
+  NumberPoolDivisionSelector,
+} from "@/entities/resource-manager/domain/model/number-pool";
 
 const GET_NUMBER_POOL_ALLOCATIONS = graphql(`
   query GET_NUMBER_POOL_ALLOCATIONS(
     $poolId: String!
     $rangeId: String
+    $division: [NumberPoolDivisionEntryInput!]
     $offset: Int!
     $limit: Int!
     $branch: String
@@ -15,6 +19,7 @@ const GET_NUMBER_POOL_ALLOCATIONS = graphql(`
     InfrahubNumberPoolAllocations(
       pool_id: $poolId
       range_id: $rangeId
+      division: $division
       branch: $branch
       provenance: $provenance
       offset: $offset
@@ -49,6 +54,7 @@ export interface GetNumberPoolAllocationsFromApiParams
     NumberPoolAllocationFilters {
   poolId: string;
   rangeId?: string;
+  division?: NumberPoolDivisionSelector;
   offset: number;
   limit: number;
 }
@@ -56,6 +62,7 @@ export interface GetNumberPoolAllocationsFromApiParams
 export function getNumberPoolAllocationsFromApi({
   poolId,
   rangeId,
+  division,
   offset,
   limit,
   branch,
@@ -65,7 +72,7 @@ export function getNumberPoolAllocationsFromApi({
 }: GetNumberPoolAllocationsFromApiParams) {
   return graphqlClient.query({
     query: GET_NUMBER_POOL_ALLOCATIONS,
-    variables: { poolId, rangeId, offset, limit, branch, provenance },
+    variables: { poolId, rangeId, division, offset, limit, branch, provenance },
     context: {
       branch: branchName,
       date: atDate,

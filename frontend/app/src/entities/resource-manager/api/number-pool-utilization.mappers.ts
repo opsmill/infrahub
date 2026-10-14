@@ -8,7 +8,9 @@ import type {
 } from "@/entities/resource-manager/domain/model/number-pool";
 import { NUMBER_POOL_RANGE_KIND } from "@/entities/resource-manager/domain/model/pool";
 
-const mapToNumberPoolUsage = (figures: NumberPoolUtilizationFiguresNode): NumberPoolUsage => ({
+export const mapToNumberPoolUsage = (
+  figures: NumberPoolUtilizationFiguresNode
+): NumberPoolUsage => ({
   size: figures.size,
   used: figures.used,
   usedDefaultBranch: figures.used_default_branch,

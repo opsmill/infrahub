@@ -94,7 +94,7 @@ export function NumberPoolRangesCard({
   }
 
   return (
-    <Card className="min-w-64 shrink-0">
+    <Card>
       <div className="px-3 pt-2 pb-1 font-medium text-foreground-muted text-sm">Ranges</div>
       <ListBox
         aria-label="Ranges"
