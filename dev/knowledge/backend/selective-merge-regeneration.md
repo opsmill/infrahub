@@ -18,7 +18,7 @@ merge (BranchMergeOrchestrator.merge)
        -> PostMergeRegenerationDispatcher.dispatch(target_branch, merge_diff_cache_key)
             -> flag off / no key / summary unavailable -> blanket regeneration (blanket triggers)
                  -> RegenerationBarrier.hold_widen: a marker under each pending repository, which the triggers exclude
-            -> RegenerationSelector.build_plan(diff_summary, target_branch)  -> generator runs + artifact generates
+            -> RegenerationPlanner.build_plan(diff_summary, target_branch)  -> generator runs + artifact generates
             -> _dispatch_plan(plan)
                  -> RegenerationBarrier.admit: hold the requests of pending repositories, dispatch the rest
 ```
@@ -27,7 +27,7 @@ Every uncertain signal short-circuits to `submit_blanket_regeneration`, which su
 
 ## Selection
 
-`RegenerationSelector` (`selective_regen/orchestrator.py`, `MergeSelectiveRegeneration`) turns a `list[NodeDiff]` summary into a plan of generator runs and artifact generations. It loads the generator and artifact definitions on the **target (destination) branch**, then runs each through a definition selector.
+`RegenerationPlanner` (`selective_regen/orchestrator.py`, `MergeSelectiveRegeneration`) turns a `list[NodeDiff]` summary into a plan of generator runs and artifact generations. It loads the generator and artifact definitions on the **target (destination) branch**, then runs each through a definition selector.
 
 The selectors live in `selective_regen/definition_selector/`. The shared loop in `base.py` applies, per definition:
 
@@ -56,8 +56,8 @@ The dependency closure and `fingerprint` are computed at repository import. The 
 Generators dispatched by the follow-up write their output after the merge diff was captured, so those writes are absent from that diff. On a merge that runs at least one generator, `_dispatch_plan` (`regeneration_dispatcher.py`):
 
 1. Awaits each generator run so its writes have landed, isolating failures per generator (one failure does not abort the others or discard the narrowing already computed).
-2. Captures the nodes those generators wrote, scoped to the members each generator tracks, through `GeneratorTrackingGroupDiffCapturer` (`generator_diff_capturer.py`). The capturer reads each generator's per-member tracking group rather than the whole branch timeframe.
-3. Selects only the artifacts that read the captured output (`RegenerationSelector.select_artifacts`), and dispatches those alongside the merge-diff artifacts. Requests selected by both are consolidated into one request per artifact definition (member and limit filters unioned; an empty filter, meaning all members, subsumes a specific one).
+2. Captures the nodes those generators wrote, scoped to the members each generator tracks, through `GeneratorTrackingGroupDiffCapturer` (`generator_output.py`). The capturer reads each generator's per-member tracking group rather than the whole branch timeframe.
+3. Selects only the artifacts that read the captured output (`RegenerationPlanner.reselect_from_cascade_output`), and dispatches those alongside the merge-diff artifacts. Requests selected by both are consolidated into one request per artifact definition (member and limit filters unioned; an empty filter, meaning all members, subsumes a specific one).
 
 The capture widens to regenerating every artifact when any generator's tracked set is unresolved or the output cannot be captured. A generator run failure regenerates every artifact without re-running the generators (which would fail the same way). The merge-diff artifacts are dispatched only after the generator-output capture, so the capture never selects on their own writes.
 
@@ -126,10 +126,10 @@ A per-merge line records the path taken (selective, with generator/artifact coun
 | `core/constants/__init__.py` | `FullRegenerationReason`, the reasons of a fallback to a full regeneration |
 | `core/merge/regeneration_barrier.py` | `RegenerationBarrier`, `NarrowedHoldCache`, `OwnedRegeneration` |
 | `core/merge/regeneration_release.py` | `HeldRegenerationReleaser`, `HeldDefinitionResolver` |
-| `core/merge/selective_regen/orchestrator.py` | `RegenerationSelector` / `MergeSelectiveRegeneration`, `build_merge_selective_regeneration` |
+| `core/merge/selective_regen/orchestrator.py` | `RegenerationPlanner` / `MergeSelectiveRegeneration`, `build_merge_selective_regeneration` |
 | `core/merge/selective_regen/definition_selector/` | Shared select loop (`base.py`) and the artifact / generator selectors |
 | `core/merge/selective_regen/gate.py`, `impacted.py`, `fallbacks.py` | Definition gate, member impact, untrusted-closure widening |
-| `core/merge/selective_regen/generator_diff_capturer.py` | `GeneratorTrackingGroupDiffCapturer` (group-scoped output capture) |
+| `core/merge/selective_regen/generator_output.py` | `GeneratorTrackingGroupDiffCapturer` (group-scoped output capture) |
 | `core/regeneration/` | Predicates, member mapping, definition models shared with the proposed-change pipeline |
 | `core/regeneration/derived_dependencies.py`, `classifier_builder.py`, `core/schema/derived_path.py` | Resolve a `display_label` / `human_friendly_id` read's backing peers and fold them into the classifier as traversed kinds |
 | `graphql/analyzer.py` | `ReachedPathResolver` / `relationship_reached_paths_by_kind` — reconstructs the relationship chains reaching each related kind |
