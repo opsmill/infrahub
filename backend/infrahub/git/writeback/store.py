@@ -372,6 +372,26 @@ class WritebackIntentStore:
         }
 
 
+class LeaseRenewer:
+    """Renew a release lease on a database session of its own for each renewal."""
+
+    def __init__(
+        self, db: InfrahubDatabase, lock_registry: InfrahubLockRegistry, default_branch: Branch, clock: Clock
+    ) -> None:
+        self.db = db
+        self.lock_registry = lock_registry
+        self.default_branch = default_branch
+        self.clock = clock
+
+    async def renew_lease(self, *, repository_id: str, lease_id: str) -> None:
+        # The release uses the session of the flow at the same time, and a session serves one query at a time.
+        async with self.db.start_session() as session:
+            store = WritebackIntentStore(
+                db=session, lock_registry=self.lock_registry, default_branch=self.default_branch, clock=self.clock
+            )
+            await store.renew_lease(repository_id=repository_id, lease_id=lease_id)
+
+
 def _stored_member[EnumT: InfrahubStringEnum](
     *, stored: Mapping[str, Any], attribute: str, enum: type[EnumT], repository_name: str
 ) -> EnumT | None:

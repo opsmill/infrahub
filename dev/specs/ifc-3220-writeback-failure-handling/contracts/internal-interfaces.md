@@ -20,8 +20,9 @@ backend/infrahub/git/writeback/          # NEW
 │                    # RevertedDelivery, WritebackIntent, DeliveryFailure, DeliveryAttemptResult, Actor
 ├── classifier.py    # classify_delivery_failure
 ├── credentials.py   # scrub_credentials
-├── ports.py         # DeliveryStatePort, DeliveryGitPort, RegenerationReleasePort, DeliveryRunQuery
-├── store.py         # WritebackIntentStore, the only read and write path
+├── ports.py         # DeliveryStatePort, DeliveryGitPort, RegenerationReleasePort,
+│                    # LeaseRenewalPort, DeliveryRunQuery
+├── store.py         # WritebackIntentStore, the only read and write path, and LeaseRenewer
 ├── queries.py       # RepositoryWriteLockQuery, the write lock of a repository node
 ├── git_adapter.py   # RepositoryDeliveryGitAdapter, the only Git code here
 ├── runs.py          # delivery_run_tags, PrefectDeliveryRunQuery, the only orchestrator query here
@@ -195,12 +196,25 @@ class RegenerationReleasePort(Protocol):
     ) -> None: ...
 
 
+class LeaseRenewalPort(Protocol):
+    async def renew_lease(self, *, repository_id: str, lease_id: str) -> None: ...
+
+
 class DeliveryRunQuery(Protocol):
     async def has_queued_run(self, *, repository_id: str) -> bool: ...
+    async def has_active_run(self, *, repository_id: str) -> bool: ...
 ```
 
 `held` holds the window of one lease: the items that it names, each with the named `hold_seq`,
 under which the release reads the narrowed cache. `renew` moves that lease's expiry.
+
+`LeaseRenewalPort` moves the expiry of a lease while the release of its items runs. Only the timer
+of the service uses it (section 5). The release reads and writes on the session of the flow at the
+same time, and a database session runs one query at a time. So the timer must not use that session.
+`LeaseRenewer`, in `store.py`, implements the port. For each renewal, it opens a session of its own,
+and renews through a `WritebackIntentStore` on that session, with the same lock registry, default
+branch and clock. The `renew` callback of the releaser stays on the session of the flow, because
+the releaser calls it between its steps, never at the same time as a step.
 
 `ReplayResult` is a frozen dataclass: `head: str` and `conflicting_commit: str | None = None`. On a
 conflict, `conflicting_commit` names the merge that conflicted, and `head` is `base`, because the replay
@@ -222,22 +236,24 @@ repository lock, and a failed read has the stage `record`, so it is retried.
 either object is missing locally. It raises `RepositoryError` for every other failure, which the
 service classifies as `unclassified`. The same contract binds IFC-3210's gateway.
 
-Every port method that runs Git passes a time limit to each of its Git commands, as GitPython's
-`kill_after_timeout` (`research.md` R6). The limit does not stop a hung fetch or push, and in the
-runtime image it stops no direct Git call (open point of R6):
+Every port method that runs Git gives each of its Git commands a bound, as GitPython's
+`kill_after_timeout`. The bound stops a command only as this list says (`research.md` R6):
 
 - `fetch` by `FETCH_TIMEOUT_SECONDS`, and `push` and `delete_remote_branch` by
-  `PUSH_TIMEOUT_SECONDS`. A `fetch` or a `push` past its limit raises `RepositoryConnectionError`
-  once Git ends, because `_raise_enriched_error_static` maps GitPython's "process killed because it
-  timed out" text to it (section 10). `delete_remote_branch` is a push too: it types its errors as
-  `push` does. Past its limit it raises `RepositoryConnectionError`, but only where GitPython's
-  watchdog can stop Git: the watchdog needs `ps`, which the runtime image does not have.
+  `PUSH_TIMEOUT_SECONDS`. GitPython does not stop a fetch or a push at the bound, so the three also
+  set Git's low-speed limit to the bound. Git then ends an HTTP(S) transfer that sends no data for
+  that long. An SSH transfer has no bound. A stalled `fetch` or `push` raises
+  `RepositoryConnectionError`, because `_raise_enriched_error_static` maps libcurl's "Operation too
+  slow" text and GitPython's "process killed because it timed out" text to it (section 10).
+  `delete_remote_branch` is a push too: it types its errors as `push` does, so a stalled deletion
+  raises `RepositoryConnectionError` as well.
 - `remote_head`, `is_ancestor`, `replay`, `reset` and `record` by `LOCAL_GIT_TIMEOUT_SECONDS`, for
-  each local command. `remote_head` reads with `git rev-parse`, not through GitPython's object
-  database. A timeout raises `RepositoryError`, with a message that names the command and the bound
-  but not the arguments, which can name worker paths. After a killed local command, the adapter
-  removes a left-over `index.lock` of the worktree before it raises. `reset` never raises: a killed
-  reset is logged like any failed reset.
+  each local command. GitPython stops a local command at the bound only where `ps` exists, so the
+  backend image installs `procps`. `remote_head` reads with `git rev-parse`, not through GitPython's object
+  database. A stopped local command raises `RepositoryError`, with a message that names the command
+  and the bound but not the arguments, which can name worker paths. After a killed local command,
+  the adapter removes a left-over `index.lock` of the worktree before it raises. `reset` never
+  raises: a killed reset is logged like any failed reset.
 
 `import_at` has no bound (`research.md` R6). `delete_remote_branch` treats a branch that is already
 gone as deleted, and then also sends `RefreshGitRepositoryBranchDeleted`. It recognises a branch
@@ -251,13 +267,14 @@ shapes the service defines, so neither the Git adapter nor the merge layer is im
 
 `has_queued_run` returns whether the orchestrator holds a delivery run of the repository that waits
 to start: a run that carries both delivery tags and has a state of type `SCHEDULED` or `PENDING`
-(`research.md` R20, condition 5). It raises when the orchestrator does not answer.
-`PrefectDeliveryRunQuery`, in `runs.py`, implements `DeliveryRunQuery` with one `read_flow_runs`
-call with `limit=1`, over a client that implements
+(`research.md` R20, condition 5). `has_active_run` returns whether it holds such a run that waits
+to start or runs: the state type can also be `RUNNING`. Both raise when the orchestrator does not
+answer. `PrefectDeliveryRunQuery`, in `runs.py`, implements `DeliveryRunQuery` with one
+`read_flow_runs` call with `limit=1` for each question, over a client that implements
 `task_manager/flow_run/prefect_client.py::FlowRunQuerying`. The filter is
 `FlowRunFilterTags(all_=delivery_run_tags(repository_id))` and
-`FlowRunFilterStateType(any_=[SCHEDULED, PENDING])`. It is the only orchestrator query of the
-package, so the recovery check's unit tests use a fake.
+`FlowRunFilterStateType(any_=[SCHEDULED, PENDING])`, with `RUNNING` added for `has_active_run`.
+It is the only orchestrator query of the package, so the recovery check's unit tests use a fake.
 
 ```python
 def delivery_run_tags(repository_id: str) -> list[str]: ...
@@ -281,12 +298,20 @@ class RepositoryWritebackService:
         state: DeliveryStatePort,
         git: DeliveryGitPort,
         releaser: RegenerationReleasePort,
+        lease_renewal: LeaseRenewalPort,
         lock_registry: InfrahubLockRegistry,
         clock: Clock,
+        release_renew_seconds: float,
     ) -> None: ...
 
     async def deliver(
-        self, *, final_attempt: bool, manual: bool, entry: PendingMerge | None
+        self,
+        *,
+        final_attempt: bool,
+        manual: bool,
+        entry: PendingMerge | None,
+        retry_delay: timedelta | None = None,
+        first_attempt: bool = True,
     ) -> DeliveryAttemptResult: ...
 ```
 
@@ -304,6 +329,14 @@ disagree.
   refused id is not a failure.
 - Steps 1 to 15 under the repository lock, the settle included. Steps 16 and 17, the release and
   the clear, after it is released, under the lease that the settle returned.
+- While the release runs, a timer renews the lease every `release_renew_seconds`. It renews
+  through `lease_renewal`, not through the `renew` callback that the releaser gets.
+  `build_writeback_service` builds a `LeaseRenewer` from its `db`, and the renewer opens a session
+  of its own for each renewal (section 4). The factory passes `RELEASE_RENEW_SECONDS`, a third of
+  `RELEASE_LEASE_SECONDS`, and tests pass a small value. A failed renewal of the timer is logged at
+  warning level with the lease and the repository, and the timer goes on. The timer stops when the
+  release returns or raises, after a renewal that runs then, so no renewal follows `expire_lease` or
+  `clear_released` (`research.md` R10).
 - If the release raises, `deliver` calls `state.expire_lease(...)` on its lease first. Then it
   handles the failure as the bullets below say, with the stage `release`. The clear does not run,
   so the held items stay. The task retry takes a new lease over them and releases every one. After
@@ -312,8 +345,11 @@ disagree.
   then covers every held item. The run of a failed release sets its lease's expiry to now, so that
   live lease belongs to a release that still runs. The one exception is an `expire_lease` call
   that failed (`research.md` R10, rule 4).
-- When `manual` is `False` and a retry of another chain is due in the future, it returns
-  `deferred` at once (one chain per repository).
+- When `first_attempt` is `True`, `manual` is `False` and a retry of another chain is due in the
+  future, it returns `deferred` at once (one chain per repository). It reads the state for this
+  check after step 0 and before the repository lock. Only a first attempt defers, because a
+  chain's own retry must never defer itself: after the wait, the wall clock can still read earlier
+  than the recorded due time.
 - It never raises for a classified failure that is final: it records it and returns `failed` or
   `unreplayable`. A retryable failure on a non-final attempt is recorded with `retry_due_at`, then
   re-raised as `RetryableDeliveryError`, so the task's `retry_condition_fn` retries it.
@@ -357,9 +393,13 @@ async def deliver_pending_merges(
 ) -> DeliveryOutcome: ...
 ```
 
-The task computes `final_attempt` from `task_run.run_count` and `DELIVERY_RETRIES`, and passes
-`entry` to `deliver` on every attempt. The enqueue is idempotent, so an attempt after one that
-enqueued finds the id and writes nothing. The flow sets
+The task computes the wait before its next retry from `task_run.run_count` and its own `retries`
+and `retry_delay_seconds`, which are `DELIVERY_RETRIES` and `DELIVERY_RETRY_DELAYS_SECONDS` unless a
+test changes them with `with_options`. It passes that wait to `deliver` as `retry_delay`, which sets
+`retry_due_at` at the time of the failure, and `final_attempt` is `True` when no retry follows.
+`first_attempt` is `True` when `task_run.run_count` is 1, or outside a task run. It passes `entry`
+to `deliver` on every attempt. The enqueue is idempotent, so an attempt after one that enqueued
+finds the id and writes nothing. The flow sets
 its own final state from the outcome (`research.md` R21). `DELIVERY_RETRIES = 3` and
 `DELIVERY_RETRY_DELAYS_SECONDS = [30, 120, 300]`. Tests pass shorter delays through
 `deliver_pending_merges.with_options(retry_delay_seconds=...)`.
@@ -378,10 +418,12 @@ class WritebackAbandoner:
         self,
         repository: RepositoryRef,
         state: DeliveryStatePort,
-        git: DeliveryGitPort,
+        git: AbandonmentGitPort,
         releaser: RegenerationReleasePort,
+        lease_renewal: LeaseRenewalPort,
         lock_registry: InfrahubLockRegistry,
         clock: Clock,
+        release_renew_seconds: float,
     ) -> None: ...
 
     async def abandon(self, *, queue_version: int, actor: Actor) -> AbandonmentRecord: ...
@@ -389,14 +431,27 @@ class WritebackAbandoner:
 
 `Actor` comes from the workflow's `InfrahubContext`.
 
-Runs `research.md` R8: under the repository lock, `state.abandon(...)`, then
-`git.notify_branch_deleted(...)` for every abandoned entry that carried the deletion flag; then,
-with the lock released, `releaser.release(...)` on the lease window, then
-`state.clear_released(...)`. If the release raises, it calls `state.expire_lease(...)` on its lease
-and re-raises, so the recovery check releases the held items (`research.md` R10, rule 4). It uses
-the Git port only for that notification: it changes no Git state, deletes no remote branch and
-imports nothing. `DeliveryQueueChangedError` and `NothingPendingError` subclass `ValidationError`,
-so the task run fails with the message of the GraphQL contract.
+Runs `research.md` R8: under the repository lock, `git.recorded_commit()` for the record, then
+`state.abandon(...)`, then `git.notify_branch_deleted(...)` for every abandoned entry that carried
+the deletion flag; then, with the lock released, `releaser.release(...)` on the lease window, then
+`state.clear_released(...)`. While the release runs, a timer renews the lease through
+`lease_renewal`, as section 5 says. The service and the abandoner run their release through one
+shared helper, which holds the timer and the expiry of a failed release. `build_writeback_abandoner`
+passes the same `LeaseRenewer` and `RELEASE_RENEW_SECONDS` as `build_writeback_service`. If the release raises, it calls `state.expire_lease(...)` on its lease
+and re-raises, so the recovery check releases the held items (`research.md` R10, rule 4). The
+queue is empty by then, so the retry mutation refuses, and the barrier no longer holds the
+repository: the error line tells the user to run the artifact and generator definitions and the
+computed attributes by hand to regenerate now. It uses
+the Git port only for these two calls, and neither runs a Git command: `recorded_commit` reads
+Infrahub, and the notification is a message to the workers. It changes no Git state, deletes no
+remote branch and imports nothing, so its flow builds the repository object without a clone.
+When the repository records no readable commit, the record stores an empty `recorded_commit`. A
+failed branch-deleted notification is only logged, as a warning, and the release still runs,
+because the queue is already dropped.
+`DeliveryQueueChangedError` and `NothingPendingError` subclass `ValidationError`, so the task run
+fails with the message of the GraphQL contract. If the clear fails after a release that worked, the
+run logs that the release ran and raises. The items stay held under the lease, which is not
+expired at once, so a later run releases them again once the lease expires.
 
 ---
 
@@ -411,6 +466,7 @@ class DeliveryRecoveryCheck:
         runs: DeliveryRunQuery,
         lock_registry: InfrahubLockRegistry,
         clock: Clock,
+        context: InfrahubContext,
     ) -> None: ...
 
     async def run(self, *, repository: RepositoryRef) -> bool: ...
@@ -422,20 +478,31 @@ bootstrap and whatever the outcome of the sync, under its own guard. It submits
 then calls `state.touch(...)`, when:
 
 - the delivery is stale (five conditions, `research.md` R20); or
-- held items that no live lease covers wait, `last_progress_at` is older than `STALE_AFTER`, and
-  no delivery run of the repository waits to start.
+- the queue is empty, held items that no live lease covers wait, `last_progress_at` is older than
+  `STALE_AFTER`, and no delivery run of the repository waits to start or runs.
+
+The second trigger needs an empty queue. A queue with merges is the stale check's case: while it is
+`pending`, the first trigger covers it. While it is `action-required`, a submission every
+`STALE_AFTER` would retry a policy failure, which FR-004 forbids.
 
 The lock condition needs the lock registry, and the orchestrator condition needs `runs`. The check
-takes both in its constructor. It reads the state and the lock first, and calls
-`runs.has_queued_run(...)` only when every other condition of a trigger holds. It then passes the
-answer to `WritebackIntent.is_stale(now, lock_free, run_queued)`. A repository with no work to
-recover, or with recent progress, costs no orchestrator query. When `has_queued_run` raises, the
-check submits nothing, does not call `state.touch(...)`, logs the failure at warning level, and
-returns `False`. It returns whether it submitted. It never raises: a failure is logged and the next
-cycle checks again.
+takes both in its constructor. The retry flow requires a context, so the check also takes the
+system context that it submits with: the default branch and an anonymous account. It reads the
+state and the lock first, and evaluates the first trigger with
+`WritebackIntent.is_stale(now, lock_free, run_queued=False)` and the second with
+`WritebackIntent.release_waits(now)`. Last, and only when one trigger holds, it asks the question
+of that trigger: `runs.has_queued_run(...)` for the first trigger, and `runs.has_active_run(...)`
+for the second. It submits only when the answer is no. A release holds no lock and writes no
+progress, so the second trigger also counts a run that runs (`research.md` R20). A repository with
+no work to recover, or with recent progress, costs no orchestrator query. When the question raises
+an `httpx.HTTPError` or an `OSError`, the check submits nothing, does not call `state.touch(...)`,
+logs the failure at warning level, and returns `False`. Another error gives the same result, but
+the guard of `run` logs it at error level, with its traceback. It returns whether it submitted. It
+never raises: a failure is logged and the next cycle checks again.
 
 `build_recovery_check` builds `PrefectDeliveryRunQuery` over
-`task_manager/flow_run/prefect_client.py::PrefectClientAdapter`.
+`task_manager/flow_run/prefect_client.py::PrefectClientAdapter`, and the system context with
+`InfrahubContext.init(branch=<default branch>, account=AnonymousSession())`.
 
 ---
 
@@ -607,7 +674,8 @@ Contract:
    other attribute has no known owner, so it stays held under every other pending repository. A
    released recompute is a coalesced submission, so its writes carry the `recompute` origin, and a
    released target of a recompute chain starts again at depth 0.
-6. Renew the lease after each awaited step, through a callback the caller passes.
+6. Renew the lease after each awaited step, through a callback the caller passes. The caller also
+   renews the lease on a timer while the release runs (section 5).
 7. Raise on a dispatch failure. A held generator run that fails is not one: it falls back to the
    terminal regeneration of the released repository (section 8, row 3). Only a run that the task
    manager cannot start or follow to a final state raises, as `WorkflowOrchestrationError`. The
@@ -626,7 +694,7 @@ Contract:
 | `git/base.py::InfrahubRepositoryBase.fetch` | Accepts a timeout and passes it as `kill_after_timeout`. |
 | `git/base.py::InfrahubRepositoryBase.create_commit_worktree`, `git/base.py::InfrahubRepositoryBase.delete_remote_branch` | Accept a timeout and pass it as `kill_after_timeout` to each Git command they run. Default unchanged. `create_commit_worktree` raises `RepositoryError` for a failed `worktree list` too, through `_raise_enriched_error_static`. After a `worktree add` stopped by its time limit, it removes the worktree that Git keeps locked as "initializing" (`git worktree remove -f -f`, best effort), and after any other failure it removes nothing. `delete_remote_branch` types its errors as `push` does (`is_write_operation=True`) and never writes the operational status. |
 | `git/repository.py::InfrahubRepository._reset_to_pre_merge_commit` | Accepts a timeout and passes it as `kill_after_timeout`. Still never raises. |
-| `git/base.py::InfrahubRepositoryBase._raise_enriched_error_static` | Raises `RepositoryTLSError` for the TLS markers, `RepositoryNotFoundError` for "Repository not found" and for Git's own HTTP 404 line (`GIT_HTTP_REPOSITORY_NOT_FOUND`), and `RepositoryConnectionError` for GitPython's "process killed because it timed out". For GitPython's "Timeout: the command ... did not complete" text of a direct Git call, raises `RepositoryError` with the Git command and the limit, not the arguments, or `RepositoryConnectionError` for a write operation. |
+| `git/base.py::InfrahubRepositoryBase._raise_enriched_error_static` | Raises `RepositoryTLSError` for the TLS markers, `RepositoryNotFoundError` for "Repository not found" and for Git's own HTTP 404 line (`GIT_HTTP_REPOSITORY_NOT_FOUND`), and `RepositoryConnectionError` for GitPython's "process killed because it timed out" and libcurl's "Operation too slow". For GitPython's "Timeout: the command ... did not complete" text of a direct Git call, raises `RepositoryError` with the Git command and the limit, not the arguments, or `RepositoryConnectionError` for a write operation. |
 | `git/base.py::InfrahubRepositoryBase._raise_enriched_error` | Resolves the status through `git/base.py::operational_status_for_error`, which matches with `isinstance`, most specific first. |
 | `message_bus/operations/git/repository.py::connectivity` | Resolves the status through the same function. |
 | `git/repository.py::InfrahubRepository.collect_pending_imports` | In the active loop, skips the default branch, and every new or updated remote branch that a pending entry names, while the state is not `none`. Takes the state port as a required parameter from the sync flow. `_collect_staging_imports` is unchanged. |
