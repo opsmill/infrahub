@@ -74,34 +74,17 @@ function EmptyMessage({ title, description }: EmptyMessageProps) {
   );
 }
 
-function useShownDivisions(pool: NumberPoolData) {
-  const [{ search, sort }] = useNumberPoolDivisionTableState();
-  const deferredSearch = React.useDeferredValue(search);
-  const query = useGetNumberPoolDivisions(pool.id);
-  const divisions = query.data?.divisions ?? [];
-
-  return {
-    ...query,
-    divisions,
-    shown: sortDivisions(filterDivisions(divisions, deferredSearch), sort),
-    isSearching: deferredSearch.trim() !== "",
-  };
-}
-
 interface DivisionsCountProps {
-  pool: NumberPoolData;
+  shown: number;
+  total: number;
 }
 
-function DivisionsCount({ pool }: DivisionsCountProps) {
-  const { data, divisions, shown, isSearching } = useShownDivisions(pool);
-
-  if (!data) return null;
-
+function DivisionsCount({ shown, total }: DivisionsCountProps) {
   return (
     <span className="text-foreground-muted text-sm tabular-nums">
-      {isSearching
-        ? `${formatNumberDisplay(shown.length)} of ${formatNumberDisplay(divisions.length)}`
-        : formatNumberDisplay(divisions.length)}
+      {shown === total
+        ? formatNumberDisplay(total)
+        : `${formatNumberDisplay(shown)} of ${formatNumberDisplay(total)}`}
     </span>
   );
 }
@@ -122,25 +105,12 @@ function DivisionsSearch() {
 
 interface DivisionsContentProps {
   pool: NumberPoolData;
+  shown: NumberPoolDivision[];
 }
 
-function DivisionsContent({ pool }: DivisionsContentProps) {
+function DivisionsContent({ pool, shown }: DivisionsContentProps) {
   const fields = useNumberPoolScopeFields(pool);
   const [{ sort }, { setSort }] = useNumberPoolDivisionTableState();
-  const { error, isPending, divisions, shown } = useShownDivisions(pool);
-
-  if (isPending) return <SkeletonRows />;
-
-  if (error) return <ErrorScreen message={error.message} />;
-
-  if (divisions.length === 0) {
-    return (
-      <EmptyMessage
-        title="No numbers allocated yet."
-        description="An allocation scope appears here once an object in it holds a number from this pool."
-      />
-    );
-  }
 
   if (shown.length === 0) return <EmptyMessage title="No allocation scope matches" />;
 
@@ -160,16 +130,37 @@ export interface NumberPoolDivisionsListProps {
 }
 
 export function NumberPoolDivisionsList({ pool }: NumberPoolDivisionsListProps) {
+  const [{ search, sort }] = useNumberPoolDivisionTableState();
+  const deferredSearch = React.useDeferredValue(search);
+  const { data, error, isPending } = useGetNumberPoolDivisions(pool.id);
+
+  if (isPending) return <SkeletonRows />;
+
+  if (error) return <ErrorScreen message={error.message} />;
+
+  const { divisions } = data;
+
+  if (divisions.length === 0) {
+    return (
+      <EmptyMessage
+        title="No numbers allocated yet."
+        description="An allocation scope appears here once an object in it holds a number from this pool."
+      />
+    );
+  }
+
+  const shown = sortDivisions(filterDivisions(divisions, deferredSearch), sort);
+
   return (
     <Card className="mx-2 mb-2 min-h-0 grow overflow-hidden">
       <Row className="border-b px-3 py-2">
         <h2 className="font-semibold text-sm">Allocation scopes</h2>
-        <DivisionsCount pool={pool} />
+        <DivisionsCount shown={shown.length} total={divisions.length} />
         <DivisionsSearch />
       </Row>
 
       <div className="relative min-h-0 flex-1 overflow-auto overscroll-contain">
-        <DivisionsContent pool={pool} />
+        <DivisionsContent pool={pool} shown={shown} />
       </div>
     </Card>
   );
