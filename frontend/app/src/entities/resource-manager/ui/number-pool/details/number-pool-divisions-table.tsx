@@ -22,10 +22,10 @@ import { getNumberPoolDivisionUrl } from "@/entities/resource-manager/ui/routing
 const pinnedEdge =
   "before:pointer-events-none before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-border";
 
-// the table surface is slightly translucent in dark mode; a pinned cell needs the same colour fully opaque
+// the table surface is slightly translucent in dark mode; a pinned cell needs the same colour fully opaque,
+// set as a colour only so a background image can still layer the row hover highlight on top
 const pinnedSurface: React.CSSProperties = {
-  background:
-    "linear-gradient(var(--table-cell-pinned), var(--table-cell-pinned)), var(--color-black)",
+  backgroundColor: "rgb(from var(--table-cell-pinned) r g b)",
 };
 
 // a collapsed table border scrolls away with the body, so the sticky header draws its own bottom edge
@@ -152,7 +152,7 @@ export function NumberPoolDivisionsTable({
           return (
             <tr
               key={JSON.stringify(values)}
-              className="cursor-pointer not-last:border-b hover:bg-highlight"
+              className="group/row cursor-pointer not-last:border-b hover:bg-highlight"
               onClick={(event) => {
                 const isOnLink = (event.target as HTMLElement).closest("a") !== null;
                 if (isOnLink || isOpenedByTheBrowser(event)) return;
@@ -174,7 +174,10 @@ export function NumberPoolDivisionsTable({
                   </td>
                 );
               })}
-              <td className={classNames("px-3", usageCellStyle)} style={pinnedSurface}>
+              <td
+                className={classNames("px-3 group-hover/row:bg-highlight", usageCellStyle)}
+                style={pinnedSurface}
+              >
                 <NumberPoolUsageBar usage={division.usage} />
               </td>
             </tr>
