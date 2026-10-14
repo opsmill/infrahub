@@ -229,6 +229,26 @@ class RegenerationReleasePort(Protocol):
         """
 
 
+class LeaseRenewalPort(Protocol):
+    async def renew_lease(self, *, repository_id: str, lease_id: str) -> None:
+        """Move the expiry of the lease while the release of its items runs."""
+
+
 class DeliveryRunQuery(Protocol):
     async def has_queued_run(self, *, repository_id: str) -> bool:
-        """Return whether a delivery run of the repository waits to start; raises when the orchestrator fails."""
+        """Return whether a delivery run of the repository waits to start.
+
+        Raises:
+            httpx.HTTPError: The orchestrator answered with an error, or its connection failed.
+            OSError: The connection to the orchestrator failed.
+
+        """
+
+    async def has_active_run(self, *, repository_id: str) -> bool:
+        """Return whether a delivery run of the repository waits to start or runs.
+
+        Raises:
+            httpx.HTTPError: The orchestrator answered with an error, or its connection failed.
+            OSError: The connection to the orchestrator failed.
+
+        """

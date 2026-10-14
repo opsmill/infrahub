@@ -12,7 +12,12 @@ from infrahub.exceptions import ServiceUnavailableError
 from infrahub.log import get_logger
 
 from .python_target_sources import DeclaredAttribute
-from .recompute_coalescing import PYTHON_COMPUTED_ATTRIBUTE, AffectedTarget, CoalescedRecompute
+from .recompute_coalescing import (
+    CoalescedRecompute,
+    PythonTargetRequest,
+    owned_python_target,
+    whole_kind_python_target,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable, Collection, Iterable
@@ -24,11 +29,11 @@ if TYPE_CHECKING:
     from infrahub.core.schema.manager import SchemaManager
     from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
     from infrahub.git.models import RequestArtifactDefinitionGenerate
-    from infrahub.git.writeback.models import HeldItem, HeldRegeneration
+    from infrahub.git.writeback.models import HeldItem, HeldPythonAttribute, HeldRegeneration
     from infrahub.message_bus.types import ProposedChangeArtifactDefinition
 
-    from .recompute_coalescing import CoalescedRecomputeSubmitter
-    from .regeneration_barrier import NarrowedHoldCache
+    from .recompute_coalescing import AffectedTarget, CoalescedRecomputeSubmitter
+    from .regeneration_barrier import NarrowedHoldCache, RegenerationBarrier
     from .regeneration_dispatcher import PostMergeRegenerationDispatcher
     from .selective_regen.definition_selector.base import DefinitionSelectorBase
     from .selective_regen.models import DefinitionModel
@@ -116,12 +121,14 @@ class HeldRegenerationReleaser:
 
     A held item takes its narrowing from the request kept at its hold, and every other field from its
     definition as it is now, because the delivery's import can change the definition after the hold.
+    Its Python recomputes pass the barrier, so an attribute that another pending repository can own stays held.
     """
 
     def __init__(
         self,
         dispatcher: PostMergeRegenerationDispatcher,
         python_submitter: CoalescedRecomputeSubmitter,
+        barrier: RegenerationBarrier,
         definitions: HeldDefinitionSource,
         narrowed: NarrowedHoldCache,
         default_branch_name: str,
@@ -129,6 +136,7 @@ class HeldRegenerationReleaser:
     ) -> None:
         self.dispatcher = dispatcher
         self.python_submitter = python_submitter
+        self.barrier = barrier
         self.definitions = definitions
         self.narrowed = narrowed
         self.default_branch_name = default_branch_name
@@ -232,9 +240,16 @@ class HeldRegenerationReleaser:
                 renew=renew,
             )
 
-        await self._recompute_whole_kinds(
-            attributes=[(attribute.kind, attribute.attribute) for attribute in held.python_attributes], renew=renew
-        )
+        if held.python_attributes:
+            targets = [
+                await self._held_python_target(repository_id=repository_id, item=item)
+                for item in held.python_attributes
+            ]
+            owned = await self.definitions.python_attributes(
+                branch=self.default_branch_name, repository_id=repository_id
+            )
+            await renew()
+            await self._recompute(repository_id=repository_id, targets=targets, owned=owned, renew=renew)
 
     async def _release_repository(
         self,
@@ -258,11 +273,16 @@ class HeldRegenerationReleaser:
         owned = await self.definitions.python_attributes(branch=self.default_branch_name, repository_id=repository_id)
         await renew()
         # A held attribute whose owner was unknown at its hold is not in the owned list.
-        await self._recompute_whole_kinds(
-            attributes=[
-                *((attribute.kind, attribute.attribute_name) for attribute in owned),
-                *((attribute.kind, attribute.attribute) for attribute in held.python_attributes),
+        await self._recompute(
+            repository_id=repository_id,
+            targets=[
+                *(whole_kind_python_target(kind=item.kind, attribute_name=item.attribute_name) for item in owned),
+                *(
+                    whole_kind_python_target(kind=item.kind, attribute_name=item.attribute)
+                    for item in held.python_attributes
+                ),
             ],
+            owned=owned,
             renew=renew,
         )
 
@@ -277,24 +297,46 @@ class HeldRegenerationReleaser:
             return unnarrowed
         return unnarrowed.model_copy(update=kept.model_dump(include=narrowing))
 
-    async def _recompute_whole_kinds(
-        self, *, attributes: Iterable[tuple[str, str]], renew: Callable[[], Awaitable[None]]
-    ) -> None:
-        targets = frozenset(
-            AffectedTarget(
-                family=PYTHON_COMPUTED_ATTRIBUTE,
-                target_kind=kind,
-                attribute_name=attribute_name,
-                reads_across_relationship=False,
-                reader_lookups=frozenset(),
-                precise=False,
-                whole_kind=True,
-            )
-            for kind, attribute_name in attributes
+    async def _held_python_target(self, *, repository_id: str, item: HeldPythonAttribute) -> AffectedTarget:
+        """Return the target kept at the hold, or the whole kind when the cache misses."""
+        kept = await self.narrowed.get(
+            repository_id=repository_id, hold_seq=item.hold_seq, identifier=item.identifier, model=PythonTargetRequest
         )
-        if not targets:
+        if kept is None:
+            return whole_kind_python_target(kind=item.kind, attribute_name=item.attribute)
+        return kept.target
+
+    async def _recompute(
+        self,
+        *,
+        repository_id: str,
+        targets: Iterable[AffectedTarget],
+        owned: Iterable[DeclaredAttribute],
+        renew: Callable[[], Awaitable[None]],
+    ) -> None:
+        """Submit the targets that the barrier admits; an attribute the repository does not own has no known owner.
+
+        Raises:
+            ServiceUnavailableError: The submission of an admitted target was skipped.
+
+        """
+        owned_keys = {(attribute.kind, attribute.attribute_name) for attribute in owned}
+        admitted = await self.barrier.admit(
+            branch=self.default_branch_name,
+            candidates=[
+                owned_python_target(
+                    target=target,
+                    repository_id=repository_id if (target.target_kind, target.attribute_name) in owned_keys else None,
+                )
+                for target in frozenset(targets)
+            ],
+            releasing=repository_id,
+        )
+        coalesced = CoalescedRecompute(
+            branch=self.default_branch_name, targets=frozenset(candidate.request.target for candidate in admitted)
+        )
+        if not coalesced.targets:
             return
-        coalesced = CoalescedRecompute(branch=self.default_branch_name, targets=targets)
         planned = self.python_submitter.plan(coalesced)
         submitted = await self.python_submitter.submit(coalesced=coalesced, context=self.context.to_event_context())
         # A failed submission is only logged and skipped, so without this check the held attribute is never recomputed.

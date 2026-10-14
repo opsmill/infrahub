@@ -16,6 +16,7 @@ from infrahub.exceptions import (
     ValidationError,
 )
 from infrahub.git.writeback.abandoner import WritebackAbandoner
+from infrahub.git.writeback.constants import RELEASE_RENEW_SECONDS
 from infrahub.git.writeback.models import (
     AbandonmentRecord,
     Actor,
@@ -183,7 +184,14 @@ def rig() -> Rig:
         repository=REPOSITORY, state=state, git=git, releaser=releaser, lock_registry=lock_registry, clock=clock
     )
     service = RepositoryWritebackService(
-        repository=REPOSITORY, state=state, git=git, releaser=releaser, lock_registry=lock_registry, clock=clock
+        repository=REPOSITORY,
+        state=state,
+        git=git,
+        releaser=releaser,
+        lease_renewal=state,
+        lock_registry=lock_registry,
+        clock=clock,
+        release_renew_seconds=RELEASE_RENEW_SECONDS,
     )
     return Rig(clock=clock, probe=probe, state=state, git=git, releaser=releaser, abandoner=abandoner, service=service)
 

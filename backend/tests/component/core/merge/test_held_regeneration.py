@@ -16,31 +16,36 @@ from infrahub import config, lock
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
-from infrahub.core.branch.tasks import post_process_branch_merge
+from infrahub.core.branch.tasks import merge_branch, post_process_branch_merge
 from infrahub.core.constants import (
     FullRegenerationReason,
     InfrahubKind,
     RepositoryDeliveryStatus,
     RepositoryInternalStatus,
 )
+from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.summary_cache import DiffSummaryCache
 from infrahub.core.diff.summary_serializer import DiffSummarySerializer
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.merge.builder import build_post_merge_regeneration_dispatcher, build_regeneration_barrier
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreGeneratorDefinition
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.computed_attribute import ComputedAttribute, ComputedAttributeKind
+from infrahub.dependencies.registry import get_component_registry
 from infrahub.generators.constants import GeneratorDefinitionRunSource
 from infrahub.generators.models import RequestGeneratorDefinitionRun
 from infrahub.generators.tasks import run_generator_definition
 from infrahub.git.models import GitRepositoryMerge, RequestArtifactDefinitionGenerate
 from infrahub.git.tasks import generate_artifact_definition, merge_git_repository
-from infrahub.git.writeback.models import HeldItem, HeldRegeneration, HeldWiden, PendingMerge
+from infrahub.git.writeback.models import HeldItem, HeldPythonAttribute, HeldRegeneration, HeldWiden, PendingMerge
 from infrahub.git.writeback.store import WritebackIntentStore
 from infrahub.server import app
 from infrahub.workers.dependencies import build_client
 from infrahub.workflows.catalogue import (
+    COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
+    GIT_REPOSITORIES_MERGE,
     REQUEST_ARTIFACT_DEFINITION_GENERATE,
     REQUEST_GENERATOR_DEFINITION_RUN,
     TRIGGER_ARTIFACT_DEFINITION_GENERATE,
@@ -84,6 +89,15 @@ ARTIFACT_GENERATE = REQUEST_ARTIFACT_DEFINITION_GENERATE.name
 DEVICE_QUERY = """
 query GetDevice($ids: [ID!]!) {
     TestNetworkDevice(ids: $ids) {
+        edges { node { name { value } } }
+    }
+}
+"""
+
+# The root is pinned to one device, so a change of a device recomputes the Python attributes of that device only.
+DEVICE_SUMMARY_QUERY = """
+query GetDeviceSummary($id: ID!) {
+    TestNetworkDevice(ids: [$id]) {
         edges { node { name { value } } }
     }
 }
@@ -331,6 +345,23 @@ def repository_regeneration(*, repository_id: str, python_attribute: str) -> lis
     ]
 
 
+def python_recompute(*, python_attribute: str, node_ids: list[str]) -> tuple[Any, ...]:
+    """The call that recomputes the Python attribute on the given devices."""
+    return (
+        "submit",
+        COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM.name,
+        {
+            "branch_name": TRUNK,
+            "node_kind": DEVICE_KIND,
+            "object_ids": node_ids,
+            "computed_attribute_name": python_attribute,
+            "computed_attribute_kind": DEVICE_KIND,
+            "coalesced": True,
+            "recompute_depth": 0,
+        },
+    )
+
+
 class TestHeldRegeneration(TestInfrahubAppWithoutLocalWorkflow):
     """A merge holds the regeneration of a repository whose merges wait for their push, and the delivery releases it.
 
@@ -412,6 +443,10 @@ class TestHeldRegeneration(TestInfrahubAppWithoutLocalWorkflow):
         await query.new(db=db, name="GetDevice", query=DEVICE_QUERY, models=[DEVICE_KIND])
         await query.save(db=db)
 
+        python_query = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY)
+        await python_query.new(db=db, name="GetDeviceSummary", query=DEVICE_SUMMARY_QUERY, models=[DEVICE_KIND])
+        await python_query.save(db=db)
+
         group = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
         await group.new(db=db, name="held-targets", members=devices)
         await group.save(db=db)
@@ -426,6 +461,7 @@ class TestHeldRegeneration(TestInfrahubAppWithoutLocalWorkflow):
             location=str(remote.directory),
             commit=remote.repo.commit(TRUNK).hexsha,
             query=query,
+            python_query=python_query,
             group=group,
             devices=devices,
         )
@@ -435,6 +471,7 @@ class TestHeldRegeneration(TestInfrahubAppWithoutLocalWorkflow):
             location="https://github.com/test/held-regeneration-other.git",
             commit=None,
             query=query,
+            python_query=python_query,
             group=group,
             devices=devices,
         )
@@ -468,6 +505,7 @@ class TestHeldRegeneration(TestInfrahubAppWithoutLocalWorkflow):
         location: str,
         commit: str | None,
         query: Node,
+        python_query: Node,
         group: Node,
         devices: list[Node],
     ) -> tuple[OwnedDefinitions, list[list[Node]]]:
@@ -525,7 +563,7 @@ class TestHeldRegeneration(TestInfrahubAppWithoutLocalWorkflow):
         await python_transform.new(
             db=db,
             name=f"{prefix}-python-transform",
-            query=query,
+            query=python_query,
             repository=repository,
             file_path="transforms/device.py",
             class_name="DeviceTransform",
@@ -936,3 +974,58 @@ class TestHeldRegeneration(TestInfrahubAppWithoutLocalWorkflow):
         assert sorted(call["parameters"]["model"].model_dump_json() for call in unheld) == sorted(
             call["parameters"]["model"].model_dump_json() for call in [*held_merge, *released]
         )
+
+    async def test_a_merge_holds_the_python_recompute_that_a_pending_repository_owns(
+        self, db: InfrahubDatabase, default_branch: Branch, harness: HeldRegenerationHarness
+    ) -> None:
+        """The merge queues the push of the repository before its recompute, so the recompute holds the attribute."""
+        pending = harness.pending
+        changed = harness.dataset.changed_device_id
+        before = await harness.view()
+        assert before.held.is_empty
+        hold_seq = before.held.next_hold_seq
+
+        # The repository is active on the branch and records a commit of its own, so the merge has content to push.
+        pushed = harness.new_merge()
+        branch = await create_branch(branch_name=pushed.source_git_branch, db=db)
+        branch.sync_with_git = True
+        await branch.save(db=db)
+        repository = await NodeManager.get_one(
+            db=db, id=pending.repository_id, kind=InfrahubKind.REPOSITORY, branch=branch, raise_on_error=True
+        )
+        repository.get_attribute(name="internal_status").value = RepositoryInternalStatus.ACTIVE.value
+        repository.get_attribute(name="commit").value = pushed.source_commit
+        await repository.save(db=db)
+        device = await NodeManager.get_one(db=db, id=changed, kind=DEVICE_KIND, branch=branch, raise_on_error=True)
+        device.get_attribute(name="name").value = f"{branch.name}-device"
+        await device.save(db=db)
+        diff_coordinator = await get_component_registry().get_component(DiffCoordinator, db=db, branch=branch)
+        await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+
+        await merge_branch(branch=branch.name, context=harness.context)
+
+        python_workflows = {COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM.name, TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES.name}
+        assert [describe(call) for call in harness.recorder.calls if call["workflow"].name in python_workflows] == [
+            python_recompute(python_attribute="y_summary", node_ids=[changed])
+        ]
+        assert (await harness.view()).held == HeldRegeneration(
+            next_hold_seq=hold_seq + 1,
+            python_attributes=(HeldPythonAttribute(kind=DEVICE_KIND, attribute="x_summary", hold_seq=hold_seq),),
+        )
+        (repository_merge,) = harness.recorder.get_submit_calls_for(GIT_REPOSITORIES_MERGE)
+        model = repository_merge["parameters"]["model"]
+        assert model.pending_merge_enqueued is True
+        assert model.pending_merge.source_commit == pushed.source_commit
+
+        state = await harness.deliver(entry=model.pending_merge, enqueued=True)
+
+        assert state.message == harness.delivered_message
+        delivered = harness.trunk_head()
+        assert delivered != before.commit
+        assert [describe(call) for call in harness.recorder.calls] == [
+            python_recompute(python_attribute="x_summary", node_ids=[changed])
+        ]
+        assert [call["observed"].commit for call in harness.recorder.calls] == [delivered]
+        after = await harness.store.read(repository_id=pending.repository_id)
+        assert after.queue.entries == ()
+        assert after.held == HeldRegeneration(next_hold_seq=hold_seq + 1)

@@ -33,6 +33,7 @@ from infrahub.exceptions import (
     RepositoryError,
     RepositoryPushRejectedError,
 )
+from infrahub.git.base import stalled_transfer_limit
 from infrahub.git.branch_mapping import get_mapped_remote_branch
 from infrahub.git.branch_status import accepts_commit_write
 from infrahub.git.commit_id import readable_commit
@@ -1120,7 +1121,8 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         """Push a given branch to the remote Origin repository; a failure never writes the operational status.
 
         Args:
-            timeout_seconds: Passed to GitPython as ``kill_after_timeout``; ``None`` sets no limit.
+            timeout_seconds: Passed to GitPython as ``kill_after_timeout``, and ends an HTTP(S) transfer that
+                sends no data for that long; ``None`` sets no limit.
 
         Raises:
             RepositoryPushRejectedError: When the remote rejects the push at the ref level. It carries the
@@ -1154,9 +1156,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         # worktree may not be named after the remote branch (it differs when the repository's
         # default branch is not the Infrahub default), so a bare refspec would have no local source.
         try:
-            push_infos = repo.remotes.origin.push(
-                refspec=f"HEAD:refs/heads/{remote_branch}", progress=progress, kill_after_timeout=timeout_seconds
-            )
+            with stalled_transfer_limit(repo=repo, timeout_seconds=timeout_seconds):
+                push_infos = repo.remotes.origin.push(
+                    refspec=f"HEAD:refs/heads/{remote_branch}", progress=progress, kill_after_timeout=timeout_seconds
+                )
         except GitCommandError as exc:
             # A transport-level failure raises here with no porcelain status line to classify from flags.
             self._raise_enriched_error_static(
