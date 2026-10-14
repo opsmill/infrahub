@@ -1,0 +1,1 @@
+Fixed a Git repository update that waited forever when the remote stopped answering and held up every other operation on that repository. The fetch now stops after 15 minutes and the repository reports a connection error.
