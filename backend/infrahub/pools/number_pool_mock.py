@@ -28,7 +28,7 @@ class MockScopeElement:
 class MockDivisionEntry:
     id: str
     path: str
-    value: str
+    value: str | int | float | bool
     display_label: str
     peer_kind: str | None
 
@@ -126,7 +126,7 @@ class MockAllocations:
 @dataclass(frozen=True, slots=True)
 class DivisionFilterEntry:
     path: str
-    value: str
+    value: object
 
 
 @dataclass(frozen=True, slots=True)

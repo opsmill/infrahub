@@ -4,7 +4,7 @@ import copy
 import datetime
 import re
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -14,10 +14,12 @@ from infrahub.core.constants import RelationshipDirection
 from infrahub.core.node import Node
 from infrahub.core.relationship.model import Relationship, RelationshipManager
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema.dropdown import DropdownChoice
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError
 from infrahub.pools.scope import (
+    NON_SCALAR_ATTRIBUTE_KINDS,
     AllocationScope,
     AllocationScopeResolver,
     AllocationScopeValidator,
@@ -26,6 +28,7 @@ from infrahub.pools.scope import (
     ScopeElement,
     UnknownScopeElementError,
 )
+from infrahub.types import ATTRIBUTE_TYPES
 from tests.helpers.number_pool import (
     SCOPED_DEVICE,
     SCOPED_HOLDER,
@@ -35,6 +38,9 @@ from tests.helpers.number_pool import (
     SCOPED_RACK,
     SCOPED_SITE,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 SITE = ScopeElement(id="17d0a4c2-0000-4000-8000-000000000001", name="site")
 ROLE = ScopeElement(id="3b1f90ee-0000-4000-8000-000000000002", name="role")
@@ -677,3 +683,154 @@ class TestDivisionFromNode:
 
         with pytest.raises(LookupError):
             _from_node(node=node, scope=scope, schema_branch=saved_schema_branch)
+
+
+class TestElementFields:
+    def test_an_element_the_branch_does_not_define_is_refused_without_a_field_key(
+        self, saved_schema_branch: SchemaBranch
+    ) -> None:
+        scope = AllocationScope(elements=(_element(name="role"), ScopeElement(id=UNKNOWN_FIELD_ID, name="zone")))
+        expected = f'The scope element "zone" of pool vlan-per-site does not exist on {DEVICE_KIND} on branch main'
+
+        with pytest.raises(ValidationError, match=f"^{re.escape(expected)}$"):
+            AllocationScopeResolver(schema_branch=saved_schema_branch).element_fields(
+                kind=DEVICE_KIND, scope=scope, pool="vlan-per-site"
+            )
+
+
+def _from_entries(
+    entries: Sequence[tuple[str, object]], scope: AllocationScope, schema_branch: SchemaBranch, kind: str = DEVICE_KIND
+) -> Division:
+    element_fields = AllocationScopeResolver(schema_branch=schema_branch).element_fields(
+        kind=kind, scope=scope, pool="vlan-per-site", attribute=TRACKED_ATTRIBUTE
+    )
+    return Division.from_entries(entries=entries, element_fields=element_fields)
+
+
+def _zone(kind: str) -> AttributeSchema:
+    if kind == "Dropdown":
+        return AttributeSchema(name="zone", kind=kind, choices=[DropdownChoice(name="red")])
+    return AttributeSchema(name="zone", kind=kind, read_only=kind == "NumberPool")
+
+
+def _zone_division(kind: str, value: object) -> Division:
+    schema_branch = _schema_branch(name="main", schema=_saved_scoped_schema(extra_device_attributes=[_zone(kind)]))
+    scope = AllocationScope(elements=(_element(name="zone"),))
+    return _from_entries(entries=[("zone", value)], scope=scope, schema_branch=schema_branch)
+
+
+@dataclass(frozen=True)
+class EntryValueCase:
+    kind: str
+    value: object
+
+
+ACCEPTED_ENTRY_VALUES = [
+    EntryValueCase(kind="ID", value="a3c1e8f0"),
+    EntryValueCase(kind="Text", value="42"),
+    EntryValueCase(kind="TextArea", value="two\nlines"),
+    EntryValueCase(kind="DateTime", value="2026-10-13T08:00:00Z"),
+    EntryValueCase(kind="Email", value="ops@example.com"),
+    EntryValueCase(kind="Password", value="secret"),
+    EntryValueCase(kind="HashedPassword", value="$2b$12$hash"),
+    EntryValueCase(kind="URL", value="https://example.com"),
+    EntryValueCase(kind="File", value="config.txt"),
+    EntryValueCase(kind="MacAddress", value="00:11:22:33:44:55"),
+    EntryValueCase(kind="Color", value="#ff0000"),
+    EntryValueCase(kind="Dropdown", value="red"),
+    EntryValueCase(kind="Number", value=42),
+    EntryValueCase(kind="NumberPool", value=7),
+    EntryValueCase(kind="Bandwidth", value=1000),
+    EntryValueCase(kind="IPHost", value="10.0.0.1/24"),
+    EntryValueCase(kind="IPNetwork", value="10.0.0.0/24"),
+    EntryValueCase(kind="IPAddress", value="10.0.0.1"),
+    EntryValueCase(kind="Boolean", value=True),
+    EntryValueCase(kind="Checkbox", value=False),
+]
+
+REFUSED_ENTRY_VALUES = [
+    EntryValueCase(kind="Text", value=42),
+    EntryValueCase(kind="Text", value=["red"]),
+    EntryValueCase(kind="Number", value="42"),
+    EntryValueCase(kind="Number", value=True),
+    EntryValueCase(kind="Number", value=4.5),
+    EntryValueCase(kind="Boolean", value="true"),
+    EntryValueCase(kind="Boolean", value="True"),
+    EntryValueCase(kind="Boolean", value=1),
+    EntryValueCase(kind="IPHost", value="not-an-ip"),
+    EntryValueCase(kind="IPAddress", value="10.0.0.1/24"),
+    EntryValueCase(kind="MacAddress", value="not-a-mac"),
+]
+
+
+class TestDivisionFromEntries:
+    def test_values_are_ordered_as_the_scope(self, saved_schema_branch: SchemaBranch) -> None:
+        scope = AllocationScope(elements=(_element(name="site"), _element(name="role")))
+
+        division = _from_entries(
+            entries=[("role", "leaf"), ("site", SITE_A_ID)], scope=scope, schema_branch=saved_schema_branch
+        )
+
+        assert division == Division(elements=(SITE_PATH, DivisionElementPath(name="role")), values=(SITE_A_ID, "leaf"))
+
+    def test_an_element_no_entry_names_is_left_out(self, saved_schema_branch: SchemaBranch) -> None:
+        scope = AllocationScope(elements=(_element(name="site"), _element(name="role")))
+
+        division = _from_entries(entries=[("role", "leaf")], scope=scope, schema_branch=saved_schema_branch)
+
+        assert division == Division(elements=(DivisionElementPath(name="role"),), values=("leaf",))
+
+    def test_an_element_inherited_from_the_generic_is_read_where_the_implementing_kind_keeps_it(
+        self, saved_schema_branch: SchemaBranch
+    ) -> None:
+        scope = AllocationScope(elements=(_element(name="site", kind=HOLDER_KIND),))
+
+        division = _from_entries(
+            entries=[("site", SITE_A_ID)], scope=scope, schema_branch=saved_schema_branch, kind=POD_HOLDER_KIND
+        )
+
+        assert division == Division(elements=(HOLDER_SITE_PATH,), values=(SITE_A_ID,))
+
+    def test_every_scalar_attribute_kind_has_an_accepted_value(self) -> None:
+        scalar_kinds = set(ATTRIBUTE_TYPES) - NON_SCALAR_ATTRIBUTE_KINDS - {"Default"}
+
+        assert {case.kind for case in ACCEPTED_ENTRY_VALUES} == scalar_kinds
+
+    @pytest.mark.parametrize("case", ACCEPTED_ENTRY_VALUES, ids=[case.kind for case in ACCEPTED_ENTRY_VALUES])
+    def test_a_value_of_the_type_its_attribute_stores_is_kept_as_sent(self, case: EntryValueCase) -> None:
+        division = _zone_division(kind=case.kind, value=case.value)
+
+        assert division.values == (case.value,)
+
+    @pytest.mark.parametrize(
+        "case", REFUSED_ENTRY_VALUES, ids=[f"{case.kind}-{case.value!r}" for case in REFUSED_ENTRY_VALUES]
+    )
+    def test_a_value_of_another_type_or_format_is_refused(self, case: EntryValueCase) -> None:
+        with pytest.raises(ValidationError, match="zone"):
+            _zone_division(kind=case.kind, value=case.value)
+
+    @pytest.mark.parametrize("kind", ["Number", "Boolean", "Text"])
+    def test_an_empty_string_names_the_objects_that_hold_no_value(self, kind: str) -> None:
+        division = _zone_division(kind=kind, value="")
+
+        assert division.values == ("",)
+
+    def test_a_relationship_value_that_is_not_text_is_refused(self, saved_schema_branch: SchemaBranch) -> None:
+        scope = AllocationScope(elements=(_element(name="site"),))
+
+        with pytest.raises(ValidationError, match="42 is not the id of a peer"):
+            _from_entries(entries=[("site", 42)], scope=scope, schema_branch=saved_schema_branch)
+
+    @pytest.mark.parametrize(
+        "entries",
+        [[("rack", "rack-1")], [("site", SITE_A_ID), ("site", SITE_A_ID)]],
+        ids=["not-a-scope-element", "named-twice"],
+    )
+    def test_an_entry_that_names_no_element_once_is_refused(
+        self, saved_schema_branch: SchemaBranch, entries: list[tuple[str, str]]
+    ) -> None:
+        scope = AllocationScope(elements=(_element(name="site"),))
+        expected = f'The division entry "{entries[0][0]}" is not an element of the pool\'s allocation scope'
+
+        with pytest.raises(ValidationError, match=f"^{re.escape(expected)}$"):
+            _from_entries(entries=entries, scope=scope, schema_branch=saved_schema_branch)

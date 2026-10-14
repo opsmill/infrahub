@@ -7,6 +7,8 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreNumberPoolRange
 from infrahub.core.query.resource_manager import (
+    NumberPoolDivisionResult,
+    NumberPoolGetDivisions,
     NumberPoolGetFree,
     NumberPoolGetReserved,
     NumberPoolGetTaken,
@@ -19,11 +21,13 @@ from infrahub.database import within_transaction
 from infrahub.pools.number_pool_space import to_pool_ranges
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.core.branch import Branch
     from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
     from infrahub.database import InfrahubDatabase
     from infrahub.pools.number_ranges import EffectiveSpace, PoolRange
-    from infrahub.pools.scope import Division
+    from infrahub.pools.scope import Division, DivisionElementPath
 
 
 class NumberPoolRangeStore(Protocol):
@@ -168,6 +172,26 @@ class NumberPoolRepository(NumberPoolRangeStore):
         await query.execute(db=self.db)
         used = [result.value for result in query.iter_results()]
         return [item for item in used if item is not None]
+
+    async def get_divisions(
+        self, pool: CoreNumberPool, branch: Branch, space: EffectiveSpace, elements: Sequence[DivisionElementPath]
+    ) -> list[NumberPoolDivisionResult]:
+        """Return the figures of every division holding a number inside `space`.
+
+        A holding object counts in every division it occupies on any live branch. `elements` says where a Node keeps
+        each scope element on `branch`, in scope order.
+        """
+        if space.is_empty:
+            return []
+        query = await NumberPoolGetDivisions.init(
+            db=self.db,
+            branch=branch,
+            pool=pool,
+            ranges=space.as_query_ranges(),
+            elements=elements,
+        )
+        await query.execute(db=self.db)
+        return query.get_data()
 
     async def get_free(
         self,

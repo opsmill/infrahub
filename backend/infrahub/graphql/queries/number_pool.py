@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from graphene import BigInt, Field, Float, InputObjectType, Int, List, NonNull, ObjectType, String
+from graphene.types.generic import GenericScalar
 
 from infrahub.graphql.types.enums import PoolRecordProvenance as PoolRecordProvenanceType
 from infrahub.pools.number_pool_mock import (
@@ -16,16 +17,18 @@ from infrahub.pools.number_pool_mock import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
+
     from graphql import GraphQLResolveInfo
 
     from infrahub.core.constants import PoolRecordProvenance
     from infrahub.graphql.initialization import GraphqlContext
 
 
-def _division_filter(division: list[dict[str, str]] | None) -> list[DivisionFilterEntry] | None:
+def _division_filter(division: Sequence[Mapping[str, object]] | None) -> list[DivisionFilterEntry] | None:
     if division is None:
         return None
-    return [DivisionFilterEntry(path=entry["path"], value=entry["value"]) for entry in division]
+    return [DivisionFilterEntry(path=str(entry["path"]), value=entry["value"]) for entry in division]
 
 
 class NumberPoolUtilizationFigures(ObjectType):
@@ -142,11 +145,12 @@ class NumberPoolDivisionEntry(ObjectType):
     id = Field(String, required=True, description="The schema element id of the attribute or relationship.")
     path = Field(String, required=True, description="The name of the scope attribute or relationship.")
     value = Field(
-        String,
+        GenericScalar,
         required=True,
         description=(
-            "For a relationship, the peer's id. For an attribute, the value as text. An empty string when the "
-            "holding object has no value for it."
+            "For a relationship, the peer's id. For an attribute, the value as the attribute stores it: a number for a "
+            "Number, NumberPool or Bandwidth attribute, a boolean for a Boolean or Checkbox attribute, and a text for "
+            "any other kind. An empty string when the holding object has no value for it."
         ),
     )
     display_label = Field(
@@ -171,7 +175,14 @@ class NumberPoolDivisionEntryInput(InputObjectType):
         )
 
     path = String(required=True, description="The name of the scope attribute or relationship.")
-    value = String(required=True, description="For a relationship, the peer's id. For an attribute, the value as text.")
+    value = GenericScalar(
+        required=True,
+        description=(
+            "For a relationship, the peer's id. For an attribute, a value as the attribute stores it: a number for a "
+            "Number, NumberPool or Bandwidth attribute, a boolean for a Boolean or Checkbox attribute, and a text for "
+            "any other kind. An empty string names the objects that hold no value for it."
+        ),
+    )
 
 
 class NumberPoolDivision(ObjectType):

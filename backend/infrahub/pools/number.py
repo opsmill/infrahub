@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
     from infrahub.pools.number_ranges import EffectiveSpace
+    from infrahub.pools.scope import Division
 
 
 @dataclass
@@ -49,7 +50,10 @@ class UtilizationFigures:
 
 
 class NumberUtilizationGetter:
-    """Utilization of a number pool measured against its effective space, for the pool and for each range."""
+    """Utilization of a number pool measured against its effective space, for the pool and for each range.
+
+    With a division, only the numbers whose holding object is in the division on some live branch are counted.
+    """
 
     def __init__(
         self,
@@ -58,8 +62,10 @@ class NumberUtilizationGetter:
         space: EffectiveSpace,
         branch: Branch,
         at: Timestamp | str | None = None,
+        division: Division | None = None,
     ) -> None:
         self.db = db
+        self.division = division
         self.at = at
         self.pool = pool
         self.space = space
@@ -77,7 +83,7 @@ class NumberUtilizationGetter:
                 pool=self.pool,
                 ranges=self.space.as_query_ranges(),
                 branch=self.branch,
-                branch_agnostic=True,
+                division=self.division,
             )
             await query.execute(db=self.db)
             self.used = [UsedNumber(number=item.value, branch=item.branch) for item in query.get_data()]

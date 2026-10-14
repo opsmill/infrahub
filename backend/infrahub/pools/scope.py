@@ -12,6 +12,7 @@ from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.exceptions import ValidationError
+from infrahub.types import get_attribute_type
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -148,13 +149,10 @@ class Division:
         elements: list[DivisionElementPath] = []
         values: list[str | int | float | bool] = []
         for element, field in element_fields:
+            elements.append(division_element_path(field=field))
             if isinstance(field, RelationshipSchema):
-                elements.append(
-                    DivisionElementPath(name=field.get_identifier(), relationship_direction=field.direction)
-                )
                 values.append(_peer_id(relationship=node.get_relationship(name=field.name)))
                 continue
-            elements.append(DivisionElementPath(name=field.name))
             value = _attribute_value(attribute=node.get_attribute(name=field.name))
             if value is None:
                 raise ValidationError(
@@ -165,6 +163,67 @@ class Division:
                 )
             values.append(value)
         return cls(elements=tuple(elements), values=tuple(values))
+
+    @classmethod
+    def from_entries(
+        cls,
+        entries: Sequence[tuple[str, object]],
+        element_fields: Sequence[tuple[ScopeElement, AttributeSchema | RelationshipSchema]],
+    ) -> Division:
+        """Return the division that a query's entries name, in scope order, leaving out the elements no entry names.
+
+        Each entry pairs the name of a scope element with its value as the query sent it; `element_fields` pairs each
+        scope element with the attribute or relationship that holds it on the pool's kind. A value has the type its
+        element stores, or is an empty string, which names the division of the objects that hold no value for it.
+
+        Raises:
+            ValidationError: When an entry names no scope element or names one twice, or when a value does not have
+                the type its element stores.
+
+        """
+        names = {element.name for element, _ in element_fields}
+        given: dict[str, object] = {}
+        for path, value in entries:
+            if path not in names or path in given:
+                raise ValidationError(f'The division entry "{path}" is not an element of the pool\'s allocation scope')
+            given[path] = value
+        named = [(element, field) for element, field in element_fields if element.name in given]
+        return cls(
+            elements=tuple(division_element_path(field=field) for _, field in named),
+            values=tuple(
+                _entry_value(element=element, field=field, value=given[element.name]) for element, field in named
+            ),
+        )
+
+
+def division_element_path(field: AttributeSchema | RelationshipSchema) -> DivisionElementPath:
+    """Return where a Node keeps the value of the scope element that `field` holds."""
+    if isinstance(field, RelationshipSchema):
+        return DivisionElementPath(name=field.get_identifier(), relationship_direction=field.direction)
+    return DivisionElementPath(name=field.name)
+
+
+def _entry_value(
+    element: ScopeElement, field: AttributeSchema | RelationshipSchema, value: object
+) -> str | int | float | bool:
+    """Return the value of a query entry once it has the type its element stores.
+
+    Raises:
+        ValidationError: When the value is not an empty string and does not have the type its element stores.
+
+    """
+    if isinstance(field, RelationshipSchema):
+        if not isinstance(value, str):
+            raise ValidationError({element.name: f"{value!r} is not the id of a peer"})
+        return value
+    if not isinstance(value, str | int | float | bool):
+        raise ValidationError({element.name: f"{value!r} is not a valid {field.kind}"})
+    if isinstance(value, str) and not value:
+        return value
+    get_attribute_type(kind=field.kind).get_infrahub_class().validate_format(
+        value=value, name=element.name, schema=field
+    )
+    return value
 
 
 def _peer_id(relationship: RelationshipManager) -> str:
@@ -244,11 +303,12 @@ class AllocationScopeResolver:
         )
 
     def element_fields(
-        self, kind: str, scope: AllocationScope, pool: str, attribute: str
+        self, kind: str, scope: AllocationScope, pool: str, attribute: str | None = None
     ) -> list[tuple[ScopeElement, AttributeSchema | RelationshipSchema]]:
         """Return each scope element with the attribute or relationship that holds it on `kind`, in scope order.
 
-        `pool` names the pool and `attribute` the pooled attribute in the refusal.
+        `pool` names the pool in the refusal, and `attribute` the pooled attribute whose field the refusal is keyed
+        on; without `attribute` the refusal is a plain message.
 
         Raises:
             ValidationError: When the schema branch does not define a scope element on `kind`.
@@ -259,12 +319,13 @@ class AllocationScopeResolver:
         for element in scope.elements:
             field = self.find_element_field(node_schema=node_schema, element=element) if node_schema else None
             if field is None:
-                raise ValidationError(
-                    {
-                        f"{attribute}.from_pool": f'the scope element "{element.name}" of pool {pool} does not exist'
-                        f" on {kind} on branch {self.schema_branch.name}"
-                    }
+                message = (
+                    f'scope element "{element.name}" of pool {pool} does not exist on {kind} on branch'
+                    f" {self.schema_branch.name}"
                 )
+                if attribute is None:
+                    raise ValidationError(f"The {message}")
+                raise ValidationError({f"{attribute}.from_pool": f"the {message}"})
             element_fields.append((element, field))
         return element_fields
 
