@@ -44,6 +44,7 @@ from infrahub.pools.attribute_pool_applier import LoadedNodePoolApplier
 from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
 from infrahub.pools.default_allocator import DefaultPoolAllocator
 from infrahub.pools.noop_allocator import NoOpPoolAllocator
+from infrahub.profiles.data_reader import ProfileDataReader
 from infrahub.profiles.mandatory_fields_checker import ProfilesMandatoryFieldGetter
 from infrahub.profiles.node_applier import NodeProfilesApplier
 from infrahub.templates.node_applier import NodeTemplateApplier, TemplatePoolFields, get_relationship_names_to_read
@@ -479,9 +480,13 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         return applied.pools
 
     async def _get_profile_provided_mandatory_fields(
-        self, db: InfrahubDatabase, fields: dict[str, Any]
+        self, fields: dict[str, Any], profiles_mandatory_field_getter: ProfilesMandatoryFieldGetter | None
     ) -> tuple[set[str], set[str]]:
-        if not isinstance(self._schema, NodeSchema) or "profiles" not in fields:
+        if (
+            profiles_mandatory_field_getter is None
+            or not isinstance(self._schema, NodeSchema)
+            or "profiles" not in fields
+        ):
             return set(), set()
 
         mandatory_attrs_to_check = [a for a in self._schema.mandatory_attribute_names if a not in fields.keys()]
@@ -489,7 +494,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         if not mandatory_attrs_to_check and not mandatory_rels_to_check:
             return set(), set()
 
-        profiles_mandatory_field_getter = ProfilesMandatoryFieldGetter(db=db, branch=self._branch)
         return await profiles_mandatory_field_getter.get_mandatory_fields_from_profiles(
             schema=self._schema,
             profiles_data=fields.get("profiles"),
@@ -502,6 +506,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         fields: dict,
         db: InfrahubDatabase,
         pool_applier: AttributePoolApplierInterface,
+        profiles_mandatory_field_getter: ProfilesMandatoryFieldGetter | None,
         process_pools: bool = True,
         user_id: str = SYSTEM_USER_ID,
     ) -> None:
@@ -530,7 +535,9 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             (
                 self._profile_provided_attrs,
                 self._profile_provided_rels,
-            ) = await self._get_profile_provided_mandatory_fields(db=db, fields=fields)
+            ) = await self._get_profile_provided_mandatory_fields(
+                fields=fields, profiles_mandatory_field_getter=profiles_mandatory_field_getter
+            )
 
             errors.extend(
                 self._validate_mandatory_attributes(fields=fields, pool_pending_fields=template_pools.pending)
@@ -1006,6 +1013,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         id: str | None = None,
         process_pools: bool = True,
         pool_applier: AttributePoolApplierInterface | None = None,
+        profiles_mandatory_field_getter: ProfilesMandatoryFieldGetter | None = None,
         user_id: str = SYSTEM_USER_ID,
         **kwargs: Any,
     ) -> Self:
@@ -1018,16 +1026,21 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         self.id = id or str(UUIDT())
 
-        # Callers that create nodes outside the mutation entry points rely on the applier being built here.
+        # Callers that create nodes outside the mutation entry points rely on the components being built here.
+        profile_data_reader = ProfileDataReader(db=db, branch=self.get_branch())
         await self._process_fields(
             db=db,
             fields=kwargs,
             pool_applier=pool_applier
             or build_attribute_pool_applier(
-                profiles_applier=NodeProfilesApplier(db=db, branch=self.get_branch()),
+                profiles_applier=NodeProfilesApplier(
+                    db=db, branch=self.get_branch(), profile_data_reader=profile_data_reader
+                ),
                 db=db,
                 schema_branch=db.schema.get_schema_branch(name=self.get_branch().name),
             ),
+            profiles_mandatory_field_getter=profiles_mandatory_field_getter
+            or ProfilesMandatoryFieldGetter(db=db, branch=self.get_branch(), profile_data_reader=profile_data_reader),
             process_pools=process_pools,
             user_id=user_id,
         )
@@ -1103,7 +1116,9 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                     node_schema=self._schema, template=self._schema.display_label, value=display_label
                 )
 
-        await self._process_fields(db=db, fields=kwargs, pool_applier=LoadedNodePoolApplier())
+        await self._process_fields(
+            db=db, fields=kwargs, pool_applier=LoadedNodePoolApplier(), profiles_mandatory_field_getter=None
+        )
         return self
 
     async def _create(self, db: InfrahubDatabase, user_id: str, at: Timestamp | None = None) -> NodeChangelog:

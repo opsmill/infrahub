@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 from infrahub.core.query.node import NodeGetByHFIDQuery
 
-from .queries.get_profile_data import GetProfileDataQuery, RelationshipFilter
+from .queries.get_profile_data import RelationshipFilter
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -13,6 +13,8 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.schema import NodeSchema
     from infrahub.database import InfrahubDatabase
+
+    from .data_reader import ProfileDataReader
 
 
 @dataclass
@@ -54,9 +56,10 @@ async def _resolve_hfids_to_ids(
 
 
 class ProfilesMandatoryFieldGetter:
-    def __init__(self, db: InfrahubDatabase, branch: Branch) -> None:
+    def __init__(self, db: InfrahubDatabase, branch: Branch, profile_data_reader: ProfileDataReader) -> None:
         self.db = db
         self.branch = branch
+        self.profile_data_reader = profile_data_reader
 
     async def get_mandatory_fields_from_profiles(
         self,
@@ -91,15 +94,9 @@ class ProfilesMandatoryFieldGetter:
             rel_filters.append(rel_filter)
             rel_name_to_filter[rel_name] = rel_filter
 
-        query = await GetProfileDataQuery.init(
-            db=self.db,
-            branch=self.branch,
-            profile_ids=profile_ids,
-            attr_names=mandatory_attr_names,
-            include_relationships=rel_filters,
+        profile_data_list = await self.profile_data_reader.read(
+            profile_ids=profile_ids, attr_names=mandatory_attr_names, rel_filters=rel_filters
         )
-        await query.execute(db=self.db)
-        profile_data_list = query.get_profile_data()
 
         provided_attrs: set[str] = set()
         provided_rels: set[str] = set()

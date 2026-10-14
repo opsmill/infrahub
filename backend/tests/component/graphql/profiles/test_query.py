@@ -9,6 +9,7 @@ from infrahub.core.schema import NodeSchema
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.profiles.data_reader import ProfileDataReader
 from infrahub.profiles.node_applier import NodeProfilesApplier
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
@@ -154,7 +155,9 @@ async def test_profile_apply(db: InfrahubDatabase, default_branch: Branch, criti
     await prof_2.new(db=db, profile_name="prof2", profile_priority=2, level=9)
     await prof_2.save(db=db)
 
-    profiles_applier = NodeProfilesApplier(db=db, branch=default_branch)
+    profiles_applier = NodeProfilesApplier(
+        db=db, branch=default_branch, profile_data_reader=ProfileDataReader(db=db, branch=default_branch)
+    )
 
     crit_schema = registry.schema.get("TestCriticality", branch=default_branch)
     crit_1 = await Node.init(db=db, schema=crit_schema)
@@ -231,7 +234,9 @@ async def test_profile_apply_generic(
     await prof_2.new(db=db, profile_name="prof2", profile_priority=2, level=9)
     await prof_2.save(db=db)
 
-    profiles_applier = NodeProfilesApplier(db=db, branch=default_branch)
+    profiles_applier = NodeProfilesApplier(
+        db=db, branch=default_branch, profile_data_reader=ProfileDataReader(db=db, branch=default_branch)
+    )
 
     crit_schema = registry.schema.get("TestCriticality", branch=default_branch)
     crit_1 = await Node.init(db=db, schema=crit_schema)
@@ -402,7 +407,9 @@ async def test_is_from_profile_set_correctly(
     await prof_2.new(db=db, profile_name="prof2", profile_priority=2, level=9, fancy="sometimes")
     await prof_2.save(db=db)
 
-    profiles_applier = NodeProfilesApplier(db=db, branch=default_branch)
+    profiles_applier = NodeProfilesApplier(
+        db=db, branch=default_branch, profile_data_reader=ProfileDataReader(db=db, branch=default_branch)
+    )
 
     crit_schema = registry.schema.get("TestCriticality", branch=default_branch)
     crit_no_profile = await Node.init(db=db, schema=crit_schema)
@@ -486,7 +493,9 @@ async def test_is_profile_source_set_correctly(
     await prof_2.new(db=db, profile_name="prof2", profile_priority=2, level=9, fancy="sometimes")
     await prof_2.save(db=db)
 
-    profiles_applier = NodeProfilesApplier(db=db, branch=default_branch)
+    profiles_applier = NodeProfilesApplier(
+        db=db, branch=default_branch, profile_data_reader=ProfileDataReader(db=db, branch=default_branch)
+    )
 
     crit_schema = registry.schema.get("TestCriticality", branch=default_branch)
     crit_no_profile = await Node.init(db=db, schema=crit_schema)

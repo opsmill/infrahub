@@ -8,7 +8,7 @@ from infrahub_sdk.utils import is_valid_uuid
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.relationship.model import Relationship
 
-from .queries.get_profile_data import GetProfileDataQuery, ProfileData, RelationshipFilter
+from .queries.get_profile_data import ProfileData, RelationshipFilter
 
 if TYPE_CHECKING:
     from infrahub.core.attribute import BaseAttribute
@@ -16,6 +16,8 @@ if TYPE_CHECKING:
     from infrahub.core.node import Node
     from infrahub.core.relationship import RelationshipManager
     from infrahub.database import InfrahubDatabase
+
+    from .data_reader import ProfileDataReader
 
 
 @dataclass(frozen=True)
@@ -39,9 +41,10 @@ class NodeProfilesApplier:
     3. Profile priority determines which profile wins when multiple profiles set the same attribute
     """
 
-    def __init__(self, db: InfrahubDatabase, branch: Branch) -> None:
+    def __init__(self, db: InfrahubDatabase, branch: Branch, profile_data_reader: ProfileDataReader) -> None:
         self.db = db
         self.branch = branch
+        self.profile_data_reader = profile_data_reader
 
     async def _get_profile_ids(self, node: Node) -> list[str]:
         try:
@@ -110,18 +113,9 @@ class NodeProfilesApplier:
         attr_names_for_profiles: list[str],
         include_relationships: list[RelationshipFilter] | None = None,
     ) -> list[ProfileData]:
-        if not profile_ids:
-            return []
-        query = await GetProfileDataQuery.init(
-            db=self.db,
-            branch=self.branch,
-            profile_ids=profile_ids,
-            attr_names=attr_names_for_profiles,
-            include_relationships=include_relationships,
+        return await self.profile_data_reader.read(
+            profile_ids=profile_ids, attr_names=attr_names_for_profiles, rel_filters=include_relationships or []
         )
-        await query.execute(db=self.db)
-        profile_data_list = query.get_profile_data()
-        return sorted(profile_data_list, key=lambda x: (x.priority, x.uuid))
 
     def _apply_profile_to_attribute(self, node_attr: BaseAttribute, profile_value: Any, profile_id: str) -> bool:
         is_changed = False

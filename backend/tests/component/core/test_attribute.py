@@ -32,6 +32,7 @@ from infrahub.database.validation import verify_graph
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.constants import KIND_GRAPHQL_FIELD_NAME
 from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
+from infrahub.profiles.data_reader import ProfileDataReader
 from infrahub.profiles.node_applier import NodeProfilesApplier
 
 
@@ -458,7 +459,9 @@ async def test_update_stores_normalized_value(
         db=db,
         data={test_case.attribute_name: {"value": test_case.update_value}},
         pool_applier=build_attribute_pool_applier(
-            profiles_applier=NodeProfilesApplier(db=db, branch=default_branch),
+            profiles_applier=NodeProfilesApplier(
+                db=db, branch=default_branch, profile_data_reader=ProfileDataReader(db=db, branch=default_branch)
+            ),
             db=db,
             schema_branch=db.schema.get_schema_branch(name=default_branch.name),
         ),
