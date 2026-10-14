@@ -16,7 +16,7 @@ from infrahub.exceptions import ValidationError
 from infrahub.graphql.types.context import ContextInput
 from infrahub.log import get_logger
 from infrahub.profiles.node_applier import NodeProfilesApplier
-from infrahub.workflows.catalogue import PROFILE_REFRESH_MULTIPLE
+from infrahub.profiles.submission import submit_profile_refresh
 
 from .main import InfrahubMutationMixin, InfrahubMutationOptions
 
@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
+    from infrahub.events.models import EventContext
     from infrahub.graphql.initialization import GraphqlContext
     from infrahub.services.adapters.workflow import InfrahubWorkflow
 
@@ -91,6 +92,7 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
         workflow_service: InfrahubWorkflow,
         branch_name: str,
         obj: Node,
+        context: EventContext,
         node_ids: list[str] | None = None,
     ) -> None:
         if not node_ids:
@@ -99,12 +101,12 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
                 related_nodes.extend(await obj.related_templates.get_relationships(db=db))  # type: ignore[attr-defined]
             node_ids = [rel.peer_id for rel in related_nodes]
         if node_ids:
-            await workflow_service.submit_workflow(
-                workflow=PROFILE_REFRESH_MULTIPLE,
-                parameters={
-                    "branch_name": branch_name,
-                    "node_ids": node_ids,
-                },
+            await submit_profile_refresh(
+                workflow=workflow_service,
+                branch_name=branch_name,
+                node_ids=node_ids,
+                context=context,
+                profile_id=obj.id,
             )
 
     @classmethod
@@ -139,7 +141,11 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
             info=info, data=data, branch=branch, database=database, override_data=override_data
         )
         await cls._send_profile_refresh_workflows(
-            db=db, workflow_service=workflow_service, branch_name=branch.name, obj=obj
+            db=db,
+            workflow_service=workflow_service,
+            branch_name=branch.name,
+            obj=obj,
+            context=graphql_context.to_event_context(),
         )
 
         return obj, mutation
@@ -176,6 +182,7 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
                 workflow_service=workflow_service,
                 branch_name=branch.name,
                 obj=obj,
+                context=info.context.to_event_context(),
                 node_ids=list(removed_node_ids),
             )
 
@@ -194,7 +201,12 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
 
         deleted = await super()._delete_obj(graphql_context=graphql_context, branch=branch, obj=obj)
         await cls._send_profile_refresh_workflows(
-            db=db, workflow_service=workflow_service, branch_name=branch.name, obj=obj, node_ids=list(related_node_ids)
+            db=db,
+            workflow_service=workflow_service,
+            branch_name=branch.name,
+            obj=obj,
+            context=graphql_context.to_event_context(),
+            node_ids=list(related_node_ids),
         )
         return deleted
 
