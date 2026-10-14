@@ -418,10 +418,12 @@ class WritebackAbandoner:
         self,
         repository: RepositoryRef,
         state: DeliveryStatePort,
-        git: DeliveryGitPort,
+        git: AbandonmentGitPort,
         releaser: RegenerationReleasePort,
+        lease_renewal: LeaseRenewalPort,
         lock_registry: InfrahubLockRegistry,
         clock: Clock,
+        release_renew_seconds: float,
     ) -> None: ...
 
     async def abandon(self, *, queue_version: int, actor: Actor) -> AbandonmentRecord: ...
@@ -432,8 +434,10 @@ class WritebackAbandoner:
 Runs `research.md` R8: under the repository lock, `git.recorded_commit()` for the record, then
 `state.abandon(...)`, then `git.notify_branch_deleted(...)` for every abandoned entry that carried
 the deletion flag; then, with the lock released, `releaser.release(...)` on the lease window, then
-`state.clear_released(...)`. While the release runs, it renews the lease on a timer, as section 5
-says. If the release raises, it calls `state.expire_lease(...)` on its lease
+`state.clear_released(...)`. While the release runs, a timer renews the lease through
+`lease_renewal`, as section 5 says. The service and the abandoner run their release through one
+shared helper, which holds the timer and the expiry of a failed release. `build_writeback_abandoner`
+passes the same `LeaseRenewer` and `RELEASE_RENEW_SECONDS` as `build_writeback_service`. If the release raises, it calls `state.expire_lease(...)` on its lease
 and re-raises, so the recovery check releases the held items (`research.md` R10, rule 4). The
 queue is empty by then, so the retry mutation refuses, and the barrier no longer holds the
 repository: the error line tells the user to run the artifact and generator definitions and the

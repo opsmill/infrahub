@@ -80,8 +80,10 @@ async def build_writeback_abandoner(
         state=parts.state,
         git=parts.git,
         releaser=parts.releaser,
+        lease_renewal=parts.lease_renewal,
         lock_registry=lock.registry,
         clock=parts.clock,
+        release_renew_seconds=RELEASE_RENEW_SECONDS,
     )
 
 

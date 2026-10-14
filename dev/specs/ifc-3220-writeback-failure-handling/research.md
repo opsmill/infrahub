@@ -1012,7 +1012,8 @@ A new lease takes every held item that no live lease covers, up to a bound:
 
 The releaser renews the expiry after each awaited step, because a release awaits generator runs and
 can take minutes. Each renewal adds 15 minutes. One generator run can take hours, which is longer
-than the lease. So while the release runs, the service also renews the lease on a timer, every
+than the lease. So while the release runs, the service and the abandoner also renew the lease on a
+timer, every
 `RELEASE_RENEW_SECONDS`, 5 minutes. Each renewal of the timer runs on a database session of its
 own. The release reads and writes on the session of the flow at the same time, and a session runs
 one query at a time. A renewal that shares that session can break a read of the release, and the

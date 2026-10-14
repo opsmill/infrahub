@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -34,8 +35,11 @@ from tests.unit.git.writeback.fakes import (
     FixedClock,
     InMemoryDeliveryGit,
     InMemoryDeliveryState,
+    RecordingLeaseRenewal,
     RecordingRegenerationReleaser,
     Release,
+    Renewal,
+    RenewalAwaitingReleaser,
 )
 
 if TYPE_CHECKING:
@@ -181,7 +185,14 @@ def rig() -> Rig:
     git = ProbedGit(destination_git_branch=REPOSITORY.destination_git_branch, head=TRUNK, probe=probe)
     releaser = SteppedReleaser()
     abandoner = WritebackAbandoner(
-        repository=REPOSITORY, state=state, git=git, releaser=releaser, lock_registry=lock_registry, clock=clock
+        repository=REPOSITORY,
+        state=state,
+        git=git,
+        releaser=releaser,
+        lease_renewal=state,
+        lock_registry=lock_registry,
+        clock=clock,
+        release_renew_seconds=RELEASE_RENEW_SECONDS,
     )
     service = RepositoryWritebackService(
         repository=REPOSITORY,
@@ -323,6 +334,38 @@ async def test_failed_broadcast_still_releases(rig: Rig, caplog: pytest.LogCaptu
     assert rig.releaser.releases == [
         Release(repository_id=REPOSITORY.id, held=_held(HeldItem(id="definition-1", hold_seq=1)))
     ]
+
+
+async def test_a_timer_renews_the_lease_while_the_release_runs_and_stops_before_the_clear(rig: Rig) -> None:
+    await rig.queue(_merge())
+    await rig.hold("definition-1")
+    lease_renewal = RecordingLeaseRenewal()
+    releaser = RenewalAwaitingReleaser(renewed_twice=lease_renewal.renewed_twice)
+    abandoner = WritebackAbandoner(
+        repository=REPOSITORY,
+        state=rig.state,
+        git=rig.git,
+        releaser=releaser,
+        lease_renewal=lease_renewal,
+        lock_registry=InfrahubLockRegistry(local_only=True),
+        clock=rig.clock,
+        release_renew_seconds=0.01,
+    )
+    rig.clear_calls()
+
+    await abandoner.abandon(queue_version=1, actor=ACTOR)
+
+    assert releaser.releases == [
+        Release(repository_id=REPOSITORY.id, held=_held(HeldItem(id="definition-1", hold_seq=1)))
+    ]
+    assert len(lease_renewal.renewals) >= 2
+    assert lease_renewal.renewals == [Renewal(repository_id=REPOSITORY.id, lease_id="lease-1")] * len(
+        lease_renewal.renewals
+    )
+    assert rig.state.calls == ["abandon", "clear_released"]
+    # The timer ended before the abandonment returned, so no renewal can follow the clear.
+    assert asyncio.all_tasks() == {asyncio.current_task()}
+    assert (rig.intent.held.artifact_definitions, rig.intent.held.release_leases) == ((), ())
 
 
 async def test_release_runs_after_the_lock_is_released(rig: Rig) -> None:

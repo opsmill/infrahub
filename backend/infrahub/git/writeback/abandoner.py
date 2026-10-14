@@ -3,15 +3,16 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.git.writeback.models import AbandonmentRecord
-from infrahub.git.writeback.service import REPOSITORY_LOCK_NAMESPACE
+from infrahub.git.writeback.service import REPOSITORY_LOCK_NAMESPACE, release_under_lease
 from infrahub.log import get_run_logger
 
 if TYPE_CHECKING:
-    from infrahub.git.writeback.models import Actor, ReleaseLease
+    from infrahub.git.writeback.models import Actor
     from infrahub.git.writeback.ports import (
         AbandonmentGitPort,
         Clock,
         DeliveryStatePort,
+        LeaseRenewalPort,
         RegenerationReleasePort,
         RepositoryRef,
     )
@@ -29,15 +30,19 @@ class WritebackAbandoner:
         state: DeliveryStatePort,
         git: AbandonmentGitPort,
         releaser: RegenerationReleasePort,
+        lease_renewal: LeaseRenewalPort,
         lock_registry: InfrahubLockRegistry,
         clock: Clock,
+        release_renew_seconds: float,
     ) -> None:
         self.repository = repository
         self.state = state
         self.git = git
         self.releaser = releaser
+        self.lease_renewal = lease_renewal
         self.lock_registry = lock_registry
         self.clock = clock
+        self.release_renew_seconds = release_renew_seconds
 
     async def abandon(self, *, queue_version: int, actor: Actor) -> AbandonmentRecord:
         """Remove every queued merge and the owed import of the repository, and return the record that names them.
@@ -83,7 +88,14 @@ class WritebackAbandoner:
         if lease is not None:
             try:
                 # A release awaits generator runs, which take the repository lock to fetch a commit they lack.
-                await self._release(lease=lease)
+                await release_under_lease(
+                    repository=self.repository,
+                    lease=lease,
+                    state=self.state,
+                    releaser=self.releaser,
+                    lease_renewal=self.lease_renewal,
+                    renew_seconds=self.release_renew_seconds,
+                )
             except Exception:
                 # The run fails with the error of the release, so this line tells the user that nothing is left to abandon.
                 log.error(
@@ -126,28 +138,3 @@ class WritebackAbandoner:
                     self.repository.name,
                     exc_info=True,
                 )
-
-    async def _release(self, *, lease: ReleaseLease) -> None:
-        repository_id = self.repository.id
-
-        async def renew() -> None:
-            await self.state.renew_lease(repository_id=repository_id, lease_id=lease.lease_id)
-
-        try:
-            await self.releaser.release(repository_id=repository_id, held=lease.window, renew=renew)
-        except Exception:
-            # Nothing cleared the items, so the next lease takes them and its run releases every one.
-            await self._expire(lease=lease)
-            raise
-
-    async def _expire(self, *, lease: ReleaseLease) -> None:
-        try:
-            await self.state.expire_lease(repository_id=self.repository.id, lease_id=lease.lease_id)
-        except Exception:
-            # The lease then ends at its own expiry, and a later run leases its items again.
-            log.warning(
-                "Failed to end the release lease %s of repository %s.",
-                lease.lease_id,
-                self.repository.name,
-                exc_info=True,
-            )

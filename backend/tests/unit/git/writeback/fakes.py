@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import itertools
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -417,3 +418,42 @@ class FailingDeliveryRunQuery:
     async def has_active_run(self, *, repository_id: str) -> bool:
         self.asked.append(("has_active_run", repository_id))
         raise self.error
+
+
+@dataclass(frozen=True)
+class Renewal:
+    repository_id: str
+    lease_id: str
+
+
+class RecordingLeaseRenewal:
+    """Records each renewal of a lease that it is asked for, a failed one included, and sets `renewed_twice` at two.
+
+    An error that a test appends to `failures` is raised by the next renewal, after it is recorded.
+    """
+
+    def __init__(self) -> None:
+        self.renewals: list[Renewal] = []
+        self.failures: list[BaseException] = []
+        self.renewed_twice = asyncio.Event()
+
+    async def renew_lease(self, *, repository_id: str, lease_id: str) -> None:
+        self.renewals.append(Renewal(repository_id=repository_id, lease_id=lease_id))
+        if len(self.renewals) == 2:
+            self.renewed_twice.set()
+        if self.failures:
+            raise self.failures.pop(0)
+
+
+class RenewalAwaitingReleaser(RecordingRegenerationReleaser):
+    """Returns once the lease was renewed twice, and never renews it itself, so each renewal comes from elsewhere."""
+
+    def __init__(self, *, renewed_twice: asyncio.Event) -> None:
+        super().__init__()
+        self.renewed_twice = renewed_twice
+
+    async def release(
+        self, *, repository_id: str, held: HeldRegeneration, renew: Callable[[], Awaitable[None]]
+    ) -> None:
+        await asyncio.wait_for(self.renewed_twice.wait(), timeout=5)
+        self.releases.append(Release(repository_id=repository_id, held=held))
