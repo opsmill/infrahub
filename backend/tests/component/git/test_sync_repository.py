@@ -52,7 +52,7 @@ from tests.adapters.repository_record_store import FailingRepositoryRecordStore,
 from tests.conftest import TestHelper
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.git import LocalRemote, build_repository_client, clone_repository
-from tests.helpers.repository_activity import activity_run
+from tests.helpers.repository_activity import activity_run, run_record_writes, stored_run_keys
 from tests.helpers.repository_sync import (
     FLOW_RUN_LOGGER,
     INVALID_YAML_CONFIG,
@@ -1089,20 +1089,6 @@ class TestSynchronisationCycleIsolation(TestInfrahubApp):
             for record in caplog.records
             if record.name == FLOW_RUN_LOGGER and record.getMessage().startswith("Unable to synchronize repository")
         ] == ["Unable to synchronize repository unreachable-broadcast-repo, continuing with the other repositories"]
-
-
-def run_record_writes(cache: RecordingCache, repository_id: str) -> list[tuple[str | None, str | None]]:
-    """Return the phase and branch of every run record the cache was given for the repository, in order."""
-    prefix = f"git:activity:run:{repository_id}:"
-    return [
-        (json.loads(call.value)["phase"], json.loads(call.value)["branch_name"])
-        for call in cache.set_calls
-        if call.key.startswith(prefix)
-    ]
-
-
-def stored_run_keys(cache: RecordingCache, repository_id: str) -> list[str]:
-    return [key for key in cache.storage if key.startswith(f"git:activity:run:{repository_id}:")]
 
 
 @pytest.mark.usefixtures("no_import_sync_filter")

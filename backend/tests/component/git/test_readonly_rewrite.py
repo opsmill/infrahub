@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import json
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
@@ -17,21 +19,33 @@ from infrahub.core.registry import registry
 from infrahub.exceptions import RepositoryError
 from infrahub.git.divergence.recorder import HistoryRewriteRecorder
 from infrahub.git.divergence.store import SdkTrackedTargetReader
+from infrahub.git.import_errors import RepositoryImportError
 from infrahub.git.models import GitReadOnlyRepositoryImportCommit
 from infrahub.git.repository import InfrahubReadOnlyRepository
 from infrahub.git.tasks import import_read_only_repository_last_commit
+from infrahub.workers.dependencies import build_cache
 from infrahub.workflows.catalogue import GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT, GIT_REPOSITORIES_PULL_READ_ONLY
+from tests.adapters.cache import RecordingCache
 from tests.adapters.repository_record_store import (
     FailingRepositoryRecordStore,
     FailingTrackedTargetReader,
     InMemoryRepositoryRecordStore,
 )
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.git import LocalRemote
+from tests.helpers.repository_activity import (
+    last_run_branches,
+    run_record_operations,
+    run_record_writes,
+    stored_run_keys,
+)
+from tests.helpers.repository_sync import INVALID_YAML_CONFIG, invalid_yaml_config_message
 from tests.helpers.test_app import TestInfrahubAppHoldingWorkflows
 
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from fast_depends import Provider
     from infrahub_sdk import InfrahubClient
 
     from infrahub.database import InfrahubDatabase
@@ -102,6 +116,16 @@ async def _wait_until_queued(timeline: LockTimeline, lock_name: str, count: int)
 
 def _rewrite_the_tracked_ref(tracked: TrackedRef) -> str:
     return tracked.remote.commit(branch_name=TRACKED_REF, files={"data.txt": "rewritten\n"}, amend=True)
+
+
+def _import_latest_commit_model(tracked: TrackedRef) -> GitReadOnlyRepositoryImportCommit:
+    return GitReadOnlyRepositoryImportCommit(
+        repository_id=tracked.repository_id,
+        repository_name=tracked.name,
+        repository_kind=InfrahubKind.READONLYREPOSITORY,
+        infrahub_branch_name=registry.default_branch,
+        ref=TRACKED_REF,
+    )
 
 
 class TestReadOnlyRepositoryRewrite(TestInfrahubAppHoldingWorkflows):
@@ -362,3 +386,100 @@ class TestReadOnlyRepositoryRewrite(TestInfrahubAppHoldingWorkflows):
 
         assert (await _read_repository(db=db, tracked=tracked)).commit.value == rewritten
         assert await _rewrite_record(db=db, tracked=tracked) == NO_RECORD
+
+    async def test_an_import_of_the_latest_commit_ends_its_run_before_the_pull_records_its_own(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        dependency_provider: Provider,
+        workflow_local: HoldingWorkflowExecution,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """The commit write submits the pull, which runs after the import has finished."""
+        tracked = await self._add_repository(client=client, db=db, tmp_path=tmp_path, name="activity-import")
+        tracked.remote.commit(branch_name=TRACKED_REF, files={"data.txt": "advanced\n"})
+        cache = RecordingCache()
+
+        with override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider):
+            with workflow_local.hold() as held:
+                await import_read_only_repository_last_commit(model=_import_latest_commit_model(tracked))
+
+            assert [submitted.workflow.name for submitted in held] == RE_POINT_WORKFLOWS
+            assert run_record_operations(cache=cache, repository_id=tracked.repository_id) == {"reimport"}
+            assert run_record_writes(cache=cache, repository_id=tracked.repository_id) == [
+                (None, None),
+                ("fetching", None),
+                ("building", registry.default_branch),
+                ("applying", registry.default_branch),
+            ]
+            assert stored_run_keys(cache=cache, repository_id=tracked.repository_id) == []
+            assert last_run_branches(cache=cache, repository_id=tracked.repository_id, operation="reimport") == [
+                {"branch_name": registry.default_branch, "outcome": "imported"}
+            ]
+            assert f"git:activity:last:{tracked.repository_id}:pull" not in cache.storage
+
+            await workflow_local.run(held[0])
+
+        assert stored_run_keys(cache=cache, repository_id=tracked.repository_id) == []
+        assert last_run_branches(cache=cache, repository_id=tracked.repository_id, operation="pull") == [
+            {"branch_name": registry.default_branch, "outcome": "imported"}
+        ]
+
+    async def test_an_import_of_a_commit_the_clone_holds_keeps_the_earlier_last_run(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        dependency_provider: Provider,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """The pull that the commit write submits records the import, so a failed earlier import stays visible."""
+        tracked = await self._add_repository(client=client, db=db, tmp_path=tmp_path, name="activity-no-change")
+        cache = RecordingCache()
+        last_run_key = f"git:activity:last:{tracked.repository_id}:reimport"
+        earlier_failure = json.dumps(
+            {
+                "operation": "reimport",
+                "started_at": "2026-01-01T10:00:00Z",
+                "finished_at": "2026-01-01T10:00:30Z",
+                "branches": [{"branch_name": registry.default_branch, "outcome": "failed"}],
+            }
+        )
+        await cache.set(key=last_run_key, value=earlier_failure)
+
+        with override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider):
+            await import_read_only_repository_last_commit(model=_import_latest_commit_model(tracked))
+
+        assert run_record_writes(cache=cache, repository_id=tracked.repository_id) == [(None, None), ("fetching", None)]
+        assert stored_run_keys(cache=cache, repository_id=tracked.repository_id) == []
+        assert cache.storage[last_run_key] == earlier_failure
+
+    async def test_an_import_of_the_latest_commit_that_fails_records_the_branch_as_failed(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        dependency_provider: Provider,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        name = "activity-failed-import"
+        tracked = await self._add_repository(client=client, db=db, tmp_path=tmp_path, name=name)
+        tracked.remote.commit(branch_name=TRACKED_REF, files={".infrahub.yml": INVALID_YAML_CONFIG})
+        cache = RecordingCache()
+
+        with (
+            override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider),
+            pytest.raises(RepositoryImportError, match=rf"^{re.escape(invalid_yaml_config_message(name))}$"),
+        ):
+            await import_read_only_repository_last_commit(model=_import_latest_commit_model(tracked))
+
+        assert run_record_writes(cache=cache, repository_id=tracked.repository_id) == [
+            (None, None),
+            ("fetching", None),
+            ("building", registry.default_branch),
+        ]
+        assert stored_run_keys(cache=cache, repository_id=tracked.repository_id) == []
+        assert last_run_branches(cache=cache, repository_id=tracked.repository_id, operation="reimport") == [
+            {"branch_name": registry.default_branch, "outcome": "failed"}
+        ]

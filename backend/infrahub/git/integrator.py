@@ -70,6 +70,8 @@ from infrahub.exceptions import (
     RepositoryInvalidFileSystemError,
     TransformError,
 )
+from infrahub.git.activity.factory import ACTIVE_RUNS
+from infrahub.git.activity.models import RepositoryActivityPhase
 from infrahub.git.base import InfrahubRepositoryBase, extract_repo_file_information
 from infrahub.git.closure_builder.canonicalizer import canonicalize_path
 from infrahub.git.closure_builder.dispatcher import build_default_closure_builder
@@ -459,11 +461,30 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
     @flow(name="import-object-from-file", flow_run_name="Import objects")
     async def import_objects_from_files(
-        self, infrahub_branch_name: str, git_branch_name: str | None = None, commit: str | None = None
+        self,
+        infrahub_branch_name: str,
+        git_branch_name: str | None = None,
+        commit: str | None = None,
+        activity_run_id: str | None = None,
     ) -> None:
+        """Build the import of a branch, then apply it.
+
+        Args:
+            activity_run_id: The run, started by the caller in this process, that the build and apply steps are
+                reported to. Nothing is reported without it.
+
+        Raises:
+            ActiveRunNotFoundError: When this process tracks no activity run with that id.
+
+        """
+        activity = ACTIVE_RUNS.get(run_id=activity_run_id) if activity_run_id else None
+        if activity:
+            await activity.set_phase(phase=RepositoryActivityPhase.BUILDING, branch_name=infrahub_branch_name)
         plan = await self.build_import_plan(
             infrahub_branch_name=infrahub_branch_name, git_branch_name=git_branch_name, commit=commit
         )
+        if activity:
+            await activity.set_phase(phase=RepositoryActivityPhase.APPLYING, branch_name=infrahub_branch_name)
         await self.apply_import_plan(plan)
 
     async def build_import_plan(
