@@ -1,3 +1,4 @@
+import { toDateTime, toDateTimeOrNull } from "@/entities/repository/api/date-time.mappers";
 import type { RepositoryCommitsResponse } from "@/entities/repository/api/get-repository-commits-from-api";
 import type {
   RepositoryCommit,
@@ -6,18 +7,6 @@ import type {
 
 type RepositoryCommitsWire = RepositoryCommitsResponse["InfrahubRepositoryCommits"];
 type RepositoryCommitNodeWire = RepositoryCommitsWire["edges"][number]["node"];
-
-// gql.tada types the DateTime scalar as unknown; the wire carries ISO 8601 strings.
-function toDateTime(value: unknown): string {
-  if (typeof value !== "string") {
-    throw new Error("Expected an ISO 8601 DateTime string");
-  }
-  return value;
-}
-
-function toDateTimeOrNull(value: unknown): string | null {
-  return value === null || value === undefined ? null : toDateTime(value);
-}
 
 function mapToRepositoryCommit(node: RepositoryCommitNodeWire): RepositoryCommit {
   return {

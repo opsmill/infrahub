@@ -18,6 +18,10 @@ export interface RemoteCheckTaskKeyParams {
   taskId: string;
 }
 
+export interface RepositoryActivityKeyParams {
+  repositoryId: string;
+}
+
 export const repositoriesQueryKeys = {
   all: ["repositories"] as const,
   repository: ({ repositoryId, branchName }: RepositoryKeyParams) =>
@@ -27,6 +31,10 @@ export const repositoriesQueryKeys = {
   // Outside `repository`: the commit-log refetch this task triggers when it ends must not refetch it.
   remoteCheckTask: ({ taskId }: RemoteCheckTaskKeyParams) =>
     [...repositoriesQueryKeys.all, "remote-check-task", { taskId }] as const,
+  // Outside `repository` and without the branch: the answer is the same on every branch, and the
+  // commit-log refetch a finished run triggers must not refetch it.
+  activity: ({ repositoryId }: RepositoryActivityKeyParams) =>
+    [...repositoriesQueryKeys.all, "activity", { repositoryId }] as const,
 } as const;
 
 export const repositoryQueryKeys = {
@@ -46,6 +54,7 @@ export const repositoryQueryKeys = {
     [...repositoryQueryKeys.all, "names", params] as const,
   names: (params: GetRepositoryNamesParams) =>
     [...repositoryQueryKeys.all, "names", params] as const,
+  branchStatuses: () => [...repositoryQueryKeys.all, "branch-status"] as const,
   branchStatus: (params: GetRepositoryBranchStatusParams) =>
-    [...repositoryQueryKeys.all, "branch-status", params] as const,
+    [...repositoryQueryKeys.branchStatuses(), params] as const,
 };

@@ -6,6 +6,7 @@ import {
   type FieldSet,
   partitionFieldsByBranchSupport,
 } from "@/entities/repository/domain/rules/partition-fields-by-branch-support";
+import { RepositoryActivityCard } from "@/entities/repository/ui/repository-activity-card/repository-activity-card";
 import { RepositoryBranchesCard } from "@/entities/repository/ui/repository-branches-card/repository-branches-card";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
@@ -46,6 +47,8 @@ export function RepositoryObjectDetails({
           permission={permission}
         />
       )}
+
+      <RepositoryActivityCard repositoryId={objectData.id} />
 
       <RepositoryBranchesCard repositoryId={objectData.id} schema={objectSchema} />
     </>
