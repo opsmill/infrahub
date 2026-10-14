@@ -8,6 +8,7 @@ import { IconMarker } from "@/entities/repository/ui/repository-activity-card/ac
 
 interface RepositoryLockRowProps {
   lock: RepositoryLock;
+  /** The lock names only a worker, which can run several flows at once, so no run is named as holder. */
   isWorkerRunning: boolean;
 }
 

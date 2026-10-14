@@ -1,4 +1,17 @@
-import { useNow } from "@/shared/hooks/use-now";
+import React from "react";
+
+const TICK_MS = 1000;
+
+function useNow() {
+  const [now, setNow] = React.useState(Date.now);
+
+  React.useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), TICK_MS);
+    return () => window.clearInterval(id);
+  }, []);
+
+  return now;
+}
 
 /** "45s", "1m 04s", "2h 05m": the unit that matters for a run of that length. */
 export function formatElapsed(ms: number): string {

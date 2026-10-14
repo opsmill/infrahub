@@ -13,10 +13,7 @@ export interface UseRefreshAfterRepositoryRunParams {
   repositoryId: string;
 }
 
-/**
- * Refreshes the commit list, the branch statuses and the repository's own details once a run on the
- * repository finishes, since none of them check for changes on their own.
- */
+/** The commit list, branch statuses and repository details do not poll, so a finished run leaves them stale. */
 export function useRefreshAfterRepositoryRun({ repositoryId }: UseRefreshAfterRepositoryRunParams) {
   const queryClient = useQueryClient();
   const { currentBranch } = useCurrentBranch();

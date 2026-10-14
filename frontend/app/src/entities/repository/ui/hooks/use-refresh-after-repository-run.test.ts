@@ -3,6 +3,8 @@ import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderHook } from "vitest-browser-react";
 
+import { waitFor } from "@/shared/utils/common";
+
 import { BranchContext } from "@/entities/branches/ui/branches-provider";
 import type { RepositoryActivity } from "@/entities/repository/domain/model/repository-activity";
 import { getRepositoryActivity } from "@/entities/repository/domain/use-cases/get-repository-activity";
@@ -58,7 +60,7 @@ const renderRefresh = async (firstAnswer: RepositoryActivity) => {
   await vi.waitFor(() => expect(queryClient.getQueryData(activityKey)).toEqual(firstAnswer));
 
   // Each answer needs a render of its own, as polls arrive seconds apart, not in one batch.
-  const settle = () => new Promise((resolve) => setTimeout(resolve, 50));
+  const settle = () => waitFor(50);
   await settle();
 
   const answer = async (next: RepositoryActivity) => {
