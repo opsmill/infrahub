@@ -444,8 +444,7 @@ SC-002, SC-007.
 - [X] T112 [US2] Add `test_a_merge_with_files_is_refused_until_a_retry_delivers_onto_the_moved_remote_trunk`
       to the same module: while a push waits and the remote default branch moved, the merge check
       refuses the merge of a branch that changes a file of the repository, the branch stays open, and
-      the same merge goes through after the retry delivers (edge case of the merge check, accepted on
-      2026-10-13).
+      the same merge goes through after the retry delivers (edge case of the merge check).
 - [ ] T059 [P] [US2] Write the retry mutation in the three-file pattern:
       `frontend/app/src/entities/repository/api/retry-delivery-from-api.ts`,
       `frontend/app/src/entities/repository/domain/use-cases/retry-delivery.ts`,

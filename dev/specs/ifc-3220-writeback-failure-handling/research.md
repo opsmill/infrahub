@@ -412,7 +412,7 @@ Under the repository lock:
     the held work stays held.
 12. **Broadcast** `RefreshGitFetch` pinned to M, as `merge_git_repository` does today. A broadcast
     that fails is logged at warning level and does not fail the attempt: a worker that missed the
-    message fetches M when it needs it. Accepted on 2026-10-13.
+    message fetches M when it needs it.
 13. **Delete source branches.** For each delivered entry with `delete_source_git_branch` set, and
     that no remaining entry names, delete the remote branch and send
     `RefreshGitRepositoryBranchDeleted` (R12). A branch that is already gone counts as deleted. A
@@ -432,7 +432,7 @@ Then, outside the repository lock:
     awaited step. If the release fails, set the lease's expiry to now, then classify the failure
     (stage `release`, R5) and stop. The held items stay (R10, rule 4). The record of that failure
     never sets `action-required`, also on the final attempt, because the merges are on the remote
-    already. Accepted on 2026-10-13.
+    already.
 17. **Clear.** Under the state lock: remove each held item of the lease window that still has the
     sequence that the lease names, and end the lease. An item held again meanwhile stays.
 
@@ -1089,7 +1089,7 @@ crash cases of the inline release.
 
 | Path | Change |
 |---|---|
-| `InfrahubRepository.collect_pending_imports`, the active loop | Removes the repository's default branch from the branches to pull. Removes from the new **and** the updated branches every remote branch that a pending entry names as its source. Logs both once per cycle. The staging path of the same method keeps the full list, because a staging repository is never queued. A state that cannot be read fails closed: the sync of that repository stops for the cycle, and the other repositories go on (accepted on 2026-10-13). |
+| `InfrahubRepository.collect_pending_imports`, the active loop | Removes the repository's default branch from the branches to pull. Removes from the new **and** the updated branches every remote branch that a pending entry names as its source. Logs both once per cycle. The staging path of the same method keeps the full list, because a staging repository is never queued. A state that cannot be read fails closed: the sync of that repository stops for the cycle, and the other repositories go on. |
 | `git/tasks.py::bootstrap_local_repository` | Skips the seed import of the default branch after a fresh clone, and logs it. The clone itself proceeds. A seed into a staging branch is not skipped, as for the staging path of the synchronisation. |
 | `graphql/mutations/repository.py::ProcessRepository` | Refuses on **every** branch, with a message that names the pending delivery. The import flow it submits checks again under the repository lock before it applies, because a merge can be queued in between. |
 
@@ -1133,7 +1133,7 @@ names the branch as `source_git_branch`, and returns whether one did. When one d
 
 When the call itself fails, the task keeps the remote branch too, logs at error level that the
 user can delete it by hand once nothing is pending, and does not raise, so the deletion goes on in
-the other repositories. Keeping a branch loses no content. Accepted on 2026-10-13.
+the other repositories. Keeping a branch loses no content.
 
 A separate read before the call would add nothing: the call already answers under the lock, and a read
 outside the lock could disagree with it.
@@ -1203,7 +1203,7 @@ default branch makes the synchronisation fail, and nothing reaches the check.
 delivered commit fails, the synchronisation logs a warning and fails the default branch at the
 record step, as a failed rewrite record does. The import of the default branch is kept, because the
 graph already records the new commit. The call catches every exception on purpose: an error that
-escapes would lose the imports of the cycle. Accepted on 2026-10-13.
+escapes would lose the imports of the cycle.
 
 **Not cleared.** Like the sibling's rewrite record, it is a fact and not an alert. A later
 reverted delivery of another commit overwrites it. A record of the same delivered commit is kept,

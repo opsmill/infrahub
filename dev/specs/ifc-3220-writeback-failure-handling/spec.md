@@ -111,7 +111,7 @@ must equal the remote head, and nothing must be pending.
    appended to the queue, and the first one stays in the queue. When the remote default branch
    moved while the push waits, and the second branch records another commit of that repository
    than the default branch, as a branch that changes a file of it does, the merge check refuses the
-   merge instead, until a retry delivers (see "Edge Cases"). Accepted on 2026-10-13.
+   merge instead, until a retry delivers (see "Edge Cases").
 3. **Given** a remote default branch that advanced during the outage, **When** the retry runs,
    **Then** the replay merges onto the fetched remote head, no force-push happens, the delivered
    commit is recorded, and the repository objects of that commit are imported.
@@ -273,7 +273,7 @@ deleted.
    merge is not blocked. One exception: when the remote default branch of X moved while the push
    waits, the merge check refuses the merge of a branch that records another commit of X than the
    default branch, as a branch that changes a file of X does, until a retry delivers (see "Edge
-   Cases"). Accepted on 2026-10-13.
+   Cases").
 
 ---
 
@@ -441,7 +441,7 @@ unreplayable, with a cause that names the discarded source commit.
   records the latest commit. The synchronisation does not import the trunk while the push waits, so
   only a delivery records the new head: after a retry delivers, the same merge goes through. A merge
   of a branch that records the commit of the trunk, such as a branch that changes no file of that
-  repository, is not refused. Accepted on 2026-10-13: the check stays as it is, and User Story 2
+  repository, is not refused. The check stays as it is, and User Story 2
   scenario 2 and User Story 6 scenario 5 name the exception.
   The IFC-3210 spec records the conflict in its edge cases.
 
@@ -505,8 +505,7 @@ system, and the new delivery path must keep them true.*
 - **FR-010**: The system MUST NOT block a branch merge because a repository's delivery is
   outstanding. The merge check of the remote heads is a separate rule: when the remote default
   branch moved while a push waits, it refuses the merge of a branch that records another commit of
-  that repository than the default branch, until a retry delivers (see "Edge Cases", accepted on
-  2026-10-13).
+  that repository than the default branch, until a retry delivers (see "Edge Cases").
 - **FR-011**: The system MUST NOT delete a remote branch while a delivery that references its commit
   is outstanding. When the system refused a deletion that was requested, it MUST delete the branch
   once the referencing entry is delivered, and MUST NOT delete it when the entry is abandoned. While

@@ -255,7 +255,7 @@ either case.
   than the commit of the trunk of that repository, until the delivery is done. IFC-3220 expects the
   opposite: in its User Story 2, scenario 2 queues a second merge behind the pending one, and
   scenario 3 replays onto a remote trunk that advanced. The two rules conflict. This spec does not
-  decide which one wins. On 2026-10-13, IFC-3220 accepted the refusal: while a push waits and the
+  decide which one wins. IFC-3220 keeps the refusal: while a push waits and the
   remote default branch moved, the merge of a branch that changes files of that repository is
   refused until a retry delivers. See the edge case "The merge check of IFC-3210 while a delivery is
   pending" in `dev/specs/ifc-3220-writeback-failure-handling/spec.md`, and the test
