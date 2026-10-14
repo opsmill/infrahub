@@ -118,26 +118,35 @@ class BulkRecomputeWriter:
                             # so their cross-node readers chain too, not only the requested ones.
                             saved.append((node, sorted(set(node.node_changelog.updated_fields))))
                 for node, fields in saved:
-                    await self._emit(node=node, fields=fields, branch=branch, context=context, origin=origin)
+                    await send_node_updated_event(
+                        event_service=self.event_service,
+                        node=node,
+                        fields=fields,
+                        branch=branch,
+                        context=context,
+                        origin=origin,
+                    )
                     written.append(WrittenNode(node_id=node.get_id(), kind=node.get_kind(), fields=tuple(fields)))
         return written
 
-    async def _emit(
-        self,
-        *,
-        node: Node,
-        fields: list[str],
-        branch: Branch,
-        context: EventContext,
-        origin: NodeMutationOrigin,
-    ) -> None:
-        meta = EventMeta.from_context(context=context, branch=branch)
-        meta.origin = origin
-        event = NodeUpdatedEvent(
-            kind=node.get_kind(),
-            node_id=node.get_id(),
-            changelog=node.node_changelog,
-            fields=fields,
-            meta=meta,
-        )
-        await self.event_service.send(event=event)
+
+async def send_node_updated_event(
+    *,
+    event_service: InfrahubEventService,
+    node: Node,
+    fields: list[str],
+    branch: Branch,
+    context: EventContext,
+    origin: NodeMutationOrigin,
+) -> None:
+    """Send the update event of a saved node, with the changelog of its last save."""
+    meta = EventMeta.from_context(context=context, branch=branch)
+    meta.origin = origin
+    event = NodeUpdatedEvent(
+        kind=node.get_kind(),
+        node_id=node.get_id(),
+        changelog=node.node_changelog,
+        fields=fields,
+        meta=meta,
+    )
+    await event_service.send(event=event)
