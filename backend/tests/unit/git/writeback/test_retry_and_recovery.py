@@ -112,6 +112,7 @@ def rig() -> Rig:
         state=state,
         git=git,
         releaser=releaser,
+        lease_renewal=state,
         lock_registry=InfrahubLockRegistry(local_only=True),
         clock=clock,
         release_renew_seconds=RELEASE_RENEW_SECONDS,

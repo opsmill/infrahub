@@ -219,6 +219,11 @@ class RegenerationReleasePort(Protocol):
         """
 
 
+class LeaseRenewalPort(Protocol):
+    async def renew_lease(self, *, repository_id: str, lease_id: str) -> None:
+        """Move the expiry of the lease while the release of its items runs."""
+
+
 class DeliveryRunQuery(Protocol):
     async def has_queued_run(self, *, repository_id: str) -> bool:
         """Return whether a delivery run of the repository waits to start.

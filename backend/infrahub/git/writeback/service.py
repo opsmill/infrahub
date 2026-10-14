@@ -13,7 +13,7 @@ from infrahub.git.writeback.models import DeliveryAttemptResult, DeliveryFailure
 from infrahub.log import get_run_logger
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
+    from collections.abc import AsyncIterator, Iterator
     from datetime import datetime, timedelta
 
     from infrahub.git.writeback.models import PendingMerge, ReleaseLease, WritebackIntent
@@ -21,6 +21,7 @@ if TYPE_CHECKING:
         Clock,
         DeliveryGitPort,
         DeliveryStatePort,
+        LeaseRenewalPort,
         RegenerationReleasePort,
         RepositoryRef,
     )
@@ -91,6 +92,7 @@ class RepositoryWritebackService:
         state: DeliveryStatePort,
         git: DeliveryGitPort,
         releaser: RegenerationReleasePort,
+        lease_renewal: LeaseRenewalPort,
         lock_registry: InfrahubLockRegistry,
         clock: Clock,
         release_renew_seconds: float,
@@ -99,6 +101,7 @@ class RepositoryWritebackService:
         self.state = state
         self.git = git
         self.releaser = releaser
+        self.lease_renewal = lease_renewal
         self.lock_registry = lock_registry
         self.clock = clock
         self.release_renew_seconds = release_renew_seconds
@@ -490,7 +493,7 @@ class RepositoryWritebackService:
             await self.state.renew_lease(repository_id=repository_id, lease_id=lease.lease_id)
 
         try:
-            async with self._renewed_on_timer(lease=lease, renew=renew):
+            async with self._renewed_on_timer(lease=lease):
                 with _step(DeliveryStage.RELEASE):
                     await self.releaser.release(repository_id=repository_id, held=lease.window, renew=renew)
         except _StepFailedError as failed:
@@ -502,9 +505,7 @@ class RepositoryWritebackService:
         return result
 
     @asynccontextmanager
-    async def _renewed_on_timer(
-        self, *, lease: ReleaseLease, renew: Callable[[], Awaitable[None]]
-    ) -> AsyncIterator[None]:
+    async def _renewed_on_timer(self, *, lease: ReleaseLease) -> AsyncIterator[None]:
         """Renew the lease every `release_renew_seconds` while the block runs, because one step can outlast the lease.
 
         The timer stops when the block ends, after the renewal that runs then, if one runs.
@@ -518,7 +519,7 @@ class RepositoryWritebackService:
                 if ended.is_set():
                     return
                 try:
-                    await renew()
+                    await self.lease_renewal.renew_lease(repository_id=self.repository.id, lease_id=lease.lease_id)
                 except Exception:
                     # The lease then expires at its own time, unless a later renewal succeeds.
                     log.warning(

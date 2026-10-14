@@ -42,6 +42,7 @@ async def test_the_delivery_task_records_when_its_retry_is_due_before_it_waits(p
         state=state,
         git=git,
         releaser=RecordingRegenerationReleaser(),
+        lease_renewal=state,
         lock_registry=InfrahubLockRegistry(local_only=True),
         clock=clock,
         release_renew_seconds=RELEASE_RENEW_SECONDS,

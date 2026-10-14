@@ -203,6 +203,7 @@ def rig() -> Rig:
         state=state,
         git=git,
         releaser=releaser,
+        lease_renewal=state,
         lock_registry=lock_registry,
         clock=clock,
         release_renew_seconds=RELEASE_RENEW_SECONDS,
@@ -944,19 +945,29 @@ async def test_release_runs_after_the_lock_is_released_and_renews_the_lease(rig:
     assert rig.state.calls[-3:] == ["settle_delivery", "renew_lease", "clear_released"]
 
 
-class RenewalCountingState(InMemoryDeliveryState):
-    """Counts each renewal of a lease that it is asked for, a failed one included, and sets `renewed_twice` at two."""
+@dataclass(frozen=True)
+class Renewal:
+    repository_id: str
+    lease_id: str
 
-    def __init__(self, *, clock: FixedClock, repository_names: Mapping[str, str]) -> None:
-        super().__init__(clock=clock, repository_names=repository_names)
-        self.renewals = 0
+
+class RecordingLeaseRenewal:
+    """Records each renewal of a lease that it is asked for, a failed one included, and sets `renewed_twice` at two.
+
+    An error that a test appends to `failures` is raised by the next renewal, after it is recorded.
+    """
+
+    def __init__(self) -> None:
+        self.renewals: list[Renewal] = []
+        self.failures: list[BaseException] = []
         self.renewed_twice = asyncio.Event()
 
     async def renew_lease(self, *, repository_id: str, lease_id: str) -> None:
-        self.renewals += 1
-        if self.renewals == 2:
+        self.renewals.append(Renewal(repository_id=repository_id, lease_id=lease_id))
+        if len(self.renewals) == 2:
             self.renewed_twice.set()
-        await super().renew_lease(repository_id=repository_id, lease_id=lease_id)
+        if self.failures:
+            raise self.failures.pop(0)
 
 
 class RenewalAwaitingReleaser(RecordingRegenerationReleaser):
@@ -996,16 +1007,18 @@ async def test_a_timer_renews_the_lease_while_the_release_runs_and_stops_before_
     case: TimerRenewalCase, caplog: pytest.LogCaptureFixture
 ) -> None:
     clock = FixedClock(now=NOW)
-    state = RenewalCountingState(clock=clock, repository_names={REPOSITORY.id: REPOSITORY.name})
+    state = InMemoryDeliveryState(clock=clock, repository_names={REPOSITORY.id: REPOSITORY.name})
     held = _held(HeldItem(id="definition-1", hold_seq=1))
     state.intents[REPOSITORY.id] = replace(state.intents[REPOSITORY.id], held=held)
-    state.failures["renew_lease"] = list(case.renew_failures)
-    releaser = RenewalAwaitingReleaser(renewed_twice=state.renewed_twice)
+    lease_renewal = RecordingLeaseRenewal()
+    lease_renewal.failures = list(case.renew_failures)
+    releaser = RenewalAwaitingReleaser(renewed_twice=lease_renewal.renewed_twice)
     service = RepositoryWritebackService(
         repository=REPOSITORY,
         state=state,
         git=InMemoryDeliveryGit(destination_git_branch=REPOSITORY.destination_git_branch, head=TRUNK),
         releaser=releaser,
+        lease_renewal=lease_renewal,
         lock_registry=InfrahubLockRegistry(local_only=True),
         clock=clock,
         release_renew_seconds=0.01,
@@ -1016,14 +1029,11 @@ async def test_a_timer_renews_the_lease_while_the_release_runs_and_stops_before_
 
     assert result == DeliveryAttemptResult(outcome=DeliveryOutcome.RELEASED)
     assert releaser.releases == [Release(repository_id=REPOSITORY.id, held=held)]
-    assert state.renewals >= 2
-    assert state.calls == [
-        "read",
-        "start_attempt",
-        "lease_owed_release",
-        *["renew_lease"] * state.renewals,
-        "clear_released",
-    ]
+    assert len(lease_renewal.renewals) >= 2
+    assert lease_renewal.renewals == [Renewal(repository_id=REPOSITORY.id, lease_id="lease-1")] * len(
+        lease_renewal.renewals
+    )
+    assert state.calls == ["read", "start_attempt", "lease_owed_release", "clear_released"]
     # The timer ended before the run returned, so no renewal can follow the clear.
     assert asyncio.all_tasks() == {asyncio.current_task()}
     assert state.intents[REPOSITORY.id].held == HeldRegeneration()

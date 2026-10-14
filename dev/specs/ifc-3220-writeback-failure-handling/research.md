@@ -1010,8 +1010,11 @@ A new lease takes every held item that no live lease covers, up to a bound:
 The releaser renews the expiry after each awaited step, because a release awaits generator runs and
 can take minutes. Each renewal adds 15 minutes. One generator run can take hours, which is longer
 than the lease. So while the release runs, the service also renews the lease on a timer, every
-`RELEASE_RENEW_SECONDS`, 5 minutes. A failed renewal of the timer is logged at warning level, and
-the timer goes on. The lease then expires at its own time, unless a later renewal succeeds. The
+`RELEASE_RENEW_SECONDS`, 5 minutes. Each renewal of the timer runs on a database session of its
+own. The release reads and writes on the session of the flow at the same time, and a session runs
+one query at a time. A renewal that shares that session can break a read of the release, and the
+renewals then fail. A failed renewal of the timer is logged at warning level, and the timer goes
+on. The lease then expires at its own time, unless a later renewal succeeds. The
 timer stops when the release returns or raises. A renewal that runs then ends first, so no renewal
 follows the clear or the expiry of the lease. A worker that dies stops its timer, so its lease
 still expires. Known limit: a release whose generator run never ends keeps its lease for as long

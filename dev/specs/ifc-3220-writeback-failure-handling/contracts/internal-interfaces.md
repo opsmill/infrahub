@@ -20,8 +20,9 @@ backend/infrahub/git/writeback/          # NEW
 │                    # RevertedDelivery, WritebackIntent, DeliveryFailure, DeliveryAttemptResult, Actor
 ├── classifier.py    # classify_delivery_failure
 ├── credentials.py   # scrub_credentials
-├── ports.py         # DeliveryStatePort, DeliveryGitPort, RegenerationReleasePort, DeliveryRunQuery
-├── store.py         # WritebackIntentStore, the only read and write path
+├── ports.py         # DeliveryStatePort, DeliveryGitPort, RegenerationReleasePort,
+│                    # LeaseRenewalPort, DeliveryRunQuery
+├── store.py         # WritebackIntentStore, the only read and write path, and LeaseRenewer
 ├── queries.py       # RepositoryWriteLockQuery, the write lock of a repository node
 ├── git_adapter.py   # RepositoryDeliveryGitAdapter, the only Git code here
 ├── runs.py          # delivery_run_tags, PrefectDeliveryRunQuery, the only orchestrator query here
@@ -195,6 +196,10 @@ class RegenerationReleasePort(Protocol):
     ) -> None: ...
 
 
+class LeaseRenewalPort(Protocol):
+    async def renew_lease(self, *, repository_id: str, lease_id: str) -> None: ...
+
+
 class DeliveryRunQuery(Protocol):
     async def has_queued_run(self, *, repository_id: str) -> bool: ...
     async def has_active_run(self, *, repository_id: str) -> bool: ...
@@ -202,6 +207,14 @@ class DeliveryRunQuery(Protocol):
 
 `held` holds the window of one lease: the items that it names, each with the named `hold_seq`,
 under which the release reads the narrowed cache. `renew` moves that lease's expiry.
+
+`LeaseRenewalPort` moves the expiry of a lease while the release of its items runs. Only the timer
+of the service uses it (section 5). The release reads and writes on the session of the flow at the
+same time, and a database session runs one query at a time. So the timer must not use that session.
+`LeaseRenewer`, in `store.py`, implements the port. For each renewal, it opens a session of its own,
+and renews through a `WritebackIntentStore` on that session, with the same lock registry, default
+branch and clock. The `renew` callback of the releaser stays on the session of the flow, because
+the releaser calls it between its steps, never at the same time as a step.
 
 `ReplayResult` is a frozen dataclass: `head: str` and `conflicting_commit: str | None = None`. On a
 conflict, `conflicting_commit` names the merge that conflicted, and `head` is `base`, because the replay
@@ -285,6 +298,7 @@ class RepositoryWritebackService:
         state: DeliveryStatePort,
         git: DeliveryGitPort,
         releaser: RegenerationReleasePort,
+        lease_renewal: LeaseRenewalPort,
         lock_registry: InfrahubLockRegistry,
         clock: Clock,
         release_renew_seconds: float,
@@ -315,12 +329,14 @@ disagree.
   refused id is not a failure.
 - Steps 1 to 15 under the repository lock, the settle included. Steps 16 and 17, the release and
   the clear, after it is released, under the lease that the settle returned.
-- While the release runs, a timer renews the lease every `release_renew_seconds`, with the `renew`
-  callback that the releaser also gets. `build_writeback_service` passes `RELEASE_RENEW_SECONDS`, a
-  third of `RELEASE_LEASE_SECONDS`, and tests pass a small value. A failed renewal of the timer is
-  logged at warning level with the lease and the repository, and the timer goes on. The timer
-  stops when the release returns or raises, after a renewal that runs then, so no renewal follows
-  `expire_lease` or `clear_released` (`research.md` R10).
+- While the release runs, a timer renews the lease every `release_renew_seconds`. It renews
+  through `lease_renewal`, not through the `renew` callback that the releaser gets.
+  `build_writeback_service` builds a `LeaseRenewer` from its `db`, and the renewer opens a session
+  of its own for each renewal (section 4). The factory passes `RELEASE_RENEW_SECONDS`, a third of
+  `RELEASE_LEASE_SECONDS`, and tests pass a small value. A failed renewal of the timer is logged at
+  warning level with the lease and the repository, and the timer goes on. The timer stops when the
+  release returns or raises, after a renewal that runs then, so no renewal follows `expire_lease` or
+  `clear_released` (`research.md` R10).
 - If the release raises, `deliver` calls `state.expire_lease(...)` on its lease first. Then it
   handles the failure as the bullets below say, with the stage `release`. The clear does not run,
   so the held items stay. The task retry takes a new lease over them and releases every one. After

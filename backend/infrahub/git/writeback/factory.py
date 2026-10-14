@@ -15,7 +15,7 @@ from infrahub.git.writeback.ports import RepositoryRef
 from infrahub.git.writeback.recovery import DeliveryRecoveryCheck
 from infrahub.git.writeback.runs import PrefectDeliveryRunQuery
 from infrahub.git.writeback.service import RepositoryWritebackService
-from infrahub.git.writeback.store import WritebackIntentStore
+from infrahub.git.writeback.store import LeaseRenewer, WritebackIntentStore
 from infrahub.log import get_log_data
 from infrahub.task_manager.flow_run.prefect_client import PrefectClientAdapter
 from infrahub.worker import WORKER_IDENTITY
@@ -65,6 +65,7 @@ async def build_writeback_service(
         releaser=await build_held_regeneration_releaser(
             db=db, state=state, default_branch=default_branch, context=context, log=log
         ),
+        lease_renewal=LeaseRenewer(db=db, lock_registry=lock.registry, default_branch=default_branch, clock=clock),
         lock_registry=lock.registry,
         clock=clock,
         release_renew_seconds=RELEASE_RENEW_SECONDS,
