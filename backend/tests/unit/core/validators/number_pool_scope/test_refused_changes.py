@@ -16,12 +16,15 @@ from tests.unit.core.validators.number_pool_scope.helpers import (
     HOLDER,
     POD_HOLDER,
     POD_HOLDER_POOL_BY_SITE,
+    RENAMED_DEVICE,
     RecordingPoolSource,
     SchemaChangeCase,
     StaticSchemaSource,
     build_checker,
     build_request,
     build_schema_branch,
+    device_renamed_and_site_optional,
+    device_renamed_and_site_removed,
     device_role_kind,
     device_role_optional,
     device_role_removed,
@@ -187,6 +190,37 @@ REFUSED_CASES = [
             (
                 "vlan-per-role",
                 "pool vlan-per-role divides its numbers by ScopeDevice.role;"
+                " a scope element cannot be removed while the pool exists",
+            )
+        ],
+        expected_kinds_read=[{DEVICE}],
+    ),
+    SchemaChangeCase(
+        name="kind-renamed-and-relationship-made-optional",
+        constraint_name="relationship.optional.update",
+        kind=RENAMED_DEVICE,
+        field_name="site",
+        path_type=SchemaPathType.RELATIONSHIP,
+        change=device_renamed_and_site_optional,
+        expected=[
+            (
+                "vlan-per-site",
+                "pool vlan-per-site divides its numbers by ScopeRouter.site; a scope element must stay required",
+            )
+        ],
+        expected_kinds_read=[{DEVICE}],
+    ),
+    SchemaChangeCase(
+        name="kind-renamed-and-relationship-removed",
+        constraint_name="node.relationship.remove",
+        kind=RENAMED_DEVICE,
+        field_name="site",
+        path_type=SchemaPathType.RELATIONSHIP,
+        change=device_renamed_and_site_removed,
+        expected=[
+            (
+                "vlan-per-site",
+                "pool vlan-per-site divides its numbers by ScopeRouter.site;"
                 " a scope element cannot be removed while the pool exists",
             )
         ],
