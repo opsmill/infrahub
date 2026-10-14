@@ -31,7 +31,6 @@ from __future__ import annotations
 
 import logging
 import math
-import socket
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
@@ -44,7 +43,6 @@ log = logging.getLogger(__name__)
 
 CGROUP_ROOT = Path("/sys/fs/cgroup")
 PROC_SELF_CGROUP = Path("/proc/self/cgroup")
-PROC_SELF_PID_NAMESPACE = Path("/proc/self/ns/pid")
 
 # A CPU limit is written as CPU time allowed per period; this is the period used when the file leaves it out.
 _DEFAULT_CPU_PERIOD_US = 100000
@@ -55,41 +53,25 @@ _CGROUP_MEMORY_UNLIMITED_THRESHOLD = 2**62
 # The errors a read can still raise, all worth retrying, because bad values in the limit files are handled where they are read.
 RESOURCE_READ_FAILURES = (OSError, psutil.Error)
 
-# Stored as the container name only when even the name cannot be read, so the reading matches no real container.
-UNKNOWN_CONTAINER = "unknown"
-
 
 class WorkerResourceReading(BaseModel):
-    """One process's CPU and memory figures, as stored in the cache between heartbeats.
+    """The CPU and memory of the container one process runs in, and how many processes share them.
 
-    ``host`` names the container by its hostname and its process ID namespace, so
-    that processes sharing a container can split its figures between them; it is
-    never sent. The figures cannot be negative, so a damaged cache entry is rejected
-    when it is read back.
+    This is what each process stores in the cache. The figures cannot be negative, so
+    a damaged cache entry is rejected when it is read back.
     """
 
-    host: str
+    processes_per_container: int = Field(ge=1)
     processor_available: int | None = Field(default=None, ge=0)
     processor_assigned: int | None = Field(default=None, ge=0)
     memory_total: int | None = Field(default=None, ge=0)
     memory_available: int | None = Field(default=None, ge=0)
-
-    @classmethod
-    def failed(cls, *, host: str) -> WorkerResourceReading:
-        """The reading stored when a process could not read its figures at all: no figures, but still its container's name."""
-        return cls(host=host)
-
-    @property
-    def is_failed(self) -> bool:
-        """Whether every figure is missing, which only happens when the whole read failed."""
-        return all(value is None for value in self.model_dump(exclude={"host"}).values())
 
 
 @dataclass(frozen=True)
 class _ProcessIdentity:
     """Facts about the process that only change when its container restarts."""
 
-    host: str
     cgroup_dirs: list[Path]
     host_processor_count: int | None
 
@@ -400,15 +382,6 @@ class Machine(Protocol):
     why the container's own limits are read from the cgroup files.
     """
 
-    def hostname(self) -> str:
-        """This process's hostname, which inside a container is the container's.
-
-        Raises:
-            OSError: The hostname could not be read.
-
-        """
-        ...
-
     def processor_count(self) -> int | None:
         """The machine's logical CPUs, or ``None`` when the platform does not report them."""
         ...
@@ -428,9 +401,6 @@ class Machine(Protocol):
 
 class PsutilMachine:
     """The machine as psutil and the operating system report it."""
-
-    def hostname(self) -> str:
-        return socket.gethostname()
 
     def processor_count(self) -> int | None:
         return psutil.cpu_count(logical=True)
@@ -456,50 +426,29 @@ class PsutilMachine:
 
 
 class ProcessResources:
-    """Read this process's CPU and memory figures.
+    """Read the CPU and memory of the container this process runs in.
 
-    The container name, where the limit files are and the machine's CPU count only
-    change when the container restarts, so they are read once. The limits and the
-    free memory can change while the process runs, so they are read every time.
+    Every reading also carries how many processes share the container, which is
+    given rather than read. Where the limit files are and the machine's CPU count
+    only change when the container restarts, so they are read once. The limits and
+    the free memory can change while the process runs, so they are read every time.
     """
 
     def __init__(
         self,
         machine: Machine,
+        processes_per_container: int,
         cgroup_root: Path = CGROUP_ROOT,
         proc_cgroup: Path = PROC_SELF_CGROUP,
-        pid_namespace: Path = PROC_SELF_PID_NAMESPACE,
     ) -> None:
         self._machine = machine
+        self._processes_per_container = processes_per_container
         self._cgroup_root = cgroup_root
         self._proc_cgroup = proc_cgroup
-        self._pid_namespace = pid_namespace
         self._identity: _ProcessIdentity | None = None
-
-    def container_name(self) -> str:
-        """The name of the container this process runs in, the same for every process in that container.
-
-        The hostname alone is not enough, because separate containers can share one,
-        for example when they use the host's network. Linux gives each container its
-        own process ID namespace, shared by every process inside it, so the name is
-        the hostname followed by that namespace, such as ``api-1/pid:[4026532001]``.
-        Where the namespace cannot be read, for example outside Linux, the name is the
-        hostname alone.
-
-        Raises:
-            OSError: The hostname could not be read.
-
-        """
-        hostname = self._machine.hostname()
-        try:
-            namespace = self._pid_namespace.readlink()
-        except OSError:
-            return hostname
-        return f"{hostname}/{namespace}"
 
     def _read_identity(self) -> _ProcessIdentity:
         return _ProcessIdentity(
-            host=self.container_name(),
             cgroup_dirs=_own_cgroup_dirs(cgroup_root=self._cgroup_root, proc_cgroup=self._proc_cgroup),
             host_processor_count=self._machine.processor_count(),
             v1_cpu_dirs=_v1_controller_dirs(self._cgroup_root, self._proc_cgroup, "cpu"),
@@ -524,9 +473,7 @@ class ProcessResources:
         except _CgroupLimitUnusableError as exc:
             # The unreadable limit could be the tightest one, and the machine's figures could be far too high.
             log.warning(
-                "CPU limit file %s exists but could not be used; reporting the CPU figures as unknown (host=%s)",
-                exc.path,
-                identity.host,
+                "CPU limit file %s exists but could not be used; reporting the CPU figures as unknown", exc.path
             )
             processor_assigned = None
             processor_available = None
@@ -536,25 +483,17 @@ class ProcessResources:
             memory_limit = min(limit for limit, _ in memory_levels) if memory_levels else None
             memory_total = memory_limit if memory_limit is not None else self._machine.memory_total()
         except _CgroupLimitUnusableError as exc:
-            log.warning(
-                "Memory limit file %s exists but could not be used; reporting memory as unknown (host=%s)",
-                exc.path,
-                identity.host,
-            )
+            log.warning("Memory limit file %s exists but could not be used; reporting memory as unknown", exc.path)
             return WorkerResourceReading(
-                host=identity.host,
+                processes_per_container=self._processes_per_container,
                 processor_available=processor_available,
                 processor_assigned=processor_assigned,
             )
         except RESOURCE_READ_FAILURES as exc:
             # No memory limit is set, so this failure came from reading the machine's memory, not a limit file.
-            log.warning(
-                "Host memory capacity read failed; reporting memory as unknown (host=%s): %s",
-                identity.host,
-                exc,
-            )
+            log.warning("Host memory capacity read failed; reporting memory as unknown: %s", exc)
             return WorkerResourceReading(
-                host=identity.host,
+                processes_per_container=self._processes_per_container,
                 processor_available=processor_available,
                 processor_assigned=processor_assigned,
             )
@@ -563,22 +502,14 @@ class ProcessResources:
         try:
             memory_available = _memory_headroom(memory_levels) if memory_levels else self._machine.memory_available()
         except _CgroupUsageUnreadableError as exc:
-            log.warning(
-                "Memory usage file %s could not be read; reporting free memory as unknown (host=%s)",
-                exc.path,
-                identity.host,
-            )
+            log.warning("Memory usage file %s could not be read; reporting free memory as unknown", exc.path)
             memory_available = None
         except RESOURCE_READ_FAILURES as exc:
-            log.warning(
-                "Host free-memory read failed; reporting free memory as unknown (host=%s): %s",
-                identity.host,
-                exc,
-            )
+            log.warning("Host free-memory read failed; reporting free memory as unknown: %s", exc)
             memory_available = None
 
         return WorkerResourceReading(
-            host=identity.host,
+            processes_per_container=self._processes_per_container,
             processor_available=processor_available,
             processor_assigned=processor_assigned,
             memory_total=memory_total,

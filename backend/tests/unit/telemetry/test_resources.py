@@ -3,9 +3,9 @@
 The reader parses the container control group (cgroup v2 first, then v1) for the
 enforced CPU quota and the memory limit, and falls back to the machine's own
 figures when no control group is present. Every case is driven from fixture
-files under a temporary cgroup root, on a machine whose CPU count, pinned CPUs,
-memory and hostname are fixed, so every figure is checked against an exact
-number and nothing is read from the machine running the tests.
+files under a temporary cgroup root, on a machine whose CPU count, pinned CPUs
+and memory are fixed, so every figure is checked against an exact number and
+nothing is read from the machine running the tests.
 """
 
 from __future__ import annotations
@@ -26,6 +26,8 @@ if TYPE_CHECKING:
 MACHINE = FixedMachine()
 """18 CPUs, none pinned, 64 GiB of which 48 GiB are free."""
 
+PROCESSES_PER_CONTAINER = 4
+
 
 def _write_cgroup_files(cgroup_root: Path, files: dict[str, str]) -> None:
     for relative_path, content in files.items():
@@ -37,7 +39,7 @@ def _write_cgroup_files(cgroup_root: Path, files: dict[str, str]) -> None:
 def _reader(
     tmp_path: Path, files: dict[str, str], proc_content: str = "0::/\n", machine: FixedMachine = MACHINE
 ) -> ProcessResources:
-    """A reader over limit files under ``tmp_path``, with no process ID namespace to read, so its container name is the hostname."""
+    """A reader over limit files under ``tmp_path``, for a container shared by four processes."""
     cgroup_root = tmp_path / "cgroup"
     cgroup_root.mkdir(exist_ok=True)
     _write_cgroup_files(cgroup_root, files)
@@ -45,9 +47,9 @@ def _reader(
     proc_cgroup.write_text(proc_content)
     return ProcessResources(
         machine=machine,
+        processes_per_container=PROCESSES_PER_CONTAINER,
         cgroup_root=cgroup_root,
         proc_cgroup=proc_cgroup,
-        pid_namespace=tmp_path / "no_pid_namespace",
     )
 
 
@@ -343,7 +345,7 @@ def test_cgroup_path_resolution(case: CgroupPathCase, tmp_path: Path) -> None:
     reading = _reader(tmp_path, case.files, proc_content=case.proc_content).read()
 
     assert reading == WorkerResourceReading(
-        host="test-host",
+        processes_per_container=PROCESSES_PER_CONTAINER,
         processor_assigned=case.expected_assigned,
         processor_available=case.expected_available,
         memory_total=case.expected_memory_total,
@@ -379,69 +381,6 @@ def test_unreadable_usage_file_keeps_the_capacity_figure(tmp_path: Path) -> None
     assert reading.memory_total == 8589934592
     assert reading.memory_available is None
     assert reading.processor_available == 18
-
-
-@dataclass
-class ContainerNameCase:
-    name: str
-
-    namespaces: list[str | None]
-    """For each process, what its process ID namespace link points to; ``None`` leaves no link."""
-
-    expected_names: list[str]
-
-    plain_files: bool = False
-    """Write each namespace as an ordinary file holding the text, which cannot be read as a link."""
-
-
-CONTAINER_NAME_CASES = [
-    ContainerNameCase(
-        name="processes_in_one_namespace_share_one_container_name",
-        namespaces=["pid:[4026532001]", "pid:[4026532001]"],
-        expected_names=["api-1/pid:[4026532001]", "api-1/pid:[4026532001]"],
-    ),
-    ContainerNameCase(
-        name="two_namespaces_under_one_hostname_get_two_container_names",
-        namespaces=["pid:[4026532001]", "pid:[4026532002]"],
-        expected_names=["api-1/pid:[4026532001]", "api-1/pid:[4026532002]"],
-    ),
-    ContainerNameCase(
-        name="a_missing_namespace_leaves_the_hostname_alone",
-        namespaces=[None, None],
-        expected_names=["api-1", "api-1"],
-    ),
-    ContainerNameCase(
-        name="a_namespace_that_is_not_a_link_leaves_the_hostname_alone",
-        namespaces=["pid:[4026532001]", "pid:[4026532002]"],
-        expected_names=["api-1", "api-1"],
-        plain_files=True,
-    ),
-]
-
-
-@pytest.mark.parametrize("case", CONTAINER_NAME_CASES, ids=[case.name for case in CONTAINER_NAME_CASES])
-def test_container_name_is_the_hostname_and_the_process_namespace(case: ContainerNameCase, tmp_path: Path) -> None:
-    machine = FixedMachine(name="api-1")
-    namespace_dir = tmp_path / "namespaces"
-    namespace_dir.mkdir()
-    readers = []
-    for index, target in enumerate(case.namespaces):
-        namespace = namespace_dir / f"pid_{index}"
-        if target is not None and case.plain_files:
-            namespace.write_text(target)
-        elif target is not None:
-            namespace.symlink_to(target)
-        readers.append(
-            ProcessResources(
-                machine=machine,
-                cgroup_root=tmp_path / "cgroup",
-                proc_cgroup=tmp_path / "proc_self_cgroup",
-                pid_namespace=namespace,
-            )
-        )
-
-    assert [reader.read().host for reader in readers] == case.expected_names
-    assert [reader.container_name() for reader in readers] == case.expected_names
 
 
 def test_limit_values_refresh_between_reads(tmp_path: Path) -> None:

@@ -1,9 +1,9 @@
-"""Component tests for the per-worker resource figures in the telemetry gather.
+"""Component tests for the CPU and memory figures in the telemetry gather.
 
 The gather is driven end to end against the testcontainers Neo4j with worker
-heartbeats synthesized directly into the in-memory cache (no mocking): each block
-reports one worker's share of its container, an api_server container is split
-across the gunicorn processes that report from it, and no prior payload key is
+heartbeats and readings synthesized directly into the in-memory cache (no
+mocking): each block reports one of its containers whole, with how many processes
+share it, only live workers' readings are used, and no prior payload key is
 renamed or removed.
 """
 
@@ -20,7 +20,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.telemetry import database as telemetry_database
-from infrahub.telemetry.models import TelemetryPerWorkerData
+from infrahub.telemetry.models import TelemetryContainerData
 from infrahub.telemetry.resources import WorkerResourceReading
 from infrahub.telemetry.tasks import build_anonymous_telemetry_gatherer
 from infrahub.workers.dependencies import (
@@ -104,15 +104,15 @@ def _whole_number_floats(value: object, path: str = "data") -> list[str]:
     return []
 
 
-async def test_gather_reports_one_workers_share_for_each_component(
+async def test_gather_reports_one_container_for_each_component(
     resource_environment: MemoryCache, caplog: pytest.LogCaptureFixture
 ) -> None:
-    """Each block counts its own processes and reports one worker's share of its container."""
+    """Each block counts its own processes and reports one of its containers with the processes that share it."""
     cache = resource_environment
 
     # Two git_agent replicas, one process per container.
     git_reading = WorkerResourceReading(
-        host="git-host-1",
+        processes_per_container=1,
         processor_available=4,
         processor_assigned=None,
         memory_total=8_000_000_000,
@@ -121,11 +121,11 @@ async def test_gather_reports_one_workers_share_for_each_component(
     _seed_active(cache, "git_agent", "w1")
     _seed_reading(cache, "git_agent", "w1", git_reading)
     _seed_active(cache, "git_agent", "w2")
-    _seed_reading(cache, "git_agent", "w2", git_reading.model_copy(update={"host": "git-host-2"}))
+    _seed_reading(cache, "git_agent", "w2", git_reading)
 
     # One api_server container running three gunicorn processes, which share it.
     api_reading = WorkerResourceReading(
-        host="api-host",
+        processes_per_container=3,
         processor_available=6,
         processor_assigned=6,
         memory_total=12_000_000_000,
@@ -148,19 +148,21 @@ async def test_gather_reports_one_workers_share_for_each_component(
     assert (data.server.total, data.server.active) == (3, 3)
 
     # A git_agent process has its container to itself.
-    assert data.task_workers.per_worker == TelemetryPerWorkerData(
-        processor_available=4.0,
+    assert data.task_workers.processes_per_container == 1
+    assert data.task_workers.per_container == TelemetryContainerData(
+        processor_available=4,
         processor_assigned=None,
         memory_total=8_000_000_000,
         memory_available=6_000_000_000,
     )
 
-    # An api_server process gets a third of its container.
-    assert data.server.per_worker == TelemetryPerWorkerData(
-        processor_available=2.0,
-        processor_assigned=2.0,
-        memory_total=4_000_000_000,
-        memory_available=3_000_000_000,
+    # The api_server container is reported whole, with the three processes that share it.
+    assert data.server.processes_per_container == 3
+    assert data.server.per_container == TelemetryContainerData(
+        processor_available=6,
+        processor_assigned=6,
+        memory_total=12_000_000_000,
+        memory_available=9_000_000_000,
     )
 
     # The test database leaves the Cypher parallel runtime's worker limit at its default.
@@ -171,7 +173,7 @@ async def test_gather_reports_one_workers_share_for_each_component(
     # A failed worker-limit read would also give null, so the healthy gather must log no warning.
     assert [record.getMessage() for record in caplog.records if record.levelno >= logging.WARNING] == []
 
-    # Whole-number shares go out as JSON integers, which the telemetry endpoint's checksum needs.
+    # A whole-number float would fail the telemetry endpoint's checksum check, which writes 2.0 as 2.
     assert _whole_number_floats(data.model_dump(mode="json")) == []
 
 
@@ -180,7 +182,7 @@ async def test_corrupted_reading_is_dropped(resource_environment: MemoryCache) -
     cache = resource_environment
 
     healthy_reading = WorkerResourceReading(
-        host="git-host-good",
+        processes_per_container=1,
         processor_available=4,
         processor_assigned=None,
         memory_total=8_000_000_000,
@@ -194,7 +196,7 @@ async def test_corrupted_reading_is_dropped(resource_environment: MemoryCache) -
     # value actually corrupted or stale in the cache would arrive. It reports one more
     # figure than the healthy reading, so it would be the one reported if it were kept.
     cache.storage["workers:resources:git_agent:worker:corrupted"] = (
-        '{"host": "git-host-bad", "processor_available": -4, "processor_assigned": 2, '
+        '{"processes_per_container": 1, "processor_available": -4, "processor_assigned": 2, '
         '"memory_total": 8000000000, "memory_available": 6000000000}'
     )
 
@@ -204,8 +206,8 @@ async def test_corrupted_reading_is_dropped(resource_environment: MemoryCache) -
     # Both workers are still counted...
     assert (data.task_workers.total, data.task_workers.active) == (2, 2)
     # ...but only the healthy reading is reported.
-    assert data.task_workers.per_worker == TelemetryPerWorkerData(
-        processor_available=4.0,
+    assert data.task_workers.per_container == TelemetryContainerData(
+        processor_available=4,
         processor_assigned=None,
         memory_total=8_000_000_000,
         memory_available=6_000_000_000,
@@ -223,13 +225,13 @@ async def test_a_stopped_workers_reading_is_ignored(resource_environment: Memory
     cache = resource_environment
 
     _seed_active(cache, "api_server", "live")
-    _seed_reading(cache, "api_server", "live", WorkerResourceReading(host="api-host", processor_available=4))
+    _seed_reading(cache, "api_server", "live", WorkerResourceReading(processes_per_container=4, processor_available=4))
     cache.storage["workers:worker:stopped"] = Timestamp().to_string()
     _seed_reading(
         cache,
         "api_server",
         "stopped",
-        WorkerResourceReading(host="api-host", processor_available=6, memory_total=8_000_000_000),
+        WorkerResourceReading(processes_per_container=4, processor_available=6, memory_total=8_000_000_000),
     )
 
     gatherer = await build_anonymous_telemetry_gatherer()
@@ -237,7 +239,7 @@ async def test_a_stopped_workers_reading_is_ignored(resource_environment: Memory
 
     # The stopped worker is still counted, the way `workers` counts it, but not as active.
     assert (data.server.total, data.server.active) == (2, 1)
-    assert data.server.per_worker == TelemetryPerWorkerData(processor_available=4.0)
+    assert data.server.per_container == TelemetryContainerData(processor_available=4)
 
 
 async def test_payload_keeps_every_prior_key(resource_environment: MemoryCache) -> None:
@@ -252,9 +254,9 @@ async def test_payload_keeps_every_prior_key(resource_environment: MemoryCache) 
     # `workers` is exactly as before.
     assert set(dumped["workers"]) == _PRE_FEATURE_WORKER_FIELDS
 
-    # The new blocks follow the same total/active convention and add one worker's figures.
+    # The new blocks follow the same total/active convention and add one container's figures.
     for block in ("server", "task_workers"):
-        assert set(dumped[block]) == _PRE_FEATURE_WORKER_FIELDS | {"per_worker"}
+        assert set(dumped[block]) == _PRE_FEATURE_WORKER_FIELDS | {"processes_per_container", "per_container"}
 
     # system_info keeps its three fields and gains exactly processor_assigned.
     assert data.database.system_info is not None
@@ -294,7 +296,7 @@ async def test_database_processor_assigned_read_failure_nulls_only_that_field(
 
 
 async def test_a_worker_that_does_not_report_is_still_counted(resource_environment: MemoryCache) -> None:
-    """An active worker that wrote no resource reading is counted, and the reporter's share is used."""
+    """An active worker that wrote no resource reading is counted, and the reporter's reading is used."""
     cache = resource_environment
 
     _seed_active(cache, "git_agent", "w1")
@@ -303,7 +305,7 @@ async def test_a_worker_that_does_not_report_is_still_counted(resource_environme
         "git_agent",
         "w1",
         WorkerResourceReading(
-            host="git-host-1",
+            processes_per_container=1,
             processor_available=4,
             processor_assigned=None,
             memory_total=8_000_000_000,
@@ -317,8 +319,8 @@ async def test_a_worker_that_does_not_report_is_still_counted(resource_environme
     data = await gatherer.gather()
 
     assert (data.task_workers.total, data.task_workers.active) == (2, 2)
-    assert data.task_workers.per_worker == TelemetryPerWorkerData(
-        processor_available=4.0,
+    assert data.task_workers.per_container == TelemetryContainerData(
+        processor_available=4,
         processor_assigned=None,
         memory_total=8_000_000_000,
         memory_available=6_000_000_000,

@@ -99,7 +99,7 @@ async def test_heartbeat_writes_liveness_and_no_resource_reading() -> None:
 
 
 THREAD_TEST_READING = WorkerResourceReading(
-    host="api-host", processor_available=4, processor_assigned=2, memory_total=8, memory_available=6
+    processes_per_container=4, processor_available=4, processor_assigned=2, memory_total=8, memory_available=6
 )
 
 
@@ -107,7 +107,7 @@ class ThreadRecordingProcessResources(ProcessResources):
     """A resource reader that records, for each read, whether it ran on the thread running the event loop."""
 
     def __init__(self, event_loop_thread_id: int) -> None:
-        super().__init__(machine=FixedMachine())
+        super().__init__(machine=FixedMachine(), processes_per_container=4)
         self.event_loop_thread_id = event_loop_thread_id
         self.reads_on_event_loop_thread: list[bool] = []
 
@@ -200,8 +200,8 @@ async def test_startup_publishes_liveness_before_storing_the_resource_reading(
 async def test_read_worker_resources_returns_only_the_given_workers(unconnected_db: InfrahubDatabase) -> None:
     """A stopped worker's reading stays in the cache for up to two hours, so it must not be returned."""
     cache = MemoryCache()
-    live_reading = WorkerResourceReading(host="api-host", processor_available=4)
-    stopped_reading = WorkerResourceReading(host="api-host", processor_available=8, memory_total=16)
+    live_reading = WorkerResourceReading(processes_per_container=4, processor_available=4)
+    stopped_reading = WorkerResourceReading(processes_per_container=4, processor_available=8, memory_total=16)
     cache.storage[f"{RESOURCE_KEY_PREFIX}{COMPONENT_API_SERVER}:worker:live"] = live_reading.model_dump_json()
     cache.storage[f"{RESOURCE_KEY_PREFIX}{COMPONENT_API_SERVER}:worker:stopped"] = stopped_reading.model_dump_json()
     component = InfrahubComponent(
@@ -212,75 +212,39 @@ async def test_read_worker_resources_returns_only_the_given_workers(unconnected_
 
 
 class AlwaysFailingProcessResources(ProcessResources):
-    """A resource reader whose self-read always fails, to drive the retry-then-empty-reading path.
+    """A resource reader whose self-read always fails, to drive the retry path.
 
     It raises from the read itself, so the retries are tested without depending on which source
-    makes the real reader fail. Its container name is fixed, so the stored reading can be checked
-    exactly.
+    makes the real reader fail.
     """
 
     def __init__(self) -> None:
-        super().__init__(machine=FixedMachine())
+        super().__init__(machine=FixedMachine(), processes_per_container=1)
 
     def read(self) -> WorkerResourceReading:
         raise OSError("resource read unavailable")
 
-    def container_name(self) -> str:
-        return "worker-container"
 
-
-class NamelessFailingProcessResources(AlwaysFailingProcessResources):
-    """A resource reader that cannot read even its container's name, the case where no name can be stored."""
-
-    def container_name(self) -> str:
-        raise OSError("container name unavailable")
-
-
-@dataclass
-class FailedSelfReadCase:
-    name: str
-    process_resources: ProcessResources
-    expected_reading: WorkerResourceReading
-
-
-FAILED_SELF_READ_CASES = [
-    FailedSelfReadCase(
-        name="the_empty_reading_keeps_the_container_name",
-        process_resources=AlwaysFailingProcessResources(),
-        expected_reading=WorkerResourceReading(host="worker-container"),
-    ),
-    FailedSelfReadCase(
-        name="a_container_name_that_cannot_be_read_is_stored_as_unknown",
-        process_resources=NamelessFailingProcessResources(),
-        expected_reading=WorkerResourceReading(host="unknown"),
-    ),
-]
-
-
-@pytest.mark.parametrize("case", FAILED_SELF_READ_CASES, ids=[case.name for case in FAILED_SELF_READ_CASES])
-async def test_self_read_failure_after_retries_logs_and_stores_an_empty_reading(
-    case: FailedSelfReadCase,
-    unconnected_db: InfrahubDatabase,
-    caplog: pytest.LogCaptureFixture,
+async def test_self_read_failure_after_retries_logs_and_keeps_the_last_reading(
+    unconnected_db: InfrahubDatabase, caplog: pytest.LogCaptureFixture
 ) -> None:
-    """A read that fails on every try leaves a warning naming the component and the error, and a reading with no figures.
-
-    The reading keeps the container's name, so the process still counts as sharing its container.
-    """
+    """A read that fails on every try leaves a warning naming the component and the error, and stores nothing."""
     cache = MemoryCache()
+    last_reading = WorkerResourceReading(processes_per_container=1, processor_available=4).model_dump_json()
+    cache.storage[RESOURCE_KEY] = last_reading
     component = InfrahubComponent(
         cache=cache,
         db=unconnected_db,
         message_bus=BusRecorder(),
         component_type=ComponentType.GIT_AGENT,
-        process_resources=case.process_resources,
+        process_resources=AlwaysFailingProcessResources(),
     )
 
     with caplog.at_level(logging.WARNING, logger="infrahub"):
-        await component.refresh_heartbeat()
+        await component.refresh_resources()
 
     warnings = [record for record in caplog.records if WORKER_IDENTITY in record.getMessage()]
     assert [record.levelname for record in warnings] == ["WARNING"]
     assert "GIT_AGENT" in warnings[0].getMessage()
     assert "resource read unavailable" in warnings[0].getMessage()
-    assert WorkerResourceReading.model_validate_json(cache.storage[RESOURCE_KEY]) == case.expected_reading
+    assert cache.storage[RESOURCE_KEY] == last_reading

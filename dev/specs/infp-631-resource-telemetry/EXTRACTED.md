@@ -5,12 +5,14 @@
 
 ## ADRs Created
 
-- `dev/adr/0021-resource-allocation-telemetry.md` (D2–D7, D11–D17, combined into one ADR)
+- `dev/adr/0021-resource-allocation-telemetry.md` (D2–D7, D11–D19, combined into one ADR; D7 and D16, superseded by D19, are
+  recorded as a rejected alternative)
 
 ## Knowledge Updated
 
 - `dev/knowledge/backend/telemetry.md` (CPU and memory figures: what an empty figure means, what
-  cannot be seen from inside a container, the caveats of the per-worker share)
+  cannot be seen from inside a container, the caveats of the per-container figures and their
+  process count)
 - `dev/knowledge/backend/async-tasks.md` (The worker liveness heartbeat runs on its own thread: the
   beat carries only liveness, and the report uses the readings of the workers it keeps alive)
 

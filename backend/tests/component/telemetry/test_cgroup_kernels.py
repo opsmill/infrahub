@@ -6,8 +6,7 @@ sits and whether the limit files are visible at the apparent root at all. These
 cases run the reader inside containers configured for each layout that occurs in
 practice — a private cgroup namespace, a host namespace, and a limit enforced on
 an ancestor rather than on the process's own group — so a regression in the path
-resolution fails here rather than in a deployment. They also check that the name
-the reader gives its container is the hostname plus the container's process ID namespace.
+resolution fails here rather than in a deployment.
 
 Requires a Docker daemon on a Linux kernel with cgroup v2, and network access the
 first time, since the probe image pulls a Python base image and installs the
@@ -58,19 +57,15 @@ _PROBE_DIR = "/probe"
 # The module is imported on its own rather than through the ``infrahub`` package, whose
 # import needs distribution metadata that a bare image lacks.
 _PROBE = """\
-import json, os
+import json
 import psutil, resources
-reading = resources.ProcessResources(machine=resources.PsutilMachine()).read()
+reading = resources.ProcessResources(machine=resources.PsutilMachine(), processes_per_container=1).read()
 print(json.dumps(reading.model_dump() | {
     "host_memory_total": psutil.virtual_memory().total,
     "host_processor_available": psutil.cpu_count(logical=True),
     "affinity_available": len(psutil.Process().cpu_affinity()),
-    "pid_namespace_number": os.stat("/proc/self/ns/pid").st_ino,
 }))
 """
-
-# Every probe container gets this hostname, so the hostname part of the container name is known.
-_PROBE_HOSTNAME = "telemetry-probe"
 
 
 def _ancestor_limit_setup(cpus: int, memory_bytes: int) -> str:
@@ -239,7 +234,7 @@ def _run_probe(image: str, case: KernelCase) -> dict[str, Any]:
     container = (
         DockerContainer(image, docker_client_kw={"timeout": _RUN_TIMEOUT_SECONDS})
         .with_command(["sh", "-c", script])
-        .with_kwargs(hostname=_PROBE_HOSTNAME, **case.container_options)
+        .with_kwargs(**case.container_options)
     )
     try:
         try:
@@ -262,8 +257,6 @@ def _run_probe(image: str, case: KernelCase) -> dict[str, Any]:
 @pytest.mark.parametrize("case", KERNEL_CASES, ids=[case.name for case in KERNEL_CASES])
 def test_reader_against_real_cgroups(case: KernelCase, probe_image: str) -> None:
     reading = _run_probe(probe_image, case)
-
-    assert reading["host"] == f"{_PROBE_HOSTNAME}/pid:[{reading['pid_namespace_number']}]"
 
     if case.expected_affinity is not None:
         assert reading["affinity_available"] == case.expected_affinity

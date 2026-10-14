@@ -14,7 +14,6 @@ from infrahub.log import get_logger
 from infrahub.message_bus.types import KVTTL
 from infrahub.telemetry.resources import (
     RESOURCE_READ_FAILURES,
-    UNKNOWN_CONTAINER,
     ProcessResources,
     PsutilMachine,
     WorkerResourceReading,
@@ -41,7 +40,7 @@ _KNOWN_COMPONENTS = frozenset({COMPONENT_API_SERVER, COMPONENT_GIT_AGENT})
 # Every key that names a component puts the name just before ":worker:", whatever comes earlier in the key.
 WORKER_COMPONENT_MATCH = re.compile(r":([^:]+):worker:[^:]+$")
 
-# A read can fail for a moment (a hostname lookup, for example), so it is tried a few times before giving up.
+# A read can fail for a moment, so it is tried a few times before giving up.
 RESOURCE_READ_MAX_ATTEMPTS = 3
 
 log = get_logger()
@@ -99,13 +98,26 @@ class InfrahubComponent:
     db: InfrahubDatabase
     message_bus: InfrahubMessageBus
     component_type: ComponentType
-    process_resources: ProcessResources = Factory(lambda: ProcessResources(machine=PsutilMachine()))
+    process_resources: ProcessResources = Factory(
+        lambda: ProcessResources(machine=PsutilMachine(), processes_per_container=1)
+    )
 
     @classmethod
     async def new(
-        cls, cache: InfrahubCache, db: InfrahubDatabase, message_bus: InfrahubMessageBus, component_type: ComponentType
+        cls,
+        cache: InfrahubCache,
+        db: InfrahubDatabase,
+        message_bus: InfrahubMessageBus,
+        component_type: ComponentType,
+        process_resources: ProcessResources,
     ) -> InfrahubComponent:
-        component = cls(cache=cache, db=db, message_bus=message_bus, component_type=component_type)
+        component = cls(
+            cache=cache,
+            db=db,
+            message_bus=message_bus,
+            component_type=component_type,
+            process_resources=process_resources,
+        )
         await component.refresh_heartbeat()
         return component
 
@@ -192,6 +204,8 @@ class InfrahubComponent:
         report uses only the readings of workers that are still alive.
         """
         reading = await asyncio.to_thread(self._read_own_resources)
+        if reading is None:
+            return
         for component in self.component_names:
             await self.cache.set(
                 key=f"{RESOURCE_KEY_PREFIX}{component}:worker:{WORKER_IDENTITY}",
@@ -199,13 +213,12 @@ class InfrahubComponent:
                 expires=KVTTL.TWO_HOURS,
             )
 
-    def _read_own_resources(self) -> WorkerResourceReading:
+    def _read_own_resources(self) -> WorkerResourceReading | None:
         """Read this process's CPU and memory figures, trying again if the read fails.
 
-        If every try fails, a warning names the component and the error and an empty
-        reading is stored, so a worker that stops reporting leaves a trace in the log.
-        The empty reading still names the process's container, so the process still
-        counts as one of the processes sharing it.
+        If every try fails, a warning names the component and the error, so a worker
+        that stops reporting leaves a trace in the log, and ``None`` is returned so the
+        last stored reading is kept.
         """
         last_error: Exception | None = None
         for _ in range(RESOURCE_READ_MAX_ATTEMPTS):
@@ -215,17 +228,12 @@ class InfrahubComponent:
                 last_error = exc
 
         log.warning(
-            "Unable to read process resource allocation for telemetry; reporting null",
+            "Unable to read process resource allocation for telemetry; keeping the last stored reading",
             component_type=self.component_type.name,
             worker_id=WORKER_IDENTITY,
             error=str(last_error),
         )
-        try:
-            host = self.process_resources.container_name()
-        except RESOURCE_READ_FAILURES:
-            # The empty reading must still be stored, so a name that cannot be read is replaced instead of raised.
-            host = UNKNOWN_CONTAINER
-        return WorkerResourceReading.failed(host=host)
+        return None
 
     async def read_worker_resources(self, worker_ids: set[str]) -> dict[str, list[WorkerResourceReading]]:
         """Return the latest CPU and memory reading of each of ``worker_ids``, grouped by component, skipping damaged ones.

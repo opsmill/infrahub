@@ -32,8 +32,8 @@ distinction that matters operationally is each category's **temporal model** (be
 |----------|----------------|
 | Deployment | anonymous deployment id, Infrahub version/type, Python/platform |
 | Workers | worker pool size and active count |
-| Server | API server process count and active count, and one API server process's CPU and memory |
-| Task workers | task-worker process count and active count, and one task worker's CPU and memory |
+| Server | API server process count and active count, one API server container's CPU and memory, and how many processes share it |
+| Task workers | task-worker process count and active count, and one task worker container's CPU and memory |
 | Branches | total and open (non-system) branch counts |
 | Accounts | active accounts, account groups |
 | Schema | node/generic kind counts, last schema change |
@@ -75,17 +75,20 @@ limit the cgroup files have no number to give. Three exceptions:
 - The usable CPUs are the smallest of the machine's CPU count, the container's CPU limit and the
   number of CPUs the process is pinned to, if it is pinned.
 
-`server` and `task_workers` each report **one worker's share** of its container in `per_worker`,
-so `per_worker × active` is the component's total. A task worker has its container to itself. The
-API server runs several processes in one container (4 by default), so its figures are divided
-between them. Their `total` and `active` count processes the same way `workers` does, which stays
-unchanged: `server.total + task_workers.total` equals `workers.total`, except for a process that
-stopped about two hours earlier and is only remembered by its presence key.
+`server` and `task_workers` each report **one of their containers whole** in `per_container`, and
+how many processes share it in `processes_per_container`, so
+`per_container × active ÷ processes_per_container` is the component's total. A task worker has its
+container to itself. The API server runs several gunicorn processes in one container (4 by default
+in Docker Compose): the gunicorn worker class puts gunicorn's worker count in each process's
+environment (`INFRAHUB_INTERNAL_PROCESSES_PER_CONTAINER`) before the app loads, and a process that
+gunicorn did not start counts 1. Their `total` and `active` count processes the same way `workers`
+does, which stays unchanged: `server.total + task_workers.total` equals `workers.total`, except for a
+process that stopped about two hours earlier and is only remembered by its presence key.
 
-A whole-number CPU share is sent as an integer (`2`, not `2.0`). The telemetry endpoint checks the
-checksum by writing the received data out again in JavaScript, which cannot tell the two apart, so
-a whole-number float fails the check and the endpoint drops the whole report. Any new float field
-in the payload needs the same treatment.
+Every CPU and memory figure is a whole number. Keep it that way for any new figure: the telemetry
+endpoint checks the checksum by writing the received data out again in JavaScript, which writes
+`2.0` as `2`, so a float with a whole-number value fails the check and the endpoint drops the whole
+report.
 
 Each API server and task-worker process stores its own figures in the cache. At startup and then
 every 5 minutes, the main loop starts a read of the limits on a separate thread, so that a slow read
@@ -122,9 +125,10 @@ An empty figure is `null`, never zero. For the API server and task workers the C
 `processor_available` set with `processor_assigned` empty means no CPU limit is set, and both empty
 means a limit is set but could not be read, or no process of that component has reported. Two
 things cannot be seen from inside a container: a limit set only on a Kubernetes pod, and Kubernetes
-CPU requests, which reserve CPU but do not limit it. The share assumes every copy of a component
-runs with the same settings, and it reads high for a moment after a process starts, until that
-process has stored its first reading. Why it is built this way:
+CPU requests, which reserve CPU but do not limit it. One container stands for every copy of a
+component, so every copy is assumed to run with the same settings. The process count comes from how
+gunicorn was started: an API server started another way with several processes counts as one per
+container, which overstates its total. Why it is built this way:
 [ADR 0021](../../adr/0021-resource-allocation-telemetry.md).
 
 ## Temporal models (the important part)
@@ -198,6 +202,7 @@ both gated on the `READ_TELEMETRY` global permission.
 | `backend/infrahub/telemetry/utils.py` | Degradation helper, 24h window functions, infrahub-type detection |
 | `backend/infrahub/telemetry/database.py` | Database and node-count metrics |
 | `backend/infrahub/telemetry/resources.py` | Reads a process's CPU and memory limits and the machine's figures |
+| `backend/infrahub/serve/worker.py`, `backend/infrahub/serve/processes.py` | The gunicorn worker class records how many processes share the container; each reading carries that count |
 | `backend/infrahub/services/scheduler.py`, `backend/infrahub/tasks/recurring.py` | The 5-minute schedule on the main loop that starts each read of the figures on a separate thread |
 | `backend/infrahub/services/heartbeat.py` | The heartbeat thread whose "alive" keys decide which workers' readings the report uses |
 | `backend/infrahub/services/component.py` | Stores each process's CPU and memory reading for 2 hours, and reads back the live workers' readings |

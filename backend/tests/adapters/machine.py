@@ -7,14 +7,10 @@ GIBIBYTE = 1024**3
 class FixedMachine:
     """A machine whose figures are fixed, so a reading can be checked against exact numbers."""
 
-    name: str = "test-host"
     processors: int | None = 18
     pinned_processors: int | None = None
     total_memory: int = 64 * GIBIBYTE
     free_memory: int = 48 * GIBIBYTE
-
-    def hostname(self) -> str:
-        return self.name
 
     def processor_count(self) -> int | None:
         return self.processors

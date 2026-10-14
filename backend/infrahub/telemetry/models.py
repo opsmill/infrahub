@@ -1,25 +1,13 @@
-from typing import Annotated
-
-from pydantic import BaseModel, Field, PlainSerializer
+from pydantic import BaseModel, Field
 
 from .constants import InfrahubType
 
 
-def _whole_number_as_integer(value: float | None) -> float | int | None:
-    if value is not None and value.is_integer():
-        return int(value)
-    return value
+class TelemetryContainerData(BaseModel):
+    """The CPU and memory of one container of a component, shared by the processes that run in it."""
 
-
-# The telemetry endpoint recomputes the checksum in JavaScript, which writes 2.0 as 2, so a whole number is sent as 2.
-ProcessorShare = Annotated[float | None, PlainSerializer(_whole_number_as_integer, when_used="json")]
-
-
-class TelemetryPerWorkerData(BaseModel):
-    """One worker's share of its container's CPU and memory; multiplied by the active count it gives the total."""
-
-    processor_available: ProcessorShare = None
-    processor_assigned: ProcessorShare = None
+    processor_available: int | None = None
+    processor_assigned: int | None = None
     memory_total: int | None = None
     memory_available: int | None = None
 
@@ -73,11 +61,15 @@ class TelemetryDatabaseSystemInfoData(BaseModel):
 
 
 class TelemetryComponentData(BaseModel):
-    """One component's processes, counted like the workers block, with one worker's CPU and memory."""
+    """One component's processes, counted like the workers block, with the CPU and memory of one of its containers.
+
+    The component's total is ``per_container`` times ``active`` divided by ``processes_per_container``.
+    """
 
     total: int | None = None
     active: int | None = None
-    per_worker: TelemetryPerWorkerData = Field(default_factory=TelemetryPerWorkerData)
+    processes_per_container: int | None = None
+    per_container: TelemetryContainerData = Field(default_factory=TelemetryContainerData)
 
 
 class TelemetryDatabaseData(BaseModel):

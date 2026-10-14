@@ -33,19 +33,21 @@ Only the additions are shown; everything else is unchanged.
     "server": {                              // NEW block: the API server
       "total": 4,                            // its processes, counted like workers (4 in one container)
       "active": 4,
-      "per_worker": {                        // each process gets a quarter of the container
-        "processor_available": 1.0,          // 4 CPUs / 4 processes
-        "processor_assigned": 1.0,
-        "memory_total": 1073741824,          // 4 GiB / 4
-        "memory_available": 671088640        // 2.5 GiB free / 4
+      "processes_per_container": 4,          // the 4 gunicorn processes share one container
+      "per_container": {                     // that container, whole
+        "processor_available": 4,
+        "processor_assigned": 4,
+        "memory_total": 4294967296,          // 4 GiB
+        "memory_available": 2684354560       // 2.5 GiB free
       }
     },
     "task_workers": {                        // NEW block: the task workers
       "total": 2,                            // its processes, counted like workers
       "active": 2,
-      "per_worker": {                        // a task worker has its container to itself
-        "processor_available": 4.0,
-        "processor_assigned": 4.0,
+      "processes_per_container": 1,          // a task worker has its container to itself
+      "per_container": {                     // one of the two containers, whole
+        "processor_available": 4,
+        "processor_assigned": 4,
         "memory_total": 4294967296,          // 4 GiB
         "memory_available": 3221225472       // 3 GiB free
       }
@@ -96,24 +98,33 @@ Two things cannot be seen from inside a container:
 - A limit set only on a Kubernetes pod, when the container itself has none.
 - Kubernetes CPU *requests*. A request reserves CPU for scheduling but does not limit it, so it is not reported.
 
-## Per worker
+## Per container
 
-In `server` and `task_workers`, `per_worker` is one worker's share of its container. A component's total is **`per_worker × active`**:
+In `server` and `task_workers`, `per_container` holds the four figures of one of the component's containers, whole: the CPU and memory that every process in that container shares. `processes_per_container` is how many processes share that container. A component's total is **`per_container × active ÷ processes_per_container`**:
 
-- A task worker runs one process per container, so its share is the whole container. In the example, 4.0 CPUs × 2 workers = 8 CPUs.
-- The API server runs several processes in one container (4 by default), and they share it. Each process gets a part, so the figures are divided by the number of processes. In the example, 1.0 CPU × 4 processes = 4 CPUs.
+- A task worker runs one process per container, so `processes_per_container` is 1. In the example, 4 CPUs × 2 active ÷ 1 = 8 CPUs.
+- The API server runs several processes in one container, and they share it. In the example, 4 CPUs × 4 active ÷ 4 = 4 CPUs.
 
-How the share is worked out:
+Where `processes_per_container` comes from:
 
-- One reading stands for every container of the component, so every copy is assumed to run with the same settings. If copies differ, `per_worker` shows one container's figures, not an average.
-- When some readings miss a figure, the most complete one is used.
-- CPU shares keep two decimals. A whole number is sent as an integer (`2`, not `2.0`), because the telemetry endpoint checks the checksum by writing the data out again in JavaScript, which cannot tell the two apart. Memory shares are whole bytes, rounded down.
+- An API server process started by gunicorn reports gunicorn's worker count, set with its `-w` option (4 by default in the Docker Compose file). The gunicorn worker class that Infrahub uses puts that count in each process's environment before the application loads.
+- Every other process reports 1: a task worker, an API server started with `infrahub server start`, which runs a single process, and any other process that gunicorn did not start.
+- Known gap: when an API server is started some other way with several processes in one container, for example with `uvicorn --workers 4` or with gunicorn and a different worker class, its processes report 1, so its total is overstated by its number of processes per container. Every way OpsMill ships Infrahub (the Docker Compose file, both Helm charts and the testcontainers stack) starts the API server through gunicorn with Infrahub's worker class.
+
+Which container is reported:
+
+- One reading stands for every container of the component, so every copy is assumed to run with the same settings. If copies differ, `per_container` shows one container's figures, not an average.
+- When some readings miss a figure, the most complete one is used. `processes_per_container` always comes from the same reading as the figures.
+- While a container runs fewer processes than `processes_per_container`, for example for the moment gunicorn takes to restart one, `active` is lower, so the total reads low until the process is back.
+
+Every figure, and `processes_per_container`, is either `null` or a whole number sent as a JSON integer. A total worked out from them can have a fraction, for example 2 CPUs × 3 active ÷ 4 = 1.5 CPUs, so it needs decimal division, not whole-number division.
 
 ## When a figure is empty
 
 `null` means "not measured" or "no limit set". It never means zero.
 
-- **Every `per_worker` figure is empty** when no process of that component has stored a usable reading, or when reading them from the cache failed.
+- **`processes_per_container` and every `per_container` figure are empty** when no active process of that component has a stored reading, or when the readings could not be read from the cache. `total` and `active` are still reported.
+- **`processes_per_container` is reported even when every `per_container` figure is empty.** This happens when none of the readings of the component's active processes has any figure, for example because the CPU limit file and the memory limit file both exist but cannot be used.
 - For the API server and task workers, the CPU and memory pairs show why a figure is missing:
   - `processor_available` set and `processor_assigned` empty: no CPU limit is set.
   - Both CPU figures empty: a CPU limit is set but could not be read. In the rare case that neither the machine's CPU count nor the CPUs the process is pinned to can be read, both are empty even without a limit.
@@ -129,19 +140,19 @@ A failure in the new figures only empties those figures; the rest of the report 
 ## Worker counts
 
 - `workers.total` and `workers.active` are unchanged: they count every worker process, API server and task workers together.
-- `server` and `task_workers` count their own processes the same way, so `server.total + task_workers.total` equals `workers.total`. The one exception is a process that stopped about two hours earlier: the keys that name its component have expired, but its 2-hour presence key has not yet. `workers` still counts it and the new blocks do not. This normally lasts at most the last 5 minutes or so before Infrahub forgets the process, and longer if a long task kept it busy before the process stopped. It never affects `active`.
+- `server` and `task_workers` count their own processes the same way, so `server.total + task_workers.total` equals `workers.total`. The one exception is a process that stopped about two hours earlier: the keys that name its component have expired, but its 2-hour presence key has not yet. `workers` still counts it and the new blocks do not. This normally lasts at most the last 5 minutes or so before Infrahub forgets the process, and longer if its reads failed (a failed read stores nothing) or a long task kept it busy before the process stopped. It never affects `active`.
 - `total` can stay above zero for up to two hours after the last process of a component stops. `active` drops to zero within 15 seconds.
 
 ## Readings and counts are separate
 
 The figures come from a reading each process stores every 5 minutes, which is kept for 2 hours. Only the readings of the workers counted in `active` are used, so a stopped worker's reading is ignored although it stays in the cache. Beyond that:
 
-- A process that has not stored a reading yet is not counted when its container is divided, so the share reads high until it does. Each process stores a reading when it starts, so this is brief.
+- Each reading carries its own `processes_per_container`, so the figures do not depend on how many processes have stored a reading.
+- A read that fails on every try stores nothing, so the process's last stored reading is kept, and can still be the one reported, until it expires 2 hours after it was stored. A process whose first read fails has no reading until a later read succeeds.
 - A worker that never stores a reading is still counted in `total` and `active`.
-- The container name used to group readings is never sent.
 
 ## Compatibility
 
 - No existing key is renamed, removed, retyped or changes meaning, and `payload_format` is unchanged (FR-008).
-- Every new figure can be `null` in any report, so the consumer must accept `null` for all of them.
+- Every new figure, and `processes_per_container`, can be `null` in any report, so the consumer must accept `null` for all of them.
 - The new figures are also present when the deployment opted out of sending telemetry, but only in the copy stored locally. Nothing is sent.

@@ -4,7 +4,7 @@
 **Date:** 2026-10-08
 **Author:** @opsmill-team
 
-**Source:** `specs/infp-631-resource-telemetry/research.md` (D2–D7, D11–D18)
+**Source:** `specs/infp-631-resource-telemetry/research.md` (D2–D7, D11–D19)
 
 ## Context
 
@@ -46,19 +46,23 @@ read cannot hold up requests and flows, and stores the reading in the cache with
 a long task that keeps the main loop from reading again does not lose it. The heartbeat thread
 only writes the "alive" keys. Once a day the report reads the readings back from the cache and
 keeps those of the workers whose "alive" key is still set, taken from the same list of workers it
-counts, so a stopped worker's reading is ignored although it stays in the cache. Each reading
-carries the container's name, which is never sent, so readings from the same container can be grouped. The name
-is the hostname followed by the container's process ID namespace, because separate containers can
-share a hostname, for example when they use the host's network.
+counts, so a stopped worker's reading is ignored although it stays in the cache. A read that fails
+on every try stores nothing, so the last stored reading is kept.
 
 **Add new blocks and leave existing fields alone.** `workers` keeps its meaning: it counts every
 worker process. Two new blocks, `server` and `task_workers`, count their own component's processes
-the same way and carry `per_worker`: one worker's share of its container. The share is the most
-complete reading of the component divided by the number of processes that reported from its
-container, with CPU figures kept to two decimals (sent as integers when whole, which the telemetry
-endpoint's checksum check needs) and memory in whole bytes, so `per_worker × active`
-is the component's total. The database block gains `processor_assigned`. `payload_format` stays the
-same until the receiving service confirms it accepts the new fields.
+the same way and carry two more fields:
+
+- `per_container`: the CPU and memory of one of the component's containers, whole, from its most
+  complete reading.
+- `processes_per_container`: how many processes share that container. Each reading carries it. For
+  an API server process it is gunicorn's worker count (`-w`), which the gunicorn worker class puts
+  in the process's environment before the app loads. A process that gunicorn did not start, such as
+  a task worker, counts 1.
+
+The component's total is `per_container × active ÷ processes_per_container`, and every figure is a
+whole number. The database block gains `processor_assigned`. `payload_format` stays the same until
+the receiving service confirms it accepts the new fields.
 
 ## Consequences
 
@@ -68,6 +72,8 @@ same until the receiving service confirms it accepts the new fields.
   The snapshot is stored locally even when the deployment does not send telemetry.
 - A figure never overstates the allocation: an unreadable limit is unknown, and an assigned figure
   is never invented.
+- The report shows how big each component's containers are and how many processes share one, so a
+  container running more processes than it has CPUs is visible directly.
 - A live limit change reaches the cache within about 5 minutes, or later while the main loop is busy
   with a long task, still well before the next daily report.
 - A worker busy with a long task keeps its reading for up to 2 hours, and the report stops using a
@@ -81,8 +87,14 @@ same until the receiving service confirms it accepts the new fields.
 
 - A limit set only on a Kubernetes pod, when the container itself has none, cannot be seen from
   inside the container. Neither can Kubernetes CPU requests, which reserve CPU but do not limit it.
-- The share assumes every copy of a component runs with the same settings. It reads high for a
-  moment after a process starts, until that process has stored its first reading.
+- One container stands for every copy of a component, so every copy is assumed to run with the same
+  settings.
+- The process count comes from how gunicorn was started, not from the processes that run. An API
+  server started another way with several processes, for example by `uvicorn --workers`, counts as
+  one process per container, so its total is overstated. Every way OpsMill ships Infrahub (Docker
+  Compose, both Helm charts) starts the API server through gunicorn with this worker class.
+- While a container runs fewer processes than its count, for example for the moment gunicorn takes
+  to restart one, `active` is lower and the total reads low until the process is back.
 - For the API server and task workers, `processor_assigned` is `null` both when no limit is set
   and when it cannot be read. The pair of CPU figures tells the two apart: no limit leaves
   `processor_available` set.
@@ -93,8 +105,8 @@ same until the receiving service confirms it accepts the new fields.
 - `psutil` becomes a runtime dependency.
 - The reading in the cache can be up to about 5 minutes old, or older while the main loop is busy
   with a long task. Limits rarely change, so this is acceptable for a daily report. Free memory does
-  change on its own, so it describes a moment up to 5 minutes before the report. An empty reading
-  left by a failed read at startup stays until the next read.
+  change on its own, so it describes a moment up to 5 minutes before the report. A process whose
+  first read fails has no reading until a later read succeeds.
 - A worker whose main loop is held up for more than 2 hours loses its reading. After the cache is
   emptied, for example by a restart, the readings come back at each process's next read, within
   5 minutes.
@@ -149,16 +161,28 @@ It would duplicate the heartbeat's job of knowing which workers are alive, with 
 Summing needed each container counted once, two different rules for empty values, and an undercount
 whenever a container stayed silent, which a consumer could not detect from one snapshot.
 
-### Report each worker's full container figures
+### Divide each container's figures among its processes
 
-`per_worker × active` would overstate the API server by its number of processes per container: a
+The report sent one process's share: the container's figures divided by the number of processes that
+had stored a reading from it, so `per_worker × active` was the total. A reader could not see how big
+a container was or how many processes shared it: a 2-CPU container running 2 processes and an 8-CPU
+container running 8 sent the same report. Grouping the readings by container needed a container name
+built from the hostname and the process ID namespace, because separate containers can share a
+hostname, and a rule that a failed read still counted as a process sharing its container. The CPU
+shares were decimals, and a whole-number share had to be sent as an integer for the telemetry
+endpoint's checksum check. The share also read high until every process of a container had stored
+its first reading.
+
+### Report each container whole without the process count
+
+`per_container × active` would overstate the API server by its number of processes per container: a
 4-CPU container shared by 4 processes would read as 16 CPUs.
 
 ### Narrow `workers.total` to task workers, or put the task-worker figures in `workers`
 
 `workers.total` is used downstream, so narrowing it would change an existing series even with its key
 and type unchanged. Putting the task-worker figures next to a count that includes API server
-processes would make `per_worker × active` wrong.
+processes would make the component's total wrong.
 
 ### Raise `payload_format` with the change
 
