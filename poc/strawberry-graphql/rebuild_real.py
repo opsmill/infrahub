@@ -31,6 +31,7 @@ from strawberry.directive import DirectiveLocation, StrawberryDirective
 from strawberry.schema.config import StrawberryConfig
 from strawberry.types.arguments import StrawberryArgument
 from strawberry.types.field import StrawberryField
+from strawberry.types.fields.resolver import StrawberryResolver
 
 BUILTIN_SCALARS = {"String": str, "Int": int, "Float": float, "Boolean": bool, "ID": strawberry.ID}
 
@@ -41,9 +42,32 @@ def new_class(name: str, bases: tuple = (), namespace: dict | None = None) -> ty
     return pytypes.new_class(name, bases, {}, lambda n: n.update(ns))
 
 
+def dict_or_attr(obj: Any, name: str) -> Any:
+    if isinstance(obj, dict):
+        return obj.get(name)
+    return getattr(obj, name, None)
+
+
+def _input_init(self: Any, **kwargs: Any) -> None:
+    """Stands in for the dataclass constructor, which cannot see fields appended after the class was decorated."""
+    for field in self.__strawberry_definition__.fields:
+        setattr(self, field.python_name, kwargs.get(field.python_name, field.default))
+
+
 class Rebuilder:
-    def __init__(self, source: Any) -> None:
+    """Builds `source` with Strawberry; `only` and `root_fields` restrict the build to part of the schema."""
+
+    def __init__(
+        self,
+        source: Any,
+        only: set[str] | None = None,
+        root_fields: dict[str, set[str]] | None = None,
+        resolvers: dict[tuple[str, str], Any] | None = None,
+    ) -> None:
         self.source = source
+        self.only = only
+        self.root_fields = root_fields or {}
+        self.resolvers = resolvers or {}
         self.py: dict[str, Any] = {}
         self._annotations: dict[str, StrawberryAnnotation] = {}
 
@@ -83,6 +107,11 @@ class Rebuilder:
 
     def build(self) -> strawberry.Schema:
         types = {n: t for n, t in self.source.type_map.items() if not n.startswith("__")}
+        if self.only is not None:
+            root_names = {
+                r.name for r in (self.source.query_type, self.source.mutation_type, self.source.subscription_type) if r
+            }
+            types = {n: t for n, t in types.items() if n in self.only or n in root_names or n in BUILTIN_SCALARS}
 
         for name, t in types.items():
             if name in BUILTIN_SCALARS:
@@ -125,7 +154,9 @@ class Rebuilder:
                     description=t.description,
                 )
             elif isinstance(t, GraphQLInputObjectType):
-                self.py[name] = strawberry.input(new_class(name), description=t.description)
+                self.py[name] = strawberry.input(
+                    new_class(name, (), {"__init__": _input_init}), description=t.description
+                )
 
         # Phase 2: fields and arguments, appended once every class exists so cycles resolve.
         for name, t in types.items():
@@ -135,6 +166,8 @@ class Rebuilder:
             inherited = {f.python_name for f in definition.fields}
             definition.fields[:] = [f for f in definition.fields if f.python_name not in t.fields]
             for field_name, f in t.fields.items():
+                if name in self.root_fields and field_name not in self.root_fields[name]:
+                    continue
                 kwargs: dict[str, Any] = {}
                 if isinstance(t, GraphQLInputObjectType):
                     kwargs["default"] = self.default(f.type, f.default_value, f)
@@ -144,6 +177,9 @@ class Rebuilder:
                     type_annotation=self.shared_annotation(f.type),
                     description=f.description,
                     deprecation_reason=f.deprecation_reason,
+                    base_resolver=StrawberryResolver(self.resolvers[name, field_name])
+                    if (name, field_name) in self.resolvers
+                    else None,
                     **kwargs,
                 )
                 field.origin = self.py[name]
@@ -200,7 +236,7 @@ class Rebuilder:
             subscription=subscription,
             types=extra,
             directives=directives,
-            config=StrawberryConfig(auto_camel_case=False),
+            config=StrawberryConfig(auto_camel_case=False, default_resolver=dict_or_attr),
         )
 
 
