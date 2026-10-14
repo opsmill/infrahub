@@ -677,7 +677,7 @@ and is not re-imported; retry; the branch is gone.
       Partial: `test_a_remote_branch_kept_while_pending_is_not_imported_and_is_deleted_after_the_delivery`
       covers the delivery part, on a worker that does not hold the branch, so the sync reads it as
       new. On the worker that ran the merge, the sync ignores an updated branch with no Infrahub
-      branch anyway. The abandonment part needs the abandonment mutation of T087.
+      branch anyway. The abandonment part is not written yet.
 - [X] T098 [P] [US6] Add a case to `backend/tests/component/git/writeback/test_enqueue.py`: a merge of
       another branch is not blocked while repository X has a pending delivery (FR-010). The case
       calls the dispatcher, so the merge check does not run: T112 covers the refusal of the merge
