@@ -1290,7 +1290,7 @@ async def retry_repository_delivery(model: GitRepositoryDeliveryRetry, context: 
     name="git-repository-delivery-abandon",
     flow_run_name="Abandon the pending pushes of git repository {model.repository_name}",
 )
-async def abandon_repository_delivery(model: GitRepositoryDeliveryAbandon, context: InfrahubContext) -> None:
+async def abandon_repository_delivery(model: GitRepositoryDeliveryAbandon, context: InfrahubContext) -> State:
     log = get_run_logger()
     await add_tags(branches=[registry.default_branch], nodes=[model.repository_id])
 
@@ -1307,10 +1307,12 @@ async def abandon_repository_delivery(model: GitRepositoryDeliveryAbandon, conte
             db=db, kind=CoreGenericAccount, id=context.account.account_id, raise_on_error=True
         )
         abandoner = await build_writeback_abandoner(db=db, repository=repo, context=context, log=log)
-        await abandoner.abandon(
+        record = await abandoner.abandon(
             queue_version=model.queue_version,
             actor=Actor(account_id=context.account.account_id, account_name=account.name.value),
         )
+
+    return Completed(message=f"Abandoned the merges {sorted(record.entry_ids)} of repository {model.repository_name}.")
 
 
 @flow(name="git-repository-import-object", flow_run_name="Import objects from git repository")
