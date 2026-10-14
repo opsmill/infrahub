@@ -406,8 +406,7 @@ async def resolve_number_pool_utilization(
     ranges = await NumberPoolRepository(db=db).get_ranges(pool_id=pool.get_id(), at=at)
     # The range nodes serve the edges too, so the space is built from the ones already read.
     space = EffectiveSpace(ranges=to_pool_ranges(ranges=ranges), domain=_pool_domain(domains=domains, pool=pool))
-    number_pool = NumberUtilizationGetter(db=db, pool=core_number_pool, space=space, at=at, branch=branch)
-    await number_pool.load_data()
+    number_pool = await NumberUtilizationGetter(db=db, branch=branch, at=at).measure(pool=core_number_pool, space=space)
 
     figures = number_pool.figures
     return {

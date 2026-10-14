@@ -195,15 +195,14 @@ async def pool_space_size(db: InfrahubDatabase, pool: CoreNumberPool) -> int:
 async def current_figures(db: InfrahubDatabase, pool: CoreNumberPool, branch: Branch) -> PoolFigures:
     """What the pool reports now, through the readers that target the attribute."""
     space = await pool_space(db=db, pool=pool)
-    getter = NumberUtilizationGetter(db=db, pool=pool, space=space, branch=branch)
-    await getter.load_data()
-    figures = getter.figures
+    utilization = await NumberUtilizationGetter(db=db, branch=branch).measure(pool=pool, space=space)
+    figures = utilization.figures
 
     return PoolFigures(
         utilization=figures.utilization,
         utilization_default_branch=figures.utilization_default_branch,
         utilization_branches=figures.utilization_branches,
-        allocated=tuple(sorted((entry.branch, entry.number) for entry in getter.used)),
+        allocated=tuple(sorted((entry.branch, entry.number) for entry in utilization.used)),
         in_use=tuple(sorted(await NumberPoolRepository(db=db).get_used(pool=pool, branch=branch, space=space))),
     )
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub.pools.number import NumberUtilizationGetter
 from infrahub.pools.number_pool_allocations_reader import NumberPoolAllocationsReader
 from infrahub.pools.number_pool_divisions_reader import NumberPoolDivisionsReader
 from infrahub.pools.number_pool_repository import NumberPoolRepository
@@ -38,6 +39,7 @@ def build_number_pool_utilization_reader(
         loader=build_number_pool_state_loader(
             db=db, branch=branch, schema_branch=schema_branch, repository=NumberPoolRepository(db=db)
         ),
+        utilization_getter=NumberUtilizationGetter(db=db, branch=branch),
     )
 
 

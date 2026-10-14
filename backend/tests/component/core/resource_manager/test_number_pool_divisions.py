@@ -409,19 +409,15 @@ class TestScopedPoolQueries:
         pool = dataset.site_pool
         branch = dataset.default_branch
         repository = NumberPoolRepository(db=db)
-        getter = NumberUtilizationGetter(
-            db=db,
+        utilization = await NumberUtilizationGetter(db=db, branch=branch).measure(
             pool=pool,
             space=EffectiveSpace(ranges=await repository.get_pool_ranges(pool_id=pool.id), domain=NumberDomain()),
-            branch=branch,
             division=Division.from_entries(
                 entries=[("site", dataset.sites["site-a"])], element_fields=element_fields_of(pool=pool, branch=branch)
             ),
         )
 
-        await getter.load_data()
-
-        assert (getter.figures.used_default_branch, getter.figures.used_branches) == (2, 1)
+        assert (utilization.figures.used_default_branch, utilization.figures.used_branches) == (2, 1)
 
     async def test_divisions_read_one_row_at_a_time_are_each_counted_once(
         self, db: InfrahubDatabase, dataset: DivisionsDataset, query_limit_of_one: None
