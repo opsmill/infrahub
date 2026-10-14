@@ -82,7 +82,6 @@ class NumberPoolAllocationsReader:
             offset=DEFAULT_OFFSET if filters.offset is None else filters.offset,
             limit=DEFAULT_LIMIT if filters.limit is None else filters.limit,
             branch=self.branch,
-            branch_agnostic=True,
         )
         count = await query.count(db=self.db)
         # A query with no limit reads every row, so a page of zero rows is not read at all.

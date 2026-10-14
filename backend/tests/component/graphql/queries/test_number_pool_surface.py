@@ -224,9 +224,7 @@ async def device_from_pool(
 async def tracked_numbers(db: InfrahubDatabase, dataset: SurfaceDataset, pool_id: str) -> list[tuple[int, str, str]]:
     """The value, branch and holding object name of every number the pool tracks, read without the dedicated queries."""
     pool = await NodeManager.get_one(db=db, id=pool_id, kind=InfrahubKind.NUMBERPOOL, raise_on_error=True)
-    query = await NumberPoolGetAllocated.init(
-        db=db, pool=pool, ranges=[[1, 100]], branch=dataset.default_branch, branch_agnostic=True
-    )
+    query = await NumberPoolGetAllocated.init(db=db, pool=pool, ranges=[[1, 100]], branch=dataset.default_branch)
     await query.execute(db=db)
     names_by_id = {node_id: name for name, node_id in dataset.devices.items()}
     return [(row.value, row.branch, names_by_id[row.id]) for row in query.get_data()]
