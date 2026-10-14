@@ -37,6 +37,10 @@ class UtilizationFigures:
     used_branches: int
 
     @property
+    def used(self) -> int:
+        return self.used_default_branch + self.used_branches
+
+    @property
     def utilization(self) -> float:
         return _percentage(self.used_default_branch + self.used_branches, self.size)
 
@@ -49,51 +53,17 @@ class UtilizationFigures:
         return _percentage(self.used_branches, self.size)
 
 
-class NumberUtilizationGetter:
-    """Utilization of a number pool measured against its effective space, for the pool and for each range.
+@dataclass(frozen=True)
+class NumberPoolUtilization:
+    """The numbers in use within an effective space, and the figures they give for the space and for each range."""
 
-    With a division, only the numbers whose holding object is in the division on some live branch are counted.
-    """
-
-    def __init__(
-        self,
-        db: InfrahubDatabase,
-        pool: CoreNumberPool,
-        space: EffectiveSpace,
-        branch: Branch,
-        at: Timestamp | str | None = None,
-        division: Division | None = None,
-    ) -> None:
-        self.db = db
-        self.division = division
-        self.at = at
-        self.pool = pool
-        self.space = space
-        self.branch = branch
-        self.used: list[UsedNumber] = []
-        self.used_default_branch: set[int] = set()
-        self.used_branches: set[int] = set()
-        self._default_branch_by_range: Counter[str | None] = Counter()
-        self._branches_by_range: Counter[str | None] = Counter()
-
-    async def load_data(self) -> None:
-        if not self.space.is_empty:
-            query = await NumberPoolGetAllocated.init(
-                db=self.db,
-                pool=self.pool,
-                ranges=self.space.as_query_ranges(),
-                branch=self.branch,
-                division=self.division,
-            )
-            await query.execute(db=self.db)
-            self.used = [UsedNumber(number=item.value, branch=item.branch) for item in query.get_data()]
-
-        self.used_default_branch = {entry.number for entry in self.used if entry.branch == registry.default_branch}
-        used_branches = {entry.number for entry in self.used if entry.branch != registry.default_branch}
-        self.used_branches = used_branches - self.used_default_branch
-
-        self._default_branch_by_range = Counter(self.space.range_for(number) for number in self.used_default_branch)
-        self._branches_by_range = Counter(self.space.range_for(number) for number in self.used_branches)
+    space: EffectiveSpace
+    used: tuple[UsedNumber, ...]
+    used_default_branch: frozenset[int]
+    used_branches: frozenset[int]
+    """Numbers in use on other branches only, so a number used on the default branch is counted once."""
+    used_default_branch_by_range: Counter[str | None]
+    used_branches_by_range: Counter[str | None]
 
     @property
     def figures(self) -> UtilizationFigures:
@@ -108,6 +78,46 @@ class NumberUtilizationGetter:
         """Return the figures of one range, measured against the part of the effective space it contributes."""
         return UtilizationFigures(
             size=self.space.size_of(range_id),
-            used_default_branch=self._default_branch_by_range[range_id],
-            used_branches=self._branches_by_range[range_id],
+            used_default_branch=self.used_default_branch_by_range[range_id],
+            used_branches=self.used_branches_by_range[range_id],
+        )
+
+
+class NumberUtilizationGetter:
+    """Measures the utilization of a number pool against an effective space, for the pool and for each range.
+
+    With a division, only the numbers whose holding object is in the division on some live branch are counted.
+    """
+
+    def __init__(self, db: InfrahubDatabase, branch: Branch, at: Timestamp | str | None = None) -> None:
+        self.db = db
+        self.branch = branch
+        self.at = at
+
+    async def measure(
+        self, pool: CoreNumberPool, space: EffectiveSpace, division: Division | None = None
+    ) -> NumberPoolUtilization:
+        """Return the numbers of `pool` in use within `space`, only those of `division` when one is given."""
+        used: list[UsedNumber] = []
+        if not space.is_empty:
+            query = await NumberPoolGetAllocated.init(
+                db=self.db,
+                pool=pool,
+                ranges=space.as_query_ranges(),
+                branch=self.branch,
+                division=division,
+            )
+            await query.execute(db=self.db)
+            used = [UsedNumber(number=item.value, branch=item.branch) for item in query.get_data()]
+
+        used_default_branch = frozenset(entry.number for entry in used if entry.branch == registry.default_branch)
+        used_branches = frozenset(entry.number for entry in used if entry.branch != registry.default_branch)
+        used_branches -= used_default_branch
+        return NumberPoolUtilization(
+            space=space,
+            used=tuple(used),
+            used_default_branch=used_default_branch,
+            used_branches=used_branches,
+            used_default_branch_by_range=Counter(space.range_for(number) for number in used_default_branch),
+            used_branches_by_range=Counter(space.range_for(number) for number in used_branches),
         )

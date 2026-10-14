@@ -5,15 +5,13 @@ from typing import TYPE_CHECKING
 from graphene import BigInt, Field, Float, InputObjectType, Int, List, NonNull, ObjectType, String
 from graphene.types.generic import GenericScalar
 
+from infrahub.core.registry import registry
 from infrahub.graphql.types.enums import PoolRecordProvenance as PoolRecordProvenanceType
-from infrahub.pools.number_pool_mock import (
-    DivisionFilterEntry,
-    MockAllocations,
-    MockDivisions,
-    MockUtilization,
-    get_allocations,
-    get_divisions,
-    get_utilization,
+from infrahub.pools.number_pool_allocations_reader import AllocationFilters
+from infrahub.pools.number_pool_usage_factory import (
+    build_number_pool_allocations_reader,
+    build_number_pool_divisions_reader,
+    build_number_pool_utilization_reader,
 )
 
 if TYPE_CHECKING:
@@ -21,14 +19,24 @@ if TYPE_CHECKING:
 
     from graphql import GraphQLResolveInfo
 
+    from infrahub.core.branch import Branch
     from infrahub.core.constants import PoolRecordProvenance
+    from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.database import InfrahubDatabase
     from infrahub.graphql.initialization import GraphqlContext
+    from infrahub.pools.number_pool_usage import PoolDivisions, PoolUsage, TrackedNumbersPage
 
 
-def _division_filter(division: Sequence[Mapping[str, object]] | None) -> list[DivisionFilterEntry] | None:
+def _division_entries(division: Sequence[Mapping[str, object]] | None) -> list[tuple[str, object]] | None:
     if division is None:
         return None
-    return [DivisionFilterEntry(path=str(entry["path"]), value=entry["value"]) for entry in division]
+    return [(str(entry["path"]), entry["value"]) for entry in division]
+
+
+def _context(info: GraphQLResolveInfo) -> tuple[InfrahubDatabase, Branch, SchemaBranch]:
+    graphql_context: GraphqlContext = info.context
+    branch = graphql_context.branch
+    return graphql_context.db, branch, registry.schema.get_schema_branch(name=branch.name)
 
 
 class NumberPoolUtilizationFigures(ObjectType):
@@ -131,11 +139,10 @@ class NumberPoolUtilization(ObjectType):
         info: GraphQLResolveInfo,
         pool_id: str,
         division: list[dict[str, str]] | None = None,
-    ) -> MockUtilization:
-        graphql_context: GraphqlContext = info.context
-        return get_utilization(
-            pool_id=pool_id, request_branch=graphql_context.branch.name, division=_division_filter(division)
-        )
+    ) -> PoolUsage:
+        db, branch, schema_branch = _context(info)
+        reader = build_number_pool_utilization_reader(db=db, branch=branch, schema_branch=schema_branch)
+        return await reader.read(pool_id=pool_id, division=_division_entries(division))
 
 
 class NumberPoolDivisionEntry(ObjectType):
@@ -220,8 +227,9 @@ class NumberPoolDivisions(ObjectType):
         List(NonNull(NumberPoolDivision)),
         required=True,
         description=(
-            "Every division that holds at least one value the pool tracks on any live branch. Each holding object's "
-            "division is read on the request's branch. Ordered by utilization descending, then by display_label. "
+            "Every division that holds at least one value the pool tracks on any live branch. Each holding object "
+            "counts under every division it occupies on any live branch. Ordered by utilization descending, then by "
+            "display_label. "
             "Empty for an unscoped pool."
         ),
     )
@@ -231,9 +239,10 @@ class NumberPoolDivisions(ObjectType):
         root: dict,  # noqa: ARG004
         info: GraphQLResolveInfo,
         pool_id: str,
-    ) -> MockDivisions:
-        graphql_context: GraphqlContext = info.context
-        return get_divisions(pool_id=pool_id, request_branch=graphql_context.branch.name)
+    ) -> PoolDivisions:
+        db, branch, schema_branch = _context(info)
+        reader = build_number_pool_divisions_reader(db=db, branch=branch, schema_branch=schema_branch)
+        return await reader.read(pool_id=pool_id)
 
 
 class NumberPoolHolder(ObjectType):
@@ -302,18 +311,18 @@ class NumberPoolAllocations(ObjectType):
         provenance: PoolRecordProvenance | None = None,
         offset: int | None = None,
         limit: int | None = None,
-    ) -> MockAllocations:
-        graphql_context: GraphqlContext = info.context
-        return get_allocations(
-            pool_id=pool_id,
-            request_branch=graphql_context.branch.name,
-            division=_division_filter(division),
+    ) -> TrackedNumbersPage:
+        filters = AllocationFilters(
+            division=_division_entries(division),
             range_id=range_id,
-            branch=branch,
+            branch_name=branch,
             provenance=provenance,
             offset=offset,
             limit=limit,
         )
+        db, request_branch, schema_branch = _context(info)
+        reader = build_number_pool_allocations_reader(db=db, branch=request_branch, schema_branch=schema_branch)
+        return await reader.read(pool_id=pool_id, filters=filters)
 
 
 InfrahubNumberPoolUtilization = Field(

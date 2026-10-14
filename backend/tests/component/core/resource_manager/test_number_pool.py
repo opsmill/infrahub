@@ -338,9 +338,8 @@ async def test_each_range_reports_the_numbers_its_branches_hold(
     space = EffectiveSpace(
         ranges=await NumberPoolRepository(db=db).get_pool_ranges(pool_id=pool.get_id()), domain=NumberDomain()
     )
-    getter = NumberUtilizationGetter(db=db, pool=pool, space=space, branch=branch)
-    await getter.load_data()
-    assert {(used.number, used.branch) for used in getter.used} == {(5, "main"), (5, "feat"), (20, "feat")}
+    utilization = await NumberUtilizationGetter(db=db, branch=branch).measure(pool=pool, space=space)
+    assert {(used.number, used.branch) for used in utilization.used} == {(5, "main"), (5, "feat"), (20, "feat")}
 
     utilization = await resolve_number_pool_utilization(
         db=db, domains=schema_domains(db=db, branch=branch), pool=pool, at=Timestamp(), branch=branch

@@ -97,7 +97,13 @@ backend/infrahub/
 │   ├── number.py                                     # existing: NumberUtilizationGetter
 │   ├── schema_number_pool_upserter.py                # existing: upsert_number_pool
 │   ├── schema_number_pool_synchronizer.py            # existing: run, _update_pool_from_schema
-│   └── number_pool_mock.py                           # PR #10932: fixed dataset, deleted when the resolvers read the database
+│   ├── number_pool_usage.py                          # NEW: the figures the three queries return
+│   ├── number_pool_usage_state.py                    # NEW: NumberPoolStateLoader, PoolScopeFields (division filters)
+│   ├── number_pool_usage_nodes.py                    # NEW: PeerSummaryReader, HoldingObjectReader
+│   ├── number_pool_utilization_reader.py             # NEW: NumberPoolUtilizationReader
+│   ├── number_pool_divisions_reader.py               # NEW: NumberPoolDivisionsReader, build_division_usages
+│   ├── number_pool_allocations_reader.py             # NEW: NumberPoolAllocationsReader, AllocationFilters
+│   └── number_pool_usage_factory.py                  # NEW: builders of the three readers
 ├── graphql/
 │   ├── mutations/resource_manager/number_pools/
 │   │   ├── pool.py                                   # existing: InfrahubNumberPoolMutation
@@ -154,7 +160,7 @@ docs/docs/resource-manager/
 ### Reading a scoped pool
 
 - PR #10932 is rebased onto `feature-number-pools-1.12` and updated to the contract first: `backend/infrahub/graphql/queries/number_pool.py` gains the `NumberPoolScopeElement` type and the `id` field of `NumberPoolDivisionEntry`; `backend/infrahub/pools/number_pool_mock.py` carries `{id, name}` scope elements and counts each holding object under every division it occupies on any live branch; the mock's tests follow. The frontend team builds on that shape.
-- `NumberPoolGetDivisions` (new query in `backend/infrahub/core/query/resource_manager.py`) groups the tracked values by division tuple, counting each value under every division its holding object occupies on any live branch, and returns, per division, the distinct values on any live branch, on the default branch, and on other branches only. `NumberPoolRepository.get_divisions` runs it. The resolver turns relationship values into display labels with one batched node lookup.
+- `NumberPoolGetDivisions` (new query in `backend/infrahub/core/query/resource_manager.py`) groups the tracked values by division tuple, counting each value under every division its holding object occupies on any live branch with the live-edge predicates of the division filter, and returns, per division, the distinct values on any live branch, on the default branch, and on other branches only. `NumberPoolRepository.get_divisions` runs it. The resolver turns relationship values into display labels with one batched node lookup.
 - `NumberPoolGetAllocated` gains the filters `division` (subset of elements allowed), range bounds, branch name and provenance (derived, as today, from the `allocated_values` list of the record), and keeps its default rendering for the existing callers (`NumberUtilizationGetter`, `resolve_number_pool_allocation`). The resolver resolves holding objects in batches per branch.
 - The component tests of the divisions and allocations resolvers assert the number of database queries with `backend/tests/helpers/db_query_counter.py`, so that a per-row lookup cannot slip in.
 - `NumberUtilizationGetter` (`backend/infrahub/pools/number.py`) takes an optional division and keeps measuring the `EffectiveSpace` of `backend/infrahub/pools/number_ranges.py`; the per-range figures come from `range_figures` as today.
