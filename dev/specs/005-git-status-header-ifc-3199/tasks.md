@@ -122,7 +122,7 @@ activatable, and the header layout matches a branch that has repositories.
 
 - [x] T023 Write `tests/e2e/repository/test_git_status_header.py`: set an existing fixture repository's `sync_status` to the import-error value through an update mutation, load a page, assert the indicator is in its error state, activate it, and assert the destination lists that repository. The test MUST restore the previous status afterwards or run on its own branch — it mutates shared session-scoped fixture state, and a leaked error status would confuse every later test *(constitution Principle IV; R5; spec US1 + US2)*
 
-- [ ] T024 Run `tests/e2e/repository/test_git_status_header.py` against a local stack and confirm it passes. Do NOT build a broken-import fixture repository — that approach was considered and rejected in R5 *(R5)*
+- [x] T024 **Done, checked 2026-10-14.** The test landed as `tests/e2e/repository/test_repository_sync_status.py` in #10649, not under the file name below, and passed in the `branches_repo` shard of `develop` CI run 38551370153. Run `tests/e2e/repository/test_git_status_header.py` against a local stack and confirm it passes. Do NOT build a broken-import fixture repository — that approach was considered and rejected in R5 *(R5)*
 
 ---
 
@@ -134,7 +134,7 @@ activatable, and the header layout matches a branch that has repositories.
 
 - [x] T027 Run the full local CI gate: `pnpm exec biome ci .` from `frontend` (the pnpm workspace root, as CI runs it), then `pnpm knip`, `pnpm exec betterer ci` and `pnpm test` from `frontend/app`. All four fail CI independently; `biome:fix` alone is not the gate. `knip` matters here because the URL builder and the sync-health use case each have exactly one importer *(quickstart.md; ship phase 5)*
 
-- [ ] T028 Confirm the three known gaps listed in `specs/005-git-status-header-ifc-3199/plan.md` are still accurate and carry them into the PR body verbatim: the refresh interval is asserted by no test (matching the existing task indicator's gap); branch-change-mid-flight relies on the query cache key rather than a test; partial-match filtering on the sync status is safe only because no enum value contains another as a substring *(plan.md known gaps)*
+- [x] T028 **Not needed, checked 2026-10-14.** #10649 has merged, so its description can no longer serve reviewers. It records the substring limit of the sync-status filter, and reports a component test that a resolved state survives the refresh interval firing. The remaining gaps stay recorded in `plan.md`. Confirm the three known gaps listed in `specs/005-git-status-header-ifc-3199/plan.md` are still accurate and carry them into the PR body verbatim: the refresh interval is asserted by no test (matching the existing task indicator's gap); branch-change-mid-flight relies on the query cache key rather than a test; partial-match filtering on the sync status is safe only because no enum value contains another as a substring *(plan.md known gaps)*
 
 ---
 

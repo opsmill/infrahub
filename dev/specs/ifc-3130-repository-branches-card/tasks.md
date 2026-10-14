@@ -568,13 +568,21 @@ another table's. It carried a stringified query signature in state, plus an effe
       revision named the path one directory up, and `git diff --exit-code` over a pathspec matching
       nothing exits 0, so that check passed unconditionally. Verify the new step **fails** when it
       should by touching one file deliberately.
-- [ ] T072 Verify FR-008 by review against two structural facts: the card imports exactly one api
+- [x] T072 **Done, checked 2026-10-14, recorded here because the PR has merged.** Outside its
+      tests, the card imports one api module, `get-repository-branch-status-from-api`, plus the
+      generated GraphQL types, and that module's query has no `node_metadata`.
+      Verify FR-008 by review against two structural facts: the card imports exactly one api
       module, and the selection set omits `node_metadata` entirely. Record the verification in the PR
       body. Do **not** substitute a call-count assertion — it measures render-loop stability, not data
       provenance, and breaks the first legitimate refetch.
-- [ ] T073 Run `pnpm codegen` and confirm `git diff --exit-code src/shared/api/graphql/generated/` is
+- [x] T073 **Done, checked 2026-10-14.** `pnpm codegen` on `develop` at `7a873ac56f` left
+      `src/shared/api/graphql/generated/` with no diff.
+      Run `pnpm codegen` and confirm `git diff --exit-code src/shared/api/graphql/generated/` is
       clean. The base branch already carries the regenerated types, so any drift means the base moved.
-- [ ] T074 Run the full CI gate locally — `pnpm exec biome ci .`, `pnpm knip`, `pnpm exec betterer ci`,
+- [x] T074 **Not needed, checked 2026-10-14.** The card merged to `develop`, and `develop` CI run
+      38551370153 passed the same four checks: `frontend-lint` runs `biome ci`, `knip` and
+      `betterer ci`, and `frontend-tests` runs `pnpm test`.
+      Run the full CI gate locally — `pnpm exec biome ci .`, `pnpm knip`, `pnpm exec betterer ci`,
       `pnpm test`. All four fail CI independently; `pnpm biome:fix` alone is not the gate. Note that
       `frontend-lint` has **no path filter** and runs on every PR.
 - [ ] T075 Walk [quickstart.md](quickstart.md)'s manual validation scenarios for both repository kinds.
@@ -583,7 +591,10 @@ another table's. It carried a stringified query signature in state, plus an effe
       row as one conversation, not just paging. Do this **before T012**: pagination is built first and
       would otherwise be rejected last. The register's largest row is the two-card split, which the
       canvas explicitly ruled against.
-- [ ] T077 Note the missing `CoreReadOnlyRepository` e2e fixture on **IFC-3153**, so its owner inherits
+- [x] T077 **Not needed, checked 2026-10-14.** The gap no longer exists:
+      `tests/e2e/repository/test_repository_check_remote.py` creates a `CoreReadOnlyRepository` for
+      its tests, and a Branches card e2e test can follow the same pattern.
+      Note the missing `CoreReadOnlyRepository` e2e fixture on **IFC-3153**, so its owner inherits
       the gap rather than it living only in this spec (FR-027).
 
 ---
