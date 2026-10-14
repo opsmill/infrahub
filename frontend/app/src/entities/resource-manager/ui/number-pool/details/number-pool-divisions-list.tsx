@@ -106,18 +106,13 @@ function DivisionsCount({ pool }: DivisionsCountProps) {
   );
 }
 
-interface DivisionsSearchProps {
-  pool: NumberPoolData;
-}
-
-function DivisionsSearch({ pool }: DivisionsSearchProps) {
-  const fields = useNumberPoolScopeFields(pool);
+function DivisionsSearch() {
   const [{ search }, { setSearch }] = useNumberPoolDivisionTableState();
 
   return (
     <SearchInput
       className="h-7 w-64 text-sm"
-      placeholder={`Search ${fields.map((field) => field.label.toLowerCase()).join(" or ")}`}
+      placeholder="Search"
       value={search}
       onChange={setSearch}
       onPressReset={() => setSearch("")}
@@ -167,11 +162,12 @@ export interface NumberPoolDivisionsListProps {
 export function NumberPoolDivisionsList({ pool }: NumberPoolDivisionsListProps) {
   return (
     <Card className="mx-2 mb-2 min-h-0 grow overflow-hidden">
-      <Row className="flex-wrap border-b px-3 py-2">
+      <Row className="border-b px-3 py-2">
         <h2 className="font-semibold text-sm">Allocation scopes</h2>
         <DivisionsCount pool={pool} />
-        <DivisionsSearch pool={pool} />
+        <DivisionsSearch />
       </Row>
+
       <div className="relative min-h-0 flex-1 overflow-auto overscroll-contain">
         <DivisionsContent pool={pool} />
       </div>

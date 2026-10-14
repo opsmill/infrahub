@@ -323,7 +323,7 @@ class TestNumberPool:
         await expect(scope_links).to_have_count(2)
         await expect(scope_links.first).to_contain_text(busy_device)
 
-        search = admin_page.get_by_placeholder(re.compile(r"^Search device"))
+        search = admin_page.get_by_role("searchbox")
         await search.fill(quiet_device)
         await expect(scope_links).to_have_count(1)
         await expect(scope_links.first).to_contain_text(quiet_device)
