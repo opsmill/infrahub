@@ -28,13 +28,13 @@ import { toastTaskStarted } from "@/entities/repository/ui/toast-task-started";
 const REQUIRED_ACTION_BY_CAUSE: Record<PushFailureCause, string> = {
   "remote-unreachable": "Wait, or retry once the remote is reachable.",
   "remote-advanced": "Wait, or retry.",
-  "record-failed": "Wait, or retry. The remote has the content.",
+  "record-failed": "Wait, or retry. The remote can already have the content.",
   "not-found": "Check the location, and that the credential can see the repository, then retry.",
   certificate: "Fix the certificate configuration, then retry.",
   credentials: "Fix the credential, then retry.",
   permission: "Grant push permission or lift the branch protection, then retry.",
   "import-interrupted":
-    "Wait, or retry once the database and the remote are reachable. The remote has the content.",
+    "Wait, or retry once the database, the Infrahub server and the remote are reachable. The remote already has the content.",
   "import-failed": "Fix the content on the remote, then retry.",
   "replay-conflict": "Merge the source branch on the remote by hand, then retry. Or abandon.",
   "source-discarded": "Abandon.",
