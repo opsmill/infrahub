@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+<<<<<<< HEAD
 from typing import TYPE_CHECKING, Protocol, assert_never
+=======
+from typing import TYPE_CHECKING, assert_never
+>>>>>>> origin/stable
 
 from infrahub.core.schema.derived_path import (
     DerivedPathResolver,
@@ -50,6 +54,7 @@ class DerivedFieldDependencies:
     widen: bool
 
 
+<<<<<<< HEAD
 class DerivedFieldDependencyResolver(Protocol):
     """Resolve the peer kinds a query's display_label / human_friendly_id reads depend on.
 
@@ -65,6 +70,19 @@ class DerivedFieldDependencyResolver(Protocol):
 class SchemaDerivedFieldDependencyResolver(DerivedFieldDependencyResolver):
     """Resolve derived-field peers by walking each field's declared paths through the schema branch."""
 
+=======
+class DerivedFieldDependencyResolver:
+    """Resolve the peer kinds a query's display_label / human_friendly_id reads depend on.
+
+    A derived value can be composed from a related node's field, so a change to that peer moves the
+    value while the peer's kind is never named in the query's read surface. This walks each derived
+    field's declared paths, following relationships to the kind that owns the backing attribute, and
+    reports the relationship chain that maps a changed peer back to the reading member. A read built
+    only from the reading kind's own attributes yields no peer -- the imprecise-read rule already
+    covers a same-kind change -- and anything that cannot be resolved sets ``widen``.
+    """
+
+>>>>>>> origin/stable
     def __init__(self, schema_branch: SchemaBranch) -> None:
         self.schema_branch = schema_branch
         self.path_resolver = DerivedPathResolver(schema_branch=schema_branch)

@@ -13,7 +13,10 @@ if TYPE_CHECKING:
     from collections.abc import Container, Iterable, Mapping
 
     from infrahub.core.schema import MainSchemaTypes, NodeSchema
+<<<<<<< HEAD
     from infrahub.core.schema.computed_attribute import ComputedAttribute
+=======
+>>>>>>> origin/stable
     from infrahub.core.schema.derived_path import DerivedPathResolver
 
 # Reads of these computed/derived fields cannot be mapped back to a precise set of backing

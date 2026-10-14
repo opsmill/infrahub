@@ -3,7 +3,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Protocol
 
 from infrahub.core import registry
+<<<<<<< HEAD
 from infrahub.core.regeneration.impact import FieldLevelImpactResolver
+=======
+>>>>>>> origin/stable
 from infrahub.core.regeneration.profiles import SchemaProfileExpander
 from infrahub.proposed_change.branch_diff import get_modified_kinds
 
@@ -22,7 +25,13 @@ if TYPE_CHECKING:
     from infrahub_sdk.diff import NodeDiff
 
     from infrahub.core.regeneration.profiles import ModifiedKindsExpander
+<<<<<<< HEAD
     from infrahub.database import InfrahubDatabase
+=======
+    from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
+    from infrahub.git.models import RequestArtifactDefinitionGenerate
+    from infrahub.message_bus.types import ProposedChangeArtifactDefinition
+>>>>>>> origin/stable
 
     from .models import CascadeSourceOutput, DefinitionModel, FullRegeneration, RegenerationRequest
     from .participant import CascadeParticipant
@@ -58,6 +67,7 @@ class MergeSelectiveRegeneration(RegenerationPlanner):
     dispatch. Adding a definition kind is one new participant in the injected list, with no change here.
     """
 
+<<<<<<< HEAD
     def __init__(self, participants: Sequence[CascadeParticipant[Any]], kinds_expander: ModifiedKindsExpander) -> None:
         self.participants = participants
         self.kinds_expander = kinds_expander
@@ -65,6 +75,25 @@ class MergeSelectiveRegeneration(RegenerationPlanner):
     async def build_plan(self, diff_summary: list[NodeDiff], target_branch: str) -> SelectiveRegenerationPlan:
         entries = await self._plan(self.participants, diff_summary=diff_summary, target_branch=target_branch)
         return SelectiveRegenerationPlan(entries=entries)
+=======
+    def __init__(
+        self,
+        generator_selector: DefinitionSelectorBase[ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun],
+        artifact_selector: DefinitionSelectorBase[ProposedChangeArtifactDefinition, RequestArtifactDefinitionGenerate],
+        kinds_expander: ModifiedKindsExpander,
+    ) -> None:
+        self.generator_selector = generator_selector
+        self.artifact_selector = artifact_selector
+        self.kinds_expander = kinds_expander
+
+    async def build_plan(self, diff_summary: list[NodeDiff], target_branch: str) -> SelectiveRegenerationPlan:
+        modified_kinds = self.kinds_expander.expand(
+            modified_kinds=get_modified_kinds(diff_summary=diff_summary, branch=target_branch),
+            branch=target_branch,
+        )
+        generator_definitions = await self.generator_selector.load_definitions(target_branch=target_branch)
+        artifact_definitions = await self.artifact_selector.load_definitions(target_branch=target_branch)
+>>>>>>> origin/stable
 
     async def reselect_from_cascade_output(
         self, diff_summary: list[NodeDiff], target_branch: str
@@ -75,6 +104,7 @@ class MergeSelectiveRegeneration(RegenerationPlanner):
         the definitions that read that output are regenerated. The sources are excluded on purpose: they
         produced this diff, so re-running them on it would repeat runs already completed.
         """
+<<<<<<< HEAD
         participants = [participant for participant in self.participants if participant.role is not CascadeRole.SOURCE]
         return await self._plan(participants, diff_summary=diff_summary, target_branch=target_branch)
 
@@ -84,6 +114,22 @@ class MergeSelectiveRegeneration(RegenerationPlanner):
         modified_kinds = self.kinds_expander.expand(
             modified_kinds=get_modified_kinds(diff_summary=diff_summary, branch=target_branch),
             branch=target_branch,
+=======
+        modified_kinds = self.kinds_expander.expand(
+            modified_kinds=get_modified_kinds(diff_summary=diff_summary, branch=target_branch),
+            branch=target_branch,
+        )
+        artifact_definitions = await self.artifact_selector.load_definitions(target_branch=target_branch)
+        forced_repositories = repositories_forcing_full_regeneration(
+            definitions=[loaded.definition for loaded in artifact_definitions]
+        )
+        return await self.artifact_selector.select(
+            loaded_definitions=artifact_definitions,
+            forced_repositories=forced_repositories,
+            diff_summary=diff_summary,
+            target_branch=target_branch,
+            modified_kinds=modified_kinds,
+>>>>>>> origin/stable
         )
         loaded_by_participant = [
             (participant, await participant.load(target_branch=target_branch)) for participant in participants
@@ -150,6 +196,7 @@ def build_merge_selective_regeneration(
     gate = DefinitionGate(log=log)
     impacted_resolver = FieldLevelImpactResolver(db=db, client=client)
     return MergeSelectiveRegeneration(
+<<<<<<< HEAD
         participants=[
             CascadeSource(
                 GeneratorSelector(client=client, gate=gate, impacted_resolver=impacted_resolver, log=log),
@@ -157,5 +204,9 @@ def build_merge_selective_regeneration(
             ),
             CascadeTerminal(ArtifactSelector(client=client, gate=gate, impacted_resolver=impacted_resolver, log=log)),
         ],
+=======
+        generator_selector=GeneratorSelector(client=client, gate=gate, impacted_resolver=impacted_resolver, log=log),
+        artifact_selector=ArtifactSelector(client=client, gate=gate, impacted_resolver=impacted_resolver, log=log),
+>>>>>>> origin/stable
         kinds_expander=SchemaProfileExpander(schema_manager=registry.schema),
     )

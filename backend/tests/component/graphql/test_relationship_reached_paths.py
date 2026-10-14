@@ -6,6 +6,10 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.regeneration.models import ReachedPath, RelationshipHop
+<<<<<<< HEAD
+=======
+from infrahub.core.schema import GenericSchema
+>>>>>>> origin/stable
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.constants import TestKind
@@ -66,6 +70,10 @@ class TestReachedPathsFromQueryCarSchema(TestInfrahubApp):
         self, db: InfrahubDatabase, default_branch: Branch, car_schema: None
     ) -> None:
         owner = registry.schema.get(name=TestKind.CAR, branch=default_branch).get_relationship("owner")
+<<<<<<< HEAD
+=======
+        assert owner.identifier is not None
+>>>>>>> origin/stable
 
         result = await _reached_paths(db, default_branch, SINGLE_HOP)
 
@@ -88,7 +96,13 @@ class TestReachedPathsFromQueryCarSchema(TestInfrahubApp):
     ) -> None:
         car = registry.schema.get(name=TestKind.CAR, branch=default_branch)
         owner = car.get_relationship("owner")
+<<<<<<< HEAD
         previous_owner = car.get_relationship("previous_owner")
+=======
+        assert owner.identifier is not None
+        previous_owner = car.get_relationship("previous_owner")
+        assert previous_owner.identifier is not None
+>>>>>>> origin/stable
 
         result = await _reached_paths(db, default_branch, TWO_RELATIONSHIPS_TO_THE_SAME_KIND)
 
@@ -132,7 +146,13 @@ class TestReachedPathsFromQueryDeviceSchema(TestInfrahubApp):
     ) -> None:
         device = registry.schema.get(name=TestKind.DEVICE, branch=default_branch)
         interfaces = device.get_relationship("interfaces")
+<<<<<<< HEAD
         interface_generic = registry.schema.get(name=TestKind.INTERFACE, branch=default_branch)
+=======
+        assert interfaces.identifier is not None
+        interface_generic = registry.schema.get(name=TestKind.INTERFACE, branch=default_branch)
+        assert isinstance(interface_generic, GenericSchema)
+>>>>>>> origin/stable
 
         result = await _reached_paths(db, default_branch, GENERIC_PEER)
 
