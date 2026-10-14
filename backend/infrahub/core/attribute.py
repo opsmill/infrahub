@@ -625,11 +625,11 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 continue
 
             if field_name == "source":
-                response[field_name] = self._source_reference_for_graphql(related_node_ids=related_node_ids)
+                response[field_name] = self._source_reference_for_graphql()
                 continue
 
             if field_name == "owner":
-                response[field_name] = self._owner_reference_for_graphql(related_node_ids=related_node_ids)
+                response[field_name] = self._owner_reference_for_graphql()
                 continue
 
             if field_name.startswith("_"):
@@ -652,24 +652,19 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
         return response
 
-    def _owner_reference_for_graphql(self, related_node_ids: set | None) -> dict[str, Any] | None:
+    def _owner_reference_for_graphql(self) -> dict[str, Any] | None:
         """The object `owner` names, for its field resolver to load."""
         if not self.owner_id:
             return None
-        if related_node_ids is not None:
-            related_node_ids.add(str(self.owner_id))
         return {"id": str(self.owner_id)}
 
-    def _source_reference_for_graphql(self, related_node_ids: set | None) -> dict[str, Any] | None:
+    def _source_reference_for_graphql(self) -> dict[str, Any] | None:
         """The object `source` names, for its field resolver to load: a tracking pool ahead of a user-set source."""
-        reference: dict[str, Any] | None = None
         if self.schema.kind in POOL_TRACKED_ATTRIBUTE_KINDS and (tracking_pool := self.tracking_pool) is not None:
-            reference = {"id": tracking_pool.pool_id, "__kind__": InfrahubKind.NUMBERPOOL}
-        elif self.source_id:
-            reference = {"id": str(self.source_id)}
-        if reference is not None and related_node_ids is not None:
-            related_node_ids.add(reference["id"])
-        return reference
+            return {"id": tracking_pool.pool_id, "__kind__": InfrahubKind.NUMBERPOOL}
+        if self.source_id:
+            return {"id": str(self.source_id)}
+        return None
 
     def _filter_sensitive(self, value: str, filter_sensitive: bool) -> str:
         if filter_sensitive and self.schema.kind in ["HashedPassword", "Password"]:
