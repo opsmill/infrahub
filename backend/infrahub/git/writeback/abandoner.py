@@ -87,8 +87,10 @@ class WritebackAbandoner:
             except Exception:
                 # The run fails with the error of the release, so this line tells the user that nothing is left to abandon.
                 log.error(
-                    "The merges %s of repository %s are abandoned, but the release of their held regeneration failed; "
-                    "a later delivery run of the repository releases it.",
+                    "The merges %s of repository %s are abandoned, but the release of their held regeneration failed. "
+                    "The barrier no longer holds the repository, so to regenerate now, run its artifact and generator "
+                    "definitions and its computed attributes by hand. A later delivery run of the repository also "
+                    "releases the held regeneration.",
                     sorted(record.entry_ids),
                     self.repository.name,
                 )

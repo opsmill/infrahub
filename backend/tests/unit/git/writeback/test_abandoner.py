@@ -271,6 +271,7 @@ async def test_abandonment_with_no_recorded_commit_records_an_empty_commit(rig: 
     entry = _merge()
     await rig.queue(entry)
     rig.git.graph_commit = None
+    rig.clear_calls()
 
     record = await rig.abandon(queue_version=1)
 
@@ -283,6 +284,8 @@ async def test_abandonment_with_no_recorded_commit_records_an_empty_commit(rig: 
         entries=(entry,),
     )
     assert rig.intent.queue.entries == ()
+    assert rig.releaser.releases == []
+    assert rig.state.calls == ["abandon"]
 
 
 async def test_branch_deletion_is_broadcast_for_flagged_entries_only(rig: Rig) -> None:
@@ -388,7 +391,9 @@ async def test_failed_release_expires_the_lease_now_and_keeps_the_items_held(
 
     assert [record.getMessage() for record in caplog.records if record.levelno == logging.ERROR] == [
         "The merges ['merge-1'] of repository net-repo are abandoned, but the release of their held regeneration "
-        "failed; a later delivery run of the repository releases it."
+        "failed. The barrier no longer holds the repository, so to regenerate now, run its artifact and generator "
+        "definitions and its computed attributes by hand. A later delivery run of the repository also releases the "
+        "held regeneration."
     ]
 
     held = HeldItem(id="definition-1", hold_seq=1)
