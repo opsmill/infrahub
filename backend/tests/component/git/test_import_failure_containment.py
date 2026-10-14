@@ -20,6 +20,7 @@ from tests.adapters.cache import MemoryCache
 from tests.adapters.lock import FailingImporter
 from tests.adapters.repository_record_store import build_in_memory_recorder
 from tests.helpers.flow import call_in_flow
+from tests.helpers.repository_activity import activity_run
 from tests.helpers.repository_sync import FLOW_RUN_LOGGER
 from tests.helpers.test_client import (
     REJECTED_REQUEST_MESSAGE,
@@ -66,14 +67,16 @@ async def test_failure_raised_outside_the_import_is_returned_and_logged_with_its
 ) -> None:
     error = RuntimeError("lock backend unavailable")
 
-    failure = await call_in_flow(
-        lambda: import_branch(
-            lock_registry=InfrahubLockRegistry(local_only=True),
-            importer=FailingImporter(error),
-            repo=git_repo_04,
-            pending_import=pending_main_import(git_repo_04),
+    async with activity_run() as run:
+        failure = await call_in_flow(
+            lambda: import_branch(
+                lock_registry=InfrahubLockRegistry(local_only=True),
+                importer=FailingImporter(error),
+                repo=git_repo_04,
+                pending_import=pending_main_import(git_repo_04),
+                activity=run,
+            )
         )
-    )
 
     assert isinstance(failure, RepositoryImportError)
     assert failure.message == "RuntimeError: lock backend unavailable"
@@ -91,14 +94,16 @@ async def test_converted_import_failure_is_returned_without_logging_it_again(
 ) -> None:
     error = RepositoryImportError(identifier=git_repo_04.name, branch_name="main", message="Schema not valid")
 
-    failure = await call_in_flow(
-        lambda: import_branch(
-            lock_registry=InfrahubLockRegistry(local_only=True),
-            importer=FailingImporter(error),
-            repo=git_repo_04,
-            pending_import=pending_main_import(git_repo_04),
+    async with activity_run() as run:
+        failure = await call_in_flow(
+            lambda: import_branch(
+                lock_registry=InfrahubLockRegistry(local_only=True),
+                importer=FailingImporter(error),
+                repo=git_repo_04,
+                pending_import=pending_main_import(git_repo_04),
+                activity=run,
+            )
         )
-    )
 
     assert failure is error
     # Only Prefect's closing entry of the branch's import run remains, matched by the prefix of its wording.
@@ -109,15 +114,17 @@ async def test_converted_import_failure_is_returned_without_logging_it_again(
 async def test_connection_failure_is_raised(prefect_test_fixture: None, git_repo_04: InfrahubRepository) -> None:
     error = RepositoryConnectionError(identifier=git_repo_04.name, message="The remote repository is unreachable")
 
-    with pytest.raises(RepositoryConnectionError, match=r"^The remote repository is unreachable$"):
-        await call_in_flow(
-            lambda: import_branch(
-                lock_registry=InfrahubLockRegistry(local_only=True),
-                importer=FailingImporter(error),
-                repo=git_repo_04,
-                pending_import=pending_main_import(git_repo_04),
+    async with activity_run() as run:
+        with pytest.raises(RepositoryConnectionError, match=r"^The remote repository is unreachable$"):
+            await call_in_flow(
+                lambda: import_branch(
+                    lock_registry=InfrahubLockRegistry(local_only=True),
+                    importer=FailingImporter(error),
+                    repo=git_repo_04,
+                    pending_import=pending_main_import(git_repo_04),
+                    activity=run,
+                )
             )
-        )
 
 
 async def test_sync_records_a_failure_raised_outside_the_import_on_its_branch(
@@ -134,10 +141,16 @@ async def test_sync_records_a_failure_raised_outside_the_import_on_its_branch(
         retarget_markers=RetargetMarkers(cache=MemoryCache()),
     )
 
-    outcome = await call_in_flow(lambda: syncer.sync(git_repo_04))
+    async with activity_run() as run:
+        outcome = await call_in_flow(lambda: syncer.sync(git_repo_04, activity=run))
 
     assert outcome.failed == (
-        FailedImport(branch_name="branch01", step=ImportStep.IMPORT, reason="RuntimeError: lock lost"),
+        FailedImport(
+            branch_name="branch01",
+            infrahub_branch_name="branch01",
+            step=ImportStep.IMPORT,
+            reason="RuntimeError: lock lost",
+        ),
     )
     assert outcome.report.imported_branches == ()
 

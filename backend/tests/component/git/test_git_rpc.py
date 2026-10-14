@@ -17,6 +17,7 @@ from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.exceptions import RepositoryError
 from infrahub.git import InfrahubRepository
+from infrahub.git.activity.models import RepositoryActivityOperation
 from infrahub.git.models import (
     GitDiffNamesOnly,
     GitRepositoryAdd,
@@ -37,6 +38,7 @@ from tests.adapters.lock import LockTimeline, RecordingImporter, RecordingLockRe
 from tests.adapters.message_bus import BusSimulator
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.git import build_repository_client
+from tests.helpers.repository_activity import activity_run
 from tests.helpers.workflow_override import override_workflow
 
 if TYPE_CHECKING:
@@ -430,7 +432,8 @@ async def test_add_git_repository_scopes_import_build_and_apply(
         importer=RecordingImporter(timeline),
         client=client,
     )
-    await adder.add(model)
+    async with activity_run(operation=RepositoryActivityOperation.ADD) as run:
+        await adder.add(model, activity=run)
 
     timeline.assert_not_held_at_checkpoint(f"repository.{git_upstream_repo_01['name']}", "build")
     timeline.assert_held_at_checkpoint(f"repository.{git_upstream_repo_01['name']}", "apply")

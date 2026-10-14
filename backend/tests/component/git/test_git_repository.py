@@ -29,6 +29,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import (
     CheckError,
     CommitNotFoundError,
+    RepositoryConnectionError,
     RepositoryError,
     RepositoryFileNotFoundError,
     RepositoryInvalidBranchError,
@@ -55,13 +56,14 @@ from infrahub.utils import find_first_file_in_directory
 from infrahub.workers.dependencies import build_client, build_event_service, build_message_bus
 from tests.adapters.cache import MemoryCache
 from tests.adapters.event import MemoryInfrahubEvent
-from tests.adapters.lock import LockTimeline, RecordingImporter
+from tests.adapters.lock import FailingImporter, LockTimeline, RecordingImporter
 from tests.adapters.repository_record_store import build_in_memory_recorder
 from tests.conftest import TestHelper
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.file_repo import MultipleStagesFileRepo
 from tests.helpers.flow import call_in_flow
 from tests.helpers.git import GraphRecordingClient, build_repository_client, clone_repository, open_repository
+from tests.helpers.repository_activity import activity_run
 from tests.helpers.test_client import dummy_async_request
 
 
@@ -742,7 +744,8 @@ async def _sync(repo: InfrahubRepository, staging_branch: str | None = None) -> 
         recorder=build_in_memory_recorder(),
         retarget_markers=RetargetMarkers(cache=MemoryCache()),
     )
-    return await call_in_flow(lambda: syncer.sync(repo, staging_branch=staging_branch))
+    async with activity_run() as run:
+        return await call_in_flow(lambda: syncer.sync(repo, activity=run, staging_branch=staging_branch))
 
 
 async def test_sync_no_update(git_repo_02: InfrahubRepository) -> None:
@@ -849,7 +852,9 @@ async def test_sync_returns_a_failed_branch_alongside_the_branches_it_advanced(
         recorder=build_in_memory_recorder(),
         retarget_markers=RetargetMarkers(cache=MemoryCache()),
     )
-    outcome = await syncer.sync(repo)
+    activity_cache = MemoryCache()
+    async with activity_run(repository_id=str(repo.id), cache=activity_cache) as run:
+        outcome = await syncer.sync(repo, activity=run)
 
     assert [(failed.branch_name, failed.step) for failed in outcome.failed] == [("branch01", ImportStep.COLLECTION)]
     assert [(branch.infrahub_branch_name, branch.commit) for branch in outcome.reconciled] == [
@@ -857,6 +862,45 @@ async def test_sync_returns_a_failed_branch_alongside_the_branches_it_advanced(
     ]
     assert outcome.report.imported_branches == ("branch02",)
     assert repo.get_commit_value(branch_name="branch02", remote=False) == str(remote_commit_branch02)
+    assert json.loads(activity_cache.storage[f"git:activity:last:{repo.id}:sync"])["branches"] == [
+        {"branch_name": "branch02", "outcome": "imported"},
+        {"branch_name": "branch01", "outcome": "failed"},
+    ]
+
+
+async def test_a_sync_stopped_by_an_unreachable_remote_still_records_the_collection_failures(
+    prefect_test_fixture: None, git_repo_07: InfrahubRepository, mock_branch_all: AsyncMock
+) -> None:
+    """The import of branch02 cannot reach the remote, and branch01 had already failed its collection."""
+    repo = git_repo_07
+
+    for branch_name in ["branch01", "branch02"]:
+        branch = Branch(name=branch_name, uuid=uuid4())
+        registry.branch[branch.name] = branch
+
+    # The diverged branch01 is reset onto its remote head, which then fails to get a commit worktree.
+    blocked_commit = repo.get_commit_value(branch_name="branch01", remote=True)
+    (repo.directory_commits / blocked_commit).mkdir()
+    (repo.directory_commits / blocked_commit / "blocker.txt").write_text("blocking worktree creation\n")
+
+    syncer = RepositorySyncer(
+        lock_registry=InfrahubLockRegistry(local_only=True),
+        importer=FailingImporter(RepositoryConnectionError(identifier=repo.name)),
+        recorder=build_in_memory_recorder(),
+        retarget_markers=RetargetMarkers(cache=MemoryCache()),
+    )
+    activity_cache = MemoryCache()
+    with pytest.raises(
+        RepositoryConnectionError,
+        match=rf"^Unable to clone the repository {repo.name}, please check the address and the credential$",
+    ):
+        async with activity_run(repository_id=str(repo.id), cache=activity_cache) as run:
+            await syncer.sync(repo, activity=run)
+
+    assert json.loads(activity_cache.storage[f"git:activity:last:{repo.id}:sync"])["branches"] == [
+        {"branch_name": "branch02", "outcome": "failed"},
+        {"branch_name": "branch01", "outcome": "failed"},
+    ]
 
 
 async def test_render_jinja2_template_success(prefect_test_fixture: None, git_repo_jinja: InfrahubRepository) -> None:

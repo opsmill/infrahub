@@ -1,3 +1,4 @@
+import json
 import logging
 import shutil
 from collections.abc import AsyncGenerator, Generator
@@ -43,14 +44,15 @@ from infrahub.git.sync import (
 from infrahub.git.tasks import report_failed_branches, sync_remote_repositories, sync_repository_from_origin
 from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
-from infrahub.workers.dependencies import build_message_bus, clear_singletons
+from infrahub.workers.dependencies import build_cache, build_message_bus, clear_singletons
 from infrahub.workflows.constants import TAG_NAMESPACE, WorkflowTag
-from tests.adapters.cache import MemoryCache
+from tests.adapters.cache import MemoryCache, RecordingCache
 from tests.adapters.message_bus import BusRecorder, BusSimulator, FailingBus, RepositoryFailingBus
 from tests.adapters.repository_record_store import FailingRepositoryRecordStore, build_in_memory_recorder
 from tests.conftest import TestHelper
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.git import LocalRemote, build_repository_client, clone_repository
+from tests.helpers.repository_activity import activity_run
 from tests.helpers.repository_sync import (
     FLOW_RUN_LOGGER,
     INVALID_YAML_CONFIG,
@@ -194,14 +196,16 @@ async def test_sync_broadcasts_synced_commit(
 
     @flow(name="test-sync-repository-from-origin")
     async def _run_sync() -> None:
-        await sync_repository_from_origin(
-            repository=node,
-            repo=repo,
-            staging_branch=scenario.staging_branch,
-            infrahub_branch=infrahub_branch,
-            default_branch_id="default-branch-id",
-            client=client,
-        )
+        async with activity_run() as run:
+            await sync_repository_from_origin(
+                repository=node,
+                repo=repo,
+                staging_branch=scenario.staging_branch,
+                infrahub_branch=infrahub_branch,
+                default_branch_id="default-branch-id",
+                client=client,
+                activity=run,
+            )
 
     await _run_sync()
 
@@ -478,12 +482,13 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
             infrahub_branch_name=registry.default_branch,
         )
 
-        outcome = await RepositorySyncer(
-            lock_registry=lock.registry,
-            importer=RepositoryFileImporter(),
-            recorder=build_in_memory_recorder(),
-            retarget_markers=RetargetMarkers(cache=MemoryCache()),
-        ).sync(repo)
+        async with activity_run() as run:
+            outcome = await RepositorySyncer(
+                lock_registry=lock.registry,
+                importer=RepositoryFileImporter(),
+                recorder=build_in_memory_recorder(),
+                retarget_markers=RetargetMarkers(cache=MemoryCache()),
+            ).sync(repo, activity=run)
 
         assert outcome == SyncOutcome(
             report=SyncReport(
@@ -880,14 +885,16 @@ class TestSynchronisationCycleFailures(TestInfrahubApp):
 
         @flow(name="test-sync-a-partly-failing-repository")
         async def _run_sync() -> None:
-            await sync_repository_from_origin(
-                repository=node,
-                repo=repo,
-                staging_branch=None,
-                infrahub_branch=registry.default_branch,
-                default_branch_id=branches[registry.default_branch].id,
-                client=client,
-            )
+            async with activity_run() as run:
+                await sync_repository_from_origin(
+                    repository=node,
+                    repo=repo,
+                    staging_branch=None,
+                    infrahub_branch=registry.default_branch,
+                    default_branch_id=branches[registry.default_branch].id,
+                    client=client,
+                    activity=run,
+                )
 
         await _run_sync()
 
@@ -943,14 +950,16 @@ class TestSynchronisationCycleFailures(TestInfrahubApp):
 
         @flow(name="test-sync-a-repository-whose-trunk-fails")
         async def _run_sync() -> None:
-            await sync_repository_from_origin(
-                repository=node,
-                repo=repo,
-                staging_branch=None,
-                infrahub_branch=registry.default_branch,
-                default_branch_id=branches[registry.default_branch].id,
-                client=client,
-            )
+            async with activity_run() as run:
+                await sync_repository_from_origin(
+                    repository=node,
+                    repo=repo,
+                    staging_branch=None,
+                    infrahub_branch=registry.default_branch,
+                    default_branch_id=branches[registry.default_branch].id,
+                    client=client,
+                    activity=run,
+                )
 
         if case.broadcast_fails:
             failing_bus = FailingBus()
@@ -1004,9 +1013,12 @@ class TestSynchronisationCycleFailures(TestInfrahubApp):
             retarget_markers=RetargetMarkers(cache=MemoryCache()),
         )
 
+        activity_cache = MemoryCache()
+
         @flow(name="test-sync-a-trunk-whose-rewrite-record-fails")
         async def _run_sync() -> SyncOutcome:
-            outcome = await syncer.sync(repo, graph_commits={registry.default_branch: imported})
+            async with activity_run(repository_id=node.id, cache=activity_cache) as run:
+                outcome = await syncer.sync(repo, activity=run, graph_commits={registry.default_branch: imported})
             with pytest.raises(RepositoryBranchesFailedError) as failure:
                 raise_if_branches_failed(repo=repo, outcome=outcome)
             await report_failed_branches(repo=repo, failure=failure.value, infrahub_branch=registry.default_branch)
@@ -1015,6 +1027,10 @@ class TestSynchronisationCycleFailures(TestInfrahubApp):
         outcome = await _run_sync()
 
         assert outcome.report.imported_branches == (registry.default_branch,)
+        # The commit was imported, but the failed record leaves the branch reported as failed.
+        assert json.loads(activity_cache.storage[f"git:activity:last:{node.id}:sync"])["branches"] == [
+            {"branch_name": registry.default_branch, "outcome": "failed"}
+        ]
         recorded = await NodeManager.get_one(
             db=db, id=node.id, kind=CoreRepositoryNode, branch=registry.default_branch, raise_on_error=True
         )
@@ -1073,3 +1089,153 @@ class TestSynchronisationCycleIsolation(TestInfrahubApp):
             for record in caplog.records
             if record.name == FLOW_RUN_LOGGER and record.getMessage().startswith("Unable to synchronize repository")
         ] == ["Unable to synchronize repository unreachable-broadcast-repo, continuing with the other repositories"]
+
+
+def run_record_writes(cache: RecordingCache, repository_id: str) -> list[tuple[str | None, str | None]]:
+    """Return the phase and branch of every run record the cache was given for the repository, in order."""
+    prefix = f"git:activity:run:{repository_id}:"
+    return [
+        (json.loads(call.value)["phase"], json.loads(call.value)["branch_name"])
+        for call in cache.set_calls
+        if call.key.startswith(prefix)
+    ]
+
+
+def stored_run_keys(cache: RecordingCache, repository_id: str) -> list[str]:
+    return [key for key in cache.storage if key.startswith(f"git:activity:run:{repository_id}:")]
+
+
+@pytest.mark.usefixtures("no_import_sync_filter")
+class TestRepositoryActivityRecords(TestInfrahubApp):
+    """The runs that the periodic sync and the add flow record in the cache.
+
+    The cycle visits every repository of the stack, so these tests run in a stack of their own.
+    """
+
+    async def test_a_sync_cycle_records_its_run_while_it_runs_and_its_last_run_when_it_ends(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        dependency_provider: Provider,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        name = "activity-cycle-repo"
+        remote = LocalRemote.create(directory=tmp_path / name, trunk="main", branches=[])
+        remote.commit(branch_name="broken", files={".infrahub.yml": INVALID_YAML_CONFIG})
+        await create_branch(branch_name="broken", db=db)
+        node = await create_repository_node(
+            db=db,
+            name=name,
+            location=str(remote.directory),
+            default_branch="main",
+            operational_status=RepositoryOperationalStatus.ONLINE.value,
+        )
+        cache = RecordingCache()
+
+        with override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider):
+            await sync_remote_repositories()
+
+        assert run_record_writes(cache=cache, repository_id=node.id) == [
+            (None, None),
+            ("fetching", None),
+            ("building", "main"),
+            ("applying", "main"),
+            ("fetching", None),
+            ("building", "broken"),
+            ("building", "main"),
+            ("applying", "main"),
+        ]
+        assert stored_run_keys(cache=cache, repository_id=node.id) == []
+        last_run = json.loads(cache.storage[f"git:activity:last:{node.id}:sync"])
+        assert last_run["branches"] == [
+            {"branch_name": "main", "outcome": "imported"},
+            {"branch_name": "broken", "outcome": "failed"},
+        ]
+
+    async def test_adding_a_read_write_repository_records_an_add_run(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        dependency_provider: Provider,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        name = "activity-add-repo"
+        remote = LocalRemote.create(directory=tmp_path / name, trunk="main", branches=[])
+        node = await create_repository_node(
+            db=db,
+            name=name,
+            location=str(remote.directory),
+            default_branch="main",
+            operational_status=RepositoryOperationalStatus.ONLINE.value,
+        )
+        cache = RecordingCache()
+
+        with override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider):
+            state = await run_add_flow(node=node, name=name, location=str(remote.directory))
+
+        assert state.is_completed()
+        assert run_record_writes(cache=cache, repository_id=node.id) == [
+            (None, None),
+            ("fetching", None),
+            ("building", "main"),
+            ("applying", "main"),
+            ("fetching", None),
+        ]
+        assert stored_run_keys(cache=cache, repository_id=node.id) == []
+        last_run = json.loads(cache.storage[f"git:activity:last:{node.id}:add"])
+        assert last_run["operation"] == "add"
+        assert last_run["branches"] == [{"branch_name": "main", "outcome": "imported"}]
+
+    async def test_a_failed_trunk_named_unlike_the_infrahub_default_is_recorded_on_the_infrahub_branch(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """The trunk's git branch has no Infrahub branch of that name, so its failure must name the branch it feeds."""
+        name = "activity-develop-trunk-repo"
+        remote = LocalRemote.create(directory=tmp_path / name, trunk=TRUNK, branches=[])
+        node = await create_repository_node(
+            db=db,
+            name=name,
+            location=str(remote.directory),
+            default_branch=TRUNK,
+            operational_status=RepositoryOperationalStatus.ONLINE.value,
+        )
+        assert (await run_add_flow(node=node, name=name, location=str(remote.directory))).is_completed()
+        repo = await InfrahubRepository.init(
+            id=node.id,
+            name=name,
+            location=str(remote.directory),
+            client=client,
+            infrahub_branch_name=registry.default_branch,
+        )
+        imported = repo.get_commit_value(branch_name=TRUNK, remote=False)
+        remote.commit(branch_name=TRUNK, files={"data.txt": "trunk rewritten\n"}, amend=True)
+        syncer = RepositorySyncer(
+            lock_registry=lock.registry,
+            importer=RepositoryFileImporter(),
+            recorder=HistoryRewriteRecorder(store=FailingRepositoryRecordStore()),
+            retarget_markers=RetargetMarkers(cache=MemoryCache()),
+        )
+        activity_cache = MemoryCache()
+
+        @flow(name="test-record-a-failed-trunk-named-unlike-the-infrahub-default")
+        async def _run_sync() -> SyncOutcome:
+            async with activity_run(repository_id=node.id, cache=activity_cache) as run:
+                return await syncer.sync(repo, activity=run, graph_commits={registry.default_branch: imported})
+
+        outcome = await _run_sync()
+
+        assert [(failed.branch_name, failed.infrahub_branch_name) for failed in outcome.failed] == [
+            (TRUNK, registry.default_branch)
+        ]
+        assert json.loads(activity_cache.storage[f"git:activity:last:{node.id}:sync"])["branches"] == [
+            {"branch_name": registry.default_branch, "outcome": "failed"}
+        ]

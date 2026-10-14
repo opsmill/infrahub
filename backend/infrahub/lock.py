@@ -6,6 +6,7 @@ import uuid
 from asyncio import Lock as LocalLock
 from asyncio import sleep
 from contextvars import ContextVar
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 import redis.asyncio as redis
@@ -71,6 +72,31 @@ def get_worker_id_from_lock_token(token: str | None) -> str | None:
     if not separator or not worker_id:
         return None
     return worker_id
+
+
+def get_requested_at_from_lock_token(token: str | None) -> datetime | None:
+    """Return when the worker in a ``"{timestamp}::{worker_id}"`` token asked for the lock, or ``None`` if malformed.
+
+    The token is written before the worker waits for the lock, so this is not when the worker got it.
+    """
+    if not token:
+        return None
+    timestamp, separator, worker_id = token.partition(_LOCK_TOKEN_SEPARATOR)
+    if not separator or not worker_id:
+        return None
+    try:
+        requested_at = datetime.fromisoformat(timestamp)
+    except ValueError:
+        return None
+    # A timestamp without an offset cannot be placed on the timeline, so it reads as unparseable.
+    if requested_at.tzinfo is None:
+        return None
+    return requested_at
+
+
+def get_lock_cache_key(name: str, namespace: str | None = None) -> str:
+    """Return the cache key under which a held global lock stores its token."""
+    return f"{LOCK_PREFIX}.{LockNameGenerator().generate_name(name=name, namespace=namespace)}"
 
 
 class InfrahubMultiLock:
