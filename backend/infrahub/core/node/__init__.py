@@ -20,7 +20,6 @@ from infrahub.core.constants import (
     RelationshipCardinality,
     RelationshipKind,
 )
-from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX as RESOURCE_POOL_REL_SUFFIX
 from infrahub.core.constants.schema import SchemaElementPathType
 from infrahub.core.metadata.interface import MetadataInterface
 from infrahub.core.metadata.model import MetadataInfo
@@ -36,10 +35,8 @@ from infrahub.core.schema import (
     RelationshipSchema,
     TemplateSchema,
 )
-from infrahub.core.schema.attribute_parameters import NumberPoolParameters as NumberPoolParameters
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import InitializationError, NodeNotFoundError, ValidationError
-from infrahub.exceptions import PoolExhaustedError as PoolExhaustedError
 from infrahub.pools.attribute_pool_applier import LoadedNodePoolApplier
 from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
 from infrahub.pools.default_allocator import DefaultPoolAllocator

@@ -1,16 +1,11 @@
-import pytest
-
-from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
-from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolRangeParameters
-from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.pools.number_pool_range_reconciler import NumberPoolRangeReconciler
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from tests.helpers.number_pool import add_pool_range
-from tests.helpers.schema import TICKET, load_schema
+from tests.helpers.schema import TICKET
 
 
 async def _pool(db: InfrahubDatabase, name: str) -> CoreNumberPool:
@@ -31,18 +26,8 @@ class TestNumberPoolRangeReconciler:
     The schema is loaded once for the class; every test works on a pool of its own.
     """
 
-    @pytest.fixture(scope="class")
-    async def ticket_schema(
-        self,
-        db: InfrahubDatabase,
-        default_branch_scope_class: Branch,
-        register_core_models_schema_scope_class: SchemaBranch,
-    ) -> None:
-        await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
-        default_branch_scope_class.update_schema_hash()
-
     async def test_reconcile_writes_the_ranges_through_the_repository(
-        self, db: InfrahubDatabase, ticket_schema: None
+        self, db: InfrahubDatabase, loaded_ticket_schema_scope_class: None
     ) -> None:
         pool = await _pool(db=db, name="reconcile-round-trip")
         kept = await add_pool_range(db=db, pool=pool, start=1, end=10)
@@ -70,7 +55,7 @@ class TestNumberPoolRangeReconciler:
         assert [item.get_id() for item in reconciliation.ranges] == [item[0] for item in stored]
 
     async def test_single_range_rewrite_keeps_the_identity_of_the_stored_range(
-        self, db: InfrahubDatabase, ticket_schema: None
+        self, db: InfrahubDatabase, loaded_ticket_schema_scope_class: None
     ) -> None:
         pool = await _pool(db=db, name="rewrite-round-trip")
         stored = await add_pool_range(db=db, pool=pool, start=1, end=10, weight=2)

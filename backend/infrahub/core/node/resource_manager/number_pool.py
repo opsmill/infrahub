@@ -48,7 +48,6 @@ class CoreNumberPool(Node):
         repository = NumberPoolRepository(db=db)
         picker = NumberPoolNumberPicker(number_reader=repository)
         async with lock.registry.get(name=self._lock_name(division=division), namespace=RESOURCE_POOL_LOCK_NAMESPACE):
-            # If the attribute already exists, try to get its pool reservation
             if attribute_id is not None:
                 reservation = await repository.get_reservation(
                     pool_id=self.get_id(),
@@ -62,7 +61,6 @@ class CoreNumberPool(Node):
             # If we have not returned a value we need to find one if avaiable
             number = await picker.next_number(pool=self, branch=branch, attribute=attribute, division=division)
             if attribute_id is not None:
-                # Cannot reserve without an Attribute to link
                 await repository.reserve(
                     pool_id=self.get_id(),
                     identifier=identifier,

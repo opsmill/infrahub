@@ -69,6 +69,5 @@ class ObjectByIdResolver:
 
 @retry_db_transaction(name="object_by_id_resolver")
 async def object_by_id_resolver(parent: dict[str, Any], info: GraphQLResolveInfo) -> dict[str, Any] | None:
-    """Function resolver that delegates to the ObjectByIdResolver on the context."""
     graphql_context: GraphqlContext = info.context
     return await graphql_context.object_by_id_resolver.resolve(parent=parent, info=info)
