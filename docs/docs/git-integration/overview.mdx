@@ -32,11 +32,11 @@ Infrahub supports two distinct repository connection types, each designed for sp
 
 ### Repository: read-write integration
 
-The standard **Repository** type gives Infrahub read-write access to Git. For branches that sync with Git, Infrahub imports code from the Git branch automatically, and on a Proposed Change merge it updates the linked Git branch (see [Controlling whether a branch reaches Git](#controlling-whether-a-branch-reaches-git)).
+The standard **Repository** type gives Infrahub read-write access to Git. For branches that sync with Git, Infrahub imports code from the Git branch automatically, and on a Proposed Change merge it updates the linked Git branch (see [Choosing whether a branch syncs with Git](#choosing-whether-a-branch-syncs-with-git)).
 
 **Design principles:**
 
-- **Branch parity**: each branch in the Git repository has a corresponding branch in Infrahub
+- **Branch parity**: each Git branch that Infrahub imports has an Infrahub branch of the same name, except the branch named in the repository's `default_branch` attribute, which Infrahub imports into its default branch
 - **Automatic import**: Infrahub imports changes from Git in the background, without a manual trigger
 - **One write-back on merge**: merging a Proposed Change updates the linked branch in Git (see [merging branches](#merging-branches) below); this moves code intent, never your infrastructure data
 
@@ -46,7 +46,7 @@ When you create a Repository connection, Infrahub:
 
 1. Clones the repository to local storage
 2. Creates Git worktrees for each branch to enable parallel operations
-3. Tracks all remote branches and creates corresponding Infrahub branches
+3. Tracks the remote branches, and creates an Infrahub branch for each new remote branch, or only for those whose names match the [selective synchronization](./branch-synchronization.mdx) rules when you configure them
 4. Runs background synchronization tasks every few seconds to detect changes
 5. Parses the `.infrahub.yml` file to determine which resources to import
 
@@ -129,14 +129,14 @@ You can configure Infrahub to always create a merge commit by setting the `INFRA
 
 <ReferenceLink title="Enabling explicit merge commits" url="/git-integration/connect-repository#customizing-git-merge-behavior"/>
 
-### Controlling whether a branch reaches Git
+### Choosing whether a branch syncs with Git
 
-Each Infrahub branch has a `sync_with_git` property, chosen when you create the branch. It controls whether the branch exchanges changes with read-write repositories, in both directions:
+Each Infrahub branch has a `sync_with_git` property, chosen when you create the branch. It sets whether Infrahub syncs the branch with read-write repositories, in both directions:
 
 - When it is on, Infrahub creates a matching branch in every read-write repository, imports the commits pushed to that Git branch, and merges the branch in Git on a Proposed Change merge.
-- When it is off, the branch stays inside Infrahub's graph. Infrahub creates no Git branch for it and imports no commits from a Git branch of the same name, even when that name matches the [selective synchronization](./branch-synchronization.mdx) rules.
+- When it is off, the branch exists only in Infrahub. Infrahub creates no Git branch for it and imports no commits from a Git branch of the same name, even when that name matches the [selective synchronization](./branch-synchronization.mdx) rules.
 
-The default branch is the exception: Infrahub always imports the repository's default branch into it. A branch that Infrahub creates from a new Git branch has `sync_with_git` on. Many data-only changes never need a Git branch at all, since that data lives only in the graph.
+The exception is Infrahub's default branch, whatever its `sync_with_git` value: Infrahub always imports the commits of the Git branch named in the repository's `default_branch` attribute into it. A branch that Infrahub creates from a new Git branch has `sync_with_git` on. If you only change data on a branch, you do not need a Git branch for it: Infrahub stores that data in its graph, not in Git.
 
 ## The `.infrahub.yml` configuration file {#infrahub-yaml}
 
@@ -219,7 +219,7 @@ The polling-based synchronization approach:
 ## Common misconceptions
 
 - **Merging a change in Infrahub pushes data to Git.** It does not. A data merge is applied to the graph. The only thing a merge writes to Git is the code-intent branch of a read-write repository, updated on a Proposed Change merge.
-- **A Git branch always imports into the Infrahub branch of the same name.** It does not. An Infrahub branch with `sync_with_git` off receives no commits from Git, whatever the selective synchronization rules match.
+- **Infrahub always imports a Git branch into the Infrahub branch of the same name.** It does not. Infrahub imports no commits into an Infrahub branch with `sync_with_git` off, whatever the selective synchronization rules match.
 - **A read-write repository has an "Import latest commit" button.** It does not. Read-write repositories import automatically in the background; **Import latest commit** is a read-only repository action, used because read-only repositories are not polled.
 
 ## Further reading

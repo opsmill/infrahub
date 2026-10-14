@@ -3,7 +3,7 @@ title: Selective branch synchronization
 ---
 import ReferenceLink from "../../src/components/Card";
 
-Infrahub automatically creates all branches from a connected Git repository by default. While this ensures full visibility, it can create unnecessary noise when many Git branches are unrelated to Infrahub data or workflows. Selective branch synchronization introduces an optional configuration that allows teams to control which Git branches are imported and synchronized into Infrahub based on custom naming patterns.
+By default, Infrahub creates an Infrahub branch for every new branch in a connected Git repository. When many of those Git branches are unrelated to Infrahub data, configure selective branch synchronization: a list of patterns that a Git branch name has to match before Infrahub imports it.
 
 ## Why selective synchronization matters
 
@@ -38,9 +38,9 @@ The one exception is an Infrahub branch with "sync with Git" turned off. Infrahu
 When you enable selective branch synchronization, Infrahub will only import branches whose names match a set of user-defined rules. Each rule is a regular expression that defines a pattern for matching branch names.
 
 :::info
-Selective synchronization only affects the Git to Infrahub direction. Branches created in Infrahub with the "sync to Git" option enabled will still synchronize to Git normally.
+Selective synchronization only affects the Git to Infrahub direction. Branches created in Infrahub with the "sync with Git" option enabled will still synchronize to Git normally.
 
-The rules select which Git branches Infrahub creates as new branches. A rule that matches the name of an Infrahub branch with "sync with Git" turned off does not import commits into that branch.
+Infrahub applies the rules only when it creates new Infrahub branches from Git branches. When a rule matches the name of an Infrahub branch with "sync with Git" turned off, Infrahub still imports no commits into that branch.
 :::
 
 ## Configuring selective synchronization
@@ -119,7 +119,7 @@ Manually deleting branches in Infrahub is permanent. The deletion does not affec
 :::
 
 :::info
-The synchronization rules only control initial import of branches from Git to Infrahub. Once a branch exists in Infrahub, its "sync with Git" flag decides whether it receives commits: with the flag enabled, it continues syncing regardless of rule changes, and with the flag disabled, it receives no commits from Git.
+The synchronization rules only control initial import of branches from Git to Infrahub. Once a branch exists in Infrahub, its "sync with Git" flag sets whether Infrahub imports commits into it: with the flag enabled, Infrahub keeps importing regardless of rule changes, and with the flag disabled, Infrahub imports nothing from Git.
 :::
 
 ## Regular expression patterns
@@ -323,7 +323,7 @@ query RepositoryBranchStatus($id: String!, $limit: Int, $offset: Int, $syncStatu
 }
 ```
 
-Which branches appear depends on the repository type. A read-write repository returns only branches with `sync_with_git` set to true, because only those branches receive commits from Git. A read-only repository returns every branch, because it tracks a single reference and is not affected by selective synchronization. In both cases, merged and deleting branches are left out, and the branch you send the query to does not change the result.
+Which branches appear depends on the repository type. A read-write repository returns only branches with `sync_with_git` set to true, because those are the branches Infrahub imports commits into. A read-only repository returns every branch, because it tracks a single reference and is not affected by selective synchronization. In both cases, merged and deleting branches are left out, and the branch you send the query to does not change the result.
 
 ### How values are resolved for each branch
 
@@ -527,15 +527,15 @@ If you abandon the pending pushes, the remote branch stays. At the next synchron
 1. Check if an environment variable is set and taking precedence
 2. Delete existing branches manually if needed — rules only control new imports, not existing branches
 
-### A branch receives no commits from Git
+### Infrahub imports no commits into a branch
 
 **Possible cause:**
 
-- The Infrahub branch has the "sync with Git" flag disabled. Infrahub imports no commits into such a branch, even when a Git branch of the same name exists and matches the rules. A branch that received commits before upgrading to Infrahub 1.12 keeps the last commit it imported.
+- The Infrahub branch has the "sync with Git" flag disabled. Infrahub imports no commits into such a branch, even when a Git branch of the same name exists and its name matches the rules. If Infrahub imported commits into the branch before you upgraded to Infrahub 1.12, the branch keeps the last commit imported.
 
 **Solution:**
 
-1. Create a branch with the "sync with Git" flag enabled for work that needs commits from Git. The flag is chosen when the branch is created.
+1. If you need commits from Git on a branch, create a new branch with the "sync with Git" flag enabled. You choose the flag when you create the branch, and you cannot change it later.
 
 ### All branches are being imported despite rules
 
@@ -559,7 +559,7 @@ If you abandon the pending pushes, the remote branch stays. At the next synchron
 Selective branch synchronization only affects the **Git → Infrahub** direction:
 
 - Git branches that don't match the rules will not be imported into Infrahub
-- Branches created in Infrahub with the "sync to Git" option enabled will still synchronize to Git normally
+- Branches created in Infrahub with the "sync with Git" option enabled will still synchronize to Git normally
 - This asymmetric behavior allows teams to use Infrahub as the source of truth while filtering incoming Git branches
 
 ### Dynamic updates
@@ -569,6 +569,7 @@ When you modify the `sync_branch_names` configuration:
 - New Git branches will be evaluated against the updated rules during the next synchronization
 - Git branches that now match the rules will be automatically imported
 - Existing Infrahub branches with Git synchronization enabled continue syncing regardless of rule changes
+- Infrahub imports no commits into existing Infrahub branches with "sync with Git" turned off, whether or not the rules match them
 - Branches no longer matching the rules will **not** be automatically removed from Infrahub
 - You must manually delete branches in Infrahub if they no longer align with your synchronization policy
 
