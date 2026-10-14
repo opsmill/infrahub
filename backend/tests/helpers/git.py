@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
@@ -7,14 +9,18 @@ from uuid import UUID
 import httpx
 from git import Repo
 from infrahub_sdk import Config, InfrahubClient
+from infrahub_sdk.exceptions import GraphQLError
 
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.registry import registry
 from infrahub.git.repository import InfrahubRepository
+from tests.helpers.test_client import dummy_async_request
 
 if TYPE_CHECKING:
     from pathlib import Path
 
+    import pytest
+    from infrahub_sdk.exceptions import Error as SdkError
     from infrahub_sdk.types import HTTPMethod
     from testcontainers.core.container import DockerContainer
 
@@ -62,21 +68,99 @@ class LocalRemote:
     def create_branch(self, branch_name: str) -> None:
         self.repo.git.branch(branch_name, self.trunk)
 
-    def commit(self, branch_name: str, files: dict[str, str]) -> str:
-        """Commit the given files on a branch, creating it from the trunk when it does not exist yet."""
+    def commit(self, branch_name: str, files: dict[str, str], amend: bool = False) -> str:
+        """Commit the given files on a branch, creating it from the trunk when it does not exist yet.
+
+        Args:
+            amend: Replace the last commit of the branch, so the branch no longer holds that commit.
+
+        """
         remote_head = self.repo.active_branch.name
         if branch_name not in [head.name for head in self.repo.heads]:
             self.create_branch(branch_name)
         self.repo.git.checkout(branch_name)
         for name, content in files.items():
+            (self.directory / name).parent.mkdir(parents=True, exist_ok=True)
             (self.directory / name).write_text(content, encoding="utf-8")
         self.repo.index.add(list(files))
-        commit = self.repo.index.commit(f"Update on {branch_name}").hexsha
+        if amend:
+            self.repo.git.commit("--amend", "-m", f"Rewritten on {branch_name}")
+        else:
+            self.repo.index.commit(f"Update on {branch_name}")
+        commit = self.repo.head.commit.hexsha
         self.repo.git.checkout(remote_head)
         return commit
 
+    def move_branch(self, branch_name: str, commit: str) -> None:
+        self.repo.git.branch("-f", branch_name, commit)
+
     def delete_branch(self, branch_name: str) -> None:
         self.repo.git.branch("-D", branch_name)
+
+
+def branch_payload(name: str, status: str = "OPEN") -> dict[str, Any]:
+    return {
+        "id": f"{name}-id",
+        "name": name,
+        "description": None,
+        "sync_with_git": True,
+        "is_default": name == "main",
+        "has_schema_changes": False,
+        "graph_version": None,
+        "status": status,
+        "origin_branch": "main",
+        "branched_from": "2024-01-01T00:00:00Z",
+    }
+
+
+class GraphRecordingClient(InfrahubClient):
+    """An SDK client whose graph holds the given Infrahub branches and keeps every commit recorded on them.
+
+    ``branch_statuses`` sets the status the listing reports for a branch, OPEN otherwise, and
+    ``rejecting_branches`` refuse a commit write the way the API refuses one on a branch that needs a rebase.
+    """
+
+    def __init__(self, branch_names: tuple[str, ...]) -> None:
+        super().__init__(config=Config(requester=dummy_async_request))
+        self.branch_names = branch_names
+        self.branch_statuses: dict[str, str] = {}
+        self.rejecting_branches: frozenset[str] = frozenset()
+        self.recorded_commits: list[tuple[str, str]] = []
+
+    async def execute_graphql(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
+        tracker = kwargs.get("tracker")
+        variables = kwargs.get("variables") or {}
+        if tracker == "query-branch-all":
+            return {
+                "Branch": [
+                    branch_payload(name=name, status=self.branch_statuses.get(name, "OPEN"))
+                    for name in self.branch_names
+                ]
+            }
+        if tracker == "mutation-branch-create":
+            raise GraphQLError(errors=[{"message": "The branch already exists"}])
+        if tracker == "query-branch":
+            return {"Branch": [branch_payload(name=variables["branch_name"])]}
+        if tracker == "mutation-repository-update-commit":
+            if kwargs["branch_name"] in self.rejecting_branches:
+                raise GraphQLError(errors=[{"message": rejected_commit_message(kwargs["branch_name"])}])
+            self.recorded_commits.append((kwargs["branch_name"], variables["commit"]))
+        return {}
+
+
+def rejected_commit_message(branch_name: str) -> str:
+    return f"Branch {branch_name} must be rebased before any updates can be made"
+
+
+def install_remote_helper(directory: Path, monkeypatch: pytest.MonkeyPatch, script: str) -> str:
+    """Put a git remote helper running ``script`` on the PATH, and return a URL that git hands to it."""
+    helper_directory = directory / "bin"
+    helper_directory.mkdir()
+    helper = helper_directory / "git-remote-fake"
+    helper.write_text(f"#!/bin/sh\n{script}\n", encoding="utf-8")
+    helper.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{helper_directory}{os.pathsep}{os.environ['PATH']}")
+    return "fake::nowhere"
 
 
 def build_repository_client(
@@ -87,13 +171,20 @@ def build_repository_client(
     default_branch: str,
     internal_status: RepositoryInternalStatus = RepositoryInternalStatus.ACTIVE,
     query_branches: tuple[str, ...] = ("main",),
+    commit_update_error: SdkError | None = None,
+    commit: str | None = None,
 ) -> InfrahubClient:
     """Return a client that answers the one repository read a read-write construction performs.
 
     Every other request is answered as an empty success, matching what tests relied on before
-    construction started reading the graph. Use this where the code under test builds the repository
-    object itself, so the real resolution path runs. The schema comes from the live registry, so it
+    construction started reading the graph: a list read finds no node. Use this where the code under
+    test builds the repository object itself, so the real resolution path runs. The schema comes from the live registry, so it
     cannot drift; the caller must have the core schema registered.
+
+    Args:
+        commit_update_error: Raise this error for every commit update instead of answering it.
+        commit: The commit the graph records for the repository, on every branch.
+
     """
     node = {
         "__typename": InfrahubKind.REPOSITORY,
@@ -102,6 +193,7 @@ def build_repository_client(
         "location": {"value": location},
         "default_branch": {"value": default_branch},
         "internal_status": {"value": internal_status.value},
+        "commit": {"value": commit},
     }
 
     async def requester(
@@ -113,10 +205,16 @@ def build_repository_client(
     ) -> httpx.Response:
         request = httpx.Request(method="POST", url="http://mock")
         query = (payload or {}).get("query", "")
+        if commit_update_error is not None and "commit" in ((payload or {}).get("variables") or {}):
+            raise commit_update_error
         # Only the construction read, which selects default_branch, returns a node; every other
         # query naming the repository kind gets an empty success.
         if InfrahubKind.REPOSITORY in query and "default_branch" in query:
             data = {InfrahubKind.REPOSITORY: {"count": 1, "edges": [{"node": node}]}}
+            return httpx.Response(status_code=200, json={"data": data}, request=request)
+        list_read = re.match(r"\s*query\b[^{]*\{\s*(\w+)\(", query)
+        if list_read is not None:
+            data = {list_read.group(1): {"count": 0, "edges": []}}
             return httpx.Response(status_code=200, json={"data": data}, request=request)
         return httpx.Response(status_code=200, json={"data": {}}, request=request)
 

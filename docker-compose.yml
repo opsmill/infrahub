@@ -52,6 +52,7 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_BROKER_PASSWORD: &broker_password ${INFRAHUB_BROKER_PASSWORD:-infrahub}
   INFRAHUB_BROKER_PORT:
   INFRAHUB_BROKER_RABBITMQ_HTTP_PORT:
+  INFRAHUB_BROKER_RPC_TIMEOUT: ${INFRAHUB_BROKER_RPC_TIMEOUT:-120}
   INFRAHUB_BROKER_TLS_CA_FILE:
   INFRAHUB_BROKER_TLS_ENABLED: ${INFRAHUB_BROKER_TLS_ENABLED:-false}
   INFRAHUB_BROKER_TLS_INSECURE: ${INFRAHUB_BROKER_TLS_INSECURE:-false}
@@ -103,6 +104,7 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_GIT_DELETE_GIT_BRANCH_AFTER_MERGE: ${INFRAHUB_GIT_DELETE_GIT_BRANCH_AFTER_MERGE:-false}
   INFRAHUB_GIT_GLOBAL_CONFIG_FILE: ${INFRAHUB_GIT_GLOBAL_CONFIG_FILE:-/opt/infrahub/.gitconfig}
   INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES:
+  INFRAHUB_GIT_READ_ONLY_REFS_CHECK_INTERVAL_MINS: ${INFRAHUB_GIT_READ_ONLY_REFS_CHECK_INTERVAL_MINS:-15}
   INFRAHUB_GIT_REPOSITORIES_DIRECTORY: ${INFRAHUB_GIT_REPOSITORIES_DIRECTORY:-repositories}
   INFRAHUB_GIT_SYNC_INTERVAL: ${INFRAHUB_GIT_SYNC_INTERVAL:-10}
   INFRAHUB_GIT_TLS_CA_FILE:
@@ -279,7 +281,7 @@ services:
       - 6362:6362
 
   task-manager:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.11.4}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.11.6}"
     command: uvicorn --host 0.0.0.0 --port 4200 --factory infrahub.prefect_server.app:create_infrahub_prefect
     restart: unless-stopped
     depends_on:
@@ -312,7 +314,7 @@ services:
       retries: 5
 
   infrahub-server:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.11.4}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.11.6}"
     restart: unless-stopped
     command: >
       gunicorn --config backend/infrahub/serve/gunicorn_config.py
@@ -358,7 +360,7 @@ services:
     deploy:
       mode: replicated
       replicas: 2
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.11.4}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.11.6}"
     command: prefect worker start --type infrahubasync --pool infrahub-worker --with-healthcheck
     restart: unless-stopped
     depends_on:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from enum import Flag, auto
+from enum import Flag, StrEnum, auto
 
 from infrahub.core.constants import infrahubkind as InfrahubKind  # noqa: N812
 from infrahub.exceptions import ValidationError
@@ -230,7 +230,45 @@ class RepositorySyncStatus(InfrahubStringEnum):
     UNKNOWN = "unknown"
     IN_SYNC = "in-sync"
     ERROR_IMPORT = "error-import"
+    ERROR_REF_MISSING = "error-ref-missing"
     SYNCING = "syncing"
+
+
+class RepositoryDeliveryStatus(InfrahubStringEnum):
+    NONE = "none"
+    PENDING = "pending"
+    ACTION_REQUIRED = "action-required"
+
+
+class RepositoryDeliveryFailureCause(InfrahubStringEnum):
+    REMOTE_UNREACHABLE = "remote-unreachable"
+    REMOTE_ADVANCED = "remote-advanced"
+    RECORD_FAILED = "record-failed"
+    NOT_FOUND = "not-found"
+    CERTIFICATE = "certificate"
+    CREDENTIALS = "credentials"
+    PERMISSION = "permission"
+    IMPORT_INTERRUPTED = "import-interrupted"
+    IMPORT_FAILED = "import-failed"
+    REPLAY_CONFLICT = "replay-conflict"
+    SOURCE_DISCARDED = "source-discarded"
+    DESTINATION_REWRITTEN = "destination-rewritten"
+    UNCLASSIFIED = "unclassified"
+
+
+class FullRegenerationReason(StrEnum):
+    """Why a regeneration covers every definition instead of a selection.
+
+    The delivery state of a repository stores the member names, so a member must not be renamed.
+    """
+
+    FEATURE_DISABLED = "Selective post-merge execution disabled"
+    NO_SUMMARY_CAPTURED = "No merge diff summary captured"
+    SUMMARY_UNAVAILABLE = "Merge diff summary unavailable"
+    SELECTION_FAILED = "Selective post-merge regeneration failed"
+    UNHELD_FOLLOW_UP = "Merge follow-ups ran without a hold"
+    TERMINAL_SELECTION_FAILED = "Terminals could not be targeted from the cascade output"
+    HELD_SET_UNRESOLVED = "Held regeneration could not be resolved"
 
 
 class RepositoryOperationalStatus(InfrahubStringEnum):
@@ -239,6 +277,31 @@ class RepositoryOperationalStatus(InfrahubStringEnum):
     ERROR_CONNECTION = "error-connection"
     ERROR = "error"
     ONLINE = "online"
+
+
+class RepositoryGitCondition(InfrahubStringEnum):
+    IN_SYNC = "in_sync"
+    BEHIND = "behind"
+    REWRITTEN = "rewritten"
+    ORPHANED = "orphaned"
+    REF_MISSING = "ref_missing"
+    NO_REMOTE = "no_remote"
+    NOT_TRACKED = "not_tracked"
+    UNAVAILABLE = "unavailable"
+
+
+class RepositoryCommitState(InfrahubStringEnum):
+    HEAD = "head"
+    IMPORTED = "imported"
+    PENDING = "pending"
+    HISTORY = "history"
+    UNRELATED = "unrelated"
+
+
+class RepositoryGitUnavailableReason(InfrahubStringEnum):
+    NOT_CLONED = "not_cloned"
+    NOT_IMPLEMENTED = "not_implemented"
+    TIMEOUT = "timeout"
 
 
 class DiffAction(InfrahubStringEnum):

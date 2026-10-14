@@ -36,15 +36,17 @@ class TestBranchMergeAction:
     async def test_disable_merge_button_during_merge_and_reenable_when_complete(
         self, admin_page: Page, branch_name: str
     ) -> None:
-        # access the branch details page
+        # access the branch details page and wait for the Tasks card to load
         await admin_page.goto(f"/branches/{branch_name}")
-        await admin_page.get_by_text("Tasks").click()
-        await expect(admin_page.get_by_text("Loading...Loading...")).not_to_be_visible()
-        await expect(admin_page.get_by_text("No task")).to_be_visible()
+        tasks_card = admin_page.get_by_test_id("branch-tasks-card")
+        await expect(
+            tasks_card.get_by_role("table").or_(tasks_card.get_by_text("No tasks have run on this branch yet"))
+        ).to_be_visible()
 
         # Merge the branch and verify button state
         await admin_page.get_by_role("button", name="Merge", exact=True).click()
         await expect(admin_page.get_by_text("Branch merge requested!")).to_be_visible()
         await expect(admin_page.get_by_role("button", name="Merge", exact=True)).to_be_disabled()
-        await expect(admin_page.get_by_text("COMPLETEDMerge branch graphQL")).to_be_visible(timeout=5 * 60 * 1000)
+        merge_task_row = tasks_card.get_by_role("row").filter(has_text="Merge branch graphQL mutation")
+        await expect(merge_task_row.filter(has_text="COMPLETED")).to_be_visible(timeout=5 * 60 * 1000)
         await expect(admin_page.get_by_role("button", name="Merge", exact=True)).to_be_disabled()

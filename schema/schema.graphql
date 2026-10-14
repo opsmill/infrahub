@@ -3560,6 +3560,14 @@ interface CoreGenericRepository {
   id: String
   """Internal status of the repository on this branch"""
   internal_status: Dropdown
+  """When Infrahub detected the last rewrite of this branch"""
+  last_rewrite_at: TextAttribute
+  """The commit Infrahub moved this branch onto after the last rewrite"""
+  last_rewrite_commit: TextAttribute
+  """
+  The commit Infrahub had imported on this branch before the last rewrite
+  """
+  last_rewrite_previous_commit: TextAttribute
   """URL or path to the Git repository"""
   location: TextAttribute
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
@@ -3568,6 +3576,10 @@ interface CoreGenericRepository {
   """Connectivity status of the repository"""
   operational_status: Dropdown
   queries(depth__is_protected: Boolean, depth__owner__id: ID, depth__source__id: ID, depth__value: BigInt, depth__values: [BigInt], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], fingerprint__is_protected: Boolean, fingerprint__owner__id: ID, fingerprint__source__id: ID, fingerprint__value: String, fingerprint__values: [String], height__is_protected: Boolean, height__owner__id: ID, height__source__id: ID, height__value: BigInt, height__values: [BigInt], ids: [ID], isnull: Boolean, limit: Int, models__is_protected: Boolean, models__owner__id: ID, models__source__id: ID, models__value: GenericScalar, models__values: [GenericScalar], name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, operations__is_protected: Boolean, operations__owner__id: ID, operations__source__id: ID, operations__value: GenericScalar, operations__values: [GenericScalar], order: OrderInput, query__is_protected: Boolean, query__owner__id: ID, query__source__id: ID, query__value: String, query__values: [String], variables__is_protected: Boolean, variables__owner__id: ID, variables__source__id: ID, variables__value: GenericScalar, variables__values: [GenericScalar]): NestedPaginatedCoreGraphQLQuery!
+  """
+  How many rewrites this branch has seen, including those on the default branch before this branch was created
+  """
+  rewrite_count: NumberAttribute
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """Current synchronization status of the repository"""
   sync_status: Dropdown
@@ -3594,6 +3606,14 @@ input CoreGenericRepositoryUpdateInput {
   id: String
   """Internal status of the repository on this branch"""
   internal_status: TextAttributeUpdate
+  """When Infrahub detected the last rewrite of this branch"""
+  last_rewrite_at: TextAttributeUpdate
+  """The commit Infrahub moved this branch onto after the last rewrite"""
+  last_rewrite_commit: TextAttributeUpdate
+  """
+  The commit Infrahub had imported on this branch before the last rewrite
+  """
+  last_rewrite_previous_commit: TextAttributeUpdate
   """URL or path to the Git repository"""
   location: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
@@ -3602,6 +3622,10 @@ input CoreGenericRepositoryUpdateInput {
   """Connectivity status of the repository"""
   operational_status: TextAttributeUpdate
   queries: [RelatedNodeInput]
+  """
+  How many rewrites this branch has seen, including those on the default branch before this branch was created
+  """
+  rewrite_count: NumberAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
   """Current synchronization status of the repository"""
   sync_status: TextAttributeUpdate
@@ -5626,6 +5650,14 @@ type CoreReadOnlyRepository implements CoreGenericRepository & CoreNode & CoreTa
   id: String!
   """Internal status of the repository on this branch"""
   internal_status: Dropdown
+  """When Infrahub detected the last rewrite of this branch"""
+  last_rewrite_at: TextAttribute
+  """The commit Infrahub moved this branch onto after the last rewrite"""
+  last_rewrite_commit: TextAttribute
+  """
+  The commit Infrahub had imported on this branch before the last rewrite
+  """
+  last_rewrite_previous_commit: TextAttribute
   """URL or path to the Git repository"""
   location: TextAttribute
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
@@ -5636,6 +5668,10 @@ type CoreReadOnlyRepository implements CoreGenericRepository & CoreNode & CoreTa
   queries(depth__is_protected: Boolean, depth__owner__id: ID, depth__source__id: ID, depth__value: BigInt, depth__values: [BigInt], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], fingerprint__is_protected: Boolean, fingerprint__owner__id: ID, fingerprint__source__id: ID, fingerprint__value: String, fingerprint__values: [String], height__is_protected: Boolean, height__owner__id: ID, height__source__id: ID, height__value: BigInt, height__values: [BigInt], ids: [ID], isnull: Boolean, limit: Int, models__is_protected: Boolean, models__owner__id: ID, models__source__id: ID, models__value: GenericScalar, models__values: [GenericScalar], name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, operations__is_protected: Boolean, operations__owner__id: ID, operations__source__id: ID, operations__value: GenericScalar, operations__values: [GenericScalar], order: OrderInput, query__is_protected: Boolean, query__owner__id: ID, query__source__id: ID, query__value: String, query__values: [String], variables__is_protected: Boolean, variables__owner__id: ID, variables__source__id: ID, variables__value: GenericScalar, variables__values: [GenericScalar]): NestedPaginatedCoreGraphQLQuery!
   """Git reference (branch or tag) to track"""
   ref: TextAttribute
+  """
+  How many rewrites this branch has seen, including those on the default branch before this branch was created
+  """
+  rewrite_count: NumberAttribute
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """Current synchronization status of the repository"""
   sync_status: Dropdown
@@ -5663,6 +5699,14 @@ input CoreReadOnlyRepositoryCreateInput {
   id: String
   """Internal status of the repository on this branch"""
   internal_status: TextAttributeCreate
+  """When Infrahub detected the last rewrite of this branch"""
+  last_rewrite_at: TextAttributeCreate
+  """The commit Infrahub moved this branch onto after the last rewrite"""
+  last_rewrite_commit: TextAttributeCreate
+  """
+  The commit Infrahub had imported on this branch before the last rewrite
+  """
+  last_rewrite_previous_commit: TextAttributeCreate
   """URL or path to the Git repository"""
   location: TextAttributeCreate
   member_of_groups: [RelatedNodeInput]
@@ -5673,6 +5717,10 @@ input CoreReadOnlyRepositoryCreateInput {
   queries: [RelatedNodeInput]
   """Git reference (branch or tag) to track"""
   ref: TextAttributeCreate
+  """
+  How many rewrites this branch has seen, including those on the default branch before this branch was created
+  """
+  rewrite_count: NumberAttributeCreate
   subscriber_of_groups: [RelatedNodeInput]
   """Current synchronization status of the repository"""
   sync_status: TextAttributeCreate
@@ -5708,6 +5756,14 @@ input CoreReadOnlyRepositoryUpdateInput {
   id: String
   """Internal status of the repository on this branch"""
   internal_status: TextAttributeUpdate
+  """When Infrahub detected the last rewrite of this branch"""
+  last_rewrite_at: TextAttributeUpdate
+  """The commit Infrahub moved this branch onto after the last rewrite"""
+  last_rewrite_commit: TextAttributeUpdate
+  """
+  The commit Infrahub had imported on this branch before the last rewrite
+  """
+  last_rewrite_previous_commit: TextAttributeUpdate
   """URL or path to the Git repository"""
   location: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
@@ -5718,6 +5774,10 @@ input CoreReadOnlyRepositoryUpdateInput {
   queries: [RelatedNodeInput]
   """Git reference (branch or tag) to track"""
   ref: TextAttributeUpdate
+  """
+  How many rewrites this branch has seen, including those on the default branch before this branch was created
+  """
+  rewrite_count: NumberAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
   """Current synchronization status of the repository"""
   sync_status: TextAttributeUpdate
@@ -5746,6 +5806,14 @@ input CoreReadOnlyRepositoryUpsertInput {
   id: String
   """Internal status of the repository on this branch"""
   internal_status: TextAttributeUpdate
+  """When Infrahub detected the last rewrite of this branch"""
+  last_rewrite_at: TextAttributeUpdate
+  """The commit Infrahub moved this branch onto after the last rewrite"""
+  last_rewrite_commit: TextAttributeUpdate
+  """
+  The commit Infrahub had imported on this branch before the last rewrite
+  """
+  last_rewrite_previous_commit: TextAttributeUpdate
   """URL or path to the Git repository"""
   location: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
@@ -5756,6 +5824,10 @@ input CoreReadOnlyRepositoryUpsertInput {
   queries: [RelatedNodeInput]
   """Git reference (branch or tag) to track"""
   ref: TextAttributeUpdate
+  """
+  How many rewrites this branch has seen, including those on the default branch before this branch was created
+  """
+  rewrite_count: NumberAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
   """Current synchronization status of the repository"""
   sync_status: TextAttributeUpdate
@@ -5773,6 +5845,36 @@ type CoreRepository implements CoreGenericRepository & CoreNode & CoreTaskTarget
   Remote branch that Infrahub maps onto its own default branch. Need not be the remote default branch.
   """
   default_branch: TextAttribute
+  """
+  Message of the last failed push, import or release step, with credentials removed.
+  """
+  delivery_error: TextAttribute
+  """
+  Why the last push to the remote, or the import that follows it, failed.
+  """
+  delivery_failure_cause: Dropdown
+  """
+  Definitions and Python computed attributes held until a release after a push or an abandonment.
+  """
+  delivery_held_regeneration: JSONAttribute
+  """
+  Who abandoned the last pending pushes, when, and which merged changes were dropped.
+  """
+  delivery_last_abandonment: JSONAttribute
+  """Commit of the last push that reached the remote."""
+  delivery_last_delivered_commit: TextAttribute
+  """
+  Times when the push attempt started and last moved, and when the next automatic retry is due.
+  """
+  delivery_progress: JSONAttribute
+  """Merged changes that wait to be pushed to the remote, in merge order."""
+  delivery_queue: JSONAttribute
+  """A pushed commit that a rewrite of the remote branch history discarded."""
+  delivery_reverted: JSONAttribute
+  """
+  Whether merged changes wait to be pushed to the remote, and whether a user must act.
+  """
+  delivery_status: Dropdown
   """Description of the repository"""
   description: TextAttribute
   display_label: String
@@ -5784,6 +5886,14 @@ type CoreRepository implements CoreGenericRepository & CoreNode & CoreTaskTarget
   id: String!
   """Internal status of the repository on this branch"""
   internal_status: Dropdown
+  """When Infrahub detected the last rewrite of this branch"""
+  last_rewrite_at: TextAttribute
+  """The commit Infrahub moved this branch onto after the last rewrite"""
+  last_rewrite_commit: TextAttribute
+  """
+  The commit Infrahub had imported on this branch before the last rewrite
+  """
+  last_rewrite_previous_commit: TextAttribute
   """URL or path to the Git repository"""
   location: TextAttribute
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
@@ -5792,6 +5902,10 @@ type CoreRepository implements CoreGenericRepository & CoreNode & CoreTaskTarget
   """Connectivity status of the repository"""
   operational_status: Dropdown
   queries(depth__is_protected: Boolean, depth__owner__id: ID, depth__source__id: ID, depth__value: BigInt, depth__values: [BigInt], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], fingerprint__is_protected: Boolean, fingerprint__owner__id: ID, fingerprint__source__id: ID, fingerprint__value: String, fingerprint__values: [String], height__is_protected: Boolean, height__owner__id: ID, height__source__id: ID, height__value: BigInt, height__values: [BigInt], ids: [ID], isnull: Boolean, limit: Int, models__is_protected: Boolean, models__owner__id: ID, models__source__id: ID, models__value: GenericScalar, models__values: [GenericScalar], name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, operations__is_protected: Boolean, operations__owner__id: ID, operations__source__id: ID, operations__value: GenericScalar, operations__values: [GenericScalar], order: OrderInput, query__is_protected: Boolean, query__owner__id: ID, query__source__id: ID, query__value: String, query__values: [String], variables__is_protected: Boolean, variables__owner__id: ID, variables__source__id: ID, variables__value: GenericScalar, variables__values: [GenericScalar]): NestedPaginatedCoreGraphQLQuery!
+  """
+  How many rewrites this branch has seen, including those on the default branch before this branch was created
+  """
+  rewrite_count: NumberAttribute
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """Current synchronization status of the repository"""
   sync_status: Dropdown
@@ -5821,6 +5935,14 @@ input CoreRepositoryCreateInput {
   id: String
   """Internal status of the repository on this branch"""
   internal_status: TextAttributeCreate
+  """When Infrahub detected the last rewrite of this branch"""
+  last_rewrite_at: TextAttributeCreate
+  """The commit Infrahub moved this branch onto after the last rewrite"""
+  last_rewrite_commit: TextAttributeCreate
+  """
+  The commit Infrahub had imported on this branch before the last rewrite
+  """
+  last_rewrite_previous_commit: TextAttributeCreate
   """URL or path to the Git repository"""
   location: TextAttributeCreate
   member_of_groups: [RelatedNodeInput]
@@ -5829,6 +5951,10 @@ input CoreRepositoryCreateInput {
   """Connectivity status of the repository"""
   operational_status: TextAttributeCreate
   queries: [RelatedNodeInput]
+  """
+  How many rewrites this branch has seen, including those on the default branch before this branch was created
+  """
+  rewrite_count: NumberAttributeCreate
   subscriber_of_groups: [RelatedNodeInput]
   """Current synchronization status of the repository"""
   sync_status: TextAttributeCreate
@@ -5960,6 +6086,14 @@ input CoreRepositoryUpdateInput {
   id: String
   """Internal status of the repository on this branch"""
   internal_status: TextAttributeUpdate
+  """When Infrahub detected the last rewrite of this branch"""
+  last_rewrite_at: TextAttributeUpdate
+  """The commit Infrahub moved this branch onto after the last rewrite"""
+  last_rewrite_commit: TextAttributeUpdate
+  """
+  The commit Infrahub had imported on this branch before the last rewrite
+  """
+  last_rewrite_previous_commit: TextAttributeUpdate
   """URL or path to the Git repository"""
   location: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
@@ -5968,6 +6102,10 @@ input CoreRepositoryUpdateInput {
   """Connectivity status of the repository"""
   operational_status: TextAttributeUpdate
   queries: [RelatedNodeInput]
+  """
+  How many rewrites this branch has seen, including those on the default branch before this branch was created
+  """
+  rewrite_count: NumberAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
   """Current synchronization status of the repository"""
   sync_status: TextAttributeUpdate
@@ -5998,6 +6136,14 @@ input CoreRepositoryUpsertInput {
   id: String
   """Internal status of the repository on this branch"""
   internal_status: TextAttributeUpdate
+  """When Infrahub detected the last rewrite of this branch"""
+  last_rewrite_at: TextAttributeUpdate
+  """The commit Infrahub moved this branch onto after the last rewrite"""
+  last_rewrite_commit: TextAttributeUpdate
+  """
+  The commit Infrahub had imported on this branch before the last rewrite
+  """
+  last_rewrite_previous_commit: TextAttributeUpdate
   """URL or path to the Git repository"""
   location: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
@@ -6006,6 +6152,10 @@ input CoreRepositoryUpsertInput {
   """Connectivity status of the repository"""
   operational_status: TextAttributeUpdate
   queries: [RelatedNodeInput]
+  """
+  How many rewrites this branch has seen, including those on the default branch before this branch was created
+  """
+  rewrite_count: NumberAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
   """Current synchronization status of the repository"""
   sync_status: TextAttributeUpdate
@@ -8963,6 +9113,48 @@ type InfrahubRelationshipMetadata {
 }
 
 """
+One branch's view of a repository.
+
+The branch fields carry the same value-field wrappers and nullability as the branch query, so a
+client reads `name.value` and `commit.value` through one access pattern across the whole row.
+"""
+type InfrahubRepositoryBranchStatus {
+  """
+  Fork point from the default branch; inherited rows resolve as of this time
+  """
+  branched_from: NonRequiredStringValueField
+  """Imported commit as this branch resolves it"""
+  commit: TextAttribute
+  """Defined on CoreGenericRepository, present for both kinds"""
+  internal_status: Dropdown
+  is_default: NonRequiredBooleanValueField
+  """Branch name; joins the repository's per-branch attribute edges"""
+  name: RequiredStringValueField!
+  """CoreReadOnlyRepository only; null for CoreRepository"""
+  ref: TextAttribute
+  status: StatusField!
+  """
+  Import status as this branch resolves it (defined on CoreGenericRepository, present for both kinds)
+  """
+  sync_status: Dropdown
+  """
+  Always true on CoreRepository, which selects on it; varies per row on CoreReadOnlyRepository, whose row set is every branch
+  """
+  sync_with_git: NonRequiredBooleanValueField
+}
+
+type InfrahubRepositoryBranchStatusEdge {
+  node: InfrahubRepositoryBranchStatus!
+  node_metadata: InfrahubNodeMetadata!
+}
+
+type InfrahubRepositoryBranchStatusType {
+  """Number of rows after all filters, before limit and offset"""
+  count: Int!
+  edges: [InfrahubRepositoryBranchStatusEdge!]!
+}
+
+"""
 Write preferences for one writable scope, USER or GLOBAL.
 
 scope=USER   → the calling account's OWN Preference row (owner_id = account_session.account_id;
@@ -9912,9 +10104,18 @@ type Mutation {
   InfrahubIPAddressPoolGetResource(data: IPAddressPoolGetResourceInput!): IPAddressPoolGetResource
   InfrahubIPPrefixPoolGetResource(data: IPPrefixPoolGetResourceInput!): IPPrefixPoolGetResource
   InfrahubProfilesRefresh(context: ContextInput, data: ProfilesRefreshInput!): InfrahubProfilesRefresh
+  InfrahubReadOnlyRepositoryCheckRefs(data: IdentifierInput!): ReadOnlyRepositoryCheckRefs
   InfrahubReadOnlyRepositoryImportLastCommit(data: IdentifierInput!): ReadOnlyRepositoryImportLastCommit
   InfrahubRecomputeComputedAttribute(context: ContextInput, data: InfrahubComputedAttributeRecomputeInput!): RecomputeComputedAttribute
   InfrahubRepositoryConnectivity(data: IdentifierInput!): ValidateRepositoryConnectivity
+  """
+  Abandon every pending merge of a repository. Nothing is removed from the remote, and no remote branch is deleted. Repository objects of the abandoned merges can stay on the default branch until the current commit is reimported.
+  """
+  InfrahubRepositoryDeliveryAbandon(data: RepositoryDeliveryAbandonInput!): RepositoryDeliveryAbandon
+  """
+  Push every pending merge of a repository to its remote, in order, in a single push.
+  """
+  InfrahubRepositoryDeliveryRetry(data: RepositoryDeliveryRetryInput!): RepositoryDeliveryRetry
   InfrahubRepositoryProcess(data: IdentifierInput!): ProcessRepository
   """
   Write preferences for one writable scope, USER or GLOBAL.
@@ -15778,6 +15979,21 @@ type Query {
     repository__internal_status__value: String
     repository__internal_status__values: [String]
     repository__isnull: Boolean
+    repository__last_rewrite_at__is_protected: Boolean
+    repository__last_rewrite_at__owner__id: ID
+    repository__last_rewrite_at__source__id: ID
+    repository__last_rewrite_at__value: DateTime
+    repository__last_rewrite_at__values: [DateTime]
+    repository__last_rewrite_commit__is_protected: Boolean
+    repository__last_rewrite_commit__owner__id: ID
+    repository__last_rewrite_commit__source__id: ID
+    repository__last_rewrite_commit__value: String
+    repository__last_rewrite_commit__values: [String]
+    repository__last_rewrite_previous_commit__is_protected: Boolean
+    repository__last_rewrite_previous_commit__owner__id: ID
+    repository__last_rewrite_previous_commit__source__id: ID
+    repository__last_rewrite_previous_commit__value: String
+    repository__last_rewrite_previous_commit__values: [String]
     repository__location__is_protected: Boolean
     repository__location__owner__id: ID
     repository__location__source__id: ID
@@ -15793,6 +16009,11 @@ type Query {
     repository__operational_status__source__id: ID
     repository__operational_status__value: String
     repository__operational_status__values: [String]
+    repository__rewrite_count__is_protected: Boolean
+    repository__rewrite_count__owner__id: ID
+    repository__rewrite_count__source__id: ID
+    repository__rewrite_count__value: BigInt
+    repository__rewrite_count__values: [BigInt]
     repository__sync_status__is_protected: Boolean
     repository__sync_status__owner__id: ID
     repository__sync_status__source__id: ID
@@ -17017,6 +17238,51 @@ type Query {
     repository__default_branch__source__id: ID
     repository__default_branch__value: String
     repository__default_branch__values: [String]
+    repository__delivery_error__is_protected: Boolean
+    repository__delivery_error__owner__id: ID
+    repository__delivery_error__source__id: ID
+    repository__delivery_error__value: String
+    repository__delivery_error__values: [String]
+    repository__delivery_failure_cause__is_protected: Boolean
+    repository__delivery_failure_cause__owner__id: ID
+    repository__delivery_failure_cause__source__id: ID
+    repository__delivery_failure_cause__value: String
+    repository__delivery_failure_cause__values: [String]
+    repository__delivery_held_regeneration__is_protected: Boolean
+    repository__delivery_held_regeneration__owner__id: ID
+    repository__delivery_held_regeneration__source__id: ID
+    repository__delivery_held_regeneration__value: GenericScalar
+    repository__delivery_held_regeneration__values: [GenericScalar]
+    repository__delivery_last_abandonment__is_protected: Boolean
+    repository__delivery_last_abandonment__owner__id: ID
+    repository__delivery_last_abandonment__source__id: ID
+    repository__delivery_last_abandonment__value: GenericScalar
+    repository__delivery_last_abandonment__values: [GenericScalar]
+    repository__delivery_last_delivered_commit__is_protected: Boolean
+    repository__delivery_last_delivered_commit__owner__id: ID
+    repository__delivery_last_delivered_commit__source__id: ID
+    repository__delivery_last_delivered_commit__value: String
+    repository__delivery_last_delivered_commit__values: [String]
+    repository__delivery_progress__is_protected: Boolean
+    repository__delivery_progress__owner__id: ID
+    repository__delivery_progress__source__id: ID
+    repository__delivery_progress__value: GenericScalar
+    repository__delivery_progress__values: [GenericScalar]
+    repository__delivery_queue__is_protected: Boolean
+    repository__delivery_queue__owner__id: ID
+    repository__delivery_queue__source__id: ID
+    repository__delivery_queue__value: GenericScalar
+    repository__delivery_queue__values: [GenericScalar]
+    repository__delivery_reverted__is_protected: Boolean
+    repository__delivery_reverted__owner__id: ID
+    repository__delivery_reverted__source__id: ID
+    repository__delivery_reverted__value: GenericScalar
+    repository__delivery_reverted__values: [GenericScalar]
+    repository__delivery_status__is_protected: Boolean
+    repository__delivery_status__owner__id: ID
+    repository__delivery_status__source__id: ID
+    repository__delivery_status__value: String
+    repository__delivery_status__values: [String]
     repository__description__is_protected: Boolean
     repository__description__owner__id: ID
     repository__description__source__id: ID
@@ -17032,6 +17298,21 @@ type Query {
     repository__internal_status__value: String
     repository__internal_status__values: [String]
     repository__isnull: Boolean
+    repository__last_rewrite_at__is_protected: Boolean
+    repository__last_rewrite_at__owner__id: ID
+    repository__last_rewrite_at__source__id: ID
+    repository__last_rewrite_at__value: DateTime
+    repository__last_rewrite_at__values: [DateTime]
+    repository__last_rewrite_commit__is_protected: Boolean
+    repository__last_rewrite_commit__owner__id: ID
+    repository__last_rewrite_commit__source__id: ID
+    repository__last_rewrite_commit__value: String
+    repository__last_rewrite_commit__values: [String]
+    repository__last_rewrite_previous_commit__is_protected: Boolean
+    repository__last_rewrite_previous_commit__owner__id: ID
+    repository__last_rewrite_previous_commit__source__id: ID
+    repository__last_rewrite_previous_commit__value: String
+    repository__last_rewrite_previous_commit__values: [String]
     repository__location__is_protected: Boolean
     repository__location__owner__id: ID
     repository__location__source__id: ID
@@ -17047,6 +17328,11 @@ type Query {
     repository__operational_status__source__id: ID
     repository__operational_status__value: String
     repository__operational_status__values: [String]
+    repository__rewrite_count__is_protected: Boolean
+    repository__rewrite_count__owner__id: ID
+    repository__rewrite_count__source__id: ID
+    repository__rewrite_count__value: BigInt
+    repository__rewrite_count__values: [BigInt]
     repository__sync_status__is_protected: Boolean
     repository__sync_status__owner__id: ID
     repository__sync_status__source__id: ID
@@ -17689,6 +17975,21 @@ type Query {
     repository__internal_status__value: String
     repository__internal_status__values: [String]
     repository__isnull: Boolean
+    repository__last_rewrite_at__is_protected: Boolean
+    repository__last_rewrite_at__owner__id: ID
+    repository__last_rewrite_at__source__id: ID
+    repository__last_rewrite_at__value: DateTime
+    repository__last_rewrite_at__values: [DateTime]
+    repository__last_rewrite_commit__is_protected: Boolean
+    repository__last_rewrite_commit__owner__id: ID
+    repository__last_rewrite_commit__source__id: ID
+    repository__last_rewrite_commit__value: String
+    repository__last_rewrite_commit__values: [String]
+    repository__last_rewrite_previous_commit__is_protected: Boolean
+    repository__last_rewrite_previous_commit__owner__id: ID
+    repository__last_rewrite_previous_commit__source__id: ID
+    repository__last_rewrite_previous_commit__value: String
+    repository__last_rewrite_previous_commit__values: [String]
     repository__location__is_protected: Boolean
     repository__location__owner__id: ID
     repository__location__source__id: ID
@@ -17704,6 +18005,11 @@ type Query {
     repository__operational_status__source__id: ID
     repository__operational_status__value: String
     repository__operational_status__values: [String]
+    repository__rewrite_count__is_protected: Boolean
+    repository__rewrite_count__owner__id: ID
+    repository__rewrite_count__source__id: ID
+    repository__rewrite_count__value: BigInt
+    repository__rewrite_count__values: [BigInt]
     repository__sync_status__is_protected: Boolean
     repository__sync_status__owner__id: ID
     repository__sync_status__source__id: ID
@@ -18535,6 +18841,24 @@ type Query {
     internal_status__source__id: ID
     internal_status__value: String
     internal_status__values: [String]
+    last_rewrite_at__is_protected: Boolean
+    last_rewrite_at__isnull: Boolean
+    last_rewrite_at__owner__id: ID
+    last_rewrite_at__source__id: ID
+    last_rewrite_at__value: DateTime
+    last_rewrite_at__values: [DateTime]
+    last_rewrite_commit__is_protected: Boolean
+    last_rewrite_commit__isnull: Boolean
+    last_rewrite_commit__owner__id: ID
+    last_rewrite_commit__source__id: ID
+    last_rewrite_commit__value: String
+    last_rewrite_commit__values: [String]
+    last_rewrite_previous_commit__is_protected: Boolean
+    last_rewrite_previous_commit__isnull: Boolean
+    last_rewrite_previous_commit__owner__id: ID
+    last_rewrite_previous_commit__source__id: ID
+    last_rewrite_previous_commit__value: String
+    last_rewrite_previous_commit__values: [String]
     limit: Int
     location__is_protected: Boolean
     location__isnull: Boolean
@@ -18640,6 +18964,12 @@ type Query {
     queries__variables__source__id: ID
     queries__variables__value: GenericScalar
     queries__variables__values: [GenericScalar]
+    rewrite_count__is_protected: Boolean
+    rewrite_count__isnull: Boolean
+    rewrite_count__owner__id: ID
+    rewrite_count__source__id: ID
+    rewrite_count__value: BigInt
+    rewrite_count__values: [BigInt]
     subscriber_of_groups__description__value: String
     subscriber_of_groups__description__values: [String]
     subscriber_of_groups__display_label__isnull: Boolean
@@ -18957,6 +19287,21 @@ type Query {
     repository__internal_status__value: String
     repository__internal_status__values: [String]
     repository__isnull: Boolean
+    repository__last_rewrite_at__is_protected: Boolean
+    repository__last_rewrite_at__owner__id: ID
+    repository__last_rewrite_at__source__id: ID
+    repository__last_rewrite_at__value: DateTime
+    repository__last_rewrite_at__values: [DateTime]
+    repository__last_rewrite_commit__is_protected: Boolean
+    repository__last_rewrite_commit__owner__id: ID
+    repository__last_rewrite_commit__source__id: ID
+    repository__last_rewrite_commit__value: String
+    repository__last_rewrite_commit__values: [String]
+    repository__last_rewrite_previous_commit__is_protected: Boolean
+    repository__last_rewrite_previous_commit__owner__id: ID
+    repository__last_rewrite_previous_commit__source__id: ID
+    repository__last_rewrite_previous_commit__value: String
+    repository__last_rewrite_previous_commit__values: [String]
     repository__location__is_protected: Boolean
     repository__location__owner__id: ID
     repository__location__source__id: ID
@@ -18972,6 +19317,11 @@ type Query {
     repository__operational_status__source__id: ID
     repository__operational_status__value: String
     repository__operational_status__values: [String]
+    repository__rewrite_count__is_protected: Boolean
+    repository__rewrite_count__owner__id: ID
+    repository__rewrite_count__source__id: ID
+    repository__rewrite_count__value: BigInt
+    repository__rewrite_count__values: [BigInt]
     repository__sync_status__is_protected: Boolean
     repository__sync_status__owner__id: ID
     repository__sync_status__source__id: ID
@@ -22092,6 +22442,24 @@ type Query {
     internal_status__source__id: ID
     internal_status__value: String
     internal_status__values: [String]
+    last_rewrite_at__is_protected: Boolean
+    last_rewrite_at__isnull: Boolean
+    last_rewrite_at__owner__id: ID
+    last_rewrite_at__source__id: ID
+    last_rewrite_at__value: DateTime
+    last_rewrite_at__values: [DateTime]
+    last_rewrite_commit__is_protected: Boolean
+    last_rewrite_commit__isnull: Boolean
+    last_rewrite_commit__owner__id: ID
+    last_rewrite_commit__source__id: ID
+    last_rewrite_commit__value: String
+    last_rewrite_commit__values: [String]
+    last_rewrite_previous_commit__is_protected: Boolean
+    last_rewrite_previous_commit__isnull: Boolean
+    last_rewrite_previous_commit__owner__id: ID
+    last_rewrite_previous_commit__source__id: ID
+    last_rewrite_previous_commit__value: String
+    last_rewrite_previous_commit__values: [String]
     limit: Int
     location__is_protected: Boolean
     location__isnull: Boolean
@@ -22203,6 +22571,12 @@ type Query {
     ref__source__id: ID
     ref__value: String
     ref__values: [String]
+    rewrite_count__is_protected: Boolean
+    rewrite_count__isnull: Boolean
+    rewrite_count__owner__id: ID
+    rewrite_count__source__id: ID
+    rewrite_count__value: BigInt
+    rewrite_count__values: [BigInt]
     subscriber_of_groups__description__value: String
     subscriber_of_groups__description__values: [String]
     subscriber_of_groups__display_label__isnull: Boolean
@@ -22351,6 +22725,60 @@ type Query {
     default_branch__source__id: ID
     default_branch__value: String
     default_branch__values: [String]
+    delivery_error__is_protected: Boolean
+    delivery_error__isnull: Boolean
+    delivery_error__owner__id: ID
+    delivery_error__source__id: ID
+    delivery_error__value: String
+    delivery_error__values: [String]
+    delivery_failure_cause__is_protected: Boolean
+    delivery_failure_cause__isnull: Boolean
+    delivery_failure_cause__owner__id: ID
+    delivery_failure_cause__source__id: ID
+    delivery_failure_cause__value: String
+    delivery_failure_cause__values: [String]
+    delivery_held_regeneration__is_protected: Boolean
+    delivery_held_regeneration__isnull: Boolean
+    delivery_held_regeneration__owner__id: ID
+    delivery_held_regeneration__source__id: ID
+    delivery_held_regeneration__value: GenericScalar
+    delivery_held_regeneration__values: [GenericScalar]
+    delivery_last_abandonment__is_protected: Boolean
+    delivery_last_abandonment__isnull: Boolean
+    delivery_last_abandonment__owner__id: ID
+    delivery_last_abandonment__source__id: ID
+    delivery_last_abandonment__value: GenericScalar
+    delivery_last_abandonment__values: [GenericScalar]
+    delivery_last_delivered_commit__is_protected: Boolean
+    delivery_last_delivered_commit__isnull: Boolean
+    delivery_last_delivered_commit__owner__id: ID
+    delivery_last_delivered_commit__source__id: ID
+    delivery_last_delivered_commit__value: String
+    delivery_last_delivered_commit__values: [String]
+    delivery_progress__is_protected: Boolean
+    delivery_progress__isnull: Boolean
+    delivery_progress__owner__id: ID
+    delivery_progress__source__id: ID
+    delivery_progress__value: GenericScalar
+    delivery_progress__values: [GenericScalar]
+    delivery_queue__is_protected: Boolean
+    delivery_queue__isnull: Boolean
+    delivery_queue__owner__id: ID
+    delivery_queue__source__id: ID
+    delivery_queue__value: GenericScalar
+    delivery_queue__values: [GenericScalar]
+    delivery_reverted__is_protected: Boolean
+    delivery_reverted__isnull: Boolean
+    delivery_reverted__owner__id: ID
+    delivery_reverted__source__id: ID
+    delivery_reverted__value: GenericScalar
+    delivery_reverted__values: [GenericScalar]
+    delivery_status__is_protected: Boolean
+    delivery_status__isnull: Boolean
+    delivery_status__owner__id: ID
+    delivery_status__source__id: ID
+    delivery_status__value: String
+    delivery_status__values: [String]
     description__is_protected: Boolean
     description__isnull: Boolean
     description__owner__id: ID
@@ -22458,6 +22886,24 @@ type Query {
     internal_status__source__id: ID
     internal_status__value: String
     internal_status__values: [String]
+    last_rewrite_at__is_protected: Boolean
+    last_rewrite_at__isnull: Boolean
+    last_rewrite_at__owner__id: ID
+    last_rewrite_at__source__id: ID
+    last_rewrite_at__value: DateTime
+    last_rewrite_at__values: [DateTime]
+    last_rewrite_commit__is_protected: Boolean
+    last_rewrite_commit__isnull: Boolean
+    last_rewrite_commit__owner__id: ID
+    last_rewrite_commit__source__id: ID
+    last_rewrite_commit__value: String
+    last_rewrite_commit__values: [String]
+    last_rewrite_previous_commit__is_protected: Boolean
+    last_rewrite_previous_commit__isnull: Boolean
+    last_rewrite_previous_commit__owner__id: ID
+    last_rewrite_previous_commit__source__id: ID
+    last_rewrite_previous_commit__value: String
+    last_rewrite_previous_commit__values: [String]
     limit: Int
     location__is_protected: Boolean
     location__isnull: Boolean
@@ -22563,6 +23009,12 @@ type Query {
     queries__variables__source__id: ID
     queries__variables__value: GenericScalar
     queries__variables__values: [GenericScalar]
+    rewrite_count__is_protected: Boolean
+    rewrite_count__isnull: Boolean
+    rewrite_count__owner__id: ID
+    rewrite_count__source__id: ID
+    rewrite_count__value: BigInt
+    rewrite_count__values: [BigInt]
     subscriber_of_groups__description__value: String
     subscriber_of_groups__description__values: [String]
     subscriber_of_groups__display_label__isnull: Boolean
@@ -22775,6 +23227,21 @@ type Query {
     repository__internal_status__value: String
     repository__internal_status__values: [String]
     repository__isnull: Boolean
+    repository__last_rewrite_at__is_protected: Boolean
+    repository__last_rewrite_at__owner__id: ID
+    repository__last_rewrite_at__source__id: ID
+    repository__last_rewrite_at__value: DateTime
+    repository__last_rewrite_at__values: [DateTime]
+    repository__last_rewrite_commit__is_protected: Boolean
+    repository__last_rewrite_commit__owner__id: ID
+    repository__last_rewrite_commit__source__id: ID
+    repository__last_rewrite_commit__value: String
+    repository__last_rewrite_commit__values: [String]
+    repository__last_rewrite_previous_commit__is_protected: Boolean
+    repository__last_rewrite_previous_commit__owner__id: ID
+    repository__last_rewrite_previous_commit__source__id: ID
+    repository__last_rewrite_previous_commit__value: String
+    repository__last_rewrite_previous_commit__values: [String]
     repository__location__is_protected: Boolean
     repository__location__owner__id: ID
     repository__location__source__id: ID
@@ -22790,6 +23257,11 @@ type Query {
     repository__operational_status__source__id: ID
     repository__operational_status__value: String
     repository__operational_status__values: [String]
+    repository__rewrite_count__is_protected: Boolean
+    repository__rewrite_count__owner__id: ID
+    repository__rewrite_count__source__id: ID
+    repository__rewrite_count__value: BigInt
+    repository__rewrite_count__values: [BigInt]
     repository__sync_status__is_protected: Boolean
     repository__sync_status__owner__id: ID
     repository__sync_status__source__id: ID
@@ -22968,6 +23440,21 @@ type Query {
     repository__internal_status__value: String
     repository__internal_status__values: [String]
     repository__isnull: Boolean
+    repository__last_rewrite_at__is_protected: Boolean
+    repository__last_rewrite_at__owner__id: ID
+    repository__last_rewrite_at__source__id: ID
+    repository__last_rewrite_at__value: DateTime
+    repository__last_rewrite_at__values: [DateTime]
+    repository__last_rewrite_commit__is_protected: Boolean
+    repository__last_rewrite_commit__owner__id: ID
+    repository__last_rewrite_commit__source__id: ID
+    repository__last_rewrite_commit__value: String
+    repository__last_rewrite_commit__values: [String]
+    repository__last_rewrite_previous_commit__is_protected: Boolean
+    repository__last_rewrite_previous_commit__owner__id: ID
+    repository__last_rewrite_previous_commit__source__id: ID
+    repository__last_rewrite_previous_commit__value: String
+    repository__last_rewrite_previous_commit__values: [String]
     repository__location__is_protected: Boolean
     repository__location__owner__id: ID
     repository__location__source__id: ID
@@ -22983,6 +23470,11 @@ type Query {
     repository__operational_status__source__id: ID
     repository__operational_status__value: String
     repository__operational_status__values: [String]
+    repository__rewrite_count__is_protected: Boolean
+    repository__rewrite_count__owner__id: ID
+    repository__rewrite_count__source__id: ID
+    repository__rewrite_count__value: BigInt
+    repository__rewrite_count__values: [BigInt]
     repository__sync_status__is_protected: Boolean
     repository__sync_status__owner__id: ID
     repository__sync_status__source__id: ID
@@ -24341,6 +24833,21 @@ type Query {
     repository__internal_status__value: String
     repository__internal_status__values: [String]
     repository__isnull: Boolean
+    repository__last_rewrite_at__is_protected: Boolean
+    repository__last_rewrite_at__owner__id: ID
+    repository__last_rewrite_at__source__id: ID
+    repository__last_rewrite_at__value: DateTime
+    repository__last_rewrite_at__values: [DateTime]
+    repository__last_rewrite_commit__is_protected: Boolean
+    repository__last_rewrite_commit__owner__id: ID
+    repository__last_rewrite_commit__source__id: ID
+    repository__last_rewrite_commit__value: String
+    repository__last_rewrite_commit__values: [String]
+    repository__last_rewrite_previous_commit__is_protected: Boolean
+    repository__last_rewrite_previous_commit__owner__id: ID
+    repository__last_rewrite_previous_commit__source__id: ID
+    repository__last_rewrite_previous_commit__value: String
+    repository__last_rewrite_previous_commit__values: [String]
     repository__location__is_protected: Boolean
     repository__location__owner__id: ID
     repository__location__source__id: ID
@@ -24356,6 +24863,11 @@ type Query {
     repository__operational_status__source__id: ID
     repository__operational_status__value: String
     repository__operational_status__values: [String]
+    repository__rewrite_count__is_protected: Boolean
+    repository__rewrite_count__owner__id: ID
+    repository__rewrite_count__source__id: ID
+    repository__rewrite_count__value: BigInt
+    repository__rewrite_count__values: [BigInt]
     repository__sync_status__is_protected: Boolean
     repository__sync_status__owner__id: ID
     repository__sync_status__source__id: ID
@@ -24609,6 +25121,21 @@ type Query {
     repository__internal_status__value: String
     repository__internal_status__values: [String]
     repository__isnull: Boolean
+    repository__last_rewrite_at__is_protected: Boolean
+    repository__last_rewrite_at__owner__id: ID
+    repository__last_rewrite_at__source__id: ID
+    repository__last_rewrite_at__value: DateTime
+    repository__last_rewrite_at__values: [DateTime]
+    repository__last_rewrite_commit__is_protected: Boolean
+    repository__last_rewrite_commit__owner__id: ID
+    repository__last_rewrite_commit__source__id: ID
+    repository__last_rewrite_commit__value: String
+    repository__last_rewrite_commit__values: [String]
+    repository__last_rewrite_previous_commit__is_protected: Boolean
+    repository__last_rewrite_previous_commit__owner__id: ID
+    repository__last_rewrite_previous_commit__source__id: ID
+    repository__last_rewrite_previous_commit__value: String
+    repository__last_rewrite_previous_commit__values: [String]
     repository__location__is_protected: Boolean
     repository__location__owner__id: ID
     repository__location__source__id: ID
@@ -24624,6 +25151,11 @@ type Query {
     repository__operational_status__source__id: ID
     repository__operational_status__value: String
     repository__operational_status__values: [String]
+    repository__rewrite_count__is_protected: Boolean
+    repository__rewrite_count__owner__id: ID
+    repository__rewrite_count__source__id: ID
+    repository__rewrite_count__value: BigInt
+    repository__rewrite_count__values: [BigInt]
     repository__sync_status__is_protected: Boolean
     repository__sync_status__owner__id: ID
     repository__sync_status__source__id: ID
@@ -24853,6 +25385,21 @@ type Query {
     repository__internal_status__value: String
     repository__internal_status__values: [String]
     repository__isnull: Boolean
+    repository__last_rewrite_at__is_protected: Boolean
+    repository__last_rewrite_at__owner__id: ID
+    repository__last_rewrite_at__source__id: ID
+    repository__last_rewrite_at__value: DateTime
+    repository__last_rewrite_at__values: [DateTime]
+    repository__last_rewrite_commit__is_protected: Boolean
+    repository__last_rewrite_commit__owner__id: ID
+    repository__last_rewrite_commit__source__id: ID
+    repository__last_rewrite_commit__value: String
+    repository__last_rewrite_commit__values: [String]
+    repository__last_rewrite_previous_commit__is_protected: Boolean
+    repository__last_rewrite_previous_commit__owner__id: ID
+    repository__last_rewrite_previous_commit__source__id: ID
+    repository__last_rewrite_previous_commit__value: String
+    repository__last_rewrite_previous_commit__values: [String]
     repository__location__is_protected: Boolean
     repository__location__owner__id: ID
     repository__location__source__id: ID
@@ -24868,6 +25415,11 @@ type Query {
     repository__operational_status__source__id: ID
     repository__operational_status__value: String
     repository__operational_status__values: [String]
+    repository__rewrite_count__is_protected: Boolean
+    repository__rewrite_count__owner__id: ID
+    repository__rewrite_count__source__id: ID
+    repository__rewrite_count__value: BigInt
+    repository__rewrite_count__values: [BigInt]
     repository__sync_status__is_protected: Boolean
     repository__sync_status__owner__id: ID
     repository__sync_status__source__id: ID
@@ -25214,6 +25766,21 @@ type Query {
     repository__internal_status__value: String
     repository__internal_status__values: [String]
     repository__isnull: Boolean
+    repository__last_rewrite_at__is_protected: Boolean
+    repository__last_rewrite_at__owner__id: ID
+    repository__last_rewrite_at__source__id: ID
+    repository__last_rewrite_at__value: DateTime
+    repository__last_rewrite_at__values: [DateTime]
+    repository__last_rewrite_commit__is_protected: Boolean
+    repository__last_rewrite_commit__owner__id: ID
+    repository__last_rewrite_commit__source__id: ID
+    repository__last_rewrite_commit__value: String
+    repository__last_rewrite_commit__values: [String]
+    repository__last_rewrite_previous_commit__is_protected: Boolean
+    repository__last_rewrite_previous_commit__owner__id: ID
+    repository__last_rewrite_previous_commit__source__id: ID
+    repository__last_rewrite_previous_commit__value: String
+    repository__last_rewrite_previous_commit__values: [String]
     repository__location__is_protected: Boolean
     repository__location__owner__id: ID
     repository__location__source__id: ID
@@ -25229,6 +25796,11 @@ type Query {
     repository__operational_status__source__id: ID
     repository__operational_status__value: String
     repository__operational_status__values: [String]
+    repository__rewrite_count__is_protected: Boolean
+    repository__rewrite_count__owner__id: ID
+    repository__rewrite_count__source__id: ID
+    repository__rewrite_count__value: BigInt
+    repository__rewrite_count__values: [BigInt]
     repository__sync_status__is_protected: Boolean
     repository__sync_status__owner__id: ID
     repository__sync_status__source__id: ID
@@ -25713,6 +26285,53 @@ type Query {
   InfrahubPermissions: AccountPermissionsEdges!
   """Find all nodes of specified kinds reachable from a source node"""
   InfrahubReachableNodes(data: ReachableNodesInput!): ReachableNodesResultType!
+  """
+  What is running on a repository now, the last run of each operation, and which worker holds the repository lock. The answer is the same on every branch.
+  """
+  InfrahubRepositoryActivity(
+    """ID or name of a read-write or read-only repository."""
+    id: String!
+  ): RepositoryActivity!
+  """Per-branch drift for a repository."""
+  InfrahubRepositoryBranchDrift(repository_id: String!): RepositoryBranchDrifts!
+  """
+  Status of one repository as seen from every relevant branch, one row per branch. Resolved entirely from the graph; never contacts a task worker. Requires view permission on the repository's kind covering both the default and non-default branches (ALLOW_ALL, or ALLOW_DEFAULT plus ALLOW_OTHER). Always reports the present: a request carrying an 'at' query parameter is rejected, because the branch list this query builds its rows from has no historical form.
+  """
+  InfrahubRepositoryBranchStatus(
+    """Repository id (uuid) or name"""
+    id: String!
+    """
+    Keep rows whose resolved internal_status value equals this value (server-side)
+    """
+    internal_status__value: String
+    limit: Int = 40
+    """Branch name filter; exact unless partial_match is true"""
+    name__value: String
+    offset: Int = 0
+    """
+    Ordering by branch node metadata; default is default branch first, then name ascending
+    """
+    order: MetadataOrderInput
+    """
+    Keep only branches holding their own commit value (imported on this branch), independent of the selected fields
+    """
+    own_values_only: Boolean = false
+    partial_match: Boolean = false
+    """Branch status filter; MERGED and DELETING branches are never returned"""
+    status__value: BranchStatus
+    """
+    Keep rows whose resolved sync_status value equals this value (server-side)
+    """
+    sync_status__value: String
+  ): InfrahubRepositoryBranchStatusType!
+  """Paged commit log for a repository on the request branch."""
+  InfrahubRepositoryCommits(
+    """Page size, 1 to 100. Default 10."""
+    limit: Int
+    """Default 0."""
+    offset: Int
+    repository_id: String!
+  ): RepositoryCommits!
   InfrahubResourcePoolAllocated(limit: Int, offset: Int, pool_id: String!, resource_id: String!): PoolAllocated!
   InfrahubResourcePoolUtilization(pool_id: String!): PoolUtilization!
   InfrahubSearchAnywhere(case_sensitive: Boolean, limit: Int, partial_match: Boolean, q: String!): NodeEdges!
@@ -26557,6 +27176,11 @@ type ReachableNodesResultType {
   source: PathNodeType!
 }
 
+type ReadOnlyRepositoryCheckRefs {
+  ok: Boolean
+  task: TaskInfo
+}
+
 type ReadOnlyRepositoryImportLastCommit {
   ok: Boolean
   task: TaskInfo
@@ -26656,6 +27280,312 @@ type RelationshipRemove {
 type Relationships {
   count: Int!
   edges: [RelationshipNode!]!
+}
+
+"""What is running on a repository now, across every branch."""
+type RepositoryActivity {
+  """
+  Runs working on this repository now. Empty when nothing is running. A run whose worker stopped without cleaning up disappears within 5 minutes.
+  """
+  active_runs: RepositoryActivityRuns!
+  """
+  The most recent finished run of each operation in the last 30 days, newest first.
+  """
+  last_runs: RepositoryActivityLastRuns!
+  """
+  Holder of the repository lock. Null when the lock is not held. Short tasks such as fetches also hold the lock, so a held lock does not mean that a run is active.
+  """
+  lock: RepositoryActivityLock
+  """ID of the repository the answer is for."""
+  repository_id: String!
+}
+
+"""One entry in the list of branch results."""
+type RepositoryActivityBranchEdge {
+  """One branch result."""
+  node: RepositoryActivityBranchNode!
+}
+
+"""The result of a run for one branch."""
+type RepositoryActivityBranchNode {
+  """Infrahub branch."""
+  branch_name: String!
+  """Result of the run for this branch."""
+  outcome: RepositoryActivityBranchOutcome!
+}
+
+"""Result of a run for one branch."""
+enum RepositoryActivityBranchOutcome {
+  """The run failed on this branch. The task log shows why."""
+  FAILED
+  """
+  The run changed the branch: it imported objects into it, created it in Git, or merged into it.
+  """
+  IMPORTED
+}
+
+"""The branches the run changed or failed on."""
+type RepositoryActivityBranches {
+  """The branch results of the run."""
+  edges: [RepositoryActivityBranchEdge!]!
+}
+
+"""One entry in the list of last runs."""
+type RepositoryActivityLastRunEdge {
+  """The last run of one operation."""
+  node: RepositoryActivityLastRunNode!
+}
+
+"""The most recent finished run of one operation."""
+type RepositoryActivityLastRunNode {
+  """
+  Branches that the run changed or failed on. Branches without a change are left out.
+  """
+  branches: RepositoryActivityBranches!
+  """When the run ended, whether it succeeded or failed."""
+  finished_at: DateTime!
+  """What the run did."""
+  operation: RepositoryActivityOperation!
+  """When the run started, by the worker's clock."""
+  started_at: DateTime!
+}
+
+"""The most recent finished run of each operation."""
+type RepositoryActivityLastRuns {
+  """One last run per operation, newest first."""
+  edges: [RepositoryActivityLastRunEdge!]!
+}
+
+"""The holder of a repository lock."""
+type RepositoryActivityLock {
+  """
+  When the worker asked for the lock, by its clock. It can have waited for the lock after that. Null when it cannot be read.
+  """
+  requested_at: DateTime
+  """Worker holding the lock, as listed by InfrahubStatus."""
+  worker_id: String!
+}
+
+"""Operation that a repository run performs."""
+enum RepositoryActivityOperation {
+  """First clone and import after the repository was added."""
+  ADD
+  """Creation of the git branch for a new Infrahub branch."""
+  BRANCH_CREATE
+  """Merge of a branch's git changes into its target branch."""
+  MERGE
+  """Import of the latest commit of the ref a read-only repository tracks."""
+  PULL
+  """Import of one branch requested by a user."""
+  REIMPORT
+  """
+  Periodic check of every tracked branch for new commits, and import of those commits.
+  """
+  SYNC
+}
+
+"""Step of a run."""
+enum RepositoryActivityPhase {
+  """Writing the imported objects to Infrahub for one branch."""
+  APPLYING
+  """Reading and validating the repository files for one branch."""
+  BUILDING
+  """Fetching from the remote. Covers every branch."""
+  FETCHING
+}
+
+"""One entry in the list of active runs."""
+type RepositoryActivityRunEdge {
+  """One active run."""
+  node: RepositoryActivityRunNode!
+}
+
+"""A run that is working on a repository now."""
+type RepositoryActivityRunNode {
+  """
+  Infrahub branch being built or applied. Null while fetching, because a fetch covers every branch.
+  """
+  branch_name: String
+  """What the run is doing."""
+  operation: RepositoryActivityOperation!
+  """
+  Step the run is in. Null until the run reports its first step, and for an operation without separate steps.
+  """
+  phase: RepositoryActivityPhase
+  """Identifier of the run, unique while the run is active."""
+  run_id: String!
+  """When the run started, by the worker's clock."""
+  started_at: DateTime!
+  """When the worker last confirmed that the run is still active."""
+  updated_at: DateTime!
+  """Worker running the run, as listed by InfrahubStatus."""
+  worker_id: String!
+}
+
+"""The runs working on a repository now."""
+type RepositoryActivityRuns {
+  """The active runs, oldest first."""
+  edges: [RepositoryActivityRunEdge!]!
+}
+
+"""Drift of one Infrahub branch of a repository."""
+type RepositoryBranchDrift {
+  branch_name: String!
+  condition: RepositoryGitCondition!
+  """
+  Remote branch or tracked ref compared for this branch. Null when the branch is not tracked.
+  """
+  git_ref: String
+  """
+  Latest remote commit. Null when there is no remote counterpart or when condition is UNAVAILABLE.
+  """
+  remote_head: String
+  tracked_commit: String
+}
+
+type RepositoryBranchDriftNode {
+  node: RepositoryBranchDrift!
+}
+
+"""
+Drift for every branch of a repository, produced by a single worker request.
+"""
+type RepositoryBranchDrifts {
+  """
+  When the remote was last checked for movement. Read-only repositories only.
+  """
+  checked_at: DateTime
+  """
+  One row per open branch the caller may view, and for a read-write repository only those synchronised with Git. The set is the branch list as it stands now: an `at` in the past changes the values each row reports, never which branches are listed.
+  """
+  edges: [RepositoryBranchDriftNode!]!
+  fetched_at: DateTime
+  repository_id: String!
+  """
+  Set when the git-derived drift answer could not be produced. It does not suppress edges, which is resolved separately.
+  """
+  unavailable: RepositoryGitUnavailable
+}
+
+"""A commit read live from a worker's local clone. Never persisted."""
+type RepositoryCommit {
+  author_name: String!
+  authored_at: DateTime!
+  committed_at: DateTime!
+  """Full commit hash."""
+  hash: String!
+  """Full commit message."""
+  message: String!
+  """First 7 characters of the hash."""
+  short_hash: String!
+  state: RepositoryCommitState!
+  """First line of the commit message."""
+  summary: String!
+}
+
+type RepositoryCommitNode {
+  node: RepositoryCommit!
+}
+
+"""
+Explicit state of one commit relative to the imported commit and the remote head.
+"""
+enum RepositoryCommitState {
+  HEAD
+  HISTORY
+  IMPORTED
+  PENDING
+  UNRELATED
+}
+
+"""
+Commit log of a repository as seen from the request branch, newest first.
+"""
+type RepositoryCommits {
+  """The Infrahub branch the answer was computed for."""
+  branch_name: String!
+  """
+  When the remote was last checked for movement. Read-only repositories only; null for read-write, where fetched_at already carries it.
+  """
+  checked_at: DateTime
+  condition: RepositoryGitCondition!
+  edges: [RepositoryCommitNode!]!
+  """
+  When the answering worker last fetched from the remote. Null before the first fetch, and after a failed fetch.
+  """
+  fetched_at: DateTime
+  """
+  Remote branch or tracked ref whose history is listed. Null when the branch tracks nothing, matching RepositoryBranchDrift.git_ref.
+  """
+  git_ref: String
+  """
+  Commit Infrahub has imported on this branch, from the repository's commit attribute.
+  """
+  imported_commit: String
+  """
+  Number of commits between imported_commit and remote_head. Only set when condition is BEHIND.
+  """
+  pending_count: Int
+  """
+  Head of the remote branch or tracked ref as last fetched by the answering worker.
+  """
+  remote_head: String
+  repository_id: String!
+  unavailable: RepositoryGitUnavailable
+}
+
+type RepositoryDeliveryAbandon {
+  ok: Boolean
+  task: TaskInfo
+}
+
+input RepositoryDeliveryAbandonInput {
+  """The id of the CoreRepository"""
+  id: String!
+  """
+  The version of the delivery queue the user saw. The request is refused if the queue changed since.
+  """
+  queue_version: Int!
+}
+
+type RepositoryDeliveryRetry {
+  ok: Boolean
+  task: TaskInfo
+}
+
+input RepositoryDeliveryRetryInput {
+  """The id of the CoreRepository"""
+  id: String!
+}
+
+"""
+How the remote head relates to the commit Infrahub has imported on the request branch.
+"""
+enum RepositoryGitCondition {
+  BEHIND
+  IN_SYNC
+  NOT_TRACKED
+  NO_REMOTE
+  ORPHANED
+  REF_MISSING
+  REWRITTEN
+  UNAVAILABLE
+}
+
+"""
+Set when condition is UNAVAILABLE. Distinct from an error: the request succeeded, git had no answer yet.
+"""
+type RepositoryGitUnavailable {
+  """Human-readable explanation safe to display."""
+  message: String!
+  reason: RepositoryGitUnavailableReason!
+}
+
+"""Why no git-derived answer was produced."""
+enum RepositoryGitUnavailableReason {
+  NOT_CLONED
+  NOT_IMPLEMENTED
+  TIMEOUT
 }
 
 type RequiredStringValueField {

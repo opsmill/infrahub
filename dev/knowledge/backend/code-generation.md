@@ -17,7 +17,9 @@ Schema definitions (Python)
        ├──► backend/infrahub/core/protocols.py         (Protocol types)
        ├──► backend/tests/protocols.py                 (Test protocols)
        ├──► python_sdk/infrahub_sdk/protocols.py       (SDK protocols)
-       └──► python_sdk/infrahub_sdk/schema/generated/  (user-facing write/read models + enums)
+       ├──► python_sdk/infrahub_sdk/schema/generated/  (user-facing write/read models + enums)
+       └──► python_sdk/infrahub_sdk/exceptions/catalogue.py  (SDK error bindings, from
+                                                              schema/error-catalogue.json)
 
        │
        ▼
@@ -43,6 +45,7 @@ Schema definitions (Python)
 | New GraphQL queries/mutations in frontend | `pnpm codegen:graphql` (gql.tada types) and/or `pnpm codegen` (graphql-codegen `types.ts`) |
 | New FastAPI route, changed request/response model, or added field on a response model | `uv run invoke schema.generate-jsonschema` (regenerates `schema/openapi.json`), then `cd frontend/app && pnpm codegen:openapi` to regenerate `src/shared/api/rest/types.generated.ts`. Note `pnpm codegen` alone only regenerates GraphQL types — it does **not** touch the REST types. |
 | Changed event classes, schema docstrings, CLI commands, or config | `uv run invoke docs.generate` |
+| Added or changed an error catalogue entry | `uv run invoke frontend.regenerate-error-bindings` for the JSON, the frontend bindings and the docs page, then `uv run invoke backend.generate` for the SDK bindings; commit the SDK file in the submodule and bump its pointer |
 
 Changes that do **not** require regeneration:
 
@@ -67,12 +70,17 @@ Each validation task regenerates the files then checks for uncommitted diffs via
 - `backend/tests/protocols.py`
 - `backend/infrahub/generators/graphql_queries/` and `backend/infrahub/computed_attribute/graphql_queries/`
 - `python_sdk/infrahub_sdk/schema/generated/` and `python_sdk/infrahub_sdk/protocols.py`
+- `python_sdk/infrahub_sdk/exceptions/catalogue.py`
 
-The last two live in the `python_sdk` Git submodule. A `git diff` run from the superproject only
-sees the submodule pointer, not the files inside it, so those two checks run as
-`git -C python_sdk diff --exit-code`. A stale generated file in the submodule therefore fails the
-same task — but committing the fix means a commit inside the submodule plus a pointer bump in the
-superproject.
+The last three live in the `python_sdk` Git submodule. A `git diff` run from the superproject only
+sees the submodule pointer, not the files inside it, so those checks run against the submodule
+itself. A stale generated file in the submodule therefore fails the same task, but committing the
+fix means a commit inside the submodule plus a pointer bump in the superproject.
+
+The error bindings check asks HEAD whether it carries the file at all rather than only diffing it:
+`git diff` reports nothing for a file Git is not tracking, so an artefact that was generated but
+never committed would otherwise read as clean. "Not committed yet" and "committed but stale" are
+reported separately, because they need different fixes.
 
 CI runs these checks to ensure generated files are committed.
 

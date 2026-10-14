@@ -36,6 +36,10 @@ Deployment has one extra rule, below.
 | **IFC-3210 rewrite classification on `develop`** | T100 | Patrick Ogenstad |
 | **Merge order agreed with IFC-3210** (`collect_pending_imports`, the ancestry primitive, the merge-path check) | T029, T039 | Patrick Ogenstad |
 
+T085 to T092 are done on the provisional answers of spec decisions 1 and 15, which are not
+confirmed yet. A different answer reopens them. The GraphQL and authorization sign-off that T087
+needs is given.
+
 ## Deployment rule
 
 **No deployment ships Phase 3 without T061 to T069 and T074 to T076 of Phase 5, T077, T079 and
@@ -68,59 +72,63 @@ the commit recorded before the merge until its next recompute.
 
 **Purpose**: prepare the worktree so the tests can run at all.
 
-- [ ] T001 Initialise the submodules and reinstall the server package, so `backend/tests/` can
+- [X] T001 Initialise the submodules and reinstall the server package, so `backend/tests/` can
       import `infrahub_sdk`: `git submodule update --init python_sdk frontend/packages/schema-visualizer`,
       then `uv sync --all-groups --reinstall-package infrahub-server`.
-- [ ] T002 Confirm the test environment is clean: unset every `INFRAHUB_*` variable inherited from
+- [X] T002 Confirm the test environment is clean: unset every `INFRAHUB_*` variable inherited from
       the dev shell, and keep testcontainers enabled. See [quickstart.md](quickstart.md).
-- [ ] T003 [P] Create the package `backend/infrahub/git/writeback/` with an empty `__init__.py`.
-- [ ] T004 [P] Create the test packages `backend/tests/unit/git/writeback/` and
+- [X] T003 [P] Create the package `backend/infrahub/git/writeback/` with an empty `__init__.py`.
+- [X] T004 [P] Create the test packages `backend/tests/unit/git/writeback/` and
       `backend/tests/component/git/writeback/`, each with an empty `__init__.py`.
 
 ---
 
 ## Phase 2: Foundational (blocking prerequisites)
 
-**Purpose**: typed failures, bounded Git commands, the state model, the schema and the store.
+**Purpose**: typed failures, time limits on Git commands, the state model, the schema and the store.
 Parts A and B of the plan.
 
 **Blocks**: every phase from 3 onwards.
 
-### Typed failures and bounded Git commands (plan part A)
+### Typed failures and time limits on Git commands (plan part A)
 
-- [ ] T005 [P] Add `RepositoryPushRejectedError`, `RepositoryTLSError`, `RepositoryNotFoundError`,
+- [X] T005 [P] Add `RepositoryPushRejectedError`, `RepositoryTLSError`, `RepositoryNotFoundError`,
       `DeliveryQueueChangedError` and `NothingPendingError` to `backend/infrahub/exceptions.py`, per
       [data-model.md](data-model.md), "New exceptions". The first three keep today's message wording
       byte for byte.
-- [ ] T006 [P] Add `PushRejectionReason` to `backend/infrahub/git/models.py`.
-- [ ] T007 Make `InfrahubRepositoryBase._raise_enriched_error_static` in
+- [X] T006 [P] Add `PushRejectionReason` to `backend/infrahub/git/models.py`.
+- [X] T007 Make `InfrahubRepositoryBase._raise_enriched_error_static` in
       `backend/infrahub/git/base.py` raise `RepositoryTLSError` for the TLS markers,
-      `RepositoryNotFoundError` for "Repository not found", and `RepositoryConnectionError` for
-      GitPython's "process killed because it timed out".
-- [ ] T008 Resolve the operational status with `isinstance`, most specific first, in
+      `RepositoryNotFoundError` for "Repository not found" and for Git's own HTTP 404 line,
+      `fatal: repository '<url>' not found` (`GIT_HTTP_REPOSITORY_NOT_FOUND`), and
+      `RepositoryConnectionError` for GitPython's "process killed because it timed out". Effect of
+      the 404 rule: a fetch of a missing repository records `error-connection` and the connection
+      message, not `error` and the raw Git line.
+- [X] T008 Resolve the operational status with `isinstance`, most specific first, in
       `InfrahubRepositoryBase._raise_enriched_error` in `backend/infrahub/git/base.py` and in
       `connectivity` in `backend/infrahub/message_bus/operations/git/repository.py`. Both subtypes
       keep `ERROR_CONNECTION`.
-- [ ] T009 Change `InfrahubRepository.push` in `backend/infrahub/git/repository.py`: pass a
-      `RemoteProgress` and a `timeout` argument as `kill_after_timeout`; derive the reason of a
-      per-ref rejection from `PushInfo.REMOTE_REJECTED` and `PushInfo.REJECTED`; raise
+- [X] T009 Change `InfrahubRepository.push` in `backend/infrahub/git/repository.py`: pass a
+      `RemoteProgress` and a `timeout_seconds` argument as `kill_after_timeout`; derive the reason of a
+      per-ref rejection from `PushInfo.REMOTE_REJECTED` and `PushInfo.REJECTED`, and from the summary
+      for Git's wording of a ref it cannot lock or update (`ref-update-failed`, research.md R5); raise
       `RepositoryPushRejectedError` carrying the reason and the joined `remote:` lines. Keep the
       message of `_describe_push_rejection`. Keep "push never writes `operational_status`".
-- [ ] T010 Give `InfrahubRepositoryBase.fetch` in `backend/infrahub/git/base.py` an optional
+- [X] T010 Give `InfrahubRepositoryBase.fetch` in `backend/infrahub/git/base.py` an optional
       timeout, passed as `kill_after_timeout`. Give the same optional timeout to
       `create_commit_worktree` and `delete_remote_branch` in the same module, and to
       `InfrahubRepository._reset_to_pre_merge_commit` in `backend/infrahub/git/repository.py`, passed
       to each Git command they run. Default unchanged for every existing caller.
-- [ ] T011 [P] Extend the case table of `backend/tests/unit/git/test_git_error_enrichment.py` with
+- [X] T011 [P] Extend the case table of `backend/tests/unit/git/test_git_error_enrichment.py` with
       the two subtypes and the killed-command text, and add a test that both status maps give
       `ERROR_CONNECTION` for the subtypes.
-- [ ] T012 [P] Add unit tests to `backend/tests/unit/git/test_git_repository.py` for the push
+- [X] T012 [P] Add unit tests to `backend/tests/unit/git/test_git_repository.py` for the push
       rejection reason from the flags, a GitHub ruleset summary, the joined `remote:` lines, and the
       unchanged message. Keep `test_push_classifies_transport_error` green.
 
 ### State model and classifier (plan part B, no database)
 
-- [ ] T013 [P] Write `backend/infrahub/git/writeback/constants.py`: `DELIVERY_RETRIES`,
+- [X] T013 [P] Write `backend/infrahub/git/writeback/constants.py`: `DELIVERY_RETRIES`,
       `DELIVERY_RETRY_DELAYS_SECONDS`, `FETCH_TIMEOUT_SECONDS`, `PUSH_TIMEOUT_SECONDS`,
       `LOCAL_GIT_TIMEOUT_SECONDS`, `STALE_AFTER_SECONDS`, `REMOVED_ENTRY_IDS_KEPT`,
       `NARROWED_HOLD_TTL_SECONDS` (derived from the delays and the fetch and push timeouts, not a
@@ -128,8 +136,10 @@ Parts A and B of the plan.
       `STATE_LOCK_TTL_SECONDS`, `STATE_LOCK_ACQUIRE_SECONDS`, `ENQUEUE_RETRIES`,
       `ENQUEUE_RETRY_DELAYS_SECONDS`, `BARRIER_STATE_READ_RETRIES` and
       `BARRIER_STATE_READ_DELAYS_SECONDS`, with the values of
-      [research.md](research.md) R2, R3, R6, R9, R10 and R20.
-- [ ] T014 Write `backend/infrahub/git/writeback/models.py`: `DeliveryQueue`, `PendingMerge`,
+      [research.md](research.md) R2, R3, R6, R9, R10 and R20. A unit test asserts that
+      `NARROWED_HOLD_TTL_SECONDS` exceeds the retry delays plus every fetch and push time limit, and
+      that the enqueue and barrier read retry delays add up to at least `STATE_LOCK_TTL_SECONDS`.
+- [X] T014 Write `backend/infrahub/git/writeback/models.py`: `DeliveryQueue`, `PendingMerge`,
       `DeliveryProgress`, `HeldRegeneration` with `HeldItem`, `HeldPythonAttribute`, `HeldWiden`
       (with its `reason`) and `ReleaseLease`, `AbandonmentRecord`, `RevertedDelivery`,
       `WritebackIntent` with `is_stale(now, lock_free, run_queued)` and `has_work(now)`,
@@ -137,47 +147,60 @@ Parts A and B of the plan.
       `DeliveryAttemptResult`, `HoldReceipt` and `Actor`, per [data-model.md](data-model.md). A
       `ReleaseLease` names its items, each with the `hold_seq` it had when the lease was taken, and
       `HeldRegeneration` has `lease_window`, `with_lease` and `without_window`, with the clean-up of
-      expired leases. Every JSON model carries `format: Literal[1]`.
-- [ ] T015 [P] Write `backend/tests/unit/git/writeback/test_models.py`: idempotent append, refusal
+      expired leases. Every JSON model carries `format: Literal[1]`, and [data-model.md](data-model.md)
+      states how a new format or enum member rolls out. `with_failure` keeps the stored
+      cause and error for a failure with no cause only while merges are queued.
+- [X] T015 [P] Write `backend/tests/unit/git/writeback/test_models.py`: idempotent append, refusal
       of a removed id and of an id in the last abandonment record, the bound of `removed_entry_ids`,
       a version that moves only on add or remove, `with_hold` raising the sequence of a repeated
       identifier and reporting the previous one, `lease_window` skipping the items that a live lease
       covers and returning the items of an expired one, a wider `widen` scope replacing a narrower
-      one while a narrower hold keeps the wider scope and its reason, `is_stale` at each of its five
-      conditions, and SHA validation. Add these lease cases: gaps, where an expired lease A, a live
+      one while a narrower hold keeps the wider scope and its reason, and `is_stale` at each of its
+      five conditions. The SHA pattern of `source_commit` is a Pydantic field constraint, so no test
+      checks it. Add these lease cases: gaps, where an expired lease A, a live
       lease B and then new holds after B give a new lease that names A's items and the new holds;
       an overlap that must not happen, where that new lease never names B's items and B's clear
       still removes them; a re-held item, held again after a lease was taken, that keeps its higher
       `hold_seq` through `without_window` and goes to the next lease; and the clean-up, where an
       item that a new lease takes from an expired lease moves to it, and an expired lease that
       names no item any more is gone after the same call.
-- [ ] T016 Write `backend/infrahub/git/writeback/classifier.py`: `classify_delivery_failure` per the
-      table of [research.md](research.md) R5, and `scrub_credentials`.
-- [ ] T017 [P] Write `backend/tests/unit/git/writeback/test_classifier.py`: every row of R5, the
-      `enqueue`, `fetch` and `release` stages included, a killed fetch and a killed push, a message
-      that never carries raw stderr, and `scrub_credentials` on `user:token@`, `user@` and several
-      URLs in one text.
+- [X] T016 Write `backend/infrahub/git/writeback/classifier.py`: `classify_delivery_failure` per the
+      table of [research.md](research.md) R5, except its `replay-conflict` row, which the service sets
+      from `ReplayResult`. Write `backend/infrahub/git/writeback/credentials.py`:
+      `scrub_credentials`, which the classifier and the model both apply.
+- [X] T017 [P] Write `backend/tests/unit/git/writeback/test_classifier.py`: every row of R5, the
+      `enqueue`, `fetch` and `release` stages included, a fetch and a push past their time limit, a
+      missing repository and a refused certificate at the import, and a message that never carries
+      raw stderr. Write
+      `backend/tests/unit/git/writeback/test_credentials.py`: `scrub_credentials` on `user:token@`,
+      `user@`, a password that holds a `'`, and several URLs in one text.
 
 ### Schema and store (plan part B)
 
-- [ ] T018 Add `RepositoryDeliveryStatus` and `RepositoryDeliveryFailureCause` to
-      `backend/infrahub/core/constants/__init__.py`, beside `RepositorySyncStatus`. Move
-      `FullRegenerationReason` there from `backend/infrahub/core/merge/regeneration_dispatcher.py`,
-      which then imports it from its new place, and add `UNHELD_FOLLOW_UP`, per
+- [X] T018 Add `RepositoryDeliveryStatus` and `RepositoryDeliveryFailureCause` to
+      `backend/infrahub/core/constants/__init__.py`, beside `RepositorySyncStatus`.
+      `FullRegenerationReason` lives in the same module, with `UNHELD_FOLLOW_UP` and a docstring that
+      forbids a rename of its stored member names, and
+      `backend/infrahub/core/merge/regeneration_dispatcher.py` imports it from there, per
       [data-model.md](data-model.md), "New fallback reasons". `HeldWiden` in T014 needs it.
-- [ ] T019 Declare the nine attributes on `CoreRepository` in
+- [X] T019 Declare the nine attributes on `CoreRepository` in
       `backend/infrahub/core/schema/definitions/core/repository.py`, per
       [data-model.md](data-model.md): `LOCAL`, `read_only`, optional, no default, `display=extra`,
       `allow_override=NONE`, the labels, the descriptions (each within the 128-character limit of
-      `AttributeSchema.description`) and the order weights. **Gate: schema
-      sign-off.**
+      `AttributeSchema.description`) and the order weights. The description of
+      `delivery_held_regeneration` names the release after a push or an abandonment.
+      [contracts/repository_delivery.graphql](contracts/repository_delivery.graphql) repeats the nine
+      descriptions word for word. **Gate: schema sign-off.**
 - [ ] T020 Regenerate: `uv run invoke backend.generate`, `uv run invoke schema.generate-graphqlschema`,
       then `pnpm codegen` and `pnpm codegen:graphql` in `frontend/app`. The change to
-      `python_sdk/infrahub_sdk/protocols.py` goes into the shared SDK PR first (**gate**).
-- [ ] T021 Write `backend/infrahub/git/writeback/ports.py`: `DeliveryStatePort`, `DeliveryGitPort`,
+      `python_sdk/infrahub_sdk/protocols.py` goes into the shared SDK PR first (**gate**). Partial:
+      the generated files are committed, but the gate is open. The `python_sdk` pointer names a commit
+      of the open SDK PR opsmill/infrahub-sdk-python#1400. Tick this task when that PR merges and the
+      pointer moves to `infrahub-develop`.
+- [X] T021 Write `backend/infrahub/git/writeback/ports.py`: `DeliveryStatePort`, `DeliveryGitPort`,
       `RegenerationReleasePort`, `DeliveryRunQuery`, `ReplayResult`, `RepositoryRef` and `Clock`, per
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) sections 2 and 4.
-- [ ] T022 Write `WritebackIntentStore` in `backend/infrahub/git/writeback/store.py`: every method
+- [X] T022 Write `WritebackIntentStore` in `backend/infrahub/git/writeback/store.py`: every method
       of contracts section 2, on the default branch, through `NodeManager` and
       `node.save(fields=...)`, under the `repository-delivery` lock with its time to live and
       bounded acquire. `settle_delivery` bounds its lease by the snapshot. Every lease names its
@@ -185,25 +208,43 @@ Parts A and B of the plan.
       leases. `clear_released` removes only the named items that keep their `hold_seq`.
       `expire_lease` sets the lease's expiry to now and keeps its items. `abandon` passes the
       actor's account id as `user_id`. `pending_repository_ids` filters on the scalar
-      `delivery_status` only.
-- [ ] T023 [P] Write an in-memory `DeliveryStatePort` and a fixed `Clock` in
+      `delivery_status` only. Each transition's transaction first takes the Neo4j write lock of the
+      repository node (`RepositoryWriteLockQuery` in `queries.py`), so the state stays right after
+      the state lock expires.
+- [X] T023 [P] Write an in-memory `DeliveryStatePort` and a fixed `Clock` in
       `backend/tests/unit/git/writeback/fakes.py`, with the same transition rules as the store.
-- [ ] T024 Write `backend/tests/component/git/writeback/test_store.py`: every transition of the data
+- [X] T024 Write `backend/tests/component/git/writeback/test_store.py`: every transition of the data
       model's table, one save per transition, the lock time to live, a timed-out acquire raising
       `DeliveryStateUnavailableError`, the abandonment edge naming the account, a status that never
       changes on an empty queue, a progress write that leaves `delivery_queue` untouched, an
-      `expire_lease` call whose items move to the lease of the next `lease_owed_release`, and the
-      expired lease that then names no item removed in that same save.
-- [ ] T025 [P] Write `backend/tests/component/git/writeback/test_branch_safety.py`: no delivery
-      attribute in a branch diff or a proposed change, never merged, and a branch created while the
-      default branch holds a queue reads a copy that the store never returns.
-- [ ] T026 [P] Write `backend/tests/component/git/writeback/test_schema_contract.py`: the nine
+      `expire_lease` call whose items move to the lease of the next `lease_owed_release`, the
+      expired lease that then names no item removed in that same save, and two writers that both
+      hold the state lock, each through its own lock registry, keeping both entries. A stored JSON
+      value, status or cause that the store cannot read raises `DeliveryStateUnreadableError`: a unit
+      test in `backend/tests/unit/git/writeback/test_store.py` checks the parse.
+- [X] T025 [P] A branch created while the default branch holds a queue holds a copy that the store
+      never returns: a case of `backend/tests/component/git/writeback/test_store.py`. The diff, merge
+      and branch read of a branch-local attribute of `CoreRepository` are not tested again here:
+      `backend/tests/component/git/test_repository_rewrite_branch_safety.py` and the core diff and
+      merge tests cover them.
+- [X] T026 [P] Write `backend/tests/component/git/writeback/test_schema_contract.py`: the nine
       attributes are absent from `CoreRepositoryCreateInput`, `CoreRepositoryUpdateInput` and
-      `CoreRepositoryUpsertInput`, and a store transition emits no node mutation event.
-- [ ] T027 [P] Add a 200-entry queue case to `backend/tests/component/git/writeback/test_store.py`.
-- [ ] T028 [P] Write `backend/tests/unit/git/writeback/test_single_writer.py`: no module under
+      `CoreRepositoryUpsertInput`. No test checks that a store transition emits no node mutation
+      event: the store has no event service, and only the GraphQL mutations emit node events, which
+      `backend/tests/component/graphql/test_mutation_update.py` tests.
+- [X] T027 [P] Add a 200-entry queue case to `backend/tests/component/git/writeback/test_store.py`.
+- [X] T028 [P] Write `backend/tests/unit/git/writeback/test_single_writer.py`: no module under
       `backend/infrahub/` other than `store.py`, the schema definition and the generated files names
       any of the nine attribute names.
+- [X] T110 Guard the repository conversion in
+      `backend/infrahub/core/convert_object_type/repository_conversion.py`, per
+      [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 10: refuse a
+      mapping that sets a read-only attribute of the target kind, and refuse the conversion of a
+      `CoreRepository` while its status is not `none` or held regeneration waits. The
+      `ConvertObjectType` mutation passes the store. Test each refusal through the mutation in
+      `backend/tests/component/git/writeback/test_repository_conversion.py`. The check and the deletion
+      hold the delivery-state lock, inside the repository lock, so a merge queued during a conversion
+      waits for it and then fails on the deleted repository.
 
 **Checkpoint**: the state can be read and written, by one store, on the default branch only.
 
@@ -223,23 +264,24 @@ SC-002, SC-007.
 
 ### Delivery service
 
-- [ ] T029 [US1] Write `RepositoryDeliveryGitAdapter` in `backend/infrahub/git/writeback/git_adapter.py`,
+- [X] T029 [US1] Write `RepositoryDeliveryGitAdapter` in `backend/infrahub/git/writeback/git_adapter.py`,
       implementing `DeliveryGitPort` over one `InfrahubRepository`, per contracts section 4.
       `is_ancestor` uses `git merge-base --is-ancestor`, returns `False` only for "no" or a missing
       object, and raises otherwise. `fetch` raises `RepositoryError` on a clone with no `origin`.
-      Every Git command it runs is bounded, per
-      [research.md](research.md) R6: `FETCH_TIMEOUT_SECONDS` for the fetch, `PUSH_TIMEOUT_SECONDS`
-      for the push and `delete_remote_branch`, and `LOCAL_GIT_TIMEOUT_SECONDS` for each local
+      Every Git command it runs gets a time limit, per [research.md](research.md) R6 (Git's
+      low-speed limit ends a stalled HTTP(S) fetch or push; SSH has no bound): `FETCH_TIMEOUT_SECONDS` for the
+      fetch, `PUSH_TIMEOUT_SECONDS` for the push and `delete_remote_branch`, and
+      `LOCAL_GIT_TIMEOUT_SECONDS` for each local
       command, `remote_head`'s `git rev-parse` included. A killed local command removes a left-over
       `index.lock` of the worktree, then raises `RepositoryError` with a message that names the
       command and the bound, not its arguments. Agree the primitive with IFC-3210 first (**gate**).
-- [ ] T030 [P] [US1] Write `backend/tests/unit/git/writeback/test_git_adapter.py` against a temporary local
+- [X] T030 [P] [US1] Write `backend/tests/unit/git/writeback/test_git_adapter.py` against a temporary local
       repository: `is_ancestor` for equal, yes, no, a missing object and a corrupt object store;
       `replay` with a clean merge and a conflict; `reset`; `fetch` on a clone with no `origin`.
-- [ ] T031 [P] [US1] Write in-memory `DeliveryGitPort` and `RegenerationReleasePort` fakes in
+- [X] T031 [P] [US1] Write in-memory `DeliveryGitPort` and `RegenerationReleasePort` fakes in
       `backend/tests/unit/git/writeback/fakes.py`. The Git fake records every call in order, and can
       fail at any step.
-- [ ] T032 [US1] Write `RepositoryWritebackService.deliver` in
+- [X] T032 [US1] Write `RepositoryWritebackService.deliver` in
       `backend/infrahub/git/writeback/service.py`, per [research.md](research.md) R4 steps 0 to 17
       and contracts section 5. Step 0 enqueues the `entry` argument, when it is not `None`, before
       the repository lock, with the stage `enqueue` on a failure. Steps 1 to 15 run under the
@@ -248,7 +290,7 @@ SC-002, SC-007.
       the lease the settle returned. A held-only run takes its lease through `lease_owed_release`.
       When the release raises, the service calls `expire_lease` on its lease, then handles the
       failure with the stage `release` (R10, rule 4).
-- [ ] T033 [US1] Write `backend/tests/unit/git/writeback/test_service.py`: nothing pending; an
+- [X] T033 [US1] Write `backend/tests/unit/git/writeback/test_service.py`: nothing pending; an
       `entry` that step 0 enqueues before the snapshot, and an enqueue that raises, which is
       retryable on a non-final attempt and, on the final one, returns `failed` with an error-level
       log line that names the repository, the source branch and the source commit; observation of
@@ -262,22 +304,23 @@ SC-002, SC-007.
       its first call, and a second `deliver` call, as the task retry makes it, that releases every
       item of the window under a new lease; an abandonment and a deletion guard that wait for the
       lock find the entries already settled.
-- [ ] T034 [US1] Write `build_writeback_service` in `backend/infrahub/git/writeback/factory.py`. It builds
+- [X] T034 [US1] Write `build_writeback_service` in `backend/infrahub/git/writeback/factory.py`. It builds
       one service per repository, with the adapter bound to the same repository. Until T069, it wires
       a releaser that does nothing, because no barrier holds anything yet.
 
 ### Enqueue in the branch merge flow, and the delivery in `merge_git_repository`
 
-- [ ] T035 [US1] Add `GitRepositoryMerge.pending_merge: PendingMerge | None = None` and
+- [X] T035 [US1] Add `GitRepositoryMerge.pending_merge: PendingMerge | None = None` and
       `GitRepositoryMerge.pending_merge_enqueued: bool = False` to `backend/infrahub/git/models.py`.
-- [ ] T036 [US1] Change `RepositoryMergeDispatcher.merge_core_repositories` in
+- [X] T036 [US1] Change `RepositoryMergeDispatcher.merge_core_repositories` in
       `backend/infrahub/core/merge/repository_merge_dispatcher.py`: enqueue only for an `active`
       repository, on a branch that syncs with Git, whose source commit carries content (R3: compare
       with the default branch's commit at `branched_from` and with the recorded commit). Guard each
       enqueue on its own, and pass `widen=False`. Retry a failed enqueue `ENQUEUE_RETRIES` times,
       after the delays of `ENQUEUE_RETRY_DELAYS_SECONDS`. The constructor takes two new required
-      parameters, the state port and a `sleep` callable, and
-      `backend/infrahub/core/merge/builder.py` passes both. If the last retry fails too, log at
+      parameters, a function that builds the state port on a database session
+      (`state_for_session`) and a `sleep` callable, and `backend/infrahub/core/merge/builder.py`
+      passes both. If the last retry fails too, log at
       error level and still submit. Pass `pending_merge` and the merge's `context` to the workflow.
       Set `pending_merge_enqueued` to `True` only when one of this repository's tries returned (R3).
       Submit no merge workflow for an `active` repository whose merge carries no content. Add
@@ -285,47 +328,50 @@ SC-002, SC-007.
       `delivery_run_tags` to `backend/infrahub/git/writeback/runs.py`. Pass
       `tags=delivery_run_tags(repository_id)` when you submit the merge of an `active` repository,
       so a run that waits in the queue carries the node tag and the delivery marker (R20, R21).
-- [ ] T037 [US1] Change `merge_git_repository` in `backend/infrahub/git/tasks.py`: for an `active`
+- [X] T037 [US1] Change `merge_git_repository` in `backend/infrahub/git/tasks.py`: for an `active`
       repository, when `model.pending_merge_enqueued` is `False`, pass `model.pending_merge` as the
       `entry` of `deliver_pending_merges`, or build it from the source branch's graph commit when it
       is `None`, after the content test of R3. Step 0 of `deliver` enqueues it with `widen=True`, so
       the save that appends the entry also holds a `widen` marker of scope `all`, with the reason
-      `UNHELD_FOLLOW_UP` (R3, FR-005a). The marker has no effect until T069 wires the releaser. A
-      failed enqueue is retried with the task. If every attempt fails, the run ends `Failed` with an
-      error-level log line that names the repository, the source branch and the source commit
-      (R3). When the flag is `True`, pass `entry=None`, so it never enqueues (R3, FR-005b).
+      `UNHELD_FOLLOW_UP` (R3, FR-005a). The marker has no effect until T069 wires the releaser. If
+      the enqueue fails, the run ends `Failed` with an error-level log line that names the
+      repository, the source branch and the source commit (R3). The retry of a failed enqueue with
+      the task moved to T077, because the task has no retries before it (T038). When the flag is `True`, pass `entry=None`, so it never enqueues (R3, FR-005b).
       Keep the read-only and the staging paths unchanged. Add no path that merges and records
       locally: a clone with no `origin` fails the attempt at the fetch and keeps the queue (R3). Tag
       the run with the repository node and the default branch, log one line per transition, and set
       the run state from the outcome (R21).
-- [ ] T038 [US1] Write the task `deliver_pending_merges` in `backend/infrahub/git/tasks.py`, with the
+- [X] T038 [US1] Write the task `deliver_pending_merges` in `backend/infrahub/git/tasks.py`, with the
       `entry` parameter of contracts section 5, and no retry yet. Phase 6 adds the retries. Until
       then, a failed enqueue of step 0 fails the run at once, with the error-level log line.
 
 ### No other import of the pending destination
 
-- [ ] T039 [US1] Change `InfrahubRepository.collect_pending_imports` in
+- [X] T039 [US1] Change `InfrahubRepository.collect_pending_imports` in
       `backend/infrahub/git/repository.py`: in the active loop, skip the default branch, and every new
       or updated remote branch that a pending entry names, while the state is not `none`. Leave
       `_collect_staging_imports` unchanged. Pass the state port in from the sync flow in
       `backend/infrahub/git/tasks.py` and `backend/infrahub/git/sync.py`.
-- [ ] T040 [US1] Change `bootstrap_local_repository` in `backend/infrahub/git/tasks.py`: skip the seed
+- [X] T040 [US1] Change `bootstrap_local_repository` in `backend/infrahub/git/tasks.py`: skip the seed
       import of the default branch while the state is not `none`, and log it.
-- [ ] T041 [US1] Change `ProcessRepository.mutate` in `backend/infrahub/graphql/mutations/repository.py`:
+- [X] T041 [US1] Change `ProcessRepository.mutate` in `backend/infrahub/graphql/mutations/repository.py`:
       refuse on every branch while the state is not `none`, with the message of the GraphQL
       contract section 3.
 
 ### Tests
 
-- [ ] T042 [P] [US1] Add a fixture to `backend/tests/integration/git/test_git_live_remote.py` that builds a
+- [X] T042 [P] [US1] Add a fixture to `backend/tests/integration/git/test_git_live_remote.py` that builds a
       git-synced Infrahub branch whose repository file differs from the default branch, on
-      `protected_branch_dataset`. Reuse `rejected_push_to_main`.
-- [ ] T043 [US1] Add `test_delivery_visible` to `backend/tests/integration/git/test_git_live_remote.py`
-      (US1 #1 to #3): one entry, `action-required`, cause `permission`, the hook's `remote:` line
-      verbatim, the commit unchanged.
-- [ ] T044 [US1] Add `test_first_attempt_delivers` to the same module (US1 #4): nothing pending, the commit
-      recorded, the remote updated, the broadcast sent.
-- [ ] T045 [P] [US1] Write `backend/tests/component/git/writeback/test_enqueue.py`: a data-only
+      `protected_branch_dataset`. Reuse `rejected_push_to_main`. Done with a fixture that builds its
+      own remote and repository for each test instead of `protected_branch_dataset`, because each
+      test changes the remote and the delivery state of its repository. `rejected_push_to_main`
+      became the factory `reject_pushes_to_main`, which each test calls for its own repository.
+- [X] T043 [US1] Add `test_a_merge_that_the_remote_refuses_stays_queued_with_the_remote_message` to
+      `backend/tests/integration/git/test_git_live_remote.py` (US1 #1 to #3): one entry,
+      `action-required`, cause `permission`, the hook's `remote:` line verbatim, the commit unchanged.
+- [X] T044 [US1] Add `test_a_merge_is_pushed_recorded_and_broadcast_on_its_first_attempt` to the same
+      module (US1 #4): nothing pending, the commit recorded, the remote updated, the broadcast sent.
+- [X] T045 [P] [US1] Write `backend/tests/component/git/writeback/test_enqueue.py`: a data-only
       branch forked before the trunk moved queues nothing (US1 #7); a staging repository queues
       nothing; a clone with no `origin` fails the attempt, records no commit and keeps the queue; a
       failed enqueue of one repository still submits the others; an enqueue that fails once and then
@@ -333,12 +379,13 @@ SC-002, SC-007.
       `ENQUEUE_RETRY_DELAYS_SECONDS`, through a `sleep` that records the delays; an enqueue whose
       every try raises logs at error level and sets the flag to `False`, and the flow then appends
       the entry and a `widen` marker of scope `all`, with the reason `UNHELD_FOLLOW_UP`, in one
-      save; a flow whose own enqueue fails once and then returns delivers the entry, through a task
-      with short retry delays; a flow whose own enqueue fails at every attempt ends `Failed`, queues
+      save; a flow whose own enqueue fails at every attempt ends `Failed`, queues
       nothing, and logs at error level the repository, the source branch and the source commit; a
       flow whose `enqueue` refuses the id holds no marker; a merge with no content submits no merge
-      workflow; and a run with no `pending_merge` and no content queues nothing.
-- [ ] T046 [P] [US1] Write `backend/tests/component/git/writeback/test_import_deferral.py`: the sync skips
+      workflow; and a run with no `pending_merge` and no content queues nothing. The case of a flow
+      whose own enqueue fails once and then delivers moved to T077, because it needs the retries of
+      the task.
+- [X] T046 [P] [US1] Write `backend/tests/component/git/writeback/test_import_deferral.py`: the sync skips
       the default branch and a named source branch, as new and as updated, while pending; the seed
       import skips the default branch; and `ProcessRepository` refuses on two branches.
 
@@ -370,29 +417,30 @@ SC-002, SC-007.
 
 **Maps to**: FR-007, FR-012, FR-023 (obligation), SC-003.
 
-- [ ] T050 [P] [US2] Add `GitRepositoryDeliveryRetry` to `backend/infrahub/git/models.py`.
-- [ ] T051 [US2] Write the flow `retry_repository_delivery` in `backend/infrahub/git/tasks.py` and the
+- [X] T050 [P] [US2] Add `GitRepositoryDeliveryRetry` to `backend/infrahub/git/models.py`.
+- [X] T051 [US2] Write the flow `retry_repository_delivery` in `backend/infrahub/git/tasks.py` and the
       catalogue entry `GIT_REPOSITORY_DELIVERY_RETRY` in `backend/infrahub/workflows/catalogue.py`.
       It calls `deliver_pending_merges` with `entry=None` and `manual=True`, or `False` when the
       recovery check submitted it, and re-checks nothing itself: `deliver` step 1 decides.
-- [ ] T052 [US2] Write `InfrahubRepositoryDeliveryRetry` in
+- [X] T052 [US2] Write `InfrahubRepositoryDeliveryRetry` in
       `backend/infrahub/graphql/mutations/repository.py` and register it in
       `backend/infrahub/graphql/schema.py`: refuse off the default branch, check the three
       permissions explicitly, refuse when nothing is pending, submit with
       `tags=delivery_run_tags(repository_id)` (R20), return the task. A running
       attempt or a waiting automatic retry does not refuse it. **Gate: GraphQL and
       authorization sign-off.**
-- [ ] T053 [US2] Regenerate `schema/schema.graphql` and the frontend GraphQL types.
-- [ ] T054 [US2] Write `backend/tests/component/graphql/mutations/test_repository_delivery_retry.py`: off
+- [X] T053 [US2] Regenerate `schema/schema.graphql` and the frontend GraphQL types.
+- [X] T054 [US2] Write `backend/tests/component/graphql/mutations/test_repository_delivery_retry.py`: off
       the default branch, each permission missing, nothing pending refused; a running attempt, a
       waiting retry, a stale `pending` and `action-required` all allowed.
-- [ ] T055 [US2] Add `test_one_retry_delivers_both` to `backend/tests/integration/git/test_git_live_remote.py`.
+- [X] T055 [US2] Add `test_one_retry_delivers_both` to `backend/tests/integration/git/test_git_live_remote.py`.
 - [ ] T056 [US2] Add `test_remote_advanced_is_imported` to the same module: a direct push to the remote
       during the outage; the sync skips the default branch; the retry records, then imports; an
       artifact definition updated by the import renders against the delivered commit.
-- [ ] T057 [US2] Add `test_observed_after_record_failure` to the same module, reusing
+      Partial: written without the sync step, which needs T039; add it when this branch meets T039.
+- [X] T057 [US2] Add `test_observed_after_record_failure` to the same module, reusing
       `block_commit_worktree`: no second push, the queue clears by observation.
-- [ ] T058 [US2] Add `test_concurrent_attempts` to the same module: a first attempt and a manual retry run
+- [X] T058 [US2] Add `test_concurrent_attempts` to the same module: a first attempt and a manual retry run
       one after the other, and the second does nothing.
 - [ ] T059 [P] [US2] Write the retry mutation in the three-file pattern:
       `frontend/app/src/entities/repository/api/retry-delivery-from-api.ts`,
@@ -418,40 +466,40 @@ X once after the delivery.
 **Maps to**: FR-013 to FR-017, SC-004, SC-005, SC-008. **T061 to T069 and T074 to T076 are in the
 deployment rule.** T070 to T073 are not.
 
-- [ ] T061 [P] [US3] Add `RequestArtifactDefinitionGenerate.repository_id: str | None = None` to
+- [X] T061 [P] [US3] Add `RequestArtifactDefinitionGenerate.repository_id: str | None = None` to
       `backend/infrahub/git/models.py`, and fill it in `ArtifactSelector._build_request` in
       `backend/infrahub/core/merge/selective_regen/definition_selector/artifact_selector.py`.
-- [ ] T062 [P] [US3] Add `exclude_repository_ids` and `include_repository_ids` to
+- [X] T062 [P] [US3] Add `exclude_repository_ids` and `include_repository_ids` to
       `generate_artifact_definition` in `backend/infrahub/git/tasks.py` and to
       `run_generator_definition` in `backend/infrahub/generators/tasks.py`.
-- [ ] T063 [P] [US3] Add `FullRegenerationReason.HELD_SET_UNRESOLVED` and
+- [X] T063 [P] [US3] Add `FullRegenerationReason.HELD_SET_UNRESOLVED` and
       `FullRegenerationReason.TERMINAL_SELECTION_FAILED` to
       `backend/infrahub/core/constants/__init__.py`, where T018 moved the enum.
-- [ ] T064 [US3] Write `OwnedRegeneration`, `NarrowedHoldCache` (with `merge_put`) and
+- [X] T064 [US3] Write `OwnedRegeneration`, `NarrowedHoldCache` (with `merge_put`) and
       `RegenerationBarrier` in `backend/infrahub/core/merge/regeneration_barrier.py`, per contracts
       section 8, rules 1 to 7. A refreshed item's cache entry is the union of the previous entry and
       the new request, or nothing when the previous entry is missing.
-- [ ] T065 [US3] Write `backend/tests/unit/core/merge/test_regeneration_barrier.py`: non-default branch, the
+- [X] T065 [US3] Write `backend/tests/unit/core/merge/test_regeneration_barrier.py`: non-default branch, the
       empty fast path, the partition, a hold that returns `None` admits, an unknown owner held under
       every pending repository, `releasing`, a cache write failure, one `hold` call per repository,
       and two holds of one artifact definition with different members whose release covers both
       members. For a state error and for a lock timeout: an error that clears within the retries
       holds as usual, and one that persists admits after the last retry. Pass a `sleep` that records
       the delays and returns at once.
-- [ ] T066 [US3] Wire the barrier into `PostMergeRegenerationDispatcher` in
+- [X] T066 [US3] Wire the barrier into `PostMergeRegenerationDispatcher` in
       `backend/infrahub/core/merge/regeneration_dispatcher.py`: on the built plan, in `_submit` after
       the cascade, in `_full_regeneration` (marker scope `all`, with the reason it receives) and in
       `_submit_full_terminal_regeneration` (marker scope `terminals`, with the reason
       `TERMINAL_SELECTION_FAILED`). Add the `releasing` parameter to `dispatch` and `_dispatch_plan`.
       Wire the flag-off path, which holds scope `all` with the reason `FEATURE_DISABLED`, and the
       builder in `backend/infrahub/core/branch/tasks.py`.
-- [ ] T067 [US3] Write `HeldRegenerationReleaser` and `HeldDefinitionResolver` in
+- [X] T067 [US3] Write `HeldRegenerationReleaser` and `HeldDefinitionResolver` in
       `backend/infrahub/core/merge/regeneration_release.py`, per contracts section 9, with the renew
       callback after each awaited step and both `widen` scopes. A `widen` release logs the reason
       that its marker carries, and `HELD_SET_UNRESOLVED` only for an identifier that does not
       resolve. After the artifact trigger of a `terminals` marker, the release continues with the
       generator items and Python items of the window.
-- [ ] T068 [US3] Write `backend/tests/unit/core/merge/test_regeneration_release.py`: a cache hit
+- [X] T068 [US3] Write `backend/tests/unit/core/merge/test_regeneration_release.py`: a cache hit
       dispatches the narrowed request, a miss dispatches the identifier, an unresolvable identifier
       widens with `include_repository_ids` and logs `HELD_SET_UNRESOLVED`, a marker of scope `all`
       logs its own reason, for example `UNHELD_FOLLOW_UP`, and never `HELD_SET_UNRESOLVED`, a
@@ -459,27 +507,28 @@ deployment rule.** T070 to T073 are not.
       `releasing` reaches every dispatch, the lease is renewed, and a dispatch failure raises. A
       `terminals` marker, a held generator definition and a held Python attribute in one window
       release all three: the artifact trigger, the generator request and the Python submission.
-- [ ] T069 [US3] Wire the releaser into `build_writeback_service` in
+- [X] T069 [US3] Wire the releaser into `build_writeback_service` in
       `backend/infrahub/git/writeback/factory.py`, so a delivery releases (R4 step 16).
-- [ ] T070 [US3] Keep the repository id per attribute in `GatheredPythonReadSets` and expose `owner_of` in
-      `backend/infrahub/core/merge/python_target_sources.py`.
-- [ ] T071 [US3] Consult the barrier in `_resolve_python_targets` in
+- [X] T070 [US3] Keep the repository id per attribute in `GatheredPythonReadSets`, in
+      `backend/infrahub/core/merge/python_target_sources.py`, and expose `owner_of` on the Python target
+      resolver, in `backend/infrahub/core/merge/python_target_resolution.py`.
+- [X] T071 [US3] Consult the barrier in `_resolve_python_targets` in
       `backend/infrahub/core/merge/recompute_coalescing.py`, for `MergeRecomputeCoordinator` and
       `RecomputeChainSubmitter`, which gain a required `barrier` parameter. Wire it in
       `backend/infrahub/core/merge/builder.py`, `backend/infrahub/core/recompute/dispatch.py` and the
       rebase builder in `backend/infrahub/core/branch/tasks.py`. Coordinate with IFC-3002.
-- [ ] T072 [US3] Consult the barrier in `computed_attribute_setup_python` in
+- [X] T072 [US3] Consult the barrier in `computed_attribute_setup_python` in
       `backend/infrahub/computed_attribute/tasks.py`, on the default branch.
-- [ ] T073 [P] [US3] Add Python-family cases to `backend/tests/unit/core/merge/test_regeneration_barrier.py`:
+- [X] T073 [P] [US3] Add Python-family cases to `backend/tests/unit/core/merge/test_regeneration_barrier.py`:
       a resolved target and a widened target are both filtered, and a rebase admits everything.
-- [ ] T074 [US3] Write `backend/tests/component/core/merge/test_held_regeneration.py`: Y dispatched, X held;
+- [X] T074 [US3] Write `backend/tests/component/core/merge/test_held_regeneration.py`: Y dispatched, X held;
       one release for X after the delivery, against the delivered commit; a deleted held definition
       widens to X only; and, after an enqueue of X whose every try raised, the follow-ups dispatch
       the work of X at once, and the release after the delivery regenerates every definition of X
       against the delivered commit (R3).
-- [ ] T075 [P] [US3] Add a case to `test_held_regeneration.py`: a hold of the same definition during a
+- [X] T075 [P] [US3] Add a case to `test_held_regeneration.py`: a hold of the same definition during a
       release survives the clear and is released again.
-- [ ] T076 [P] [US3] Add a case to `test_held_regeneration.py` for SC-008: a first attempt that succeeds
+- [X] T076 [P] [US3] Add a case to `test_held_regeneration.py` for SC-008: a first attempt that succeeds
       inside the window dispatches the same targets, members and node ids as the same merge with no
       barrier.
 
@@ -496,12 +545,18 @@ deployment rule.** T070 to T073 are not.
 **Maps to**: FR-004, FR-027, SC-003. **T077, T079 and T080 are in the deployment rule.** T078 and
 T081 to T084 are not.
 
-- [ ] T077 [US4] Give `deliver_pending_merges` in `backend/infrahub/git/tasks.py` its `retries`,
+- [X] T077 [US4] Give `deliver_pending_merges` in `backend/infrahub/git/tasks.py` its `retries`,
       `retry_delay_seconds` and `retry_condition_fn`, and compute `final_attempt` from
-      `task_run.run_count`. Record `retry_due_at` before each wait.
-- [ ] T078 [US4] Make `RepositoryWritebackService.deliver` return `deferred` when `manual` is `False` and a
-      retry of another chain is due in the future, in `backend/infrahub/git/writeback/service.py`.
-- [ ] T079 [US4] Write `DeliveryRecoveryCheck` in `backend/infrahub/git/writeback/recovery.py` and run it
+      `task_run.run_count`. Record `retry_due_at` before each wait. The retries also retry a failed
+      enqueue of step 0, the part that moved here from T037. Add to
+      `backend/tests/component/git/writeback/test_enqueue.py` the case that moved here from T045: a
+      flow whose own enqueue fails once and then returns delivers the entry, through a task with
+      short retry delays.
+- [X] T078 [US4] Make the first attempt only of `RepositoryWritebackService.deliver` return `deferred`,
+      in `backend/infrahub/git/writeback/service.py`: a chain's first automatic attempt
+      (`first_attempt` is `True`, `manual` is `False`) returns `deferred` when the retry of another
+      chain is due later. A later attempt of the chain never defers.
+- [X] T079 [US4] Write `DeliveryRecoveryCheck` in `backend/infrahub/git/writeback/recovery.py` and run it
       from the loop of `sync_remote_repositories` in `backend/infrahub/git/tasks.py`, for every
       repository, before the bootstrap and whatever the sync outcome, under its own guard. It submits
       with `tags=delivery_run_tags(repository.id)`. Write `PrefectDeliveryRunQuery` in
@@ -509,7 +564,7 @@ T081 to T084 are not.
       `read_flow_runs` call, and wire it in `build_recovery_check`. The check queries the
       orchestrator only when every other condition of a trigger holds, and submits nothing when the
       query raises (R20, contracts section 7).
-- [ ] T080 [US4] Write `backend/tests/unit/git/writeback/test_retry_and_recovery.py`, with a fake
+- [X] T080 [US4] Write `backend/tests/unit/git/writeback/test_retry_and_recovery.py`, with a fake
       `DeliveryRunQuery` in `backend/tests/unit/git/writeback/fakes.py`: the retry condition per cause,
       `final_attempt`, the deferred chain, the recovery check for a stale delivery (each of the five
       conditions, the free lock included) and for uncovered held work behind an empty queue, no
@@ -521,15 +576,16 @@ T081 to T084 are not.
       no query; every submission carries the delivery tags. Test `PrefectDeliveryRunQuery` against a
       fake `FlowRunQuerying` client: the filter holds both tags and the state types `SCHEDULED` and
       `PENDING`, with `limit=1`.
-- [ ] T081 [US4] Add `test_transient_fault_heals` to
+- [X] T081 [US4] Add `test_transient_fault_heals` to
       `backend/tests/integration/git/test_git_live_remote.py`: block the Gogs port for the first
-      attempt, open it, short delays through `with_options`.
-- [ ] T082 [US4] Add `test_lost_attempt_recovers` to the same module: kill the flow after the snapshot,
+      attempt, open it, short delays through `with_options`. One case blocks the port before the
+      fetch, the other after the fetch, so that the push fails.
+- [X] T082 [US4] Add `test_lost_attempt_recovers` to the same module: kill the flow after the snapshot,
       free the repository lock in the test, as the deadlock cleanup does for a dead worker (R20),
       age the state past the stale bound, run one sync cycle, and assert the delivery.
-- [ ] T083 [P] [US4] Add `test_policy_failure_is_not_retried` to the same module: one attempt only, then
+- [X] T083 [P] [US4] Add `test_policy_failure_is_not_retried` to the same module: one attempt only, then
       `action-required`.
-- [ ] T084 [P] [US4] Add two timeout cases to `backend/tests/unit/git/writeback/test_git_adapter.py`.
+- [X] T084 [P] [US4] Add two timeout cases to `backend/tests/unit/git/writeback/test_git_adapter.py`.
       A local TCP server that accepts and never answers makes the push fail as `remote-unreachable`
       within the bound. A `merge` of `replay` that stalls, through a `pre-merge-commit` hook of the
       temporary repository that `exec`s a long `sleep`, is killed within `LOCAL_GIT_TIMEOUT_SECONDS`,
@@ -549,8 +605,8 @@ release.
 **Maps to**: FR-005b, FR-008, FR-009, FR-015, FR-024, SC-006. **T085 to T093 are in the deployment
 rule.** T094 is not.
 
-- [ ] T085 [P] [US5] Add `GitRepositoryDeliveryAbandon` to `backend/infrahub/git/models.py`.
-- [ ] T086 [US5] Write `WritebackAbandoner.abandon` in `backend/infrahub/git/writeback/abandoner.py`, the
+- [X] T085 [P] [US5] Add `GitRepositoryDeliveryAbandon` to `backend/infrahub/git/models.py`.
+- [X] T086 [US5] Write `WritebackAbandoner.abandon` in `backend/infrahub/git/writeback/abandoner.py`, the
       flow `abandon_repository_delivery` in `backend/infrahub/git/tasks.py`, and the catalogue entry
       `GIT_REPOSITORY_DELIVERY_ABANDON`, per [research.md](research.md) R8. The actor comes from the
       workflow context. The abandonment sends `RefreshGitRepositoryBranchDeleted` for every abandoned
@@ -559,24 +615,25 @@ rule.** T094 is not.
       `backend/infrahub/git/writeback/factory.py`, with the same releaser as
       `build_writeback_service`. After T069, that releaser dispatches the held work. **Gate: spec
       decision 15 for the broadcast.**
-- [ ] T087 [US5] Write `InfrahubRepositoryDeliveryAbandon` in
+- [X] T087 [US5] Write `InfrahubRepositoryDeliveryAbandon` in
       `backend/infrahub/graphql/mutations/repository.py` and register it in
       `backend/infrahub/graphql/schema.py`. **Gate: GraphQL and authorization sign-off; spec
       decision 1.**
-- [ ] T088 [US5] Write `backend/tests/unit/git/writeback/test_abandoner.py`: a stale version and an empty
+- [X] T088 [US5] Write `backend/tests/unit/git/writeback/test_abandoner.py`: a stale version and an empty
       queue refuse; the entries leave and the lease is taken before the release; the broadcast is sent
       for flagged entries only; the release runs after the lock is released; `clear_released` keeps a
       later hold; a crash between the removal and the clear leaves a lease that expires, and the
       recovery check then releases the work; a release that fails sets the lease's expiry to now and
-      keeps the items held.
-- [ ] T089 [US5] Write `backend/tests/component/graphql/mutations/test_repository_delivery_abandon.py`: off
+      keeps the items held. The crash case runs the recovery check of T079: once the lease expires,
+      the check submits a delivery run, and that run releases the work.
+- [X] T089 [US5] Write `backend/tests/component/graphql/mutations/test_repository_delivery_abandon.py`: off
       the default branch, each permission missing, a stale version, nothing pending.
-- [ ] T090 [US5] Add `test_conflict_then_abandon` to
+- [X] T090 [US5] Add `test_conflict_then_abandon` to
       `backend/tests/integration/git/test_git_live_remote.py`: cause `replay-conflict`, nothing
       pushed; after the abandonment, the record, the account on the edge, one release, an unchanged
       remote.
-- [ ] T091 [US5] Add `test_conflict_resolved_on_remote` to the same module (US5 #2).
-- [ ] T092 [US5] Add `test_late_first_attempt_does_not_resurrect` to the same module (FR-005b):
+- [X] T091 [US5] Add `test_conflict_resolved_on_remote` to the same module (US5 #2).
+- [X] T092 [US5] Add `test_late_first_attempt_does_not_resurrect` to the same module (FR-005b):
       abandon while a run of `merge_git_repository` with `pending_merge_enqueued` set to `True`
       waits, then let it run. The entry does not come back and the remote is unchanged. A second
       case: a run with the flag `False`, whose entry was never queued, enqueues the entry and
@@ -600,17 +657,17 @@ and is not re-imported; retry; the branch is gone.
 
 **Maps to**: FR-010, FR-011. **In the deployment rule.**
 
-- [ ] T095 [US6] Change `git_branch_delete` in `backend/infrahub/git/tasks.py`: when
-      `references_source_branch` is true, call `request_branch_deletion`, skip the remote deletion,
-      log why, and do not send `RefreshGitRepositoryBranchDeleted`.
-- [ ] T096 [US6] Confirm step 13 of `RepositoryWritebackService.deliver` deletes a flagged branch that no
+- [X] T095 [US6] Change `git_branch_delete` in `backend/infrahub/git/tasks.py`: call
+      `request_branch_deletion`, and when it returns true, skip the remote deletion, log why, and do
+      not send `RefreshGitRepositoryBranchDeleted`.
+- [X] T096 [US6] Confirm step 13 of `RepositoryWritebackService.deliver` deletes a flagged branch that no
       remaining entry names, and add the case to `backend/tests/unit/git/writeback/test_service.py`.
 - [ ] T097 [US6] Add `test_remote_branch_kept_while_pending` to
       `backend/tests/integration/git/test_git_live_remote.py`, with
       `delete_branch_after_merge_reset_config` and `delete_git_branch_after_merge_reset_config`:
       kept, not re-imported by the sync as new or as updated, deleted after the retry; and, after an
       abandonment instead, kept on the remote and imported again as a new Infrahub branch.
-- [ ] T098 [P] [US6] Add a case to `backend/tests/component/git/writeback/test_enqueue.py`: a merge of
+- [X] T098 [P] [US6] Add a case to `backend/tests/component/git/writeback/test_enqueue.py`: a merge of
       another branch is not blocked while repository X has a pending delivery (FR-010).
 
 ---
@@ -621,12 +678,12 @@ and is not re-imported; retry; the branch is gone.
 
 **Maps to**: FR-020, FR-021, FR-022, SC-007.
 
-- [ ] T099 [US7] Add `test_source_discarded` to `backend/tests/integration/git/test_git_live_remote.py`:
-      force-push the source branch, retry, cause `source-discarded`, the remote never holds the
-      discarded commit.
-- [ ] T100 [US7] Add `test_destination_rewritten` to the same module: force-push the remote default branch,
-      retry, cause `destination-rewritten`, nothing pushed.
-- [ ] T101 [US7] Call `record_reverted` from IFC-3210's reconciliation of the default branch, per
+- [X] T099 [US7] Add `test_a_merge_whose_source_commit_the_remote_discarded_is_refused` to
+      `backend/tests/integration/git/test_git_live_remote.py`: force-push the source branch, retry,
+      cause `source-discarded`, the remote never holds the discarded commit.
+- [X] T100 [US7] Add `test_a_merge_onto_a_rewritten_trunk_is_refused` to the same module: force-push the
+      remote default branch, retry, cause `destination-rewritten`, nothing pushed.
+- [X] T101 [US7] Call `record_reverted` from IFC-3210's reconciliation of the default branch, per
       [research.md](research.md) R13, and add a test beside the sibling's reconciliation tests.
       **Gate: IFC-3210 rewrite classification on `develop`.**
 
@@ -634,12 +691,12 @@ and is not re-imported; retry; the branch is gone.
 
 ## Phase 10: Documentation and polish
 
-- [ ] T102 [P] Update `dev/knowledge/backend/git-integration.md` per [research.md](research.md) R16.
-- [ ] T103 [P] Update `dev/knowledge/backend/selective-merge-regeneration.md` per R16.
-- [ ] T104 [P] Update `dev/knowledge/backend/merge-recompute.md` per R16.
-- [ ] T105 [P] Update `docs/docs/git-integration/branch-synchronization.mdx` and
+- [x] T102 [P] Update `dev/knowledge/backend/git-integration.md` per [research.md](research.md) R16.
+- [x] T103 [P] Update `dev/knowledge/backend/selective-merge-regeneration.md` per R16.
+- [x] T104 [P] Update `dev/knowledge/backend/merge-recompute.md` per R16.
+- [x] T105 [P] Update `docs/docs/git-integration/branch-synchronization.mdx` and
       `docs/docs/git-integration/overview.mdx` per R16, then run `uv run invoke docs.lint`.
-- [ ] T106 Write the changelog fragment with the `creating-changelog-entries` skill, including the
+- [x] T106 Write the changelog fragment with the `creating-changelog-entries` skill, including the
       rollback note of R22.
 - [ ] T107 Land the shared SDK PR for the protocols on `opsmill/infrahub-sdk-python`, then bump the
       `python_sdk` pointer here.
@@ -725,7 +782,7 @@ covers only the success path covers nothing that matters.
 | Phase | Tasks |
 |---|---|
 | 1 Setup | 4 |
-| 2 Foundational | 24 |
+| 2 Foundational | 25 |
 | 3 US1 visible failure | 21 |
 | 4 US2 one retry | 11 |
 | 5 US3 held regeneration | 16 |
@@ -734,4 +791,4 @@ covers only the success path covers nothing that matters.
 | 8 US6 branch kept | 4 |
 | 9 US7 rewrites | 3 |
 | 10 Documentation and polish | 8 |
-| **Total** | **109** |
+| **Total** | **110** |

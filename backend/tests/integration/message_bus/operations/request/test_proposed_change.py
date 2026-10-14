@@ -14,6 +14,7 @@ from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.node import Node
 from infrahub.git import InfrahubRepository
+from infrahub.git.divergence.suppression import RetargetMarkers
 from infrahub.git.sync import RepositoryFileImporter, RepositorySyncer
 from infrahub.lock import InfrahubLockRegistry
 from infrahub.message_bus.types import ProposedChangeBranchDiff
@@ -35,10 +36,14 @@ from infrahub.workflows.catalogue import (
     REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY,
     REQUEST_PROPOSED_CHANGE_USER_TESTS,
 )
+from tests.adapters.cache import MemoryCache
+from tests.adapters.delivery_state import build_idle_delivery_state
 from tests.adapters.log import FakeLogger
 from tests.adapters.message_bus import BusRecorder
+from tests.adapters.repository_record_store import build_in_memory_recorder
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.graphql import graphql_mutation, graphql_query
+from tests.helpers.repository_activity import activity_run
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -101,9 +106,17 @@ PROPOSED_CHANGE_QUERY = """
 @flow(name="sync-repository-for-test")
 async def sync_repository(repo: InfrahubRepository) -> None:
     """Run a repository sync inside a flow run so the import has a Prefect run context, as in production."""
-    await RepositorySyncer(lock_registry=InfrahubLockRegistry(local_only=True), importer=RepositoryFileImporter()).sync(
-        repo
+    syncer = RepositorySyncer(
+        lock_registry=InfrahubLockRegistry(local_only=True),
+        importer=RepositoryFileImporter(),
+        recorder=build_in_memory_recorder(),
+        retarget_markers=RetargetMarkers(cache=MemoryCache()),
+        state=build_idle_delivery_state(repository_id=str(repo.id)),
     )
+    async with activity_run() as run:
+        outcome = await syncer.sync(repo, activity=run)
+    assert outcome.failed == ()
+    assert outcome.report.imported_branches == ("change1",)
 
 
 class TestProposedChange(TestInfrahubApp):

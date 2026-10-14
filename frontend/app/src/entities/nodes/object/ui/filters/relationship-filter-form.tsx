@@ -8,6 +8,7 @@ import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import {
   FILTER_CONDITION,
   type FilterCondition,
+  type FilterConditionSelectProps,
 } from "@/entities/nodes/object/ui/filters/filter-condition-select";
 import { FilterFormLayout } from "@/entities/nodes/object/ui/filters/filter-form-layout";
 import { RelationshipFilterCombobox } from "@/entities/nodes/object/ui/filters/relationship-filter-combobox";
@@ -18,6 +19,7 @@ import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface RelationshipFilterFormProps {
   relationshipSchema: RelationshipSchema;
+  filterConditions?: FilterConditionSelectProps["filterConditions"];
   onSuccess?: () => void;
 }
 
@@ -27,6 +29,7 @@ type FormData = {
 
 export function RelationshipFilterForm({
   relationshipSchema,
+  filterConditions,
   onSuccess,
 }: RelationshipFilterFormProps) {
   const [filters, setFilters] = useFilters();
@@ -81,6 +84,7 @@ export function RelationshipFilterForm({
 
   return (
     <FilterFormLayout
+      filterConditions={filterConditions}
       filterType="relationship"
       label={getRelationshipLabel(relationshipSchema, peerSchema)}
       condition={condition}

@@ -4,17 +4,29 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from infrahub.exceptions import RepositoryConnectionError, RepositoryCredentialsError, RepositoryError
+from prefect import flow
 
+from infrahub.exceptions import RepositoryConnectionError, RepositoryCredentialsError, RepositoryError
+from infrahub.log import suppress_traceback_in_logs
+
+from .activity.models import RepositoryActivityBranchOutcome, RepositoryActivityPhase
+from .import_errors import RepositoryImportError, log_import_failure
 from .repository import FailedImport, ImportStep, InfrahubRepository, PendingObjectImport
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from infrahub_sdk.client import InfrahubClient
 
     from infrahub.lock import InfrahubLockRegistry
 
+    from .activity.recorder import ActivityRun
+    from .divergence.models import ReconciledBranch
+    from .divergence.recorder import HistoryRewriteRecorder
+    from .divergence.suppression import RetargetMarkers
     from .integrator import ObjectImportPlan
     from .models import GitRepositoryAdd
+    from .writeback.ports import DeliveryStatePort
 
 
 @dataclass(frozen=True)
@@ -22,20 +34,13 @@ class SyncReport:
     """What a synchronization run did, for the caller to report on.
 
     ``skipped_branches`` are the remote branches left out because their name collides with Infrahub's
-    default branch. ``imported_branches`` are the Infrahub branches whose import was applied, and
-    ``failed_import_branches`` those whose import was attempted and failed. ``advanced_skipped_branches``
-    are the skipped branches whose remote head moved during the run.
+    default branch. ``imported_branches`` are the Infrahub branches whose import was applied.
+    ``advanced_skipped_branches`` are the skipped branches whose remote head moved during the run.
     """
 
     skipped_branches: tuple[str, ...]
     imported_branches: tuple[str, ...]
-    failed_import_branches: tuple[str, ...]
     advanced_skipped_branches: tuple[str, ...]
-
-    @property
-    def attempted_import_branches(self) -> tuple[str, ...]:
-        """The Infrahub branches the run tried to import, whether or not the import succeeded."""
-        return self.imported_branches + self.failed_import_branches
 
     @property
     def reports_skipped_branches(self) -> bool:
@@ -47,12 +52,56 @@ class SyncReport:
         return bool(self.skipped_branches) and bool(self.imported_branches or self.advanced_skipped_branches)
 
 
-class RepositoryBranchesFailedError(RepositoryError):
-    """Raised when at least one branch failed to synchronize, carrying the report of the whole run."""
+@dataclass(frozen=True)
+class SyncOutcome:
+    """What a synchronization run did: its report, the branches it advanced and the branches that failed."""
 
-    def __init__(self, identifier: str, report: SyncReport, message: str | None = None) -> None:
+    report: SyncReport
+    reconciled: tuple[ReconciledBranch, ...]
+    """The branches whose import succeeded, each with the commit it advanced to."""
+
+    failed: tuple[FailedImport, ...]
+
+    @property
+    def default_branch_failures(self) -> tuple[FailedImport, ...]:
+        """The failures of the repository's configured default branch."""
+        return tuple(failed for failed in self.failed if failed.on_default_branch)
+
+    @property
+    def default_branch_import_failures(self) -> tuple[FailedImport, ...]:
+        """The failures that leave the objects of the default branch behind its commit.
+
+        A failed rewrite record is not one of them, because the import of the branch still runs.
+        """
+        return tuple(failed for failed in self.default_branch_failures if failed.step is not ImportStep.RECORD)
+
+
+@suppress_traceback_in_logs
+class RepositoryBranchesFailedError(RepositoryError):
+    """Raised when at least one branch failed to synchronize, carrying the outcome of the whole run.
+
+    Registered so the logging layer drops the traceback Prefect writes when it leaves a flow: each
+    branch failure was already logged once, and this error only summarizes them.
+    """
+
+    def __init__(self, identifier: str, outcome: SyncOutcome, message: str | None = None) -> None:
         super().__init__(identifier=identifier, message=message)
-        self.report = report
+        self.outcome = outcome
+
+
+def raise_if_branches_failed(repo: InfrahubRepository, outcome: SyncOutcome) -> None:
+    """Log every branch the run failed to synchronize and raise them as one error.
+
+    Raises:
+        RepositoryBranchesFailedError: When at least one branch failed to synchronize; the error
+            carries the outcome of the whole run.
+
+    """
+    try:
+        repo.raise_if_branches_failed(list(outcome.failed))
+    except RepositoryError as exc:
+        # Same identifier and message, so the original adds nothing to the chain.
+        raise RepositoryBranchesFailedError(identifier=exc.identifier, outcome=outcome, message=exc.message) from None
 
 
 class RepositoryImporter(ABC):
@@ -67,10 +116,77 @@ class RepositoryImporter(ABC):
     @abstractmethod
     async def build_branch_import(
         self, repo: InfrahubRepository, pending_import: PendingObjectImport
-    ) -> ObjectImportPlan: ...
+    ) -> ObjectImportPlan:
+        """Build the import of one branch.
+
+        Raises:
+            RepositoryImportError: When the import fails, with the branch already marked as failed.
+
+        """
 
     @abstractmethod
-    async def apply_branch_import(self, repo: InfrahubRepository, plan: ObjectImportPlan) -> None: ...
+    async def apply_branch_import(self, repo: InfrahubRepository, plan: ObjectImportPlan) -> None:
+        """Apply a built import to the graph.
+
+        Raises:
+            RepositoryImportError: When the import fails, with the branch already marked as failed.
+
+        """
+
+
+async def import_branch(
+    lock_registry: InfrahubLockRegistry,
+    importer: RepositoryImporter,
+    repo: InfrahubRepository,
+    pending_import: PendingObjectImport,
+    activity: ActivityRun,
+) -> RepositoryImportError | None:
+    """Import one branch in a flow run of its own, applying it under the repository lock, and return its failure.
+
+    The run of its own keeps the import's logs and failure on the branch it imports into, rather than on
+    the branch of the run that started the import. Any failure is returned, logged once, so a failed
+    branch never stops the import of the other branches.
+
+    Raises:
+        RepositoryConnectionError: When the remote repository is unreachable.
+        RepositoryCredentialsError: When the credentials for the remote repository are invalid.
+
+    """
+
+    # Defined here so the collaborators are captured rather than passed, since Prefect stores a flow's parameters.
+    @flow(name="import-branch-objects", flow_run_name="Import objects into branch {branch_name}", persist_result=False)
+    async def import_branch_flow(branch_name: str) -> None:
+        try:
+            await activity.set_phase(phase=RepositoryActivityPhase.BUILDING, branch_name=branch_name)
+            plan = await importer.build_branch_import(repo, pending_import)
+            async with lock_registry.get(name=repo.name, namespace="repository"):
+                await activity.set_phase(phase=RepositoryActivityPhase.APPLYING, branch_name=branch_name)
+                await importer.apply_branch_import(repo, plan)
+        except (RepositoryConnectionError, RepositoryCredentialsError, RepositoryImportError):
+            raise
+        except Exception as exc:
+            # A failure the import did not convert is still recorded on its branch, so the other branches import.
+            raise log_import_failure(identifier=repo.name, branch_name=branch_name, exc=exc) from exc
+
+    branch_name = pending_import.infrahub_branch_name
+    try:
+        await import_branch_flow(branch_name=branch_name)
+    except RepositoryImportError as exc:
+        activity.record_branch(branch_name=branch_name, outcome=RepositoryActivityBranchOutcome.FAILED)
+        return exc
+    except (RepositoryConnectionError, RepositoryCredentialsError):
+        activity.record_branch(branch_name=branch_name, outcome=RepositoryActivityBranchOutcome.FAILED)
+        raise
+    activity.record_branch(branch_name=branch_name, outcome=RepositoryActivityBranchOutcome.IMPORTED)
+    return None
+
+
+@dataclass(frozen=True)
+class AddedRepository:
+    """A repository that was cloned, and the failure of its default-branch import, if it failed."""
+
+    repository: InfrahubRepository
+    import_error: RepositoryImportError | None
 
 
 class RepositoryFileImporter(RepositoryImporter):
@@ -106,8 +222,14 @@ class RepositoryAdder:
         self._importer = importer
         self._client = client
 
-    async def add(self, model: GitRepositoryAdd) -> InfrahubRepository:
+    async def add(self, model: GitRepositoryAdd, activity: ActivityRun) -> AddedRepository:
+        """Clone the repository and import its default branch.
+
+        A failed default-branch import is returned rather than raised, so the caller can still
+        synchronize the other branches.
+        """
         async with self._lock_registry.get(name=model.repository_name, namespace="repository"):
+            await activity.set_phase(phase=RepositoryActivityPhase.FETCHING)
             repo = await InfrahubRepository.new(
                 id=model.repository_id,
                 name=model.repository_name,
@@ -123,10 +245,14 @@ class RepositoryAdder:
             git_branch_name=repo.default_branch,
             commit=default_commit,
         )
-        plan = await self._importer.build_branch_import(repo, pending_import)
-        async with self._lock_registry.get(name=model.repository_name, namespace="repository"):
-            await self._importer.apply_branch_import(repo, plan)
-        return repo
+        import_error = await import_branch(
+            lock_registry=self._lock_registry,
+            importer=self._importer,
+            repo=repo,
+            pending_import=pending_import,
+            activity=activity,
+        )
+        return AddedRepository(repository=repo, import_error=import_error)
 
 
 class RepositorySyncer:
@@ -135,59 +261,89 @@ class RepositorySyncer:
     The lock serializes mutations of the repository's on-disk git state. Each synced branch is then
     built outside the lock, reading from the per-commit worktree pinned during the locked phase, and
     applied to the graph under the lock so that concurrent imports of the same repository are
-    serialized.
+    serialized. While the repository has pending pushes, the default branch and the source branch of
+    each pending merge are left out.
     """
 
-    def __init__(self, lock_registry: InfrahubLockRegistry, importer: RepositoryImporter) -> None:
+    def __init__(
+        self,
+        lock_registry: InfrahubLockRegistry,
+        importer: RepositoryImporter,
+        recorder: HistoryRewriteRecorder,
+        retarget_markers: RetargetMarkers,
+        state: DeliveryStatePort,
+    ) -> None:
         self._lock_registry = lock_registry
         self._importer = importer
+        self._recorder = recorder
+        self._retarget_markers = retarget_markers
+        self._state = state
 
-    async def sync(self, repo: InfrahubRepository, staging_branch: str | None = None) -> SyncReport:
-        """Synchronize the repository and report what the run did.
+    async def sync(
+        self,
+        repo: InfrahubRepository,
+        activity: ActivityRun,
+        staging_branch: str | None = None,
+        graph_commits: Mapping[str, str | None] | None = None,
+    ) -> SyncOutcome:
+        """Synchronize the repository and return what the run did, including the branches that failed.
+
+        A branch that fails does not raise, so the caller can act on the branches that advanced first.
 
         Raises:
             RepositoryConnectionError: When the remote repository is unreachable.
             RepositoryCredentialsError: When the credentials for the remote repository are invalid.
             RepositoryError: When fetching the remote fails for another reason.
             CommitNotFoundError: When a commit the sync needs cannot be found.
-            RepositoryBranchesFailedError: When at least one branch failed to synchronize; the error
-                carries the same report a successful run returns.
 
         """
         async with self._lock_registry.get(name=repo.name, namespace="repository"):
-            collected = await repo.collect_pending_imports(staging_branch=staging_branch)
+            await activity.set_phase(phase=RepositoryActivityPhase.FETCHING)
+            collected = await repo.collect_pending_imports(
+                staging_branch=staging_branch,
+                graph_commits=graph_commits,
+                recorder=self._recorder,
+                retarget_markers=self._retarget_markers,
+                state=self._state,
+            )
 
         failed_imports = list(collected.failed_imports)
+        reconciled: list[ReconciledBranch] = []
         imported_branches: list[str] = []
-        failed_import_branches: list[str] = []
-        for pending_import in collected.imports:
-            try:
-                plan = await self._importer.build_branch_import(repo, pending_import)
-                async with self._lock_registry.get(name=repo.name, namespace="repository"):
-                    await self._importer.apply_branch_import(repo, plan)
-            except (RepositoryConnectionError, RepositoryCredentialsError):
-                raise
-            except Exception as exc:  # noqa: BLE001
-                # The import already records its own per-branch error status before re-raising, so
-                # isolate the failure here to keep importing the remaining branches.
+        try:
+            for pending_import in collected.imports:
+                import_error = await import_branch(
+                    lock_registry=self._lock_registry,
+                    importer=self._importer,
+                    repo=repo,
+                    pending_import=pending_import,
+                    activity=activity,
+                )
+                if import_error is None:
+                    imported_branches.append(pending_import.infrahub_branch_name)
+                    if pending_import.reconciled is not None:
+                        reconciled.append(pending_import.reconciled)
+                    continue
                 failed_imports.append(
                     FailedImport(
-                        branch_name=pending_import.infrahub_branch_name, step=ImportStep.IMPORT, reason=str(exc)
+                        branch_name=pending_import.infrahub_branch_name,
+                        infrahub_branch_name=pending_import.infrahub_branch_name,
+                        step=ImportStep.IMPORT,
+                        reason=import_error.message,
+                        on_default_branch=pending_import.on_default_branch,
                     )
                 )
-                failed_import_branches.append(pending_import.infrahub_branch_name)
-                continue
-            imported_branches.append(pending_import.infrahub_branch_name)
+        finally:
+            # After the imports, so a failed rewrite record overrides the import of its branch that still ran, and
+            # also when an unreachable remote stops the imports early.
+            for failed in collected.failed_imports:
+                activity.record_branch(
+                    branch_name=failed.infrahub_branch_name, outcome=RepositoryActivityBranchOutcome.FAILED
+                )
 
         report = SyncReport(
             skipped_branches=tuple(collected.skipped_branches),
             imported_branches=tuple(imported_branches),
-            failed_import_branches=tuple(failed_import_branches),
             advanced_skipped_branches=tuple(collected.advanced_skipped_branches),
         )
-        try:
-            repo.raise_if_branches_failed(failed_imports)
-        except RepositoryError as exc:
-            # Same identifier and message, so the original adds nothing to the chain.
-            raise RepositoryBranchesFailedError(identifier=exc.identifier, report=report, message=exc.message) from None
-        return report
+        return SyncOutcome(report=report, reconciled=tuple(reconciled), failed=tuple(failed_imports))

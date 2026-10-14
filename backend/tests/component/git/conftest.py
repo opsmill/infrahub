@@ -20,6 +20,7 @@ from infrahub import config
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
+from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot, core_models
 from infrahub.database import InfrahubDatabase
 from infrahub.git import InfrahubRepository
@@ -37,8 +38,27 @@ def client() -> InfrahubClient:
 
 @pytest.fixture
 def mock_branch_all() -> Generator[AsyncMock]:
-    """Git sync queries all branches to skip merged/read-only ones; stub the SDK call with no such branches."""
-    with patch("infrahub_sdk.branch.InfrahubBranchManager.all", new_callable=AsyncMock, return_value={}) as mock:
+    """Answer the sync's listing of Infrahub branches with the branches the test registered, all of them open.
+
+    The sync reads the listing to skip merged branches and to name the branches it advances.
+    """
+
+    async def list_registered_branches() -> dict[str, BranchData]:
+        return {
+            name: BranchData(
+                id=str(branch.uuid),
+                name=name,
+                sync_with_git=branch.sync_with_git,
+                is_default=branch.is_default,
+                has_schema_changes=False,
+                branched_from=str(branch.branched_from),
+            )
+            for name, branch in registry.branch.items()
+        }
+
+    with patch(
+        "infrahub_sdk.branch.InfrahubBranchManager.all", new_callable=AsyncMock, side_effect=list_registered_branches
+    ) as mock:
         yield mock
 
 

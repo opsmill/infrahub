@@ -16,6 +16,7 @@ if TYPE_CHECKING:
         DateTime,
         DateTimeOptional,
         Dropdown,
+        DropdownOptional,
         HashedPassword,
         Integer,
         IntegerOptional,
@@ -128,6 +129,10 @@ class CoreGenericRepository(CoreNode):
     operational_status: Dropdown
     commit: StringOptional
     sync_status: Dropdown
+    last_rewrite_previous_commit: StringOptional
+    last_rewrite_commit: StringOptional
+    last_rewrite_at: DateTimeOptional
+    rewrite_count: IntegerOptional
     credential: RelationshipManager[CoreCredential]
     tags: RelationshipManager[BuiltinTag]
     transformations: RelationshipManager[CoreTransformation]
@@ -562,6 +567,15 @@ class CoreReadOnlyRepository(LineageOwner, LineageSource, CoreGenericRepository,
 class CoreRepository(LineageOwner, LineageSource, CoreGenericRepository, CoreTaskTarget):
     default_branch: String
     commit: StringOptional
+    delivery_status: DropdownOptional
+    delivery_failure_cause: DropdownOptional
+    delivery_error: StringOptional
+    delivery_queue: JSONAttributeOptional
+    delivery_held_regeneration: JSONAttributeOptional
+    delivery_last_abandonment: JSONAttributeOptional
+    delivery_last_delivered_commit: StringOptional
+    delivery_reverted: JSONAttributeOptional
+    delivery_progress: JSONAttributeOptional
 
 
 class CoreRepositoryGroup(CoreGroup):

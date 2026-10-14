@@ -1,4 +1,4 @@
-import { Card, CardContent, Tooltip } from "@infrahub/ui";
+import { Card, CardContent, CardHeader, Tooltip } from "@infrahub/ui";
 import {
   BoxIcon,
   CheckIcon,
@@ -24,7 +24,8 @@ interface BranchAttributesProps {
 
 export function BranchAttributes({ branch }: BranchAttributesProps) {
   return (
-    <Card className="w-fit">
+    <Card>
+      <CardHeader>Details</CardHeader>
       {/* biome-ignore lint/nursery/noTailwindArbitraryValue: structure: single-site intrinsic track list; the sizes are structural, not design values */}
       <CardContent className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5">
         <BranchAttributeLabel>

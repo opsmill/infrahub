@@ -59,6 +59,26 @@ CONVERSION_RESPONSE_COMMON_FIELDS = {
         "source_field_name": "sync_status",
         "relationship_cardinality": None,
     },
+    "last_rewrite_previous_commit": {
+        "is_mandatory": False,
+        "source_field_name": "last_rewrite_previous_commit",
+        "relationship_cardinality": None,
+    },
+    "last_rewrite_commit": {
+        "is_mandatory": False,
+        "source_field_name": "last_rewrite_commit",
+        "relationship_cardinality": None,
+    },
+    "last_rewrite_at": {
+        "is_mandatory": False,
+        "source_field_name": "last_rewrite_at",
+        "relationship_cardinality": None,
+    },
+    "rewrite_count": {
+        "is_mandatory": False,
+        "source_field_name": "rewrite_count",
+        "relationship_cardinality": None,
+    },
     "credential": {
         "is_mandatory": False,
         "source_field_name": "credential",
@@ -100,6 +120,23 @@ CONVERSION_RESPONSE_COMMON_FIELDS = {
         "source_field_name": "subscriber_of_groups",
         "relationship_cardinality": "many",
     },
+}
+
+DELIVERY_STATE_FIELDS = (
+    "delivery_status",
+    "delivery_failure_cause",
+    "delivery_error",
+    "delivery_queue",
+    "delivery_held_regeneration",
+    "delivery_last_abandonment",
+    "delivery_last_delivered_commit",
+    "delivery_reverted",
+    "delivery_progress",
+)
+
+CONVERSION_RESPONSE_DELIVERY_STATE_FIELDS = {
+    field_name: {"is_mandatory": False, "source_field_name": None, "relationship_cardinality": None}
+    for field_name in DELIVERY_STATE_FIELDS
 }
 
 
@@ -305,6 +342,7 @@ class TestConvertRepository(TestInfrahubApp):
                         "relationship_cardinality": None,
                     },
                     "commit": {"is_mandatory": False, "source_field_name": "commit", "relationship_cardinality": None},
+                    **CONVERSION_RESPONSE_DELIVERY_STATE_FIELDS,
                 }
             }
         }
@@ -356,7 +394,7 @@ class TestConvertRepository(TestInfrahubApp):
             if field_infos["source_field_name"] is not None:
                 mapping[field_name] = ConversionFieldInput(source_field=field_infos["source_field_name"])
             else:
-                assert field_name == "default_branch"
+                assert field_name in {"default_branch", *DELIVERY_STATE_FIELDS}
 
         mapping["default_branch"] = ConversionFieldInput(data=ConversionFieldValue(attribute_value=default_branch.name))
         mapping_dict = {field_name: model.model_dump(mode="json") for field_name, model in mapping.items()}
@@ -452,6 +490,7 @@ class TestConvertRepository(TestInfrahubApp):
                         "relationship_cardinality": None,
                     },
                     "commit": {"is_mandatory": False, "source_field_name": "commit", "relationship_cardinality": None},
+                    **CONVERSION_RESPONSE_DELIVERY_STATE_FIELDS,
                 }
             }
         }
@@ -492,7 +531,7 @@ class TestConvertRepository(TestInfrahubApp):
             if field_infos["source_field_name"] is not None:
                 mapping[field_name] = ConversionFieldInput(source_field=field_infos["source_field_name"])
             else:
-                assert field_name == "default_branch"
+                assert field_name in {"default_branch", *DELIVERY_STATE_FIELDS}
 
         mapping["default_branch"] = ConversionFieldInput(data=ConversionFieldValue(attribute_value=default_branch.name))
         mapping_dict = {field_name: model.model_dump(mode="json") for field_name, model in mapping.items()}

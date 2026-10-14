@@ -198,9 +198,9 @@ either case.
   broadcast it missed carried no correctness weight.
 - **A worker that has never seen the repository.** It clones from the remote and is correct by
   construction.
-- **Infrahub's own unpushed merge commit.** The writeback ordering fix removes this state, so no
-  guard against it is needed. Before that fix, an unconditional reset would silently discard a
-  merge commit held by one worker only. That is why the fix is a prerequisite.
+- **Infrahub's own unpushed merge commit.** The merge path pushes the merge commit before it
+  records it and resets the destination worktree when either step fails, so this state does not
+  arise and no guard against it is needed.
 - **A rewrite of a branch that is not the trunk notifies nobody.** It writes a record and emits no
   signal. This is deliberate. By the time the record is written the branch is reset, the workers
   have converged and the re-import has run, so nothing is outstanding and there is no action to
@@ -221,18 +221,42 @@ either case.
 - **Re-deriving content at a discarded commit.** This is not guaranteed and varies by worker. It is
   a pre-existing limitation, tracked separately. This work corrects the claim in the documentation,
   not the behaviour.
-- **A merged branch or a branch being deleted.** Synchronisation already excludes these before
-  reconciliation is reached. The behaviour is unchanged.
+- **A branch whose status refuses a commit.** A branch that needs a rebase, is being merged,
+  failed a merge, is merged or is being deleted is excluded before reconciliation is reached.
+  Synchronisation already excluded the merged and deleted ones; the others made the cycle fail
+  on the commit write.
 - **A deliberate change of tracking target.** Re-pointing a read-only repository to a new tag, or
   editing a repository's configured default branch, breaks lineage without rewriting anything. It
   is reconciled and not reported. User Story 6 covers it.
+- **An import of the latest commit during a read-only re-point.** The import a user asks for
+  carries no re-point flag. A run that still resolves the old ref records nothing. A run that takes
+  the lock after a change of `ref` and before the runs of that change, or after a pull writes a pin
+  that the ref does not hold and before the import that this write submits, records a false
+  rewrite. This is accepted: it needs a user action during a re-point, and a read-only repository
+  sends no trunk signal.
 - **A tracked ref that disappears from the remote.** This is an absent ref, not a lineage break. It
   keeps its current behaviour and writes no record.
-- **A branch left ahead of its remote.** After a rejected push the local branch holds commits the
-  remote does not. The remote head is then an ancestor of the imported commit. This is not a
-  rewrite. The branch MUST NOT be reset, because the reset would discard a commit that exists on
-  one worker only. The push-ordering work of IFC-1449 removes that state at its source. Until PR
-  #10465 reaches `develop`, every step that resets a worktree waits for it. See "Dependencies".
+- **A remote rewound onto an ancestor of the imported commit.** A force push, or a ref moved
+  backwards, can leave the remote head inside the history Infrahub already recorded. No write path
+  records a commit the remote never carried, so the remote discarded content here exactly as a
+  rewrite does. It is reconciled and recorded like any other rewrite, on every worker: a worktree
+  the remote head is an ancestor of was rewound too, and FR-001b resets it.
+- **A plain push that the synchronisation has not imported yet.** The check before the graph merge
+  compares each remote head with the graph commit for equality (FR-005d). It therefore refuses a
+  merge after a plain push to the source branch, or to the trunk of a repository whose branch
+  records a commit other than the commit of its trunk, not only after a rewrite. A branch created
+  from an older trunk is held too, even when it changed no file of that repository. The branch stays
+  open, and the merge goes through once the next cycle imports the head. Contract section 9 says why
+  the rule is equality and not ancestry.
+- **A delivery that IFC-3220 holds while the trunk moves.** IFC-3220 FR-023 forbids an import of a
+  branch while a delivery for that branch is pending, so the graph keeps the old trunk commit. When
+  the remote trunk moves in that time, the check before the graph merge (FR-005d) finds a remote
+  head the graph does not record. It refuses every merge of a branch that records a commit other
+  than the commit of the trunk of that repository, until the delivery is done. IFC-3220 expects the
+  opposite: in its User Story 2, scenario 2 queues a second merge behind the pending one, and
+  scenario 3 replays onto a remote trunk that advanced. The two rules conflict. This spec does not
+  decide which one wins. The decision is open and belongs to IFC-3220
+  (`dev/specs/ifc-3220-writeback-failure-handling/spec.md`).
 - **The commit Infrahub imported is no longer present in the local object database.** Ancestry
   cannot be tested. The branch is treated as diverged, which is the safe classification, and the
   record names the imported commit as the previous commit.
@@ -247,15 +271,18 @@ here. See "Out of Scope".
 #### Detection
 
 - **FR-001**: The system MUST classify a tracked ref's remote head against the imported commit by
-  ancestry. The classification MUST distinguish unchanged, fast-forward, local-ahead and diverged.
-  Equality alone MUST NOT be used.
-- **FR-001a**: The system MUST NOT treat a branch whose remote head is an ancestor of the imported
-  commit as a rewrite. Such a branch holds commits the remote does not. It MUST NOT be reset and
-  MUST NOT be recorded. Resetting it would discard a commit that exists on one worker only.
+  ancestry. The classification MUST distinguish unchanged, fast-forward and diverged. Equality
+  alone MUST NOT be used.
+- **FR-001a**: The system MUST treat a remote head that is an ancestor of the imported commit as a
+  lineage break, and MUST NOT treat it as unchanged or as a fast-forward. No write path records a
+  commit the remote never carried, so such a remote was rewound and content was discarded. The
+  branch MUST be reconciled and recorded like any other rewrite.
 - **FR-001b**: The system MUST keep two comparisons apart. Whether the history was rewritten is
   decided from the commit **recorded in the graph** for that branch. Whether a given worker's clone
   must move is decided from **that worker's own branch worktree**. The first drives the record and
-  the signal. The second drives the reset.
+  the signal. The second drives the reset. A worktree that already is the remote head, or is an
+  ancestor of it, MUST NOT be reset. A worktree the remote head is an ancestor of MUST be reset,
+  because the remote was rewound and nothing leaves a commit there that exists nowhere else.
 - **FR-001c**: A worker whose clone is stale MUST reset even when the graph already holds the
   remote's commit, and MUST record nothing when it does. Without this, every worker except the one
   that ran the reconciliation keeps the discarded history. Recording from it would produce one
@@ -275,18 +302,51 @@ here. See "Out of Scope".
   branch worktree **from the remote**. Convergence MUST NOT depend on receiving a notification.
   This covers the synchronisation collector and the convergence handler.
 - **FR-005a**: The merge path MUST fetch and compare both the source branch and the destination
-  branch against the remote before it merges. When either has diverged, it MUST refuse the merge
-  with a typed error naming a divergent remote history. It MUST NOT reconcile the branch itself.
-  The merge path reads its source commit from the local branch ref and advances the destination
-  worktree from local state, without contacting the remote, so FR-005 does not reach it.
+  branch against the remote before it merges. The merge path reads its source commit from the local
+  branch ref and advances the destination worktree from local state, without contacting the remote,
+  so FR-005 does not reach it. A branch whose clone is not the remote head is decided by its graph
+  commit:
+  - When the graph commit equals the remote head, only this clone is stale. The merge path MUST move
+    the branch onto that head and merge, whether the clone is behind, ahead or diverged.
+  - When the graph commit differs and the clone is ahead or diverged, the rewrite is not reconciled
+    yet. The merge path MUST refuse the merge with a typed error naming a divergent remote history.
+    It MUST NOT reconcile that branch itself.
+  - When the graph commit differs and the destination clone is on or behind its remote head, the
+    remote would reject a push onto an older trunk, and the record of a merge onto a head the graph
+    never imported would hide that head. The merge path MUST refuse the merge with the same typed
+    error.
+  - When the graph commit differs and the source clone is on or behind its remote head, the merge
+    path MUST move the source onto the graph commit when the remote history holds that commit, and
+    MUST merge the source as it is otherwise. In that last case the Git merge can hold a source that
+    differs from the one the graph merged, which is an accepted risk. When the merge does not use
+    the remote head of the source, the merge path MUST log a warning that names the commit it uses,
+    the remote head, and that the commits after it stay on the source branch.
 - **FR-005b**: The system MUST NOT push a commit the remote has already discarded. Merging a stale
   source branch into the trunk and pushing the result restores commits a rewrite removed. When a
   rewrite exists to remove a leaked credential, that restores the credential.
-- **FR-005c**: The merge path MUST NOT reset a diverged branch and then merge it. Doing so writes
-  the merge commit to the graph, so the next synchronisation cycle sees the graph and the remote
-  agree and classifies the branch unchanged. The rewrite is then never recorded, the trunk signal
-  never fires, and the rewritten content is never re-imported. Resetting the source also merges
-  content that was never imported at all.
+- **FR-005c**: The merge path MUST NOT reset a diverged branch and then merge it while the graph
+  commit of that branch differs from the remote head. Doing so writes the merge commit to the graph,
+  so the next synchronisation cycle sees the graph and the remote agree and classifies the branch
+  unchanged. The rewrite is then never recorded, the trunk signal never fires, and the rewritten
+  content is never re-imported. Resetting the source also merges content that was never imported at
+  all.
+- **FR-005d**: The Git merge runs after the graph merge, when the source branch is merged and is
+  never synchronised again, so a refusal there cannot clear by a retry. The branch merge MUST
+  therefore compare, before the graph merge, the remote heads of the source branch and of the trunk
+  of every repository whose merge runs in Git with the commits the graph records, and MUST refuse
+  the merge while one differs. A repository whose source branch records the commit that its trunk
+  records has nothing to merge in Git, and so has a repository where neither branch records a
+  commit, as after a failed first clone: the system MUST NOT run its Git merge, and MUST compare
+  only the remote head of its source branch. That refusal leaves the branch open, and the merge can
+  run again after the synchronisation imports the head. A remote that refuses the credentials of a
+  repository that needs a Git merge MUST block the merge, because that Git merge would fail the same
+  way after the graph merge. Any other failure to read a remote, and a remote not read before the
+  total deadline of the check, MUST be logged as a warning and MUST NOT block the merge. A refusal
+  of the Git merge itself, after a remote moved between the two checks, MUST say that the branch is
+  merged in Infrahub and not in Git, and how to finish the merge in Git. The user finishes that
+  merge in Git. The delivery queue of IFC-3220 does not recover it. After a rewrite of the source or
+  of the trunk, its FR-020 and FR-022 only mark such a delivery unreplayable, with a named cause.
+  After a plain push to the trunk between the two checks, IFC-3220 specifies no recovery.
 - **FR-006**: The worker-convergence broadcast MUST cover every branch reconciled in a cycle. It
   MUST be sent before a failed branch aborts the flow.
 - **FR-007**: A worker that reconciles itself MUST NOT record the commit and MUST NOT emit the
@@ -316,8 +376,9 @@ here. See "Out of Scope".
 #### Truthfulness of the error path
 
 - **FR-017**: When a pull fails for a reason the system cannot classify, the message MUST NOT claim
-  a merge conflict unless the system observed one. The divergent-branches case MUST get its own
-  message naming a divergent history.
+  a merge conflict unless the system observed one. No path runs `git pull`, so a pull never stops on
+  diverged branches. The merge guard carries the diverged case: its `RepositoryDivergentHistoryError`
+  MUST have its own message naming a divergent history.
 
 #### Failure handling and observability
 
@@ -347,10 +408,10 @@ here. See "Out of Scope".
 - **`CoreReadOnlyRepository`**: detected and recorded, never reconciled. It resolves a commit and
   creates a commit worktree instead of pulling a branch. The divergence failure this work removes
   cannot occur there.
-- **Ref classification**: a typed value with six cases. Unchanged, fast-forward, locally-ahead,
-  rewrite, re-target and remote-absent. It is a type and not a boolean, so that "diverged",
-  "re-targeted" and "ahead of the remote" cannot collapse into each other at a call site.
-  Locally-ahead is the one that protects an unpushed commit from being reset away.
+- **Ref classification**: a typed value with five cases. Unchanged, fast-forward, rewrite,
+  re-target and remote-absent. It is a type and not a boolean, so that "diverged" and
+  "re-targeted" cannot collapse into each other at a call site. Both reconcile the same way, and
+  only a rewrite is recorded and signalled.
 - **Trunk-rewrite signal**: one outbound event per rewrite of the configured default branch.
 - **Repository operational status**: unchanged. It describes whether the remote is reachable, which
   is a different phase.
@@ -390,8 +451,6 @@ No new node kind is introduced.
   is correct behaviour and not data loss.
 - Rewriting the history of a feature branch is ordinary practice and must be absorbed quietly.
   Rewriting the trunk of a synchronised repository is abnormal and must be reported.
-- The writeback ordering fix of PR #10465 lands and forward-merges before this work begins. Without
-  it, an unconditional reset would silently discard a merge commit that exists on one worker only.
 - Losing the ability to re-derive content at a superseded commit is acceptable. This work does not
   make it worse.
 - The writeback delivery queue of the writeback PRD does not exist yet. The PRD requirements that
@@ -399,12 +458,12 @@ No new node kind is introduced.
 
 ## Dependencies
 
-- **PR opsmill/infrahub#10465 (IFC-1449)**, on `pog-fix-merge-push-ordering-IFC-1449`, targets
-  `develop`, still a draft. It moves the push ahead of the graph write and resets the destination
-  worktree on failure. This branch comes off `develop`, so it carries the old ordering: every step
-  that resets a worktree waits for #10465 to reach `develop`.
-- The Gogs-backed live-remote test harness, which is already on `develop`. Only its two
-  server-side `pre-receive` hook helpers come from #10465, and nothing here needs them.
+- **The merge ordering of IFC-1449**, on `develop`. `InfrahubRepository.merge` pushes the merge
+  commit before it records it and resets the destination worktree when either step fails. Every
+  step here that resets a worktree relies on it: without it a rejected push would leave a merge
+  commit on one worker alone for the reset to discard.
+- The Gogs-backed live-remote test harness, which is already on `develop`, including its two
+  server-side `pre-receive` hook helpers.
 - The existing hard-reset primitive that pins a branch worktree to a named commit.
 - The existing worker-convergence broadcast and its handler.
 

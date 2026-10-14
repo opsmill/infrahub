@@ -192,8 +192,9 @@ must become "action required" after one attempt, with no automatic retry.
 5. **Given** a delivery attempt lost to a worker restart, **When** the next synchronisation cycle
    runs after the attempt went stale, **Then** a new attempt starts with no user action, and a user
    can also retry at once.
-6. **Given** a push to a remote that stops answering, **When** the bound of the Git command expires,
-   **Then** the attempt fails as transient and does not hang.
+6. **Given** a fetch or a push to an HTTP(S) remote that stops answering, **When** the transfer sends
+   no data for the bound of the Git command, **Then** the attempt fails as transient and does not
+   hang. A fetch or a push over SSH has no such bound.
 
 ---
 
@@ -299,6 +300,12 @@ unreplayable, with a cause that names the discarded source commit.
 
 ### Edge Cases
 
+- **A repository is converted to a read-only repository while a push waits.** The conversion deletes
+  the repository node, so it would drop the pending pushes and the held regeneration with no
+  abandonment record. The conversion is refused until the pushes are retried or abandoned and the
+  held regeneration is released. The check and the deletion hold the lock of the delivery state, so
+  a merge is queued either before the check, and the conversion is refused, or after the deletion,
+  and the merge fails on the deleted repository.
 - **A second merge lands while a delivery is outstanding.** It is appended to the queue and never
   replaces an earlier entry. One retry delivers both.
 - **The pending queue becomes unreplayable.** The remote destination advanced and a replayed merge
@@ -418,6 +425,11 @@ unreplayable, with a cause that names the discarded source commit.
   that varies by worker. Accepted and documented. The sibling spec says more.
 - **A repository with two hundred branches.** The delivery state lives on the default branch only,
   so any surface that lists it needs one read per repository, not one per branch.
+- **The merge check of IFC-3210 while a delivery is pending.** FR-023 keeps the graph on the old
+  trunk commit, so when the remote trunk moves, the check that IFC-3210 FR-005d runs before the graph
+  merge refuses every merge of a branch that records a commit other than the commit of the trunk of
+  that repository, against User Story 2 scenarios 2 and 3. The decision is open and belongs to this spec. The IFC-3210 spec records the conflict in
+  its edge cases.
 
 ## Requirements *(mandatory)*
 
@@ -444,7 +456,9 @@ system, and the new delivery path must keep them true.*
   MUST NOT automatically retry a credential, permission or branch-protection failure. A failure
   after the remote accepted the push counts as transient. Every Git command of a delivery attempt,
   outside the repository import, MUST be bounded in time, so that a remote that stops answering
-  produces a transient failure. FR-027 covers the import.
+  produces a transient failure. FR-027 covers the import. Note: the bound holds for a fetch, a push
+  and a remote branch deletion over HTTP(S). A transfer over SSH has no bound. A local Git command
+  is bounded where `ps` exists, and the backend image installs it (`research.md` R6).
 - **FR-005**: The system MUST keep, per repository and destination branch, an ordered queue of
   merges awaiting delivery. A later merge MUST be appended and MUST NOT displace an earlier one. An
   entry MUST hold the merge inputs, the remote source branch and the source commit that Infrahub
@@ -730,9 +744,11 @@ These were settled without asking. Three of them need confirmation, and say so.
     state. Without the rule, the view of that branch would show "action required" for ever.
 11. **FR-026 is added.** The PRD's further notes say that "delivery bookkeeping writes should carry a
     non-live mutation origin per 0016". This states the observable outcome instead of the mechanism.
-12. **FR-027 is added.** A worker restart, a lost workflow submission or a hung push would otherwise
-    leave a delivery pending for ever, with its regeneration held, and with no action available to a
-    user. SC-003 counts a lost worker as transient.
+12. **FR-027 is added.** A worker restart or a lost workflow submission would otherwise leave a
+    delivery pending for ever, with its regeneration held, and with no action available to a user.
+    SC-003 counts a lost worker as transient. A push that stops answering ends at its bound over
+    HTTP(S) (FR-004). Over SSH it has no bound and holds the repository lock, so the recovery waits
+    for it.
 13. **SC-008 and the second sentence of FR-014 are added.** A merge of a git-synced branch nearly
     always reaches the coalesced recompute before its first delivery attempt completes, so the hold
     is the normal path for such a merge. Without a short-lived narrowed selection, every such merge
@@ -744,7 +760,9 @@ These were settled without asking. Three of them need confirmation, and say so.
     automations on repository state, which is a much larger change.
 15. **After an abandonment, a kept source branch comes back as a new Infrahub branch.** The
     abandonment tells every worker to drop its local branch, so the result is the same on every
-    worker. The user then has the undelivered content as a branch and can merge it again, which
+    worker. A failed send is only logged. A worker that misses it keeps its local branch, and a
+    sync on that worker does not import the branch again, because it ignores an updated branch
+    with no Infrahub branch. A sync on any other worker imports it. The user then has the undelivered content as a branch and can merge it again, which
     softens the cost of decision 1. **To confirm with the product owner**: the alternative is to
     keep the branch on the remote only.
 16. **FR-017 accepts a wider hold.** Two consultation points cannot tell a merge-started run from

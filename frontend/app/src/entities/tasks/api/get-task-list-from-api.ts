@@ -39,9 +39,18 @@ export const GET_TASK_LIST = graphql(`
 
 export interface GetTaskListFromApiParams extends VariablesOf<typeof GET_TASK_LIST> {}
 
-export function getTaskListFromApi(variables?: GetTaskListFromApiParams) {
+export interface TaskRequestOptions {
+  silenceErrors?: boolean;
+}
+
+// A silenced caller renders its own error state, so the client's toast is skipped.
+export function getTaskListFromApi(
+  variables?: GetTaskListFromApiParams,
+  { silenceErrors = false }: TaskRequestOptions = {}
+) {
   return graphqlClient.query({
     query: GET_TASK_LIST,
     variables,
+    context: silenceErrors ? { processErrorMessage: () => {} } : undefined,
   });
 }

@@ -1,0 +1,117 @@
+{# Renders infrahub_sdk/exceptions/catalogue.py into the Python SDK submodule. #}
+# Generated from schema/error-catalogue.json in the opsmill/infrahub repository - DO NOT EDIT.
+# Catalogue version: {{ catalogue_version }}
+# Regenerate there with: uv run invoke backend.generate
+#
+# Stability: a "stable" code keeps its payload shape; an "evolving" code may still gain fields.
+from __future__ import annotations
+
+from collections.abc import Callable, Mapping
+{% if needs_datetime %}from datetime import datetime
+{% endif %}from typing import Any, ClassVar
+
+from pydantic import BaseModel, ConfigDict
+from typing_extensions import Self
+
+from .base import {{ base_imports | join(", ") }}
+
+__all__ = [
+{%- for name in exported_names %}
+    "{{ name }}",
+{%- endfor %}
+]
+{% for model in payload_models %}
+
+class {{ model.name }}(BaseModel):
+    """Payload a server-reported {{ model.code }} carries."""
+
+    # A newer server may add fields this SDK has never heard of; ignoring them keeps the code
+    # resolvable rather than failing validation.
+    model_config = ConfigDict(extra="ignore")
+{% for field in model.fields %}
+    {{ field.name }}: {{ field.type }}{% if field.default is not none %} = {{ field.default }}{% endif %}
+{%- endfor %}
+{% endfor %}
+{%- for exc in exception_classes %}
+
+class {{ exc.name }}({{ exc.parent }}):
+    """{{ exc.summary }}
+
+    {{ exc.description }}
+
+    Stability: {{ exc.stability }}.
+    """
+
+    CODE: ClassVar[str | None] = "{{ exc.code }}"
+    DATA_MODEL: ClassVar[type[BaseModel]] = {{ exc.model }}
+
+    code: str | None = "{{ exc.code }}"
+    http_status: int | None = {{ exc.http_status }}
+
+    def __init__(
+        self,
+        *,
+{%- for field in exc.fields %}
+        {{ field.name }}: {{ field.type }}{% if field.default is not none %} = {{ field.default }}{% endif %},
+{%- endfor %}
+        errors: list[dict[str, Any]] | None = None,
+        query: str | None = None,
+        variables: dict | None = None,
+        message: str | None = None,
+    ) -> None:
+{%- for field in exc.fields %}
+        self.{{ field.name }} = {{ field.name }}
+{%- endfor %}
+        super().__init__(errors=errors or [], query=query, variables=variables, message=message)
+
+    @classmethod
+    def from_payload(cls, payload: {{ exc.model }}) -> Self:
+        """Build the exception from the validated payload of a server-reported failure."""
+{%- if exc.fields %}
+        return cls({% for field in exc.fields %}{{ field.name }}=payload.{{ field.name }}{% if not loop.last %}, {% endif %}{% endfor %})
+{%- else %}
+        del payload
+        return cls()
+{%- endif %}
+{% endfor %}
+
+# Codes that map to a dedicated exception class. Authentication and permission codes are absent: the
+# SDK raises a generic class for those and carries the code on the instance.
+CODE_TO_EXCEPTION: dict[str, type[GraphQLError]] = {
+{%- for code, name in code_to_exception %}
+    "{{ code }}": {{ name }},
+{%- endfor %}
+}
+
+# Every code's payload model, including the codes that get no class, so a caller that observes one
+# can still validate what it carries.
+CODE_TO_DATA_MODEL: dict[str, type[BaseModel]] = {
+{%- for code, name in code_to_data_model %}
+    "{{ code }}": {{ name }},
+{%- endfor %}
+}
+
+{% for builder in builders %}
+
+def {{ builder.name }}(data: Mapping[str, Any]) -> GraphQLError:
+    return {{ builder.exception }}.from_payload({{ builder.model }}.model_validate(data))
+{% endfor %}
+
+# Each builder validates against its own code's model, so the payload type is never widened on the
+# way to the constructor that consumes it.
+_CODE_TO_BUILDER: dict[str, Callable[[Mapping[str, Any]], GraphQLError]] = {
+{%- for builder in builders %}
+    "{{ builder.code }}": {{ builder.name }},
+{%- endfor %}
+}
+
+
+def exception_from_payload(code: str, data: Mapping[str, Any]) -> GraphQLError | None:
+    """Build the exception a catalogued code names, or None where the SDK has no class for it.
+
+    Raises:
+        pydantic.ValidationError: when the payload does not match what the code declares.
+
+    """
+    builder = _CODE_TO_BUILDER.get(code)
+    return None if builder is None else builder(data)

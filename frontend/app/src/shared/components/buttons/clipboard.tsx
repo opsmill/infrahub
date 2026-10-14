@@ -19,8 +19,11 @@ export const Clipboard = (props: tClipboard) => {
   const { isCopied, copyToClipboard } = useCopyToClipboard();
 
   const handleCopy = async () => {
-    await copyToClipboard(value);
-    toast(<Alert message={alert} type={ALERT_TYPES.INFO} />);
+    if (await copyToClipboard(value)) {
+      toast(<Alert message={alert} type={ALERT_TYPES.INFO} />);
+      return;
+    }
+    toast(<Alert message="Could not copy the content" type={ALERT_TYPES.ERROR} />);
   };
 
   return (

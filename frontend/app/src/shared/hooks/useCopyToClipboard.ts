@@ -1,45 +1,33 @@
 import React from "react";
 
-function oldSchoolCopy(text: string) {
-  const textNode = document.createTextNode(text);
-  document.body.appendChild(textNode);
-  const range = document.createRange();
-  range.selectNode(textNode);
-  const selection = window.getSelection();
-  if (selection) {
-    selection.removeAllRanges();
-    selection.addRange(range);
-    document.execCommand("copy");
-    selection.removeAllRanges();
-  }
-  document.body.removeChild(textNode);
-}
+import { copyTextToClipboard } from "@/shared/utils/clipboard";
 
 const COPIED_FEEDBACK_DURATION = 2000;
 
 export function useCopyToClipboard() {
   const [isCopied, setIsCopied] = React.useState(false);
+  const [copyCount, setCopyCount] = React.useState(0);
+  const feedbackTimeout = React.useRef<ReturnType<typeof setTimeout>>(undefined);
+  const isMounted = React.useRef(false);
 
-  const copyToClipboard = React.useCallback(async (value: string) => {
-    function confirmCopied() {
-      setIsCopied(true);
-      setTimeout(() => setIsCopied(false), COPIED_FEEDBACK_DURATION);
-    }
-
-    if (!window.isSecureContext || !navigator.clipboard) {
-      oldSchoolCopy(value);
-      confirmCopied();
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(value);
-      confirmCopied();
-    } catch {
-      oldSchoolCopy(value);
-      confirmCopied();
-    }
+  React.useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+      clearTimeout(feedbackTimeout.current);
+    };
   }, []);
 
-  return { isCopied, copyToClipboard };
+  const copyToClipboard = async (value: string): Promise<boolean> => {
+    const hasCopied = await copyTextToClipboard(value);
+    // The clipboard write can settle after unmount, past the cleanup that clears the timer.
+    if (!hasCopied || !isMounted.current) return hasCopied;
+    setIsCopied(true);
+    setCopyCount((count) => count + 1);
+    clearTimeout(feedbackTimeout.current);
+    feedbackTimeout.current = setTimeout(() => setIsCopied(false), COPIED_FEEDBACK_DURATION);
+    return true;
+  };
+
+  return { isCopied, copyCount, copyToClipboard };
 }

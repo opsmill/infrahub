@@ -1,0 +1,1 @@
+A Python transform or check whose `class_name` is not defined in its module now fails the branch import with a message that names the entry, instead of being skipped silently and having its existing definition deleted from Infrahub.

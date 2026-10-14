@@ -11,6 +11,7 @@ from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.git import InfrahubRepository
 from tests.helpers.file_repo import FileRepo
+from tests.helpers.flow import call_in_flow
 from tests.helpers.schema import load_schema
 from tests.integration.proposed_change.artifact_regen_harness import ArtifactRegenGateHarness
 
@@ -91,7 +92,7 @@ class TestArtifactRegenE2E(ArtifactRegenGateHarness):
         )
 
         commit = repo.get_commit_value(branch_name="main")
-        config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[call-overload]
+        config_file = await call_in_flow(lambda: repo.get_repository_config(branch_name="main", commit=commit))
         assert config_file
 
         await repo.import_all_graphql_query(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]

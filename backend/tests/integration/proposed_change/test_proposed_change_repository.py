@@ -103,6 +103,7 @@ class TestProposedChangePipelineRepository(TestInfrahubApp):
         expected_validators = [
             "Data Integrity",
             "Schema Integrity",
+            "Repository Validator: car-dealership",
             "Check: car_description_check",
             "Check: owner_age_check",
             "Generator Validator: cartags",

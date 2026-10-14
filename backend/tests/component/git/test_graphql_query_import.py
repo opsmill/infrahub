@@ -21,6 +21,7 @@ from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.git.integrator import InfrahubRepositoryIntegrator
 from tests.constants import FIXTURE_REPOS_DIR
+from tests.helpers.flow import call_in_flow
 from tests.helpers.git import clone_repository
 from tests.helpers.test_client import dummy_async_request
 
@@ -65,7 +66,7 @@ async def _import_queries(
     """
     if commit is None:
         commit = repo.get_commit_value(branch_name=branch_name)
-    config_file = await repo.get_repository_config(branch_name=branch_name, commit=commit)
+    config_file = await call_in_flow(lambda: repo.get_repository_config(branch_name=branch_name, commit=commit))
 
     rendered: dict[str, str] = {}
 
@@ -144,7 +145,7 @@ async def test_unresolved_fragment_raises(
 ) -> None:
     """A query that spreads an undeclared fragment must raise FragmentNotFoundError during import."""
     commit = fragment_repo.get_commit_value(branch_name="main")
-    config_file = await fragment_repo.get_repository_config(branch_name="main", commit=commit)
+    config_file = await call_in_flow(lambda: fragment_repo.get_repository_config(branch_name="main", commit=commit))
     config_file.queries.append(
         InfrahubRepositoryGraphQLConfig(
             name="query_missing_fragment", file_path=Path("queries/query_missing_fragment.gql")
@@ -160,7 +161,7 @@ async def test_missing_fragment_file_raises_with_path(
 ) -> None:
     """A declared fragment file that doesn't exist on disk must raise FragmentFileNotFoundError with the missing path."""
     commit = fragment_repo.get_commit_value(branch_name="main")
-    config_file = await fragment_repo.get_repository_config(branch_name="main", commit=commit)
+    config_file = await call_in_flow(lambda: fragment_repo.get_repository_config(branch_name="main", commit=commit))
     config_file.graphql_fragments = [
         InfrahubRepositoryFragmentConfig(name="missing_file", file_path=Path("fragments/does_not_exist.gql"))
     ]

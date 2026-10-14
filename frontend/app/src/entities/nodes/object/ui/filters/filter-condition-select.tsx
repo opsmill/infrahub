@@ -62,6 +62,8 @@ export const METADATA_USER_FILTER_CONDITION_OPTIONS: Array<{
 
 export interface FilterConditionSelectProps extends SelectProps<string> {
   filterType: FilterDefinition["type"] | "datetime";
+  /** Narrows the menu to the conditions the caller's backend contract is able to honour. */
+  filterConditions?: readonly FilterCondition[];
 }
 
 function getFilterConditionOptions(filterType: FilterConditionSelectProps["filterType"]) {
@@ -81,7 +83,22 @@ function getFilterConditionOptions(filterType: FilterConditionSelectProps["filte
   }
 }
 
-export function FilterConditionSelect({ filterType, ...props }: FilterConditionSelectProps) {
+export function getAvailableFilterConditions(
+  filterType: FilterConditionSelectProps["filterType"],
+  filterConditions?: readonly FilterCondition[]
+) {
+  const options = getFilterConditionOptions(filterType);
+
+  return filterConditions
+    ? options.filter((option) => filterConditions.includes(option.key))
+    : options;
+}
+
+export function FilterConditionSelect({
+  filterType,
+  filterConditions,
+  ...props
+}: FilterConditionSelectProps) {
   return (
     <Select
       defaultValue="is any of"
@@ -92,7 +109,10 @@ export function FilterConditionSelect({ filterType, ...props }: FilterConditionS
     >
       <SelectTrigger className="h-auto min-h-auto border-transparent bg-transparent px-1 py-0" />
 
-      <SelectList items={getFilterConditionOptions(filterType)} width="content">
+      <SelectList
+        items={getAvailableFilterConditions(filterType, filterConditions)}
+        width="content"
+      >
         {(item) => <SelectItem>{item.label}</SelectItem>}
       </SelectList>
     </Select>

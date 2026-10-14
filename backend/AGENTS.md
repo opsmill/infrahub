@@ -128,6 +128,7 @@ Each entry says *when* to load it — open the doc before working in that area.
 - `dev/knowledge/backend/merge-failure-recovery.md` - Failed-merge detection and range rollback, and the invariants that make a blind range revert correct; read before changing merge locking, write scoping, timestamping, or vertex metadata handling
 - `dev/knowledge/backend/events.md` - Events system; read when adding or changing an event
 - `dev/knowledge/backend/async-tasks.md` - Prefect workflows, priority lanes, failure/best-effort handling; read before creating or changing a workflow
+- `dev/knowledge/backend/task-workers.md` - How task workers poll, reserve, claim and start flow runs; read before changing the worker or diagnosing a run that waits before it starts
 - `dev/knowledge/backend/message-bus.md` - Message bus system; read when adding or changing a message
 - `dev/knowledge/backend/telemetry.md` - Anonymous usage telemetry (categories, windowing, retention, degradation); read when adding or changing telemetry metrics or the collection window
 - `dev/knowledge/backend/webhooks.md` - Webhook delivery and failure classification; read when touching webhook delivery
@@ -136,6 +137,7 @@ Each entry says *when* to load it — open the doc before working in that area.
 - `dev/knowledge/backend/templates.md` - Object template generation and application; read when touching templates
 - `dev/knowledge/backend/code-generation.md` - Generated-file pipeline (protocols, schema, SDK); read before/after changing event, schema, CLI, or config code
 - `dev/knowledge/backend/git-sync.md` - Remote branch import/mapping and git error surfacing; read when touching repository sync or debugging branch-import behavior
+- `dev/knowledge/backend/git-push-queue.md` - The push queue of a read-write repository: delivery, retry, abandon, the imports that wait, the regeneration barrier; read when touching the push of a merge or a path that imports the default branch
 
 ### Guides (How to do X)
 

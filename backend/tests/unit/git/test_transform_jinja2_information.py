@@ -6,23 +6,11 @@ import pytest
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import CoreTransformJinja2
-from infrahub_sdk.schema import NodeSchemaAPI
 
-from infrahub.core.schema import SchemaRoot, core_models, internal_schema
-from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.git.integrator import InfrahubRepositoryIntegrator, InfrahubRepositoryJinja2
+from tests.helpers.schema.core_api import load_core_node_schema_api
 
-
-def _load_core_node_schema(kind: str) -> NodeSchemaAPI:
-    schema_branch = SchemaBranch(cache={}, name="test")
-    schema_branch.load_schema(schema=SchemaRoot(**internal_schema))
-    schema_branch.load_schema(schema=SchemaRoot(**core_models))
-    # Flatten inherited attributes/relationships so the node schema carries the full field set.
-    schema_branch.process_inheritance()
-    return NodeSchemaAPI(**schema_branch.get(name=kind, duplicate=False).model_dump())
-
-
-TRANSFORM_JINJA2_SCHEMA = _load_core_node_schema("CoreTransformJinja2")
+TRANSFORM_JINJA2_SCHEMA = load_core_node_schema_api("CoreTransformJinja2")
 EXISTING_TRANSFORM_ID = "a0d4c22a-5f60-4bf9-a53f-f9a335420492"
 
 

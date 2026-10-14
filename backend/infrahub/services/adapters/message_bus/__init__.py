@@ -63,7 +63,19 @@ class InfrahubMessageBus(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass]) -> ResponseClass:
+    async def rpc(
+        self,
+        message: InfrahubMessage,
+        response_class: type[ResponseClass],
+        timeout: float | None = None,  # noqa: ASYNC109 part of the published bus contract
+    ) -> ResponseClass:
+        """Send a message and wait for its reply, for `timeout` seconds or the configured default when None.
+
+        Raises:
+            WorkerTimeoutError: When no worker answered in time. An implementation that replies
+                in-process never waits and so never raises it.
+
+        """
         raise NotImplementedError()
 
     async def send(self, message: InfrahubMessage, delay: MessageTTL | None = None, is_retry: bool = False) -> None:
