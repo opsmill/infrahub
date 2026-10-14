@@ -20,7 +20,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError, WorkerTimeoutError
-from infrahub.git.state.cache_keys import refs_check_last_key
+from infrahub.git.state.cache_keys import activity_last_run_key, activity_run_key, refs_check_last_key
 from infrahub.git.state.models import (
     BranchDriftResult,
     BranchDriftRow,
@@ -40,6 +40,7 @@ from infrahub.message_bus.messages.git_branch_heads_get import (
     GitBranchHeadsGetResponseData,
 )
 from infrahub.services import InfrahubServices
+from infrahub.services.adapters.cache.redis import RedisCache
 from tests.adapters.cache import MemoryCache, UnreachableCache
 from tests.adapters.message_bus import BusRecorder
 from tests.helpers.graphql import graphql_query
@@ -1822,3 +1823,286 @@ async def test_drift_offers_no_filtering_ordering_or_counting(
         {"name": "unavailable", "args": []},
         {"name": "edges", "args": []},
     ]
+
+
+ACTIVITY_QUERY = """
+query RepositoryActivity($id: String!) {
+  InfrahubRepositoryActivity(id: $id) {
+    repository_id
+    active_runs { edges { node { run_id operation phase branch_name worker_id started_at updated_at } } }
+    last_runs { edges { node { operation started_at finished_at branches { edges { node { branch_name outcome } } } } } }
+    lock { worker_id requested_at }
+  }
+}
+"""
+
+
+def activity_run_record(
+    repository_id: str, run_id: str, started_at: str, phase: str | None, branch_name: str | None
+) -> str:
+    return json.dumps(
+        {
+            "run_id": run_id,
+            "repository_id": repository_id,
+            "operation": "sync",
+            "phase": phase,
+            "branch_name": branch_name,
+            "worker_id": "worker-1",
+            "started_at": started_at,
+            "updated_at": started_at,
+        }
+    )
+
+
+def last_run_record(operation: str, finished_at: str, branches: list[tuple[str, str]]) -> str:
+    return json.dumps(
+        {
+            "operation": operation,
+            "started_at": "2026-09-08T09:00:00Z",
+            "finished_at": finished_at,
+            "branches": [{"branch_name": name, "outcome": outcome} for name, outcome in branches],
+        }
+    )
+
+
+class ExpiringOnReadCache(MemoryCache):
+    """Lists every key, then reads the keys in `expire_on_read` as expired, as when a record expires in between."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.expire_on_read: set[str] = set()
+
+    async def get_values(self, keys: list[str]) -> list[str | None]:
+        return [None if key in self.expire_on_read else self.storage.get(key) for key in keys]
+
+
+async def query_activity(
+    db: InfrahubDatabase, branch: Branch, service: InfrahubServices, session: AccountSession, repository_id: str
+) -> dict[str, Any]:
+    response = await graphql_query(
+        query=ACTIVITY_QUERY,
+        db=db,
+        branch=branch,
+        service=service,
+        variables={"id": repository_id},
+        account_session=session,
+    )
+    assert not response.errors
+    assert response.data
+    return response.data["InfrahubRepositoryActivity"]
+
+
+async def test_activity_of_an_idle_repository_on_redis(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    repository: Node,
+    redis: dict[int, int] | None,
+) -> None:
+    if config.SETTINGS.cache.driver != config.CacheDriver.Redis:
+        pytest.skip("Must use Redis to run this test")
+    service = await InfrahubServices.new(database=db, message_bus=BusRecorder(), cache=RedisCache())
+
+    activity = await query_activity(
+        db=db, branch=default_branch, service=service, session=session_admin, repository_id=repository.id
+    )
+
+    assert activity == {
+        "repository_id": repository.id,
+        "active_runs": {"edges": []},
+        "last_runs": {"edges": []},
+        "lock": None,
+    }
+
+
+async def test_activity_lists_every_run_working_on_the_repository_oldest_first(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    service_with_cache: tuple[InfrahubServices, MemoryCache],
+    repository: Node,
+) -> None:
+    service, cache = service_with_cache
+    cache.storage[activity_run_key(repository_id=repository.id, run_id="run-b")] = activity_run_record(
+        repository_id=repository.id,
+        run_id="run-b",
+        started_at="2026-09-08T10:05:00Z",
+        phase="building",
+        branch_name=default_branch.name,
+    )
+    cache.storage[activity_run_key(repository_id=repository.id, run_id="run-a")] = activity_run_record(
+        repository_id=repository.id,
+        run_id="run-a",
+        started_at="2026-09-08T10:00:00Z",
+        phase="fetching",
+        branch_name=None,
+    )
+    cache.storage[activity_run_key(repository_id="other-repository", run_id="run-c")] = activity_run_record(
+        repository_id="other-repository",
+        run_id="run-c",
+        started_at="2026-09-08T10:00:00Z",
+        phase=None,
+        branch_name=None,
+    )
+
+    activity = await query_activity(
+        db=db, branch=default_branch, service=service, session=session_admin, repository_id=repository.id
+    )
+
+    assert activity["active_runs"] == {
+        "edges": [
+            {
+                "node": {
+                    "run_id": "run-a",
+                    "operation": "SYNC",
+                    "phase": "FETCHING",
+                    "branch_name": None,
+                    "worker_id": "worker-1",
+                    "started_at": "2026-09-08T10:00:00+00:00",
+                    "updated_at": "2026-09-08T10:00:00+00:00",
+                }
+            },
+            {
+                "node": {
+                    "run_id": "run-b",
+                    "operation": "SYNC",
+                    "phase": "BUILDING",
+                    "branch_name": default_branch.name,
+                    "worker_id": "worker-1",
+                    "started_at": "2026-09-08T10:05:00+00:00",
+                    "updated_at": "2026-09-08T10:05:00+00:00",
+                }
+            },
+        ]
+    }
+
+
+async def test_activity_skips_a_run_that_expires_between_listing_and_reading(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    repository: Node,
+) -> None:
+    cache = ExpiringOnReadCache()
+    service = await InfrahubServices.new(database=db, message_bus=BusRecorder(), cache=cache)
+    for run_id in ("run-kept", "run-expired"):
+        cache.storage[activity_run_key(repository_id=repository.id, run_id=run_id)] = activity_run_record(
+            repository_id=repository.id,
+            run_id=run_id,
+            started_at="2026-09-08T10:00:00Z",
+            phase="fetching",
+            branch_name=None,
+        )
+    cache.expire_on_read.add(activity_run_key(repository_id=repository.id, run_id="run-expired"))
+
+    activity = await query_activity(
+        db=db, branch=default_branch, service=service, session=session_admin, repository_id=repository.id
+    )
+
+    assert [edge["node"]["run_id"] for edge in activity["active_runs"]["edges"]] == ["run-kept"]
+
+
+async def test_activity_answers_the_same_for_the_repository_name_as_for_its_id(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    service_with_cache: tuple[InfrahubServices, MemoryCache],
+    repository: Node,
+) -> None:
+    service, cache = service_with_cache
+    cache.storage[activity_run_key(repository_id=repository.id, run_id="run-a")] = activity_run_record(
+        repository_id=repository.id,
+        run_id="run-a",
+        started_at="2026-09-08T10:00:00Z",
+        phase="fetching",
+        branch_name=None,
+    )
+
+    by_name = await query_activity(
+        db=db, branch=default_branch, service=service, session=session_admin, repository_id=REPOSITORY_NAME
+    )
+    by_id = await query_activity(
+        db=db, branch=default_branch, service=service, session=session_admin, repository_id=repository.id
+    )
+
+    assert by_name == by_id
+    assert by_name["repository_id"] == repository.id
+    assert [edge["node"]["run_id"] for edge in by_name["active_runs"]["edges"]] == ["run-a"]
+
+
+async def test_activity_reports_the_holder_of_the_repository_lock(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    service_with_cache: tuple[InfrahubServices, MemoryCache],
+    repository: Node,
+) -> None:
+    service, cache = service_with_cache
+    cache.storage[f"lock.repository.{REPOSITORY_NAME}"] = "2026-09-08T10:30:00.000000Z::worker-9"
+
+    activity = await query_activity(
+        db=db, branch=default_branch, service=service, session=session_admin, repository_id=repository.id
+    )
+
+    assert activity["lock"] == {"worker_id": "worker-9", "requested_at": "2026-09-08T10:30:00+00:00"}
+    assert activity["active_runs"] == {"edges": []}
+
+
+async def test_activity_lists_one_last_run_per_operation_newest_first(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    service_with_cache: tuple[InfrahubServices, MemoryCache],
+    repository: Node,
+) -> None:
+    service, cache = service_with_cache
+    cache.storage[activity_last_run_key(repository_id=repository.id, operation="sync")] = last_run_record(
+        operation="sync",
+        finished_at="2026-09-08T10:00:00Z",
+        branches=[(default_branch.name, "imported"), ("deleted-branch", "failed")],
+    )
+    cache.storage[activity_last_run_key(repository_id=repository.id, operation="add")] = last_run_record(
+        operation="add", finished_at="2026-09-08T11:00:00Z", branches=[(default_branch.name, "failed")]
+    )
+    cache.storage[activity_last_run_key(repository_id=repository.id, operation="reimport")] = last_run_record(
+        operation="reimport", finished_at="2026-09-08T09:30:00Z", branches=[]
+    )
+
+    activity = await query_activity(
+        db=db, branch=default_branch, service=service, session=session_admin, repository_id=repository.id
+    )
+
+    assert activity["last_runs"] == {
+        "edges": [
+            {
+                "node": {
+                    "operation": "ADD",
+                    "started_at": "2026-09-08T09:00:00+00:00",
+                    "finished_at": "2026-09-08T11:00:00+00:00",
+                    "branches": {"edges": [{"node": {"branch_name": default_branch.name, "outcome": "FAILED"}}]},
+                }
+            },
+            {
+                "node": {
+                    "operation": "SYNC",
+                    "started_at": "2026-09-08T09:00:00+00:00",
+                    "finished_at": "2026-09-08T10:00:00+00:00",
+                    "branches": {"edges": [{"node": {"branch_name": default_branch.name, "outcome": "IMPORTED"}}]},
+                }
+            },
+            {
+                "node": {
+                    "operation": "REIMPORT",
+                    "started_at": "2026-09-08T09:00:00+00:00",
+                    "finished_at": "2026-09-08T09:30:00+00:00",
+                    "branches": {"edges": []},
+                }
+            },
+        ]
+    }

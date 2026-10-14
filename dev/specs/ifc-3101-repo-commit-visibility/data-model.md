@@ -309,11 +309,20 @@ user would read it to mean, and null for a read-only repository whose remote has
 
 | Kind | Attribute | Branch support | New choice | Written by |
 | --- | --- | --- | --- | --- |
-| `CoreGenericRepository` | `sync_status` (Dropdown) | LOCAL | `error-ref-missing`, label "Tracked Ref Missing" | the read-only refs check only (FR-030) |
+| `CoreGenericRepository` | `sync_status` (Dropdown) | LOCAL | `error-ref-missing`, label "Tracked Ref Missing" | the read-only refs check, and kept by "Reimport current commit" while the ref is missing (FR-030) |
 
-Set on every Infrahub branch whose `ref` the check finds absent from the remote, cleared when a later
-check finds it. The import pipeline writes `syncing`, `in-sync` and `error-import` and must not move a
-branch off `error-ref-missing` while its ref is still missing. Never touches `commit` or `ref`.
+Set when the check finds a tracked ref absent from the remote, on the default branch if it tracks that
+ref and on every other Infrahub branch that holds its own `ref` naming it. A branch that inherits the
+default branch's `ref` is never marked. The check writes only on a change and never clears the value.
+Only a successful import clears it, which a reimport of the current commit achieves once the ref is
+restored or `ref` is edited: that reimport lists the ref the branch tracks on the remote and keeps the
+value while the remote does not list it or cannot be listed, unless the ref is the hash, whole or
+abbreviated, of the commit being imported. "Import latest commit" fails for a tag
+while the tag is still missing; for a branch it can succeed from the worker's own copy of the branch
+(FR-030). A ref that is a commit hash is never marked. `error-ref-missing`
+and `error-import` may replace each other. The value fails the proposed-change check and blocks the
+merge, decided through the same verdict property as a failed import, and both messages name the ref.
+Never touches `commit` or `ref`.
 
 ## Error catalogue addition
 

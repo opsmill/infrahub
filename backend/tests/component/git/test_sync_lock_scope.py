@@ -10,6 +10,7 @@ from tests.adapters.cache import MemoryCache
 from tests.adapters.delivery_state import build_idle_delivery_state
 from tests.adapters.lock import LockTimeline, RecordingImporter, RecordingLockRegistry
 from tests.adapters.repository_record_store import build_in_memory_recorder
+from tests.helpers.repository_activity import activity_run
 
 
 async def test_repository_lock_scopes_import_build_and_apply(
@@ -33,7 +34,8 @@ async def test_repository_lock_scopes_import_build_and_apply(
         state=build_idle_delivery_state(repository_id=str(git_repo_04.id)),
     )
 
-    await syncer.sync(git_repo_04)
+    async with activity_run() as run:
+        await syncer.sync(git_repo_04, activity=run)
 
     timeline.assert_not_held_at_checkpoint(f"repository.{git_repo_04.name}", "build")
     timeline.assert_held_at_checkpoint(f"repository.{git_repo_04.name}", "apply")

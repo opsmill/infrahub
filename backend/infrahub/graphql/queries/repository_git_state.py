@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, cast
 
 from graphene import Field, Int, String
+from pydantic import ValidationError as PydanticValidationError
 
 from infrahub import config
 from infrahub.core.constants import (
@@ -20,13 +22,15 @@ from infrahub.core.query.repository import BranchScope, RepositoryBranchValuesQu
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import NodeNotFoundError, ValidationError, WorkerTimeoutError
+from infrahub.git.activity.models import ActivityRunRecord, LastRunRecord, RepositoryActivityOperation
 from infrahub.git.branch_mapping import get_mapped_remote_branch, remote_branch_is_imported
-from infrahub.git.state.cache_keys import refs_check_last_key
+from infrahub.git.state.cache_keys import activity_last_run_key, activity_run_pattern, refs_check_last_key
 from infrahub.git.state.factory import build_repository_git_state_reader
 from infrahub.git.state.models import BranchHeadsRequest, BranchRef, CommitLogRequest
 from infrahub.git.state.reader import NOT_IMPLEMENTED_MESSAGE
 from infrahub.graphql.field_extractor import extract_graphql_fields
-from infrahub.graphql.types.repository import RepositoryBranchDrifts, RepositoryCommits
+from infrahub.graphql.types.repository import RepositoryActivity, RepositoryBranchDrifts, RepositoryCommits
+from infrahub.lock import get_lock_cache_key, get_requested_at_from_lock_token, get_worker_id_from_lock_token
 from infrahub.log import get_logger
 from infrahub.permissions.types import define_object_permission_from_branch
 
@@ -39,6 +43,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
     from infrahub.git.state.models import BranchDriftResult, CommitLogResult
     from infrahub.graphql.initialization import GraphqlContext
+    from infrahub.services.adapters.cache import InfrahubCache
 
 log = get_logger()
 
@@ -523,6 +528,121 @@ class RepositoryBranchDriftResolver:
 
         return payload
 
+
+async def _read_active_runs(cache: InfrahubCache, repository_id: str) -> list[ActivityRunRecord]:
+    keys = await cache.list_keys(filter_pattern=activity_run_pattern(repository_id=repository_id))
+    # An idle repository is the common case under polling, so it costs no second round trip.
+    if not keys:
+        return []
+    runs = []
+    # A record can expire between the listing and the read, which leaves its value empty.
+    for value in await cache.get_values(keys=keys):
+        if value is None:
+            continue
+        try:
+            runs.append(ActivityRunRecord.model_validate_json(value))
+        except PydanticValidationError:
+            log.warning("Ignoring an unreadable repository run record", repository_id=repository_id)
+    return sorted(runs, key=lambda run: run.started_at)
+
+
+async def _read_last_runs(cache: InfrahubCache, repository_id: str) -> list[LastRunRecord]:
+    keys = [
+        activity_last_run_key(repository_id=repository_id, operation=operation.value)
+        for operation in RepositoryActivityOperation
+    ]
+    last_runs = []
+    for value in await cache.get_values(keys=keys):
+        if value is None:
+            continue
+        try:
+            last_runs.append(LastRunRecord.model_validate_json(value))
+        except PydanticValidationError:
+            log.warning("Ignoring an unreadable repository last run record", repository_id=repository_id)
+    return sorted(last_runs, key=lambda last_run: last_run.finished_at, reverse=True)
+
+
+async def _read_lock(cache: InfrahubCache, repository_name: str) -> dict[str, Any] | None:
+    token = await cache.get(key=get_lock_cache_key(name=repository_name, namespace="repository"))
+    worker_id = get_worker_id_from_lock_token(token)
+    if worker_id is None:
+        return None
+    return {"worker_id": worker_id, "requested_at": get_requested_at_from_lock_token(token)}
+
+
+def _viewable_branch_names(graphql_context: GraphqlContext, kind: str, branch_names: set[str]) -> set[str]:
+    """Keep the names of the branches that still exist and that the caller may view."""
+    branches = [branch for name in branch_names if (branch := registry.branch.get(name)) is not None]
+    return {branch.name for branch in _viewable_branches(graphql_context=graphql_context, kind=kind, branches=branches)}
+
+
+class RepositoryActivityResolver:
+    @staticmethod
+    async def resolve(
+        root: dict,  # noqa: ARG004
+        info: GraphQLResolveInfo,
+        id: str,
+    ) -> dict[str, Any]:
+        graphql_context: GraphqlContext = info.context
+
+        repository = await load_repository_for_view(graphql_context=graphql_context, repository_id=id)
+        # The records are keyed by id, so a repository named in the request is read under its id.
+        repository_id = repository.get_id()
+        # The cache holds only the current state, so the requested time does not apply to these reads.
+        cache = graphql_context.active_service.cache
+        active_runs, last_runs, lock = await asyncio.gather(
+            _read_active_runs(cache=cache, repository_id=repository_id),
+            _read_last_runs(cache=cache, repository_id=repository_id),
+            _read_lock(cache=cache, repository_name=str(repository.name.value)),
+        )
+
+        recorded_branches = {run.branch_name for run in active_runs if run.branch_name is not None} | {
+            branch.branch_name for last_run in last_runs for branch in last_run.branches
+        }
+        viewable = _viewable_branch_names(
+            graphql_context=graphql_context, kind=repository.get_kind(), branch_names=recorded_branches
+        )
+
+        return {
+            "repository_id": repository_id,
+            "active_runs": {
+                "edges": [
+                    {"node": run.model_dump()}
+                    for run in active_runs
+                    if run.branch_name is None or run.branch_name in viewable
+                ]
+            },
+            "last_runs": {
+                "edges": [
+                    {
+                        "node": {
+                            "operation": last_run.operation,
+                            "started_at": last_run.started_at,
+                            "finished_at": last_run.finished_at,
+                            "branches": {
+                                "edges": [
+                                    {"node": branch.model_dump()}
+                                    for branch in last_run.branches
+                                    if branch.branch_name in viewable
+                                ]
+                            },
+                        }
+                    }
+                    for last_run in last_runs
+                ]
+            },
+            "lock": lock,
+        }
+
+
+InfrahubRepositoryActivity = Field(
+    RepositoryActivity,
+    id=String(required=True, description="ID or name of a read-write or read-only repository."),
+    description="What is running on a repository now, the last run of each operation, and which worker holds the "
+    "repository lock. The answer is the same on every branch.",
+    resolver=RepositoryActivityResolver.resolve,
+    required=True,
+)
 
 InfrahubRepositoryCommits = Field(
     RepositoryCommits,

@@ -341,6 +341,124 @@ async def test_requested_read(
     } == case.expected_fields_by_kind
 
 
+FILTERED_FIELDS_CASES = [
+    RequestedReadCase(
+        name="root_filters_on_an_attribute_and_a_relationship",
+        query="""
+        query {
+            TestCar(owner__name__value: "John", color__value: "red") {
+                edges { node { name { value } } }
+            }
+        }
+        """,
+        expected_fields_by_kind={
+            "TestCar": {"owner", "color"},
+            "TestElectricCar": {"owner", "color"},
+            "TestGazCar": {"owner", "color"},
+        },
+    ),
+    RequestedReadCase(
+        name="any_filter_selects_on_every_attribute",
+        query="""
+        query {
+            TestPerson(any__value: "John") {
+                edges { node { name { value } } }
+            }
+        }
+        """,
+        expected_fields_by_kind={"TestPerson": {"name", "height"}},
+    ),
+    RequestedReadCase(
+        name="display_label_filter_selects_on_display_label",
+        query="""
+        query {
+            TestPerson(display_label__value: "John") {
+                edges { node { name { value } } }
+            }
+        }
+        """,
+        expected_fields_by_kind={"TestPerson": {"display_label"}},
+    ),
+    RequestedReadCase(
+        name="arguments_that_select_no_field_are_left_out",
+        query="""
+        query {
+            TestPerson(ids: ["a"], limit: 1, offset: 0) {
+                edges { node { name { value } } }
+            }
+        }
+        """,
+        expected_fields_by_kind={},
+    ),
+    RequestedReadCase(
+        name="filters_on_a_traversed_relationship_apply_to_its_peer",
+        query="""
+        query {
+            TestPerson(name__value: "John") {
+                edges {
+                    node {
+                        cars(color__value: "red") {
+                            edges { node { name { value } } }
+                        }
+                    }
+                }
+            }
+        }
+        """,
+        expected_fields_by_kind={
+            "TestPerson": {"name"},
+            "TestCar": {"color"},
+            "TestElectricCar": {"color"},
+            "TestGazCar": {"color"},
+        },
+    ),
+]
+
+
+@pytest.mark.parametrize("case", FILTERED_FIELDS_CASES, ids=lambda case: case.name)
+async def test_filtered_fields_by_kind(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics: SchemaRoot, case: RequestedReadCase
+) -> None:
+    """Report, per kind, the attributes and relationships the query's filter arguments select on."""
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    analyzer = InfrahubGraphQLQueryAnalyzer(
+        query=case.query, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
+    )
+
+    assert analyzer.query_report.filtered_fields_by_kind == case.expected_fields_by_kind
+
+
+async def test_filtered_fields_by_kind_reports_the_hfid_filter(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+) -> None:
+    """A filter on ``hfid`` selects on the kind's ``human_friendly_id``."""
+    tshirt_hfid = deepcopy(TSHIRT)
+    tshirt_hfid.name = "TShirtHfid"
+    tshirt_hfid.human_friendly_id = ["name__value"]
+    registry.schema.register_schema(schema=SchemaRoot(nodes=[COLOR, tshirt_hfid]), branch=default_branch.name)
+    default_branch.update_schema_hash()
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    analyzer = InfrahubGraphQLQueryAnalyzer(
+        query="""
+        query {
+            TestingTShirtHfid(hfid: ["blue"]) {
+                edges { node { name { value } } }
+            }
+        }
+        """,
+        schema=gql_params.schema,
+        branch=default_branch,
+        schema_branch=schema_branch,
+    )
+
+    assert analyzer.query_report.filtered_fields_by_kind == {"TestingTShirtHfid": {"human_friendly_id"}}
+
+
 async def test_query_report(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics: SchemaRoot
 ) -> None:

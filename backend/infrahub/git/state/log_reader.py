@@ -14,7 +14,6 @@ from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from git import BadName
 from git.exc import GitCommandError
 from git.objects import Commit, Object
 from git.refs import Reference, TagReference
@@ -23,6 +22,7 @@ from infrahub.core.constants import InfrahubKind, RepositoryGitCondition, Reposi
 from infrahub.exceptions import RepositoryError, RepositoryInvalidFileSystemError
 from infrahub.git.base import InfrahubRepositoryBase
 from infrahub.git.models import GitRepositoryWarmUp
+from infrahub.git.ref_resolution import resolve_commit, resolve_pinned_commit
 from infrahub.log import get_logger
 from infrahub.workflows.catalogue import GIT_REPOSITORY_WARM_UP
 
@@ -295,35 +295,16 @@ def _open_validated_clone(repository: InfrahubRepositoryBase) -> Repo:
     return repository.get_git_repo_main()
 
 
-def _resolve_commit(repo: Repo, revisions: tuple[str, ...]) -> Commit | None:
-    """Return the first revision naming a commit the clone holds."""
-    for revision in revisions:
-        try:
-            return repo.commit(revision)
-        # An unknown name raises BadName and an unknown full hash raises ValueError.
-        except (BadName, ValueError):
-            continue
-    return None
-
-
 def _resolve_head(repo: Repo, git_ref: str, is_read_only: bool) -> Commit | None:
     """Return the commit the remote branch or tracked ref points at, as last fetched.
 
     A read-only repository may also be pinned to a commit hash. A bare ref is only accepted as
     that, never as a name, since a bare name also matches a local branch the remote has deleted.
     """
-    head = _resolve_commit(repo=repo, revisions=_head_candidates(git_ref=git_ref, is_read_only=is_read_only))
+    head = resolve_commit(repo=repo, revisions=_head_candidates(git_ref=git_ref, is_read_only=is_read_only))
     if head is not None or not is_read_only:
         return head
-    return _resolve_pinned_commit(repo=repo, git_ref=git_ref)
-
-
-def _resolve_pinned_commit(repo: Repo, git_ref: str) -> Commit | None:
-    """Return the commit a read-only ref names when the ref is a commit hash, never when it is a name."""
-    pinned = _resolve_commit(repo=repo, revisions=(git_ref,))
-    if pinned is not None and pinned.hexsha.startswith(git_ref.lower()):
-        return pinned
-    return None
+    return resolve_pinned_commit(repo=repo, git_ref=git_ref)
 
 
 def read_fetched_at(repo: Repo) -> datetime | None:
@@ -392,9 +373,7 @@ def _read_commit_log(repo: Repo, request: CommitLogRequest) -> CommitLogResult:
     is_read_only = request.repository_kind == InfrahubKind.READONLYREPOSITORY
     head = _resolve_head(repo=repo, git_ref=request.git_ref, is_read_only=is_read_only)
     imported = (
-        _resolve_commit(repo=repo, revisions=(request.imported_commit,))
-        if request.imported_commit is not None
-        else None
+        resolve_commit(repo=repo, revisions=(request.imported_commit,)) if request.imported_commit is not None else None
     )
     facts = _measure_facts(
         head=head.hexsha if head is not None else None,
@@ -472,7 +451,7 @@ def _read_branch_heads(repo: Repo, request: BranchHeadsRequest) -> BranchDriftRe
     # Many branches share a tracked commit and a remote head, so each lookup is made once per pass.
     @cache
     def resolve_imported(commit: str) -> str | None:
-        resolved = _resolve_commit(repo=repo, revisions=(commit,))
+        resolved = resolve_commit(repo=repo, revisions=(commit,))
         return resolved.hexsha if resolved is not None else None
 
     is_ancestor = cache(_is_ancestor_in(repo=repo))
@@ -485,7 +464,7 @@ def _read_branch_heads(repo: Repo, request: BranchHeadsRequest) -> BranchDriftRe
         head = _read_tag_head(repo=repo, git_ref=git_ref)
         if head is not None:
             return head
-        pinned = _resolve_pinned_commit(repo=repo, git_ref=git_ref)
+        pinned = resolve_pinned_commit(repo=repo, git_ref=git_ref)
         return pinned.hexsha if pinned is not None else None
 
     return BranchDriftResult(

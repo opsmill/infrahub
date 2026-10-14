@@ -16,6 +16,7 @@ from infrahub.core.registry import registry
 from infrahub.git.models import GitRepositoryAdd
 from infrahub.git.tasks import add_git_repository, sync_git_repo_with_origin_and_tag_on_failure
 from infrahub.workflows.constants import WorkflowTag
+from tests.helpers.repository_activity import activity_run
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -26,6 +27,7 @@ if TYPE_CHECKING:
     from prefect.client.orchestration import PrefectClient
 
     from infrahub.database import InfrahubDatabase
+    from infrahub.services.adapters.cache import InfrahubCache
 
 FLOW_RUN_LOGGER = "prefect.flow_runs"
 SKIPPED_BRANCH_WARNING_PREFIX = "Skipped remote branch"
@@ -89,18 +91,22 @@ async def run_sync_flow(
     name: str,
     location: str,
     operational_status: str = RepositoryOperationalStatus.ONLINE.value,
+    activity_cache: InfrahubCache | None = None,
 ) -> State:
-    return await run_flow_for_state(
-        sync_git_repo_with_origin_and_tag_on_failure,
-        parameters={
-            "client": client,
-            "repository_id": repository_id,
-            "repository_name": name,
-            "repository_location": location,
-            "operational_status": operational_status,
-            "infrahub_branch": registry.default_branch,
-        },
-    )
+    """Run the synchronization flow inside an activity run, which records to `activity_cache` when one is given."""
+    async with activity_run(repository_id=repository_id, cache=activity_cache) as run:
+        return await run_flow_for_state(
+            sync_git_repo_with_origin_and_tag_on_failure,
+            parameters={
+                "client": client,
+                "repository_id": repository_id,
+                "repository_name": name,
+                "repository_location": location,
+                "operational_status": operational_status,
+                "infrahub_branch": registry.default_branch,
+                "activity_run_id": run.run_id,
+            },
+        )
 
 
 async def run_flow_for_state(flow: Flow[..., Any], parameters: dict[str, Any]) -> State:

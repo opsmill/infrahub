@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING
 
 import pytest
@@ -12,7 +13,9 @@ from infrahub.core.constants import InfrahubKind, PermissionAction, PermissionDe
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.git.state.cache_keys import activity_last_run_key, activity_run_key
 from infrahub.services import InfrahubServices
+from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusRecorder
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.graphql import graphql_mutation, graphql_query
@@ -54,6 +57,17 @@ query RepositoryBranchDrift($id: String!) {
   }
 }
 """
+
+ACTIVITY_QUERY = """
+query RepositoryActivity($id: String!) {
+  InfrahubRepositoryActivity(id: $id) {
+    active_runs { edges { node { run_id } } }
+    last_runs { edges { node { branches { edges { node { branch_name outcome } } } } } }
+  }
+}
+"""
+
+UNKNOWN_ID = "18d39e83-1ef7-d650-5424-000000000000"
 
 CHECK_REFS_MUTATION = """
 mutation InfrahubReadOnlyRepositoryCheckRefs($id: String!) {
@@ -529,6 +543,115 @@ async def test_a_repository_kind_the_caller_cannot_view_is_reported_as_missing(
         made_up_id.errors[0].message
         == "Unable to find the node 18d39e83-1ef7-d650-5424-000000000000 / CoreGenericRepository in the database."
     )
+
+
+async def test_activity_is_refused_with_the_answer_for_an_unknown_id(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    service: InfrahubServices,
+    repository: Node,
+    read_only_repository: Node,
+) -> None:
+    outsider = await _account_session(db=db, name="activity-outsider", permissions=[])
+    read_write_viewer = await _account_session(
+        db=db,
+        name="activity-read-write-viewer",
+        permissions=[
+            ObjectPermission(
+                namespace="Core",
+                name="Repository",
+                action=PermissionAction.VIEW.value,
+                decision=PermissionDecision.ALLOW_ALL.value,
+            )
+        ],
+    )
+
+    async def errors(session: AccountSession, repository_id: str) -> list[str]:
+        response = await graphql_query(
+            query=ACTIVITY_QUERY,
+            db=db,
+            branch=default_branch,
+            service=service,
+            variables={"id": repository_id},
+            account_session=session,
+        )
+        assert response.data is None
+        return [error.message for error in response.errors or []]
+
+    denial = ["You do not have the following permission: object:Core:Repository:view:allow_default"]
+    assert await errors(session=outsider, repository_id=repository.id) == denial
+    assert await errors(session=outsider, repository_id=UNKNOWN_ID) == denial
+    assert await errors(session=read_write_viewer, repository_id=read_only_repository.id) == [
+        f"Unable to find the node {read_only_repository.id} / CoreGenericRepository in the database."
+    ]
+    assert await errors(session=read_write_viewer, repository_id=UNKNOWN_ID) == [
+        f"Unable to find the node {UNKNOWN_ID} / CoreGenericRepository in the database."
+    ]
+
+
+async def test_activity_leaves_out_the_branches_the_caller_cannot_view(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    repository: Node,
+) -> None:
+    branch = await create_branch(branch_name="branch2", db=db)
+    cache = MemoryCache()
+    service = await InfrahubServices.new(database=db, message_bus=BusRecorder(), cache=cache)
+    for run_id, branch_name in (("fetching", None), ("on-default", default_branch.name), ("on-branch2", branch.name)):
+        cache.storage[activity_run_key(repository_id=repository.id, run_id=run_id)] = json.dumps(
+            {
+                "run_id": run_id,
+                "repository_id": repository.id,
+                "operation": "sync",
+                "phase": "fetching" if branch_name is None else "building",
+                "branch_name": branch_name,
+                "worker_id": "worker-1",
+                "started_at": "2026-09-08T10:00:00Z",
+                "updated_at": "2026-09-08T10:00:00Z",
+            }
+        )
+    cache.storage[activity_last_run_key(repository_id=repository.id, operation="sync")] = json.dumps(
+        {
+            "operation": "sync",
+            "started_at": "2026-09-08T09:00:00Z",
+            "finished_at": "2026-09-08T09:01:00Z",
+            "branches": [
+                {"branch_name": default_branch.name, "outcome": "imported"},
+                {"branch_name": branch.name, "outcome": "failed"},
+            ],
+        }
+    )
+    session = await _account_session(
+        db=db,
+        name="default-branch-activity-viewer",
+        permissions=[
+            ObjectPermission(
+                namespace="Core",
+                name="Repository",
+                action=PermissionAction.VIEW.value,
+                decision=PermissionDecision.ALLOW_DEFAULT.value,
+            )
+        ],
+    )
+
+    response = await graphql_query(
+        query=ACTIVITY_QUERY,
+        db=db,
+        branch=default_branch,
+        service=service,
+        variables={"id": repository.id},
+        account_session=session,
+    )
+
+    assert not response.errors
+    assert response.data
+    activity = response.data["InfrahubRepositoryActivity"]
+    assert [edge["node"]["run_id"] for edge in activity["active_runs"]["edges"]] == ["fetching", "on-default"]
+    assert activity["last_runs"]["edges"][0]["node"]["branches"] == {
+        "edges": [{"node": {"branch_name": default_branch.name, "outcome": "IMPORTED"}}]
+    }
 
 
 async def test_check_refs_mutation_requires_update_permission(

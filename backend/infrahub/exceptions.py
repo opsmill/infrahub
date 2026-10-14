@@ -612,11 +612,25 @@ class MergeConflictsUnresolvedError(ValidationError):
 class MergeRepositoryImportError(ValidationError):
     """Raised when a branch cannot be merged because the objects a repository registered on it may not match it."""
 
-    def __init__(self, failed_repositories: list[str], incomplete_repositories: list[str]) -> None:
-        if not failed_repositories and not incomplete_repositories:
-            raise ValueError("A repository import refusal needs at least one failed or incomplete repository")
+    def __init__(
+        self,
+        failed_repositories: list[str],
+        incomplete_repositories: list[str],
+        ref_missing_repositories: dict[str, str | None],
+    ) -> None:
+        """`ref_missing_repositories` maps each repository name to the ref it tracks, or None when it is not known.
+
+        Raises:
+            ValueError: When no repository is given.
+
+        """
+        if not failed_repositories and not incomplete_repositories and not ref_missing_repositories:
+            raise ValueError(
+                "A repository import refusal needs at least one failed, incomplete or ref-missing repository"
+            )
         self.failed_repositories = failed_repositories
         self.incomplete_repositories = incomplete_repositories
+        self.ref_missing_repositories = ref_missing_repositories
 
         reasons = ["Cannot merge."]
         if failed_repositories:
@@ -630,7 +644,20 @@ class MergeRepositoryImportError(ValidationError):
                 f"{self._label(incomplete_repositories).title()} {self._quote(incomplete_repositories)} {verb} not "
                 f"finished importing: wait for the import, or reimport the current commit if it does not finish."
             )
+        if ref_missing_repositories:
+            names = sorted(ref_missing_repositories)
+            verb = "was" if len(names) == 1 else "were"
+            tracked_refs = ", ".join(self._name_tracked_ref(name, ref_missing_repositories[name]) for name in names)
+            reasons.append(
+                f"The tracked {tracked_refs} {verb} missing from the remote when last checked: restore the ref or "
+                f"edit the ref of the {self._label(names)}, then reimport the current commit."
+            )
         super().__init__(" ".join(reasons))
+
+    def _name_tracked_ref(self, repository_name: str, ref: str | None) -> str:
+        if ref is None:
+            return f"ref of repository '{repository_name}'"
+        return f"ref '{ref}' of repository '{repository_name}'"
 
     def _label(self, names: list[str]) -> str:
         return "repository" if len(names) == 1 else "repositories"

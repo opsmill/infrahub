@@ -342,6 +342,93 @@ The check before the lock still raises on a broken copy rather than replacing it
 The lock is reentrant per context, so a caller that already holds it for a wider critical section
 pays nothing extra.
 
+## Repository activity records
+
+The `InfrahubRepositoryActivity` query answers what is running on a repository across every branch.
+The per-branch statuses of a repository (`sync_status`, `internal_status`) each describe one branch,
+and its connectivity status (`operational_status`, the same on every branch) records no run, so the
+answer comes from records in the cache instead (`git/activity/`, keys in `git/state/cache_keys.py`).
+The design targets the Redis cache driver.
+
+- **A run record per run.** `RepositoryActivity.track` writes
+  `git:activity:run:{repository_id}:{run_id}` when a run starts, with a lifetime of 300 seconds, and a
+  background task rewrites it every 60 seconds. Each run has its own key, so two runs on one
+  repository never overwrite each other. The record holds the operation, the phase (`fetching`,
+  `building`, `applying`), the branch being built or applied, the worker and two times.
+- **The lifetime is several renewals long** because a git fetch runs synchronously and blocks the
+  event loop, which can delay a renewal by more than a minute. A fetch or a first clone that blocks
+  for longer than 300 seconds lets the record expire until the next renewal. A killed worker leaves a
+  record that expires within 300 seconds.
+- **Every exit removes the record.** When the run ends, by success, failure or cancellation, the
+  run leaves the per-process table and its renewal task is cancelled before anything is awaited. The
+  renewal task is then awaited, so it cannot write the record again, the last-run record is written
+  and the run record is deleted. That cleanup runs as a shielded task, because a cancel scope, such as
+  a flow timeout, cancels again at every await and would otherwise skip it. Every cache call is best
+  effort: a failure is logged and never fails the run.
+- **One last-run record per operation.** `git:activity:last:{repository_id}:{operation}` keeps the
+  most recent finished run of each operation for 30 days, so a periodic sync that imports nothing
+  does not hide the result of another operation. It lists only the branches the run changed or
+  failed on, by Infrahub branch name, and the last outcome of a branch wins. The syncer
+  reports collection and rewrite-record failures after its imports, so a branch whose commit was
+  imported but whose rewrite record failed is reported as failed. A run that fails before any branch
+  outcome, for example on a fetch that cannot reach the remote, is recorded with no branches. A run
+  whose work another run records calls `keep_last_run`, and the earlier last run stays in place.
+- **Which flows write them.** The periodic sync writes one `sync` run per repository, created in
+  `sync_remote_repository`. It covers the clone and default-branch import of the bootstrap and the
+  syncer run in the `sync-git-repo-with-origin` subflow. Adding a read-write repository writes an
+  `add` run. The syncer, `import_branch` and `RepositoryAdder.add` take the run as a required
+  `activity` argument and report their phases and branch outcomes through it.
+- **The flows outside the syncer record their own run.** Each one targets a single Infrahub branch.
+  It records the branch as imported once the import, the push or the merge succeeds, so a broadcast
+  that fails afterwards does not turn it into a failure, and as failed when the work before that
+  raises. A cancelled run lists no branch, and every finished run except a last-commit import that
+  imports nothing replaces the last run of its operation:
+  - `git-repository-import-object` writes a `reimport` run: `building` while the plan is built, then
+    `applying` once the repository lock is held. It has no `fetching` phase.
+  - `git-read-only-repository-import-last-commit` writes a `reimport` run: `fetching` once the lock
+    is held, then `building` and `applying` when it imports the objects of the commit. When the local
+    ref already points at the commit, only the commit is written and the run keeps the earlier
+    `reimport` last run, so it does not hide a failed import; the pull that the write submits imports
+    the objects. The local branch of a ref never moves, so once
+    the remote has moved past the commit the clone was created at, a branch ref is imported on every
+    run, while a fetch can move a tag. The run ends when the commit
+    is written, and that write submits the pull, which writes its own `pull` run.
+  - `git-repository-pull-read-only` writes a `pull` run and `git-repository-add-read-only` an `add`
+    run: `fetching` once the lock is held, then `building` and `applying` for each import. Adding an
+    active repository sets `fetching` again before it resolves the tracked ref.
+  - The task `git-branch-create` writes a `branch_create` run per repository, with no phase. A
+    branch that already existed in git lists no branch, and a repository skipped because it cannot
+    be read lists the branch as failed.
+  - `git-repository-merge` writes a `merge` run on the destination branch, with no phase. A
+    read-write repository delivers the merge through its push queue, so the run lists the branch as
+    imported only when the delivery pushed, and as failed when the delivery fails or the merge was
+    lost before it was queued. A delivery that pushes nothing, and a read-only repository whose
+    destination already holds the source ref and commit, list no branch.
+- **Read-only imports report their steps from inside the import.** `import_objects_from_files` takes
+  the run id, like the sync subflow, and sets `building` and `applying` itself, because the read-only
+  flows build and apply in that single subflow. `sync_from_remote` and `update_latest_commit` pass
+  the run on to it. Without a run id nothing is reported.
+- **The subflow receives the run id, not the run.** Subflow parameters are stored with the run, so
+  the subflow looks the run up by id in `ACTIVE_RUNS`, a per-process table in
+  `git/activity/factory.py`. The parent flow and the subflow therefore share one run object, and its
+  write lock keeps a renewal from writing back an older phase after a newer one.
+- **The repository lock is not part of the record.** In the syncer runs and the
+  `git-repository-import-object` run, the lock is held for one phase at a time, never for a whole
+  run, and the build phase runs without it. The read-only add, pull and last-commit import runs hold
+  it through every phase. The `branch_create` run holds it while it creates and pushes the branch,
+  records its commit and broadcasts it, and the delivery of a `merge` run while it replays, pushes,
+  records and broadcasts. The
+  query reports the lock holder separately, from the lock token (`{timestamp}::{worker_id}`). The
+  token is written before the worker waits for the lock, so its time is when the worker asked for
+  the lock (`requested_at`). Many flows take the lock without importing anything, so a held lock
+  does not mean that a run is active. The lock key uses the repository name, so a repository
+  renamed while a flow holds the lock does not report that lock.
+- **Reading the records.** The resolver lists the run keys with `list_keys`, which scans the whole
+  Redis keyspace, and returns early when it finds none, which saves a second round trip for an idle
+  repository. A record that expires between the listing and the read is skipped. The six last-run keys are known,
+  so they are read directly. The cache reads ignore the time-travel date. Branch names are mapped to
+  existing branches and filtered by the caller's view permission.
+
 ## Import failures
 
 A branch import is built by `build_import_plan` and applied by `apply_import_plan`. Each runs inside
