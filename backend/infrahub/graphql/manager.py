@@ -46,6 +46,7 @@ from .mutations.webhook import InfrahubWebhookMutation
 from .registry import registry
 from .resolvers.account_metadata import account_metadata_resolver
 from .resolvers.ipam import ipam_paginated_list_resolver
+from .resolvers.object_by_id import object_by_id_resolver
 from .resolvers.resolver import (
     account_resolver,
     ancestors_resolver,
@@ -391,8 +392,8 @@ class GraphQLSchemaManager:
         relationship_property = self.get_type(name="RelationshipProperty")
         for data_type in ATTRIBUTE_TYPES.values():
             gql_type = self.get_type(name=data_type.get_graphql_type_name())
-            gql_type._meta.fields["source"] = graphene.Field(data_source)
-            gql_type._meta.fields["owner"] = graphene.Field(data_owner)
+            gql_type._meta.fields["source"] = graphene.Field(data_source, resolver=object_by_id_resolver)
+            gql_type._meta.fields["owner"] = graphene.Field(data_owner, resolver=object_by_id_resolver)
             gql_type._meta.fields["updated_by"] = graphene.Field(
                 account_type, required=False, resolver=account_metadata_resolver
             )

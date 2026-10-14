@@ -125,9 +125,10 @@ is a silent no-op — the operator learns nothing. It is also one published-cont
 The pool is read apart from the stored source: the attribute query returns the tracking pool's uuid
 with the provenance of the value held (`MetadataOptions.TRACKING_POOL`, requested whenever `source` is
 selected on a `Number` or `NumberPool` attribute) into the attribute's `tracking_pool` property, and
-the GraphQL render loads that pool node and renders it in the `source` slot ahead of the stored
-source. The concrete GraphQL type comes from the loaded node, so assert the resolved kind in a test,
-not just the uuid. The stored source never holds the pool, so a save after a re-pool or a detach
+the attribute's `source` field resolver renders that pool in the `source` slot ahead of the stored
+source. The resolver, shared with `owner`, loads the objects a page's attributes name as their source or
+owner in one batch, pools and stored sources alike. The concrete GraphQL type comes from the loaded node, so assert the resolved
+kind in a test, not just the uuid. The stored source never holds the pool, so a save after a re-pool or a detach
 cannot write the pool back as a `HAS_SOURCE` edge. Python callers reading `get_source()` get the
 stored source only; the pool is reported by `tracking_pool`.
 
