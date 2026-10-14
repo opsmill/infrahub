@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.core.regeneration.models import DefinitionSelect
-from infrahub.core.regeneration.predicates import definition_changed, query_changed
+from infrahub.core.regeneration.predicates import definition_changed, query_changed, reads_kind
 
 from .models import GateResult
 
@@ -40,7 +40,7 @@ class DefinitionGate:
                 self.log.debug(outcome.reason)
         regenerate_all_members = query_outcome.matched or definition_outcome.matched
 
-        matches_modified_kind = any(definition.reads_kind(changed_model) for changed_model in modified_kinds)
+        matches_modified_kind = any(reads_kind(definition, changed_model) for changed_model in modified_kinds)
 
         select = DefinitionSelect.NONE
         select = select.add_flag(current=select, flag=DefinitionSelect.QUERY_CHANGED, condition=query_outcome.matched)

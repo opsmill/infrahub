@@ -137,15 +137,6 @@ class ProposedChangeArtifactDefinition(BaseModel):
     def instance_noun(self) -> str:
         return "artifacts"
 
-    def reads_kind(self, kind: str) -> bool:
-        """Whether a data change to ``kind`` is relevant because the query reads that kind.
-
-        An artifact query may read a kind through its Profile, so the profile-stripped kind matches too.
-        """
-        return kind in self.query_models or (
-            kind.startswith("Profile") and kind.replace("Profile", "", 1) in self.query_models
-        )
-
     @property
     def transform_location(self) -> str:
         if self.transform_kind == InfrahubKind.TRANSFORMJINJA2:

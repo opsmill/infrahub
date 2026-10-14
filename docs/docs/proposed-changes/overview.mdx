@@ -62,6 +62,8 @@ Learn more about [Checks & Validation](../checks/overview.mdx) and how to implem
 
 Infrahub will automatically run Transformations and generate artifacts as part of the proposed change workflow.
 
+These artifacts are generated on the source branch and are not merged. After the merge, Infrahub regenerates the affected artifacts on the default branch from the default branch's data at that time, so they can differ from the artifacts you reviewed. See [How artifacts reach the default branch](../artifacts/overview#how-artifacts-reach-the-default-branch).
+
 Learn more about [Transformations](../transformations/overview) and [Artifacts](../artifacts/overview).
 
 ### Understanding artifact regeneration
