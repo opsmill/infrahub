@@ -1,6 +1,6 @@
 # Git Integration
 
-> Part of: `dev/knowledge/backend/` | Related: [Git Sync](git-sync.md), [Architecture](architecture.md)
+> Part of: `dev/knowledge/backend/` | Related: [Git Sync](git-sync.md), [Git Push Queue](git-push-queue.md), [Architecture](architecture.md)
 
 How Infrahub models an external git repository, where the repository object comes from, and which
 branch each operation actually targets. Read this before changing anything in `backend/infrahub/git/`:
@@ -116,21 +116,21 @@ worktree that does not lead to it:
 | Periodic sync | `git.tasks.sync_remote_repositories` | Cron `* * * * *`, `concurrency_limit=1`, `CANCEL_NEW` (`workflows/catalogue.py::GIT_REPOSITORIES_SYNC`). Pull direction only; it never pushes. |
 | Add repository | `git.tasks.add_git_repository` / `..._read_only` | Clone, import, broadcast. |
 | Create branch | `git.tasks.create_branch` | Create in git, push, broadcast. |
-| Branch merge, also from a proposed change | `core/merge/repository_merge_dispatcher.py` → `git.tasks.merge_git_repository` | Queue the merge of a read-write repository and deliver the queue ([The push queue](#the-push-queue)); copy the ref and commit of the source branch for a read-only one. A read-write repository whose branch records no commit, or the commit that the default branch recorded at the fork of the branch or records now, or whose branch has the name of the remote branch that a delivery pushes to, gets no queue entry and no merge flow: there is nothing to push (`git/writeback/content.py::read_pending_merges`). |
+| Branch merge, also from a proposed change | `core/merge/repository_merge_dispatcher.py` → `git.tasks.merge_git_repository` | Queue the merge of a read-write repository and deliver the queue ([The push queue](#the-push-queue)); copy the ref and commit of the source branch for a read-only one. A read-write repository whose branch records no commit, or the commit that the default branch recorded at the `branched_from` time of the branch (its creation or its last rebase) or records now, or whose branch has the name of the remote branch that a delivery pushes to, gets no queue entry and no merge flow: there is nothing to push (`git/writeback/content.py::read_pending_merges`). |
 | Read-only pull | `git.tasks.pull_read_only` | On-demand fetch latest. |
 
-The merge trigger is **not ordered against post-merge regeneration**.
+The repository merge and post-merge regeneration run in **no fixed order**.
 `PostMergeDispatcher.run_follow_ups` submits the repository merge and then `BRANCH_MERGE_POST_PROCESS`;
 both go through `submit_workflow` (`services/adapters/workflow/worker.py`), which is
 `run_deployment(..., timeout=0)` and returns immediately. `post_process_branch_merge`
 (`core/branch/tasks.py`) dispatches regeneration without waiting on the repository merge, and artifact
-generation reads the destination branch's commit from the graph node at the moment it runs. Nothing
-guarantees which of the two flows the scheduler reaches first.
-
-> **Volatile section.** The intended fix for this ordering gap is a persisted writeback state,
-> recorded before the merge workflow is submitted, that holds regeneration for repository-owned
-> definitions until that repository's commit on the destination branch is final. It is specified in
-> `dev/specs/ifc-3220-writeback-failure-handling/`. Update this section when that lands.
+generation reads the destination branch's commit from the graph node at the moment it runs. The
+order does not matter, because the dispatcher queues the merge of each read-write repository before
+either flow is submitted, and the regeneration barrier holds the regeneration that the repository owns
+until the delivery records and imports the new commit and then releases the held items
+([Git Push Queue](git-push-queue.md#the-regeneration-barrier-and-the-release)). When the dispatcher
+cannot read or queue the merge, the merge flow queues it later and holds a regeneration of every
+definition of the repository with it.
 
 ## Pushing back to the remote
 
@@ -139,9 +139,10 @@ guarantees which of the two flows the scheduler reaches first.
 ```python
 # git/repository.py::InfrahubRepository.push
 remote_branch = self._get_mapped_remote_branch(branch_name=branch_name)
-push_infos = repo.remotes.origin.push(
-    refspec=f"HEAD:refs/heads/{remote_branch}", progress=progress, kill_after_timeout=timeout_seconds
-)
+with stalled_transfer_limit(repo=repo, timeout_seconds=timeout_seconds):
+    push_infos = repo.remotes.origin.push(
+        refspec=f"HEAD:refs/heads/{remote_branch}", progress=progress, kill_after_timeout=timeout_seconds
+    )
 ```
 
 A bare refspec would have no local source on a worker whose clone never checked out a local branch
@@ -151,40 +152,19 @@ while the merge still reported success; sending HEAD is what closed that gap.
 
 ### The push queue
 
-Each merge of a git-synced branch that changes the content of an active read-write repository
-becomes an entry in the push queue of that repository (`git/writeback/`). A staging repository has
-no queue: its merge makes it active and records its commit, and pushes nothing. The branch merge
-writes the entry before it submits `merge_git_repository`, and the flow delivers the whole queue
-through `git/writeback/service.py::RepositoryWritebackService.deliver`. Under the repository lock, an
-attempt:
+Each merge of a git-synced branch that changes the content of a read-write repository waits in the
+push queue of that repository until a delivery pushes it. A delivery fetches, checks each queued
+commit against the remote, replays the queued commits by id onto the remote head, pushes once when
+the remote lacks a queued merge, records the new commit, and imports it when the remote head had
+moved past the recorded commit or an earlier import is still owed. A
+failed attempt records its cause on the repository and keeps the queue. The delivery task retries a
+failure that a later attempt can fix, the recovery check of the periodic sync restarts a lost
+attempt, and a user can retry or abandon the queue. The periodic sync itself never pushes.
 
-- fetches, and checks the queue against the remote, as the next section describes;
-- resets the destination worktree to the remote head, replays each queued source commit by its id,
-  and pushes once;
-- records the new commit on the default branch, and imports it when the remote head had moved ahead
-  of the recorded commit;
-- removes the delivered entries from the queue in the save that ends the attempt.
-
-When the replay conflicts or fails, or the push or the record fails, the attempt resets the worktree
-to the commit recorded before the attempt. A failed fetch or a refused check stops before the
-worktree moves. A failed import, or a failed write of the delivery state after the push, leaves the
-worktree at the delivered commit, which the remote holds. The repository records the cause, and for
-a refused push the remote's own `remote:` lines (`git/writeback/classifier.py`). The entries stay in
-the queue, and the next merge flow of the repository delivers them with its own. A clone with no
-`origin` fails the attempt and keeps the queue. The periodic sync still only reads from the remote:
-it never pushes a queued merge.
-
-With `git.use_explicit_merge_commit` at its default of `False` a replay fast-forwards where it can,
-and the resulting SHA is the source commit, which the remote already has. When the remote head has
-moved past the fork of the source, or when that setting is enabled, Git creates a real merge commit
-whose SHA embeds a timestamp and is therefore not reproducible. A failed attempt discards it, and the
-next attempt replays the queued source commit again on any worker.
-
-> **Volatile section.** The automatic retry of an attempt, the recovery of a lost attempt, and the
-> retry and abandon actions on the repository are specified in
-> `dev/specs/ifc-3220-writeback-failure-handling/` and land with the rest of it. Until then, the run of
-> a failed attempt ends failed, and nothing runs the queue again until the next merge flow of the
-> repository. Update this section when they land.
+While a repository has pending pushes, the paths that import its default branch wait, because an
+import of the remote head would remove the objects of the pending merges.
+[Git Push Queue](git-push-queue.md) describes the push state, the delivery, the import paths that
+wait, the regeneration barrier and the known limitations.
 
 Per-ref push rejections do **not** flow through the error classifier below. GitPython reports them on
 the push result, not by raising `GitCommandError`, so `push()` raises `RepositoryPushRejectedError`
@@ -219,17 +199,21 @@ and keeps the branch open:
   Git, and only for its active repositories; a source branch with the remote name of the trunk
   compares only the trunk. While one head differs, it refuses the merge with
   `RepositoryNotSynchronizedError`, so the branch stays open and the user merges again after the
-  next cycle. It compares for equality, so a plain push to the source branch, or to the trunk of a
-  repository whose branch records a commit other than the commit of its trunk, holds the merge too,
-  not only a rewrite, until the next cycle imports the new head. A remote that refuses the
-  credentials blocks the merge, with `RepositoryCredentialsRefusedError`, when the repository needs
-  a Git merge: that Git merge would fail the same way after the graph merge. Any other failure to
-  read a remote, and a remote not read before the total deadline of the check
+  next cycle imports the new head. It compares for equality, so a plain push to the source branch,
+  or to the trunk of a repository whose branch records a commit other than the commit of its trunk,
+  holds the merge too, not only a rewrite, until the next cycle imports the new head. A remote that
+  refuses the credentials blocks the merge, with `RepositoryCredentialsRefusedError`, when the
+  repository needs a Git merge: that Git merge would fail the same way after the graph merge. Any
+  other failure to read a remote, and a remote not read before the total deadline of the check
   (`REMOTE_HEADS_DEADLINE_SECONDS`), logs a warning and does not block the merge. For a repository
   whose source branch records the commit its trunk records, or where neither branch records a
   commit, as after a failed first clone, the check reads the source branch only, and the dispatcher
   runs no Git merge for it: there is nothing to push. A value that is set but is not a full commit
-  id is unknown, so the full check runs.
+  id is unknown, so the full check runs. While a repository has pending pushes, the sync does not
+  import the trunk. A push to the trunk then holds the merge of each branch with something to merge
+  in that repository until a delivery records the pushed commit, or until a user abandons the queue
+  and the next cycle imports the new head ([Git Push
+  Queue](git-push-queue.md#imports-that-wait-for-the-queue)).
 - In the delivery of the Git merge (`git/writeback/service.py::RepositoryWritebackService`), the
   attempt fetches, then checks each queued merge against the remote before it replays the merges by
   commit onto the remote head of the trunk. The source commit comes in the queue entry, read when the
@@ -245,15 +229,8 @@ and keeps the branch open:
 
   A refusal comes after the graph merge: the branch is merged in Infrahub, the merge stays in the
   push queue of the repository, and the repository records the cause. The run fails, and its log
-  says what the user can do.
-
-> **Volatile section.** A refusal keeps the merges in the queue, and each attempt checks the whole
-> queue. The next merge flow of the repository is therefore refused for the same cause, so one
-> refusal blocks every later merge of the repository until a user abandons the queue. The abandon and
-> retry actions land with the rest of `dev/specs/ifc-3220-writeback-failure-handling/`. Until the
-> branch-deletion guard of that spec lands too, the deletion of the remote source branch after a
-> merge (`git.delete_git_branch_after_merge`) can run before the delivery, which is then refused with
-> `source-discarded`. Update this section when they land.
+  says what the user can do: abandon the queue, or, after a conflict, merge the source branch on the
+  remote by hand and retry ([Git Push Queue](git-push-queue.md#retry-and-abandon)).
 
 ## Repository state and branch support
 
@@ -265,6 +242,7 @@ individually:
 | Attribute | Branch support | Consequence |
 |---|---|---|
 | `CoreRepository.commit`, `sync_status`, `internal_status` | LOCAL | Per-branch value, never diffed, never merged |
+| The nine `CoreRepository.delivery_*` attributes | LOCAL | Read-only push state; Infrahub uses only the value on the default branch ([Git Push Queue](git-push-queue.md#the-push-state)) |
 | `operational_status` | AGNOSTIC | One value shared by every branch |
 | `name`, `description`, `location` | AGNOSTIC | One value shared by every branch |
 | `CoreReadOnlyRepository.commit` and `.ref` | AWARE | Per-branch value that **does** reach diffs and merges |
@@ -347,12 +325,17 @@ Two rules cover a Git command past the time limit that its caller passes as `kil
 
 - A fetch or a push that ran past its limit gets "process killed because it timed out" in its error
   lines, and raises `RepositoryConnectionError` with a message of its own. GitPython adds that line
-  only after Git ends: the limit does not stop a fetch or a push that hangs.
+  only after Git ends: the limit does not stop a fetch or a push that hangs. So a fetch of a
+  read-write repository, a push or a remote branch deletion that gets a limit also sets Git's
+  low-speed limit for that command
+  (`git/base.py::stalled_transfer_limit`). Git then ends an HTTP(S) transfer that sends no data for
+  that long, with "Operation too slow", which raises the same error. An SSH transfer has no such
+  limit.
 - A direct Git call that GitPython's watchdog stops gets "Timeout: the command ... did not complete".
   It raises a `RepositoryError` that names the Git command and the limit, never the arguments, which
   can name worker paths. A write operation, such as the deletion of a remote branch, is a push to the
   remote, so it raises `RepositoryConnectionError` instead. The watchdog finds the child processes of
-  Git with `ps`, which the runtime image does not have, so there it cannot stop a direct call.
+  Git with `ps --ppid`, so the backend image installs `procps`.
 
 `git/base.py::operational_status_for_error` turns the typed error into the operational status, most
 specific class first: every `RepositoryConnectionError` gives `ERROR_CONNECTION`, a credential or
@@ -393,10 +376,13 @@ to reconcile divergent branches", because only `git pull` writes that text and n
   `infrahub.repository.update_commit` in its events set. It is not a working signal; wiring anything
   to it means introducing the first consumer. The merge path does not emit it at all, and the
   `RefreshGitFetch` handler explicitly suppresses the commit write that would.
-- **Remote branch deletion is not gated on the push queue.** `git.tasks.git_branch_delete` deletes
-  the remote branch gated only on `origin_has_branch`, and `BRANCH_DELETE` is submitted right after the
-  repository merge (`core/merge/post_merge.py`). With `main.delete_branch_after_merge` and
-  `git.delete_git_branch_after_merge` enabled, the deletion can run before the delivery, or after a
-  failed one. The delivery is then refused with `source-discarded`, the remote holds neither the
-  source commit nor the merged content, and the refusal blocks every later merge of the repository.
-  The branch-deletion guard of `dev/specs/ifc-3220-writeback-failure-handling/` closes this.
+- **Remote branch deletion keeps a branch only once a queued merge names it.**
+  `git.tasks.git_branch_delete` keeps the remote branch while a queued merge comes from it. With
+  `main.delete_branch_after_merge` and `git.delete_git_branch_after_merge` on, `BRANCH_DELETE` is
+  submitted right after the repository merge (`core/merge/post_merge.py`). When the dispatcher
+  cannot read or queue the merge, no queued merge names the branch yet, so the deletion can remove
+  the only copy of the source commit, and the delivery is then refused with `source-discarded` ([Git
+  Push Queue](git-push-queue.md#the-kept-source-branch)).
+- **The push queue has limitations of its own**, such as an SSH remote with no stall limit and a
+  branch forked from the default branch while pushes are pending. They are listed in
+  [Git Push Queue](git-push-queue.md#known-limitations).
