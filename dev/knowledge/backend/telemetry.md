@@ -87,15 +87,15 @@ checksum by writing the received data out again in JavaScript, which cannot tell
 a whole-number float fails the check and the endpoint drops the whole report. Any new float field
 in the payload needs the same treatment.
 
-Each API server and task-worker process reports its own figures through the cache. At startup and
-then every 5 minutes, the main loop starts a read of the limits on a separate thread, so that a slow
-read never holds up requests and flows, and puts the reading in a shared slot in memory. The report
-runs once a day, so a reading every 5 minutes still catches a limit changed while Infrahub runs. The
-heartbeat thread, which only writes to the cache so that a busy main loop never stalls it, copies
-the latest reading into the cache every 5 seconds next to its "alive" key, with the same 15-second
-expiry, so a reading stays in the cache for as long as its process is alive, however old it is.
-Once a day the report reads those entries. The database figures come from Neo4j itself when the
-report runs.
+Each API server and task-worker process stores its own figures in the cache. At startup and then
+every 5 minutes, the main loop starts a read of the limits on a separate thread, so that a slow read
+never holds up requests and flows, and stores the reading under
+`workers:resources:{component}:worker:{worker_id}` for 2 hours. The report runs once a day, so a
+reading every 5 minutes still catches a limit changed while Infrahub runs, and the 2-hour expiry
+keeps a reading while a long task holds up the main loop. The report uses only the readings of the
+workers whose "alive" key, written every 5 seconds by the heartbeat thread with a 15-second expiry,
+is still set, so a stopped worker's reading is ignored although it stays in the cache. The database
+figures come from Neo4j itself when the report runs.
 
 ```mermaid
 flowchart LR
@@ -103,16 +103,18 @@ flowchart LR
     subgraph process["One Infrahub process: an API server or a task worker"]
         main["Main work<br/>asks for a new reading every 5 min<br/>refresh_resources()"]
         reader["Side helper<br/>looks up the numbers"]
-        slot["Latest reading<br/>kept in memory<br/>LatestResourceReading"]
         beat["Heartbeat<br/>says it is alive every 5 s<br/>WorkerHeartbeat"]
         main -->|asks| reader
         reader -->|returns the numbers| main
-        main -->|saves| slot
-        slot -->|picks up| beat
     end
-    cache[("Shared cache<br/>read by the daily report<br/>workers:resources:*")]
+    readings[("Readings<br/>kept 2 h<br/>workers:resources:*")]
+    alive[("Alive signals<br/>kept 15 s<br/>workers:active:*")]
+    report["Daily report<br/>uses the readings of live workers<br/>AnonymousTelemetryGatherer"]
     limits -->|looked up| reader
-    beat -->|alive signal and reading, kept 15 s| cache
+    main -->|stores the reading| readings
+    beat -->|alive signal| alive
+    readings --> report
+    alive -->|which workers are alive| report
 ```
 
 <!-- Extracted from specs/infp-631-resource-telemetry on 2026-10-08 -->
@@ -197,8 +199,8 @@ both gated on the `READ_TELEMETRY` global permission.
 | `backend/infrahub/telemetry/database.py` | Database and node-count metrics |
 | `backend/infrahub/telemetry/resources.py` | Reads a process's CPU and memory limits and the machine's figures |
 | `backend/infrahub/services/scheduler.py`, `backend/infrahub/tasks/recurring.py` | The 5-minute schedule on the main loop that starts each read of the figures on a separate thread |
-| `backend/infrahub/services/heartbeat.py` | The heartbeat thread that copies the latest reading into the cache every 5 seconds |
-| `backend/infrahub/services/component.py` | Stores each process's CPU and memory reading next to its heartbeat |
+| `backend/infrahub/services/heartbeat.py` | The heartbeat thread whose "alive" keys decide which workers' readings the report uses |
+| `backend/infrahub/services/component.py` | Stores each process's CPU and memory reading for 2 hours, and reads back the live workers' readings |
 | `backend/infrahub/telemetry/models.py` | Payload schema |
 | `backend/infrahub/workflows/catalogue.py` | Registers the `anonymous_telemetry_send` deployment |
 

@@ -1,10 +1,10 @@
-# 21. Resource-allocation telemetry: container limits, carried by the heartbeat, in new blocks
+# 21. Resource-allocation telemetry: container limits, stored by each process, in new blocks
 
 **Status:** Accepted
 **Date:** 2026-10-08
 **Author:** @opsmill-team
 
-**Source:** `specs/infp-631-resource-telemetry/research.md` (D2–D7, D11–D17)
+**Source:** `specs/infp-631-resource-telemetry/research.md` (D2–D7, D11–D18)
 
 ## Context
 
@@ -40,12 +40,14 @@ writes the limit it puts on a container, and `psutil` for the whole machine.
   its default, 0, is reported as `null`. The other database figures are the ones Neo4j already
   reported.
 
-**Carry the reading through the liveness heartbeat.** At startup and every 5 minutes the main loop
-starts a read of the figures on a separate thread, so that a slow read cannot hold up requests and
-flows, and hands the reading to the heartbeat thread through a locked slot in memory. Every 5
-seconds the heartbeat writes the latest reading to the cache next to its "alive" key, with the same
-15-second expiry, so a reading stays in the cache for as long as its process is alive. Once a day the report reads every reading back from the cache. Each reading carries the
-container's name, which is never sent, so readings from the same container can be grouped. The name
+**Store each reading from the read that takes it, and use only live workers' readings.** At startup
+and every 5 minutes the main loop starts a read of the figures on a separate thread, so that a slow
+read cannot hold up requests and flows, and stores the reading in the cache with a 2-hour expiry, so
+a long task that keeps the main loop from reading again does not lose it. The heartbeat thread
+only writes the "alive" keys. Once a day the report reads the readings back from the cache and
+keeps those of the workers whose "alive" key is still set, taken from the same list of workers it
+counts, so a stopped worker's reading is ignored although it stays in the cache. Each reading
+carries the container's name, which is never sent, so readings from the same container can be grouped. The name
 is the hostname followed by the container's process ID namespace, because separate containers can
 share a hostname, for example when they use the host's network.
 
@@ -68,8 +70,11 @@ same until the receiving service confirms it accepts the new fields.
   is never invented.
 - A live limit change reaches the cache within about 5 minutes, or later while the main loop is busy
   with a long task, still well before the next daily report.
-- A worker busy with a long task keeps reporting for as long as it is alive, and a stopped worker's
-  reading disappears within 15 seconds, so the counts and the figures describe the same processes.
+- A worker busy with a long task keeps its reading for up to 2 hours, and the report stops using a
+  stopped worker's reading once its "alive" key expires, within 15 seconds, so the counts and the
+  figures describe the same processes.
+- The heartbeat writes only the "alive" keys, so a failed or slow telemetry write cannot stop it from
+  refreshing the primary API server election or the presence key.
 - No existing field changes, so current ingestion keeps working.
 
 ### Negative
@@ -90,11 +95,15 @@ same until the receiving service confirms it accepts the new fields.
   with a long task. Limits rarely change, so this is acceptable for a daily report. Free memory does
   change on its own, so it describes a moment up to 5 minutes before the report. An empty reading
   left by a failed read at startup stays until the next read.
+- A worker whose main loop is held up for more than 2 hours loses its reading. After the cache is
+  emptied, for example by a restart, the readings come back at each process's next read, within
+  5 minutes.
 
 ### Neutral
 
 - `server.total + task_workers.total` equals `workers.total`, except for a process that stopped
-  about two hours earlier and is only remembered by its 2-hour presence key.
+  about two hours earlier and is only remembered by its 2-hour presence key, normally for at most
+  about 5 minutes.
 - Neo4j rounds a fractional CPU limit up for its usable figure, while the other components round it
   down, so under a fractional limit the two can differ by one.
 - Older parts of the report, such as building the database block and reading the worker list, still
@@ -107,10 +116,19 @@ same until the receiving service confirms it accepts the new fields.
 Inside a container `psutil` still sees the whole machine. On an 18-CPU machine with a container
 limited to 2 CPUs it reports 18.
 
-### Read and store the figures on a main-loop schedule
+### Store the reading with the "alive" key's 15-second expiry
 
 A long task that keeps the main loop busy would let the reading expire while the heartbeat kept the
 worker alive, so the worker would be counted with no figures.
+
+### Carry the reading through the liveness heartbeat
+
+The main loop handed each reading to the heartbeat thread through a locked slot in memory, and every
+5-second beat wrote it next to the "alive" key with the same 15-second expiry. The beat wrote the
+same reading about 60 times between two reads, and the slot was a process-wide object of the kind the
+component design rules do not allow. The telemetry write also ran inside the beat's time limit,
+before the primary API server election and the presence key: when it failed or ran out of time, the
+beat skipped those two as well.
 
 ### Read the figures every 10 seconds
 

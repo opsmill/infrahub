@@ -12,7 +12,7 @@
 - `dev/knowledge/backend/telemetry.md` (CPU and memory figures: what an empty figure means, what
   cannot be seen from inside a container, the caveats of the per-worker share)
 - `dev/knowledge/backend/async-tasks.md` (The worker liveness heartbeat runs on its own thread: the
-  beat also carries the resource reading)
+  beat carries only liveness, and the report uses the readings of the workers it keeps alive)
 
 ## Guidelines Updated
 

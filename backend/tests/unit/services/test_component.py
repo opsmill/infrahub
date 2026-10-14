@@ -10,14 +10,13 @@ from neo4j import AsyncGraphDatabase
 
 from infrahub.components import ComponentType
 from infrahub.database import InfrahubDatabase
+from infrahub.message_bus.types import KVTTL
 from infrahub.services import InfrahubServices
 from infrahub.services.component import (
     COMPONENT_API_SERVER,
     COMPONENT_GIT_AGENT,
-    LATEST_RESOURCE_READING,
     RESOURCE_KEY_PREFIX,
     InfrahubComponent,
-    LatestResourceReading,
     WorkerInfo,
     refresh_worker_heartbeat,
 )
@@ -29,10 +28,11 @@ from tests.adapters.machine import FixedMachine
 from tests.adapters.message_bus import BusRecorder
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
+    from collections.abc import AsyncIterator, Awaitable, Callable
 
 RESOURCE_KEY = f"{RESOURCE_KEY_PREFIX}{COMPONENT_GIT_AGENT}:worker:{WORKER_IDENTITY}"
 ACTIVE_KEY = f"workers:active:{COMPONENT_GIT_AGENT}:worker:{WORKER_IDENTITY}"
+API_RESOURCE_KEY = f"{RESOURCE_KEY_PREFIX}{COMPONENT_API_SERVER}:worker:{WORKER_IDENTITY}"
 
 
 @dataclass
@@ -90,29 +90,12 @@ def test_worker_is_attributed_to_the_component_its_keys_name(case: AttributionCa
     assert worker.active is case.expected_active
 
 
-async def test_heartbeat_carries_the_latest_published_resource_reading() -> None:
-    cache = MemoryCache()
-    resources = LatestResourceReading()
-    resources.publish(
-        WorkerResourceReading(host="git-host-1", processor_available=2, memory_total=8, memory_available=7)
-    )
-    reading = WorkerResourceReading(host="git-host-1", processor_available=4, memory_total=8, memory_available=6)
-    resources.publish(reading)
-
-    await refresh_worker_heartbeat(cache=cache, component_type=ComponentType.GIT_AGENT, resources=resources)
-
-    assert WorkerResourceReading.model_validate_json(cache.storage[RESOURCE_KEY]) == reading
-
-
-async def test_heartbeat_writes_liveness_but_no_resources_before_a_reading_exists() -> None:
+async def test_heartbeat_writes_liveness_and_no_resource_reading() -> None:
     cache = MemoryCache()
 
-    await refresh_worker_heartbeat(
-        cache=cache, component_type=ComponentType.GIT_AGENT, resources=LatestResourceReading()
-    )
+    await refresh_worker_heartbeat(cache=cache, component_type=ComponentType.GIT_AGENT)
 
-    assert ACTIVE_KEY in cache.storage
-    assert RESOURCE_KEY not in cache.storage
+    assert set(cache.storage) == {ACTIVE_KEY, f"workers:worker:{WORKER_IDENTITY}"}
 
 
 THREAD_TEST_READING = WorkerResourceReading(
@@ -155,14 +138,6 @@ RESOURCE_REFRESH_CASES = [
 
 
 @pytest.fixture
-def latest_resource_reading_restored() -> Iterator[None]:
-    """Put the process-wide reading back as it was, because every refresh replaces it."""
-    saved = LATEST_RESOURCE_READING._payload
-    yield
-    LATEST_RESOURCE_READING._payload = saved
-
-
-@pytest.fixture
 async def unconnected_db() -> AsyncIterator[InfrahubDatabase]:
     # Building a driver opens no connection, and the resource refresh never queries the database.
     driver = AsyncGraphDatabase.driver("bolt://127.0.0.1:9", auth=("neo4j", "unused"))
@@ -171,13 +146,17 @@ async def unconnected_db() -> AsyncIterator[InfrahubDatabase]:
 
 
 @pytest.mark.parametrize("case", RESOURCE_REFRESH_CASES, ids=[case.name for case in RESOURCE_REFRESH_CASES])
-async def test_resource_read_runs_off_the_event_loop_thread(
-    case: ResourceRefreshCase, unconnected_db: InfrahubDatabase, latest_resource_reading_restored: None
+async def test_resource_reading_is_taken_off_the_event_loop_and_kept_for_two_hours(
+    case: ResourceRefreshCase, unconnected_db: InfrahubDatabase
 ) -> None:
-    """Reading the limit files and the machine's figures blocks, so it must never hold up requests and flows."""
+    """Reading the limit files and the machine's figures blocks, so it must never hold up requests and flows.
+
+    The reading is kept for two hours, so a long task that keeps the main loop from reading again does not lose it.
+    """
+    cache = MemoryCache()
     process_resources = ThreadRecordingProcessResources(event_loop_thread_id=threading.get_ident())
     component = InfrahubComponent(
-        cache=MemoryCache(),
+        cache=cache,
         db=unconnected_db,
         message_bus=BusRecorder(),
         component_type=ComponentType.API_SERVER,
@@ -187,9 +166,49 @@ async def test_resource_read_runs_off_the_event_loop_thread(
     await case.refresh(component)
 
     assert process_resources.reads_on_event_loop_thread == [False]
-    latest = LATEST_RESOURCE_READING.latest()
-    assert latest is not None
-    assert WorkerResourceReading.model_validate_json(latest) == THREAD_TEST_READING
+    assert WorkerResourceReading.model_validate_json(cache.storage[API_RESOURCE_KEY]) == THREAD_TEST_READING
+    assert cache.expiries[API_RESOURCE_KEY] == KVTTL.TWO_HOURS
+
+
+class ResourceWriteFailingCache(MemoryCache):
+    """A cache that refuses to store a resource reading and stores everything else."""
+
+    async def set(self, key: str, value: str, expires: int | None = None, not_exists: bool = False) -> bool | None:
+        if key.startswith(RESOURCE_KEY_PREFIX):
+            raise ConnectionError("resource write refused")
+        return await super().set(key=key, value=value, expires=expires, not_exists=not_exists)
+
+
+async def test_startup_publishes_liveness_before_storing_the_resource_reading(
+    unconnected_db: InfrahubDatabase,
+) -> None:
+    cache = ResourceWriteFailingCache()
+    component = InfrahubComponent(
+        cache=cache,
+        db=unconnected_db,
+        message_bus=BusRecorder(),
+        component_type=ComponentType.GIT_AGENT,
+        process_resources=ThreadRecordingProcessResources(event_loop_thread_id=threading.get_ident()),
+    )
+
+    with pytest.raises(ConnectionError, match=r"^resource write refused$"):
+        await component.refresh_heartbeat()
+
+    assert set(cache.storage) == {ACTIVE_KEY, f"workers:worker:{WORKER_IDENTITY}"}
+
+
+async def test_read_worker_resources_returns_only_the_given_workers(unconnected_db: InfrahubDatabase) -> None:
+    """A stopped worker's reading stays in the cache for up to two hours, so it must not be returned."""
+    cache = MemoryCache()
+    live_reading = WorkerResourceReading(host="api-host", processor_available=4)
+    stopped_reading = WorkerResourceReading(host="api-host", processor_available=8, memory_total=16)
+    cache.storage[f"{RESOURCE_KEY_PREFIX}{COMPONENT_API_SERVER}:worker:live"] = live_reading.model_dump_json()
+    cache.storage[f"{RESOURCE_KEY_PREFIX}{COMPONENT_API_SERVER}:worker:stopped"] = stopped_reading.model_dump_json()
+    component = InfrahubComponent(
+        cache=cache, db=unconnected_db, message_bus=BusRecorder(), component_type=ComponentType.GIT_AGENT
+    )
+
+    assert await component.read_worker_resources(worker_ids={"live"}) == {COMPONENT_API_SERVER: [live_reading]}
 
 
 class AlwaysFailingProcessResources(ProcessResources):
@@ -242,7 +261,6 @@ FAILED_SELF_READ_CASES = [
 async def test_self_read_failure_after_retries_logs_and_stores_an_empty_reading(
     case: FailedSelfReadCase,
     unconnected_db: InfrahubDatabase,
-    latest_resource_reading_restored: None,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """A read that fails on every try leaves a warning naming the component and the error, and a reading with no figures.

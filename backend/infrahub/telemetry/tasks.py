@@ -191,7 +191,10 @@ class AnonymousTelemetryGatherer:
         task_workers = [worker for worker in workers if worker.component == COMPONENT_GIT_AGENT]
         api_workers = [worker for worker in workers if worker.component == COMPONENT_API_SERVER]
 
-        readings_by_component = await safe_metric(self.component.read_worker_resources()) or {}
+        active_worker_ids = {worker.id for worker in workers if worker.active}
+        readings_by_component = (
+            await safe_metric(self.component.read_worker_resources(worker_ids=active_worker_ids)) or {}
+        )
 
         accounts = await safe_metric(self.account_gatherer.gather())
         activity_24h = await safe_metric(self.activity_gatherer.gather())

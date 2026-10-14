@@ -68,7 +68,7 @@ task_workers: TelemetryComponentData = Field(default_factory=TelemetryComponentD
 
 ## Per-process reading (transits the cache, not part of the payload)
 
-Read by each process at startup and every 5 minutes, on a separate thread its main loop starts, and written into `workers:resources:{component}:worker:{WORKER_IDENTITY}` by its liveness heartbeat, alongside the active key and with the same expiry:
+Read by each process at startup and every 5 minutes, on a separate thread its main loop starts, and written by that read into `workers:resources:{component}:worker:{WORKER_IDENTITY}` with a 2-hour expiry. The gatherer reads back only the readings of the workers that are active when it counts them (research D18):
 
 | Field | Type | Source |
 |-------|------|--------|

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import re
-import threading
 from typing import TYPE_CHECKING, Any
 
 from attr import Factory, dataclass
@@ -32,7 +31,7 @@ WORKER_MATCH = re.compile(r":worker:([^:]+)")
 
 # Writing, finding and parsing the resource keys all start from this prefix, so the three cannot drift apart.
 RESOURCE_KEY_PREFIX = "workers:resources:"
-RESOURCE_COMPONENT_MATCH = re.compile(re.escape(RESOURCE_KEY_PREFIX) + r"([^:]+):worker:")
+RESOURCE_KEY_MATCH = re.compile(re.escape(RESOURCE_KEY_PREFIX) + r"([^:]+):worker:([^:]+)$")
 
 # The component names written into the cache keys, which tell API server processes from task workers.
 COMPONENT_API_SERVER = "api_server"
@@ -48,32 +47,6 @@ RESOURCE_READ_MAX_ATTEMPTS = 3
 log = get_logger()
 
 
-class LatestResourceReading:
-    """This process's latest CPU and memory reading, taken on a separate thread and stored by the heartbeat.
-
-    The heartbeat runs on its own thread and may only write to the cache, so the reading is
-    taken elsewhere and handed over here. The main loop starts each reading, so if a long task
-    blocks the main loop, the heartbeat keeps storing the last reading.
-    """
-
-    def __init__(self) -> None:
-        self._lock = threading.Lock()
-        self._payload: str | None = None
-
-    def publish(self, reading: WorkerResourceReading) -> None:
-        payload = reading.model_dump_json()
-        with self._lock:
-            self._payload = payload
-
-    def latest(self) -> str | None:
-        """The serialized reading, or ``None`` before the first one is published."""
-        with self._lock:
-            return self._payload
-
-
-LATEST_RESOURCE_READING = LatestResourceReading()
-
-
 def get_component_names(component_type: ComponentType) -> list[str]:
     """Return the component labels a worker of this type reports under in the cache."""
     names = []
@@ -84,40 +57,25 @@ def get_component_names(component_type: ComponentType) -> list[str]:
     return names
 
 
-async def refresh_worker_heartbeat(
-    cache: InfrahubCache,
-    component_type: ComponentType,
-    resources: LatestResourceReading = LATEST_RESOURCE_READING,
-) -> None:
+async def refresh_worker_heartbeat(cache: InfrahubCache, component_type: ComponentType) -> None:
     """Publish this worker's liveness to the cache.
 
     Writes the ``workers:active:*`` key whose 15-second expiry defines the active-worker set, keeps
     the primary API-server election alive, and refreshes the two-hour ``workers:worker:*`` presence
-    key. Next to the active key it stores the latest CPU and memory reading with the same 15-second
-    expiry, so the reading disappears when the worker stops. The function only touches
-    ``cache``, so it can run on any event loop as long as ``cache`` was created on that loop;
-    ``WorkerHeartbeat`` relies on this to beat from its own thread.
+    key. The function only touches ``cache``, so it can run on any event loop as long as ``cache``
+    was created on that loop; ``WorkerHeartbeat`` relies on this to beat from its own thread.
 
     Args:
         cache: Cache connection to write through.
         component_type: Type of the running process, which selects the keys to write.
-        resources: Where the latest CPU and memory reading is handed over; nothing is stored for it
-            until the first reading arrives.
 
     """
-    reading = resources.latest()
     for component in get_component_names(component_type):
         await cache.set(
             key=f"workers:active:{component}:worker:{WORKER_IDENTITY}",
             value=Timestamp().to_string(),
             expires=KVTTL.FIFTEEN,
         )
-        if reading is not None:
-            await cache.set(
-                key=f"{RESOURCE_KEY_PREFIX}{component}:worker:{WORKER_IDENTITY}",
-                value=reading,
-                expires=KVTTL.FIFTEEN,
-            )
     if component_type == ComponentType.API_SERVER:
         await _set_primary_api_server(cache=cache)
     await cache.set(key=f"workers:worker:{WORKER_IDENTITY}", value=Timestamp().to_string(), expires=KVTTL.TWO_HOURS)
@@ -219,19 +177,27 @@ class InfrahubComponent:
         """Publish this worker's liveness once, through the main-loop cache connection.
 
         The recurring refresh runs on the ``WorkerHeartbeat`` thread; this is for the one-off writes
-        at startup, before that thread exists.
+        at startup, before that thread exists. The worker's CPU and memory figures are stored after
+        its liveness, so a failure to store them cannot hide a live worker.
         """
-        await self.refresh_resources()
         await refresh_worker_heartbeat(cache=self.cache, component_type=self.component_type)
+        await self.refresh_resources()
 
     async def refresh_resources(self) -> None:
-        """Read this process's CPU and memory figures on a separate thread and hand them to the heartbeat to store.
+        """Read this process's CPU and memory figures on a separate thread and store them for the daily report.
 
         Reading the limit files and the machine's figures waits on the operating system, so it runs
-        off the main loop, where it would hold up requests and flows.
+        off the main loop, where it would hold up requests and flows. The reading is kept for two
+        hours, so a long task that keeps the main loop from reading again does not lose it; the
+        report uses only the readings of workers that are still alive.
         """
         reading = await asyncio.to_thread(self._read_own_resources)
-        LATEST_RESOURCE_READING.publish(reading)
+        for component in self.component_names:
+            await self.cache.set(
+                key=f"{RESOURCE_KEY_PREFIX}{component}:worker:{WORKER_IDENTITY}",
+                value=reading.model_dump_json(),
+                expires=KVTTL.TWO_HOURS,
+            )
 
     def _read_own_resources(self) -> WorkerResourceReading:
         """Read this process's CPU and memory figures, trying again if the read fails.
@@ -261,8 +227,12 @@ class InfrahubComponent:
             host = UNKNOWN_CONTAINER
         return WorkerResourceReading.failed(host=host)
 
-    async def read_worker_resources(self) -> dict[str, list[WorkerResourceReading]]:
-        """Return the latest CPU and memory reading of every worker, grouped by component, skipping damaged ones."""
+    async def read_worker_resources(self, worker_ids: set[str]) -> dict[str, list[WorkerResourceReading]]:
+        """Return the latest CPU and memory reading of each of ``worker_ids``, grouped by component, skipping damaged ones.
+
+        A stopped worker's reading stays in the cache for up to two hours, so only the
+        readings of the given workers are returned.
+        """
         keys = await self.cache.list_keys(filter_pattern=f"{RESOURCE_KEY_PREFIX}*")
         values = await self.cache.get_values(keys=keys)
 
@@ -270,8 +240,8 @@ class InfrahubComponent:
         for key, value in zip(keys, values, strict=False):
             if value is None:
                 continue
-            match = RESOURCE_COMPONENT_MATCH.search(key)
-            if not match:
+            match = RESOURCE_KEY_MATCH.search(key)
+            if not match or match.group(2) not in worker_ids:
                 continue
             try:
                 reading = WorkerResourceReading.model_validate_json(value)
@@ -287,7 +257,7 @@ class WorkerInfo:
         self.active = False
         self._schema_hash: str | None = None
         # None only after an exited process's keys that name its component have expired and just its
-        # general presence key is left, normally for about 15 minutes.
+        # general presence key is left, normally for at most about 5 minutes.
         self.component: str | None = None
 
     @property

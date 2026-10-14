@@ -210,7 +210,34 @@ async def test_corrupted_reading_is_dropped(resource_environment: MemoryCache) -
         memory_total=8_000_000_000,
         memory_available=6_000_000_000,
     )
-    assert await gatherer.component.read_worker_resources() == {"git_agent": [healthy_reading]}
+    assert await gatherer.component.read_worker_resources(worker_ids={"healthy", "corrupted"}) == {
+        "git_agent": [healthy_reading]
+    }
+
+
+async def test_a_stopped_workers_reading_is_ignored(resource_environment: MemoryCache) -> None:
+    """A stopped worker's reading stays in the cache for up to two hours, but only live workers' readings are used.
+
+    The stopped worker's reading reports more figures, so it would be the one used if it were kept.
+    """
+    cache = resource_environment
+
+    _seed_active(cache, "api_server", "live")
+    _seed_reading(cache, "api_server", "live", WorkerResourceReading(host="api-host", processor_available=4))
+    cache.storage["workers:worker:stopped"] = Timestamp().to_string()
+    _seed_reading(
+        cache,
+        "api_server",
+        "stopped",
+        WorkerResourceReading(host="api-host", processor_available=6, memory_total=8_000_000_000),
+    )
+
+    gatherer = await build_anonymous_telemetry_gatherer()
+    data = await gatherer.gather()
+
+    # The stopped worker is still counted, the way `workers` counts it, but not as active.
+    assert (data.server.total, data.server.active) == (2, 1)
+    assert data.server.per_worker == TelemetryPerWorkerData(processor_available=4.0)
 
 
 async def test_payload_keeps_every_prior_key(resource_environment: MemoryCache) -> None:

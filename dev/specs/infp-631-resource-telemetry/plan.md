@@ -8,7 +8,7 @@
 
 Extend the daily telemetry payload to report logical CPU cores (available + assigned) and memory (total + available) for the **database** (in place, on its existing `system_info`), the **task workers** (a new `task_workers` section), and the **API server** (a new `server` section), each new section with its own process count and a `per_worker` object, all using the existing `processor_*`/`memory_*` field names, so a deployment can be audited against its contracted tier from a single snapshot — including offline/air-gapped deployments.
 
-Technical approach: reuse the existing telemetry gatherer, the `safe_metric` degradation boundary, the existing database JMX query, and the existing worker-heartbeat cache channel. The database row is derived from the JMX system-info the payload already collects. The server and worker figures are self-reported by each process into its heartbeat, and the gatherer reports one worker's share of its container for each of the two components. CPU/RAM figures come from `psutil` (promoted from a dev-only to a production runtime dependency — research D1) plus stdlib `/sys/fs/cgroup` reads for the enforced allocation limit. Because several `api_server` processes share one container/cgroup, the gatherer divides that container's figures by the number of processes that reported from it, so the share times the block's `active` count is the component's total (research D16). No new third-party package — but `psutil` moves from a dev-only pin to a production runtime dependency, which is an Ask-First gate in its own right (Constraints, Governance). No database schema change, no branch-scoped data.
+Technical approach: reuse the existing telemetry gatherer, the `safe_metric` degradation boundary, the existing database JMX query, and the existing worker keys in the cache. The database row is derived from the JMX system-info the payload already collects. The server and worker figures are self-reported by each process into the cache, and the gatherer uses the readings of the active workers and reports one worker's share of its container for each of the two components. CPU/RAM figures come from `psutil` (promoted from a dev-only to a production runtime dependency — research D1) plus stdlib `/sys/fs/cgroup` reads for the enforced allocation limit. Because several `api_server` processes share one container/cgroup, the gatherer divides that container's figures by the number of processes that reported from it, so the share times the block's `active` count is the component's total (research D16). No new third-party package — but `psutil` moves from a dev-only pin to a production runtime dependency, which is an Ask-First gate in its own right (Constraints, Governance). No database schema change, no branch-scoped data.
 
 **Worker counts.** `workers` is unchanged: `total`/`active` count every worker process. Each new block describes one component, counts and resources alike: `server` the API server, `task_workers` the git_agent processes. `server.total + task_workers.total` equals `workers.total`, except for a process known only by its generic presence key, usually one that stopped about two hours earlier, which only `workers` counts (research D17).
 
@@ -16,11 +16,11 @@ Technical approach: reuse the existing telemetry gatherer, the `safe_metric` deg
 
 **Language/Version**: Python 3.14 (backend)
 
-**Primary Dependencies**: Pydantic 2.12 (typed payload models), Prefect 3.8.6 (gather flow/tasks), `psutil==6.1.0` (promoted from dev-only to a production runtime dependency — host logical CPU count, CPU affinity, memory), stdlib `socket`, `pathlib`, `math`, `logging`, and `dataclasses` + `/sys/fs/cgroup` and `/proc/self/cgroup` reads (enforced cgroup limit), Neo4j driver (existing JMX for the database row), Redis-backed `InfrahubCache` (existing heartbeat channel)
+**Primary Dependencies**: Pydantic 2.12 (typed payload models), Prefect 3.8.6 (gather flow/tasks), `psutil==6.1.0` (promoted from dev-only to a production runtime dependency — host logical CPU count, CPU affinity, memory), stdlib `socket`, `pathlib`, `math`, `logging`, and `dataclasses` + `/sys/fs/cgroup` and `/proc/self/cgroup` reads (enforced cgroup limit), Neo4j driver (existing JMX for the database row), Redis-backed `InfrahubCache` (existing worker keys)
 
-**Storage**: telemetry snapshot persisted via the existing snapshot repository; per-process resource readings transit through the cache heartbeat (TTL-bound), never persisted separately
+**Storage**: telemetry snapshot persisted via the existing snapshot repository; per-process resource readings transit through the cache, each kept for 2 hours (research D18), never persisted separately
 
-**Testing**: pytest — unit (`backend/tests/unit/telemetry/`: cgroup parsing and path resolution, the per-worker share, the database setting parse; `backend/tests/unit/services/`: component attribution, the heartbeat's resource write, the schedule registration) + component (`backend/tests/component/telemetry/`: end-to-end gather against the testcontainers Neo4j with synthesized worker heartbeats, and the reader against real kernel control groups in containers)
+**Testing**: pytest — unit (`backend/tests/unit/telemetry/`: cgroup parsing and path resolution, the per-worker share, the database setting parse; `backend/tests/unit/services/`: component attribution, storing the resource reading and keeping only the active workers' readings, the schedule registration) + component (`backend/tests/component/telemetry/`: end-to-end gather against the testcontainers Neo4j with synthesized worker heartbeats, and the reader against real kernel control groups in containers)
 
 **Target Platform**: Linux server (containers). cgroup reads are Linux-only. Without them (e.g. developer macOS), memory falls back to psutil's whole-host figures and `processor_available` to the host's count, capped by CPU affinity where it is readable; only `processor_assigned` is `null`, which is acceptable because `assigned` is only meaningful where a limit is enforced
 
@@ -44,7 +44,7 @@ Technical approach: reuse the existing telemetry gatherer, the `safe_metric` deg
 | IV. Test Discipline | ✅ Pass | Unit tests for cgroup parsing and the per-worker share; component test for end-to-end gather incl. the FR-005 partial-report and FR-003 unlimited→`null` edges. Test files mirror source, except `test_cgroup_kernels.py`, which has no same-named source and runs `resources.py` against real kernel control groups. |
 | V. Query Performance & Efficiency | ✅ Pass | Reuses the existing JMX call and the existing `workers:*` cache scan; adds one new lightweight `SHOW SETTINGS` read for `processor_assigned` and one `workers:resources:*` key scan with a single multi-get. No N+1, no large result sets. |
 | VI. Security & Input Boundaries | ✅ Pass | Reads only local, trusted `/sys/fs/cgroup` and `/proc/self/cgroup` files — no user input, no injection surface. Cores/RAM are not PII; transmission remains gated by the existing opt-out. |
-| VII. Simplicity & Maintainability | ✅ Pass (1 justified complexity) | Reuses `safe_metric`, the heartbeat channel, and the JMX path; no new third-party package, though `psutil` is promoted to a production runtime dependency (Governance gate below). Dividing a container's figures between the processes that share it is the one non-obvious element — justified in Complexity Tracking. |
+| VII. Simplicity & Maintainability | ✅ Pass (1 justified complexity) | Reuses `safe_metric`, the worker keys and active-worker set, and the JMX path; no new third-party package, though `psutil` is promoted to a production runtime dependency (Governance gate below). Dividing a container's figures between the processes that share it is the one non-obvious element — justified in Complexity Tracking. |
 
 **Governance Ask-First gates**: New dependency — **none added**, but `psutil` is promoted from dev-only to a production runtime dependency (Ask-First confirmed, research D1). DB schema/migration — **none**. Auth — **none**. GraphQL/REST schema — **none** (telemetry payload is an internal contract with the receiving service, coordinated cross-team, not an Infrahub API). CI/CD — **none**.
 
@@ -94,9 +94,8 @@ backend/infrahub/telemetry/
 
 backend/infrahub/services/
 ├── component.py         # InfrahubComponent.refresh_resources() reads this process's
-│                        #   resources and publishes them to LATEST_RESOURCE_READING; the
-│                        #   liveness heartbeat writes that reading beside its active key;
-│                        #   the gatherer reads them back through the new
+│                        #   resources and stores them for 2 hours; the gatherer reads
+│                        #   the active workers' readings back through the new
 │                        #   read_worker_resources() scan; WorkerInfo gains a component
 │                        #   attribute, set by add_key from the process's own keys
 └── scheduler.py         # registers the 5-minute resource_refresh schedule on the main loop
@@ -112,7 +111,8 @@ backend/tests/unit/telemetry/
 └── test_database.py     # NEW: the worker_limit setting parse
 
 backend/tests/unit/services/
-├── test_component.py    # NEW: component attribution; the heartbeat's resource write;
+├── test_component.py    # NEW: component attribution; storing the reading and reading
+│                        #   back only the given workers'; liveness written first;
 │                        #   a read that keeps failing leaves a warning and an empty reading
 └── test_scheduler.py    # extended: resource_refresh is registered for worker processes
 
@@ -127,7 +127,7 @@ Outside `backend/`, the feature also touches:
 - `docs/`: the FAQ entry.
 - One Towncrier fragment, `changelog/+resource-telemetry.added.md`, covering the whole feature.
 
-**Structure Decision**: Single backend project. The behaviour lives in `backend/infrahub/telemetry/` (a new `resources.py` reader, three new Pydantic models — `TelemetryComponentData` and `TelemetryPerWorkerData` in `models.py`, `WorkerResourceReading` in `resources.py` — and gather wiring) and three existing modules: `backend/infrahub/services/component.py` (resources read by `refresh_resources()` and written by the liveness heartbeat, read back by the new `read_worker_resources()` scan; `WorkerInfo` gains a `component` attribute), `backend/infrahub/services/scheduler.py` (registers the resource schedule), and `backend/infrahub/tasks/recurring.py` (the schedule's function). Alongside it the feature promotes `psutil` in `pyproject.toml`, and updates the docs and changelog. No new top-level package, no cross-cutting refactor. It follows the backend-component-design rule only in part. The reader is a defaulted `Factory(ProcessResources)` attribute on the existing `InfrahubComponent`, which is constructed at many call sites: the rule's transitional compromise for existing code, not its target shape of a required collaborator. The reading reaches the heartbeat thread through the module-level `LATEST_RESOURCE_READING`, built at import inside `component.py`, which `refresh_resources()` publishes to directly and `refresh_worker_heartbeat()` takes as a defaulted parameter. The rule asks for a process-global built on first use in its own registry module, so this deviates from it. The gatherer itself follows the DI/builder pattern established in the parent telemetry work.
+**Structure Decision**: Single backend project. The behaviour lives in `backend/infrahub/telemetry/` (a new `resources.py` reader, three new Pydantic models — `TelemetryComponentData` and `TelemetryPerWorkerData` in `models.py`, `WorkerResourceReading` in `resources.py` — and gather wiring) and three existing modules: `backend/infrahub/services/component.py` (resources read and stored by `refresh_resources()`, read back for the active workers by the new `read_worker_resources()` scan; `WorkerInfo` gains a `component` attribute), `backend/infrahub/services/scheduler.py` (registers the resource schedule), and `backend/infrahub/tasks/recurring.py` (the schedule's function). Alongside it the feature promotes `psutil` in `pyproject.toml`, and updates the docs and changelog. No new top-level package, no cross-cutting refactor. It follows the backend-component-design rule only in part. The reader is a defaulted `Factory(ProcessResources)` attribute on the existing `InfrahubComponent`, which is constructed at many call sites: the rule's transitional compromise for existing code, not its target shape of a required collaborator. The gatherer itself follows the DI/builder pattern established in the parent telemetry work.
 
 ## Complexity Tracking
 

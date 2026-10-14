@@ -444,12 +444,9 @@ remains the one way a live holder can lose a lock; the merge watcher's grace per
 the deadlock cleanup has no equivalent.
 
 <!-- Extracted from specs/infp-631-resource-telemetry on 2026-10-08 -->
-Each beat also carries the process's CPU and memory reading for telemetry, under
-`workers:resources:{component}:worker:{worker_id}` with the same 15-second expiry, so a reading
-exists exactly as long as the process counts as alive. Every 5 minutes the main loop starts a
-reading on a separate thread, not the heartbeat thread, and each beat writes the latest one again.
-It is handed to the thread through `LatestResourceReading` in `services/component.py`, because the
-thread only writes to the cache: reading the limit files there could stall the beat. See
+The beat writes only liveness keys. Telemetry's CPU and memory readings are stored by a 5-minute
+schedule on the main loop instead, and the daily report uses only the readings of the workers whose
+active key the beat keeps alive, so a slow or failed telemetry write can never delay a beat. See
 [Telemetry](telemetry.md#cpu-and-memory-figures).
 
 ## Key Locations

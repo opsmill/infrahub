@@ -129,12 +129,12 @@ A failure in the new figures only empties those figures; the rest of the report 
 ## Worker counts
 
 - `workers.total` and `workers.active` are unchanged: they count every worker process, API server and task workers together.
-- `server` and `task_workers` count their own processes the same way, so `server.total + task_workers.total` equals `workers.total`. The one exception is a process that stopped about two hours earlier: the keys that name its component have expired, but its 2-hour presence key has not yet. `workers` still counts it and the new blocks do not. This normally lasts the last 15 minutes or so before Infrahub forgets the process, and longer if Infrahub could not refresh its branches, or a long task kept it busy, before the process stopped. It never affects `active`.
+- `server` and `task_workers` count their own processes the same way, so `server.total + task_workers.total` equals `workers.total`. The one exception is a process that stopped about two hours earlier: the keys that name its component have expired, but its 2-hour presence key has not yet. `workers` still counts it and the new blocks do not. This normally lasts at most the last 5 minutes or so before Infrahub forgets the process, and longer if a long task kept it busy before the process stopped. It never affects `active`.
 - `total` can stay above zero for up to two hours after the last process of a component stops. `active` drops to zero within 15 seconds.
 
 ## Readings and counts are separate
 
-The figures come from a reading each process stores next to its heartbeat, which expires after the same 15 seconds. They are not matched against the active workers, so:
+The figures come from a reading each process stores every 5 minutes, which is kept for 2 hours. Only the readings of the workers counted in `active` are used, so a stopped worker's reading is ignored although it stays in the cache. Beyond that:
 
 - A process that has not stored a reading yet is not counted when its container is divided, so the share reads high until it does. Each process stores a reading when it starts, so this is brief.
 - A worker that never stores a reading is still counted in `total` and `active`.
