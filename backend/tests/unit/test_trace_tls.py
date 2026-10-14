@@ -228,8 +228,9 @@ class TestGRPCExporterTLS:
         monkeypatch: pytest.MonkeyPatch,
         make_exporter: Callable[..., SpanExporter],
     ) -> None:
-        # Cap the export deadline so the failure path does not sit in gRPC's retry backoff.
-        monkeypatch.setenv("OTEL_EXPORTER_OTLP_TIMEOUT", "1")
+        # opentelemetry-exporter-otlp-proto-grpc 1.44 waits at least 0.8s before a retry, so this timeout never retries.
+        monkeypatch.delenv("OTEL_EXPORTER_OTLP_TRACES_TIMEOUT", raising=False)
+        monkeypatch.setenv("OTEL_EXPORTER_OTLP_TIMEOUT", "0.5")
         exporter = make_exporter(
             exporter_type="otlp",
             exporter_protocol="grpc",
@@ -286,7 +287,9 @@ class TestHTTPExporterTLS:
         monkeypatch: pytest.MonkeyPatch,
         make_exporter: Callable[..., SpanExporter],
     ) -> None:
-        monkeypatch.setenv("OTEL_EXPORTER_OTLP_TIMEOUT", "1")
+        # opentelemetry-exporter-otlp-proto-http 1.44 waits at least 0.8s before a retry, so this timeout never retries into a negative one.
+        monkeypatch.delenv("OTEL_EXPORTER_OTLP_TRACES_TIMEOUT", raising=False)
+        monkeypatch.setenv("OTEL_EXPORTER_OTLP_TIMEOUT", "0.5")
         exporter = make_exporter(
             exporter_type="otlp",
             exporter_protocol="http/protobuf",
