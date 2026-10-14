@@ -32,6 +32,8 @@ Every rebase replays all of the branch's own changes onto the new base: one `reb
 - The builder and the Python target resolver run with `refresh_updated_nodes`, so an updated node also recomputes its own derived values, whichever fields changed: every value it derived on the branch read the old base, including one that reads no changed field, such as a computed attribute a schema change wrote.
 - The rebase submits a profile refresh for every node whose profiles changed on the branch, since the profile values it applied were the old base's.
 
+For the kinds whose schema the branch changed, the rebase reads the default branch's changes through `DiffCoordinator.calculate_arbitrary_timeframe_diff`, which calculates the diff without storing it.
+
 ## The Python transform family
 
 **Location:** `core/merge/python_target_resolution.py` (the narrowing), `core/merge/python_target_sources.py` (the database and client sources)

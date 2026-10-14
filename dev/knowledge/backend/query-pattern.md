@@ -25,9 +25,11 @@ schema = db.schema.get(name="MyNode", branch=branch)
 schema = registry.schema.get(name="MyNode")
 ```
 
-Components already accept `schema_manager` (the merge orchestrator, diff calculator, schema update coordinator, …); entry points still pass `registry.schema`, concentrating the access at the boundary. The next step is an accessor like the existing `get_database()` / `get_component()` so entry points can drop `registry` entirely.
+Components already accept `schema_manager` (the merge orchestrator, diff calculator, schema update coordinator, …); entry points still pass `registry.schema`, concentrating the access at the boundary.
 
 Exception: `registry` stays for hot (per-request) in-memory reads where a DB round-trip is a real regression (e.g. `registry.branch`); cold paths (daily tasks) use the DB. New-code preference — don't sweep existing call sites.
+
+When a read must reflect what a branch itself defines (a branch that removed a kind must not see it), pass `check_branch_only=True` to `schema.get`. Without it the lookup silently falls back to the default-branch schema and returns stale definitions.
 
 ## Query Lifecycle
 
@@ -225,6 +227,8 @@ With `insert_limit = False` it is worse than wasteful. The wrapper cannot append
 
 Because the wasted execution changes no returned value, assertions on query results cannot detect it. `CountingInfrahubDatabase` in `backend/tests/helpers/db_query_counter.py` counts executions by query name, so a test can assert how many queries a paged read issues.
 
+The converse trap: setting `self.limit` only so `execute()` runs a single round trip still renders a literal `LIMIT`, because `insert_limit` defaults to `True`. An exact-row-count limit with no `ORDER BY` silently drops an arbitrary row the moment the query matches one more than expected — set `insert_limit = False` when the limit sizes the read rather than pages it, and keep a computed limit non-zero (`execute()` reads a falsy limit as unpaginated and chunks the read).
+
 ### Branch-Aware Edge Resolution
 
 Every edge in the graph has branch/temporal properties (`branch`, `branch_level`, `from`, `to`, `status`). When traversing multiple edges in a single query, filter each edge independently to resolve the correct active version:
@@ -242,18 +246,11 @@ WITH n, attr, r
 WHERE r.status = "active"
 ```
 
-Each subquery:
-
-1. Re-matches the edge with branch filter applied
-2. Orders by `branch_level DESC, from DESC, status ASC` to prefer the most specific, most recent, active edge
-3. `LIMIT 1` picks the winning edge
-4. Outer `WHERE r.status = "active"` excludes soft-deleted edges
-
-Get `branch_filter` via `self.branch.get_query_filter_path(at=self.at)`. For queries filtering multiple edges with different variable names, use `variable_name="r_custom"` to generate a filter bound to a specific variable.
-
-Example: `NodeGetListByAttributeValueQuery` and `NodeGetByHFIDQuery` chain three such subqueries (`IS_PART_OF`, `HAS_ATTRIBUTE`, `HAS_VALUE`) to resolve the active attribute value for the requested branch/time.
+The ordering prefers the most specific, most recent, active edge; `LIMIT 1` elects the winner, and the outer `WHERE` excludes soft-deleted edges. Get `branch_filter` via `self.branch.get_query_filter_path(at=self.at)`; pass `variable_name="r_custom"` to bind the filter to a specific edge variable. `NodeGetByHFIDQuery` chains three such subqueries (`IS_PART_OF`, `HAS_ATTRIBUTE`, `HAS_VALUE`) to resolve the active attribute value.
 
 The outer `MATCH` returns one row per matching edge, and the graph keeps one `HAS_ATTRIBUTE` edge per branch that touched the attribute — so an attribute edited on three branches yields three rows, and the `CALL` subquery then runs three times to elect the same winning edge. Add `WITH DISTINCT <keys>` before the `CALL` and group at the natural cardinality: an Attribute has exactly one active AttributeValue per branch/time, so group by `(n, attr)` and re-apply value predicates after the subquery. Keep the outer edge anonymous (`-[:HAS_ATTRIBUTE]->`) while you are there — binding a variable you never read does not change the row count, but it does collide with the subquery's own edge variable (see below). See [Database Schema — Key Points](database-schema.md#key-points).
+
+The same granularity rule holds when one query reads several attribute names for a node: `UNWIND` the names and run the electing subquery once per `(node, name)` pair, so at most one row per name comes back. Matching every name in one pass without a per-name election returns each active edge it finds; with a duplicate-active bug, a reader that keys the rows by name keeps whichever arrived last instead of surfacing the fault.
 
 ### Cross-branch grouped attribute read
 
@@ -299,6 +296,8 @@ Two earlier queries hold halves of this shape, and are the ones to read alongsid
 ### Query performance
 
 `AttributeValueIndexed` values are stored natively typed (a number attribute's `av.value` is an integer). Compare `av.value` directly in `WHERE` predicates — wrapping the property in a function (`toInteger(av.value) >= $x`) prevents Neo4j from using the index, so the query scans every row of the kind instead of seeking the matching range.
+
+The `uuid` and `kind` indexes of a node vertex are declared on the `Node` label (`node_uuid`, `node_kind` in `backend/infrahub/core/graph/index.py`), not on its kind label. A `MATCH` anchored on a kind label alone — `MATCH (pool:%(kind)s { uuid: $pool_id })` — cannot use them and scans every vertex of that kind. Include the `Node` label too: `MATCH (pool:Node:%(kind)s { uuid: $pool_id })`, and check the plan with `EXPLAIN` when in doubt.
 
 ### Cypher Variable Shadowing (Neo4j 5+)
 

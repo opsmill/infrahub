@@ -253,6 +253,19 @@ if offset is not None:
     query += " SKIP $offset"
 ```
 
+`None` must mean one thing. When an optional parameter's `None` would carry two readings — "the value
+is known to be absent" and "the value is unknown, go look it up" — the function is hiding two
+contracts. Split it into two methods, one per contract, and share the common logic privately:
+
+```python
+# ❌ Bad - checksum=None means both "artifact has none: refuse" and "unknown: query for it"
+async def read(self, storage_id: str, checksum: str | None = None) -> bytes: ...
+
+# ✅ Good - one contract each
+async def read_artifact(self, storage_id: str, checksum: str | None) -> bytes: ...  # absent → refuse
+async def read_stored_object(self, storage_id: str) -> bytes: ...                   # look up the recorded checksum
+```
+
 When zero deliberately means "no bound" in the caller contract, keep that reading — and pin it with
 a test, so the next pass at the line fails fast instead of shipping the inversion.
 
