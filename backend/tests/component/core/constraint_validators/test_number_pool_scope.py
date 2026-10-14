@@ -80,6 +80,20 @@ def _site_renamed(schema_branch: SchemaBranch) -> SchemaRoot:
     return SchemaRoot(nodes=[device])
 
 
+def _kind_renamed_and_site_optional(schema_branch: SchemaBranch) -> SchemaRoot:
+    device = _device(schema_branch)
+    device.name = "Router"
+    device.get_relationship(name="site").optional = True
+    return SchemaRoot(nodes=[device])
+
+
+def _kind_renamed_and_site_removed(schema_branch: SchemaBranch) -> SchemaRoot:
+    device = _device(schema_branch)
+    device.name = "Router"
+    device.get_relationship(name="site").state = HashableModelState.ABSENT
+    return SchemaRoot(nodes=[device])
+
+
 def _role_optional(schema_branch: SchemaBranch) -> SchemaRoot:
     device = _device(schema_branch)
     device.get_attribute(name="role").optional = True
@@ -155,6 +169,20 @@ REFUSAL_CASES = [
         pool=DEVICE_POOL_BY_SITE,
         field="site",
         detail="divides its numbers by ScopeDevice.site; a scope element cannot be removed while the pool exists",
+    ),
+    RefusalCase(
+        name="kind-renamed-and-relationship-made-optional",
+        change=_kind_renamed_and_site_optional,
+        pool=DEVICE_POOL_BY_SITE,
+        field="site",
+        detail="divides its numbers by ScopeRouter.site; a scope element must stay required",
+    ),
+    RefusalCase(
+        name="kind-renamed-and-relationship-removed",
+        change=_kind_renamed_and_site_removed,
+        pool=DEVICE_POOL_BY_SITE,
+        field="site",
+        detail="divides its numbers by ScopeRouter.site; a scope element cannot be removed while the pool exists",
     ),
     RefusalCase(
         name="attribute-made-optional",
