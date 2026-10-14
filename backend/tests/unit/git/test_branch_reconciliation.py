@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import logging
 import re
-from dataclasses import dataclass
-from datetime import UTC, datetime
+from dataclasses import dataclass, replace
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -21,13 +21,16 @@ from infrahub.git.divergence.models import ReconciledBranch, RefClassification, 
 from infrahub.git.divergence.recorder import HistoryRewriteRecorder
 from infrahub.git.divergence.suppression import RetargetMarkers
 from infrahub.git.repository import FailedImport, ImportStep, PendingObjectImport
+from infrahub.git.writeback.models import RevertedDelivery
 from tests.adapters.cache import MemoryCache
+from tests.adapters.delivery_state import build_idle_delivery_state
 from tests.adapters.repository_record_store import (
     FailingRepositoryRecordStore,
     InMemoryRepositoryRecordStore,
     WrittenRecord,
 )
 from tests.helpers.git import GraphRecordingClient, LocalRemote, clone_repository
+from tests.unit.git.writeback.fakes import FixedClock, InMemoryDeliveryState
 
 if TYPE_CHECKING:
     from infrahub.git.repository import InfrahubRepository
@@ -184,7 +187,9 @@ async def test_a_rewritten_branch_is_reset_onto_the_remote_head_and_imported_aga
     imported = tracked.imported_commits[TRACKED]
     rewritten = tracked.remote.commit(branch_name=TRACKED, files={"data.txt": "feature rewritten\n"}, amend=True)
 
-    collected = await tracked.repository.collect_pending_imports(graph_commits=tracked.graph_commits())
+    collected = await tracked.repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)), graph_commits=tracked.graph_commits()
+    )
 
     assert collected.failed_imports == []
     rewrite = divergence(imported, rewritten, RefClassification.REWRITE)
@@ -206,7 +211,9 @@ async def test_a_fast_forwarded_branch_is_moved_onto_the_remote_head_and_reports
     imported = tracked.imported_commits[TRACKED]
     advanced = tracked.remote.commit(branch_name=TRACKED, files={"data.txt": "feature v2\n"})
 
-    collected = await tracked.repository.collect_pending_imports(graph_commits=tracked.graph_commits())
+    collected = await tracked.repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)), graph_commits=tracked.graph_commits()
+    )
 
     assert collected.imports == [
         queued(commit=advanced, divergence=divergence(imported, advanced, RefClassification.FAST_FORWARD))
@@ -223,7 +230,9 @@ async def test_a_branch_the_remote_rewound_is_reset_back_onto_the_remote_head(
     imported = tracked.imported_commits[TRACKED]
     tracked.remote.move_branch(branch_name=TRACKED, commit=tracked.trunk_commit)
 
-    collected = await tracked.repository.collect_pending_imports(graph_commits=tracked.graph_commits())
+    collected = await tracked.repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)), graph_commits=tracked.graph_commits()
+    )
 
     assert collected.imports == [
         queued(
@@ -249,7 +258,8 @@ async def test_a_stale_worktree_resets_even_when_the_graph_already_records_the_r
     rewritten = tracked.remote.commit(branch_name=TRACKED, files={"data.txt": "feature rewritten\n"}, amend=True)
 
     collected = await tracked.repository.collect_pending_imports(
-        graph_commits=tracked.graph_commits(**{TRACKED: rewritten})
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)),
+        graph_commits=tracked.graph_commits(**{TRACKED: rewritten}),
     )
 
     assert collected.imports == [
@@ -268,7 +278,8 @@ async def test_a_worktree_on_the_remote_head_records_the_commit_the_graph_lacks(
     assert await tracked.repository.compare_local_remote() == ([], [])
 
     collected = await tracked.repository.collect_pending_imports(
-        graph_commits=tracked.graph_commits(**{TRACKED: tracked.trunk_commit})
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)),
+        graph_commits=tracked.graph_commits(**{TRACKED: tracked.trunk_commit}),
     )
 
     assert collected.imports == [
@@ -286,7 +297,8 @@ async def test_a_worktree_on_the_remote_head_reports_the_commit_the_graph_held_a
     imported = tracked.imported_commits[TRACKED]
 
     collected = await tracked.repository.collect_pending_imports(
-        graph_commits=tracked.graph_commits(**{TRACKED: UNKNOWN_COMMIT})
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)),
+        graph_commits=tracked.graph_commits(**{TRACKED: UNKNOWN_COMMIT}),
     )
 
     assert collected.imports == [
@@ -302,7 +314,10 @@ async def test_an_empty_graph_commit_is_one_the_graph_never_recorded(
     tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
     imported = tracked.imported_commits[TRACKED]
 
-    collected = await tracked.repository.collect_pending_imports(graph_commits=tracked.graph_commits(**{TRACKED: ""}))
+    collected = await tracked.repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)),
+        graph_commits=tracked.graph_commits(**{TRACKED: ""}),
+    )
 
     assert collected.failed_imports == []
     assert collected.imports == [
@@ -316,7 +331,9 @@ async def test_a_branch_on_the_remote_head_in_both_git_and_the_graph_is_left_alo
 ) -> None:
     tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
 
-    collected = await tracked.repository.collect_pending_imports(graph_commits=tracked.graph_commits())
+    collected = await tracked.repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)), graph_commits=tracked.graph_commits()
+    )
 
     assert collected.imports == []
     assert collected.failed_imports == []
@@ -332,7 +349,8 @@ async def test_a_malformed_graph_commit_counts_as_none_and_the_branch_is_reset(
     rewritten = tracked.remote.commit(branch_name=TRACKED, files={"data.txt": "feature rewritten\n"}, amend=True)
 
     collected = await tracked.repository.collect_pending_imports(
-        graph_commits=tracked.graph_commits(**{TRACKED: "not-a-commit"})
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)),
+        graph_commits=tracked.graph_commits(**{TRACKED: "not-a-commit"}),
     )
 
     assert collected.failed_imports == []
@@ -354,12 +372,14 @@ async def test_a_branch_whose_object_store_cannot_be_read_fails_alone_and_keeps_
     missing_store = lose_an_object_store(tracked=tracked, tmp_path=tmp_path)
 
     collected = await tracked.repository.collect_pending_imports(
-        graph_commits=tracked.graph_commits(**{TRACKED: UNKNOWN_COMMIT})
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)),
+        graph_commits=tracked.graph_commits(**{TRACKED: UNKNOWN_COMMIT}),
     )
 
     assert collected.failed_imports == [
         FailedImport(
             branch_name=TRACKED,
+            infrahub_branch_name=TRACKED,
             step=ImportStep.COLLECTION,
             reason=f"Unable to read {UNKNOWN_COMMIT} from the object database: {missing_store} is unreadable",
         )
@@ -386,7 +406,9 @@ async def test_a_branch_whose_infrahub_branch_is_gone_is_left_alone(
     advanced = tracked.remote.commit(branch_name=OTHER, files={"data.txt": "other v2\n"})
     tracked.client.branch_names = ("main", OTHER)
 
-    collected = await tracked.repository.collect_pending_imports(graph_commits=tracked.graph_commits())
+    collected = await tracked.repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)), graph_commits=tracked.graph_commits()
+    )
 
     assert collected.failed_imports == []
     assert collected.imports == [
@@ -410,7 +432,9 @@ async def test_a_branch_that_needs_a_rebase_is_left_alone(tmp_path: Path, monkey
     advanced = tracked.remote.commit(branch_name=OTHER, files={"data.txt": "other v2\n"})
     tracked.client.branch_statuses = {TRACKED: "NEED_REBASE"}
 
-    collected = await tracked.repository.collect_pending_imports(graph_commits=tracked.graph_commits())
+    collected = await tracked.repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)), graph_commits=tracked.graph_commits()
+    )
 
     assert collected.failed_imports == []
     assert collected.imports == [
@@ -435,11 +459,14 @@ async def test_a_branch_whose_commit_the_graph_refuses_fails_alone(
     advanced = tracked.remote.commit(branch_name=OTHER, files={"data.txt": "other v2\n"})
     tracked.client.rejecting_branches = frozenset({TRACKED})
 
-    collected = await tracked.repository.collect_pending_imports(graph_commits=tracked.graph_commits())
+    collected = await tracked.repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)), graph_commits=tracked.graph_commits()
+    )
 
     assert collected.failed_imports == [
         FailedImport(
             branch_name=TRACKED,
+            infrahub_branch_name=TRACKED,
             step=ImportStep.COLLECTION,
             reason=(
                 "An error occurred while executing the GraphQL Query None, "
@@ -467,7 +494,9 @@ async def test_a_branch_new_to_this_worker_is_classified_against_the_commit_anot
     imported = tracked.imported_commits[TRACKED]
     rewritten = tracked.remote.commit(branch_name=TRACKED, files={"data.txt": "feature rewritten\n"}, amend=True)
 
-    collected = await tracked.repository.collect_pending_imports(graph_commits=tracked.graph_commits())
+    collected = await tracked.repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)), graph_commits=tracked.graph_commits()
+    )
 
     assert collected.imports == [
         queued(commit=rewritten, divergence=divergence(imported, rewritten, RefClassification.REWRITE))
@@ -485,7 +514,8 @@ async def test_a_branch_new_to_this_worker_is_created_even_when_it_cannot_be_cla
     missing_store = lose_an_object_store(tracked=tracked, tmp_path=tmp_path)
 
     collected = await tracked.repository.collect_pending_imports(
-        graph_commits=tracked.graph_commits(**{TRACKED: UNKNOWN_COMMIT})
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)),
+        graph_commits=tracked.graph_commits(**{TRACKED: UNKNOWN_COMMIT}),
     )
 
     assert collected.failed_imports == []
@@ -509,7 +539,9 @@ async def test_a_rewritten_trunk_of_a_staging_repository_is_reset_and_imported_i
     rewritten = tracked.remote.commit(branch_name="main", files={"data.txt": "main rewritten\n"}, amend=True)
 
     collected = await tracked.repository.collect_pending_imports(
-        staging_branch=STAGING, graph_commits=tracked.graph_commits()
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)),
+        staging_branch=STAGING,
+        graph_commits=tracked.graph_commits(),
     )
 
     assert collected.imports == [
@@ -535,12 +567,15 @@ async def test_a_staging_trunk_whose_commit_the_graph_refuses_fails_without_rais
     tracked.client.rejecting_branches = frozenset({"main"})
 
     collected = await tracked.repository.collect_pending_imports(
-        staging_branch=STAGING, graph_commits=tracked.graph_commits()
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)),
+        staging_branch=STAGING,
+        graph_commits=tracked.graph_commits(),
     )
 
     assert collected.failed_imports == [
         FailedImport(
             branch_name="main",
+            infrahub_branch_name=STAGING,
             step=ImportStep.COLLECTION,
             reason=(
                 "An error occurred while executing the GraphQL Query None, "
@@ -559,11 +594,14 @@ async def test_a_default_branch_new_to_this_worker_fails_as_the_default_branch(
     tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch, local_branches=())
     tracked.repository.default_branch = TRACKED
 
-    collected = await tracked.repository.collect_pending_imports(graph_commits=tracked.graph_commits())
+    collected = await tracked.repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)), graph_commits=tracked.graph_commits()
+    )
 
     assert collected.failed_imports == [
         FailedImport(
             branch_name=TRACKED,
+            infrahub_branch_name="main",
             step=ImportStep.COLLECTION,
             reason=(
                 f"Unable to push the branch {TRACKED} to the remote for repository tracked-repo: "
@@ -593,7 +631,9 @@ async def test_a_default_branch_renamed_to_the_infrahub_default_is_queued_as_the
     )
     repository.default_branch = "main"
 
-    collected = await repository.collect_pending_imports(graph_commits={"main": trunk_commit})
+    collected = await repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(repository.id)), graph_commits={"main": trunk_commit}
+    )
 
     assert collected.failed_imports == []
     assert collected.imports == [
@@ -621,7 +661,9 @@ async def test_a_rewrite_is_recorded_on_the_branch_whose_commit_was_written(
     store = InMemoryRepositoryRecordStore()
 
     collected = await tracked.repository.collect_pending_imports(
-        graph_commits=tracked.graph_commits(), recorder=recorder(store)
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)),
+        graph_commits=tracked.graph_commits(),
+        recorder=recorder(store),
     )
 
     assert collected.failed_imports == []
@@ -636,7 +678,11 @@ async def test_a_rewrite_found_on_a_branch_new_to_this_worker_is_recorded(
     rewritten = tracked.remote.commit(branch_name=TRACKED, files={"data.txt": "feature rewritten\n"}, amend=True)
     store = InMemoryRepositoryRecordStore()
 
-    await tracked.repository.collect_pending_imports(graph_commits=tracked.graph_commits(), recorder=recorder(store))
+    await tracked.repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)),
+        graph_commits=tracked.graph_commits(),
+        recorder=recorder(store),
+    )
 
     assert store.written == [written_record(tracked, branch_name=TRACKED, previous_commit=imported, commit=rewritten)]
 
@@ -652,7 +698,10 @@ async def test_a_rewritten_trunk_of_a_staging_repository_is_recorded_on_the_trun
     store = InMemoryRepositoryRecordStore()
 
     await tracked.repository.collect_pending_imports(
-        staging_branch=STAGING, graph_commits=tracked.graph_commits(), recorder=recorder(store)
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)),
+        staging_branch=STAGING,
+        graph_commits=tracked.graph_commits(),
+        recorder=recorder(store),
     )
 
     assert store.written == [
@@ -669,7 +718,9 @@ async def test_a_worktree_that_resets_onto_a_commit_the_graph_already_records_re
     store = InMemoryRepositoryRecordStore()
 
     collected = await tracked.repository.collect_pending_imports(
-        graph_commits=tracked.graph_commits(**{TRACKED: rewritten}), recorder=recorder(store)
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)),
+        graph_commits=tracked.graph_commits(**{TRACKED: rewritten}),
+        recorder=recorder(store),
     )
 
     assert [pending_import.commit for pending_import in collected.imports] == [rewritten]
@@ -693,18 +744,22 @@ async def test_a_record_that_fails_fails_its_branch_alone_and_keeps_its_import(
     advanced = tracked.remote.commit(branch_name=OTHER, files={"data.txt": "other v2\n"})
 
     collected = await tracked.repository.collect_pending_imports(
-        graph_commits=tracked.graph_commits(), recorder=recorder(FailingRepositoryRecordStore())
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)),
+        graph_commits=tracked.graph_commits(),
+        recorder=recorder(FailingRepositoryRecordStore()),
     )
 
     assert collected.failed_imports == [
         FailedImport(
             branch_name=TRACKED,
+            infrahub_branch_name=TRACKED,
             step=ImportStep.RECORD,
             reason=f"The API is unreachable from {TRACKED}",
             on_default_branch=False,
         ),
         FailedImport(
             branch_name="main",
+            infrahub_branch_name="main",
             step=ImportStep.RECORD,
             reason="The API is unreachable from main",
             on_default_branch=True,
@@ -751,7 +806,9 @@ async def test_a_record_that_fails_is_logged_once_with_the_reason_of_its_cause(
     tracked.remote.commit(branch_name=TRACKED, files={"data.txt": "feature rewritten\n"}, amend=True)
 
     collected = await tracked.repository.collect_pending_imports(
-        graph_commits=tracked.graph_commits(), recorder=recorder(FailingRepositoryRecordStore(cause=test_case.cause))
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)),
+        graph_commits=tracked.graph_commits(),
+        recorder=recorder(FailingRepositoryRecordStore(cause=test_case.cause)),
     )
     with pytest.raises(
         RepositoryError,
@@ -859,7 +916,10 @@ async def test_a_trunk_re_pointed_on_purpose_is_reset_records_nothing_and_clears
     store = InMemoryRepositoryRecordStore()
 
     collected = await re_pointed.tracked.repository.collect_pending_imports(
-        graph_commits=re_pointed.graph_commits(), recorder=recorder(store), retarget_markers=markers
+        state=build_idle_delivery_state(repository_id=str(re_pointed.tracked.repository.id)),
+        graph_commits=re_pointed.graph_commits(),
+        recorder=recorder(store),
+        retarget_markers=markers,
     )
 
     assert collected.failed_imports == []
@@ -880,6 +940,7 @@ async def test_a_trunk_re_pointed_without_a_marker_is_recorded_as_a_rewrite(
     store = InMemoryRepositoryRecordStore()
 
     await re_pointed.tracked.repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(re_pointed.tracked.repository.id)),
         graph_commits=re_pointed.graph_commits(),
         recorder=recorder(store),
         retarget_markers=RetargetMarkers(cache=MemoryCache()),
@@ -902,13 +963,17 @@ async def test_a_marker_suppresses_one_cycle_so_a_later_rewrite_of_the_trunk_is_
     markers = await marked(re_pointed.tracked, target=TRACKED)
     store = InMemoryRepositoryRecordStore()
     await re_pointed.tracked.repository.collect_pending_imports(
-        graph_commits=re_pointed.graph_commits(), recorder=recorder(store), retarget_markers=markers
+        state=build_idle_delivery_state(repository_id=str(re_pointed.tracked.repository.id)),
+        graph_commits=re_pointed.graph_commits(),
+        recorder=recorder(store),
+        retarget_markers=markers,
     )
     rewritten = re_pointed.tracked.remote.commit(
         branch_name=TRACKED, files={"data.txt": "feature rewritten\n"}, amend=True
     )
 
     await re_pointed.tracked.repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(re_pointed.tracked.repository.id)),
         graph_commits=re_pointed.graph_commits(main=re_pointed.new_head),
         recorder=recorder(store),
         retarget_markers=markers,
@@ -928,7 +993,10 @@ async def test_a_re_pointed_trunk_does_not_hide_a_rewrite_of_another_branch(
     rewritten = re_pointed.tracked.remote.commit(branch_name=OTHER, files={"data.txt": "other rewritten\n"}, amend=True)
 
     await re_pointed.tracked.repository.collect_pending_imports(
-        graph_commits=re_pointed.graph_commits(), recorder=recorder(store), retarget_markers=markers
+        state=build_idle_delivery_state(repository_id=str(re_pointed.tracked.repository.id)),
+        graph_commits=re_pointed.graph_commits(),
+        recorder=recorder(store),
+        retarget_markers=markers,
     )
 
     assert store.written == [
@@ -950,12 +1018,16 @@ async def test_a_re_pointed_trunk_that_fails_keeps_its_marker_for_the_next_cycle
     re_pointed.tracked.client.rejecting_branches = frozenset({"main"})
 
     failed = await re_pointed.tracked.repository.collect_pending_imports(
-        graph_commits=re_pointed.graph_commits(), recorder=recorder(store), retarget_markers=markers
+        state=build_idle_delivery_state(repository_id=str(re_pointed.tracked.repository.id)),
+        graph_commits=re_pointed.graph_commits(),
+        recorder=recorder(store),
+        retarget_markers=markers,
     )
 
     assert failed.failed_imports == [
         FailedImport(
             branch_name=TRACKED,
+            infrahub_branch_name="main",
             step=ImportStep.COLLECTION,
             reason=(
                 "An error occurred while executing the GraphQL Query None, "
@@ -968,7 +1040,10 @@ async def test_a_re_pointed_trunk_that_fails_keeps_its_marker_for_the_next_cycle
 
     re_pointed.tracked.client.rejecting_branches = frozenset()
     retried = await re_pointed.tracked.repository.collect_pending_imports(
-        graph_commits=re_pointed.graph_commits(), recorder=recorder(store), retarget_markers=markers
+        state=build_idle_delivery_state(repository_id=str(re_pointed.tracked.repository.id)),
+        graph_commits=re_pointed.graph_commits(),
+        recorder=recorder(store),
+        retarget_markers=markers,
     )
 
     assert retried.failed_imports == []
@@ -990,7 +1065,10 @@ async def test_a_marker_no_branch_needed_is_swept_so_a_later_rewrite_of_the_trun
     store = InMemoryRepositoryRecordStore()
 
     idle = await tracked.repository.collect_pending_imports(
-        graph_commits=tracked.graph_commits(), recorder=recorder(store), retarget_markers=markers
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)),
+        graph_commits=tracked.graph_commits(),
+        recorder=recorder(store),
+        retarget_markers=markers,
     )
 
     assert idle.imports == []
@@ -998,7 +1076,10 @@ async def test_a_marker_no_branch_needed_is_swept_so_a_later_rewrite_of_the_trun
 
     rewritten = tracked.remote.commit(branch_name="main", files={"data.txt": "main rewritten\n"}, amend=True)
     await tracked.repository.collect_pending_imports(
-        graph_commits=tracked.graph_commits(), recorder=recorder(store), retarget_markers=markers
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)),
+        graph_commits=tracked.graph_commits(),
+        recorder=recorder(store),
+        retarget_markers=markers,
     )
 
     assert store.written == [
@@ -1016,7 +1097,10 @@ async def test_a_marker_for_another_target_is_left_for_the_cycle_that_synchronis
     rewritten = tracked.remote.commit(branch_name="main", files={"data.txt": "main rewritten\n"}, amend=True)
 
     await tracked.repository.collect_pending_imports(
-        graph_commits=tracked.graph_commits(), recorder=recorder(store), retarget_markers=markers
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)),
+        graph_commits=tracked.graph_commits(),
+        recorder=recorder(store),
+        retarget_markers=markers,
     )
 
     assert store.written == [
@@ -1035,7 +1119,10 @@ async def test_an_inactive_repository_keeps_its_marker_for_the_cycle_that_synchr
     re_pointed.tracked.repository.internal_status = RepositoryInternalStatus.INACTIVE
 
     idle = await re_pointed.tracked.repository.collect_pending_imports(
-        graph_commits=re_pointed.graph_commits(), recorder=recorder(store), retarget_markers=markers
+        state=build_idle_delivery_state(repository_id=str(re_pointed.tracked.repository.id)),
+        graph_commits=re_pointed.graph_commits(),
+        recorder=recorder(store),
+        retarget_markers=markers,
     )
 
     assert idle.imports == []
@@ -1043,7 +1130,10 @@ async def test_an_inactive_repository_keeps_its_marker_for_the_cycle_that_synchr
 
     re_pointed.tracked.repository.internal_status = RepositoryInternalStatus.ACTIVE
     active = await re_pointed.tracked.repository.collect_pending_imports(
-        graph_commits=re_pointed.graph_commits(), recorder=recorder(store), retarget_markers=markers
+        state=build_idle_delivery_state(repository_id=str(re_pointed.tracked.repository.id)),
+        graph_commits=re_pointed.graph_commits(),
+        recorder=recorder(store),
+        retarget_markers=markers,
     )
 
     assert active.imports == [
@@ -1065,6 +1155,7 @@ async def test_a_re_pointed_trunk_of_a_staging_repository_records_nothing_and_cl
     store = InMemoryRepositoryRecordStore()
 
     collected = await re_pointed.tracked.repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(re_pointed.tracked.repository.id)),
         staging_branch=STAGING,
         graph_commits=re_pointed.graph_commits(),
         recorder=recorder(store),
@@ -1104,6 +1195,7 @@ async def test_a_default_branch_the_remote_does_not_hold_yet_keeps_its_marker(
     markers = await marked(tracked, target="release")
 
     await tracked.repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)),
         graph_commits=tracked.graph_commits(),
         recorder=recorder(InMemoryRepositoryRecordStore()),
         retarget_markers=markers,
@@ -1117,6 +1209,7 @@ async def test_a_cycle_without_a_marker_reads_the_cache_once(tmp_path: Path, mon
     cache = CountingCache()
 
     await tracked.repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)),
         graph_commits=tracked.graph_commits(),
         recorder=recorder(InMemoryRepositoryRecordStore()),
         retarget_markers=RetargetMarkers(cache=cache),
@@ -1135,9 +1228,211 @@ async def test_a_marker_written_after_the_read_is_left_for_the_next_cycle(
     markers = RetargetMarkers(cache=CacheWrittenDuringTheCycle(pending=edit.storage))
 
     await tracked.repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)),
         graph_commits=tracked.graph_commits(),
         recorder=recorder(InMemoryRepositoryRecordStore()),
         retarget_markers=markers,
     )
 
     assert await is_marked(markers, tracked, target="main")
+
+
+def pushed_state(
+    tracked: TrackedRepository, last_delivered_commit: str, reverted: RevertedDelivery | None = None
+) -> InMemoryDeliveryState:
+    """A delivery state with no pending push, whose last push delivered the given commit."""
+    repository_id = str(tracked.repository.id)
+    state = InMemoryDeliveryState(
+        clock=FixedClock(now=REWRITTEN_AT), repository_names={repository_id: tracked.repository.name}
+    )
+    state.intents[repository_id] = replace(
+        state.intents[repository_id], last_delivered_commit=last_delivered_commit, reverted=reverted
+    )
+    return state
+
+
+def reverted_push(state: InMemoryDeliveryState, tracked: TrackedRepository) -> RevertedDelivery | None:
+    return state.intents[str(tracked.repository.id)].reverted
+
+
+@pytest.mark.parametrize(
+    ("fetch_pushed", "fetch_imported"),
+    [
+        pytest.param(True, True, id="clone_holds_both_commits"),
+        pytest.param(True, False, id="clone_lacks_the_imported_commit"),
+        pytest.param(False, False, id="clone_lacks_both_commits"),
+    ],
+)
+async def test_a_rewrite_of_the_default_branch_that_discards_the_pushed_commit_records_a_reverted_push(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    fetch_pushed: bool,
+    fetch_imported: bool,
+) -> None:
+    """A clone that never fetched a commit cannot compare it, but the fetch shows the pushed commit is off the remote."""
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    pushed = tracked.remote.commit(branch_name="main", files={"data.txt": "main v2\n"})
+    if fetch_pushed:
+        await tracked.repository.fetch()
+    imported_trunk = tracked.remote.commit(branch_name="main", files={"data.txt": "main v3\n"})
+    if fetch_imported:
+        await tracked.repository.fetch()
+    tracked.remote.repo.git.reset("--hard", tracked.trunk_commit)
+    rewritten_trunk = tracked.remote.commit(branch_name="main", files={"data.txt": "main rewritten\n"})
+    state = pushed_state(tracked, last_delivered_commit=pushed)
+
+    collected = await tracked.repository.collect_pending_imports(
+        graph_commits=tracked.graph_commits(main=imported_trunk), state=state
+    )
+
+    assert collected.failed_imports == []
+    assert reverted_push(state, tracked) == RevertedDelivery(
+        delivered_commit=pushed, new_head=rewritten_trunk, detected_at=REWRITTEN_AT
+    )
+    assert (
+        f"The rewrite of branch main of repository tracked-repo discarded the pushed commit {pushed}, "
+        f"the branch now points to {rewritten_trunk}"
+    ) in caplog.messages
+
+
+async def test_a_later_rewrite_keeps_the_reverted_push_already_recorded(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A clone that never fetched the pushed commit finds it off the remote again at every later rewrite."""
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    pushed = tracked.remote.commit(branch_name="main", files={"data.txt": "main v2\n"})
+    tracked.remote.repo.git.reset("--hard", tracked.trunk_commit)
+    imported_trunk = tracked.remote.commit(branch_name="main", files={"data.txt": "main v3\n"})
+    await tracked.repository.fetch()
+    tracked.remote.commit(branch_name="main", files={"data.txt": "main v4\n"}, amend=True)
+    first_record = RevertedDelivery(
+        delivered_commit=pushed, new_head=imported_trunk, detected_at=REWRITTEN_AT - timedelta(days=1)
+    )
+    state = pushed_state(tracked, last_delivered_commit=pushed, reverted=first_record)
+
+    collected = await tracked.repository.collect_pending_imports(
+        graph_commits=tracked.graph_commits(main=imported_trunk), state=state
+    )
+
+    assert collected.failed_imports == []
+    assert reverted_push(state, tracked) == first_record
+    assert not [message for message in caplog.messages if message.startswith("The rewrite of branch main")]
+
+
+async def test_a_rewrite_of_the_default_branch_that_keeps_the_pushed_commit_records_nothing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Only the commit imported after the push is discarded, so the pushed commit is still on the remote."""
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    imported_trunk = tracked.remote.commit(branch_name="main", files={"data.txt": "main v2\n"})
+    await tracked.repository.fetch()
+    tracked.remote.commit(branch_name="main", files={"data.txt": "main rewritten\n"}, amend=True)
+    state = pushed_state(tracked, last_delivered_commit=tracked.trunk_commit)
+
+    collected = await tracked.repository.collect_pending_imports(
+        graph_commits=tracked.graph_commits(main=imported_trunk), state=state
+    )
+
+    assert collected.failed_imports == []
+    assert reverted_push(state, tracked) is None
+
+
+async def test_a_pushed_commit_that_an_earlier_rewrite_discarded_is_recorded_at_the_next_rewrite(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The record of the earlier rewrite failed, and nothing selects that rewrite again."""
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    pushed = tracked.remote.commit(branch_name="main", files={"data.txt": "main v2\n"})
+    await tracked.repository.fetch()
+    imported_trunk = tracked.remote.commit(branch_name="main", files={"data.txt": "main v3\n"}, amend=True)
+    await tracked.repository.fetch()
+    rewritten_trunk = tracked.remote.commit(branch_name="main", files={"data.txt": "main v4\n"}, amend=True)
+    state = pushed_state(tracked, last_delivered_commit=pushed)
+
+    collected = await tracked.repository.collect_pending_imports(
+        graph_commits=tracked.graph_commits(main=imported_trunk), state=state
+    )
+
+    assert collected.failed_imports == []
+    assert reverted_push(state, tracked) == RevertedDelivery(
+        delivered_commit=pushed, new_head=rewritten_trunk, detected_at=REWRITTEN_AT
+    )
+
+
+async def test_a_trunk_re_pointed_on_purpose_forgets_the_pushed_commit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The pushed commit stays on the branch that the trunk tracked before, so a later rewrite must not report it."""
+    re_pointed = await re_point_the_trunk(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    state = pushed_state(re_pointed.tracked, last_delivered_commit=re_pointed.discarded_commit)
+
+    collected = await re_pointed.tracked.repository.collect_pending_imports(
+        graph_commits=re_pointed.graph_commits(),
+        retarget_markers=await marked(re_pointed.tracked, target=TRACKED),
+        state=state,
+    )
+
+    assert collected.failed_imports == []
+    intent = state.intents[str(re_pointed.tracked.repository.id)]
+    assert (intent.last_delivered_commit, intent.reverted) == (None, None)
+
+
+@dataclass
+class FailedRevertedPushCase:
+    name: str
+    error: Exception
+    reason: str
+    keeps_traceback: bool
+
+
+FAILED_REVERTED_PUSH_CASES: list[FailedRevertedPushCase] = [
+    FailedRevertedPushCase(
+        name="infrahub_error_gives_its_message",
+        error=RepositoryError(identifier="tracked-repo", message="The database is down"),
+        reason="The database is down",
+        keeps_traceback=False,
+    ),
+    FailedRevertedPushCase(
+        name="other_error_keeps_its_type_and_traceback",
+        error=ValueError("The stored record is not valid"),
+        reason="ValueError: The stored record is not valid",
+        keeps_traceback=True,
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in FAILED_REVERTED_PUSH_CASES])
+async def test_a_reverted_push_that_fails_to_record_fails_the_default_branch_and_keeps_its_import(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, test_case: FailedRevertedPushCase
+) -> None:
+    """The graph already records the new commit, so no later cycle would select the branch to import it."""
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    rewritten_trunk = tracked.remote.commit(branch_name="main", files={"data.txt": "main rewritten\n"}, amend=True)
+    state = pushed_state(tracked, last_delivered_commit=tracked.trunk_commit)
+    state.failures["record_reverted"] = [test_case.error]
+
+    collected = await tracked.repository.collect_pending_imports(graph_commits=tracked.graph_commits(), state=state)
+
+    assert collected.failed_imports == [
+        FailedImport(
+            branch_name="main",
+            infrahub_branch_name="main",
+            step=ImportStep.RECORD,
+            reason=test_case.reason,
+            on_default_branch=True,
+        )
+    ]
+    assert [(pending_import.infrahub_branch_name, pending_import.commit) for pending_import in collected.imports] == [
+        ("main", rewritten_trunk)
+    ]
+    failure_logs = [
+        record
+        for record in caplog.records
+        if record.name == SYNC_LOGGER and record.getMessage().startswith("Failed to update the reverted push")
+    ]
+    assert [record.getMessage() for record in failure_logs] == [
+        f"Failed to update the reverted push record of branch main of repository tracked-repo: {test_case.reason}"
+    ]
+    logged_error = failure_logs[0].exc_info[1] if failure_logs[0].exc_info else None
+    assert logged_error is (test_case.error if test_case.keeps_traceback else None)

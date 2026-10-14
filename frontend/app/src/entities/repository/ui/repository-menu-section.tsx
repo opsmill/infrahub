@@ -3,18 +3,17 @@ import { ArrowUpRightIcon } from "lucide-react";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { constructPath } from "@/shared/api/rest/fetch";
 import { Icon } from "@/shared/components/display/icon";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Link } from "@/shared/components/ui/link";
 
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import type { Permission } from "@/entities/permission/domain/model/permission";
-import { READONLY_REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
+import { isReadOnlyRepository } from "@/entities/repository/domain/rules/is-read-only-repository";
 import { useImportCurrentCommitMutation } from "@/entities/repository/ui/queries/import-current-commit.mutation";
 import { useReimportLastCommitMutation } from "@/entities/repository/ui/queries/reimport-last-commit.mutation";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
-import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
+import { getTaskDetailsUrl } from "@/entities/tasks/ui/routing/task-urls";
 
 interface RepositoryMenuSectionProps {
   repositoryId: string;
@@ -29,7 +28,7 @@ export function RepositoryMenuSection({
   onCheckConnectivity,
   permission,
 }: RepositoryMenuSectionProps) {
-  const isReadOnlyRepository = isOfKind(READONLY_REPOSITORY_KIND, objectSchema);
+  const isReadOnly = isReadOnlyRepository(objectSchema);
   const isUpdateAllowed = permission.update.isAllowed;
 
   const { mutate: reimportLastCommit } = useReimportLastCommitMutation({
@@ -39,7 +38,7 @@ export function RepositoryMenuSection({
           Import from remote started.
           <br />
           <Link
-            to={constructPath(`/tasks/${result.taskId}`)}
+            to={getTaskDetailsUrl(result.taskId)}
             className="inline-flex items-center gap-1 underline"
           >
             View task <ArrowUpRightIcon className="size-3.5" />
@@ -65,7 +64,7 @@ export function RepositoryMenuSection({
           Import of current commit started.
           <br />
           <Link
-            to={constructPath(`/tasks/${result.taskId}`)}
+            to={getTaskDetailsUrl(result.taskId)}
             className="inline-flex items-center gap-1 underline"
           >
             View task <ArrowUpRightIcon className="size-3.5" />
@@ -96,7 +95,7 @@ export function RepositoryMenuSection({
         Check connectivity
       </MenuItem>
 
-      {isReadOnlyRepository && (
+      {isReadOnly && (
         <MenuItem
           isDisabled={!isUpdateAllowed}
           onAction={() => reimportLastCommit({ repositoryId })}

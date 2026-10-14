@@ -13029,6 +13029,24 @@ export type CoreRepository = CoreGenericRepository & CoreNode & CoreTaskTarget &
   credential: NestedEdgedCoreCredential;
   /** Remote branch that Infrahub maps onto its own default branch. Need not be the remote default branch. */
   default_branch: Maybe<TextAttribute>;
+  /** Message of the last failed push, import or release step, with credentials removed. */
+  delivery_error: Maybe<TextAttribute>;
+  /** Why the last push to the remote, or the import that follows it, failed. */
+  delivery_failure_cause: Maybe<Dropdown>;
+  /** Definitions and Python computed attributes held until a release after a push or an abandonment. */
+  delivery_held_regeneration: Maybe<JsonAttribute>;
+  /** Who abandoned the last pending pushes, when, and which merged changes were dropped. */
+  delivery_last_abandonment: Maybe<JsonAttribute>;
+  /** Commit of the last push that reached the remote. */
+  delivery_last_delivered_commit: Maybe<TextAttribute>;
+  /** Times when the push attempt started and last moved, and when the next automatic retry is due. */
+  delivery_progress: Maybe<JsonAttribute>;
+  /** Merged changes that wait to be pushed to the remote, in merge order. */
+  delivery_queue: Maybe<JsonAttribute>;
+  /** A pushed commit that a rewrite of the remote branch history discarded. */
+  delivery_reverted: Maybe<JsonAttribute>;
+  /** Whether merged changes wait to be pushed to the remote, and whether a user must act. */
+  delivery_status: Maybe<Dropdown>;
   /** Description of the repository */
   description: Maybe<TextAttribute>;
   display_label: Maybe<Scalars['String']['output']>;
@@ -18594,6 +18612,45 @@ export type InfrahubRelationshipMetadata = {
 };
 
 /**
+ * One branch's view of a repository.
+ *
+ * The branch fields carry the same value-field wrappers and nullability as the branch query, so a
+ * client reads `name.value` and `commit.value` through one access pattern across the whole row.
+ */
+export type InfrahubRepositoryBranchStatus = {
+  __typename: 'InfrahubRepositoryBranchStatus';
+  /** Fork point from the default branch; inherited rows resolve as of this time */
+  branched_from: Maybe<NonRequiredStringValueField>;
+  /** Imported commit as this branch resolves it */
+  commit: Maybe<TextAttribute>;
+  /** Defined on CoreGenericRepository, present for both kinds */
+  internal_status: Maybe<Dropdown>;
+  is_default: Maybe<NonRequiredBooleanValueField>;
+  /** Branch name; joins the repository's per-branch attribute edges */
+  name: RequiredStringValueField;
+  /** CoreReadOnlyRepository only; null for CoreRepository */
+  ref: Maybe<TextAttribute>;
+  status: StatusField;
+  /** Import status as this branch resolves it (defined on CoreGenericRepository, present for both kinds) */
+  sync_status: Maybe<Dropdown>;
+  /** Always true on CoreRepository, which selects on it; varies per row on CoreReadOnlyRepository, whose row set is every branch */
+  sync_with_git: Maybe<NonRequiredBooleanValueField>;
+};
+
+export type InfrahubRepositoryBranchStatusEdge = {
+  __typename: 'InfrahubRepositoryBranchStatusEdge';
+  node: InfrahubRepositoryBranchStatus;
+  node_metadata: InfrahubNodeMetadata;
+};
+
+export type InfrahubRepositoryBranchStatusType = {
+  __typename: 'InfrahubRepositoryBranchStatusType';
+  /** Number of rows after all filters, before limit and offset */
+  count: Scalars['Int']['output'];
+  edges: Array<InfrahubRepositoryBranchStatusEdge>;
+};
+
+/**
  * Write preferences for one writable scope, USER or GLOBAL.
  *
  * scope=USER   → the calling account's OWN Preference row (owner_id = account_session.account_id;
@@ -20246,9 +20303,14 @@ export type Mutation = {
   InfrahubIPAddressPoolGetResource: Maybe<IpAddressPoolGetResource>;
   InfrahubIPPrefixPoolGetResource: Maybe<IpPrefixPoolGetResource>;
   InfrahubProfilesRefresh: Maybe<InfrahubProfilesRefresh>;
+  InfrahubReadOnlyRepositoryCheckRefs: Maybe<ReadOnlyRepositoryCheckRefs>;
   InfrahubReadOnlyRepositoryImportLastCommit: Maybe<ReadOnlyRepositoryImportLastCommit>;
   InfrahubRecomputeComputedAttribute: Maybe<RecomputeComputedAttribute>;
   InfrahubRepositoryConnectivity: Maybe<ValidateRepositoryConnectivity>;
+  /** Abandon every pending merge of a repository. Nothing is removed from the remote, and no remote branch is deleted. Repository objects of the abandoned merges can stay on the default branch until the current commit is reimported. */
+  InfrahubRepositoryDeliveryAbandon: Maybe<RepositoryDeliveryAbandon>;
+  /** Push every pending merge of a repository to its remote, in order, in a single push. */
+  InfrahubRepositoryDeliveryRetry: Maybe<RepositoryDeliveryRetry>;
   InfrahubRepositoryProcess: Maybe<ProcessRepository>;
   /**
    * Write preferences for one writable scope, USER or GLOBAL.
@@ -21951,6 +22013,11 @@ export type MutationInfrahubProfilesRefreshArgs = {
 };
 
 
+export type MutationInfrahubReadOnlyRepositoryCheckRefsArgs = {
+  data: IdentifierInput;
+};
+
+
 export type MutationInfrahubReadOnlyRepositoryImportLastCommitArgs = {
   data: IdentifierInput;
 };
@@ -21964,6 +22031,16 @@ export type MutationInfrahubRecomputeComputedAttributeArgs = {
 
 export type MutationInfrahubRepositoryConnectivityArgs = {
   data: IdentifierInput;
+};
+
+
+export type MutationInfrahubRepositoryDeliveryAbandonArgs = {
+  data: RepositoryDeliveryAbandonInput;
+};
+
+
+export type MutationInfrahubRepositoryDeliveryRetryArgs = {
+  data: RepositoryDeliveryRetryInput;
 };
 
 
@@ -26233,6 +26310,14 @@ export type Query = {
   InfrahubPermissions: AccountPermissionsEdges;
   /** Find all nodes of specified kinds reachable from a source node */
   InfrahubReachableNodes: ReachableNodesResultType;
+  /** What is running on a repository now, the last run of each operation, and which worker holds the repository lock. The answer is the same on every branch. */
+  InfrahubRepositoryActivity: RepositoryActivity;
+  /** Per-branch drift for a repository. */
+  InfrahubRepositoryBranchDrift: RepositoryBranchDrifts;
+  /** Status of one repository as seen from every relevant branch, one row per branch. Resolved entirely from the graph; never contacts a task worker. Requires view permission on the repository's kind covering both the default and non-default branches (ALLOW_ALL, or ALLOW_DEFAULT plus ALLOW_OTHER). Always reports the present: a request carrying an 'at' query parameter is rejected, because the branch list this query builds its rows from has no historical form. */
+  InfrahubRepositoryBranchStatus: InfrahubRepositoryBranchStatusType;
+  /** Paged commit log for a repository on the request branch. */
+  InfrahubRepositoryCommits: RepositoryCommits;
   /** The IP prefixes or IP addresses inside one resource of a pool, paginated. For a number pool, resource_id and the allocation scope are ignored, every value the pool tracks inside its bounds is listed and display_label is the value itself; read InfrahubNumberPoolAllocations instead. */
   InfrahubResourcePoolAllocated: PoolAllocated;
   /** Utilization of one resource pool and of each of its resources. For a number pool, the figures cover the whole pool and ignore its allocation scope; read InfrahubNumberPoolUtilization and InfrahubNumberPoolDivisions instead. */
@@ -29986,6 +30071,51 @@ export type QueryCoreFileThreadArgs = {
   repository__default_branch__source__id?: InputMaybe<Scalars['ID']['input']>;
   repository__default_branch__value?: InputMaybe<Scalars['String']['input']>;
   repository__default_branch__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__delivery_error__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__delivery_error__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_error__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_error__value?: InputMaybe<Scalars['String']['input']>;
+  repository__delivery_error__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__delivery_failure_cause__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__delivery_failure_cause__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_failure_cause__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_failure_cause__value?: InputMaybe<Scalars['String']['input']>;
+  repository__delivery_failure_cause__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__delivery_held_regeneration__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__delivery_held_regeneration__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_held_regeneration__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_held_regeneration__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  repository__delivery_held_regeneration__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  repository__delivery_last_abandonment__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__delivery_last_abandonment__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_last_abandonment__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_last_abandonment__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  repository__delivery_last_abandonment__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  repository__delivery_last_delivered_commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__delivery_last_delivered_commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_last_delivered_commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_last_delivered_commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__delivery_last_delivered_commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__delivery_progress__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__delivery_progress__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_progress__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_progress__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  repository__delivery_progress__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  repository__delivery_queue__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__delivery_queue__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_queue__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_queue__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  repository__delivery_queue__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  repository__delivery_reverted__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__delivery_reverted__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_reverted__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_reverted__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  repository__delivery_reverted__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  repository__delivery_status__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__delivery_status__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_status__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_status__value?: InputMaybe<Scalars['String']['input']>;
+  repository__delivery_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   repository__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   repository__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   repository__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -35296,6 +35426,60 @@ export type QueryCoreRepositoryArgs = {
   default_branch__source__id?: InputMaybe<Scalars['ID']['input']>;
   default_branch__value?: InputMaybe<Scalars['String']['input']>;
   default_branch__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  delivery_error__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_error__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_error__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_error__source__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_error__value?: InputMaybe<Scalars['String']['input']>;
+  delivery_error__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  delivery_failure_cause__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_failure_cause__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_failure_cause__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_failure_cause__source__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_failure_cause__value?: InputMaybe<Scalars['String']['input']>;
+  delivery_failure_cause__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  delivery_held_regeneration__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_held_regeneration__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_held_regeneration__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_held_regeneration__source__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_held_regeneration__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  delivery_held_regeneration__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  delivery_last_abandonment__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_last_abandonment__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_last_abandonment__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_last_abandonment__source__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_last_abandonment__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  delivery_last_abandonment__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  delivery_last_delivered_commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_last_delivered_commit__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_last_delivered_commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_last_delivered_commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_last_delivered_commit__value?: InputMaybe<Scalars['String']['input']>;
+  delivery_last_delivered_commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  delivery_progress__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_progress__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_progress__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_progress__source__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_progress__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  delivery_progress__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  delivery_queue__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_queue__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_queue__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_queue__source__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_queue__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  delivery_queue__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  delivery_reverted__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_reverted__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_reverted__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_reverted__source__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_reverted__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  delivery_reverted__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  delivery_status__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_status__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_status__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_status__source__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_status__value?: InputMaybe<Scalars['String']['input']>;
+  delivery_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   description__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   description__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -38678,6 +38862,37 @@ export type QueryInfrahubReachableNodesArgs = {
 };
 
 
+export type QueryInfrahubRepositoryActivityArgs = {
+  id: Scalars['String']['input'];
+};
+
+
+export type QueryInfrahubRepositoryBranchDriftArgs = {
+  repository_id: Scalars['String']['input'];
+};
+
+
+export type QueryInfrahubRepositoryBranchStatusArgs = {
+  id: Scalars['String']['input'];
+  internal_status__value?: InputMaybe<Scalars['String']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  name__value?: InputMaybe<Scalars['String']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<MetadataOrderInput>;
+  own_values_only?: InputMaybe<Scalars['Boolean']['input']>;
+  partial_match?: InputMaybe<Scalars['Boolean']['input']>;
+  status__value?: InputMaybe<BranchStatus>;
+  sync_status__value?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryInfrahubRepositoryCommitsArgs = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  repository_id: Scalars['String']['input'];
+};
+
+
 export type QueryInfrahubResourcePoolAllocatedArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
   offset?: InputMaybe<Scalars['Int']['input']>;
@@ -39494,6 +39709,12 @@ export type ReachableNodesResultType = {
   source: PathNodeType;
 };
 
+export type ReadOnlyRepositoryCheckRefs = {
+  __typename: 'ReadOnlyRepositoryCheckRefs';
+  ok: Maybe<Scalars['Boolean']['output']>;
+  task: Maybe<TaskInfo>;
+};
+
 export type ReadOnlyRepositoryImportLastCommit = {
   __typename: 'ReadOnlyRepositoryImportLastCommit';
   ok: Maybe<Scalars['Boolean']['output']>;
@@ -39604,6 +39825,286 @@ export type Relationships = {
   edges: Array<RelationshipNode>;
 };
 
+/** What is running on a repository now, across every branch. */
+export type RepositoryActivity = {
+  __typename: 'RepositoryActivity';
+  /** Runs working on this repository now. Empty when nothing is running. A run whose worker stopped without cleaning up disappears within 5 minutes. */
+  active_runs: RepositoryActivityRuns;
+  /** The most recent finished run of each operation in the last 30 days, newest first. */
+  last_runs: RepositoryActivityLastRuns;
+  /** Holder of the repository lock. Null when the lock is not held. Short tasks such as fetches also hold the lock, so a held lock does not mean that a run is active. */
+  lock: Maybe<RepositoryActivityLock>;
+  /** ID of the repository the answer is for. */
+  repository_id: Scalars['String']['output'];
+};
+
+/** One entry in the list of branch results. */
+export type RepositoryActivityBranchEdge = {
+  __typename: 'RepositoryActivityBranchEdge';
+  /** One branch result. */
+  node: RepositoryActivityBranchNode;
+};
+
+/** The result of a run for one branch. */
+export type RepositoryActivityBranchNode = {
+  __typename: 'RepositoryActivityBranchNode';
+  /** Infrahub branch. */
+  branch_name: Scalars['String']['output'];
+  /** Result of the run for this branch. */
+  outcome: RepositoryActivityBranchOutcome;
+};
+
+/** Result of a run for one branch. */
+export const RepositoryActivityBranchOutcome = {
+  /** The run failed on this branch. The task log shows why. */
+  FAILED: 'FAILED',
+  /** The run changed the branch: it imported objects into it, created it in Git, or merged into it. */
+  IMPORTED: 'IMPORTED'
+} as const;
+
+export type RepositoryActivityBranchOutcome = typeof RepositoryActivityBranchOutcome[keyof typeof RepositoryActivityBranchOutcome];
+/** The branches the run changed or failed on. */
+export type RepositoryActivityBranches = {
+  __typename: 'RepositoryActivityBranches';
+  /** The branch results of the run. */
+  edges: Array<RepositoryActivityBranchEdge>;
+};
+
+/** One entry in the list of last runs. */
+export type RepositoryActivityLastRunEdge = {
+  __typename: 'RepositoryActivityLastRunEdge';
+  /** The last run of one operation. */
+  node: RepositoryActivityLastRunNode;
+};
+
+/** The most recent finished run of one operation. */
+export type RepositoryActivityLastRunNode = {
+  __typename: 'RepositoryActivityLastRunNode';
+  /** Branches that the run changed or failed on. Branches without a change are left out. */
+  branches: RepositoryActivityBranches;
+  /** When the run ended, whether it succeeded or failed. */
+  finished_at: Scalars['DateTime']['output'];
+  /** What the run did. */
+  operation: RepositoryActivityOperation;
+  /** When the run started, by the worker's clock. */
+  started_at: Scalars['DateTime']['output'];
+};
+
+/** The most recent finished run of each operation. */
+export type RepositoryActivityLastRuns = {
+  __typename: 'RepositoryActivityLastRuns';
+  /** One last run per operation, newest first. */
+  edges: Array<RepositoryActivityLastRunEdge>;
+};
+
+/** The holder of a repository lock. */
+export type RepositoryActivityLock = {
+  __typename: 'RepositoryActivityLock';
+  /** When the worker asked for the lock, by its clock. It can have waited for the lock after that. Null when it cannot be read. */
+  requested_at: Maybe<Scalars['DateTime']['output']>;
+  /** Worker holding the lock, as listed by InfrahubStatus. */
+  worker_id: Scalars['String']['output'];
+};
+
+/** Operation that a repository run performs. */
+export const RepositoryActivityOperation = {
+  /** First clone and import after the repository was added. */
+  ADD: 'ADD',
+  /** Creation of the git branch for a new Infrahub branch. */
+  BRANCH_CREATE: 'BRANCH_CREATE',
+  /** Merge of a branch's git changes into its target branch. */
+  MERGE: 'MERGE',
+  /** Import of the latest commit of the ref a read-only repository tracks. */
+  PULL: 'PULL',
+  /** Import of one branch requested by a user. */
+  REIMPORT: 'REIMPORT',
+  /** Periodic check of every tracked branch for new commits, and import of those commits. */
+  SYNC: 'SYNC'
+} as const;
+
+export type RepositoryActivityOperation = typeof RepositoryActivityOperation[keyof typeof RepositoryActivityOperation];
+/** Step of a run. */
+export const RepositoryActivityPhase = {
+  /** Writing the imported objects to Infrahub for one branch. */
+  APPLYING: 'APPLYING',
+  /** Reading and validating the repository files for one branch. */
+  BUILDING: 'BUILDING',
+  /** Fetching from the remote. Covers every branch. */
+  FETCHING: 'FETCHING'
+} as const;
+
+export type RepositoryActivityPhase = typeof RepositoryActivityPhase[keyof typeof RepositoryActivityPhase];
+/** One entry in the list of active runs. */
+export type RepositoryActivityRunEdge = {
+  __typename: 'RepositoryActivityRunEdge';
+  /** One active run. */
+  node: RepositoryActivityRunNode;
+};
+
+/** A run that is working on a repository now. */
+export type RepositoryActivityRunNode = {
+  __typename: 'RepositoryActivityRunNode';
+  /** Infrahub branch being built or applied. Null while fetching, because a fetch covers every branch. */
+  branch_name: Maybe<Scalars['String']['output']>;
+  /** What the run is doing. */
+  operation: RepositoryActivityOperation;
+  /** Step the run is in. Null until the run reports its first step, and for an operation without separate steps. */
+  phase: Maybe<RepositoryActivityPhase>;
+  /** Identifier of the run, unique while the run is active. */
+  run_id: Scalars['String']['output'];
+  /** When the run started, by the worker's clock. */
+  started_at: Scalars['DateTime']['output'];
+  /** When the worker last confirmed that the run is still active. */
+  updated_at: Scalars['DateTime']['output'];
+  /** Worker running the run, as listed by InfrahubStatus. */
+  worker_id: Scalars['String']['output'];
+};
+
+/** The runs working on a repository now. */
+export type RepositoryActivityRuns = {
+  __typename: 'RepositoryActivityRuns';
+  /** The active runs, oldest first. */
+  edges: Array<RepositoryActivityRunEdge>;
+};
+
+/** Drift of one Infrahub branch of a repository. */
+export type RepositoryBranchDrift = {
+  __typename: 'RepositoryBranchDrift';
+  branch_name: Scalars['String']['output'];
+  condition: RepositoryGitCondition;
+  /** Remote branch or tracked ref compared for this branch. Null when the branch is not tracked. */
+  git_ref: Maybe<Scalars['String']['output']>;
+  /** Latest remote commit. Null when there is no remote counterpart or when condition is UNAVAILABLE. */
+  remote_head: Maybe<Scalars['String']['output']>;
+  tracked_commit: Maybe<Scalars['String']['output']>;
+};
+
+export type RepositoryBranchDriftNode = {
+  __typename: 'RepositoryBranchDriftNode';
+  node: RepositoryBranchDrift;
+};
+
+/** Drift for every branch of a repository, produced by a single worker request. */
+export type RepositoryBranchDrifts = {
+  __typename: 'RepositoryBranchDrifts';
+  /** When the remote was last checked for movement. Read-only repositories only. */
+  checked_at: Maybe<Scalars['DateTime']['output']>;
+  /** One row per open branch the caller may view, and for a read-write repository only those synchronised with Git. The set is the branch list as it stands now: an `at` in the past changes the values each row reports, never which branches are listed. */
+  edges: Array<RepositoryBranchDriftNode>;
+  fetched_at: Maybe<Scalars['DateTime']['output']>;
+  repository_id: Scalars['String']['output'];
+  /** Set when the git-derived drift answer could not be produced. It does not suppress edges, which is resolved separately. */
+  unavailable: Maybe<RepositoryGitUnavailable>;
+};
+
+/** A commit read live from a worker's local clone. Never persisted. */
+export type RepositoryCommit = {
+  __typename: 'RepositoryCommit';
+  author_name: Scalars['String']['output'];
+  authored_at: Scalars['DateTime']['output'];
+  committed_at: Scalars['DateTime']['output'];
+  /** Full commit hash. */
+  hash: Scalars['String']['output'];
+  /** Full commit message. */
+  message: Scalars['String']['output'];
+  /** First 7 characters of the hash. */
+  short_hash: Scalars['String']['output'];
+  state: RepositoryCommitState;
+  /** First line of the commit message. */
+  summary: Scalars['String']['output'];
+};
+
+export type RepositoryCommitNode = {
+  __typename: 'RepositoryCommitNode';
+  node: RepositoryCommit;
+};
+
+/** Explicit state of one commit relative to the imported commit and the remote head. */
+export const RepositoryCommitState = {
+  HEAD: 'HEAD',
+  HISTORY: 'HISTORY',
+  IMPORTED: 'IMPORTED',
+  PENDING: 'PENDING',
+  UNRELATED: 'UNRELATED'
+} as const;
+
+export type RepositoryCommitState = typeof RepositoryCommitState[keyof typeof RepositoryCommitState];
+/** Commit log of a repository as seen from the request branch, newest first. */
+export type RepositoryCommits = {
+  __typename: 'RepositoryCommits';
+  /** The Infrahub branch the answer was computed for. */
+  branch_name: Scalars['String']['output'];
+  /** When the remote was last checked for movement. Read-only repositories only; null for read-write, where fetched_at already carries it. */
+  checked_at: Maybe<Scalars['DateTime']['output']>;
+  condition: RepositoryGitCondition;
+  edges: Array<RepositoryCommitNode>;
+  /** When the answering worker last fetched from the remote. Null before the first fetch, and after a failed fetch. */
+  fetched_at: Maybe<Scalars['DateTime']['output']>;
+  /** Remote branch or tracked ref whose history is listed. Null when the branch tracks nothing, matching RepositoryBranchDrift.git_ref. */
+  git_ref: Maybe<Scalars['String']['output']>;
+  /** Commit Infrahub has imported on this branch, from the repository's commit attribute. */
+  imported_commit: Maybe<Scalars['String']['output']>;
+  /** Number of commits between imported_commit and remote_head. Only set when condition is BEHIND. */
+  pending_count: Maybe<Scalars['Int']['output']>;
+  /** Head of the remote branch or tracked ref as last fetched by the answering worker. */
+  remote_head: Maybe<Scalars['String']['output']>;
+  repository_id: Scalars['String']['output'];
+  unavailable: Maybe<RepositoryGitUnavailable>;
+};
+
+export type RepositoryDeliveryAbandon = {
+  __typename: 'RepositoryDeliveryAbandon';
+  ok: Maybe<Scalars['Boolean']['output']>;
+  task: Maybe<TaskInfo>;
+};
+
+export type RepositoryDeliveryAbandonInput = {
+  /** The id of the CoreRepository */
+  id: Scalars['String']['input'];
+  /** The version of the delivery queue the user saw. The request is refused if the queue changed since. */
+  queue_version: Scalars['Int']['input'];
+};
+
+export type RepositoryDeliveryRetry = {
+  __typename: 'RepositoryDeliveryRetry';
+  ok: Maybe<Scalars['Boolean']['output']>;
+  task: Maybe<TaskInfo>;
+};
+
+export type RepositoryDeliveryRetryInput = {
+  /** The id of the CoreRepository */
+  id: Scalars['String']['input'];
+};
+
+/** How the remote head relates to the commit Infrahub has imported on the request branch. */
+export const RepositoryGitCondition = {
+  BEHIND: 'BEHIND',
+  IN_SYNC: 'IN_SYNC',
+  NOT_TRACKED: 'NOT_TRACKED',
+  NO_REMOTE: 'NO_REMOTE',
+  ORPHANED: 'ORPHANED',
+  REF_MISSING: 'REF_MISSING',
+  REWRITTEN: 'REWRITTEN',
+  UNAVAILABLE: 'UNAVAILABLE'
+} as const;
+
+export type RepositoryGitCondition = typeof RepositoryGitCondition[keyof typeof RepositoryGitCondition];
+/** Set when condition is UNAVAILABLE. Distinct from an error: the request succeeded, git had no answer yet. */
+export type RepositoryGitUnavailable = {
+  __typename: 'RepositoryGitUnavailable';
+  /** Human-readable explanation safe to display. */
+  message: Scalars['String']['output'];
+  reason: RepositoryGitUnavailableReason;
+};
+
+/** Why no git-derived answer was produced. */
+export const RepositoryGitUnavailableReason = {
+  NOT_CLONED: 'NOT_CLONED',
+  NOT_IMPLEMENTED: 'NOT_IMPLEMENTED',
+  TIMEOUT: 'TIMEOUT'
+} as const;
+
+export type RepositoryGitUnavailableReason = typeof RepositoryGitUnavailableReason[keyof typeof RepositoryGitUnavailableReason];
 export type RequiredStringValueField = {
   __typename: 'RequiredStringValueField';
   value: Scalars['String']['output'];

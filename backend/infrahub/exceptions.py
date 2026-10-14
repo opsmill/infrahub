@@ -7,6 +7,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.diff.model.diff import SchemaConflict
     from infrahub.core.validators.model import SchemaViolation
+    from infrahub.git.models import PushRejectionReason
 
 
 def _rebuild_error(cls: type[Error], args: tuple[Any, ...], state: Any) -> Error:
@@ -66,6 +67,17 @@ class RPCError(Error):
         self.message = message
 
 
+class WorkerTimeoutError(Error):
+    HTTP_CODE: int = 504
+    DESCRIPTION: str = "No worker answered within the allowed time"
+
+    def __init__(self, operation: str, timeout_seconds: float) -> None:
+        self.operation = operation
+        self.timeout_seconds = timeout_seconds
+        self.message = f"No worker answered {operation} within {timeout_seconds:g} seconds"
+        super().__init__(self.message)
+
+
 class InitializationError(Error):
     DESCRIPTION: str = "The application hasn't been initialized properly"
 
@@ -86,6 +98,10 @@ class ServiceUnavailableError(Error):
     def __init__(self, message: str) -> None:
         self.message = message
         super().__init__(self.message)
+
+
+class WorkflowOrchestrationError(ServiceUnavailableError):
+    """Raised when the task manager cannot start a workflow run or follow it to a final state."""
 
 
 class LockError(Error):
@@ -115,6 +131,20 @@ class RepositoryConnectionError(RepositoryError):
         )
 
 
+class RepositoryTLSError(RepositoryConnectionError):
+    """Raised when Git does not accept the certificate of the remote."""
+
+    def __init__(self, identifier: str, message: str | None = None) -> None:
+        super().__init__(
+            identifier=identifier,
+            message=message or f"SSL verification failed for {identifier}, please validate the certificate chain.",
+        )
+
+
+class RepositoryNotFoundError(RepositoryConnectionError):
+    """Raised when the remote reports the repository as not found, as a host also does for one the token cannot see."""
+
+
 class RepositoryCredentialsError(RepositoryError):
     def __init__(self, identifier: str, message: str | None = None) -> None:
         super().__init__(
@@ -135,12 +165,13 @@ class RepositoryPermissionError(RepositoryError):
         )
 
 
-class RepositoryDivergentHistoryError(RepositoryError):
-    def __init__(self, identifier: str, message: str | None = None) -> None:
-        super().__init__(
-            identifier=identifier,
-            message=message or f"The local history of repository {identifier} and its remote history have diverged.",
-        )
+class RepositoryPushRejectedError(RepositoryError):
+    """Raised when the remote refuses a pushed ref; ``remote_message`` holds the remote's own ``remote:`` lines."""
+
+    def __init__(self, identifier: str, reason: PushRejectionReason, remote_message: str, message: str) -> None:
+        super().__init__(identifier=identifier, message=message)
+        self.reason = reason
+        self.remote_message = remote_message
 
 
 class RepositoryInvalidBranchError(RepositoryError):
@@ -451,6 +482,74 @@ class HFIDViolatedError(UniquenessViolationError):
         super().__init__(message, node_kind=node_kind, fields=fields)
 
 
+class DeliveryQueueChangedError(ValidationError):
+    """Raised when the pending pushes of a repository changed since the queue version the caller read."""
+
+    def __init__(self, repository_name: str, queue_version: int) -> None:
+        super().__init__(
+            f"The pending pushes of repository {repository_name} changed since version {queue_version}; "
+            "reload and try again."
+        )
+
+
+class NothingPendingError(ValidationError):
+    """Raised when a repository has no pending push to act on."""
+
+    def __init__(self, repository_name: str) -> None:
+        super().__init__(f"Repository {repository_name} has nothing pending to push.")
+
+
+class ReimportPendingPushesError(ValidationError):
+    """Raised when a reimport of a repository would remove the objects that its pending pushes added."""
+
+    def __init__(self, repository_name: str) -> None:
+        super().__init__(
+            f"Repository {repository_name} has pending pushes; a reimport now would remove the objects they added. "
+            "Retry or abandon the pending pushes first."
+        )
+
+
+class DeliveryPendingError(ValidationError):
+    """Raised when a repository with pending pushes or held regeneration would be converted, which would drop them."""
+
+    def __init__(self, repository_name: str, *, regeneration_held: bool = False) -> None:
+        if regeneration_held:
+            super().__init__(
+                f"Repository {repository_name} has a regeneration that waits to be released after a push; wait "
+                "for the release, then convert the repository."
+            )
+            return
+        super().__init__(
+            f"Repository {repository_name} has pending pushes to its remote; retry or abandon them before you "
+            "convert the repository."
+        )
+
+
+class DeliveryStateUnavailableError(ServiceUnavailableError):
+    """Raised when the lock of the delivery state of a repository is not acquired in time."""
+
+    def __init__(self, repository_id: str, acquire_seconds: float) -> None:
+        self.repository_id = repository_id
+        super().__init__(
+            message=(
+                f"The lock of the delivery state of repository {repository_id} "
+                f"was not acquired within {acquire_seconds} seconds; try again."
+            )
+        )
+
+
+class DeliveryStateUnreadableError(Error):
+    """Raised when a stored value of the delivery state of a repository does not match its model."""
+
+    def __init__(self, repository_name: str, attribute_name: str) -> None:
+        self.repository_name = repository_name
+        self.attribute_name = attribute_name
+        self.message = (
+            f"The stored value of {attribute_name} on repository {repository_name} does not match its expected shape."
+        )
+        super().__init__(self.message)
+
+
 class DiffRangeValidationError(DiffError): ...
 
 
@@ -508,6 +607,66 @@ class MergeConflictsUnresolvedError(ValidationError):
         super().__init__(
             f"Unable to merge the branch '{branch_name}', conflict resolution missing: {', '.join(conflict_paths)}"
         )
+
+
+class MergeRepositoryImportError(ValidationError):
+    """Raised when a branch cannot be merged because the objects a repository registered on it may not match it."""
+
+    def __init__(
+        self,
+        failed_repositories: list[str],
+        incomplete_repositories: list[str],
+        ref_missing_repositories: dict[str, str | None],
+    ) -> None:
+        """`ref_missing_repositories` maps each repository name to the ref it tracks, or None when it is not known.
+
+        Raises:
+            ValueError: When no repository is given.
+
+        """
+        if not failed_repositories and not incomplete_repositories and not ref_missing_repositories:
+            raise ValueError(
+                "A repository import refusal needs at least one failed, incomplete or ref-missing repository"
+            )
+        self.failed_repositories = failed_repositories
+        self.incomplete_repositories = incomplete_repositories
+        self.ref_missing_repositories = ref_missing_repositories
+
+        reasons = ["Cannot merge."]
+        if failed_repositories:
+            reasons.append(
+                f"The last import of {self._name_repositories(failed_repositories)} failed: push a fix, reimport the "
+                f"current commit, or set the {self._label(failed_repositories)} to inactive."
+            )
+        if incomplete_repositories:
+            verb = "has" if len(incomplete_repositories) == 1 else "have"
+            reasons.append(
+                f"{self._label(incomplete_repositories).title()} {self._quote(incomplete_repositories)} {verb} not "
+                f"finished importing: wait for the import, or reimport the current commit if it does not finish."
+            )
+        if ref_missing_repositories:
+            names = sorted(ref_missing_repositories)
+            verb = "was" if len(names) == 1 else "were"
+            tracked_refs = ", ".join(self._name_tracked_ref(name, ref_missing_repositories[name]) for name in names)
+            reasons.append(
+                f"The tracked {tracked_refs} {verb} missing from the remote when last checked: restore the ref or "
+                f"edit the ref of the {self._label(names)}, then reimport the current commit."
+            )
+        super().__init__(" ".join(reasons))
+
+    def _name_tracked_ref(self, repository_name: str, ref: str | None) -> str:
+        if ref is None:
+            return f"ref of repository '{repository_name}'"
+        return f"ref '{ref}' of repository '{repository_name}'"
+
+    def _label(self, names: list[str]) -> str:
+        return "repository" if len(names) == 1 else "repositories"
+
+    def _quote(self, names: list[str]) -> str:
+        return ", ".join(f"'{name}'" for name in names)
+
+    def _name_repositories(self, names: list[str]) -> str:
+        return f"{self._label(names)} {self._quote(names)}"
 
 
 class BranchStatusError(Error):

@@ -269,6 +269,39 @@ class TestResolveObjectPermission:
         )
         assert empty_resolver.resolve_object_permission(permission_to_check=check) is False
 
+    def test_allow_all_granted_by_two_grants_of_the_same_specificity(self) -> None:
+        resolver = _make_resolver(
+            object_permissions=[
+                ObjectPermission(
+                    namespace="Infra", name="Device", action="view", decision=PermissionDecision.ALLOW_DEFAULT.value
+                ),
+                ObjectPermission(
+                    namespace="Infra", name="Device", action="view", decision=PermissionDecision.ALLOW_OTHER.value
+                ),
+            ]
+        )
+        check = ObjectPermission(
+            namespace="Infra", name="Device", action="view", decision=PermissionDecision.ALLOW_ALL.value
+        )
+        assert resolver.resolve_object_permission(permission_to_check=check) is True
+
+    def test_allow_all_denied_when_the_two_grants_differ_in_specificity(self) -> None:
+        """A more specific grant replaces a less specific one instead of combining with it."""
+        resolver = _make_resolver(
+            object_permissions=[
+                ObjectPermission(
+                    namespace="Infra", name="Device", action="view", decision=PermissionDecision.ALLOW_DEFAULT.value
+                ),
+                ObjectPermission(
+                    namespace="Infra", name="*", action="view", decision=PermissionDecision.ALLOW_OTHER.value
+                ),
+            ]
+        )
+        check = ObjectPermission(
+            namespace="Infra", name="Device", action="view", decision=PermissionDecision.ALLOW_ALL.value
+        )
+        assert resolver.resolve_object_permission(permission_to_check=check) is False
+
 
 class TestHasPermission:
     def test_object_permission_granted(self) -> None:

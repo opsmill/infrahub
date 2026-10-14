@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING, Any
 
 from graphql.error.graphql_error import format_error
@@ -26,6 +27,7 @@ from infrahub.errors.payloads import (
     TokenExpiredData,
     UndefinedErrorData,
     UniquenessViolationData,
+    WorkerTimeoutData,
 )
 from infrahub.errors.validation import MultiFieldValidationError
 from infrahub.exceptions import (
@@ -39,6 +41,7 @@ from infrahub.exceptions import (
     NodeNotFoundError,
     SchemaNotFoundError,
     UniquenessViolationError,
+    WorkerTimeoutError,
 )
 from infrahub.log import get_logger
 
@@ -99,6 +102,10 @@ def _build_payload(exc: BaseException | None, code: str) -> dict[str, Any]:
             payload = MergeRecoveryRequiredData(branch_name=exc.identifier, merging_branch=exc.merging_branch)
         case "SCHEMA_NOT_FOUND" if isinstance(exc, SchemaNotFoundError):
             payload = SchemaNotFoundData(kind=exc.identifier)
+        case "WORKER_TIMEOUT" if isinstance(exc, WorkerTimeoutError):
+            # Round up so a sub-second wait never reports zero, or advises retrying immediately.
+            seconds = math.ceil(exc.timeout_seconds)
+            payload = WorkerTimeoutData(operation=exc.operation, timeout_seconds=seconds, retry_after_seconds=seconds)
     return payload.model_dump(mode="json")
 
 

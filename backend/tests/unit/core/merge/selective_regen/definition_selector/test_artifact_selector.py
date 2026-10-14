@@ -39,7 +39,7 @@ def _artifact_definition() -> ProposedChangeArtifactDefinition:
     )
 
 
-def test_build_request_carries_definition_identity_and_members(artifact_selector: ArtifactSelector) -> None:
+def test_build_request_carries_definition_identity_repository_and_members(artifact_selector: ArtifactSelector) -> None:
     definition = _artifact_definition()
 
     request = artifact_selector._build_request(definition=definition, target_branch=TARGET_BRANCH, members=["m1", "m2"])
@@ -47,6 +47,7 @@ def test_build_request_carries_definition_identity_and_members(artifact_selector
     assert request.branch == TARGET_BRANCH
     assert request.artifact_definition_id == "def-1"
     assert request.artifact_definition_name == "art"
+    assert request.repository_id == "repo-1"
     assert request.members == ["m1", "m2"]
 
 

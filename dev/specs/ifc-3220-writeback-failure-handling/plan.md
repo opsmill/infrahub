@@ -21,7 +21,8 @@ replays the pending merges on the fresh remote head, pushes once, records the co
 import obligation, imports when the remote had moved, broadcasts, and then, outside the repository
 lock, releases the held regeneration. `merge_git_repository`, a new retry flow and a recovery check
 in the periodic synchronisation call the same service. A Prefect task retries transient failures three
-times, and every Git command of the adapter is bounded in time. While a delivery is pending, no
+times, and every Git command of the adapter gets a time limit. Git's low-speed limit also ends a
+stalled HTTP(S) fetch or push; an SSH transfer has no bound (`research.md` R6). While a delivery is pending, no
 other path imports the default branch. A regeneration barrier, consulted at every dispatch point of
 the merge follow-up, holds the definitions of a repository with a pending delivery as identifiers
 with hold sequences, keeps their narrowed selection in the cache for the length of the automatic
@@ -55,12 +56,14 @@ delivery succeeds within its automatic retry chain regenerates as precisely as t
 **Constraints**: the repository lock is the most contended lock of the Git subsystem. The new
 delivery-state lock is held for one read-modify-write, has a 30-second time to live, and is never
 held across Git work, so a branch merge never waits for a push. A delivery attempt holds no lock
-across a retry delay or a release. Every Git command that the delivery adapter runs is bounded in
-time, the local ones included. The import has no bound, and the Git commands inside it have none
-either. While the import holds the repository lock, the recovery check starts no second attempt
+across a retry delay or a release. Every Git command that the delivery adapter runs gets a time
+limit, the local ones included. GitPython does not stop a fetch or a push at its limit, so Git's
+low-speed limit ends a stalled HTTP(S) transfer. An SSH transfer has no bound (`research.md` R6,
+open point). GitPython stops a direct Git call with `ps`, which the backend image installs. The import has no bound, and the
+Git commands inside it have none either. While the import holds the repository lock, the recovery check starts no second attempt
 (`research.md` R6, R20).
 
-**Scale/Scope**: one new package of twelve files (`backend/infrahub/git/writeback/`), two new
+**Scale/Scope**: one new package of fourteen files (`backend/infrahub/git/writeback/`), two new
 modules in `core/merge/`, about twenty-five existing backend modules touched, and one frontend
 entity folder, `frontend/app/src/entities/repository/`. The stored history of the queue grows with
 the square of the merges in one outage: about 1.2 MB for 100 merges (`research.md` R23). The task
@@ -130,10 +133,12 @@ backend/infrahub/
 │   │   ├── constants.py                   # retry bounds, barrier read retries, Git timeouts,
 │   │   │                                  # stale bound, cache bounds
 │   │   ├── models.py                      # queue, held set, records, intent, outcomes, actor
-│   │   ├── classifier.py                  # classify_delivery_failure, scrub_credentials
+│   │   ├── classifier.py                  # classify_delivery_failure
+│   │   ├── credentials.py                 # scrub_credentials
 │   │   ├── ports.py                       # DeliveryStatePort, DeliveryGitPort, RegenerationReleasePort,
 │   │   │                                  # DeliveryRunQuery
 │   │   ├── store.py                       # WritebackIntentStore, the only read/write path
+│   │   ├── queries.py                     # RepositoryWriteLockQuery
 │   │   ├── git_adapter.py                 # the only Git code of the package
 │   │   ├── runs.py                        # delivery run tags, the only orchestrator query
 │   │   ├── service.py                     # RepositoryWritebackService.deliver
@@ -158,7 +163,8 @@ backend/infrahub/
 │   │   ├── repository_merge_dispatcher.py # enqueue before submit, bounded retry,
 │   │   │                                  # per-repository guard, context, state port
 │   │   ├── recompute_coalescing.py        # barrier on the Python family
-│   │   ├── python_target_sources.py       # owner_of
+│   │   ├── python_target_sources.py       # repository id per attribute
+│   │   ├── python_target_resolution.py    # owner_of
 │   │   ├── builder.py                     # wiring
 │   │   └── selective_regen/definition_selector/artifact_selector.py   # repository_id
 │   ├── branch/tasks.py                    # wiring of post_process_branch_merge
@@ -184,7 +190,7 @@ frontend/app/src/entities/
 backend/tests/
 ├── unit/git/writeback/                    # classifier, scrubber, models, service, abandoner, recovery
 ├── unit/core/merge/                       # barrier, release plan building
-├── component/git/writeback/               # store, branch safety, no events, data-only skip, long queue
+├── component/git/writeback/               # store, mutation inputs, data-only skip, long queue
 ├── component/graphql/                     # mutations: branch and permissions
 ├── component/core/merge/                  # held regeneration end to end
 └── integration/git/test_git_live_remote.py   # the Gogs scenarios
@@ -205,7 +211,7 @@ Each part is testable on its own.
 
 | Part | User story | Depends on | Gate |
 |---|---|---|---|
-| **A. Typed failures and bounded Git commands** | Foundation | nothing | none |
+| **A. Typed failures and time limits on Git commands** | Foundation | nothing | none |
 | **B. State, schema and store** | Foundation for US1 | A | schema sign-off, SDK PR |
 | **C. Queue and first attempt** | US1, some scenarios of US2, US7 #1 and #2 | B | none |
 | **D. No other import of a pending destination** | US2 #3 | C | none |
@@ -267,7 +273,7 @@ the attempt fails and keeps the queue (`research.md` R3). `InfrahubRepository.me
 | **The synchronisation skips the default branch while a delivery is pending.** | A commit pushed directly to the remote default branch is not imported until the queue clears. | The section says so. The delivery imports it. Documented in the user docs. |
 | **A branch forked during an outage.** | A later synchronisation import of that branch deletes the pending merges' objects there. | The reimport refuses on every branch. The synchronisation case is a known limitation, documented. |
 | **A push failure classification changes on a Git or server upgrade.** | A rejection moves to `unclassified`, which is never retried. | The safe direction. The reason comes from GitPython's flags, and the classifier's table test lists the known cases. |
-| **The automatic retry can hold a worker slot for up to about 45 minutes.** | Less worker capacity during a remote outage. | One chain per repository, three retries (four attempts), bounded Git commands. A persistent outage ends in `action-required` and frees the slot. |
+| **The automatic retry can hold a worker slot for up to about 45 minutes.** | Less worker capacity during a remote outage. | One chain per repository, three retries (four attempts), time limits on Git commands. A persistent outage ends in `action-required` and frees the slot. A stalled HTTP(S) fetch or push ends at Git's low-speed limit. A stalled SSH transfer keeps the slot until the connection ends (`research.md` R6, open point). |
 | **Existing tests assert the push rejection message.** | Part A could break them. | The typed error keeps the message byte for byte. |
 | **The e2e stack has no Git server.** | The UI journeys cannot use Gogs. | The SDK `GitRepo` helper serves a bare repository, and a `pre-receive` hook in it rejects the push. `research.md` R15. |
 
@@ -286,7 +292,7 @@ the default branch. No setting falls back to the old merge path (`research.md` R
 | 2 | Provisional label "Push to remote". Names never carry the label. | `spec.md` decision 2. To settle with INFP-671. |
 | 3 | The state lives on `CoreRepository`, read and written on the default branch only. | `research.md` R1. |
 | 4 | Writes go through the core node API, not the SDK, so they emit no node event. | `research.md` R2. |
-| 5 | A second, short lock with a time to live guards the state. | `research.md` R2. |
+| 5 | A second, short lock with a time to live guards the state, and each transition's transaction also takes the Neo4j write lock of the repository node. | `research.md` R2. |
 | 6 | The queue entry carries the source commit from the graph. A merge that carries no content is not queued. | `research.md` R3. |
 | 7 | The delivery records, with a prior import obligation, then imports, then releases outside the lock. | `research.md` R4. |
 | 8 | Both mutations refuse off the default branch and require what an update of the repository on the default branch requires. | `research.md` R7. |
@@ -305,6 +311,6 @@ the default branch. No setting falls back to the old merge path (`research.md` R
 
 | Violation | Why needed | Simpler alternative rejected because |
 |---|---|---|
-| A second lock, `repository-delivery`, which is new coordination state (Principle VII). | The barrier's check-and-hold and the delivery's take-and-clear must not interleave, or held work is dropped (`research.md` R2). The branch merge flow must not wait for Git. | The repository lock makes a branch merge wait behind a sync or a push. A compare-and-set query is more code and has no precedent for node attributes here. |
+| A second lock, `repository-delivery`, which is new coordination state (Principle VII). | The barrier's check-and-hold and the delivery's take-and-clear must not interleave, or held work is dropped (`research.md` R2). The branch merge flow must not wait for Git. | The repository lock makes a branch merge wait behind a sync or a push. A compare-and-set query loses updates at read-committed isolation unless it takes the node's write lock first, which the store does without a counter. |
 | Four JSON attributes, which are structured values (Principle VII, and the sibling's rejection of a structured record). | The queue and the held set are lists by nature, and an abandonment record carries a list of entries. | One attribute per entry field cannot hold a list. A related node per entry is diff-visible and needs its own permission model, which the PRD rejects. The status, the cause, the message and the last commit, which a server-side query or a display needs, stay scalar. |
 | A cache of narrowed selections, which is a second store for held work (Principle VII). | Without it, nearly every git-synced merge that carries content would recompute whole kinds (SC-008). | Persisting the narrowing in the graph breaks FR-014. Waiting for the first attempt delays every git-synced merge, by minutes when the remote is down. A miss only over-executes. |

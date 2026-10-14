@@ -4,12 +4,12 @@ import React from "react";
 import { Button as AriaButton, DialogTrigger } from "react-aria-components";
 
 import { CopyToClipboardButton } from "@/shared/components/buttons/copy-to-clipboard-button";
+import { RefreshButton } from "@/shared/components/buttons/refresh-button";
 import { Col, Row } from "@/shared/components/container";
 import { Skeleton } from "@/shared/components/loading/skeleton";
 import { classNames } from "@/shared/utils/common";
 
 import { NodeMetadataPopover } from "@/entities/nodes/object/ui/metadata/node-metadata-popover";
-import { RefreshButton } from "@/entities/nodes/object/ui/object-details/refresh-button";
 import type { Permission } from "@/entities/permission/domain/model/permission";
 import type { NumberPoolData } from "@/entities/resource-manager/domain/model/number-pool";
 import {
@@ -22,6 +22,8 @@ import { resourceManagerQueryKeys } from "@/entities/resource-manager/ui/queries
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { SchemaViewerModal } from "@/entities/schema/ui/schema-viewer-modal";
+
+const REFRESHED_QUERY_KEYS = [resourceManagerQueryKeys.all];
 
 const managedByTagStyle =
   "inline-flex h-6 shrink-0 items-center gap-1 rounded-lg border border-border-strong px-2 font-medium text-foreground text-xs data-hovered:bg-highlight";
@@ -157,7 +159,7 @@ export function NumberPoolHeader({ pool, schema, permission }: NumberPoolHeaderP
         </Col>
 
         <PoolId id={pool.id} className="h-8" />
-        <RefreshButton queryKey={resourceManagerQueryKeys.all} />
+        <RefreshButton queryKeys={REFRESHED_QUERY_KEYS} />
         <NumberPoolActionsMenu pool={pool} schema={schema} permission={permission} />
       </Row>
 

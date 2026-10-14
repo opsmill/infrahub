@@ -123,7 +123,7 @@ class TestTutorial1ObjectAndBranch:
         # trigger the diff update
         await admin_page.get_by_text("Data").click()
         await expect(admin_page.get_by_text("We are computing the diff")).to_be_visible()
-        await admin_page.get_by_role("button", name="Refresh").click()
+        await admin_page.get_by_role("button", name="Refresh diff", exact=True).click()
         await expect(admin_page.get_by_text("Diff updated!")).to_be_visible()
 
         # view branch diff
@@ -139,8 +139,10 @@ class TestTutorial1ObjectAndBranch:
         await save_screenshot_for_docs(admin_page, "tutorial_1_branch_details")
         await merge_button.click()
         await expect(admin_page.locator("#alert-success")).to_contain_text("Branch merge requested!")
-        await admin_page.get_by_test_id("tasks-accordion").click()
-        await expect(admin_page.get_by_text("COMPLETEDMerge branch graphQL")).to_be_visible()
+        merge_row = (
+            admin_page.get_by_test_id("branch-tasks-card").get_by_role("row").filter(has_text="Merge branch graphQL")
+        )
+        await expect(merge_row.first).to_contain_text("COMPLETED")
 
         # validate merged changes in main
         await admin_page.get_by_test_id("branch-selector-trigger").click()

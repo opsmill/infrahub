@@ -15,6 +15,57 @@ For more detailed explanations on how these events are used within Infrahub, see
 ## Messages events
 <!-- markdownlint-disable MD012 -->
 <!-- vale off -->
+### Git Branch Heads
+<!-- vale on -->
+
+<!-- vale off -->
+#### Event git.branch_heads.get
+<!-- vale on -->
+
+**Description**: Read the remote head of every branch of a repository from a worker's local clone.
+
+**Priority**: 4
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **repository_id** | The unique ID of the Repository | string | None |
+| **repository_name** | The name of the repository | string | None |
+| **repository_kind** | The kind of the repository | string | None |
+| **location** | The external URL of the repository | string | None |
+| **branches** | The branches whose remote heads are read | array | None |
+<!-- vale on -->
+
+<!-- vale off -->
+### Git Commit Log
+<!-- vale on -->
+
+<!-- vale off -->
+#### Event git.commit_log.get
+<!-- vale on -->
+
+**Description**: Read the commit log of a repository from a worker's local clone.
+
+**Priority**: 4
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **repository_id** | The unique ID of the Repository | string | None |
+| **repository_name** | The name of the repository | string | None |
+| **repository_kind** | The kind of the repository | string | None |
+| **location** | The external URL of the repository | string | None |
+| **infrahub_branch_name** | Infrahub branch the log is read for | string | None |
+| **git_ref** | Remote branch or read-only ref whose history is listed | string | None |
+| **imported_commit** | Commit imported on the Infrahub branch | N/A | None |
+| **limit** | Number of commits to return | integer | None |
+| **offset** | Number of commits to skip from the head | integer | None |
+| **include_pending_count** | Whether to count the commits not yet imported | boolean | None |
+<!-- vale on -->
+
+<!-- vale off -->
 ### Git File
 <!-- vale on -->
 
@@ -64,6 +115,23 @@ For more detailed explanations on how these events are used within Infrahub, see
 ### Refresh Git
 <!-- vale on -->
 
+<!-- vale off -->
+#### Event refresh.git.clone
+<!-- vale on -->
+
+**Description**: Ask every worker to create its local copy of a repository if it has none, without changing any checkout.
+
+**Priority**: 3
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **repository_id** | The unique ID of the repository | string | None |
+| **repository_name** | The name of the repository | string | None |
+| **repository_kind** | The type of repository | string | None |
+| **infrahub_branch_name** | Infrahub branch whose ref a new copy checks out | string | None |
+<!-- vale on -->
 <!-- vale off -->
 #### Event refresh.git.fetch
 <!-- vale on -->
@@ -176,6 +244,58 @@ For more detailed explanations on how these events are used within Infrahub, see
 
 
 ## Responses events
+
+<!-- vale off -->
+### Git Branch Heads
+<!-- vale on -->
+
+<!-- vale off -->
+#### Event git.branch_heads.get
+<!-- vale on -->
+**Priority**: 4
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **passed** | N/A | boolean | True |
+| **routing_key** | N/A | string | git.branch_heads.get |
+| **data.fetched_at** | N/A | N/A | None |
+| **data.unavailable_reason** | N/A | N/A | None |
+| **data.warm_up_task_id** | N/A | N/A | None |
+| **data.branches** | N/A | array | None |
+| **data.error_message** | N/A | N/A | None |
+| **errors** | N/A | array | None |
+| **initial_message** | Initial message in dict format, the primary goal of this field is to provide additional context when there is an error | N/A | None |
+<!-- vale on -->
+
+<!-- vale off -->
+### Git Commit Log
+<!-- vale on -->
+
+<!-- vale off -->
+#### Event git.commit_log.get
+<!-- vale on -->
+**Priority**: 4
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **passed** | N/A | boolean | True |
+| **routing_key** | N/A | string | git.commit_log.get |
+| **data.condition** | N/A | N/A | None |
+| **data.remote_head** | N/A | N/A | None |
+| **data.imported_commit** | N/A | N/A | None |
+| **data.pending_count** | N/A | N/A | None |
+| **data.fetched_at** | N/A | N/A | None |
+| **data.unavailable_reason** | N/A | N/A | None |
+| **data.warm_up_task_id** | N/A | N/A | None |
+| **data.commits** | N/A | array | None |
+| **data.error_message** | N/A | N/A | None |
+| **errors** | N/A | array | None |
+| **initial_message** | Initial message in dict format, the primary goal of this field is to provide additional context when there is an error | N/A | None |
+<!-- vale on -->
 
 <!-- vale off -->
 ### Git File

@@ -1,15 +1,90 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from dataclasses import dataclass
+from enum import StrEnum
+from typing import TYPE_CHECKING, assert_never
 
-from infrahub.core.constants import MetadataOptions
+from infrahub.core.constants import MetadataOptions, RepositoryInternalStatus, RepositorySyncStatus
 from infrahub.core.manager import NodeManager
-from infrahub.core.protocols import CoreGenericRepository
+from infrahub.core.order import OrderModel
+from infrahub.core.protocols import CoreGenericRepository, CoreReadOnlyRepository
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+
+
+class BranchImportVerdict(StrEnum):
+    """Whether the objects a repository registered on a branch match the content of that branch."""
+
+    USABLE = "usable"
+    FAILED = "failed"
+    INCOMPLETE = "incomplete"
+    REF_MISSING = "ref-missing"
+    """The tracked ref is gone from the remote, so a fix pushed to it cannot be imported."""
+
+    @property
+    def blocks_merge(self) -> bool:
+        """Whether a branch with this verdict fails its proposed-change check and is refused a merge."""
+        match self:
+            case BranchImportVerdict.USABLE:
+                return False
+            case BranchImportVerdict.FAILED | BranchImportVerdict.INCOMPLETE | BranchImportVerdict.REF_MISSING:
+                return True
+            case _:
+                assert_never(self)
+
+
+def classify_branch_import(
+    sync_status: RepositorySyncStatus | None, internal_status: RepositoryInternalStatus
+) -> BranchImportVerdict:
+    """Classify a repository's import on a branch from the status the branch wrote itself.
+
+    `sync_status` is None when the branch only inherits a status. A repository that is inactive on the branch is
+    usable, so disabling it clears an earlier import failure.
+    """
+    if internal_status == RepositoryInternalStatus.INACTIVE or sync_status is None:
+        return BranchImportVerdict.USABLE
+
+    match sync_status:
+        case RepositorySyncStatus.IN_SYNC:
+            return BranchImportVerdict.USABLE
+        case RepositorySyncStatus.ERROR_IMPORT:
+            return BranchImportVerdict.FAILED
+        case RepositorySyncStatus.ERROR_REF_MISSING:
+            return BranchImportVerdict.REF_MISSING
+        case RepositorySyncStatus.SYNCING | RepositorySyncStatus.UNKNOWN:
+            return BranchImportVerdict.INCOMPLETE
+        case _:
+            assert_never(sync_status)
+
+
+def is_written_on_branch(updated_at: Timestamp | None, branch: Branch) -> bool:
+    """Return whether a `sync_status` value updated at `updated_at` was written on `branch` rather than inherited.
+
+    A value the branch wrote is at least as recent as `branched_from`: a rebase moves both the branch's own edges
+    and `branched_from` to the rebase time, so the two are equal afterwards and the comparison must not be strict.
+    An inherited value is frozen before `branched_from`. A value whose update time is unknown counts as written, so
+    a check fails closed rather than passing on missing metadata.
+    """
+    return updated_at is None or updated_at >= Timestamp(branch.get_branched_from())
+
+
+@dataclass(frozen=True)
+class RepositoryBranchSyncStatus:
+    repository_name: str
+    internal_status: RepositoryInternalStatus
+
+    sync_status: RepositorySyncStatus | None
+    """The status written on the branch itself, or None when the branch only inherits one."""
+
+    tracked_ref: str | None = None
+    """The ref a read-only repository tracks on the branch, read only when the status reports that ref missing."""
+
+    @property
+    def verdict(self) -> BranchImportVerdict:
+        return classify_branch_import(sync_status=self.sync_status, internal_status=self.internal_status)
 
 
 class RepositoryBranchSyncStatusReader:
@@ -23,14 +98,8 @@ class RepositoryBranchSyncStatusReader:
     def __init__(self, db: InfrahubDatabase) -> None:
         self.db = db
 
-    async def get_status_written_on_branch(self, repository_id: str, branch: Branch) -> str | None:
-        """Return the sync status written on `branch`, or None when the branch only inherits one.
-
-        A value the branch wrote is at least as recent as `branched_from`: a rebase moves both the branch's
-        own edges and `branched_from` to the rebase time, so the two are equal afterwards and the comparison
-        must not be strict. An inherited value is frozen before `branched_from`. A value whose update time
-        is unknown is reported, so the check fails closed rather than passing on missing metadata.
-        """
+    async def get_status_written_on_branch(self, repository_id: str, branch: Branch) -> RepositorySyncStatus | None:
+        """Return the sync status written on `branch`, or None when the branch only inherits one."""
         repository = await NodeManager.get_one(
             db=self.db,
             id=repository_id,
@@ -40,8 +109,58 @@ class RepositoryBranchSyncStatusReader:
         )
         if repository is None:
             return None
+        return self._get_written_status(repository=repository, branch=branch)
 
-        updated_at = repository.sync_status._get_updated_at()
-        if updated_at is not None and updated_at < Timestamp(branch.get_branched_from()):
+    async def list_statuses_on_branch(self, branch: Branch) -> list[RepositoryBranchSyncStatus]:
+        """Return the status every repository visible on `branch` wrote on it."""
+        repositories = await NodeManager.query(
+            db=self.db,
+            schema=CoreGenericRepository,
+            branch=branch,
+            fields={"name": None, "internal_status": None, "sync_status": None},
+            include_metadata=MetadataOptions.UPDATED_AT,
+            order=OrderModel(disable=True),
+        )
+        written = {
+            repository.id: self._get_written_status(repository=repository, branch=branch) for repository in repositories
+        }
+        tracked_refs = await self._read_tracked_refs(
+            repository_ids=[
+                repository_id
+                for repository_id, sync_status in written.items()
+                if sync_status == RepositorySyncStatus.ERROR_REF_MISSING
+            ],
+            branch=branch,
+        )
+        return [
+            RepositoryBranchSyncStatus(
+                repository_name=repository.name.value,
+                internal_status=RepositoryInternalStatus(repository.internal_status.value),
+                sync_status=written[repository.id],
+                tracked_ref=tracked_refs.get(repository.id),
+            )
+            for repository in repositories
+        ]
+
+    async def get_tracked_ref(self, repository_id: str, branch: Branch) -> str | None:
+        """Return the ref the read-only repository tracks on `branch`, or None for any other repository."""
+        tracked_refs = await self._read_tracked_refs(repository_ids=[repository_id], branch=branch)
+        return tracked_refs.get(repository_id)
+
+    async def _read_tracked_refs(self, repository_ids: list[str], branch: Branch) -> dict[str, str]:
+        if not repository_ids:
+            return {}
+        repositories = await NodeManager.query(
+            db=self.db,
+            schema=CoreReadOnlyRepository,
+            branch=branch,
+            filters={"ids": repository_ids},
+            fields={"ref": None},
+            order=OrderModel(disable=True),
+        )
+        return {repository.id: repository.ref.value for repository in repositories if repository.ref.value}
+
+    def _get_written_status(self, repository: CoreGenericRepository, branch: Branch) -> RepositorySyncStatus | None:
+        if not is_written_on_branch(updated_at=repository.sync_status._get_updated_at(), branch=branch):
             return None
-        return repository.sync_status.value
+        return RepositorySyncStatus(repository.sync_status.value)

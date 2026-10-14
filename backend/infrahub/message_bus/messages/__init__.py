@@ -1,7 +1,10 @@
 from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 
+from .git_branch_heads_get import GitBranchHeadsGet, GitBranchHeadsGetResponse
+from .git_commit_log_get import GitCommitLogGet, GitCommitLogGetResponse
 from .git_file_get import GitFileGet, GitFileGetResponse
 from .git_repository_connectivity import GitRepositoryConnectivity
+from .refresh_git_clone import RefreshGitClone
 from .refresh_git_fetch import RefreshGitFetch
 from .refresh_git_repository_branch_deleted import RefreshGitRepositoryBranchDeleted
 from .refresh_registry_branches import RefreshRegistryBranches
@@ -10,8 +13,11 @@ from .refresh_settings_response_delay import RefreshSettingsResponseDelay
 from .send_echo_request import SendEchoRequest, SendEchoRequestResponse
 
 MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
+    "git.branch_heads.get": GitBranchHeadsGet,
+    "git.commit_log.get": GitCommitLogGet,
     "git.file.get": GitFileGet,
     "git.repository.connectivity": GitRepositoryConnectivity,
+    "refresh.git.clone": RefreshGitClone,
     "refresh.git.fetch": RefreshGitFetch,
     "refresh.git.branch_deleted": RefreshGitRepositoryBranchDeleted,
     "refresh.registry.branches": RefreshRegistryBranches,
@@ -21,12 +27,16 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
 }
 
 RESPONSE_MAP: dict[str, type[InfrahubResponse]] = {
+    "git.branch_heads.get": GitBranchHeadsGetResponse,
+    "git.commit_log.get": GitCommitLogGetResponse,
     "git.file.get": GitFileGetResponse,
     "send.echo.request": SendEchoRequestResponse,
 }
 
 PRIORITY_MAP = {
     "send.echo.request": 5,  # Currently only for testing purposes, will be removed once all message bus have been migrated to prefect
+    "git.branch_heads.get": 4,
+    "git.commit_log.get": 4,
     "git.file.get": 4,
 }
 

@@ -1,10 +1,12 @@
+import { RefreshButton } from "@/shared/components/buttons/refresh-button";
+
 import type { ArtifactObject } from "@/entities/artifacts/domain/model/artifact";
 import { ArtifactDetailsMenu } from "@/entities/artifacts/ui/artifact-details-menu";
 import { ArtifactGenerateButton } from "@/entities/artifacts/ui/artifact-generate-button";
 import { ArtifactStatusBadge } from "@/entities/artifacts/ui/artifact-status-badge";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { NodeMetadataPopover } from "@/entities/nodes/object/ui/metadata/node-metadata-popover";
-import { RefreshButton } from "@/entities/nodes/object/ui/object-details/refresh-button";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 
 interface ArtifactHeaderProps {
   artifact: ArtifactObject;
@@ -18,7 +20,7 @@ export function ArtifactHeader({ artifact }: ArtifactHeaderProps) {
       <ArtifactStatusBadge status={artifact.status.value} />
 
       <div className="ml-auto flex items-center gap-1">
-        <RefreshButton />
+        <RefreshButton queryKeys={[objectQueryKeys.all]} />
 
         <ArtifactGenerateButton
           label="Re-generate"

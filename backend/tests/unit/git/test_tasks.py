@@ -1,3 +1,6 @@
+import ast
+import inspect
+import textwrap
 from dataclasses import dataclass
 from uuid import uuid4
 
@@ -15,8 +18,24 @@ from infrahub.git.tasks import (
     format_check_log_entry,
     resolve_initial_import_branch,
     select_writable_branch_commits,
+    warm_up_git_repository,
 )
 from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
+
+
+def test_the_warm_up_flow_does_not_tag_its_run_with_the_namespace() -> None:
+    """A read starts the warm-up, and the namespace tag is what puts a run in the task list."""
+    flow_source = textwrap.dedent(inspect.getsource(warm_up_git_repository.fn))
+    add_tags_calls = [
+        node
+        for node in ast.walk(ast.parse(flow_source))
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "add_tags"
+    ]
+
+    assert [
+        {keyword.arg: ast.literal_eval(keyword.value) for keyword in call.keywords if keyword.arg == "namespace"}
+        for call in add_tags_calls
+    ] == [{"namespace": False}]
 
 
 @dataclass
@@ -122,33 +141,38 @@ def test_format_check_log_entry_produces_single_line_per_entry() -> None:
 @dataclass(frozen=True, kw_only=True)
 class ImportStatusCase:
     name: str
-    sync_status: str | None
-    internal_status: str
+    sync_status: RepositorySyncStatus | None
+    internal_status: RepositoryInternalStatus
 
 
 PASSING_IMPORT_STATUS_CASES = [
+    ImportStatusCase(name="not_written_on_branch", sync_status=None, internal_status=RepositoryInternalStatus.ACTIVE),
     ImportStatusCase(
-        name="not_written_on_branch", sync_status=None, internal_status=RepositoryInternalStatus.ACTIVE.value
-    ),
-    ImportStatusCase(
-        name="in_sync",
-        sync_status=RepositorySyncStatus.IN_SYNC.value,
-        internal_status=RepositoryInternalStatus.ACTIVE.value,
-    ),
-    ImportStatusCase(
-        name="syncing",
-        sync_status=RepositorySyncStatus.SYNCING.value,
-        internal_status=RepositoryInternalStatus.ACTIVE.value,
-    ),
-    ImportStatusCase(
-        name="unknown",
-        sync_status=RepositorySyncStatus.UNKNOWN.value,
-        internal_status=RepositoryInternalStatus.ACTIVE.value,
+        name="in_sync", sync_status=RepositorySyncStatus.IN_SYNC, internal_status=RepositoryInternalStatus.ACTIVE
     ),
     ImportStatusCase(
         name="inactive_after_import_error",
-        sync_status=RepositorySyncStatus.ERROR_IMPORT.value,
-        internal_status=RepositoryInternalStatus.INACTIVE.value,
+        sync_status=RepositorySyncStatus.ERROR_IMPORT,
+        internal_status=RepositoryInternalStatus.INACTIVE,
+    ),
+    ImportStatusCase(
+        name="inactive_while_syncing",
+        sync_status=RepositorySyncStatus.SYNCING,
+        internal_status=RepositoryInternalStatus.INACTIVE,
+    ),
+]
+
+INCOMPLETE_IMPORT_STATUS_CASES = [
+    ImportStatusCase(
+        name="syncing", sync_status=RepositorySyncStatus.SYNCING, internal_status=RepositoryInternalStatus.ACTIVE
+    ),
+    ImportStatusCase(
+        name="unknown", sync_status=RepositorySyncStatus.UNKNOWN, internal_status=RepositoryInternalStatus.ACTIVE
+    ),
+    ImportStatusCase(
+        name="staging_syncing",
+        sync_status=RepositorySyncStatus.SYNCING,
+        internal_status=RepositoryInternalStatus.STAGING,
     ),
 ]
 
@@ -160,20 +184,20 @@ def test_evaluate_import_status_passes_without_import_error(case: ImportStatusCa
         internal_status=case.internal_status,
         repository_name="dealership-car",
         branch_name="remove-ca",
+        tracked_ref=None,
     )
 
     assert outcome == ImportStatusOutcome(conclusion=ValidatorConclusion.SUCCESS, severity=Severity.INFO, message="")
 
 
-@pytest.mark.parametrize(
-    "internal_status", [RepositoryInternalStatus.ACTIVE.value, RepositoryInternalStatus.STAGING.value]
-)
-def test_evaluate_import_status_fails_on_import_error(internal_status: str) -> None:
+@pytest.mark.parametrize("internal_status", [RepositoryInternalStatus.ACTIVE, RepositoryInternalStatus.STAGING])
+def test_evaluate_import_status_fails_on_import_error(internal_status: RepositoryInternalStatus) -> None:
     outcome = evaluate_import_status(
-        sync_status=RepositorySyncStatus.ERROR_IMPORT.value,
+        sync_status=RepositorySyncStatus.ERROR_IMPORT,
         internal_status=internal_status,
         repository_name="dealership-car",
         branch_name="remove-ca",
+        tracked_ref=None,
     )
 
     assert outcome == ImportStatusOutcome(
@@ -184,6 +208,73 @@ def test_evaluate_import_status_fails_on_import_error(internal_status: str) -> N
             "objects registered for this repository do not match the content of the branch. Merging would apply "
             "the rest of the branch without them. Review the latest 'Import objects' task for this repository, "
             "resolve the cause and run the checks again."
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    "case", INCOMPLETE_IMPORT_STATUS_CASES, ids=[case.name for case in INCOMPLETE_IMPORT_STATUS_CASES]
+)
+def test_evaluate_import_status_fails_without_a_completed_import(case: ImportStatusCase) -> None:
+    outcome = evaluate_import_status(
+        sync_status=case.sync_status,
+        internal_status=case.internal_status,
+        repository_name="dealership-car",
+        branch_name="remove-ca",
+        tracked_ref=None,
+    )
+
+    assert outcome == ImportStatusOutcome(
+        conclusion=ValidatorConclusion.FAILURE,
+        severity=Severity.CRITICAL,
+        message=(
+            "No completed import of the objects from repository 'dealership-car' is recorded on branch 'remove-ca', "
+            "so the objects registered for this repository may not match the content of the branch. Wait for the "
+            "import to complete, or run 'Reimport current commit' for this repository on the branch if it does not, "
+            "then run the checks again."
+        ),
+    )
+
+
+@dataclass(frozen=True, kw_only=True)
+class RefMissingMessageCase:
+    name: str
+    tracked_ref: str | None
+    expected_opening: str
+
+
+REF_MISSING_MESSAGE_CASES = [
+    RefMissingMessageCase(
+        name="names_the_tracked_ref",
+        tracked_ref="v1.0",
+        expected_opening="The ref 'v1.0' that repository 'dealership-car' tracks",
+    ),
+    RefMissingMessageCase(
+        name="unknown_ref_is_not_named",
+        tracked_ref=None,
+        expected_opening="The ref that repository 'dealership-car' tracks",
+    ),
+]
+
+
+@pytest.mark.parametrize("case", REF_MISSING_MESSAGE_CASES, ids=[case.name for case in REF_MISSING_MESSAGE_CASES])
+def test_evaluate_import_status_fails_when_the_tracked_ref_is_missing(case: RefMissingMessageCase) -> None:
+    outcome = evaluate_import_status(
+        sync_status=RepositorySyncStatus.ERROR_REF_MISSING,
+        internal_status=RepositoryInternalStatus.ACTIVE,
+        repository_name="dealership-car",
+        branch_name="remove-ca",
+        tracked_ref=case.tracked_ref,
+    )
+
+    assert outcome == ImportStatusOutcome(
+        conclusion=ValidatorConclusion.FAILURE,
+        severity=Severity.CRITICAL,
+        message=(
+            f"{case.expected_opening} on branch 'remove-ca' was missing from the remote when Infrahub last checked "
+            "it, so Infrahub keeps running the commit it imported last. Restore the ref on the remote or edit the "
+            "ref of the repository, then run 'Reimport current commit' for this repository on the branch and run "
+            "the checks again."
         ),
     )
 

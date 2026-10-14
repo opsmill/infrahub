@@ -27,7 +27,7 @@ mutation {
 }
 ```
 
-The `resources` field references the `IpamIPPrefix` objects the pool allocates from — this is the connection point between IPAM and Resource Manager. Passing the same `identifier` on repeated allocation requests returns the existing allocation instead of creating a new one, so a provisioning script can run more than once without allocating the same address or subnet twice. Each pool also takes an exclusive lock scoped to itself while allocating, so two concurrent requests against the same pool never return the same resource.
+The `resources` field references the `IpamIPPrefix` objects the pool allocates from, and is the connection point between IPAM and Resource Manager. When you pass the same `identifier` on repeated allocation requests through the GraphQL API, Infrahub returns the existing allocation instead of creating a new one, on any branch that can read that allocation. A provisioning script can then run more than once without allocating a second address or subnet for the same object. Infrahub also handles one allocation request at a time for each pool, across every Infrahub worker, so two concurrent requests against the same pool never get the same resource. The [Resource Manager](../resource-manager/overview.mdx#idempotent-allocation) page has the full identifier rules.
 
 For the full allocation walkthrough — creating the source prefix, creating the pool, and allocating directly or during node creation — see [Allocate IP addresses](../resource-manager/allocate-ip-address.mdx) and [Allocate IP prefixes](../resource-manager/allocate-ip-prefix.mdx).
 

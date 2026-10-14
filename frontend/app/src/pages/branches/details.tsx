@@ -1,21 +1,19 @@
-import { Spinner } from "@infrahub/ui";
+import { Card, Spinner } from "@infrahub/ui";
 import { useAtomValue } from "jotai";
 import { Navigate, Outlet } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Row } from "@/shared/components/container";
+import { Col } from "@/shared/components/container";
 import Content from "@/shared/components/layout/content";
 import { useRequiredParams } from "@/shared/hooks/use-required-params";
 import { useTitle } from "@/shared/hooks/useTitle";
 
 import type { BranchListItem } from "@/entities/branches/domain/model/branch";
 import { branchesState } from "@/entities/branches/stores";
-import { BranchDefaultBadge } from "@/entities/branches/ui/branch-list-item/branch-default-badge";
-import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
+import { BranchDetailsHeader } from "@/entities/branches/ui/branch-details/branch-details-header";
 import { BranchTabs } from "@/entities/branches/ui/branch-tabs";
 import { BranchWorkingNotice } from "@/entities/branches/ui/branch-working-notice";
 import type { BranchDetailsOutletContext } from "@/entities/branches/ui/routing/use-branch-details-outlet";
-import { NodeMetadataPopover } from "@/entities/nodes/object/ui/metadata/node-metadata-popover";
 
 function BranchDetailsLayout() {
   const { branchName } = useRequiredParams("branchName");
@@ -45,24 +43,14 @@ function BranchDetailsContent({ branch }: { branch: BranchListItem }) {
     <Content.Card>
       <BranchWorkingNotice branch={branch} />
 
-      <header className="p-5 pb-2">
-        <Row>
-          <h1 className="font-bold text-xl">{branch.name}</h1>
-          <NodeMetadataPopover objectKind="InfrahubBranch" objectId={branch.id} />
-          {branch.is_default ? (
-            <BranchDefaultBadge className="text-sm" />
-          ) : (
-            <BranchStatusBadge status={branch.status} className="text-sm" />
-          )}
-        </Row>
-        {branch.description && <p className="text-sm">{branch.description}</p>}
-      </header>
+      <BranchDetailsHeader branch={branch} />
 
-      {!branch.is_default && <BranchTabs />}
-
-      <div className="p-2">
-        <Outlet context={{ branch } satisfies BranchDetailsOutletContext} />
-      </div>
+      <Col className="gap-0 p-1">
+        {!branch.is_default && <BranchTabs />}
+        <Card variant="panel" className="overflow-auto">
+          <Outlet context={{ branch } satisfies BranchDetailsOutletContext} />
+        </Card>
+      </Col>
     </Content.Card>
   );
 }

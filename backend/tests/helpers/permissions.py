@@ -20,6 +20,18 @@ async def define_permissions(
     role_name: str = "chief-people-officer",
     group_name: str = "hr",
 ) -> None:
+    """Grant an account a set of permissions through a new role and group.
+
+    Args:
+        account: Account to add to the new group.
+        db: Database connection instance.
+        object_permissions: Object permissions to grant.
+        global_permissions: Global permissions to grant.
+        role_name: Name of the role to create; both role and group names are unique, so a caller
+            granting several accounts in one database must pass its own.
+        group_name: Name of the group to create.
+
+    """
     object_permissions = object_permissions or []
     global_permissions = global_permissions or []
     permissions = []

@@ -3,6 +3,22 @@ import { BranchStatus } from "@/shared/api/graphql/generated/types";
 import type { FilterDefinition } from "@/entities/nodes/object/domain/model/filter-definition";
 import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
 
+function buildDisplayColumnSchema(name: string, label: string): AttributeSchema {
+  return {
+    name,
+    label,
+    kind: "Text",
+    read_only: true,
+    unique: false,
+    optional: true,
+    ordered: true,
+    inherited: false,
+    state: "present",
+    allow_override: "none",
+    display: "default",
+  };
+}
+
 export const BRANCH_FIELD_SCHEMAS = {
   name: {
     name: "name",
@@ -40,6 +56,8 @@ export const BRANCH_FIELD_SCHEMAS = {
     label: "Proposed Changes",
     kind: "Text",
   } as AttributeSchema,
+  repositories: buildDisplayColumnSchema("repositories", "Repositories"),
+  git_state: buildDisplayColumnSchema("git_state", "Git state"),
 } as const;
 
 export const BRANCH_FILTER_DEFINITIONS: Record<string, FilterDefinition> = {

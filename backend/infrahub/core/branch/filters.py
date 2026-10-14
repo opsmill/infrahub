@@ -26,6 +26,8 @@ class BranchListFilters:
     partial_match: bool = False
     status: BranchStatus | None = None
     statuses: list[BranchStatus] | None = None
+    sync_with_git: bool | None = None
+    """Keep only branches whose `sync_with_git` equals this value. None means no constraint."""
     created_by_id: str | None = None
     branched_from_after: datetime | None = None
     branched_from_before: datetime | None = None

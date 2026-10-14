@@ -85,6 +85,15 @@ class ReconciledBranch:
 
 
 @dataclass(frozen=True)
+class TrackedTarget:
+    """The ref and the commit a read-only repository records on one Infrahub branch."""
+
+    ref: str
+    commit: str | None
+    """None when the branch records no full commit id."""
+
+
+@dataclass(frozen=True)
 class RewriteRecord:
     """What the repository holds about the last history rewrite of one branch."""
 

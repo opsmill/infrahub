@@ -17,9 +17,11 @@ from infrahub.git.repository import FailedImport, ImportStep, PendingObjectImpor
 from infrahub.git.sync import RepositorySyncer, import_branch
 from infrahub.lock import InfrahubLockRegistry
 from tests.adapters.cache import MemoryCache
+from tests.adapters.delivery_state import build_idle_delivery_state
 from tests.adapters.lock import FailingImporter
 from tests.adapters.repository_record_store import build_in_memory_recorder
 from tests.helpers.flow import call_in_flow
+from tests.helpers.repository_activity import activity_run
 from tests.helpers.repository_sync import FLOW_RUN_LOGGER
 from tests.helpers.test_client import (
     REJECTED_REQUEST_MESSAGE,
@@ -45,6 +47,15 @@ def flow_run_errors(caplog: pytest.LogCaptureFixture) -> list[tuple[str, BaseExc
     ]
 
 
+def flow_run_warnings_and_errors(caplog: pytest.LogCaptureFixture) -> list[tuple[int, str]]:
+    """Return the level and message of each warning- and error-level entry of the flow run logger, in order."""
+    return [
+        (record.levelno, record.getMessage())
+        for record in caplog.records
+        if record.name == FLOW_RUN_LOGGER and record.levelno >= logging.WARNING
+    ]
+
+
 def pending_main_import(repo: InfrahubRepository) -> PendingObjectImport:
     return PendingObjectImport(infrahub_branch_name="main", commit=repo.get_commit_value(branch_name="main"))
 
@@ -57,20 +68,23 @@ async def test_failure_raised_outside_the_import_is_returned_and_logged_with_its
 ) -> None:
     error = RuntimeError("lock backend unavailable")
 
-    failure = await call_in_flow(
-        lambda: import_branch(
-            lock_registry=InfrahubLockRegistry(local_only=True),
-            importer=FailingImporter(error),
-            repo=git_repo_04,
-            pending_import=pending_main_import(git_repo_04),
+    async with activity_run() as run:
+        failure = await call_in_flow(
+            lambda: import_branch(
+                lock_registry=InfrahubLockRegistry(local_only=True),
+                importer=FailingImporter(error),
+                repo=git_repo_04,
+                pending_import=pending_main_import(git_repo_04),
+                activity=run,
+            )
         )
-    )
 
     assert isinstance(failure, RepositoryImportError)
     assert failure.message == "RuntimeError: lock backend unavailable"
-    assert flow_run_errors(caplog) == [
-        ("Failed to import branch 'main': RuntimeError: lock backend unavailable", error)
-    ]
+    *entries, (finished_entry, _) = flow_run_errors(caplog)
+    assert entries == [("Failed to import branch 'main': RuntimeError: lock backend unavailable", error)]
+    # Prefect closes the branch's own import run with an entry matched by its prefix, the part of its wording it owns.
+    assert finished_entry.startswith("Finished in state Failed(")
 
 
 async def test_converted_import_failure_is_returned_without_logging_it_again(
@@ -81,31 +95,37 @@ async def test_converted_import_failure_is_returned_without_logging_it_again(
 ) -> None:
     error = RepositoryImportError(identifier=git_repo_04.name, branch_name="main", message="Schema not valid")
 
-    failure = await call_in_flow(
-        lambda: import_branch(
-            lock_registry=InfrahubLockRegistry(local_only=True),
-            importer=FailingImporter(error),
-            repo=git_repo_04,
-            pending_import=pending_main_import(git_repo_04),
-        )
-    )
-
-    assert failure is error
-    assert flow_run_errors(caplog) == []
-
-
-async def test_connection_failure_is_raised(prefect_test_fixture: None, git_repo_04: InfrahubRepository) -> None:
-    error = RepositoryConnectionError(identifier=git_repo_04.name, message="The remote repository is unreachable")
-
-    with pytest.raises(RepositoryConnectionError, match=r"^The remote repository is unreachable$"):
-        await call_in_flow(
+    async with activity_run() as run:
+        failure = await call_in_flow(
             lambda: import_branch(
                 lock_registry=InfrahubLockRegistry(local_only=True),
                 importer=FailingImporter(error),
                 repo=git_repo_04,
                 pending_import=pending_main_import(git_repo_04),
+                activity=run,
             )
         )
+
+    assert failure is error
+    # Only Prefect's closing entry of the branch's import run remains, matched by the prefix of its wording.
+    (finished_entry,) = [message for message, _ in flow_run_errors(caplog)]
+    assert finished_entry.startswith("Finished in state Failed(")
+
+
+async def test_connection_failure_is_raised(prefect_test_fixture: None, git_repo_04: InfrahubRepository) -> None:
+    error = RepositoryConnectionError(identifier=git_repo_04.name, message="The remote repository is unreachable")
+
+    async with activity_run() as run:
+        with pytest.raises(RepositoryConnectionError, match=r"^The remote repository is unreachable$"):
+            await call_in_flow(
+                lambda: import_branch(
+                    lock_registry=InfrahubLockRegistry(local_only=True),
+                    importer=FailingImporter(error),
+                    repo=git_repo_04,
+                    pending_import=pending_main_import(git_repo_04),
+                    activity=run,
+                )
+            )
 
 
 async def test_sync_records_a_failure_raised_outside_the_import_on_its_branch(
@@ -120,14 +140,20 @@ async def test_sync_records_a_failure_raised_outside_the_import_on_its_branch(
         importer=FailingImporter(RuntimeError("lock lost")),
         recorder=build_in_memory_recorder(),
         retarget_markers=RetargetMarkers(cache=MemoryCache()),
+        state=build_idle_delivery_state(repository_id=str(git_repo_04.id)),
     )
 
-    outcome = await call_in_flow(lambda: syncer.sync(git_repo_04))
+    async with activity_run() as run:
+        outcome = await call_in_flow(lambda: syncer.sync(git_repo_04, activity=run))
 
     assert outcome.failed == (
-        FailedImport(branch_name="branch01", step=ImportStep.IMPORT, reason="RuntimeError: lock lost"),
+        FailedImport(
+            branch_name="branch01",
+            infrahub_branch_name="branch01",
+            step=ImportStep.IMPORT,
+            reason="RuntimeError: lock lost",
+        ),
     )
-    assert outcome.report.failed_import_branches == ("branch01",)
     assert outcome.report.imported_branches == ()
 
 
@@ -144,10 +170,12 @@ async def test_failed_status_write_does_not_replace_the_import_failure(
     with pytest.raises(RepositoryImportError, match=rf"^{REJECTED_REQUEST_MESSAGE}$"):
         await call_in_flow(lambda: git_repo_04.build_import_plan(infrahub_branch_name="main", commit=commit))
 
-    *entries, finished_entry = [message for message, _ in flow_run_errors(caplog)]
+    *entries, (finished_level, finished_message) = flow_run_warnings_and_errors(caplog)
     assert entries == [
-        f"Failed to import branch 'main': {REJECTED_REQUEST_MESSAGE}",
-        "Failed to set the sync status of branch 'main' to ERROR_IMPORT",
+        (logging.ERROR, f"Failed to import branch 'main': {REJECTED_REQUEST_MESSAGE}"),
+        (logging.WARNING, "Import of branch 'main' stopped before any import step ran, so nothing was imported."),
+        (logging.ERROR, "Failed to set the sync status of branch 'main' to ERROR_IMPORT"),
     ]
     # Prefect's own closing entry is matched by its prefix, which is the part of its wording it owns.
-    assert finished_entry.startswith("Finished in state Failed(")
+    assert finished_level == logging.ERROR
+    assert finished_message.startswith("Finished in state Failed(")

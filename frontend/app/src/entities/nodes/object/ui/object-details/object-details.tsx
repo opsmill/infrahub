@@ -12,6 +12,8 @@ import { ObjectActivitiesCard } from "@/entities/nodes/object/ui/object-details/
 import { ObjectDetailsCard } from "@/entities/nodes/object/ui/object-details/object-details-card";
 import { ObjectProfilesGroupsCard } from "@/entities/nodes/object/ui/object-details/object-profiles-groups-card";
 import type { Permission } from "@/entities/permission/domain/model/permission";
+import { GENERIC_REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
+import { RepositoryObjectDetails } from "@/entities/repository/ui/repository-object-details";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 
@@ -27,11 +29,19 @@ export function ObjectDetails({ objectSchema, objectData, permission }: ObjectDe
   return (
     <DetailsLayout>
       <DetailsLayout.Main>
-        <ObjectDetailsCard
-          objectSchema={objectSchema}
-          objectData={objectData}
-          permission={permission}
-        />
+        {isOfKind(GENERIC_REPOSITORY_KIND, objectSchema) ? (
+          <RepositoryObjectDetails
+            objectSchema={objectSchema}
+            objectData={objectData}
+            permission={permission}
+          />
+        ) : (
+          <ObjectDetailsCard
+            objectSchema={objectSchema}
+            objectData={objectData}
+            permission={permission}
+          />
+        )}
 
         {isOfKind(FILE_OBJECT_KIND, objectSchema) && (
           <FilePreviewCard objectData={objectData as unknown as NodeFileObject} />

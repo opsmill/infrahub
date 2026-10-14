@@ -146,7 +146,9 @@ Allocate an IP address directly from the pool:
 <Tabs groupId="method" queryString>
   <TabItem value="web" label="Web interface" default>
 
-  This method is currently not available in the Web interface. Use the GraphQL method instead.
+  Create an IP address. Next to the **Address** field, click the pool button, labeled "select a pool", and choose `My IP address pool`, then save. Infrahub allocates the next available address from the pool and creates the IP address with it.
+
+  Infrahub allocates a new address on each save. To get the same address back when a script or a Generator runs again, use the GraphQL method with an `identifier`.
 
   </TabItem>
   <TabItem value="graphql" label="GraphQL">
@@ -170,7 +172,7 @@ Allocate an IP address directly from the pool:
 
   :::info Idempotent allocation
 
-  Include an `identifier` field to ensure the same IP address is returned on repeated calls:
+  Include an `identifier` field, and repeated calls with the same identifier return the same IP address:
 
   ```graphql
   mutation {
@@ -190,7 +192,7 @@ Allocate an IP address directly from the pool:
   }
   ```
 
-  This is essential for [Generators](../generators/overview) and automated workflows.
+  This is essential for [Generators](../generators/overview) and automated workflows. On another branch that cannot read the allocated address yet, a request with the same identifier gets a different address. See [Idempotent allocation](./overview.mdx#idempotent-allocation) for the rules.
 
   :::
 
@@ -210,7 +212,7 @@ Allocate an IP address when creating a device:
 <Tabs groupId="method" queryString>
   <TabItem value="web" label="Web interface" default>
 
-  Navigate to **Devices** → **Add Device**. Next to the Primary IP Address field, click the pools button and select your resource pool.
+  Navigate to **Devices** → **Add Device**. Next to the Primary IP Address field, click the pool button, labeled "select a pool", and choose your resource pool.
 
   ![Device creation via the Web Interface - Before](../media/guides/resources-manager/resource_manager_pool_device_before.png)
   ![Device creation via the Web Interface - After](../media/guides/resources-manager/resource_manager_pool_device_after.png)

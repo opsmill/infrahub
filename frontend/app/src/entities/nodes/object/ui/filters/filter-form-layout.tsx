@@ -11,6 +11,7 @@ import {
 
 interface FilterFormLayoutProps {
   filterType: FilterConditionSelectProps["filterType"];
+  filterConditions?: FilterConditionSelectProps["filterConditions"];
   condition: FilterCondition;
   onConditionChange: (condition: FilterCondition) => void;
   testId: string;
@@ -21,6 +22,7 @@ interface FilterFormLayoutProps {
 
 export function FilterFormLayout({
   filterType,
+  filterConditions,
   condition,
   onConditionChange,
   testId,
@@ -35,6 +37,7 @@ export function FilterFormLayout({
         <span className="font-semibold text-sm">{label}</span>
         <FilterConditionSelect
           filterType={filterType}
+          filterConditions={filterConditions}
           value={condition}
           onChange={(key) => onConditionChange(key as FilterCondition)}
         />

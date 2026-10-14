@@ -1,13 +1,17 @@
 import { type ColumnDef, createColumnHelper } from "@tanstack/react-table";
 
-import type { BranchListItem } from "@/entities/branches/domain/model/branch";
+import { WIDE_COLUMN_MAX_WIDTH } from "@/shared/components/table/style";
+
 import { BRANCH_FIELD_SCHEMAS } from "@/entities/branches/ui/branches-table/branch-field-schemas";
+import type { BranchTableRow } from "@/entities/branches/ui/branches-table/branch-table-row";
 import { BranchActionsCell } from "@/entities/branches/ui/branches-table/cells/branch-actions-cell";
 import { BranchCreatedByCell } from "@/entities/branches/ui/branches-table/cells/branch-created-by-cell";
 import { BranchDateCell } from "@/entities/branches/ui/branches-table/cells/branch-date-cell";
+import { BranchGitStateCell } from "@/entities/branches/ui/branches-table/cells/branch-git-state-cell";
 import { BranchIdentifierHeader } from "@/entities/branches/ui/branches-table/cells/branch-identifier-header";
 import { BranchNameCell } from "@/entities/branches/ui/branches-table/cells/branch-name-cell";
 import { BranchProposedChangesCell } from "@/entities/branches/ui/branches-table/cells/branch-proposed-changes-cell";
+import { BranchRepositoriesCell } from "@/entities/branches/ui/branches-table/cells/branch-repositories-cell";
 import { BranchStatusCell } from "@/entities/branches/ui/branches-table/cells/branch-status-cell";
 import { BranchStatusHeader } from "@/entities/branches/ui/branches-table/cells/branch-status-header";
 import { ActionsHeaderCell } from "@/entities/nodes/object/ui/object-table/cells/actions-header-cell";
@@ -15,11 +19,12 @@ import { TableColumnHeader } from "@/entities/nodes/object/ui/object-table/cells
 import { TableColumnHeaderSimple } from "@/entities/nodes/object/ui/object-table/cells/table-column-header-simple";
 import { getToggleSelectedRowHandler } from "@/entities/nodes/object/ui/object-table/utils/get-toggle-selected-row-handler";
 
-const columnHelper = createColumnHelper<BranchListItem>();
+const columnHelper = createColumnHelper<BranchTableRow>();
 
-export function getBranchIdentifierColumn(): ColumnDef<BranchListItem, string> {
-  return columnHelper.accessor("name", {
+export function getBranchIdentifierColumn(): ColumnDef<BranchTableRow> {
+  return columnHelper.display({
     id: "id",
+    meta: { gridTrack: `fit-content(${WIDE_COLUMN_MAX_WIDTH})` },
     header: ({ table }) => (
       <BranchIdentifierHeader
         isSelected={table.getIsAllRowsSelected()}
@@ -37,15 +42,16 @@ export function getBranchIdentifierColumn(): ColumnDef<BranchListItem, string> {
   });
 }
 
-export function getBranchFieldsColumns(): Array<ColumnDef<BranchListItem>> {
+export function getBranchFieldsColumns(): Array<ColumnDef<BranchTableRow>> {
   return [
-    columnHelper.accessor("status", {
+    columnHelper.display({
       id: "status",
       header: () => <BranchStatusHeader />,
-      cell: ({ cell }) => <BranchStatusCell status={cell.getValue()} />,
-    }) as ColumnDef<BranchListItem>,
+      cell: ({ row }) => <BranchStatusCell status={row.original.status} />,
+    }),
     columnHelper.display({
       id: "proposed_changes",
+      meta: { gridTrack: "minmax(150px, 200px)" },
       size: 250,
       minSize: 250,
       header: () => (
@@ -53,47 +59,57 @@ export function getBranchFieldsColumns(): Array<ColumnDef<BranchListItem>> {
       ),
       cell: ({ row }) => <BranchProposedChangesCell branchName={row.original.name} />,
     }),
-    columnHelper.accessor("branched_from", {
+    columnHelper.display({
+      id: "repositories",
+      // Fixed so the cells filling in as repositories load do not shift the columns.
+      meta: { gridTrack: "minmax(12rem, 18rem)" },
+      header: () => <TableColumnHeaderSimple columnSchema={BRANCH_FIELD_SCHEMAS.repositories} />,
+      cell: ({ row }) => <BranchRepositoriesCell branch={row.original} />,
+    }),
+    columnHelper.display({
+      id: "git_state",
+      meta: { gridTrack: "9rem" },
+      header: () => <TableColumnHeaderSimple columnSchema={BRANCH_FIELD_SCHEMAS.git_state} />,
+      cell: ({ row }) => <BranchGitStateCell branch={row.original} />,
+    }),
+    columnHelper.display({
       id: "branched_from",
       header: () => <TableColumnHeader columnSchema={BRANCH_FIELD_SCHEMAS.branched_from} />,
-      cell: ({ cell }) => <BranchDateCell date={cell.getValue()} />,
-    }) as ColumnDef<BranchListItem>,
-    columnHelper.accessor("updated_at", {
+      cell: ({ row }) => <BranchDateCell date={row.original.branched_from} />,
+    }),
+    columnHelper.display({
       id: "updated_at",
       header: () => (
         <TableColumnHeader columnSchema={BRANCH_FIELD_SCHEMAS.node_metadata__updated_at} />
       ),
-      cell: ({ cell }) => <BranchDateCell date={cell.getValue()} />,
-    }) as ColumnDef<BranchListItem>,
-    columnHelper.accessor("created_at", {
+      cell: ({ row }) => <BranchDateCell date={row.original.updated_at} />,
+    }),
+    columnHelper.display({
       id: "created_at",
       header: () => (
         <TableColumnHeader columnSchema={BRANCH_FIELD_SCHEMAS.node_metadata__created_at} />
       ),
-      cell: ({ cell }) => <BranchDateCell date={cell.getValue()} />,
-    }) as ColumnDef<BranchListItem>,
-    columnHelper.accessor("created_by", {
+      cell: ({ row }) => <BranchDateCell date={row.original.created_at} />,
+    }),
+    columnHelper.display({
       id: "created_by",
       header: () => (
         <TableColumnHeader columnSchema={BRANCH_FIELD_SCHEMAS.node_metadata__created_by} />
       ),
-      cell: ({ cell }) => <BranchCreatedByCell createdBy={cell.getValue()} />,
-    }) as ColumnDef<BranchListItem>,
+      cell: ({ row }) => <BranchCreatedByCell createdBy={row.original.created_by} />,
+    }),
   ];
 }
 
-export function getBranchActionsColumn(): ColumnDef<BranchListItem> {
+export function getBranchActionsColumn(): ColumnDef<BranchTableRow> {
   return columnHelper.display({
     id: "actions",
+    meta: { gridTrack: "2.5rem" },
     header: () => <ActionsHeaderCell />,
     cell: ({ row }) => <BranchActionsCell branch={row.original} />,
   });
 }
 
-export function getBranchTableColumns(): Array<ColumnDef<BranchListItem>> {
-  return [
-    getBranchIdentifierColumn() as ColumnDef<BranchListItem>,
-    ...getBranchFieldsColumns(),
-    getBranchActionsColumn(),
-  ];
+export function getBranchTableColumns(): Array<ColumnDef<BranchTableRow>> {
+  return [getBranchIdentifierColumn(), ...getBranchFieldsColumns(), getBranchActionsColumn()];
 }

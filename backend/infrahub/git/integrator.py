@@ -5,6 +5,7 @@ import importlib
 import sys
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -69,6 +70,8 @@ from infrahub.exceptions import (
     RepositoryInvalidFileSystemError,
     TransformError,
 )
+from infrahub.git.activity.factory import ACTIVE_RUNS
+from infrahub.git.activity.models import RepositoryActivityPhase
 from infrahub.git.base import InfrahubRepositoryBase, extract_repo_file_information
 from infrahub.git.closure_builder.canonicalizer import canonicalize_path
 from infrahub.git.closure_builder.dispatcher import build_default_closure_builder
@@ -221,6 +224,51 @@ class ObjectImportPlan:
     artifact_definitions: dict[str, InfrahubRepositoryArtifactDefinitionConfig]
 
 
+class ImportSummaryStep(Enum):
+    """A step of a branch import as named in the summary logged on failure, in the order the steps run."""
+
+    SCHEMA = ("schema", "importing the schema")
+    GRAPHQL_QUERIES = ("GraphQL queries", "importing GraphQL queries")
+    PYTHON_TRANSFORMS = ("Python transforms", "importing Python transforms")
+    JINJA2_TRANSFORMS = ("Jinja2 transforms", "importing Jinja2 transforms")
+    OBJECTS = ("objects and menus", "importing objects and menus")
+    CHECK_DEFINITIONS = ("check definitions", "importing check definitions")
+    GENERATOR_DEFINITIONS = ("generator definitions", "importing generator definitions")
+    ARTIFACT_DEFINITIONS = ("artifact definitions", "importing artifact definitions")
+    DEFERRED_OBJECTS = (
+        "generator actions and trigger rules from object files",
+        "importing generator actions and trigger rules from object files",
+    )
+    STALE_NODE_DELETION = (
+        "deletion of removed GraphQL queries, transforms, checks and generators",
+        "deleting removed GraphQL queries, transforms, checks and generators",
+    )
+
+    def __init__(self, label: str, activity: str) -> None:
+        self.label = label
+        self.activity = activity
+
+
+@dataclass
+class ImportProgress:
+    """The step a branch import is running, so a failure can name what completed and what did not run."""
+
+    step: ImportSummaryStep | None = None
+
+    def summary(self, branch_name: str) -> str:
+        if self.step is None:
+            return f"Import of branch '{branch_name}' stopped before any import step ran, so nothing was imported."
+        steps = list(ImportSummaryStep)
+        position = steps.index(self.step)
+        # Semicolons separate the steps because some step labels contain commas.
+        completed = "; ".join(step.label for step in steps[:position]) or "none"
+        not_run = "; ".join(step.label for step in steps[position + 1 :]) or "none"
+        return (
+            f"Import of branch '{branch_name}' stopped while {self.step.activity}. "
+            f"Completed: {completed}. Not run: {not_run}."
+        )
+
+
 def serialize_artifact_content(
     content: Any, content_type: str, repository_name: str, commit: str, location: str
 ) -> str:
@@ -369,10 +417,13 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                     if self.cache_repo is not None:
                         self.cache_repo.close()
                         self.cache_repo = None
+                    # A read-only repository's ref can be deleted upstream while Infrahub keeps its imported
+                    # commit, so the clone must succeed for this worker to report the ref missing.
                     await self.create_locally(
                         checkout_ref=await self.resolve_checkout_ref(),
                         infrahub_branch_name=self.infrahub_branch_name,
                         update_commit_value=False,
+                        allow_missing_checkout_ref=self.is_read_only,
                     )
                     self.reinitialized = True
                     log.info(f"Initialized the local directory for {self.name}.")
@@ -413,11 +464,30 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
     @flow(name="import-object-from-file", flow_run_name="Import objects")
     async def import_objects_from_files(
-        self, infrahub_branch_name: str, git_branch_name: str | None = None, commit: str | None = None
+        self,
+        infrahub_branch_name: str,
+        git_branch_name: str | None = None,
+        commit: str | None = None,
+        activity_run_id: str | None = None,
     ) -> None:
+        """Build the import of a branch, then apply it.
+
+        Args:
+            activity_run_id: The run, started by the caller in this process, that the build and apply steps are
+                reported to. Nothing is reported without it.
+
+        Raises:
+            ActiveRunNotFoundError: When this process tracks no activity run with that id.
+
+        """
+        activity = ACTIVE_RUNS.get(run_id=activity_run_id) if activity_run_id else None
+        if activity:
+            await activity.set_phase(phase=RepositoryActivityPhase.BUILDING, branch_name=infrahub_branch_name)
         plan = await self.build_import_plan(
             infrahub_branch_name=infrahub_branch_name, git_branch_name=git_branch_name, commit=commit
         )
+        if activity:
+            await activity.set_phase(phase=RepositoryActivityPhase.APPLYING, branch_name=infrahub_branch_name)
         await self.apply_import_plan(plan)
 
     async def build_import_plan(
@@ -471,21 +541,28 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             artifact_definitions=artifact_definitions,
         )
 
-    async def apply_import_plan(self, plan: ObjectImportPlan) -> None:
+    async def apply_import_plan(
+        self, plan: ObjectImportPlan, sync_status: RepositorySyncStatus = RepositorySyncStatus.IN_SYNC
+    ) -> None:
         """Apply a previously built plan to the graph: schema, queries, transforms, objects, definitions.
 
         Performs every graph mutation of the import, so it must run serialized against any concurrent
         import of the same repository.
 
+        Args:
+            plan: The objects to import.
+            sync_status: The status left on the branch once every object is imported.
+
         Raises:
             RepositoryConnectionError: When the remote repository is unreachable.
             RepositoryCredentialsError: When the credentials for the remote repository are invalid.
             RepositoryImportError: When applying the import fails for any other reason.
-            Exception: When setting the branch to `IN_SYNC` or sending the commit event fails after the
+            Exception: When setting the branch's final status or sending the commit event fails after the
                 import completed; the branch is not set to `ERROR_IMPORT` then.
 
         """
-        async with self._import_failure_boundary(branch_name=plan.infrahub_branch_name):
+        async with self._import_failure_boundary(branch_name=plan.infrahub_branch_name) as progress:
+            progress.step = ImportSummaryStep.SCHEMA
             # A single composer instance is threaded through every phase so a dependent
             # definition composes the fingerprint freshly computed for its inputs in the
             # same import, in dependency order: queries, then transformations and generator
@@ -497,6 +574,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             )
             if plan.config_file.schemas:
                 await self.sdk.schema.all(branch=plan.infrahub_branch_name, refresh=True)
+            progress.step = ImportSummaryStep.GRAPHQL_QUERIES
             stale_queries = await self._apply_graphql_query_definitions(
                 branch_name=plan.infrahub_branch_name,
                 local_queries=plan.query_strings,
@@ -505,16 +583,19 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             )
             # Transforms must be registered before objects so that an object referencing a transform
             # defined in the same repository resolves during import.
+            progress.step = ImportSummaryStep.PYTHON_TRANSFORMS
             stale_python_transforms = await self._apply_python_transform_definitions(
                 branch_name=plan.infrahub_branch_name,
                 definitions=plan.transform_definitions,
                 fingerprint_composer=fingerprint_composer,
             )
+            progress.step = ImportSummaryStep.JINJA2_TRANSFORMS
             stale_jinja2_transforms = await self._apply_jinja2_transform_definitions(
                 branch_name=plan.infrahub_branch_name,
                 local_transforms=plan.jinja2_definitions,
                 fingerprint_composer=fingerprint_composer,
             )
+            progress.step = ImportSummaryStep.OBJECTS
             await self.import_objects(
                 branch_name=plan.infrahub_branch_name,
                 commit=plan.commit,
@@ -522,14 +603,17 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             )
             # Checks, generators and artifact definitions are imported after objects because their
             # targets reference groups that are defined as objects in the repository.
+            progress.step = ImportSummaryStep.CHECK_DEFINITIONS
             stale_checks = await self._apply_python_check_definitions(
                 branch_name=plan.infrahub_branch_name, definitions=plan.check_definitions
             )
+            progress.step = ImportSummaryStep.GENERATOR_DEFINITIONS
             stale_generators = await self._apply_generator_definitions(
                 branch_name=plan.infrahub_branch_name,
                 definitions=plan.generator_definitions,
                 fingerprint_composer=fingerprint_composer,
             )
+            progress.step = ImportSummaryStep.ARTIFACT_DEFINITIONS
             await self._apply_artifact_definitions(
                 branch_name=plan.infrahub_branch_name,
                 local_artifact_defs=plan.artifact_definitions,
@@ -538,6 +622,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             # Generator actions and trigger rules are imported last: they reference the definitions
             # created above, which in turn reference groups imported as objects, forming a cycle a
             # single objects pass cannot satisfy on a first import.
+            progress.step = ImportSummaryStep.DEFERRED_OBJECTS
             await self.import_deferred_objects(
                 branch_name=plan.infrahub_branch_name,
                 commit=plan.commit,
@@ -545,6 +630,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             )
             # A mandatory relationship blocks deleting its peer, so a removed node is deleted only
             # after everything still declared has been re-pointed, and before the nodes it references.
+            progress.step = ImportSummaryStep.STALE_NODE_DELETION
             stale_nodes_in_delete_order: list[Mapping[str, CoreNode]] = [
                 stale_generators,
                 stale_checks,
@@ -556,7 +642,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 await self._delete_stale_nodes(branch_name=plan.infrahub_branch_name, nodes=stale_nodes)
 
         # Outside the boundary: once every object is imported, a later failure must not mark the branch as failed.
-        await self._update_sync_status(branch_name=plan.infrahub_branch_name, status=RepositorySyncStatus.IN_SYNC)
+        await self._update_sync_status(branch_name=plan.infrahub_branch_name, status=sync_status)
 
         if self.reinitialized:
             return
@@ -574,9 +660,11 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         )
 
     @asynccontextmanager
-    async def _import_failure_boundary(self, branch_name: str) -> AsyncIterator[None]:
+    async def _import_failure_boundary(self, branch_name: str) -> AsyncIterator[ImportProgress]:
         """Set the branch to `ERROR_IMPORT` when the import inside fails, logging the failure once.
 
+        The failure is followed by a warning that names the import steps that completed and those that
+        did not run, according to the step last set on the yielded progress.
         Connection and credential errors are re-raised unchanged, because they stop the whole sync.
 
         Raises:
@@ -585,13 +673,15 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             RepositoryImportError: When anything else fails inside, recognised or not.
 
         """
+        progress = ImportProgress()
         try:
-            yield
+            yield progress
         except (RepositoryConnectionError, RepositoryCredentialsError):
             await self._mark_import_failed(branch_name=branch_name)
             raise
         except Exception as exc:
             import_error = log_import_failure(identifier=self.name, branch_name=branch_name, exc=exc)
+            get_run_logger().warning(progress.summary(branch_name=branch_name))
             await self._mark_import_failed(branch_name=branch_name)
             raise import_error from exc
 
