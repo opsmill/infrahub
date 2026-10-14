@@ -64,9 +64,7 @@ export interface NumberPoolDivisionCardProps {
 
 export function NumberPoolDivisionCard({ pool, division }: NumberPoolDivisionCardProps) {
   const { data, isPending, isError } = useGetNumberPoolDivisions(pool.id);
-  const divisions = [...(data?.divisions ?? [])].sort(
-    (a, b) => b.usage.utilization - a.usage.utilization
-  );
+  const divisions = data?.divisions ?? [];
   const selectedValues = division.map((entry) => entry.value);
 
   return (

@@ -4,7 +4,11 @@ import { LinkIcon } from "lucide-react";
 import { Col } from "@/shared/components/container";
 import { pluralize } from "@/shared/utils/string";
 
-import type { AllocationScopeField } from "@/entities/resource-manager/ui/hooks/use-allocation-scope-fields";
+import type { NumberPoolData } from "@/entities/resource-manager/domain/model/number-pool";
+import {
+  type AllocationScopeField,
+  useAllocationScopeFields,
+} from "@/entities/resource-manager/ui/hooks/use-allocation-scope-fields";
 import type { NumberPoolDivisionInvalidCause } from "@/entities/resource-manager/ui/hooks/use-number-pool-division";
 import { getNumberPoolDivisionsUrl } from "@/entities/resource-manager/ui/routing/number-pool-urls";
 
@@ -21,16 +25,13 @@ const describeCause = (cause: NumberPoolDivisionInvalidCause, fields: Allocation
 };
 
 export interface NumberPoolDivisionInvalidProps {
-  poolId: string;
-  fields: AllocationScopeField[];
+  pool: NumberPoolData;
   cause: NumberPoolDivisionInvalidCause;
 }
 
-export function NumberPoolDivisionInvalid({
-  poolId,
-  fields,
-  cause,
-}: NumberPoolDivisionInvalidProps) {
+export function NumberPoolDivisionInvalid({ pool, cause }: NumberPoolDivisionInvalidProps) {
+  const fields = useAllocationScopeFields(pool);
+
   return (
     <Card>
       <Col className="items-center gap-4 px-6 py-16 text-center">
@@ -43,7 +44,7 @@ export function NumberPoolDivisionInvalid({
             {describeCause(cause, fields)}
           </p>
         </Col>
-        <LinkButton variant="outline" size="sm" href={getNumberPoolDivisionsUrl(poolId)}>
+        <LinkButton variant="outline" size="sm" href={getNumberPoolDivisionsUrl(pool.id)}>
           View all allocation scopes
         </LinkButton>
       </Col>

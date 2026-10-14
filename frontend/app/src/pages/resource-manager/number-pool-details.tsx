@@ -10,7 +10,6 @@ import type {
   NumberPoolData,
   NumberPoolDivisionSelector,
 } from "@/entities/resource-manager/domain/model/number-pool";
-import { useAllocationScopeFields } from "@/entities/resource-manager/ui/hooks/use-allocation-scope-fields";
 import { useNumberPoolDivision } from "@/entities/resource-manager/ui/hooks/use-number-pool-division";
 import { NumberPoolAllocationsCard } from "@/entities/resource-manager/ui/number-pool/details/number-pool-allocations-card";
 import { NumberPoolDivisionCard } from "@/entities/resource-manager/ui/number-pool/details/number-pool-division-card";
@@ -105,7 +104,6 @@ interface ScopedNumberPoolBodyProps {
 }
 
 function ScopedNumberPoolBody({ pool }: ScopedNumberPoolBodyProps) {
-  const fields = useAllocationScopeFields(pool);
   const division = useNumberPoolDivision(pool.allocation_scope.value);
 
   if (division.status === "none") {
@@ -113,7 +111,7 @@ function ScopedNumberPoolBody({ pool }: ScopedNumberPoolBodyProps) {
   }
 
   if (division.status === "invalid") {
-    return <NumberPoolDivisionInvalid poolId={pool.id} fields={fields} cause={division.cause} />;
+    return <NumberPoolDivisionInvalid pool={pool} cause={division.cause} />;
   }
 
   return <NumberPoolBody pool={pool} division={division.selector} />;

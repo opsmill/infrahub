@@ -34,6 +34,6 @@ const mapToNumberPoolDivision = (division: NumberPoolDivisionNode): NumberPoolDi
 });
 
 export const mapToNumberPoolDivisions = (node: NumberPoolDivisionsNode): NumberPoolDivisions => ({
-  fields: node.allocation_scope.map((element) => element.name),
+  fields: node.allocation_scope.map((field) => field.name),
   divisions: node.divisions.map(mapToNumberPoolDivision),
 });

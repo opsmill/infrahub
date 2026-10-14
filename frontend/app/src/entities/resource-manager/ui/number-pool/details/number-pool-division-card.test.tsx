@@ -123,20 +123,6 @@ describe("NumberPoolDivisionCard", () => {
       .toHaveTextContent("Allocation scopes unavailable");
   });
 
-  it("lists the fullest allocation scope first", async () => {
-    // GIVEN
-    mockDivisions();
-    const component = await renderCard("atl1-core1-id", "leaf");
-
-    // WHEN
-    await userEvent.click(component.getByRole("button", { name: /Allocation scope/ }));
-
-    // THEN
-    const options = component.getByRole("option");
-    await expect.element(options.first()).toHaveTextContent(/den1-edge2 · spine.*80%/);
-    await expect.element(options.last()).toHaveTextContent(/atl1-core1 · leaf.*20%/);
-  });
-
   it("opens the allocation scope the operator picks", async () => {
     // GIVEN
     mockDivisions();
