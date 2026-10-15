@@ -594,15 +594,15 @@ def _validate_peer_mandatory_remove(
         if peer_id not in existing_peers or peer_id not in peers:
             continue
         peer = peers[peer_id]
-        peer_relationships = [rel for rel in peer.get_schema().relationships if rel.identifier == rel_schema.identifier]
-        if len(peer_relationships) != 1:
-            continue
-        peer_relationship = peer_relationships[0]
-        if peer_relationship.cardinality == RelationshipCardinality.ONE and peer_relationship.optional is False:
-            raise ValidationError(
-                f"{peer_id!r} {peer.get_kind()!r} can't be removed from '{rel_schema.name}':"
-                f" its mandatory relationship '{peer_relationship.name}' would be left empty"
-            )
+        # A hierarchy declares parent and children under one identifier, so only the mirrored direction is the peer's side.
+        for peer_relationship in peer.get_schema().get_relationships_by_identifier(id=rel_schema.identifier):
+            if not peer_relationship.mirrors(rel_schema):
+                continue
+            if peer_relationship.cardinality == RelationshipCardinality.ONE and peer_relationship.optional is False:
+                raise ValidationError(
+                    f"{peer_id!r} {peer.get_kind()!r} can't be removed from '{rel_schema.name}':"
+                    f" its mandatory relationship '{peer_relationship.name}' would be left empty"
+                )
 
 
 def _get_group_event_type(

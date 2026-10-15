@@ -8,7 +8,7 @@ from infrahub.core import registry
 from infrahub.core.constants import RelationshipCardinality, RelationshipKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
+from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
 
@@ -302,3 +302,57 @@ async def test_relationship_remove_refuses_only_a_peer_left_without_its_mandator
     assert await refreshed_shelf.get_relationship("boxes").get_relationships(db=db) == []
     refreshed_box = await NodeManager.get_one(db=db, id=box.id, branch=default_branch)
     assert await refreshed_box.get_relationship("shelf").get_peer_id(db=db) is None
+
+
+@pytest.fixture
+async def hierarchy_schemas(
+    db: InfrahubDatabase, default_branch: Branch, node_group_schema: None, data_schema: None
+) -> SchemaBranch:
+    schema = SchemaRoot(
+        version="1.0",
+        generics=[
+            GenericSchema(
+                name="Location",
+                namespace="Test",
+                hierarchical=True,
+                attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+            )
+        ],
+        nodes=[
+            NodeSchema(name="Country", namespace="Test", inherit_from=["TestLocation"], parent="", children="TestSite"),
+            NodeSchema(name="Site", namespace="Test", inherit_from=["TestLocation"], parent="TestCountry", children=""),
+        ],
+    )
+    return registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+
+async def test_relationship_remove_refuses_a_child_left_without_its_mandatory_parent(
+    db: InfrahubDatabase, default_branch: Branch, hierarchy_schemas: SchemaBranch
+) -> None:
+    country = await _create(db=db, branch=default_branch, schema=hierarchy_schemas, kind="TestCountry", name="fr")
+    site = await _create(
+        db=db, branch=default_branch, schema=hierarchy_schemas, kind="TestSite", name="paris", parent=country
+    )
+    site_schema = hierarchy_schemas.get_node(name="TestSite")
+    assert site_schema.get_relationship(name="parent").optional is False
+    assert (
+        site_schema.get_relationship(name="parent").identifier
+        == site_schema.get_relationship(name="children").identifier
+    )
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=REMOVE_QUERY,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"id": country.id, "name": "children", "node_id": site.id},
+    )
+
+    assert result.errors
+    assert result.errors[0].message == (
+        f"'{site.id}' 'TestSite' can't be removed from 'children': its mandatory relationship 'parent' would be left empty"
+    )
+    refreshed_site = await NodeManager.get_one(db=db, id=site.id, branch=default_branch)
+    assert await refreshed_site.get_relationship("parent").get_peer_id(db=db) == country.id
