@@ -182,7 +182,7 @@ Task identifiers are stable references, not an execution order: phases run in th
 ### Implementation
 
 - [ ] T058 [P] [US5] Null-guard and render `ranges` in `frontend/app/src/entities/schema/ui/attribute-display.tsx`; update the fixture in `frontend/app/src/entities/schema/ui/schema-viewer.test.tsx`; check the resource-manager utilization view against one edge per range
-- [ ] T059 [P] [US5] Restrict the `process_deprecations` log in `backend/infrahub/core/schema/schema_branch.py` to kinds outside the `Core` namespace; keep forcing `optional=True`
+- [x] T059 [P] [US5] Restrict the `process_deprecations` log in `backend/infrahub/core/schema/schema_branch.py` to kinds outside the restricted namespaces (`RESTRICTED_NAMESPACES`); keep forcing `optional=True`
 - [ ] T060 [P] Update `docs/docs/schema/number-pool.mdx` (declare `parameters.ranges`, shorthand deprecated) and `docs/docs/resource-manager/allocate-number.mdx` (create a user pool with ranges, weights, per-range utilization) following `dev/guidelines/documentation.md`
 - [ ] T061 Changelog fragments in `changelog/` with the `creating-changelog-entries` skill, one per row of the spec's changelog table; Vale-lint them
 - [ ] T062 Run `/pre-ci` on the whole stack and every command in `quickstart.md`; record the outcomes and the approvals list from the spec in the PR descriptions
