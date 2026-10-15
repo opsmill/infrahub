@@ -191,7 +191,7 @@ These mutations change one relationship of an existing node, so they refuse a ch
 |--------------|----------|
 | the relationship is `read_only` | both |
 | a peer is not of the relationship's peer kind | both |
-| a new peer is already linked to another node on a cardinality-one side of its own | `RelationshipAdd` |
+| a peer is already linked to another node on a cardinality-one side of its own | both |
 | the relationship is cardinality one and would receive more than one peer | `RelationshipAdd` |
 | the peers do not share the parent named by `common_parent` | `RelationshipAdd` |
 | the relationship is mandatory and would be left with no peer | `RelationshipRemove` |
