@@ -2130,10 +2130,16 @@ class SchemaBranch:
         for name in self.all_names:
             node = self.get(name=name, duplicate=False)
 
+            # Infrahub ships the nodes of the restricted namespaces, so an operator has nothing to clean up there.
+            report_deprecations = node.namespace not in RESTRICTED_NAMESPACES
+
             change_required = False
             for item in node.attributes + node.relationships:
                 if item.is_deprecated:
-                    log.warn(f"'{item.name}' for '{node.kind}' has been marked as deprecated, remember to clean it up")
+                    if report_deprecations:
+                        log.warning(
+                            f"'{item.name}' for '{node.kind}' has been marked as deprecated, remember to clean it up"
+                        )
                     if not item.optional:
                         change_required = True
 

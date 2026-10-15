@@ -120,7 +120,7 @@ The schema-load flow does not read `CONSTRAINT_VALIDATOR_MAP`: `schema_path_vali
 
 ### D12. Deprecation reaches GraphQL by general propagation
 
-**Decision**: `graphql/manager.py` passes `deprecation_reason=attr.deprecation` and `rel.deprecation` in `generate_graphql_object`, `generate_interface_object`, the relationship field construction in `generate_object_types`, and the three input generators. Filter arguments are left alone. `SchemaRoot.gather_warnings` adds one `DEPRECATION` warning per NumberPool attribute whose `start_range` or `end_range` is not `None`, pointing at `parameters.ranges`. `SchemaBranch.process_deprecations` keeps forcing `optional=True` but logs only for kinds outside the `Core` namespace.
+**Decision**: `graphql/manager.py` passes `deprecation_reason=attr.deprecation` and `rel.deprecation` in `generate_graphql_object`, `generate_interface_object`, the relationship field construction in `generate_object_types`, and the three input generators. Filter arguments are left alone. `SchemaRoot.gather_warnings` adds one `DEPRECATION` warning per NumberPool attribute whose `start_range` or `end_range` is not `None`, pointing at `parameters.ranges`. `SchemaBranch.process_deprecations` keeps forcing `optional=True` but logs only for kinds outside the restricted namespaces (`RESTRICTED_NAMESPACES`).
 
 **Rationale**: the addendum's resolved finding 6.1; restricting the log keeps the customer-facing reminder meaningful once a core attribute is deprecated.
 
@@ -150,7 +150,7 @@ The schema-load flow does not read `CONSTRAINT_VALIDATOR_MAP`: `schema_path_vali
 |----------|--------|
 | Constraint name for a nested parameter field | `attribute.parameters.ranges.update` (derived by `_process_node_fields`, precedent `attribute.parameters.start_range.update`). |
 | Can an agnostic node inherit the aware weighted generic | Yes; `process_branch_support` resets the inherited attribute to the node's branch support. |
-| Deprecation log for core attributes | Restricted to non-`Core` namespaces (D12). |
+| Deprecation log for core attributes | Restricted to kinds outside the restricted namespaces (D12). |
 | Migration ordering versus core schema update | Migration bootstraps the kind (D7, `m073` precedent). |
 | Whether legacy start/end constraint identifiers stay registered | Yes (D9). |
 | Detecting the shorthand for the schema-load warning | Fields are not rewritten by validation; `start_range is not None or end_range is not None` on the incoming model (D8, D12). |
