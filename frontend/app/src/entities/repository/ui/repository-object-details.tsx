@@ -3,6 +3,7 @@ import type { NodeObjectWithMetadata } from "@/entities/nodes/object/domain/mode
 import { ObjectDetailsCard } from "@/entities/nodes/object/ui/object-details/object-details-card";
 import type { Permission } from "@/entities/permission/domain/model/permission";
 import { REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
+import { isPushStateAttribute } from "@/entities/repository/domain/rules/is-push-state-attribute";
 import {
   type FieldSet,
   partitionFieldsByBranchSupport,
@@ -30,7 +31,12 @@ export function RepositoryObjectDetails({
   permission,
 }: RepositoryObjectDetailsProps) {
   const { currentBranch } = useCurrentBranch();
-  const { repositoryWide, branchScoped } = partitionFieldsByBranchSupport(objectSchema);
+  const { repositoryWide, branchScoped } = partitionFieldsByBranchSupport({
+    ...objectSchema,
+    attributes: objectSchema.attributes?.filter(
+      (attribute) => !isPushStateAttribute(attribute.name)
+    ),
+  });
   // This page shows the cards a finished run changes, so it is the one that refreshes them.
   useRefreshAfterRepositoryRun({ repositoryId: objectData.id });
 

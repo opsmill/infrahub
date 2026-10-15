@@ -372,4 +372,46 @@ describe("RepositoryObjectDetails", () => {
     await expect.element(component.getByRole("region", { name: "Details" })).toBeVisible();
     await expect.element(component.getByText("Push to remote")).not.toBeInTheDocument();
   });
+
+  it("never shows the push state attributes, and no Extra toggle when they are the only extra fields", async () => {
+    const schemaWithPushState = generateNodeSchema({
+      ...repositorySchema,
+      attributes: [
+        ...repositoryWideAttributes,
+        ...branchScopedAttributes,
+        generateAttributeSchema({
+          name: "delivery_error",
+          label: "Last push error",
+          branch: "agnostic",
+          display: "extra",
+          order_weight: 7000,
+        }),
+        generateAttributeSchema({
+          name: "delivery_last_delivered_commit",
+          label: "Last pushed commit",
+          branch: "agnostic",
+          display: "extra",
+          order_weight: 8000,
+        }),
+      ],
+    });
+
+    const component = await render(
+      <RepositoryObjectDetails
+        objectSchema={schemaWithPushState}
+        objectData={{
+          ...objectData,
+          delivery_error: generateNodeAttributeWithMetadata({ value: "stale copy of the branch" }),
+          delivery_last_delivered_commit: generateNodeAttributeWithMetadata({ value: "4b825dc" }),
+        }}
+        permission={permission}
+      />
+    );
+
+    await expect.element(component.getByRole("region", { name: "Details" })).toBeVisible();
+
+    expect(component.getByText("Last push error", { exact: true }).elements()).toHaveLength(0);
+    expect(component.getByText("Last pushed commit", { exact: true }).elements()).toHaveLength(0);
+    expect(component.getByRole("button", { name: "Extra" }).elements()).toHaveLength(0);
+  });
 });

@@ -3,7 +3,6 @@ import * as R from "remeda";
 import type { ColumnSurface } from "@/entities/nodes/columns/domain/model/column-surface";
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/domain/rules/get-attributes-visible-in-list-view";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/domain/rules/get-relationships-visible-in-list-view";
-import { isRepositoryPushStateAttribute } from "@/entities/repository/domain/rules/is-repository-push-state-attribute";
 import type {
   AttributeSchema,
   FieldSchema,
@@ -47,7 +46,6 @@ export function getColumnCandidates(
     candidates,
     R.filter((field) => !surface.excludeField(field)),
     R.filter((field) => !surface.fixedColumnIds.includes(field.name)),
-    R.filter((field) => !isRepositoryPushStateAttribute(schema, field.name)),
     // Defensive: a field *could* reach this list twice, and a duplicate name is a duplicate column
     // id. `getIpAddressRelationshipsVisibleInListView` prepends `ip_prefix` on top of the generic
     // list, which today drops it again as a `Generic` relationship — so no duplicate occurs. Give
