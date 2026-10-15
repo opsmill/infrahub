@@ -1,0 +1,83 @@
+---
+title: Change generics
+---
+
+When multiple node kinds inherit attributes and relationships from a [Generic](./generics-and-inheritance), you can change the shared definitions on that Generic instead of updating each node kind separately. Infrahub applies supported changes to the inheriting node kinds and validates their existing objects against any new constraints. If you make an inherited attribute mandatory, for example, existing objects of every affected node kind must have a value for it.
+
+You can override an inherited attribute or relationship by defining it directly on a node kind. Infrahub also copies certain node-level properties from a Generic when it first loads a node kind, rather than inheriting later changes to those properties. Before editing the Generic, check which node kinds inherit the definition, which have overrides, and which properties must be updated on the node kinds themselves.
+
+## Change an attribute or relationship on a Generic
+
+In your schema YAML file, find the Generic under `generics` by its `namespace` and `name`. Edit the relevant entry under `attributes` or `relationships`, preserving any previously configured properties that should remain unchanged. Then check and load the updated schema on an Infrahub branch. See [Update a schema](./migration) for validation, testing, and review through a Proposed Change.
+
+For each node kind that inherits from the Generic, Infrahub handles the updated definition according to whether the node kind inherits or overrides it:
+
+- **Inherited definition.** Infrahub applies the supported change to the inheriting node kind. If you change an attribute to `optional: false`, Infrahub validates existing objects of every affected node kind. When an object lacks the now-mandatory value, Infrahub reports the constraint violation and rejects the schema update. See [Make an attribute mandatory or unique](./change-node-definitions#make-an-attribute-mandatory-or-unique).
+- **Overridden definition.** Infrahub retains the definition configured directly on the node kind. To adopt the Generic's updated definition, either edit the node-level override or remove it so the node kind inherits the Generic's definition again.
+
+For example, `InfraGenericDevice` may define a `name` attribute inherited by `InfraSwitch`. If `InfraSwitch` has no separate `name` definition, a supported change to the Generic's attribute also applies to `InfraSwitch`. If `InfraSwitch` defines its own `name` attribute, that override takes precedence; changing the Generic's definition does not replace it. You can remove the override when you want the node kind to inherit the Generic's definition again.
+
+You can see which definition a node kind uses in **Object Management > Schemas**. Select the node, then the attribute or relationship. The **Inherited** row is `true` for an inherited definition and `false` for a node-level override. An inherited attribute or relationship has no separate **ID** on the node, because the ID belongs to the definition on the Generic. A node kind can override some inherited definitions while inheriting others.
+
+## Remove an override
+
+When a node kind has its own definition of an attribute or relationship, that definition takes precedence over the same-named definition on its Generic. To restore inheritance, remove **the node-level definition**, not the definition on the Generic. Infrahub then resolves the attribute or relationship from the Generic and retains existing values and links associated with objects of that node kind.
+
+1. **Find the ID of the node-level definition.** In **Object Management > Schemas**, select the node and then its overridden attribute or relationship. Copy the value in the **ID** row. Be sure to select the node-level override, not the definition on the Generic.
+2. **Declare the removal in YAML.** Under the node's `attributes` or `relationships`, keep the existing definition and add its `id` and `state: absent`. Preserve its other properties while declaring the removal; Infrahub validates removed definitions against the supplied schema.
+3. **Check and load the updated schema.** Infrahub removes the node-level definition and uses the corresponding definition from the Generic. Verify the inherited definition and the existing object values or relationships on the branch before merging.
+
+For example, `InfraSwitch` overrides the `name` attribute defined on `InfraGenericDevice`. The following YAML removes the override while keeping the Generic's definition:
+
+```yaml
+generics:
+  - name: GenericDevice
+    namespace: Infra
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+nodes:
+  - name: Switch
+    namespace: Infra
+    inherit_from: [InfraGenericDevice]
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+        id: 18dc8071-7eea-2b24-3883-c51fd0b01804  # the id of the node's attribute, from your instance
+        state: absent
+```
+
+After you load the schema, the existing `name` values on `InfraSwitch` objects remain available. `InfraSwitch` now inherits the `name` definition from `InfraGenericDevice`, so subsequent supported changes to that Generic attribute also apply to `InfraSwitch`.
+
+Once the removal is complete, delete the obsolete node-level attribute declaration from your YAML file. The `id` you copied is specific to that Infrahub instance; see [The id belongs to one instance](./rename-schema-elements#the-id-belongs-to-one-instance).
+
+## Update properties copied from a Generic
+
+Some node-level properties are copied when Infrahub first loads a node kind rather than inherited as ongoing changes to the Generic. These properties are:
+
+- `human_friendly_id`
+- `display_label`
+- `display_labels` (deprecated)
+- `default_filter` (deprecated; prefer `human_friendly_id`)
+- `uniqueness_constraints`
+- `order_by`
+- `icon`
+- `menu_placement`
+
+When Infrahub first loads a node kind, it copies these properties from its Generic if the node definition does not specify them. It does not subsequently copy changes to those properties from the Generic into node kinds that have already been loaded.
+
+For example, suppose `InfraSwitch` originally received its `icon` from `InfraGenericDevice`. Changing `icon` on the Generic later does not change the icon configured on `InfraSwitch`. To update it, set the new `icon` directly in the `InfraSwitch` YAML definition and load the updated schema. Repeat for any other existing node kinds that need the new value. See [Node-level properties](./generics-and-inheritance#inherited-properties).
+
+## Remove a dropdown choice on a Generic
+
+You cannot remove a choice from a `Dropdown` attribute by changing the schema YAML. The web interface also does not support removing the choice when the attribute is defined on a Generic.
+
+Call the `SchemaDropdownRemove` GraphQL mutation with **the Generic's kind**, then delete the removed choice from your YAML definitions so a later schema load does not add it again. The [Remove a dropdown choice](./remove-schema-elements#remove-a-dropdown-choice) procedure includes the mutation and the constraints on removing choices that are still assigned to objects.
+
+## Related documentation
+
+- [Change node definitions](./change-node-definitions) — Add attributes, update constraints, and move attributes and relationships onto a Generic
+- [Rename schema elements](./rename-schema-elements) — Rename nodes, attributes, and relationships while retaining existing data
+- [Generics & inheritance](./generics-and-inheritance) — Define Generics, configure inheritance, and override shared attributes and relationships

@@ -1,0 +1,135 @@
+---
+title: Remove schema elements
+---
+
+Infrahub loads schema YAML **incrementally**: when you leave a node, Generic, attribute, or relationship out of a file, Infrahub retains the definition already loaded on the branch. To remove an existing schema element, keep its definition in YAML and set `state: absent`. When you load the updated file, Infrahub identifies the requested removal and removes the definition and associated data according to its type and branch behavior.
+
+**Data removal.** Removing a node kind deletes its existing objects; removing an attribute deletes its stored values; removing a relationship deletes the corresponding links. Review the data affected by the removal before merging. Nothing is hard-deleted: Infrahub keeps the earlier versions, so you can always go back to a time before the removal and read the definition and the values it held; see [Query historical data after removal](#query-historical-data-after-removal).
+
+**Dependent automation.** Update GraphQL queries, Transformations, Generators, and checks that refer to the definition you are removing. Infrahub does not rewrite these dependencies. Test the updated schema and automation on an Infrahub branch before merging; see [Update a schema](./migration).
+
+## Remove a schema element
+
+1. **Declare the removal in YAML.** Keep the existing definition in your schema file and add `state: absent` to it. For example, to remove `InfraRack`:
+
+   ```yaml
+   - name: Rack
+     namespace: Infra
+     state: absent
+     attributes:
+       - name: name
+         kind: Text
+   ```
+
+2. **Check the proposed removal.** Run `infrahubctl schema check <file> --branch <branch>`. Infrahub lists the matched definition under `removed`. If it does not appear, confirm that the file contains `state: absent` and that the definition exists on the target Infrahub branch.
+3. **Load and review on a branch.** Load the updated schema. In the Proposed Change, review the **Schema** tab and the validation results, then merge the change after verifying the affected data and automation.
+4. **Remove the obsolete YAML declaration, if desired.** Once the schema change is merged, you can delete the `state: absent` declaration from the file. Leaving it in place is also valid: Infrahub ignores a removal declaration for a definition no longer loaded on the branch.
+
+## Why removal must be explicit
+
+The schema format is both **declarative** and **incremental**. You declare the definitions Infrahub should add, modify, or remove, and Infrahub combines them with the schema already loaded on the branch. An instance may load definitions from several files or repositories. Infrahub therefore retains the loaded definition even if you delete it from a particular YAML file.
+
+With `state: absent`, you explicitly identify the existing definition for removal. Infrahub reports it under `removed` when you run `infrahubctl schema check`. See [How Infrahub applies a schema file](./operations#how-infrahub-applies-a-schema-file).
+
+## Remove an attribute or relationship
+
+An attribute or relationship can be referenced by schema properties on the same node kind or on another node kind. Before removing it, find those references and update the relevant definitions in the same schema operation. Infrahub can update some references automatically, but rejects a schema update if other properties still refer to a definition being removed.
+
+### Update references in schema properties
+
+Infrahub sets some of these properties for you. If your schema does not define a `human_friendly_id`, Infrahub derives one from the first attribute marked `unique: true` and adds it to `uniqueness_constraints`. So a node can have a `human_friendly_id` that references the attribute you are removing even though you never wrote one. See [Nodes & attributes](./nodes-and-attributes) for how Infrahub derives them.
+
+**`human_friendly_id`, `uniqueness_constraints`, and `order_by` on the same node.** If your YAML does not explicitly set these properties, Infrahub removes the deleted attribute or relationship from their loaded values. If the removed definition was the only item in a property, the property becomes empty—for example, the node kind no longer has a `human_friendly_id` if its only referenced attribute is removed. The deprecated `display_labels` and `default_filter` properties are updated the same way, and a `default_filter` that referenced the removed attribute becomes empty.
+
+If your YAML explicitly sets one of these properties and still names the removed definition, Infrahub rejects the schema update:
+
+```text
+Unable to load the schema:
+  InfraRack.human_friendly_id: name__value is invalid on schema InfraRack
+```
+
+Update that property in YAML. If the deleted attribute provided the entire `human_friendly_id`, define a replacement or clear the list with `[]`. See [Update an existing node or attribute](./change-node-definitions#update-an-existing-node-or-attribute) for clearing schema properties.
+
+**`display_label` on the same node.** Infrahub does not automatically remove references from `display_label`, even when your YAML omits it. If the label still refers to the removed attribute or relationship, Infrahub rejects the schema update:
+
+```text
+Unable to load the schema:
+  InfraRack.display_label: name__value is invalid on schema InfraRack
+```
+
+Supply a replacement `display_label` in YAML that no longer references the removed definition, such as `"{{ code__value }}"`.
+
+**Properties on related nodes.** A path like `rack__name__value` can refer to an attribute on a relationship's peer. For example, `InfraDevice.human_friendly_id` may refer to `InfraRack.name` through the `rack` relationship. If you remove `name` from `InfraRack`, Infrahub rejects the schema update while `InfraDevice` still uses that path, even if your YAML file does not contain an `InfraDevice` definition:
+
+```text
+Unable to load the schema:
+  InfraDevice.human_friendly_id: name is not a valid attribute of InfraRack
+```
+
+Update `InfraDevice` in the same schema operation to remove or replace the invalid reference.
+
+These rules also apply when the removed definition is a relationship. For example, `uniqueness_constraints` may reference `rack` directly, while `human_friendly_id`, `order_by`, and `display_label` may reference a path such as `rack__name__value`. Infrahub updates omitted `human_friendly_id`, `uniqueness_constraints`, and `order_by` properties but rejects explicitly supplied old references and unresolved `display_label` values.
+
+### Number pools and branch-agnostic data
+
+- **`NumberPool` attributes.** When you remove the attribute, Infrahub also removes the number pool it created for that attribute. See [Number pools](./number-pool).
+- **Branch-agnostic attributes and relationships.** Infrahub stores their values once for all branches, so a branch-agnostic element remains visible as long as at least one branch still references it. Removing the definition from one branch does not remove its values while another branch still declares the same field, and does not remove the node kind's objects. See [Branch-agnostic data](../branches/branch-agnostic-data).
+
+## Remove an attribute or relationship from a Generic
+
+When you remove an attribute or relationship defined on a Generic, Infrahub removes it from each node kind that inherits that definition and deletes the corresponding values or links. A node kind that overrides the definition retains its own attribute or relationship and associated data.
+
+Check the schema properties on every inheriting node kind for references to the definition you plan to remove. The rules in [Update references in schema properties](#update-references-in-schema-properties) apply to these nodes as well. See [Change generics](./change-generics) for inherited definitions and node-level overrides.
+
+## Remove a node kind referenced by other relationships
+
+Before removing a node kind, identify relationships on other node kinds or Generics whose `peer` references its Kind. Infrahub rejects a schema update that would leave a relationship referring to a Kind that no longer exists. For example:
+
+```text
+Unable to load the schema:
+  InfraDevice: Relationship 'rack' is referring an invalid peer 'InfraRack'
+```
+
+In your YAML definitions, mark each relationship that refers to the removed Kind with `state: absent`, or update its `peer` to an appropriate existing Kind. If those relationships also appear in schema properties, update those references as described above. Include these changes and `state: absent` for the node kind in the same schema operation, then check and load the updated definitions.
+
+## Remove a Generic
+
+Infrahub rejects a schema update that removes a Generic while other definitions still depend on it:
+
+- **A relationship still names the Generic as its `peer`.** Update or remove the relationship as described in [Remove a node kind referenced by other relationships](#remove-a-node-kind-referenced-by-other-relationships).
+- **A node kind still lists the Generic in `inherit_from`.** Infrahub does not support removing an inherited Generic from an already loaded node definition. To remove the Generic, you must first remove the node kinds that inherit from it. See [Remove a generic from a node](./change-node-definitions#remove-a-generic-from-a-node).
+
+## Remove a Dropdown choice
+
+A `Dropdown` choice cannot be removed through schema YAML. Infrahub merges choices by name when loading a schema file, so omitting a choice preserves it. A Dropdown choice has no supported `state` property. If you supply `state: absent` for a choice, Infrahub ignores it and reports a warning instead of removing the choice.
+
+First remove the choice from the loaded schema on the branch where you are making the change:
+
+- **Attribute defined on a node kind.** In the Infrahub web interface, open an object form for that node kind, expand the Dropdown field, select the delete control beside the choice, and confirm. Alternatively, call `SchemaDropdownRemove` with the node kind.
+- **Attribute defined on a Generic.** The web interface does not support deleting the choice. Call `SchemaDropdownRemove` with the **Generic's Kind** instead:
+
+  ```graphql
+  mutation {
+    SchemaDropdownRemove(data: { kind: "InfraGenericDevice", attribute: "status", dropdown: "provisioning" }) {
+      ok
+    }
+  }
+  ```
+
+  Infrahub removes that choice from the affected Dropdown attributes on inheriting node kinds.
+
+After the mutation succeeds, delete the choice from your YAML definitions. Otherwise, the next schema load adds it again.
+
+Infrahub rejects the choice removal if any existing object still has that value, or if you attempt to remove the attribute's last remaining choice. Update the affected objects first, and retain at least one choice for the Dropdown attribute.
+
+Schema-file removal of Dropdown choices is tracked in [issue #10938](https://github.com/opsmill/infrahub/issues/10938).
+
+## Query historical data after removal
+
+Nothing is hard-deleted. Infrahub keeps earlier versions of the schema and the stored data. To examine an object, attribute, or relationship that has been removed, select a point in time before the removal in the web interface or query that time through GraphQL. Infrahub returns the schema and data as they existed at the selected time, including the previous values of removed attributes. See [Query data at a specific time](../immutable-history/query-historical-data#query-data-at-a-specific-time).
+
+## Related documentation
+
+- [Rename schema elements](./rename-schema-elements) — Rename definitions and retain their objects, attribute values, and links
+- [Change generics](./change-generics) — Generic inheritance and node-level overrides
+- [Schema operations](./operations) — Declarative, incremental schema updates

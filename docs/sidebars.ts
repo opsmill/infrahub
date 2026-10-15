@@ -115,11 +115,15 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'Schema operations',
-          link: { type: 'generated-index' },
+          link: { type: 'doc', id: 'schema/operations' }, // hub
           items: [
-            { type: 'doc', id: 'schema/build-your-schema', label: 'Build your schema with AI' },
             { type: 'doc', id: 'schema/create-and-load', label: 'Create and load schema' },
-            { type: 'doc', id: 'schema/migration', label: 'Schema migration' },
+            { type: 'doc', id: 'schema/build-your-schema', label: 'Build your schema with AI' },
+            { type: 'doc', id: 'schema/migration', label: 'Update a schema' },
+            { type: 'doc', id: 'schema/change-node-definitions', label: 'Change node definitions' },
+            { type: 'doc', id: 'schema/change-generics', label: 'Change generics' },
+            { type: 'doc', id: 'schema/rename-schema-elements', label: 'Rename schema elements' },
+            { type: 'doc', id: 'schema/remove-schema-elements', label: 'Remove schema elements' },
             { type: 'doc', id: 'schema/marketplace/index', label: 'Marketplace' },
           ],
         },
