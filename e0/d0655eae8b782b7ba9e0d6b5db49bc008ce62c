@@ -1,0 +1,33 @@
+backend/tests/unit/core/schema/test_number_pool_parameters.py
+  s_f4cdafdd905485::t_3971460f6825d0 180-191
+  s_f4cdafdd905485::t_1de817c21a25aa 192-195,202-214,218-227
+  s_f4cdafdd905485::t_8eae9c68fad69b 196-201,215-217
+backend/infrahub/core/schema/attribute_parameters.py
+  s_f4cdafdd905485::t_e12c9194ade50c 259-271
+  s_f4cdafdd905485::t_ed27790b125e5c 280
+  s_f4cdafdd905485::t_ba7af8443523ca 6
+  s_f4cdafdd905485::t_9bebccff962307 209-210
+  s_f4cdafdd905485::t_d4c6b04f3c4cd5 273-274
+backend/tests/unit/core/schema/test_schema_update_validation.py
+  s_f4cdafdd905485::t_2a11abff44add8 6
+  s_f4cdafdd905485::t_5416bac110407a 189-263,271-273,275-280,285-299
+  s_f4cdafdd905485::t_ef4f2dff6d7722 264-270,274,281-284
+backend/tests/integration/schema_lifecycle/test_number_pool_parameters_update.py
+  s_f4cdafdd905485::t_f8b13a27e023a7 151-224
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e0d0655eae8b782b7ba9e0d6b5db49bc008ce62c",
+  "prompts": {},
+  "sessions": {
+    "s_f4cdafdd905485": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d80b27f2-528a-4331-bd46-39778bf01130",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
