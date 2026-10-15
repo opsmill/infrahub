@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Iterable, Mapping, cast, overload
 
 from infrahub import lock
 from infrahub.core import registry
+from infrahub.core.attribute import PayloadPresence
 from infrahub.core.constants import (
     PROFILES_RELATIONSHIP_NAME,
     SYSTEM_USER_ID,
@@ -24,6 +25,7 @@ from infrahub.core.schema import GenericSchema
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.lock import InfrahubMultiLock
 from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
+from infrahub.pools.scope import AllocationScope
 from infrahub.profiles.data_reader import ProfileDataReader
 from infrahub.profiles.mandatory_fields_checker import ProfilesMandatoryFieldGetter
 from infrahub.profiles.node_applier import NodeProfilesApplier
@@ -242,6 +244,7 @@ async def allocate_from_resource_pools(
     branch: Branch,
     obj: Node,
     template: CoreObjectTemplate,
+    pool_applier: AttributePoolApplierInterface,
     at: Timestamp | None = None,
     user_id: str = SYSTEM_USER_ID,
 ) -> None:
@@ -249,7 +252,8 @@ async def allocate_from_resource_pools(
 
     Handles two cases:
     - Relationship pools (IP address/prefix): allocates a new node and sets it as the relationship peer
-    - Attribute pools (Number): allocates a value and sets it on the attribute
+    - Attribute pools (Number): allocates a value and sets it on the attribute, within the object's division
+      when the pool has an allocation scope, so every other field of the object must be set beforehand
     An IP pool is recorded as the source of the relationship. A number pool is not written to the
     attribute's source: it is derived from the reservation record the allocation leaves behind.
     """
@@ -268,6 +272,14 @@ async def allocate_from_resource_pools(
             continue
 
         if original_name in obj_schema.attribute_names:
+            if not AllocationScope.from_stored(
+                value=pool.get_attribute("allocation_scope").value, pool=pool.get_id()
+            ).is_empty:
+                attribute = obj.get_attribute(name=original_name)
+                attribute.from_pool = {"id": pool.get_id()}
+                attribute.from_pool_presence = PayloadPresence.SET
+                await pool_applier.apply(node=obj, attribute=attribute, allocate=True, user_id=user_id)
+                continue
             # Number pool: allocate a value and set it on the attribute
             attr_schema = obj_schema.get_attribute(name=original_name)
             allocated_value = await pool.get_resource(  # type: ignore[attr-defined]
@@ -299,6 +311,7 @@ async def create_component(
     parent_obj: Node,
     parent_template: CoreObjectTemplate,
     component: TemplateComponent,
+    pool_applier: AttributePoolApplierInterface,
     at: Timestamp | None = None,
     user_id: str = SYSTEM_USER_ID,
 ) -> Node:
@@ -316,7 +329,13 @@ async def create_component(
     await constraint_runner.check(node=obj_peer, field_filters=list(obj_peer_data))
 
     await allocate_from_resource_pools(
-        db=db, branch=branch, obj=obj_peer, template=component.subtemplate, at=at, user_id=user_id
+        db=db,
+        branch=branch,
+        obj=obj_peer,
+        template=component.subtemplate,
+        pool_applier=pool_applier,
+        at=at,
+        user_id=user_id,
     )
 
     template_profile_ids = await get_profile_ids(db=db, obj=component.subtemplate)
@@ -338,6 +357,7 @@ async def create_components(
     parent_obj: Node,
     parent_template: CoreObjectTemplate,
     components: list[TemplateComponent],
+    pool_applier: AttributePoolApplierInterface,
     at: Timestamp | None = None,
     user_id: str = SYSTEM_USER_ID,
 ) -> None:
@@ -357,6 +377,7 @@ async def create_components(
             parent_obj=parent_obj,
             parent_template=parent_template,
             component=component,
+            pool_applier=pool_applier,
             at=at,
             user_id=user_id,
         )
@@ -367,6 +388,7 @@ async def create_components(
             parent_obj=obj_peer,
             parent_template=component.subtemplate,
             components=component.components,
+            pool_applier=pool_applier,
             at=at,
             user_id=user_id,
         )
@@ -378,6 +400,7 @@ async def handle_template_relationships(
     obj: Node,
     template: CoreObjectTemplate,
     fields: list,
+    pool_applier: AttributePoolApplierInterface,
     at: Timestamp | None = None,
     user_id: str = SYSTEM_USER_ID,
 ) -> None:
@@ -403,6 +426,7 @@ async def handle_template_relationships(
         parent_obj=obj,
         parent_template=template,
         components=components,
+        pool_applier=pool_applier,
         at=at,
         user_id=user_id,
     )
@@ -488,6 +512,7 @@ async def _do_create_node(
                 template=object_template,
                 obj=obj,
                 fields=fields_to_validate,
+                pool_applier=pool_applier,
                 at=at,
                 user_id=user_id,
             )

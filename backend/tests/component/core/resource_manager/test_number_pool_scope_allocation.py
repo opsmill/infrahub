@@ -9,13 +9,13 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 from infrahub.core import registry
-from infrahub.core.constants import InfrahubKind, RelationshipDirection
+from infrahub.core.constants import InfrahubKind, RelationshipCardinality, RelationshipDirection, RelationshipKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.create import create_node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
-from infrahub.core.schema import AttributeSchema, SchemaRoot
+from infrahub.core.schema import AttributeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.pools.scope import Division, DivisionElementPath
@@ -23,7 +23,10 @@ from tests.adapters.lock.timeline import LockAction
 from tests.helpers.agnostic_edges import IsReservedEdge, is_reserved_edge_on
 from tests.helpers.number_pool import (
     SCOPED_ATTRIBUTE_NAME,
+    SCOPED_CARD,
+    SCOPED_CHASSIS,
     SCOPED_CIRCUIT,
+    SCOPED_COMPONENT_POOL_SCHEMA,
     SCOPED_DEVICE,
     SCOPED_POOL_END,
     SCOPED_POOL_SCHEMA,
@@ -657,6 +660,197 @@ class TestObjectTemplateNamingAPool:
         stored = await NodeManager.get_one(db=db, branch=branch, id=device.id, raise_on_error=True)
         assert stored.get_attribute("role").value == "leaf"
         assert vlan_id(stored) == case.expected_number
+        assert pool_lock_events(timeline=recording_lock_timeline, pool=pool, after=start) == [
+            (expected_lock_name, LockAction.ACQUIRE),
+            (expected_lock_name, LockAction.RELEASE),
+        ]
+
+
+async def save_sited_component_pool_schema(db: InfrahubDatabase) -> None:
+    """Save a chassis whose cards are components created from subtemplates, each card in a site."""
+    schema = deepcopy(SCOPED_COMPONENT_POOL_SCHEMA)
+    card = next(node for node in schema.nodes if node.kind == SCOPED_CARD.kind)
+    card.relationships.append(
+        RelationshipSchema(
+            name="site",
+            peer=SCOPED_SITE.kind,
+            identifier="scope_card__site",
+            kind=RelationshipKind.ATTRIBUTE,
+            cardinality=RelationshipCardinality.ONE,
+            optional=False,
+        )
+    )
+    schema.nodes.append(deepcopy(SCOPED_SITE))
+    await save_schema_kinds(db=db, schema=schema)
+    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+
+
+async def card_holding(
+    db: InfrahubDatabase,
+    branch: Branch,
+    pool: CoreNumberPool,
+    chassis: Node,
+    site: Node,
+    number: int,
+    slot_group: str | None = None,
+) -> Node:
+    """A card holding a `vlan_id` it provided, which the pool tracks without allocating it."""
+    card = await Node.init(db=db, schema=SCOPED_CARD.kind, branch=branch)
+    await card.new(
+        db=db,
+        name=f"card-{pool.get_attribute('name').value}-{site.get_attribute('name').value}-{slot_group}-{number}",
+        chassis=chassis,
+        site=site,
+        slot_group=slot_group,
+        vlan_id={"value": number, "from_pool": {"id": pool.id}},
+    )
+    await card.save(db=db)
+    return card
+
+
+@dataclass
+class ComponentPoolDataset:
+    """Three pools over the card's `vlan_id` that a card subtemplate each names, and the numbers they hold.
+
+    The pool scoped by `chassis`: chassis-a holds 1. The pool scoped by `slot_group`: x holds 1 and y holds 1 to 3.
+    The pool scoped by `site`: site-a holds 1 and site-b holds 1 to 3. Each chassis template has one card subtemplate:
+    the one for `chassis` sets site-a, the one for `slot_group` sets site-a and the profile that sets the slot group
+    x, and the one for `site` sets only the profile that sets site-a.
+    """
+
+    default_branch: Branch
+    pools: dict[str, CoreNumberPool]
+    sites: dict[str, Node]
+    templates: dict[str, Node]
+
+
+@dataclass
+class ComponentPoolCase:
+    name: str
+    pool: str
+    expected_number: int
+    expected_division: str
+    """A site name, `new-chassis` for the chassis the test creates, or the division key itself."""
+
+
+COMPONENT_POOL_CASES = [
+    # Chassis-a holds 1, so 1 comes only from the new chassis' own division.
+    ComponentPoolCase(name="scoped-by-chassis", pool="chassis", expected_number=1, expected_division="new-chassis"),
+    # Y holds 1 to 3, so 2 comes only from the slot group the profile on the subtemplate sets.
+    ComponentPoolCase(name="slot-group-set-by-a-profile", pool="slot_group", expected_number=2, expected_division="x"),
+    # Site-b holds 1 to 3, so 2 comes only from the site the profile on the subtemplate sets.
+    ComponentPoolCase(name="site-set-by-a-profile", pool="site", expected_number=2, expected_division="site-a"),
+]
+
+
+class TestSubtemplateNamingAPool:
+    """Every test creates one chassis whose card draws through a pool that no other test of the class draws through."""
+
+    @pytest.fixture(scope="class")
+    async def dataset(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        register_core_models_schema_scope_class: SchemaBranch,
+    ) -> ComponentPoolDataset:
+        branch = default_branch_scope_class
+        await save_sited_component_pool_schema(db=db)
+        pools = {
+            scope: await scoped_pool(db=db, name=f"vlan-per-{scope}", allocation_scope=[scope], kind=SCOPED_CARD.kind)
+            for scope in ("chassis", "slot_group", "site")
+        }
+        sites = {name: await scoped_site(db=db, branch=branch, name=name) for name in ("site-a", "site-b")}
+        chassis_a = await Node.init(db=db, schema=SCOPED_CHASSIS.kind, branch=branch)
+        await chassis_a.new(db=db, name="chassis-a")
+        await chassis_a.save(db=db)
+        await card_holding(
+            db=db, branch=branch, pool=pools["chassis"], chassis=chassis_a, site=sites["site-a"], number=1
+        )
+        for slot_group, numbers in (("x", [1]), ("y", [1, 2, 3])):
+            for number in numbers:
+                await card_holding(
+                    db=db,
+                    branch=branch,
+                    pool=pools["slot_group"],
+                    chassis=chassis_a,
+                    site=sites["site-a"],
+                    number=number,
+                    slot_group=slot_group,
+                )
+        for site_name, numbers in (("site-a", [1]), ("site-b", [1, 2, 3])):
+            for number in numbers:
+                await card_holding(
+                    db=db, branch=branch, pool=pools["site"], chassis=chassis_a, site=sites[site_name], number=number
+                )
+        slot_group_profile = await Node.init(db=db, schema=f"Profile{SCOPED_CARD.kind}", branch=branch)
+        await slot_group_profile.new(db=db, profile_name="slot-group-x", profile_priority=1000, slot_group="x")
+        await slot_group_profile.save(db=db)
+        site_profile = await Node.init(db=db, schema=f"Profile{SCOPED_CARD.kind}", branch=branch)
+        await site_profile.new(db=db, profile_name="site-a-cards", profile_priority=1000, site=sites["site-a"])
+        await site_profile.save(db=db)
+        subtemplate_fields: dict[str, dict[str, Any]] = {
+            "chassis": {"site": sites["site-a"]},
+            "slot_group": {"site": sites["site-a"], "profiles": [slot_group_profile]},
+            "site": {"profiles": [site_profile]},
+        }
+        templates = {}
+        subtemplates = {}
+        for scope, fields in subtemplate_fields.items():
+            template = await Node.init(db=db, schema=f"Template{SCOPED_CHASSIS.kind}", branch=branch)
+            await template.new(db=db, template_name=f"chassis-template-of-{scope}")
+            await template.save(db=db)
+            subtemplate = await Node.init(db=db, schema=f"Template{SCOPED_CARD.kind}", branch=branch)
+            await subtemplate.new(
+                db=db,
+                template_name=f"card-template-of-{scope}",
+                name="card-1",
+                chassis=template.id,
+                vlan_id_from_resource_pool={"id": pools[scope].id},
+                **fields,
+            )
+            await subtemplate.save(db=db)
+            templates[scope] = template
+            subtemplates[scope] = subtemplate
+        # The profile does not write its slot group onto the subtemplate, so the card takes it from the profile.
+        stored_subtemplate = await NodeManager.get_one(
+            db=db, branch=branch, id=subtemplates["slot_group"].id, raise_on_error=True
+        )
+        assert stored_subtemplate.get_attribute("slot_group").value is None
+        return ComponentPoolDataset(default_branch=branch, pools=pools, sites=sites, templates=templates)
+
+    @pytest.mark.parametrize("case", COMPONENT_POOL_CASES, ids=[case.name for case in COMPONENT_POOL_CASES])
+    async def test_the_component_allocates_in_its_division_of_the_pool_its_subtemplate_names(
+        self,
+        db: InfrahubDatabase,
+        dataset: ComponentPoolDataset,
+        recording_lock_timeline: LockTimeline,
+        case: ComponentPoolCase,
+    ) -> None:
+        branch = dataset.default_branch
+        pool = dataset.pools[case.pool]
+        start = recording_lock_timeline.checkpoint("write")
+
+        chassis = await create_node(
+            data={
+                "name": {"value": f"chassis-of-{case.name}"},
+                "object_template": {"id": dataset.templates[case.pool].id},
+            },
+            db=db,
+            branch=branch,
+            schema=db.schema.get(name=SCOPED_CHASSIS.kind, branch=branch, duplicate=False),
+        )
+
+        cards = await NodeManager.query(
+            db=db, schema=SCOPED_CARD.kind, branch=branch, filters={"chassis__ids": [chassis.id]}
+        )
+        card_sites = [await card.get_relationship("site").get_peer(db=db) for card in cards]
+        assert [(site.id if site else None, vlan_id(card)) for site, card in zip(card_sites, cards, strict=True)] == [
+            (dataset.sites["site-a"].id, case.expected_number)
+        ]
+        division_key = {"new-chassis": chassis.id, **{name: site.id for name, site in dataset.sites.items()}}.get(
+            case.expected_division, case.expected_division
+        )
+        expected_lock_name = f"resource_pool.{pool.id}.{division_key}"
         assert pool_lock_events(timeline=recording_lock_timeline, pool=pool, after=start) == [
             (expected_lock_name, LockAction.ACQUIRE),
             (expected_lock_name, LockAction.RELEASE),
