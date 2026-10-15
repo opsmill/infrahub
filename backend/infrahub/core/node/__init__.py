@@ -170,7 +170,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         self._attributes: list[str] = []
         self._relationships: list[str] = []
         self._node_changelog: NodeChangelog | None = None
-        self._creation_context: NodeMutationContext | None = None
+        self._mutation_context: NodeMutationContext | None = None
         self._object_template: CoreObjectTemplate | None = None
 
     def _set_created_at(self, value: Timestamp | None) -> None:

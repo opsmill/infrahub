@@ -482,7 +482,7 @@ async def _do_create_node(
     node_constraint_runner: NodeConstraintRunner,
     pool_applier: AttributePoolApplierInterface,
     profiles_mandatory_field_getter: ProfilesMandatoryFieldGetter,
-    creation_context: NodeMutationContext,
+    mutation_context: NodeMutationContext,
     db: InfrahubDatabase,
     schema: NonGenericSchemaTypes,
     branch: Branch,
@@ -492,7 +492,7 @@ async def _do_create_node(
     user_id: str = SYSTEM_USER_ID,
     object_template: CoreObjectTemplate | None = None,
 ) -> Node:
-    with creation_context:
+    with mutation_context:
         obj = await node_class.init(db=db, schema=schema, branch=branch)
         obj._object_template = object_template
         await obj.new_from_fields(
@@ -517,7 +517,7 @@ async def _do_create_node(
                 user_id=user_id,
             )
 
-    obj._creation_context = creation_context
+    obj._mutation_context = mutation_context
     return obj
 
 
@@ -593,7 +593,7 @@ async def create_node(
     object_template = preview_obj._object_template
 
     obj: Node
-    creation_context = NodeMutationContext()
+    mutation_context = NodeMutationContext()
     async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names, metrics=False):
         if db.is_transaction:
             node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
@@ -603,7 +603,7 @@ async def create_node(
                 node_constraint_runner=node_constraint_runner,
                 pool_applier=components.pool_applier,
                 profiles_mandatory_field_getter=components.profiles_mandatory_field_getter,
-                creation_context=creation_context,
+                mutation_context=mutation_context,
                 db=db,
                 schema=schema,
                 branch=branch,
@@ -627,7 +627,7 @@ async def create_node(
                     node_constraint_runner=node_constraint_runner,
                     pool_applier=transaction_components.pool_applier,
                     profiles_mandatory_field_getter=transaction_components.profiles_mandatory_field_getter,
-                    creation_context=creation_context,
+                    mutation_context=mutation_context,
                     db=dbt,
                     schema=schema,
                     branch=branch,

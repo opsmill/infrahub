@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING, Self
 if TYPE_CHECKING:
     from infrahub.core.node import Node
 
-_creation_context: contextvars.ContextVar[NodeMutationContext | None] = contextvars.ContextVar(
-    "node_creation_context", default=None
+_mutation_context: contextvars.ContextVar[NodeMutationContext | None] = contextvars.ContextVar(
+    "node_mutation_context", default=None
 )
 
 
@@ -29,7 +29,7 @@ class NodeMutationContext:
 
     @classmethod
     def get_current(cls) -> NodeMutationContext | None:
-        return _creation_context.get(None)
+        return _mutation_context.get(None)
 
     @classmethod
     def record_if_active(cls, node: Node) -> None:
@@ -38,9 +38,9 @@ class NodeMutationContext:
             ctx.record(node)
 
     def __enter__(self) -> Self:
-        self._token = _creation_context.set(self)
+        self._token = _mutation_context.set(self)
         return self
 
     def __exit__(self, *args: object) -> None:
         if self._token is not None:
-            _creation_context.reset(self._token)
+            _mutation_context.reset(self._token)
