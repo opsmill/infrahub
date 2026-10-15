@@ -171,13 +171,28 @@ async def test_gather_reports_one_container_for_each_component(
     assert data.database.system_info.processor_available > 0
     assert data.database.system_info.memory_total > 0
     assert data.database.system_info.processor_assigned is None
-    # The test database sets a 1 GiB heap and a 512 MiB page cache.
-    assert data.database.system_info.memory_assigned == 1_610_612_736
     # A failed settings read would also give null, so the healthy gather must log no warning.
     assert [record.getMessage() for record in caplog.records if record.levelno >= logging.WARNING] == []
 
     # A whole-number float would fail the telemetry endpoint's checksum check, which writes 2.0 as 2.
     assert _whole_number_floats(data.model_dump(mode="json")) == []
+
+
+async def test_database_memory_assigned_is_heap_plus_page_cache(
+    resource_environment: MemoryCache,
+    neo4j: dict[int, int] | None,
+    neo4j_heap_bytes: int,
+    neo4j_pagecache_bytes: int,
+) -> None:
+    """The database reports the heap and the page cache it was started with, added up."""
+    if neo4j is None:
+        pytest.skip("The test session did not start the database, so its memory settings are not known")
+
+    gatherer = await build_anonymous_telemetry_gatherer()
+    data = await gatherer.gather()
+
+    assert data.database.system_info is not None
+    assert data.database.system_info.memory_assigned == neo4j_heap_bytes + neo4j_pagecache_bytes
 
 
 async def test_corrupted_reading_is_dropped(resource_environment: MemoryCache) -> None:
@@ -275,7 +290,6 @@ class AssignedReadFailureCase:
     setting_constant: str
     failed_field: str
     other_field: str
-    other_expected: int | None
 
 
 ASSIGNED_READ_FAILURE_CASES = [
@@ -284,14 +298,12 @@ ASSIGNED_READ_FAILURE_CASES = [
         setting_constant="DB_WORKER_LIMIT_SETTING",
         failed_field="processor_assigned",
         other_field="memory_assigned",
-        other_expected=1_610_612_736,
     ),
     AssignedReadFailureCase(
         name="memory_assigned",
         setting_constant="DB_HEAP_MAX_SETTING",
         failed_field="memory_assigned",
         other_field="processor_assigned",
-        other_expected=None,
     ),
 ]
 
@@ -310,6 +322,9 @@ async def test_database_assigned_read_failure_nulls_only_that_field(
     returning the natural unset-is-null. Only that field degrades; the other assigned
     figure, the JMX-derived figures and the whole snapshot are still produced.
     """
+    healthy = await (await build_anonymous_telemetry_gatherer()).gather()
+    assert healthy.database.system_info is not None
+
     monkeypatch.setattr(telemetry_database, case.setting_constant, object())
 
     gatherer = await build_anonymous_telemetry_gatherer()
@@ -319,11 +334,11 @@ async def test_database_assigned_read_failure_nulls_only_that_field(
     # The read genuinely raised and was caught (not merely the unset-is-null default).
     assert any("Telemetry metric collection failed" in record.getMessage() for record in caplog.records)
 
-    # Only the failed field is null; the other figures are intact.
+    # Only the failed field is null; the other assigned figure matches the healthy gather.
     assert data.database.system_info is not None
     system_info = data.database.system_info.model_dump()
     assert system_info[case.failed_field] is None
-    assert system_info[case.other_field] == case.other_expected
+    assert system_info[case.other_field] == healthy.database.system_info.model_dump()[case.other_field]
     assert data.database.system_info.processor_available > 0
     assert data.database.system_info.memory_total > 0
 

@@ -380,7 +380,24 @@ async def register_simplified_proposed_change_schema(default_branch: Branch) -> 
 
 
 @pytest.fixture(scope="session")
-def neo4j(request: pytest.FixtureRequest, load_settings_before_session: None) -> dict[int, int] | None:
+def neo4j_heap_bytes() -> int:
+    """Heap size the test Neo4j container is started with."""
+    return 1024**3
+
+
+@pytest.fixture(scope="session")
+def neo4j_pagecache_bytes() -> int:
+    """Page cache size the test Neo4j container is started with."""
+    return 512 * 1024**2
+
+
+@pytest.fixture(scope="session")
+def neo4j(
+    request: pytest.FixtureRequest,
+    load_settings_before_session: None,
+    neo4j_heap_bytes: int,
+    neo4j_pagecache_bytes: int,
+) -> dict[int, int] | None:
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.database.db_type == "memgraph":
         return None
 
@@ -389,9 +406,9 @@ def neo4j(request: pytest.FixtureRequest, load_settings_before_session: None) ->
     container = start_neo4j_container(
         NEO4J_IMAGE,
         extra_env={
-            "NEO4J_server_memory_heap_initial__size": "1g",
-            "NEO4J_server_memory_heap_max__size": "1g",
-            "NEO4J_server_memory_pagecache_size": "512m",
+            "NEO4J_server_memory_heap_initial__size": str(neo4j_heap_bytes),
+            "NEO4J_server_memory_heap_max__size": str(neo4j_heap_bytes),
+            "NEO4J_server_memory_pagecache_size": str(neo4j_pagecache_bytes),
         },
     )
     request.addfinalizer(container.stop)
