@@ -24,7 +24,7 @@ nodes:
         # optional: true was previously set but is missing here
 ```
 
-To keep `InfraDevice.description` optional, include `optional: true` in the updated YAML definition. The `unique` and `read_only` properties also default to `false`, so include their previous settings if you intend to retain them. Apply the same check to any other nondefault property in the definition.
+To keep `InfraDevice.description` optional, include `optional: true` in the updated YAML definition. The `unique` and `read_only` properties also default to `false`, so include their previous settings if you intend to retain them. Apply the same check to any other property in the definition whose value differs from its default.
 
 **Clear a schema property explicitly.** Set a text-valued property such as a node's `label` or `description` to `""` in YAML, then load the updated definition. Infrahub clears that schema property without deleting attribute values from existing objects. For list-valued properties such as `human_friendly_id` or `order_by`, `[]` can have a different meaning from an omitted property. Consult the [Schema Specification](../reference/schema) before changing those lists.
 
