@@ -166,7 +166,7 @@ infrahubctl graphql query-report device_config
 
 The command reads the query named `device_config` from the `queries` section of your `.infrahub.yml` file. Add `--online` to check the query stored on the Infrahub server instead, and `--branch <name>` to check it against the schema of a branch. Uniqueness constraints come from the schema, so the result can differ between branches.
 
-The report shows `Targets unique nodes: true` when every query in the file returns a single object, and `Targets unique nodes: false` otherwise.
+The report shows `Targets unique nodes: true` when every query in the document returns a single object, and `Targets unique nodes: false` otherwise.
 
 ## Why every target is regenerated
 
@@ -178,7 +178,9 @@ The task log states the reason with one of the following messages, followed by `
 | --- | --- |
 | `the query does not guarantee unique targets` | The query is not single-target. Fix it with the requirements on this page and check it with `infrahubctl graphql query-report`. |
 | `the query reads <kinds> through a relationship, and a change there cannot be traced back to specific targets` | The change is on one of the listed kinds, and the query reads that kind through a relationship in a way Infrahub cannot follow back to the target. This happens when the path to the kind goes through a fragment (`... on <Kind>`), or when the query also reads the same kind at its root. |
-| `the query reads a human_friendly_id or display_label whose value cannot be traced back to specific targets` | The query reads the `human_friendly_id` or `display_label` of an object, and Infrahub cannot determine from the schema which attributes of which related objects that value is built from, or the query also reads that related kind at its root. |
+| `the query reads a human_friendly_id or display_label whose value cannot be traced back to specific targets` | The query reads the `human_friendly_id` or `display_label` of an object, or filters on it with `hfid` or `display_label__value`, and Infrahub cannot determine from the schema which attributes of which related objects that value is built from, or the query also reads that related kind at its root. |
+
+A field the query filters on counts as a field it reads, even when the query does not return it. For example, `InfraDevice(site__name__value: $site)` reads the `site` relationship of the device, so moving a device to another site regenerates its artifact.
 
 A change reached through a relationship regenerates only the affected targets unless one of the conditions above applies. For example, when an artifact for each device reads the description of its interfaces, changing the description of one interface regenerates only the artifact of the device that has that interface.
 
