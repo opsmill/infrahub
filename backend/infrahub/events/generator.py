@@ -3,13 +3,13 @@ from typing import TYPE_CHECKING, cast
 from infrahub.core.branch import Branch
 from infrahub.core.changelog.models import RelationshipChangelogGetter
 from infrahub.core.constants import InfrahubKind, MutationAction
+from infrahub.core.mutation_context import RecordedNode
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 
 if TYPE_CHECKING:
     from infrahub.core.protocols import CoreThread
 from infrahub.events.node_action import (
-    NodeCreatedEvent,
     NodeDeletedEvent,
     NodeMutatedEvent,
     NodeUpdatedEvent,
@@ -30,7 +30,7 @@ async def generate_node_mutation_events(
     context: EventContext,
     request_id: str,
     action: MutationAction,
-    side_effect_nodes: list[Node] | None = None,
+    recorded_nodes: list[RecordedNode] | None = None,
 ) -> list[InfrahubEvent]:
     meta = EventMeta(
         account_id=context.account_id,
@@ -78,19 +78,17 @@ async def generate_node_mutation_events(
             )
             events.append(update_event)
 
-    side_effect_events: list[NodeMutatedEvent] = []
-    for side_effect_node in side_effect_nodes or []:
-        if not side_effect_node.has_changelog or not side_effect_node.node_changelog.has_changes:
-            continue
-        side_effect_events.append(
-            NodeCreatedEvent(
-                kind=side_effect_node.get_kind(),
-                node_id=side_effect_node.id,
-                changelog=side_effect_node.node_changelog,
-                fields=side_effect_node.node_changelog.updated_fields,
-                meta=EventMeta.from_parent(parent=main_event),
-            )
+    recorded_events: list[NodeMutatedEvent] = [
+        get_node_event(recorded.action)(
+            kind=recorded.node.get_kind(),
+            node_id=recorded.node.id,
+            changelog=recorded.node.node_changelog,
+            fields=recorded.node.node_changelog.updated_fields,
+            meta=EventMeta.from_parent(parent=main_event),
         )
+        for recorded in recorded_nodes or []
+        if recorded.node.has_changelog and recorded.node.node_changelog.has_changes
+    ]
 
     group_parser = GroupNodeMutationParser(db=db, branch=branch)
     group_events = await group_parser.group_events_from_node_actions(events=events)
@@ -120,4 +118,4 @@ async def generate_node_mutation_events(
                     )
                 )
 
-    return events + side_effect_events + group_events + specific_events
+    return events + recorded_events + group_events + specific_events

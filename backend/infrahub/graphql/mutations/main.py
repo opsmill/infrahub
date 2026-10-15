@@ -40,6 +40,7 @@ if TYPE_CHECKING:
     from starlette.datastructures import UploadFile
 
     from infrahub.core.branch import Branch
+    from infrahub.core.mutation_context import RecordedNode
     from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
     from infrahub.graphql.types.context import ContextInput
@@ -55,7 +56,7 @@ async def emit_node_mutation_events(
     graphql_context: GraphqlContext,
     action: MutationAction,
     deleted_nodes: list[Node] | None = None,
-    side_effect_nodes: list[Node] | None = None,
+    recorded_nodes: list[RecordedNode] | None = None,
 ) -> None:
     if (
         not graphql_context.background
@@ -76,7 +77,7 @@ async def emit_node_mutation_events(
         context=graphql_context.to_event_context(),
         request_id=request_id,
         action=action,
-        side_effect_nodes=side_effect_nodes or [],
+        recorded_nodes=recorded_nodes or [],
     )
     for event in events:
         graphql_context.background.add_task(graphql_context.active_service.event.send, event)
@@ -235,14 +236,14 @@ class InfrahubMutationMixin:
         graphql_context.at = Timestamp()
 
         mutation_context = obj._mutation_context if obj else None
-        side_effect_nodes = mutation_context.side_effect_nodes if mutation_context else None
+        recorded_nodes = mutation_context.recorded_nodes if mutation_context else None
 
         await emit_node_mutation_events(
             node=obj,
             graphql_context=graphql_context,
             action=action,
             deleted_nodes=deleted_nodes,
-            side_effect_nodes=side_effect_nodes,
+            recorded_nodes=recorded_nodes,
         )
 
         return mutation

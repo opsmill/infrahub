@@ -25,7 +25,7 @@ mutate_create()
        -> preview node (process_pools=False) for lock calculation
        -> acquire InfrahubMultiLock
        -> _do_create_node()
-            -> NodeMutationContext     # tracks side-effect nodes for events
+            -> NodeMutationContext     # records the other nodes the mutation writes, for events
             -> Node.new()
                  -> _process_fields()  # validates, hydrates attrs & rels
                  -> _process_macros()  # evaluates mandatory computed attrs

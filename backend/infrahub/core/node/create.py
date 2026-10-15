@@ -10,6 +10,7 @@ from infrahub.core.constants import (
     PROFILES_RELATIONSHIP_NAME,
     SYSTEM_USER_ID,
     MetadataOptions,
+    MutationAction,
     PoolRecordProvenance,
     RelationshipKind,
 )
@@ -296,7 +297,7 @@ async def allocate_from_resource_pools(
             allocated_resource = await pool.get_resource(  # type: ignore[attr-defined]
                 db=db, branch=branch, identifier=obj.get_id(), at=at, user_id=user_id
             )  # type: ignore
-            NodeMutationContext.record_if_active(node=allocated_resource)
+            NodeMutationContext.record_if_active(node=allocated_resource, action=MutationAction.CREATED)
 
             obj_rel_manager = obj.get_relationship(name=original_name)
             await obj_rel_manager.update(
@@ -346,7 +347,7 @@ async def create_component(
         await node_profiles_applier.apply_profiles(node=obj_peer)
 
     await obj_peer.save(db=db, user_id=user_id)
-    NodeMutationContext.record_if_active(node=obj_peer)
+    NodeMutationContext.record_if_active(node=obj_peer, action=MutationAction.CREATED)
     return obj_peer
 
 

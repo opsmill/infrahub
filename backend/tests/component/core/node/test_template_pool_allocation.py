@@ -141,9 +141,10 @@ async def test_object_from_template_with_pool_allocates_address(
     assert primary_ip_rel[0].source_id == ip_address_pool.id
 
     assert device._mutation_context is not None
-    assert len(device._mutation_context.side_effect_nodes) == 1
-    assert device._mutation_context.side_effect_nodes[0].get_kind() == "IpamIPAddress"
-    assert device._mutation_context.side_effect_nodes[0].id == primary_ip.id
+    recorded_nodes = [recorded.node for recorded in device._mutation_context.recorded_nodes]
+    assert len(recorded_nodes) == 1
+    assert recorded_nodes[0].get_kind() == "IpamIPAddress"
+    assert recorded_nodes[0].id == primary_ip.id
 
 
 async def test_object_from_template_with_explicit_address_uses_explicit(
@@ -544,7 +545,7 @@ async def test_template_children_and_pool_recorded_as_side_effects(
     )
 
     assert device._mutation_context is not None
-    side_effects = device._mutation_context.side_effect_nodes
+    side_effects = [recorded.node for recorded in device._mutation_context.recorded_nodes]
 
     intf_side_effects = [n for n in side_effects if n.get_kind() == TestKind.PHYSICAL_INTERFACE]
     assert len(intf_side_effects) == 1
