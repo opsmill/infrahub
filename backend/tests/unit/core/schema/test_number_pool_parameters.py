@@ -177,6 +177,73 @@ def test_update_with_ranges_replaces_the_previous_ranges() -> None:
     assert _declared(current) == (None, None, [(45, 55, None), (70, 80, 5)])
 
 
+@dataclass
+class ZeroRangeUpdateTestCase:
+    name: str
+    current: dict[str, Any]
+
+
+ZERO_RANGE_UPDATE_TEST_CASES: list[ZeroRangeUpdateTestCase] = [
+    ZeroRangeUpdateTestCase(name="shorthand_removed", current={"start_range": 40, "end_range": 60}),
+    ZeroRangeUpdateTestCase(name="ranges_removed", current={"ranges": [{"start": 45, "end": 55}]}),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in ZERO_RANGE_UPDATE_TEST_CASES])
+def test_update_with_an_explicitly_empty_range_list_removes_every_range(test_case: ZeroRangeUpdateTestCase) -> None:
+    current = NumberPoolParameters(**test_case.current)
+
+    current.update(NumberPoolParameters(ranges=[]))
+
+    assert _declared(current) == (None, None, [])
+    assert current.effective_ranges() == []
+
+
+def test_zero_range_declaration_survives_a_dump_and_a_parse() -> None:
+    # A schema merged from several files is dumped and parsed again before it is applied.
+    declaration = NumberPoolParameters(ranges=[])
+
+    reparsed = NumberPoolParameters.model_validate(declaration.model_dump())
+
+    assert reparsed.declares_zero_ranges is True
+
+
+@dataclass
+class DumpedRangeFieldsTestCase:
+    name: str
+    parameters: dict[str, Any]
+    expected: dict[str, Any]
+    """The start_range, end_range and ranges keys present in the dump, with their values."""
+
+
+DUMPED_RANGE_FIELDS_TEST_CASES: list[DumpedRangeFieldsTestCase] = [
+    DumpedRangeFieldsTestCase(name="unset", parameters={}, expected={}),
+    DumpedRangeFieldsTestCase(
+        name="shorthand",
+        parameters={"start_range": 40, "end_range": 60},
+        expected={"start_range": 40, "end_range": 60},
+    ),
+    DumpedRangeFieldsTestCase(
+        name="shorthand_with_an_empty_list",
+        parameters={"start_range": 40, "ranges": []},
+        expected={"start_range": 40},
+    ),
+    DumpedRangeFieldsTestCase(name="zero_ranges", parameters={"ranges": []}, expected={"ranges": []}),
+    DumpedRangeFieldsTestCase(
+        name="ranges",
+        parameters={"ranges": [{"start": 45, "end": 55}]},
+        expected={"ranges": [{"id": None, "state": "present", "start": 45, "end": 55, "weight": None}]},
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in DUMPED_RANGE_FIELDS_TEST_CASES])
+def test_dump_keeps_only_the_declared_range_fields(test_case: DumpedRangeFieldsTestCase) -> None:
+    dumped = NumberPoolParameters(**test_case.parameters).model_dump(mode="json")
+
+    assert {key: dumped[key] for key in ("start_range", "end_range", "ranges") if key in dumped} == test_case.expected
+
+
 def test_update_without_any_range_spelling_keeps_the_current_declaration() -> None:
     shorthand = NumberPoolParameters(start_range=40, end_range=60)
     explicit = NumberPoolParameters(ranges=[NumberPoolRangeParameters(start=45, end=55)])
