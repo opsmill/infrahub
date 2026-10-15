@@ -1,0 +1,25 @@
+backend/infrahub/pools/schema_number_pool_synchronizer.py
+  s_760cbcf248de37::t_5302fce6dbb034 19,129-131,148,156-161,178-182
+backend/infrahub/pools/registration.py
+  s_760cbcf248de37::t_e6f023ad8b7f2d 1-4,6,9-33,35,46-47
+backend/tests/component/pools/schema_number_pool_synchronizer/test_attribute_rename.py
+  s_760cbcf248de37::t_b7f9192264d3e9 1-125
+backend/tests/integration/schema_lifecycle/test_number_pool_attribute_rename.py
+  s_760cbcf248de37::t_909273b3d1fb75 1-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "21a25bec8b081569c5e64b52ffb3f7e42fae442e",
+  "prompts": {},
+  "sessions": {
+    "s_760cbcf248de37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9796f03b-7c77-4706-bad0-f6d8a85686f0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <pol@opsmill.com>"
+    }
+  }
+}
