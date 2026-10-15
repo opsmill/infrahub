@@ -129,8 +129,10 @@ flowchart LR
 An empty figure is `null`, never zero. For the API server and task workers the CPU pair shows why:
 `processor_available` set with `processor_assigned` empty means no CPU limit is set, and both empty
 means a limit is set but could not be read, or no process of that component has reported. Two
-things cannot be seen from inside a container: a limit set only on a Kubernetes pod, and Kubernetes
-CPU requests, which reserve CPU but do not limit it. One container stands for every copy of a
+things cannot be seen from inside a container: a limit set above the container's own view, for
+example on a Kubernetes node that itself runs in a container, and Kubernetes CPU requests, which
+reserve CPU but do not limit it. A limit set only on a pod is seen: on Kubernetes 1.37 the pod's
+limit is also written on a container that sets none. One container stands for every copy of a
 component, so every copy is assumed to run with the same settings. The process count comes from how
 gunicorn was started: an API server started another way with several processes counts as one per
 container, which overstates its total. Why it is built this way:

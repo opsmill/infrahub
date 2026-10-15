@@ -97,8 +97,10 @@ Exceptions:
 
 Two things cannot be seen from inside a container:
 
-- A limit set only on a Kubernetes pod, when the container itself has none.
+- A limit set above the container's own view, for example on a Kubernetes node that itself runs in a container.
 - Kubernetes CPU *requests*. A request reserves CPU for scheduling but does not limit it, so it is not reported.
+
+A limit set only on a Kubernetes pod, when the container itself has none, is seen: on Kubernetes 1.37 with containerd, the pod's limit is also written on the container. Older Kubernetes versions were not checked.
 
 ## Per container
 

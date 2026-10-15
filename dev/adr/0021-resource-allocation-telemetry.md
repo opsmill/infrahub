@@ -90,8 +90,10 @@ the receiving service confirms it accepts the new fields.
 
 ### Negative
 
-- A limit set only on a Kubernetes pod, when the container itself has none, cannot be seen from
-  inside the container. Neither can Kubernetes CPU requests, which reserve CPU but do not limit it.
+- A limit set above the container's own view, for example on a Kubernetes node that itself runs in a
+  container, cannot be seen from inside the container. Neither can Kubernetes CPU requests, which
+  reserve CPU but do not limit it. A limit set only on a pod is seen: on Kubernetes 1.37 the pod's
+  limit is also written on a container that sets none. Older versions were not checked.
 - One container stands for every copy of a component, so every copy is assumed to run with the same
   settings.
 - The process count comes from how gunicorn was started, not from the processes that run. An API
