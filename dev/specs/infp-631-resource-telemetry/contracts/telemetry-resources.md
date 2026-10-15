@@ -23,7 +23,8 @@ Only the additions are shown; everything else is unchanged.
         "processor_available": 32,           // existing: CPUs Neo4j can use
         "processor_assigned": 16,            // NEW: CPUs its parallel query engine is set to use; null when not set
         "memory_total": 67435982848,         // existing: bytes
-        "memory_available": 47034888192      // existing: free bytes
+        "memory_available": 47034888192,     // existing: free bytes
+        "memory_assigned": 50465865728       // NEW: heap + page cache Neo4j is set to use (31 GiB + 16 GiB); null unless both are set
       }
     },
     "workers": {                             // existing, unchanged: every worker process
@@ -59,14 +60,15 @@ Only the additions are shown; everything else is unchanged.
 
 ## What each figure means
 
-All three components use the same four names, which the database block already used. CPUs are counted as logical CPUs and memory is in bytes. Memory used is `memory_total − memory_available`.
+All three components use the same four names, which the database block already used, and the database also reports `memory_assigned`. CPUs are counted as logical CPUs and memory is in bytes. Memory used is `memory_total − memory_available`.
 
 | Figure | API server and task workers | Database |
 |--------|-----------------------------|----------|
 | `processor_available` | The CPUs the process can use: the smallest of the machine's CPU count, the container's CPU limit and the number of CPUs the process is pinned to, if it is pinned. | The CPUs Neo4j reports it can use. This also follows the container limit. |
 | `processor_assigned` | The container's CPU limit. Empty when no limit is set. | The number of CPUs Neo4j's parallel query engine is set to use. Empty when the setting is left at its default. |
-| `memory_total` | The container's memory limit, or the machine's memory when no limit is set. | The memory Neo4j reports. |
-| `memory_available` | The memory still free under that limit, or the machine's free memory when no limit is set. | The free memory Neo4j reports. |
+| `memory_total` | The container's memory limit, or the machine's memory when no limit is set. | The memory Neo4j reports: its container's memory limit, or the machine's memory when no limit is set. A Kubernetes memory request is not a limit. |
+| `memory_available` | The memory still free under that limit, or the machine's free memory when no limit is set. | The free memory Neo4j reports, under the same limit or on the same machine. |
+| `memory_assigned` | Not reported. | The memory Neo4j is set up to use: its heap (`server.memory.heap.max_size`) plus its page cache (`server.memory.pagecache.size`). Empty unless both are set. |
 
 Two details matter when comparing figures:
 
@@ -131,6 +133,7 @@ Every figure, and `processes_per_container`, is either `null` or a whole number 
   - Both memory figures empty: the memory limit, or the machine's memory, could not be read.
   - Only `memory_available` empty: the memory in use, or the machine's free memory, could not be read.
 - **`database.system_info.processor_assigned` is empty** when the setting is left at its default, is not a positive number, or could not be read. A failed read is logged.
+- **`database.system_info.memory_assigned` is empty** unless both the heap and the page cache are set, or when the settings could not be read. A failed read is logged. Without them, Neo4j works out its sizes from the memory it can see, which `memory_total` already reports. The Neo4j Docker image sets a 512 MiB page cache on its own when none is configured, so under Docker only the heap setting decides whether the figure is reported.
 - **`database.system_info` is empty** when the database is not Neo4j.
 
 ## When the whole report is not produced

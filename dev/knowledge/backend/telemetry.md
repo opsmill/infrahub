@@ -98,7 +98,12 @@ reading every 5 minutes still catches a limit changed while Infrahub runs, and t
 keeps a reading while a long task holds up the main loop. The report uses only the readings of the
 workers whose "alive" key, written every 5 seconds by the heartbeat thread with a 15-second expiry,
 is still set, so a stopped worker's reading is ignored although it stays in the cache. The database
-figures come from Neo4j itself when the report runs.
+figures come from Neo4j itself when the report runs. Its `memory_total` and `memory_available` are
+its container's memory limit, or the whole machine when no limit is set, and a Kubernetes memory
+request is not a limit. What Neo4j is set up to use is `memory_assigned`: its heap
+(`server.memory.heap.max_size`) plus its page cache (`server.memory.pagecache.size`), `null` unless
+both are set. The Neo4j Docker image sets a 512 MiB page cache on its own when none is configured,
+so under Docker only the heap setting decides whether the figure is reported.
 
 ```mermaid
 flowchart LR
@@ -176,7 +181,7 @@ of the payload is still built, stored, and sent. A source that succeeds with not
 reports `0`. So **`null` means "could not measure", `0` means "measured, nothing there"**.
 
 The new CPU and memory figures for the API server and the task workers, and the database's
-`processor_assigned`, are protected this way. Several older parts are not, among them the list of
+`processor_assigned` and `memory_assigned`, are protected this way. Several older parts are not, among them the list of
 workers and the database block, including its CPU and memory figures: a failure in any of them
 stops the whole report.
 

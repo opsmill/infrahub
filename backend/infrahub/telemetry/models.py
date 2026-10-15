@@ -58,6 +58,7 @@ class TelemetryDatabaseSystemInfoData(BaseModel):
     memory_available: int
     processor_available: int
     processor_assigned: int | None = Field(default=None, ge=0)
+    memory_assigned: int | None = Field(default=None, ge=0)
 
 
 class TelemetryComponentData(BaseModel):

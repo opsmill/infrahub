@@ -9,6 +9,7 @@ renamed or removed.
 
 import logging
 from collections.abc import AsyncGenerator
+from dataclasses import dataclass
 from typing import Generator
 
 import pytest
@@ -170,7 +171,9 @@ async def test_gather_reports_one_container_for_each_component(
     assert data.database.system_info.processor_available > 0
     assert data.database.system_info.memory_total > 0
     assert data.database.system_info.processor_assigned is None
-    # A failed worker-limit read would also give null, so the healthy gather must log no warning.
+    # The test database sets a 1 GiB heap and a 512 MiB page cache.
+    assert data.database.system_info.memory_assigned == 1_610_612_736
+    # A failed settings read would also give null, so the healthy gather must log no warning.
     assert [record.getMessage() for record in caplog.records if record.levelno >= logging.WARNING] == []
 
     # A whole-number float would fail the telemetry endpoint's checksum check, which writes 2.0 as 2.
@@ -258,35 +261,69 @@ async def test_payload_keeps_every_prior_key(resource_environment: MemoryCache) 
     for block in ("server", "task_workers"):
         assert set(dumped[block]) == _PRE_FEATURE_WORKER_FIELDS | {"processes_per_container", "per_container"}
 
-    # system_info keeps its three fields and gains exactly processor_assigned.
+    # system_info keeps its three fields and gains exactly the two assigned figures.
     assert data.database.system_info is not None
-    assert set(dumped["database"]["system_info"]) == _PRE_FEATURE_SYSTEM_INFO_FIELDS | {"processor_assigned"}
+    assert set(dumped["database"]["system_info"]) == _PRE_FEATURE_SYSTEM_INFO_FIELDS | {
+        "processor_assigned",
+        "memory_assigned",
+    }
 
 
-async def test_database_processor_assigned_read_failure_nulls_only_that_field(
+@dataclass
+class AssignedReadFailureCase:
+    name: str
+    setting_constant: str
+    failed_field: str
+    other_field: str
+    other_expected: int | None
+
+
+ASSIGNED_READ_FAILURE_CASES = [
+    AssignedReadFailureCase(
+        name="processor_assigned",
+        setting_constant="DB_WORKER_LIMIT_SETTING",
+        failed_field="processor_assigned",
+        other_field="memory_assigned",
+        other_expected=1_610_612_736,
+    ),
+    AssignedReadFailureCase(
+        name="memory_assigned",
+        setting_constant="DB_HEAP_MAX_SETTING",
+        failed_field="memory_assigned",
+        other_field="processor_assigned",
+        other_expected=None,
+    ),
+]
+
+
+@pytest.mark.parametrize("case", ASSIGNED_READ_FAILURE_CASES, ids=[case.name for case in ASSIGNED_READ_FAILURE_CASES])
+async def test_database_assigned_read_failure_nulls_only_that_field(
     resource_environment: MemoryCache,
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
+    case: AssignedReadFailureCase,
 ) -> None:
     """A failing assigned read nulls only that field; the rest of the snapshot survives.
 
-    Feeding an unserializable value as the setting name makes the real Cypher settings
-    read fail at the database driver, so the assigned read raises for real rather than
-    returning the natural auto-is-null. Only ``processor_assigned`` degrades; the
-    JMX-derived figures and the whole snapshot are still produced.
+    Feeding an unserializable value as a setting name makes the real Cypher settings
+    read fail at the database driver, so the read raises for real rather than
+    returning the natural unset-is-null. Only that field degrades; the other assigned
+    figure, the JMX-derived figures and the whole snapshot are still produced.
     """
-    monkeypatch.setattr(telemetry_database, "DB_WORKER_LIMIT_SETTING", object())
+    monkeypatch.setattr(telemetry_database, case.setting_constant, object())
 
     gatherer = await build_anonymous_telemetry_gatherer()
     with caplog.at_level(logging.WARNING, logger="infrahub.tasks"):
         data = await gatherer.gather()
 
-    # The read genuinely raised and was caught (not merely the auto-is-null default).
+    # The read genuinely raised and was caught (not merely the unset-is-null default).
     assert any("Telemetry metric collection failed" in record.getMessage() for record in caplog.records)
 
-    # Only the assigned field is null; the independent JMX figures are intact.
+    # Only the failed field is null; the other figures are intact.
     assert data.database.system_info is not None
-    assert data.database.system_info.processor_assigned is None
+    system_info = data.database.system_info.model_dump()
+    assert system_info[case.failed_field] is None
+    assert system_info[case.other_field] == case.other_expected
     assert data.database.system_info.processor_available > 0
     assert data.database.system_info.memory_total > 0
 
