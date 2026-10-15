@@ -118,11 +118,11 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
                     reconciliation = await reconciler.reconcile(
                         pool=number_pool, declared=declared_ranges, user_id=graphql_context.assigned_user_id
                     )
-                    cls._raise_for_range_permissions(graphql_context=graphql_context, reconciliation=reconciliation)
                 else:
                     reconciliation = await reconciler.rewrite_single_range(
                         pool=number_pool, declared=declared_ranges[0], user_id=graphql_context.assigned_user_id
                     )
+                cls._raise_for_range_permissions(graphql_context=graphql_context, reconciliation=reconciliation)
                 stored_pool = await sync_shorthand(
                     db=dbt, pool_id=pool_id, ranges=reconciliation.ranges, user_id=graphql_context.assigned_user_id
                 )
@@ -398,7 +398,7 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
                 reconciliation = await reconciler.reconcile(
                     pool=number_pool, declared=declared_ranges, user_id=graphql_context.assigned_user_id
                 )
-                cls._raise_for_range_permissions(graphql_context=graphql_context, reconciliation=reconciliation)
+            cls._raise_for_range_permissions(graphql_context=graphql_context, reconciliation=reconciliation)
             stored_pool = await sync_shorthand(
                 db=dbt, pool_id=pool_id, ranges=reconciliation.ranges, user_id=graphql_context.assigned_user_id
             )
