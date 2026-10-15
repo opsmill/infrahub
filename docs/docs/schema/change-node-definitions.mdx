@@ -1,0 +1,225 @@
+---
+title: Change node definitions
+---
+
+You can change the attributes, relationships, and validation rules of existing node kinds as your network designs and automation requirements evolve. For example, you might add an attribute to identify a device's role, require a description for every device, or define shared VLAN attributes and relationships on a Generic. If you already store objects of those node kinds in Infrahub, you also need to consider whether their existing attribute values and relationships are compatible with the updated schema.
+
+Edit the relevant definitions in your schema YAML file, then check and load that file on an Infrahub branch. Infrahub compares the supplied definitions with the schema already loaded on the branch and validates existing objects against any new constraints. If an object does not satisfy a constraint, Infrahub reports the validation error and rejects the schema update. You can correct the object's values or revise the definition before trying again. After testing the updated schema and dependent automation, open a Proposed Change for review and merge. See [Update a schema](./migration) for the complete workflow.
+
+## Update an existing node or attribute
+
+Open the YAML schema file containing the node you want to update. Under `nodes`, find its definition by `namespace` and `name`: for example, `namespace: Infra` and `name: Device` identify the kind `InfraDevice`. To change a node property, edit that property in the node's definition. To change an attribute, find its entry under `attributes` and edit the appropriate property. Check and load the updated file on an Infrahub branch as described in [Create and load schema](./create-and-load).
+
+**Retain properties you still need.** When you load a revised node or attribute definition, Infrahub assigns default values to properties omitted from that definition. It does not necessarily retain the values previously configured in the loaded schema. Include previously configured properties even if you are changing only one of them.
+
+For example, suppose you configured the `description` attribute on `InfraDevice` with `optional: true`. If you load the definition below without `optional: true`, Infrahub applies the default, `optional: false`, and requires a description on every `InfraDevice` object:
+
+```yaml
+nodes:
+  - name: Device
+    namespace: Infra
+    attributes:
+      - name: description
+        kind: Text
+        # optional: true was previously set but is missing here
+```
+
+To keep `InfraDevice.description` optional, include `optional: true` in the updated YAML definition. The `unique` and `read_only` properties also default to `false`, so include their previous settings if you intend to retain them. Apply the same check to any other nondefault property in the definition.
+
+**Clear a schema property explicitly.** Set a text-valued property such as a node's `label` or `description` to `""` in YAML, then load the updated definition. Infrahub clears that schema property without deleting attribute values from existing objects. For list-valued properties such as `human_friendly_id` or `order_by`, `[]` can have a different meaning from an omitted property. Consult the [Schema Specification](../reference/schema) before changing those lists.
+
+## Add an attribute
+
+To add an attribute, define it under `attributes` in the node's YAML definition. When you load the updated schema, Infrahub also checks objects already stored for that node kind. The behavior depends on whether you make the new attribute optional, provide a default, or allocate its values from a `NumberPool`:
+
+- **Optional attribute.** Infrahub adds the attribute to the node kind; the attribute has no value on existing objects until you populate it.
+- **Mandatory attribute with `default_value`.** Infrahub assigns the configured default value to the new attribute on each existing object.
+- **Mandatory attribute without `default_value`.** If objects of that node kind already exist, they have no values for the new attribute, so Infrahub rejects the schema update. Supply a `default_value`, or add the attribute as optional, populate it on the existing objects, and then change `optional` to `false`.
+- **`NumberPool` attribute.** Infrahub creates the pool and allocates a number to each existing object. If there are fewer available numbers between `start_range` and `end_range` than existing objects, Infrahub rejects the schema update. See [Number pools](./number-pool).
+
+For example, if existing `InfraDevice` objects lack a newly required attribute, Infrahub identifies the affected objects in an error like this:
+
+```text
+Node-level 'attribute' constraint violation on schema 'InfraDevice'. Node (InfraDevice(ID: 18dc3640-a35d-e006-36a4-c5146bdc5c04)) is not compliant.
+```
+
+## Make an attribute mandatory or unique
+
+To change the requirements for an existing attribute, edit its properties in YAML. Set `optional: false` when every object must have a value, or `unique: true` when objects of that node kind must not share a value. Before applying either constraint, Infrahub validates the attribute values already stored on the target branch:
+
+- **Mandatory (`optional: false`).** Every existing object must have a value for the attribute.
+- **Unique (`unique: true`).** No two existing objects can have the same value for that attribute.
+
+If any object violates the proposed constraint, Infrahub rejects the schema update and identifies the affected object. For example, changing an existing attribute to mandatory can produce this error when an object has no value:
+
+```text
+Attribute-level 'optional' constraint violation on schema 'InfraDevice'. Node (InfraDevice(ID: 18dc3640-af1a-c8ea-36a2-c516b4afaa59)) is not compliant.
+```
+
+Populate the missing values or correct duplicates on the target branch, then check and load the revised schema again. When you change `choices` or `regex`, Infrahub likewise validates every existing value against the new permitted choices or pattern.
+
+**Profiles and Object Templates.** When you set `unique: true`, Infrahub removes that attribute and its configured values from Profiles and Object Templates associated with the node kind, because neither can set a unique attribute. Review those changes alongside the new constraint.
+
+## Change the kind of an attribute
+
+You can change an attribute's `kind` in YAML, but Infrahub does not convert existing values to the new kind. Instead, Infrahub validates each populated value against the requested kind. If any value is incompatible, Infrahub rejects the schema update. Objects where that attribute has no value do not prevent the update.
+
+Compatibility depends on the type, content, and representation of the values already stored in Infrahub. For example:
+
+- **`Text` to `URL`:** Accepted when every populated value is a URL such as `http://test.com`; `test.com` is not accepted.
+- **`URL` to `Text`:** Accepted because URL values also satisfy the `Text` kind.
+- **`Text` to `MacAddress`:** Accepted for values already in Infrahub's stored format, such as `AA:BB:CC:DD:EE:FF`. A value such as `aa-bb-cc-dd-ee-ff` is rejected even though it represents a valid MAC address, because Infrahub does not rewrite it.
+- **`IPHost` to `IPNetwork`:** Accepted when each populated value is already a network address, such as `10.0.0.0/24`.
+- **`IPHost` to `IPAddress`, or `IPAddress` to `IPHost`:** Rejected when the attribute has populated values. For `IPHost`, Infrahub stores a prefix (such as `10.0.0.1/32`); for `IPAddress`, it stores the address without a prefix (such as `10.0.0.1`).
+- **`Text` to `Number`:** Rejected when the attribute has populated text values, including `"42"`; Infrahub does not parse stored text as a number. Accepted only when the attribute has no populated values.
+- **`Number` to `Text`:** Rejected when the attribute has populated numeric values; Infrahub does not convert stored numbers to text.
+- **`TextArea` to `Text`:** Accepted only when every populated value fits within the length supported by `Text`.
+
+### Preserve values that need conversion
+
+If the existing values are incompatible with the new `kind`, retain the original attribute until you have copied and converted those values into a replacement:
+
+1. Define a new attribute with the intended `kind` in YAML, then load the updated schema.
+2. Write a conversion script or use an external tool to read each existing object's original attribute value, convert it to the target type, and write the converted value into the new attribute.
+3. Check the converted values on the existing objects. After confirming that the replacement is complete, mark the original attribute `state: absent` in YAML and load the removal. See [Remove schema elements](./remove-schema-elements).
+
+**Data-loss warning:** Changing an attribute kind and moving values can result in data loss. Contact OpsMill to review your plan through [Discord](https://discord.gg/opsmill) or [contact@opsmill.com](mailto:contact@opsmill.com).
+
+## Move attributes and relationships onto a generic
+
+When several node kinds need the same attributes and relationships, you can define them once on a generic and configure each node kind to inherit from it. You can also introduce a generic after Infrahub has already stored objects of an existing node kind. To retain the values and relationships on those objects, preserve the relevant relationship identifiers and explicitly remove the definitions that the node kind will inherit instead.
+
+Suppose Infrahub already stores VLAN objects of kind `IpamVLAN`, and you want to add `IpamQinQVLAN` for Q-in-Q VLANs. Both node kinds need `name`, `vlan_id`, and a relationship to a VLAN group. Define those common attributes and the `vlan_group` relationship on a new generic, `IpamGenericVLAN`, then configure both node kinds to inherit from it.
+
+### Before: attributes and relationships defined on `IpamVLAN`
+
+```yaml
+nodes:
+  - name: VLAN
+    namespace: Ipam
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: vlan_id
+        kind: Number
+    relationships:
+      - name: vlan_group
+        peer: IpamVLANGroup
+        kind: Attribute
+        cardinality: one
+        optional: false
+        identifier: vlan_group__vlan
+
+  - name: VLANGroup
+    namespace: Ipam
+    label: VLAN Group
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+        optional: false
+    relationships:
+      - name: vlans
+        peer: IpamVLAN
+        kind: Component
+        cardinality: many
+        optional: true
+        identifier: vlan_group__vlan
+```
+
+### Update the definitions
+
+Include the Generic, the updated VLAN node definitions, and the changed relationship peer in the same schema update. Infrahub can then validate the resulting inheritance and relationships when you load the YAML:
+
+1. **Define the generic.** Under `generics`, add `name: GenericVLAN` and `namespace: Ipam`. Copy the `name`, `vlan_id`, and `vlan_group` definitions from `IpamVLAN`. Keep `identifier: vlan_group__vlan` on the relationship: Infrahub uses that identifier to store links between VLAN objects and their groups, so changing it would not preserve the existing links.
+2. **Add the inheritance declarations.** In the YAML definitions for `IpamVLAN` and the new `IpamQinQVLAN`, set `inherit_from: [IpamGenericVLAN]`. Infrahub then resolves shared attributes and relationships through the generic once you remove the original node-level definitions.
+3. **Update relationships that refer to `IpamVLAN`.** In the `IpamVLANGroup` definition, change `vlans.peer` from `IpamVLAN` to `IpamGenericVLAN`. Update any other relationships that refer to the original node kind. Infrahub validates that objects already connected by these relationships have node kinds that inherit from the new Generic.
+4. **Remove the node-level definitions.** The existing `name`, `vlan_id`, and `vlan_group` definitions on `IpamVLAN` would otherwise [override](./generics-and-inheritance) their equivalents on the generic. In Infrahub, open **Object Management > Schemas**, select `IpamVLAN`, and copy the **ID** of each node-level attribute and relationship. Add the corresponding `id` to each YAML definition and set `state: absent`. When you load the updated schema, Infrahub removes those node-level definitions and resolves the attributes and relationship through `IpamGenericVLAN`. See [Remove an override](./change-generics#remove-an-override).
+
+### After: both VLAN kinds inherit from the generic
+
+```yaml
+generics:
+  - name: GenericVLAN
+    namespace: Ipam
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: vlan_id
+        kind: Number
+    relationships:
+      - name: vlan_group
+        peer: IpamVLANGroup
+        kind: Attribute
+        cardinality: one
+        optional: false
+        identifier: vlan_group__vlan
+
+nodes:
+  - name: VLAN
+    namespace: Ipam
+    inherit_from: [IpamGenericVLAN]
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+        id: 18dc8071-7eea-2b24-3883-c51fd0b01804  # the id of the node's attribute, from your instance
+        state: absent
+      - name: vlan_id
+        kind: Number
+        id: 18dc8071-7f31-6c0a-3883-c51a4e2b7a12  # the id of the node's attribute, from your instance
+        state: absent
+    relationships:
+      - name: vlan_group
+        peer: IpamVLANGroup
+        kind: Attribute
+        cardinality: one
+        optional: false
+        identifier: vlan_group__vlan
+        id: 18dc8071-8b90-45cd-3884-c51c2c0256ce  # the id of the node's relationship, from your instance
+        state: absent
+
+  - name: QinQVLAN
+    namespace: Ipam
+    label: Q-in-Q VLAN
+    inherit_from: [IpamGenericVLAN]
+    # attributes and relationships specific to Q-in-Q VLANs
+
+  - name: VLANGroup
+    namespace: Ipam
+    label: VLAN Group
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+        optional: false
+    relationships:
+      - name: vlans
+        peer: IpamGenericVLAN  # now points to the generic
+        kind: Component
+        cardinality: many
+        optional: true
+        identifier: vlan_group__vlan
+```
+
+After you load the updated schema, Infrahub retains the existing `name` and `vlan_id` values and VLAN group relationships on stored `IpamVLAN` objects. With the updated `vlans` definition, you can link `IpamVLANGroup` objects to objects of any node kind that inherits from `IpamGenericVLAN`, including `IpamQinQVLAN`.
+
+The common attributes and relationship are now defined on `IpamGenericVLAN`. When you update those definitions and load the schema again, Infrahub applies the changes to both inheriting node kinds unless either one has an override. See [Change generics](./change-generics).
+
+**Conflicting definitions.** When you add a generic to `inherit_from`, Infrahub checks the node-level attribute and relationship definitions for conflicts. If a same-named attribute has a different `kind`, or a relationship has a different `peer`, Infrahub rejects the schema update. Resolve the conflicting definitions in YAML before trying again.
+
+## Change branch support
+
+Choose the `branch` setting before you first load a node, generic, attribute, or relationship. Infrahub does not support changing that setting afterward, even when no objects of the affected kind exist; it rejects the proposed schema update. See [Branch awareness](./branch-awareness).
+
+## Remove a generic from a node
+
+Once Infrahub has loaded a node definition with a generic listed in `inherit_from`, you cannot remove that inheritance by deleting the generic from the YAML list. Infrahub rejects the proposed schema update even when no objects of that node kind exist.
+
+## Related documentation
+
+- [Change generics](./change-generics) — Changes to shared definitions and inherited overrides
+- [Rename schema elements](./rename-schema-elements) — Rename schema elements while retaining their data
+- [Remove schema elements](./remove-schema-elements) — Explicit removal with `state: absent`

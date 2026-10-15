@@ -1,0 +1,126 @@
+---
+title: Rename schema elements
+---
+
+As your network data model develops, you may need to rename a node kind, attribute, or relationship while retaining the objects, values, and links already stored in Infrahub. Infrahub normally matches definitions by name when loading schema YAML. To rename an existing definition rather than create another, include its internal `id` with the new name. Infrahub can then identify the existing definition on the target branch and apply the supported rename without recreating its data.
+
+**Dependent automation.** The generated GraphQL API reflects the renamed definitions, but Infrahub does not rewrite GraphQL queries, Transformations, Generators, or checks that refer to their old names. Update and test those references before merging. See [Update a schema](./migration) for the branch-based review process.
+
+## How Infrahub recognizes an existing definition
+
+Infrahub loads schema definitions incrementally. For nodes and Generics it normally matches the `namespace` and `name` that form the Kind; for attributes and relationships it matches `name` within the parent definition. If you only change the name, Infrahub may recognize a new definition rather than a rename of the existing one. The original definition remains loaded because omitting it from the YAML file does not remove it. See [How Infrahub applies a schema file](./operations#how-infrahub-applies-a-schema-file).
+
+Without a matching ID, Infrahub interprets the new name as a separate definition:
+
+- **Attribute:** Infrahub adds an attribute with the new name but no existing values. The original attribute keeps its values.
+- **Node:** Infrahub adds a new node kind, initially without objects. Existing objects remain associated with the original node kind.
+- **Relationship:** Infrahub adds a new relationship definition and retains the original relationship and its links.
+
+## Rename a schema element
+
+1. **Find the existing definition's ID.** In the Infrahub web interface, open **Object Management > Schemas** and select the node kind. For a node rename, copy the value in the node's **ID** row. For an attribute or relationship, select that definition within the node and copy its **ID** instead. If the node inherits the definition from a Generic, find the ID on the Generic. Copy the ID from the **target Infrahub instance**; IDs are not shared between development, staging, and production. See [The ID belongs to one instance](#the-id-belongs-to-one-instance).
+2. **Edit the YAML definition.** Change the `name` and include the existing `id` in that same definition. Retain all other properties you previously configured; Infrahub can reset an omitted property to its default when you load the updated definition.
+
+   For example, to rename the `name` attribute on `InfraRack` to `rack_name`:
+
+   ```yaml
+   nodes:
+     - name: Rack
+       namespace: Infra
+       attributes:
+         - id: 18dc3660-1bc9-da23-36a6-c51fc5edb56e  # the id from your instance
+           name: rack_name                           # was: name
+           kind: Text
+   ```
+
+3. **Check how Infrahub interprets the rename.** Run `infrahubctl schema check <file> --branch <branch>`. When Infrahub matches the ID to the existing attribute, it reports the rename under `changed`, as a change to the `name` property of `rack_name`. With the empty `added: {}` and `removed: {}` entries omitted, the output is:
+
+   ```yaml
+   diff:
+       changed:
+           InfraRack:
+               changed:
+                   attributes:
+                       changed:
+                           rack_name:
+                               changed:
+                                   name: null
+   ```
+
+   If `rack_name` appears under `added`, Infrahub did not match the ID to the original attribute. Confirm the ID on the target instance before loading the schema.
+4. **Load and review the rename.** Load the updated schema on an Infrahub branch. Test the affected GraphQL queries and automation, then open a Proposed Change and review the renamed definitions and validation results before merging.
+5. **Remove the temporary ID from YAML after the rename is merged.** Infrahub can then match the renamed definition by its new name. Because IDs are different across Infrahub instances, do not commit an instance-specific ID as a permanent part of a shared schema file.
+
+## Rename an attribute or relationship
+
+When you rename an attribute using its existing `id`, Infrahub updates the attribute name on the applicable objects and preserves their values. For a relationship, Infrahub stores links under the relationship's `identifier`, rather than its display name. A supported rename using its `id` updates the schema and generated GraphQL field without removing the existing links.
+
+### Update references in schema properties
+
+A node's schema properties can refer to its own attributes and relationships, as well as to attributes on a related node. When you rename a referenced definition, update the references that Infrahub does not rewrite automatically. Infrahub can also reject the schema update when a remaining reference points to the old name.
+
+Infrahub sets some of these properties for you. If your schema does not define a `human_friendly_id`, Infrahub derives one from the first attribute marked `unique: true` and adds it to `uniqueness_constraints`. So a node can have a `human_friendly_id` that references the attribute you are renaming even though you never wrote one. See [Nodes & attributes](./nodes-and-attributes) for how Infrahub derives them.
+
+**Same-node properties (`human_friendly_id`, `uniqueness_constraints`, and `order_by`).** If your YAML file does not specify one of these properties, Infrahub substitutes the new name for the old one in the loaded property. If your YAML explicitly sets the property using the old name, Infrahub rejects the schema update. The deprecated `display_labels` and `default_filter` properties are substituted the same way. For example:
+
+```text
+Unable to load the schema:
+  InfraRack.human_friendly_id: name__value is invalid on schema InfraRack
+```
+
+Edit the property in YAML to refer to the new attribute or relationship name.
+
+**Display labels (`display_label`).** Infrahub does not automatically substitute the new name in `display_label`, including when that property is absent from the YAML file. If the loaded label still references the old name, Infrahub rejects the schema update:
+
+```text
+Unable to load the schema:
+  InfraRack.display_label: name__value is invalid on schema InfraRack
+```
+
+Set `display_label` in the same schema update using the new reference, for example `"{{ rack_name__value }}"`.
+
+**References through relationships.** A property can traverse a relationship to an attribute on its peer. For example, `rack__name__value` on `InfraDevice` refers to the `name` attribute on its related `InfraRack`. If you rename that attribute to `rack_name`, an existing `InfraDevice.human_friendly_id` that still references `rack__name__value` prevents Infrahub from applying the update—even if the file you load does not contain `InfraDevice`:
+
+```text
+Unable to load the schema:
+  InfraDevice.human_friendly_id: name is not a valid attribute of InfraRack
+```
+
+Include the corresponding update to `InfraDevice` in the same schema operation.
+
+The same rules apply to relationship names. For example, `uniqueness_constraints` can reference a relationship named `rack`, while properties such as `human_friendly_id`, `order_by`, and `display_label` can use paths like `rack__name__value`. When a relationship is renamed, Infrahub updates references in omitted `human_friendly_id`, `uniqueness_constraints`, and `order_by` properties, but does not correct explicitly supplied old references or `display_label` references. Update those in YAML before loading.
+
+## Rename an attribute defined on a Generic
+
+An inheriting node kind does not have its own ID for an inherited attribute. Find the attribute's ID on the Generic, then rename that attribute in the Generic's YAML definition. Infrahub applies the new name to node kinds that inherit the attribute and preserves their existing values.
+
+Infrahub also updates references to the old attribute name in `human_friendly_id`, `uniqueness_constraints`, and `order_by` where the properties are not explicitly supplied, but does not update `display_label`. Review those references for each affected node kind. See [Change generics](./change-generics).
+
+## Rename a node or change its namespace
+
+A node's Kind includes its `namespace` and `name`. Changing either property changes the Kind—for example, `InfraFirewall` can become `SecurityFirewall`. Include the existing node's `id` so Infrahub can associate its objects with the renamed Kind while retaining their values and relationships.
+
+Relationships that refer to that node kind must also be updated. If a relationship's `peer` still names the old Kind, Infrahub rejects the schema update:
+
+```text
+Unable to load the schema:
+  InfraDevice: Relationship 'firewall' is referring an invalid peer 'InfraFirewall'
+```
+
+In the same schema update, change the node's `name` or `namespace`, keep its `id`, and update the `peer` of every relationship that names its previous Kind. These definitions may be stored in separate YAML files, but load the changes as one operation so Infrahub can validate the resulting schema.
+
+## The ID belongs to one instance
+
+Infrahub assigns an internal ID when it first loads a schema element. The same node, attribute, or relationship will therefore have a different ID in development, staging, and production instances. If you supply an ID copied from a different instance, Infrahub does not recognize the intended rename there and instead creates a separate definition, just as it does when the ID is missing.
+
+For each target instance, find the existing definition's ID in **Object Management > Schemas**, then use that instance's ID in the YAML you load. This also matters when [Git integration](../git-integration/overview) imports the same schema repository into several Infrahub instances: a single instance-specific ID in the shared repository cannot identify the definition on all of them.
+
+## Recover from an unintended addition
+
+If Infrahub added a second definition because the YAML did not include a matching ID, the original definition and its data are still present. Mark the unintended definition `state: absent`, load the removal, then redo the rename with the original definition's `id`.
+
+## Related documentation
+
+- [Remove schema elements](./remove-schema-elements) — Remove a node, attribute, relationship, or Dropdown choice
+- [Change generics](./change-generics) — Understand inherited definitions and node-level overrides
+- [Schema operations](./operations) — Incremental schema loading and schema definition matching
