@@ -74,7 +74,8 @@ dev/specs/infp-631-resource-telemetry/
 
 ```text
 backend/infrahub/telemetry/
-├── models.py            # extend TelemetryDatabaseSystemInfoData (processor_assigned);
+├── models.py            # extend TelemetryDatabaseSystemInfoData (processor_assigned,
+│                        #   memory_assigned);
 │                        #   add TelemetryContainerData, TelemetryComponentData, and the
 │                        #   server and task_workers fields on TelemetryData
 ├── resources.py         # NEW: read logical cores, CPU affinity + memory (psutil) and the
@@ -87,8 +88,9 @@ backend/infrahub/telemetry/
 │                        #   since adopted by the infrahub-enterprise chart presets as the
 │                        #   Neo4j CPU budget (infrahub-helm#93); it caps the parallel
 │                        #   runtime's workers, not Neo4j's total CPU use;
-│                        #   existing
-│                        #   processor_available/memory_* already cover DB cores + RAM
+│                        #   add memory_assigned, heap max plus page cache (SHOW SETTINGS),
+│                        #   research D20; existing processor_available/memory_* cover
+│                        #   DB cores + RAM
 └── tasks.py             # gather: counts each component's processes into the new server and
                          #   task_workers blocks and fills their processes_per_container and
                          #   per_container through _component_data() from

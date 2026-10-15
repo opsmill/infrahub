@@ -66,8 +66,8 @@ the same way and carry two more fields:
   a task worker, counts 1.
 
 The component's total is `per_container × active ÷ processes_per_container`, and every figure is a
-whole number. The database block gains `processor_assigned` and `memory_assigned`. `payload_format` stays the same until
-the receiving service confirms it accepts the new fields.
+whole number. The database block gains `processor_assigned` and `memory_assigned`.
+`payload_format` stays the same until the receiving service confirms it accepts the new fields.
 
 ## Consequences
 
@@ -111,7 +111,8 @@ the receiving service confirms it accepts the new fields.
   two apart.
 - The database's `memory_assigned` is `null` both when a setting is unset and when the read fails;
   only the logged warning tells them apart. Neo4j returns the settings rounded to two decimals of
-  their unit, so the figure can be a few megabytes off the configured size. The Neo4j Docker image
+  their unit, so each setting can be off its configured size by up to 0.005 of that unit: about
+  5 MiB at GiB scale, about 5 GiB at TiB scale. The Neo4j Docker image
   sets a 512 MiB page cache on its own when none is configured, so under Docker only the heap
   setting decides whether the figure is reported.
 - `psutil` becomes a runtime dependency.

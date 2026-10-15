@@ -52,17 +52,17 @@ DOCKER_HOST=unix://$HOME/.docker/run/docker.sock \
 
 **Expected**:
 
-- `database.system_info`: `processor_available` > 0, `memory_total` > 0, and the new `processor_assigned is None`, since the test Neo4j leaves `server.cypher.parallel.worker_limit` at its default.
+- `database.system_info`: `processor_available` > 0, `memory_total` > 0, the new `processor_assigned is None`, since the test Neo4j leaves `server.cypher.parallel.worker_limit` at its default, and the new `memory_assigned` is 1610612736, the 1 GiB heap plus the 512 MiB page cache the test Neo4j sets.
 - `server.per_container` is the api_server container's figures, undivided, and `server.processes_per_container` is 3, since three processes share it.
 - `task_workers` counts the two git_agent processes (2 total, 2 active) and `server` the three api_server ones (3 total, 3 active). `workers` counts every worker process (6 total, 5 active), including the process known only by its presence key, which neither new block counts.
 - `task_workers.per_container` equals one git_agent container's figures, and `task_workers.processes_per_container` is 1.
-- The gather logs no warning. A failed `worker_limit` read would also leave `processor_assigned` as `None`, so the absence of a warning is what shows the read worked.
+- The gather logs no warning. A failed `worker_limit` read would also leave `processor_assigned` as `None`, and a failed heap and page cache read would leave `memory_assigned` as `None`, so the absence of a warning is what shows both reads worked.
 - No figure is written as a whole-number decimal such as `2.0`: every figure is a whole number and goes out as a JSON integer, which the telemetry endpoint's checksum needs.
-- Force the database `worker_limit` read to fail → only `database.system_info.processor_assigned` is `None`; the snapshot is still produced (FR-006). This holds for that read only, which is guarded on its own; a failure of the JMX read behind the other `system_info` figures aborts the snapshot.
+- Force the database `worker_limit` read to fail → only `database.system_info.processor_assigned` is `None`; force the heap and page cache read to fail → only `database.system_info.memory_assigned` is `None`. Either way the snapshot is still produced (FR-006). This holds for those two reads only, each guarded on its own, which is guarded on its own; a failure of the JMX read behind the other `system_info` figures aborts the snapshot.
 
 ## Scenario 4 — Opt-out still stores locally (FR-006/FR-007)
 
-With `telemetry_optout = true`, run the flow; confirm the locally stored snapshot still carries the new resource fields (`task_workers.per_container`, `server.per_container`, the two `processes_per_container` counts, `system_info.processor_assigned`) and nothing is transmitted. The flow stores the gathered payload unchanged, so no test of its own covers this: the opt-out branch is covered by `TestSendTelemetryPushOptedOut` in `backend/tests/unit/telemetry/test_workflow.py`, and the new fields by Scenario 3.
+With `telemetry_optout = true`, run the flow; confirm the locally stored snapshot still carries the new resource fields (`task_workers.per_container`, `server.per_container`, the two `processes_per_container` counts, `system_info.processor_assigned`, `system_info.memory_assigned`) and nothing is transmitted. The flow stores the gathered payload unchanged, so no test of its own covers this: the opt-out branch is covered by `TestSendTelemetryPushOptedOut` in `backend/tests/unit/telemetry/test_workflow.py`, and the new fields by Scenario 3.
 
 ## Scenario 5 — Backward compatibility (SC-005)
 

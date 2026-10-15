@@ -183,9 +183,9 @@ of the payload is still built, stored, and sent. A source that succeeds with not
 reports `0`. So **`null` means "could not measure", `0` means "measured, nothing there"**.
 
 The new CPU and memory figures for the API server and the task workers, and the database's
-`processor_assigned` and `memory_assigned`, are protected this way. Several older parts are not, among them the list of
-workers and the database block, including its CPU and memory figures: a failure in any of them
-stops the whole report.
+`processor_assigned` and `memory_assigned`, are protected this way. Several older parts are not,
+among them the list of workers and the database block, including its CPU and memory figures: a
+failure in any of them stops the whole report.
 
 One caveat on the check metrics: `checks_started` counts every validator that starts, but
 `checks_passed`/`checks_failed` are only emitted for validators that run through the checks
