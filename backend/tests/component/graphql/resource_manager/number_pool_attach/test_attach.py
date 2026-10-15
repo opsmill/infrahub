@@ -5,12 +5,14 @@ import pytest
 
 from infrahub.core.branch import Branch
 from infrahub.core.branch.data_deleter import BranchDataDeleter
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.agnostic_edges import TEST_ACTOR_ID, attribute_edges, node_metadata
 from tests.helpers.graphql import graphql
+from tests.helpers.number_pool import add_pool_range
 from tests.helpers.schema import TICKET
 
 from .helpers import (
@@ -295,6 +297,29 @@ class TestNumberPoolAttach:
         assert await allocated_rows(db=db, branch=main_branch, pool=pool) == [
             (ticket["id"], "main", case.expected_value, case.expected_provenance)
         ]
+
+    async def test_value_null_with_the_tracking_pool_allocates_from_its_current_ranges(
+        self, db: InfrahubDatabase, main_branch: Branch
+    ) -> None:
+        pool = await new_pool(db=db, name="reallocate", start_range=3100, end_range=3109)
+        ticket = await create_ticket(
+            db=db, branch=main_branch, title="reallocate", ticket_id={"from_pool": {"id": pool.id}}
+        )
+        assert ticket["ticket_id"]["value"] == 3100
+        [first_range] = await NodeManager.query(
+            db=db, schema=InfrahubKind.NUMBERPOOLRANGE, filters={"pool__ids": [pool.get_id()]}
+        )
+        await first_range.delete(db=db)
+        await add_pool_range(db=db, pool=pool, start=3150, end=3159)
+
+        reallocated = await update_ticket(
+            db=db, branch=main_branch, node_id=ticket["id"], ticket_id={"value": None, "from_pool": {"id": pool.id}}
+        )
+
+        assert reallocated["ticket_id"]["value"] == 3150
+        assert await open_is_reserved_edges(db=db, pool=pool) == {(ticket["id"], (3100, 3150))}
+        assert await used_numbers(db=db, branch=main_branch, pool=pool) == [3150]
+        assert await allocated_rows(db=db, branch=main_branch, pool=pool) == [(ticket["id"], "main", 3150, "allocated")]
 
     async def test_naming_the_pool_alone_on_a_hand_set_number_is_refused_and_writes_nothing(
         self, db: InfrahubDatabase, main_branch: Branch

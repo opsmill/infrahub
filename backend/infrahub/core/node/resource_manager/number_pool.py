@@ -37,8 +37,11 @@ class CoreNumberPool(Node):
         at: Timestamp | None = None,
         user_id: str = SYSTEM_USER_ID,
         division: Division | None = None,
+        reuse_reservation: bool = True,
     ) -> int:
         """Return the number reserved for `identifier`, or the next free one, within `division` when one is given.
+
+        Without `reuse_reservation` the reserved number is ignored and the next free one is returned.
 
         Raises:
             ValidationError: When a division is given to a pool that has no allocation scope.
@@ -48,7 +51,7 @@ class CoreNumberPool(Node):
         repository = NumberPoolRepository(db=db)
         picker = NumberPoolNumberPicker(number_reader=repository)
         async with lock.registry.get(name=self._lock_name(division=division), namespace=RESOURCE_POOL_LOCK_NAMESPACE):
-            if attribute_id is not None:
+            if attribute_id is not None and reuse_reservation:
                 reservation = await repository.get_reservation(
                     pool_id=self.get_id(),
                     branch=branch,
