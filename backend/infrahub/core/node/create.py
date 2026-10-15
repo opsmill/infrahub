@@ -15,7 +15,7 @@ from infrahub.core.constants import (
 )
 from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
-from infrahub.core.creation_context import NodeMutationContext
+from infrahub.core.mutation_context import NodeMutationContext
 from infrahub.core.node import Node
 from infrahub.core.node.lock_utils import get_lock_names_on_object_mutation
 from infrahub.core.protocols_base import CoreNode

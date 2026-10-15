@@ -31,9 +31,9 @@ from infrahub.core.constants import (
     RelationshipKind,
 )
 from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX
-from infrahub.core.creation_context import NodeMutationContext
 from infrahub.core.metadata.interface import MetadataInterface
 from infrahub.core.metadata.model import MetadataInfo, MetadataQueryOptions
+from infrahub.core.mutation_context import NodeMutationContext
 from infrahub.core.property import (
     FlagPropertyMixin,
     NodePropertyData,

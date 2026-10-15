@@ -61,7 +61,7 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
     from infrahub.core.branch import Branch
-    from infrahub.core.creation_context import NodeMutationContext
+    from infrahub.core.mutation_context import NodeMutationContext
     from infrahub.core.protocols import CoreObjectTemplate
     from infrahub.core.relationship import Relationship
     from infrahub.core.schema.schema_branch import SchemaBranch

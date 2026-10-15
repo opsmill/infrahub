@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from infrahub.core.creation_context import NodeMutationContext
+from infrahub.core.mutation_context import NodeMutationContext
 from infrahub.pools.allocator import PoolAllocator
 
 if TYPE_CHECKING:
