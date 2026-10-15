@@ -65,8 +65,8 @@ def add_span_exception(exception: Exception) -> None:
 class ExcludeServerPathsSampler(Sampler):
     """Drop server spans for the given request paths and leave every other decision to `delegate`.
 
-    Spans started inside a dropped request are dropped as well when `delegate` is parent-based, which
-    is the SDK default.
+    A span whose parent in this process was not sampled is dropped as well, so no span of a dropped
+    request is recorded, even when `delegate` ignores the parent's decision.
     """
 
     def __init__(self, delegate: Sampler, paths: frozenset[str]) -> None:
@@ -83,6 +83,9 @@ class ExcludeServerPathsSampler(Sampler):
         links: Sequence[Link] | None = None,
         trace_state: TraceState | None = None,
     ) -> SamplingResult:
+        parent = trace.get_current_span(parent_context).get_span_context()
+        if parent.is_valid and not parent.is_remote and not parent.trace_flags.sampled:
+            return SamplingResult(Decision.DROP)
         if kind == SpanKind.SERVER and attributes:
             path = attributes.get("url.path")
             if isinstance(path, str) and path in self._paths:
