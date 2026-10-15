@@ -1,0 +1,34 @@
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_create.py
+  s_19d4ea08b89ab1::t_0fcc6c64c3093d 17,73-74,78-79,105-109,173-177,245-249
+  s_19d4ea08b89ab1::t_e053f8e75773d4 126,153,204,227,272,377,404,424
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_immutable_fields.py
+  s_19d4ea08b89ab1::t_e053f8e75773d4 60,104,153,178,210,260,299,335
+backend/tests/component/pools/test_number_pool_range_reconciler.py
+  s_19d4ea08b89ab1::t_0fcc6c64c3093d 8
+  s_19d4ea08b89ab1::t_e053f8e75773d4 30,58
+backend/infrahub/core/convert_object_type/object_conversion.py
+  s_19d4ea08b89ab1::t_0fcc6c64c3093d 196
+backend/tests/component/conftest.py
+  s_19d4ea08b89ab1::t_e053f8e75773d4 92,1856-1863
+  s_19d4ea08b89ab1::t_0fcc6c64c3093d 1865
+  s_19d4ea08b89ab1::t_6d1ed732c3a0f6 1864
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_update.py
+  s_19d4ea08b89ab1::t_e053f8e75773d4 124,170,198,220,236,252,301,325,361,423,452,500,524,558
+  s_19d4ea08b89ab1::t_0fcc6c64c3093d 145-149,275-279,396-400,474-478
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "de60e9b4bdde7d75750ede76326f9796f7252ba8",
+  "prompts": {},
+  "sessions": {
+    "s_19d4ea08b89ab1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c3965bce-23be-4c63-89e9-5ce1cad16d8c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+backend/tests/component/core/resource_manager/test_number_pool_scope_allocation.py
+  s_90d57abc1cfeb7::t_d8512acd84a736 797,813,815-817
+  s_90d57abc1cfeb7::t_2dda544460ef07 12,18,26-27,29,667-668,682,686-688,696,698-700,702,704-708
+  s_90d57abc1cfeb7::t_511fe7d736d107 669-681,683-685,689-695,697,701,703,712-795,798-812,814,818-853,857
+  s_90d57abc1cfeb7::t_5deb47cf7396d9 709-711,796,854-856
+backend/infrahub/core/node/create.py
+  s_90d57abc1cfeb7::t_c0badcba0b6cae 8,28,247,255-256,275-282,314,332-338,360,380,391,403,429,515
+backend/tests/helpers/number_pool.py
+  s_90d57abc1cfeb7::t_eff0c8f2db7b92 16,312-353,355
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fceefbc48568512cf427a20808678f35f42ee6df",
+  "prompts": {},
+  "sessions": {
+    "s_90d57abc1cfeb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "98b28fc3-cccd-4e87-800f-1b76c5baaacf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
