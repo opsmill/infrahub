@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 from typing import Any, Self
 
-from pydantic import ConfigDict, Field, model_validator
+from pydantic import ConfigDict, Field, SerializerFunctionWrapHandler, model_serializer, model_validator
 
 from infrahub import config
 from infrahub.core.constants.schema import UpdateSupport
@@ -206,8 +206,8 @@ class NumberPoolRangeParameters(HashableModel):
         return self.start <= other.end and other.start <= self.end
 
 
-def _is_unset(value: int | list[NumberPoolRangeParameters] | None) -> bool:
-    return value is None or value == []
+def _is_unset(value: int | None) -> bool:
+    return value is None
 
 
 # Unset range fields stay out of dumps so clients of an older published contract can load a dumped schema.
@@ -233,7 +233,6 @@ class NumberPoolParameters(AttributeParameters):
     ranges: list[NumberPoolRangeParameters] = Field(
         default_factory=list,
         description="Ranges of numbers the associated NumberPool allocates from, they must not overlap",
-        exclude_if=_is_unset,
         json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
     )
     number_pool_id: str | None = Field(
@@ -257,15 +256,28 @@ class NumberPoolParameters(AttributeParameters):
     def has_shorthand(self) -> bool:
         return self.start_range is not None or self.end_range is not None
 
+    @property
+    def declares_zero_ranges(self) -> bool:
+        """Whether the declaration sets an empty range list, as opposed to leaving the ranges unset."""
+        return "ranges" in self.model_fields_set and not self.ranges and not self.has_shorthand
+
+    @model_serializer(mode="wrap")
+    def _serialize(self, handler: SerializerFunctionWrapHandler) -> Any:
+        data = handler(self)
+        # Kept in the dump only when declared, so a dumped and reloaded declaration still removes every range.
+        if isinstance(data, dict) and not self.ranges and not self.declares_zero_ranges:
+            data.pop("ranges", None)
+        return data
+
     def update(self, other: HashableModel) -> Self:
-        # A declaration carrying either spelling replaces the previous ranges wholesale, a field-wise merge would
-        # combine the two spellings or keep a previous bound the new shorthand leaves to its default.
+        # A declaration carrying either spelling, an empty range list included, replaces the previous ranges wholesale:
+        # a field-wise merge would combine the two spellings or keep a previous bound or range the new one leaves out.
         if isinstance(other, NumberPoolParameters):
             if other.has_shorthand:
                 self.start_range = other.start_range
                 self.end_range = other.end_range
                 self.ranges = []
-            elif other.ranges:
+            elif other.ranges or other.declares_zero_ranges:
                 self.start_range = None
                 self.end_range = None
                 self.ranges = list(other.ranges)
