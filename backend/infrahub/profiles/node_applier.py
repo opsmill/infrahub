@@ -219,15 +219,15 @@ class NodeProfilesApplier:
             for node_rel in (node.get_relationship(name=rel_name) for rel_name in rel_names)
             if await self._takes_profile_peers(node_rel=node_rel)
         ]
-        field_values = ProfileFieldValues(attribute_values={}, relationship_peers={})
         if not candidate_attr_names and not candidate_rels:
-            return field_values
+            return ProfileFieldValues(attribute_values={}, relationship_peers={})
         sorted_profile_data = await self.profile_data_reader.read(
             schema=node.get_schema(),
             profile_ids=await self._get_profile_ids(node=node),
             attr_names=candidate_attr_names,
             rel_names=[node_rel.name for node_rel in candidate_rels],
         )
+        attribute_values: dict[str, Any] = {}
         for attr_name in candidate_attr_names:
             profile_value = next(
                 (
@@ -238,7 +238,8 @@ class NodeProfilesApplier:
                 None,
             )
             if profile_value is not None:
-                field_values.attribute_values[attr_name] = profile_value
+                attribute_values[attr_name] = profile_value
+        relationship_peers: dict[str, list[str]] = {}
         for node_rel in candidate_rels:
             profile_peers = next(
                 (
@@ -249,8 +250,8 @@ class NodeProfilesApplier:
                 None,
             )
             if profile_peers is not None:
-                field_values.relationship_peers[node_rel.name] = profile_peers
-        return field_values
+                relationship_peers[node_rel.name] = profile_peers
+        return ProfileFieldValues(attribute_values=attribute_values, relationship_peers=relationship_peers)
 
     async def _takes_profile_peers(self, node_rel: RelationshipManager) -> bool:
         """Whether profiles support the relationship and every peer it holds, if any, was set by a profile."""

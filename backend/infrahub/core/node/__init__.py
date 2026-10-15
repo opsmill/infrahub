@@ -105,6 +105,11 @@ def _build_peer_stub(relationship: Relationship) -> dict[str, Any]:
     return stub
 
 
+def _requests_pool(value: Any) -> bool:
+    """Whether the GraphQL value of an attribute asks for its value to be drawn from a resource pool."""
+    return isinstance(value, dict) and "from_pool" in value
+
+
 class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
     @classmethod
     def __init_subclass_with_meta__(
@@ -498,8 +503,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             mandatory_rel_names=mandatory_rels_to_check,
             # A number pool may read the profiles again to choose the division, so read them once for both.
             read_every_field=any(
-                attr_schema.kind == "NumberPool"
-                or (isinstance(fields.get(attr_schema.name), dict) and "from_pool" in fields[attr_schema.name])
+                attr_schema.kind == "NumberPool" or _requests_pool(fields.get(attr_schema.name))
                 for attr_schema in self._schema.attributes
             ),
         )
@@ -1478,7 +1482,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             if key in self._attributes and isinstance(value, dict):
                 attribute: BaseAttribute = getattr(self, key)
                 changed |= await attribute.from_graphql(data=value)
-                if "from_pool" in value:
+                if _requests_pool(value):
                     pooled_attributes.append(attribute)
 
             if key in self._relationships:
