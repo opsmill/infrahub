@@ -193,7 +193,7 @@ async def convert_object_type(
         schema=target_schema,
     )
 
-    # Update reservations from IP pools
+    # The converted node gets a new id, so its pool reservations must move to that id.
     query = await IPPoolChangeReserved.init(
         db=db,
         existing_identifier=node.get_id(),
@@ -202,7 +202,6 @@ async def convert_object_type(
     )
     await query.execute(db=db)
 
-    # Update reservations from Number pools
     number_pool_query = await NumberPoolChangeReserved.init(
         db=db,
         existing_node_id=node.get_id(),

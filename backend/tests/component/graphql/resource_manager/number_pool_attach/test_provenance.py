@@ -169,23 +169,21 @@ class TestProvenanceAcrossBranches:
         assert await _rows_on(db=db, branch=main_branch, pool=pool, branch_name=branch.name) == [(2400, "allocated")]
         assert await _rows_on(db=db, branch=main_branch, pool=pool, branch_name="main") == [(2400, "allocated")]
 
-    async def test_discarding_a_provided_number_in_favour_of_its_tracking_pool_keeps_the_number(
+    async def test_discarding_a_provided_number_in_favour_of_its_tracking_pool_allocates_a_new_number(
         self, db: InfrahubDatabase, main_branch: Branch
     ) -> None:
-        """The tracking pool returns the number it already holds for the object, so nothing is written and the label stays."""
         pool = await new_pool(db=db, name="discard-held", start_range=2500, end_range=2509)
         ticket = await create_ticket(
             db=db, branch=main_branch, title="discard-held", ticket_id={"value": 2505, "from_pool": {"id": pool.id}}
         )
-        before = await attribute_edges(db=db, node_id=ticket["id"], attribute_name="ticket_id")
 
         changed = await update_ticket(
             db=db, branch=main_branch, node_id=ticket["id"], ticket_id={"value": None, "from_pool": {"id": pool.id}}
         )
 
-        assert changed["ticket_id"]["value"] == 2505
-        assert await attribute_edges(db=db, node_id=ticket["id"], attribute_name="ticket_id") == before
-        assert await allocated_rows(db=db, branch=main_branch, pool=pool) == [(ticket["id"], "main", 2505, "provided")]
+        assert changed["ticket_id"]["value"] == 2500
+        assert await open_is_reserved_edges(db=db, pool=pool) == {(ticket["id"], (2500,))}
+        assert await allocated_rows(db=db, branch=main_branch, pool=pool) == [(ticket["id"], "main", 2500, "allocated")]
 
     async def _allocated_on_main_and_provided_on_a_branch(
         self, db: InfrahubDatabase, main_branch: Branch, name: str, start: int
