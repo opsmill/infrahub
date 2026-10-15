@@ -92,6 +92,14 @@ async def gather_python_transform_attributes(
             python_transform_computed_attribute.populate_branch_commit(
                 repository_data=repositories.get(repository.name.value)
             )
+            if branch_name not in python_transform_computed_attribute.branch_commit:
+                log.warning(
+                    msg=(
+                        f"Skipping computed attribute {transform.name.value}: no commit of repository "
+                        f"{repository.name.value} found on branch {branch_name}, it may have been deleted."
+                    )
+                )
+                continue
             computed_attributes.append(python_transform_computed_attribute)
 
     return computed_attributes
