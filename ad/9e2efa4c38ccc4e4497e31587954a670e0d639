@@ -1,0 +1,23 @@
+backend/infrahub/core/models.py
+  s_25caa80b324d76::t_bddbb7b4b852f3 340-360
+  s_25caa80b324d76::t_8ac0206efc8dba 199-203
+  s_25caa80b324d76::t_ff0b196b39be86 249
+backend/tests/component/pools/test_schema_number_pool_scope.py
+  s_25caa80b324d76::t_849034576fa895 4,9,18-20,250-317
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ad9e2efa4c38ccc4e4497e31587954a670e0d639",
+  "prompts": {},
+  "sessions": {
+    "s_25caa80b324d76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "49548646-b0b9-4e49-bf30-dfa48956b959",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
