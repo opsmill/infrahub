@@ -7,13 +7,13 @@ from typing import TYPE_CHECKING, Self
 if TYPE_CHECKING:
     from infrahub.core.node import Node
 
-_creation_context: contextvars.ContextVar[NodeCreationContext | None] = contextvars.ContextVar(
+_creation_context: contextvars.ContextVar[NodeMutationContext | None] = contextvars.ContextVar(
     "node_creation_context", default=None
 )
 
 
 @dataclass
-class NodeCreationContext:
+class NodeMutationContext:
     """Collects nodes created as side effects during node creation.
 
     Uses Python contextvars for async-safe ambient state. Only active when
@@ -22,13 +22,13 @@ class NodeCreationContext:
     """
 
     side_effect_nodes: list[Node] = field(default_factory=list)
-    _token: contextvars.Token[NodeCreationContext | None] | None = None
+    _token: contextvars.Token[NodeMutationContext | None] | None = None
 
     def record(self, node: Node) -> None:
         self.side_effect_nodes.append(node)
 
     @classmethod
-    def get_current(cls) -> NodeCreationContext | None:
+    def get_current(cls) -> NodeMutationContext | None:
         return _creation_context.get(None)
 
     @classmethod

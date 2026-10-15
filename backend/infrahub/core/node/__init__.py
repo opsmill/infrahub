@@ -61,7 +61,7 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
     from infrahub.core.branch import Branch
-    from infrahub.core.creation_context import NodeCreationContext
+    from infrahub.core.creation_context import NodeMutationContext
     from infrahub.core.protocols import CoreObjectTemplate
     from infrahub.core.relationship import Relationship
     from infrahub.core.schema.schema_branch import SchemaBranch
@@ -170,7 +170,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         self._attributes: list[str] = []
         self._relationships: list[str] = []
         self._node_changelog: NodeChangelog | None = None
-        self._creation_context: NodeCreationContext | None = None
+        self._creation_context: NodeMutationContext | None = None
         self._object_template: CoreObjectTemplate | None = None
 
     def _set_created_at(self, value: Timestamp | None) -> None:
