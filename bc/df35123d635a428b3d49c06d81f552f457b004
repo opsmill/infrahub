@@ -1,0 +1,24 @@
+dev/knowledge/backend/telemetry.md
+  s_b134b1501718e5::t_8209bff6065837 132-135
+dev/specs/infp-631-resource-telemetry/contracts/telemetry-resources.md
+  s_b134b1501718e5::t_8762d4bf11be15 100,103
+  s_b134b1501718e5::t_782c998d72d9e4 104
+dev/adr/0021-resource-allocation-telemetry.md
+  s_b134b1501718e5::t_3cf56fde13d110 93-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bcdf35123d635a428b3d49c06d81f552f457b004",
+  "prompts": {},
+  "sessions": {
+    "s_b134b1501718e5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "94683ba3-7a9a-45ea-9335-07384e00b903",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

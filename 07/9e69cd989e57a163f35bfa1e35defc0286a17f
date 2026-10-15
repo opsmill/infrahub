@@ -1,0 +1,23 @@
+backend/infrahub/graphql/mutations/relationship.py
+  s_f4cdafdd905485::t_9f75080766ad46 52-56
+  s_f4cdafdd905485::t_7a73bf1b93c1dd 429-433
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_ranges_relationship_edits.py
+  s_f4cdafdd905485::t_da01491c95bbd7 1-38,40-84
+  s_f4cdafdd905485::t_40e6ea48f8b013 39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "079e69cd989e57a163f35bfa1e35defc0286a17f",
+  "prompts": {},
+  "sessions": {
+    "s_f4cdafdd905485": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d80b27f2-528a-4331-bd46-39778bf01130",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
