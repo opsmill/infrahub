@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { getDeliveryActions } from "@/entities/repository/domain/rules/get-delivery-actions";
+import { getPushActions } from "@/entities/repository/domain/rules/get-push-actions";
 
-describe("getDeliveryActions", () => {
+describe("getPushActions", () => {
   it("refuses retry and abandon when nothing is pending", () => {
     // GIVEN
     const status = "none";
 
     // WHEN
-    const actions = getDeliveryActions(status);
+    const actions = getPushActions(status);
 
     // THEN
     expect(actions).toEqual({ canRetry: false, canAbandon: false });
@@ -19,7 +19,7 @@ describe("getDeliveryActions", () => {
     const pendingStatus = status;
 
     // WHEN
-    const actions = getDeliveryActions(pendingStatus);
+    const actions = getPushActions(pendingStatus);
 
     // THEN
     expect(actions).toEqual({ canRetry: true, canAbandon: true });

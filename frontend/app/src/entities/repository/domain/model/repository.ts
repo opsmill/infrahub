@@ -90,7 +90,7 @@ export const REPOSITORY_ERROR_IMPORT_FILTER = {
   value: REPOSITORY_SYNC_STATUS_ERROR_VALUE,
 };
 
-export const REPOSITORY_DELIVERY_ATTRIBUTE_NAMES: readonly string[] = [
+export const REPOSITORY_PUSH_STATE_ATTRIBUTE_NAMES: readonly string[] = [
   "delivery_status",
   "delivery_failure_cause",
   "delivery_error",

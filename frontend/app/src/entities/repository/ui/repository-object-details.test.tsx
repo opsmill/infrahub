@@ -21,6 +21,9 @@ import {
 import { RepositoryObjectDetails } from "./repository-object-details";
 
 vi.mock("@/entities/repository/api/get-repository-branch-status-from-api");
+vi.mock("@/entities/repository/ui/repository-push-to-remote-card", () => ({
+  RepositoryPushToRemoteCard: () => <p>Push to remote</p>,
+}));
 
 const apiMock = vi.mocked(getRepositoryBranchStatusFromApi);
 
@@ -331,5 +334,42 @@ describe("RepositoryObjectDetails", () => {
     expect(
       component.getByRole("region", { name: `On this branch ${CURRENT_BRANCH_NAME}` }).elements()
     ).toHaveLength(1);
+  });
+
+  it("shows the push to remote card below the branches card on a repository", async () => {
+    const component = await render(
+      <RepositoryObjectDetails
+        objectSchema={repositorySchema}
+        objectData={objectData}
+        permission={permission}
+      />
+    );
+
+    const branchesCardLocator = component.getByRole("region", { name: "Branches" });
+    const pushSectionLocator = component.getByText("Push to remote");
+    await expect.element(branchesCardLocator).toBeVisible();
+    await expect.element(pushSectionLocator).toBeVisible();
+
+    expect(
+      branchesCardLocator.element().compareDocumentPosition(pushSectionLocator.element())
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it("never shows the push to remote card on a read-only repository", async () => {
+    const readOnlySchema = generateNodeSchema({
+      ...repositorySchema,
+      kind: "CoreReadOnlyRepository",
+    });
+
+    const component = await render(
+      <RepositoryObjectDetails
+        objectSchema={readOnlySchema}
+        objectData={{ ...objectData, __typename: "CoreReadOnlyRepository" }}
+        permission={permission}
+      />
+    );
+
+    await expect.element(component.getByRole("region", { name: "Details" })).toBeVisible();
+    await expect.element(component.getByText("Push to remote")).not.toBeInTheDocument();
   });
 });

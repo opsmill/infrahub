@@ -1,10 +1,10 @@
 import * as z from "zod";
 
-export const DeliveryStatusSchema = z.enum(["none", "pending", "action-required"]);
+export const PushStatusSchema = z.enum(["none", "pending", "action-required"]);
 
-export type DeliveryStatus = z.infer<typeof DeliveryStatusSchema>;
+export type PushStatus = z.infer<typeof PushStatusSchema>;
 
-export const DeliveryFailureCauseSchema = z.enum([
+export const PushFailureCauseSchema = z.enum([
   "remote-unreachable",
   "remote-advanced",
   "record-failed",
@@ -20,7 +20,7 @@ export const DeliveryFailureCauseSchema = z.enum([
   "unclassified",
 ]);
 
-export type DeliveryFailureCause = z.infer<typeof DeliveryFailureCauseSchema>;
+export type PushFailureCause = z.infer<typeof PushFailureCauseSchema>;
 
 const PendingMergeSchema = z.object({
   entry_id: z.string(),
@@ -31,18 +31,18 @@ const PendingMergeSchema = z.object({
 
 export type PendingMerge = z.infer<typeof PendingMergeSchema>;
 
-export const DeliveryQueueSchema = z.object({
+export const PendingMergeQueueSchema = z.object({
   format: z.literal(1),
   entries: z.array(PendingMergeSchema),
 });
 
 /** The push state of a repository, as the default branch holds it. */
-export interface DeliveryState {
-  status: DeliveryStatus;
+export interface RepositoryPushState {
+  status: PushStatus;
   /** The labels and the color come from the backend, so the UI keeps the backend's wording. */
   statusLabel: string;
   statusColor: string | null;
-  cause: DeliveryFailureCause | null;
+  cause: PushFailureCause | null;
   causeLabel: string | null;
   /** The message of the last failed push or import, with credentials removed. */
   error: string | null;

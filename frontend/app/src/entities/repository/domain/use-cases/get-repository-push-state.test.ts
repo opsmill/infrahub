@@ -1,16 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { getDeliveryStateFromApi } from "@/entities/repository/api/get-delivery-state-from-api";
+import { getRepositoryPushStateFromApi } from "@/entities/repository/api/get-repository-push-state-from-api";
 
-import { getDeliveryState } from "./get-delivery-state";
+import { getRepositoryPushState } from "./get-repository-push-state";
 
-vi.mock("@/entities/repository/api/get-delivery-state-from-api");
+vi.mock("@/entities/repository/api/get-repository-push-state-from-api");
 
-type ApiResult = Awaited<ReturnType<typeof getDeliveryStateFromApi>>;
+type ApiResult = Awaited<ReturnType<typeof getRepositoryPushStateFromApi>>;
 type RepositoryNode = NonNullable<ApiResult["data"]["CoreRepository"]["edges"][number]["node"]>;
 
 const mockRepository = (node: RepositoryNode) => {
-  vi.mocked(getDeliveryStateFromApi).mockResolvedValue({
+  vi.mocked(getRepositoryPushStateFromApi).mockResolvedValue({
     data: { CoreRepository: { edges: [{ node }] } },
   });
 };
@@ -24,16 +24,16 @@ const repositoryNode = (overrides: Partial<RepositoryNode> = {}): RepositoryNode
   ...overrides,
 });
 
-describe("getDeliveryState", () => {
+describe("getRepositoryPushState", () => {
   it("reads a repository that never pushed as nothing pending", async () => {
     // GIVEN
     mockRepository(repositoryNode());
 
     // WHEN
-    const state = await getDeliveryState({ repositoryId: "repo-1", branchName: "primary" });
+    const state = await getRepositoryPushState({ repositoryId: "repo-1", branchName: "primary" });
 
     // THEN
-    expect(getDeliveryStateFromApi).toHaveBeenCalledWith({
+    expect(getRepositoryPushStateFromApi).toHaveBeenCalledWith({
       repositoryId: "repo-1",
       branchName: "primary",
     });
@@ -80,7 +80,7 @@ describe("getDeliveryState", () => {
     );
 
     // WHEN
-    const state = await getDeliveryState({ repositoryId: "repo-1", branchName: "primary" });
+    const state = await getRepositoryPushState({ repositoryId: "repo-1", branchName: "primary" });
 
     // THEN
     expect(state).toEqual({
@@ -117,7 +117,7 @@ describe("getDeliveryState", () => {
     );
 
     // WHEN
-    const state = await getDeliveryState({ repositoryId: "repo-1", branchName: "primary" });
+    const state = await getRepositoryPushState({ repositoryId: "repo-1", branchName: "primary" });
 
     // THEN
     expect(state).toMatchObject({
@@ -133,7 +133,7 @@ describe("getDeliveryState", () => {
     mockRepository(repositoryNode({ delivery_queue: { value: { format: 2, entries: [] } } }));
 
     // WHEN
-    const result = getDeliveryState({ repositoryId: "repo-1", branchName: "primary" });
+    const result = getRepositoryPushState({ repositoryId: "repo-1", branchName: "primary" });
 
     // THEN
     await expect(result).rejects.toThrow("Cannot read the pending pushes of this repository.");
