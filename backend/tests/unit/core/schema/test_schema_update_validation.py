@@ -3,6 +3,7 @@ from typing import Any
 
 import pytest
 
+from infrahub.api.schema import SchemaLoadAPI
 from infrahub.core.constants import UpdateValidationErrorType
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.attribute_parameters import (
@@ -185,3 +186,172 @@ async def test_number_pool_allocation_scope_reordered_is_not_a_change(case: Reor
     assert diff.all == []
     assert result.errors == []
     assert result.constraints == []
+
+
+def _widget_with_number_pool(number_attribute: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "version": "1.0",
+        "nodes": [
+            {
+                "name": "Widget",
+                "namespace": "Test",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "number", "kind": "NumberPool", "read_only": True, **number_attribute},
+                ],
+            }
+        ],
+    }
+
+
+@dataclass(frozen=True)
+class ReloadedPoolDeclarationCase:
+    name: str
+    stored_parameters: dict[str, Any]
+    reloaded_attribute: dict[str, Any]
+    """The NumberPool attribute fields of the reloaded schema, besides its name and kind."""
+    expected_declaration: tuple[int | None, int | None, list[tuple[int, int]]]
+    """The stored declaration after the reload, as (start_range, end_range, ranges)."""
+    expected_changed_parameters: list[str]
+    """The NumberPool parameters the reload changes, each one checked against the stored data before the load."""
+
+
+RELOADED_POOL_DECLARATION_CASES = [
+    ReloadedPoolDeclarationCase(
+        name="empty-parameters-keep-the-ranges",
+        stored_parameters={"ranges": [{"start": 1, "end": 100}, {"start": 200, "end": 300}]},
+        reloaded_attribute={"parameters": {}},
+        expected_declaration=(None, None, [(1, 100), (200, 300)]),
+        expected_changed_parameters=[],
+    ),
+    ReloadedPoolDeclarationCase(
+        name="parameters-without-a-range-key-keep-the-ranges",
+        stored_parameters={"ranges": [{"start": 1, "end": 100}, {"start": 200, "end": 300}]},
+        reloaded_attribute={"parameters": {"allocation_scope": ["name"]}},
+        expected_declaration=(None, None, [(1, 100), (200, 300)]),
+        expected_changed_parameters=["allocation_scope"],
+    ),
+    ReloadedPoolDeclarationCase(
+        name="empty-range-list-removes-the-ranges",
+        stored_parameters={"ranges": [{"start": 1, "end": 100}, {"start": 200, "end": 300}]},
+        reloaded_attribute={"parameters": {"ranges": []}},
+        expected_declaration=(None, None, []),
+        expected_changed_parameters=["ranges"],
+    ),
+    ReloadedPoolDeclarationCase(
+        name="empty-parameters-keep-the-shorthand",
+        stored_parameters={"start_range": 50, "end_range": 1200},
+        reloaded_attribute={"parameters": {}},
+        expected_declaration=(50, 1200, []),
+        expected_changed_parameters=[],
+    ),
+    ReloadedPoolDeclarationCase(
+        name="parameters-without-a-range-key-keep-the-shorthand",
+        stored_parameters={"start_range": 50, "end_range": 1200},
+        reloaded_attribute={"parameters": {"allocation_scope": ["name"]}},
+        expected_declaration=(50, 1200, []),
+        expected_changed_parameters=["allocation_scope"],
+    ),
+    ReloadedPoolDeclarationCase(
+        name="empty-range-list-removes-the-shorthand",
+        stored_parameters={"start_range": 50, "end_range": 1200},
+        reloaded_attribute={"parameters": {"ranges": []}},
+        expected_declaration=(None, None, []),
+        expected_changed_parameters=["end_range", "start_range"],
+    ),
+    ReloadedPoolDeclarationCase(
+        name="omitted-parameters-keep-the-ranges",
+        stored_parameters={"ranges": [{"start": 1, "end": 100}, {"start": 200, "end": 300}]},
+        reloaded_attribute={},
+        expected_declaration=(None, None, [(1, 100), (200, 300)]),
+        expected_changed_parameters=[],
+    ),
+    ReloadedPoolDeclarationCase(
+        name="omitted-parameters-keep-the-shorthand",
+        stored_parameters={"start_range": 50, "end_range": 1200},
+        reloaded_attribute={},
+        expected_declaration=(50, 1200, []),
+        expected_changed_parameters=[],
+    ),
+]
+
+
+@dataclass(frozen=True)
+class ReloadOutcome:
+    declaration: tuple[int | None, int | None, list[tuple[int, int]]]
+    """The stored declaration after the reload, as (start_range, end_range, ranges)."""
+    changed_parameters: list[str]
+    """The NumberPool parameters the update validation checks against the stored data, sorted."""
+
+
+def _reload_number_pool_declaration(
+    case: ReloadedPoolDeclarationCase, other_files: list[dict[str, Any]]
+) -> ReloadOutcome:
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**_widget_with_number_pool({"parameters": case.stored_parameters})))
+    schema.process()
+
+    candidate = schema.duplicate()
+    reloaded = SchemaLoadAPI.model_validate(_widget_with_number_pool(case.reloaded_attribute)).internal_schema
+    for other_file in other_files:
+        reloaded = reloaded.merge(schema=SchemaLoadAPI.model_validate(other_file).internal_schema)
+    candidate.load_schema(schema=reloaded)
+    candidate.process()
+
+    result = schema.validate_update(other=candidate, diff=schema.diff(other=candidate))
+    assert result.errors == []
+
+    parameters = candidate.get_node(name="TestWidget", duplicate=False).get_attribute(name="number").parameters
+    assert isinstance(parameters, NumberPoolParameters)
+    return ReloadOutcome(
+        declaration=(
+            parameters.start_range,
+            parameters.end_range,
+            [(pool_range.start, pool_range.end) for pool_range in parameters.ranges],
+        ),
+        changed_parameters=sorted(
+            constraint.constraint_name.removeprefix("attribute.parameters.").removesuffix(".update")
+            for constraint in result.constraints
+        ),
+    )
+
+
+@pytest.mark.parametrize("case", [pytest.param(tc, id=tc.name) for tc in RELOADED_POOL_DECLARATION_CASES])
+async def test_reloaded_number_pool_declaration(case: ReloadedPoolDeclarationCase) -> None:
+    """Only an explicitly empty range list removes the stored ranges, a reload that leaves the ranges out keeps them."""
+    outcome = _reload_number_pool_declaration(case=case, other_files=[])
+
+    assert outcome.declaration == case.expected_declaration
+    assert outcome.changed_parameters == case.expected_changed_parameters
+
+
+UNRELATED_SCHEMA_FILE: dict[str, Any] = {
+    "version": "1.0",
+    "nodes": [{"name": "Gadget", "namespace": "Test", "attributes": [{"name": "name", "kind": "Text"}]}],
+}
+
+MERGED_LOAD_CASES = [
+    ReloadedPoolDeclarationCase(
+        name="empty-range-list-still-removes-the-ranges",
+        stored_parameters={"ranges": [{"start": 1, "end": 100}, {"start": 200, "end": 300}]},
+        reloaded_attribute={"parameters": {"ranges": []}},
+        expected_declaration=(None, None, []),
+        expected_changed_parameters=["ranges"],
+    ),
+    ReloadedPoolDeclarationCase(
+        name="empty-parameters-still-keep-the-ranges",
+        stored_parameters={"ranges": [{"start": 1, "end": 100}, {"start": 200, "end": 300}]},
+        reloaded_attribute={"parameters": {}},
+        expected_declaration=(None, None, [(1, 100), (200, 300)]),
+        expected_changed_parameters=[],
+    ),
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(tc, id=tc.name) for tc in MERGED_LOAD_CASES])
+async def test_reloaded_number_pool_declaration_in_a_load_of_several_files(case: ReloadedPoolDeclarationCase) -> None:
+    """A load of several files merges them through a dump and a parse, which must keep the declared ranges as sent."""
+    outcome = _reload_number_pool_declaration(case=case, other_files=[UNRELATED_SCHEMA_FILE])
+
+    assert outcome.declaration == case.expected_declaration
+    assert outcome.changed_parameters == case.expected_changed_parameters

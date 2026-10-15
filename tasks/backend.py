@@ -977,6 +977,10 @@ class SdkSchemaGenerator:
             self._field("end", "Number", "Last number of the range"),
             self._field("weight", "Number", "Ranges with a higher weight are allocated from first", optional=True),
         ]
+        ranges_description = "Ranges of numbers the associated NumberPool allocates from, they must not overlap"
+        ranges_field = _sdk_extension_field(
+            "ranges", "list[NumberPoolRange__VARIANT__]", "default_factory=list", ranges_description
+        )
         self.number_pool_parameters_fields = [
             self._field(
                 "end_range",
@@ -991,12 +995,7 @@ class SdkSchemaGenerator:
                 "Deprecated, use ranges instead. Start of the single range, defaults to 1 when only end_range is set",
                 optional=True,
             ),
-            _sdk_extension_field(
-                "ranges",
-                "list[NumberPoolRange__VARIANT__]",
-                "default_factory=list",
-                "Ranges of numbers the associated NumberPool allocates from, they must not overlap",
-            ),
+            ranges_field,
             self._field(
                 "number_pool_id",
                 "Text",
@@ -1012,6 +1011,13 @@ class SdkSchemaGenerator:
                 optional=True,
                 internal_kind=list[str],
             ),
+        ]
+        # A submitted schema that leaves the ranges out must not read as one that declares zero ranges.
+        write_ranges_field = _sdk_extension_field(
+            "ranges", "list[NumberPoolRange__VARIANT__] | None", "default=None", ranges_description
+        )
+        self.number_pool_parameters_write_fields = [
+            write_ranges_field if field is ranges_field else field for field in self.number_pool_parameters_fields
         ]
 
         self.computed_kind_description = "Defines how the value of the attribute is computed."
@@ -1223,7 +1229,9 @@ class SdkSchemaGenerator:
             {
                 "class_name": f"NumberPoolParameters{suffix}",
                 "parent": base,
-                "attributes": self.number_pool_parameters_fields,
+                "attributes": self.number_pool_parameters_write_fields
+                if suffix == "Write"
+                else self.number_pool_parameters_fields,
             },
             {
                 "class_name": f"DropdownChoice{suffix}",

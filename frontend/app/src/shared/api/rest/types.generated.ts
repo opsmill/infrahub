@@ -2717,7 +2717,7 @@ export interface components {
              * Ranges
              * @description Ranges of numbers the associated NumberPool allocates from, they must not overlap
              */
-            ranges?: components["schemas"]["NumberPoolRangeWrite"][];
+            ranges?: components["schemas"]["NumberPoolRangeWrite"][] | null;
             /**
              * Number Pool Id
              * @description The ID of the numberpool associated with this attribute. Only set after the number pool has been provisioned.
