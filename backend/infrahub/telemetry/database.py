@@ -88,8 +88,6 @@ async def get_system_info(db: InfrahubDatabase) -> TelemetryDatabaseSystemInfoDa
         memory_total=results[0]["memory_total"]["value"],
         memory_available=results[0]["memory_available"]["value"],
         processor_available=results[0]["processor_available"]["value"],
-        # Wrapped independently so this read degrades to None on its own rather
-        # than failing the whole system-info block.
         processor_assigned=await safe_metric(get_processor_assigned(db=db)),
     )
 

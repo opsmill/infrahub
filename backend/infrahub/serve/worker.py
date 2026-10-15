@@ -42,6 +42,5 @@ class InfrahubUvicorn(UvicornWorker):
                 file_path.unlink()
 
     def init_process(self) -> None:
-        # Runs in each forked worker before the app loads, so the app knows how many processes share its container.
         os.environ[PROCESSES_PER_CONTAINER_ENV] = str(self.cfg.workers)
         super().init_process()

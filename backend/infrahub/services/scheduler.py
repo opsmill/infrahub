@@ -55,7 +55,7 @@ class InfrahubScheduler:
                     name="branch_refresh", interval=900, function=trigger_branch_refresh, start_delay=random_number
                 )
             )
-            # The snapshot is daily, so every 5 minutes still catches a live limit change; startup already published one.
+            # Startup already stored a reading.
             self.schedules.append(
                 Schedule(name="resource_refresh", interval=300, function=trigger_resource_refresh, start_delay=300)
             )

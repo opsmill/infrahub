@@ -264,8 +264,7 @@ class WorkerInfo:
         self.id = identity
         self.active = False
         self._schema_hash: str | None = None
-        # None only after an exited process's keys that name its component have expired and just its
-        # general presence key is left, normally for at most about 5 minutes.
+        # None when only an exited process's presence key is left.
         self.component: str | None = None
 
     @property
