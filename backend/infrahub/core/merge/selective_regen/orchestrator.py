@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol
 
+from infrahub.core import registry
+from infrahub.core.regeneration.profiles import SchemaProfileExpander
 from infrahub.proposed_change.branch_diff import get_modified_kinds
 
 from .definition_selector.artifact_selector import ArtifactSelector
@@ -17,6 +19,7 @@ if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
     from infrahub_sdk.diff import NodeDiff
 
+    from infrahub.core.regeneration.profiles import ModifiedKindsExpander
     from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
     from infrahub.git.models import RequestArtifactDefinitionGenerate
     from infrahub.message_bus.types import ProposedChangeArtifactDefinition
@@ -46,12 +49,17 @@ class MergeSelectiveRegeneration:
         self,
         generator_selector: DefinitionSelectorBase[ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun],
         artifact_selector: DefinitionSelectorBase[ProposedChangeArtifactDefinition, RequestArtifactDefinitionGenerate],
+        kinds_expander: ModifiedKindsExpander,
     ) -> None:
         self.generator_selector = generator_selector
         self.artifact_selector = artifact_selector
+        self.kinds_expander = kinds_expander
 
     async def build_plan(self, diff_summary: list[NodeDiff], target_branch: str) -> SelectiveRegenerationPlan:
-        modified_kinds = get_modified_kinds(diff_summary=diff_summary, branch=target_branch)
+        modified_kinds = self.kinds_expander.expand(
+            modified_kinds=get_modified_kinds(diff_summary=diff_summary, branch=target_branch),
+            branch=target_branch,
+        )
         generator_definitions = await self.generator_selector.load_definitions(target_branch=target_branch)
         artifact_definitions = await self.artifact_selector.load_definitions(target_branch=target_branch)
 
@@ -85,7 +93,10 @@ class MergeSelectiveRegeneration:
         Runs the artifact half of the selection in isolation, so a diff of an after-merge generator's
         own writes reprocesses the artifacts that read them without re-selecting the generators.
         """
-        modified_kinds = get_modified_kinds(diff_summary=diff_summary, branch=target_branch)
+        modified_kinds = self.kinds_expander.expand(
+            modified_kinds=get_modified_kinds(diff_summary=diff_summary, branch=target_branch),
+            branch=target_branch,
+        )
         artifact_definitions = await self.artifact_selector.load_definitions(target_branch=target_branch)
         forced_repositories = repositories_forcing_full_regeneration(
             definitions=[loaded.definition for loaded in artifact_definitions]
@@ -110,4 +121,5 @@ def build_merge_selective_regeneration(
     return MergeSelectiveRegeneration(
         generator_selector=GeneratorSelector(client=client, gate=gate, impacted_resolver=impacted_resolver, log=log),
         artifact_selector=ArtifactSelector(client=client, gate=gate, impacted_resolver=impacted_resolver, log=log),
+        kinds_expander=SchemaProfileExpander(schema_manager=registry.schema),
     )
