@@ -6,6 +6,8 @@ import {
   type FieldSet,
   partitionFieldsByBranchSupport,
 } from "@/entities/repository/domain/rules/partition-fields-by-branch-support";
+import { useRefreshAfterRepositoryRun } from "@/entities/repository/ui/hooks/use-refresh-after-repository-run";
+import { RepositoryActivityCard } from "@/entities/repository/ui/repository-activity-card/repository-activity-card";
 import { RepositoryBranchesCard } from "@/entities/repository/ui/repository-branches-card/repository-branches-card";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
@@ -26,6 +28,8 @@ export function RepositoryObjectDetails({
 }: RepositoryObjectDetailsProps) {
   const { currentBranch } = useCurrentBranch();
   const { repositoryWide, branchScoped } = partitionFieldsByBranchSupport(objectSchema);
+  // This page shows the cards a finished run changes, so it is the one that refreshes them.
+  useRefreshAfterRepositoryRun({ repositoryId: objectData.id });
 
   return (
     <>
@@ -46,6 +50,8 @@ export function RepositoryObjectDetails({
           permission={permission}
         />
       )}
+
+      <RepositoryActivityCard repositoryId={objectData.id} />
 
       <RepositoryBranchesCard repositoryId={objectData.id} schema={objectSchema} />
     </>

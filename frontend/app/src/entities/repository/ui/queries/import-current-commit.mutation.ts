@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import type { BranchContextParams, MutationConfig } from "@/shared/api/types";
 
@@ -7,6 +7,7 @@ import {
   type ImportCurrentCommitParams,
   importCurrentCommit,
 } from "@/entities/repository/domain/use-cases/import-current-commit";
+import { repositoriesQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 
 interface ImportCurrentCommitProps extends MutationConfig<typeof importCurrentCommit> {}
 
@@ -19,6 +20,7 @@ export function useImportCurrentCommitMutation(
   config?: Omit<ImportCurrentCommitProps, "mutationFn">
 ) {
   const { currentBranch } = useCurrentBranch();
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationKey: IMPORT_CURRENT_COMMIT_MUTATION_KEY,
@@ -26,5 +28,12 @@ export function useImportCurrentCommitMutation(
       return importCurrentCommit({ branchName: currentBranch.name, ...params });
     },
     ...config,
+    // The card shows the started run at once instead of at its next idle check.
+    onSuccess: (...args) => {
+      queryClient.invalidateQueries({
+        queryKey: repositoriesQueryKeys.activity({ repositoryId: args[1].repositoryId }),
+      });
+      return config?.onSuccess?.(...args);
+    },
   });
 }
