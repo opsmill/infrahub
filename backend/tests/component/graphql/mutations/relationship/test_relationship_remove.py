@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 from infrahub.core import registry
-from infrahub.core.constants import RelationshipCardinality, RelationshipKind
+from infrahub.core.constants import RelationshipCardinality, RelationshipDirection, RelationshipKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema, SchemaRoot
@@ -326,7 +326,7 @@ async def hierarchy_schemas(
     return registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
 
-async def test_relationship_remove_refuses_a_child_left_without_its_mandatory_parent(
+async def test_relationship_remove_refuses_a_hierarchy_child_whose_parent_is_mandatory(
     db: InfrahubDatabase, default_branch: Branch, hierarchy_schemas: SchemaBranch
 ) -> None:
     country = await _create(db=db, branch=default_branch, schema=hierarchy_schemas, kind="TestCountry", name="fr")
@@ -356,3 +356,178 @@ async def test_relationship_remove_refuses_a_child_left_without_its_mandatory_pa
     )
     refreshed_site = await NodeManager.get_one(db=db, id=site.id, branch=default_branch)
     assert await refreshed_site.get_relationship("parent").get_peer_id(db=db) == country.id
+
+
+async def _remove(db: InfrahubDatabase, branch: Branch, source_id: str, name: str, peer_id: str) -> Any:
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
+    return await graphql(
+        schema=gql_params.schema,
+        source=REMOVE_QUERY,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"id": source_id, "name": name, "node_id": peer_id},
+    )
+
+
+@pytest.fixture
+async def optional_parent_hierarchy_schemas(
+    db: InfrahubDatabase, default_branch: Branch, node_group_schema: None, data_schema: None
+) -> SchemaBranch:
+    schema = SchemaRoot(
+        version="1.0",
+        generics=[
+            GenericSchema(
+                name="Zone",
+                namespace="Test",
+                hierarchical=True,
+                attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+            )
+        ],
+        nodes=[
+            NodeSchema(
+                name="Region", namespace="Test", inherit_from=["TestZone"], parent="TestZone", children="TestZone"
+            )
+        ],
+    )
+    return registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+
+async def test_relationship_remove_accepts_a_hierarchy_child_whose_parent_is_optional(
+    db: InfrahubDatabase, default_branch: Branch, optional_parent_hierarchy_schemas: SchemaBranch
+) -> None:
+    europe = await _create(
+        db=db, branch=default_branch, schema=optional_parent_hierarchy_schemas, kind="TestRegion", name="europe"
+    )
+    west = await _create(
+        db=db,
+        branch=default_branch,
+        schema=optional_parent_hierarchy_schemas,
+        kind="TestRegion",
+        name="west",
+        parent=europe,
+    )
+    region_schema = optional_parent_hierarchy_schemas.get_node(name="TestRegion")
+    assert region_schema.get_relationship(name="parent").optional is True
+    assert region_schema.get_relationship(name="children").optional is True
+
+    result = await _remove(db=db, branch=default_branch, source_id=europe.id, name="children", peer_id=west.id)
+
+    assert result.errors is None
+    refreshed_west = await NodeManager.get_one(db=db, id=west.id, branch=default_branch)
+    assert await refreshed_west.get_relationship("parent").get_peer_id(db=db) is None
+
+
+@pytest.fixture
+async def directed_schemas(
+    db: InfrahubDatabase, default_branch: Branch, node_group_schema: None, data_schema: None
+) -> SchemaBranch:
+    schema = SchemaRoot(
+        version="1.0",
+        generics=[
+            GenericSchema(
+                name="Staff",
+                namespace="Test",
+                relationships=[
+                    RelationshipSchema(
+                        name="reports",
+                        peer="TestEmployee",
+                        identifier="staff__manager",
+                        direction=RelationshipDirection.INBOUND,
+                        cardinality=RelationshipCardinality.MANY,
+                        optional=True,
+                    )
+                ],
+            )
+        ],
+        nodes=[
+            NodeSchema(
+                name="Director",
+                namespace="Test",
+                inherit_from=["TestStaff"],
+                attributes=[AttributeSchema(name="name", kind="Text", optional=False)],
+            ),
+            NodeSchema(
+                name="Employee",
+                namespace="Test",
+                inherit_from=["TestStaff"],
+                attributes=[AttributeSchema(name="name", kind="Text", optional=False)],
+                relationships=[
+                    RelationshipSchema(
+                        name="manager",
+                        peer="TestStaff",
+                        identifier="staff__manager",
+                        direction=RelationshipDirection.OUTBOUND,
+                        cardinality=RelationshipCardinality.ONE,
+                        optional=False,
+                    )
+                ],
+            ),
+            _named_node(
+                name="Owner",
+                relationships=[
+                    RelationshipSchema(
+                        name="items",
+                        peer="TestAsset",
+                        identifier="owner__asset",
+                        direction=RelationshipDirection.OUTBOUND,
+                        cardinality=RelationshipCardinality.MANY,
+                        optional=True,
+                    )
+                ],
+            ),
+            _named_node(
+                name="Asset",
+                relationships=[
+                    RelationshipSchema(
+                        name="owner",
+                        peer="TestOwner",
+                        identifier="owner__asset",
+                        direction=RelationshipDirection.INBOUND,
+                        cardinality=RelationshipCardinality.ONE,
+                        optional=False,
+                    )
+                ],
+            ),
+        ],
+    )
+    return registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+
+async def test_relationship_remove_refuses_a_peer_declaring_both_directions_whose_mirrored_side_is_mandatory(
+    db: InfrahubDatabase, default_branch: Branch, directed_schemas: SchemaBranch
+) -> None:
+    director = await _create(db=db, branch=default_branch, schema=directed_schemas, kind="TestDirector", name="boss")
+    employee = await _create(
+        db=db, branch=default_branch, schema=directed_schemas, kind="TestEmployee", name="employee", manager=director
+    )
+    employee_schema = directed_schemas.get_node(name="TestEmployee")
+    assert employee_schema.get_relationship(name="manager").identifier == "staff__manager"
+    assert employee_schema.get_relationship(name="reports").identifier == "staff__manager"
+
+    result = await _remove(db=db, branch=default_branch, source_id=director.id, name="reports", peer_id=employee.id)
+
+    assert result.errors
+    assert result.errors[0].message == (
+        f"'{employee.id}' 'TestEmployee' can't be removed from 'reports': its mandatory relationship 'manager' would be left empty"
+    )
+    refreshed_employee = await NodeManager.get_one(db=db, id=employee.id, branch=default_branch)
+    assert await refreshed_employee.get_relationship("manager").get_peer_id(db=db) == director.id
+
+
+async def test_relationship_remove_refuses_a_peer_whose_mirrored_inbound_side_is_mandatory(
+    db: InfrahubDatabase, default_branch: Branch, directed_schemas: SchemaBranch
+) -> None:
+    owner = await _create(db=db, branch=default_branch, schema=directed_schemas, kind="TestOwner", name="owner-1")
+    asset = await _create(
+        db=db, branch=default_branch, schema=directed_schemas, kind="TestAsset", name="asset-1", owner=owner
+    )
+
+    result = await _remove(db=db, branch=default_branch, source_id=owner.id, name="items", peer_id=asset.id)
+
+    assert result.errors
+    assert result.errors[0].message == (
+        f"'{asset.id}' 'TestAsset' can't be removed from 'items': its mandatory relationship 'owner' would be left empty"
+    )
+    refreshed_asset = await NodeManager.get_one(db=db, id=asset.id, branch=default_branch)
+    assert await refreshed_asset.get_relationship("owner").get_peer_id(db=db) == owner.id
