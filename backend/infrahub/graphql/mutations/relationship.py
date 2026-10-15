@@ -279,6 +279,7 @@ class RelationshipRemove(Mutation):
 
         existing_peers = await _collect_current_peers(info=info, data=data, source_node=source)
         _validate_optional_remove(data=data, rel_schema=rel_schema, existing_peers=existing_peers)
+        _validate_peer_mandatory_remove(data=data, rel_schema=rel_schema, peers=nodes, existing_peers=existing_peers)
         group_event_type = _get_group_event_type(
             node=source, relationship_schema=rel_schema, relationship_name=relationship_name
         )
@@ -572,6 +573,36 @@ def _validate_optional_remove(
     remaining = set(existing_peers.keys()) - peers_to_remove
     if not remaining:
         raise ValidationError({"name": f"'{rel_schema.name}' is a mandatory relationship and cannot be fully removed"})
+
+
+def _validate_peer_mandatory_remove(
+    data: RelationshipNodesInput,
+    rel_schema: RelationshipSchema,
+    peers: dict[str, Node],
+    existing_peers: dict[str, RelationshipPeerData],
+) -> None:
+    """Refuse removing a peer whose own side of the relationship is mandatory with cardinality one.
+
+    Raises:
+        ValidationError: For the first peer that would be left without its mandatory peer.
+
+    """
+    if not rel_schema.identifier:
+        return
+    for node_data in data.get("nodes"):
+        peer_id = node_data.get("id")
+        if peer_id not in existing_peers or peer_id not in peers:
+            continue
+        peer = peers[peer_id]
+        peer_relationships = [rel for rel in peer.get_schema().relationships if rel.identifier == rel_schema.identifier]
+        if len(peer_relationships) != 1:
+            continue
+        peer_relationship = peer_relationships[0]
+        if peer_relationship.cardinality == RelationshipCardinality.ONE and peer_relationship.optional is False:
+            raise ValidationError(
+                f"{peer_id!r} {peer.get_kind()!r} can't be removed from '{rel_schema.name}':"
+                f" its mandatory relationship '{peer_relationship.name}' would be left empty"
+            )
 
 
 def _get_group_event_type(
