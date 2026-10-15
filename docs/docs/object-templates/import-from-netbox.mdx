@@ -29,7 +29,7 @@ Infrahub stores a NetBox device type as several objects rather than one, so each
 | `interfaces` and other component lists | `TemplateDcimDevice` with component templates | The reusable definition you create devices from |
 | Module types (line cards, power supplies, transceivers) | `DcimModuleType` object | A second input family, converted in the same run with the module mapping file |
 
-Anything the mapping file cannot place is listed in a coverage report rather than dropped. Your assistant explains each gap and offers the schema change that would close it, but does not change your schema itself.
+Unmapped data is omitted from the generated YAML and listed in a coverage report. Your assistant explains each gap and proposes a mapping or schema change, but does not change your schema itself.
 
 ### Choose between this and Infrahub Sync
 
@@ -40,13 +40,21 @@ Anything the mapping file cannot place is listed in a coverage report rather tha
 
 ## Import device types
 
-The steps below show the commands your assistant runs, so you can also run them yourself. `$SKILL` stands for the directory your installer put the skill in. Your assistant names each script by its full path and runs it from your own working directory, so the export, the cloned library, the generated files, and any mapping file you write stay with you. Keep them out of the skill directory: reinstalling or updating the skill can replace that directory, and anything inside it is lost.
+The commands below can be run by your assistant or manually. Run them from your project directory. Set `SKILL` to the installed skill directory:
+
+```bash
+SKILL="$PWD/.agents/skills/infrahub-converting-netbox-device-types"
+```
+
+This uses the project-local `.agents/skills/` installation. If your installer used another directory, use the path shown by `npx skills list`.
+
+Note: Keep exports, generated files, and custom mapping files outside the skill directory. Updating or reinstalling the skill can replace that directory.
 
 ### 1. Check that your schema generates templates
 
 Template kinds such as `TemplateDcimDevice` exist only for nodes that declare `generate_template: true`. When the flag is missing, the conversion produces files that have nothing to load into.
 
-The `infrahub/dcim` schema on the [Infrahub Marketplace](../schema/marketplace/index.mdx) already sets it on `DcimDevice`, and the default mapping file targets that schema together with `infrahub/organization`. To convert module types and module bays as well, use the [schema-library `main` branch](https://github.com/opsmill/schema-library/tree/main) with its `device_module` and `module_port` extensions loaded. To also keep each module's ports, set `generate_template: true` on `DcimModule`, which schema-library does not set; see [Module ports](#module-ports) below.
+The `infrahub/dcim` schema on the [Infrahub Marketplace](../schema/marketplace/index.mdx) already sets it on `DcimDevice`. The default mapping file targets that schema together with `infrahub/organization`. For module types, check the additional [module schema requirements](#module-types-and-ports) before continuing.
 
 For a custom schema, your assistant checks the schema files, shows you the one-line change if the flag is missing, and waits for you to apply it. See [Enable template support within the schema](./use.mdx#enable-template-support-within-the-schema) for what the flag generates.
 
@@ -58,8 +66,11 @@ For a custom schema, your assistant checks the schema files, shows you the one-l
 Export the device types you run from your own instance. The exporter reads the API token from `NETBOX_TOKEN` by default:
 
 ```bash
-export NETBOX_TOKEN=<your NetBox API token>
+read -r -s NETBOX_TOKEN
+export NETBOX_TOKEN
 ```
+
+Enter your token when the command waits for input, then press Enter. It is hidden while you type.
 
 ```text title="Example prompt"
 Export the device types we use from https://netbox.example.com, including module types, and convert them into Infrahub object templates.
@@ -68,8 +79,6 @@ Export the device types we use from https://netbox.example.com, including module
 Your assistant runs the exporter:
 
 ```bash
-SKILL=/path/to/infrahub-converting-netbox-device-types
-
 python "$SKILL/scripts/netbox_export_device_types.py" \
   --url https://netbox.example.com \
   --in-use \
@@ -93,16 +102,7 @@ Not carried into the library format:
   - AP7901: power-ports: 1 of 1 unset 'type', which the library schema requires
 ```
 
-The list names:
-
-- Populated fields NetBox holds that the file format has no field for, such as a device type's `default_platform` or `tags`, or a custom module-type profile.
-- Fields the file format requires that NetBox left empty. The file is still written.
-- Component endpoints your NetBox version does not have. That list is skipped and the rest of the export continues.
-- Records whose file names collided. The second is written with a numeric suffix.
-- NetBox versions older than 4.5, which store front-port mappings differently.
-- Files that an earlier, wider export left in `device-types/` or `module-types/`. These are removed and counted, so the converter reads only this export.
-
-A failed run leaves the output directory unchanged.
+Read these notes before converting. They identify data the file format cannot represent and fields it requires that NetBox left empty. The [export report reference](https://github.com/opsmill/infrahub-skills/blob/main/skills/infrahub-converting-netbox-device-types/reference.md#what-it-reports) explains every category of note, including unavailable endpoints and files removed from earlier exports. A failed run leaves the output directory unchanged.
 
   </TabItem>
   <TabItem value="library" label="From the published library">
@@ -110,7 +110,7 @@ A failed run leaves the output directory unchanged.
 Seed Infrahub with vendor models from [netbox-community/devicetype-library](https://github.com/netbox-community/devicetype-library). You can browse it first at the [NetBox Data Exchange](https://netboxlabs.com/ndx/).
 
 ```text title="Example prompt"
-Convert the Juniper device types from the NetBox devicetype-library into Infrahub object templates.
+Convert the Cisco Catalyst 9300-48P definition from the NetBox devicetype-library into an Infrahub object template.
 ```
 
 Your assistant clones only the definitions. A full clone is about 1.6 GB, almost all of it rack elevation images the converter does not read; the definitions alone, more than 11,500 device types and 2,000 module types, are about 60 MB:
@@ -129,9 +129,17 @@ git -C devicetype-library sparse-checkout set device-types module-types
 Your assistant picks the mapping file that matches your schema. The skill includes four:
 
 - `schema-library.yml` converts device types with their interfaces.
-- `schema-library-modules.yml` also converts module bays and module types, and needs the schema-library `main` schema from step 1.
-- `schema-library-module-ports.yml` also gives each module type a module template that holds its ports. See [Module ports](#module-ports).
+- `schema-library-modules.yml` also converts module bays and module types. See [Module types and ports](#module-types-and-ports) for its schema requirements.
+- `schema-library-module-ports.yml` also gives each module type a module template that holds its ports. See [Module types and ports](#module-types-and-ports).
 - `_template.yml` is an annotated starting point for a custom schema. Your assistant copies it into your working directory, for example as `./mappings/my-schema.yml`, and fills it in from your schema files. The converter refuses `_template.yml` until every placeholder kind is replaced.
+
+Create a fresh output directory before each conversion:
+
+```bash
+OUTPUT_DIR=$(mktemp -d ./generated.XXXXXX)
+```
+
+Use the same `OUTPUT_DIR` for the conversion, report, and load steps. The converter does not remove old output files when a later run produces fewer kinds, so reusing a directory can load stale objects.
 
 <Tabs groupId="netbox-source" queryString>
   <TabItem value="netbox" label="From your NetBox" default>
@@ -140,8 +148,8 @@ Your assistant picks the mapping file that matches your schema. The skill includ
 python "$SKILL/scripts/netbox_to_infrahub_templates.py" \
   ./netbox-export/ \
   --mapping "$SKILL/scripts/mappings/schema-library-modules.yml" \
-  --output-dir ./generated \
-  --report ./generated/coverage-report.md
+  --output-dir "$OUTPUT_DIR" \
+  --report "$OUTPUT_DIR/coverage-report.md"
 ```
 
   </TabItem>
@@ -149,27 +157,27 @@ python "$SKILL/scripts/netbox_to_infrahub_templates.py" \
 
 ```bash
 python "$SKILL/scripts/netbox_to_infrahub_templates.py" \
-  devicetype-library/device-types/Juniper/ \
+  devicetype-library/device-types/Cisco/C9300-48P.yaml \
   --mapping "$SKILL/scripts/mappings/schema-library.yml" \
-  --output-dir ./generated \
-  --report ./generated/coverage-report.md
+  --output-dir "$OUTPUT_DIR" \
+  --report "$OUTPUT_DIR/coverage-report.md"
 ```
 
   </TabItem>
 </Tabs>
 
-Pointed at the export directory, the converter reads `device-types/` and `module-types/` together, which is why that tab uses the mapping file that maps both. It writes one file per kind, numbered in dependency order. Files with no content are not written:
+The NetBox command reads `device-types/` and `module-types/` together. The library command converts the Cisco model used in the examples below. Each command writes one file per kind into `OUTPUT_DIR`, numbered in dependency order. A mixed export can produce these files; kinds with no objects are omitted:
 
 ```text
-generated/01_manufacturers.yml     OrganizationManufacturer   rows=7
-generated/02_device_types.yml      DcimDeviceType             rows=18
-generated/03_device_templates.yml  TemplateDcimDevice         rows=18
-generated/04_module_types.yml      DcimModuleType             rows=1
+01_manufacturers.yml     OrganizationManufacturer
+02_device_types.yml      DcimDeviceType
+03_device_templates.yml  TemplateDcimDevice
+04_module_types.yml      DcimModuleType
 ```
 
-Each device template includes its interfaces as component templates, named after the template so that names stay unique across vendors:
+Interface component templates include the parent template's name so that names stay unique across vendors. This single-interface example shows the object YAML structure:
 
-```yaml title="generated/03_device_templates.yml"
+```yaml title="03_device_templates.yml"
 ---
 apiVersion: infrahub.app/v1
 kind: Object
@@ -187,14 +195,15 @@ spec:
         status: active
 ```
 
+The converter includes every mapped interface in the generated template.
+
 ### 4. Review the coverage report
 
 The coverage report lists, per device type, what the mapping file had nowhere to put:
 
-```markdown title="generated/coverage-report.md"
+```markdown title="coverage-report.md"
 ### `cisco-c9300-48p`
 
-- Skipped `console-ports` (1 entry) — not mapped by the profile
 - Dropped from `device_type`: `airflow`
 - Dropped from `interfaces`: `poe_mode`, `poe_type`, `type`
 ```
@@ -212,17 +221,20 @@ Against the default `schema-library.yml` mapping file, most NetBox component lis
 Load the files in order, onto a branch rather than the default branch:
 
 ```bash
-infrahubctl branch create netbox-import
-for file in generated/0*.yml; do
-  infrahubctl object load "$file" --branch netbox-import
-done
+(
+  set -e
+  infrahubctl branch create netbox-import
+  for file in "$OUTPUT_DIR"/0*.yml; do
+    infrahubctl object load "$file" --branch netbox-import
+  done
+)
 ```
 
-Each file references objects from the ones before it, so manufacturers load first, then device types, then templates.
+The subshell stops at the first failure, including a failed branch creation. Each file references objects from the ones before it, so manufacturers load first, then device types, then templates. If loading fails, discard the partial branch as described under [What to watch for](#what-to-watch-for).
 
 ### 6. Create a device and open a Proposed Change
 
-Create a device from one of the new templates to check the result. In the web interface, select the template when you add a device, as described in [Use object templates](./use.mdx#create-object-instances-using-the-predefined-template). In an object file, reference the template by its `template_name`:
+Create a device on `netbox-import` from one of the new templates to check the result. In the web interface, select the template when you add a device, as described in [Use object templates](./use.mdx#create-object-instances-using-the-predefined-template). In an object file, reference the template by its `template_name`:
 
 ```yaml
 ---
@@ -237,9 +249,9 @@ spec:
       serial_number: FCW2140L0GH
 ```
 
-`location` is mandatory on `DcimDevice` in the `infrahub/dcim` schema, and must reference a location that already exists in your instance.
+This uses the Cisco template produced by the library example. If you exported from your own NetBox, choose a template from that export instead. `location` is mandatory on `DcimDevice` in the `infrahub/dcim` schema, and must reference a location that already exists on the branch.
 
-The device is created with the 48 interfaces from its template. When the templates look right, open a Proposed Change to merge the branch. See [Proposed Changes](../proposed-changes/overview) for the review workflow.
+The device is created with the interfaces defined in its template. When the templates look right, open a Proposed Change to merge the branch. See [Proposed Changes](../proposed-changes/overview) for the review workflow.
 
 ## What to watch for
 
@@ -249,7 +261,9 @@ The device is created with the 48 interfaces from its template. When the templat
 - **Changing a template does not change existing devices.** Changes to a template do not apply to devices already created from it, so loading a later conversion affects only the devices you create afterwards.
 - **Loading is not transactional across files.** If a file fails partway through, the branch keeps the earlier files and whatever part of the failing file loaded. [Delete the branch](../branches/delete.mdx) and load again onto a new one.
 
-## Module ports
+## Module types and ports
+
+To convert module types and module bays, use the [schema-library `main` branch](https://github.com/opsmill/schema-library/tree/main) with its `device_module` extension loaded, and convert with `schema-library-modules.yml`. This creates module type objects and module bay templates. Module ports need the additional schema support below.
 
 NetBox names module ports with a `{module}` token, such as `Ethernet{module}/1`, that depends on the bay the module is installed in. No conversion can resolve it, so with `schema-library-modules.yml` module ports are reported as skipped.
 
@@ -260,11 +274,11 @@ To keep them, your schema needs a module template, and the conversion needs the 
 3. Create each module from its template with `object_template`, and install it by setting its `module_bay`. A module created without `object_template` has no ports.
 4. Run the [Generator](../generators/overview.mdx) bundled with the skill. For each installed module, it replaces `{module}` with the bay position and creates the device interfaces.
 
-Only interface ports become device interfaces. Console ports need a console interface kind in your schema, and power ports stay declarations on the module. The [skill reference](https://docs.infrahub.app/skills/skills-reference/converting-netbox-device-types) covers the schema extension, the Generator setup, and how to install a module.
+Only interface ports become device interfaces. Console ports need a console interface kind in your schema, and power ports stay declarations on the module. Use the [module template schema extension](https://github.com/opsmill/infrahub-skills/blob/main/skills/infrahub-converting-netbox-device-types/extending-your-schema.md#carrying-the-ports-too), then follow the [Generator registration](https://github.com/opsmill/infrahub-skills/blob/main/skills/infrahub-converting-netbox-device-types/generators-module-ports.md#registration) and [module installation](https://github.com/opsmill/infrahub-skills/blob/main/skills/infrahub-converting-netbox-device-types/generators-module-ports.md#installing-a-module) instructions.
 
 ## Related
 
-- [NetBox Device Type Converter skill reference](https://docs.infrahub.app/skills/skills-reference/converting-netbox-device-types): mapping file keys, every exporter and converter option, and the full field inventory
+- [Converter reference](https://github.com/opsmill/infrahub-skills/blob/main/skills/infrahub-converting-netbox-device-types/reference.md): mapping file keys, exporter and converter options, and the field inventory
 - [Use object templates](./use.mdx): create a device type and template manually, and create devices from them
 - [Infrahub Sync]($(base_url)sync): replicate records between NetBox and Infrahub on a schedule
 - [Set up your AI assistant](../overview/build-with-ai/setup.mdx): install the Infrahub Skills and connect the MCP server
