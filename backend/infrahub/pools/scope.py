@@ -17,11 +17,11 @@ from infrahub.types import get_attribute_type
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from infrahub.core.attribute import BaseAttribute
     from infrahub.core.node import Node
     from infrahub.core.relationship.model import RelationshipManager
     from infrahub.core.schema import AttributeSchema, MainSchemaTypes
     from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.profiles.node_applier import ProfileFieldValues
 
 SCOPE_FIELD = "allocation_scope"
 SCOPE_SEPARATOR = "__"
@@ -134,11 +134,13 @@ class Division:
         element_fields: Sequence[tuple[ScopeElement, AttributeSchema | RelationshipSchema]],
         pool: str,
         attribute: str,
+        profile_values: ProfileFieldValues,
     ) -> Division:
         """Return the division the node holds, reading only what the node holds in memory.
 
         `element_fields` pairs each scope element with the attribute or relationship that holds it on the node's kind,
-        in scope order; `pool` names the pool and `attribute` the pooled attribute in the refusal.
+        in scope order; `pool` names the pool and `attribute` the pooled attribute in the refusal. A field that
+        `profile_values` names holds the value or the peer given there, as the node will once its profiles are applied.
 
         Raises:
             ValidationError: When an attribute element holds a value that is not a single scalar.
@@ -151,9 +153,16 @@ class Division:
         for element, field in element_fields:
             elements.append(division_element_path(field=field))
             if isinstance(field, RelationshipSchema):
-                values.append(_peer_id(relationship=node.get_relationship(name=field.name)))
+                profile_peers = profile_values.relationship_peers.get(field.name)
+                values.append(
+                    profile_peers[0] if profile_peers else _peer_id(relationship=node.get_relationship(name=field.name))
+                )
                 continue
-            value = _attribute_value(attribute=node.get_attribute(name=field.name))
+            value = _scalar_value(
+                value=profile_values.attribute_values[field.name]
+                if field.name in profile_values.attribute_values
+                else node.get_attribute(name=field.name).value
+            )
             if value is None:
                 raise ValidationError(
                     {
@@ -235,9 +244,8 @@ def _peer_id(relationship: RelationshipManager) -> str:
     return related.peer_id
 
 
-def _attribute_value(attribute: BaseAttribute) -> str | int | float | bool | None:
+def _scalar_value(value: Any) -> str | int | float | bool | None:
     """Return the value as stored, an empty string when there is none, or None when it is not a single scalar."""
-    value = attribute.value
     if value is None:
         return ""
     if isinstance(value, Enum):

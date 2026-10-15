@@ -13,6 +13,7 @@ from infrahub.core.constants import (
     InfrahubKind,
     RelationshipCardinality,
     RelationshipDirection,
+    RelationshipKind,
 )
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
@@ -308,7 +309,50 @@ SCOPED_CIRCUIT = NodeSchema(
     ],
 )
 
+SCOPED_CHASSIS = NodeSchema(
+    name="Chassis",
+    namespace="Scope",
+    label="Chassis",
+    human_friendly_id=["name__value"],
+    display_label="{{ name__value }}",
+    generate_template=True,
+    attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+    relationships=[
+        RelationshipSchema(
+            name="cards",
+            peer="ScopeCard",
+            identifier="scope_chassis__cards",
+            kind=RelationshipKind.COMPONENT,
+            cardinality=RelationshipCardinality.MANY,
+            optional=True,
+        ),
+    ],
+)
+
+SCOPED_CARD = NodeSchema(
+    name="Card",
+    namespace="Scope",
+    label="Card",
+    generate_template=True,
+    attributes=[
+        AttributeSchema(name="name", kind="Text"),
+        AttributeSchema(name="vlan_id", kind="Number", optional=True),
+        AttributeSchema(name="slot_group", kind="Text", optional=True),
+    ],
+    relationships=[
+        RelationshipSchema(
+            name="chassis",
+            peer="ScopeChassis",
+            identifier="scope_chassis__cards",
+            kind=RelationshipKind.PARENT,
+            cardinality=RelationshipCardinality.ONE,
+            optional=False,
+        ),
+    ],
+)
+
 SCOPED_CIRCUIT_SCHEMA = SchemaRoot(nodes=[SCOPED_SITE, SCOPED_CIRCUIT])
+SCOPED_COMPONENT_POOL_SCHEMA = SchemaRoot(nodes=[SCOPED_CHASSIS, SCOPED_CARD])
 
 
 async def save_schema_kinds(db: InfrahubDatabase, schema: SchemaRoot, branch_name: str | None = None) -> None:

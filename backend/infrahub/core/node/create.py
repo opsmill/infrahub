@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Iterable, Mapping, cast, overload
 
 from infrahub import lock
 from infrahub.core import registry
+from infrahub.core.attribute import PayloadPresence
 from infrahub.core.constants import (
     PROFILES_RELATIONSHIP_NAME,
     SYSTEM_USER_ID,
@@ -24,6 +25,9 @@ from infrahub.core.schema import GenericSchema
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.lock import InfrahubMultiLock
 from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
+from infrahub.pools.scope import AllocationScope
+from infrahub.profiles.data_reader import ProfileDataReader
+from infrahub.profiles.mandatory_fields_checker import ProfilesMandatoryFieldGetter
 from infrahub.profiles.node_applier import NodeProfilesApplier
 from infrahub.templates.node_applier import get_relationship_names_to_read
 
@@ -33,9 +37,10 @@ if TYPE_CHECKING:
     from infrahub.core.protocols import CoreObjectTemplate
     from infrahub.core.relationship.model import Relationship, RelationshipManager
     from infrahub.core.schema import MainSchemaTypes, NonGenericSchemaTypes
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
-    from infrahub.pools.attribute_pool_applier import AttributePoolApplierInterface
+    from infrahub.pools.attribute_pool_applier import AttributePoolApplier, AttributePoolApplierInterface
 
 
 @dataclass
@@ -239,6 +244,7 @@ async def allocate_from_resource_pools(
     branch: Branch,
     obj: Node,
     template: CoreObjectTemplate,
+    pool_applier: AttributePoolApplierInterface,
     at: Timestamp | None = None,
     user_id: str = SYSTEM_USER_ID,
 ) -> None:
@@ -246,7 +252,8 @@ async def allocate_from_resource_pools(
 
     Handles two cases:
     - Relationship pools (IP address/prefix): allocates a new node and sets it as the relationship peer
-    - Attribute pools (Number): allocates a value and sets it on the attribute
+    - Attribute pools (Number): allocates a value and sets it on the attribute, within the object's division
+      when the pool has an allocation scope, so every other field of the object must be set beforehand
     An IP pool is recorded as the source of the relationship. A number pool is not written to the
     attribute's source: it is derived from the reservation record the allocation leaves behind.
     """
@@ -265,6 +272,14 @@ async def allocate_from_resource_pools(
             continue
 
         if original_name in obj_schema.attribute_names:
+            if not AllocationScope.from_stored(
+                value=pool.get_attribute("allocation_scope").value, pool=pool.get_id()
+            ).is_empty:
+                attribute = obj.get_attribute(name=original_name)
+                attribute.from_pool = {"id": pool.get_id()}
+                attribute.from_pool_presence = PayloadPresence.SET
+                await pool_applier.apply(node=obj, attribute=attribute, allocate=True, user_id=user_id)
+                continue
             # Number pool: allocate a value and set it on the attribute
             attr_schema = obj_schema.get_attribute(name=original_name)
             allocated_value = await pool.get_resource(  # type: ignore[attr-defined]
@@ -296,6 +311,7 @@ async def create_component(
     parent_obj: Node,
     parent_template: CoreObjectTemplate,
     component: TemplateComponent,
+    pool_applier: AttributePoolApplierInterface,
     at: Timestamp | None = None,
     user_id: str = SYSTEM_USER_ID,
 ) -> Node:
@@ -313,12 +329,20 @@ async def create_component(
     await constraint_runner.check(node=obj_peer, field_filters=list(obj_peer_data))
 
     await allocate_from_resource_pools(
-        db=db, branch=branch, obj=obj_peer, template=component.subtemplate, at=at, user_id=user_id
+        db=db,
+        branch=branch,
+        obj=obj_peer,
+        template=component.subtemplate,
+        pool_applier=pool_applier,
+        at=at,
+        user_id=user_id,
     )
 
     template_profile_ids = await get_profile_ids(db=db, obj=component.subtemplate)
     if template_profile_ids:
-        node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
+        node_profiles_applier = NodeProfilesApplier(
+            db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+        )
         await node_profiles_applier.apply_profiles(node=obj_peer)
 
     await obj_peer.save(db=db, user_id=user_id)
@@ -333,6 +357,7 @@ async def create_components(
     parent_obj: Node,
     parent_template: CoreObjectTemplate,
     components: list[TemplateComponent],
+    pool_applier: AttributePoolApplierInterface,
     at: Timestamp | None = None,
     user_id: str = SYSTEM_USER_ID,
 ) -> None:
@@ -352,6 +377,7 @@ async def create_components(
             parent_obj=parent_obj,
             parent_template=parent_template,
             component=component,
+            pool_applier=pool_applier,
             at=at,
             user_id=user_id,
         )
@@ -362,6 +388,7 @@ async def create_components(
             parent_obj=obj_peer,
             parent_template=component.subtemplate,
             components=component.components,
+            pool_applier=pool_applier,
             at=at,
             user_id=user_id,
         )
@@ -373,6 +400,7 @@ async def handle_template_relationships(
     obj: Node,
     template: CoreObjectTemplate,
     fields: list,
+    pool_applier: AttributePoolApplierInterface,
     at: Timestamp | None = None,
     user_id: str = SYSTEM_USER_ID,
 ) -> None:
@@ -398,6 +426,7 @@ async def handle_template_relationships(
         parent_obj=obj,
         parent_template=template,
         components=components,
+        pool_applier=pool_applier,
         at=at,
         user_id=user_id,
     )
@@ -425,10 +454,34 @@ def _has_profiles_set(node: Node) -> bool:
     return len(profiles) > 0
 
 
+@dataclass(frozen=True)
+class _NodeWriteComponents:
+    pool_applier: AttributePoolApplier
+    profiles_mandatory_field_getter: ProfilesMandatoryFieldGetter
+
+
+def _build_node_write_components(
+    db: InfrahubDatabase, branch: Branch, schema_branch: SchemaBranch
+) -> _NodeWriteComponents:
+    """Build the components that write one node, reading the node's profiles through one reader."""
+    profile_data_reader = ProfileDataReader(db=db, branch=branch)
+    return _NodeWriteComponents(
+        pool_applier=build_attribute_pool_applier(
+            profiles_applier=NodeProfilesApplier(db=db, branch=branch, profile_data_reader=profile_data_reader),
+            db=db,
+            schema_branch=schema_branch,
+        ),
+        profiles_mandatory_field_getter=ProfilesMandatoryFieldGetter(
+            db=db, branch=branch, profile_data_reader=profile_data_reader
+        ),
+    )
+
+
 async def _do_create_node(
     node_class: type[Node],
     node_constraint_runner: NodeConstraintRunner,
     pool_applier: AttributePoolApplierInterface,
+    profiles_mandatory_field_getter: ProfilesMandatoryFieldGetter,
     creation_context: NodeCreationContext,
     db: InfrahubDatabase,
     schema: NonGenericSchemaTypes,
@@ -442,7 +495,13 @@ async def _do_create_node(
     with creation_context:
         obj = await node_class.init(db=db, schema=schema, branch=branch)
         obj._object_template = object_template
-        await obj.new_from_fields(db=db, fields=data, pool_applier=pool_applier, user_id=user_id)
+        await obj.new_from_fields(
+            db=db,
+            fields=data,
+            pool_applier=pool_applier,
+            profiles_mandatory_field_getter=profiles_mandatory_field_getter,
+            user_id=user_id,
+        )
         await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
         await obj.save(db=db, at=at, user_id=user_id)
 
@@ -453,6 +512,7 @@ async def _do_create_node(
                 template=object_template,
                 obj=obj,
                 fields=fields_to_validate,
+                pool_applier=pool_applier,
                 at=at,
                 user_id=user_id,
             )
@@ -516,13 +576,17 @@ async def create_node(
     fields_to_validate = list(data)
 
     # A node created in a transaction this function opens draws its numbers through that transaction, so it
-    # gets an applier of its own.
+    # gets components of its own.
     schema_branch = db.schema.get_schema_branch(name=branch.name)
-    pool_applier = build_attribute_pool_applier(
-        profiles_applier=NodeProfilesApplier(db=db, branch=branch), db=db, schema_branch=schema_branch
-    )
+    components = _build_node_write_components(db=db, branch=branch, schema_branch=schema_branch)
     preview_obj = await node_class.init(db=db, schema=schema, branch=branch)
-    await preview_obj.new_from_fields(db=db, fields=data, pool_applier=pool_applier, process_pools=False)
+    await preview_obj.new_from_fields(
+        db=db,
+        fields=data,
+        pool_applier=components.pool_applier,
+        profiles_mandatory_field_getter=components.profiles_mandatory_field_getter,
+        process_pools=False,
+    )
     lock_names = get_lock_names_on_object_mutation(node=preview_obj, schema_branch=schema_branch)
     # The preview read the object template to work out the lock names; the node created under the
     # lock is built from that same template rather than reading it again.
@@ -537,7 +601,8 @@ async def create_node(
             obj = await _do_create_node(
                 node_class=node_class,
                 node_constraint_runner=node_constraint_runner,
-                pool_applier=pool_applier,
+                pool_applier=components.pool_applier,
+                profiles_mandatory_field_getter=components.profiles_mandatory_field_getter,
                 creation_context=creation_context,
                 db=db,
                 schema=schema,
@@ -553,13 +618,15 @@ async def create_node(
                 node_constraint_runner = await component_registry.get_component(
                     NodeConstraintRunner, db=dbt, branch=branch
                 )
+                transaction_components = _build_node_write_components(
+                    db=dbt, branch=branch, schema_branch=schema_branch
+                )
 
                 obj = await _do_create_node(
                     node_class=node_class,
                     node_constraint_runner=node_constraint_runner,
-                    pool_applier=build_attribute_pool_applier(
-                        profiles_applier=NodeProfilesApplier(db=dbt, branch=branch), db=dbt, schema_branch=schema_branch
-                    ),
+                    pool_applier=transaction_components.pool_applier,
+                    profiles_mandatory_field_getter=transaction_components.profiles_mandatory_field_getter,
                     creation_context=creation_context,
                     db=dbt,
                     schema=schema,
@@ -574,7 +641,9 @@ async def create_node(
     # The node was written from its in-memory state, so the profiles it is linked to are the ones
     # its payload or its template set on it; there is nothing to read back.
     if _has_profiles_set(node=obj):
-        node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
+        node_profiles_applier = NodeProfilesApplier(
+            db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+        )
         await node_profiles_applier.apply_profiles(node=obj)
         await obj.save(db=db, user_id=user_id)
 

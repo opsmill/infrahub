@@ -29,6 +29,7 @@ from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.lock import InfrahubMultiLock
 from infrahub.log import get_log_data, get_logger
 from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
+from infrahub.profiles.data_reader import ProfileDataReader
 from infrahub.profiles.node_applier import NodeProfilesApplier
 
 from ...core.node.lock_utils import apply_payload_for_lock_names, get_lock_names_on_object_mutation
@@ -357,7 +358,9 @@ class InfrahubMutationMixin:
             db=db,
             data=data,
             pool_applier=build_attribute_pool_applier(
-                profiles_applier=NodeProfilesApplier(db=db, branch=branch),
+                profiles_applier=NodeProfilesApplier(
+                    db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+                ),
                 db=db,
                 schema_branch=db.schema.get_schema_branch(name=branch.name),
             ),
@@ -376,7 +379,9 @@ class InfrahubMutationMixin:
         # A node already holding values from a profile needs the applier either way, so which
         # profiles it is linked to does not have to be read.
         if obj.uses_profiles() or await get_profile_ids(db=db, obj=obj):
-            node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
+            node_profiles_applier = NodeProfilesApplier(
+                db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+            )
             updated_field_names = await node_profiles_applier.apply_profiles(node=obj)
             fields += updated_field_names
         await obj.save(db=db, fields=fields, user_id=graphql_context.assigned_user_id)

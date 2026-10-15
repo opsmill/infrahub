@@ -14,7 +14,8 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
-from infrahub.profiles.node_applier import NodeProfilesApplier
+from infrahub.profiles.data_reader import ProfileDataReader
+from infrahub.profiles.node_applier import NodeProfilesApplier, ProfileFieldValues
 from tests.helpers.schema import CHILD, THING, load_schema
 
 
@@ -49,7 +50,7 @@ async def _validate_node_profile_attrs(
             assert updated_source is None
 
 
-async def test_apply_attribute_values_sets_a_default_attribute_in_memory_only(
+async def test_get_field_values_reads_the_profiles_without_changing_the_node(
     db: InfrahubDatabase, criticality_schema: NodeSchema, branch: Branch
 ) -> None:
     profile_schema = registry.schema.get("ProfileTestCriticality", branch=branch)
@@ -75,18 +76,17 @@ async def test_apply_attribute_values_sets_a_default_attribute_in_memory_only(
         profiles=[{"hfid": ["low-priority"]}, high_priority],
     )
 
-    updated_names = await NodeProfilesApplier(db=db, branch=branch).apply_attribute_values(
-        node=node, attr_names=["color", "is_false", "description"]
-    )
+    field_values = await NodeProfilesApplier(
+        db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+    ).get_field_values(node=node, attr_names=["color", "is_false", "description"], rel_names=[])
 
-    assert updated_names == ["color", "is_false"]
-    assert node.color.value == "blue"
-    assert node.color.is_from_profile is True
-    assert node.color.source_id == high_priority.id
-    assert node.is_false.value is True
-    assert node.is_false.source_id == low_priority.id
-    assert node.description.value == "set-by-user"
-    assert node.description.is_from_profile is False
+    assert field_values == ProfileFieldValues(
+        attribute_values={"color": "blue", "is_false": True}, relationship_peers={}
+    )
+    assert node.get_attribute("color").value != "blue"
+    assert node.get_attribute("color").is_from_profile is False
+    assert node.get_attribute("is_false").is_from_profile is False
+    assert node.get_attribute("description").value == "set-by-user"
     assert await NodeManager.get_many(db=db, branch=branch, ids=[node.id]) == {}
 
 
@@ -108,7 +108,9 @@ async def test_get_many_with_profile(
     await crit_low.profiles.update(db=db, data=[crit_profile_1, crit_profile_2])
     await crit_low.save(db=db)
 
-    node_applier = NodeProfilesApplier(db=db, branch=branch)
+    node_applier = NodeProfilesApplier(
+        db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+    )
 
     updated_field_names = await node_applier.apply_profiles(node=crit_low)
     assert updated_field_names == ["color"]
@@ -171,7 +173,9 @@ async def test_get_many_with_profile_generic(
     await crit_low.profiles.update(db=db, data=[crit_profile, generic_profile])
     await crit_low.save(db=db)
 
-    node_applier = NodeProfilesApplier(db=db, branch=branch)
+    node_applier = NodeProfilesApplier(
+        db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+    )
 
     updated_field_names = await node_applier.apply_profiles(node=crit_low)
     assert set(updated_field_names) == {"color", "description", "is_true"}
@@ -231,7 +235,9 @@ async def test_get_many_with_multiple_profiles_same_priority(
     await crit_low.profiles.update(db=db, data=crit_profiles)
     await crit_low.save(db=db)
 
-    node_applier = NodeProfilesApplier(db=db, branch=branch)
+    node_applier = NodeProfilesApplier(
+        db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+    )
     updated_field_names = await node_applier.apply_profiles(node=crit_low)
     assert updated_field_names == ["color"]
     await crit_low.save(db=db)
@@ -369,7 +375,9 @@ async def test_get_many_with_profile_relationships_empty(
     await child_and_thing_nodes.child_nodes[0].profiles.update(db=db, data=[augmented_child_profile])
     await child_and_thing_nodes.child_nodes[0].save(db=db)
 
-    node_applier = NodeProfilesApplier(db=db, branch=branch)
+    node_applier = NodeProfilesApplier(
+        db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+    )
 
     updated_field_names = await node_applier.apply_profiles(node=child_and_thing_nodes.child_nodes[0])
     assert updated_field_names == []
@@ -413,7 +421,9 @@ async def test_get_many_with_profile_relationships(
     await child_and_thing_nodes.child_nodes[1].profiles.update(db=db, data=[missing_child_profile])
     await child_and_thing_nodes.child_nodes[1].save(db=db)
 
-    node_applier = NodeProfilesApplier(db=db, branch=branch)
+    node_applier = NodeProfilesApplier(
+        db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+    )
 
     updated_field_names = await node_applier.apply_profiles(node=child_and_thing_nodes.child_nodes[0])
     assert updated_field_names == ["things"]
@@ -492,7 +502,9 @@ async def test_get_many_with_profile_relationships_existing_peers(
     await child_two.profiles.update(db=db, data=[missing_child_profile])
     await child_two.save(db=db)
 
-    node_applier = NodeProfilesApplier(db=db, branch=branch)
+    node_applier = NodeProfilesApplier(
+        db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+    )
 
     updated_field_names = await node_applier.apply_profiles(node=child_one)
     assert updated_field_names == []
@@ -559,7 +571,9 @@ async def test_get_many_with_profile_relationships_clear(
     await child_and_thing_nodes.child_nodes[0].profiles.update(db=db, data=[augmented_child_profile])
     await child_and_thing_nodes.child_nodes[0].save(db=db)
 
-    node_applier = NodeProfilesApplier(db=db, branch=branch)
+    node_applier = NodeProfilesApplier(
+        db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+    )
 
     updated_field_names = await node_applier.apply_profiles(node=child_and_thing_nodes.child_nodes[0])
     assert updated_field_names == ["things"]
@@ -584,7 +598,9 @@ async def test_get_many_with_profile_relationships_clear(
         ],
     )
 
-    node_applier = NodeProfilesApplier(db=db, branch=branch)
+    node_applier = NodeProfilesApplier(
+        db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+    )
 
     # Clear profile for child one
     await updated_child_one.profiles.remove_locally(db=db, peer_id=augmented_child_profile.id)
@@ -628,7 +644,9 @@ async def test_get_many_with_profile_relationships_override(
     await child_and_thing_nodes.child_nodes[0].profiles.update(db=db, data=[augmented_child_profile])
     await child_and_thing_nodes.child_nodes[0].save(db=db)
 
-    node_applier = NodeProfilesApplier(db=db, branch=branch)
+    node_applier = NodeProfilesApplier(
+        db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+    )
 
     updated_field_names = await node_applier.apply_profiles(node=child_and_thing_nodes.child_nodes[0])
     assert updated_field_names == ["things"]
@@ -653,7 +671,9 @@ async def test_get_many_with_profile_relationships_override(
         ],
     )
 
-    node_applier = NodeProfilesApplier(db=db, branch=branch)
+    node_applier = NodeProfilesApplier(
+        db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+    )
 
     # Override the relationship profile
     await updated_child_one.things.add(db=db, data=child_and_thing_nodes.thing_nodes[2])
@@ -695,7 +715,9 @@ async def test_get_many_with_profile_relationships_partial_override(
     )
     await child_and_thing_nodes.child_nodes[0].save(db=db)
 
-    node_applier = NodeProfilesApplier(db=db, branch=branch)
+    node_applier = NodeProfilesApplier(
+        db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+    )
 
     updated_field_names = await node_applier.apply_profiles(node=child_and_thing_nodes.child_nodes[0])
     assert updated_field_names == ["things"]
@@ -770,7 +792,9 @@ async def test_template_profile_application(
 
     await crit_template.profiles.update(db=db, data=[crit_profile_1])
 
-    node_applier = NodeProfilesApplier(db=db, branch=branch)
+    node_applier = NodeProfilesApplier(
+        db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+    )
 
     updated_template_field_names = await node_applier.apply_profiles(node=crit_template)
     assert updated_template_field_names == ["color"]
@@ -828,7 +852,9 @@ async def test_template_with_multiple_profiles(
 
     await crit_template.profiles.update(db=db, data=[crit_profile_high_priority, crit_profile_low_priority])
 
-    node_applier = NodeProfilesApplier(db=db, branch=branch)
+    node_applier = NodeProfilesApplier(
+        db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+    )
 
     updated_field_names = await node_applier.apply_profiles(node=crit_template)
     # Should update color (from high priority), description (from high priority), and is_true (from low priority)
@@ -885,7 +911,9 @@ async def test_template_profile_manual_values_precedence(
     # Now add profile to template
     await crit_template.profiles.update(db=db, data=[crit_profile])
 
-    node_applier = NodeProfilesApplier(db=db, branch=branch)
+    node_applier = NodeProfilesApplier(
+        db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+    )
     updated_field_names = await node_applier.apply_profiles(node=crit_template)
     # Template's own value should take precedence, so color should NOT be updated
     assert "color" not in updated_field_names
@@ -939,7 +967,9 @@ async def test_node_from_template_with_profile_precedence(
     await crit_template.profiles.update(db=db, data=[crit_profile])
 
     # Apply profiles to template
-    node_applier = NodeProfilesApplier(db=db, branch=branch)
+    node_applier = NodeProfilesApplier(
+        db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+    )
     await node_applier.apply_profiles(node=crit_template)
     await crit_template.save(db=db)
 
@@ -991,7 +1021,9 @@ async def test_node_with_cardinality_one_relationship_profile_updated_on_profile
     await car.new(db=db, name="Sample car", owner=john.id, profiles=[car_profile.id])
     await car.save(db=db)
 
-    node_applier = NodeProfilesApplier(db=db, branch=default_branch)
+    node_applier = NodeProfilesApplier(
+        db=db, branch=default_branch, profile_data_reader=ProfileDataReader(db=db, branch=default_branch)
+    )
     await node_applier.apply_profiles(node=car)
 
     peer = await car.driver.get_peer(db=db)
@@ -1005,7 +1037,9 @@ async def test_node_with_cardinality_one_relationship_profile_updated_on_profile
     assert peer.id == peter.id
 
     car = await NodeManager.get_one(db=db, id=car.id, kind="TestCar")
-    node_applier = NodeProfilesApplier(db=db, branch=default_branch)
+    node_applier = NodeProfilesApplier(
+        db=db, branch=default_branch, profile_data_reader=ProfileDataReader(db=db, branch=default_branch)
+    )
     await node_applier.apply_profiles(node=car)
     await car.save(db=db)
 

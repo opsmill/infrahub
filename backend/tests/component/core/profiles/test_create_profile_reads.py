@@ -11,6 +11,7 @@ from infrahub.core.node.create import create_node
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot
+from infrahub.profiles.data_reader import ProfileDataReader
 from infrahub.profiles.node_applier import NodeProfilesApplier
 from tests.constants import TestKind
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
@@ -87,7 +88,9 @@ async def test_create_from_a_template_applies_the_profiles_it_carries(
         profiles=[profile.id],
     )
     await template.save(db=db)
-    await NodeProfilesApplier(db=db, branch=default_branch).apply_profiles(node=template)
+    await NodeProfilesApplier(
+        db=db, branch=default_branch, profile_data_reader=ProfileDataReader(db=db, branch=default_branch)
+    ).apply_profiles(node=template)
     await template.save(db=db)
     assert template.part_number.value == "from-profile"
 

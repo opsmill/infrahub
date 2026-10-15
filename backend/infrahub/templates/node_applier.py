@@ -10,6 +10,7 @@ from infrahub.core.constants import (
     RelationshipKind,
 )
 from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX
+from infrahub.pools.scope import AllocationScope
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -177,7 +178,11 @@ class NodeTemplateApplier:
         target_id: str,
         fields: dict[str, Any],
     ) -> None:
-        """Allocate from pool and set the original relationship or attribute."""
+        """Allocate from pool and set the original relationship or attribute.
+
+        A number pool with an allocation scope is named by `from_pool` on the attribute instead, so that the node
+        draws within its division.
+        """
         original_name = pool_rel_name.removesuffix(RESOURCE_POOL_REL_SUFFIX)
 
         if original_name in fields:
@@ -186,6 +191,17 @@ class NodeTemplateApplier:
         pool_relationship = template.get_relationship(name=pool_rel_name)
 
         if original_name in target_schema.attribute_names:
+            pool = await pool_relationship.get_peer(db=self.db)
+            # if this pool has an allocation_scope, set {from_pool:...} and count on object creation
+            # to handle the correct scope after all template values are set
+            if (
+                pool is not None
+                and not AllocationScope.from_stored(
+                    value=pool.get_attribute("allocation_scope").value, pool=pool.get_id()
+                ).is_empty
+            ):
+                fields[original_name] = {"from_pool": {"id": pool.get_id()}}
+                return
             # Number pool: allocate a value for the attribute
             allocated_value = await self.pool_allocator.allocate_for_attribute(
                 pool_relationship=pool_relationship,
@@ -193,13 +209,10 @@ class NodeTemplateApplier:
                 attribute_name=original_name,
                 identifier=target_id,
             )
-            if allocated_value is not None:
-                pool_node = await pool_relationship.get_peer(db=self.db, raise_on_error=True)
-                # The pool is not stored as the attribute's source: it is derived from the
-                # reservation record.
+            if allocated_value is not None and pool is not None:
                 fields[original_name] = {"value": allocated_value}
-                self._allocated_attribute_pools[original_name] = pool_node.id
-            elif await pool_relationship.get_peer(db=self.db):
+                self._allocated_attribute_pools[original_name] = pool.get_id()
+            elif pool is not None:
                 self._pool_pending_fields.add(original_name)
             return
         # IP pool: allocate a node for the relationship

@@ -32,6 +32,7 @@ from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.types.context import ContextInput
 from infrahub.groups.ancestors import collect_ancestors
 from infrahub.permissions import get_global_permission_for_kind
+from infrahub.profiles.data_reader import ProfileDataReader
 from infrahub.profiles.node_applier import NodeProfilesApplier
 
 from ..types import RelatedNodeInput
@@ -591,7 +592,9 @@ def _get_group_event_type(
 
 async def _apply_profiles(node: Node, db: InfrahubDatabase, branch: Branch) -> None:
     refreshed_node = await NodeManager.get_one(db=db, id=node.get_id(), branch=branch)
-    node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
+    node_profiles_applier = NodeProfilesApplier(
+        db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+    )
     updated_fields = await node_profiles_applier.apply_profiles(node=refreshed_node)
     if updated_fields:
         await refreshed_node.save(db=db, fields=updated_fields)

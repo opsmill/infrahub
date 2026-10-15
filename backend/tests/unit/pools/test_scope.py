@@ -28,6 +28,7 @@ from infrahub.pools.scope import (
     ScopeElement,
     UnknownScopeElementError,
 )
+from infrahub.profiles.node_applier import ProfileFieldValues
 from infrahub.types import ATTRIBUTE_TYPES
 from tests.helpers.number_pool import (
     SCOPED_DEVICE,
@@ -586,7 +587,11 @@ def _from_node(node: Node, scope: AllocationScope, schema_branch: SchemaBranch) 
         kind=node.get_kind(), scope=scope, pool="vlan-per-site", attribute=TRACKED_ATTRIBUTE
     )
     return Division.from_node(
-        node=node, element_fields=element_fields, pool="vlan-per-site", attribute=TRACKED_ATTRIBUTE
+        node=node,
+        element_fields=element_fields,
+        pool="vlan-per-site",
+        attribute=TRACKED_ATTRIBUTE,
+        profile_values=ProfileFieldValues(attribute_values={}, relationship_peers={}),
     )
 
 

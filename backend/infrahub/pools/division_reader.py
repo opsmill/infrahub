@@ -19,7 +19,8 @@ class NodeNumberPoolDivisionReader:
 
     A relationship element whose peers the node has not read is read once, a peer named by a human-friendly id or a
     default filter value is resolved to its node id, or refused as the save would refuse it when no node matches,
-    and an attribute element takes the value the node's profiles give it, as the node will hold once it is saved.
+    and an element the writer leaves to the node's profiles takes the value or the peer they give it, as the node
+    will hold once it is saved.
     """
 
     def __init__(
@@ -42,14 +43,24 @@ class NodeNumberPoolDivisionReader:
             kind=node.get_kind(), scope=scope, pool=pool_name, attribute=attribute_name
         )
         attribute_names: list[str] = []
+        relationship_names: list[str] = []
         for _, field in element_fields:
             if isinstance(field, RelationshipSchema):
                 await self._resolve_peers(relationship=node.get_relationship(name=field.name))
+                relationship_names.append(field.name)
             else:
                 attribute_names.append(field.name)
-        await self.profiles_applier.apply_attribute_values(node=node, attr_names=attribute_names)
+        profile_values = await self.profiles_applier.get_field_values(
+            node=node, attr_names=attribute_names, rel_names=relationship_names
+        )
 
-        return Division.from_node(node=node, element_fields=element_fields, pool=pool_name, attribute=attribute_name)
+        return Division.from_node(
+            node=node,
+            element_fields=element_fields,
+            pool=pool_name,
+            attribute=attribute_name,
+            profile_values=profile_values,
+        )
 
     async def read_for_pool(self, node: Node, pool: Node, attribute_name: str) -> Division | None:
         """Return the division the node holds for the number pool's scope, or None when the pool has no scope.

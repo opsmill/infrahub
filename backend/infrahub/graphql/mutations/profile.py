@@ -15,6 +15,7 @@ from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.types.context import ContextInput
 from infrahub.log import get_logger
+from infrahub.profiles.data_reader import ProfileDataReader
 from infrahub.profiles.node_applier import NodeProfilesApplier
 from infrahub.workflows.catalogue import PROFILE_REFRESH_MULTIPLE
 
@@ -230,7 +231,9 @@ class InfrahubProfilesRefresh(Mutation):
             include_metadata=MetadataOptions.SOURCE,
             raise_on_error=True,
         )
-        node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
+        node_profiles_applier = NodeProfilesApplier(
+            db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+        )
         updated_fields = await node_profiles_applier.apply_profiles(node=obj)
         if updated_fields:
             await obj.save(db=db, fields=updated_fields, user_id=graphql_context.assigned_user_id)

@@ -22,6 +22,7 @@ from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_a
 from infrahub.pools.number import NumberUtilizationGetter
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.number_ranges import EffectiveSpace, NumberDomain
+from infrahub.profiles.data_reader import ProfileDataReader
 from infrahub.profiles.node_applier import NodeProfilesApplier
 from tests.helpers.agnostic_edges import pool_reservation_edges
 from tests.helpers.number_pool import (
@@ -102,7 +103,11 @@ async def test_allocation_records_reservation_whether_pool_is_named_or_identifie
         db=db,
         data={"ticket_id": {"from_pool": {"id": "pool1"}}},
         pool_applier=build_attribute_pool_applier(
-            profiles_applier=NodeProfilesApplier(db=db, branch=updated_by_name.get_branch()),
+            profiles_applier=NodeProfilesApplier(
+                db=db,
+                branch=updated_by_name.get_branch(),
+                profile_data_reader=ProfileDataReader(db=db, branch=updated_by_name.get_branch()),
+            ),
             db=db,
             schema_branch=db.schema.get_schema_branch(name=updated_by_name.get_branch().name),
         ),
