@@ -380,13 +380,6 @@ class TestNumberPool:
         await expect(admin_page.get_by_role("spinbutton", name="Number")).to_have_value("5")
         await expect(admin_page.get_by_test_id("source-pool-badge")).to_be_visible()
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "The update that ends the pool reservation saves the pool as the attribute's source, "
-            "so the form still shows the pool after the number leaves it"
-        ),
-    )
     async def test_typed_value_takes_number_out_of_pool(self, admin_page: Page, number_pool_branch: str) -> None:
         await admin_page.goto(f"/objects/InfraInterfaceL3?branch={number_pool_branch}")
         await admin_page.get_by_role("searchbox", name="Search").fill("typed pool number")
