@@ -495,12 +495,12 @@ async def _do_create_node(
     with creation_context:
         obj = await node_class.init(db=db, schema=schema, branch=branch)
         obj._object_template = object_template
-        await obj.new(
+        await obj.new_from_fields(
             db=db,
+            fields=data,
             pool_applier=pool_applier,
             profiles_mandatory_field_getter=profiles_mandatory_field_getter,
             user_id=user_id,
-            **data,
         )
         await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
         await obj.save(db=db, at=at, user_id=user_id)
@@ -580,12 +580,12 @@ async def create_node(
     schema_branch = db.schema.get_schema_branch(name=branch.name)
     components = _build_node_write_components(db=db, branch=branch, schema_branch=schema_branch)
     preview_obj = await node_class.init(db=db, schema=schema, branch=branch)
-    await preview_obj.new(
+    await preview_obj.new_from_fields(
         db=db,
-        process_pools=False,
+        fields=data,
         pool_applier=components.pool_applier,
         profiles_mandatory_field_getter=components.profiles_mandatory_field_getter,
-        **data,
+        process_pools=False,
     )
     lock_names = get_lock_names_on_object_mutation(node=preview_obj, schema_branch=schema_branch)
     # The preview read the object template to work out the lock names; the node created under the

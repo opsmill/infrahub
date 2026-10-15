@@ -88,7 +88,15 @@ export type AttributeValueFromProfile = {
 
 export type AttributeValueFromPool = {
   source: PoolSource;
-  value: { from_pool: { id: string; prefixLength?: number; allocatedKind?: string } };
+  value: {
+    from_pool: {
+      id: string;
+      prefixLength?: number;
+      allocatedKind?: string;
+      /** Applies only to a `CoreNumberPool` source. */
+      number?: number | null;
+    };
+  };
 };
 
 export type AttributeValueForCheckbox = {

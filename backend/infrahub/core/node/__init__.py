@@ -20,7 +20,6 @@ from infrahub.core.constants import (
     RelationshipCardinality,
     RelationshipKind,
 )
-from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX as RESOURCE_POOL_REL_SUFFIX
 from infrahub.core.constants.schema import SchemaElementPathType
 from infrahub.core.metadata.interface import MetadataInterface
 from infrahub.core.metadata.model import MetadataInfo
@@ -36,10 +35,8 @@ from infrahub.core.schema import (
     RelationshipSchema,
     TemplateSchema,
 )
-from infrahub.core.schema.attribute_parameters import NumberPoolParameters as NumberPoolParameters
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import InitializationError, NodeNotFoundError, ValidationError
-from infrahub.exceptions import PoolExhaustedError as PoolExhaustedError
 from infrahub.pools.attribute_pool_applier import LoadedNodePoolApplier
 from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
 from infrahub.pools.default_allocator import DefaultPoolAllocator
@@ -1013,40 +1010,58 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             self.label.value = " ".join([word.title() for word in self.name.value.split("_")])
             self.label.is_default = False
 
-    async def new(
-        self,
-        db: InfrahubDatabase,
-        id: str | None = None,
-        process_pools: bool = True,
-        pool_applier: AttributePoolApplierInterface | None = None,
-        profiles_mandatory_field_getter: ProfilesMandatoryFieldGetter | None = None,
-        user_id: str = SYSTEM_USER_ID,
-        **kwargs: Any,
-    ) -> Self:
-        if id and not is_valid_uuid(id):
-            raise ValidationError({"id": f"{id} is not a valid UUID"})
-        if id:
-            query = await NodeCheckIDQuery.init(db=db, node_id=id)
-            if await query.count(db=db):
-                raise ValidationError({"id": f"{id} is already in use"})
-
-        self.id = id or str(UUIDT())
-
+    async def new(self, db: InfrahubDatabase, id: str | None = None, process_pools: bool = True, **kwargs: Any) -> Self:
         # Callers that create nodes outside the mutation entry points rely on the components being built here.
         profile_data_reader = ProfileDataReader(db=db, branch=self.get_branch())
-        await self._process_fields(
+        return await self.new_from_fields(
             db=db,
-            fields=kwargs,
-            pool_applier=pool_applier
-            or build_attribute_pool_applier(
+            fields={"id": id, **kwargs},
+            pool_applier=build_attribute_pool_applier(
                 profiles_applier=NodeProfilesApplier(
                     db=db, branch=self.get_branch(), profile_data_reader=profile_data_reader
                 ),
                 db=db,
                 schema_branch=db.schema.get_schema_branch(name=self.get_branch().name),
             ),
-            profiles_mandatory_field_getter=profiles_mandatory_field_getter
-            or ProfilesMandatoryFieldGetter(db=db, branch=self.get_branch(), profile_data_reader=profile_data_reader),
+            profiles_mandatory_field_getter=ProfilesMandatoryFieldGetter(
+                db=db, branch=self.get_branch(), profile_data_reader=profile_data_reader
+            ),
+            process_pools=process_pools,
+        )
+
+    async def new_from_fields(
+        self,
+        db: InfrahubDatabase,
+        fields: dict[str, Any],
+        pool_applier: AttributePoolApplierInterface,
+        profiles_mandatory_field_getter: ProfilesMandatoryFieldGetter,
+        process_pools: bool = True,
+        user_id: str = SYSTEM_USER_ID,
+    ) -> Self:
+        """Initialize the node from field values keyed by name, where an `id` key, when set, is the node's uuid.
+
+        Keeping the field values in a dict lets a schema name a field like any parameter of this method.
+
+        Raises:
+            ValidationError: When the `id` is not a valid UUID or is already in use.
+
+        """
+        field_values = dict(fields)
+        node_id = field_values.pop("id", None)
+        if node_id and not is_valid_uuid(node_id):
+            raise ValidationError({"id": f"{node_id} is not a valid UUID"})
+        if node_id:
+            query = await NodeCheckIDQuery.init(db=db, node_id=node_id)
+            if await query.count(db=db):
+                raise ValidationError({"id": f"{node_id} is already in use"})
+
+        self.id = node_id or str(UUIDT())
+
+        await self._process_fields(
+            db=db,
+            fields=field_values,
+            pool_applier=pool_applier,
+            profiles_mandatory_field_getter=profiles_mandatory_field_getter,
             process_pools=process_pools,
             user_id=user_id,
         )

@@ -32,6 +32,7 @@ class _AllocatingNumberPool(Protocol):
         at: Timestamp | None = None,
         user_id: str = SYSTEM_USER_ID,
         division: Division | None = None,
+        reuse_reservation: bool = True,
     ) -> int: ...
 
 
@@ -47,9 +48,12 @@ class NumberPoolAttributeAllocator:
         node: Node,
         attribute: BaseAttribute,
         user_id: str,
+        reuse_reservation: bool,
         division: Division | None = None,
     ) -> int:
         """Return the number the pool holds for the attribute, or the next free one in `division` when one is given.
+
+        Without `reuse_reservation` the number the pool holds is ignored and the next free one is returned.
 
         Raises:
             InitializationError: When the pool was not loaded as a number pool that can allocate.
@@ -66,6 +70,7 @@ class NumberPoolAttributeAllocator:
             attribute_id=attribute.id,
             user_id=user_id,
             division=division,
+            reuse_reservation=reuse_reservation,
         )
 
     async def attach(

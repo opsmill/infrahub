@@ -32,11 +32,13 @@ distinction that matters operationally is each category's **temporal model** (be
 |----------|----------------|
 | Deployment | anonymous deployment id, Infrahub version/type, Python/platform |
 | Workers | worker pool size and active count |
+| Server | API server process count and active count, one API server container's CPU and memory, and how many processes share it |
+| Task workers | task-worker process count and active count, and one task worker container's CPU and memory |
 | Branches | total and open (non-system) branch counts |
 | Accounts | active accounts, account groups |
 | Schema | node/generic kind counts, last schema change |
 | Features | how many objects of adoption-signalling kinds exist (artifacts, repos, generators, …) |
-| Database | database type, node/relationship counts, server + host system info |
+| Database | database type, node/relationship counts, server versions, the CPU and memory Neo4j can use |
 | Prefect | event tally, automation counts, work-pool state |
 | Activity (24h) | logins, checks, artifacts, branch actions, webhook deliveries |
 
@@ -49,6 +51,85 @@ distinction that matters operationally is each category's **temporal model** (be
 | `artifacts_created` / `_updated` | Artifact lifecycle events. |
 | `branches_created` / `_merged` / `_deleted` | Branch lifecycle events. |
 | `webhooks_fired_success` / `_failure` | Terminal `webhook-process` flow-run states. |
+
+## CPU and memory figures
+
+The `database`, `server` and `task_workers` blocks report how much CPU and memory each component
+is allowed to use, so a deployment's size can be compared with its licence tier. Every field is
+described in the [payload contract](../../specs/infp-631-resource-telemetry/contracts/telemetry-resources.md).
+
+The API server and task-worker figures come from two sources:
+
+- **The container limit**, from the Linux "cgroup" files where Docker or Kubernetes writes the
+  limit it puts on a container, for example "2 CPUs and 4 GB".
+- **The whole machine**, from psutil, for example "18 CPUs and 64 GB".
+
+If a container limit is set, the limit is reported, because that is all Infrahub can use. If no
+limit is set, the machine's figures are reported, because Infrahub can then use the whole machine.
+Both sources are needed: inside a container psutil still sees the whole machine, and without a
+limit the cgroup files have no number to give. Three exceptions:
+
+- A limit that is set but cannot be read is reported as unknown (`null`), never as the machine's
+  figure, which could be far too high.
+- The assigned CPUs come only from the container limit. With no limit they stay `null`.
+- The usable CPUs are the smallest of the machine's CPU count, the container's CPU limit and the
+  number of CPUs the process is pinned to, if it is pinned.
+
+`server` and `task_workers` each report **one of their containers whole** in `per_container`, and
+how many processes share it in `processes_per_container`, so
+`per_container × active ÷ processes_per_container` is the component's total. A task worker has its
+container to itself. The API server runs several gunicorn processes in one container (4 by default
+in Docker Compose): the gunicorn worker class puts gunicorn's worker count in each process's
+environment (`INFRAHUB_INTERNAL_PROCESSES_PER_CONTAINER`) before the app loads, and a process that
+gunicorn did not start counts 1. Their `total` and `active` count processes the same way `workers`
+does, which stays unchanged: `server.total + task_workers.total` equals `workers.total`, except for a
+process that stopped about two hours earlier and is only remembered by its presence key.
+
+Every CPU and memory figure is a whole number. Keep it that way for any new figure: the telemetry
+endpoint checks the checksum by writing the received data out again in JavaScript, which writes
+`2.0` as `2`, so a float with a whole-number value fails the check and the endpoint drops the whole
+report.
+
+Each API server and task-worker process stores its own figures in the cache. At startup and then
+every 5 minutes, the main loop starts a read of the limits on a separate thread, so that a slow read
+never holds up requests and flows, and stores the reading under
+`workers:resources:{component}:worker:{worker_id}` for 2 hours. The report runs once a day, so a
+reading every 5 minutes still catches a limit changed while Infrahub runs, and the 2-hour expiry
+keeps a reading while a long task holds up the main loop. The report uses only the readings of the
+workers whose "alive" key, written every 5 seconds by the heartbeat thread with a 15-second expiry,
+is still set, so a stopped worker's reading is ignored although it stays in the cache. The database
+figures come from Neo4j itself when the report runs.
+
+```mermaid
+flowchart LR
+    limits["Allowed CPU and memory<br/>container limit, or the whole machine<br/>ProcessResources"]
+    subgraph process["One Infrahub process: an API server or a task worker"]
+        main["Main work<br/>asks for a new reading every 5 min<br/>refresh_resources()"]
+        reader["Side helper<br/>looks up the numbers"]
+        beat["Heartbeat<br/>says it is alive every 5 s<br/>WorkerHeartbeat"]
+        main -->|asks| reader
+        reader -->|returns the numbers| main
+    end
+    readings[("Readings<br/>kept 2 h<br/>workers:resources:*")]
+    alive[("Alive signals<br/>kept 15 s<br/>workers:active:*")]
+    report["Daily report<br/>uses the readings of live workers<br/>AnonymousTelemetryGatherer"]
+    limits -->|looked up| reader
+    main -->|stores the reading| readings
+    beat -->|alive signal| alive
+    readings --> report
+    alive -->|which workers are alive| report
+```
+
+<!-- Extracted from specs/infp-631-resource-telemetry on 2026-10-08 -->
+An empty figure is `null`, never zero. For the API server and task workers the CPU pair shows why:
+`processor_available` set with `processor_assigned` empty means no CPU limit is set, and both empty
+means a limit is set but could not be read, or no process of that component has reported. Two
+things cannot be seen from inside a container: a limit set only on a Kubernetes pod, and Kubernetes
+CPU requests, which reserve CPU but do not limit it. One container stands for every copy of a
+component, so every copy is assumed to run with the same settings. The process count comes from how
+gunicorn was started: an API server started another way with several processes counts as one per
+container, which overstates its total. Why it is built this way:
+[ADR 0021](../../adr/0021-resource-allocation-telemetry.md).
 
 ## Temporal models (the important part)
 
@@ -89,10 +170,15 @@ the metrics are a live daily sample, not a backfillable ledger.
 
 ## Graceful degradation
 
-Every metric source is gathered through a single helper (`safe_metric`) that isolates failures:
+Many metric sources are gathered through a single helper (`safe_metric`) that isolates failures:
 if a source raises, that field is reported as `null` (and the failure is logged) while the rest
 of the payload is still built, stored, and sent. A source that succeeds with nothing to count
 reports `0`. So **`null` means "could not measure", `0` means "measured, nothing there"**.
+
+The new CPU and memory figures for the API server and the task workers, and the database's
+`processor_assigned`, are protected this way. Several older parts are not, among them the list of
+workers and the database block, including its CPU and memory figures: a failure in any of them
+stops the whole report.
 
 One caveat on the check metrics: `checks_started` counts every validator that starts, but
 `checks_passed`/`checks_failed` are only emitted for validators that run through the checks
@@ -115,6 +201,11 @@ both gated on the `READ_TELEMETRY` global permission.
 | `backend/infrahub/telemetry/task_manager.py` | Windowed event / webhook-run counters |
 | `backend/infrahub/telemetry/utils.py` | Degradation helper, 24h window functions, infrahub-type detection |
 | `backend/infrahub/telemetry/database.py` | Database and node-count metrics |
+| `backend/infrahub/telemetry/resources.py` | Reads a process's CPU and memory limits and the machine's figures |
+| `backend/infrahub/serve/worker.py`, `backend/infrahub/serve/processes.py` | The gunicorn worker class records how many processes share the container; each reading carries that count |
+| `backend/infrahub/services/scheduler.py`, `backend/infrahub/tasks/recurring.py` | The 5-minute schedule on the main loop that starts each read of the figures on a separate thread |
+| `backend/infrahub/services/heartbeat.py` | The heartbeat thread whose "alive" keys decide which workers' readings the report uses |
+| `backend/infrahub/services/component.py` | Stores each process's CPU and memory reading for 2 hours, and reads back the live workers' readings |
 | `backend/infrahub/telemetry/models.py` | Payload schema |
 | `backend/infrahub/workflows/catalogue.py` | Registers the `anonymous_telemetry_send` deployment |
 

@@ -51,9 +51,17 @@ class DivisionReader(Protocol):
 
 class AttributeNumberAllocator(Protocol):
     async def allocate(
-        self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute, user_id: str, division: Division | None
+        self,
+        pool: CoreNumberPool,
+        node: Node,
+        attribute: BaseAttribute,
+        user_id: str,
+        reuse_reservation: bool,
+        division: Division | None,
     ) -> int:
         """Return the number the pool gives the attribute, within `division` when the pool has a scope.
+
+        With `reuse_reservation` the number the pool already holds for the attribute is returned when there is one.
 
         Raises:
             PoolExhaustedError: When the pool has no number left to give.
@@ -229,7 +237,11 @@ class AttributePoolApplier:
                 )
             case FromPoolIntent.ALLOCATE:
                 await self._allocate(
-                    node=node, pool=self._require_pool(pool=pool, intent=intent), attribute=attribute, user_id=user_id
+                    node=node,
+                    pool=self._require_pool(pool=pool, intent=intent),
+                    attribute=attribute,
+                    user_id=user_id,
+                    reuse_reservation=False,
                 )
             case _:
                 assert_never(intent)
@@ -268,7 +280,7 @@ class AttributePoolApplier:
         pool = await self._find_pool(attribute=attribute, pool_ref=pool_id)
         attribute.from_pool = {"id": pool.get_id()}
         self._check_pool_targets_attribute(schema=node.get_schema(), pool=pool, attribute=attribute)
-        await self._allocate(node=node, pool=pool, attribute=attribute, user_id=user_id)
+        await self._allocate(node=node, pool=pool, attribute=attribute, user_id=user_id, reuse_reservation=True)
 
     async def _attach(self, node: Node, pool: CoreNumberPool, attribute: BaseAttribute, user_id: str) -> None:
         # An attribute not saved yet is attached to the pool when the node is created.
@@ -277,8 +289,10 @@ class AttributePoolApplier:
             provenance = await self.number_allocator.attach(pool=pool, node=node, attribute=attribute, user_id=user_id)
         attribute.tracking_pool = TrackingPool(pool_id=pool.get_id(), provenance=provenance)
 
-    async def _allocate(self, node: Node, pool: CoreNumberPool, attribute: BaseAttribute, user_id: str) -> None:
-        """Set the attribute's value from the pool.
+    async def _allocate(
+        self, node: Node, pool: CoreNumberPool, attribute: BaseAttribute, user_id: str, reuse_reservation: bool
+    ) -> None:
+        """Set the attribute's value from the pool, reusing the number the pool holds for it when `reuse_reservation` is set.
 
         Raises:
             ValidationError: When the pool is exhausted.
@@ -289,7 +303,12 @@ class AttributePoolApplier:
         division = await self._read_division(node=node, pool=pool, attribute=attribute)
         try:
             attribute.value = await self.number_allocator.allocate(
-                pool=pool, node=node, attribute=attribute, user_id=user_id, division=division
+                pool=pool,
+                node=node,
+                attribute=attribute,
+                user_id=user_id,
+                reuse_reservation=reuse_reservation,
+                division=division,
             )
         except PoolExhaustedError as exc:
             raise ValidationError({f"{attribute.name}.from_pool": exc.message}) from exc

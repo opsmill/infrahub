@@ -8,8 +8,6 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node.lock_utils import RESOURCE_POOL_LOCK_NAMESPACE
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
-from infrahub.core.schema import SchemaRoot
-from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.mutations.resource_manager.number_pools.pool import (
     BOUNDS_NOT_CLEARABLE,
@@ -20,7 +18,6 @@ from infrahub.graphql.mutations.resource_manager.number_pools.pool import (
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.number_pool_shorthand import NumberPoolShorthandMirror
 from tests.helpers.number_pool import add_pool_range
-from tests.helpers.schema import TICKET, load_schema
 
 from .helpers import (
     INVALID_RANGES_CASES,
@@ -123,18 +120,8 @@ class TestNumberPoolUpdate:
     The schema is loaded once for the class; every test creates pools under names of its own.
     """
 
-    @pytest.fixture(scope="class")
-    async def ticket_schema(
-        self,
-        db: InfrahubDatabase,
-        default_branch_scope_class: Branch,
-        register_core_models_schema_scope_class: SchemaBranch,
-    ) -> None:
-        await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
-        default_branch_scope_class.update_schema_hash()
-
     async def test_update_untouched_bounds_are_not_validated(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, loaded_ticket_schema_scope_class: None
     ) -> None:
         """An update that leaves the bounds alone succeeds whatever the pool holds in them."""
         pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
@@ -155,7 +142,11 @@ class TestNumberPoolUpdate:
 
     @pytest.mark.parametrize("case", CLEARED_BOUND_CASES, ids=lambda case: case.name)
     async def test_update_rejects_clearing_a_bound(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None, case: BoundsCase
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        loaded_ticket_schema_scope_class: None,
+        case: BoundsCase,
     ) -> None:
         pool_id = await create_pool(
             db=db,
@@ -176,7 +167,7 @@ class TestNumberPoolUpdate:
         assert await range_bounds(db=db, pool_id=pool_id) == [(10, 20)]
 
     async def test_bounds_written_on_a_pool_with_one_range_rewrite_it_in_place(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, loaded_ticket_schema_scope_class: None
     ) -> None:
         pool_id = await create_pool(
             db=db,
@@ -204,7 +195,7 @@ class TestNumberPoolUpdate:
         assert await range_details(db=db, pool_id=pool_id) == [(pool_range.get_id(), 15, 30, 7)]
 
     async def test_one_bound_written_on_a_pool_with_one_range_keeps_the_other(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, loaded_ticket_schema_scope_class: None
     ) -> None:
         pool_id = await create_pool(
             db=db,
@@ -226,7 +217,7 @@ class TestNumberPoolUpdate:
         assert await range_details(db=db, pool_id=pool_id) == [(pool_range.get_id(), 10, 25, None)]
 
     async def test_bounds_written_on_a_pool_without_range_create_it(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, loaded_ticket_schema_scope_class: None
     ) -> None:
         pool_id = await create_pool(db=db, branch=default_branch_scope_class, name="grown-pool", bounds={})
 
@@ -242,7 +233,7 @@ class TestNumberPoolUpdate:
         assert await range_bounds(db=db, pool_id=pool_id) == [(5, 9)]
 
     async def test_one_bound_written_on_a_pool_without_range_is_refused(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, loaded_ticket_schema_scope_class: None
     ) -> None:
         pool_id = await create_pool(db=db, branch=default_branch_scope_class, name="half-bound-pool", bounds={})
 
@@ -258,7 +249,7 @@ class TestNumberPoolUpdate:
         assert await range_bounds(db=db, pool_id=pool_id) == []
 
     async def test_bounds_written_on_a_pool_with_several_ranges_are_refused_listing_them(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, loaded_ticket_schema_scope_class: None
     ) -> None:
         pool_id = await create_pool(db=db, branch=default_branch_scope_class, name="multi-range-pool", bounds={})
         pool = await load_pool(db=db, pool_id=pool_id)
@@ -281,7 +272,11 @@ class TestNumberPoolUpdate:
 
     @pytest.mark.parametrize("case", RANGES_WITH_BOUNDS_CASES, ids=lambda case: case.name)
     async def test_update_refuses_bounds_combined_with_ranges(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None, case: RangesWithBoundsCase
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        loaded_ticket_schema_scope_class: None,
+        case: RangesWithBoundsCase,
     ) -> None:
         pool_id = await create_pool(
             db=db,
@@ -303,7 +298,7 @@ class TestNumberPoolUpdate:
         assert await range_details(db=db, pool_id=pool_id) == ranges_before
 
     async def test_update_with_ranges_alone_is_accepted(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, loaded_ticket_schema_scope_class: None
     ) -> None:
         pool_id = await create_pool(
             db=db,
@@ -327,7 +322,7 @@ class TestNumberPoolUpdate:
         assert await range_details(db=db, pool_id=pool_id) == [(pool_range.get_id(), 10, 20, None)]
 
     async def test_one_bound_written_while_the_range_changes_keeps_its_new_other_bound(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, loaded_ticket_schema_scope_class: None
     ) -> None:
         pool_id = await create_pool(
             db=db,
@@ -363,7 +358,7 @@ class TestNumberPoolUpdate:
         assert await range_details(db=db, pool_id=pool_id) == [(pool_range.get_id(), 5, 22, None)]
 
     async def test_update_with_ranges_replaces_the_pool_ranges_keeping_the_matching_one(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, loaded_ticket_schema_scope_class: None
     ) -> None:
         pool_id = await create_pool(
             db=db,
@@ -398,7 +393,11 @@ class TestNumberPoolUpdate:
 
     @pytest.mark.parametrize("case", REDECLARED_WEIGHT_CASES, ids=lambda case: case.name)
     async def test_update_with_ranges_sets_the_weight_of_a_redeclared_range(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None, case: RedeclaredWeightCase
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        loaded_ticket_schema_scope_class: None,
+        case: RedeclaredWeightCase,
     ) -> None:
         pool_id = await create_pool(
             db=db,
@@ -421,7 +420,7 @@ class TestNumberPoolUpdate:
         assert (stored[0][0] == stored_range.get_id()) is case.keeps_the_stored_range
 
     async def test_update_down_to_one_range_mirrors_it_into_the_shorthand(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, loaded_ticket_schema_scope_class: None
     ) -> None:
         pool_id = await create_pool(
             db=db,
@@ -450,7 +449,7 @@ class TestNumberPoolUpdate:
         assert await shorthand(db=db, pool_id=pool_id) == (50, 60)
 
     async def test_update_with_empty_ranges_removes_every_range(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, loaded_ticket_schema_scope_class: None
     ) -> None:
         pool_id = await create_pool(
             db=db,
@@ -472,7 +471,11 @@ class TestNumberPoolUpdate:
 
     @pytest.mark.parametrize("case", INVALID_RANGES_CASES, ids=lambda case: case.name)
     async def test_update_with_invalid_ranges_is_refused_and_leaves_the_pool_untouched(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None, case: InvalidRangesCase
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        loaded_ticket_schema_scope_class: None,
+        case: InvalidRangesCase,
     ) -> None:
         pool_id = await create_pool(
             db=db,
@@ -494,7 +497,7 @@ class TestNumberPoolUpdate:
         assert await shorthand(db=db, pool_id=pool_id) == (10, 20)
 
     async def test_upsert_of_a_new_pool_creates_its_ranges(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, loaded_ticket_schema_scope_class: None
     ) -> None:
         result = await execute(
             db=db,
@@ -518,7 +521,7 @@ class TestNumberPoolUpdate:
         ]
 
     async def test_upsert_of_an_existing_pool_replaces_its_ranges(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, loaded_ticket_schema_scope_class: None
     ) -> None:
         pool_id = await create_pool(
             db=db,
@@ -552,7 +555,7 @@ class TestNumberPoolUpdate:
         assert await shorthand(db=db, pool_id=pool_id) == (None, None)
 
     async def test_update_with_null_ranges_is_refused_and_leaves_the_pool_untouched(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, loaded_ticket_schema_scope_class: None
     ) -> None:
         pool_id = await create_pool(
             db=db,

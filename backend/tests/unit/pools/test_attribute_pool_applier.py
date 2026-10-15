@@ -55,6 +55,8 @@ class PoolCall:
     node_id: str
     attribute_name: str
     user_id: str = ACTOR_ID
+    reuse_reservation: bool | None = None
+    """Whether an allocation may return the number the pool already holds, None for every other action."""
 
 
 @dataclass
@@ -67,8 +69,14 @@ class RecordingNumberAllocator:
     """What the pool's record says about the held number once attached, as the write reports it."""
     calls: list[PoolCall] = field(default_factory=list)
 
-    async def allocate(
-        self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute, user_id: str, division: Division | None
+    async def allocate(  # noqa: PLR0913, PLR0917
+        self,
+        pool: CoreNumberPool,
+        node: Node,
+        attribute: BaseAttribute,
+        user_id: str,
+        reuse_reservation: bool,
+        division: Division | None,
     ) -> int:
         self.calls.append(
             PoolCall(
@@ -77,6 +85,7 @@ class RecordingNumberAllocator:
                 node_id=node.get_id(),
                 attribute_name=attribute.name,
                 user_id=user_id,
+                reuse_reservation=reuse_reservation,
             )
         )
         if self.exhausted:
@@ -175,7 +184,9 @@ async def test_pool_named_by_id_gives_the_attribute_its_number(
     assert ticket_id.from_pool == {"id": POOL_ID}
     assert ticket_id.tracking_pool == TrackingPool(pool_id=POOL_ID, provenance=PoolRecordProvenance.ALLOCATED)
     assert allocator.calls == [
-        PoolCall(action="allocate", pool_id=POOL_ID, node_id=NODE_ID, attribute_name="ticket_id")
+        PoolCall(
+            action="allocate", pool_id=POOL_ID, node_id=NODE_ID, attribute_name="ticket_id", reuse_reservation=False
+        )
     ]
 
 
@@ -188,7 +199,12 @@ async def test_the_account_making_the_write_reaches_the_allocator(
 
     assert allocator.calls == [
         PoolCall(
-            action="allocate", pool_id=POOL_ID, node_id=NODE_ID, attribute_name="ticket_id", user_id=OTHER_ACTOR_ID
+            action="allocate",
+            pool_id=POOL_ID,
+            node_id=NODE_ID,
+            attribute_name="ticket_id",
+            user_id=OTHER_ACTOR_ID,
+            reuse_reservation=False,
         )
     ]
 
@@ -293,7 +309,9 @@ async def test_naming_another_pool_with_a_null_value_moves_the_attribute_to_it(
     assert ticket_id.value == 42
     assert ticket_id.tracking_pool == TrackingPool(pool_id=POOL_ID, provenance=PoolRecordProvenance.ALLOCATED)
     assert allocator.calls == [
-        PoolCall(action="allocate", pool_id=POOL_ID, node_id=NODE_ID, attribute_name="ticket_id")
+        PoolCall(
+            action="allocate", pool_id=POOL_ID, node_id=NODE_ID, attribute_name="ticket_id", reuse_reservation=False
+        )
     ]
 
 
@@ -354,7 +372,9 @@ async def test_a_number_pool_attribute_draws_from_the_pool_its_schema_declares(
     assert attribute.is_default is False
     assert attribute.value == 42
     assert allocator.calls == [
-        PoolCall(action="allocate", pool_id=POOL_ID, node_id=NODE_ID, attribute_name="ticket_id")
+        PoolCall(
+            action="allocate", pool_id=POOL_ID, node_id=NODE_ID, attribute_name="ticket_id", reuse_reservation=True
+        )
     ]
 
 

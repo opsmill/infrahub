@@ -5,8 +5,6 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import initialize_registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.schema import SchemaRoot
-from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.initialization import prepare_graphql_params
@@ -16,7 +14,7 @@ from infrahub.graphql.mutations.resource_manager.number_pools.pool import (
     SHORTHAND_WITH_RANGES,
 )
 from tests.helpers.graphql import graphql
-from tests.helpers.schema import TICKET, load_schema
+from tests.helpers.schema import TICKET
 
 from .helpers import (
     CREATE_NUMBER_POOL,
@@ -72,19 +70,13 @@ class TestNumberPoolCreate:
     The schema is loaded once for the class; every test creates pools under names of its own.
     """
 
-    @pytest.fixture(scope="class")
-    async def ticket_schema(
+    @pytest.mark.parametrize("case", MISSING_BOUND_CASES, ids=lambda case: case.name)
+    async def test_create_requires_both_bounds(
         self,
         db: InfrahubDatabase,
         default_branch_scope_class: Branch,
-        register_core_models_schema_scope_class: SchemaBranch,
-    ) -> None:
-        await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
-        default_branch_scope_class.update_schema_hash()
-
-    @pytest.mark.parametrize("case", MISSING_BOUND_CASES, ids=lambda case: case.name)
-    async def test_create_requires_both_bounds(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None, case: BoundsCase
+        loaded_ticket_schema_scope_class: None,
+        case: BoundsCase,
     ) -> None:
         pools_before = await NodeManager.count(db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch_scope_class)
         ranges_before = await NodeManager.count(
@@ -110,7 +102,11 @@ class TestNumberPoolCreate:
 
     @pytest.mark.parametrize("case", NO_BOUNDS_CASES, ids=lambda case: case.name)
     async def test_create_without_bounds_yields_a_pool_without_range(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None, case: BoundsCase
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        loaded_ticket_schema_scope_class: None,
+        case: BoundsCase,
     ) -> None:
         result = await execute(
             db=db,
@@ -127,7 +123,7 @@ class TestNumberPoolCreate:
         assert await range_bounds(db=db, pool_id=created["id"]) == []
 
     async def test_create_with_ranges_creates_each_of_them(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, loaded_ticket_schema_scope_class: None
     ) -> None:
         result = await execute(
             db=db,
@@ -154,7 +150,7 @@ class TestNumberPoolCreate:
         ]
 
     async def test_create_with_one_range_mirrors_it_into_the_shorthand(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, loaded_ticket_schema_scope_class: None
     ) -> None:
         result = await execute(
             db=db,
@@ -174,7 +170,11 @@ class TestNumberPoolCreate:
 
     @pytest.mark.parametrize("case", INVALID_RANGES_CASES, ids=lambda case: case.name)
     async def test_create_with_invalid_ranges_is_refused(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None, case: InvalidRangesCase
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        loaded_ticket_schema_scope_class: None,
+        case: InvalidRangesCase,
     ) -> None:
         pools_before = await NodeManager.count(db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch_scope_class)
         ranges_before = await NodeManager.count(
@@ -201,7 +201,7 @@ class TestNumberPoolCreate:
         )
 
     async def test_create_with_bounds_creates_the_single_range(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, loaded_ticket_schema_scope_class: None
     ) -> None:
         pool_id = await create_pool(
             db=db,
@@ -224,7 +224,7 @@ class TestNumberPoolCreate:
         ] == [(10, 20, None)]
 
     async def test_create_accepts_equal_bounds(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, loaded_ticket_schema_scope_class: None
     ) -> None:
         result = await execute(
             db=db,
@@ -242,7 +242,11 @@ class TestNumberPoolCreate:
 
     @pytest.mark.parametrize("case", RANGES_WITH_BOUNDS_CASES, ids=lambda case: case.name)
     async def test_create_refuses_bounds_combined_with_ranges(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None, case: RangesWithBoundsCase
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        loaded_ticket_schema_scope_class: None,
+        case: RangesWithBoundsCase,
     ) -> None:
         pools_before = await NodeManager.count(db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch_scope_class)
 
@@ -265,7 +269,7 @@ class TestNumberPoolCreate:
         )
 
     async def test_number_pool_creation_errors(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, loaded_ticket_schema_scope_class: None
     ) -> None:
         pools_before = await NodeManager.count(db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch_scope_class)
         ranges_before = await NodeManager.count(
@@ -370,7 +374,7 @@ class TestNumberPoolCreate:
         )
 
     async def test_pool_created_with_bounds_hands_out_numbers_from_its_range(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, loaded_ticket_schema_scope_class: None
     ) -> None:
         await initialize_registry(db=db)
         pool_id = await create_pool(
@@ -397,7 +401,7 @@ class TestNumberPoolCreate:
         )
 
     async def test_pool_created_with_ranges_hands_out_numbers_from_the_heaviest_range_first(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, loaded_ticket_schema_scope_class: None
     ) -> None:
         await initialize_registry(db=db)
         pool_id = await create_pool(
@@ -417,7 +421,7 @@ class TestNumberPoolCreate:
         assert allocated == [500, 1]
 
     async def test_create_with_null_ranges_is_refused(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, loaded_ticket_schema_scope_class: None
     ) -> None:
         pools_before = await NodeManager.count(db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch_scope_class)
 

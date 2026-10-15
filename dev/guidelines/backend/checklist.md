@@ -135,6 +135,27 @@ Plan to follow established patterns:
 - **Standard parameter names** - use `db`, `node_id`, `branch_name` consistently
 - **Domain language** - choose names that match terminology from the domain model
 
+## Telemetry
+
+<!-- Extracted from specs/infp-631-resource-telemetry on 2026-10-08 -->
+### Does this feature change the telemetry payload?
+
+The receiving service already ingests the payload and charts some fields over time, so a change
+must keep every existing reading valid:
+
+- **Never change what an existing field means**, even when its key and type stay the same. Narrowing
+  what a count covers breaks the series built on it.
+- **Put new information in new blocks** that follow the existing convention, for example a block
+  with its own `total` and `active` next to `workers`, rather than new fields that redefine an old
+  block.
+- **Raise `payload_format` only after the receiving service confirms** it accepts the change; until
+  then the additions ship under the existing version.
+- **Report `null` for a figure that could not be read**, never `0` and never a fallback that could
+  overstate it.
+
+See [ADR 0021](../../adr/0021-resource-allocation-telemetry.md) and
+[Telemetry](../../knowledge/backend/telemetry.md).
+
 ## See Also
 
 - [Python Coding Standards](./python.md) - Python coding conventions

@@ -581,7 +581,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
     async def to_graphql(
         self,
-        db: InfrahubDatabase,
+        db: InfrahubDatabase,  # noqa: ARG002  # the render signature is shared with objects and relationships
         fields: dict | None = None,
         related_node_ids: set | None = None,
         filter_sensitive: bool = False,
@@ -624,23 +624,12 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 response[field_name] = {"update_value": permissions["update"]} if permissions else None
                 continue
 
-            if field_name in ["source", "owner"]:
-                if field_name == "source":
-                    node_attr = await self._get_source_for_graphql(db=db)
-                else:
-                    node_attr = await self.get_owner(db=db)
-                if not node_attr:
-                    response[field_name] = None
-                elif fields and isinstance(fields, dict):
-                    response[field_name] = await node_attr.to_graphql(
-                        db=db, fields=fields[field_name], related_node_ids=related_node_ids
-                    )
-                else:
-                    response[field_name] = await node_attr.to_graphql(
-                        db=db,
-                        fields={"id": None, "display_label": None, "__typename": None},
-                        related_node_ids=related_node_ids,
-                    )
+            if field_name == "source":
+                response[field_name] = self._source_reference_for_graphql()
+                continue
+
+            if field_name == "owner":
+                response[field_name] = self._owner_reference_for_graphql()
                 continue
 
             if field_name.startswith("_"):
@@ -663,11 +652,19 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
         return response
 
-    async def _get_source_for_graphql(self, db: InfrahubDatabase) -> Node | None:
-        """The node `source` reports: the pool tracking a number attribute ahead of a source the user set."""
+    def _owner_reference_for_graphql(self) -> dict[str, Any] | None:
+        """The object `owner` names, for its field resolver to load."""
+        if not self.owner_id:
+            return None
+        return {"id": str(self.owner_id)}
+
+    def _source_reference_for_graphql(self) -> dict[str, Any] | None:
+        """The object `source` names, for its field resolver to load: a tracking pool ahead of a user-set source."""
         if self.schema.kind in POOL_TRACKED_ATTRIBUTE_KINDS and (tracking_pool := self.tracking_pool) is not None:
-            return await registry.manager.get_one(db=db, id=tracking_pool.pool_id, branch=self.branch, at=self.at)
-        return await self.get_source(db=db)
+            return {"id": tracking_pool.pool_id, "__kind__": InfrahubKind.NUMBERPOOL}
+        if self.source_id:
+            return {"id": str(self.source_id)}
+        return None
 
     def _filter_sensitive(self, value: str, filter_sensitive: bool) -> str:
         if filter_sensitive and self.schema.kind in ["HashedPassword", "Password"]:

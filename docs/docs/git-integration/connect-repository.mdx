@@ -371,7 +371,7 @@ The mutation returns a task ID that you can use to monitor the progress of the i
 
 :::success Check synchronization status
 
-After triggering the import, the repository will fetch from the remote and re-import resources. You can monitor the process by checking the repository's sync status and the commit field, which will update to reflect the latest commit from the tracked ref.
+After triggering the import, the repository will fetch from the remote and re-import resources. The **Repository activity** card on the repository's detail page shows the run while it works: its step, the branch it is on and how long it has been running. When the run finishes, the card shows which branches it changed or failed on. The repository's sync status and the commit field also update to reflect the latest commit from the tracked ref.
 
 :::
 
@@ -400,7 +400,9 @@ The repository sync status indicator in the header tells you whether anything is
    - Select **Reimport current commit** to force reimport without changing the reference
    - For read-only repositories, select **Import latest commit** to fetch and import the latest commit from the remote for the tracked ref
 
-4. **A `Repository` reporting a Credential Error may have valid credentials that lack write access.** A read-write `Repository` needs to push to the remote, and the connectivity check verifies this. If the token can read the repository but cannot push, the check fails with a credential error even though the credentials themselves are valid. Grant the token **write** access to the repository (see the token guidance below); reissuing the token does not help if the new one also lacks write access.
+4. **Check which worker holds the repository lock.** The **Repository activity** card names the worker that holds the repository lock and when it requested it. A held lock is not an error on its own: short tasks such as fetches also hold it.
+
+5. **A `Repository` reporting a Credential Error may have valid credentials that lack write access.** A read-write `Repository` needs to push to the remote, and the connectivity check verifies this. If the token can read the repository but cannot push, the check fails with a credential error even though the credentials themselves are valid. Grant the token **write** access to the repository (see the token guidance below); reissuing the token does not help if the new one also lacks write access.
 
 :::success Validation
 A healthy repository connection should show `Online` for operational status and `In sync` for sync status once all operations complete.
