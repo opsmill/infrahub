@@ -62,25 +62,32 @@ def _worker_limit_from_value(value: object) -> int | None:
     return limit if limit > 0 else None
 
 
-async def get_processor_assigned(db: InfrahubDatabase) -> int | None:
-    """Read how many CPUs the database's parallel query engine is set to use, or ``None`` when no cap is set.
+async def _read_settings(db: InfrahubDatabase, setting_names: list[str], query_name: str) -> dict[str, object]:
+    """Return the raw value of each named database setting that exists, keyed by its name.
 
     A failure to run the query is raised, not hidden here.
     """
     query = """
     SHOW SETTINGS YIELD name, value
-    WHERE name = $setting_name
-    RETURN value AS value
+    WHERE name IN $setting_names
+    RETURN name, value
     """
     results = await db.execute_query(
         query=query,
-        params={"setting_name": DB_WORKER_LIMIT_SETTING},
-        name="get_processor_assigned",
+        params={"setting_names": setting_names},
+        name=query_name,
         type=QueryType.READ,
     )
-    if not results:
-        return None
-    return _worker_limit_from_value(results[0]["value"])
+    return {result["name"]: result["value"] for result in results}
+
+
+async def get_processor_assigned(db: InfrahubDatabase) -> int | None:
+    """Read how many CPUs the database's parallel query engine is set to use, or ``None`` when no cap is set.
+
+    A failure to run the query is raised, not hidden here.
+    """
+    settings = await _read_settings(db=db, setting_names=[DB_WORKER_LIMIT_SETTING], query_name="get_processor_assigned")
+    return _worker_limit_from_value(settings.get(DB_WORKER_LIMIT_SETTING))
 
 
 def _bytes_from_value(value: object) -> int | None:
@@ -112,19 +119,10 @@ async def get_memory_assigned(db: InfrahubDatabase) -> int | None:
 
     A failure to run the query is raised, not hidden here.
     """
-    query = """
-    SHOW SETTINGS YIELD name, value
-    WHERE name IN $setting_names
-    RETURN name, value
-    """
-    results = await db.execute_query(
-        query=query,
-        params={"setting_names": [DB_HEAP_MAX_SETTING, DB_PAGECACHE_SETTING]},
-        name="get_memory_assigned",
-        type=QueryType.READ,
+    settings = await _read_settings(
+        db=db, setting_names=[DB_HEAP_MAX_SETTING, DB_PAGECACHE_SETTING], query_name="get_memory_assigned"
     )
-    values = {result["name"]: result["value"] for result in results}
-    return _memory_assigned_from_values(values.get(DB_HEAP_MAX_SETTING), values.get(DB_PAGECACHE_SETTING))
+    return _memory_assigned_from_values(settings.get(DB_HEAP_MAX_SETTING), settings.get(DB_PAGECACHE_SETTING))
 
 
 async def get_system_info(db: InfrahubDatabase) -> TelemetryDatabaseSystemInfoData:
