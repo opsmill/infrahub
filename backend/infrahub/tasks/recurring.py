@@ -14,3 +14,7 @@ async def trigger_branch_refresh(service: InfrahubServices) -> None:
         await refresh_branches(db=db)
 
     await service.component.refresh_schema_hash()
+
+
+async def trigger_resource_refresh(service: InfrahubServices) -> None:
+    await service.component.refresh_resources()

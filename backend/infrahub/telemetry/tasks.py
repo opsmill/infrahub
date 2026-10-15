@@ -15,7 +15,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import AccountStatus, InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase
-from infrahub.services.component import InfrahubComponent
+from infrahub.services.component import COMPONENT_API_SERVER, COMPONENT_GIT_AGENT, InfrahubComponent, WorkerInfo
 from infrahub.workers.dependencies import get_component, get_database, get_http
 
 from .constants import (
@@ -28,11 +28,14 @@ from .models import (
     TelemetryAccountData,
     TelemetryActivity24hData,
     TelemetryBranchData,
+    TelemetryComponentData,
+    TelemetryContainerData,
     TelemetryData,
     TelemetrySchemaData,
     TelemetryWorkerData,
 )
 from .repository import TelemetrySnapshotRepository
+from .resources import WorkerResourceReading
 from .snapshot import TelemetrySnapshot
 from .task_manager import gather_activity_24h, gather_prefect_information
 from .utils import determine_infrahub_type, safe_metric
@@ -125,6 +128,35 @@ class DefaultActiveBranchCounter:
         return await count_active_branches(db=self.db)
 
 
+def _component_data(workers: list[WorkerInfo], readings: list[WorkerResourceReading]) -> TelemetryComponentData:
+    """Count one component's processes and report the CPU and memory of one of its containers.
+
+    Every copy of a component is assumed to run with the same settings, so one
+    container stands for all of them. If a process could read only some of its
+    figures, the most complete reading is used.
+    """
+    total = len(workers)
+    active = len([worker for worker in workers if worker.active])
+    if not readings:
+        return TelemetryComponentData(total=total, active=active)
+    chosen = max(readings, key=_reported_field_count)
+    return TelemetryComponentData(
+        total=total,
+        active=active,
+        processes_per_container=chosen.processes_per_container,
+        per_container=TelemetryContainerData(
+            processor_available=chosen.processor_available,
+            processor_assigned=chosen.processor_assigned,
+            memory_total=chosen.memory_total,
+            memory_available=chosen.memory_available,
+        ),
+    )
+
+
+def _reported_field_count(reading: WorkerResourceReading) -> int:
+    return sum(value is not None for value in reading.model_dump(exclude={"processes_per_container"}).values())
+
+
 class AnonymousTelemetryGatherer:
     """Assemble the full telemetry payload from its injected metric sources."""
 
@@ -148,6 +180,14 @@ class AnonymousTelemetryGatherer:
 
         default_branch = registry.get_branch_from_registry()
         workers = await self.component.list_workers(branch=default_branch.name, schema_hash=False)
+        # The server and task_workers blocks break the workers count down by component.
+        task_workers = [worker for worker in workers if worker.component == COMPONENT_GIT_AGENT]
+        api_workers = [worker for worker in workers if worker.component == COMPONENT_API_SERVER]
+
+        active_worker_ids = {worker.id for worker in workers if worker.active}
+        readings_by_component = (
+            await safe_metric(self.component.read_worker_resources(worker_ids=active_worker_ids)) or {}
+        )
 
         accounts = await safe_metric(self.account_gatherer.gather())
         activity_24h = await safe_metric(self.activity_gatherer.gather())
@@ -161,8 +201,10 @@ class AnonymousTelemetryGatherer:
             platform=platform.machine(),
             workers=TelemetryWorkerData(
                 total=len(workers),
-                active=len([w for w in workers if w.active]),
+                active=len([worker for worker in workers if worker.active]),
             ),
+            server=_component_data(api_workers, readings_by_component.get(COMPONENT_API_SERVER, [])),
+            task_workers=_component_data(task_workers, readings_by_component.get(COMPONENT_GIT_AGENT, [])),
             branches=TelemetryBranchData(
                 total=len(registry.branch),
                 active=await safe_metric(self.active_branch_counter.gather()),

@@ -443,6 +443,12 @@ such a call. A blip between one worker and the cache while the cleanup's worker 
 remains the one way a live holder can lose a lock; the merge watcher's grace period absorbs that,
 the deadlock cleanup has no equivalent.
 
+<!-- Extracted from specs/infp-631-resource-telemetry on 2026-10-08 -->
+The beat writes only liveness keys. Telemetry's CPU and memory readings are stored by a 5-minute
+schedule on the main loop instead, and the daily report uses only the readings of the workers whose
+active key the beat keeps alive, so a slow or failed telemetry write can never delay a beat. See
+[Telemetry](telemetry.md#cpu-and-memory-figures).
+
 ## Key Locations
 
 | Component | Location |
