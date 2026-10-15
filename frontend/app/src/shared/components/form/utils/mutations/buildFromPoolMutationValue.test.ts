@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { buildFromPoolPayload } from "@/shared/components/form/utils/mutations/buildFromPoolMutationValue";
+import {
+  buildFromPoolPayload,
+  buildNumberPoolMutationValue,
+} from "@/shared/components/form/utils/mutations/buildFromPoolMutationValue";
 
 import {
   IP_ADDRESS_POOL,
@@ -92,5 +95,35 @@ describe("buildFromPoolPayload", () => {
         NUMBER_POOL_KIND
       )
     ).toEqual({ id: "pool1" });
+  });
+});
+
+describe("buildNumberPoolMutationValue", () => {
+  it("sends the entered number with the pool", () => {
+    expect(buildNumberPoolMutationValue({ id: "pool1", number: 42 })).toEqual({
+      value: 42,
+      from_pool: { id: "pool1" },
+    });
+  });
+
+  it("sends a null value when the number was cleared", () => {
+    expect(buildNumberPoolMutationValue({ id: "pool1", number: null })).toEqual({
+      value: null,
+      from_pool: { id: "pool1" },
+    });
+  });
+
+  it("sends a null value when no number was entered", () => {
+    expect(buildNumberPoolMutationValue({ id: "pool1" })).toEqual({
+      value: null,
+      from_pool: { id: "pool1" },
+    });
+  });
+
+  it("keeps zero as an entered number", () => {
+    expect(buildNumberPoolMutationValue({ id: "pool1", number: 0 })).toEqual({
+      value: 0,
+      from_pool: { id: "pool1" },
+    });
   });
 });
