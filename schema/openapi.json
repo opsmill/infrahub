@@ -7193,10 +7193,17 @@
                         "description": "Deprecated, use ranges instead. Start of the single range, defaults to 1 when only end_range is set"
                     },
                     "ranges": {
-                        "items": {
-                            "$ref": "#/components/schemas/NumberPoolRangeWrite"
-                        },
-                        "type": "array",
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/NumberPoolRangeWrite"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Ranges",
                         "description": "Ranges of numbers the associated NumberPool allocates from, they must not overlap"
                     },
