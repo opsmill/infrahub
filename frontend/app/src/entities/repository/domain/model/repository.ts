@@ -1,4 +1,5 @@
 import {
+  type CoreRepository,
   type RepositoryCommit as GeneratedRepositoryCommit,
   RepositoryCommitState as GeneratedRepositoryCommitState,
   type RepositoryCommits as GeneratedRepositoryCommits,
@@ -88,3 +89,15 @@ export const REPOSITORY_ERROR_IMPORT_FILTER = {
   name: `${REPOSITORY_SYNC_STATUS_ATTRIBUTE_NAME}__value`,
   value: REPOSITORY_SYNC_STATUS_ERROR_VALUE,
 };
+
+export const REPOSITORY_PUSH_STATE_ATTRIBUTE_NAMES: readonly string[] = [
+  "delivery_status",
+  "delivery_failure_cause",
+  "delivery_error",
+  "delivery_queue",
+  "delivery_held_regeneration",
+  "delivery_last_abandonment",
+  "delivery_last_delivered_commit",
+  "delivery_reverted",
+  "delivery_progress",
+] satisfies readonly (keyof CoreRepository)[];
