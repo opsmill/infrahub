@@ -35,14 +35,17 @@ from infrahub.core.constants import (
     RelationshipDirection,
     RelationshipKind,
     SchemaElementPathType,
+    SchemaPathType,
 )
 from infrahub.core.migrations import MIGRATION_MAP
 from infrahub.core.models import (
     HashableModelDiff,
     SchemaBranchHash,
     SchemaDiff,
+    SchemaUpdateConstraintInfo,
     SchemaUpdateValidationResult,
 )
+from infrahub.core.path import SchemaPath
 from infrahub.core.schema import (
     AttributePathParsingError,
     AttributeSchema,
@@ -65,6 +68,7 @@ from infrahub.core.schema.attribute_schema import get_attribute_schema_class_for
 from infrahub.core.schema.definitions.core import core_profile_schema_definition
 from infrahub.core.schema.derived_kinds import get_object_template_kind, get_profile_kind
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
+from infrahub.core.validators.enum import ConstraintIdentifier
 from infrahub.core.validators.schema_branch.display_label_validator import DisplayLabelValidator
 from infrahub.core.validators.schema_branch.hierarchical_nodes_restricted_words_validator import (
     HierarchicalNodesRestrictedWords,
@@ -362,8 +366,47 @@ class SchemaBranch:
         result = SchemaUpdateValidationResult.init(
             diff=diff, schema=other, enforce_update_support=enforce_update_support
         )
+        result.constraints.extend(other._added_allocation_scope_constraints(diff=diff))
         result.validate_all(migration_map=MIGRATION_MAP, validator_map=CONSTRAINT_VALIDATOR_MAP)
         return result
+
+    def _added_allocation_scope_constraints(self, diff: SchemaDiff) -> list[SchemaUpdateConstraintInfo]:
+        """Return an allocation scope constraint for each NumberPool attribute the diff adds with a declared scope.
+
+        A pool created for the same kind and attribute, for example on the default branch, can already exist, so the
+        declaration is checked against that pool's scope as an update of the scope is.
+        """
+        added: list[tuple[MainSchemaTypes, str]] = [
+            (self.get(name=kind, duplicate=False), attribute_name)
+            for kind in diff.added
+            for attribute_name in self.get(name=kind, duplicate=False).attribute_names
+        ]
+        for kind, kind_diff in diff.changed.items():
+            attributes_diff = kind_diff.changed.get("attributes")
+            if isinstance(attributes_diff, HashableModelDiff):
+                added.extend((self.get(name=kind, duplicate=False), name) for name in attributes_diff.added)
+
+        constraints: list[SchemaUpdateConstraintInfo] = []
+        for kind_schema, attribute_name in added:
+            attribute = kind_schema.get_attribute(name=attribute_name)
+            if (
+                attribute.inherited
+                or not isinstance(attribute.parameters, NumberPoolParameters)
+                or attribute.parameters.allocation_scope is None
+            ):
+                continue
+            constraints.append(
+                SchemaUpdateConstraintInfo(
+                    path=SchemaPath(
+                        schema_kind=kind_schema.kind,
+                        path_type=SchemaPathType.ATTRIBUTE,
+                        field_name=attribute_name,
+                        property_name="parameters.allocation_scope",
+                    ),
+                    constraint_name=ConstraintIdentifier.ATTRIBUTE_PARAMETERS_ALLOCATION_SCOPE_UPDATE.value,
+                )
+            )
+        return constraints
 
     def duplicate(self, name: str | None = None) -> SchemaBranch:
         """Duplicate the current object but conserve the same cache."""

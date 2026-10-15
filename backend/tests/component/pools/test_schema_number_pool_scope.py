@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
@@ -26,6 +27,7 @@ from tests.helpers.number_pool import (
     SCOPED_POOL_SCHEMA,
     SCOPED_RACK,
     SCOPED_SITE,
+    schema_load_violations,
 )
 from tests.helpers.schema import save_schema
 
@@ -222,3 +224,49 @@ async def test_declaration_on_a_branch_leaving_out_the_scope_attaches_the_scoped
     # A schema load keeps a parameter it leaves out, so the branch declaration stands for the scope the pool holds.
     assert [pool.id for pool in pools] == [branch_parameters.number_pool_id]
     assert pools[0].allocation_scope.value == [{"id": role_id, "name": "role"}]
+
+
+@dataclass(frozen=True)
+class BranchDeclarationCase:
+    name: str
+    scope: list[str] | None
+    refused: bool
+
+
+BRANCH_DECLARATION_CASES = [
+    BranchDeclarationCase(name="empty-scope", scope=[], refused=True),
+    BranchDeclarationCase(name="other-scope", scope=["site"], refused=True),
+    BranchDeclarationCase(name="same-scope", scope=["role"], refused=False),
+    BranchDeclarationCase(name="scope-left-out", scope=None, refused=False),
+]
+
+
+@pytest.mark.parametrize("case", BRANCH_DECLARATION_CASES, ids=[case.name for case in BRANCH_DECLARATION_CASES])
+async def test_loading_on_a_branch_a_declaration_the_scoped_pool_cannot_take_is_refused(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, case: BranchDeclarationCase
+) -> None:
+    await save_schema(db=db, schema=SCOPED_POOL_SCHEMA)
+    branch = await create_branch(db=db, branch_name="declares-vlan-index")
+    main_device = copy.deepcopy(SCOPED_DEVICE)
+    main_device.attributes.append(_pooled_attribute(name="vlan_index", scope=["role"]))
+    await _load_and_provision(db=db, schema=_schema(device=main_device))
+    pool = await _schema_pool(db=db, kind=SCOPED_DEVICE.kind, attribute="vlan_index")
+    branch_device = copy.deepcopy(SCOPED_DEVICE)
+    branch_device.attributes.append(
+        AttributeSchema(
+            name="vlan_index",
+            kind="NumberPool",
+            optional=False,
+            read_only=True,
+            parameters=NumberPoolParameters(start_range=1, end_range=100, allocation_scope=case.scope),
+        )
+    )
+
+    violations = await schema_load_violations(db=db, branch=branch, schema=_schema(device=branch_device))
+
+    refusal = (
+        f"'number_pool.scope' constraint violation on schema 'CoreNumberPool'. Node (ScopeDevice.vlan_index [{pool.id}])"
+        " is not compliant. The error relates to field vlan_index=\"ScopeDevice.vlan_index: allocation_scope can't be"
+        ' changed after the pool is created".'
+    )
+    assert violations == ([(pool.id, refusal)] if case.refused else [])

@@ -10,11 +10,14 @@ from infrahub.core.constants import HashableModelState, InfrahubKind, Relationsh
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.registry import registry
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
-from infrahub.core.validators.aggregated_checker import AggregatedConstraintChecker
-from infrahub.core.validators.model import SchemaConstraintValidatorRequest
-from infrahub.dependencies.registry import get_component_registry
 from infrahub.pools.scope import AllocationScopeResolver
-from tests.helpers.number_pool import SCOPED_DEVICE, SCOPED_HOLDER, SCOPED_POD_HOLDER, SCOPED_POOL_SCHEMA
+from tests.helpers.number_pool import (
+    SCOPED_DEVICE,
+    SCOPED_HOLDER,
+    SCOPED_POD_HOLDER,
+    SCOPED_POOL_SCHEMA,
+    schema_load_violations,
+)
 from tests.helpers.schema import load_schema
 
 if TYPE_CHECKING:
@@ -215,26 +218,7 @@ class TestNumberPoolScopeSchemaChange:
         db: InfrahubDatabase, branch: Branch, change: Callable[[SchemaBranch], SchemaRoot]
     ) -> list[tuple[str, str]]:
         branch_schema = registry.schema.get_schema_branch(name=branch.name)
-        candidate_schema, result = evaluate_candidate_schemas(
-            branch_schema=branch_schema, schemas_to_evaluate=[change(branch_schema.duplicate())]
-        )
-        checker = await get_component_registry().get_component(AggregatedConstraintChecker, db=db, branch=branch)
-
-        violations: list[tuple[str, str]] = []
-        for constraint in result.constraints:
-            node_schema = candidate_schema.get(name=constraint.path.schema_kind, duplicate=False)
-            assert isinstance(node_schema, NodeSchema | GenericSchema)
-            request = SchemaConstraintValidatorRequest(
-                branch=branch,
-                constraint_name=constraint.constraint_name,
-                node_schema=node_schema,
-                schema_path=constraint.path,
-                schema_branch=candidate_schema,
-            )
-            violations.extend(
-                (violation.node_id, violation.message) for violation in await checker.run_constraints(request)
-            )
-        return violations
+        return await schema_load_violations(db=db, branch=branch, schema=change(branch_schema.duplicate()))
 
     @pytest.mark.parametrize("case", REFUSAL_CASES, ids=[case.name for case in REFUSAL_CASES])
     async def test_refuses_a_change_that_breaks_a_scope_element(

@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 from typing import TYPE_CHECKING
 
+from infrahub.api.schema import evaluate_candidate_schemas
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import InfrahubContext
@@ -21,6 +22,9 @@ from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, Rel
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters, NumberPoolParameters
 from infrahub.core.schema.attribute_schema import NumberAttributeSchema
 from infrahub.core.schema.computed_attribute import ComputedAttribute
+from infrahub.core.validators.aggregated_checker import AggregatedConstraintChecker
+from infrahub.core.validators.model import SchemaConstraintValidatorRequest
+from infrahub.dependencies.registry import get_component_registry
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.number_pool_shorthand import NumberPoolShorthandMirror
 from infrahub.pools.number_pool_space import SchemaAttributeDomains
@@ -76,6 +80,28 @@ async def provision_schema_number_pools(db: InfrahubDatabase) -> None:
         range_store_factory=NumberPoolRepository,
     )
     await synchronizer.run()
+
+
+async def schema_load_violations(db: InfrahubDatabase, branch: Branch, schema: SchemaRoot) -> list[tuple[str, str]]:
+    """Evaluate the schema as a schema load on the branch does and return what its constraints refuse, by node id."""
+    branch_schema = registry.schema.get_schema_branch(name=branch.name)
+    candidate_schema, result = evaluate_candidate_schemas(branch_schema=branch_schema, schemas_to_evaluate=[schema])
+    checker = await get_component_registry().get_component(AggregatedConstraintChecker, db=db, branch=branch)
+    violations: list[tuple[str, str]] = []
+    for constraint in result.constraints:
+        kind_schema = candidate_schema.get(name=constraint.path.schema_kind, duplicate=False)
+        assert isinstance(kind_schema, NodeSchema | GenericSchema)
+        request = SchemaConstraintValidatorRequest(
+            branch=branch,
+            constraint_name=constraint.constraint_name,
+            node_schema=kind_schema,
+            schema_path=constraint.path,
+            schema_branch=candidate_schema,
+        )
+        violations.extend(
+            (violation.node_id, violation.message) for violation in await checker.run_constraints(request)
+        )
+    return violations
 
 
 async def run_schema_updated_workflow(service: InfrahubServices, branch: Branch) -> None:
