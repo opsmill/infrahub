@@ -721,8 +721,50 @@ async def test_a_marker_of_scope_terminals_still_releases_the_held_generators_an
     assert renew.after_calls == [0, 1, 1, 2, 2, 2, 3]
 
 
-async def test_the_released_repository_dispatches_its_work_while_another_pending_repository_holds() -> None:
-    state = await _delivery_state(REPOSITORY_X, REPOSITORY_Y)
+@dataclass
+class ReleaseCascadeTestCase:
+    name: str
+    pending: tuple[str, ...]
+    expected_reselected: list[RequestArtifactDefinitionGenerate]
+    """The artifacts reselected from the generator output that the release submits after the held ones."""
+    expected_renewals: list[int]
+    expected_state_calls: list[str]
+    expected_held: dict[str, HeldRegeneration]
+
+
+RELEASE_CASCADE_TEST_CASES: list[ReleaseCascadeTestCase] = [
+    ReleaseCascadeTestCase(
+        name="another_pending_repository_holds_its_reselected_artifact",
+        pending=(REPOSITORY_X, REPOSITORY_Y),
+        expected_reselected=[_artifact_generate(definition_id="ad-x-reselected")],
+        expected_renewals=[0, 0, 1, 3],
+        expected_state_calls=["pending_repository_ids", "pending_repository_ids", "hold"],
+        expected_held={
+            REPOSITORY_X: HeldRegeneration(),
+            REPOSITORY_Y: HeldRegeneration(
+                next_hold_seq=2, artifact_definitions=(HeldItem(id="ad-y-reselected", hold_seq=1),)
+            ),
+        },
+    ),
+    ReleaseCascadeTestCase(
+        name="another_repository_with_nothing_pending_regenerates_its_reselected_artifact",
+        pending=(REPOSITORY_X,),
+        expected_reselected=[
+            _artifact_generate(definition_id="ad-x-reselected"),
+            _artifact_generate(definition_id="ad-y-reselected", repository_id=REPOSITORY_Y),
+        ],
+        expected_renewals=[0, 0, 1, 4],
+        expected_state_calls=["pending_repository_ids", "pending_repository_ids"],
+        expected_held={REPOSITORY_X: HeldRegeneration(), REPOSITORY_Y: HeldRegeneration()},
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in RELEASE_CASCADE_TEST_CASES])
+async def test_a_release_holds_the_reselected_artifact_of_another_repository_only_while_it_is_pending(
+    test_case: ReleaseCascadeTestCase,
+) -> None:
+    state = await _delivery_state(*test_case.pending)
     recorder = WorkflowRecorder()
     renew = RecordedRenewals(recorder=recorder)
     releaser = _releaser(
@@ -750,20 +792,14 @@ async def test_the_released_repository_dispatches_its_work_while_another_pending
     assert _calls(recorder) == [
         ("execute", REQUEST_GENERATOR_DEFINITION_RUN, {"model": _generator_run(definition_id="gd-x")}),
         ("submit", REQUEST_ARTIFACT_DEFINITION_GENERATE, {"model": _artifact_generate(definition_id="ad-x")}),
-        (
-            "submit",
-            REQUEST_ARTIFACT_DEFINITION_GENERATE,
-            {"model": _artifact_generate(definition_id="ad-x-reselected")},
+        *(
+            ("submit", REQUEST_ARTIFACT_DEFINITION_GENERATE, {"model": request})
+            for request in test_case.expected_reselected
         ),
     ]
-    assert renew.after_calls == [0, 0, 1, 3]
-    assert state.calls == ["pending_repository_ids", "pending_repository_ids", "hold"]
-    assert {repository_id: intent.held for repository_id, intent in state.intents.items()} == {
-        REPOSITORY_X: HeldRegeneration(),
-        REPOSITORY_Y: HeldRegeneration(
-            next_hold_seq=2, artifact_definitions=(HeldItem(id="ad-y-reselected", hold_seq=1),)
-        ),
-    }
+    assert renew.after_calls == test_case.expected_renewals
+    assert state.calls == test_case.expected_state_calls
+    assert {repository_id: intent.held for repository_id, intent in state.intents.items()} == test_case.expected_held
 
 
 @dataclass
