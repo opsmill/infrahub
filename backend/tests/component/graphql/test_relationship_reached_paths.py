@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
@@ -16,6 +17,14 @@ from tests.helpers.test_app import TestInfrahubApp
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+    from infrahub.graphql.analyzer import GraphQLQueryReport
+
+
+@dataclass(frozen=True)
+class QueryCase:
+    name: str
+    query: str
+
 
 SINGLE_HOP = """
 query { TestingCar { edges { node { owner { node { name { value } } } } } } }
@@ -49,13 +58,45 @@ query { TestingDevice { edges { node { interfaces { edges { node { name { value 
 """
 
 
-async def _reached_paths(db: InfrahubDatabase, branch: Branch, query: str) -> dict[str, tuple[ReachedPath, ...]]:
+SFP_INSIDE_A_SPREAD_IN_AN_INLINE_FRAGMENT = """
+fragment PhysicalInterfaceSfp on TestingPhysicalInterface { sfp { node { serial_number { value } } } }
+
+query {
+    TestingDevice { edges { node {
+        interfaces { edges { node {
+            ... on TestingPhysicalInterface { ...PhysicalInterfaceSfp }
+        } } }
+    } } }
+}
+"""
+
+SFP_INSIDE_A_SPREAD_IN_A_NAMED_FRAGMENT = """
+fragment PhysicalInterfaceSfp on TestingPhysicalInterface { sfp { node { serial_number { value } } } }
+fragment InterfaceSfp on TestingPhysicalInterface { ...PhysicalInterfaceSfp }
+
+query {
+    TestingDevice { edges { node {
+        interfaces { edges { node { ...InterfaceSfp } } }
+    } } }
+}
+"""
+
+SFP_FRAGMENT_QUERIES = [
+    QueryCase(name="spread_in_an_inline_fragment", query=SFP_INSIDE_A_SPREAD_IN_AN_INLINE_FRAGMENT),
+    QueryCase(name="spread_in_a_named_fragment", query=SFP_INSIDE_A_SPREAD_IN_A_NAMED_FRAGMENT),
+]
+
+
+async def _query_report(db: InfrahubDatabase, branch: Branch, query: str) -> GraphQLQueryReport:
     schema_branch = registry.schema.get_schema_branch(name=branch.name)
     gql_params = await prepare_graphql_params(db=db, branch=branch)
-    report = InfrahubGraphQLQueryAnalyzer(
+    return InfrahubGraphQLQueryAnalyzer(
         query=query, schema=gql_params.schema, branch=branch, schema_branch=schema_branch
     ).query_report
-    return report.relationship_reached_paths_by_kind
+
+
+async def _reached_paths(db: InfrahubDatabase, branch: Branch, query: str) -> dict[str, tuple[ReachedPath, ...]]:
+    return (await _query_report(db, branch, query)).relationship_reached_paths_by_kind
 
 
 class TestReachedPathsFromQueryCarSchema(TestInfrahubApp):
@@ -152,3 +193,11 @@ class TestReachedPathsFromQueryDeviceSchema(TestInfrahubApp):
             )
         )
         assert result == dict.fromkeys(interface_generic.used_by, (chain,))
+
+    @pytest.mark.parametrize("case", SFP_FRAGMENT_QUERIES, ids=lambda case: case.name)
+    async def test_a_field_read_inside_a_fragment_is_in_the_read_set(
+        self, db: InfrahubDatabase, default_branch: Branch, device_schema: None, case: QueryCase
+    ) -> None:
+        report = await _query_report(db, default_branch, case.query)
+
+        assert report.requested_read[TestKind.SFP].attributes == {"serial_number"}

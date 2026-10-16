@@ -1,0 +1,1 @@
+Fixed GraphQL queries ignoring the fields read through a named fragment used inside another fragment, such as `... on InfraDevice { ...DeviceInterfaces }`. When such a field changes, artifacts and Generators that read it are now regenerated and computed attributes based on a Python transform are recomputed. Object permissions are now checked on these fields.
