@@ -824,12 +824,7 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
                 context_type=ContextType.DIRECT,
                 infrahub_model=infrahub_model,
             )
-            for field_node in selections.field_nodes:
-                named_fragment.children.append(self._populate_field_node(node=field_node, query_node=named_fragment))
-            for inline_fragment_node in selections.inline_fragment_nodes:
-                named_fragment.children.append(
-                    self._populate_inline_fragment_node(node=inline_fragment_node, query_node=named_fragment)
-                )
+            self._populate_children(selections=selections, query_node=named_fragment)
 
             self._named_fragments[fragment_name] = named_fragment
 
@@ -866,19 +861,24 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
         )
 
         if node.selection_set:
-            selections = self._get_selections(selection_set=node.selection_set)
-            for field_node in selections.field_nodes:
-                current_node.children.append(self._populate_field_node(node=field_node, query_node=current_node))
-            for inline_fragment_node in selections.inline_fragment_nodes:
-                current_node.children.append(
-                    self._populate_inline_fragment_node(node=inline_fragment_node, query_node=current_node)
-                )
-            for fragment_spread_node in selections.fragment_spread_nodes:
-                current_node.children.append(
-                    self._populate_fragment_spread_node(node=fragment_spread_node, query_node=current_node)
-                )
+            self._populate_children(
+                selections=self._get_selections(selection_set=node.selection_set), query_node=current_node
+            )
 
         return current_node
+
+    def _populate_children(self, selections: GraphQLSelectionSet, query_node: GraphQLQueryNode) -> None:
+        """Add a child node for every field, inline fragment and fragment spread of a selection set."""
+        for field_node in selections.field_nodes:
+            query_node.children.append(self._populate_field_node(node=field_node, query_node=query_node))
+        for inline_fragment_node in selections.inline_fragment_nodes:
+            query_node.children.append(
+                self._populate_inline_fragment_node(node=inline_fragment_node, query_node=query_node)
+            )
+        for fragment_spread_node in selections.fragment_spread_nodes:
+            query_node.children.append(
+                self._populate_fragment_spread_node(node=fragment_spread_node, query_node=query_node)
+            )
 
     def _populate_inline_fragment_node(
         self, node: InlineFragmentNode, query_node: GraphQLQueryNode
@@ -893,13 +893,9 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
             infrahub_model=infrahub_model,
         )
         if node.selection_set:
-            selections = self._get_selections(selection_set=node.selection_set)
-            for field_node in selections.field_nodes:
-                current_node.children.append(self._populate_field_node(node=field_node, query_node=current_node))
-            for inline_fragment_node in selections.inline_fragment_nodes:
-                current_node.children.append(
-                    self._populate_inline_fragment_node(node=inline_fragment_node, query_node=current_node)
-                )
+            self._populate_children(
+                selections=self._get_selections(selection_set=node.selection_set), query_node=current_node
+            )
 
         return current_node
 

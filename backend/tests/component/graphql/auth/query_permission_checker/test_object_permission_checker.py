@@ -243,6 +243,36 @@ mutation {
 """
 
 
+# The repository is read only through a named fragment spread inside another fragment.
+QUERY_GRAPHQL_AND_REPO_IN_A_SPREAD_IN_AN_INLINE_FRAGMENT = """
+fragment QueryRepository on CoreGraphQLQuery { repository { node { display_label } } }
+
+query {
+  CoreGraphQLQuery {
+    edges {
+      node {
+        display_label
+        ... on CoreGraphQLQuery { ...QueryRepository }
+      }
+    }
+  }
+}
+"""
+
+QUERY_GRAPHQL_AND_REPO_IN_A_SPREAD_IN_A_NAMED_FRAGMENT = """
+fragment QueryRepository on CoreGraphQLQuery { repository { node { display_label } } }
+fragment QueryFields on CoreGraphQLQuery { display_label ...QueryRepository }
+
+query {
+  CoreGraphQLQuery {
+    edges {
+      node { ...QueryFields }
+    }
+  }
+}
+"""
+
+
 class TestObjectPermissions:
     async def test_setup(
         self,
@@ -436,6 +466,47 @@ class TestObjectPermissions:
                 branch=permissions_helper.default_branch,
                 query_parameters=gql_params,
             )
+
+    @pytest.mark.parametrize(
+        "query",
+        [
+            pytest.param(QUERY_GRAPHQL_AND_REPO_IN_A_SPREAD_IN_AN_INLINE_FRAGMENT, id="spread_in_an_inline_fragment"),
+            pytest.param(QUERY_GRAPHQL_AND_REPO_IN_A_SPREAD_IN_A_NAMED_FRAGMENT, id="spread_in_a_named_fragment"),
+        ],
+    )
+    async def test_first_account_repos_read_through_a_spread_inside_a_fragment(
+        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper, query: str
+    ) -> None:
+        """A kind read only through a fragment spread inside another fragment needs its view permission."""
+        checker = ObjectPermissionChecker()
+        session = AccountSession(
+            authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
+        )
+
+        gql_params = await prepare_graphql_params(
+            db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
+        )
+        schema_branch = registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
+        analyzed_query = InfrahubGraphQLQueryAnalyzer(
+            query=query,
+            schema=gql_params.schema,
+            branch=permissions_helper.default_branch,
+            schema_branch=schema_branch,
+        )
+
+        with pytest.raises(PermissionDeniedError) as exc_info:
+            await checker.check(
+                db=db,
+                account_session=session,
+                analyzed_query=analyzed_query,
+                branch=permissions_helper.default_branch,
+                query_parameters=gql_params,
+            )
+        assert str(exc_info.value) == (
+            "You do not have one of the following permissions: "
+            "object:Core:GraphQLQuery:view:allow_default | object:Core:GenericRepository:view:allow_default | "
+            "object:Core:ReadOnlyRepository:view:allow_default | object:Core:Repository:view:allow_default"
+        )
 
 
 class TestAccountManagerPermissions:
