@@ -14,6 +14,7 @@ from infrahub.pools.range_refusal import (
     is_within_ranges,
     other_branch_refusal,
     tracked_edit_refusal,
+    tracked_empty_refusal,
     untracked_attach_refusal,
 )
 from infrahub.pools.scope import AllocationScope
@@ -122,7 +123,8 @@ class AttributePoolApplierInterface(Protocol):
         """Refuse a new number the pool tracking the saved attribute cannot hold.
 
         Raises:
-            ValidationError: When the number is outside the ranges of the pool tracking the attribute.
+            ValidationError: When the number is outside the ranges of the pool tracking the attribute, or when the
+                attribute is emptied.
             InitializationError: When the attribute was loaded without the pool tracking it.
             NodeNotFoundError: When the pool tracking the attribute cannot be read.
 
@@ -312,7 +314,8 @@ class AttributePoolApplier:
         in a refusal.
 
         Raises:
-            ValidationError: When the number is outside the ranges of the pool tracking the attribute.
+            ValidationError: When the number is outside the ranges of the pool tracking the attribute, or when the
+                attribute is emptied.
             InitializationError: When the attribute was loaded without the pool tracking it.
             NodeNotFoundError: When the pool tracking the attribute cannot be read.
 
@@ -323,7 +326,14 @@ class AttributePoolApplier:
 
         number = self._get_number(attribute=attribute)
         if number is None:
-            return
+            pool = await self.pool_finder.find(pool_ref=tracking_pool.pool_id)
+            raise ValidationError(
+                {
+                    f"{attribute.name}.value": tracked_empty_refusal(
+                        pool_name=pool.name.value, attribute_name=attribute.name
+                    )
+                }
+            )
 
         ranges = await self.range_reader.get_pool_ranges(pool_id=tracking_pool.pool_id)
         if is_within_ranges(ranges=ranges, value=number):

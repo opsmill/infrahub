@@ -752,6 +752,21 @@ async def test_editing_a_tracked_number_to_one_inside_the_ranges_is_allowed(
     assert finder.tracking_pool_lookups == []
 
 
+async def test_emptying_a_tracked_number_is_refused_without_reading_the_ranges(
+    applier: AttributePoolApplier, range_reader: InMemoryPoolRangeReader
+) -> None:
+    ticket_id = _edited_ticket_id(value=None, tracking_pool_id=POOL_ID)
+
+    with pytest.raises(ValidationError) as exc_info:
+        await applier.check_value_change(node=ticket_id.node, attribute=ticket_id)
+
+    assert exc_info.value.message == (
+        "'ticket_id' is tracked by the tickets pool, so it cannot be emptied. To empty 'ticket_id' and stop the pool "
+        "tracking it, send 'value: null' together with 'from_pool: null'. at ticket_id.value"
+    )
+    assert range_reader.reads == []
+
+
 async def test_editing_a_number_no_pool_tracks_reads_nothing(
     applier: AttributePoolApplier, finder: InMemoryNumberPoolFinder, range_reader: InMemoryPoolRangeReader
 ) -> None:

@@ -239,6 +239,48 @@ class TestNumberPoolValueEdit:
         assert await _held_value(db=db, branch=branch, node_id=ticket["id"]) == 7055
         assert await is_reserved_edges(db=db, node_id=ticket["id"]) == before
 
+    async def test_emptying_a_tracked_number_is_refused(
+        self, db: InfrahubDatabase, main_branch: Branch, ticket_pool: CoreNumberPool
+    ) -> None:
+        ticket = await create_ticket(
+            db=db,
+            branch=main_branch,
+            title="edit-empty",
+            ticket_id={"value": 7065, "from_pool": {"id": ticket_pool.id}},
+        )
+        before = await is_reserved_edges(db=db, node_id=ticket["id"])
+
+        message = await refused_write(
+            db=db,
+            branch=main_branch,
+            source=UPDATE_TICKET,
+            variables={"id": ticket["id"], "ticket_id": {"value": None}},
+        )
+
+        assert message == (
+            "'ticket_id' is tracked by the value-edit pool, so it cannot be emptied. To empty 'ticket_id' and stop "
+            "the pool tracking it, send 'value: null' together with 'from_pool: null'. at ticket_id.value"
+        )
+        assert await _held_value(db=db, branch=main_branch, node_id=ticket["id"]) == 7065
+        assert await is_reserved_edges(db=db, node_id=ticket["id"]) == before
+
+    async def test_emptying_a_tracked_number_with_a_null_pool_detaches_it(
+        self, db: InfrahubDatabase, main_branch: Branch, ticket_pool: CoreNumberPool
+    ) -> None:
+        ticket = await create_ticket(
+            db=db,
+            branch=main_branch,
+            title="edit-empty-detach",
+            ticket_id={"value": 7075, "from_pool": {"id": ticket_pool.id}},
+        )
+
+        changed = await update_ticket(
+            db=db, branch=main_branch, node_id=ticket["id"], ticket_id={"value": None, "from_pool": None}
+        )
+
+        assert changed["ticket_id"]["value"] is None
+        assert await tracking_pool_id(db=db, node_id=ticket["id"]) is None
+
     @pytest.mark.usefixtures("sequence_pool")
     @pytest.mark.parametrize("test_case", [pytest.param(case, id=case.name) for case in UNTRACKED_EDIT_CASES])
     async def test_a_number_no_pool_tracks_takes_any_value(

@@ -113,9 +113,9 @@ class TestProvenanceAcrossBranches:
         records = await is_reserved_edges(db=db, node_id=ticket["id"])
         assert sorted((record.status, record.is_open) for record in records) == [("active", False), ("active", True)]
 
-        # The tracking pool returns a number the branch still holds, so the branch clears it before allocating.
+        # The tracking pool returns a number the branch still holds, so the branch moves off it before allocating.
         other = await create_branch(branch_name="re-pool-current-other", db=db)
-        await update_ticket(db=db, branch=other, node_id=ticket["id"], ticket_id={"value": None})
+        await update_ticket(db=db, branch=other, node_id=ticket["id"], ticket_id={"value": 2219})
         changed = await update_ticket(
             db=db, branch=other, node_id=ticket["id"], ticket_id={"value": None, "from_pool": {"id": second_pool.id}}
         )
