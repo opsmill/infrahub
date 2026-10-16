@@ -138,7 +138,7 @@ dev/knowledge/backend/telemetry.md                      # license block
   The pure functions come first because every surface depends on them.
 - **Failure containment**: two boundaries, one for building the service and one for `status()`, so no surface wraps those calls itself (spec FR-010):
   - `get_license_service()` never raises: an exception while building the service is logged once with the traceback, and `LicenseServiceUnavailable` (`invalid` / `internal_error`, quiet mode) is cached and returned for the rest of the process, so a broken builder is not retried on every request;
-  - every call site reads the status through `read_license_status`, which turns an exception from `status()` into `invalid` / `internal_error` with an ERROR log.
+  - every call site reads the status through `read_license_status`, which turns an exception from `status()` into `invalid` / `internal_error` and logs its traceback at ERROR the first time each exception type is raised in the process.
 
   `notice_mode` and `enforcing_release` are per-release constants that must not raise, and are read without a guard. The two boundaries are the only places a broad `except Exception` is justified: a top-level boundary that must not take the process down (`dev/guidelines/backend/exceptions.md`; a comment names that reason, and no `# noqa: BLE001` is needed because the handler logs with `log.exception`).
 - **Days arithmetic**: `days_remaining` rounds up and `days_since_expiry` rounds down, so a license with 11.5 days left reads "12 days" and one expired 3.9 days ago reads "3 days ago".

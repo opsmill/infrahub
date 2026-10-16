@@ -10,6 +10,8 @@ from tests.adapters.license import FailingLicenseService, RecordingLicenseServic
 from tests.helpers.log import find_logged_events
 
 NOW = datetime(2026, 6, 1, tzinfo=UTC)
+FAILURE_EVENT = "The license service failed; reporting the license as invalid with reason internal_error"
+INTERNAL_ERROR = LicenseStatus(state=LicenseState.INVALID, reason=LicenseFailureReason.INTERNAL_ERROR)
 
 
 @pytest.mark.parametrize("now", [None, NOW], ids=["current_time", "fixed_time"])
@@ -48,10 +50,27 @@ def test_read_license_status_reports_a_failing_service_as_invalid_and_logs_the_t
     with caplog.at_level("ERROR", logger="infrahub"):
         status = read_license_status(service=FailingLicenseService(), now=NOW)
 
-    assert status == LicenseStatus(state=LicenseState.INVALID, reason=LicenseFailureReason.INTERNAL_ERROR)
-    failures = find_logged_events(
-        caplog, event="The license service failed; reporting the license as invalid with reason internal_error"
-    )
+    assert status == INTERNAL_ERROR
+    failures = find_logged_events(caplog, event=FAILURE_EVENT)
     assert len(failures) == 1
     assert failures[0]["level"] == "error"
     assert failures[0]["exc_info"] is True
+
+
+def test_read_license_status_logs_a_repeated_failure_once(caplog: pytest.LogCaptureFixture) -> None:
+    """A service failing on every request leaves one traceback, not one per request."""
+    service = FailingLicenseService()
+
+    with caplog.at_level("ERROR", logger="infrahub"):
+        statuses = [read_license_status(service=service, now=NOW) for _ in range(3)]
+
+    assert statuses == [INTERNAL_ERROR, INTERNAL_ERROR, INTERNAL_ERROR]
+    assert len(find_logged_events(caplog, event=FAILURE_EVENT)) == 1
+
+
+def test_read_license_status_logs_each_kind_of_failure_once(caplog: pytest.LogCaptureFixture) -> None:
+    with caplog.at_level("ERROR", logger="infrahub"):
+        for error_type in (RuntimeError, ValueError, RuntimeError, ValueError):
+            read_license_status(service=FailingLicenseService(error_type=error_type), now=NOW)
+
+    assert len(find_logged_events(caplog, event=FAILURE_EVENT)) == 2

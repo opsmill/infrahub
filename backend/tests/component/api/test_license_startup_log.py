@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from contextlib import ExitStack
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
@@ -9,16 +8,16 @@ import pytest
 
 from infrahub import config
 from infrahub.license.models import License, LicenseState, LicenseStatus
-from infrahub.workers.dependencies import build_license_service
 from tests.adapters.license import RecordingLicenseService
-from tests.helpers.dependency_override import override_dependency
 
 if TYPE_CHECKING:
-    from fast_depends import Provider
+    from collections.abc import Callable
+
     from fastapi.testclient import TestClient
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+    from infrahub.license.service import LicenseService
 
 EXPIRED_LICENSE = License(
     license_id="lic-0042",
@@ -80,27 +79,19 @@ async def test_api_server_logs_its_license_state_once_at_startup(
     client: TestClient,
     default_branch: Branch,
     register_core_models_schema: None,
-    dependency_provider: Provider,
+    use_license_service: Callable[[LicenseService], None],
     caplog: pytest.LogCaptureFixture,
     monkeypatch: pytest.MonkeyPatch,
     test_case: StartupLogCase,
 ) -> None:
     monkeypatch.setattr(config.SETTINGS.license, "key", test_case.license_key)
     replacement: RecordingLicenseService | None = None
+    if test_case.replacement_status is not None:
+        replacement = RecordingLicenseService(status=test_case.replacement_status)
+        use_license_service(replacement)
 
-    with ExitStack() as stack:
-        if test_case.replacement_status is not None:
-            replacement = RecordingLicenseService(status=test_case.replacement_status)
-            stack.enter_context(
-                override_dependency(
-                    original=build_license_service,
-                    override=lambda: replacement,
-                    dependency_provider=dependency_provider,
-                )
-            )
-        stack.enter_context(caplog.at_level("INFO", logger="infrahub"))
-        with client:
-            pass
+    with caplog.at_level("INFO", logger="infrahub"), client:
+        pass
 
     license_lines: list[dict[str, Any]] = [
         record.msg for record in caplog.records if isinstance(record.msg, dict) and "license_state" in record.msg
