@@ -3533,7 +3533,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "localprometheus"
+            "uid": "${datasource_prometheus}"
           },
           "fieldConfig": {
             "defaults": {

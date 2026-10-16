@@ -22,6 +22,8 @@ FORMER_HIGHEST_BUCKETS = {
     "infrahub_db_query_execution_seconds": "1",
     "infrahub_request_duration_seconds": "0.5",
 }
+# Grafana's own data sources exist in every Grafana, so naming them by uid is portable.
+BUILT_IN_DATASOURCE_UIDS = {"-- Grafana --", "grafana", "-- Mixed --", "-- Dashboard --"}
 BUCKET_MATCHER = re.compile(
     r"""\b(?P<metric>infrahub_db_query_execution_seconds|infrahub_request_duration_seconds)_bucket\s*\{[^}]*\ble\s*=\s*["'](?P<le>[^"']*)["']"""
 )
@@ -43,6 +45,19 @@ def _panel_queries(dashboard: dict[str, Any]) -> Iterator[tuple[str, str]]:
             expr = target.get("expr")
             if isinstance(expr, str):
                 yield str(panel.get("title")), expr
+
+
+def _datasource_uids(node: Any, title: str = "") -> Iterator[tuple[str, str]]:
+    if isinstance(node, dict):
+        title = str(node.get("title", title))
+        datasource = node.get("datasource")
+        if isinstance(datasource, dict) and isinstance(datasource.get("uid"), str):
+            yield title, datasource["uid"]
+        for value in node.values():
+            yield from _datasource_uids(value, title)
+    elif isinstance(node, list):
+        for item in node:
+            yield from _datasource_uids(item, title)
 
 
 def test_dashboards_are_found() -> None:
@@ -85,3 +100,16 @@ def test_duration_panels_do_not_read_a_former_highest_bucket(path: Path) -> None
     ]
 
     assert former_highest_buckets == []
+
+
+@pytest.mark.parametrize("path", [pytest.param(path, id=path.name) for path in DASHBOARD_FILES])
+def test_panels_select_their_data_source_through_a_variable(path: Path) -> None:
+    fixed_uids = sorted(
+        {
+            f"{title}: {uid}"
+            for title, uid in _datasource_uids(_load(path))
+            if "$" not in uid and uid not in BUILT_IN_DATASOURCE_UIDS
+        }
+    )
+
+    assert fixed_uids == []
