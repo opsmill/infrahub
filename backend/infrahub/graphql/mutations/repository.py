@@ -133,7 +133,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
             kind=cls._meta.schema.kind,
             id=data.get("id"),
             branch=branch,
-            include_metadata=MetadataOptions.LINKED_NODES,
+            include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.TRACKING_POOL,
         )
         return await super().mutate_update(info, data, branch, database=graphql_context.db, node=repo_node)
 

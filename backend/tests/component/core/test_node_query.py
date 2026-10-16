@@ -638,17 +638,29 @@ class TrackingPoolReadScopeCase:
     attribute_names: frozenset[str] | None
     """The attributes the read is told a pool can track; None places no limit."""
     expects_pool: bool
+    loaded: frozenset[str]
+    """Of `ticket_id` and `title`, the attributes read together with the pool tracking them."""
 
 
 TRACKING_POOL_READ_SCOPE_CASES: list[TrackingPoolReadScopeCase] = [
-    TrackingPoolReadScopeCase(name="unlimited", attribute_names=None, expects_pool=True),
     TrackingPoolReadScopeCase(
-        name="naming_the_tracked_attribute", attribute_names=frozenset({"ticket_id"}), expects_pool=True
+        name="unlimited", attribute_names=None, expects_pool=True, loaded=frozenset({"ticket_id", "title"})
     ),
     TrackingPoolReadScopeCase(
-        name="naming_another_attribute", attribute_names=frozenset({"title"}), expects_pool=False
+        name="naming_the_tracked_attribute",
+        attribute_names=frozenset({"ticket_id"}),
+        expects_pool=True,
+        loaded=frozenset({"ticket_id"}),
     ),
-    TrackingPoolReadScopeCase(name="naming_no_attribute", attribute_names=frozenset(), expects_pool=False),
+    TrackingPoolReadScopeCase(
+        name="naming_another_attribute",
+        attribute_names=frozenset({"title"}),
+        expects_pool=False,
+        loaded=frozenset({"title"}),
+    ),
+    TrackingPoolReadScopeCase(
+        name="naming_no_attribute", attribute_names=frozenset(), expects_pool=False, loaded=frozenset()
+    ),
 ]
 
 
@@ -673,3 +685,4 @@ async def test_query_NodeListGetAttributeQuery_tracking_pool_only_on_the_attribu
     expected = TrackingPool(pool_id=ticket_pool.id, provenance=PoolRecordProvenance.ALLOCATED)
     assert attributes["ticket_id"].tracking_pool == (expected if test_case.expects_pool else None)
     assert attributes["title"].tracking_pool is None
+    assert {name for name in ("ticket_id", "title") if attributes[name].tracking_pool_loaded} == test_case.loaded

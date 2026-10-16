@@ -99,6 +99,12 @@ class PoolPropertyData(NodePropertyData):
     """The number the pool allocated to the attribute, None when a user provided the value."""
 
 
+class TrackingPoolNotLoaded(Enum):
+    """Marks an attribute read without trying to load its pool versus read and has no active pool."""
+
+    NOT_LOADED = "not_loaded"
+
+
 class AttributeCreateData(BaseModel):
     uuid: str
     name: str
@@ -148,7 +154,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         self.from_pool: dict | None = None
         self.value_presence = PayloadPresence.ABSENT
         self.from_pool_presence = PayloadPresence.ABSENT
-        self.tracking_pool: TrackingPool | None = None
+        self._tracking_pool: TrackingPool | TrackingPoolNotLoaded | None = TrackingPoolNotLoaded.NOT_LOADED
 
         self._init_node_property_mixin(kwargs)
         self._init_flag_property_mixin(kwargs)
@@ -204,6 +210,21 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
     @property
     def is_enum(self) -> bool:
         return bool(self.schema.enum)
+
+    @property
+    def tracking_pool(self) -> TrackingPool | None:
+        if self._tracking_pool is TrackingPoolNotLoaded.NOT_LOADED:
+            return None
+        return self._tracking_pool
+
+    @tracking_pool.setter
+    def tracking_pool(self, tracking_pool: TrackingPool | None) -> None:
+        self._tracking_pool = tracking_pool
+
+    @property
+    def tracking_pool_known(self) -> bool:
+        """Whether `tracking_pool` says which pool tracks the attribute, or that none does."""
+        return self._tracking_pool is not TrackingPoolNotLoaded.NOT_LOADED
 
     def get_branch_based_on_support_type(self) -> Branch:
         """If the attribute is branch aware, return the Branch object associated with this attribute.
@@ -368,7 +389,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         self.value = self.value_from_db(data=data)
         self.is_default = data.is_default
         self.is_from_profile = data.is_from_profile
-        self.tracking_pool = data.tracking_pool
+        self._tracking_pool = data.tracking_pool if data.tracking_pool_loaded else TrackingPoolNotLoaded.NOT_LOADED
 
         self.id = data.attr_uuid
         self.db_id = data.attr_id

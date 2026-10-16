@@ -118,6 +118,7 @@ class AttributeFromDB:
     is_default: bool
     is_from_profile: bool = dataclass_field(default=False)
     tracking_pool: TrackingPool | None = None
+    tracking_pool_loaded: bool = False
 
     updated_at: Timestamp | None = None
     updated_by: str | None = None
@@ -1068,7 +1069,10 @@ CALL (a) {
                 uuid=result.get_node("owner").get("uuid"), labels=list(result.get_node("owner").labels)
             )
 
-        if self._include_tracking_pool:
+        if self._include_tracking_pool and (
+            self.tracking_pool_attribute_names is None or data.name in self.tracking_pool_attribute_names
+        ):
+            data.tracking_pool_loaded = True
             data.tracking_pool = None
             if tracking_pool_uuid := result.get_as_optional_type("tracking_pool_uuid", return_type=str):
                 is_provided = result.get_as_type("tracking_pool_is_provided", return_type=bool)
