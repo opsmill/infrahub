@@ -123,6 +123,17 @@ def _changes_a_tracked_number(attribute: BaseAttribute, value: dict[str, Any], h
     )
 
 
+def _resets_a_tracked_number(attribute: BaseAttribute, value: dict[str, Any]) -> bool:
+    """Whether the GraphQL value resets a saved number that a pool may track to its default, without naming a pool."""
+    return (
+        attribute.schema.kind in POOL_TRACKED_ATTRIBUTE_KINDS
+        and "is_default" in value
+        and "value" not in value
+        and "from_pool" not in value
+        and attribute.id is not None
+    )
+
+
 class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
     @classmethod
     def __init_subclass_with_meta__(
@@ -1486,13 +1497,14 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         The pools are applied once every key of the payload is applied, since the division of a scoped pool is read
         from the node's other fields; without `process_pools` nothing is drawn: each pool is resolved, and the key of
-        the node's division of a scoped pool is stored beside the pool id. With `process_pools`, a number changed
-        without naming a pool is checked against the pool tracking it, unless the node is a resource pool, whose
-        numbers no pool tracks.
+        the node's division of a scoped pool is stored beside the pool id. With `process_pools`, a number changed or
+        reset to its default without naming a pool is checked against the pool tracking it, unless the node is a
+        resource pool, whose numbers no pool tracks.
         """
         changed = False
         pooled_attributes: list[BaseAttribute] = []
         changed_numbers: list[BaseAttribute] = []
+        reset_numbers: list[BaseAttribute] = []
 
         for key, value in data.items():
             if key in self._attributes and isinstance(value, dict):
@@ -1503,6 +1515,8 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                     pooled_attributes.append(attribute)
                 elif _changes_a_tracked_number(attribute=attribute, value=value, held_value=held_value):
                     changed_numbers.append(attribute)
+                elif _resets_a_tracked_number(attribute=attribute, value=value):
+                    reset_numbers.append(attribute)
 
             if key in self._relationships:
                 rel: RelationshipManager = getattr(self, key)
@@ -1514,6 +1528,8 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         if process_pools and not is_resource_pool_schema(schema=self.get_schema()):
             for attribute in changed_numbers:
                 await pool_applier.check_value_change(node=self, attribute=attribute)
+            for attribute in reset_numbers:
+                await pool_applier.check_reset_to_default(node=self, attribute=attribute)
 
         return changed
 

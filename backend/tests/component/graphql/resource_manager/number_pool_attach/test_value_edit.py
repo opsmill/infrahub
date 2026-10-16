@@ -75,6 +75,21 @@ class GetterCase:
     """The mutation payload; `ID`, `TITLE` and `TICKET_ID` stand for the existing ticket's id, title and number."""
 
 
+@dataclass(frozen=True)
+class TrackedResetCase:
+    name: str
+    payload: dict[str, Any]
+    """The `ticket_id` payload; a `from_pool` key in it is sent naming the pool tracking the number."""
+
+
+TRACKED_RESET_CASES = [
+    TrackedResetCase(name="is_default_true", payload={"is_default": True}),
+    TrackedResetCase(
+        name="is_default_true_with_the_tracking_pool", payload={"is_default": True, "from_pool": "TRACKING_POOL"}
+    ),
+]
+
+
 GETTER_CASES = [
     GetterCase(name="update_by_id", source=UPDATE_TICKET_DATA, data={"id": "ID"}),
     GetterCase(name="update_by_hfid", source=UPDATE_TICKET_DATA, data={"hfid": ["TITLE", "TICKET_ID"]}),
@@ -280,6 +295,110 @@ class TestNumberPoolValueEdit:
 
         assert changed["ticket_id"]["value"] is None
         assert await tracking_pool_id(db=db, node_id=ticket["id"]) is None
+
+    @pytest.fixture(scope="class")
+    async def reset_ticket(
+        self, db: InfrahubDatabase, main_branch: Branch, ticket_pool: CoreNumberPool
+    ) -> dict[str, Any]:
+        """Every reset of it is refused, so one ticket serves them all."""
+        return await create_ticket(
+            db=db,
+            branch=main_branch,
+            title="edit-reset",
+            ticket_id={"value": 7135, "from_pool": {"id": ticket_pool.id}},
+        )
+
+    @pytest.mark.parametrize("test_case", [pytest.param(case, id=case.name) for case in TRACKED_RESET_CASES])
+    async def test_every_reset_of_a_tracked_number_that_keeps_the_pool_is_refused(
+        self,
+        db: InfrahubDatabase,
+        main_branch: Branch,
+        ticket_pool: CoreNumberPool,
+        reset_ticket: dict[str, Any],
+        test_case: TrackedResetCase,
+    ) -> None:
+        ticket = reset_ticket
+        before = await is_reserved_edges(db=db, node_id=ticket["id"])
+        payload = {
+            key: {"id": ticket_pool.id} if key == "from_pool" else value for key, value in test_case.payload.items()
+        }
+
+        message = await refused_write(
+            db=db, branch=main_branch, source=UPDATE_TICKET, variables={"id": ticket["id"], "ticket_id": payload}
+        )
+
+        assert message == (
+            "'ticket_id' is tracked by the value-edit pool, so it cannot be reset to its default. To reset "
+            "'ticket_id' and stop the pool tracking it, send 'is_default: true' together with 'from_pool: null'. "
+            "at ticket_id.is_default"
+        )
+        assert await _held_value(db=db, branch=main_branch, node_id=ticket["id"]) == 7135
+        assert await is_reserved_edges(db=db, node_id=ticket["id"]) == before
+
+    async def test_a_reset_naming_another_pool_allocates_from_it(
+        self, db: InfrahubDatabase, main_branch: Branch, sequence_pool: CoreNumberPool
+    ) -> None:
+        """The reset discards the number, so the pool the write names allocates one and becomes the pool tracking it."""
+        other_pool = await new_pool(
+            db=db, name="value-edit-sequence-other", start_range=7700, end_range=7709, node_attribute="sequence"
+        )
+        ticket = await create_ticket(
+            db=db,
+            branch=main_branch,
+            title="edit-reset-other-pool",
+            ticket_id={"value": 7130},
+            sequence={"value": 7130, "from_pool": {"id": sequence_pool.id}},
+        )
+
+        changed = await update_ticket(
+            db=db,
+            branch=main_branch,
+            node_id=ticket["id"],
+            sequence={"is_default": True, "from_pool": {"id": other_pool.id}},
+        )
+
+        assert changed["sequence"]["value"] == 7700
+        assert await tracking_pool_id(db=db, node_id=ticket["id"], attribute_name="sequence") == other_pool.get_id()
+
+    async def test_resetting_a_tracked_number_to_its_default_with_a_null_pool_detaches_it(
+        self, db: InfrahubDatabase, main_branch: Branch, sequence_pool: CoreNumberPool
+    ) -> None:
+        """`sequence` carries no uniqueness constraint, so several tickets can hold its empty default."""
+        ticket = await create_ticket(
+            db=db,
+            branch=main_branch,
+            title="edit-reset-detach",
+            ticket_id={"value": 7110},
+            sequence={"value": 7115, "from_pool": {"id": sequence_pool.id}},
+        )
+
+        changed = await update_ticket(
+            db=db, branch=main_branch, node_id=ticket["id"], sequence={"is_default": True, "from_pool": None}
+        )
+
+        assert changed["sequence"]["value"] is None
+        stored = await NodeManager.get_one(db=db, id=ticket["id"], branch=main_branch)
+        assert stored is not None
+        assert stored.get_attribute(name="sequence").is_default is True
+        assert await tracking_pool_id(db=db, node_id=ticket["id"], attribute_name="sequence") is None
+
+    @pytest.mark.usefixtures("sequence_pool")
+    async def test_resetting_a_number_no_pool_tracks_to_its_default_is_allowed(
+        self, db: InfrahubDatabase, main_branch: Branch
+    ) -> None:
+        """A pool exists for `sequence` but does not track this ticket's number, so the reset is accepted."""
+        ticket = await create_ticket(
+            db=db,
+            branch=main_branch,
+            title="edit-reset-untracked",
+            ticket_id={"value": 7120},
+            sequence={"value": 7125},
+        )
+
+        changed = await update_ticket(db=db, branch=main_branch, node_id=ticket["id"], sequence={"is_default": True})
+
+        assert changed["sequence"]["value"] is None
+        assert await tracking_pool_id(db=db, node_id=ticket["id"], attribute_name="sequence") is None
 
     @pytest.mark.usefixtures("sequence_pool")
     @pytest.mark.parametrize("test_case", [pytest.param(case, id=case.name) for case in UNTRACKED_EDIT_CASES])

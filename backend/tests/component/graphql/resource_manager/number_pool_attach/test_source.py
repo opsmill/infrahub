@@ -215,32 +215,32 @@ class TestPooledSourceRead:
     async def test_a_number_inherited_from_a_profile_still_reports_the_pool(
         self, db: InfrahubDatabase, main_branch: Branch
     ) -> None:
-        """The profile becomes the stored source while the pool's record on the attribute stays open and wins."""
+        """The profile is the stored source on a branch while the pool's record on the attribute stays open and wins.
+
+        A tracked number cannot be reset to take a profile's value, so the branch takes it before the pool tracks it.
+        """
         pool = await new_pool(db=db, name="read-profile", start_range=4700, end_range=4709, node_attribute="sequence")
         profile = await Node.init(db=db, schema="ProfileTestingTicket", branch=main_branch)
         await profile.new(db=db, profile_name="read-profile", profile_priority=1000, sequence=4705)
         await profile.save(db=db)
         ticket = await create_ticket(
-            db=db,
-            branch=main_branch,
-            title="read-profile",
-            ticket_id={"value": 4790},
-            sequence={"from_pool": {"id": pool.id}},
+            db=db, branch=main_branch, title="read-profile", ticket_id={"value": 4790}, sequence={"value": 4700}
         )
-        assert ticket["sequence"]["value"] == 4700
+        branch = await create_branch(branch_name="read-profile", db=db)
 
         data = await execute(
             db=db,
-            branch=main_branch,
+            branch=branch,
             source=UPDATE_TICKET_WITH_PROFILE,
             variables={"id": ticket["id"], "profile_id": profile.id},
         )
-
         assert data
         assert data["TestingTicketUpdate"]["object"]["sequence"] == {"value": 4705, "is_from_profile": True}
-        data = await execute(
-            db=db, branch=main_branch, source=TICKET_SEQUENCE_WITH_PROFILE, variables={"id": ticket["id"]}
+        await update_ticket(
+            db=db, branch=main_branch, node_id=ticket["id"], sequence={"value": 4700, "from_pool": {"id": pool.id}}
         )
+
+        data = await execute(db=db, branch=branch, source=TICKET_SEQUENCE_WITH_PROFILE, variables={"id": ticket["id"]})
         assert data
         [edge] = data["TestingTicket"]["edges"]
         assert edge["node"]["sequence"]["is_from_profile"] is True

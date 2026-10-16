@@ -15,6 +15,7 @@ from infrahub.pools.range_refusal import (
     other_branch_refusal,
     tracked_edit_refusal,
     tracked_empty_refusal,
+    tracked_reset_refusal,
     untracked_attach_refusal,
 )
 from infrahub.pools.scope import AllocationScope
@@ -131,6 +132,17 @@ class AttributePoolApplierInterface(Protocol):
         """
         ...
 
+    async def check_reset_to_default(self, node: Node, attribute: BaseAttribute) -> None:
+        """Refuse a reset to the default of a saved attribute a pool tracks.
+
+        Raises:
+            ValidationError: When a pool tracks the attribute.
+            InitializationError: When the attribute was loaded without the pool tracking it.
+            NodeNotFoundError: When the pool tracking the attribute cannot be read.
+
+        """
+        ...
+
 
 class LoadedNodePoolApplier:
     """Stands in for the applier on a node loaded from the database, which never draws from a pool."""
@@ -159,6 +171,17 @@ class LoadedNodePoolApplier:
         """
         raise InitializationError(
             f"The loaded node {node.get_id()} cannot check '{attribute.name}' against the pool tracking it"
+        )
+
+    async def check_reset_to_default(self, node: Node, attribute: BaseAttribute) -> None:
+        """Refuse, since reaching this means a loaded node was asked to check a reset against a pool.
+
+        Raises:
+            InitializationError: Always.
+
+        """
+        raise InitializationError(
+            f"The loaded node {node.get_id()} cannot check a reset of '{attribute.name}' against the pool tracking it"
         )
 
 
@@ -204,7 +227,8 @@ class AttributePoolApplier:
                 a non-default number the attribute holds and that pool does not already track it, or when the
                 schema of the node's branch does not define an element of the pool's scope, or when a number sent
                 with `from_pool` is outside the ranges of the pool it names, or when the pool would start tracking
-                an attribute another live branch holds outside those ranges.
+                an attribute another live branch holds outside those ranges, or when `is_default` is sent without a
+                value together with the pool already tracking the attribute.
             NodeNotFoundError: When a relationship element of the pool's scope names, by a human-friendly id or a
                 default filter value, a peer that does not exist.
 
@@ -253,6 +277,9 @@ class AttributePoolApplier:
         tracking_pool_id: str | None = None
         if attribute.id is not None:
             tracking_pool_id = await self.pool_finder.get_tracking_pool_id(attribute_id=attribute.id)
+
+        if pool is not None and tracking_pool_id == pool.get_id():
+            self._refuse_reset_of_tracked_number(pool=pool, attribute=attribute)
 
         number = self._get_number(attribute=attribute)
         intent = self.intent_resolver.resolve(
@@ -343,6 +370,50 @@ class AttributePoolApplier:
             {
                 f"{attribute.name}.value": tracked_edit_refusal(
                     pool_name=pool.name.value, attribute_name=attribute.name, ranges=ranges, value=number
+                )
+            }
+        )
+
+    async def check_reset_to_default(self, node: Node, attribute: BaseAttribute) -> None:
+        """Refuse a reset to the default of a saved attribute a pool tracks, whatever that default is.
+
+        The pool tracking the attribute is the one loaded with the node, and the pool itself is read only to name it
+        in the refusal.
+
+        Raises:
+            ValidationError: When a pool tracks the attribute.
+            InitializationError: When the attribute was loaded without the pool tracking it.
+            NodeNotFoundError: When the pool tracking the attribute cannot be read.
+
+        """
+        tracking_pool = self._loaded_tracking_pool(node=node, attribute=attribute)
+        if tracking_pool is None:
+            return
+        pool = await self.pool_finder.find(pool_ref=tracking_pool.pool_id)
+        raise ValidationError(
+            {
+                f"{attribute.name}.is_default": tracked_reset_refusal(
+                    pool_name=pool.name.value, attribute_name=attribute.name
+                )
+            }
+        )
+
+    def _refuse_reset_of_tracked_number(self, pool: CoreNumberPool, attribute: BaseAttribute) -> None:
+        """Refuse an `is_default` sent without a value, which resets the number the pool tracks with no check.
+
+        Raises:
+            ValidationError: When `is_default` is sent without a value.
+
+        """
+        if (
+            attribute.is_default_presence is PayloadPresence.ABSENT
+            or attribute.value_presence is not PayloadPresence.ABSENT
+        ):
+            return
+        raise ValidationError(
+            {
+                f"{attribute.name}.is_default": tracked_reset_refusal(
+                    pool_name=pool.name.value, attribute_name=attribute.name
                 )
             }
         )

@@ -154,6 +154,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         self.from_pool: dict | None = None
         self.value_presence = PayloadPresence.ABSENT
         self.from_pool_presence = PayloadPresence.ABSENT
+        self.is_default_presence = PayloadPresence.ABSENT
         self._tracking_pool: TrackingPool | TrackingPoolNotLoaded | None = TrackingPoolNotLoaded.NOT_LOADED
 
         self._init_node_property_mixin(kwargs)
@@ -698,6 +699,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         changed = False
         self.value_presence = PayloadPresence.of(data=data, key="value")
         self.from_pool_presence = PayloadPresence.of(data=data, key="from_pool")
+        self.is_default_presence = PayloadPresence.of(data=data, key="is_default")
         if "value" in data:
             if self.is_enum:
                 value_to_set = self.schema.convert_value_to_enum(data["value"])
