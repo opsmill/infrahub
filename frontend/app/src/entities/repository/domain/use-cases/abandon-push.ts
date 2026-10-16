@@ -17,7 +17,7 @@ export const abandonPush: AbandonPush = async (params) => {
   const result = data?.InfrahubRepositoryDeliveryAbandon;
 
   if (!result) {
-    throw new Error("Cannot start the abandonment of the pending pushes.");
+    throw new Error("Cannot abandon the pending pushes.");
   }
 
   return {

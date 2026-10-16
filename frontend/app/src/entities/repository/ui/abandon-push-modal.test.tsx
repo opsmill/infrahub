@@ -38,7 +38,7 @@ const conflictingPush: RepositoryPushState = {
     },
   ],
   queueVersion: 4,
-  lastAbandonment: null,
+  lastAbandonedPush: null,
 };
 
 describe("AbandonPushModal", () => {
@@ -117,7 +117,7 @@ describe("AbandonPushModal", () => {
     );
   });
 
-  test("links to the task and closes when the abandonment starts", async () => {
+  test("links to the task and closes when abandoning starts", async () => {
     // GIVEN
     const component = await renderModal();
 
@@ -126,7 +126,7 @@ describe("AbandonPushModal", () => {
 
     // THEN
     await expect
-      .element(component.getByText("Abandonment of the pending pushes started."))
+      .element(component.getByText("Started abandoning the pending pushes."))
       .toBeVisible();
     await expect
       .element(component.getByRole("link", { name: "View task" }))

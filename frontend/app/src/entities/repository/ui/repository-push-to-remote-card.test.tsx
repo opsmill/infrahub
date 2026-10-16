@@ -4,7 +4,7 @@ import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.quer
 import { getObjectPermissions } from "@/entities/permission/domain/use-cases/get-object-permissions";
 import { useHasGlobalPermission } from "@/entities/permission/ui/queries/has-global-permission.query";
 import type {
-  AbandonmentRecord,
+  AbandonedPush,
   RepositoryPushState,
 } from "@/entities/repository/domain/model/repository-push-state";
 import { getRepositoryPushState } from "@/entities/repository/domain/use-cases/get-repository-push-state";
@@ -49,7 +49,7 @@ const refusedPush: RepositoryPushState = {
     },
   ],
   queueVersion: 2,
-  lastAbandonment: null,
+  lastAbandonedPush: null,
 };
 
 const OBJECTS_CAN_STAY =
@@ -57,7 +57,7 @@ const OBJECTS_CAN_STAY =
 const OBJECTS_CAN_LACK =
   "The default branch can also lack repository objects that the recorded commit holds.";
 
-const lastAbandonment: AbandonmentRecord = {
+const lastAbandonedPush: AbandonedPush = {
   format: 1,
   abandoned_at: "2026-10-03T08:00:00.000000+00:00",
   account_name: "alice",
@@ -66,7 +66,7 @@ const lastAbandonment: AbandonmentRecord = {
   entries: refusedPush.pendingMerges.slice(0, 1),
 };
 
-const nothingPendingAfterAbandonment: RepositoryPushState = {
+const nothingPendingAfterAbandon: RepositoryPushState = {
   status: "none",
   statusLabel: "none",
   statusColor: null,
@@ -75,7 +75,7 @@ const nothingPendingAfterAbandonment: RepositoryPushState = {
   error: null,
   pendingMerges: [],
   queueVersion: 3,
-  lastAbandonment,
+  lastAbandonedPush,
 };
 
 const renderCard = () => render(<RepositoryPushToRemoteCard repositoryId="repo-1" />);
@@ -199,7 +199,7 @@ describe("RepositoryPushToRemoteCard", () => {
       error: null,
       pendingMerges: [],
       queueVersion: 0,
-      lastAbandonment: null,
+      lastAbandonedPush: null,
     });
 
     // WHEN
@@ -225,16 +225,16 @@ describe("RepositoryPushToRemoteCard", () => {
       .toBeVisible();
   });
 
-  test("shows the last abandonment, its account, the abandoned merges and the recorded commit", async () => {
+  test("shows the last abandoned push, its account, the abandoned merges and the recorded commit", async () => {
     // GIVEN
-    vi.mocked(getRepositoryPushState).mockResolvedValue(nothingPendingAfterAbandonment);
+    vi.mocked(getRepositoryPushState).mockResolvedValue(nothingPendingAfterAbandon);
 
     // WHEN
     const component = await renderCard();
 
     // THEN
     await expect.element(component.getByText("Nothing pending")).toBeVisible();
-    await expect.element(component.getByText("Last abandonment")).toBeVisible();
+    await expect.element(component.getByText("Last abandoned push")).toBeVisible();
     await expect.element(component.getByText("alice")).toBeVisible();
     await expect.element(component.getByText("feature-a", { exact: true })).toBeVisible();
     await expect.element(component.getByText("4b825dc", { exact: true })).toBeVisible();
@@ -243,13 +243,13 @@ describe("RepositoryPushToRemoteCard", () => {
     await expect.element(component.baseElement).not.toHaveTextContent(OBJECTS_CAN_LACK);
   });
 
-  test("also says the default branch can lack objects when the abandonment dropped an import", async () => {
+  test("also says the default branch can lack objects when abandoning dropped an import", async () => {
     // GIVEN
     vi.mocked(getRepositoryPushState).mockResolvedValue({
       ...refusedPush,
-      lastAbandonment: {
-        ...lastAbandonment,
-        import_owed_commit: lastAbandonment.recorded_commit,
+      lastAbandonedPush: {
+        ...lastAbandonedPush,
+        import_owed_commit: lastAbandonedPush.recorded_commit,
       },
     });
 
@@ -264,13 +264,13 @@ describe("RepositoryPushToRemoteCard", () => {
 
   test("offers no reimport while pushes are pending, since the backend refuses it", async () => {
     // GIVEN
-    vi.mocked(getRepositoryPushState).mockResolvedValue({ ...refusedPush, lastAbandonment });
+    vi.mocked(getRepositoryPushState).mockResolvedValue({ ...refusedPush, lastAbandonedPush });
 
     // WHEN
     const component = await renderCard();
 
     // THEN
-    await expect.element(component.getByText("Last abandonment")).toBeVisible();
+    await expect.element(component.getByText("Last abandoned push")).toBeVisible();
     await expect
       .element(component.getByRole("button", { name: "Reimport current commit" }))
       .not.toBeInTheDocument();
@@ -278,7 +278,7 @@ describe("RepositoryPushToRemoteCard", () => {
 
   test("reimports the current commit on the default branch while another branch is selected", async () => {
     // GIVEN
-    vi.mocked(getRepositoryPushState).mockResolvedValue(nothingPendingAfterAbandonment);
+    vi.mocked(getRepositoryPushState).mockResolvedValue(nothingPendingAfterAbandon);
     vi.mocked(importCurrentCommit).mockResolvedValue({ ok: true, taskId: "task-2" });
     const component = await renderCard();
 
@@ -299,7 +299,7 @@ describe("RepositoryPushToRemoteCard", () => {
 
   test("shows why the reimport is refused", async () => {
     // GIVEN
-    vi.mocked(getRepositoryPushState).mockResolvedValue(nothingPendingAfterAbandonment);
+    vi.mocked(getRepositoryPushState).mockResolvedValue(nothingPendingAfterAbandon);
     vi.mocked(importCurrentCommit).mockRejectedValue(
       new Error("You are not allowed to edit main.")
     );
@@ -318,7 +318,7 @@ describe("RepositoryPushToRemoteCard", () => {
 
   test("enables Reimport on the default branch from the update permission on the default branch while another branch is selected", async () => {
     // GIVEN
-    vi.mocked(getRepositoryPushState).mockResolvedValue(nothingPendingAfterAbandonment);
+    vi.mocked(getRepositoryPushState).mockResolvedValue(nothingPendingAfterAbandon);
 
     // WHEN
     const component = await renderCard();
@@ -334,7 +334,7 @@ describe("RepositoryPushToRemoteCard", () => {
 
   test("disables Reimport on the default branch without update permission on the default branch", async () => {
     // GIVEN
-    vi.mocked(getRepositoryPushState).mockResolvedValue(nothingPendingAfterAbandonment);
+    vi.mocked(getRepositoryPushState).mockResolvedValue(nothingPendingAfterAbandon);
     vi.mocked(getObjectPermissions).mockResolvedValue(generatePermission({ update: false }));
 
     // WHEN
@@ -349,7 +349,7 @@ describe("RepositoryPushToRemoteCard", () => {
 
   test("disables Reimport on the default branch without the permission to edit the default branch", async () => {
     // GIVEN
-    vi.mocked(getRepositoryPushState).mockResolvedValue(nothingPendingAfterAbandonment);
+    vi.mocked(getRepositoryPushState).mockResolvedValue(nothingPendingAfterAbandon);
     vi.mocked(useHasGlobalPermission).mockReturnValue({
       data: false,
     } as unknown as ReturnType<typeof useHasGlobalPermission>);

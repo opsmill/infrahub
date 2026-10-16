@@ -47,7 +47,7 @@ describe("getRepositoryPushState", () => {
       error: null,
       pendingMerges: [],
       queueVersion: 0,
-      lastAbandonment: null,
+      lastAbandonedPush: null,
     });
   });
 
@@ -108,11 +108,11 @@ describe("getRepositoryPushState", () => {
         },
       ],
       queueVersion: 2,
-      lastAbandonment: null,
+      lastAbandonedPush: null,
     });
   });
 
-  it("maps the last abandonment with the abandoned merges and the dropped import", async () => {
+  it("maps the last abandoned push with the abandoned merges and the dropped import", async () => {
     // GIVEN
     const abandonedMerge = {
       entry_id: "entry-1",
@@ -145,7 +145,7 @@ describe("getRepositoryPushState", () => {
 
     // THEN
     expect(state).toMatchObject({ status: "none", pendingMerges: [], queueVersion: 3 });
-    expect(state.lastAbandonment).toEqual({
+    expect(state.lastAbandonedPush).toEqual({
       format: 1,
       abandoned_at: "2026-10-03T08:00:00.000000+00:00",
       account_name: "admin",
@@ -194,7 +194,7 @@ describe("getRepositoryPushState", () => {
     await expect(result).rejects.toThrow("Cannot read the pending pushes of this repository.");
   });
 
-  it("fails with a readable message when the last abandonment cannot be read", async () => {
+  it("fails with a readable message when the last abandoned push cannot be read", async () => {
     // GIVEN
     mockRepository(
       repositoryNode({ delivery_last_abandonment: { value: { format: 2, entries: [] } } })
@@ -204,6 +204,6 @@ describe("getRepositoryPushState", () => {
     const result = getRepositoryPushState({ repositoryId: "repo-1", branchName: "primary" });
 
     // THEN
-    await expect(result).rejects.toThrow("Cannot read the last abandonment of this repository.");
+    await expect(result).rejects.toThrow("Cannot read the last abandoned push of this repository.");
   });
 });

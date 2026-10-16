@@ -37,7 +37,7 @@ export const PendingMergeQueueSchema = z.object({
   entries: z.array(PendingMergeSchema),
 });
 
-export const AbandonmentRecordSchema = z.object({
+export const AbandonedPushSchema = z.object({
   format: z.literal(1),
   abandoned_at: z.string(),
   account_name: z.string(),
@@ -48,7 +48,7 @@ export const AbandonmentRecordSchema = z.object({
   entries: z.array(PendingMergeSchema),
 });
 
-export type AbandonmentRecord = z.infer<typeof AbandonmentRecordSchema>;
+export type AbandonedPush = z.infer<typeof AbandonedPushSchema>;
 
 /** The push state of a repository, as the default branch holds it. */
 export interface RepositoryPushState {
@@ -62,7 +62,7 @@ export interface RepositoryPushState {
   error: string | null;
   /** In merge order. */
   pendingMerges: PendingMerge[];
-  /** The version of the pending merges; an abandonment names it, so the backend refuses it once they change. */
+  /** The version of the pending merges; abandoning names it, so the backend refuses once they change. */
   queueVersion: number;
-  lastAbandonment: AbandonmentRecord | null;
+  lastAbandonedPush: AbandonedPush | null;
 }

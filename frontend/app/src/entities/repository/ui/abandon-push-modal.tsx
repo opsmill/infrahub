@@ -20,7 +20,7 @@ export function AbandonPushModal({ repositoryId, isOpen, onOpenChange }: Abandon
   const { data: pushState } = useGetRepositoryPushState({ repositoryId });
   const { mutate: abandonPush, isPending } = useAbandonPushMutation({
     onSuccess: (result) => {
-      toastTaskStarted("Abandonment of the pending pushes started.", result.taskId);
+      toastTaskStarted("Started abandoning the pending pushes.", result.taskId);
     },
     onError: (error) => {
       toast(
@@ -55,7 +55,7 @@ export function AbandonPushModal({ repositoryId, isOpen, onOpenChange }: Abandon
       isOpen={isOpen}
       onOpenChange={onOpenChange}
       isLoading={isPending}
-      // The version names the list shown, so the backend refuses the abandonment if the pending merges changed since.
+      // The version names the list shown, so the backend refuses to abandon if the pending merges changed since.
       onConfirm={() =>
         pushState && abandonPush({ repositoryId, queueVersion: pushState.queueVersion })
       }

@@ -39,7 +39,7 @@ const refusedPush: RepositoryPushState = {
   error: null,
   pendingMerges: [],
   queueVersion: 0,
-  lastAbandonment: null,
+  lastAbandonedPush: null,
 };
 
 const nothingPending: RepositoryPushState = {
@@ -51,7 +51,7 @@ const nothingPending: RepositoryPushState = {
   error: null,
   pendingMerges: [],
   queueVersion: 0,
-  lastAbandonment: null,
+  lastAbandonedPush: null,
 };
 
 const mockPushState = (state: RepositoryPushState | undefined) => {
@@ -559,7 +559,7 @@ describe("RepositoryMenuSection", () => {
       .toBeVisible();
   });
 
-  test("opens the abandonment", async () => {
+  test("opens the abandon dialog", async () => {
     // GIVEN
     const component = await renderRepositoryMenu();
 

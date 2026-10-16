@@ -12,7 +12,7 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { useDefaultBranch } from "@/entities/branches/ui/hooks/use-default-branch";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import type {
-  AbandonmentRecord,
+  AbandonedPush,
   PushFailureCause,
   RepositoryPushState,
 } from "@/entities/repository/domain/model/repository-push-state";
@@ -68,7 +68,7 @@ function PushStateDetails({ repositoryId }: RepositoryPushToRemoteCardProps) {
       <PendingPushDetails pushState={pushState} />
       <AbandonedPushDetails
         repositoryId={repositoryId}
-        abandonment={pushState.lastAbandonment}
+        abandonedPush={pushState.lastAbandonedPush}
         hasPendingPushes={pushState.status !== "none"}
       />
     </div>
@@ -120,41 +120,41 @@ function PendingPushDetails({ pushState }: PendingPushDetailsProps) {
 
 interface AbandonedPushDetailsProps {
   repositoryId: string;
-  abandonment: AbandonmentRecord | null;
+  abandonedPush: AbandonedPush | null;
   hasPendingPushes: boolean;
 }
 
 function AbandonedPushDetails({
   repositoryId,
-  abandonment,
+  abandonedPush,
   hasPendingPushes,
 }: AbandonedPushDetailsProps) {
-  if (!abandonment) {
+  if (!abandonedPush) {
     return null;
   }
 
   return (
     <>
-      <DetailRow label="Last abandonment">
-        <DateDisplay date={abandonment.abandoned_at} />
+      <DetailRow label="Last abandoned push">
+        <DateDisplay date={abandonedPush.abandoned_at} />
       </DetailRow>
 
-      <DetailRow label="Abandoned by">{abandonment.account_name}</DetailRow>
+      <DetailRow label="Abandoned by">{abandonedPush.account_name}</DetailRow>
 
       <DetailRow label="Abandoned merges">
-        <PendingMergeList merges={abandonment.entries} />
+        <PendingMergeList merges={abandonedPush.entries} />
       </DetailRow>
 
       {/* The backend records an empty commit when it could not read the one the default branch kept. */}
-      {abandonment.recorded_commit && (
+      {abandonedPush.recorded_commit && (
         <DetailRow label="Recorded commit">
-          <code className="text-xs">{abandonment.recorded_commit.slice(0, 7)}</code>
+          <code className="text-xs">{abandonedPush.recorded_commit.slice(0, 7)}</code>
         </DetailRow>
       )}
 
       <DetailRow label="Repository objects">
         <p>The default branch can hold repository objects that the recorded commit lacks.</p>
-        {abandonment.import_owed_commit && (
+        {abandonedPush.import_owed_commit && (
           <p>The default branch can also lack repository objects that the recorded commit holds.</p>
         )}
         {/* The backend refuses a reimport while pushes are pending. */}
@@ -191,7 +191,7 @@ function ReimportOnDefaultBranchButton({ repositoryId }: ReimportOnDefaultBranch
     return null;
   }
 
-  // The abandonment changed the default branch, so the reimport runs there whatever branch the user selected.
+  // Abandoning changed the default branch, so the reimport runs there whatever branch the user selected.
   return (
     <div>
       <Button

@@ -12,7 +12,7 @@ interface AbandonPushProps extends MutationConfig<typeof abandonPush> {}
 
 export const ABANDON_PUSH_MUTATION_KEY = ["repository", "abandon-push"] as const;
 
-// The pending pushes live on the default branch, and the backend refuses an abandonment sent on any other.
+// The pending pushes live on the default branch, and the backend refuses to abandon from any other.
 // invalidation-at-callsite: the caller invalidates `objectQueryKeys.all` with its own toast.
 export function useAbandonPushMutation(config?: Omit<AbandonPushProps, "mutationFn">) {
   const defaultBranch = useDefaultBranch();
