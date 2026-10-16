@@ -131,6 +131,7 @@ Each entry says *when* to load it — open the doc before working in that area.
 - `dev/knowledge/backend/task-workers.md` - How task workers poll, reserve, claim and start flow runs; read before changing the worker or diagnosing a run that waits before it starts
 - `dev/knowledge/backend/message-bus.md` - Message bus system; read when adding or changing a message
 - `dev/knowledge/backend/telemetry.md` - Anonymous usage telemetry (categories, windowing, retention, degradation); read when adding or changing telemetry metrics or the collection window
+- `dev/knowledge/backend/observability.md` - Traces, metrics and logs of the API server and task workers, and the local observability stack; read before adding a span or a metric, changing how a process sets up tracing, or upgrading FastAPI, Prefect or an OpenTelemetry package
 - `dev/knowledge/backend/webhooks.md` - Webhook delivery and failure classification; read when touching webhook delivery
 - `dev/knowledge/backend/computed-attributes.md` - Jinja2 computed attributes and their recompute paths; read when touching Jinja2 computed attributes
 - `dev/knowledge/backend/display-labels-and-hfid.md` - Display-label and human-friendly-id derivation; read when touching either
