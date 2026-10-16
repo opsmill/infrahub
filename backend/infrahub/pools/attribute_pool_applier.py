@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol, assert_never
 
 from infrahub.core.attribute import PayloadPresence
-from infrahub.core.constants import PoolRecordProvenance
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, PoolRecordProvenance
 from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX
 from infrahub.core.query.resource_manager import TrackingPool
 from infrahub.core.schema import TemplateSchema
@@ -12,6 +12,7 @@ from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExha
 from infrahub.pools.intent import FromPoolIntent, FromPoolIntentResolver, FromPoolRequest, Sent
 from infrahub.pools.range_refusal import (
     is_within_ranges,
+    other_branch_refusal,
     tracked_edit_refusal,
     untracked_attach_refusal,
 )
@@ -23,6 +24,7 @@ if TYPE_CHECKING:
     from infrahub.core.protocols import CoreNumberPool
     from infrahub.core.schema import NonGenericSchemaTypes
     from infrahub.pools.number_ranges import PoolRange
+    from infrahub.pools.range_refusal import BranchValue
     from infrahub.pools.scope import Division
 
 
@@ -44,6 +46,12 @@ class NumberPoolFinder(Protocol):
 class PoolRangeReader(Protocol):
     async def get_pool_ranges(self, pool_id: str) -> list[PoolRange]:
         """Return the ranges the pool allocates from."""
+        ...
+
+
+class AttributeBranchValuesReader(Protocol):
+    async def read(self, attribute_ids: list[str]) -> list[BranchValue]:
+        """Return the number each live branch holds for each of the attributes."""
         ...
 
 
@@ -144,12 +152,14 @@ class AttributePoolApplier:
         intent_resolver: FromPoolIntentResolver,
         division_reader: DivisionReader,
         range_reader: PoolRangeReader,
+        branch_values_reader: AttributeBranchValuesReader,
     ) -> None:
         self.pool_finder = pool_finder
         self.number_allocator = number_allocator
         self.intent_resolver = intent_resolver
         self.division_reader = division_reader
         self.range_reader = range_reader
+        self.branch_values_reader = branch_values_reader
 
     async def apply(
         self,
@@ -169,7 +179,8 @@ class AttributePoolApplier:
                 when the pool or the writer's division is exhausted, when `from_pool` alone names a pool over
                 a non-default number the attribute holds and that pool does not already track it, or when the
                 schema of the node's branch does not define an element of the pool's scope, or when a number sent
-                with `from_pool` is outside the ranges of the pool it names.
+                with `from_pool` is outside the ranges of the pool it names, or when the pool would start tracking
+                an attribute another live branch holds outside those ranges.
             NodeNotFoundError: When a relationship element of the pool's scope names, by a human-friendly id or a
                 default filter value, a peer that does not exist.
 
@@ -256,6 +267,10 @@ class AttributePoolApplier:
                     ranges=ranges,
                     tracking_pool_id=tracking_pool_id,
                 )
+                if tracking_pool_id != attach_pool.get_id():
+                    await self._check_other_branches_within_ranges(
+                        node=node, pool=attach_pool, attribute=attribute, ranges=ranges
+                    )
                 await self._attach(node=node, pool=attach_pool, attribute=attribute, user_id=user_id)
             case FromPoolIntent.ALLOCATE:
                 await self._allocate(
@@ -331,6 +346,34 @@ class AttributePoolApplier:
                 )
             }
         )
+
+    async def _check_other_branches_within_ranges(
+        self, node: Node, pool: CoreNumberPool, attribute: BaseAttribute, ranges: list[PoolRange]
+    ) -> None:
+        """Refuse to start tracking an attribute that has an out-of-range value on another branch.
+
+        An attribute not saved yet holds no number on any branch. The write replaces the number of the branch it is
+        made on, and of every branch at once when the attribute is branch-agnostic, so only the other branches' numbers
+        are checked.
+
+        Raises:
+            ValidationError: When another live branch holds a number outside the pool's ranges.
+
+        """
+        if attribute.id is None:
+            return
+        replaced_branches = {node.get_branch().name, GLOBAL_BRANCH_NAME}
+        branch_values = await self.branch_values_reader.read(attribute_ids=[attribute.id])
+        refusal = other_branch_refusal(
+            pool_name=pool.name.value,
+            attribute_name=attribute.name,
+            ranges=ranges,
+            branch_values=[
+                branch_value for branch_value in branch_values if branch_value.branch not in replaced_branches
+            ],
+        )
+        if refusal is not None:
+            raise ValidationError({f"{attribute.name}.from_pool": refusal})
 
     async def _attach(self, node: Node, pool: CoreNumberPool, attribute: BaseAttribute, user_id: str) -> None:
         # An attribute not saved yet is attached to the pool when the node is created.

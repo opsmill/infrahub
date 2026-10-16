@@ -7,14 +7,16 @@ that value was written, or the closed one it still reads at its fork point.
 
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import TYPE_CHECKING
 
 import pytest
 
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType
 from infrahub.core.initialization import create_branch, initialize_registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema import NodeSchema, SchemaRoot
 from infrahub.pools.number_pool_attribute_branch_values import NumberPoolAttributeBranchValues
 from infrahub.pools.range_refusal import BranchValue
 from tests.component.core.resource_manager.conftest import delete_branch
@@ -26,19 +28,32 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
+def _agnostic_ticket_schema() -> NodeSchema:
+    """A ticket whose number every branch shares, stored once on the global branch."""
+    schema = deepcopy(TICKET)
+    schema.name = "AgnosticTicket"
+    schema.get_attribute(name="ticket_id").branch = BranchSupportType.AGNOSTIC
+    return schema
+
+
+AGNOSTIC_TICKET = _agnostic_ticket_schema()
+
+
 @pytest.fixture(scope="class")
 async def ticket_schema(
     db: InfrahubDatabase,
     default_branch_scope_class: Branch,
     register_core_models_schema_scope_class: SchemaBranch,
 ) -> Branch:
-    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET, AGNOSTIC_TICKET]))
     await initialize_registry(db=db)
     return default_branch_scope_class
 
 
-async def _new_ticket(db: InfrahubDatabase, title: str, ticket_id: int | None) -> tuple[Node, str]:
-    ticket = await Node.init(db=db, schema=TICKET.kind)
+async def _new_ticket(
+    db: InfrahubDatabase, title: str, ticket_id: int | None, schema: NodeSchema = TICKET
+) -> tuple[Node, str]:
+    ticket = await Node.init(db=db, schema=schema.kind)
     await ticket.new(db=db, title=title, ticket_id=ticket_id)
     await ticket.save(db=db)
     attribute_id = ticket.get_attribute("ticket_id").id
@@ -66,6 +81,19 @@ class TestAttributeBranchValues:
 
         assert await _read(db=db, attribute_ids=[attribute_id]) == [
             BranchValue(attribute_id=attribute_id, branch=ticket_schema.name, value=101)
+        ]
+
+    async def test_a_branch_agnostic_value_reads_once_under_the_global_branch(
+        self, db: InfrahubDatabase, ticket_schema: Branch
+    ) -> None:
+        ticket, attribute_id = await _new_ticket(
+            db=db, title="shared-by-every-branch", ticket_id=601, schema=AGNOSTIC_TICKET
+        )
+        branch = await create_branch(branch_name="changes-the-shared-value", db=db)
+        await _set_on_branch(db=db, ticket=ticket, branch=branch, ticket_id=602)
+
+        assert await _read(db=db, attribute_ids=[attribute_id]) == [
+            BranchValue(attribute_id=attribute_id, branch=GLOBAL_BRANCH_NAME, value=602)
         ]
 
     async def test_a_branch_inheriting_the_open_default_value_reads_it_under_its_own_name(
