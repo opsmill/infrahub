@@ -10,7 +10,10 @@ import type { Permission } from "@/entities/permission/domain/model/permission";
 import { REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
 import { getPushActions } from "@/entities/repository/domain/rules/get-push-actions";
 import { isReadOnlyRepository } from "@/entities/repository/domain/rules/is-read-only-repository";
-import { usePendingPushPermissions } from "@/entities/repository/ui/hooks/use-pending-push-permissions";
+import {
+  ACCESS_DENIED_TOOLTIP,
+  usePendingPushPermissions,
+} from "@/entities/repository/ui/hooks/use-pending-push-permissions";
 import { useGetRepositoryPushState } from "@/entities/repository/ui/queries/get-repository-push-state.query";
 import { useImportCurrentCommitMutation } from "@/entities/repository/ui/queries/import-current-commit.mutation";
 import { useReimportLastCommitMutation } from "@/entities/repository/ui/queries/reimport-last-commit.mutation";
@@ -98,7 +101,6 @@ export function RepositoryMenuSection({
   );
 }
 
-const ACCESS_DENIED_TOOLTIP = "Ask an administrator for access";
 const NOTHING_TO_PUSH_TOOLTIP = "Nothing to push";
 const UNREADABLE_PUSH_STATE_TOOLTIP = "Couldn't load the pending pushes. Reload the page";
 

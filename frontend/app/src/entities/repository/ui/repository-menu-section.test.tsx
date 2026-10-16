@@ -512,6 +512,20 @@ describe("RepositoryMenuSection", () => {
       .toHaveAttribute("aria-disabled", "true");
   });
 
+  test("disables Retry push while its request runs", async () => {
+    // GIVEN
+    vi.mocked(retryRepositoryPush).mockReturnValue(new Promise(() => {}));
+    const component = await renderRepositoryMenu();
+
+    // WHEN
+    await component.getByRole("menuitem", { name: "Retry push" }).click();
+
+    // THEN
+    await expect
+      .element(component.getByRole("menuitem", { name: "Retry push" }))
+      .toHaveAttribute("aria-disabled", "true");
+  });
+
   test("retries the pending pushes on the default branch while another branch is selected", async () => {
     // GIVEN
     const component = await renderRepositoryMenu();

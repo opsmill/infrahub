@@ -10,6 +10,8 @@ import { getObjectPermissionsQueryOptions } from "@/entities/permission/ui/queri
 import { useHasGlobalPermission } from "@/entities/permission/ui/queries/has-global-permission.query";
 import { REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
 
+export const ACCESS_DENIED_TOOLTIP = "Ask an administrator for access";
+
 interface PendingPushPermissions {
   canActOnPendingPushes: boolean;
   canReimportOnDefaultBranch: boolean;

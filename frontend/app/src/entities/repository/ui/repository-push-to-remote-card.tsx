@@ -1,4 +1,4 @@
-import { Button, Card, CardHeader } from "@infrahub/ui";
+import { Button, Card, CardHeader, Tooltip } from "@infrahub/ui";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
@@ -16,7 +16,10 @@ import type {
   PushFailureCause,
   RepositoryPushState,
 } from "@/entities/repository/domain/model/repository-push-state";
-import { usePendingPushPermissions } from "@/entities/repository/ui/hooks/use-pending-push-permissions";
+import {
+  ACCESS_DENIED_TOOLTIP,
+  usePendingPushPermissions,
+} from "@/entities/repository/ui/hooks/use-pending-push-permissions";
 import { PendingMergeList } from "@/entities/repository/ui/pending-merge-list";
 import { useGetRepositoryPushState } from "@/entities/repository/ui/queries/get-repository-push-state.query";
 import { useImportCurrentCommitMutation } from "@/entities/repository/ui/queries/import-current-commit.mutation";
@@ -170,7 +173,9 @@ interface ReimportOnDefaultBranchButtonProps {
 
 function ReimportOnDefaultBranchButton({ repositoryId }: ReimportOnDefaultBranchButtonProps) {
   const defaultBranch = useDefaultBranch();
-  const { canReimportOnDefaultBranch } = usePendingPushPermissions();
+  const { canReimportOnDefaultBranch, isPending: isPermissionPending } =
+    usePendingPushPermissions();
+  const isAccessDenied = !isPermissionPending && !canReimportOnDefaultBranch;
 
   const { mutate: importCurrentCommit, isPending: isReimporting } = useImportCurrentCommitMutation({
     onSuccess: async (result) => {
@@ -194,15 +199,18 @@ function ReimportOnDefaultBranchButton({ repositoryId }: ReimportOnDefaultBranch
   // Abandoning changed the default branch, so the reimport runs there whatever branch the user selected.
   return (
     <div>
-      <Button
-        size="sm"
-        variant="outline"
-        isDisabled={!canReimportOnDefaultBranch}
-        isPending={isReimporting}
-        onPress={() => importCurrentCommit({ repositoryId, branchName: defaultBranch.name })}
-      >
-        Reimport current commit
-      </Button>
+      <Tooltip message={isAccessDenied ? ACCESS_DENIED_TOOLTIP : undefined}>
+        <Button
+          size="sm"
+          variant="outline"
+          isDisabled={isPermissionPending}
+          isDisabledAndFocusable={isAccessDenied}
+          isPending={isReimporting}
+          onPress={() => importCurrentCommit({ repositoryId, branchName: defaultBranch.name })}
+        >
+          Reimport current commit
+        </Button>
+      </Tooltip>
     </div>
   );
 }

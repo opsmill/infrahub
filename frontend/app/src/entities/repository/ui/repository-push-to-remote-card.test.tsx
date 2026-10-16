@@ -11,6 +11,7 @@ import { getRepositoryPushState } from "@/entities/repository/domain/use-cases/g
 import { importCurrentCommit } from "@/entities/repository/domain/use-cases/import-current-commit";
 
 import { render } from "../../../../tests/components/render";
+import { initPointerTracking } from "../../../../tests/components/utils";
 import { generateBranch } from "../../../../tests/fake/branch";
 import { generatePermission } from "../../../../tests/fake/permission";
 import { RepositoryPushToRemoteCard } from "./repository-push-to-remote-card";
@@ -330,6 +331,26 @@ describe("RepositoryPushToRemoteCard", () => {
     expect(getObjectPermissions).toHaveBeenCalledWith(
       expect.objectContaining({ kind: "CoreRepository", branchName: "primary" })
     );
+  });
+
+  test("explains why Reimport current commit is disabled without update permission on the default branch", async () => {
+    // GIVEN
+    vi.mocked(getRepositoryPushState).mockResolvedValue(nothingPendingAfterAbandon);
+    vi.mocked(getObjectPermissions).mockResolvedValue(generatePermission({ update: false }));
+    const component = await renderCard();
+    const reimportButton = component.getByRole("button", { name: "Reimport current commit" });
+    await expect.element(reimportButton).toBeDisabled();
+
+    // WHEN
+    await initPointerTracking(component.locator);
+    await reimportButton.hover();
+
+    // THEN
+    await expect
+      .element(component.getByRole("tooltip", { name: "Ask an administrator for access" }))
+      .toBeVisible();
+    // Move the pointer off the trigger so the tooltip does not carry into the next test.
+    await initPointerTracking(component.locator);
   });
 
   test("disables Reimport on the default branch without update permission on the default branch", async () => {
