@@ -126,7 +126,7 @@ function RepositoryPushMenuItems({ repositoryId, onAbandonPush }: RepositoryPush
   const abandonTooltip =
     accessTooltip ?? getAbandonStateTooltip({ isPending, isError, canAbandon });
 
-  const { mutate: retryRepositoryPush } = useRetryRepositoryPushMutation({
+  const { mutate: retryRepositoryPush, isPending: isRetrying } = useRetryRepositoryPushMutation({
     onSuccess: (result) => {
       toastTaskStarted("Retry of the pending pushes started.", result.taskId);
     },
@@ -143,7 +143,7 @@ function RepositoryPushMenuItems({ repositoryId, onAbandonPush }: RepositoryPush
   return (
     <>
       <MenuItem
-        isDisabled={!permissions.canActOnPendingPushes || !canRetry}
+        isDisabled={!permissions.canActOnPendingPushes || !canRetry || isRetrying}
         tooltip={retryTooltip}
         onAction={() => retryRepositoryPush({ repositoryId })}
       >
