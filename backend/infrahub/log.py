@@ -1,11 +1,16 @@
 import importlib
+import io
 import logging
 import os
-from typing import TYPE_CHECKING, Any
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any, TextIO
 
 import structlog
 from pydantic import TypeAdapter
 from structlog.dev import plain_traceback
+from structlog.types import EventDict, ExcInfo, WrappedLogger
+
+from infrahub.masking import MASKING_RULES, mask_mapping, mask_nested, replace_url_queries_in_text
 
 if TYPE_CHECKING:
     from structlog.types import Processor
@@ -75,6 +80,92 @@ def install_traceback_suppression_filter() -> TracebackSuppressionFilter:
     return traceback_filter
 
 
+# Attributes that the logging module sets on every record; any other attribute came from `extra=`.
+_STANDARD_RECORD_ATTRIBUTES = frozenset(logging.makeLogRecord({}).__dict__) | {"message", "asctime"}
+
+
+class _MaskedText:
+    """Stand in for a logged object so that both `%s` and `%r` render its text with URL query strings replaced."""
+
+    def __init__(self, value: object) -> None:
+        self._str = replace_url_queries_in_text(text=str(value))
+        self._repr = replace_url_queries_in_text(text=repr(value))
+
+    def __str__(self) -> str:
+        return self._str
+
+    def __repr__(self) -> str:
+        return self._repr
+
+
+def _mask_record_arg(value: Any) -> Any:
+    if isinstance(value, str):
+        return replace_url_queries_in_text(text=value)
+    if isinstance(value, BaseException):
+        return _MaskedText(value=value)
+    return value
+
+
+def _mask_record_args(args: tuple[object, ...] | Mapping[str, object]) -> tuple[object, ...] | dict[str, object]:
+    masked = mask_nested(value=args, rules=MASKING_RULES)
+    if isinstance(masked, Mapping):
+        return {key: _mask_record_arg(value=value) for key, value in masked.items()}
+    return tuple(_mask_record_arg(value=value) for value in masked)
+
+
+class LogMaskingFilter(logging.Filter):
+    """Mask the values of record fields whose keys name personal data or a secret, using the shared masking rules.
+
+    A record carries fields in its `extra=` attributes, in a mapping passed as its message or as its arguments.
+    Values inside free-text messages are not matched by key; only the query strings of the URLs in the message,
+    its arguments and its exception text are replaced.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        """Mask the record in place and keep it, so every handler that reads it later gets the masked values."""
+        if isinstance(record.msg, dict):
+            record.msg = mask_mapping(data=record.msg, rules=MASKING_RULES)
+        elif isinstance(record.msg, str):
+            record.msg = replace_url_queries_in_text(text=record.msg)
+        if record.args:
+            record.args = _mask_record_args(args=record.args)
+        if record.exc_info and not record.exc_text:
+            record.exc_text = logging.Formatter().formatException(record.exc_info)
+        if record.exc_text:
+            record.exc_text = replace_url_queries_in_text(text=record.exc_text)
+        extra = {key: value for key, value in record.__dict__.items() if key not in _STANDARD_RECORD_ATTRIBUTES}
+        record.__dict__.update(mask_mapping(data=extra, rules=MASKING_RULES))
+        return True
+
+
+def add_log_masking_filter(target: logging.Logger | logging.Handler) -> LogMaskingFilter:
+    """Add a masking filter to a logger or a handler, and return it so a caller can remove it again."""
+    masking_filter = LogMaskingFilter()
+    target.addFilter(masking_filter)
+    return masking_filter
+
+
+def install_log_masking_filter() -> list[LogMaskingFilter]:
+    """Install the masking filter on the Prefect run loggers, whose records Prefect sends to its API."""
+    return [add_log_masking_filter(logging.getLogger(name)) for name in PREFECT_RUN_LOGGERS]
+
+
+def mask_personal_data(logger: WrappedLogger, method_name: str, event_dict: EventDict) -> EventDict:  # noqa: ARG001
+    """Mask the values of keys that name personal data or a secret, and the URL query strings in the message and exception."""
+    masked = mask_mapping(data=event_dict, rules=MASKING_RULES)
+    for key in ("event", "exception"):
+        value = masked.get(key)
+        if isinstance(value, str):
+            masked[key] = replace_url_queries_in_text(text=value)
+    return masked
+
+
+def _plain_traceback_with_masked_urls(sio: TextIO, exc_info: ExcInfo) -> None:
+    traceback_text = io.StringIO()
+    plain_traceback(traceback_text, exc_info)
+    sio.write(replace_url_queries_in_text(text=traceback_text.getvalue()))
+
+
 def clear_log_context() -> None:
     structlog.contextvars.clear_contextvars()
 
@@ -104,6 +195,7 @@ def configure_logging(production: bool, log_level: str) -> None:
 
     # Installed after the prefect.main import above so it survives Prefect's logging reset.
     install_traceback_suppression_filter()
+    install_log_masking_filter()
 
     shared_processors: list[Processor] = [
         structlog.contextvars.merge_contextvars,
@@ -116,6 +208,8 @@ def configure_logging(production: bool, log_level: str) -> None:
 
     if production:
         shared_processors.append(structlog.processors.format_exc_info)
+    # Last, so that it also reads the exception text that the step above renders.
+    shared_processors.append(mask_personal_data)
 
     structlog.configure(
         processors=shared_processors + [structlog.stdlib.ProcessorFormatter.wrap_for_formatter],
@@ -127,7 +221,7 @@ def configure_logging(production: bool, log_level: str) -> None:
     if production:
         log_renderer = structlog.processors.JSONRenderer()
     else:
-        log_renderer = structlog.dev.ConsoleRenderer(exception_formatter=plain_traceback)
+        log_renderer = structlog.dev.ConsoleRenderer(exception_formatter=_plain_traceback_with_masked_urls)
 
     formatter = structlog.stdlib.ProcessorFormatter(
         foreign_pre_chain=shared_processors,
