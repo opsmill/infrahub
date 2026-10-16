@@ -374,7 +374,10 @@ is traced, then check that the default applies after 2 minutes.
   address. Cypher text, URL paths and query names stay readable.
 - **Text inside a log message that is not a known field**, such as an email address in an exception
   message, is not masked until the log audit lists it (design document, D9). URL query strings are the
-  one exception: they are replaced in the message and exception text of every log line (FR-013).
+  one exception: they are replaced in the message and exception text of every log line (FR-013). Only
+  URLs with a scheme (`https://…?…`) are found in free text; a request target without one
+  (`GET /api/…?code=…`) keeps its query string. Infrahub writes no access log today (uvicorn's access
+  logger has a null handler and gunicorn has no access log configured), so no such line exists.
 - **Docker Desktop for macOS**: cAdvisor sends container metrics without the container name, so panels
   that filter by container are empty there. The Prefect panel fix must be checked on a Linux host
   (design document, B2).
@@ -418,8 +421,9 @@ is traced, then check that the default applies after 2 minutes.
 - **FR-011**: FR-009 and FR-010 MUST ship before tracing is turned on for more operators (card, scope).
 - **FR-012**: Before a span leaves the API server or the task worker, Infrahub MUST mask tokens, user
   names, email addresses, client IP addresses and URL query strings in its attributes and in the
-  attributes of its events, including the exception events. In `exception.message`, URL query strings
-  MUST be replaced. Cypher text, URL paths and query names MUST stay readable.
+  attributes of its events, including the exception events. In `exception.message` and
+  `exception.stacktrace`, URL query strings MUST be replaced, because the stack trace repeats the
+  message. Cypher text, URL paths and query names MUST stay readable.
 - **FR-013**: In every log line, including Prefect and gunicorn log lines, Infrahub MUST mask, before
   any log pipeline reads it, the values of keys that name a token, a password, an email address or a
   user name, and the fields that the log audit

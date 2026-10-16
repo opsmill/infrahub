@@ -7,7 +7,7 @@
 | Output | Where | When |
 |--------|-------|------|
 | Span attributes | `infrahub.trace::MaskingSpanExporter`, wrapping the exporter of the tracer provider | On export, after every instrumentation has set its attributes |
-| Span events, including exception events | Same exporter: the attributes of each event are masked with the same rules, and URL query strings inside `exception.message` are replaced | On export |
+| Span events, including exception events | Same exporter: the attributes of each event are masked with the same rules, and URL query strings inside `exception.message` and `exception.stacktrace` are replaced | On export |
 | structlog log lines (API server, task worker) | `infrahub.log::mask_personal_data` processor | Before the renderer writes the line |
 | Standard `logging` records (Prefect run loggers, gunicorn) | `infrahub.log::LogMaskingFilter` | Before any handler reads the record, including the handler that sends flow run logs to the Prefect API |
 

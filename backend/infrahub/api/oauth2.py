@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 
-import ujson
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -135,7 +134,7 @@ async def token(
     validate_auth_response(response=token_response, provider_type="OAuth 2.0")
 
     with trace.get_tracer(__name__).start_as_current_span("sso_token_request") as span:
-        span.set_attribute("token_request_data", ujson.dumps(token_response.json()))
+        span.set_attribute("provider_name", provider_name)
         payload = token_response.json()
 
     headers = {"Authorization": f"{payload.get('token_type')} {payload.get('access_token')}"}
@@ -153,11 +152,6 @@ async def token(
         source="oauth2_userinfo",
     ) or await get_groups_from_provider(provider=provider, service=service, payload=payload, user_info=user_info)
 
-    log.info(
-        "SSO user authenticated",
-        body={"user_name": user_info.get("name"), "groups": sso_groups},
-    )
-
     sub = user_info.get("sub")
     if not sub:
         raise ProcessingError(
@@ -173,11 +167,17 @@ async def token(
     )
 
     with trace.get_tracer(__name__).start_as_current_span("signin_sso_account") as span:
-        span.set_attribute("account_name", ujson.dumps(userinfo_response.json()))
+        span.set_attribute("provider_name", provider_name)
+        span.set_attribute("sso_group_count", len(sso_groups))
         span.set_attribute("sso_groups", sso_groups)
         auth_result = await signin_sso_account(
             db=db, external_identity=external_identity, sso_groups=sso_groups, event_service=service.event
         )
+
+    log.info(
+        "SSO user authenticated",
+        body={"account_id": auth_result.account_id, "groups": sso_groups},
+    )
 
     response.set_cookie(
         "access_token",

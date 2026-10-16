@@ -28,6 +28,7 @@ from infrahub.exceptions import InitializationError
 from infrahub.git import initialize_repositories_directory
 from infrahub.git.global_config import apply_git_tls_config, set_git_global_setting
 from infrahub.lock import initialize_lock
+from infrahub.log import add_log_masking_filter
 from infrahub.message_bus.types import KVTTL
 from infrahub.services import InfrahubServices
 from infrahub.trace import configure_trace
@@ -272,6 +273,7 @@ class InfrahubWorkerAsync(BaseWorker):
     def _init_logger(self) -> None:
         """Initialize loggers to use the API handle provided by Prefect."""
         api_handler = APILogHandler()
+        add_log_masking_filter(api_handler)
 
         for logger_name in config.SETTINGS.workflow.extra_loggers + DEFAULT_TASK_LOGGERS:
             logger = logging.getLogger(logger_name)
