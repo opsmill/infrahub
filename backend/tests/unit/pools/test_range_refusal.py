@@ -106,7 +106,7 @@ def test_every_branch_holding_a_number_outside_the_ranges_is_listed_sorted_by_na
     assert message == (
         "The tickets pool cannot track 'ticket_id', because a pool tracks an attribute on every branch and "
         "branch 'alpha' holds 150, branch 'beta' holds 1000, branch 'zeta' holds 900 outside its ranges: "
-        "1-100, 200-300. Change the number on that branch, or delete the branch, before attaching."
+        "1-100, 200-300. Change the number on that branch, or delete the branch, before attaching to or allocating from this pool."
     )
 
 
@@ -121,5 +121,5 @@ def test_a_branch_value_on_a_pool_without_ranges_is_refused_and_says_it_has_none
     assert message == (
         "The tickets pool cannot track 'ticket_id', because a pool tracks an attribute on every branch and "
         "branch 'main' holds 5 outside its ranges: no ranges. "
-        "Change the number on that branch, or delete the branch, before attaching."
+        "Change the number on that branch, or delete the branch, before attaching to or allocating from this pool."
     )

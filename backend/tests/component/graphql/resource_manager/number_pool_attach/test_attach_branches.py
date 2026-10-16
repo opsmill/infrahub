@@ -1,4 +1,4 @@
-"""An attach checks the number every other live branch holds, since a pool tracks an attribute on every branch."""
+"""An attach or an allocation from a new pool checks the number every other live branch holds, since a pool tracks an attribute on every branch."""
 
 from __future__ import annotations
 
@@ -26,8 +26,8 @@ if TYPE_CHECKING:
 def _other_branch_message(pool_name: str, held: str, ranges: str) -> str:
     return (
         f"The {pool_name} pool cannot track 'ticket_id', because a pool tracks an attribute on every branch and "
-        f"{held} outside its ranges: {ranges}. Change the number on that branch, or delete the branch, before "
-        "attaching. at ticket_id.from_pool"
+        f"{held} outside its ranges: {ranges}. Change the number on that branch, or delete the branch, before attaching "
+        "to or allocating from this pool. at ticket_id.from_pool"
     )
 
 
@@ -154,3 +154,46 @@ class TestAttachAcrossBranches:
         )
         assert await tracking_pool_id(db=db, node_id=ticket["id"]) is None
         assert await used_numbers(db=db, branch=main_branch, pool=pool) == []
+
+    async def test_an_allocation_from_another_pool_is_refused_while_another_branch_holds_a_number_outside_its_ranges(
+        self, db: InfrahubDatabase, main_branch: Branch
+    ) -> None:
+        tracking = await new_pool(db=db, name="allocation-tracking", start_range=8060, end_range=8069)
+        target = await new_pool(db=db, name="allocation-target", start_range=8070, end_range=8079)
+        ticket = await create_ticket(
+            db=db,
+            branch=main_branch,
+            title="allocation-from-another-pool",
+            ticket_id={"value": 8061, "from_pool": {"id": tracking.id}},
+        )
+        feature = await create_branch(branch_name="holds-8065", db=db)
+        await update_ticket(db=db, branch=feature, node_id=ticket["id"], ticket_id={"value": 8065})
+
+        message = await refused_write(
+            db=db,
+            branch=main_branch,
+            source=UPDATE_TICKET,
+            variables={"id": ticket["id"], "ticket_id": {"value": None, "from_pool": {"id": target.id}}},
+        )
+
+        assert message == _other_branch_message(
+            pool_name="allocation-target", held="branch 'holds-8065' holds 8065", ranges="8070-8079"
+        )
+        assert await tracking_pool_id(db=db, node_id=ticket["id"]) == tracking.id
+        assert await used_numbers(db=db, branch=main_branch, pool=target) == []
+
+    async def test_an_allocation_that_discards_an_untracked_number_tracks_every_branch_number_inside_the_ranges(
+        self, db: InfrahubDatabase, main_branch: Branch
+    ) -> None:
+        pool = await new_pool(db=db, name="allocation-inside", start_range=8090, end_range=8099)
+        ticket = await create_ticket(db=db, branch=main_branch, title="allocation-inside", ticket_id={"value": 8990})
+        feature = await create_branch(branch_name="holds-8095", db=db)
+        await update_ticket(db=db, branch=feature, node_id=ticket["id"], ticket_id={"value": 8095})
+
+        allocated = await update_ticket(
+            db=db, branch=main_branch, node_id=ticket["id"], ticket_id={"value": None, "from_pool": {"id": pool.id}}
+        )
+
+        assert allocated["ticket_id"]["value"] == 8090
+        assert await tracking_pool_id(db=db, node_id=ticket["id"]) == pool.id
+        assert await used_numbers(db=db, branch=main_branch, pool=pool) == [8090, 8095]

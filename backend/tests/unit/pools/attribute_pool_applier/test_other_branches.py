@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 def _other_branch_message(held: str) -> str:
     return (
         f"The tickets pool cannot track 'ticket_id', because a pool tracks an attribute on every branch and {held} "
-        "outside its ranges: 1-100. Change the number on that branch, or delete the branch, before attaching. "
+        "outside its ranges: 1-100. Change the number on that branch, or delete the branch, before attaching to or allocating from this pool. "
         "at ticket_id.from_pool"
     )
 
@@ -145,4 +145,100 @@ async def test_a_number_sent_outside_the_ranges_is_refused_before_other_branches
         await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True, user_id=ACTOR_ID)
 
     assert exc_info.value.message == untracked_attach_message(ranges="1-100")
+    assert branch_values.reads == []
+
+
+@dataclass
+class OtherBranchAllocationCase:
+    name: str
+    tracking_pool_id: str | None
+    payload: dict[str, Any]
+
+
+ALLOCATIONS_FROM_A_NEW_POOL = [
+    OtherBranchAllocationCase(
+        name="null-value-moves-from-another-pool",
+        tracking_pool_id=OTHER_POOL_ID,
+        payload={"value": None, "from_pool": {"id": POOL_ID}},
+    ),
+    OtherBranchAllocationCase(
+        name="null-value-on-an-untracked-attribute",
+        tracking_pool_id=None,
+        payload={"value": None, "from_pool": {"id": POOL_ID}},
+    ),
+    OtherBranchAllocationCase(
+        name="pool-alone-on-an-untracked-default", tracking_pool_id=None, payload={"from_pool": {"id": POOL_ID}}
+    ),
+]
+
+
+@pytest.mark.parametrize("case", ALLOCATIONS_FROM_A_NEW_POOL, ids=lambda case: case.name)
+async def test_an_allocation_from_a_new_pool_is_refused_when_another_branch_holds_a_number_outside_the_ranges(
+    applier: AttributePoolApplier,
+    finder: InMemoryNumberPoolFinder,
+    branch_values: InMemoryAttributeBranchValues,
+    allocator: RecordingNumberAllocator,
+    case: OtherBranchAllocationCase,
+) -> None:
+    if case.tracking_pool_id is not None:
+        finder.tracking_pool_ids[ATTRIBUTE_ID] = case.tracking_pool_id
+    branch_values.values = [_held("main", 900), _held("old", 950)]
+    ticket_id = make_ticket_id(payload=case.payload, saved=True)
+
+    with pytest.raises(ValidationError) as exc_info:
+        await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True, user_id=ACTOR_ID)
+
+    assert exc_info.value.message == _other_branch_message(held="branch 'old' holds 950")
+    assert branch_values.reads == [[ATTRIBUTE_ID]]
+    assert allocator.calls == []
+
+
+@pytest.mark.parametrize("case", ALLOCATIONS_FROM_A_NEW_POOL, ids=lambda case: case.name)
+async def test_an_allocation_from_a_new_pool_proceeds_when_every_other_branch_holds_a_number_inside_the_ranges(
+    applier: AttributePoolApplier,
+    finder: InMemoryNumberPoolFinder,
+    branch_values: InMemoryAttributeBranchValues,
+    allocator: RecordingNumberAllocator,
+    case: OtherBranchAllocationCase,
+) -> None:
+    if case.tracking_pool_id is not None:
+        finder.tracking_pool_ids[ATTRIBUTE_ID] = case.tracking_pool_id
+    branch_values.values = [_held("main", 900), _held("old", 70)]
+    ticket_id = make_ticket_id(payload=case.payload, saved=True)
+
+    await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True, user_id=ACTOR_ID)
+
+    assert ticket_id.tracking_pool == TrackingPool(pool_id=POOL_ID, provenance=PoolRecordProvenance.ALLOCATED)
+    assert branch_values.reads == [[ATTRIBUTE_ID]]
+    assert allocator.calls == [
+        PoolCall(
+            action="allocate", pool_id=POOL_ID, node_id=NODE_ID, attribute_name="ticket_id", reuse_reservation=False
+        )
+    ]
+
+
+async def test_an_allocation_from_the_tracking_pool_reads_no_other_branch(
+    applier: AttributePoolApplier,
+    finder: InMemoryNumberPoolFinder,
+    branch_values: InMemoryAttributeBranchValues,
+    allocator: RecordingNumberAllocator,
+) -> None:
+    finder.tracking_pool_ids[ATTRIBUTE_ID] = POOL_ID
+    branch_values.values = [_held("old", 950)]
+    ticket_id = make_ticket_id(payload={"value": None, "from_pool": {"id": POOL_ID}}, saved=True)
+
+    await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True, user_id=ACTOR_ID)
+
+    assert branch_values.reads == []
+    assert [call.action for call in allocator.calls] == ["allocate"]
+
+
+async def test_an_allocation_on_create_reads_no_other_branch(
+    applier: AttributePoolApplier, branch_values: InMemoryAttributeBranchValues
+) -> None:
+    ticket_id = make_ticket_id(payload={"from_pool": {"id": POOL_ID}})
+
+    await apply_on_create(applier=applier, attribute=ticket_id)
+
+    assert ticket_id.tracking_pool == TrackingPool(pool_id=POOL_ID, provenance=PoolRecordProvenance.ALLOCATED)
     assert branch_values.reads == []

@@ -76,7 +76,7 @@ def other_branch_refusal(
     return (
         f"The {pool_name} pool cannot track '{attribute_name}', because a pool tracks an attribute on every branch "
         f"and {held} outside its ranges: {_describe_ranges(ranges)}. "
-        "Change the number on that branch, or delete the branch, before attaching."
+        "Change the number on that branch, or delete the branch, before attaching to or allocating from this pool."
     )
 
 

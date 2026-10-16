@@ -324,9 +324,15 @@ class AttributePoolApplier:
                     )
                 await self._attach(node=node, pool=attach_pool, attribute=attribute, user_id=user_id)
             case FromPoolIntent.ALLOCATE:
+                allocate_pool = self._require_pool(pool=pool, intent=intent)
+                if attribute.id is not None and tracking_pool_id != allocate_pool.get_id():
+                    ranges = await self.range_reader.get_pool_ranges(pool_id=allocate_pool.get_id())
+                    await self._check_other_branches_within_ranges(
+                        node=node, pool=allocate_pool, attribute=attribute, ranges=ranges
+                    )
                 await self._allocate(
                     node=node,
-                    pool=self._require_pool(pool=pool, intent=intent),
+                    pool=allocate_pool,
                     attribute=attribute,
                     user_id=user_id,
                     reuse_reservation=False,
