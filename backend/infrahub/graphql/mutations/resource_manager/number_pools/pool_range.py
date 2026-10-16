@@ -20,6 +20,7 @@ from .common import (
     range_bounds,
     refuse_ranges_outside_attribute,
     refuse_schema_pool,
+    refuse_values_outside_ranges,
     sync_shorthand,
 )
 
@@ -104,18 +105,16 @@ class InfrahubNumberPoolRangeMutation(InfrahubMutation):
 
     @classmethod
     async def _delete_obj(cls, graphql_context: GraphqlContext, branch: Branch, obj: Node) -> list[Node]:
-        pool_id = (await cls._get_editable_pool(db=graphql_context.db, range_node=obj)).get_id()
+        pool = await cls._get_editable_pool(db=graphql_context.db, range_node=obj)
+        pool_id = pool.get_id()
 
         async with pool_lock(pool_id=pool_id), graphql_context.db.start_transaction() as dbt:
             deleted = await NodeManager.delete(
                 db=dbt, branch=branch, nodes=[obj], user_id=graphql_context.assigned_user_id
             )
-            await sync_shorthand(
-                db=dbt,
-                pool_id=pool_id,
-                ranges=await NumberPoolRepository(db=dbt).get_ranges(pool_id=pool_id),
-                user_id=graphql_context.assigned_user_id,
-            )
+            ranges = await NumberPoolRepository(db=dbt).get_ranges(pool_id=pool_id)
+            await refuse_values_outside_ranges(db=dbt, pool=pool, ranges=range_bounds(ranges))
+            await sync_shorthand(db=dbt, pool_id=pool_id, ranges=ranges, user_id=graphql_context.assigned_user_id)
 
         return deleted
 
@@ -147,4 +146,5 @@ class InfrahubNumberPoolRangeMutation(InfrahubMutation):
             attribute=pool_target_attribute(db=db, pool=pool, branch=branch),
             ranges=[NumberPoolRangeParameters(start=candidate.start, end=candidate.end)],
         )
+        await refuse_values_outside_ranges(db=db, pool=pool, ranges=bounds_by_id.values())
         await sync_shorthand(db=db, pool_id=pool_id, ranges=ranges, user_id=user_id)

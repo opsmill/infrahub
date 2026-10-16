@@ -296,9 +296,10 @@ async def test_adding_a_range_to_a_pool_in_use_leaves_allocated_values_untouched
     assert await pool_used_numbers(db=db, pool=pool, branch=default_branch) == [100, 101]
 
 
-async def test_removing_a_range_holding_an_allocated_value_keeps_the_value(
+async def test_a_range_removed_outside_the_mutations_leaves_its_allocated_value_recorded(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
+    """The mutations refuse to remove a range holding a number, so the range node is deleted directly."""
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
     await initialize_registry(db=db)
     pool, held_range = await _create_pool_with_range(db=db, start=205, end=300)
@@ -306,13 +307,8 @@ async def test_removing_a_range_holding_an_allocated_value_keeps_the_value(
     await _create_range(db=db, branch=default_branch, pool=pool, start=100, end=200)
     assert await _range_bounds(db=db, pool=pool) == [(100, 200), (205, 300)]
 
-    result = await _execute(
-        db=db, branch=default_branch, source=DELETE_RANGE, variables={"range_id": held_range.get_id()}
-    )
+    await held_range.delete(db=db)
 
-    assert not result.errors
-    assert result.data
-    assert result.data["CoreNumberPoolRangeDelete"]["ok"]
     assert await NodeManager.get_one(id=held_range.get_id(), db=db, branch=default_branch) is None
     assert await _range_bounds(db=db, pool=pool) == [(100, 200)]
     assert await _ticket_ids(db=db, branch=default_branch) == {"held": 205}
@@ -370,7 +366,8 @@ async def test_a_number_held_outside_the_ranges_stays_recorded_until_a_range_cov
     """Removing and re-adding a range changes what the pool counts, never what it recorded.
 
     The pool holds 10-12 (weight 10) and 14-18, and hands out 10-12 then 16, which a range edit
-    moved into the second range.
+    moved into the second range. The mutations refuse to remove a range holding a number, so the
+    range node is deleted directly.
     """
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
     await initialize_registry(db=db)
@@ -400,8 +397,8 @@ async def test_a_number_held_outside_the_ranges_stays_recorded_until_a_range_cov
         ],
     }
 
-    removed = await _execute(db=db, branch=default_branch, source=DELETE_RANGE, variables={"range_id": upper_range_id})
-    assert not removed.errors
+    upper_range = await NodeManager.get_one(db=db, id=upper_range_id, branch=default_branch, raise_on_error=True)
+    await upper_range.delete(db=db)
     assert await _utilization(db=db, branch=default_branch, pool=pool) == {
         "count": 1,
         "utilization": _percent(3, 3),
