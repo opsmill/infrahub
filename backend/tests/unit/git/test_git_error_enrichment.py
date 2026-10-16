@@ -40,6 +40,9 @@ CONNECTION_HINT = "Unable to clone the repository net-repo, please check the add
 FETCH_CONNECTION_HINT = (
     "Unable to fetch from the remote of repository net-repo, please check that the remote is reachable."
 )
+FETCH_NOT_FOUND_HINT = (
+    "Unable to fetch from the remote of repository net-repo, please check the address and the credential."
+)
 TIME_LIMIT_HINT = (
     "The Git command for repository net-repo did not complete within its time limit, "
     "please check that the remote is reachable."
@@ -101,9 +104,11 @@ ENRICHMENT_CASES = [
         expected=RepositoryConnectionError,
     ),
     EnrichmentCase(
+        # Only a clone or a read of the remote keeps the host's "remote:" line.
         name="repository_not_found",
         stderr=NOT_FOUND_STDERR,
         expected=RepositoryNotFoundError,
+        command=["git", "clone", "-v", "--", "https://gitlab.example.com/net/repo.git", "/opt/infrahub/git/net-repo"],
         message=CONNECTION_HINT,
     ),
     EnrichmentCase(
@@ -111,7 +116,7 @@ ENRICHMENT_CASES = [
         name="repository_not_found_http_404",
         stderr="fatal: repository 'http://127.0.0.1:18765/missing.git/' not found",
         expected=RepositoryNotFoundError,
-        message=CONNECTION_HINT,
+        message=FETCH_NOT_FOUND_HINT,
     ),
     EnrichmentCase(
         # Git's line for a missing branch also says "not found", but it names no missing repository.
