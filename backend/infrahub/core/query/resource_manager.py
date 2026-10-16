@@ -902,38 +902,9 @@ class NumberPoolGetDivisions(Query):
         ]
 
 
-def reserved_values_query(
-    pool_id: str,
-    attribute_name: str,
-    at: str,
-    default_branch_name: str,
-    division_filter: str = "",
-) -> tuple[str, dict[str, Any]]:
-    """Cypher fragment to find all Attributes reserved for a given NumberPool, with the parameters it reads.
-
-    Finds every value some non-deleting branch holds on each reserved Attribute, with the branch that holds it. A
-    value counts on the edge's branch when its HAS_VALUE edge is open now, and on each branch that forked from the
-    edge's branch while the edge was open and has written no edge of its own that hides the default-branch version.
-
-    `division_filter` is inserted after the reserved Attributes are matched, to keep only those of a division.
-
-    Final values are res (IS_RESERVED edge), attr (the reserved Attribute), value (an active Attribute value),
-    branch (a branch holding the value), deleting_branches and branch_windows.
-    """
-    params: dict[str, Any] = {
-        "pool_id": pool_id,
-        "attribute_name": attribute_name,
-        "at": at,
-        "default_branch_name": default_branch_name,
-    }
-    query = """
-%(live_branches)s
-    // --------------
-    // Start with all the Attributes currently reserved for this pool
-    // --------------
-    MATCH (pool:Node:%(number_pool)s { uuid: $pool_id })-[res:IS_RESERVED]->(attr:Attribute { name: $attribute_name })
-    WHERE res.status = "active" AND res.from <= $at AND (res.to IS NULL OR res.to > $at)
-%(division)s    CALL (attr, deleting_branches, branch_windows) {
+# Reads `attr`, `deleting_branches`, `branch_windows`, `$at` and `$default_branch_name`; each branch of the UNION
+# returns `value` and `branch`.
+LIVE_ATTRIBUTE_VALUES_QUERY = """
         // --------------
         // Every value edge open now, on any branch that is not being deleted
         // --------------
@@ -972,9 +943,49 @@ def reserved_values_query(
             AND hv.from <= window.fork_at AND window.fork_at < hv.to
             AND NOT window.name IN hiding_branches | window.name] AS branch
         RETURN av.value AS value, branch
+"""
+
+
+def reserved_values_query(
+    pool_id: str,
+    attribute_name: str,
+    at: str,
+    default_branch_name: str,
+    division_filter: str = "",
+) -> tuple[str, dict[str, Any]]:
+    """Cypher fragment to find all Attributes reserved for a given NumberPool, with the parameters it reads.
+
+    Finds every value some non-deleting branch holds on each reserved Attribute, with the branch that holds it. A
+    value counts on the edge's branch when its HAS_VALUE edge is open now, and on each branch that forked from the
+    edge's branch while the edge was open and has written no edge of its own that hides the default-branch version.
+
+    `division_filter` is inserted after the reserved Attributes are matched, to keep only those of a division.
+
+    Final values are res (IS_RESERVED edge), attr (the reserved Attribute), value (an active Attribute value),
+    branch (a branch holding the value), deleting_branches and branch_windows.
+    """
+    params: dict[str, Any] = {
+        "pool_id": pool_id,
+        "attribute_name": attribute_name,
+        "at": at,
+        "default_branch_name": default_branch_name,
     }
+    query = """
+%(live_branches)s
+    // --------------
+    // Start with all the Attributes currently reserved for this pool
+    // --------------
+    MATCH (pool:Node:%(number_pool)s { uuid: $pool_id })-[res:IS_RESERVED]->(attr:Attribute { name: $attribute_name })
+    WHERE res.status = "active" AND res.from <= $at AND (res.to IS NULL OR res.to > $at)
+%(division)s    CALL (attr, deleting_branches, branch_windows) {
+%(live_values)s    }
     WITH DISTINCT res, attr, value, branch, deleting_branches, branch_windows
-    """ % {"number_pool": InfrahubKind.NUMBERPOOL, "division": division_filter, "live_branches": LIVE_BRANCHES_QUERY}
+    """ % {
+        "number_pool": InfrahubKind.NUMBERPOOL,
+        "division": division_filter,
+        "live_branches": LIVE_BRANCHES_QUERY,
+        "live_values": LIVE_ATTRIBUTE_VALUES_QUERY,
+    }
     return query, params
 
 
