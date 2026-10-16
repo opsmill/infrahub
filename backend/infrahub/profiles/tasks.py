@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from prefect import flow
 from prefect.logging import get_run_logger
 
+from infrahub.events.branch_action import BranchDeletedEvent
 from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
 from infrahub.trigger.setup import setup_triggers_specific
@@ -57,7 +58,7 @@ async def objects_profiles_refresh_multiple(branch_name: str, node_ids: list[str
 async def profile_refresh_setup(
     context: EventContext,  # noqa: ARG001
     branch_name: str | None = None,
-    event_name: str | None = None,  # noqa: ARG001
+    event_name: str | None = None,
 ) -> None:
     """Setup Prefect automations for profile refresh triggers.
 
@@ -70,7 +71,8 @@ async def profile_refresh_setup(
     async with database.start_session() as db:
         log = get_run_logger()
 
-        if branch_name:
+        # A deleted branch has no schema to wait for, and its tag would list this run under a same-named branch.
+        if branch_name and event_name != BranchDeletedEvent.event_name:
             await add_tags(branches=[branch_name])
             component = await get_component()
             await wait_for_schema_to_converge(branch_name=branch_name, component=component, db=db, log=log)

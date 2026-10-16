@@ -103,7 +103,8 @@ async def display_labels_setup_jinja2(
     async with database.start_session() as db:
         log = get_run_logger()
 
-        if branch_name:
+        # A deleted branch has no schema to wait for, and its tag would list this run under a same-named branch.
+        if branch_name and event_name != BranchDeletedEvent.event_name:
             await add_tags(branches=[branch_name])
             component = await get_component()
             await wait_for_schema_to_converge(branch_name=branch_name, component=component, db=db, log=log)
