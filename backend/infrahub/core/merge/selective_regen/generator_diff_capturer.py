@@ -2,11 +2,9 @@ from __future__ import annotations
 
 import re
 from typing import TYPE_CHECKING, Protocol
-from uuid import uuid4
 
 from infrahub_sdk.protocols import CoreGeneratorGroup
 
-from infrahub.core.diff.query.filters import EnrichedDiffQueryFilters
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
@@ -15,14 +13,10 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.diff.coordinator import DiffCoordinator
-    from infrahub.core.diff.repository.repository import DiffRepository
     from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 
 # A generator tracks the nodes it writes into a per-member group named "<definition name>-<md5 hex>".
 _TRACKING_HASH = re.compile(r"[0-9a-f]{32}$")
-
-# The tracking-id delimiter is ".", so the marker must not contain one.
-CAPTURE_DIFF_NAME_PREFIX = "selective-regen-capture--"
 
 
 class GeneratorMutationDiffCapturer(Protocol):
@@ -50,13 +44,11 @@ class GeneratorTrackingGroupDiffCapturer:
     def __init__(
         self,
         diff_coordinator: DiffCoordinator,
-        diff_repository: DiffRepository,
         serializer: DiffSummarySerializer,
         client: InfrahubClient,
         branch: Branch,
     ) -> None:
         self.diff_coordinator = diff_coordinator
-        self.diff_repository = diff_repository
         self.serializer = serializer
         self.client = client
         self.branch = branch
@@ -64,18 +56,12 @@ class GeneratorTrackingGroupDiffCapturer:
     async def capture(self, *, since: Timestamp, generator_definition_names: list[str]) -> list[NodeDiff]:
         node_ids = await self._output_node_ids(generator_definition_names=generator_definition_names)
 
-        diff = await self.diff_coordinator.create_or_update_arbitrary_timeframe_diff(
-            base_branch=self.branch,
-            diff_branch=self.branch,
-            from_time=since,
-            to_time=Timestamp(),
-            name=f"{CAPTURE_DIFF_NAME_PREFIX}{uuid4()}",
+        diff = await self.diff_coordinator.calculate_arbitrary_timeframe_diff(
+            base_branch=self.branch, diff_branch=self.branch, from_time=since, to_time=Timestamp()
         )
-        filters = EnrichedDiffQueryFilters(ids=sorted(node_ids)) if node_ids else None
-        enriched = await self.diff_repository.get_one(
-            diff_branch_name=self.branch.name, diff_id=diff.uuid, filters=filters
-        )
-        return self.serializer.serialize(root=enriched, target_branch_name=self.branch.name)
+        if node_ids:
+            diff.nodes = {node for node in diff.nodes if node.uuid in node_ids}
+        return self.serializer.serialize(root=diff, target_branch_name=self.branch.name)
 
     async def _output_node_ids(self, *, generator_definition_names: list[str]) -> set[str] | None:
         """Resolve the nodes the just-run generators wrote from their tracking groups on the target branch.
