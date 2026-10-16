@@ -19,14 +19,15 @@ The [contract](contracts/telemetry-resources.md#where-the-api-server-and-task-wo
 
 ### `TelemetryDatabaseSystemInfoData` (extend)
 
-Already carries `memory_total`, `memory_available`, `processor_available`. Add two fields:
+Already carries `memory_total`, `memory_available`, `processor_available`. Add three fields:
 
 | Field | Type | Source |
 |-------|------|--------|
 | `processor_assigned` | `int \| None` (default `None`) | `server.cypher.parallel.worker_limit` via `SHOW SETTINGS`; `0`/auto → `None`. |
-| `memory_assigned` | `int \| None` (default `None`), bytes | `server.memory.heap.max_size` + `server.memory.pagecache.size` via `SHOW SETTINGS`, parsed from Neo4j's rounded text ("1.46GiB"); `None` unless both are set (D20). |
+| `memory_heap_max_size` | `str \| None` (default `None`) | `server.memory.heap.max_size` via `SHOW SETTINGS`, the text Neo4j returns ("1.46GiB"); `None` when unset (D20). |
+| `memory_pagecache_size` | `str \| None` (default `None`) | `server.memory.pagecache.size` via `SHOW SETTINGS`, the text Neo4j returns ("512.00MiB"); `None` when unset (D20). |
 
-The DB gains **only** `processor_assigned` and `memory_assigned` — everything else it already has. Zero duplication.
+The DB gains **only** `processor_assigned` and its two memory settings — everything else it already has. Zero duplication.
 
 ### `TelemetryWorkerData` (unchanged)
 
@@ -68,7 +69,7 @@ server: TelemetryComponentData = Field(default_factory=TelemetryComponentData)
 task_workers: TelemetryComponentData = Field(default_factory=TelemetryComponentData)
 ```
 
-`workers` is unchanged. `database` keeps its position and gains two defaulted fields, `database.system_info.processor_assigned` and `database.system_info.memory_assigned`. There is **no** parallel `resources` block.
+`workers` is unchanged. `database` keeps its position and gains three defaulted fields, `database.system_info.processor_assigned`, `memory_heap_max_size` and `memory_pagecache_size`. There is **no** parallel `resources` block.
 
 ## Per-process reading (transits the cache, not part of the payload)
 
@@ -96,7 +97,7 @@ The resolved cgroup path and the host's logical CPU count are read once per proc
 
 `server.processes_per_container` and `task_workers.processes_per_container` are the count of the same chosen reading.
 
-The database also carries **`memory_assigned`** (D20): heap max plus page cache, `None` unless both settings are set.
+The database also carries **`memory_heap_max_size`** and **`memory_pagecache_size`** (D20): its heap and page cache settings as Neo4j reports them, `None` when unset.
 
 **`database.system_info.processor_assigned` reports `server.cypher.parallel.worker_limit`**, `null` where it is unset. The `infrahub-enterprise` chart presets set it to the preset's Neo4j CPU request (4, 8 or 16, infrahub-helm#93), so those installs report their sized database cores today; the community chart and the compose file leave it unset. It caps the Cypher parallel runtime's worker threads, not Neo4j's total CPU use. **`server.per_container.processor_assigned` and `task_workers.per_container.processor_assigned`** come from live cgroup CPU-quota reads, so a deployment running with a configured container CPU limit reports a finite value — see D3. `processor_assigned` is never derived from `processor_available`; the derivation runs the other way only — `processor_available` is capped by the quota that `processor_assigned` reports.
 
@@ -114,7 +115,7 @@ A task worker has its container to itself, so its count is 1. The API server's g
 
 - The per-process reading's four figures are non-negative when present (Pydantic `ge=0`), and its `processes_per_container` is required and at least 1 (`ge=1`), so a corrupted cache entry fails to parse and is skipped.
 - `database.system_info.processor_assigned` carries `ge=0`; its reader already maps a non-positive setting to `None`.
-- `database.system_info.memory_assigned` carries `ge=0`; its reader maps an unset or unreadable setting to `None`.
+- `database.system_info.memory_heap_max_size` and `memory_pagecache_size` are plain text, copied from Neo4j unparsed; an unset setting is `None`.
 - The three existing `system_info` figures (`memory_total`, `memory_available`, `processor_available`) stay plain `int` with no constraint: the database gather is not guarded, so a value failing a constraint would abort the whole snapshot rather than being stored as read.
 - `TelemetryContainerData` and the payload's `processes_per_container` carry no constraint; they are copied from a reading already validated.
 - All new payload fields default to `None`, so partial degradation never fails model construction. The reading's `processes_per_container` is the one required field, and the reader always sets it.

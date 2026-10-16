@@ -39,11 +39,11 @@ writes the limit it puts on a container, and `psutil` for the whole machine.
 - For the database, `processor_assigned` is Neo4j's `server.cypher.parallel.worker_limit` setting;
   its default, 0, is reported as `null`. The other database figures are the ones Neo4j already
   reported. Its `memory_total` is the container's memory limit, or the whole machine without one,
-  so a database sized only through its own settings, as the enterprise chart presets do, needs one
-  more figure.
-- For the database, `memory_assigned` is Neo4j's heap (`server.memory.heap.max_size`) plus its page
-  cache (`server.memory.pagecache.size`), and `null` unless both are set: without them Neo4j works
-  out its sizes from the memory it can see, which `memory_total` already reports.
+  so a database sized only through its own settings, as the enterprise chart presets do, needs more.
+- For the database, `memory_heap_max_size` and `memory_pagecache_size` are Neo4j's heap
+  (`server.memory.heap.max_size`) and page cache (`server.memory.pagecache.size`) settings, sent as
+  the text Neo4j returns, such as `1.00GiB`, and `null` when unset. Infrahub does not convert them:
+  the report carries exactly what Neo4j says.
 
 **Store each reading from the read that takes it, and use only live workers' readings.** At startup
 and every 5 minutes the main loop starts a read of the figures on a separate thread, so that a slow
@@ -66,8 +66,9 @@ the same way and carry two more fields:
   a task worker, counts 1.
 
 The component's total is `per_container × active ÷ processes_per_container`, and every figure is a
-whole number. The database block gains `processor_assigned` and `memory_assigned`.
-`payload_format` stays the same until the receiving service confirms it accepts the new fields.
+whole number, except the database's two memory settings, which are text. The database block gains
+`processor_assigned`, `memory_heap_max_size` and `memory_pagecache_size`. `payload_format` stays the
+same until the receiving service confirms it accepts the new fields.
 
 ## Consequences
 
@@ -109,12 +110,12 @@ whole number. The database block gains `processor_assigned` and `memory_assigned
   is left at its default and when it cannot be read, and `processor_available`, which comes from
   Neo4j itself, is set either way. Only the warning that a failed read writes to the log tells the
   two apart.
-- The database's `memory_assigned` is `null` both when a setting is unset and when the read fails;
-  only the logged warning tells them apart. Neo4j returns the settings rounded to two decimals of
-  their unit, so each setting can be off its configured size by up to 0.005 of that unit: about
-  5 MiB at GiB scale, about 5 GiB at TiB scale. The Neo4j Docker image
-  sets a 512 MiB page cache on its own when none is configured, so under Docker only the heap
-  setting decides whether the figure is reported.
+- The database's memory settings are `null` both when a setting is unset and when the read fails;
+  only the logged warning tells them apart. They are text in Neo4j's format, so whoever uses them
+  has to parse it, and Neo4j rounds them to two decimals of their unit (`1500M` reads as
+  `1.46GiB`): up to about 5 MiB off at GiB scale and about 5 GiB at TiB scale. The Neo4j Docker
+  image sets a 512 MiB page cache on its own when none is configured, so under Docker
+  `memory_pagecache_size` is never `null`.
 - `psutil` becomes a runtime dependency.
 - The reading in the cache can be up to about 5 minutes old, or older while the main loop is busy
   with a long task. Limits rarely change, so this is acceptable for a daily report. Free memory does

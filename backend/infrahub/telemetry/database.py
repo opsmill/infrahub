@@ -1,6 +1,3 @@
-import re
-from decimal import Decimal
-
 from neo4j.exceptions import Neo4jError
 from prefect import task
 from prefect.cache_policies import NONE
@@ -19,13 +16,9 @@ from .utils import safe_metric
 
 # The Neo4j setting for how many CPUs its parallel query engine uses; the default, 0, means all of them, so no cap.
 DB_WORKER_LIMIT_SETTING = "server.cypher.parallel.worker_limit"
-# Neo4j sizes its own memory with these two settings, whatever memory its container or machine has.
+# The Neo4j settings that size its memory; left unset, Neo4j sizes it from the memory it can see.
 DB_HEAP_MAX_SETTING = "server.memory.heap.max_size"
 DB_PAGECACHE_SETTING = "server.memory.pagecache.size"
-
-# Neo4j returns a byte-size setting rounded to two decimals in a binary unit, such as "1.46GiB".
-BYTE_SIZE_MATCH = re.compile(r"^(\d+(?:\.\d+)?)\s*(B|KiB|MiB|GiB|TiB|PiB|EiB)?$")
-BYTE_UNITS = {"B": 1, "KiB": 2**10, "MiB": 2**20, "GiB": 2**30, "TiB": 2**40, "PiB": 2**50, "EiB": 2**60}
 
 
 async def get_server_info(db: InfrahubDatabase) -> list[TelemetryDatabaseServerData]:
@@ -63,10 +56,6 @@ def _worker_limit_from_value(value: object) -> int | None:
 
 
 async def _read_settings(db: InfrahubDatabase, setting_names: list[str], query_name: str) -> dict[str, object]:
-    """Return the raw value of each named database setting that exists, keyed by its name.
-
-    A failure to run the query is raised, not hidden here.
-    """
     query = """
     SHOW SETTINGS YIELD name, value
     WHERE name IN $setting_names
@@ -82,47 +71,16 @@ async def _read_settings(db: InfrahubDatabase, setting_names: list[str], query_n
 
 
 async def get_processor_assigned(db: InfrahubDatabase) -> int | None:
-    """Read how many CPUs the database's parallel query engine is set to use, or ``None`` when no cap is set.
-
-    A failure to run the query is raised, not hidden here.
-    """
+    """Read how many CPUs the database's parallel query engine is set to use, or ``None`` when no cap is set."""
     settings = await _read_settings(db=db, setting_names=[DB_WORKER_LIMIT_SETTING], query_name="get_processor_assigned")
     return _worker_limit_from_value(settings.get(DB_WORKER_LIMIT_SETTING))
 
 
-def _bytes_from_value(value: object) -> int | None:
-    """Turn a raw byte-size setting value into a whole number of bytes, or ``None`` when it is unset or unreadable."""
-    if not isinstance(value, str):
-        return None
-    match = BYTE_SIZE_MATCH.match(value.strip())
-    if not match:
-        return None
-    number, unit = match.groups()
-    return int((Decimal(number) * BYTE_UNITS[unit or "B"]).to_integral_value())
-
-
-def _memory_assigned_from_values(heap_max: object, pagecache: object) -> int | None:
-    """Add up the heap and the page cache in bytes, or return ``None`` unless both are set.
-
-    Without both, Neo4j works out the missing size from the memory it can see, so it
-    says nothing beyond the memory figures already reported.
-    """
-    heap_bytes = _bytes_from_value(heap_max)
-    pagecache_bytes = _bytes_from_value(pagecache)
-    if heap_bytes is None or pagecache_bytes is None:
-        return None
-    return heap_bytes + pagecache_bytes
-
-
-async def get_memory_assigned(db: InfrahubDatabase) -> int | None:
-    """Read how much memory the database is set up to use, its heap plus its page cache, or ``None`` unless both are set.
-
-    A failure to run the query is raised, not hidden here.
-    """
-    settings = await _read_settings(
-        db=db, setting_names=[DB_HEAP_MAX_SETTING, DB_PAGECACHE_SETTING], query_name="get_memory_assigned"
-    )
-    return _memory_assigned_from_values(settings.get(DB_HEAP_MAX_SETTING), settings.get(DB_PAGECACHE_SETTING))
+async def get_setting_text(db: InfrahubDatabase, setting_name: str) -> str | None:
+    """Read a database setting's value as the database reports it, or ``None`` when it is unset."""
+    settings = await _read_settings(db=db, setting_names=[setting_name], query_name="get_setting_text")
+    value = settings.get(setting_name)
+    return value if isinstance(value, str) else None
 
 
 async def get_system_info(db: InfrahubDatabase) -> TelemetryDatabaseSystemInfoData:
@@ -141,7 +99,8 @@ async def get_system_info(db: InfrahubDatabase) -> TelemetryDatabaseSystemInfoDa
         memory_available=results[0]["memory_available"]["value"],
         processor_available=results[0]["processor_available"]["value"],
         processor_assigned=await safe_metric(get_processor_assigned(db=db)),
-        memory_assigned=await safe_metric(get_memory_assigned(db=db)),
+        memory_heap_max_size=await safe_metric(get_setting_text(db=db, setting_name=DB_HEAP_MAX_SETTING)),
+        memory_pagecache_size=await safe_metric(get_setting_text(db=db, setting_name=DB_PAGECACHE_SETTING)),
     )
 
 

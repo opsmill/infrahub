@@ -85,10 +85,10 @@ gunicorn did not start counts 1. Their `total` and `active` count processes the 
 does, which stays unchanged: `server.total + task_workers.total` equals `workers.total`, except for a
 process that stopped about two hours earlier and is only remembered by its presence key.
 
-Every CPU and memory figure is a whole number. Keep it that way for any new figure: the telemetry
-endpoint checks the checksum by writing the received data out again in JavaScript, which writes
-`2.0` as `2`, so a float with a whole-number value fails the check and the endpoint drops the whole
-report.
+Every CPU and memory figure is a whole number, except the database's two memory settings, which
+are text. Keep every new numeric figure a whole number: the telemetry endpoint checks the checksum
+by writing the received data out again in JavaScript, which writes `2.0` as `2`, so a float with a
+whole-number value fails the check and the endpoint drops the whole report.
 
 Each API server and task-worker process stores its own figures in the cache. At startup and then
 every 5 minutes, the main loop starts a read of the limits on a separate thread, so that a slow read
@@ -98,12 +98,13 @@ reading every 5 minutes still catches a limit changed while Infrahub runs, and t
 keeps a reading while a long task holds up the main loop. The report uses only the readings of the
 workers whose "alive" key, written every 5 seconds by the heartbeat thread with a 15-second expiry,
 is still set, so a stopped worker's reading is ignored although it stays in the cache. The database
-figures come from Neo4j itself when the report runs. Its `memory_total` and `memory_available` are
-its container's memory limit, or the whole machine when no limit is set, and a Kubernetes memory
-request is not a limit. What Neo4j is set up to use is `memory_assigned`: its heap
-(`server.memory.heap.max_size`) plus its page cache (`server.memory.pagecache.size`), `null` unless
-both are set. The Neo4j Docker image sets a 512 MiB page cache on its own when none is configured,
-so under Docker only the heap setting decides whether the figure is reported.
+figures come from Neo4j itself when the report runs. Its `memory_total` is its container's memory
+limit, or the whole machine's memory when no limit is set, and `memory_available` is the free memory
+under it; a Kubernetes memory request is not a limit. What Neo4j is set up to use is in
+`memory_heap_max_size` and `memory_pagecache_size`: its heap (`server.memory.heap.max_size`) and
+page cache (`server.memory.pagecache.size`) settings, as text in Neo4j's format such as `1.00GiB`,
+`null` when unset. The Neo4j Docker image sets a 512 MiB page cache on its own when none is
+configured, so under Docker the page cache is never `null`.
 
 ```mermaid
 flowchart LR
@@ -183,7 +184,7 @@ of the payload is still built, stored, and sent. A source that succeeds with not
 reports `0`. So **`null` means "could not measure", `0` means "measured, nothing there"**.
 
 The new CPU and memory figures for the API server and the task workers, and the database's
-`processor_assigned` and `memory_assigned`, are protected this way. Several older parts are not,
+`processor_assigned`, `memory_heap_max_size` and `memory_pagecache_size`, are protected this way. Several older parts are not,
 among them the list of workers and the database block, including its CPU and memory figures: a
 failure in any of them stops the whole report.
 

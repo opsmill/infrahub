@@ -52,6 +52,8 @@ _PRE_FEATURE_DATA_FIELDS = {
 }
 _PRE_FEATURE_WORKER_FIELDS = {"total", "active"}
 _PRE_FEATURE_SYSTEM_INFO_FIELDS = {"memory_total", "memory_available", "processor_available"}
+# The database figures read from Neo4j settings, each by a query of its own.
+_SETTINGS_FIELDS = ("processor_assigned", "memory_heap_max_size", "memory_pagecache_size")
 
 
 def _seed_active(cache: MemoryCache, component: str, identity: str) -> None:
@@ -178,13 +180,13 @@ async def test_gather_reports_one_container_for_each_component(
     assert _whole_number_floats(data.model_dump(mode="json")) == []
 
 
-async def test_database_memory_assigned_is_heap_plus_page_cache(
+async def test_database_reports_the_memory_settings_it_was_started_with(
     resource_environment: MemoryCache,
     neo4j: dict[int, int] | None,
-    neo4j_heap_bytes: int,
-    neo4j_pagecache_bytes: int,
+    neo4j_heap_size: str,
+    neo4j_pagecache_size: str,
 ) -> None:
-    """The database reports the heap and the page cache it was started with, added up."""
+    """The database reports its heap and page cache settings as it was started with them."""
     if neo4j is None:
         pytest.skip("The test session did not start the database, so its memory settings are not known")
 
@@ -192,7 +194,8 @@ async def test_database_memory_assigned_is_heap_plus_page_cache(
     data = await gatherer.gather()
 
     assert data.database.system_info is not None
-    assert data.database.system_info.memory_assigned == neo4j_heap_bytes + neo4j_pagecache_bytes
+    assert data.database.system_info.memory_heap_max_size == neo4j_heap_size
+    assert data.database.system_info.memory_pagecache_size == neo4j_pagecache_size
 
 
 async def test_corrupted_reading_is_dropped(resource_environment: MemoryCache) -> None:
@@ -276,51 +279,44 @@ async def test_payload_keeps_every_prior_key(resource_environment: MemoryCache) 
     for block in ("server", "task_workers"):
         assert set(dumped[block]) == _PRE_FEATURE_WORKER_FIELDS | {"processes_per_container", "per_container"}
 
-    # system_info keeps its three fields and gains exactly the two assigned figures.
+    # system_info keeps its three fields and gains exactly the three settings figures.
     assert data.database.system_info is not None
-    assert set(dumped["database"]["system_info"]) == _PRE_FEATURE_SYSTEM_INFO_FIELDS | {
-        "processor_assigned",
-        "memory_assigned",
-    }
+    assert set(dumped["database"]["system_info"]) == _PRE_FEATURE_SYSTEM_INFO_FIELDS | set(_SETTINGS_FIELDS)
 
 
 @dataclass
-class AssignedReadFailureCase:
+class SettingsReadFailureCase:
     name: str
     setting_constant: str
     failed_field: str
-    other_field: str
 
 
-ASSIGNED_READ_FAILURE_CASES = [
-    AssignedReadFailureCase(
-        name="processor_assigned",
-        setting_constant="DB_WORKER_LIMIT_SETTING",
-        failed_field="processor_assigned",
-        other_field="memory_assigned",
+SETTINGS_READ_FAILURE_CASES = [
+    SettingsReadFailureCase(
+        name="processor_assigned", setting_constant="DB_WORKER_LIMIT_SETTING", failed_field="processor_assigned"
     ),
-    AssignedReadFailureCase(
-        name="memory_assigned",
-        setting_constant="DB_HEAP_MAX_SETTING",
-        failed_field="memory_assigned",
-        other_field="processor_assigned",
+    SettingsReadFailureCase(
+        name="memory_heap_max_size", setting_constant="DB_HEAP_MAX_SETTING", failed_field="memory_heap_max_size"
+    ),
+    SettingsReadFailureCase(
+        name="memory_pagecache_size", setting_constant="DB_PAGECACHE_SETTING", failed_field="memory_pagecache_size"
     ),
 ]
 
 
-@pytest.mark.parametrize("case", ASSIGNED_READ_FAILURE_CASES, ids=[case.name for case in ASSIGNED_READ_FAILURE_CASES])
-async def test_database_assigned_read_failure_nulls_only_that_field(
+@pytest.mark.parametrize("case", SETTINGS_READ_FAILURE_CASES, ids=[case.name for case in SETTINGS_READ_FAILURE_CASES])
+async def test_database_settings_read_failure_nulls_only_that_field(
     resource_environment: MemoryCache,
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
-    case: AssignedReadFailureCase,
+    case: SettingsReadFailureCase,
 ) -> None:
-    """A failing assigned read nulls only that field; the rest of the snapshot survives.
+    """A failing settings read nulls only that field; the rest of the snapshot survives.
 
     Feeding an unserializable value as a setting name makes the real Cypher settings
     read fail at the database driver, so the read raises for real rather than
-    returning the natural unset-is-null. Only that field degrades; the other assigned
-    figure, the JMX-derived figures and the whole snapshot are still produced.
+    returning the natural unset-is-null. Only that field degrades; the other settings
+    figures, the JMX-derived figures and the whole snapshot are still produced.
     """
     healthy = await (await build_anonymous_telemetry_gatherer()).gather()
     assert healthy.database.system_info is not None
@@ -334,11 +330,15 @@ async def test_database_assigned_read_failure_nulls_only_that_field(
     # The read genuinely raised and was caught (not merely the unset-is-null default).
     assert any("Telemetry metric collection failed" in record.getMessage() for record in caplog.records)
 
-    # Only the failed field is null; the other assigned figure matches the healthy gather.
+    # Only the failed field is null; the other settings figures match the healthy gather.
     assert data.database.system_info is not None
     system_info = data.database.system_info.model_dump()
+    healthy_info = healthy.database.system_info.model_dump()
     assert system_info[case.failed_field] is None
-    assert system_info[case.other_field] == healthy.database.system_info.model_dump()[case.other_field]
+    other_fields = [field for field in _SETTINGS_FIELDS if field != case.failed_field]
+    assert {field: system_info[field] for field in other_fields} == {
+        field: healthy_info[field] for field in other_fields
+    }
     assert data.database.system_info.processor_available > 0
     assert data.database.system_info.memory_total > 0
 
