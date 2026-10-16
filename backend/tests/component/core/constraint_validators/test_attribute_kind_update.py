@@ -475,3 +475,43 @@ async def test_validator(
         )
         in data_paths
     )
+
+
+async def test_list_attribute_regex_validation(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    all_attribute_types_schema: NodeSchema,
+):
+    """Test that List attribute regex validation checks each item individually, not the serialized string."""
+    # Create a node with a List attribute containing values that will become invalid
+    node = await Node.init(db=db, schema=all_attribute_types_schema.kind, branch=default_branch)
+    await node.new(db=db, name="test_node", mystring="test", mylist=["tcp:443", "telnet", "udp:53"])
+    await node.save(db=db)
+
+    # Update schema to add regex validation that makes "telnet" invalid
+    node_schema = registry.schema.get_node_schema(name=all_attribute_types_schema.kind, branch=default_branch)
+    list_attr = node_schema.get_attribute(name="mylist")
+    list_attr.parameters.regex = r"^(tcp|udp):[\d-]+$"
+    registry.schema.set(name=all_attribute_types_schema.kind, schema=node_schema, branch=default_branch.name)
+
+    schema_path = SchemaPath(
+        path_type=SchemaPathType.ATTRIBUTE, schema_kind=all_attribute_types_schema.kind, field_name="mylist"
+    )
+
+    # Run validation - should fail since "telnet" doesn't match the new regex
+    query = await AttributeKindUpdateValidatorQuery.init(
+        db=db, branch=default_branch, node_schema=node_schema, schema_path=schema_path
+    )
+    await query.execute(db=db)
+    grouped_paths = await query.get_paths()
+    all_data_paths = grouped_paths.get_all_data_paths()
+    assert len(all_data_paths) == 1
+    # Value is stored as JSON string in database
+    assert next(iter(all_data_paths)) == DataPath(
+        branch=default_branch.name,
+        path_type=PathType.ATTRIBUTE,
+        node_id=node.id,
+        kind=all_attribute_types_schema.kind,
+        field_name="mylist",
+        value='["tcp:443","telnet","udp:53"]',
+    )

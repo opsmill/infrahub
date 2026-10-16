@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from infrahub.core.attribute import ListAttribute
 from infrahub.core.constants import NULL_VALUE, PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
 from infrahub.core.validators.enum import ConstraintIdentifier
+from infrahub.exceptions import ValidationError
+from infrahub.types import get_attribute_type
 
 from ..interface import ConstraintCheckerInterface
 from ..shared import AttributeSchemaValidatorQuery
@@ -26,31 +29,79 @@ class AttributeRegexUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         self.params["attr_name"] = self.attribute_schema.name
         self.params["attr_value_regex"] = self.attribute_schema.get_regex()
         self.params["null_value"] = NULL_VALUE
-        query = """
-        MATCH p = (n:%(node_kind)s)
-        CALL (n) {
-            MATCH path = (root:Root)<-[rr:IS_PART_OF]-(n)-[ra:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name } )-[rv:HAS_VALUE]-(av:AttributeValue)
-            WHERE all(
-                r in relationships(path)
-                WHERE %(branch_filter)s
-            )
-            RETURN path as full_path, n as node, rv as value_relationship, av.value as attribute_value
-            ORDER BY rv.branch_level DESC, ra.branch_level DESC, rr.branch_level DESC, rv.from DESC, ra.from DESC, rr.from DESC
-            LIMIT 1
-        }
-        WITH full_path, node, attribute_value, value_relationship
-        WHERE all(r in relationships(full_path) WHERE r.status = "active")
-        AND attribute_value <> $null_value
-        AND NOT attribute_value =~ $attr_value_regex
-        """ % {"branch_filter": branch_filter, "node_kind": self.node_schema.kind}
+
+        # For List attributes, we cannot validate regex in Cypher against the serialized JSON string
+        # Instead, fetch all values and validate in Python after deserialization
+        infrahub_data_type = get_attribute_type(self.attribute_schema.kind)
+        infrahub_attribute_class = infrahub_data_type.get_infrahub_class()
+        is_list_attribute = issubclass(infrahub_attribute_class, ListAttribute)
+
+        if is_list_attribute:
+            # Fetch all List attribute values, validate in get_paths()
+            query = """
+            MATCH p = (n:%(node_kind)s)
+            CALL (n) {
+                MATCH path = (root:Root)<-[rr:IS_PART_OF]-(n)-[ra:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name } )-[rv:HAS_VALUE]-(av:AttributeValue)
+                WHERE all(
+                    r in relationships(path)
+                    WHERE %(branch_filter)s
+                )
+                RETURN path as full_path, n as node, rv as value_relationship, av.value as attribute_value
+                ORDER BY rv.branch_level DESC, ra.branch_level DESC, rr.branch_level DESC, rv.from DESC, ra.from DESC, rr.from DESC
+                LIMIT 1
+            }
+            WITH full_path, node, attribute_value, value_relationship
+            WHERE all(r in relationships(full_path) WHERE r.status = "active")
+            AND attribute_value IS NOT NULL
+            AND attribute_value <> $null_value
+            """ % {"branch_filter": branch_filter, "node_kind": self.node_schema.kind}
+        else:
+            # For non-List attributes, use Cypher regex matching as before
+            query = """
+            MATCH p = (n:%(node_kind)s)
+            CALL (n) {
+                MATCH path = (root:Root)<-[rr:IS_PART_OF]-(n)-[ra:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name } )-[rv:HAS_VALUE]-(av:AttributeValue)
+                WHERE all(
+                    r in relationships(path)
+                    WHERE %(branch_filter)s
+                )
+                RETURN path as full_path, n as node, rv as value_relationship, av.value as attribute_value
+                ORDER BY rv.branch_level DESC, ra.branch_level DESC, rr.branch_level DESC, rv.from DESC, ra.from DESC, rr.from DESC
+                LIMIT 1
+            }
+            WITH full_path, node, attribute_value, value_relationship
+            WHERE all(r in relationships(full_path) WHERE r.status = "active")
+            AND attribute_value <> $null_value
+            AND NOT attribute_value =~ $attr_value_regex
+            """ % {"branch_filter": branch_filter, "node_kind": self.node_schema.kind}
 
         self.add_to_query(query)
         self.return_labels = ["node.uuid", "attribute_value", "value_relationship"]
 
     async def get_paths(self) -> GroupedDataPaths:
         grouped_data_paths = GroupedDataPaths()
+        infrahub_data_type = get_attribute_type(self.attribute_schema.kind)
+        infrahub_attribute_class = infrahub_data_type.get_infrahub_class()
+
         for result in self.results:
-            value = str(result.get("attribute_value"))
+            value = result.get("attribute_value")
+
+            # For List attributes, deserialize and validate each item
+            if issubclass(infrahub_attribute_class, ListAttribute) and isinstance(value, str):
+                try:
+                    deserialized_value = infrahub_attribute_class.deserialize_from_string(value)
+                    # Validate using the attribute's validate_content method
+                    infrahub_attribute_class.validate_content(
+                        value=deserialized_value, name=self.attribute_schema.name, schema=self.attribute_schema
+                    )
+                    # If validation passes, skip adding to grouped_data_paths (no violation)
+                    continue
+                except ValidationError:
+                    # Validation failed, add to paths as a violation
+                    pass
+
+            # For non-List attributes or List attributes that failed validation
+            value_str = str(value)
             grouped_data_paths.add_data_path(
                 DataPath(
                     branch=str(result.get("value_relationship").get("branch")),
@@ -58,9 +109,9 @@ class AttributeRegexUpdateValidatorQuery(AttributeSchemaValidatorQuery):
                     node_id=str(result.get("node.uuid")),
                     field_name=self.attribute_schema.name,
                     kind=self.node_schema.kind,
-                    value=value,
+                    value=value_str,
                 ),
-                grouping_key=value,
+                grouping_key=value_str,
             )
 
         return grouped_data_paths
