@@ -581,17 +581,19 @@ T081 to T084 are not.
       attempt, open it, short delays through `with_options`. One case blocks the port before the
       fetch, the other after the fetch, so that the push fails.
 - [X] T082 [US4] Add `test_lost_attempt_recovers` to the same module: kill the flow after the snapshot,
-      free the repository lock in the test, as the deadlock cleanup does for a dead worker (R20),
-      age the state past the stale bound, run one sync cycle, and assert the delivery.
+      age the state past the stale bound, run one sync cycle, and assert the delivery. The test does
+      not free the repository lock itself: the kill unwinds through the lock and frees it, as the
+      deadlock cleanup frees the lock of a dead worker (R20).
 - [X] T083 [P] [US4] Add `test_policy_failure_is_not_retried` to the same module: one attempt only, then
       `action-required`.
 - [X] T084 [P] [US4] Add two timeout cases to `backend/tests/unit/git/writeback/test_git_adapter.py`.
       A local TCP server that accepts and never answers makes the push fail as `remote-unreachable`
-      within the bound. A `merge` of `replay` that stalls, through a `pre-merge-commit` hook of the
-      temporary repository that `exec`s a long `sleep`, is killed within `LOCAL_GIT_TIMEOUT_SECONDS`,
-      lowered for the test. It raises a `RepositoryError` that names the command, which the
-      classifier gives `unclassified`, and no `index.lock` stays behind in the worktree. The hook uses
-      `exec` because GitPython kills only the direct children of the Git process.
+      within the bound. A `merge` of `replay` that stalls, through a merge driver of the temporary
+      repository that `exec`s a long `sleep`, is killed within `LOCAL_GIT_TIMEOUT_SECONDS`, lowered
+      for the test. It raises a `RepositoryError` that names the command, which the classifier gives
+      `unclassified`, and no `index.lock` stays behind in the worktree. The driver uses `exec`
+      because GitPython kills only the direct children of the Git process. The test keeps the
+      existing stalled-merge test, with a merge driver and not a `pre-merge-commit` hook.
 
 ---
 
@@ -662,11 +664,16 @@ and is not re-imported; retry; the branch is gone.
       not send `RefreshGitRepositoryBranchDeleted`.
 - [X] T096 [US6] Confirm step 13 of `RepositoryWritebackService.deliver` deletes a flagged branch that no
       remaining entry names, and add the case to `backend/tests/unit/git/writeback/test_service.py`.
-- [ ] T097 [US6] Add `test_remote_branch_kept_while_pending` to
+- [X] T097 [US6] Add `test_remote_branch_kept_while_pending` to
       `backend/tests/integration/git/test_git_live_remote.py`, with
       `delete_branch_after_merge_reset_config` and `delete_git_branch_after_merge_reset_config`:
       kept, not re-imported by the sync as new or as updated, deleted after the retry; and, after an
       abandonment instead, kept on the remote and imported again as a new Infrahub branch.
+      `test_an_abandonment_lets_the_repository_sync_and_merge_again_and_its_kept_branch_comes_back`
+      covers the abandonment part. The test stack has one worker: the test shows that this worker
+      drops its local branch and that the next sync imports the branch again. The drop on the other
+      workers is covered only by the unit test of the branch-deleted message
+      (`test_branch_deletion_is_broadcast_for_flagged_entries_only`).
 - [X] T098 [P] [US6] Add a case to `backend/tests/component/git/writeback/test_enqueue.py`: a merge of
       another branch is not blocked while repository X has a pending delivery (FR-010).
 
