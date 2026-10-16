@@ -33,18 +33,23 @@ Without a matching ID, Infrahub interprets the new name as a separate definition
            kind: Text
    ```
 
-3. **Check how Infrahub interprets the rename.** Run `infrahubctl schema check <file> --branch <branch>`. When Infrahub matches the ID to the existing attribute, it reports the rename under `changed`, as a change to the `name` property of `rack_name`. With the empty `added: {}` and `removed: {}` entries omitted, the output is:
+3. **Check how Infrahub interprets the rename.** Run `infrahubctl schema check <file> --branch <branch>`. When Infrahub matches the ID to the existing attribute, it reports the rename under `changed`, as a change to the `name` property of `rack_name`. The output is:
 
    ```yaml
    diff:
+       added: {}
        changed:
            InfraRack:
+               added: {}
                changed:
                    attributes:
+                       added: {}
                        changed:
                            rack_name:
+                               added: {}
                                changed:
                                    name: null
+                               removed: {}
    ```
 
    If `rack_name` appears under `added`, Infrahub did not match the ID to the original attribute. Confirm the ID on the target instance before loading the schema.

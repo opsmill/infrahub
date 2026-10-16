@@ -72,7 +72,7 @@ These rules also apply when the removed definition is a relationship. For exampl
 
 ### Number pools and branch-agnostic data
 
-- **`NumberPool` attributes.** When you remove the attribute, Infrahub also removes the number pool it created for that attribute. See [Number pools](./number-pool).
+- **`NumberPool` attributes.** Infrahub does not remove the number pool at the moment it removes the attribute. After every schema load and every branch merge, Infrahub checks each pool created for a `NumberPool` attribute on all branches. It deletes the pool when no branch defines that attribute any longer, so the pool remains while any branch still defines the attribute. See [Number pools](./number-pool).
 - **Branch-agnostic attributes and relationships.** Infrahub stores their values once for all branches, so a branch-agnostic element remains visible as long as at least one branch still references it. Removing the definition from one branch does not remove its values while another branch still declares the same field, and does not remove the node kind's objects. See [Branch-agnostic data](../branches/branch-agnostic-data).
 
 ## Remove an attribute or relationship from a Generic
@@ -101,7 +101,11 @@ Infrahub rejects a schema update that removes a Generic while other definitions 
 
 ## Remove a Dropdown choice
 
-A `Dropdown` choice cannot be removed through schema YAML. Infrahub merges choices by name when loading a schema file, so omitting a choice preserves it. A Dropdown choice has no supported `state` property. If you supply `state: absent` for a choice, Infrahub ignores it and reports a warning instead of removing the choice.
+A `Dropdown` choice cannot be removed through schema YAML. Infrahub merges choices by name when loading a schema file, so omitting a choice preserves it. A Dropdown choice has no supported `state` property. If you supply `state: absent` for a choice, Infrahub ignores it and returns a warning instead of removing the choice:
+
+```text
+'choices.state' is a read-only field, the submitted value is ignored
+```
 
 First remove the choice from the loaded schema on the branch where you are making the change:
 
