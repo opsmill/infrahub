@@ -1,8 +1,9 @@
 from inspect import isawaitable
 
+import pytest
 from graphql import build_schema, execute, get_introspection_query, parse
 
-from infrahub.graphql.middleware import raise_on_mutation_for_branch_status
+from infrahub.graphql.middleware import branch_status_middleware, raise_on_mutation_for_branch_status
 
 SCHEMA = build_schema("type Query { greeting: String }")
 
@@ -36,3 +37,29 @@ def test_introspection_execution_stays_synchronous() -> None:
     assert not isawaitable(result)
     assert result.errors is None
     assert result.data is not None
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "{ greeting }",
+        "query Greeting { greeting }",
+        "fragment F on Query { greeting } query { ...F }",
+    ],
+)
+def test_query_document_runs_without_the_branch_status_middleware(query: str) -> None:
+    assert branch_status_middleware(parse(query)) is None
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "mutation { BranchCreate { ok } }",
+        # A mutation whose top-level fields come from a fragment is still a mutation.
+        "fragment F on Mutation { BranchCreate { ok } } mutation { ...F }",
+        # The operation name is not known here, so a document with any mutation keeps the check.
+        "query Greeting { greeting } mutation Create { BranchCreate { ok } }",
+    ],
+)
+def test_mutation_document_runs_with_the_branch_status_middleware(query: str) -> None:
+    assert branch_status_middleware(parse(query)) == [raise_on_mutation_for_branch_status]

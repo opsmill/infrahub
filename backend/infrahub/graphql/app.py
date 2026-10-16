@@ -59,7 +59,7 @@ from .metrics import (
     GRAPHQL_RESPONSE_SIZE_METRICS,
     GRAPHQL_TOP_LEVEL_QUERIES_METRICS,
 )
-from .middleware import raise_on_mutation_for_branch_status
+from .middleware import branch_status_middleware
 
 if TYPE_CHECKING:
     import graphene
@@ -276,7 +276,7 @@ class InfrahubGraphQLApp:
                     source=query,
                     context_value=graphql_params.context,
                     root_value=self.root_value,
-                    middleware=[raise_on_mutation_for_branch_status],
+                    middleware=branch_status_middleware(analyzed_query.document),
                     variable_values=variable_values,
                     operation_name=operation_name,
                     execution_context_class=self.execution_context_class,
