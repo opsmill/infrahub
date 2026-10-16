@@ -297,6 +297,77 @@ class NumberPoolGetAllocated(Query):
         ]
 
 
+@dataclass(frozen=True)
+class NumberPoolHeldOutsideResult:
+    """A number a branch holds for a pool outside every range of a range set, and the object holding it."""
+
+    id: str
+    kind: str
+    branch: str
+    value: int
+
+
+class NumberPoolGetHeldOutsideRanges(Query):
+    """Report each number a live branch holds for the pool outside every given range, with the object holding it.
+
+    An empty range list reports every number the pool tracks. Rows are ordered by value, then branch, then the holding
+    object's id.
+    """
+
+    name = "numberpool_get_held_outside_ranges"
+    type = QueryType.READ
+
+    def __init__(
+        self,
+        pool_id: str,
+        attribute_name: str,
+        ranges: list[list[int]],
+        **kwargs: Unpack[QueryInitKwargs],
+    ) -> None:
+        self.pool_id = pool_id
+        self.attribute_name = attribute_name
+        self.ranges = ranges
+
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["ranges"] = self.ranges
+        reserved_values, reserved_values_params = reserved_values_query(
+            pool_id=self.pool_id,
+            attribute_name=self.attribute_name,
+            at=self.at.to_string(),
+            default_branch_name=registry.default_branch,
+        )
+        self.params.update(reserved_values_params)
+
+        query = """
+        %(reserved_values)s
+        WITH attr, branch, toInteger(value) AS value
+        WHERE value IS NOT NULL AND none(r IN $ranges WHERE value >= r[0] AND value <= r[1])
+        CALL (attr) {
+            MATCH (node:Node)-[:HAS_ATTRIBUTE]->(attr)
+            RETURN node.uuid AS id, node.kind AS kind
+            LIMIT 1
+        }
+        WITH DISTINCT id, kind, branch, value
+        """ % {"reserved_values": reserved_values}
+        self.add_to_query(query)
+
+        self.return_labels = ["id", "kind", "branch", "value"]
+        self.order_by = ["value", "branch", "id"]
+
+    def get_data(self) -> list[NumberPoolHeldOutsideResult]:
+        return [
+            NumberPoolHeldOutsideResult(
+                id=result.get_as_type("id", str),
+                kind=result.get_as_type("kind", str),
+                branch=result.get_as_type("branch", str),
+                value=result.get_as_type("value", int),
+            )
+            for result in self.get_results()
+        ]
+
+
 class NumberPoolGetReserved(Query):
     """Resolve a pool's reservation(s) to the value(s) on this branch.
 

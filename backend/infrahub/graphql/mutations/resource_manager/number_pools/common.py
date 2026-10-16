@@ -6,6 +6,7 @@ from infrahub import lock
 from infrahub.core.constants import InfrahubKind, NumberPoolType
 from infrahub.core.manager import NodeManager
 from infrahub.core.node.lock_utils import RESOURCE_POOL_LOCK_NAMESPACE
+from infrahub.core.query.resource_manager import NumberPoolGetHeldOutsideRanges
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters, NumberPoolRangeParameters
 from infrahub.exceptions import ValidationError
 from infrahub.pools.number_pool_range_validation import NumberRangeBounds, validate_ranges_within_attribute
@@ -28,6 +29,7 @@ SCHEMA_POOL_SHORTHAND_REFUSED = (
 )
 SCHEMA_POOL_RANGES_REFUSED = f"ranges can't be updated on schema defined pools, {SCHEMA_POOL_EDIT_HINT}"
 SCOPE_UPDATE_REFUSED = "allocation_scope can't be changed after the pool is created"
+HELD_OUTSIDE_RANGES_LISTED = 20
 
 
 def refuse_schema_pool(pool: Node, message: str) -> None:
@@ -62,6 +64,35 @@ def refuse_ranges_outside_attribute(attribute: AttributeSchema, ranges: Iterable
             min_value=attribute.parameters.min_value,
             max_value=attribute.parameters.max_value,
         )
+
+
+async def refuse_values_outside_ranges(db: InfrahubDatabase, pool: Node, ranges: Iterable[NumberRangeBounds]) -> None:
+    """Refuse a range set leaving a number the pool tracks, on any live branch, outside every range.
+
+    Raises:
+        ValidationError: Listing the lowest numbers outside the ranges, each with the object and branch holding it.
+
+    """
+    query = await NumberPoolGetHeldOutsideRanges.init(
+        db=db,
+        pool_id=pool.get_id(),
+        attribute_name=str(pool.get_attribute("node_attribute").value),
+        ranges=[[pool_range.start, pool_range.end] for pool_range in ranges],
+        limit=HELD_OUTSIDE_RANGES_LISTED,
+    )
+    count = await query.count(db=db)
+    if not count:
+        return
+    await query.execute(db=db)
+    held = "; ".join(f"{row.kind} {row.id} holds {row.value} on branch {row.branch}" for row in query.get_data())
+    if count > HELD_OUTSIDE_RANGES_LISTED:
+        held += f"; and {count - HELD_OUTSIDE_RANGES_LISTED} more"
+    raise ValidationError(
+        input_value=(
+            f"The ranges of the pool would leave {count} number(s) it tracks outside every range: {held}. "
+            "Keep ranges covering these numbers, or change the numbers first."
+        )
+    )
 
 
 def pool_lock(pool_id: str) -> lock.InfrahubLock:

@@ -85,17 +85,17 @@ A deployment upgrades. Every pool it had becomes a pool with one range covering 
 
 ### User Story 3 - Grow and shrink a pool that is already in use (Priority: P2)
 
-An operator adds a range to a pool already handing out numbers, removes a range to give part of the space to something else, and is never refused for a range edit, even when the removed range holds numbers already handed out. Numbers that fall outside every remaining range stay associated with the pool, are never handed out and do not count, and count again when a covering range is added back.
+An operator adds a range to a pool already handing out numbers, or removes or narrows a range to give part of the space to something else. A range edit that would leave a number the pool tracks outside every range of the pool is refused, and the error lists each object holding such a number, the branch holding it and the value on that branch. A number that is already outside every range stays associated with the pool, is never handed out and does not count; every range edit that leaves it outside is refused and lists it, and it counts again when a covering range is added.
 
 **Why this priority**: Growing and shrinking a live pool is what makes several ranges useful over time; it depends on User Story 1 existing.
 
-**Independent Test**: On a two-range pool with allocations in both ranges, remove and re-add a range and check utilization, allocation and the persisted records after each step.
+**Independent Test**: On a two-range pool with allocations in both ranges, try to remove and to narrow a range holding numbers, and check the refusal and that the ranges, utilization and records are unchanged.
 
 **Acceptance Scenarios**:
 
 1. **Given** a pool in use, **When** a non-overlapping range is added, **Then** the addition succeeds, nothing already handed out changes, and the pool's size grows by the new range's effective size.
-2. **Given** ranges 100–200 (fully allocated) and 205–300 with 250 allocated, **When** 205–300 is removed, **Then** the removal succeeds, 250 stays associated with the pool, utilization reports 101 of 101, and 250 is never handed out.
-3. **Given** the pool from scenario 2, **When** 205–300 is re-added, **Then** 250 counts as in use again and utilization reports 102 of 197.
+2. **Given** ranges 100–200 (fully allocated) and 205–300 with 250 allocated, **When** 205–300 is removed, or narrowed to 260–300, or replaced through the pool's `ranges` or `start_range` / `end_range`, **Then** the edit is refused, the error names the object holding 250, its branch and its value there, and the pool's ranges are unchanged.
+3. **Given** a pool tracking a number already outside every range, **When** a range edit leaves that number outside, **Then** the edit is refused and the number is listed; **When** a range covering the number is added, **Then** the edit succeeds and the number counts as in use again.
 4. **Given** a pool holding ranges, **When** a range overlapping an existing range of the same pool, or a range whose end is below its start, is saved, **Then** the save is refused and the error names the clashing ranges.
 5. **Given** two user-created pools attached to the same kind and attribute, **When** their ranges overlap, **Then** both saves are accepted; only a uniqueness constraint on the attribute refuses a collision between them.
 6. **Given** a pool whose last range is removed, **When** it is read and allocated from, **Then** the pool is legal, size is 0, utilization reports 0 of 0 as 0 %, and allocation raises the existing pool-exhausted error.
@@ -146,7 +146,8 @@ An API or SDK consumer discovers, through introspection and schema-load warnings
 ### Edge Cases
 
 - Two ranges in one pool overlap, or a range ends below where it starts: refused, clashing ranges named.
-- A range is removed, or narrowed, while numbers inside it have been handed out: succeeds; the affected records stay associated and hidden until a covering range returns.
+- A range is removed, or narrowed, while numbers inside it have been handed out: refused, listing each object holding such a number, the branch holding it and the value there.
+- A number the pool tracks is already outside every range: every range edit that leaves it outside is refused and lists it, until a covering range is added.
 - Two ranges carry the same weight, or no range carries one: lowest start first.
 - A weight changes on a partially drained pool: the newly heaviest range is drawn from next, at its lowest free value.
 - An attribute's excluded values lie entirely outside the pool's ranges: size is unchanged and no division-by-zero error occurs.
@@ -170,7 +171,7 @@ An API or SDK consumer discovers, through introspection and schema-load warnings
 #### Ranges on a pool
 
 - **FR-001**: A number pool MUST be able to hold zero, one or several ranges. Each range has a start, an end and an optional allocation weight, belongs to exactly one pool, and is branch-agnostic. *(PRD FR-001)*
-- **FR-002**: Ranges MUST be addable and removable one at a time on a pool that is already in use. A range edit is never refused for what the pool has handed out, including removing a range that holds handed-out numbers. *(PRD FR-002)*
+- **FR-002**: Ranges MUST be addable and removable one at a time on a pool that is already in use. A range edit, on a user-created pool, that leaves a number the pool tracks on any live branch outside every range MUST be refused, and the error MUST list each such number with the object and branch holding it. *(PRD FR-002, IFC-3431)*
 - **FR-003**: A handed-out number whose value falls outside every effective range MUST be retained and stay associated with the pool: invisible to allocation, excluded from utilization, and counted again as soon as a covering range is added. *(PRD FR-002a)*
 - **FR-004**: Allocation MUST draw from the range with the highest weight first and empty it before moving to the next. A missing weight counts as zero. Ranges of equal weight are used lowest start first. Within a range the lowest free number is handed out. *(PRD FR-003)*
 - **FR-005**: Ranges within one pool MUST NOT overlap, and a range's end MUST NOT be below its start. Such a range is refused when saved and the error names the clashing ranges. Ranges of different pools over the same kind and attribute MAY overlap; a collision between them is refused only by a uniqueness constraint. *(PRD FR-004, cross-pool clause dropped)*

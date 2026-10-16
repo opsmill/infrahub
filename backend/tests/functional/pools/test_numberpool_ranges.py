@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import pytest
+from infrahub_sdk.exceptions import GraphQLError
 
 from infrahub.core.schema import SchemaRoot
 from tests.helpers.schema import TICKET
@@ -144,18 +145,14 @@ class TestNumberPoolRanges(TestInfrahubApp):
             ],
         }
 
-    async def test_a_removed_range_keeps_its_number_recorded_until_it_is_re_added(
+    async def test_removing_a_range_holding_a_number_is_refused(
         self, client: InfrahubClient, ranged_pool: RangedPool
     ) -> None:
-        deleted = await client.execute_graphql(query=DELETE_RANGE, variables={"range_id": ranged_pool.light_range_id})
-        assert deleted["CoreNumberPoolRangeDelete"]["ok"]
-        assert await self._utilization(client=client, pool_id=ranged_pool.pool_id) == {
-            "count": 1,
-            "utilization": 100.0,
-            "edges": [{"node": {"display_label": "100 - 102", "weight": 10, "utilization": 100.0}}],
-        }
+        with pytest.raises(GraphQLError) as exc_info:
+            await client.execute_graphql(query=DELETE_RANGE, variables={"range_id": ranged_pool.light_range_id})
 
-        await self._create_range(client=client, pool_id=ranged_pool.pool_id, start=205, end=207)
+        assert f"{TICKET.kind} " in str(exc_info.value)
+        assert "holds 205 on branch main" in str(exc_info.value)
         assert await self._utilization(client=client, pool_id=ranged_pool.pool_id) == {
             "count": 2,
             "utilization": _percent(4, 6),
@@ -164,6 +161,4 @@ class TestNumberPoolRanges(TestInfrahubApp):
                 {"node": {"display_label": "205 - 207", "weight": 0, "utilization": _percent(1, 3)}},
             ],
         }
-        assert await self._allocate(client=client, pool_id=ranged_pool.pool_id, title="after-re-add") == 206, (
-            "205 stayed recorded while its range was gone"
-        )
+        assert await self._allocate(client=client, pool_id=ranged_pool.pool_id, title="after-refusal") == 206
