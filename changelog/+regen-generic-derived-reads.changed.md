@@ -1,0 +1,1 @@
+Changed proposed-change and post-merge regeneration to follow a `display_label` or `human_friendly_id` read on a generic through the value that each implementation defines or inherits, instead of selecting every target when the generic defines none.

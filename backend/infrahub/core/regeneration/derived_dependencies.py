@@ -88,10 +88,14 @@ class DerivedFieldDependencyResolver:
 
         A field with no declared path, or on a kind absent from the schema, cannot be resolved: it
         yields no peer and widens. Otherwise every declared path is followed and their peers unioned.
+        A node is never an instance of a generic, so a read on a generic resolves through the
+        definition each implementation carries, inherited or its own.
         """
         reading_schema = self._node_schema(reading_kind)
         if reading_schema is None:
             return [], True
+        if reading_schema.is_generic_schema:
+            return self._resolve_implementations(generic=reading_schema, field_name=field_name)
         paths = reading_schema.get_derived_field_paths(field_name)
         if paths is None:
             return [], True
@@ -102,6 +106,17 @@ class DerivedFieldDependencyResolver:
             path_peers, path_widen = self._resolve_path(reading_schema=reading_schema, path=path)
             peers.extend(path_peers)
             widen = widen or path_widen
+        return peers, widen
+
+    def _resolve_implementations(
+        self, *, generic: MainSchemaTypes, field_name: str
+    ) -> tuple[list[PeerDependency], bool]:
+        peers: list[PeerDependency] = []
+        widen = False
+        for concrete_kind in generic.concrete_kinds:
+            kind_peers, kind_widen = self._resolve_field(reading_kind=concrete_kind, field_name=field_name)
+            peers.extend(kind_peers)
+            widen = widen or kind_widen
         return peers, widen
 
     def _resolve_path(self, *, reading_schema: MainSchemaTypes, path: str) -> tuple[list[PeerDependency], bool]:
