@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.core import registry
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.regeneration.models import ReachedPath, RelationshipHop
 from infrahub.core.schema import GenericSchema
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
@@ -50,6 +51,35 @@ query {
     TestingPerson { edges { node { name { value } } } }
 }
 """
+
+# Each query reads an account inside a fragment under the metadata of a field, not on the node the field
+# belongs to: no relationship leads from the car to the account, so a change to it cannot be traced back.
+ACCOUNT_IN_A_FRAGMENT_UNDER_FIELD_METADATA = [
+    QueryCase(
+        name="attribute_source",
+        query="""
+query { TestingCar { edges { node {
+    name { value source { ... on CoreAccount { name { value } } } }
+} } } }
+""",
+    ),
+    QueryCase(
+        name="attribute_owner",
+        query="""
+query { TestingCar { edges { node {
+    name { value owner { ... on CoreAccount { name { value } } } }
+} } } }
+""",
+    ),
+    QueryCase(
+        name="relationship_property_source",
+        query="""
+query { TestingCar { edges { node {
+    owner { node { name { value } } properties { source { ... on CoreAccount { name { value } } } } }
+} } } }
+""",
+    ),
+]
 
 # The device reaches its interfaces through a relationship whose peer is a generic, so the change is
 # resolved to each concrete interface kind.
@@ -236,6 +266,15 @@ class TestReachedPathsFromQueryCarSchema(TestInfrahubApp):
                 ),
             )
         }
+
+    @pytest.mark.parametrize("case", ACCOUNT_IN_A_FRAGMENT_UNDER_FIELD_METADATA, ids=lambda case: case.name)
+    async def test_a_kind_read_in_a_fragment_under_field_metadata_gets_no_chain(
+        self, db: InfrahubDatabase, default_branch: Branch, car_schema: None, case: QueryCase
+    ) -> None:
+        report = await _query_report(db, default_branch, case.query)
+
+        assert InfrahubKind.ACCOUNT in report.traversed_kinds
+        assert InfrahubKind.ACCOUNT not in report.relationship_reached_paths_by_kind
 
 
 class TestReachedPathsFromQueryDeviceSchema(TestInfrahubApp):
