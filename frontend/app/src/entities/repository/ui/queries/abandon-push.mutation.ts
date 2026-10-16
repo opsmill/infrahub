@@ -4,26 +4,26 @@ import type { BranchContextParams, MutationConfig } from "@/shared/api/types";
 
 import { useDefaultBranch } from "@/entities/branches/ui/hooks/use-default-branch";
 import {
-  type AbandonDeliveryParams,
-  abandonDelivery,
-} from "@/entities/repository/domain/use-cases/abandon-delivery";
+  type AbandonPushParams,
+  abandonPush,
+} from "@/entities/repository/domain/use-cases/abandon-push";
 
-interface AbandonDeliveryProps extends MutationConfig<typeof abandonDelivery> {}
+interface AbandonPushProps extends MutationConfig<typeof abandonPush> {}
 
-export const ABANDON_DELIVERY_MUTATION_KEY = ["repository", "abandon-delivery"] as const;
+export const ABANDON_PUSH_MUTATION_KEY = ["repository", "abandon-push"] as const;
 
 // The pending pushes live on the default branch, and the backend refuses an abandonment sent on any other.
 // invalidation-at-callsite: the caller invalidates `objectQueryKeys.all` with its own toast.
-export function useAbandonDeliveryMutation(config?: Omit<AbandonDeliveryProps, "mutationFn">) {
+export function useAbandonPushMutation(config?: Omit<AbandonPushProps, "mutationFn">) {
   const defaultBranch = useDefaultBranch();
 
   return useMutation({
-    mutationKey: ABANDON_DELIVERY_MUTATION_KEY,
-    mutationFn: (params: Omit<AbandonDeliveryParams, keyof BranchContextParams>) => {
+    mutationKey: ABANDON_PUSH_MUTATION_KEY,
+    mutationFn: (params: Omit<AbandonPushParams, keyof BranchContextParams>) => {
       if (!defaultBranch) {
         throw new Error("The default branch is not loaded.");
       }
-      return abandonDelivery({ branchName: defaultBranch.name, ...params });
+      return abandonPush({ branchName: defaultBranch.name, ...params });
     },
     ...config,
   });

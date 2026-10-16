@@ -36,7 +36,7 @@ import {
 import type { Permission } from "@/entities/permission/domain/model/permission";
 import { GENERIC_REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
 import type { RepositoryPushState } from "@/entities/repository/domain/model/repository-push-state";
-import { AbandonDeliveryModal } from "@/entities/repository/ui/abandon-delivery-modal";
+import { AbandonPushModal } from "@/entities/repository/ui/abandon-push-modal";
 import { CheckConnectivityModal } from "@/entities/repository/ui/check-connectivity-modal";
 import { RepositoryMenuSection } from "@/entities/repository/ui/repository-menu-section";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
@@ -58,8 +58,8 @@ export function ObjectDetailsMenu({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isCheckConnectivityOpen, setIsCheckConnectivityOpen] = useState(false);
-  const [deliveryToAbandon, setDeliveryToAbandon] = useState<RepositoryPushState>();
-  const [isAbandonDeliveryOpen, setIsAbandonDeliveryOpen] = useState(false);
+  const [pushToAbandon, setPushToAbandon] = useState<RepositoryPushState>();
+  const [isAbandonPushOpen, setIsAbandonPushOpen] = useState(false);
   const navigate = useNavigate();
 
   const nodeLabel = getNodeLabel(objectData);
@@ -125,9 +125,9 @@ export function ObjectDetailsMenu({
                 repositoryId={objectData.id}
                 objectSchema={objectSchema}
                 onCheckConnectivity={() => setIsCheckConnectivityOpen(true)}
-                onAbandonDelivery={(deliveryState) => {
-                  setDeliveryToAbandon(deliveryState);
-                  setIsAbandonDeliveryOpen(true);
+                onAbandonPush={(pushState) => {
+                  setPushToAbandon(pushState);
+                  setIsAbandonPushOpen(true);
                 }}
                 permission={permission}
               />
@@ -227,12 +227,12 @@ export function ObjectDetailsMenu({
         />
       )}
 
-      {deliveryToAbandon && (
-        <AbandonDeliveryModal
+      {pushToAbandon && (
+        <AbandonPushModal
           repositoryId={objectData.id}
-          deliveryState={deliveryToAbandon}
-          isOpen={isAbandonDeliveryOpen}
-          onOpenChange={setIsAbandonDeliveryOpen}
+          pushState={pushToAbandon}
+          isOpen={isAbandonPushOpen}
+          onOpenChange={setIsAbandonPushOpen}
         />
       )}
     </>

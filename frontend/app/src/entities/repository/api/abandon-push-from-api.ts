@@ -1,9 +1,11 @@
 import { graphql, graphqlClient, type VariablesOf } from "@/shared/api/graphql/client";
 import type { BranchContextParams } from "@/shared/api/types";
 
-const RETRY_DELIVERY = graphql(`
-  mutation RETRY_DELIVERY($repositoryId: String!) {
-    InfrahubRepositoryDeliveryRetry(data: { id: $repositoryId }) {
+const ABANDON_PUSH = graphql(`
+  mutation ABANDON_PUSH($repositoryId: String!, $queueVersion: Int!) {
+    InfrahubRepositoryDeliveryAbandon(
+      data: { id: $repositoryId, queue_version: $queueVersion }
+    ) {
       ok
       task {
         id
@@ -12,18 +14,20 @@ const RETRY_DELIVERY = graphql(`
   }
 `);
 
-export interface RetryDeliveryFromApiParams
+export interface AbandonPushFromApiParams
   extends BranchContextParams,
-    VariablesOf<typeof RETRY_DELIVERY> {}
+    VariablesOf<typeof ABANDON_PUSH> {}
 
-export const retryDeliveryFromApi = async ({
+export const abandonPushFromApi = async ({
   repositoryId,
+  queueVersion,
   branchName,
-}: RetryDeliveryFromApiParams) => {
+}: AbandonPushFromApiParams) => {
   return graphqlClient.mutate({
-    mutation: RETRY_DELIVERY,
+    mutation: ABANDON_PUSH,
     variables: {
       repositoryId,
+      queueVersion,
     },
     // The caller's error toast shows the refusal message, so the global toast would repeat it.
     context: { branch: branchName, processErrorMessage: () => {} },

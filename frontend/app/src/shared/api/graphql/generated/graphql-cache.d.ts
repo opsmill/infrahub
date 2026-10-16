@@ -29,8 +29,8 @@ declare module 'gql.tada' {
     /** @gql.tada/hash sha256:82e4d11421825a9476a5d6283fdbded5 */
     "\n  fragment BranchRepositoryFields on CoreGenericRepository @_unmask {\n    id\n    __typename\n    display_label\n    name { value }\n    commit { value }\n    sync_status { value label color description }\n    operational_status { value label color }\n  }\n":
       TadaDocumentNode<{ __typename: "CoreReadOnlyRepository"; id: string | null; display_label: string | null; name: { value: string | null; } | null; commit: { value: string | null; } | null; sync_status: { value: string | null; label: string | null; color: string | null; description: string | null; } | null; operational_status: { value: string | null; label: string | null; color: string | null; } | null; } | { __typename: "CoreRepository"; id: string | null; display_label: string | null; name: { value: string | null; } | null; commit: { value: string | null; } | null; sync_status: { value: string | null; label: string | null; color: string | null; description: string | null; } | null; operational_status: { value: string | null; label: string | null; color: string | null; } | null; }, {}, { fragment: "BranchRepositoryFields"; on: "CoreGenericRepository"; masked: false; }>;
-    /** @gql.tada/hash sha256:1a48aa0841706cbfa52ec16945576f92 */
-    "\n  mutation ABANDON_DELIVERY($repositoryId: String!, $queueVersion: Int!) {\n    InfrahubRepositoryDeliveryAbandon(\n      data: { id: $repositoryId, queue_version: $queueVersion }\n    ) {\n      ok\n      task {\n        id\n      }\n    }\n  }\n":
+    /** @gql.tada/hash sha256:078adf40b0fead28d75c41d94d48279a */
+    "\n  mutation ABANDON_PUSH($repositoryId: String!, $queueVersion: Int!) {\n    InfrahubRepositoryDeliveryAbandon(\n      data: { id: $repositoryId, queue_version: $queueVersion }\n    ) {\n      ok\n      task {\n        id\n      }\n    }\n  }\n":
       TadaDocumentNode<{ InfrahubRepositoryDeliveryAbandon: { ok: boolean | null; task: { id: string | null; } | null; } | null; }, { queueVersion: number; repositoryId: string; }, void>;
     /** @gql.tada/hash sha256:022055de7392abb6917a94ed5914d010 */
     "\n  mutation BRANCH_CREATE($name: String!, $description: String, $sync_with_git: Boolean) {\n    BranchCreate(data: { name: $name, description: $description, sync_with_git: $sync_with_git }) {\n      object {\n        id\n        name\n        description\n        origin_branch\n        branched_from\n        created_at\n        status\n        sync_with_git\n        is_default\n        status\n        schema_differs_from_default_branch\n      }\n    }\n  }\n":
@@ -95,8 +95,8 @@ declare module 'gql.tada' {
     /** @gql.tada/hash sha256:b855cd06a43a5452ad5eb7ef130cf219 */
     "\n  mutation RESOLVE_CONFLICT($id: String, $selection: ConflictSelection) {\n    ResolveDiffConflict(data: { conflict_id: $id, selected_branch: $selection }) {\n      ok\n    }\n  }\n":
       TadaDocumentNode<{ ResolveDiffConflict: { ok: boolean | null; } | null; }, { selection?: "BASE_BRANCH" | "DIFF_BRANCH" | null | undefined; id?: string | null | undefined; }, void>;
-    /** @gql.tada/hash sha256:016b5511e27896bead7f005b55d6b5a9 */
-    "\n  mutation RETRY_DELIVERY($repositoryId: String!) {\n    InfrahubRepositoryDeliveryRetry(data: { id: $repositoryId }) {\n      ok\n      task {\n        id\n      }\n    }\n  }\n":
+    /** @gql.tada/hash sha256:e21f28a2e7141082d1cb83424dd5e87b */
+    "\n  mutation RETRY_PUSH($repositoryId: String!) {\n    InfrahubRepositoryDeliveryRetry(data: { id: $repositoryId }) {\n      ok\n      task {\n        id\n      }\n    }\n  }\n":
       TadaDocumentNode<{ InfrahubRepositoryDeliveryRetry: { ok: boolean | null; task: { id: string | null; } | null; } | null; }, { repositoryId: string; }, void>;
     /** @gql.tada/hash sha256:6336655ff29bd56601c134b932507d99 */
     "\n  mutation RETRY_TASK($id: String!) {\n    InfrahubTaskRetry(data: { id: $id }) {\n      ok\n      task {\n        id\n      }\n    }\n  }\n":

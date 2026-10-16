@@ -19,7 +19,7 @@ import { isReadOnlyRepository } from "@/entities/repository/domain/rules/is-read
 import { useGetRepositoryPushState } from "@/entities/repository/ui/queries/get-repository-push-state.query";
 import { useImportCurrentCommitMutation } from "@/entities/repository/ui/queries/import-current-commit.mutation";
 import { useReimportLastCommitMutation } from "@/entities/repository/ui/queries/reimport-last-commit.mutation";
-import { useRetryDeliveryMutation } from "@/entities/repository/ui/queries/retry-delivery.mutation";
+import { useRetryPushMutation } from "@/entities/repository/ui/queries/retry-push.mutation";
 import { toastTaskStarted } from "@/entities/repository/ui/toast-task-started";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
@@ -28,7 +28,7 @@ interface RepositoryMenuSectionProps {
   repositoryId: string;
   objectSchema: ModelSchema;
   onCheckConnectivity: () => void;
-  onAbandonDelivery: (deliveryState: RepositoryPushState) => void;
+  onAbandonPush: (pushState: RepositoryPushState) => void;
   permission: Permission;
 }
 
@@ -36,7 +36,7 @@ export function RepositoryMenuSection({
   repositoryId,
   objectSchema,
   onCheckConnectivity,
-  onAbandonDelivery,
+  onAbandonPush,
   permission,
 }: RepositoryMenuSectionProps) {
   const isReadOnly = isReadOnlyRepository(objectSchema);
@@ -97,27 +97,27 @@ export function RepositoryMenuSection({
       </MenuItem>
 
       {isOfKind(REPOSITORY_KIND, objectSchema) && (
-        <RepositoryDeliveryMenuItems
+        <RepositoryPushMenuItems
           repositoryId={repositoryId}
           isUpdateAllowed={isUpdateAllowed}
-          onAbandonDelivery={onAbandonDelivery}
+          onAbandonPush={onAbandonPush}
         />
       )}
     </MenuSection>
   );
 }
 
-interface RepositoryDeliveryMenuItemsProps {
+interface RepositoryPushMenuItemsProps {
   repositoryId: string;
   isUpdateAllowed: boolean;
-  onAbandonDelivery: (deliveryState: RepositoryPushState) => void;
+  onAbandonPush: (pushState: RepositoryPushState) => void;
 }
 
-function RepositoryDeliveryMenuItems({
+function RepositoryPushMenuItems({
   repositoryId,
   isUpdateAllowed,
-  onAbandonDelivery,
-}: RepositoryDeliveryMenuItemsProps) {
+  onAbandonPush,
+}: RepositoryPushMenuItemsProps) {
   const { data: state, isError } = useGetRepositoryPushState({ repositoryId });
   // Until the state loads, nothing is known to be pending.
   const { canRetry, canAbandon } = getPushActions(
@@ -128,7 +128,7 @@ function RepositoryDeliveryMenuItems({
   const { data: canEditDefaultBranch = false } = useHasGlobalPermission(EDIT_DEFAULT_BRANCH);
   const isAllowed = isUpdateAllowed && canManageRepositories && canEditDefaultBranch;
 
-  const { mutate: retryDelivery } = useRetryDeliveryMutation({
+  const { mutate: retryPush } = useRetryPushMutation({
     onSuccess: async (result) => {
       toastTaskStarted("Retry of the pending pushes started.", result.taskId);
       await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
@@ -145,17 +145,14 @@ function RepositoryDeliveryMenuItems({
 
   return (
     <>
-      <MenuItem
-        isDisabled={!isAllowed || !canRetry}
-        onAction={() => retryDelivery({ repositoryId })}
-      >
+      <MenuItem isDisabled={!isAllowed || !canRetry} onAction={() => retryPush({ repositoryId })}>
         <Icon icon="mdi:upload" />
         Retry push
       </MenuItem>
 
       <MenuItem
         isDisabled={!isAllowed || !canAbandon}
-        onAction={() => state && onAbandonDelivery(state)}
+        onAction={() => state && onAbandonPush(state)}
       >
         <Icon icon="mdi:upload-off" />
         Abandon pending push

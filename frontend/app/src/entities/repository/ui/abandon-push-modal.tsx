@@ -7,24 +7,24 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import type { RepositoryPushState } from "@/entities/repository/domain/model/repository-push-state";
 import { PendingMergeList } from "@/entities/repository/ui/pending-merge-list";
-import { useAbandonDeliveryMutation } from "@/entities/repository/ui/queries/abandon-delivery.mutation";
+import { useAbandonPushMutation } from "@/entities/repository/ui/queries/abandon-push.mutation";
 import { toastTaskStarted } from "@/entities/repository/ui/toast-task-started";
 
-interface AbandonDeliveryModalProps {
+interface AbandonPushModalProps {
   repositoryId: string;
   /** The push state the user read: the backend refuses the abandonment if its pending merges changed since. */
-  deliveryState: RepositoryPushState;
+  pushState: RepositoryPushState;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
 }
 
-export function AbandonDeliveryModal({
+export function AbandonPushModal({
   repositoryId,
-  deliveryState,
+  pushState,
   isOpen,
   onOpenChange,
-}: AbandonDeliveryModalProps) {
-  const { mutate: abandonDelivery, isPending } = useAbandonDeliveryMutation({
+}: AbandonPushModalProps) {
+  const { mutate: abandonPush, isPending } = useAbandonPushMutation({
     onSuccess: (result) => {
       toastTaskStarted("Abandonment of the pending pushes started.", result.taskId);
     },
@@ -49,7 +49,7 @@ export function AbandonDeliveryModal({
       description={
         <div className="flex flex-col gap-2">
           <p>Abandon every pending merge of this repository:</p>
-          <PendingMergeList merges={deliveryState.pendingMerges} />
+          <PendingMergeList merges={pushState.pendingMerges} />
           <p>Nothing is removed from the remote, and no remote branch is deleted.</p>
           <p>
             Repository objects of the abandoned merges can stay on the default branch until the
@@ -61,7 +61,7 @@ export function AbandonDeliveryModal({
       isOpen={isOpen}
       onOpenChange={onOpenChange}
       isLoading={isPending}
-      onConfirm={() => abandonDelivery({ repositoryId, queueVersion: deliveryState.queueVersion })}
+      onConfirm={() => abandonPush({ repositoryId, queueVersion: pushState.queueVersion })}
     />
   );
 }

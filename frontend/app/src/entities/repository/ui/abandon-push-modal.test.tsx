@@ -5,13 +5,13 @@ import { queryClient } from "@/shared/api/rest/client";
 import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import type { RepositoryPushState } from "@/entities/repository/domain/model/repository-push-state";
-import { abandonDelivery } from "@/entities/repository/domain/use-cases/abandon-delivery";
+import { abandonPush } from "@/entities/repository/domain/use-cases/abandon-push";
 
 import { render } from "../../../../tests/components/render";
 import { generateBranch } from "../../../../tests/fake/branch";
-import { AbandonDeliveryModal } from "./abandon-delivery-modal";
+import { AbandonPushModal } from "./abandon-push-modal";
 
-vi.mock("@/entities/repository/domain/use-cases/abandon-delivery");
+vi.mock("@/entities/repository/domain/use-cases/abandon-push");
 vi.mock("@/entities/branches/ui/queries/get-branches.query");
 
 const conflictingPush: RepositoryPushState = {
@@ -39,7 +39,7 @@ const conflictingPush: RepositoryPushState = {
   lastAbandonment: null,
 };
 
-describe("AbandonDeliveryModal", () => {
+describe("AbandonPushModal", () => {
   const mockOnOpenChange = vi.fn();
 
   beforeEach(() => {
@@ -53,14 +53,14 @@ describe("AbandonDeliveryModal", () => {
       ],
     } as unknown as ReturnType<typeof useGetBranches>);
 
-    vi.mocked(abandonDelivery).mockResolvedValue({ ok: true, taskId: "task-1" });
+    vi.mocked(abandonPush).mockResolvedValue({ ok: true, taskId: "task-1" });
   });
 
-  const renderModal = (deliveryState = conflictingPush) =>
+  const renderModal = (pushState = conflictingPush) =>
     render(
-      <AbandonDeliveryModal
+      <AbandonPushModal
         repositoryId="repo-1"
-        deliveryState={deliveryState}
+        pushState={pushState}
         isOpen
         onOpenChange={mockOnOpenChange}
       />
@@ -68,10 +68,10 @@ describe("AbandonDeliveryModal", () => {
 
   test("lists the pending merges it abandons and says what stays", async () => {
     // GIVEN
-    const deliveryState = conflictingPush;
+    const pushState = conflictingPush;
 
     // WHEN
-    const component = await renderModal(deliveryState);
+    const component = await renderModal(pushState);
 
     // THEN
     await expect
@@ -108,7 +108,7 @@ describe("AbandonDeliveryModal", () => {
 
     // THEN
     await vi.waitFor(() =>
-      expect(abandonDelivery).toHaveBeenCalledWith({
+      expect(abandonPush).toHaveBeenCalledWith({
         branchName: "primary",
         repositoryId: "repo-1",
         queueVersion: 4,
@@ -138,7 +138,7 @@ describe("AbandonDeliveryModal", () => {
     const invalidateQueriesSpy = vi
       .spyOn(queryClient, "invalidateQueries")
       .mockResolvedValue(undefined);
-    vi.mocked(abandonDelivery).mockRejectedValue(
+    vi.mocked(abandonPush).mockRejectedValue(
       new Error(
         "The pending pushes of repository repo-a changed since version 4; reload and try again."
       )
@@ -169,6 +169,6 @@ describe("AbandonDeliveryModal", () => {
 
     // THEN
     expect(mockOnOpenChange).toHaveBeenCalledWith(false);
-    expect(abandonDelivery).not.toHaveBeenCalled();
+    expect(abandonPush).not.toHaveBeenCalled();
   });
 });

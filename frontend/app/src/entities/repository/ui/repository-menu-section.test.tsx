@@ -9,7 +9,7 @@ import {
 } from "@/entities/permission/domain/model/permission";
 import { useHasGlobalPermission } from "@/entities/permission/ui/queries/has-global-permission.query";
 import type { RepositoryPushState } from "@/entities/repository/domain/model/repository-push-state";
-import { retryDelivery } from "@/entities/repository/domain/use-cases/retry-delivery";
+import { retryPush } from "@/entities/repository/domain/use-cases/retry-push";
 import { useGetRepositoryPushState } from "@/entities/repository/ui/queries/get-repository-push-state.query";
 import { useImportCurrentCommitMutation } from "@/entities/repository/ui/queries/import-current-commit.mutation";
 import { useReimportLastCommitMutation } from "@/entities/repository/ui/queries/reimport-last-commit.mutation";
@@ -23,7 +23,7 @@ import { RepositoryMenuSection } from "./repository-menu-section";
 vi.mock("@/entities/repository/ui/queries/reimport-last-commit.mutation");
 vi.mock("@/entities/repository/ui/queries/import-current-commit.mutation");
 vi.mock("@/entities/repository/ui/queries/get-repository-push-state.query");
-vi.mock("@/entities/repository/domain/use-cases/retry-delivery");
+vi.mock("@/entities/repository/domain/use-cases/retry-push");
 vi.mock("@/entities/branches/ui/queries/get-branches.query");
 vi.mock("@/entities/permission/ui/queries/has-global-permission.query");
 
@@ -51,7 +51,7 @@ const nothingPending: RepositoryPushState = {
   lastAbandonment: null,
 };
 
-const mockDeliveryState = (state: RepositoryPushState | undefined) => {
+const mockPushState = (state: RepositoryPushState | undefined) => {
   vi.mocked(useGetRepositoryPushState).mockReturnValue({
     data: state,
     isPending: state === undefined,
@@ -59,7 +59,7 @@ const mockDeliveryState = (state: RepositoryPushState | undefined) => {
   } as unknown as ReturnType<typeof useGetRepositoryPushState>);
 };
 
-const mockUnreadableDeliveryState = () => {
+const mockUnreadablePushState = () => {
   vi.mocked(useGetRepositoryPushState).mockReturnValue({
     data: undefined,
     isPending: false,
@@ -80,7 +80,7 @@ describe("RepositoryMenuSection", () => {
   const mockReimportLastCommit = vi.fn();
   const mockImportCurrentCommit = vi.fn();
   const mockOnCheckConnectivity = vi.fn();
-  const mockOnAbandonDelivery = vi.fn();
+  const mockOnAbandonPush = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -103,9 +103,9 @@ describe("RepositoryMenuSection", () => {
       ],
     } as unknown as ReturnType<typeof useGetBranches>);
 
-    mockDeliveryState(refusedPush);
+    mockPushState(refusedPush);
     mockGlobalPermissions(ALL_GLOBAL_PERMISSIONS);
-    vi.mocked(retryDelivery).mockResolvedValue({ ok: true, taskId: "task-1" });
+    vi.mocked(retryPush).mockResolvedValue({ ok: true, taskId: "task-1" });
   });
 
   const renderRepositoryMenu = ({
@@ -121,7 +121,7 @@ describe("RepositoryMenuSection", () => {
           repositoryId="repo-1"
           objectSchema={generateNodeSchema({ kind })}
           onCheckConnectivity={mockOnCheckConnectivity}
-          onAbandonDelivery={mockOnAbandonDelivery}
+          onAbandonPush={mockOnAbandonPush}
           permission={permission}
         />
       </Menu>
@@ -135,7 +135,7 @@ describe("RepositoryMenuSection", () => {
           repositoryId="repo-1"
           objectSchema={generateNodeSchema({ kind: "CoreRepository" })}
           onCheckConnectivity={mockOnCheckConnectivity}
-          onAbandonDelivery={mockOnAbandonDelivery}
+          onAbandonPush={mockOnAbandonPush}
           permission={generatePermission()}
         />
       </Menu>
@@ -157,7 +157,7 @@ describe("RepositoryMenuSection", () => {
           repositoryId="repo-1"
           objectSchema={generateNodeSchema({ kind: "CoreReadOnlyRepository" })}
           onCheckConnectivity={mockOnCheckConnectivity}
-          onAbandonDelivery={mockOnAbandonDelivery}
+          onAbandonPush={mockOnAbandonPush}
           permission={generatePermission()}
         />
       </Menu>
@@ -177,7 +177,7 @@ describe("RepositoryMenuSection", () => {
           repositoryId="repo-1"
           objectSchema={generateNodeSchema({ kind: "CoreRepository" })}
           onCheckConnectivity={mockOnCheckConnectivity}
-          onAbandonDelivery={mockOnAbandonDelivery}
+          onAbandonPush={mockOnAbandonPush}
           permission={generatePermission()}
         />
       </Menu>
@@ -198,7 +198,7 @@ describe("RepositoryMenuSection", () => {
           repositoryId="repo-1"
           objectSchema={generateNodeSchema({ kind: "CoreReadOnlyRepository" })}
           onCheckConnectivity={mockOnCheckConnectivity}
-          onAbandonDelivery={mockOnAbandonDelivery}
+          onAbandonPush={mockOnAbandonPush}
           permission={generatePermission()}
         />
       </Menu>
@@ -219,7 +219,7 @@ describe("RepositoryMenuSection", () => {
           repositoryId="repo-1"
           objectSchema={generateNodeSchema({ kind: "CoreReadOnlyRepository" })}
           onCheckConnectivity={mockOnCheckConnectivity}
-          onAbandonDelivery={mockOnAbandonDelivery}
+          onAbandonPush={mockOnAbandonPush}
           permission={generatePermission({ update: false })}
         />
       </Menu>
@@ -239,7 +239,7 @@ describe("RepositoryMenuSection", () => {
           repositoryId="repo-1"
           objectSchema={generateNodeSchema({ kind: "CoreRepository" })}
           onCheckConnectivity={mockOnCheckConnectivity}
-          onAbandonDelivery={mockOnAbandonDelivery}
+          onAbandonPush={mockOnAbandonPush}
           permission={generatePermission()}
         />
       </Menu>
@@ -257,7 +257,7 @@ describe("RepositoryMenuSection", () => {
           repositoryId="repo-1"
           objectSchema={generateNodeSchema({ kind: "CoreReadOnlyRepository" })}
           onCheckConnectivity={mockOnCheckConnectivity}
-          onAbandonDelivery={mockOnAbandonDelivery}
+          onAbandonPush={mockOnAbandonPush}
           permission={generatePermission()}
         />
       </Menu>
@@ -277,7 +277,7 @@ describe("RepositoryMenuSection", () => {
           repositoryId="repo-1"
           objectSchema={generateNodeSchema({ kind: "CoreRepository" })}
           onCheckConnectivity={mockOnCheckConnectivity}
-          onAbandonDelivery={mockOnAbandonDelivery}
+          onAbandonPush={mockOnAbandonPush}
           permission={generatePermission()}
         />
       </Menu>
@@ -297,7 +297,7 @@ describe("RepositoryMenuSection", () => {
           repositoryId="repo-1"
           objectSchema={generateNodeSchema({ kind: "CoreReadOnlyRepository" })}
           onCheckConnectivity={mockOnCheckConnectivity}
-          onAbandonDelivery={mockOnAbandonDelivery}
+          onAbandonPush={mockOnAbandonPush}
           permission={generatePermission()}
         />
       </Menu>
@@ -314,7 +314,7 @@ describe("RepositoryMenuSection", () => {
     "enables %s for a read-write repository with pending pushes",
     async (itemName) => {
       // GIVEN
-      mockDeliveryState(refusedPush);
+      mockPushState(refusedPush);
 
       // WHEN
       const component = await renderRepositoryMenu();
@@ -328,7 +328,7 @@ describe("RepositoryMenuSection", () => {
 
   test("does not show the push items for a read-only repository", async () => {
     // GIVEN
-    mockDeliveryState(refusedPush);
+    mockPushState(refusedPush);
 
     // WHEN
     const component = await renderRepositoryMenu({ kind: "CoreReadOnlyRepository" });
@@ -381,7 +381,7 @@ describe("RepositoryMenuSection", () => {
     ])
   )("disables $itemName $reason", async ({ itemName, state, permission, globalPermissions }) => {
     // GIVEN
-    mockDeliveryState(state);
+    mockPushState(state);
     mockGlobalPermissions(globalPermissions);
 
     // WHEN
@@ -395,7 +395,7 @@ describe("RepositoryMenuSection", () => {
 
   test("keeps Retry push and disables Abandon pending push when the push state cannot be read", async () => {
     // GIVEN
-    mockUnreadableDeliveryState();
+    mockUnreadablePushState();
 
     // WHEN
     const component = await renderRepositoryMenu();
@@ -430,7 +430,7 @@ describe("RepositoryMenuSection", () => {
 
     // THEN
     await vi.waitFor(() =>
-      expect(retryDelivery).toHaveBeenCalledWith({ branchName: "primary", repositoryId: "repo-1" })
+      expect(retryPush).toHaveBeenCalledWith({ branchName: "primary", repositoryId: "repo-1" })
     );
   });
 
@@ -450,7 +450,7 @@ describe("RepositoryMenuSection", () => {
 
   test("shows the refusal message of the backend when the retry is refused", async () => {
     // GIVEN
-    vi.mocked(retryDelivery).mockRejectedValue(
+    vi.mocked(retryPush).mockRejectedValue(
       new Error("Repository repo-a has nothing pending to push.")
     );
     const component = await renderRepositoryMenu();
@@ -476,6 +476,6 @@ describe("RepositoryMenuSection", () => {
     await component.getByRole("menuitem", { name: "Abandon pending push" }).click();
 
     // THEN
-    expect(mockOnAbandonDelivery).toHaveBeenCalledWith(refusedPush);
+    expect(mockOnAbandonPush).toHaveBeenCalledWith(refusedPush);
   });
 });
