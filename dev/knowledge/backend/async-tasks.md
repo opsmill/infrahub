@@ -192,9 +192,25 @@ Tags come from two moments, and the difference matters: tags present at run crea
 
 ### Branch-tagged runs outlive their branch
 
-Deleting a branch does not remove the flow runs tagged with it; they persist in Prefect. Because the branch tag encodes the branch **name**, a new branch created with the same name would otherwise retrieve the deleted branch's runs in the branch-filtered task query. To prevent this, the `branch-deleted-purge-tasks-trigger` automation reacts to `BranchDeletedEvent` and runs the internal `branch-purge-tasks` flow, which deletes the settled (terminal-state) runs tagged with the branch. The purge is best-effort, and because it runs after the deletion, runs that were still in flight at delete time have usually settled and are cleaned up as well; runs still executing (the deletion flow itself, for one) keep the tag and are left in place.
+Deleting a branch does not remove the flow runs tagged with it; they persist in Prefect until flow-run retention (`infrahub tasks flush flow-runs`) removes them. Retention deletes only completed, failed and cancelled runs that started before its cutoff, so a crashed run, or a run that never started, stays in Prefect. Because the branch tag encodes the branch **name**, a new branch created with the same name would otherwise retrieve the deleted branch's runs in the branch-filtered task query. To prevent this, the `branch-deleted-purge-tasks-trigger` automation reacts to `BranchDeletedEvent` and runs the internal `branch-purge-tasks` flow with the branch name and id from the event payload. The flow detaches every settled (terminal-state) run from the branch: it replaces the `branch/{name}` tag with `deleted-branch/{name}`, adds `deleted-branch-id/{id}`, keeps every other tag, and deletes nothing. The detach is best-effort.
 
-Scoping the purge to terminal states, and running it as one reaction to the deletion event, has a limit: `BranchDeletedEvent` also triggers the schema-refresh setup flows (profile refresh, computed attributes, hfid, display labels), which tag themselves with the same branch and can complete after the purge has already run. Those runs linger and can surface on a same-named recreation. Removing the race means scoping the branch-filtered task query by the branch's stable UUID instead of its name, which touches tagging and UUID resolution at every submission site.
+The flow re-tags instead of deleting because callers wait on a run by id: `run_deployment` reads the run once per second until it settles, so a deleted run reads as an error. The `BranchDelete` mutation waits on the `branch-delete` run this way, and the `BranchMerge` mutation waits on a `merge-branch-mutation` run tagged with the merged branch. A detached run stays readable by id, so these callers are unaffected.
+
+What a detached run looks like afterwards:
+
+- It no longer matches the branch-filtered task query, so a same-named branch does not list it.
+- It still carries the `infrahub.app` namespace tag, so it stays in the unfiltered task list and in a proposed change's task tab.
+- `WorkflowTagDecoder.branch_name` falls back to the `deleted-branch/` tag when no `branch/` tag remains, so the task's branch still shows the old name.
+- A run tagged with two branches (rebase, Git repository merge) loses only the deleted branch's tag; the decoder prefers the remaining `branch/` tag.
+
+The schema-refresh setup flows that `BranchDeletedEvent` also triggers (profile refresh, computed attributes, hfid, display labels) skip tagging themselves with the branch and skip waiting for its schema when the triggering event is the branch deletion, so they cannot add a `branch/{name}` tag after the detach.
+
+Limits:
+
+- A run still executing at delete time keeps the `branch/{name}` tag. If it settles after the detach, a branch re-created with the same name lists it. Removing this needs the branch-filtered task query to scope by the branch's stable UUID instead of its name.
+- Other runs that start with or after the deletion still tag themselves with the deleted branch: `branch-merge-post-process` (submitted after `branch-delete` when `delete_branch_after_merge` is enabled), `proposed-changes-cancel-branch`, and `webhook-send` for a webhook that subscribes to `infrahub.branch.deleted`. A run that adds the tag after the detach has read the branch's runs, or that has not settled by then, keeps `branch/{name}`, and a same-named branch lists it.
+- The detach selects runs by the branch name, and `branch-purge-tasks` runs on the low-priority queue. If a branch with the same name is created and finishes runs before the detach starts, the detach also moves those runs off `branch/{name}` and tags them with the deleted branch's id.
+- During a rolling upgrade, a worker still on the previous version runs its own `branch-purge-tasks`, which does not declare `branch_id`. Prefect rejects the run with `SignatureMismatchError` before any code runs, and the flow has no retries, so that branch's settled runs keep the `branch/{name}` tag until retention removes them, and a same-named branch lists them in the meantime. In the opposite direction, a new worker that receives a run from the previous automation (no `branch_id`) detaches without the id tag.
 
 ## Execution Flow
 

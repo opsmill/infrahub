@@ -1,0 +1,1 @@
+Deleting a branch, or merging a branch when `delete_branch_after_merge` is enabled, no longer returns an error after the branch was deleted. The finished tasks of a deleted branch now stay in the task list under the old branch name, and a new branch created with the same name does not list them.
