@@ -1,5 +1,6 @@
 import { Separator } from "@/shared/components/aria/separator";
 import { InfoRow } from "@/shared/components/display/info-row";
+import { pluralize } from "@/shared/utils/string";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import type { LicenseInfo } from "@/entities/license/domain/model/license";
@@ -69,20 +70,16 @@ function licenseTypeText({ license_type, days_remaining }: LicenseInfo) {
   }
   return days_remaining === null
     ? "Evaluation license"
-    : `Evaluation license, ${dayCount(days_remaining)} left`;
+    : `Evaluation license, ${pluralize(days_remaining, "day")} left`;
 }
 
 function timeLeftText({ days_remaining, days_since_expiry }: LicenseInfo) {
   if (days_remaining !== null) {
-    return `${dayCount(days_remaining)} left`;
+    return `${pluralize(days_remaining, "day")} left`;
   }
   const daysExpired = days_since_expiry ?? 0;
   if (daysExpired === 0) {
     return "expired today";
   }
-  return `expired ${dayCount(daysExpired)} ago`;
-}
-
-function dayCount(count: number) {
-  return `${count} ${count === 1 ? "day" : "days"}`;
+  return `expired ${pluralize(daysExpired, "day")} ago`;
 }

@@ -163,13 +163,14 @@ Operators who run the upgrade command, with or without its check option, see the
 
 #### Banner rules
 
-- **FR-013**: The system MUST decide, from the state and the release mode only, who sees a banner, whether it can be dismissed and whether the response header is sent:
+- **FR-013**: The system MUST decide, from the state, the failure reason and the release mode only, who sees a banner, whether it can be dismissed and whether the response header is sent:
 
   | State | First licensing release | Second licensing release | Header (second release only) |
   | --- | --- | --- | --- |
   | Not required, valid | No banner | No banner | No |
   | Expiring | Super-admins, dismissible | Super-admins, dismissible | Yes |
   | Unlicensed, invalid, not yet valid, expired | Super-admins, dismissible | Every signed-in user, not dismissible | Yes |
+  | Invalid because of an internal error (checked first) | Super-admins, dismissible | Super-admins, dismissible | No |
 
 - **FR-014**: In the first licensing release, no response carries the license status header, whatever the state.
 

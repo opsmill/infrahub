@@ -95,7 +95,7 @@ LICENSE_OBJECT_CASES: list[LicenseObjectCase] = [
             "days_since_expiry": None,
             "notice_mode": "quiet",
             "enforcing_release": None,
-            "banner": {"audience": "none", "dismissible": False},
+            "banner": {"audience": "none", "dismissible": False, "shown_to_all_users_when_enforced": False},
         },
     ),
     LicenseObjectCase(
@@ -111,7 +111,21 @@ LICENSE_OBJECT_CASES: list[LicenseObjectCase] = [
             "days_since_expiry": None,
             "notice_mode": "enforce",
             "enforcing_release": None,
-            "banner": {"audience": "all_users", "dismissible": False},
+            "banner": {"audience": "all_users", "dismissible": False, "shown_to_all_users_when_enforced": False},
+        },
+    ),
+    LicenseObjectCase(
+        name="unlicensed_in_quiet_mode",
+        service=RecordingLicenseService(status=LicenseStatus(state=LicenseState.UNLICENSED), enforcing_release="1.13"),
+        expected={
+            "state": "unlicensed",
+            "reason": None,
+            **NO_LICENSE_DETAILS,
+            "days_remaining": None,
+            "days_since_expiry": None,
+            "notice_mode": "quiet",
+            "enforcing_release": "1.13",
+            "banner": {"audience": "super_admins", "dismissible": True, "shown_to_all_users_when_enforced": True},
         },
     ),
     LicenseObjectCase(
@@ -128,7 +142,7 @@ LICENSE_OBJECT_CASES: list[LicenseObjectCase] = [
             "days_since_expiry": None,
             "notice_mode": "quiet",
             "enforcing_release": "1.13",
-            "banner": {"audience": "super_admins", "dismissible": True},
+            "banner": {"audience": "super_admins", "dismissible": True, "shown_to_all_users_when_enforced": True},
         },
     ),
     LicenseObjectCase(
@@ -144,7 +158,23 @@ LICENSE_OBJECT_CASES: list[LicenseObjectCase] = [
             "days_since_expiry": None,
             "notice_mode": "quiet",
             "enforcing_release": None,
-            "banner": {"audience": "super_admins", "dismissible": True},
+            "banner": {"audience": "super_admins", "dismissible": True, "shown_to_all_users_when_enforced": False},
+        },
+    ),
+    LicenseObjectCase(
+        name="expired_in_quiet_mode",
+        service=RecordingLicenseService(
+            status=LicenseStatus(state=LicenseState.EXPIRED, license=COMMERCIAL, days_since_expiry=4)
+        ),
+        expected={
+            "state": "expired",
+            "reason": None,
+            **COMMERCIAL_DETAILS,
+            "days_remaining": None,
+            "days_since_expiry": 4,
+            "notice_mode": "quiet",
+            "enforcing_release": None,
+            "banner": {"audience": "super_admins", "dismissible": True, "shown_to_all_users_when_enforced": True},
         },
     ),
     LicenseObjectCase(
@@ -162,7 +192,7 @@ LICENSE_OBJECT_CASES: list[LicenseObjectCase] = [
             "days_since_expiry": 4,
             "notice_mode": "enforce",
             "enforcing_release": "1.13",
-            "banner": {"audience": "all_users", "dismissible": False},
+            "banner": {"audience": "all_users", "dismissible": False, "shown_to_all_users_when_enforced": False},
         },
     ),
     LicenseObjectCase(
@@ -186,7 +216,7 @@ LICENSE_OBJECT_CASES: list[LicenseObjectCase] = [
             "days_since_expiry": None,
             "notice_mode": "enforce",
             "enforcing_release": "1.13",
-            "banner": {"audience": "none", "dismissible": False},
+            "banner": {"audience": "none", "dismissible": False, "shown_to_all_users_when_enforced": False},
         },
     ),
     LicenseObjectCase(
@@ -200,7 +230,21 @@ LICENSE_OBJECT_CASES: list[LicenseObjectCase] = [
             "days_since_expiry": None,
             "notice_mode": "quiet",
             "enforcing_release": None,
-            "banner": {"audience": "super_admins", "dismissible": True},
+            "banner": {"audience": "super_admins", "dismissible": True, "shown_to_all_users_when_enforced": False},
+        },
+    ),
+    LicenseObjectCase(
+        name="failing_service_in_enforce_mode_stays_with_super_admins",
+        service=FailingLicenseService(notice_mode=NoticeMode.ENFORCE, enforcing_release="1.13"),
+        expected={
+            "state": "invalid",
+            "reason": "internal_error",
+            **NO_LICENSE_DETAILS,
+            "days_remaining": None,
+            "days_since_expiry": None,
+            "notice_mode": "enforce",
+            "enforcing_release": "1.13",
+            "banner": {"audience": "super_admins", "dismissible": True, "shown_to_all_users_when_enforced": False},
         },
     ),
 ]
@@ -238,7 +282,7 @@ INTERNAL_ERROR_OBJECT: dict[str, Any] = {
     "days_since_expiry": None,
     "notice_mode": "quiet",
     "enforcing_release": None,
-    "banner": {"audience": "super_admins", "dismissible": True},
+    "banner": {"audience": "super_admins", "dismissible": True, "shown_to_all_users_when_enforced": False},
 }
 
 
