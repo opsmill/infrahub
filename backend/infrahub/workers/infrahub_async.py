@@ -57,6 +57,9 @@ DEFAULT_TASK_LOGGERS = ["infrahub.tasks"]
 # Prefect 3.8.6 fixes that pool at 16 connections, with no setting to change it:
 # https://github.com/PrefectHQ/prefect/blob/3.8.6/src/prefect/client/orchestration/__init__.py#L388-L399
 SUBMISSION_WINDOW_CAPACITY = 8
+# Route of the health-check server `prefect worker start --with-healthcheck` runs in this process.
+# FastAPI traces it on its own once a global tracer provider is set, so its spans are dropped.
+PREFECT_WORKER_HEALTHCHECK_PATH = "/health"
 
 
 def build_worker_client_config(log: Any | None = None) -> Config:
@@ -141,6 +144,7 @@ class InfrahubWorkerAsync(BaseWorker):
                 insecure=config.SETTINGS.trace.insecure,
                 tls_insecure=config.SETTINGS.trace.tls_insecure,
                 tls_ca_bundle=config.SETTINGS.trace.tls_ca_bundle,
+                excluded_server_paths=frozenset({PREFECT_WORKER_HEALTHCHECK_PATH}),
             )
 
         # Start metric endpoint
