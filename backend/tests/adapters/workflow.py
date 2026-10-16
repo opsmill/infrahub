@@ -52,7 +52,7 @@ class WorkflowRecorder(InfrahubWorkflow):
         tags: list[str] | None = None,
         priority: WorkflowPriority | None = None,
     ) -> Any:
-        self.calls.append({"kind": "execute", "workflow": workflow, "parameters": parameters or {}})
+        self.calls.append({"kind": "execute", "workflow": workflow, "parameters": parameters or {}, "context": context})
         if workflow.name in self.execute_results:
             return self.execute_results[workflow.name]
         if expected_return is ValidatorConclusion:
@@ -67,7 +67,15 @@ class WorkflowRecorder(InfrahubWorkflow):
         tags: list[str] | None = None,
         priority: WorkflowPriority | None = None,
     ) -> WorkflowInfo:
-        self.calls.append({"kind": "submit", "workflow": workflow, "parameters": parameters or {}, "tags": tags or []})
+        self.calls.append(
+            {
+                "kind": "submit",
+                "workflow": workflow,
+                "parameters": parameters or {},
+                "tags": tags or [],
+                "context": context,
+            }
+        )
         return WorkflowInfo(id=uuid.uuid4())
 
     def get_execute_calls_for(self, workflow: WorkflowDefinition) -> list[dict[str, Any]]:
