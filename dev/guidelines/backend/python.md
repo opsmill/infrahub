@@ -93,9 +93,8 @@ deliberate, documented exception: `pyproject.toml`'s `"tasks/**.py"` per-file-ig
 imports (stdlib, `invoke`, sibling `.shared`/`.utils` modules) at the top; defer the rest into the
 function that needs them.
 
-The exception covers a thin task wrapper, not logic that happens to live in `tasks/`. A task body
-needing a dozen deferred imports is telling you the logic belongs in a module of its own, which the
-task then imports once — put it there and the deferred imports mostly disappear with it.
+The exception covers a thin task wrapper only. A task body needing a dozen deferred imports holds
+logic that belongs in a module of its own, which the task imports once.
 
 Import a singleton from the module that defines it, not from a package `__init__.py` that re-exports
 it under the same name as its submodule. `from infrahub.core import registry` names two things — the
@@ -112,8 +111,10 @@ from infrahub.core import registry
 from infrahub.core.registry import registry
 ```
 
-Fix the import where the checker flags it rather than sweeping existing call sites, and prefer not
-importing the registry into a new component at all — see
+Never write `from x import Y as Y` to keep an import that nothing uses: the redundant alias is the
+re-export marker that stops the linter reporting it as dead. Delete the import when its last user goes.
+
+Fix the import where the checker flags it, not across existing call sites, and avoid importing the registry into a new component — see
 [Accessing schema](../../knowledge/backend/query-pattern.md#accessing-schema-inject-schemamanager-else-dbschema-never-registry).
 
 ## Data Structures
@@ -230,8 +231,9 @@ Prefer `dict.get(key, default)` over an `in` check or `try/except KeyError` for 
 key (without a second argument `get()` returns `None`); use `setdefault()` when the default is a
 mutable object you build up.
 
-Zero is a value, not an absence. Test an optional numeric with `is not None` — a truthiness check
-silently treats a legitimate `0` as unset:
+Zero and empty values are values, not absence. Test an optional with `is None` / `is not None` — a
+truthiness check treats a legitimate `0`, `""` or `[]` as unset, so an empty list in stored data is
+accepted as "not provided" instead of being rejected:
 
 ```python
 # ❌ Bad - offset=0 is dropped, so the first page renders a different query text
@@ -243,8 +245,8 @@ if offset is not None:
     query += " SKIP $offset"
 ```
 
-When zero deliberately means "no bound" in the caller contract, keep that reading — and pin it with
-a test, so the next pass at the line fails fast instead of shipping the inversion.
+When zero or empty deliberately means "no bound" in the caller contract, keep that reading and pin it
+with a test.
 
 ## Configuration Settings
 

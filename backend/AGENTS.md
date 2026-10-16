@@ -96,7 +96,7 @@ already exists.
 ### Never Do
 
 - Unparameterized Cypher queries
-- Block event loop with sync I/O
+- Block event loop with sync I/O (file or `/proc` reads, `psutil` calls) — offload with `asyncio.to_thread`
 - Edit files in `infrahub/core/schema/generated/`
 
 ## See Also
