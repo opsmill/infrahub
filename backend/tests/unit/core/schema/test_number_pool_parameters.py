@@ -5,7 +5,9 @@ from typing import Any
 import pydantic
 import pytest
 
+from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters, NumberPoolRangeParameters
+from infrahub.core.schema.schema_branch import SchemaBranch
 
 
 @dataclass
@@ -226,7 +228,7 @@ DUMPED_RANGE_FIELDS_TEST_CASES: list[DumpedRangeFieldsTestCase] = [
     DumpedRangeFieldsTestCase(
         name="shorthand_with_an_empty_list",
         parameters={"start_range": 40, "ranges": []},
-        expected={"start_range": 40},
+        expected={"start_range": 40, "end_range": sys.maxsize},
     ),
     DumpedRangeFieldsTestCase(name="zero_ranges", parameters={"ranges": []}, expected={"ranges": []}),
     DumpedRangeFieldsTestCase(
@@ -254,3 +256,46 @@ def test_update_without_any_range_spelling_keeps_the_current_declaration() -> No
     assert _declared(shorthand) == (40, 60, [])
     assert _declared(explicit) == (None, None, [(45, 55, None)])
     assert shorthand.number_pool_id == explicit.number_pool_id == "pool-id"
+
+
+@dataclass
+class SingleBoundTestCase:
+    name: str
+    parameters: dict[str, int]
+    expected: tuple[int, int]
+
+
+SINGLE_BOUND_TEST_CASES: list[SingleBoundTestCase] = [
+    SingleBoundTestCase(name="start_only", parameters={"start_range": 40}, expected=(40, sys.maxsize)),
+    SingleBoundTestCase(name="end_only", parameters={"end_range": 60}, expected=(1, 60)),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in SINGLE_BOUND_TEST_CASES])
+def test_a_single_bound_declares_the_other_at_its_former_default(test_case: SingleBoundTestCase) -> None:
+    parameters = NumberPoolParameters.model_validate(test_case.parameters)
+
+    assert (parameters.start_range, parameters.end_range) == test_case.expected
+
+
+def test_a_single_bound_reload_of_a_declaration_stored_with_both_bounds_has_no_diff() -> None:
+    def schema(parameters: dict[str, int]) -> SchemaRoot:
+        return SchemaRoot(
+            version="1.0",
+            nodes=[
+                {
+                    "name": "Service",
+                    "namespace": "Test",
+                    "attributes": [
+                        {"name": "identifier", "kind": "NumberPool", "read_only": True, "parameters": parameters}
+                    ],
+                }
+            ],
+        )
+
+    stored = SchemaBranch(cache={}, name="main")
+    stored.load_schema(schema=schema({"start_range": 100, "end_range": sys.maxsize}))
+    reloaded = stored.duplicate()
+    reloaded.load_schema(schema=schema({"start_range": 100}))
+
+    assert stored.diff(other=reloaded).model_dump(exclude_defaults=True) == {}
