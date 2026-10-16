@@ -20,7 +20,7 @@ This principle — that the schema controls the default user experience, not jus
 
 ## Visibility: the `display` property
 
-The `display` property on attributes and relationships controls whether a field appears in the main view or is moved to a secondary section.
+The `display` property on attributes and relationships controls whether a field is shown by default, or hidden from the list view and shown in the detail view only after you select **Extra**.
 
 <ReferenceLink title="Attribute reference" url="../reference/schema/attribute#display" openInNewTab />
 <ReferenceLink title="Relationship reference" url="../reference/schema/relationship#display" openInNewTab />
@@ -29,24 +29,43 @@ The `display` property on attributes and relationships controls whether a field 
 
 | Value | Meaning |
 | --- | --- |
-| `default` | The field appears in all views. This is the default when `display` is not specified. |
-| `extra` | The field is hidden from list and detail views by default. It is accessible via an **Extras** toggle in the detail view and still visible in create and edit forms. |
+| `default` | The field appears in the detail view and in forms, and in the list view when the list view has a column for it. This is the default when `display` is not specified. |
+| `extra` | The field is hidden from list and detail views by default. It is accessible via an **Extra** toggle in the detail view and still visible in create and edit forms. |
 
 ### Behavior by view
 
 | View | `display: default` | `display: extra` |
 | --- | --- | --- |
-| List view | Visible | Hidden |
-| Detail view | Visible | Accessible via Extras toggle |
+| List view | Visible when the list view has a column for the field | Hidden |
+| Detail view | Visible | Accessible via Extra toggle |
 | Create / edit forms | Visible | Visible |
 | API / GraphQL | Accessible | Accessible |
+
+The list view has a column only for some kinds of fields, whatever their `display` value:
+
+- Attributes, except some kinds. For example, attributes of kind `TextArea`, `JSON`, `List`, `Any`, `Password` or `HashedPassword` have no column.
+- Relationships of kind `Attribute` or `Parent`, and the `parent` relationship of a hierarchical node.
+
+Relationships of kind `Generic`, which is the default kind, have no list view column. They appear in the detail view.
+
+:::info Hiding a field does not restrict access
+
+`display: extra` changes only the default list and detail views. Users can still:
+
+- View the field in the detail view after they select **Extra**.
+- Set its value in the create and edit forms.
+- Read and write it through the API and GraphQL.
+
+To control who can view or change data, use [permissions and roles](../deploy-manage/user-management/permissions-roles/overview). An object permission applies to a kind of node, such as `DcimDevice`, not to an individual attribute or relationship.
+
+:::
 
 ### Example
 
 ```yaml
 nodes:
   - name: Device
-    namespace: Infra
+    namespace: Dcim
     attributes:
       - name: name
         kind: Text
@@ -67,19 +86,45 @@ nodes:
 
 `internal_tracking_id` and `audit_source` are stored and fully accessible via the API but are not shown in the list or detail view by default.
 
+With this schema, the list view of devices has **Name** and **Description** columns, but no **Internal Tracking Id** column. **Primary Site** has no column either, because it is a relationship of kind `Generic`:
+
+![Device list view with Name and Description columns and no Internal Tracking Id column](../media/topics/field-visibility/list-view.png)
+
+The **Details** card of a device shows **Name**, **Description** and **Primary Site**. The **Extra** toggle appears in the card header because the schema has fields set to `display: extra`:
+
+![Details card of a device with Name, Description and Primary Site, and the Extra toggle in the card header](../media/topics/field-visibility/details-card.png)
+
+Select **Extra** to show **Internal Tracking Id** and **Audit Source**. An eye icon at the end of a row marks each field set to `display: extra`:
+
+![Details card after selecting Extra, with Internal Tracking Id and Audit Source added and an eye icon at the end of their rows](../media/topics/field-visibility/details-card-extra.png)
+
 ### Cardinality-many relationships
 
-Relationships with `cardinality: many` and `kind: Component` or `kind: Generic` are rendered in dedicated tabs in the detail view. The `display` property has no effect on these relationships — their tabs are always shown regardless of the `display` value.
+A relationship with `cardinality: many` and kind `Generic`, `Component` or `Hierarchy` has its own tab in the detail view, with the number of peers next to the tab name. It has no row in the **Details** card. The `display` property has no effect on these relationships: their tabs are always shown, whatever the `display` value.
 
-### Key design principle
+For example, add an `interfaces` relationship to the device from the example above. The detail view of a device has an **Interfaces** tab, even with `display: extra`:
 
-The `display` property is intentionally a UI hint rather than an access control mechanism. It does not prevent users from reading or writing `extra` fields — it only removes them from default views. Data integrity and API contracts are unaffected.
+```yaml
+nodes:
+  - name: Device
+    namespace: Dcim
+    relationships:
+      - name: interfaces
+        peer: DcimInterface
+        kind: Component
+        cardinality: many
+        display: extra          # no effect: the Interfaces tab is always shown
+```
 
-For controlling who can read or write a field, use [permissions and roles](../deploy-manage/user-management/permissions-roles/overview) instead.
+![Detail view of a device with an Interfaces tab that shows 4 peers, and a Details card without an Interfaces row](../media/topics/field-visibility/detail-view-tabs.png)
+
+The `children` relationship of a hierarchical node is a relationship of kind `Hierarchy` with `cardinality: many`, so it also has its own tab.
+
+A relationship of kind `Attribute` with `cardinality: many` has no tab. It appears as a row in the **Details** card, and `display: extra` hides it like any other field.
 
 ## Interaction with other schema properties
 
-- **`order_weight`**: Controls the position of fields within a view. The order weight still applies within the Extras section for `display: extra` fields.
+- **`order_weight`**: Controls the position of fields within a view. Fields set to `display: extra` keep their order weight: after you select **Extra**, they appear among the other fields in order weight order, not in a separate section.
 - **`read_only`**: Marks a field as non-editable. Can be combined with `display: extra` for fields that should rarely be visible and never modified by users.
 - **`optional`**: Determines whether a value is required. Setting `display: extra` on a required field means users must still provide a value in forms, even though the field is hidden in other views.
 
