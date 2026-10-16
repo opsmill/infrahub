@@ -51,7 +51,7 @@ if TYPE_CHECKING:
     from prefect.client.schemas.responses import WorkerFlowRunResponse
 
 WORKER_QUERY_SECONDS = "2"
-WORKER_DEFAULT_RESULT_STORAGE_BLOCK = f"redisstoragecontainer/{TASK_RESULT_STORAGE_NAME}"
+WORKER_DEFAULT_RESULT_STORAGE_BLOCK = f"redis-database/{TASK_RESULT_STORAGE_NAME}"
 DEFAULT_TASK_LOGGERS = ["infrahub.tasks"]
 # Half of the Prefect client's connection pool, so that polls and state proposals never queue behind submissions.
 # Prefect 3.8.6 fixes that pool at 16 connections, with no setting to change it:
