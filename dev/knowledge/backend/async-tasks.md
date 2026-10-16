@@ -204,6 +204,18 @@ Scoping the purge to terminal states, and running it as one reaction to the dele
 4. **Execution**: Workers pick up and execute flows
 5. **Tracking**: State and logs aggregated in Prefect
 
+### Dispatch reuses the deployment id
+
+The worker adapter (`backend/infrahub/services/adapters/workflow/worker.py::WorkflowWorkerExecution`)
+looks a deployment up by name once per process and creates every later run from the cached id. Task-manager
+setup upserts deployments in place, so the id survives a re-save; it changes only when the deployment is
+deleted and saved again, and the create then fails with a 404, upon which the adapter looks the name up
+again and retries once.
+
+A dispatch made inside a flow or task run goes through Prefect's `run_deployment` instead, which reads the
+deployment on every call: it links the new run as a subflow of its caller, and Prefect cancels such
+subflows when their parent is cancelled.
+
 ## Concurrency Control
 
 Workflows can specify concurrency limits:
