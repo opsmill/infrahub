@@ -46,6 +46,7 @@ import pytest
 import yaml
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.spec.menu import MenuFile
+from infrahub_sdk.testing.repository import GitRepo
 from infrahub_testcontainers import __version__ as infrahub_testcontainers_version
 from infrahub_testcontainers.container import PROJECT_ENV_VARIABLES, InfrahubDockerCompose
 from playwright.async_api import expect
@@ -383,7 +384,6 @@ async def demo_edge_repo(
         return
 
     from infrahub_sdk.graphql import Mutation
-    from infrahub_sdk.testing.repository import GitRepo
 
     remote_dir = infrahub_compose_dir / PROJECT_ENV_VARIABLES["INFRAHUB_TESTING_LOCAL_REMOTE_GIT_DIRECTORY"]
     # GitRepo.__post_init__ runs a synchronous copy + git init/commit of the fixture repo.
@@ -405,6 +405,23 @@ async def demo_edge_repo(
             raise RuntimeError("The demo-edge repository import errored")
         await asyncio.sleep(5)
     raise RuntimeError("The demo-edge repository did not reach the in-sync state")
+
+
+@pytest.fixture(scope="session")
+def demo_edge_copy_location(infrahub_compose_dir: Path, infrahub_provisioned_externally: bool) -> str:
+    """Return the location of an unregistered copy of the `demo-edge` fixture repository.
+
+    Specs that register a repository through the UI use it so they do not depend on reaching
+    github.com. A repository location must be unique, so the copy cannot reuse the `demo-edge`
+    remote. An externally provisioned Infrahub does not mount the compose `repos` directory, so
+    it gets the public GitHub repository instead.
+    """
+    if infrahub_provisioned_externally:
+        return "https://github.com/opsmill/infrahub-demo-edge.git"
+
+    remote_dir = infrahub_compose_dir / PROJECT_ENV_VARIABLES["INFRAHUB_TESTING_LOCAL_REMOTE_GIT_DIRECTORY"]
+    repo = GitRepo(name="demo-edge-copy", src_directory=DEMO_EDGE_REPO_FIXTURE, dst_directory=remote_dir)
+    return f"{repo.remote_directory_name}/{repo.name}"
 
 
 @pytest.fixture
