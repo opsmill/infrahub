@@ -108,9 +108,9 @@ function RepositoryPushMenuItems({ repositoryId, onAbandonPush }: RepositoryPush
   const { data: state, isError } = useGetRepositoryPushState({ repositoryId });
   const { canActOnPendingPushes } = usePendingPushPermissions();
   // Until the state loads, nothing is known to be pending.
-  const { canRetry, canAbandon } = getPushActions(
-    isError ? "unreadable" : (state?.status ?? "none")
-  );
+  const pushActions = getPushActions(state?.status ?? "none");
+  // The backend refuses a retry when nothing is pending, so an unreadable state still allows one.
+  const canRetry = isError || pushActions.canRetry;
 
   const { mutate: retryPush } = useRetryPushMutation({
     onSuccess: async (result) => {
@@ -138,7 +138,7 @@ function RepositoryPushMenuItems({ repositoryId, onAbandonPush }: RepositoryPush
       </MenuItem>
 
       <MenuItem
-        isDisabled={!canActOnPendingPushes || !canAbandon}
+        isDisabled={!canActOnPendingPushes || !pushActions.canAbandon}
         onAction={() => state && onAbandonPush(state)}
       >
         <Icon icon="mdi:upload-off" />
