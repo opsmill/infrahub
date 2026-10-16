@@ -91,6 +91,10 @@ Some mutations need explicit status checks beyond the middleware for richer erro
 
 Exception: Branch delete is handled by the middleware allowlist, not by the permission system, so the permission report does not auto-deny delete on Branch objects.
 
+### 5. Derived-Value Recompute Writes
+
+`backend/infrahub/core/recompute/merge_gate.py` — computed attributes, display labels and human-friendly ids are written from task workers, outside the GraphQL middleware. `MergeSourceWriteGate` holds such a write while its branch is the source of an in-progress merge and drops it once the branch has merged; it leaves the default branch unheld. See [merge-recompute.md](merge-recompute.md) for why.
+
 ## Status Transition in merge_branch()
 
 `backend/infrahub/core/branch/tasks.py`
