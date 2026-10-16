@@ -289,7 +289,7 @@ SC-002, SC-007.
       before the commit is recorded. The release and the clear run after the lock is released, under
       the lease the settle returned. A held-only run takes its lease through `lease_owed_release`.
       When the release raises, the service calls `expire_lease` on its lease, then handles the
-      failure with the stage `release` (R10, rule 4).
+      failure with the stage `release` (R10, rule 4), and never sets `action-required` for it.
 - [X] T033 [US1] Write `backend/tests/unit/git/writeback/test_service.py`: nothing pending; an
       `entry` that step 0 enqueues before the snapshot, and an enqueue that raises, which is
       retryable on a non-final attempt and, on the final one, returns `failed` with an error-level
@@ -350,7 +350,7 @@ SC-002, SC-007.
 - [X] T039 [US1] Change `InfrahubRepository.collect_pending_imports` in
       `backend/infrahub/git/repository.py`: in the active loop, skip the default branch, and every new
       or updated remote branch that a pending entry names, while the state is not `none`. Leave
-      `_collect_staging_imports` unchanged. Pass the state port in from the sync flow in
+      the staging path of the same method unchanged. Pass the state port in from the sync flow in
       `backend/infrahub/git/tasks.py` and `backend/infrahub/git/sync.py`.
 - [X] T040 [US1] Change `bootstrap_local_repository` in `backend/infrahub/git/tasks.py`: skip the seed
       import of the default branch while the state is not `none`, and log it.
@@ -434,14 +434,21 @@ SC-002, SC-007.
       the default branch, each permission missing, nothing pending refused; a running attempt, a
       waiting retry, a stale `pending` and `action-required` all allowed.
 - [X] T055 [US2] Add `test_one_retry_delivers_both` to `backend/tests/integration/git/test_git_live_remote.py`.
-- [ ] T056 [US2] Add `test_remote_advanced_is_imported` to the same module: a direct push to the remote
+- [X] T056 [US2] Add `test_remote_advanced_is_imported` to the same module: a direct push to the remote
       during the outage; the sync skips the default branch; the retry records, then imports; an
-      artifact definition updated by the import renders against the delivered commit.
-      Partial: written without the sync step, which needs T039; add it when this branch meets T039.
+      artifact definition updated by the import renders against the delivered commit. A query that
+      only the remote change adds exists after the import, and not after the sync.
 - [X] T057 [US2] Add `test_observed_after_record_failure` to the same module, reusing
       `block_commit_worktree`: no second push, the queue clears by observation.
 - [X] T058 [US2] Add `test_concurrent_attempts` to the same module: a first attempt and a manual retry run
       one after the other, and the second does nothing.
+- [X] T111 [US2] Add `test_the_merge_after_a_fixed_cause_delivers_the_whole_queue` to the same module
+      (US2 #7): the remote refuses a merge, the rejection is lifted, and the attempt of the next
+      merge delivers both merges in order, with no retry.
+- [X] T112 [US2] Add `test_a_merge_with_files_is_refused_until_a_retry_delivers_onto_the_moved_remote_trunk`
+      to the same module: while a push waits and the remote default branch moved, the merge check
+      refuses the merge of a branch that changes a file of the repository, the branch stays open, and
+      the same merge goes through after the retry delivers (edge case of the merge check).
 - [ ] T059 [P] [US2] Write the retry mutation in the three-file pattern:
       `frontend/app/src/entities/repository/api/retry-delivery-from-api.ts`,
       `frontend/app/src/entities/repository/domain/use-cases/retry-delivery.ts`,
@@ -667,8 +674,14 @@ and is not re-imported; retry; the branch is gone.
       `delete_branch_after_merge_reset_config` and `delete_git_branch_after_merge_reset_config`:
       kept, not re-imported by the sync as new or as updated, deleted after the retry; and, after an
       abandonment instead, kept on the remote and imported again as a new Infrahub branch.
+      Partial: `test_a_remote_branch_kept_while_pending_is_not_imported_and_is_deleted_after_the_delivery`
+      covers the delivery part, on a worker that does not hold the branch, so the sync reads it as
+      new. On the worker that ran the merge, the sync ignores an updated branch with no Infrahub
+      branch anyway. The abandonment part is not written yet.
 - [X] T098 [P] [US6] Add a case to `backend/tests/component/git/writeback/test_enqueue.py`: a merge of
-      another branch is not blocked while repository X has a pending delivery (FR-010).
+      another branch is not blocked while repository X has a pending delivery (FR-010). The case
+      calls the dispatcher, so the merge check does not run: T112 covers the refusal of the merge
+      check when the remote default branch moved.
 
 ---
 
