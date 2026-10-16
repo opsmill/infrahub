@@ -125,6 +125,12 @@ Each entry says *when* to load it — open the doc before working in that area.
 - `dev/knowledge/backend/api-backpressure.md` - Priority-aware load shedding (admission middleware, CoDel, slot pool) and the database-stress signal; read before touching the admission layer or request prioritization
 - `dev/knowledge/backend/authentication.md` - Authentication flow, SSO group resolution, auto-create groups; read when touching login, SSO, or LDAP
 - `dev/knowledge/backend/branch-status.md` - Branch status enforcement (`BranchStatusChecker`, middleware allowlists, permission integration); read when touching branch lifecycle or write-protection
+- `dev/knowledge/backend/merge-recompute.md` - One coalesced recompute of Jinja2 computed attributes, display labels and HFIDs for a whole merge or rebase; read before changing what a merge or rebase recomputes
+- `dev/knowledge/backend/selective-merge-regeneration.md` - Post-merge generator and artifact regeneration narrowed to what the merge affected (`selective_execution_after_merge`); read before changing post-merge regeneration
+- `dev/knowledge/backend/graphql-execution.md` - Sync vs async field completion in graphql-core; read before adding a resolver hook or GraphQL middleware on the hot path
+- `dev/knowledge/backend/preferences.md` - User and global preferences (internal `StandardNode` storage, dedicated GraphQL API); read before adding a preference or changing how preferences are stored or read
+- `dev/knowledge/backend/tls.md` - How outbound TLS chooses its certificate authorities; read before adding a component that opens outbound connections or touching a `tls_*` setting
+- `dev/knowledge/backend/package-init-files.md` - Keep `__init__.py` free of logic; read before adding to an `__init__.py` or creating a package
 - `dev/knowledge/backend/merge-failure-recovery.md` - Failed-merge detection and range rollback, and the invariants that make a blind range revert correct; read before changing merge locking, write scoping, timestamping, or vertex metadata handling
 - `dev/knowledge/backend/events.md` - Events system; read when adding or changing an event
 - `dev/knowledge/backend/async-tasks.md` - Prefect workflows, priority lanes, failure/best-effort handling; read before creating or changing a workflow

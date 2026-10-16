@@ -65,6 +65,14 @@ The full-message-over-fragment preference applies to any exception assertion, no
 
 Exact-match is not only for error messages. Assert the exact collection (full set/dict equality, not `in`/`issubset`), never mere non-emptiness (`!= frozenset()`, `len() > 0`), and a positive count where the number matters (so a run that silently measures zero fails). Never `or` two acceptable outcomes in one assertion — if you cannot say which one the system produces, you do not yet know the behavior under test. A denial test must also reload the target and assert nothing changed. Pin literal expected values — never compute the expectation with the same serializer/library the implementation calls. Full guidance in `dev/guidelines/backend/testing.md` §"Assert exact expectations".
 
+- A persistence check reloads from the database, not from the registry or cache the code wrote. A removal check reads on the right branch and first shows the data resolved before the operation.
+- A "does not raise" test also asserts a side effect, and a setup produces the state under test (a "missing row" test does not create the row).
+- When two code paths reach the same result ("lookup skipped" and "lookup found nothing"), also assert a signal that tells them apart.
+- A test that writes to the graph (migration, merge, delete, rebase) checks integrity with `verify_graph(db=db)`, or `collect_graph_violations` for an expected-damage state, not individual checks.
+- Share `Recording*`/`Failing*` doubles in `tests/adapters/` or a `helpers.py`; do not redefine them in each file.
+
+Not violations: mock usage on unchanged lines (about 88 legacy files use it); a plain tuple `parametrize` for two or three simple scenarios; `match=` on a substring when the message contains an id, path or count; tests of Pydantic bounds that encode a named domain invariant or the shipped defaults.
+
 ## Don't test the framework
 
 Skip tests that only exercise library behavior: plain `Enum` value/round-trip checks, Pydantic field constraints (`ge`, `min_length`, …), `SettingsConfigDict`/env plumbing, or "a model has field X". Rule of thumb: if the test would still pass after deleting our implementation and reinstalling the library, it belongs to the library. See `dev/guidelines/backend/testing.md` §"What not to test".
@@ -80,18 +88,6 @@ Trace the code's callers to the test that asserts their output; a grep for the c
 ## Wiring tests parse source, never instrument it
 
 Never add a marker, attribute, or `type: ignore` to production code so a test can observe it. To assert wiring or a convention (the right decorator applied, with the right arguments), parse the module with `ast` + `inspect.getsource` — see `backend/tests/unit/workflows/test_flow_session_convention.py`.
-
-## Don't leak process-global state
-
-Every test in an xdist worker shares one interpreter. Change `logging` levels/handlers/filters, `structlog` config, module-level registries/singletons, class attributes (your own or a third-party library's), `sys.path`/`sys.modules` or env vars only through a save/restore fixture (change it, `yield`, restore it), or `monkeypatch` where it applies. Never call an application startup routine such as `infrahub.log.configure_logging` from a test — it owns the whole process and undoes nothing, so it reconfigures every later test in the worker. Install only the piece under test and remove it after the `yield`. Never call `dependency_provider.scope` around code that may raise: it skips its cleanup on an exception, so a `pytest.raises` around the call leaks the double to every later test on the worker. Use `backend/tests/helpers/dependency_override.py::override_dependency`, or `backend/tests/helpers/workflow_override.py::override_workflow` for a workflow double; both restore in a `finally`. See `dev/guidelines/backend/testing.md` §"Leave process-global state as you found it".
-
-## One database session per concurrent path
-
-A Neo4j session carries a single connection and cannot serve two coroutines at once, and the module-scoped `db` fixture hands the same session to every test in a module. Give each racing call its own `db.start_session()`. Sharing one wedges the connection, and every later test in the module then dies on `read() called while another coroutine is already waiting for incoming data`. Flows and GraphQL open their own session, so racing those is safe; a component a test calls directly is not. Full guidance in `dev/guidelines/backend/testing.md` §"One database session per concurrent path".
-
-## Prefect task manager setup
-
-Never call `setup_task_manager()` from a test or fixture; call `tests.helpers.task_manager.setup_task_manager_once()`. The raw setup re-registers every block, pool, deployment and trigger against the worker's Prefect server with no timeout, and under CI load that hangs until pytest-timeout kills the whole class. The helper runs it once per server URL, bounded, and fails fast for that server afterwards. The only test allowed to call the raw function is the one that tests the setup itself. Mechanism in `dev/knowledge/backend/testing.md` §"Prefect Testing Patterns".
 
 ## A regression guard must be shown to bite
 

@@ -19,5 +19,6 @@ Applies when creating a new backend component or making significant changes to a
 - Dispatch across an open set of implementations through a `supports()` predicate and an injected list, not `isinstance` branching; a closed set takes an exhaustive `match`.
 - A component that is hard to test without a mock needs splitting or its dependencies injected, since tests use adapters (`dev/guidelines/backend/testing.md`).
 - Leave nearby code that violates this alone in an unrelated change, and raise it separately.
+- Not violations: legacy `StandardNode`/`Branch` persistence, an optional collaborator added to existing code to avoid a large call-site change, and a missing interface when there is only one implementation and no out-of-domain dependency to keep out.
 
 Full reference: `dev/guidelines/backend/component-design.md`

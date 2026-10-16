@@ -54,6 +54,7 @@ cd frontend/app && pnpm test              # vitest (browser mode)
 - `dev/knowledge/frontend/branches.md` - Read before writing code that depends on which branch is current, or on the default branch — the default branch name is deployment-configurable
 - `dev/knowledge/frontend/date-rendering.md` - Preference-aware dates (`DateDisplay`, `useFormatDate`) — load before rendering a user-facing date or time
 - `dev/knowledge/frontend/object-file-entity.md` - The `object-file` entity as a worked example of the api/domain/ui layers — load before fetching or displaying a stored file, or when copying an entity's layer boundaries
+- `dev/knowledge/frontend/request-priority.md` - The `X-Priority` header the frontend sends so the backend serves interactive requests first — load before adding a request, polling or background fetch
 
 ### Guides (How to do X)
 
