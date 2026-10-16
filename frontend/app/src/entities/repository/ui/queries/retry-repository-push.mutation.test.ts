@@ -4,14 +4,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook } from "vitest-browser-react";
 
 import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
-import { retryPush } from "@/entities/repository/domain/use-cases/retry-push";
+import { retryRepositoryPush } from "@/entities/repository/domain/use-cases/retry-repository-push";
 import { repositoriesQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
-import { useRetryPushMutation } from "@/entities/repository/ui/queries/retry-push.mutation";
+import { useRetryRepositoryPushMutation } from "@/entities/repository/ui/queries/retry-repository-push.mutation";
 
 import { generateBranch } from "../../../../../tests/fake/branch";
 
 vi.mock("@/entities/branches/ui/queries/get-branches.query");
-vi.mock("@/entities/repository/domain/use-cases/retry-push");
+vi.mock("@/entities/repository/domain/use-cases/retry-repository-push");
 
 const PUSH_STATE_KEY = repositoriesQueryKeys.pushState({ repositoryId: "repo-1" });
 const ACTIVITY_KEY = repositoriesQueryKeys.activity({ repositoryId: "repo-1" });
@@ -24,7 +24,9 @@ const renderMutation = async (onSettled = vi.fn()) => {
 
   const wrapper = ({ children }: { children: React.ReactNode }) =>
     React.createElement(QueryClientProvider, { client: queryClient }, children);
-  const { result } = await renderHook(() => useRetryPushMutation({ onSettled }), { wrapper });
+  const { result } = await renderHook(() => useRetryRepositoryPushMutation({ onSettled }), {
+    wrapper,
+  });
 
   const invalidatedKeys = () =>
     SEEDED_KEYS.filter((queryKey) => queryClient.getQueryState(queryKey)?.isInvalidated);
@@ -32,7 +34,7 @@ const renderMutation = async (onSettled = vi.fn()) => {
   return { result, invalidatedKeys };
 };
 
-describe("useRetryPushMutation", () => {
+describe("useRetryRepositoryPushMutation", () => {
   beforeEach(() => {
     vi.resetAllMocks();
 
@@ -43,7 +45,7 @@ describe("useRetryPushMutation", () => {
 
   it("reloads the push state and the activity of the repository when the request is accepted", async () => {
     // GIVEN
-    vi.mocked(retryPush).mockResolvedValue({ ok: true, taskId: "task-1" });
+    vi.mocked(retryRepositoryPush).mockResolvedValue({ ok: true, taskId: "task-1" });
     const onSettled = vi.fn();
     const { result, invalidatedKeys } = await renderMutation(onSettled);
 
@@ -57,7 +59,7 @@ describe("useRetryPushMutation", () => {
 
   it("reloads the push state and the activity of the repository when the request is refused", async () => {
     // GIVEN
-    vi.mocked(retryPush).mockRejectedValue(new Error("Nothing is pending."));
+    vi.mocked(retryRepositoryPush).mockRejectedValue(new Error("Nothing is pending."));
     const { result, invalidatedKeys } = await renderMutation();
 
     // WHEN

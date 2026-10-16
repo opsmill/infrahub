@@ -2,14 +2,14 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
 import type { RepositoryPushState } from "@/entities/repository/domain/model/repository-push-state";
-import { abandonPush } from "@/entities/repository/domain/use-cases/abandon-push";
+import { abandonRepositoryPush } from "@/entities/repository/domain/use-cases/abandon-repository-push";
 import { getRepositoryPushState } from "@/entities/repository/domain/use-cases/get-repository-push-state";
 
 import { render } from "../../../../tests/components/render";
 import { generateBranch } from "../../../../tests/fake/branch";
-import { AbandonPushModal } from "./abandon-push-modal";
+import { AbandonRepositoryPushModal } from "./abandon-repository-push-modal";
 
-vi.mock("@/entities/repository/domain/use-cases/abandon-push");
+vi.mock("@/entities/repository/domain/use-cases/abandon-repository-push");
 vi.mock("@/entities/repository/domain/use-cases/get-repository-push-state");
 vi.mock("@/entities/branches/ui/queries/get-branches.query");
 
@@ -38,7 +38,7 @@ const conflictingPush: RepositoryPushState = {
   lastAbandonedPush: null,
 };
 
-describe("AbandonPushModal", () => {
+describe("AbandonRepositoryPushModal", () => {
   const mockOnOpenChange = vi.fn();
 
   beforeEach(() => {
@@ -52,13 +52,13 @@ describe("AbandonPushModal", () => {
       ],
     } as unknown as ReturnType<typeof useGetBranches>);
 
-    vi.mocked(abandonPush).mockResolvedValue({ ok: true, taskId: "task-1" });
+    vi.mocked(abandonRepositoryPush).mockResolvedValue({ ok: true, taskId: "task-1" });
     vi.mocked(getRepositoryPushState).mockResolvedValue(conflictingPush);
   });
 
   const renderModal = async () => {
     const component = await render(
-      <AbandonPushModal repositoryId="repo-1" isOpen onOpenChange={mockOnOpenChange} />
+      <AbandonRepositoryPushModal repositoryId="repo-1" isOpen onOpenChange={mockOnOpenChange} />
     );
     await expect.element(component.getByText("feature-a", { exact: true })).toBeVisible();
     return component;
@@ -107,7 +107,7 @@ describe("AbandonPushModal", () => {
 
     // THEN
     await vi.waitFor(() =>
-      expect(abandonPush).toHaveBeenCalledWith({
+      expect(abandonRepositoryPush).toHaveBeenCalledWith({
         branchName: "primary",
         repositoryId: "repo-1",
         queueVersion: 4,
@@ -134,7 +134,7 @@ describe("AbandonPushModal", () => {
 
   test("shows the refusal message, closes and reloads the state when the pending pushes changed", async () => {
     // GIVEN
-    vi.mocked(abandonPush).mockRejectedValue(
+    vi.mocked(abandonRepositoryPush).mockRejectedValue(
       new Error(
         "The pending pushes of repository repo-a changed since version 4; reload and try again."
       )
@@ -165,6 +165,6 @@ describe("AbandonPushModal", () => {
 
     // THEN
     expect(mockOnOpenChange).toHaveBeenCalledWith(false);
-    expect(abandonPush).not.toHaveBeenCalled();
+    expect(abandonRepositoryPush).not.toHaveBeenCalled();
   });
 });

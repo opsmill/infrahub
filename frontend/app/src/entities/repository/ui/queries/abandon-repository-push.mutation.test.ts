@@ -4,14 +4,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook } from "vitest-browser-react";
 
 import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
-import { abandonPush } from "@/entities/repository/domain/use-cases/abandon-push";
-import { useAbandonPushMutation } from "@/entities/repository/ui/queries/abandon-push.mutation";
+import { abandonRepositoryPush } from "@/entities/repository/domain/use-cases/abandon-repository-push";
+import { useAbandonRepositoryPushMutation } from "@/entities/repository/ui/queries/abandon-repository-push.mutation";
 import { repositoriesQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 
 import { generateBranch } from "../../../../../tests/fake/branch";
 
 vi.mock("@/entities/branches/ui/queries/get-branches.query");
-vi.mock("@/entities/repository/domain/use-cases/abandon-push");
+vi.mock("@/entities/repository/domain/use-cases/abandon-repository-push");
 
 const PUSH_STATE_KEY = repositoriesQueryKeys.pushState({ repositoryId: "repo-1" });
 const ACTIVITY_KEY = repositoriesQueryKeys.activity({ repositoryId: "repo-1" });
@@ -24,7 +24,9 @@ const renderMutation = async (onSettled = vi.fn()) => {
 
   const wrapper = ({ children }: { children: React.ReactNode }) =>
     React.createElement(QueryClientProvider, { client: queryClient }, children);
-  const { result } = await renderHook(() => useAbandonPushMutation({ onSettled }), { wrapper });
+  const { result } = await renderHook(() => useAbandonRepositoryPushMutation({ onSettled }), {
+    wrapper,
+  });
 
   const invalidatedKeys = () =>
     SEEDED_KEYS.filter((queryKey) => queryClient.getQueryState(queryKey)?.isInvalidated);
@@ -32,7 +34,7 @@ const renderMutation = async (onSettled = vi.fn()) => {
   return { result, invalidatedKeys };
 };
 
-describe("useAbandonPushMutation", () => {
+describe("useAbandonRepositoryPushMutation", () => {
   beforeEach(() => {
     vi.resetAllMocks();
 
@@ -43,7 +45,7 @@ describe("useAbandonPushMutation", () => {
 
   it("reloads the push state and the activity of the repository when the request is accepted", async () => {
     // GIVEN
-    vi.mocked(abandonPush).mockResolvedValue({ ok: true, taskId: "task-1" });
+    vi.mocked(abandonRepositoryPush).mockResolvedValue({ ok: true, taskId: "task-1" });
     const onSettled = vi.fn();
     const { result, invalidatedKeys } = await renderMutation(onSettled);
 
@@ -57,7 +59,7 @@ describe("useAbandonPushMutation", () => {
 
   it("reloads the push state and the activity of the repository when the request is refused", async () => {
     // GIVEN
-    vi.mocked(abandonPush).mockRejectedValue(new Error("Nothing is pending."));
+    vi.mocked(abandonRepositoryPush).mockRejectedValue(new Error("Nothing is pending."));
     const { result, invalidatedKeys } = await renderMutation();
 
     // WHEN

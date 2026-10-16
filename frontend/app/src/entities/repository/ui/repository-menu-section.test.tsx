@@ -10,7 +10,7 @@ import {
 import { getObjectPermissions } from "@/entities/permission/domain/use-cases/get-object-permissions";
 import { useHasGlobalPermission } from "@/entities/permission/ui/queries/has-global-permission.query";
 import type { RepositoryPushState } from "@/entities/repository/domain/model/repository-push-state";
-import { retryPush } from "@/entities/repository/domain/use-cases/retry-push";
+import { retryRepositoryPush } from "@/entities/repository/domain/use-cases/retry-repository-push";
 import { useGetRepositoryPushState } from "@/entities/repository/ui/queries/get-repository-push-state.query";
 import { useImportCurrentCommitMutation } from "@/entities/repository/ui/queries/import-current-commit.mutation";
 import { useReimportLastCommitMutation } from "@/entities/repository/ui/queries/reimport-last-commit.mutation";
@@ -25,7 +25,7 @@ import { RepositoryMenuSection } from "./repository-menu-section";
 vi.mock("@/entities/repository/ui/queries/reimport-last-commit.mutation");
 vi.mock("@/entities/repository/ui/queries/import-current-commit.mutation");
 vi.mock("@/entities/repository/ui/queries/get-repository-push-state.query");
-vi.mock("@/entities/repository/domain/use-cases/retry-push");
+vi.mock("@/entities/repository/domain/use-cases/retry-repository-push");
 vi.mock("@/entities/branches/ui/queries/get-branches.query");
 vi.mock("@/entities/permission/ui/queries/has-global-permission.query");
 vi.mock("@/entities/permission/domain/use-cases/get-object-permissions");
@@ -109,7 +109,7 @@ describe("RepositoryMenuSection", () => {
     mockPushState(refusedPush);
     mockGlobalPermissions(ALL_GLOBAL_PERMISSIONS);
     vi.mocked(getObjectPermissions).mockResolvedValue(generatePermission());
-    vi.mocked(retryPush).mockResolvedValue({ ok: true, taskId: "task-1" });
+    vi.mocked(retryRepositoryPush).mockResolvedValue({ ok: true, taskId: "task-1" });
   });
 
   const renderRepositoryMenu = ({
@@ -521,7 +521,10 @@ describe("RepositoryMenuSection", () => {
 
     // THEN
     await vi.waitFor(() =>
-      expect(retryPush).toHaveBeenCalledWith({ branchName: "primary", repositoryId: "repo-1" })
+      expect(retryRepositoryPush).toHaveBeenCalledWith({
+        branchName: "primary",
+        repositoryId: "repo-1",
+      })
     );
   });
 
@@ -541,7 +544,7 @@ describe("RepositoryMenuSection", () => {
 
   test("shows the refusal message of the backend when the retry is refused", async () => {
     // GIVEN
-    vi.mocked(retryPush).mockRejectedValue(
+    vi.mocked(retryRepositoryPush).mockRejectedValue(
       new Error("Repository repo-a has nothing pending to push.")
     );
     const component = await renderRepositoryMenu();

@@ -14,7 +14,7 @@ import { usePendingPushPermissions } from "@/entities/repository/ui/hooks/use-pe
 import { useGetRepositoryPushState } from "@/entities/repository/ui/queries/get-repository-push-state.query";
 import { useImportCurrentCommitMutation } from "@/entities/repository/ui/queries/import-current-commit.mutation";
 import { useReimportLastCommitMutation } from "@/entities/repository/ui/queries/reimport-last-commit.mutation";
-import { useRetryPushMutation } from "@/entities/repository/ui/queries/retry-push.mutation";
+import { useRetryRepositoryPushMutation } from "@/entities/repository/ui/queries/retry-repository-push.mutation";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 import { toastTaskStarted } from "@/entities/tasks/ui/toast-task-started";
@@ -124,7 +124,7 @@ function RepositoryPushMenuItems({ repositoryId, onAbandonPush }: RepositoryPush
   const abandonTooltip =
     accessTooltip ?? getAbandonStateTooltip({ isPending, isError, canAbandon });
 
-  const { mutate: retryPush } = useRetryPushMutation({
+  const { mutate: retryRepositoryPush } = useRetryRepositoryPushMutation({
     onSuccess: (result) => {
       toastTaskStarted("Retry of the pending pushes started.", result.taskId);
     },
@@ -143,7 +143,7 @@ function RepositoryPushMenuItems({ repositoryId, onAbandonPush }: RepositoryPush
       <MenuItem
         isDisabled={!permissions.canActOnPendingPushes || !canRetry}
         tooltip={retryTooltip}
-        onAction={() => retryPush({ repositoryId })}
+        onAction={() => retryRepositoryPush({ repositoryId })}
       >
         <Icon icon="mdi:upload" />
         Retry push

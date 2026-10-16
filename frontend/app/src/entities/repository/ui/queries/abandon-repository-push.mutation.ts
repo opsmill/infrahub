@@ -4,27 +4,32 @@ import type { BranchContextParams, MutationConfig } from "@/shared/api/types";
 
 import { useDefaultBranch } from "@/entities/branches/ui/hooks/use-default-branch";
 import {
-  type AbandonPushParams,
-  abandonPush,
-} from "@/entities/repository/domain/use-cases/abandon-push";
+  type AbandonRepositoryPushParams,
+  abandonRepositoryPush,
+} from "@/entities/repository/domain/use-cases/abandon-repository-push";
 import { repositoriesQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 
-interface AbandonPushProps extends MutationConfig<typeof abandonPush> {}
+interface AbandonRepositoryPushProps extends MutationConfig<typeof abandonRepositoryPush> {}
 
-export const ABANDON_PUSH_MUTATION_KEY = ["repository", "abandon-push"] as const;
+export const ABANDON_REPOSITORY_PUSH_MUTATION_KEY = [
+  "repository",
+  "abandon-repository-push",
+] as const;
 
 // The pending pushes live on the default branch, and the backend refuses to abandon from any other.
-export function useAbandonPushMutation(config?: Omit<AbandonPushProps, "mutationFn">) {
+export function useAbandonRepositoryPushMutation(
+  config?: Omit<AbandonRepositoryPushProps, "mutationFn">
+) {
   const defaultBranch = useDefaultBranch();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationKey: ABANDON_PUSH_MUTATION_KEY,
-    mutationFn: (params: Omit<AbandonPushParams, keyof BranchContextParams>) => {
+    mutationKey: ABANDON_REPOSITORY_PUSH_MUTATION_KEY,
+    mutationFn: (params: Omit<AbandonRepositoryPushParams, keyof BranchContextParams>) => {
       if (!defaultBranch) {
         throw new Error("The default branch is not loaded.");
       }
-      return abandonPush({ branchName: defaultBranch.name, ...params });
+      return abandonRepositoryPush({ branchName: defaultBranch.name, ...params });
     },
     ...config,
     // A refused request means the state shown is out of date, so it reloads either way.

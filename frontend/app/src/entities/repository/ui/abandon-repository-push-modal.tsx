@@ -7,21 +7,25 @@ import { pluralize } from "@/shared/utils/string";
 
 import { useDefaultBranch } from "@/entities/branches/ui/hooks/use-default-branch";
 import { PendingMergeList } from "@/entities/repository/ui/pending-merge-list";
-import { useAbandonPushMutation } from "@/entities/repository/ui/queries/abandon-push.mutation";
+import { useAbandonRepositoryPushMutation } from "@/entities/repository/ui/queries/abandon-repository-push.mutation";
 import { useGetRepositoryPushState } from "@/entities/repository/ui/queries/get-repository-push-state.query";
 import { toastTaskStarted } from "@/entities/tasks/ui/toast-task-started";
 
-interface AbandonPushModalProps {
+interface AbandonRepositoryPushModalProps {
   repositoryId: string;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
 }
 
-export function AbandonPushModal({ repositoryId, isOpen, onOpenChange }: AbandonPushModalProps) {
+export function AbandonRepositoryPushModal({
+  repositoryId,
+  isOpen,
+  onOpenChange,
+}: AbandonRepositoryPushModalProps) {
   const { data: pushState } = useGetRepositoryPushState({ repositoryId });
   const defaultBranch = useDefaultBranch();
   const pendingMerges = pushState?.pendingMerges ?? [];
-  const { mutate: abandonPush, isPending } = useAbandonPushMutation({
+  const { mutate: abandonRepositoryPush, isPending } = useAbandonRepositoryPushMutation({
     onSuccess: (result) => {
       toastTaskStarted("Started abandoning the pending pushes.", result.taskId);
     },
@@ -63,7 +67,7 @@ export function AbandonPushModal({ repositoryId, isOpen, onOpenChange }: Abandon
       isLoading={isPending}
       // The version names the list shown, so the backend refuses to abandon if the pending merges changed since.
       onConfirm={() =>
-        pushState && abandonPush({ repositoryId, queueVersion: pushState.queueVersion })
+        pushState && abandonRepositoryPush({ repositoryId, queueVersion: pushState.queueVersion })
       }
     />
   );
