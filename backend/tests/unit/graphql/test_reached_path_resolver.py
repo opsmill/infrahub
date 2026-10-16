@@ -96,6 +96,11 @@ def _fragment(model: NodeSchema | GenericSchema, *children: GraphQLQueryNode) ->
     return node
 
 
+def _edge_node(*children: GraphQLQueryNode) -> GraphQLQueryNode:
+    """The ``edges { node { ... } }`` levels a query places between an object and the fields it selects."""
+    return _tree("edges", None, _tree("node", None, *children))
+
+
 def test_single_hop_narrows_to_the_owning_root() -> None:
     tree = _tree("TestingDevice", DEVICE, _tree("interfaces", INTERFACE))
 
@@ -143,7 +148,7 @@ def test_field_that_is_not_a_relationship_on_its_owner_widens() -> None:
 
 def test_a_relationship_inside_a_fragment_on_a_peer_keeps_the_chain_through_the_fragment() -> None:
     addresses = _tree("addresses", ADDRESS)
-    endpoints = _tree("endpoints", ENDPOINT, _fragment(PHYSICAL_WITH_ADDRESSES, addresses))
+    endpoints = _tree("endpoints", ENDPOINT, _edge_node(_fragment(PHYSICAL_WITH_ADDRESSES, addresses)))
     endpoints.infrahub_node_models = [PHYSICAL_WITH_ADDRESSES, VIRTUAL]
     tree = _tree("TestingDevice", DEVICE_WITH_GENERIC, endpoints)
 
@@ -159,7 +164,7 @@ def test_a_relationship_inside_a_fragment_on_a_peer_keeps_the_chain_through_the_
 def test_a_fragment_on_a_generic_resolves_to_its_implementations() -> None:
     things = _tree("things", THING)
     fragment = _fragment(ENDPOINT_WITH_IMPLEMENTATIONS, things)
-    tree = _tree("TestingDevice", DEVICE_WITH_GENERIC, _tree("endpoints", ENDPOINT, fragment))
+    tree = _tree("TestingDevice", DEVICE_WITH_GENERIC, _tree("endpoints", ENDPOINT, _edge_node(fragment)))
 
     result = ReachedPathResolver(queries=[tree]).resolve()
 
@@ -175,7 +180,7 @@ def test_a_fragment_on_a_generic_resolves_to_its_implementations() -> None:
 
 def test_a_relationship_inside_a_fragment_on_the_root_narrows_like_one_outside_it() -> None:
     # The fragment stands for the root device itself, so the device maps to itself through an empty chain.
-    tree = _tree("TestingDevice", DEVICE, _fragment(DEVICE, _tree("interfaces", INTERFACE)))
+    tree = _tree("TestingDevice", DEVICE, _edge_node(_fragment(DEVICE, _tree("interfaces", INTERFACE))))
 
     result = ReachedPathResolver(queries=[tree]).resolve()
 

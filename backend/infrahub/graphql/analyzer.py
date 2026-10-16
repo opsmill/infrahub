@@ -342,8 +342,9 @@ class ReachedPathResolver:
         """The chain of reverse relationship hops from a related node back to the query root, or None when a hop cannot be pinned.
 
         A fragment stands for the node it sits on, so the walk steps over it without a hop. Returns
-        None when a hop's field is not a relationship on its owner, which cannot resolve a changed
-        node to a reverse relationship.
+        None when a hop's field is not a relationship on its owner, or when a fragment sits under the
+        metadata of a field rather than on a node, as neither resolves a changed node to a reverse
+        relationship.
         """
         hops: list[RelationshipHop] = []
         current = node
@@ -352,6 +353,8 @@ class ReachedPathResolver:
             if owner is None or owner.infrahub_model is None:
                 return None
             if current.is_fragment:
+                if current.parent is None or not current.parent.in_property_level:
+                    return None
                 current = owner
                 continue
             relationship = owner.infrahub_model.get_relationship_or_none(name=current.path)
