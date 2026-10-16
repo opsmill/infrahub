@@ -25,7 +25,7 @@ core_graphql_query = NodeSchema(
     generate_profile=False,
     branch=BranchSupportType.AWARE,
     uniqueness_constraints=[["name__value"]],
-    documentation="/topics/graphql",
+    documentation="/development-resources/graphql/overview/",
     attributes=[
         Attr(name="name", kind="Text", unique=True),
         Attr(name="description", kind="Text", optional=True),

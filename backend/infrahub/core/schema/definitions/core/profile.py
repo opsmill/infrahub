@@ -11,6 +11,7 @@ core_profile_schema_definition = GenericSchema(
     display_label="profile_name__value",
     default_filter="profile_name__value",
     uniqueness_constraints=[["profile_name__value"]],
+    documentation="/profiles/overview/",
     attributes=[
         Attr(
             name="profile_name",

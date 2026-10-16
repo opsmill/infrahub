@@ -27,7 +27,7 @@ core_generator_definition = NodeSchema(
     uniqueness_constraints=[["name__value"]],
     generate_profile=False,
     inherit_from=[InfrahubKind.TASKTARGET],
-    documentation="/topics/generator",
+    documentation="/generators/overview/",
     attributes=[
         Attr(name="name", kind="Text", unique=True),
         Attr(name="description", kind="Text", optional=True),
@@ -132,7 +132,7 @@ core_generator_instance = NodeSchema(
     branch=BranchSupportType.LOCAL,
     generate_profile=False,
     inherit_from=[InfrahubKind.TASKTARGET],
-    documentation="/topics/generator",
+    documentation="/generators/overview/",
     attributes=[
         Attr(name="name", kind="Text"),
         Attr(name="status", kind="Text", enum=GeneratorInstanceStatus.available_types()),
