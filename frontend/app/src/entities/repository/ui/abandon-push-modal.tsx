@@ -1,13 +1,11 @@
 import { toast } from "react-toastify";
 
-import { queryClient } from "@/shared/api/rest/client";
 import { Col } from "@/shared/components/container";
 import { ModalDanger } from "@/shared/components/modals/modal-danger";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { pluralize } from "@/shared/utils/string";
 
 import { useDefaultBranch } from "@/entities/branches/ui/hooks/use-default-branch";
-import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { PendingMergeList } from "@/entities/repository/ui/pending-merge-list";
 import { useAbandonPushMutation } from "@/entities/repository/ui/queries/abandon-push.mutation";
 import { useGetRepositoryPushState } from "@/entities/repository/ui/queries/get-repository-push-state.query";
@@ -36,10 +34,7 @@ export function AbandonPushModal({ repositoryId, isOpen, onOpenChange }: Abandon
       );
     },
     // After a refusal the list shown is out of date, so the user reopens the modal to read the new one.
-    onSettled: async () => {
-      onOpenChange(false);
-      await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
-    },
+    onSettled: () => onOpenChange(false),
   });
 
   return (

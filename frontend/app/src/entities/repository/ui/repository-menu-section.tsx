@@ -125,9 +125,8 @@ function RepositoryPushMenuItems({ repositoryId, onAbandonPush }: RepositoryPush
     accessTooltip ?? getAbandonStateTooltip({ isPending, isError, canAbandon });
 
   const { mutate: retryPush } = useRetryPushMutation({
-    onSuccess: async (result) => {
+    onSuccess: (result) => {
       toastTaskStarted("Retry of the pending pushes started.", result.taskId);
-      await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
     },
     onError: (error) => {
       toast(

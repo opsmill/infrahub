@@ -35,6 +35,7 @@ export function useRefreshAfterRepositoryRun({ repositoryId }: UseRefreshAfterRe
       queryKey: repositoriesQueryKeys.repository({ repositoryId, branchName: currentBranch.name }),
     });
     queryClient.invalidateQueries({ queryKey: repositoryQueryKeys.branchStatuses() });
+    queryClient.invalidateQueries({ queryKey: repositoriesQueryKeys.pushState({ repositoryId }) });
     queryClient.invalidateQueries({
       queryKey: objectQueryKeys.all,
       predicate: ({ queryKey }) => queryKey.includes(repositoryId),
