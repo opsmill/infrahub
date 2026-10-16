@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from helpers import Deadline, generate_random_branch_name
+from infrahub_sdk.exceptions import GraphQLError
 from infrahub_sdk.testing.repository import GitRepo
 from infrahub_testcontainers.container import PROJECT_ENV_VARIABLES
 from playwright.async_api import expect
@@ -150,7 +151,16 @@ class TestRepositoryDelivery:
             await deadline.tick(pause=2)
 
         await branch_api.create(view_branch)
-        await branch_api.merge(branch_name)
+        # The reads above can see the status the branch inherited before the import writes its own, which the merge checks.
+        while True:
+            try:
+                await branch_api.merge(branch_name)
+            except GraphQLError as exc:
+                if "has not finished importing" not in str(exc):
+                    raise
+            else:
+                break
+            await deadline.tick(pause=2)
         await _wait_for_delivery_status(infrahub_client, repository.id, "action-required")
 
         yield RefusedDelivery(
