@@ -140,12 +140,28 @@ class TestReachedPathsFromQueryCarSchema(TestInfrahubApp):
             ),
         }
 
-    async def test_a_kind_read_at_a_root_and_through_a_relationship_widens(
+    async def test_a_kind_read_at_a_root_and_through_a_relationship_keeps_an_empty_chain_besides_its_chain(
         self, db: InfrahubDatabase, default_branch: Branch, car_schema: None
     ) -> None:
+        owner = registry.schema.get(name=TestKind.CAR, branch=default_branch).get_relationship("owner")
+        assert owner.identifier is not None
+
         result = await _reached_paths(db, default_branch, ROOT_AND_TRAVERSED)
 
-        assert result == {}
+        assert result == {
+            TestKind.PERSON: (
+                ReachedPath(hops=()),
+                ReachedPath(
+                    hops=(
+                        RelationshipHop(
+                            node_kind=TestKind.CAR,
+                            relationship_identifier=owner.identifier,
+                            relationship_direction=owner.direction,
+                        ),
+                    )
+                ),
+            )
+        }
 
 
 class TestReachedPathsFromQueryDeviceSchema(TestInfrahubApp):

@@ -287,9 +287,10 @@ class ReachedPathResolver:
     A kind maps to every relationship chain that reaches it; a kind reached as a generic peer, or
     through a fragment on a generic, is resolved to the generic's concrete implementations, since a
     data change reports the concrete kind. An inline or named fragment narrows the type of the node it
-    sits on rather than reaching another node, so it adds no hop. A kind is absent -- so a change there
-    widens -- when a way it is reached cannot be pinned: a hop whose field is not a relationship on its
-    owner, or the kind is also read at a root.
+    sits on rather than reaching another node, so it adds no hop. A kind also read at a root keeps an
+    empty chain besides its relationship chains, which maps a changed node to itself. A kind is absent
+    -- so a change there widens -- when a way it is reached cannot be pinned: a hop whose field is not a
+    relationship on its owner.
     """
 
     queries: list[GraphQLQueryNode]
@@ -311,10 +312,12 @@ class ReachedPathResolver:
                     else:
                         chains_by_kind[kind].add(chain)
 
+        for kind in root_kinds & chains_by_kind.keys():
+            chains_by_kind[kind].add(ReachedPath(hops=()))
         return {
             kind: tuple(sorted(chains, key=_reached_path_sort_key))
             for kind, chains in chains_by_kind.items()
-            if kind not in ambiguous_kinds and kind not in root_kinds
+            if kind not in ambiguous_kinds
         }
 
     def _reached_kinds(self, node: GraphQLQueryNode) -> list[str]:
@@ -440,8 +443,8 @@ class GraphQLQueryReport:
 
         A kind is reported here even when a root query also resolves to it. Both read paths share
         one entry in the requested-read map, so a caller given a changed node of that kind cannot
-        tell which path saw it; reporting the kind as traversed keeps that ambiguity visible rather
-        than resolving it optimistically.
+        tell which path saw it; reporting the kind as traversed keeps that ambiguity visible, and the
+        kind's reached chains then cover both reads.
 
         The concrete kinds standing behind a generic or interface peer are included, because a data
         change is reported against the concrete kind.

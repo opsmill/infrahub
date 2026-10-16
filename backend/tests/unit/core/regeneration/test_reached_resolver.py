@@ -59,6 +59,22 @@ async def test_direct_member_changes_pass_through_without_a_lookup() -> None:
     assert resolver.calls == []
 
 
+async def test_an_empty_path_maps_a_changed_node_to_itself_without_a_lookup() -> None:
+    resolver = RecordingDependentResolver(
+        owners_by_identifier={"device__interface": {"dev2": {"dev1"}}},
+    )
+
+    members = await ReachedMemberResolver(resolver=resolver).resolve(
+        RelationshipReachedChanges(
+            direct_member_node_ids=[],
+            reached=[ReachedChange(node_ids=["dev2"], paths=(ReachedPath(hops=()), ReachedPath(hops=(DEVICE_HOP,))))],
+        )
+    )
+
+    assert members == {"dev1", "dev2"}
+    assert resolver.calls == [("TestDevice", "device__interface", RelationshipDirection.OUTBOUND, ("dev2",))]
+
+
 async def test_single_hop_resolves_the_owning_member() -> None:
     resolver = RecordingDependentResolver(
         owners_by_identifier={"device__interface": {"intf1": {"dev1"}}},
