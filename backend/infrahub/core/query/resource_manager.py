@@ -989,6 +989,78 @@ def reserved_values_query(
     return query, params
 
 
+@dataclass(frozen=True)
+class NumberPoolAttributeBranchValuesQueryResult:
+    """The number one live branch holds for one attribute."""
+
+    attribute_id: str
+    branch: str
+    value: int
+
+
+class NumberPoolAttributeBranchValuesQuery(Query):
+    """Report the number each live branch holds for each attribute, one row per attribute and branch.
+
+    A branch holds the value of its own open edge, or else the value of the default branch it inherits, whether that
+    value is still open or was closed on the default branch after the branch forked. A branch being deleted holds
+    nothing, and neither does a branch whose attribute holds no number.
+    """
+
+    name = "number_pool_attribute_branch_values"
+    type = QueryType.READ
+
+    def __init__(self, attribute_ids: list[str], **kwargs: Unpack[QueryInitKwargs]) -> None:
+        self.attribute_ids = attribute_ids
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["attribute_ids"] = self.attribute_ids
+        self.params["at"] = self.at.to_string()
+        self.params["default_branch_name"] = registry.default_branch
+        self.params["null_value"] = NULL_VALUE
+
+        query = """
+        %(live_branches)s
+        UNWIND $attribute_ids AS attribute_id
+        MATCH (attr:Attribute { uuid: attribute_id })
+        CALL (attr, deleting_branches, branch_windows) {
+%(live_values)s
+            UNION
+            // --------------
+            // A branch that forked while the default branch's edge was open, and has written no edge of its own
+            // since, inherits the value without an edge carrying its name
+            // --------------
+            MATCH (attr)-[hv:HAS_VALUE {branch: $default_branch_name}]->(av)
+            WHERE hv.status = "active"
+            AND hv.from <= $at AND (hv.to IS NULL OR hv.to > $at)
+            WITH hv, av, branch_windows, COLLECT {
+                MATCH (attr)-[hiding:HAS_VALUE]->()
+                WHERE hiding.from <= $at AND (hiding.to IS NULL OR hiding.to > $at)
+                RETURN hiding.branch AS branch_name
+            } AS hiding_branches
+            UNWIND [window IN branch_windows WHERE window.origin_name = hv.branch
+                AND hv.from <= window.fork_at
+                AND NOT window.name IN hiding_branches | window.name] AS branch
+            RETURN av.value AS value, branch
+        }
+        WITH DISTINCT attr.uuid AS attribute_id, branch, value
+        WHERE value <> $null_value
+        """ % {"live_branches": LIVE_BRANCHES_QUERY, "live_values": LIVE_ATTRIBUTE_VALUES_QUERY}
+        self.add_to_query(query)
+        self.return_labels = ["attribute_id", "branch", "value"]
+        self.order_by = ["attribute_id", "branch", "value"]
+
+    def get_data(self) -> list[NumberPoolAttributeBranchValuesQueryResult]:
+        return [
+            NumberPoolAttributeBranchValuesQueryResult(
+                attribute_id=result.get_as_type("attribute_id", str),
+                branch=result.get_as_type("branch", str),
+                value=result.get_as_type("value", int),
+            )
+            for result in self.get_results()
+        ]
+
+
 class NumberPoolGetUsed(Query):
     """A pool is branch-agnostic, and so is the set of numbers it accounts for.
 
