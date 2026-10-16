@@ -1,0 +1,1 @@
+Fixed deleting a branch intermittently failing with a 500 error even though the branch was removed: the cleanup that drops a deleted branch's tasks also deleted the task that performed the deletion, while the request was still waiting on it. That task is now left in place, so the delete reports its real outcome and the branch list refreshes as expected.

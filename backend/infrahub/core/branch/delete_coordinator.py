@@ -37,6 +37,7 @@ class BranchDeleteOrchestrator:
         log: LoggerInterface,
         global_branch: Branch,
         delete_git_branch_after_merge: bool,
+        deletion_task_id: str | None = None,
     ) -> None:
         self.data_deleter = data_deleter
         self.diff_freezer = diff_freezer
@@ -45,6 +46,7 @@ class BranchDeleteOrchestrator:
         self.log = log
         self.global_branch = global_branch
         self.delete_git_branch_after_merge = delete_git_branch_after_merge
+        self.deletion_task_id = deletion_task_id
 
     async def delete(
         self,
@@ -81,6 +83,7 @@ class BranchDeleteOrchestrator:
                     sync_with_git=branch.sync_with_git,
                     meta=EventMeta.from_context(context=context.to_event_context(), branch=self.global_branch),
                     proposed_change_id=proposed_change_id,
+                    deletion_task_id=self.deletion_task_id,
                 )
             )
         else:

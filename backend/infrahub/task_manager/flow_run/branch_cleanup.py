@@ -40,11 +40,12 @@ class BranchFlowRunPurger:
             self.log.warning(f"Failed to read flow runs for deleted branch '{branch_name}': {exc}")
             return None
 
-    async def purge_for_branch(self, branch_name: str) -> None:
+    async def purge_for_branch(self, branch_name: str, excluded_ids: list[str] | None = None) -> None:
+        """Delete the branch's settled runs, leaving the ones named in `excluded_ids` in place."""
         # Only settled runs: a run still in flight keeps the branch tag while it runs, so restricting
         # to terminal states leaves it untouched.
         flow_run_filter = self.filter_builder.build_flow_run_filter(
-            criteria=FlowRunQueryCriteria(branch=branch_name, statuses=list(TERMINAL_STATES))
+            criteria=FlowRunQueryCriteria(branch=branch_name, statuses=list(TERMINAL_STATES), excluded_ids=excluded_ids)
         )
 
         flow_runs = await self._read(flow_run_filter=flow_run_filter, branch_name=branch_name)
