@@ -67,6 +67,8 @@ Every create or update that carries the shorthand or `ranges` runs under the poo
 | delete | pool not `Schema` |
 | after create / update / delete | pool's `start_range` / `end_range` re-synced from the range set |
 
+`RelationshipAdd` and `RelationshipRemove` on a pool's `ranges` are refused, because a range's `pool` is mandatory with cardinality one. A range is removed through the range delete mutation or the pool's `ranges` on update.
+
 ## Utilization query
 
 `InfrahubResourcePoolUtilization` for a number pool:

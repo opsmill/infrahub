@@ -183,6 +183,22 @@ the mutation then works from it rather than reading it back:
 Passing a node keeps the rest of the payload for that relationship (its source, its owner) only if
 the node replaces the `id` inside it rather than the payload itself.
 
+## RelationshipAdd and RelationshipRemove
+
+These mutations change one relationship of an existing node, so they refuse a change that would break the schema on either side of it:
+
+| Refused when | Mutation |
+|--------------|----------|
+| the relationship is `read_only` | both |
+| a peer is not of the relationship's peer kind | both |
+| a peer is already linked to another node on a cardinality-one side of its own | both |
+| the relationship is cardinality one and would receive more than one peer | `RelationshipAdd` |
+| the peers do not share the parent named by `common_parent` | `RelationshipAdd` |
+| the relationship is mandatory and would be left with no peer | `RelationshipRemove` |
+| a removed peer's own side of the relationship (same identifier, mirrored direction) is mandatory with cardinality one, so the peer would be left without its peer | `RelationshipRemove` |
+
+A peer that must keep its relationship, such as a component under a mandatory parent or a number pool range under its pool, therefore changes through a mutation on the peer itself: update its relationship to another node, or delete it.
+
 ## Locking Strategy
 
 1. A preview node is created with `process_pools=False` (no side effects)
