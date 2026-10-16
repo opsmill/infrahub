@@ -22,12 +22,6 @@ Branching in Infrahub supports various infrastructure management workflows:
 - **Experimentation**: Use branches to test new ideas or approaches without affecting the production environment. This provides a safe sandbox to validate new configurations or architectures before committing to them.
 - **Grouped changes**: Group related changes on one branch so that a single merge applies them to the default branch. A merge either completes or is rolled back. An interrupted merge leaves the branch in `MERGE_FAILED` until an administrator recovers it.
 
-:::success Change Management Workflow Blog Post
-
-Want to see how branches can be used in a change management workflow? Read our blog post on [Infrahub's Change Management Workflow Is Built for Infrastructure Data](https://opsmill.com/blog/infrastructure-change-management-workflow/).
-
-:::
-
 ## Core concepts
 
 Branches in Infrahub serve as isolated workspaces where changes can be prepared, validated, and reviewed before merging into production. Each branch maintains its own independent view of the data while sharing the underlying immutable history.
@@ -169,7 +163,7 @@ This approach means creating a branch has minimal overhead, and storage grows on
 - [Merge a branch](./merge.mdx): what the merge checks again, write blocking, and recovery from a failed merge
 - [Resolve conflicts](./resolve-conflicts.mdx): each conflict type and what clears it
 - [Parallel branches](./parallel-branches.mdx): Why merging one branch does not change the others, and when to rebase
-- [Branching blog post](https://opsmill.com/blog/infrastructure-change-management-workflow/): a change management workflow built on branches and Proposed Changes
+- [Review and merge a change](../learn/tutorials/review-and-merge-a-change): a change taken from a branch to the default branch through review, checks, and merge
 - [Git Integration](../git-integration/overview.mdx): how branches synchronize with connected Git repositories
 - [Proposed Changes](../proposed-changes/overview.mdx): review, checks, and merge for a branch
 - [Immutable History](../immutable-history/overview.mdx): how Infrahub keeps earlier values and relationships
