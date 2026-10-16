@@ -9,8 +9,12 @@ import {
   type GetRepositoryPushStateParams,
   getRepositoryPushState,
 } from "@/entities/repository/domain/use-cases/get-repository-push-state";
+import {
+  REPOSITORY_ERROR_REFETCH_INTERVAL_MS,
+  REPOSITORY_PUSH_PENDING_REFETCH_INTERVAL_MS,
+} from "@/entities/repository/ui/queries/repository-polling";
 
-function getRepositoryPushStateQueryOptions(params: GetRepositoryPushStateParams) {
+export function getRepositoryPushStateQueryOptions(params: GetRepositoryPushStateParams) {
   return queryOptions({
     queryKey: [
       ...objectQueryKeys.lists({
@@ -22,6 +26,13 @@ function getRepositoryPushStateQueryOptions(params: GetRepositoryPushStateParams
       "push-state",
     ],
     queryFn: () => getRepositoryPushState(params),
+    // No run reports the end of a push or of an abandon, so the state polls while pushes are pending.
+    refetchInterval: ({ state }) => {
+      if (state.status === "error") return REPOSITORY_ERROR_REFETCH_INTERVAL_MS;
+      return state.data && state.data.status !== "none"
+        ? REPOSITORY_PUSH_PENDING_REFETCH_INTERVAL_MS
+        : false;
+    },
   });
 }
 
