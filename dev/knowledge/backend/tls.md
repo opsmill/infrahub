@@ -37,7 +37,7 @@ reaching public services.
 | Component | Setting read by the code | Applied in |
 |-----------|--------------------------|------------|
 | HTTP client (webhooks, SSO, telemetry) | `http.tls_ca_bundle`, `http.tls_insecure` | `services/adapters/http/httpx.py::InfrahubHTTP.verify_tls` through `TlsContextRegistry` |
-| Prefect client | `http.tls_*` | `services/adapters/workflow/worker.py`, `workers/infrahub_async.py`, `workflows/utils.py` |
+| Prefect client | `http.tls_*` | `services/adapters/workflow/worker.py`, `workers/infrahub_async.py` (flow code reuses that per-run client) |
 | SDK client to the Infrahub API | `http.tls_*` | `workers/dependencies.py::build_client` for the injected client, `workers/infrahub_async.py::build_worker_client_config` for the client the worker puts on `InfrahubServices` |
 | Git credential commands | `http.tls_*` | `git_credential/client.py::build_client_config`, shared by the credential helper and askpass (git spawns each as its own process) |
 | Git | `git.tls_ca_file`, `git.tls_insecure` | `git/global_config.py::apply_git_tls_config` writes `http.sslCAInfo` / `http.sslVerify` into the global gitconfig at task-worker startup |

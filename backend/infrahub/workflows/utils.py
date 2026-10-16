@@ -3,13 +3,12 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING
 
-from prefect import get_client
+from prefect.context import AsyncClientContext
 from prefect.runtime import flow_run
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.registry import registry
 from infrahub.tasks.registry import refresh_branches
-from infrahub.workers.dependencies import get_http
 
 from .constants import TAG_NAMESPACE, WorkflowTag
 
@@ -30,7 +29,8 @@ async def add_tags(
     """Add metadata tags to the current Prefect flow run for observability and filtering.
 
     Tags are applied via the Prefect API and appear in the Prefect UI, enabling operators
-    to filter flow runs by branch, related node, or custom labels.
+    to filter flow runs by branch, related node, or custom labels. The update goes through
+    the running flow's Prefect client, so it opens no connection of its own.
 
     Args:
         branches: Branch names to tag. Each becomes a WorkflowTag.BRANCH tag.
@@ -42,7 +42,6 @@ async def add_tags(
             the flow run modifies the database.
 
     """
-    client = get_client(httpx_settings={"verify": get_http().verify_tls()}, sync_client=False)
     current_flow_run_id = flow_run.id
     current_tags: list[str] = flow_run.tags
     branch_tags = (
@@ -61,7 +60,8 @@ async def add_tags(
         new_tags.add(TAG_NAMESPACE)
     if db_change:
         new_tags.add(WorkflowTag.DATABASE_CHANGE.render())
-    await client.update_flow_run(current_flow_run_id, tags=list(new_tags))
+    async with AsyncClientContext.get_or_create() as client_ctx:
+        await client_ctx.client.update_flow_run(flow_run_id=current_flow_run_id, tags=list(new_tags))
 
 
 async def add_branch_tag(branch_name: str) -> None:
