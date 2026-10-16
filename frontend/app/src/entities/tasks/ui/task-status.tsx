@@ -4,15 +4,16 @@ import { useQuery } from "@tanstack/react-query";
 
 import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
 
-import { constructPath, type overrideQueryParams } from "@/shared/api/rest/fetch";
 import { Pulse } from "@/shared/components/ui/pulse";
 import { QSP } from "@/shared/config/qsp";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { useConstructPath } from "@/entities/navigation/ui/hooks/use-construct-path";
 import { isTaskRunningOnBranchQueryOptions } from "@/entities/tasks/ui/queries/is-task-running-on-branch.query";
 
 export function TaskStatus() {
   const { currentBranch } = useCurrentBranch();
+  const constructPath = useConstructPath();
 
   const {
     error,
@@ -28,20 +29,11 @@ export function TaskStatus() {
     value: currentBranch.name,
   };
 
-  // The branch must come from the context, not the URL: nuqs writes it one render later, so a
-  // param inherited from the URL would still point at the previous branch.
-  const branchParam: overrideQueryParams = currentBranch.is_default
-    ? { name: QSP.BRANCH, exclude: true }
-    : { name: QSP.BRANCH, value: currentBranch.name };
-
   const commonButtonProps: LinkButtonProps = {
     shape: "square",
     variant: "outline",
     size: "sm",
-    href: constructPath("/tasks", [
-      branchParam,
-      { name: QSP.FILTER, value: JSON.stringify([filter]) },
-    ]),
+    href: constructPath("/tasks", [{ name: QSP.FILTER, value: JSON.stringify([filter]) }]),
   };
 
   if (error) {
