@@ -5,25 +5,19 @@ import { ModalDanger } from "@/shared/components/modals/modal-danger";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import type { RepositoryPushState } from "@/entities/repository/domain/model/repository-push-state";
 import { PendingMergeList } from "@/entities/repository/ui/pending-merge-list";
 import { useAbandonPushMutation } from "@/entities/repository/ui/queries/abandon-push.mutation";
+import { useGetRepositoryPushState } from "@/entities/repository/ui/queries/get-repository-push-state.query";
 import { toastTaskStarted } from "@/entities/repository/ui/toast-task-started";
 
 interface AbandonPushModalProps {
   repositoryId: string;
-  /** The push state the user read: the backend refuses the abandonment if its pending merges changed since. */
-  pushState: RepositoryPushState;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
 }
 
-export function AbandonPushModal({
-  repositoryId,
-  pushState,
-  isOpen,
-  onOpenChange,
-}: AbandonPushModalProps) {
+export function AbandonPushModal({ repositoryId, isOpen, onOpenChange }: AbandonPushModalProps) {
+  const { data: pushState } = useGetRepositoryPushState({ repositoryId });
   const { mutate: abandonPush, isPending } = useAbandonPushMutation({
     onSuccess: (result) => {
       toastTaskStarted("Abandonment of the pending pushes started.", result.taskId);
@@ -49,7 +43,7 @@ export function AbandonPushModal({
       description={
         <div className="flex flex-col gap-2">
           <p>Abandon every pending merge of this repository:</p>
-          <PendingMergeList merges={pushState.pendingMerges} />
+          <PendingMergeList merges={pushState?.pendingMerges ?? []} />
           <p>Nothing is removed from the remote, and no remote branch is deleted.</p>
           <p>
             Repository objects of the abandoned merges can stay on the default branch until the
@@ -61,7 +55,10 @@ export function AbandonPushModal({
       isOpen={isOpen}
       onOpenChange={onOpenChange}
       isLoading={isPending}
-      onConfirm={() => abandonPush({ repositoryId, queueVersion: pushState.queueVersion })}
+      // The version names the list shown, so the backend refuses the abandonment if the pending merges changed since.
+      onConfirm={() =>
+        pushState && abandonPush({ repositoryId, queueVersion: pushState.queueVersion })
+      }
     />
   );
 }

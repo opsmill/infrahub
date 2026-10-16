@@ -34,8 +34,10 @@ import {
   getObjectTasksUrl,
 } from "@/entities/nodes/object/ui/routing/object-urls";
 import type { Permission } from "@/entities/permission/domain/model/permission";
-import { GENERIC_REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
-import type { RepositoryPushState } from "@/entities/repository/domain/model/repository-push-state";
+import {
+  GENERIC_REPOSITORY_KIND,
+  REPOSITORY_KIND,
+} from "@/entities/repository/domain/model/repository";
 import { AbandonPushModal } from "@/entities/repository/ui/abandon-push-modal";
 import { CheckConnectivityModal } from "@/entities/repository/ui/check-connectivity-modal";
 import { RepositoryMenuSection } from "@/entities/repository/ui/repository-menu-section";
@@ -58,7 +60,6 @@ export function ObjectDetailsMenu({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isCheckConnectivityOpen, setIsCheckConnectivityOpen] = useState(false);
-  const [pushToAbandon, setPushToAbandon] = useState<RepositoryPushState>();
   const [isAbandonPushOpen, setIsAbandonPushOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -125,10 +126,7 @@ export function ObjectDetailsMenu({
                 repositoryId={objectData.id}
                 objectSchema={objectSchema}
                 onCheckConnectivity={() => setIsCheckConnectivityOpen(true)}
-                onAbandonPush={(pushState) => {
-                  setPushToAbandon(pushState);
-                  setIsAbandonPushOpen(true);
-                }}
+                onAbandonPush={() => setIsAbandonPushOpen(true)}
                 permission={permission}
               />
             )}
@@ -227,10 +225,9 @@ export function ObjectDetailsMenu({
         />
       )}
 
-      {pushToAbandon && (
+      {isOfKind(REPOSITORY_KIND, objectSchema) && (
         <AbandonPushModal
           repositoryId={objectData.id}
-          pushState={pushToAbandon}
           isOpen={isAbandonPushOpen}
           onOpenChange={setIsAbandonPushOpen}
         />

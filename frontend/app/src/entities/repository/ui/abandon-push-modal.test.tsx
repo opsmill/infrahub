@@ -6,12 +6,14 @@ import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.quer
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import type { RepositoryPushState } from "@/entities/repository/domain/model/repository-push-state";
 import { abandonPush } from "@/entities/repository/domain/use-cases/abandon-push";
+import { getRepositoryPushState } from "@/entities/repository/domain/use-cases/get-repository-push-state";
 
 import { render } from "../../../../tests/components/render";
 import { generateBranch } from "../../../../tests/fake/branch";
 import { AbandonPushModal } from "./abandon-push-modal";
 
 vi.mock("@/entities/repository/domain/use-cases/abandon-push");
+vi.mock("@/entities/repository/domain/use-cases/get-repository-push-state");
 vi.mock("@/entities/branches/ui/queries/get-branches.query");
 
 const conflictingPush: RepositoryPushState = {
@@ -54,24 +56,23 @@ describe("AbandonPushModal", () => {
     } as unknown as ReturnType<typeof useGetBranches>);
 
     vi.mocked(abandonPush).mockResolvedValue({ ok: true, taskId: "task-1" });
+    vi.mocked(getRepositoryPushState).mockResolvedValue(conflictingPush);
   });
 
-  const renderModal = (pushState = conflictingPush) =>
-    render(
-      <AbandonPushModal
-        repositoryId="repo-1"
-        pushState={pushState}
-        isOpen
-        onOpenChange={mockOnOpenChange}
-      />
+  const renderModal = async () => {
+    const component = await render(
+      <AbandonPushModal repositoryId="repo-1" isOpen onOpenChange={mockOnOpenChange} />
     );
+    await expect.element(component.getByText("feature-a", { exact: true })).toBeVisible();
+    return component;
+  };
 
   test("lists the pending merges it abandons and says what stays", async () => {
     // GIVEN
-    const pushState = conflictingPush;
+    vi.mocked(getRepositoryPushState).mockResolvedValue(conflictingPush);
 
     // WHEN
-    const component = await renderModal(pushState);
+    const component = await renderModal();
 
     // THEN
     await expect

@@ -497,7 +497,7 @@ describe("RepositoryMenuSection", () => {
       .toBeVisible();
   });
 
-  test("opens the abandonment with the push state the user read", async () => {
+  test("opens the abandonment", async () => {
     // GIVEN
     const component = await renderRepositoryMenu();
 
@@ -505,6 +505,6 @@ describe("RepositoryMenuSection", () => {
     await component.getByRole("menuitem", { name: "Abandon pending push" }).click();
 
     // THEN
-    expect(mockOnAbandonPush).toHaveBeenCalledWith(refusedPush);
+    expect(mockOnAbandonPush).toHaveBeenCalled();
   });
 });

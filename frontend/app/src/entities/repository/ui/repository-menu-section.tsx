@@ -8,7 +8,6 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import type { Permission } from "@/entities/permission/domain/model/permission";
 import { REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
-import type { RepositoryPushState } from "@/entities/repository/domain/model/repository-push-state";
 import { getPushActions } from "@/entities/repository/domain/rules/get-push-actions";
 import { isReadOnlyRepository } from "@/entities/repository/domain/rules/is-read-only-repository";
 import { usePendingPushPermissions } from "@/entities/repository/ui/hooks/use-pending-push-permissions";
@@ -24,7 +23,7 @@ interface RepositoryMenuSectionProps {
   repositoryId: string;
   objectSchema: ModelSchema;
   onCheckConnectivity: () => void;
-  onAbandonPush: (pushState: RepositoryPushState) => void;
+  onAbandonPush: () => void;
   permission: Permission;
 }
 
@@ -101,7 +100,7 @@ export function RepositoryMenuSection({
 
 interface RepositoryPushMenuItemsProps {
   repositoryId: string;
-  onAbandonPush: (pushState: RepositoryPushState) => void;
+  onAbandonPush: () => void;
 }
 
 function RepositoryPushMenuItems({ repositoryId, onAbandonPush }: RepositoryPushMenuItemsProps) {
@@ -139,7 +138,7 @@ function RepositoryPushMenuItems({ repositoryId, onAbandonPush }: RepositoryPush
 
       <MenuItem
         isDisabled={!canActOnPendingPushes || !pushActions.canAbandon}
-        onAction={() => state && onAbandonPush(state)}
+        onAction={onAbandonPush}
       >
         <Icon icon="mdi:upload-off" />
         Abandon pending push
