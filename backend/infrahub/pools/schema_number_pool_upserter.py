@@ -117,7 +117,8 @@ class SchemaNumberPoolUpserter:
         If found, retrieves the pool using registry.manager.get_one().
         If not found, creates a new pool carrying the ranges and the allocation scope the attribute declares, the scope
         resolved against the schema of the default branch. A schema pool another branch created for the same kind and
-        attribute is returned only when it stores the scope the attribute declares.
+        attribute is returned only when it stores the scope the attribute declares, or when the attribute leaves the
+        scope out.
 
         Args:
             schema_node: The schema containing the NumberPool attribute.
@@ -238,6 +239,9 @@ class SchemaNumberPoolUpserter:
         parameters: NumberPoolParameters,
         default_branch_schema: SchemaBranch,
     ) -> None:
+        # A schema load keeps the stored value of a parameter it leaves out.
+        if parameters.allocation_scope is None:
+            return
         stored = AllocationScope.from_stored(value=pool.allocation_scope.value, pool=pool.name.value)
         reason = DeclaredScopeComparator().refusal(
             schema_branch=default_branch_schema,

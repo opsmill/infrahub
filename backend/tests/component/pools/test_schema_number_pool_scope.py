@@ -70,13 +70,17 @@ async def _load_and_provision(db: InfrahubDatabase, schema: SchemaRoot, branch_n
     ).run()
 
 
-async def _schema_pool(db: InfrahubDatabase, kind: str, attribute: str) -> CoreNumberPoolProtocol:
-    pools = await NodeManager.query(
+async def _schema_pools(db: InfrahubDatabase, kind: str, attribute: str) -> list[CoreNumberPoolProtocol]:
+    return await NodeManager.query(
         db=db,
         schema=CoreNumberPoolProtocol,
         filters={"node__value": kind, "node_attribute__value": attribute},
         branch_agnostic=True,
     )
+
+
+async def _schema_pool(db: InfrahubDatabase, kind: str, attribute: str) -> CoreNumberPoolProtocol:
+    pools = await _schema_pools(db=db, kind=kind, attribute=attribute)
     assert len(pools) == 1
     return pools[0]
 
@@ -171,13 +175,50 @@ async def test_declared_scope_on_a_branch_differing_from_the_existing_pool_is_no
     assert isinstance(branch_attribute.parameters, NumberPoolParameters)
     assert branch_attribute.parameters.number_pool_id is None
     upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository)
-    with pytest.raises(
-        ValidationError,
-        match=rf"^ScopeDevice\.vlan_index: allocation_scope can't be changed after the pool is created; the pool"
-        rf" ScopeDevice\.vlan_index \[{pool.id}\] is scoped by \['role'\]$",
-    ):
+    with pytest.raises(ValidationError) as exc_info:
         await upserter.upsert_number_pool(
             schema_node=registry.schema.get(name=SCOPED_DEVICE.kind, branch=branch.name, duplicate=False),
             attribute=branch_attribute,
             branch_name=branch.name,
         )
+
+    assert exc_info.value.message == (
+        "ScopeDevice.vlan_index: allocation_scope can't be changed after the pool is created;"
+        f" the pool ScopeDevice.vlan_index [{pool.id}] is scoped by ['role']"
+    )
+
+
+async def test_declaration_on_a_branch_leaving_out_the_scope_attaches_the_scoped_pool(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """A branch declaration without allocation_scope uses the pool the default branch created, which keeps its scope."""
+    await save_schema(db=db, schema=SCOPED_POOL_SCHEMA)
+    branch = await create_branch(db=db, branch_name="scope-left-out")
+    main_device = copy.deepcopy(SCOPED_DEVICE)
+    main_device.attributes.append(_pooled_attribute(name="vlan_index", scope=["role"]))
+    await _load_and_provision(db=db, schema=_schema(device=main_device))
+    branch_device = copy.deepcopy(SCOPED_DEVICE)
+    branch_device.attributes.append(
+        AttributeSchema(
+            name="vlan_index",
+            kind="NumberPool",
+            optional=False,
+            read_only=True,
+            parameters=NumberPoolParameters(start_range=1, end_range=100),
+        )
+    )
+
+    await _load_and_provision(db=db, schema=_schema(device=branch_device), branch_name=branch.name)
+
+    pools = await _schema_pools(db=db, kind=SCOPED_DEVICE.kind, attribute="vlan_index")
+    role_id = _saved_field_id(kind=SCOPED_DEVICE.kind, name="role")
+    branch_parameters = (
+        registry.schema.get(name=SCOPED_DEVICE.kind, branch=branch.name, duplicate=False)
+        .get_attribute(name="vlan_index")
+        .parameters
+    )
+    assert isinstance(branch_parameters, NumberPoolParameters)
+
+    # A schema load keeps a parameter it leaves out, so the branch declaration stands for the scope the pool holds.
+    assert [pool.id for pool in pools] == [branch_parameters.number_pool_id]
+    assert pools[0].allocation_scope.value == [{"id": role_id, "name": "role"}]
