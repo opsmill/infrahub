@@ -28,6 +28,9 @@ from infrahub.git.writeback.models import DeliveryFailure, DeliveryStage
 REPOSITORY = "net-repo"
 LOCATION = "https://gitlab.example.com/net/repo.git"
 CONNECTION_MESSAGE = "Unable to clone the repository net-repo, please check the address and the credential"
+FETCH_CONNECTION_MESSAGE = (
+    "Unable to fetch from the remote of repository net-repo, please check that the remote is reachable."
+)
 DATABASE_MESSAGE = "Unable to connect to the database"
 TIME_LIMIT_MESSAGE = (
     "The Git command for repository net-repo did not complete within its time limit, "
@@ -490,7 +493,7 @@ def test_typed_error_from_the_git_output_gives_its_typed_message() -> None:
     failure = classify_delivery_failure(error=error, stage=DeliveryStage.FETCH)
 
     assert failure == DeliveryFailure(
-        cause=RepositoryDeliveryFailureCause.REMOTE_UNREACHABLE, retryable=True, message=CONNECTION_MESSAGE
+        cause=RepositoryDeliveryFailureCause.REMOTE_UNREACHABLE, retryable=True, message=FETCH_CONNECTION_MESSAGE
     )
 
 

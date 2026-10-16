@@ -403,6 +403,8 @@ class TransientFaultCase:
     """The step of the first attempt that finds the remote closed."""
     fault_from: str
     """The start of the log line from which the clone points at a closed port, with a `{repository}` field."""
+    error: str
+    """The message of the failed step, with a `{repository}` field."""
 
 
 TRANSIENT_FAULT_CASES: list[TransientFaultCase] = [
@@ -410,12 +412,14 @@ TRANSIENT_FAULT_CASES: list[TransientFaultCase] = [
         name="fault_at_fetch",
         stage=DeliveryStage.FETCH,
         fault_from="Delivery attempt of repository {repository} starts",
+        error="Unable to fetch from the remote of repository {repository}, please check that the remote is reachable.",
     ),
     # The attempt writes this line after its fetch, so only its push finds the remote closed.
     TransientFaultCase(
         name="fault_at_push",
         stage=DeliveryStage.PUSH,
         fault_from="The remote branch main of repository {repository} is at",
+        error="Unable to push to the remote of repository {repository}, please check that the remote is reachable.",
     ),
 ]
 
@@ -1724,7 +1728,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         assert _delivery_log_lines(caplog=caplog, repository_name=repository.name) == [
             f"Delivery attempt of repository {repository.name} starts (final attempt: False, manual: False).",
             f"The {case.stage} step of the delivery to repository {repository.name} failed, and a later attempt "
-            f"retries it: Unable to clone the repository {repository.name}, please check the address and the credential",
+            f"retries it: {case.error.format(repository=repository.name)}",
             f"Delivery attempt of repository {repository.name} starts (final attempt: False, manual: False).",
         ]
 
