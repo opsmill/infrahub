@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import operator
 from collections import defaultdict
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import lru_cache
@@ -195,7 +195,7 @@ def cleanup_return_labels(labels: list[str]) -> list[str]:
 
 
 class QueryResult:
-    def __init__(self, data: list[Neo4jNode | Neo4jRelationship | list[Neo4jNode]], labels: list[str]) -> None:
+    def __init__(self, data: Sequence[Any], labels: list[str]) -> None:
         self.data = data
         self.labels = labels
         self.branch_score: int = 0
@@ -246,7 +246,13 @@ class QueryResult:
                 self.has_deleted_rels = True
                 return
 
-    def _get(self, label: str) -> Neo4jNode | Neo4jRelationship | list[Neo4jNode]:
+    def _get(self, label: str) -> Any:
+        """Return a column, which holds any Cypher value: node, relationship, path, scalar, list, map or null.
+
+        Raises:
+            ValueError: when the label is not one of the query's return labels.
+
+        """
         if label not in self.labels:
             raise ValueError(f"{label} is not a valid value for this query, must be one of {self.labels}")
 
@@ -254,6 +260,7 @@ class QueryResult:
         return self.data[return_id]
 
     def get(self, label: str) -> Neo4jNode | Neo4jRelationship:
+        """Return a column as-is; the annotation is not enforced, so the value may also be a scalar, list or null."""
         return self._get(label=label)
 
     def get_as_str(self, label: str) -> str | None:
@@ -343,13 +350,13 @@ class QueryResult:
                 yield item
 
     def get_path(self, label: str) -> Neo4jPath:
-        path = self.get(label=label)
+        path = self._get(label=label)
         if isinstance(path, Neo4jPath):
             return path
         raise ValueError(f"{label} is not a Path")
 
     def get_paths(self, label: str) -> Generator[Neo4jPath, None, None]:
-        for path in self.get(label=label):
+        for path in self._get(label=label):
             if isinstance(path, Neo4jPath):
                 yield path
 
