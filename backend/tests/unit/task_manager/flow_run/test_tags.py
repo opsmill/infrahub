@@ -53,6 +53,21 @@ BRANCH_CASES = [
         expected=None,
     ),
     BranchCase(name="no_tags", tags=[], expected=None),
+    BranchCase(
+        name="deleted_branch_tag_only",
+        tags=["infrahub.app/deleted-branch/old"],
+        expected="old",
+    ),
+    BranchCase(
+        name="live_branch_tag_wins_over_deleted",
+        tags=["infrahub.app/deleted-branch/old", "infrahub.app/branch/live"],
+        expected="live",
+    ),
+    BranchCase(
+        name="deleted_branch_id_tag_is_not_a_name",
+        tags=["infrahub.app/deleted-branch-id/abc"],
+        expected=None,
+    ),
 ]
 
 

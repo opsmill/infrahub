@@ -4,6 +4,8 @@ from typing import TYPE_CHECKING
 
 from prefect.client.schemas.objects import TERMINAL_STATES
 
+from infrahub.workflows.constants import WorkflowTag
+
 from .models import FlowRunQueryCriteria
 
 if TYPE_CHECKING:
@@ -13,15 +15,15 @@ if TYPE_CHECKING:
     from infrahub.log import InfrahubLogger
 
     from .filters import FlowRunFilterBuilder
-    from .prefect_client import RetentionPrefectClient
+    from .prefect_client import BranchCleanupPrefectClient
 
 
-class BranchFlowRunPurger:
-    """Delete the settled flow runs tagged with a given branch."""
+class BranchFlowRunDetacher:
+    """Move the settled flow runs of a deleted branch off its branch tag, keeping every run readable by id."""
 
     def __init__(
         self,
-        client: RetentionPrefectClient,
+        client: BranchCleanupPrefectClient,
         filter_builder: FlowRunFilterBuilder,
         log: InfrahubLogger,
         batch_size: int = 100,
@@ -40,47 +42,58 @@ class BranchFlowRunPurger:
             self.log.warning(f"Failed to read flow runs for deleted branch '{branch_name}': {exc}")
             return None
 
-    async def purge_for_branch(self, branch_name: str) -> None:
+    def _detached_tags(self, tags: list[str], branch_tag: str, added_tags: list[str]) -> list[str]:
+        kept = [tag for tag in tags if tag != branch_tag]
+        return kept + [tag for tag in added_tags if tag not in kept]
+
+    async def detach_for_branch(self, branch_name: str, branch_id: str | None = None) -> None:
         # Only settled runs: a run still in flight keeps the branch tag while it runs, so restricting
         # to terminal states leaves it untouched.
         flow_run_filter = self.filter_builder.build_flow_run_filter(
             criteria=FlowRunQueryCriteria(branch=branch_name, statuses=list(TERMINAL_STATES))
         )
+        branch_tag = WorkflowTag.BRANCH.render(identifier=branch_name)
+        added_tags = [WorkflowTag.DELETED_BRANCH.render(identifier=branch_name)]
+        if branch_id:
+            added_tags.append(WorkflowTag.DELETED_BRANCH_ID.render(identifier=branch_id))
 
         flow_runs = await self._read(flow_run_filter=flow_run_filter, branch_name=branch_name)
         if flow_runs is None:
             return
 
-        purged_total = 0
+        detached_total = 0
         while flow_runs:
             attempted_ids = [flow_run.id for flow_run in flow_runs]
-            deleted_calls = 0
+            updated_calls = 0
             for flow_run in flow_runs:
                 try:
-                    await self.client.delete_flow_run(flow_run_id=flow_run.id)
-                    deleted_calls += 1
-                # A single failed delete must not abort the rest of the batch.
+                    await self.client.update_flow_run(
+                        flow_run_id=flow_run.id,
+                        tags=self._detached_tags(tags=flow_run.tags, branch_tag=branch_tag, added_tags=added_tags),
+                    )
+                    updated_calls += 1
+                # A single failed update must not abort the rest of the batch.
                 except Exception as exc:
                     self.log.warning(
-                        f"Failed to delete flow run {flow_run.id} for deleted branch '{branch_name}': {exc}"
+                        f"Failed to detach flow run {flow_run.id} from deleted branch '{branch_name}': {exc}"
                     )
 
             flow_runs = await self._read(flow_run_filter=flow_run_filter, branch_name=branch_name)
             if flow_runs is None:
-                # The re-read that confirms removals failed, so fall back to the delete calls that
+                # The re-read that confirms the detach failed, so fall back to the update calls that
                 # returned this batch rather than dropping them from the count.
-                purged_total += deleted_calls
+                detached_total += updated_calls
                 break
-            # Progress is measured by what actually left the store, not by delete calls that returned:
-            # a delete can report success yet leave the run in place under eventual consistency.
+            # Progress is measured by what actually left the branch filter, not by update calls that
+            # returned: an update can report success yet leave the tag in place under eventual consistency.
             remaining_ids = {flow_run.id for flow_run in flow_runs}
-            purged_total += sum(1 for flow_run_id in attempted_ids if flow_run_id not in remaining_ids)
-            # None of the attempted runs are gone, so retrying would loop forever: stop and say so.
+            detached_total += sum(1 for flow_run_id in attempted_ids if flow_run_id not in remaining_ids)
+            # None of the attempted runs left the filter, so retrying would loop forever: stop and say so.
             if remaining_ids.issuperset(attempted_ids):
                 self.log.warning(
-                    f"Stopped purging flow runs for deleted branch '{branch_name}': "
-                    f"{len(attempted_ids)} run(s) could not be removed"
+                    f"Stopped detaching flow runs from deleted branch '{branch_name}': "
+                    f"{len(attempted_ids)} run(s) kept the branch tag"
                 )
                 break
 
-        self.log.info(f"Purged {purged_total} flow run(s) for deleted branch '{branch_name}'")
+        self.log.info(f"Detached {detached_total} flow run(s) from deleted branch '{branch_name}'")
