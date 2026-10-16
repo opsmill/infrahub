@@ -337,12 +337,17 @@ infrahub-sdk-python: infrahub-develop ← S1 ← S2
   (`dev/guidelines/git-workflow.md`, "Stacked Pull Requests"), and the changelog fragments are created
   in the top layer. Reviews of all layers can run at the same time, so each layer can be approved
   before the merge.
+- Review: a layer is marked ready for review when the layer below it is approved (decided by Daniel on
+  2026-10-16). The spec layer and IFC-3425 were marked ready at once. Each
+  pull request shows only its own diff, so several layers can be under review at the same time.
+  Before marking a layer ready, run `gh stack sync` and check that its CI passes.
 - A fix in a lower layer is made in that layer, then `gh stack rebase --upstack` replays the layers
   above. Each layer ticks its own tasks in this file and records its own spec updates.
 - A2 is tested with `python_sdk` on the S1 branch; it does not wait for S1 to merge. Only C1 commits
   the `python_sdk` pointer, after S1 and S2 merge. Then Daniel runs `opsmill-dev-guiding-manual-tests`
   (T093).
-- Each pull request opens as a draft (`gh stack submit --auto`). Force-pushing commands
+- Each pull request opens as a draft (`gh stack submit --auto`), after Daniel's manual test of the
+  layer. Force-pushing commands
   (`gh stack sync`, `gh stack rebase`) run only while it is a draft, or after its review has landed.
   Push and open pull requests only when Daniel asks.
 - IFC-3425 also fixes [IFC-3330](https://opsmill.atlassian.net/browse/IFC-3330).
