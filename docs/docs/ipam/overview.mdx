@@ -43,6 +43,10 @@ Every IP prefix exposes a read-only `utilization` attribute, computed on read fr
 
 Network and broadcast addresses count toward the usable total when `is_pool` is `true`, when an IPv4 prefix is `/31` or longer (per [RFC 3021](https://datatracker.ietf.org/doc/html/rfc3021)), and for every IPv6 prefix.
 
+### Tree map
+
+The **Tree Map** tab on a prefix draws its direct children and free blocks as tiles sized by their share of the address space, with each child's utilization as an inner fill and pools in their own color, so you can see where the space of a supernet has gone and where contiguous free blocks remain. Click a child to descend one level, or a free block to allocate into it. See [Visualize prefix utilization](./visualize-prefix-utilization.mdx).
+
 ## Namespaces
 
 Every IP prefix and IP address belongs to exactly one IP namespace. Namespaces isolate IP space — the same prefix or address can exist in multiple namespaces without conflict, similar to how a VRF isolates a routing table. Use additional namespaces when you need that isolation, for example between customers or business units with overlapping address ranges.
