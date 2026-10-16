@@ -41,6 +41,24 @@ class LicenseServiceCommunity(LicenseService):
         return LicenseStatus(state=LicenseState.NOT_REQUIRED)
 
 
+class LicenseServiceUnavailable(LicenseService):
+    """Stands in for a license service that could not be built, reporting the license as invalid."""
+
+    @property
+    def notice_mode(self) -> NoticeMode:
+        return NoticeMode.QUIET
+
+    @property
+    def enforcing_release(self) -> str | None:
+        return None
+
+    def status(self, now: datetime | None = None) -> LicenseStatus:
+        return evaluate(
+            outcome=LicenseFailure(reason=LicenseFailureReason.INTERNAL_ERROR),
+            now=now if now is not None else datetime.now(tz=UTC),
+        )
+
+
 def read_license_status(service: LicenseService, now: datetime | None = None) -> LicenseStatus:
     """Return the service's license state, reporting any error it raises as invalid with an internal error."""
     try:
@@ -48,7 +66,4 @@ def read_license_status(service: LicenseService, now: datetime | None = None) ->
     # Top-level boundary: a defect in a replaceable license service must not fail a startup or a request.
     except Exception:
         log.exception("The license service failed; reporting the license as invalid with reason internal_error")
-        return evaluate(
-            outcome=LicenseFailure(reason=LicenseFailureReason.INTERNAL_ERROR),
-            now=now if now is not None else datetime.now(tz=UTC),
-        )
+        return LicenseServiceUnavailable().status(now=now)

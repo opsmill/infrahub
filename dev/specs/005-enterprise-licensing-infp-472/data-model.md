@@ -109,11 +109,15 @@ Returned by `notice_for(status, mode)`.
 
 `status()` never raises. An Enterprise implementation that hits an unexpected error returns `invalid` with `internal_error` and logs it.
 
+When building the service raises, `get_license_service()` logs it once and returns `LicenseServiceUnavailable` for the rest of the process: `status()` is `invalid` with `internal_error`, `notice_mode` is `quiet`, `enforcing_release` is `None`.
+
 ## LicenseSettings (configuration)
 
 | Field | Environment variable | Type | Default |
 | --- | --- | --- | --- |
 | `key` | `INFRAHUB_LICENSE_KEY` | `str \| None` | `None` |
+
+A blank or whitespace-only value is read as `None`, because deployment templates render an unset variable as an empty string.
 
 ## LicenseInfoAPI (REST, Pydantic)
 

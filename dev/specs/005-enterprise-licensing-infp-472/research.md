@@ -4,7 +4,7 @@ Each entry records a decision this plan needed, the reason, and what was rejecte
 
 ## R1. How the license service is replaced by Enterprise
 
-- **Decision**: An abstract `LicenseService` in `backend/infrahub/license/service.py`, a `LicenseServiceCommunity` default, and a `build_license_service` / `get_license_service` pair in `backend/infrahub/workers/dependencies.py`, cached in `_singletons` exactly like `build_ldap_auth_service` / `get_ldap_auth_service`. Enterprise replaces it with `dependency_provider.override(build_license_service, …)` in its `set_enterprise_dependencies()`.
+- **Decision**: An abstract `LicenseService` in `backend/infrahub/license/service.py`, a `LicenseServiceCommunity` default, and a `build_license_service` / `get_license_service` pair in `backend/infrahub/workers/dependencies.py`, cached in `_singletons` exactly like `build_ldap_auth_service` / `get_ldap_auth_service`. Enterprise replaces it with `dependency_provider.override(build_license_service, …)` in its `set_enterprise_dependencies()`. Unlike its LDAP counterpart, `get_license_service()` never raises: a builder that raises is logged once and replaced for the rest of the process by `LicenseServiceUnavailable`, which reports `invalid` / `internal_error` in quiet mode, because a build failure is a defect in the edition rather than the customer's license.
 - **Rationale**: Same mechanism as LDAP and log forwarding (`infrahub.ldap_auth.service::LDAPAuthService`, `LDAPAuthServiceCommunity`). Tests already have `tests/helpers/dependency_override.py::override_dependency` to swap it.
 - **Alternatives considered**: a module-level registry or entry-point plugin (new pattern, rejected by constitution VII "follow established project patterns"); calling the Enterprise checker from community code behind `installation_type` (puts vendor logic in the public repo, rejected by design D7).
 
@@ -22,7 +22,7 @@ Each entry records a decision this plan needed, the reason, and what was rejecte
 
 ## R4. The license key setting
 
-- **Decision**: A `LicenseSettings` group in `backend/infrahub/config.py` with `env_prefix="INFRAHUB_LICENSE_"` and one field `key: str | None = None`, registered on `Settings` as `license`. It is not added to `enterprise_features`, so `server.py::_validate_feature_selection` does not refuse it on Community. At startup, a process whose state is `not_required` (Community, or Enterprise with no license service registered) and that has a key set logs once at INFO that it is ignored, without the value.
+- **Decision**: A `LicenseSettings` group in `backend/infrahub/config.py` with `env_prefix="INFRAHUB_LICENSE_"` and one field `key: str | None = None`, registered on `Settings` as `license`. A blank or whitespace-only value is read as `None`, because deployment templates render an unset variable as an empty string. It is not added to `enterprise_features`, so `server.py::_validate_feature_selection` does not refuse it on Community. At startup, a process whose state is `not_required` (Community, or Enterprise with no license service registered) and that has a key set logs once at INFO that it is ignored, without the value.
 - **Rationale**: Every Infrahub server setting is a settings group with an env prefix; design D4 puts the license in `INFRAHUB_LICENSE_KEY`. Refusing to start on Community would break production for a harmless value (design D6).
 - **Alternatives considered**: `SecretStr` for the key. The token is not a credential and no other setting uses `SecretStr`; leakage is prevented by never logging it, enforced by a test (spec FR-012, SC-005). Reading `os.environ` directly in the Enterprise package (Community could not log the ignored value, and the configuration reference would not list the setting).
 - **Consequence**: the generated `docs/docs/reference/configuration.mdx` gains the setting, described as "License for Infrahub Enterprise, as a signed token. Infrahub Community ignores it." Regenerated with `uv run invoke docs.generate`.
@@ -35,7 +35,7 @@ Each entry records a decision this plan needed, the reason, and what was rejecte
 
 ## R6. The info endpoint
 
-- **Decision**: `backend/infrahub/api/internal.py::InfoAPI` gains `license: LicenseInfoAPI`. `get_info` builds it from `get_license_service().status()` and `notice_for(...)`. `ConfigAPI` is unchanged. `schema/openapi.json` and `frontend/app/src/shared/api/rest/types.generated.ts` are regenerated.
+- **Decision**: `backend/infrahub/api/internal.py::InfoAPI` gains `license: LicenseInfoAPI`. `get_info` builds it from `read_license_status(get_license_service())` and `notice_for(status, service.notice_mode)`. `ConfigAPI` is unchanged. `schema/openapi.json` and `frontend/app/src/shared/api/rest/types.generated.ts` are regenerated.
 - **Rationale**: `/api/info` already requires sign-in (`get_current_user`); `/api/config` does not (design D9). The banner decision is resolved on the server ("backend is authoritative", `dev/knowledge/frontend/entities-structure.md`), and the UI only applies the audience to the signed-in user.
 - **Alternatives considered**: resolving visibility per user on the server (would duplicate the frontend's existing super-admin check and make the response user-specific for no gain); a new `/api/license` endpoint (one more request on every page load).
 
@@ -54,7 +54,7 @@ Each entry records a decision this plan needed, the reason, and what was rejecte
 
 ## R9. Startup logs
 
-- **Decision**: `backend/infrahub/license/reporting.py::log_license_state(service, installation_type)` is called once in `server.py::app_initialization` after `validate_graph_version`, and once in `workers/infrahub_async.py::InfrahubWorkerAsync.setup` after `validate_graph_version`. It logs INFO for valid or not required, WARNING for unlicensed, not yet valid, expiring and expired, ERROR for invalid, plus the Community "ignored" message. It never includes the key.
+- **Decision**: `backend/infrahub/license/reporting.py::log_license_state(service, key_is_set)` is called once in `server.py::app_initialization` after `validate_graph_version`, and once in `workers/infrahub_async.py::InfrahubWorkerAsync.setup` after `validate_graph_version`. It logs INFO for valid or not required, WARNING for unlicensed, not yet valid, expiring and expired, ERROR for invalid. When the state is not required and a key is set, the one line says the key is ignored, in either edition. It never includes the key. A service that raises, while being built or while being read, yields two ERROR entries: the traceback from the boundary that caught it, then the invalid state line.
 - **Rationale**: Spec FR-011 and EC-001 rely on per-process startup logs to diagnose a key missing on the task workers. The daily repeat belongs to the Enterprise workflow (design D10, out of scope).
 
 ## R10. Frontend

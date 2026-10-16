@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 import pytest
 
 from infrahub.license.models import LicenseFailureReason, LicenseState, LicenseStatus, NoticeMode
-from infrahub.license.service import LicenseServiceCommunity, read_license_status
+from infrahub.license.service import LicenseServiceCommunity, LicenseServiceUnavailable, read_license_status
 from tests.adapters.license import FailingLicenseService, RecordingLicenseService
 from tests.helpers.log import find_logged_events
 
@@ -20,6 +20,16 @@ def test_community_service_reports_no_license_required(now: datetime | None) -> 
 def test_community_service_shows_notices_to_super_admins_only_with_no_enforcing_release() -> None:
     service = LicenseServiceCommunity()
 
+    assert service.notice_mode is NoticeMode.QUIET
+    assert service.enforcing_release is None
+
+
+def test_unavailable_service_reports_an_internal_error_to_super_admins_only() -> None:
+    service = LicenseServiceUnavailable()
+
+    assert service.status(now=NOW) == LicenseStatus(
+        state=LicenseState.INVALID, reason=LicenseFailureReason.INTERNAL_ERROR
+    )
     assert service.notice_mode is NoticeMode.QUIET
     assert service.enforcing_release is None
 
