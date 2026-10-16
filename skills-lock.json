@@ -31,6 +31,24 @@
       "skillPath": "opsmill-dev/skills/monitoring-pull-requests/SKILL.md",
       "computedHash": "b52cf3902ca8a290aa3167ff5e6b0a54068a45187357e342e5967f18fb00d854"
     },
+    "neo4j-cypher-skill": {
+      "source": "neo4j-contrib/neo4j-skills",
+      "sourceType": "github",
+      "skillPath": "neo4j-cypher-skill/SKILL.md",
+      "computedHash": "1822c0a56aae0e1f3a704671dfae3370260a2489dda3598e8485b9a6733202ae"
+    },
+    "neo4j-driver-python-skill": {
+      "source": "neo4j-contrib/neo4j-skills",
+      "sourceType": "github",
+      "skillPath": "neo4j-driver-python-skill/SKILL.md",
+      "computedHash": "daef535fd218c4c370c5bfe993d53c16ffbfd7ce57224e03b4890d282975d5ae"
+    },
+    "neo4j-query-tuning-skill": {
+      "source": "neo4j-contrib/neo4j-skills",
+      "sourceType": "github",
+      "skillPath": "neo4j-query-tuning-skill/SKILL.md",
+      "computedHash": "203ba2a3dae704c3a22875c4d9eb86ef2943e04d923d5f17413a8a0f1ff6d198"
+    },
     "opsmill-dev-analyzing-bugs": {
       "source": "opsmill/opsmill-skills",
       "sourceType": "github",
