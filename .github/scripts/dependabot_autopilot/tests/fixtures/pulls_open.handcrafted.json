@@ -1,0 +1,24 @@
+[
+  {
+    "number": 10712,
+    "state": "open",
+    "user": {"login": "dependabot[bot]", "id": 49699333, "type": "Bot"},
+    "base": {"ref": "stable"},
+    "head": {
+      "ref": "dependabot/github_actions/actions/checkout-6.0.1",
+      "sha": "8b1c3f0e2d4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c",
+      "repo": {"full_name": "opsmill/infrahub"}
+    }
+  },
+  {
+    "number": 10698,
+    "state": "open",
+    "user": {"login": "external-contributor", "id": 1, "type": "User"},
+    "base": {"ref": "stable"},
+    "head": {
+      "ref": "fix-typo",
+      "sha": "2f3e4d5c6b7a8f9e0d1c2b3a4f5e6d7c8b9a0f1e",
+      "repo": null
+    }
+  }
+]

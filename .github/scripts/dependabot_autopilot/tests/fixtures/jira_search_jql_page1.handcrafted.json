@@ -1,0 +1,21 @@
+{
+  "issues": [
+    {
+      "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+      "id": "10042",
+      "self": "https://opsmill.atlassian.net/rest/api/3/issue/10042",
+      "key": "IFC-42",
+      "fields": {
+        "summary": "[fastapi] Use lifespan state",
+        "priority": {
+          "self": "https://opsmill.atlassian.net/rest/api/3/priority/3",
+          "iconUrl": "https://opsmill.atlassian.net/images/icons/priorities/medium.svg",
+          "name": "Medium",
+          "id": "3"
+        }
+      }
+    }
+  ],
+  "nextPageToken": "CAEaAggD",
+  "isLast": false
+}

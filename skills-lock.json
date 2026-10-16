@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "opsmill-dev-analyzing-dependency-bumps": {
+      "source": "opsmill/opsmill-skills",
+      "sourceType": "github",
+      "skillPath": "opsmill-dev/skills/analyzing-dependency-bumps/SKILL.md",
+      "computedHash": "911a83c2dd4e8af17d66462a58a7fa49d34fb98a8e4d2a74e41bdda548cd840b"
+    },
     "commit": {
       "source": "opsmill/opsmill-skills",
       "sourceType": "github",

@@ -1,0 +1,14 @@
+{
+  "issues": [
+    {
+      "id": "10050",
+      "self": "https://opsmill.atlassian.net/rest/api/3/issue/10050",
+      "key": "IFC-50",
+      "fields": {
+        "summary": "[fastapi] Use lifespan state",
+        "priority": null
+      }
+    }
+  ],
+  "isLast": true
+}
