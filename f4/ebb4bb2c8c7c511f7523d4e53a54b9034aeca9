@@ -1,0 +1,23 @@
+backend/infrahub/graphql/analyzer.py
+  s_fd0c128a7b3dd4::t_835c541fcbd06b 827,864-866,870-881,895-897
+backend/tests/component/graphql/test_relationship_reached_paths.py
+  s_fd0c128a7b3dd4::t_3dc96e767f2d82 19,53-82,85,88-91,188-195
+changelog/+regen-fragment-spread-inside-fragment.fixed.md
+  s_fd0c128a7b3dd4::t_c7df53d14cf348 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f4ebb4bb2c8c7c511f7523d4e53a54b9034aeca9",
+  "prompts": {},
+  "sessions": {
+    "s_fd0c128a7b3dd4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e92e46bb-6843-4c8c-ba3a-944b2c66f5ae",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

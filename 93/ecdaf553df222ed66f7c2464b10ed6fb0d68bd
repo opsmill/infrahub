@@ -1,0 +1,35 @@
+backend/infrahub/branch/tasks.py
+  s_2fae1787d146ee::t_7d978c7fdbdf21 10,39-40,43,46
+backend/infrahub/branch/triggers.py
+  s_2fae1787d146ee::t_dbf06d4c0584a1 34
+backend/infrahub/task_manager/flow_run/branch_cleanup.py
+  s_2fae1787d146ee::t_05da3656b81fb8 7-8,18,21-22,26,45-49,55-58,64,67,70-75,78,83,85,87-88,90-91,94-95,99
+backend/infrahub/task_manager/flow_run/prefect_client.py
+  s_2fae1787d146ee::t_77c7c2a1ef49fd 55-60,81-83,134-136
+backend/infrahub/task_manager/flow_run/tags.py
+  s_2fae1787d146ee::t_8f14a5678701a3 10-16
+backend/infrahub/workflows/constants.py
+  s_2fae1787d146ee::t_99c14a3bc0a724 36-37
+backend/tests/component/branch/test_purge_deleted_branch_tasks.py
+  s_2fae1787d146ee::t_ad82aad46d021b 8-9,18,21,23-25,28,38,40-43,46-55
+backend/tests/unit/task_manager/flow_run/test_branch_cleanup.py
+  s_2fae1787d146ee::t_14a78ce10d9e38 7,11,13-14,17,20-22,25-26,28-30,35,46-47,49-50,52-54,57-58,63,65-66,68-69,72,76,88-89,92-93,95-96,99-100,120-121,130-131,134,141-142,144-146,148,150-153,155-182,185,187,189,193,195,197,201,206,208,210-211,213,217,219,221,224,226,228-230,232-234,236,238,241,243,245-247,250,252,254,257,259,261-262,266,270,272,274
+backend/tests/unit/task_manager/flow_run/test_tags.py
+  s_2fae1787d146ee::t_3d42ceeb6ec3d5 56-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "93ecdaf553df222ed66f7c2464b10ed6fb0d68bd",
+  "prompts": {},
+  "sessions": {
+    "s_2fae1787d146ee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c38a01a-cf7a-4707-9e40-59d796ec98f5",
+        "model": "unknown"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}
