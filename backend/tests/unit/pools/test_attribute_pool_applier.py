@@ -13,8 +13,8 @@ from infrahub.core.query.resource_manager import TrackingPool
 from infrahub.core.schema import AttributeSchema, NodeSchema
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import NodeNotFoundError, PoolExhaustedError, ValidationError
-from infrahub.pools.attribute_pool_applier import AttributePoolApplier
+from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExhaustedError, ValidationError
+from infrahub.pools.attribute_pool_applier import AttributePoolApplier, LoadedNodePoolApplier
 from infrahub.pools.intent import FromPoolIntentResolver
 from infrahub.pools.number_ranges import PoolRange
 from infrahub.pools.range_refusal import BranchValue
@@ -39,6 +39,8 @@ OTHER_ACTOR_ID = "5b7d2e0c-4f3a-4c1e-9a6b-2d8f1c0e7a41"
 class InMemoryNumberPoolFinder:
     pools: list[InMemoryNumberPool]
     tracking_pool_ids: dict[str, str] = field(default_factory=dict)
+    tracking_pool_lookups: list[str] = field(default_factory=list)
+    """The attribute ids of every tracking pool lookup, in order."""
 
     async def find(self, pool_ref: str) -> CoreNumberPool:
         for pool in self.pools:
@@ -47,6 +49,7 @@ class InMemoryNumberPoolFinder:
         raise NodeNotFoundError(node_type=InfrahubKind.NUMBERPOOL, identifier=pool_ref)
 
     async def get_tracking_pool_id(self, attribute_id: str) -> str | None:
+        self.tracking_pool_lookups.append(attribute_id)
         return self.tracking_pool_ids.get(attribute_id)
 
 
@@ -707,3 +710,90 @@ async def test_a_number_sent_outside_the_ranges_is_refused_before_other_branches
 
     assert exc_info.value.message == _untracked_attach_message(ranges="1-100")
     assert branch_values.reads == []
+
+
+def _edited_ticket_id(value: int | None, tracking_pool_id: str | None) -> BaseAttribute:
+    """Build a saved ticket attribute loaded with the pool tracking it, then given `value` alone by a write."""
+    ticket_id = _ticket_id(payload={"value": value}, saved=True)
+    ticket_id.tracking_pool = (
+        TrackingPool(pool_id=tracking_pool_id, provenance=PoolRecordProvenance.PROVIDED)
+        if tracking_pool_id is not None
+        else None
+    )
+    return ticket_id
+
+
+async def test_editing_a_tracked_number_to_one_outside_the_ranges_is_refused(
+    applier: AttributePoolApplier, range_reader: InMemoryPoolRangeReader
+) -> None:
+    ticket_id = _edited_ticket_id(value=900, tracking_pool_id=POOL_ID)
+
+    with pytest.raises(ValidationError) as exc_info:
+        await applier.check_value_change(node=ticket_id.node, attribute=ticket_id)
+
+    assert exc_info.value.message == (
+        "'ticket_id' is tracked by the tickets pool, so it cannot hold 900, which is outside the pool's ranges: "
+        "1-100. To set 900 and stop the pool tracking 'ticket_id', send 'value: 900' together with "
+        "'from_pool: null'. at ticket_id.value"
+    )
+    assert range_reader.reads == [POOL_ID]
+
+
+async def test_editing_a_tracked_number_to_one_inside_the_ranges_is_allowed(
+    applier: AttributePoolApplier, finder: InMemoryNumberPoolFinder, range_reader: InMemoryPoolRangeReader
+) -> None:
+    ticket_id = _edited_ticket_id(value=60, tracking_pool_id=POOL_ID)
+
+    await applier.check_value_change(node=ticket_id.node, attribute=ticket_id)
+
+    assert ticket_id.value == 60
+    assert ticket_id.tracking_pool == TrackingPool(pool_id=POOL_ID, provenance=PoolRecordProvenance.PROVIDED)
+    assert range_reader.reads == [POOL_ID]
+    assert finder.tracking_pool_lookups == []
+
+
+async def test_editing_a_number_no_pool_tracks_reads_nothing(
+    applier: AttributePoolApplier, finder: InMemoryNumberPoolFinder, range_reader: InMemoryPoolRangeReader
+) -> None:
+    ticket_id = _edited_ticket_id(value=900, tracking_pool_id=None)
+
+    await applier.check_value_change(node=ticket_id.node, attribute=ticket_id)
+
+    assert ticket_id.value == 900
+    assert finder.tracking_pool_lookups == []
+    assert range_reader.reads == []
+
+
+async def test_emptying_a_number_no_pool_tracks_reads_nothing(
+    applier: AttributePoolApplier, finder: InMemoryNumberPoolFinder, range_reader: InMemoryPoolRangeReader
+) -> None:
+    ticket_id = _edited_ticket_id(value=None, tracking_pool_id=None)
+
+    await applier.check_value_change(node=ticket_id.node, attribute=ticket_id)
+
+    assert ticket_id.value is None
+    assert finder.tracking_pool_lookups == []
+    assert range_reader.reads == []
+
+
+async def test_a_number_loaded_without_the_pool_tracking_it_cannot_be_checked(
+    applier: AttributePoolApplier, range_reader: InMemoryPoolRangeReader
+) -> None:
+    ticket_id = _ticket_id(payload={"value": 900}, saved=True)
+
+    with pytest.raises(
+        InitializationError,
+        match=rf"^'ticket_id' of {NODE_ID} was loaded without the pool tracking it, so it cannot be checked$",
+    ):
+        await applier.check_value_change(node=ticket_id.node, attribute=ticket_id)
+    assert range_reader.reads == []
+
+
+async def test_a_loaded_node_cannot_check_a_number_against_a_pool() -> None:
+    ticket_id = _ticket_id(payload={"value": 50}, saved=True)
+
+    with pytest.raises(
+        InitializationError,
+        match=rf"^The loaded node {NODE_ID} cannot check 'ticket_id' against the pool tracking it$",
+    ):
+        await LoadedNodePoolApplier().check_value_change(node=ticket_id.node, attribute=ticket_id)

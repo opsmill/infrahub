@@ -12,6 +12,7 @@ from infrahub.core.changelog.models import NodeChangelog
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
     OBJECT_TEMPLATE_RELATIONSHIP_NAME,
+    POOL_TRACKED_ATTRIBUTE_KINDS,
     SYSTEM_USER_ID,
     BranchSupportType,
     ComputedAttributeKind,
@@ -41,6 +42,7 @@ from infrahub.pools.attribute_pool_applier import LoadedNodePoolApplier
 from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
 from infrahub.pools.default_allocator import DefaultPoolAllocator
 from infrahub.pools.noop_allocator import NoOpPoolAllocator
+from infrahub.pools.pool_kinds import is_resource_pool_schema
 from infrahub.profiles.data_reader import ProfileDataReader
 from infrahub.profiles.mandatory_fields_checker import ProfilesMandatoryFieldGetter
 from infrahub.profiles.node_applier import NodeProfilesApplier
@@ -108,6 +110,17 @@ def _build_peer_stub(relationship: Relationship) -> dict[str, Any]:
 def _requests_pool(value: Any) -> bool:
     """Whether the GraphQL value of an attribute asks for its value to be drawn from a resource pool."""
     return isinstance(value, dict) and "from_pool" in value
+
+
+def _changes_a_tracked_number(attribute: BaseAttribute, value: dict[str, Any], held_value: Any) -> bool:
+    """Whether the GraphQL value changes a saved number that a pool may track, without naming a pool."""
+    return (
+        attribute.schema.kind in POOL_TRACKED_ATTRIBUTE_KINDS
+        and "value" in value
+        and "from_pool" not in value
+        and attribute.id is not None
+        and attribute.value != held_value
+    )
 
 
 class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
@@ -1473,17 +1486,23 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         The pools are applied once every key of the payload is applied, since the division of a scoped pool is read
         from the node's other fields; without `process_pools` nothing is drawn: each pool is resolved, and the key of
-        the node's division of a scoped pool is stored beside the pool id.
+        the node's division of a scoped pool is stored beside the pool id. With `process_pools`, a number changed
+        without naming a pool is checked against the pool tracking it, unless the node is a resource pool, whose
+        numbers no pool tracks.
         """
         changed = False
         pooled_attributes: list[BaseAttribute] = []
+        changed_numbers: list[BaseAttribute] = []
 
         for key, value in data.items():
             if key in self._attributes and isinstance(value, dict):
                 attribute: BaseAttribute = getattr(self, key)
+                held_value = attribute.value
                 changed |= await attribute.from_graphql(data=value)
                 if _requests_pool(value):
                     pooled_attributes.append(attribute)
+                elif _changes_a_tracked_number(attribute=attribute, value=value, held_value=held_value):
+                    changed_numbers.append(attribute)
 
             if key in self._relationships:
                 rel: RelationshipManager = getattr(self, key)
@@ -1491,6 +1510,10 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         for attribute in pooled_attributes:
             await pool_applier.apply(node=self, attribute=attribute, allocate=process_pools, user_id=user_id)
+
+        if process_pools and not is_resource_pool_schema(schema=self.get_schema()):
+            for attribute in changed_numbers:
+                await pool_applier.check_value_change(node=self, attribute=attribute)
 
         return changed
 

@@ -118,6 +118,17 @@ class AttributePoolApplierInterface(Protocol):
         """
         ...
 
+    async def check_value_change(self, node: Node, attribute: BaseAttribute) -> None:
+        """Refuse a new number the pool tracking the saved attribute cannot hold.
+
+        Raises:
+            ValidationError: When the number is outside the ranges of the pool tracking the attribute.
+            InitializationError: When the attribute was loaded without the pool tracking it.
+            NodeNotFoundError: When the pool tracking the attribute cannot be read.
+
+        """
+        ...
+
 
 class LoadedNodePoolApplier:
     """Stands in for the applier on a node loaded from the database, which never draws from a pool."""
@@ -136,6 +147,17 @@ class LoadedNodePoolApplier:
 
         """
         raise InitializationError(f"The loaded node {node.get_id()} cannot draw '{attribute.name}' from a pool")
+
+    async def check_value_change(self, node: Node, attribute: BaseAttribute) -> None:
+        """Refuse, since reaching this means a loaded node was asked to check a number against a pool.
+
+        Raises:
+            InitializationError: Always.
+
+        """
+        raise InitializationError(
+            f"The loaded node {node.get_id()} cannot check '{attribute.name}' against the pool tracking it"
+        )
 
 
 class AttributePoolApplier:
@@ -282,6 +304,51 @@ class AttributePoolApplier:
                 )
             case _:
                 assert_never(intent)
+
+    async def check_value_change(self, node: Node, attribute: BaseAttribute) -> None:
+        """Refuse a new number the pool tracking the saved attribute cannot hold.
+
+        The pool tracking the attribute is the one loaded with the node, and the pool itself is read only to name it
+        in a refusal.
+
+        Raises:
+            ValidationError: When the number is outside the ranges of the pool tracking the attribute.
+            InitializationError: When the attribute was loaded without the pool tracking it.
+            NodeNotFoundError: When the pool tracking the attribute cannot be read.
+
+        """
+        tracking_pool = self._loaded_tracking_pool(node=node, attribute=attribute)
+        if tracking_pool is None:
+            return
+
+        number = self._get_number(attribute=attribute)
+        if number is None:
+            return
+
+        ranges = await self.range_reader.get_pool_ranges(pool_id=tracking_pool.pool_id)
+        if is_within_ranges(ranges=ranges, value=number):
+            return
+        pool = await self.pool_finder.find(pool_ref=tracking_pool.pool_id)
+        raise ValidationError(
+            {
+                f"{attribute.name}.value": tracked_edit_refusal(
+                    pool_name=pool.name.value, attribute_name=attribute.name, ranges=ranges, value=number
+                )
+            }
+        )
+
+    def _loaded_tracking_pool(self, node: Node, attribute: BaseAttribute) -> TrackingPool | None:
+        """Return the pool tracking the saved attribute, as loaded with the node.
+
+        Raises:
+            InitializationError: When the attribute was loaded without the pool tracking it.
+
+        """
+        if not attribute.tracking_pool_known:
+            raise InitializationError(
+                f"'{attribute.name}' of {node.get_id()} was loaded without the pool tracking it, so it cannot be checked"
+            )
+        return attribute.tracking_pool
 
     async def _apply_schema_number_pool(
         self,

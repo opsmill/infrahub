@@ -212,24 +212,6 @@ class TestPooledSourceRead:
         untracked = await pooled_numbers(db=db, branch=main_branch, node_id=ticket["id"], at=before_attach)
         assert untracked["ticket_id"] == AttributeRead(4405, None, None)
 
-    async def test_a_number_outside_the_range_or_null_still_reports_the_pool(
-        self, db: InfrahubDatabase, main_branch: Branch
-    ) -> None:
-        pool = await new_pool(db=db, name="read-outside", start_range=4500, end_range=4509)
-        ticket = await create_ticket(
-            db=db, branch=main_branch, title="read-outside", ticket_id={"from_pool": {"id": pool.id}}
-        )
-        assert ticket["ticket_id"]["value"] == 4500
-        branch = await create_branch(branch_name="read-outside", db=db)
-
-        await update_ticket(db=db, branch=main_branch, node_id=ticket["id"], ticket_id={"value": 4590})
-        await update_ticket(db=db, branch=branch, node_id=ticket["id"], ticket_id={"value": None})
-
-        on_main = await pooled_numbers(db=db, branch=main_branch, node_id=ticket["id"])
-        assert on_main["ticket_id"] == pool_source(4590, pool)
-        on_branch = await pooled_numbers(db=db, branch=branch, node_id=ticket["id"])
-        assert on_branch["ticket_id"] == pool_source(None, pool)
-
     async def test_a_number_inherited_from_a_profile_still_reports_the_pool(
         self, db: InfrahubDatabase, main_branch: Branch
     ) -> None:
