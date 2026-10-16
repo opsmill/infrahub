@@ -102,6 +102,20 @@ async def execute(
     return result.data
 
 
+async def refused_write(db: InfrahubDatabase, branch: Branch, source: str, variables: dict[str, Any]) -> str:
+    """Run a mutation the server must refuse, and return the message of its first error."""
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=source,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values=variables,
+    )
+    assert result.errors
+    return str(result.errors[0].message)
+
+
 async def create_ticket(
     db: InfrahubDatabase,
     branch: Branch,

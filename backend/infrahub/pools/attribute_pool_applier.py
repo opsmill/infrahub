@@ -10,6 +10,11 @@ from infrahub.core.schema import TemplateSchema
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExhaustedError, ValidationError
 from infrahub.pools.intent import FromPoolIntent, FromPoolIntentResolver, FromPoolRequest, Sent
+from infrahub.pools.range_refusal import (
+    is_within_ranges,
+    tracked_edit_refusal,
+    untracked_attach_refusal,
+)
 from infrahub.pools.scope import AllocationScope
 
 if TYPE_CHECKING:
@@ -17,6 +22,7 @@ if TYPE_CHECKING:
     from infrahub.core.node import Node
     from infrahub.core.protocols import CoreNumberPool
     from infrahub.core.schema import NonGenericSchemaTypes
+    from infrahub.pools.number_ranges import PoolRange
     from infrahub.pools.scope import Division
 
 
@@ -32,6 +38,12 @@ class NumberPoolFinder(Protocol):
 
     async def get_tracking_pool_id(self, attribute_id: str) -> str | None:
         """Return the id of the number pool currently tracking the attribute, or None when none does."""
+        ...
+
+
+class PoolRangeReader(Protocol):
+    async def get_pool_ranges(self, pool_id: str) -> list[PoolRange]:
+        """Return the ranges the pool allocates from."""
         ...
 
 
@@ -131,11 +143,13 @@ class AttributePoolApplier:
         number_allocator: AttributeNumberAllocator,
         intent_resolver: FromPoolIntentResolver,
         division_reader: DivisionReader,
+        range_reader: PoolRangeReader,
     ) -> None:
         self.pool_finder = pool_finder
         self.number_allocator = number_allocator
         self.intent_resolver = intent_resolver
         self.division_reader = division_reader
+        self.range_reader = range_reader
 
     async def apply(
         self,
@@ -154,7 +168,8 @@ class AttributePoolApplier:
                 pool is not provisioned or cannot be found, when the pool cannot be used for the attribute,
                 when the pool or the writer's division is exhausted, when `from_pool` alone names a pool over
                 a non-default number the attribute holds and that pool does not already track it, or when the
-                schema of the node's branch does not define an element of the pool's scope.
+                schema of the node's branch does not define an element of the pool's scope, or when a number sent
+                with `from_pool` is outside the ranges of the pool it names.
             NodeNotFoundError: When a relationship element of the pool's scope names, by a human-friendly id or a
                 default filter value, a peer that does not exist.
 
@@ -232,9 +247,16 @@ class AttributePoolApplier:
                 await self.number_allocator.release(attribute=attribute, user_id=user_id)
                 attribute.tracking_pool = None
             case FromPoolIntent.ATTACH:
-                await self._attach(
-                    node=node, pool=self._require_pool(pool=pool, intent=intent), attribute=attribute, user_id=user_id
+                attach_pool = self._require_pool(pool=pool, intent=intent)
+                ranges = await self.range_reader.get_pool_ranges(pool_id=attach_pool.get_id())
+                self._check_attach_within_ranges(
+                    pool=attach_pool,
+                    attribute=attribute,
+                    number=number,
+                    ranges=ranges,
+                    tracking_pool_id=tracking_pool_id,
                 )
+                await self._attach(node=node, pool=attach_pool, attribute=attribute, user_id=user_id)
             case FromPoolIntent.ALLOCATE:
                 await self._allocate(
                     node=node,
@@ -281,6 +303,34 @@ class AttributePoolApplier:
         attribute.from_pool = {"id": pool.get_id()}
         self._check_pool_targets_attribute(schema=node.get_schema(), pool=pool, attribute=attribute)
         await self._allocate(node=node, pool=pool, attribute=attribute, user_id=user_id, reuse_reservation=True)
+
+    def _check_attach_within_ranges(
+        self,
+        pool: CoreNumberPool,
+        attribute: BaseAttribute,
+        number: int | None,
+        ranges: list[PoolRange],
+        tracking_pool_id: str | None,
+    ) -> None:
+        """Refuse a number sent with `from_pool` that is outside the ranges of the pool it names.
+
+        Raises:
+            ValidationError: When the number is outside the pool's ranges.
+            InitializationError: When no number was sent.
+
+        """
+        if number is None:
+            raise InitializationError(f"Attaching '{attribute.name}' to a number pool needs a number")
+        if is_within_ranges(ranges=ranges, value=number):
+            return
+        describe_refusal = tracked_edit_refusal if tracking_pool_id == pool.get_id() else untracked_attach_refusal
+        raise ValidationError(
+            {
+                f"{attribute.name}.from_pool": describe_refusal(
+                    pool_name=pool.name.value, attribute_name=attribute.name, ranges=ranges, value=number
+                )
+            }
+        )
 
     async def _attach(self, node: Node, pool: CoreNumberPool, attribute: BaseAttribute, user_id: str) -> None:
         # An attribute not saved yet is attached to the pool when the node is created.
