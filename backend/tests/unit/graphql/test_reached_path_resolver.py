@@ -174,11 +174,15 @@ def test_a_fragment_on_a_generic_resolves_to_its_implementations() -> None:
 
 
 def test_a_relationship_inside_a_fragment_on_the_root_narrows_like_one_outside_it() -> None:
+    # The fragment stands for the root device itself, so the device maps to itself through an empty chain.
     tree = _tree("TestingDevice", DEVICE, _fragment(DEVICE, _tree("interfaces", INTERFACE)))
 
     result = ReachedPathResolver(queries=[tree]).resolve()
 
-    assert result == {"TestingInterface": (ReachedPath(hops=(DEVICE_HOP,)),)}
+    assert result == {
+        "TestingDevice": (ReachedPath(hops=()),),
+        "TestingInterface": (ReachedPath(hops=(DEVICE_HOP,)),),
+    }
 
 
 def test_kind_reached_by_more_than_one_chain_keeps_every_chain() -> None:
@@ -200,8 +204,20 @@ def test_kind_reached_by_more_than_one_chain_keeps_every_chain() -> None:
     assert result == {"TestingPerson": (ReachedPath(hops=(backup_hop,)), ReachedPath(hops=(primary_hop,)))}
 
 
-def test_kind_read_at_a_root_and_through_a_relationship_widens() -> None:
+def test_kind_read_at_a_root_and_through_a_relationship_keeps_an_empty_chain_besides_its_chains() -> None:
     device_tree = _tree("TestingDevice", DEVICE_WITH_OWNER, _tree("owner", PERSON))
+    person_root = _tree("TestingPerson", PERSON)
+
+    result = ReachedPathResolver(queries=[device_tree, person_root]).resolve()
+
+    owner_hop = RelationshipHop(
+        node_kind="TestingDevice", relationship_identifier="device__owner", relationship_direction=OUT
+    )
+    assert result == {"TestingPerson": (ReachedPath(hops=()), ReachedPath(hops=(owner_hop,)))}
+
+
+def test_kind_read_at_a_root_and_reached_un_pinnably_widens() -> None:
+    device_tree = _tree("TestingDevice", DEVICE_WITH_OWNER, _tree("owner", PERSON), _tree("TestingConcrete", PERSON))
     person_root = _tree("TestingPerson", PERSON)
 
     result = ReachedPathResolver(queries=[device_tree, person_root]).resolve()

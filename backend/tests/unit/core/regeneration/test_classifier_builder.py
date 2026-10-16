@@ -235,16 +235,16 @@ FOLD_CASES = [
         ),
     ),
     FoldCase(
-        name="a_peer_already_read_at_a_root_widens",
+        name="a_peer_already_read_at_a_root_keeps_an_empty_chain_besides_the_derived_one",
         readable_fields_by_kind={"TestReader": {"human_friendly_id"}, "TestOwner": {"name"}},
         traversed_kinds=set(),
         reached_paths_by_kind={},
         dependencies=DerivedFieldDependencies(peers=(OWNER_PEER,), widen=False),
         expected=_classifier(
-            traversed_kinds=set(),
+            traversed_kinds={"TestOwner"},
             readable_fields_by_kind={"TestReader": {"human_friendly_id"}, "TestOwner": {"name"}},
-            reached_paths_by_kind={},
-            depends_on_everything=True,
+            reached_paths_by_kind={"TestOwner": (ReachedPath(hops=()), ReachedPath(hops=(OWNER_HOP,)))},
+            depends_on_everything=False,
         ),
     ),
     FoldCase(
