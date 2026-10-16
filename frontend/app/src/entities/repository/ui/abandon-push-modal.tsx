@@ -1,9 +1,12 @@
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
+import { Col } from "@/shared/components/container";
 import { ModalDanger } from "@/shared/components/modals/modal-danger";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { pluralize } from "@/shared/utils/string";
 
+import { useDefaultBranch } from "@/entities/branches/ui/hooks/use-default-branch";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { PendingMergeList } from "@/entities/repository/ui/pending-merge-list";
 import { useAbandonPushMutation } from "@/entities/repository/ui/queries/abandon-push.mutation";
@@ -18,6 +21,8 @@ interface AbandonPushModalProps {
 
 export function AbandonPushModal({ repositoryId, isOpen, onOpenChange }: AbandonPushModalProps) {
   const { data: pushState } = useGetRepositoryPushState({ repositoryId });
+  const defaultBranch = useDefaultBranch();
+  const pendingMerges = pushState?.pendingMerges ?? [];
   const { mutate: abandonPush, isPending } = useAbandonPushMutation({
     onSuccess: (result) => {
       toastTaskStarted("Started abandoning the pending pushes.", result.taskId);
@@ -41,15 +46,21 @@ export function AbandonPushModal({ repositoryId, isOpen, onOpenChange }: Abandon
     <ModalDanger
       title="Abandon pending push"
       description={
-        <div className="flex flex-col gap-2">
-          <p>Abandon every pending merge of this repository:</p>
-          <PendingMergeList merges={pushState?.pendingMerges ?? []} />
-          <p>Nothing is removed from the remote, and no remote branch is deleted.</p>
-          <p>
-            Repository objects of the abandoned merges can stay on the default branch until the
-            current commit is reimported.
+        <Col className="gap-3">
+          <p className="text-foreground">
+            {pluralize(pendingMerges.length, "merge")} won't be pushed to the remote
           </p>
-        </div>
+          <div className="max-h-60 overflow-y-auto rounded-md border bg-content-muted px-3 py-2">
+            <PendingMergeList merges={pendingMerges} />
+          </div>
+          <ul className="flex flex-col gap-1 text-xs">
+            <li>The remote stays as it is, and no branch is deleted</li>
+            <li>
+              Objects from these merges stay on {defaultBranch?.name ?? "the default branch"} until
+              you reimport the current commit
+            </li>
+          </ul>
+        </Col>
       }
       confirmLabel="Abandon"
       isOpen={isOpen}

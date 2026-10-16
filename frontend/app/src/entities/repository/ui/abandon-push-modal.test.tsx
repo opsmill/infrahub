@@ -87,14 +87,15 @@ describe("AbandonPushModal", () => {
       Node.DOCUMENT_POSITION_FOLLOWING
     );
     await expect
-      .element(
-        component.getByText("Nothing is removed from the remote, and no remote branch is deleted.")
-      )
+      .element(component.getByText("2 merges won't be pushed to the remote"))
+      .toBeVisible();
+    await expect
+      .element(component.getByText("The remote stays as it is, and no branch is deleted"))
       .toBeVisible();
     await expect
       .element(
         component.getByText(
-          "Repository objects of the abandoned merges can stay on the default branch until the current commit is reimported."
+          "Objects from these merges stay on primary until you reimport the current commit"
         )
       )
       .toBeVisible();
