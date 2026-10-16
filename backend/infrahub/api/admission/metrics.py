@@ -4,15 +4,8 @@ from prometheus_client import Counter, Gauge, Histogram
 
 METRIC_PREFIX = "infrahub_admission"
 
-# Multiprocess note: admission state (slots, waiters, CoDel controllers) is per worker
-# process by design, so no cross-worker aggregation is attempted. That per-worker,
-# no-aggregation assumption holds ONLY while PROMETHEUS_MULTIPROC_DIR is unset: each worker
-# then serves its own /metrics from its own default registry. If PROMETHEUS_MULTIPROC_DIR is
-# ever set, prometheus_client serves /metrics via a MultiProcessCollector and a plain Gauge
-# defaults to multiprocess_mode="all" (cross-worker), breaking the assumption. To keep
-# meaningful per-class figures in that mode, IN_FLIGHT/WAITERS would need
-# multiprocess_mode="livesum" and MAX_CONCURRENCY multiprocess_mode="max"; that is
-# intentionally deferred, not overlooked.
+# Admission state is per worker process, and the API server combines its workers' values in one
+# /metrics response, so counts and slot limits are summed over live workers to compare usage with capacity.
 
 OFFERED_TOTAL = Counter(
     f"{METRIC_PREFIX}_offered_total",
@@ -36,12 +29,14 @@ IN_FLIGHT = Gauge(
     f"{METRIC_PREFIX}_in_flight",
     "Currently-running admitted requests, per priority class",
     labelnames=["priority"],
+    multiprocess_mode="livesum",
 )
 
 WAITERS = Gauge(
     f"{METRIC_PREFIX}_waiters",
     "Requests currently queued waiting for a slot, per priority class",
     labelnames=["priority"],
+    multiprocess_mode="livesum",
 )
 
 SOJOURN_SECONDS = Histogram(
@@ -54,6 +49,7 @@ SOJOURN_SECONDS = Histogram(
 MAX_CONCURRENCY = Gauge(
     f"{METRIC_PREFIX}_max_concurrency",
     "Effective derived per-worker admission slot cap",
+    multiprocess_mode="livesum",
 )
 
 MISSING_PRIORITY_TOTAL = Counter(
@@ -64,4 +60,6 @@ MISSING_PRIORITY_TOTAL = Counter(
 SUSTAINED_LOAD_SECONDS = Gauge(
     f"{METRIC_PREFIX}_sustained_load_seconds",
     "Seconds the worker has continuously observed database stress at or above the significant-load ratio (0 below it)",
+    # Each worker runs its own clock, so one series per live worker is kept.
+    multiprocess_mode="liveall",
 )
