@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 import pytest
 
 from infrahub.core.branch import Branch
@@ -11,6 +13,7 @@ from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.mutations.resource_manager.number_pools.pool import (
     BOUNDS_REQUIRED,
     RANGES_NOT_NULLABLE,
+    RESOURCE_POOL_TARGET_REFUSED,
     SHORTHAND_WITH_RANGES,
 )
 from tests.helpers.graphql import graphql
@@ -32,6 +35,19 @@ from .helpers import (
     shorthand,
     ticket_pool_input,
 )
+
+
+@dataclass(frozen=True, kw_only=True)
+class ResourcePoolTargetCase:
+    name: str
+    kind: str
+    attribute_name: str
+
+
+RESOURCE_POOL_TARGET_CASES = [
+    ResourcePoolTargetCase(name="number_pool", kind=InfrahubKind.NUMBERPOOL, attribute_name="start_range"),
+    ResourcePoolTargetCase(name="number_pool_range", kind=InfrahubKind.NUMBERPOOLRANGE, attribute_name="start"),
+]
 
 MISSING_BOUND_CASES = [
     BoundsCase(name="start_only", bounds={"start_range": {"value": 1}}),
@@ -419,6 +435,35 @@ class TestNumberPoolCreate:
             allocated.append(ticket.get_attribute("ticket_id").value)
 
         assert allocated == [500, 1]
+
+    @pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in RESOURCE_POOL_TARGET_CASES])
+    async def test_create_for_a_resource_pool_is_refused(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        loaded_ticket_schema_scope_class: None,
+        case: ResourcePoolTargetCase,
+    ) -> None:
+        pools_before = await NodeManager.count(db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch_scope_class)
+
+        result = await execute(
+            db=db,
+            branch=default_branch_scope_class,
+            source=CREATE_NUMBER_POOL,
+            variables={
+                "name": f"pool-over-{case.name}",
+                "node": case.kind,
+                "node_attribute": case.attribute_name,
+                "start_range": 1,
+                "end_range": 3,
+            },
+        )
+
+        assert [error.message for error in result.errors or []] == [RESOURCE_POOL_TARGET_REFUSED]
+        assert (
+            await NodeManager.count(db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch_scope_class)
+            == pools_before
+        )
 
     async def test_create_with_null_ranges_is_refused(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, loaded_ticket_schema_scope_class: None
