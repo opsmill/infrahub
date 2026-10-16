@@ -90,6 +90,18 @@ GIT_CALL_TIME_LIMIT = re.compile(
     r'Timeout: the command "\S*git (?P<command>\S+)[^"]*" did not complete in (?P<seconds>\S+) secs'
 )
 
+# A fetch or a push runs from a clone that exists, so its failure must not carry the message of a first clone.
+REMOTE_COMMAND_ACTIONS = {"fetch": "fetch from", "push": "push to"}
+
+
+def _remote_command_failure(error: GitCommandError, name: str, hint: str) -> str | None:
+    """Return a message that names the fetch or the push that `error` comes from, or None for any other command."""
+    subcommand = error.command[1] if len(error.command) > 1 else ""
+    action = REMOTE_COMMAND_ACTIONS.get(subcommand)
+    if action is None:
+        return None
+    return f"Unable to {action} the remote of repository {name}, please check {hint}."
+
 
 def _clone_carries_ref(repo: Repo, ref: str) -> bool:
     """Return whether a fresh clone can check `ref` out, as a remote branch, a tag or a commit it holds."""
@@ -1331,7 +1343,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         """
         if "Repository not found" in error.stderr or GIT_HTTP_REPOSITORY_NOT_FOUND.search(error.stderr):
-            raise RepositoryNotFoundError(identifier=name) from error
+            raise RepositoryNotFoundError(
+                identifier=name,
+                message=_remote_command_failure(error=error, name=name, hint="the address and the credential"),
+            ) from error
 
         if any(
             err in error.stderr
@@ -1345,7 +1360,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 "RPC failed; HTTP 5",
             )
         ):
-            raise RepositoryConnectionError(identifier=name) from error
+            raise RepositoryConnectionError(
+                identifier=name,
+                message=_remote_command_failure(error=error, name=name, hint="that the remote is reachable"),
+            ) from error
 
         time_limit = GIT_CALL_TIME_LIMIT.search(error.stderr)
         if (
