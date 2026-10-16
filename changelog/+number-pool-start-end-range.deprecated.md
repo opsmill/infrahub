@@ -1,0 +1,1 @@
+Deprecated `start_range` and `end_range` on `NumberPool` attributes and on `CoreNumberPool` in favor of `ranges`; see [How to migrate number pools to `ranges`](https://docs.infrahub.app/release-notes/deprecation-guides/number-pool-ranges).
