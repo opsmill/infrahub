@@ -1,4 +1,5 @@
 import os
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -12,11 +13,16 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
     OTLPSpanExporter as HTTPSpanExporter,
 )
 from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter, SpanExporter
+from opentelemetry.sdk.trace import Event, ReadableSpan, TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter, SpanExporter, SpanExportResult
 from opentelemetry.trace import StatusCode
+from opentelemetry.util.types import Attributes
 
+from infrahub.masking import MASKING_RULES, MaskingRule, mask_mapping, replace_url_queries_in_text
 from infrahub.worker import WORKER_IDENTITY
+
+# Exception events repeat the exception message in their stack trace, so both carry the same URLs.
+_EXCEPTION_TEXT_ATTRIBUTES = ("exception.message", "exception.stacktrace")
 
 
 def get_current_span_with_context() -> trace.Span:
@@ -56,6 +62,66 @@ def add_span_exception(exception: Exception) -> None:
     current_span = get_current_span_with_context()
     if current_span.is_recording():
         current_span.record_exception(exception)
+
+
+def _mask_attributes(attributes: Attributes, rules: Sequence[MaskingRule]) -> dict[str, Any]:
+    masked = mask_mapping(data=attributes or {}, rules=rules)
+    for key in _EXCEPTION_TEXT_ATTRIBUTES:
+        value = masked.get(key)
+        if isinstance(value, str):
+            masked[key] = replace_url_queries_in_text(text=value)
+    return masked
+
+
+def _mask_event(event: Event, rules: Sequence[MaskingRule]) -> Event:
+    attributes = _mask_attributes(attributes=event.attributes, rules=rules)
+    if attributes == dict(event.attributes or {}):
+        return event
+    return Event(name=event.name, attributes=attributes, timestamp=event.timestamp)
+
+
+def mask_span(span: ReadableSpan, rules: Sequence[MaskingRule] = MASKING_RULES) -> ReadableSpan:
+    """Return the span with its attributes and the attributes of its events masked by `rules`.
+
+    The span itself is returned when no value changes.
+    """
+    attributes = _mask_attributes(attributes=span.attributes, rules=rules)
+    events = tuple(_mask_event(event=event, rules=rules) for event in span.events)
+    if attributes == dict(span.attributes or {}) and all(
+        masked is original for masked, original in zip(events, span.events, strict=True)
+    ):
+        return span
+    return ReadableSpan(
+        name=span.name,
+        context=span.context,
+        parent=span.parent,
+        resource=span.resource,
+        attributes=attributes,
+        events=events,
+        links=span.links,
+        kind=span.kind,
+        status=span.status,
+        start_time=span.start_time,
+        end_time=span.end_time,
+        instrumentation_scope=span.instrumentation_scope,
+    )
+
+
+class MaskingSpanExporter(SpanExporter):
+    """Mask span attributes on export, because the HTTP instrumentation sets them again after the span starts."""
+
+    def __init__(self, exporter: SpanExporter, rules: Sequence[MaskingRule] = MASKING_RULES) -> None:
+        self._exporter = exporter
+        self._rules = rules
+
+    def export(self, spans: Sequence[ReadableSpan]) -> SpanExportResult:
+        return self._exporter.export([mask_span(span=span, rules=self._rules) for span in spans])
+
+    def shutdown(self) -> None:
+        self._exporter.shutdown()
+
+    def force_flush(self, timeout_millis: int = 30000) -> bool:
+        return self._exporter.force_flush(timeout_millis=timeout_millis)
 
 
 class InsecureTLSSession(requests.Session):
@@ -125,7 +191,7 @@ def create_tracer_provider(
             **extra_attributes,
         }
     )
-    span_processor = BatchSpanProcessor(exporter)
+    span_processor = BatchSpanProcessor(MaskingSpanExporter(exporter))
     tracer_provider = TracerProvider(resource=resource)
     tracer_provider.add_span_processor(span_processor)
 
