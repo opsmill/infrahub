@@ -65,7 +65,7 @@ query GetDeviceWithTags($ids: [ID!]!) {
 }
 """
 
-# Reads the tag name through an inline fragment, a hop that cannot be mapped back to the owning device.
+# Reads the tag name inside a fragment on the tag kind, which maps back to the owning device like a plain read.
 QUERY_UNIQUE_WITH_FRAGMENT_TAGS = """
 query GetDeviceWithFragmentTags($ids: [ID!]!) {
     TestNetworkDevice(ids: $ids) {
@@ -214,18 +214,16 @@ GENERATOR_WIDENING_LOG_CASES = [
         expected_keys=ALL_INSTANCES,
     ),
     GeneratorWideningLogCase(
-        name="change_on_a_related_kind_names_that_kind_not_target_uniqueness",
+        # No device carries the changed tag, so the change read through the fragment maps back to no target.
+        name="change_on_a_related_kind_read_through_a_fragment_narrows_without_a_warning",
         definition_key="gendef_fragment_tags",
         diff=[
             DiffEntry(
                 id_key="00000000-0000-0000-0000-000000000000", kind=InfrahubKind.TAG, fields=["name"], literal_id=True
             )
         ],
-        expected_warnings=[
-            f"Generator definition device-generator: the query reads {InfrahubKind.TAG} through a relationship, "
-            "and a change there cannot be traced back to specific targets. All targets will be processed."
-        ],
-        expected_keys=ALL_INSTANCES,
+        expected_warnings=[],
+        expected_keys=[],
     ),
     GeneratorWideningLogCase(
         name="narrowed_selection_logs_no_widening",

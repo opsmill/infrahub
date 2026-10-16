@@ -373,6 +373,22 @@ query GetImpactRackSlotNames($ids: [ID!]!) {
 }
 """
 
+# The card is read inside a fragment on the concrete ``TestingPowerSlot`` kind.
+QUERY_RACK_WITH_CARD_THROUGH_A_FRAGMENT = """
+query GetImpactRackThroughFragment($ids: [ID!]!) {
+    TestingRack(ids: $ids) {
+        edges {
+            node {
+                name { value }
+                slots { edges { node {
+                    ... on TestingPowerSlot { card { node { name { value } } } }
+                } } }
+            }
+        }
+    }
+}
+"""
+
 
 class TestGenericOwnerFieldLevelImpact(TestInfrahubApp):
     """Narrow a change reached through a relationship whose owner is a generic.
@@ -507,6 +523,34 @@ class TestGenericOwnerFieldLevelImpact(TestInfrahubApp):
                 node_diff(
                     node_id=dataset["slot_id"],
                     kind="TestingPowerSlot",
+                    branch=default_branch.name,
+                    field_names=["name"],
+                )
+            ],
+            query_branch=default_branch.name,
+            subscriber_kind=TestKind.TAG,
+            every_target=[dataset["subscriber_id"], dataset["other_subscriber_id"]],
+            client=client,
+        )
+        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]])
+
+    async def test_change_reached_through_a_fragment_narrows_to_the_owning_member(
+        self,
+        dataset: dict[str, Any],
+        default_branch: Branch,
+        client: InfrahubClient,
+    ) -> None:
+        """A change on a card read inside a fragment on the slot kind narrows to its rack alone.
+
+        The fragment narrows the slot's type without reaching another node, so the reverse traversal
+        walks the card back through the slot to the rack holding it, as it does without the fragment.
+        """
+        resolved = await get_field_level_impacted_subscribers(
+            query_payload=QUERY_RACK_WITH_CARD_THROUGH_A_FRAGMENT,
+            diff_summary=[
+                node_diff(
+                    node_id=dataset["card_id"],
+                    kind="TestingCard",
                     branch=default_branch.name,
                     field_names=["name"],
                 )

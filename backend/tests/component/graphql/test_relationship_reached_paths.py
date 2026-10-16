@@ -48,6 +48,28 @@ GENERIC_PEER = """
 query { TestingDevice { edges { node { interfaces { edges { node { name { value } } } } } } } }
 """
 
+# The SFP is reached through a relationship that only the physical interface has, so the query selects
+# it inside a fragment on that kind.
+SFP_INSIDE_AN_INLINE_FRAGMENT = """
+query {
+    TestingDevice { edges { node {
+        interfaces { edges { node {
+            ... on TestingPhysicalInterface { sfp { node { serial_number { value } } } }
+        } } }
+    } } }
+}
+"""
+
+SFP_INSIDE_A_NAMED_FRAGMENT = """
+fragment PhysicalInterfaceSfp on TestingPhysicalInterface { sfp { node { serial_number { value } } } }
+
+query {
+    TestingDevice { edges { node {
+        interfaces { edges { node { ...PhysicalInterfaceSfp } } }
+    } } }
+}
+"""
+
 
 async def _reached_paths(db: InfrahubDatabase, branch: Branch, query: str) -> dict[str, tuple[ReachedPath, ...]]:
     schema_branch = registry.schema.get_schema_branch(name=branch.name)
@@ -152,3 +174,39 @@ class TestReachedPathsFromQueryDeviceSchema(TestInfrahubApp):
             )
         )
         assert result == dict.fromkeys(interface_generic.used_by, (chain,))
+
+    @pytest.mark.parametrize(
+        "query",
+        [
+            pytest.param(SFP_INSIDE_AN_INLINE_FRAGMENT, id="inline_fragment"),
+            pytest.param(SFP_INSIDE_A_NAMED_FRAGMENT, id="named_fragment"),
+        ],
+    )
+    async def test_a_kind_reached_through_a_fragment_keeps_the_chain_through_it(
+        self, db: InfrahubDatabase, default_branch: Branch, device_schema: None, query: str
+    ) -> None:
+        device = registry.schema.get(name=TestKind.DEVICE, branch=default_branch)
+        interfaces = device.get_relationship("interfaces")
+        assert interfaces.identifier is not None
+        physical_interface = registry.schema.get(name=TestKind.PHYSICAL_INTERFACE, branch=default_branch)
+        sfp = physical_interface.get_relationship("sfp")
+        assert sfp.identifier is not None
+        interface_generic = registry.schema.get(name=TestKind.INTERFACE, branch=default_branch)
+        assert isinstance(interface_generic, GenericSchema)
+
+        result = await _reached_paths(db, default_branch, query)
+
+        interfaces_hop = RelationshipHop(
+            node_kind=TestKind.DEVICE,
+            relationship_identifier=interfaces.identifier,
+            relationship_direction=interfaces.direction,
+        )
+        sfp_hop = RelationshipHop(
+            node_kind=TestKind.PHYSICAL_INTERFACE,
+            relationship_identifier=sfp.identifier,
+            relationship_direction=sfp.direction,
+        )
+        assert result == {
+            **dict.fromkeys(interface_generic.used_by, (ReachedPath(hops=(interfaces_hop,)),)),
+            TestKind.SFP: (ReachedPath(hops=(sfp_hop, interfaces_hop)),),
+        }

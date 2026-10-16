@@ -60,11 +60,25 @@ DEVICE_GENERIC_AND_CONCRETE = _node(
     _rel("physical_ports", "TestingPhysical", "device__physical_port"),
 )
 
+PHYSICAL_WITH_ADDRESSES = _node("Physical", _rel("addresses", "TestingAddress", "physical__address"))
+ENDPOINT_WITH_IMPLEMENTATIONS = GenericSchema(
+    name="Endpoint",
+    namespace="Testing",
+    relationships=[_rel("things", "TestingThing", "endpoint__thing")],
+    used_by=["TestingPhysical", "TestingVirtual"],
+)
+
 DEVICE_HOP = RelationshipHop(
     node_kind="TestingDevice", relationship_identifier="device__interface", relationship_direction=OUT
 )
 INTERFACE_HOP = RelationshipHop(
     node_kind="TestingInterface", relationship_identifier="interface__address", relationship_direction=OUT
+)
+ENDPOINT_HOP = RelationshipHop(
+    node_kind="TestingDevice", relationship_identifier="device__endpoint", relationship_direction=OUT
+)
+PHYSICAL_ADDRESS_HOP = RelationshipHop(
+    node_kind="TestingPhysical", relationship_identifier="physical__address", relationship_direction=OUT
 )
 
 
@@ -73,6 +87,12 @@ def _tree(path: str, model: NodeSchema | GenericSchema | None, *children: GraphQ
     for child in children:
         child.parent = node
         node.children.append(child)
+    return node
+
+
+def _fragment(model: NodeSchema | GenericSchema, *children: GraphQLQueryNode) -> GraphQLQueryNode:
+    node = _tree(model.kind, model, *children)
+    node.is_fragment = True
     return node
 
 
@@ -112,13 +132,53 @@ def test_generic_peer_resolves_to_its_concrete_implementations() -> None:
 
 
 def test_field_that_is_not_a_relationship_on_its_owner_widens() -> None:
-    # A node carrying a model whose path is not a relationship on its owner (an inline/named fragment
-    # refinement) cannot be pinned to a reverse relationship.
+    # A node carrying a model whose path is neither a relationship on its owner nor a fragment cannot
+    # be pinned to a reverse relationship.
     tree = _tree("TestingDevice", DEVICE, _tree("TestingConcrete", PERSON))
 
     result = ReachedPathResolver(queries=[tree]).resolve()
 
     assert result == {}
+
+
+def test_a_relationship_inside_a_fragment_on_a_peer_keeps_the_chain_through_the_fragment() -> None:
+    addresses = _tree("addresses", ADDRESS)
+    endpoints = _tree("endpoints", ENDPOINT, _fragment(PHYSICAL_WITH_ADDRESSES, addresses))
+    endpoints.infrahub_node_models = [PHYSICAL_WITH_ADDRESSES, VIRTUAL]
+    tree = _tree("TestingDevice", DEVICE_WITH_GENERIC, endpoints)
+
+    result = ReachedPathResolver(queries=[tree]).resolve()
+
+    assert result == {
+        "TestingPhysical": (ReachedPath(hops=(ENDPOINT_HOP,)),),
+        "TestingVirtual": (ReachedPath(hops=(ENDPOINT_HOP,)),),
+        "TestingAddress": (ReachedPath(hops=(PHYSICAL_ADDRESS_HOP, ENDPOINT_HOP)),),
+    }
+
+
+def test_a_fragment_on_a_generic_resolves_to_its_implementations() -> None:
+    things = _tree("things", THING)
+    fragment = _fragment(ENDPOINT_WITH_IMPLEMENTATIONS, things)
+    tree = _tree("TestingDevice", DEVICE_WITH_GENERIC, _tree("endpoints", ENDPOINT, fragment))
+
+    result = ReachedPathResolver(queries=[tree]).resolve()
+
+    thing_hop = RelationshipHop(
+        node_kind="TestingEndpoint", relationship_identifier="endpoint__thing", relationship_direction=OUT
+    )
+    assert result == {
+        "TestingPhysical": (ReachedPath(hops=(ENDPOINT_HOP,)),),
+        "TestingVirtual": (ReachedPath(hops=(ENDPOINT_HOP,)),),
+        "TestingThing": (ReachedPath(hops=(thing_hop, ENDPOINT_HOP)),),
+    }
+
+
+def test_a_relationship_inside_a_fragment_on_the_root_narrows_like_one_outside_it() -> None:
+    tree = _tree("TestingDevice", DEVICE, _fragment(DEVICE, _tree("interfaces", INTERFACE)))
+
+    result = ReachedPathResolver(queries=[tree]).resolve()
+
+    assert result == {"TestingInterface": (ReachedPath(hops=(DEVICE_HOP,)),)}
 
 
 def test_kind_reached_by_more_than_one_chain_keeps_every_chain() -> None:
@@ -224,8 +284,8 @@ def test_a_kind_reached_through_a_relationship_on_a_generic_owner_narrows() -> N
 def test_an_implementation_also_reached_un_pinnably_widens_while_its_siblings_narrow() -> None:
     endpoints = _tree("endpoints", ENDPOINT)
     endpoints.infrahub_node_models = [PHYSICAL, VIRTUAL]
-    # PHYSICAL is also reached by a node whose path is not a relationship on the device (a fragment
-    # refinement), which cannot be pinned -- so PHYSICAL widens even though the generic peer resolves it.
+    # PHYSICAL is also reached by a node whose path is neither a relationship on the device nor a
+    # fragment, which cannot be pinned -- so PHYSICAL widens even though the generic peer resolves it.
     refinement = _tree("TestingPhysical", PHYSICAL)
     tree = _tree("TestingDevice", DEVICE_WITH_GENERIC, endpoints, refinement)
 
