@@ -1,0 +1,487 @@
+---
+title: Use Red Hat images
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+The Infrahub Helm chart deploys three supporting services from bundled Bitnami charts: the cache (Redis), the message queue (RabbitMQ), and the task manager database (PostgreSQL). In this guide, you replace them with services you deploy and manage yourself. The cache and the task manager database run from Red Hat's container images, and the message queue runs from the official RabbitMQ image, because Red Hat does not publish a standalone RabbitMQ image. Infrahub and its task manager then connect to your services instead of the bundled ones.
+
+The bundled charts use images from the `bitnamilegacy` repository, which [Bitnami announced](https://github.com/bitnami/containers/issues/83267) will receive no further updates or security fixes. Follow this guide when your organization requires images from Red Hat's registry, or when you run Infrahub on OpenShift and want its supporting services from Red Hat's catalog.
+
+## What you'll accomplish
+
+By following this guide, you'll learn how to:
+
+- Store the credentials of the cache, the message queue, and the task manager database in Kubernetes Secrets
+- Deploy the three services from Red Hat and RabbitMQ images, on OpenShift or on another Kubernetes distribution
+- Turn off the bundled services and connect Infrahub and the task manager to yours, including with a sizing preset
+- Check that Infrahub runs on the new services
+
+## Prerequisites
+
+Before starting, ensure you have:
+
+- The `infrahub-enterprise` or `infrahub` Helm chart. This guide was tested with `infrahub-enterprise` 4.21.2, which deploys Infrahub 1.11.4.
+- `kubectl` and `helm` access to the namespace Infrahub runs in. The examples use the `infrahub` namespace and the `infrahub` release name.
+- Access to `registry.redhat.io`. On OpenShift, the cluster's global pull secret already contains credentials for it. On other Kubernetes distributions, create a [registry service account](https://access.redhat.com/terms-based-registry/) to use in an image pull secret.
+- A storage class for the three persistent volumes, the cluster default unless you set another one.
+
+## Images
+
+| Service | Image | Tested version | Published by |
+|---------|-------|----------------|--------------|
+| Cache | `registry.redhat.io/rhel9/redis-7` | Redis 7.2.16 | Red Hat |
+| Task manager database | `registry.redhat.io/rhel9/postgresql-16` | PostgreSQL 16.15 | Red Hat |
+| Message queue | `docker.io/library/rabbitmq:4.1` | RabbitMQ 4.1.8 | Docker Official Images |
+
+The graph database (Neo4j) stays as it is: the chart deploys it from Neo4j's own chart and image, not from Bitnami.
+
+Changing the image of a bundled chart is not a substitute for these steps. The bundled PostgreSQL chart sets `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DATABASE`, while the Red Hat image reads `POSTGRESQL_USER`, `POSTGRESQL_PASSWORD`, and `POSTGRESQL_DATABASE`, so the database container stops at startup. The Red Hat Redis image does start in the bundled Redis chart, but Bitnami warns that replacing its images can break chart features. In this guide, you deploy all three services yourself, the same way.
+
+## Step 1: Create the credentials
+
+Store the passwords in two Secrets. The cache and the message queue read their credentials from the first one, and the Infrahub server and task workers load all its keys as environment variables, so you write each password once:
+
+```shell
+CACHE_PASSWORD='<strong-cache-password>'
+BROKER_PASSWORD='<strong-broker-password>'
+TASK_MANAGER_DB_PASSWORD='<strong-task-manager-db-password>'
+
+kubectl create secret generic infrahub-supporting-services --namespace infrahub \
+  --from-literal=INFRAHUB_CACHE_USERNAME=default \
+  --from-literal=INFRAHUB_CACHE_PASSWORD="$CACHE_PASSWORD" \
+  --from-literal=INFRAHUB_BROKER_USERNAME=infrahub \
+  --from-literal=INFRAHUB_BROKER_PASSWORD="$BROKER_PASSWORD"
+
+kubectl create secret generic task-manager-db --namespace infrahub \
+  --from-literal=username=prefect \
+  --from-literal=password="$TASK_MANAGER_DB_PASSWORD" \
+  --from-literal=database=prefect \
+  --from-literal=connection-string="postgresql+asyncpg://prefect:${TASK_MANAGER_DB_PASSWORD}@task-manager-db:5432/prefect"
+```
+
+The task manager reads its database address and password from the `connection-string` key. If the password contains characters that have a meaning in a URL, such as `@`, `:`, or `/`, percent-encode them in the connection string.
+
+:::warning
+
+Keep `INFRAHUB_CACHE_USERNAME` set to `default`. The Red Hat Redis image sets the password on Redis's built-in `default` user, and Infrahub sends the cache password only when a username is also set. Without the username, Infrahub connects without credentials and stops at startup with `redis.exceptions.AuthenticationError: Authentication required.`
+
+:::
+
+## Step 2: Deploy the cache, message queue, and task manager database
+
+Each service runs as a StatefulSet with a persistent volume. A StatefulSet keeps the pod's hostname across restarts, and RabbitMQ needs that: it stores its data under a node name built from the hostname.
+
+:::warning
+
+Do not name these Services `infrahub-cache` or `infrahub-<component>`. Kubernetes adds environment variables such as `<SERVICE>_PORT=tcp://<address>:<port>` to every pod in the namespace, as described in [Services: environment variables](https://kubernetes.io/docs/concepts/services-networking/service/#environment-variables). For a Service named `infrahub-cache`, Kubernetes sets `INFRAHUB_CACHE_PORT`, which is also Infrahub's cache port setting, and a pod that does not set the variable itself fails to load its settings. The names below are the ones Infrahub's Docker Compose file uses.
+
+:::
+
+Save the following as `supporting-services.yaml`. The volume sizes match the sizes the [installation guide](../install/enterprise.mdx#enable-storage-persistence) uses for the bundled services; see [Task manager database (PostgreSQL) storage](../hardware-requirements.mdx#task-manager-database-postgresql-storage) to size the PostgreSQL volume.
+
+```yaml title="supporting-services.yaml"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cache
+spec:
+  selector:
+    app.kubernetes.io/name: cache
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: redis
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: cache
+spec:
+  serviceName: cache
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cache
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: cache
+    spec:
+      containers:
+        - name: redis
+          image: registry.redhat.io/rhel9/redis-7
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: infrahub-supporting-services
+                  key: INFRAHUB_CACHE_PASSWORD
+          ports:
+            - name: redis
+              containerPort: 6379
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", 'REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli ping | grep -q PONG']
+            periodSeconds: 5
+            timeoutSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: redis
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/redis/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 8Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: message-queue
+spec:
+  selector:
+    app.kubernetes.io/name: message-queue
+  ports:
+    - name: amqp
+      port: 5672
+      targetPort: amqp
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: message-queue
+spec:
+  serviceName: message-queue
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: message-queue
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: message-queue
+    spec:
+      containers:
+        - name: rabbitmq
+          image: docker.io/library/rabbitmq:4.1
+          env:
+            - name: RABBITMQ_DEFAULT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: infrahub-supporting-services
+                  key: INFRAHUB_BROKER_USERNAME
+            - name: RABBITMQ_DEFAULT_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: infrahub-supporting-services
+                  key: INFRAHUB_BROKER_PASSWORD
+          ports:
+            - name: amqp
+              containerPort: 5672
+          readinessProbe:
+            exec:
+              command: ["rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 15
+          livenessProbe:
+            exec:
+              command: ["rabbitmq-diagnostics", "-q", "ping"]
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 15
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/rabbitmq
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 8Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: task-manager-db
+spec:
+  selector:
+    app.kubernetes.io/name: task-manager-db
+  ports:
+    - name: postgresql
+      port: 5432
+      targetPort: postgresql
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: task-manager-db
+spec:
+  serviceName: task-manager-db
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: task-manager-db
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: task-manager-db
+    spec:
+      containers:
+        - name: postgresql
+          image: registry.redhat.io/rhel9/postgresql-16
+          env:
+            - name: POSTGRESQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: task-manager-db
+                  key: username
+            - name: POSTGRESQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: task-manager-db
+                  key: password
+            - name: POSTGRESQL_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: task-manager-db
+                  key: database
+          ports:
+            - name: postgresql
+              containerPort: 5432
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-h", "127.0.0.1", "-p", "5432"]
+            periodSeconds: 5
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-h", "127.0.0.1", "-p", "5432"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/pgsql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 20Gi
+```
+
+Then apply the file for your platform.
+
+<Tabs groupId="platform" queryString>
+<TabItem value="openshift" label="OpenShift" default>
+
+Apply the file as it is:
+
+```shell
+kubectl apply -f supporting-services.yaml --namespace infrahub
+```
+
+The manifests set no user or group ID, so the `restricted-v2` security context constraint assigns them, as it does for every pod in the namespace. The three containers run under the user ID it assigns.
+
+</TabItem>
+<TabItem value="kubernetes" label="Other Kubernetes">
+
+Create a pull secret for `registry.redhat.io` with your registry service account:
+
+```shell
+kubectl create secret docker-registry redhat-registry --namespace infrahub \
+  --docker-server=registry.redhat.io \
+  --docker-username='<service-account-username>' \
+  --docker-password='<service-account-token>'
+```
+
+In `supporting-services.yaml`, add the pull secret to the pod spec of the `cache` and `task-manager-db` StatefulSets:
+
+```yaml
+    spec:
+      imagePullSecrets:
+        - name: redhat-registry
+```
+
+Add a user ID to the pod spec of the `message-queue` StatefulSet. The RabbitMQ image declares no user, so Kubernetes refuses to start it as root under `runAsNonRoot`; `999` is the image's `rabbitmq` user. The Redis and PostgreSQL images already declare non-root users (1001 and 26).
+
+```yaml
+    spec:
+      securityContext:
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+```
+
+Then apply the file:
+
+```shell
+kubectl apply -f supporting-services.yaml --namespace infrahub
+```
+
+</TabItem>
+</Tabs>
+
+Wait until the three pods are ready:
+
+```shell
+kubectl get pods --namespace infrahub -l 'app.kubernetes.io/name in (cache,message-queue,task-manager-db)'
+```
+
+```text
+NAME                READY   STATUS    RESTARTS   AGE
+cache-0             1/1     Running   0          40s
+message-queue-0     1/1     Running   0          40s
+task-manager-db-0   1/1     Running   0          40s
+```
+
+## Step 3: Turn off the bundled services and connect Infrahub
+
+Add the following to your `values.yml` file. Once a bundled service is turned off, the chart stops setting its address on the Infrahub pods, so the values set the addresses of your services. The credentials come from the Secrets you created in step 1.
+
+```yaml title="values.yml"
+infrahub:
+  redis:
+    enabled: false
+  rabbitmq:
+    enabled: false
+
+  infrahubServer:
+    infrahubServer:
+      env:
+        INFRAHUB_CACHE_ADDRESS: cache
+        INFRAHUB_BROKER_ADDRESS: message-queue
+      envFromExistingSecrets:
+        - infrahub-supporting-services
+
+  infrahubTaskWorker:
+    infrahubTaskWorker:
+      env:
+        INFRAHUB_CACHE_ADDRESS: cache
+        INFRAHUB_BROKER_ADDRESS: message-queue
+      envFromExistingSecrets:
+        - infrahub-supporting-services
+
+  prefect-server:
+    postgresql:
+      enabled: false
+    secret:
+      create: false
+      name: task-manager-db
+```
+
+Helm merges the `env` keys with the chart's defaults and with the rest of your values file. The job that runs `infrahub upgrade` during a chart upgrade uses the server's `env` and `envFromExistingSecrets`, so it reaches the same services. With the `infrahub` chart instead of `infrahub-enterprise`, use the same keys without the top-level `infrahub:` key.
+
+### With a sizing preset
+
+With a sizing preset of the `infrahub-enterprise` chart, used through a flavored chart version such as `-medium` or through a `values.<size>.yaml` file, the chart also runs the task manager's background services as a separate deployment, which coordinates through Redis. The preset sets a placeholder Redis host for that deployment, and the chart refuses to install until you replace it.
+
+Store the Redis password and the docket URL, the Redis address the background services use to schedule their work, in a third Secret:
+
+```shell
+kubectl create secret generic task-manager-redis --namespace infrahub \
+  --from-literal=redis-password="$CACHE_PASSWORD" \
+  --from-literal=docket-url="redis://default:${CACHE_PASSWORD}@cache:6379/2"
+```
+
+Then add the following to `values.yml`:
+
+```yaml title="values.yml"
+infrahub:
+  prefect-server:
+    server:
+      extraEnvVarsSecret: infrahub-supporting-services
+    backgroundServices:
+      messaging:
+        redis:
+          host: cache
+          existingSecret: task-manager-redis
+        docket:
+          url: ""
+          existingSecret: task-manager-redis
+```
+
+- `docket.url` is set to an empty value because the chart's validation rejects the placeholder URL of the preset, even when the URL comes from the Secret.
+- With `extraEnvVarsSecret`, the task manager server gets the cache credentials: with the background services in their own deployment, the server takes a lock in Redis at startup, using Infrahub's cache settings.
+- The medium and larger presets set `POSTGRESQL_MAX_CONNECTIONS` to `500` on the bundled PostgreSQL. Set the same variable in the `env` list of the `task-manager-db` StatefulSet; the startup script of the Red Hat image reads it, and the default is `100`.
+
+## Step 4: Install and verify
+
+Install or upgrade the release with your values file:
+
+```shell
+helm upgrade --install infrahub oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise \
+  --namespace infrahub -f values.yml
+```
+
+List the pods. Your three services run next to Infrahub, and no bundled service runs: the list contains no pod named `infrahub-cache-master-0`, `infrahub-message-queue-0`, or `prefect-server-postgresql-0`.
+
+```shell
+kubectl get pods --namespace infrahub
+```
+
+Then open Infrahub, log in, and create a branch. Infrahub creates a branch through a workflow on the task manager, so a new branch shows that the task manager and its database work.
+
+:::success Validation
+
+Infrahub and its task manager run on the cache, message queue, and task manager database you deployed, and none of the bundled Bitnami services remain in the release.
+
+:::
+
+## Troubleshooting
+
+### Redis rejects Infrahub with an authentication error
+
+The Infrahub server restarts in a loop, and its log ends with `redis.exceptions.AuthenticationError: Authentication required.` The `infrahub-supporting-services` Secret has no `INFRAHUB_CACHE_USERNAME`. Add it with the value `default`, then restart the server and task worker pods. With a sizing preset, the task manager server stops with the same error when `extraEnvVarsSecret` is missing.
+
+### A pod cannot parse its cache port
+
+A pod restarts in a loop with `Input should be a valid integer, unable to parse string as an integer`, and the rejected input has the form `tcp://<address>:6379`. A Service in the namespace is named `infrahub-cache` or `infrahub-<component>`. Rename it as described in step 2.
+
+### RabbitMQ does not start outside OpenShift
+
+On a Kubernetes distribution other than OpenShift, the `message-queue-0` pod stays in `CreateContainerConfigError` with `container has runAsNonRoot and image will run as root`. Add the `runAsUser: 999` security context shown in step 2.
+
+## Related resources
+
+- [Production deployment](./overview.mdx) - Hardened configuration checklist and least-privilege users for each service
+- [Trust a private CA](./private-ca.mdx) - TLS settings for the connections to the cache, the message queue, and the database
+- [High availability](./high-availability.mdx) - Replicated deployments of every component
+- [Install Infrahub Enterprise](../install/enterprise.mdx) - Helm values, sizing presets, and storage persistence
+- [Configuration reference](../../../reference/configuration.mdx) - Every `INFRAHUB_CACHE_*` and `INFRAHUB_BROKER_*` setting

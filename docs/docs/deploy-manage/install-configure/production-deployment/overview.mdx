@@ -64,6 +64,8 @@ If your infrastructure uses a private certificate authority, mount its bundle in
 
 Install Infrahub using your chosen deployment technology, applying your hardened configuration.
 
+On Kubernetes, to run the cache, the message queue, and the task manager database from Red Hat images instead of the Helm chart's bundled Bitnami charts, follow [Use Red Hat images](./red-hat-images.mdx).
+
 :::info
 For high availability deployments on Kubernetes, use the HA manifest which includes proper replication and resource requests/limits.
 :::

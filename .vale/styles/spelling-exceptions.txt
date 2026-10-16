@@ -24,6 +24,7 @@ backfills
 backpressure
 bcrypt
 Biome
+Bitnami
 bool
 boolean
 booleans
