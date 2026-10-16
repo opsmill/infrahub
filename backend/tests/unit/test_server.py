@@ -84,6 +84,20 @@ def test_one_request_records_one_server_span(span_exporter: InMemorySpanExporter
     assert _all_scope_names(span_exporter) == {"opentelemetry.instrumentation.fastapi"}
 
 
+def test_fastapi_records_no_spans_of_its_own_without_the_contrib_middleware(
+    span_exporter: InMemorySpanExporter, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    stack = app.middleware_stack
+    assert isinstance(stack, ServerErrorMiddleware)
+    assert isinstance(stack.app, OpenTelemetryMiddleware)
+    monkeypatch.setattr(stack, "app", stack.app.app)
+
+    response = TestClient(app).get("/api/openapi.json")
+
+    assert response.status_code == 200
+    assert span_exporter.get_finished_spans() == ()
+
+
 def test_plain_fastapi_app_records_a_native_server_span(span_exporter: InMemorySpanExporter) -> None:
     """Control: FastAPI's built-in tracing is active in this setup, so the single span above is not a vacuous pass."""
     plain_app = FastAPI()
