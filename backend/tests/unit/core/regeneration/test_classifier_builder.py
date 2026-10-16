@@ -9,7 +9,7 @@ from infrahub.core.regeneration.classifier_builder import QueryClassifierBuilder
 from infrahub.core.regeneration.derived_dependencies import DerivedFieldDependencies, PeerDependency
 from infrahub.core.regeneration.impact_classifier import QueryImpactClassifier
 from infrahub.core.regeneration.models import ReachedPath, RelationshipHop
-from infrahub.core.schema import AttributeSchema, MainSchemaTypes, NodeSchema, RelationshipSchema
+from infrahub.core.schema import AttributeSchema, GenericSchema, MainSchemaTypes, NodeSchema, RelationshipSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.graphql.analyzer import ObjectAccess
 
@@ -57,6 +57,12 @@ READER = _node(
     human_friendly_id=["owner__name__value"],
 )
 OWNER = _node("Owner")
+PORT = GenericSchema(
+    name="Port",
+    namespace="Test",
+    attributes=[AttributeSchema(name="name", kind="Text")],
+    used_by=["TestPhysicalPort", "TestVirtualPort"],
+)
 OWNER_HOP = RelationshipHop(
     node_kind="TestReader",
     relationship_identifier="reader__owner",
@@ -65,7 +71,7 @@ OWNER_HOP = RelationshipHop(
 
 
 def _builder() -> QueryClassifierBuilder:
-    schemas: dict[str, MainSchemaTypes] = {"TestReader": READER, "TestOwner": OWNER}
+    schemas: dict[str, MainSchemaTypes] = {"TestReader": READER, "TestOwner": OWNER, "TestPort": PORT}
     branch = SchemaBranch(cache={}, name="test")
     for kind, schema in schemas.items():
         branch.set(name=kind, schema=schema)
@@ -123,6 +129,49 @@ def test_build_counts_a_filtered_field_as_read() -> None:
         reached_paths_by_kind={},
         depends_on_everything=False,
     )
+
+
+def test_build_counts_a_read_on_a_traversed_generic_for_each_implementation() -> None:
+    """A field read off a generic, such as inside a fragment on it, is matched against each implementation.
+
+    A diff reports a node under its concrete kind, and an implementation is reached the way its generic is.
+    """
+    report = _FakeAnalyzedQuery(
+        requested_read={
+            "TestReader": ObjectAccess(attributes={"name"}),
+            "TestPort": ObjectAccess(attributes={"name"}),
+        },
+        traversed_kinds={"TestPort"},
+    )
+
+    classifier = _builder().build(report)
+
+    assert classifier == QueryImpactClassifier(
+        query_branch=QUERY_BRANCH,
+        only_has_unique_targets=True,
+        traversed_kinds={"TestPort", "TestPhysicalPort", "TestVirtualPort"},
+        readable_fields_by_kind={
+            "TestReader": {"name"},
+            "TestPort": {"name"},
+            "TestPhysicalPort": {"name"},
+            "TestVirtualPort": {"name"},
+        },
+        reached_paths_by_kind={},
+        depends_on_everything=False,
+    )
+
+
+def test_build_keeps_the_implementations_of_a_generic_read_at_a_root_out_of_the_traversed_kinds() -> None:
+    report = _FakeAnalyzedQuery(requested_read={"TestPort": ObjectAccess(attributes={"name"})})
+
+    classifier = _builder().build(report)
+
+    assert classifier.traversed_kinds == set()
+    assert classifier.readable_fields_by_kind == {
+        "TestPort": {"name"},
+        "TestPhysicalPort": {"name"},
+        "TestVirtualPort": {"name"},
+    }
 
 
 MAKER_HOP = RelationshipHop(

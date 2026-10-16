@@ -46,6 +46,7 @@ class QueryClassifierBuilder:
 
     def __init__(self, *, query_branch: str, schema_branch: SchemaBranch) -> None:
         self._query_branch = query_branch
+        self._schema_branch = schema_branch
         self._dependency_resolver = DerivedFieldDependencyResolver(schema_branch=schema_branch)
 
     def build(self, query_report: AnalyzedQuery) -> QueryImpactClassifier:
@@ -53,14 +54,35 @@ class QueryClassifierBuilder:
         # A change to a filtered field moves which objects answer the query, so it counts as a read.
         for kind, fields in query_report.filtered_fields_by_kind.items():
             readable_fields_by_kind.setdefault(kind, set()).update(fields)
+        traversed_kinds = set(query_report.traversed_kinds)
+        self._extend_generic_reads_to_implementations(
+            readable_fields_by_kind=readable_fields_by_kind, traversed_kinds=traversed_kinds
+        )
         dependencies = self._dependency_resolver.resolve(readable_fields_by_kind)
         return self.build_query_classifier(
             only_has_unique_targets=query_report.only_has_unique_targets,
             readable_fields_by_kind=readable_fields_by_kind,
-            traversed_kinds=query_report.traversed_kinds,
+            traversed_kinds=traversed_kinds,
             reached_paths_by_kind=query_report.relationship_reached_paths_by_kind,
             dependencies=dependencies,
         )
+
+    def _extend_generic_reads_to_implementations(
+        self, *, readable_fields_by_kind: dict[str, set[str]], traversed_kinds: set[str]
+    ) -> None:
+        """Count what the query reads off a generic as read off each of its implementations.
+
+        A diff reports a node under its concrete kind, so a field read only through a fragment on a
+        generic would otherwise never match a change. An implementation of a generic reached through a
+        relationship is reached through that relationship too.
+        """
+        generic_kinds = set(self._schema_branch.generic_names)
+        for kind in sorted(readable_fields_by_kind.keys() & generic_kinds):
+            generic = self._schema_branch.get_generic(name=kind, duplicate=False)
+            for concrete_kind in generic.concrete_kinds:
+                readable_fields_by_kind.setdefault(concrete_kind, set()).update(readable_fields_by_kind[kind])
+                if kind in traversed_kinds:
+                    traversed_kinds.add(concrete_kind)
 
     def build_query_classifier(
         self,

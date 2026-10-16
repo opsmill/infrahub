@@ -356,6 +356,23 @@ query GetImpactRack($ids: [ID!]!) {
 }
 """
 
+# The slot names are read only inside a fragment on the ``TestingSlot`` generic, while a change to a slot is
+# reported under its concrete ``TestingPowerSlot`` kind.
+QUERY_RACK_WITH_SLOT_NAMES_ON_THE_GENERIC = """
+query GetImpactRackSlotNames($ids: [ID!]!) {
+    TestingRack(ids: $ids) {
+        edges {
+            node {
+                name { value }
+                slots { edges { node {
+                    ... on TestingSlot { name { value } }
+                } } }
+            }
+        }
+    }
+}
+"""
+
 
 class TestGenericOwnerFieldLevelImpact(TestInfrahubApp):
     """Narrow a change reached through a relationship whose owner is a generic.
@@ -437,6 +454,7 @@ class TestGenericOwnerFieldLevelImpact(TestInfrahubApp):
         return {
             "rack_id": rack.id,
             "other_rack_id": other_rack.id,
+            "slot_id": slot.id,
             "card_id": card.id,
             "subscriber_id": subscriber.id,
             "other_subscriber_id": other_subscriber.id,
@@ -460,6 +478,35 @@ class TestGenericOwnerFieldLevelImpact(TestInfrahubApp):
                 node_diff(
                     node_id=dataset["card_id"],
                     kind="TestingCard",
+                    branch=default_branch.name,
+                    field_names=["name"],
+                )
+            ],
+            query_branch=default_branch.name,
+            subscriber_kind=TestKind.TAG,
+            every_target=[dataset["subscriber_id"], dataset["other_subscriber_id"]],
+            client=client,
+        )
+        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]])
+
+    async def test_change_to_a_field_read_through_a_fragment_on_a_generic_narrows_to_the_owning_member(
+        self,
+        dataset: dict[str, Any],
+        default_branch: Branch,
+        client: InfrahubClient,
+    ) -> None:
+        """A change to a slot name read inside a fragment on the slot generic selects the owning rack.
+
+        The query reads ``name`` off the ``TestingSlot`` generic, and the diff reports the change under the
+        concrete ``TestingPowerSlot`` kind: the change is a read of the implementation, mapped back to
+        the rack holding the slot.
+        """
+        resolved = await get_field_level_impacted_subscribers(
+            query_payload=QUERY_RACK_WITH_SLOT_NAMES_ON_THE_GENERIC,
+            diff_summary=[
+                node_diff(
+                    node_id=dataset["slot_id"],
+                    kind="TestingPowerSlot",
                     branch=default_branch.name,
                     field_names=["name"],
                 )
