@@ -12,11 +12,14 @@ from infrahub.core.timestamp import current_timestamp
 from infrahub.lock import (
     GLOBAL_TASKMGR_INIT_LOCK,
     GLOBAL_WORKER_TASKMGR_INIT_LOCK,
+    LOCK_ACQUIRE_TIME_METRICS,
+    LOCK_RESERVE_TIME_METRICS,
     InfrahubLockRegistry,
     get_lock_cache_key,
     get_requested_at_from_lock_token,
     get_worker_id_from_lock_token,
 )
+from tests.helpers.metrics import bucket_bounds
 
 
 @dataclass
@@ -221,4 +224,39 @@ async def test_reentrant_lock_allows_nested_acquisitions() -> None:
         "inner released",
         "outer released",
         "waiter acquired",
+    ]
+
+
+BOUNDS_PROBE_LABELS = {"lock": "bucket_bounds_probe", "type": "local"}
+
+
+def test_lock_acquire_time_is_recorded_up_to_five_minutes() -> None:
+    LOCK_ACQUIRE_TIME_METRICS.labels(**BOUNDS_PROBE_LABELS).observe(0)
+
+    assert bucket_bounds(LOCK_ACQUIRE_TIME_METRICS, labels=BOUNDS_PROBE_LABELS) == [
+        "0.0005",
+        "0.25",
+        "0.5",
+        "1.0",
+        "5.0",
+        "30.0",
+        "60.0",
+        "120.0",
+        "300.0",
+    ]
+
+
+def test_lock_reserved_time_is_recorded_up_to_five_minutes() -> None:
+    LOCK_RESERVE_TIME_METRICS.labels(**BOUNDS_PROBE_LABELS).observe(0)
+
+    assert bucket_bounds(LOCK_RESERVE_TIME_METRICS, labels=BOUNDS_PROBE_LABELS) == [
+        "0.001",
+        "0.5",
+        "1.0",
+        "5.0",
+        "10.0",
+        "30.0",
+        "60.0",
+        "120.0",
+        "300.0",
     ]

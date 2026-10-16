@@ -38,14 +38,14 @@ LOCK_ACQUIRE_TIME_METRICS = Histogram(
     f"{METRIC_PREFIX}_acquire_seconds",
     "Time to acquire the lock on a given object",
     labelnames=["lock", "type"],
-    buckets=[0.0005, 0.25, 0.5, 1, 5],
+    buckets=[0.0005, 0.25, 0.5, 1, 5, 30, 60, 120, 300],
 )
 
 LOCK_RESERVE_TIME_METRICS = Histogram(
     f"{METRIC_PREFIX}_reserved_duration_seconds",
     "Time while a given lock is reserved by a given client",
     labelnames=["lock", "type"],
-    buckets=[0.001, 0.5, 1, 5, 10],
+    buckets=[0.001, 0.5, 1, 5, 10, 30, 60, 120, 300],
 )
 
 LOCAL_SCHEMA_LOCK = "local.schema"

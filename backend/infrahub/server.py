@@ -56,6 +56,8 @@ from infrahub.workers.dependencies import (
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 
+REQUEST_DURATION_BUCKETS = [0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 120, 300, 600, 1200]
+
 
 async def app_initialization(application: FastAPI, enable_scheduler: bool = True) -> None:
     config.SETTINGS.initialize_and_exit()
@@ -220,7 +222,7 @@ app.add_middleware(
     app_name="infrahub",
     group_paths=True,
     prefix="infrahub",
-    buckets=[0.1, 0.25, 0.5],
+    buckets=REQUEST_DURATION_BUCKETS,
     skip_paths=["/health"],
 )
 app.add_middleware(
