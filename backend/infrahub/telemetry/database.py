@@ -124,7 +124,7 @@ async def gather_database_information(db: InfrahubDatabase) -> TelemetryDatabase
 
         if db.db_type == DatabaseType.NEO4J:
             server_info = await get_server_info(db=dbs)
-            system_info = await get_system_info(db=dbs)
+            system_info = await safe_metric(get_system_info(db=dbs))
 
             # server_info is populated only on Neo4j Enterprise, so a non-empty result implies it.
             if len(server_info) == 0:
