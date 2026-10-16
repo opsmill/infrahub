@@ -14,6 +14,7 @@ import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query
 import type {
   AbandonmentRecord,
   PushFailureCause,
+  RepositoryPushState,
 } from "@/entities/repository/domain/model/repository-push-state";
 import { usePendingPushPermissions } from "@/entities/repository/ui/hooks/use-pending-push-permissions";
 import { PendingMergeList } from "@/entities/repository/ui/pending-merge-list";
@@ -46,88 +47,132 @@ export function RepositoryPushToRemoteCard({ repositoryId }: RepositoryPushToRem
   return (
     <Card>
       <CardHeader>Push to remote</CardHeader>
-      <RepositoryPushToRemoteState repositoryId={repositoryId} />
+      <PushStateDetails repositoryId={repositoryId} />
     </Card>
   );
 }
 
-function RepositoryPushToRemoteState({ repositoryId }: RepositoryPushToRemoteCardProps) {
-  const { data: state, isPending, error } = useGetRepositoryPushState({ repositoryId });
+function PushStateDetails({ repositoryId }: RepositoryPushToRemoteCardProps) {
+  const { data: pushState, isPending, error } = useGetRepositoryPushState({ repositoryId });
 
   if (isPending) {
     return <LoadingIndicator className="p-3" />;
   }
 
   if (error) {
-    return (
-      <>
-        <ErrorScreen message={error.message} />
-        <p className="px-3 py-2 text-foreground-muted text-sm">
-          Retry push stays available. Abandon pending push needs the pending pushes, so it is not
-          available until they can be read.
-        </p>
-      </>
-    );
+    return <ErrorScreen message={error.message} />;
   }
-
-  const lastAbandonment = state.lastAbandonment && (
-    <LastAbandonment repositoryId={repositoryId} record={state.lastAbandonment} />
-  );
-
-  if (state.status === "none") {
-    return (
-      <div className="divide-y">
-        <p className="px-3 py-2 text-foreground-muted text-sm">Nothing pending</p>
-        {lastAbandonment}
-      </div>
-    );
-  }
-
-  const isActionRequired = state.status === "action-required";
 
   return (
     <div className="divide-y">
-      <DetailRow label="Status">
-        <div>
-          <ColorDisplay value={state.statusLabel} color={state.statusColor} />
-        </div>
-        <p>Imports from the remote default branch are paused until the pending pushes clear.</p>
-      </DetailRow>
-
-      {isActionRequired && state.cause && (
-        <>
-          <DetailRow label="Cause">{state.causeLabel}</DetailRow>
-          <DetailRow label="Required action">{REQUIRED_ACTION_BY_CAUSE[state.cause]}</DetailRow>
-        </>
-      )}
-
-      {isActionRequired && state.error && (
-        <DetailRow label="Message from the remote">
-          <pre className="w-0 min-w-full overflow-x-auto text-xs">{state.error}</pre>
-        </DetailRow>
-      )}
-
-      {state.pendingMerges.length > 0 && (
-        <DetailRow label="Pending merges">
-          <PendingMergeList merges={state.pendingMerges} />
-        </DetailRow>
-      )}
-
-      {lastAbandonment}
+      <PendingPushDetails pushState={pushState} />
+      <AbandonedPushDetails
+        repositoryId={repositoryId}
+        abandonment={pushState.lastAbandonment}
+        hasPendingPushes={pushState.status !== "none"}
+      />
     </div>
   );
 }
 
-interface LastAbandonmentProps {
-  repositoryId: string;
-  record: AbandonmentRecord;
+interface PendingPushDetailsProps {
+  pushState: RepositoryPushState;
 }
 
-function LastAbandonment({ repositoryId, record }: LastAbandonmentProps) {
+function PendingPushDetails({ pushState }: PendingPushDetailsProps) {
+  if (pushState.status === "none") {
+    return <p className="px-3 py-2 text-foreground-muted text-sm">Nothing pending</p>;
+  }
+
+  // While a retry runs, the cause and the message of the last failure no longer apply.
+  const isActionRequired = pushState.status === "action-required";
+
+  return (
+    <>
+      <DetailRow label="Status">
+        <div>
+          <ColorDisplay value={pushState.statusLabel} color={pushState.statusColor} />
+        </div>
+        <p>Imports from the remote default branch are paused until the pending pushes clear.</p>
+      </DetailRow>
+
+      {isActionRequired && pushState.cause && (
+        <>
+          <DetailRow label="Cause">{pushState.causeLabel}</DetailRow>
+          <DetailRow label="Required action">{REQUIRED_ACTION_BY_CAUSE[pushState.cause]}</DetailRow>
+        </>
+      )}
+
+      {isActionRequired && pushState.error && (
+        <DetailRow label="Message from the remote">
+          <pre className="w-0 min-w-full overflow-x-auto text-xs">{pushState.error}</pre>
+        </DetailRow>
+      )}
+
+      {pushState.pendingMerges.length > 0 && (
+        <DetailRow label="Pending merges">
+          <PendingMergeList merges={pushState.pendingMerges} />
+        </DetailRow>
+      )}
+    </>
+  );
+}
+
+interface AbandonedPushDetailsProps {
+  repositoryId: string;
+  abandonment: AbandonmentRecord | null;
+  hasPendingPushes: boolean;
+}
+
+function AbandonedPushDetails({
+  repositoryId,
+  abandonment,
+  hasPendingPushes,
+}: AbandonedPushDetailsProps) {
+  if (!abandonment) {
+    return null;
+  }
+
+  return (
+    <>
+      <DetailRow label="Last abandonment">
+        <DateDisplay date={abandonment.abandoned_at} />
+      </DetailRow>
+
+      <DetailRow label="Abandoned by">{abandonment.account_name}</DetailRow>
+
+      <DetailRow label="Abandoned merges">
+        <PendingMergeList merges={abandonment.entries} />
+      </DetailRow>
+
+      {/* The backend records an empty commit when it could not read the one the default branch kept. */}
+      {abandonment.recorded_commit && (
+        <DetailRow label="Recorded commit">
+          <code className="text-xs">{abandonment.recorded_commit.slice(0, 7)}</code>
+        </DetailRow>
+      )}
+
+      <DetailRow label="Repository objects">
+        <p>The default branch can hold repository objects that the recorded commit lacks.</p>
+        {abandonment.import_owed_commit && (
+          <p>The default branch can also lack repository objects that the recorded commit holds.</p>
+        )}
+        {/* The backend refuses a reimport while pushes are pending. */}
+        {!hasPendingPushes && <ReimportOnDefaultBranchButton repositoryId={repositoryId} />}
+      </DetailRow>
+    </>
+  );
+}
+
+interface ReimportOnDefaultBranchButtonProps {
+  repositoryId: string;
+}
+
+function ReimportOnDefaultBranchButton({ repositoryId }: ReimportOnDefaultBranchButtonProps) {
   const defaultBranch = useDefaultBranch();
   const { canReimportOnDefaultBranch } = usePendingPushPermissions();
 
-  const { mutate: importCurrentCommit, isPending } = useImportCurrentCommitMutation({
+  const { mutate: importCurrentCommit, isPending: isReimporting } = useImportCurrentCommitMutation({
     onSuccess: async (result) => {
       toastTaskStarted("Import of current commit started.", result.taskId);
       await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
@@ -142,44 +187,22 @@ function LastAbandonment({ repositoryId, record }: LastAbandonmentProps) {
     },
   });
 
+  if (!defaultBranch) {
+    return null;
+  }
+
+  // The abandonment changed the default branch, so the reimport runs there whatever branch the user selected.
   return (
-    <>
-      <DetailRow label="Last abandonment">
-        <DateDisplay date={record.abandoned_at} />
-      </DetailRow>
-
-      <DetailRow label="Abandoned by">{record.account_name}</DetailRow>
-
-      <DetailRow label="Abandoned merges">
-        <PendingMergeList merges={record.entries} />
-      </DetailRow>
-
-      {record.recorded_commit && (
-        <DetailRow label="Recorded commit">
-          <code className="text-xs">{record.recorded_commit.slice(0, 7)}</code>
-        </DetailRow>
-      )}
-
-      <DetailRow label="Repository objects">
-        <p>The default branch can hold repository objects that the recorded commit lacks.</p>
-        {record.import_owed_commit && (
-          <p>The default branch can also lack repository objects that the recorded commit holds.</p>
-        )}
-        <div>
-          {/* The abandonment changed the default branch, so the reimport runs there whatever branch the user selected. */}
-          <Button
-            size="sm"
-            variant="outline"
-            isDisabled={!canReimportOnDefaultBranch || !defaultBranch}
-            isPending={isPending}
-            onPress={() =>
-              defaultBranch && importCurrentCommit({ repositoryId, branchName: defaultBranch.name })
-            }
-          >
-            Reimport current commit
-          </Button>
-        </div>
-      </DetailRow>
-    </>
+    <div>
+      <Button
+        size="sm"
+        variant="outline"
+        isDisabled={!canReimportOnDefaultBranch}
+        isPending={isReimporting}
+        onPress={() => importCurrentCommit({ repositoryId, branchName: defaultBranch.name })}
+      >
+        Reimport current commit
+      </Button>
+    </div>
   );
 }

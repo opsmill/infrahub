@@ -214,5 +214,5 @@ class TestRepositoryDelivery:
         await expect(
             admin_page.get_by_text("The default branch can hold repository objects that the recorded commit lacks.")
         ).to_be_visible()
-        await expect(admin_page.get_by_role("button", name="Reimport current commit")).to_be_visible()
+        await expect(admin_page.get_by_role("button", name="Reimport current commit", exact=True)).to_be_visible()
         assert _git(refused_delivery.remote, "rev-parse", "main") == refused_delivery.trunk_commit
