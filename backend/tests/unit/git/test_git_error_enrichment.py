@@ -37,6 +37,9 @@ from tests.helpers.test_client import dummy_async_request
 
 TLS_HINT = "SSL verification failed for net-repo, please validate the certificate chain."
 CONNECTION_HINT = "Unable to clone the repository net-repo, please check the address and the credential"
+FETCH_CONNECTION_HINT = (
+    "Unable to fetch from the remote of repository net-repo, please check that the remote is reachable."
+)
 TIME_LIMIT_HINT = (
     "The Git command for repository net-repo did not complete within its time limit, "
     "please check that the remote is reachable."
@@ -421,6 +424,13 @@ class FetchConnectionFailureCase:
 @pytest.mark.parametrize(
     "case",
     [
+        FetchConnectionFailureCase(
+            name="remote_unreachable",
+            stderr="fatal: unable to access 'https://git.example.com/net/repo.git/': "
+            "Failed to connect to git.example.com port 443 after 5 ms: Couldn't connect to server",
+            expected=RepositoryConnectionError,
+            message=FETCH_CONNECTION_HINT,
+        ),
         FetchConnectionFailureCase(
             name="certificate_not_accepted", stderr=TLS_STDERR, expected=RepositoryTLSError, message=TLS_HINT
         ),
