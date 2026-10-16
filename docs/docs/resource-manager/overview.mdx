@@ -76,7 +76,7 @@ Number pools manage sequential numeric identifiers. Common scenarios:
 
 Key features:
 
-- Define start and end ranges
+- Define one or several ranges, each with an optional weight ([migrate from `start_range` and `end_range`](../release-notes/deprecation-guides/number-pool-ranges))
 - Automatic sequential allocation
 - Skip values already in use, when the target attribute is `unique`
 - Support for any numeric attribute
