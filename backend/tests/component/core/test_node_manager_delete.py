@@ -7,6 +7,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
     BranchSupportType,
+    GeneratorInstanceStatus,
     InfrahubKind,
     RelationshipCardinality,
     RelationshipDeleteBehavior,
@@ -621,6 +622,56 @@ async def test_delete_cascade_artifacts(
     assert artifact.id in {d.id for d in deleted}
     node_map = await NodeManager.get_many(db=db, ids=[c1.id, artifact.id])
     assert node_map == {}
+
+    await verify_graph(db=db)
+
+
+async def test_delete_cascade_generator_instances(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_data_generic: dict[str, Node],
+) -> None:
+    """Deleting the target of a generator instance must cascade-delete the instance and keep the other instances."""
+    c1 = car_person_data_generic["c1"]
+    c2 = car_person_data_generic["c2"]
+    q1 = car_person_data_generic["q1"]
+    r1 = car_person_data_generic["r1"]
+
+    group = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
+    await group.new(db=db, name="generator-target-group", members=[c1, c2])
+    await group.save(db=db)
+
+    definition = await Node.init(db=db, schema=InfrahubKind.GENERATORDEFINITION)
+    await definition.new(
+        db=db,
+        name="generatordef-cascade-test",
+        query=q1,
+        repository=r1,
+        targets=group,
+        file_path="generators/car.py",
+        class_name="CarGenerator",
+        parameters={"value": {"name": "name__value"}},
+    )
+    await definition.save(db=db)
+
+    instances: dict[str, Node] = {}
+    for car in (c1, c2):
+        instance = await Node.init(db=db, schema=InfrahubKind.GENERATORINSTANCE)
+        await instance.new(
+            db=db,
+            name=f"instance-{car.id}",
+            status=GeneratorInstanceStatus.READY.value,
+            object=car,
+            definition=definition,
+        )
+        await instance.save(db=db)
+        instances[car.id] = instance
+
+    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[c1])
+
+    assert {d.id for d in deleted} == {c1.id, instances[c1.id].id}
+    node_map = await NodeManager.get_many(db=db, ids=[c1.id, instances[c1.id].id, instances[c2.id].id])
+    assert set(node_map) == {instances[c2.id].id}
 
     await verify_graph(db=db)
 

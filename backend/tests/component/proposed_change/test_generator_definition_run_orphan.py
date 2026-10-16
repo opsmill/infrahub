@@ -62,9 +62,9 @@ DEVICE_SCHEMA = SchemaRoot(
 class TestGeneratorDefinitionRunToleratesOrphanInstance(TestInfrahubAppWithoutLocalWorkflow):
     """The post-merge generator run skips a generator instance whose target was deleted.
 
-    Deleting a target node does not cascade to its generator instance, leaving an instance whose
-    object peer cannot be resolved. Building the member-to-instance map must skip that orphan rather
-    than raise, so the run still dispatches for the live members.
+    A target removed through a path that skips the delete cascade leaves an instance whose object peer
+    cannot be resolved. Building the member-to-instance map must skip that orphan rather than raise, so
+    the run still dispatches for the live members.
     """
 
     @pytest.fixture(scope="class", autouse=True)
@@ -172,7 +172,7 @@ class TestGeneratorDefinitionRunToleratesOrphanInstance(TestInfrahubAppWithoutLo
         )
         await instance_orphan.save(db=db)
 
-        # Delete the target: its generator instance stays behind with an unresolvable object peer.
+        # Deleting the node directly skips the delete cascade, so its generator instance stays behind.
         await orphaned_target.delete(db=db)
 
         return {
