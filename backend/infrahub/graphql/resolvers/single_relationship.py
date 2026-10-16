@@ -14,7 +14,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.constants import KIND_GRAPHQL_FIELD_NAME
-from infrahub.graphql.field_extractor import extract_graphql_fields
+from infrahub.graphql.field_extractor import extract_graphql_fields_for_request
 from infrahub.graphql.metadata import build_metadata_query_options, get_metadata_options_from_fields
 
 from ..loaders.node import GetManyParams, NodeDataLoader
@@ -102,16 +102,19 @@ class SingleRelationshipResolver:
         graphql_context: GraphqlContext = info.context
 
         # Extract the name of the fields in the GQL query
-        fields = extract_graphql_fields(info=info)
+        # The fields are shared by every call for this field of the query: changes go to a copy.
+        fields = extract_graphql_fields_for_request(info=info)
         node_fields = fields.get("node", {})
         property_fields = fields.get("properties", {})
         metadata_fields = {
             "node_metadata": fields.get("node_metadata", {}),
             "relationship_metadata": fields.get("relationship_metadata", {}),
         }
-        for key, value in property_fields.items():
-            mapped_name = RELATIONS_PROPERTY_MAP[key]
-            node_fields[mapped_name] = value
+        if property_fields:
+            node_fields = {
+                **node_fields,
+                **{RELATIONS_PROPERTY_MAP[key]: value for key, value in property_fields.items()},
+            }
 
         metadata_field_names = {prop_name for prop_name in RELATIONS_PROPERTY_MAP if prop_name != "__typename"}
         requires_relationship_properties = bool(set(property_fields.keys()) & metadata_field_names)
@@ -260,7 +263,7 @@ class SingleRelationshipResolver:
             return None
 
         if node_fields and "hfid" in node_fields:
-            node_fields["human_friendly_id"] = None
+            node_fields = {**node_fields, "human_friendly_id": None}
 
         include_metadata |= MetadataQueryOptions(attribute_level=MetadataOptions.LINKED_NODES)
         query_params = GetManyParams(

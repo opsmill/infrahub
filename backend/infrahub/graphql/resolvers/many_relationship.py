@@ -16,7 +16,7 @@ from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql.field_extractor import extract_graphql_fields
+from infrahub.graphql.field_extractor import extract_graphql_fields_for_request
 from infrahub.graphql.metadata import build_metadata_query_options, get_metadata_options_from_fields
 
 from ..loaders.peers import PeerRelationshipsDataLoader, QueryPeerParams
@@ -116,7 +116,8 @@ class ManyRelationshipResolver:
         graphql_context: GraphqlContext = info.context
 
         # Extract the name of the fields in the GQL query
-        fields = extract_graphql_fields(info=info)
+        # The fields are shared by every call for this field of the query: changes go to a copy.
+        fields = extract_graphql_fields_for_request(info=info)
         edges = fields.get("edges", {})
         node_fields = edges.get("node", {})
         property_fields = edges.get("properties", {})
@@ -124,9 +125,11 @@ class ManyRelationshipResolver:
             "node_metadata": edges.get("node_metadata", {}),
             "relationship_metadata": edges.get("relationship_metadata", {}),
         }
-        for key, value in property_fields.items():
-            mapped_name = RELATIONS_PROPERTY_MAP[key]
-            node_fields[mapped_name] = value
+        if property_fields:
+            node_fields = {
+                **node_fields,
+                **{RELATIONS_PROPERTY_MAP[key]: value for key, value in property_fields.items()},
+            }
 
         filters = {
             f"{info.field_name}__{key}": value
@@ -292,7 +295,7 @@ class ManyRelationshipResolver:
         order: OrderModel | None = None,
     ) -> list[Relationship] | None:
         if node_fields and "hfid" in node_fields:
-            node_fields["human_friendly_id"] = None
+            node_fields = {**node_fields, "human_friendly_id": None}
 
         query_params = QueryPeerParams(
             branch=branch,
