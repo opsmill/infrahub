@@ -111,7 +111,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "localprometheus"
+        "uid": "${datasource_prometheus}"
       },
       "description": "Boolean status of the Neo4j server",
       "fieldConfig": {
@@ -194,7 +194,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "localprometheus"
+            "uid": "${datasource_prometheus}"
           },
           "editorMode": "code",
           "expr": "up{job='$job', instance=~'$instance'}",
@@ -213,7 +213,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "localprometheus"
+        "uid": "${datasource_prometheus}"
       },
       "description": "Instant rate",
       "fieldConfig": {
@@ -286,7 +286,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "localprometheus"
+            "uid": "${datasource_prometheus}"
           },
           "editorMode": "code",
           "expr": "irate(neo4j_database_neo4j_transaction_committed_total{}[$interval])",
@@ -303,7 +303,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "localprometheus"
+        "uid": "${datasource_prometheus}"
       },
       "fieldConfig": {
         "defaults": {
@@ -365,7 +365,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "localprometheus"
+            "uid": "${datasource_prometheus}"
           },
           "editorMode": "code",
           "expr": "neo4j_database_neo4j_transaction_last_committed_tx_id_total",
@@ -383,7 +383,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "localprometheus"
+        "uid": "${datasource_prometheus}"
       },
       "description": "Instant rate",
       "fieldConfig": {
@@ -456,7 +456,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "localprometheus"
+            "uid": "${datasource_prometheus}"
           },
           "editorMode": "code",
           "expr": "irate(neo4j_database_neo4j_transaction_rollbacks_total{job=\"$job\"}[$interval])",
@@ -486,7 +486,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "localprometheus"
+        "uid": "${datasource_prometheus}"
       },
       "fieldConfig": {
         "defaults": {
@@ -568,7 +568,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "localprometheus"
+            "uid": "${datasource_prometheus}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -650,7 +650,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "localprometheus"
+        "uid": "${datasource_prometheus}"
       },
       "description": "All transaction metrics",
       "fieldConfig": {
@@ -736,7 +736,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "localprometheus"
+            "uid": "${datasource_prometheus}"
           },
           "editorMode": "code",
           "expr": "label_replace({__name__=~\"neo4j_database_neo4j_transaction_(started|committed|rollbacks|terminated)_total\"}, \"label\", \"$1\", \"__name__\", \"neo4j_database_neo4j_transaction_(.+)\")",
@@ -755,7 +755,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "localprometheus"
+        "uid": "${datasource_prometheus}"
       },
       "description": "Total number of graph items: node, relationships, ...",
       "fieldConfig": {
@@ -840,7 +840,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "localprometheus"
+            "uid": "${datasource_prometheus}"
           },
           "editorMode": "code",
           "expr": "label_replace({__name__=~\"neo4j_database_neo4j_ids_in_use_(node|property|relationship)\", job=\"$job\", instance=~'$instance'}, \"label\", \"$1\", \"__name__\", \"neo4j_database_neo4j_ids_in_use_(.+)\")",
@@ -854,7 +854,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "localprometheus"
+            "uid": "${datasource_prometheus}"
           },
           "editorMode": "code",
           "expr": "neo4j_database_neo4j_ids_in_use_relationship_type{job=\"$job\", instance=~\"$instance\"}",
@@ -1213,7 +1213,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "localprometheus"
+        "uid": "${datasource_prometheus}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1317,7 +1317,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "localprometheus"
+        "uid": "${datasource_prometheus}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1400,7 +1400,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "localprometheus"
+            "uid": "${datasource_prometheus}"
           },
           "editorMode": "code",
           "expr": "rate(infrahub_db_query_execution_seconds_bucket{le!=\"\"}[$interval])",
@@ -1416,7 +1416,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "localprometheus"
+        "uid": "${datasource_prometheus}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1466,7 +1466,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "localprometheus"
+            "uid": "${datasource_prometheus}"
           },
           "editorMode": "code",
           "expr": "histogram_quantile(0.95, sum(rate(infrahub_db_query_execution_seconds_bucket{}[5m])) by (le, query))",

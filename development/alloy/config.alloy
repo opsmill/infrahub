@@ -306,7 +306,7 @@ prometheus.scrape "message_queue" {
 }
 
 // --- Database ---
-// Only Neo4j Enterprise has a metrics endpoint, so NEO4J_METRICS_TARGET is empty unless one is enabled.
+// Only Neo4j Enterprise has a metrics endpoint, so an empty NEO4J_METRICS_TARGET stops this scrape on Community.
 discovery.relabel "database" {
 	targets = [
 		{"__address__" = env("NEO4J_METRICS_TARGET")},
