@@ -14,7 +14,15 @@ The `NumberPool` attribute kind enables the dynamic creation of a `CoreNumberPoo
 
 ## Defining a `NumberPool` attribute {#define-number-pool}
 
-When defining a `NumberPool` attribute, you'll have to define extra `parameters` on the attribute to define the `start_range` and `end_range` for the `CoreNumberPool` resource manager.
+A `NumberPool` attribute declares the numbers its pool allocates from in `parameters.ranges`. Each range has a `start` and an `end`, both included, and an optional `weight`. Infrahub allocates from the range with the highest weight first. Ranges of the same attribute cannot overlap.
+
+For an attribute that declares no range, Infrahub creates a pool with zero ranges, so every allocation from that pool fails. Declare at least one range.
+
+:::note
+
+`start_range` and `end_range` are deprecated in favor of `ranges`. They still declare a single range. See [How to migrate number pools to `ranges`](../release-notes/deprecation-guides/number-pool-ranges).
+
+:::
 
 We'll define a generic service schema that nodes will inherit from to provide a global service identifier among different schema node services.
 
@@ -40,8 +48,9 @@ generics:
         kind: NumberPool
         read_only: true # Required
         parameters:
-          start_range: 100
-          end_range: 10000
+          ranges:
+            - start: 100
+              end: 10000
 nodes:
   - name: BackBoneService
     namespace: Infra
@@ -99,9 +108,9 @@ The naming of the Resource Manager will be `Kind.attribute_name [uuid]`.
 
 ![numberpool-resource-manager](../media/numberpool_attribute_kind_resource_manager.png)
 
-:::info Updating Parameters (Start/End Range)
+:::info Updating the ranges
 
-To update the **parameters** of a `NumberPool` attribute requires performing a schema update.
+To change the ranges of a `NumberPool` attribute, load the updated schema on the default branch. The ranges of a pool that the schema created cannot be edited on the pool itself.
 
 :::
 
@@ -132,6 +141,7 @@ generics:
         kind: NumberPool
         read_only: true # Required
         parameters:
-          start_range: 100
-          end_range: 10000
+          ranges:
+            - start: 100
+              end: 10000
 ```
