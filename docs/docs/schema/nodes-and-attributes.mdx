@@ -158,7 +158,7 @@ nodes:
 
 Setting `unique: true` on an attribute adds a single-field constraint, `["<attributename>__value"]`, to the node's `uniqueness_constraints`. Infrahub checks it separately from any composite constraint that includes the same attribute. The reverse also applies: a single-field constraint such as `["name__value"]` marks `name` as unique.
 
-To make a name unique only within its cluster, list the attribute in a composite constraint and leave `unique` unset:
+To make a name unique only within its cluster, list the attribute in a composite constraint and leave `unique` unset. If the node has a `human_friendly_id`, it must be composite as well, for example `["cluster__name__value", "name__value"]`. A `human_friendly_id` of `["name__value"]` adds the constraint `["name__value"]`, which marks `name` as unique. See the [human-friendly identifier](#human-friendly-identifier-hfid) section.
 
 ```yaml {4-5} showLineNumbers
 nodes:
@@ -257,7 +257,7 @@ nodes:
 
 :::info
 
-If a `human_friendly_id` is defined on a node, Infrahub adds a uniqueness constraint matching it, unless `uniqueness_constraints` already contains the same entry. A relationship path such as `cluster__name__value` becomes `cluster` in the constraint. The comparison includes the order of the fields, so a `human_friendly_id` of `["cluster__name__value", "name__value"]` matches `["cluster", "name__value"]` but not `["name__value", "cluster"]`. Writing it in the second order leaves the node with both constraints.
+If a `human_friendly_id` is defined on a node, Infrahub adds a uniqueness constraint matching it, unless `uniqueness_constraints` already contains the same entry. A relationship path such as `cluster__name__value` becomes `cluster` in the constraint. The comparison includes the order of the fields, so a `human_friendly_id` of `["cluster__name__value", "name__value"]` matches `["cluster", "name__value"]` but not `["name__value", "cluster"]`. If `uniqueness_constraints` lists `["name__value", "cluster"]` instead, Infrahub still adds `["cluster", "name__value"]`, so the node has both constraints.
 
 If at least one attribute is marked as unique, and `human_friendly_id` hasn't been defined, `human_friendly_id` will be automatically created.
 
