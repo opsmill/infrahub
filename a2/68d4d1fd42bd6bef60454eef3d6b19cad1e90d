@@ -1,0 +1,21 @@
+backend/infrahub/server.py
+  s_d03d43548f9236::t_79710c8cbf845a 155-156
+backend/tests/unit/test_server.py
+  s_d03d43548f9236::t_3cf7529bcad8d9 87-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a268d4d1fd42bd6bef60454eef3d6b19cad1e90d",
+  "prompts": {},
+  "sessions": {
+    "s_d03d43548f9236": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "11fd0f89-7d67-4f27-b0d0-d2b6a4251de7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}
