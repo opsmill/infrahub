@@ -2,7 +2,7 @@
 
 Search-anywhere modal: open/close (click, Esc, Ctrl/Cmd+K), the Device menu
 link, the no-results message, node + IPAM results, and lookup by UUID. Runs
-anonymously; the result tests rely on data_sites (the atl1 site, the 10.x
+anonymously; the result tests rely on data_site_atl1 (the atl1 site, the 10.x
 prefix/loopback tree, and AS174 transitively via org_registry) and the menu.
 """
 
@@ -59,7 +59,7 @@ class TestSearchAnywhere:
             )
         ).to_be_visible()
 
-    async def test_display_results_on_search_nodes(self, page: Page, data_sites: SitesHandle) -> None:
+    async def test_display_results_on_search_nodes(self, page: Page, data_site_atl1: SitesHandle) -> None:
         await page.goto("/")
         await page.get_by_test_id("search-anywhere-trigger").click()
         await expect(page.get_by_test_id("search-anywhere")).to_be_visible()
@@ -77,7 +77,7 @@ class TestSearchAnywhere:
         await expect(page.get_by_text("IP Namespacedefault").first).to_be_visible()
         await expect(page.get_by_text("IP NamespacedefaultAddress10.0.0.2/32Description-")).to_be_visible()
 
-    async def test_display_result_when_searching_by_uuid(self, page: Page, data_sites: SitesHandle) -> None:
+    async def test_display_result_when_searching_by_uuid(self, page: Page, data_site_atl1: SitesHandle) -> None:
         await page.goto("/objects/InfraAutonomousSystem")
 
         await page.get_by_role("link", name="AS174 174").click()

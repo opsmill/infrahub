@@ -34,8 +34,6 @@ from __future__ import annotations
 
 import asyncio
 import os
-import shutil
-import subprocess
 import sys
 import warnings
 from datetime import datetime
@@ -86,9 +84,6 @@ if TYPE_CHECKING:
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MODELS_DIR = REPO_ROOT / "models"
 DEMO_EDGE_REPO_FIXTURE = REPO_ROOT / "backend/tests/fixtures/repos/infrahub-demo-edge/initial__main"
-
-# How long the demo-data generator (models/infrastructure_edge.py) may run.
-INFRASTRUCTURE_DATA_TIMEOUT = 30 * 60
 
 # Module-level env signals: used to define fixtures conditionally, because the
 # lazy `request.getfixturevalue` alternative does not work with async fixtures.
@@ -256,40 +251,8 @@ def infrahub_client(infrahub_address: str) -> InfrahubClient:
 
 
 # --------------------------------------------------------------------------- #
-# Composable data fixtures (faithful reproduction of the demo dataset)
+# Composable data fixtures (the demo dataset as SDK slices, slimmed to atl1 + den1)
 # --------------------------------------------------------------------------- #
-def _run_infrahubctl(args: list[str], address: str, *, cwd: Path = REPO_ROOT, timeout: int = 600) -> str:
-    """Run an ``infrahubctl`` command against ``address`` with the admin token.
-
-    Used ONLY by the parity reference loader (infrastructure_data_monolith);
-    the suite itself loads everything through the SDK.
-    """
-    env = os.environ.copy()
-    env["INFRAHUB_ADDRESS"] = address
-    env["INFRAHUB_API_TOKEN"] = ADMIN_API_TOKEN
-    # Runs at the SDK's default batch concurrency, like the legacy CI job. The historical
-    # INFRAHUB_MAX_CONCURRENT_EXECUTION=1 serialization is no longer needed: the symmetric-pair
-    # save race is fixed in the generator (save_connected_interfaces in
-    # models/infrastructure_edge.py) and the backend retries creates on the transient
-    # read anomaly hit when concurrent creates reference the same peer node.
-    binary = shutil.which("infrahubctl") or "infrahubctl"
-    result = subprocess.run(  # noqa: S603
-        [binary, *args],
-        cwd=cwd,
-        env=env,
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-        check=False,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(
-            f"`infrahubctl {' '.join(args)}` failed (rc={result.returncode}):\n"
-            f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
-        )
-    return result.stdout
-
-
 @pytest.fixture(scope="session")
 async def schema_base(infrahub_client: InfrahubClient, infrahub_provisioned_externally: bool) -> None:
     """Load the full base schema (models/base/*.yml) as one set.
@@ -333,34 +296,11 @@ async def infrastructure_data(data_scenario_branches: ScenarioBranchesHandle) ->
     Script-free replacement for `infrahubctl run models/infrastructure_edge.py`:
     data_scenario_branches is the terminal node of the slice DAG (it pulls
     data_topology -> data_sites -> rbac/locations/org_registry/ipam_pools, and
-    data_patch_template), so this loads everything the monolithic script run
-    produced — minus the two scenario branches no test references (their pool
-    consumption is replayed; see data/scenario_branches.py). Parity proven by a
-    structural dump diff (tests/e2e/data/parity.py). Kept under the legacy
-    fixture name for specs that genuinely need the whole dataset.
+    data_patch_template), so this loads everything the slimmed dataset produces.
+    The dataset is slimmed to two sites (atl1 + den1) — the only sites any test
+    references; see data/sites.py KEPT_SITES. Kept under the legacy fixture name
+    for specs that genuinely need the whole dataset.
     """
-
-
-@pytest.fixture(scope="session")
-def infrastructure_data_monolith(
-    infrahub_address: str,
-    schema_base: None,
-    infrahub_provisioned_externally: bool,
-) -> None:
-    """Load the demo dataset by running models/infrastructure_edge.py (legacy path).
-
-    Kept ONLY as the reference loader for the parity dump
-    (INFRAHUB_E2E_PARITY=monolith); the suite itself loads through the SDK
-    slices. Equivalent to `infrahubctl run models/infrastructure_edge.py`.
-    """
-    if infrahub_provisioned_externally:
-        return
-    _run_infrahubctl(
-        ["run", str(MODELS_DIR / "infrastructure_edge.py")],
-        infrahub_address,
-        cwd=REPO_ROOT,
-        timeout=INFRASTRUCTURE_DATA_TIMEOUT,
-    )
 
 
 @pytest.fixture(scope="session")

@@ -6,7 +6,7 @@ removing them again, editing a row's field, and resetting to the schema
 default. Sorting is URL state only (no mutations), so the test runs as Admin
 against main; data_sites provides the demo devices whose names and sites drive
 the expected row order (name ascending starts at atl1-core1, descending at
-ord1-leaf2).
+den1-leaf2).
 """
 
 from __future__ import annotations
@@ -51,7 +51,7 @@ class TestObjectSort:
         await expect(admin_page.get_by_text("Custom order")).to_be_visible()
         await expect(admin_page).to_have_url(re.compile(r"sort=name__value__desc"))
         await expect(sort_button).to_contain_text("1")
-        await expect(first_row_link).to_have_text("ord1-leaf2")
+        await expect(first_row_link).to_have_text("den1-leaf2")
 
         # add a secondary sort on a relationship field
         await admin_page.get_by_role("button", name="Add sort").click()
@@ -68,7 +68,7 @@ class TestObjectSort:
         await expect(sort_button).to_contain_text("2")
         await expect(admin_page).to_have_url(re.compile(r"sort=name__value__desc(,|%2C)site__name__value__asc"))
         # The primary sort is unchanged, so the first row stays the same.
-        await expect(first_row_link).to_have_text("ord1-leaf2")
+        await expect(first_row_link).to_have_text("den1-leaf2")
 
         # add a metadata sort from the search results
         await admin_page.get_by_role("button", name="Add sort").click()

@@ -35,43 +35,20 @@ Dropped scenarios (deliberate — no e2e test references their branches):
 * ``branch_scenario_replace_ip_addresses`` (lines 1990-2048, site jfk1,
   branch ``jfk1-update-edge-ips``).
 
-Allocation ballast for the dropped scenarios
---------------------------------------------
-Both dropped scenarios allocate from a shared resource pool ON THEIR BRANCH:
-add_upstream takes the next /29 from the "External prefixes pool"
-(identifier ``ord1-edge1``) and replace_ip_addresses takes the next /31 from
-the "Interconnections pool" (identifier ``jfk1-edge1__jfk1-edge2``). Pool
-next-free computation is branch-AGNOSTIC (``CoreIPPrefixPool.get_next`` uses
-``IPAMResourceAllocator(..., branch_agnostic=True)``, see
-backend/infrahub/core/node/resource_manager/ip_prefix_pool.py), so those
-branch-scoped allocations consume pool space visible from every branch:
-after the monolith load the next free external /29 is 203.111.0.248/29 —
-exactly what tests/e2e/ipam/test_ip_prefix_create_with_pool.py asserts on a
-throwaway branch cut from main. Dropping the scenarios without replacing the
-consumption would shift that to 203.111.0.240/29 and break the test, so
-``_consume_dropped_scenario_pool_allocations`` performs the SAME two
-allocations (same pool, same identifier, no other kwargs) and creates no
-branch and none of the branch-only objects (no circuits/IPs/interface edits).
-It produces 203.111.0.240/29 (external, 31st /29 after the 30 generate_site
-ones) and 10.1.0.32/31 (interconnections, 17th /31 after 10 generate_site +
-6 backbone ones).
-
-Known deviation of the ballast: it allocates with ``branch="main"`` while the
-script allocated on the scenario branch, where the prefix NODE itself is
-created (``get_resource`` inits the node on the mutation branch). On a
-monolith-loaded stack the two prefixes therefore exist only on the dropped
-branches and main shows them solely as consumed pool space; here they are
-real nodes on main (main's IpamIPPrefix count is +2 vs the monolith parity
-dump). Kept in a clearly separated function so it can be adjusted after the
-first parity diff if the extra main-visible nodes matter.
+These two scenarios ran on ord1/jfk1, which the 2-site slim no longer builds
+(see data/sites.py KEPT_SITES), so there is nothing to drop — they simply do
+not exist. The earlier ``_consume_dropped_scenario_pool_allocations`` ballast
+(which replayed their branch-agnostic pool consumption to hold the external
+next-free at 203.111.0.248/29 for
+tests/e2e/ipam/test_ip_prefix_create_with_pool.py) was removed with the slim;
+that test's next-free assertion is re-pinned to the 2-site value instead.
 
 Other deviations from the script:
 
 * The script runs all five scenarios CONCURRENTLY in one SDK batch; this
-  fixture runs its three sequentially in the dispatch order (ballast for the
-  two dropped ones first, mirroring their batch.add positions). End state is
-  equivalent, and the branch points become deterministic — in the script a
-  branch could be cut before or after another scenario's main-side mutations.
+  fixture runs its three sequentially. End state is equivalent, and the branch
+  points become deterministic — in the script a branch could be cut before or
+  after another scenario's main-side mutations.
 * Async SDK with kind STRINGS instead of generated protocol classes.
 * ``branch="main"`` is passed explicitly where the script relied on the
   client's default branch (infrahubctl runs with default_branch "main").
@@ -97,11 +74,10 @@ if TYPE_CHECKING:
 BRANCH = "main"
 
 # run() dispatch (lines 2827-2857): sites = site_generator(nbr_site=5) -> ["atl1", "ord1", "jfk1", "den1", "dfw1"].
-REMOVE_COLT_SITE = "atl1"  # sites[0]
-CONFLICT_DEVICE_SITE = "den1"  # sites[3]
-# Dropped scenarios (ballast only): add_upstream ran on sites[1], replace_ip_addresses on sites[2].
-DROPPED_ADD_UPSTREAM_DEVICE = "ord1-edge1"
-DROPPED_REPLACE_IP_DEVICES = ("jfk1-edge1", "jfk1-edge2")
+REMOVE_COLT_SITE = "atl1"  # script sites[0]
+CONFLICT_DEVICE_SITE = "den1"  # script sites[3]; the 2nd (last) built site under the slim
+# Dropped scenarios add_upstream (script sites[1]=ord1) and replace_ip_addresses (sites[2]=jfk1)
+# are not replayed: with the 2-site slim ord1/jfk1 are never built (see data/sites.py KEPT_SITES).
 
 SCENARIO_BRANCHES = ("atl1-delete-upstream", "den1-maintenance-conflict", "platform-conflict")
 
@@ -132,37 +108,6 @@ GET_CIRCUITS_QUERY = """
         }
     }
     """
-
-
-async def _consume_dropped_scenario_pool_allocations(client: InfrahubClient) -> None:
-    """Replay the dropped scenarios' pool allocations (see module docstring).
-
-    * branch_scenario_add_upstream line 1910: ``allocate_next_ip_prefix(
-      resource_pool=external_pool, identifier=device_name, branch=new_branch_name)``
-      with ``device_name = "ord1-edge1"`` -> 203.111.0.240/29.
-    * branch_scenario_replace_ip_addresses line 2006: ``allocate_next_ip_prefix(
-      kind=IpamIPPrefix, resource_pool=interconnection_pool,
-      identifier=f"{device1_name}__{device2_name}", branch=new_branch_name)``
-      -> 10.1.0.32/31.
-
-    Allocated on main instead of the (not created) scenario branches; the
-    identifiers make the calls idempotent (PrefixPoolGetReserved returns the
-    reserved prefix on re-run).
-    """
-    external_pool = await client.get(kind="CoreIPPrefixPool", name__value="External prefixes pool", branch=BRANCH)
-    await client.allocate_next_ip_prefix(
-        resource_pool=external_pool, identifier=DROPPED_ADD_UPSTREAM_DEVICE, branch=BRANCH
-    )
-
-    interconnection_pool = await client.get(kind="CoreIPPrefixPool", name__value="Interconnections pool", branch=BRANCH)
-    device1_name, device2_name = DROPPED_REPLACE_IP_DEVICES
-    # NB: `kind` is typing-only sugar on allocate_next_ip_prefix (unused at runtime); mirrored from the script.
-    await client.allocate_next_ip_prefix(
-        kind="IpamIPPrefix",  # type: ignore[call-overload]
-        resource_pool=interconnection_pool,
-        identifier=f"{device1_name}__{device2_name}",
-        branch=BRANCH,
-    )
 
 
 async def _branch_scenario_remove_colt(client: InfrahubClient, site_name: str) -> None:
@@ -286,12 +231,12 @@ async def data_scenario_branches(  # noqa: PLR0913, PLR0917  (each argument is a
     if infrahub_provisioned_externally:
         return ScenarioBranchesHandle.external()
 
-    await _consume_dropped_scenario_pool_allocations(client=data_client)
     # The three scenarios are independent: each creates its OWN branch off the
     # (already final) main and only mutates that branch, so they run
-    # concurrently. The ballast consumption above must stay FIRST — pool
-    # next-free values are branch-agnostic and the scenarios' branch contents
-    # snapshot main at creation time.
+    # concurrently. (The dropped scenarios' pool ballast was removed with the
+    # 2-site slim — ord1/jfk1 are no longer built at all, so there is nothing to
+    # replay; the dependent test_ip_prefix_create_with_pool next-free assertion
+    # was re-pinned to the 2-site value.)
     await asyncio.gather(
         _branch_scenario_remove_colt(client=data_client, site_name=REMOVE_COLT_SITE),
         _branch_scenario_conflict_device(client=data_client, site_name=CONFLICT_DEVICE_SITE),

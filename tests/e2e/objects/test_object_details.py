@@ -3,9 +3,12 @@
 /objects/:objectKind/:objectId detail view: unauthenticated cannot edit, admin
 can edit, relationship rendering, the two-step select, and the node metadata
 popover. All work happens on a throwaway branch cut from main, hence the
-data_topology dependency: Ethernet4's connected endpoint is a backbone Circuit
+data_topology dependency: Ethernet3's connected endpoint is a backbone Circuit
 Endpoint built by the topology stage (the 203.111.0.2/29 BGP session label and
-atl1-edge1's "Interfaces15" come via the transitive sites slice).
+atl1-edge1's "Interfaces15" come via the transitive sites slice). NB: re-pinned
+from Ethernet4 to Ethernet3 for the 2-site slim — with a single backbone
+neighbour (atl1<->den1) only the first backbone interface (Ethernet3) of each
+edge is wired (see data/topology.py _p2p_networks).
 """
 
 from __future__ import annotations
@@ -92,7 +95,7 @@ class TestObjectDetails:
 
         await admin_page.get_by_role("link", name="atl1-edge1").click()
         await admin_page.get_by_text("Interfaces15").click()
-        await admin_page.get_by_role("link", name="Ethernet4").first.click()
+        await admin_page.get_by_role("link", name="Ethernet3").first.click()
         await admin_page.get_by_test_id("edit-button").click()
 
         kind_selector = admin_page.get_by_label("Kind").get_by_test_id("select-value")
