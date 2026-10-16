@@ -292,6 +292,9 @@ class NumberPoolParameters(AttributeParameters):
             shorthand = self._shorthand_range()
             if shorthand.start > shorthand.end:
                 raise ValueError("`start_range` can't be less than `end_range`")
+            # Stored resolved, so a declaration stored when the bounds had defaults compares equal on reload.
+            self.start_range = shorthand.start
+            self.end_range = shorthand.end
             return self
 
         ordered = sorted(self.ranges)

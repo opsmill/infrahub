@@ -57,8 +57,9 @@ mutation {
       name: {value: "My VLAN ID Pool"}
       node: {value: "IpamVLAN"}
       node_attribute: {value: "vlan_id"}
-      start_range: {value: 100}
-      end_range: {value: 1000}
+      ranges: [
+        {start: 100, end: 1000}
+      ]
     }
   ) {
     ok
@@ -69,6 +70,8 @@ mutation {
   }
 }
 ```
+
+A pool can hold several ranges. Add an `allocation_weight` to a range to have the pool allocate from it first. `start_range` and `end_range` are deprecated, see [How to migrate number pools to `ranges`](../release-notes/deprecation-guides/number-pool-ranges).
 
 :::important
 
