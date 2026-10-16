@@ -14,13 +14,14 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.schema import AttributeSchema
 from tests.helpers.number_pool import add_pool_range
 from tests.helpers.schema import load_schema
 
-from .helpers import attribute_read, execute, pool_source
+from .helpers import attribute_read, execute, pool_source, refused_write
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -41,6 +42,12 @@ query RankSourcesOfAncestors($id: ID!) {
     LocationRack(ids: [$id]) {
         edges { node { ancestors { edges { node { id rank { value source { id __typename } } } } } } }
     }
+}
+"""
+
+UPDATE_PREFIX_VLAN = """
+mutation UpdatePrefixVlan($id: String!, $vlan_id: NumberAttributeUpdate!) {
+    IpamIPPrefixUpdate(data: {id: $id, vlan_id: $vlan_id}) { ok object { vlan_id { value } } }
 }
 """
 
@@ -113,16 +120,20 @@ async def test_a_hierarchy_read_reports_the_pool_of_every_location(
     }
 
 
-@pytest.fixture
-async def prefix_kind_with_vlan(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, ipam_schema: SchemaRoot
-) -> None:
-    """The IPAM prefix kind, with a `vlan_id` number the generic prefix query only reaches through a fragment."""
+async def _load_prefix_kind_with_vlan(db: InfrahubDatabase, ipam_schema: SchemaRoot) -> None:
     schema = deepcopy(ipam_schema)
     [prefix_kind] = [node for node in schema.nodes if node.kind == "IpamIPPrefix"]
     prefix_kind.attributes.append(AttributeSchema(name="vlan_id", kind="Number", optional=True))
     await load_schema(db=db, schema=schema)
     registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+
+
+@pytest.fixture
+async def prefix_kind_with_vlan(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, ipam_schema: SchemaRoot
+) -> None:
+    """The IPAM prefix kind, with a `vlan_id` number the generic prefix query only reaches through a fragment."""
+    await _load_prefix_kind_with_vlan(db=db, ipam_schema=ipam_schema)
 
 
 async def test_the_generic_prefix_query_reports_the_pool_of_an_implementer_number(
@@ -139,3 +150,66 @@ async def test_the_generic_prefix_query_reports_the_pool_of_an_implementer_numbe
     data = await execute(db=db, branch=default_branch, source=VLAN_SOURCES_OF_PREFIXES, variables={"id": prefix.id})
     assert data
     assert sources_of(data["BuiltinIPPrefix"]["edges"], "vlan_id") == {prefix.id: pool_source(value=1, pool=pool)}
+
+
+class TestPrefixUpdateChecksTheTrackedNumber:
+    """An IPAM prefix update checks the number a pool tracks; the steps run in order on one prefix."""
+
+    @pytest.fixture(scope="class")
+    async def vlan_pool(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        register_core_models_schema_scope_class: SchemaBranch,
+        ipam_schema: SchemaRoot,
+    ) -> CoreNumberPool:
+        await _load_prefix_kind_with_vlan(db=db, ipam_schema=ipam_schema)
+        return await new_pool(db=db, name="vlans", node="IpamIPPrefix", node_attribute="vlan_id")
+
+    @pytest.fixture(scope="class")
+    async def prefix(self, db: InfrahubDatabase, default_branch_scope_class: Branch, vlan_pool: CoreNumberPool) -> Node:
+        namespace = await Node.init(db=db, schema=InfrahubKind.NAMESPACE, branch=default_branch_scope_class)
+        await namespace.new(db=db, name="ns-vlans")
+        await namespace.save(db=db)
+        node = await Node.init(db=db, schema="IpamIPPrefix", branch=default_branch_scope_class)
+        await node.new(db=db, prefix="10.0.0.0/8", ip_namespace=namespace, vlan_id={"value": 5})
+        await node.save(db=db)
+        return node
+
+    async def test_a_number_no_pool_tracks_takes_any_value(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, prefix: Node
+    ) -> None:
+        data = await execute(
+            db=db,
+            branch=default_branch_scope_class,
+            source=UPDATE_PREFIX_VLAN,
+            variables={"id": prefix.id, "vlan_id": {"value": 900}},
+        )
+
+        assert data == {"IpamIPPrefixUpdate": {"ok": True, "object": {"vlan_id": {"value": 900}}}}
+
+    async def test_a_tracked_number_moved_outside_the_ranges_is_refused(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, vlan_pool: CoreNumberPool, prefix: Node
+    ) -> None:
+        await execute(
+            db=db,
+            branch=default_branch_scope_class,
+            source=UPDATE_PREFIX_VLAN,
+            variables={"id": prefix.id, "vlan_id": {"value": 5, "from_pool": {"id": vlan_pool.id}}},
+        )
+
+        message = await refused_write(
+            db=db,
+            branch=default_branch_scope_class,
+            source=UPDATE_PREFIX_VLAN,
+            variables={"id": prefix.id, "vlan_id": {"value": 900}},
+        )
+
+        assert message == (
+            "'vlan_id' is tracked by the vlans pool, so it cannot hold 900, which is outside the pool's ranges: 1-20. "
+            "To set 900 and stop the pool tracking 'vlan_id', send 'value: 900' together with 'from_pool: null'. "
+            "at vlan_id.value"
+        )
+        stored = await NodeManager.get_one(db=db, id=prefix.id, branch=default_branch_scope_class)
+        assert stored is not None
+        assert stored.get_attribute(name="vlan_id").value == 5

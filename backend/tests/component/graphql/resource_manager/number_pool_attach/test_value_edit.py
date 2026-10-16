@@ -25,6 +25,18 @@ if TYPE_CHECKING:
     from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
     from infrahub.database import InfrahubDatabase
 
+UPDATE_TICKET_DATA = """
+mutation UpdateTicket($data: TestingTicketUpdateInput!) {
+    TestingTicketUpdate(data: $data) { ok }
+}
+"""
+
+UPSERT_TICKET_DATA = """
+mutation UpsertTicket($data: TestingTicketUpsertInput!) {
+    TestingTicketUpsert(data: $data) { ok }
+}
+"""
+
 
 def _tracked_edit_message(pool_name: str, value: int, ranges: str, key: str = "ticket_id.value") -> str:
     attribute_name = key.split(".", maxsplit=1)[0]
@@ -53,6 +65,44 @@ UNTRACKED_EDIT_CASES = [
     UntrackedEditCase(name="any_number", held=7081, value=7990),
     UntrackedEditCase(name="null", held=7082, value=None),
 ]
+
+
+@dataclass(frozen=True)
+class GetterCase:
+    name: str
+    source: str
+    data: dict[str, Any]
+    """The mutation payload; `ID`, `TITLE` and `TICKET_ID` stand for the existing ticket's id, title and number."""
+
+
+GETTER_CASES = [
+    GetterCase(name="update_by_id", source=UPDATE_TICKET_DATA, data={"id": "ID"}),
+    GetterCase(name="update_by_hfid", source=UPDATE_TICKET_DATA, data={"hfid": ["TITLE", "TICKET_ID"]}),
+    GetterCase(name="update_by_default_filter", source=UPDATE_TICKET_DATA, data={"id": "TITLE"}),
+    GetterCase(name="upsert_by_id", source=UPSERT_TICKET_DATA, data={"id": "ID"}),
+    GetterCase(name="upsert_by_hfid", source=UPSERT_TICKET_DATA, data={"hfid": ["TITLE", "TICKET_ID"]}),
+    GetterCase(
+        name="upsert_by_the_hfid_values_of_a_create_payload",
+        source=UPSERT_TICKET_DATA,
+        data={"title": {"value": "TITLE"}, "ticket_id": {"value": "TICKET_ID"}},
+    ),
+]
+
+
+def _fill(payload: Any, node_id: str, title: str, ticket_id: int) -> Any:
+    """Replace the placeholders in a payload; the number is a string inside an `hfid` and a number elsewhere."""
+    if isinstance(payload, dict):
+        return {
+            key: _fill(payload=value, node_id=node_id, title=title, ticket_id=ticket_id)
+            for key, value in payload.items()
+        }
+    if isinstance(payload, list):
+        return [str(_fill(payload=item, node_id=node_id, title=title, ticket_id=ticket_id)) for item in payload]
+    return (
+        {"ID": node_id, "TITLE": title, "TICKET_ID": ticket_id}.get(payload, payload)
+        if isinstance(payload, str)
+        else payload
+    )
 
 
 class TestNumberPoolValueEdit:
@@ -209,3 +259,31 @@ class TestNumberPoolValueEdit:
 
         assert changed["sequence"]["value"] == test_case.value
         assert await tracking_pool_id(db=db, node_id=ticket["id"], attribute_name="sequence") is None
+
+    @pytest.fixture(scope="class")
+    async def sequence_tracked_ticket(
+        self, db: InfrahubDatabase, main_branch: Branch, sequence_pool: CoreNumberPool
+    ) -> dict[str, Any]:
+        """Every mutation path is refused, so one ticket serves them all."""
+        return await create_ticket(
+            db=db,
+            branch=main_branch,
+            title="edit-every-path",
+            ticket_id={"value": 7600},
+            sequence={"value": 7600, "from_pool": {"id": sequence_pool.id}},
+        )
+
+    @pytest.mark.parametrize("test_case", [pytest.param(case, id=case.name) for case in GETTER_CASES])
+    async def test_every_mutation_that_finds_the_object_checks_the_tracked_number(
+        self, db: InfrahubDatabase, main_branch: Branch, sequence_tracked_ticket: dict[str, Any], test_case: GetterCase
+    ) -> None:
+        ticket = sequence_tracked_ticket
+        data = _fill(payload=test_case.data, node_id=ticket["id"], title="edit-every-path", ticket_id=7600)
+        data["sequence"] = {"value": 7999}
+
+        message = await refused_write(db=db, branch=main_branch, source=test_case.source, variables={"data": data})
+
+        assert message == _tracked_edit_message(
+            pool_name="value-edit-sequence", value=7999, ranges="7000-7699", key="sequence.value"
+        )
+        assert await _held_value(db=db, branch=main_branch, node_id=ticket["id"], attribute_name="sequence") == 7600
