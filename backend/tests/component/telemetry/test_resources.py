@@ -9,6 +9,7 @@ renamed or removed.
 
 import logging
 from collections.abc import AsyncGenerator
+from dataclasses import dataclass
 from typing import Generator
 
 import pytest
@@ -51,6 +52,8 @@ _PRE_FEATURE_DATA_FIELDS = {
 }
 _PRE_FEATURE_WORKER_FIELDS = {"total", "active"}
 _PRE_FEATURE_SYSTEM_INFO_FIELDS = {"memory_total", "memory_available", "processor_available"}
+# The database figures read from Neo4j settings, each by a query of its own.
+_SETTINGS_FIELDS = ("processor_assigned", "memory_heap_max_size", "memory_pagecache_size")
 
 
 def _seed_active(cache: MemoryCache, component: str, identity: str) -> None:
@@ -170,11 +173,29 @@ async def test_gather_reports_one_container_for_each_component(
     assert data.database.system_info.processor_available > 0
     assert data.database.system_info.memory_total > 0
     assert data.database.system_info.processor_assigned is None
-    # A failed worker-limit read would also give null, so the healthy gather must log no warning.
+    # A failed settings read would also give null, so the healthy gather must log no warning.
     assert [record.getMessage() for record in caplog.records if record.levelno >= logging.WARNING] == []
 
     # A whole-number float would fail the telemetry endpoint's checksum check, which writes 2.0 as 2.
     assert _whole_number_floats(data.model_dump(mode="json")) == []
+
+
+async def test_database_reports_the_memory_settings_it_was_started_with(
+    resource_environment: MemoryCache,
+    neo4j: dict[int, int] | None,
+    neo4j_heap_size: str,
+    neo4j_pagecache_size: str,
+) -> None:
+    """The database reports its heap and page cache settings as it was started with them."""
+    if neo4j is None:
+        pytest.skip("The test session did not start the database, so its memory settings are not known")
+
+    gatherer = await build_anonymous_telemetry_gatherer()
+    data = await gatherer.gather()
+
+    assert data.database.system_info is not None
+    assert data.database.system_info.memory_heap_max_size == neo4j_heap_size
+    assert data.database.system_info.memory_pagecache_size == neo4j_pagecache_size
 
 
 async def test_corrupted_reading_is_dropped(resource_environment: MemoryCache) -> None:
@@ -258,35 +279,66 @@ async def test_payload_keeps_every_prior_key(resource_environment: MemoryCache) 
     for block in ("server", "task_workers"):
         assert set(dumped[block]) == _PRE_FEATURE_WORKER_FIELDS | {"processes_per_container", "per_container"}
 
-    # system_info keeps its three fields and gains exactly processor_assigned.
+    # system_info keeps its three fields and gains exactly the three settings figures.
     assert data.database.system_info is not None
-    assert set(dumped["database"]["system_info"]) == _PRE_FEATURE_SYSTEM_INFO_FIELDS | {"processor_assigned"}
+    assert set(dumped["database"]["system_info"]) == _PRE_FEATURE_SYSTEM_INFO_FIELDS | set(_SETTINGS_FIELDS)
 
 
-async def test_database_processor_assigned_read_failure_nulls_only_that_field(
+@dataclass
+class SettingsReadFailureCase:
+    name: str
+    setting_constant: str
+    failed_field: str
+
+
+SETTINGS_READ_FAILURE_CASES = [
+    SettingsReadFailureCase(
+        name="processor_assigned", setting_constant="DB_WORKER_LIMIT_SETTING", failed_field="processor_assigned"
+    ),
+    SettingsReadFailureCase(
+        name="memory_heap_max_size", setting_constant="DB_HEAP_MAX_SETTING", failed_field="memory_heap_max_size"
+    ),
+    SettingsReadFailureCase(
+        name="memory_pagecache_size", setting_constant="DB_PAGECACHE_SETTING", failed_field="memory_pagecache_size"
+    ),
+]
+
+
+@pytest.mark.parametrize("case", SETTINGS_READ_FAILURE_CASES, ids=[case.name for case in SETTINGS_READ_FAILURE_CASES])
+async def test_database_settings_read_failure_nulls_only_that_field(
     resource_environment: MemoryCache,
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
+    case: SettingsReadFailureCase,
 ) -> None:
-    """A failing assigned read nulls only that field; the rest of the snapshot survives.
+    """A failing settings read nulls only that field; the rest of the snapshot survives.
 
-    Feeding an unserializable value as the setting name makes the real Cypher settings
-    read fail at the database driver, so the assigned read raises for real rather than
-    returning the natural auto-is-null. Only ``processor_assigned`` degrades; the
-    JMX-derived figures and the whole snapshot are still produced.
+    Feeding an unserializable value as a setting name makes the real Cypher settings
+    read fail at the database driver, so the read raises for real rather than
+    returning the natural unset-is-null. Only that field degrades; the other settings
+    figures, the JMX-derived figures and the whole snapshot are still produced.
     """
-    monkeypatch.setattr(telemetry_database, "DB_WORKER_LIMIT_SETTING", object())
+    healthy = await (await build_anonymous_telemetry_gatherer()).gather()
+    assert healthy.database.system_info is not None
+
+    monkeypatch.setattr(telemetry_database, case.setting_constant, object())
 
     gatherer = await build_anonymous_telemetry_gatherer()
     with caplog.at_level(logging.WARNING, logger="infrahub.tasks"):
         data = await gatherer.gather()
 
-    # The read genuinely raised and was caught (not merely the auto-is-null default).
+    # The read genuinely raised and was caught (not merely the unset-is-null default).
     assert any("Telemetry metric collection failed" in record.getMessage() for record in caplog.records)
 
-    # Only the assigned field is null; the independent JMX figures are intact.
+    # Only the failed field is null; the other settings figures match the healthy gather.
     assert data.database.system_info is not None
-    assert data.database.system_info.processor_assigned is None
+    system_info = data.database.system_info.model_dump()
+    healthy_info = healthy.database.system_info.model_dump()
+    assert system_info[case.failed_field] is None
+    other_fields = [field for field in _SETTINGS_FIELDS if field != case.failed_field]
+    assert {field: system_info[field] for field in other_fields} == {
+        field: healthy_info[field] for field in other_fields
+    }
     assert data.database.system_info.processor_available > 0
     assert data.database.system_info.memory_total > 0
 

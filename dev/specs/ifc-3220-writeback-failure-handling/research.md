@@ -527,7 +527,7 @@ error whose reason comes from GitPython's `PushInfo` flags, not from text.
 | push | `RepositoryPushRejectedError`, reason `ref-update-failed` (`REMOTE_REJECTED`, with Git's wording for a ref it cannot lock or update) | `remote-advanced` | yes. Another push changed or locked the ref, and the next attempt fetches again. |
 | push | `RepositoryPushRejectedError`, reason `non-fast-forward` (`REJECTED`) | `remote-advanced` | yes. The remote moved between the fetch and the push, and the next attempt fetches again. |
 | push | `RepositoryPushRejectedError`, reason `unknown` | `unclassified` | no |
-| record | any | `record-failed` | yes. The remote has the content (FR-004). |
+| record | any | `record-failed` | yes. The remote can already have the content (FR-004). |
 | import | `RepositoryNotFoundError`, `RepositoryTLSError` | `not-found`, `certificate` | no. Both are subtypes of `RepositoryConnectionError`, but a retry cannot fix them, as at the fetch. |
 | import | `DatabaseError`, any other `RepositoryConnectionError`, a GraphQL transport error. The import raises a connection error as it is and wraps any other error in `RepositoryImportError`, so the classifier reads the cause of that wrapper. | `import-interrupted` | yes |
 | import | any other, for example a configuration or validation error of the content | `import-failed` | no |

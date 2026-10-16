@@ -34,7 +34,11 @@ import {
   getObjectTasksUrl,
 } from "@/entities/nodes/object/ui/routing/object-urls";
 import type { Permission } from "@/entities/permission/domain/model/permission";
-import { GENERIC_REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
+import {
+  GENERIC_REPOSITORY_KIND,
+  REPOSITORY_KIND,
+} from "@/entities/repository/domain/model/repository";
+import { AbandonRepositoryPushModal } from "@/entities/repository/ui/abandon-repository-push-modal";
 import { CheckConnectivityModal } from "@/entities/repository/ui/check-connectivity-modal";
 import { RepositoryMenuSection } from "@/entities/repository/ui/repository-menu-section";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
@@ -56,6 +60,7 @@ export function ObjectDetailsMenu({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isCheckConnectivityOpen, setIsCheckConnectivityOpen] = useState(false);
+  const [isAbandonPushOpen, setIsAbandonPushOpen] = useState(false);
   const navigate = useNavigate();
 
   const nodeLabel = getNodeLabel(objectData);
@@ -121,6 +126,7 @@ export function ObjectDetailsMenu({
                 repositoryId={objectData.id}
                 objectSchema={objectSchema}
                 onCheckConnectivity={() => setIsCheckConnectivityOpen(true)}
+                onAbandonPush={() => setIsAbandonPushOpen(true)}
                 permission={permission}
               />
             )}
@@ -216,6 +222,14 @@ export function ObjectDetailsMenu({
           repositoryId={objectData.id}
           isOpen
           onOpenChange={() => setIsCheckConnectivityOpen(false)}
+        />
+      )}
+
+      {isOfKind(REPOSITORY_KIND, objectSchema) && (
+        <AbandonRepositoryPushModal
+          repositoryId={objectData.id}
+          isOpen={isAbandonPushOpen}
+          onOpenChange={setIsAbandonPushOpen}
         />
       )}
     </>
