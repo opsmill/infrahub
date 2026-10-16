@@ -2,11 +2,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from prefect.client.schemas.filters import FlowRunFilterId
 from prefect.client.schemas.objects import TERMINAL_STATES
 
 from .models import FlowRunQueryCriteria
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
     from prefect.client.schemas.filters import FlowRunFilter
     from prefect.client.schemas.objects import FlowRun
 
@@ -40,12 +43,16 @@ class BranchFlowRunPurger:
             self.log.warning(f"Failed to read flow runs for deleted branch '{branch_name}': {exc}")
             return None
 
-    async def purge_for_branch(self, branch_name: str) -> None:
+    async def purge_for_branch(self, branch_name: str, kept_flow_run_id: UUID | None = None) -> None:
         # Only settled runs: a run still in flight keeps the branch tag while it runs, so restricting
         # to terminal states leaves it untouched.
         flow_run_filter = self.filter_builder.build_flow_run_filter(
             criteria=FlowRunQueryCriteria(branch=branch_name, statuses=list(TERMINAL_STATES))
         )
+        # The caller of the deleting flow can still poll its settled run, and that poll fails once the
+        # run is gone.
+        if kept_flow_run_id is not None:
+            flow_run_filter.id = FlowRunFilterId(not_any_=[kept_flow_run_id])
 
         flow_runs = await self._read(flow_run_filter=flow_run_filter, branch_name=branch_name)
         if flow_runs is None:
