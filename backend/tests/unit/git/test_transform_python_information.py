@@ -70,13 +70,15 @@ def _make_existing_transform(
     return InfrahubNode(client=client, schema=TRANSFORM_PYTHON_SCHEMA, data=data)  # type: ignore[return-value, ty:invalid-return-type]
 
 
-def _make_local_transform(description: str | None = None) -> TransformPythonInformation:
+def _make_local_transform(
+    description: str | None = None, class_name: str = "TestTransform"
+) -> TransformPythonInformation:
     return TransformPythonInformation(
         name="test",
         repository="repo-id",
         file_path="transforms/test.py",
         query="query-id",
-        class_name="TestTransform",
+        class_name=class_name,
         transform_class=object(),
         timeout=10,
         convert_query_response=False,
@@ -133,3 +135,8 @@ class TestComparePythonTransform:
         existing = _make_existing_transform(description="Same")
         local = _make_local_transform(description="Same")
         assert await InfrahubRepositoryIntegrator.compare_python_transform(existing, local) is True
+
+    async def test_class_name_changed_returns_false(self) -> None:
+        existing = _make_existing_transform()
+        local = _make_local_transform(class_name="OtherTransform")
+        assert await InfrahubRepositoryIntegrator.compare_python_transform(existing, local) is False

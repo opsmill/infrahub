@@ -1462,6 +1462,12 @@ async def test_compare_python_check(
 
     assert await repo.compare_python_check_definition(check=check03, existing_check=existing_check) is False
 
+    check04 = check01.model_copy(update={"class_name": "OtherCheck"})
+    assert await repo.compare_python_check_definition(check=check04, existing_check=existing_check) is False
+
+    check05 = check01.model_copy(update={"targets": "c4908d78-7b24-45e2-9252-96d0fb3e2c78"})
+    assert await repo.compare_python_check_definition(check=check05, existing_check=existing_check) is False
+
 
 async def test_get_filtered_remote_branches__all_branches_exists(
     git_repo_01: InfrahubRepository, mock_create_branch_git_repo_01: None, import_sync_branch_names: None
