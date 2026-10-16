@@ -32,26 +32,12 @@ def branch_name_matches_import_filters(branch_short_name: str, import_sync_branc
     return False
 
 
-def remote_branch_is_imported(
-    remote_branch_name: str,
-    branch_is_synced_with_git: bool,
-    repository_default_branch: str,
-    infrahub_default_branch: str,
-    import_sync_branch_names: list[str],
+def infrahub_branch_receives_imports(
+    infrahub_branch_name: str, branch_is_synced_with_git: bool, infrahub_default_branch: str
 ) -> bool:
-    """Return whether a sync imports this remote branch onto the Infrahub branch that maps to it.
+    """Return whether a sync imports commits into this existing Infrahub branch.
 
-    Presumes that Infrahub branch exists, because both trunks are admitted unconditionally: this
-    does not answer whether a remote branch with no Infrahub counterpart is imported, where a sync
-    admits nothing the filters do not match. With no import filters configured every remote branch
-    is imported, so `branch_is_synced_with_git` on its own does not decide the answer.
+    Infrahub's default branch always receives the repository's default branch. The import filters only
+    select remote branches that have no Infrahub branch yet, so they play no part here.
     """
-    if not import_sync_branch_names:
-        return True
-    if remote_branch_name in {infrahub_default_branch, repository_default_branch}:
-        return True
-    if branch_is_synced_with_git:
-        return True
-    return branch_name_matches_import_filters(
-        branch_short_name=remote_branch_name, import_sync_branch_names=import_sync_branch_names
-    )
+    return infrahub_branch_name == infrahub_default_branch or branch_is_synced_with_git

@@ -92,24 +92,33 @@ The read-write kind implements the mapping described below; the read-only kind r
   build one — calls the function directly. The function takes all three inputs as required
   parameters, so no caller can fall back to Infrahub's default branch by omitting the repository's
   trunk.
-- `git.import_sync_branch_names` (settings) is a list of names or regex patterns selecting which
-  other remote branches are imported during sync; branches created in Infrahub with
-  `sync_with_git` are imported regardless. **The list is empty by default, and an empty list
-  filters nothing**: every remote branch then reaches import validation, `sync_with_git` or not.
-  Passing the filter is not the last word, because `validate_remote_branch` still rejects a name
-  the database cannot hold and the mismatched default branch described above. So `sync_with_git`
-  alone never answers "does Infrahub import this branch".
-- Two functions express that filter, and they answer different questions. They are not
-  interchangeable:
-  - `get_filtered_remote_branches` in `backend/infrahub/git/base.py` is the filter the sync itself
-    runs, over every remote branch. Where an Infrahub branch of that name exists, either trunk
-    name, `sync_with_git`, or a filter match admits it. Where no Infrahub branch of that name
-    exists, only a filter match admits it: that arm has no trunk exemption.
-  - `remote_branch_is_imported` in `backend/infrahub/git/branch_mapping.py` answers the narrower
-    question the API side asks about a branch that already exists in Infrahub: does a sync import
-    this remote branch onto the Infrahub branch that maps to it. It admits both trunks
-    unconditionally, so it must not be reused to decide whether a remote branch with no Infrahub
-    counterpart is imported.
+- Which remote branches a sync imports depends on the Infrahub branch the remote branch maps to
+  (`_get_mapped_target_branch`), so the repository's default branch is judged as Infrahub's default
+  branch, whatever its own name:
+  - **That Infrahub branch exists.** `infrahub_branch_receives_imports` in
+    `backend/infrahub/git/branch_mapping.py` decides, in every configuration: Infrahub's default
+    branch always receives commits, and any other branch only with `sync_with_git` on.
+  - **No Infrahub branch exists.** `git.import_sync_branch_names` (settings), a list of names or
+    regex patterns, selects the remote branches the sync creates as new Infrahub branches, with
+    `sync_with_git` on. **The list is empty by default, and an empty list selects every remote
+    branch.** A remote branch that maps to Infrahub's default branch is never filtered.
+- Passing that rule is not the last word, because `validate_remote_branch` still rejects a name the
+  database cannot hold and the mismatched default branch described above.
+- The sync applies the rule twice, because the first check reads a cache:
+  - `get_filtered_remote_branches` in `backend/infrahub/git/base.py` runs over every remote branch
+    before anything else, reading the branches from the worker's registry. It keeps a skipped
+    branch out of the local/remote comparison, so a cycle with nothing to import does not pay for
+    the branch listing below. The registry can lag behind the database, so a branch created moments
+    earlier falls into the no-Infrahub-branch arm.
+  - `_exclude_unimportable_branches` in `backend/infrahub/git/repository.py` re-checks the branches
+    that comparison selected against the branch listing the collection reads from the database, and
+    is the check that makes the rule hold. It also drops the branches whose status rejects a commit.
+    A branch created after that listing is caught when its creation reports that it exists already.
+- The API's commit view calls `infrahub_branch_receives_imports` too, so a branch the sync imports
+  nothing into is reported as not tracked. The function must not be reused to decide whether
+  a remote branch with no Infrahub counterpart is imported, which the import filters decide.
+- A branch that imported commits before `sync_with_git` gated imports keeps its last imported commit,
+  and the worker's clone keeps its local branch. Neither moves again, and nothing removes them.
 
 ### A push to the skipped branch can go unreported
 
