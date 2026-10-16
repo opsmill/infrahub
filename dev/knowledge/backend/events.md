@@ -134,6 +134,31 @@ Events can be queried through:
 - **REST API**: `/infrahub/events/filter` endpoint
 - **Prefect Client**: Direct Prefect event API access
 
+### Query-path performance constraints
+
+The `/infrahub/events/filter` endpoint runs two SQL statements against the task manager's
+Postgres: an unbounded `count(*)` over the whole filter window and the `LIMIT`-ed page read.
+Two hard-earned constraints apply to this path:
+
+- **The count is only computed when the caller asks for it.** The count aggregates every
+  matching row while the page read stops at the page size, so the count dominates the
+  endpoint's cost. The GraphQL resolver requests it (`include_total`) only when the query
+  selects `count` — the activity-log UI does not, so its page loads skip the aggregate
+  entirely. Keep that property when extending the endpoint.
+- **The endpoint forces per-execution planning** (`SET LOCAL plan_cache_mode =
+  force_custom_plan` at the start of its transaction). After five executions of a
+  prepared statement, Postgres may switch it to a *generic* plan chosen without seeing
+  the parameter values. For these event filters — a wide `occurred` window plus a JSON
+  label match against `event_resources` — the generic plan degrades from a linear hash
+  join to a quadratic nested loop (measured: 5 ms → 3.5 s on a 5k-event table, growing
+  quadratically). The flip is per pool connection and per statement, which made the
+  resulting stalls look like a once-a-week CI flake: one pool connection runs the
+  pathological plan while its siblings answer in milliseconds. `SET LOCAL` scopes the
+  countermeasure to this transaction only — the rest of the Prefect server keeps its
+  prepared-statement plan caching — at the cost of replanning these two queries per
+  request (~1.5 ms). Do not remove it without re-checking the event queries' plans under
+  `plan_cache_mode = force_generic_plan`.
+
 ## Key Locations
 
 | Component | Location |

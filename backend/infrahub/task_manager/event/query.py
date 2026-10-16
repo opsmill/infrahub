@@ -396,17 +396,30 @@ class PrefectEvent:
         limit: int,
         filters: InfrahubEventFilter,
         offset: int | None = None,
+        include_total: bool = True,
     ) -> PrefectEventResponse:
-        body = {"limit": limit, "filter": filters.model_dump(mode="json", exclude_none=True), "offset": offset}
+        body = {
+            "limit": limit,
+            "filter": filters.model_dump(mode="json", exclude_none=True),
+            "offset": offset,
+            "include_total": include_total,
+        }
 
         # Retry due to https://github.com/PrefectHQ/prefect/issues/16299
-        for _ in range(1, 5):
+        for attempt in range(1, 5):
             prefect_error: PrefectHTTPStatusError | None = None
             try:
                 response = await client._client.post("/infrahub/events/filter", json=body)
                 break
             except PrefectHTTPStatusError as exc:
                 prefect_error = exc
+                # Each failed attempt can hide up to a full task-manager request timeout,
+                # so a silent loop here turns into a multi-minute stall for the caller.
+                log.warning(
+                    "Event query to the task manager failed, retrying",
+                    attempt=attempt,
+                    status_code=exc.response.status_code,
+                )
                 await asyncio.sleep(0.1)
 
         if prefect_error:
@@ -438,8 +451,14 @@ class PrefectEvent:
             # returning data that will only be discarded
             limit = 1
 
+        # The count is an unbounded aggregate over the whole filter window and is by far
+        # the most expensive part of the endpoint, so only ask for it when selected.
+        include_total = "count" in fields
+
         async with get_client(sync_client=False) as client:
-            response = await cls.query_events(client=client, filters=event_filter, limit=limit, offset=offset)
+            response = await cls.query_events(
+                client=client, filters=event_filter, limit=limit, offset=offset, include_total=include_total
+            )
             nodes = [{"node": event.to_graphql()} for event in response.events]
 
         return {"count": response.count, "edges": nodes}
