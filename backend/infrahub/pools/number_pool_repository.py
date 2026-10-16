@@ -18,7 +18,7 @@ from infrahub.core.query.resource_manager import (
 )
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import within_transaction
-from infrahub.pools.number_pool_space import to_pool_ranges
+from infrahub.pools.number_pool_lookup import NumberPoolRangeLookup
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -79,21 +79,15 @@ class NumberPoolRepository(NumberPoolRangeStore):
 
     def __init__(self, db: InfrahubDatabase) -> None:
         self.db = db
+        self.range_lookup = NumberPoolRangeLookup(db=db, node_manager=NodeManager)
 
     async def get_ranges(self, pool_id: str, at: Timestamp | str | None = None) -> list[CoreNumberPoolRange]:
         """Return the ranges a pool allocates from, lowest start first."""
-        pool_ranges = await NodeManager.query(
-            db=self.db,
-            schema=CoreNumberPoolRange,
-            filters={"pool__ids": [pool_id]},
-            at=at,
-            branch_agnostic=True,
-        )
-        return sorted(pool_ranges, key=lambda pool_range: int(pool_range.start.value))
+        return await self.range_lookup.get_ranges(pool_id=pool_id, at=at)
 
     async def get_pool_ranges(self, pool_id: str, at: Timestamp | str | None = None) -> list[PoolRange]:
         """Return the pool's ranges as plain start, end, weight and id values, lowest start first."""
-        return to_pool_ranges(ranges=await self.get_ranges(pool_id=pool_id, at=at))
+        return await self.range_lookup.get_pool_ranges(pool_id=pool_id, at=at)
 
     async def create_range(
         self,
