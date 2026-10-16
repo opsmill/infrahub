@@ -17,6 +17,8 @@ services:
     - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       COMPOSE_PROJECT_NAME: ${COMPOSE_PROJECT_NAME}
+      # Neo4j Community has no metrics endpoint: set INFRAHUB_NEO4J_METRICS_TARGET to an empty value to stop the scrape.
+      NEO4J_METRICS_TARGET: "${INFRAHUB_NEO4J_METRICS_TARGET-database:2004}"
     command:
     - run
     - --server.http.listen-addr=0.0.0.0:12345
@@ -506,10 +508,21 @@ configs:
       }
 
       // --- Database ---
-      prometheus.scrape "database" {
+      // Only Neo4j Enterprise has a metrics endpoint, so NEO4J_METRICS_TARGET is empty unless one is enabled.
+      discovery.relabel "database" {
       	targets = [
-      		{"__address__" = "database:2004"},
+      		{"__address__" = env("NEO4J_METRICS_TARGET")},
       	]
+
+      	rule {
+      		source_labels = ["__address__"]
+      		regex         = ""
+      		action        = "drop"
+      	}
+      }
+
+      prometheus.scrape "database" {
+      	targets         = discovery.relabel.database.output
       	forward_to      = [prometheus.remote_write.prometheus.receiver]
       	job_name        = "database"
       	scrape_interval = "15s"
@@ -2584,7 +2597,7 @@ configs:
                       "uid": "$${datasource_loki}"
                     },
                     "editorMode": "code",
-                    "expr": "{container=~\".*(database|server|task|git|cache|queue).*\", container!~\".*run.*\", container=~\"$$container\" , level=~\"(?i)WARN.*\"}| line_format \"{{__timestamp__ | date `2006-01-02 15:04:05.00` }}\\t{{.container| replace `infrahub-` ``}}\\t{{.level}}\\t{{.logger}}\\t{{.message}}\"",
+                    "expr": "{container=~\"$$log_containers\", container!~\"$$log_containers_excluded\", container=~\"$$container\" , level=~\"(?i)WARN.*\"}| line_format \"{{__timestamp__ | date `2006-01-02 15:04:05.00` }}\\t{{.container| replace `infrahub-` ``}}\\t{{.level}}\\t{{.logger}}\\t{{.message}}\"",
                     "queryType": "range",
                     "refId": "A"
                   }
@@ -2626,7 +2639,7 @@ configs:
                       "uid": "$${datasource_loki}"
                     },
                     "editorMode": "code",
-                    "expr": "{container=~\".*(database|server|task|git|cache).*\", container!~\".*run.*\", container=~\"$$container\" , level=~\"(?i)ERR.*|CRIT|FATAL.*\"}| line_format \"{{__timestamp__ | date `2006-01-02 15:04:05.00` }}\\t{{.container| replace `infrahub-` ``}}\\t{{.level}}\\t{{.logger}}\\t{{.message}}\"",
+                    "expr": "{container=~\"$$log_containers\", container!~\"$$log_containers_excluded\", container=~\"$$container\" , level=~\"(?i)ERR.*|CRIT|FATAL.*\"}| line_format \"{{__timestamp__ | date `2006-01-02 15:04:05.00` }}\\t{{.container| replace `infrahub-` ``}}\\t{{.level}}\\t{{.logger}}\\t{{.message}}\"",
                     "queryType": "range",
                     "refId": "A"
                   }
@@ -2795,7 +2808,7 @@ configs:
                   "type": "prometheus",
                   "uid": "$${datasource_prometheus}"
                 },
-                "description": "In-flight admitted requests as a share of total pool capacity, summed over every worker process. Slots are shared across priority classes.",
+                "description": "In-flight admitted requests as a share of total pool capacity, summed over every worker process. Slots are shared across priority classes. This is not the Neo4j connection pool.",
                 "fieldConfig": {
                   "defaults": {
                     "color": {
@@ -2860,7 +2873,7 @@ configs:
                     "refId": "A"
                   }
                 ],
-                "title": "Slot Pool Saturation",
+                "title": "Admission Limit Usage",
                 "type": "stat"
               },
               {
@@ -3169,7 +3182,7 @@ configs:
                   "type": "prometheus",
                   "uid": "$${datasource_prometheus}"
                 },
-                "description": "Concurrent admitted requests by priority class, stacked, against total pool capacity (dashed). Both are summed across worker processes, since admission state is per-worker. Stack touching the line = saturated; further arrivals queue.",
+                "description": "Concurrent admitted requests by priority class, stacked, against total pool capacity (dashed). Both are summed across worker processes, since admission state is per-worker. Stack touching the line = saturated; further arrivals queue. This is not the Neo4j connection pool.",
                 "fieldConfig": {
                   "defaults": {
                     "color": {
@@ -3311,7 +3324,7 @@ configs:
                     "refId": "B"
                   }
                 ],
-                "title": "In-Flight vs Pool Capacity",
+                "title": "Running API Requests vs Admission Limit",
                 "type": "timeseries"
               },
               {
@@ -6555,11 +6568,549 @@ configs:
           },
           {
             "collapsed": true,
+            "datasource": {
+              "type": "prometheus",
+              "uid": "$${datasource_prometheus}"
+            },
             "gridPos": {
               "h": 1,
               "w": 24,
               "x": 0,
               "y": 5
+            },
+            "id": 236,
+            "panels": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "$${datasource_prometheus}"
+                },
+                "description": "Highest share of its connection pool that one process (API worker or task worker) used, in percent. Each process has its own pool of INFRAHUB_DB_MAX_CONNECTION_POOL_SIZE connections. A value near 100 means queries in that process wait for a connection; check the connection wait panel.",
+                "fieldConfig": {
+                  "defaults": {
+                    "color": {
+                      "mode": "thresholds"
+                    },
+                    "decimals": 0,
+                    "mappings": [],
+                    "max": 100,
+                    "min": 0,
+                    "thresholds": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green"
+                        },
+                        {
+                          "color": "yellow",
+                          "value": 70
+                        },
+                        {
+                          "color": "red",
+                          "value": 90
+                        }
+                      ]
+                    },
+                    "unit": "percent"
+                  },
+                  "overrides": []
+                },
+                "gridPos": {
+                  "h": 8,
+                  "w": 6,
+                  "x": 0,
+                  "y": 180
+                },
+                "id": 237,
+                "options": {
+                  "colorMode": "value",
+                  "graphMode": "area",
+                  "justifyMode": "auto",
+                  "orientation": "auto",
+                  "reduceOptions": {
+                    "calcs": [
+                      "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                  },
+                  "showPercentChange": false,
+                  "textMode": "auto",
+                  "wideLayout": true
+                },
+                "pluginVersion": "11.4.0",
+                "targets": [
+                  {
+                    "datasource": {
+                      "type": "prometheus",
+                      "uid": "$${datasource_prometheus}"
+                    },
+                    "editorMode": "code",
+                    "expr": "100 * max(infrahub_db_last_connection_pool_usage / infrahub_db_connection_pool_size)",
+                    "legendFormat": "",
+                    "range": true,
+                    "refId": "A"
+                  }
+                ],
+                "title": "Highest Connection Pool Usage",
+                "type": "stat"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "$${datasource_prometheus}"
+                },
+                "description": "Connections in use (solid) against the pool size (dashed), one series per process. The usage is read when a query starts, so it is the last known value. Processes that stopped are not shown.",
+                "fieldConfig": {
+                  "defaults": {
+                    "color": {
+                      "mode": "palette-classic"
+                    },
+                    "custom": {
+                      "axisBorderShow": false,
+                      "axisCenteredZero": false,
+                      "axisColorMode": "text",
+                      "axisLabel": "",
+                      "axisPlacement": "auto",
+                      "barAlignment": 0,
+                      "barWidthFactor": 0.6,
+                      "drawStyle": "line",
+                      "fillOpacity": 0,
+                      "gradientMode": "none",
+                      "hideFrom": {
+                        "legend": false,
+                        "tooltip": false,
+                        "viz": false
+                      },
+                      "insertNulls": false,
+                      "lineInterpolation": "linear",
+                      "lineWidth": 1,
+                      "pointSize": 5,
+                      "scaleDistribution": {
+                        "type": "linear"
+                      },
+                      "showPoints": "auto",
+                      "spanNulls": true,
+                      "stacking": {
+                        "group": "A",
+                        "mode": "none"
+                      },
+                      "thresholdsStyle": {
+                        "mode": "off"
+                      }
+                    },
+                    "mappings": [],
+                    "min": 0,
+                    "thresholds": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green"
+                        }
+                      ]
+                    },
+                    "unit": "short"
+                  },
+                  "overrides": [
+                    {
+                      "matcher": {
+                        "id": "byRegexp",
+                        "options": ".* size$$"
+                      },
+                      "properties": [
+                        {
+                          "id": "custom.lineStyle",
+                          "value": {
+                            "dash": [
+                              10,
+                              10
+                            ],
+                            "fill": "dash"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "gridPos": {
+                  "h": 8,
+                  "w": 9,
+                  "x": 6,
+                  "y": 180
+                },
+                "id": 238,
+                "options": {
+                  "legend": {
+                    "calcs": [
+                      "mean",
+                      "max"
+                    ],
+                    "displayMode": "table",
+                    "placement": "right",
+                    "showLegend": true,
+                    "sortBy": "Max",
+                    "sortDesc": true
+                  },
+                  "tooltip": {
+                    "mode": "multi",
+                    "sort": "desc"
+                  }
+                },
+                "pluginVersion": "11.4.0",
+                "targets": [
+                  {
+                    "datasource": {
+                      "type": "prometheus",
+                      "uid": "$${datasource_prometheus}"
+                    },
+                    "editorMode": "code",
+                    "expr": "infrahub_db_last_connection_pool_usage",
+                    "legendFormat": "{{instance}} pid {{pid}} in use",
+                    "range": true,
+                    "refId": "A"
+                  },
+                  {
+                    "datasource": {
+                      "type": "prometheus",
+                      "uid": "$${datasource_prometheus}"
+                    },
+                    "editorMode": "code",
+                    "expr": "infrahub_db_connection_pool_size",
+                    "legendFormat": "{{instance}} pid {{pid}} size",
+                    "range": true,
+                    "refId": "B"
+                  }
+                ],
+                "title": "Connection Pool Usage vs Size (per process)",
+                "type": "timeseries"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "$${datasource_prometheus}"
+                },
+                "description": "Time a query waited to get a connection from the pool. The neo4j driver gives up after 60 seconds, which is the highest bucket. A rising value means the pool is too small for the load, or queries hold connections for a long time.",
+                "fieldConfig": {
+                  "defaults": {
+                    "color": {
+                      "mode": "palette-classic"
+                    },
+                    "custom": {
+                      "axisBorderShow": false,
+                      "axisCenteredZero": false,
+                      "axisColorMode": "text",
+                      "axisLabel": "",
+                      "axisPlacement": "auto",
+                      "barAlignment": 0,
+                      "barWidthFactor": 0.6,
+                      "drawStyle": "line",
+                      "fillOpacity": 0,
+                      "gradientMode": "none",
+                      "hideFrom": {
+                        "legend": false,
+                        "tooltip": false,
+                        "viz": false
+                      },
+                      "insertNulls": false,
+                      "lineInterpolation": "linear",
+                      "lineWidth": 1,
+                      "pointSize": 5,
+                      "scaleDistribution": {
+                        "type": "linear"
+                      },
+                      "showPoints": "auto",
+                      "spanNulls": true,
+                      "stacking": {
+                        "group": "A",
+                        "mode": "none"
+                      },
+                      "thresholdsStyle": {
+                        "mode": "off"
+                      }
+                    },
+                    "mappings": [],
+                    "min": 0,
+                    "thresholds": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green"
+                        }
+                      ]
+                    },
+                    "unit": "s"
+                  },
+                  "overrides": []
+                },
+                "gridPos": {
+                  "h": 8,
+                  "w": 9,
+                  "x": 15,
+                  "y": 180
+                },
+                "id": 239,
+                "options": {
+                  "legend": {
+                    "calcs": [
+                      "mean",
+                      "max"
+                    ],
+                    "displayMode": "table",
+                    "placement": "right",
+                    "showLegend": true,
+                    "sortBy": "Max",
+                    "sortDesc": true
+                  },
+                  "tooltip": {
+                    "mode": "multi",
+                    "sort": "desc"
+                  }
+                },
+                "pluginVersion": "11.4.0",
+                "targets": [
+                  {
+                    "datasource": {
+                      "type": "prometheus",
+                      "uid": "$${datasource_prometheus}"
+                    },
+                    "editorMode": "code",
+                    "expr": "histogram_quantile($$percentile, sum by (le, instance) (rate(infrahub_db_connection_wait_seconds_bucket[$$__rate_interval])))",
+                    "legendFormat": "{{instance}}",
+                    "range": true,
+                    "refId": "A"
+                  }
+                ],
+                "title": "Connection Wait ($$percentile)",
+                "type": "timeseries"
+              }
+            ],
+            "title": "Connection Pool",
+            "type": "row"
+          },
+          {
+            "collapsed": true,
+            "datasource": {
+              "type": "prometheus",
+              "uid": "$${datasource_prometheus}"
+            },
+            "gridPos": {
+              "h": 1,
+              "w": 24,
+              "x": 0,
+              "y": 6
+            },
+            "id": 244,
+            "panels": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "$${datasource_prometheus}"
+                },
+                "description": "Time a flow run waited between its expected start time and the moment a task worker started it, 95th percentile, one series per priority queue. A rising value on the high queue means users wait for their changes. The highest bucket is one hour.",
+                "fieldConfig": {
+                  "defaults": {
+                    "color": {
+                      "mode": "palette-classic"
+                    },
+                    "custom": {
+                      "axisBorderShow": false,
+                      "axisCenteredZero": false,
+                      "axisColorMode": "text",
+                      "axisLabel": "",
+                      "axisPlacement": "auto",
+                      "barAlignment": 0,
+                      "barWidthFactor": 0.6,
+                      "drawStyle": "line",
+                      "fillOpacity": 0,
+                      "gradientMode": "none",
+                      "hideFrom": {
+                        "legend": false,
+                        "tooltip": false,
+                        "viz": false
+                      },
+                      "insertNulls": false,
+                      "lineInterpolation": "linear",
+                      "lineWidth": 1,
+                      "pointSize": 5,
+                      "scaleDistribution": {
+                        "type": "linear"
+                      },
+                      "showPoints": "auto",
+                      "spanNulls": true,
+                      "stacking": {
+                        "group": "A",
+                        "mode": "none"
+                      },
+                      "thresholdsStyle": {
+                        "mode": "off"
+                      }
+                    },
+                    "mappings": [],
+                    "min": 0,
+                    "thresholds": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green"
+                        }
+                      ]
+                    },
+                    "unit": "s"
+                  },
+                  "overrides": []
+                },
+                "gridPos": {
+                  "h": 8,
+                  "w": 12,
+                  "x": 0,
+                  "y": 190
+                },
+                "id": 245,
+                "options": {
+                  "legend": {
+                    "calcs": [
+                      "mean",
+                      "max"
+                    ],
+                    "displayMode": "table",
+                    "placement": "right",
+                    "showLegend": true,
+                    "sortBy": "Max",
+                    "sortDesc": true
+                  },
+                  "tooltip": {
+                    "mode": "multi",
+                    "sort": "desc"
+                  }
+                },
+                "pluginVersion": "11.4.0",
+                "targets": [
+                  {
+                    "datasource": {
+                      "type": "prometheus",
+                      "uid": "$${datasource_prometheus}"
+                    },
+                    "editorMode": "code",
+                    "expr": "histogram_quantile(0.95, sum by (le, queue) (rate(infrahub_task_flow_run_start_delay_seconds_bucket{queue=~\"high|medium|low\"}[$$__rate_interval])))",
+                    "legendFormat": "{{queue}}",
+                    "range": true,
+                    "refId": "A"
+                  }
+                ],
+                "title": "Flow Run Start Delay p95 by Queue",
+                "type": "timeseries"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "$${datasource_prometheus}"
+                },
+                "description": "Number of flow runs that the task workers are running now, summed over all task workers, one series per priority queue. Compare it with the start delay: a delay that rises while this count stays flat means the task workers do not start more runs.",
+                "fieldConfig": {
+                  "defaults": {
+                    "color": {
+                      "mode": "palette-classic"
+                    },
+                    "custom": {
+                      "axisBorderShow": false,
+                      "axisCenteredZero": false,
+                      "axisColorMode": "text",
+                      "axisLabel": "",
+                      "axisPlacement": "auto",
+                      "barAlignment": 0,
+                      "barWidthFactor": 0.6,
+                      "drawStyle": "line",
+                      "fillOpacity": 0,
+                      "gradientMode": "none",
+                      "hideFrom": {
+                        "legend": false,
+                        "tooltip": false,
+                        "viz": false
+                      },
+                      "insertNulls": false,
+                      "lineInterpolation": "linear",
+                      "lineWidth": 1,
+                      "pointSize": 5,
+                      "scaleDistribution": {
+                        "type": "linear"
+                      },
+                      "showPoints": "auto",
+                      "spanNulls": true,
+                      "stacking": {
+                        "group": "A",
+                        "mode": "none"
+                      },
+                      "thresholdsStyle": {
+                        "mode": "off"
+                      }
+                    },
+                    "mappings": [],
+                    "min": 0,
+                    "thresholds": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green"
+                        }
+                      ]
+                    },
+                    "unit": "short",
+                    "decimals": 0
+                  },
+                  "overrides": []
+                },
+                "gridPos": {
+                  "h": 8,
+                  "w": 12,
+                  "x": 12,
+                  "y": 190
+                },
+                "id": 246,
+                "options": {
+                  "legend": {
+                    "calcs": [
+                      "mean",
+                      "max"
+                    ],
+                    "displayMode": "table",
+                    "placement": "right",
+                    "showLegend": true,
+                    "sortBy": "Max",
+                    "sortDesc": true
+                  },
+                  "tooltip": {
+                    "mode": "multi",
+                    "sort": "desc"
+                  }
+                },
+                "pluginVersion": "11.4.0",
+                "targets": [
+                  {
+                    "datasource": {
+                      "type": "prometheus",
+                      "uid": "$${datasource_prometheus}"
+                    },
+                    "editorMode": "code",
+                    "expr": "sum by (queue) (infrahub_task_flow_runs_in_progress{queue=~\"high|medium|low\"})",
+                    "legendFormat": "{{queue}}",
+                    "range": true,
+                    "refId": "A"
+                  }
+                ],
+                "title": "Flow Runs in Progress by Queue",
+                "type": "timeseries"
+              }
+            ],
+            "title": "Priority Queues",
+            "type": "row"
+          },
+          {
+            "collapsed": true,
+            "gridPos": {
+              "h": 1,
+              "w": 24,
+              "x": 0,
+              "y": 7
             },
             "id": 23,
             "panels": [
@@ -6622,7 +7173,7 @@ configs:
                   "h": 17,
                   "w": 6,
                   "x": 0,
-                  "y": 95
+                  "y": 75
                 },
                 "id": 14,
                 "options": {
@@ -6649,7 +7200,7 @@ configs:
                       "uid": "$${datasource_loki}"
                     },
                     "editorMode": "code",
-                    "expr": "sum by (container, level) (rate({container=~\".*(queue|database|server|git|task|cache).*\", container!~\".*run.*\", container=~\"$$container\"} | label_format container=`{{.container| replace \"infrahub-\" \"\"}}`| label_format level=`{{.level|lower}}` | level != \"\" [$$__rate_interval]))",
+                    "expr": "sum by (container, level) (rate({container=~\"$$log_containers\", container!~\"$$log_containers_excluded\", container=~\"$$container\"} | label_format container=`{{.container| replace \"infrahub-\" \"\"}}`| label_format level=`{{.level|lower}}` | level != \"\" [$$__rate_interval]))",
                     "hide": false,
                     "legendFormat": "{{ container }} - {{level}}",
                     "queryType": "range",
@@ -6672,7 +7223,7 @@ configs:
                   "h": 17,
                   "w": 18,
                   "x": 6,
-                  "y": 95
+                  "y": 75
                 },
                 "id": 2,
                 "options": {
@@ -6693,7 +7244,7 @@ configs:
                       "uid": "$${datasource_loki}"
                     },
                     "editorMode": "code",
-                    "expr": "{container=~\".*(queue|database|server|git|task|cache).*\", container!~\".*run.*\", container=~\"$$container\"} | line_format \"{{__timestamp__ | date `2006-01-02 15:04:05.00` }}\\t{{.container| replace `infrahub-` ``}}\\t{{.level}}\\t{{.logger}}\\t{{.message}}\"",
+                    "expr": "{container=~\"$$log_containers\", container!~\"$$log_containers_excluded\", container=~\"$$container\"} | line_format \"{{__timestamp__ | date `2006-01-02 15:04:05.00` }}\\t{{.container| replace `infrahub-` ``}}\\t{{.level}}\\t{{.logger}}\\t{{.message}}\"",
                     "hide": false,
                     "legendFormat": "",
                     "queryType": "range",
@@ -6795,6 +7346,44 @@ configs:
               "regex": "^infrahub.+",
               "sort": 1,
               "type": "query"
+            },
+            {
+              "current": {
+                "text": ".*(queue|database|server|git|task|cache).*",
+                "value": ".*(queue|database|server|git|task|cache).*"
+              },
+              "description": "Regular expression that selects the containers whose logs the log panels show. Change it to match the container names of your deployment.",
+              "hide": 2,
+              "label": "Log containers",
+              "name": "log_containers",
+              "options": [
+                {
+                  "selected": true,
+                  "text": ".*(queue|database|server|git|task|cache).*",
+                  "value": ".*(queue|database|server|git|task|cache).*"
+                }
+              ],
+              "query": ".*(queue|database|server|git|task|cache).*",
+              "type": "textbox"
+            },
+            {
+              "current": {
+                "text": ".*run.*",
+                "value": ".*run.*"
+              },
+              "description": "Regular expression that removes containers from the log panels. Change it to match the container names of your deployment.",
+              "hide": 2,
+              "label": "Excluded log containers",
+              "name": "log_containers_excluded",
+              "options": [
+                {
+                  "selected": true,
+                  "text": ".*run.*",
+                  "value": ".*run.*"
+                }
+              ],
+              "query": ".*run.*",
+              "type": "textbox"
             },
             {
               "current": {
@@ -20823,6 +21412,26 @@ configs:
         "links": [],
         "panels": [
           {
+            "gridPos": {
+              "h": 3,
+              "w": 24,
+              "x": 0,
+              "y": 0
+            },
+            "id": 26,
+            "options": {
+              "code": {
+                "language": "plaintext",
+                "showLineNumbers": false,
+                "showMiniMap": false
+              },
+              "content": "The panels that read `neo4j_*` metrics (page cache, heap memory, transactions, query execution and database size) need Neo4j Enterprise with its metrics endpoint enabled. Neo4j Community has no metrics endpoint, so these panels have no data on Community. The panels that read `infrahub_db_*` metrics work with both editions.",
+              "mode": "markdown"
+            },
+            "title": "Neo4j Enterprise metrics",
+            "type": "text"
+          },
+          {
             "datasource": {
               "type": "prometheus",
               "uid": "$${datasource_prometheus}"
@@ -20851,7 +21460,7 @@ configs:
               "h": 6,
               "w": 5,
               "x": 0,
-              "y": 0
+              "y": 3
             },
             "id": 2,
             "options": {
@@ -20943,7 +21552,7 @@ configs:
               "h": 6,
               "w": 5,
               "x": 5,
-              "y": 0
+              "y": 3
             },
             "id": 18,
             "maxDataPoints": 100,
@@ -20972,7 +21581,7 @@ configs:
                   "uid": "localprometheus"
                 },
                 "editorMode": "code",
-                "expr": "up{job='database', instance=~'database:2004'}",
+                "expr": "up{job='$$job', instance=~'$$instance'}",
                 "format": "time_series",
                 "instant": false,
                 "interval": "",
@@ -21035,7 +21644,7 @@ configs:
               "h": 6,
               "w": 5,
               "x": 10,
-              "y": 0
+              "y": 3
             },
             "id": 21,
             "maxDataPoints": 100,
@@ -21114,7 +21723,7 @@ configs:
               "h": 6,
               "w": 5,
               "x": 15,
-              "y": 0
+              "y": 3
             },
             "id": 20,
             "maxDataPoints": 100,
@@ -21205,7 +21814,7 @@ configs:
               "h": 6,
               "w": 4,
               "x": 20,
-              "y": 0
+              "y": 3
             },
             "id": 22,
             "maxDataPoints": 100,
@@ -21234,7 +21843,7 @@ configs:
                   "uid": "localprometheus"
                 },
                 "editorMode": "code",
-                "expr": "irate(neo4j_database_neo4j_transaction_rollbacks_total{job=\"database\"}[$$interval])",
+                "expr": "irate(neo4j_database_neo4j_transaction_rollbacks_total{job=\"$$job\"}[$$interval])",
                 "format": "time_series",
                 "intervalFactor": 1,
                 "range": true,
@@ -21251,7 +21860,7 @@ configs:
               "h": 1,
               "w": 24,
               "x": 0,
-              "y": 6
+              "y": 9
             },
             "id": 1,
             "panels": [],
@@ -21323,7 +21932,7 @@ configs:
               "h": 8,
               "w": 12,
               "x": 0,
-              "y": 7
+              "y": 10
             },
             "id": 23,
             "options": {
@@ -21386,7 +21995,7 @@ configs:
               "h": 8,
               "w": 12,
               "x": 12,
-              "y": 7
+              "y": 10
             },
             "id": 3,
             "options": {
@@ -21488,7 +22097,7 @@ configs:
               "h": 8,
               "w": 12,
               "x": 0,
-              "y": 15
+              "y": 18
             },
             "id": 17,
             "options": {
@@ -21593,7 +22202,7 @@ configs:
               "h": 8,
               "w": 12,
               "x": 12,
-              "y": 15
+              "y": 18
             },
             "id": 16,
             "options": {
@@ -21618,7 +22227,7 @@ configs:
                   "uid": "localprometheus"
                 },
                 "editorMode": "code",
-                "expr": "label_replace({__name__=~\"neo4j_database_neo4j_ids_in_use_(node|property|relationship)\", job=\"database\", instance=~'database:2004'}, \"label\", \"$$1\", \"__name__\", \"neo4j_database_neo4j_ids_in_use_(.+)\")",
+                "expr": "label_replace({__name__=~\"neo4j_database_neo4j_ids_in_use_(node|property|relationship)\", job=\"$$job\", instance=~'$$instance'}, \"label\", \"$$1\", \"__name__\", \"neo4j_database_neo4j_ids_in_use_(.+)\")",
                 "format": "time_series",
                 "hide": false,
                 "instant": false,
@@ -21632,7 +22241,7 @@ configs:
                   "uid": "localprometheus"
                 },
                 "editorMode": "code",
-                "expr": "neo4j_database_neo4j_ids_in_use_relationship_type{job=\"database\", instance=~\"database:2004\"}",
+                "expr": "neo4j_database_neo4j_ids_in_use_relationship_type{job=\"$$job\", instance=~\"$$instance\"}",
                 "format": "time_series",
                 "hide": false,
                 "instant": false,
@@ -21651,7 +22260,7 @@ configs:
               "h": 1,
               "w": 24,
               "x": 0,
-              "y": 23
+              "y": 26
             },
             "id": 4,
             "panels": [],
@@ -21719,7 +22328,7 @@ configs:
               "h": 8,
               "w": 12,
               "x": 0,
-              "y": 24
+              "y": 27
             },
             "id": 5,
             "options": {
@@ -21822,7 +22431,7 @@ configs:
               "h": 8,
               "w": 12,
               "x": 12,
-              "y": 24
+              "y": 27
             },
             "id": 6,
             "options": {
@@ -21869,7 +22478,7 @@ configs:
               "h": 1,
               "w": 24,
               "x": 0,
-              "y": 32
+              "y": 35
             },
             "id": 7,
             "panels": [],
@@ -21941,7 +22550,7 @@ configs:
               "h": 8,
               "w": 12,
               "x": 0,
-              "y": 33
+              "y": 36
             },
             "id": 8,
             "options": {
@@ -22058,7 +22667,7 @@ configs:
               "h": 8,
               "w": 12,
               "x": 12,
-              "y": 33
+              "y": 36
             },
             "id": 9,
             "options": {
@@ -22152,7 +22761,7 @@ configs:
               "h": 8,
               "w": 12,
               "x": 0,
-              "y": 41
+              "y": 44
             },
             "id": 24,
             "options": {
@@ -22218,7 +22827,7 @@ configs:
               "h": 8,
               "w": 12,
               "x": 12,
-              "y": 41
+              "y": 44
             },
             "id": 25,
             "options": {
@@ -22260,7 +22869,7 @@ configs:
               "h": 1,
               "w": 24,
               "x": 0,
-              "y": 49
+              "y": 52
             },
             "id": 10,
             "panels": [],
@@ -22294,7 +22903,7 @@ configs:
               "h": 8,
               "w": 12,
               "x": 0,
-              "y": 50
+              "y": 53
             },
             "id": 11,
             "options": {
@@ -22390,7 +22999,7 @@ configs:
               "h": 8,
               "w": 12,
               "x": 12,
-              "y": 50
+              "y": 53
             },
             "id": 12,
             "options": {
@@ -22446,7 +23055,7 @@ configs:
               "h": 1,
               "w": 24,
               "x": 0,
-              "y": 58
+              "y": 61
             },
             "id": 13,
             "panels": [],
@@ -22513,7 +23122,7 @@ configs:
               "h": 8,
               "w": 12,
               "x": 0,
-              "y": 59
+              "y": 62
             },
             "id": 14,
             "options": {
@@ -22614,7 +23223,7 @@ configs:
               "h": 8,
               "w": 12,
               "x": 12,
-              "y": 59
+              "y": 62
             },
             "id": 15,
             "options": {
@@ -22743,6 +23352,44 @@ configs:
               "query": "1m,10m,30m,1h,6h,12h,1d,7d,14d,30d",
               "refresh": 2,
               "type": "interval"
+            },
+            {
+              "current": {
+                "text": "database",
+                "value": "database"
+              },
+              "description": "Prometheus job label of the Neo4j metrics endpoint. Change it to match your scrape configuration.",
+              "hide": 2,
+              "label": "Neo4j job",
+              "name": "job",
+              "options": [
+                {
+                  "selected": true,
+                  "text": "database",
+                  "value": "database"
+                }
+              ],
+              "query": "database",
+              "type": "textbox"
+            },
+            {
+              "current": {
+                "text": "database:2004",
+                "value": "database:2004"
+              },
+              "description": "Prometheus instance label (regular expression) of the Neo4j metrics endpoint. Change it to match your scrape configuration.",
+              "hide": 2,
+              "label": "Neo4j instance",
+              "name": "instance",
+              "options": [
+                {
+                  "selected": true,
+                  "text": "database:2004",
+                  "value": "database:2004"
+                }
+              ],
+              "query": "database:2004",
+              "type": "textbox"
             }
           ]
         },
@@ -23048,7 +23695,7 @@ configs:
                 },
                 "editorMode": "code",
                 "exemplar": false,
-                "expr": "count(prefect_info_flow_runs == 1)",
+                "expr": "sum(prefect_info_flow_runs{state_name=\"Running\"})",
                 "instant": false,
                 "legendFormat": "__auto",
                 "range": true,
@@ -23086,7 +23733,7 @@ configs:
             },
             "gridPos": {
               "h": 5,
-              "w": 4,
+              "w": 8,
               "x": 12,
               "y": 1
             },
@@ -23113,7 +23760,7 @@ configs:
                   "uid": "$${datasource_prometheus}"
                 },
                 "editorMode": "code",
-                "expr": "count(prefect_info_flow_runs)",
+                "expr": "sum(prefect_info_flow_runs)",
                 "instant": false,
                 "legendFormat": "__auto",
                 "range": true,
@@ -23121,70 +23768,6 @@ configs:
               }
             ],
             "title": "Flow Runs total",
-            "type": "stat"
-          },
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "$${datasource_prometheus}"
-            },
-            "fieldConfig": {
-              "defaults": {
-                "color": {
-                  "mode": "thresholds"
-                },
-                "decimals": 0,
-                "mappings": [],
-                "thresholds": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "green",
-                      "value": null
-                    }
-                  ]
-                },
-                "unit": "s"
-              },
-              "overrides": []
-            },
-            "gridPos": {
-              "h": 5,
-              "w": 4,
-              "x": 16,
-              "y": 1
-            },
-            "id": 60,
-            "options": {
-              "colorMode": "value",
-              "graphMode": "none",
-              "justifyMode": "center",
-              "orientation": "auto",
-              "reduceOptions": {
-                "calcs": [
-                  "lastNotNull"
-                ],
-                "fields": "",
-                "values": false
-              },
-              "textMode": "auto"
-            },
-            "pluginVersion": "10.1.5",
-            "targets": [
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "$${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "avg(prefect_flow_runs_total_run_time_total)",
-                "instant": false,
-                "legendFormat": "__auto",
-                "range": true,
-                "refId": "A"
-              }
-            ],
-            "title": "Flow Runs average run time",
             "type": "stat"
           },
           {
@@ -23309,7 +23892,7 @@ configs:
                   "uid": "$${datasource_prometheus}"
                 },
                 "editorMode": "code",
-                "expr": "count by (state_name) (prefect_info_flow_runs)",
+                "expr": "sum by (state_name) (prefect_info_flow_runs)",
                 "instant": false,
                 "legendFormat": "{{label_name}}",
                 "range": true,
@@ -23359,7 +23942,7 @@ configs:
               "overrides": []
             },
             "gridPos": {
-              "h": 4,
+              "h": 12,
               "w": 3,
               "x": 0,
               "y": 7
@@ -23387,7 +23970,7 @@ configs:
                   "uid": "$${datasource_prometheus}"
                 },
                 "editorMode": "code",
-                "expr": "count(prefect_info_flow_runs{flow_name=~\"$$flow_name\"})",
+                "expr": "sum(prefect_info_flow_runs{flow_name=~\"$$flow_name\"})",
                 "instant": false,
                 "legendFormat": "__auto",
                 "range": true,
@@ -23682,135 +24265,6 @@ configs:
             "type": "table"
           },
           {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "$${datasource_prometheus}"
-            },
-            "description": "Last 24h",
-            "fieldConfig": {
-              "defaults": {
-                "color": {
-                  "mode": "thresholds"
-                },
-                "mappings": [],
-                "thresholds": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "green",
-                      "value": null
-                    }
-                  ]
-                },
-                "unit": "short"
-              },
-              "overrides": []
-            },
-            "gridPos": {
-              "h": 4,
-              "w": 3,
-              "x": 0,
-              "y": 11
-            },
-            "id": 56,
-            "options": {
-              "colorMode": "value",
-              "graphMode": "none",
-              "justifyMode": "center",
-              "orientation": "auto",
-              "reduceOptions": {
-                "calcs": [
-                  "lastNotNull"
-                ],
-                "fields": "",
-                "values": false
-              },
-              "textMode": "auto"
-            },
-            "pluginVersion": "10.1.5",
-            "targets": [
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "$${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "max(max(max_over_time(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace=\"$$namespace\", pod=~\".*$$flow_name.*\"}[$$__range])) by (pod))",
-                "instant": false,
-                "legendFormat": "__auto",
-                "range": true,
-                "refId": "A"
-              }
-            ],
-            "title": "CPU usage peak",
-            "type": "stat"
-          },
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "$${datasource_prometheus}"
-            },
-            "description": "Last 24h",
-            "fieldConfig": {
-              "defaults": {
-                "color": {
-                  "mode": "thresholds"
-                },
-                "decimals": 0,
-                "mappings": [],
-                "thresholds": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "green",
-                      "value": null
-                    }
-                  ]
-                },
-                "unit": "bytes"
-              },
-              "overrides": []
-            },
-            "gridPos": {
-              "h": 4,
-              "w": 3,
-              "x": 0,
-              "y": 15
-            },
-            "id": 55,
-            "options": {
-              "colorMode": "value",
-              "graphMode": "none",
-              "justifyMode": "center",
-              "orientation": "auto",
-              "reduceOptions": {
-                "calcs": [
-                  "lastNotNull"
-                ],
-                "fields": "",
-                "values": false
-              },
-              "textMode": "auto"
-            },
-            "pluginVersion": "10.1.5",
-            "targets": [
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "$${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "max(max(max_over_time(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$$namespace\", pod=~\".*$$flow_name.*\", container!=\"\", image!=\"\"}[$$__range])) by (pod))",
-                "instant": false,
-                "legendFormat": "__auto",
-                "range": true,
-                "refId": "A"
-              }
-            ],
-            "title": "MEM usage peak",
-            "type": "stat"
-          },
-          {
             "collapsed": false,
             "gridPos": {
               "h": 1,
@@ -23822,167 +24276,6 @@ configs:
             "panels": [],
             "title": "Flows",
             "type": "row"
-          },
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "$${datasource_prometheus}"
-            },
-            "description": "Last 24h",
-            "fieldConfig": {
-              "defaults": {
-                "color": {
-                  "mode": "thresholds"
-                },
-                "mappings": [],
-                "thresholds": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "green",
-                      "value": null
-                    }
-                  ]
-                },
-                "unit": "s"
-              },
-              "overrides": []
-            },
-            "gridPos": {
-              "h": 8,
-              "w": 3,
-              "x": 0,
-              "y": 20
-            },
-            "id": 58,
-            "options": {
-              "colorMode": "value",
-              "graphMode": "none",
-              "justifyMode": "center",
-              "orientation": "auto",
-              "reduceOptions": {
-                "calcs": [
-                  "lastNotNull"
-                ],
-                "fields": "",
-                "values": false
-              },
-              "textMode": "auto"
-            },
-            "pluginVersion": "10.1.5",
-            "targets": [
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "$${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "avg by (flow_name) (prefect_flow_runs_total_run_time_total{flow_name=~\"$$flow_name\"})",
-                "instant": false,
-                "legendFormat": "__auto",
-                "range": true,
-                "refId": "A"
-              }
-            ],
-            "title": "Average time",
-            "type": "stat"
-          },
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "$${datasource_prometheus}"
-            },
-            "fieldConfig": {
-              "defaults": {
-                "color": {
-                  "mode": "palette-classic"
-                },
-                "custom": {
-                  "axisCenteredZero": false,
-                  "axisColorMode": "text",
-                  "axisLabel": "",
-                  "axisPlacement": "auto",
-                  "barAlignment": 0,
-                  "drawStyle": "line",
-                  "fillOpacity": 0,
-                  "gradientMode": "none",
-                  "hideFrom": {
-                    "legend": false,
-                    "tooltip": false,
-                    "viz": false
-                  },
-                  "insertNulls": false,
-                  "lineInterpolation": "linear",
-                  "lineWidth": 1,
-                  "pointSize": 5,
-                  "scaleDistribution": {
-                    "type": "linear"
-                  },
-                  "showPoints": "auto",
-                  "spanNulls": false,
-                  "stacking": {
-                    "group": "A",
-                    "mode": "none"
-                  },
-                  "thresholdsStyle": {
-                    "mode": "off"
-                  }
-                },
-                "mappings": [],
-                "min": 0,
-                "thresholds": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "green",
-                      "value": null
-                    },
-                    {
-                      "color": "red",
-                      "value": 80
-                    }
-                  ]
-                },
-                "unit": "s"
-              },
-              "overrides": []
-            },
-            "gridPos": {
-              "h": 8,
-              "w": 21,
-              "x": 3,
-              "y": 20
-            },
-            "id": 61,
-            "options": {
-              "legend": {
-                "calcs": [],
-                "displayMode": "list",
-                "placement": "bottom",
-                "showLegend": false
-              },
-              "tooltip": {
-                "mode": "single",
-                "sort": "none"
-              }
-            },
-            "pluginVersion": "10.1.5",
-            "targets": [
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "$${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "avg by (flow_name) (prefect_flow_runs_total_run_time_total{flow_name=~\"$$flow_name\"})",
-                "instant": false,
-                "legendFormat": "{{flow_run_name}}",
-                "range": true,
-                "refId": "A"
-              }
-            ],
-            "title": "Flow Run total run time",
-            "type": "timeseries"
           },
           {
             "datasource": {
@@ -24033,7 +24326,7 @@ configs:
               "h": 10,
               "w": 24,
               "x": 0,
-              "y": 28
+              "y": 20
             },
             "id": 12,
             "options": {
@@ -24246,7 +24539,7 @@ configs:
               "h": 7,
               "w": 13,
               "x": 0,
-              "y": 38
+              "y": 30
             },
             "id": 53,
             "interval": "1m",
@@ -24271,41 +24564,14 @@ configs:
                   "uid": "$${datasource_prometheus}"
                 },
                 "editorMode": "code",
-                "expr": "avg(sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace=\"$$namespace\", pod=~\".*$$flow_name.*\"}) by (pod))",
+                "expr": "sum(rate(container_cpu_usage_seconds_total{container_label_com_docker_compose_service=~\"$$task_worker_service\"}[$$__rate_interval])) by (name)",
                 "format": "time_series",
-                "intervalFactor": 2,
-                "legendFormat": "usage",
+                "legendFormat": "{{name}}",
                 "range": true,
                 "refId": "A"
-              },
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "$${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "kube_pod_container_resource_requests{job=\"kube-state-metrics\", namespace=\"$$namespace\", pod=~\".*$$flow_name.*\", resource=\"cpu\"}\n",
-                "format": "time_series",
-                "intervalFactor": 2,
-                "legendFormat": "requests",
-                "range": true,
-                "refId": "B"
-              },
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "$${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "kube_pod_container_resource_limits{job=\"kube-state-metrics\", namespace=\"$$namespace\", pod=~\".*$$flow_name.*\", resource=\"cpu\"}\n",
-                "format": "time_series",
-                "intervalFactor": 2,
-                "legendFormat": "limits",
-                "range": true,
-                "refId": "C"
               }
             ],
-            "title": "CPU Usage $$flow_name",
+            "title": "Task Worker CPU Usage",
             "type": "timeseries"
           },
           {
@@ -24444,7 +24710,7 @@ configs:
               "h": 7,
               "w": 11,
               "x": 13,
-              "y": 38
+              "y": 30
             },
             "id": 54,
             "interval": "1m",
@@ -24469,41 +24735,14 @@ configs:
                   "uid": "$${datasource_prometheus}"
                 },
                 "editorMode": "code",
-                "expr": "avg(sum(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$$namespace\", pod=~\".*$$flow_name.*\", container!=\"\", image!=\"\"}) by (pod))",
+                "expr": "sum(container_memory_working_set_bytes{container_label_com_docker_compose_service=~\"$$task_worker_service\"}) by (name)",
                 "format": "time_series",
-                "intervalFactor": 2,
-                "legendFormat": "usage",
+                "legendFormat": "{{name}}",
                 "range": true,
                 "refId": "A"
-              },
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "$${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "kube_pod_container_resource_requests{job=\"kube-state-metrics\", namespace=\"$$namespace\", pod=~\".*$$flow_name.*\", resource=\"memory\"}",
-                "format": "time_series",
-                "intervalFactor": 2,
-                "legendFormat": "requests",
-                "range": true,
-                "refId": "B"
-              },
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "$${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "kube_pod_container_resource_limits{job=\"kube-state-metrics\", namespace=\"$$namespace\", pod=~\".*$$flow_name.*\", resource=\"memory\"}",
-                "format": "time_series",
-                "intervalFactor": 2,
-                "legendFormat": "limits",
-                "range": true,
-                "refId": "C"
               }
             ],
-            "title": "Memory Usage (WSS)",
+            "title": "Task Worker Memory Usage (WSS)",
             "type": "timeseries"
           },
           {
@@ -24516,7 +24755,7 @@ configs:
               "h": 18,
               "w": 24,
               "x": 0,
-              "y": 45
+              "y": 37
             },
             "id": 46,
             "options": {
@@ -24550,7 +24789,7 @@ configs:
               "h": 1,
               "w": 24,
               "x": 0,
-              "y": 63
+              "y": 55
             },
             "id": 8,
             "panels": [
@@ -24771,12 +25010,15 @@ configs:
         "templating": {
           "list": [
             {
-              "current": {},
-              "datasource": {
-                "type": "prometheus",
-                "uid": "$${datasource_prometheus}"
+              "current": {
+                "text": "prefect",
+                "value": "prefect"
               },
-              "definition": "label_values(namespace)",
+              "datasource": {
+                "type": "loki",
+                "uid": "$${datasource_loki}"
+              },
+              "definition": "",
               "hide": 0,
               "includeAll": false,
               "label": "Namespace",
@@ -24784,8 +25026,10 @@ configs:
               "name": "namespace",
               "options": [],
               "query": {
-                "query": "label_values(namespace)",
-                "refId": "PrometheusVariableQueryEditor-VariableQuery"
+                "label": "namespace",
+                "refId": "LokiVariableQueryEditor-VariableQuery",
+                "stream": "",
+                "type": 1
               },
               "refresh": 1,
               "regex": "",
@@ -24811,29 +25055,6 @@ configs:
                 "refId": "PrometheusVariableQueryEditor-VariableQuery"
               },
               "refresh": 1,
-              "regex": "",
-              "skipUrlSync": false,
-              "sort": 0,
-              "type": "query"
-            },
-            {
-              "current": {},
-              "datasource": {
-                "type": "prometheus",
-                "uid": "$${datasource_prometheus}"
-              },
-              "definition": "label_values(prefect_info_flow_runs{flow_name=\"$$flow_name\"},flow_run_name)",
-              "hide": 0,
-              "includeAll": false,
-              "label": "Flow Run Name",
-              "multi": false,
-              "name": "flow_run_name",
-              "options": [],
-              "query": {
-                "query": "label_values(prefect_info_flow_runs{flow_name=\"$$flow_name\"},flow_run_name)",
-                "refId": "PrometheusVariableQueryEditor-VariableQuery"
-              },
-              "refresh": 2,
               "regex": "",
               "skipUrlSync": false,
               "sort": 0,
@@ -24913,6 +25134,25 @@ configs:
               "regex": "",
               "skipUrlSync": false,
               "type": "datasource"
+            },
+            {
+              "current": {
+                "text": "task-worker",
+                "value": "task-worker"
+              },
+              "description": "Docker Compose service of the task workers, as cAdvisor reports it in the container_label_com_docker_compose_service label. Change it to match your deployment.",
+              "hide": 2,
+              "label": "Task worker service",
+              "name": "task_worker_service",
+              "options": [
+                {
+                  "selected": true,
+                  "text": "task-worker",
+                  "value": "task-worker"
+                }
+              ],
+              "query": "task-worker",
+              "type": "textbox"
             }
           ]
         },
@@ -25088,7 +25328,7 @@ configs:
                   "uid": "$${datasource_prometheus}"
                 },
                 "editorMode": "code",
-                "expr": "count(prefect_info_flow_runs)",
+                "expr": "sum(prefect_info_flow_runs)",
                 "instant": false,
                 "legendFormat": "__auto",
                 "range": true,
@@ -25154,7 +25394,7 @@ configs:
                 },
                 "editorMode": "code",
                 "exemplar": false,
-                "expr": "count(prefect_info_flow_runs == 1)",
+                "expr": "sum(prefect_info_flow_runs{state_name=\"Running\"})",
                 "instant": false,
                 "legendFormat": "__auto",
                 "range": true,
@@ -25351,7 +25591,7 @@ configs:
                   "uid": "$${datasource_prometheus}"
                 },
                 "editorMode": "code",
-                "expr": "count by (state_name) (prefect_info_flow_runs)",
+                "expr": "sum by (state_name) (prefect_info_flow_runs)",
                 "instant": false,
                 "legendFormat": "{{label_name}}",
                 "range": true,
@@ -25517,79 +25757,14 @@ configs:
                     }
                   ]
                 },
-                "unit": "s"
-              },
-              "overrides": []
-            },
-            "gridPos": {
-              "h": 5,
-              "w": 4,
-              "x": 8,
-              "y": 6
-            },
-            "id": 49,
-            "options": {
-              "colorMode": "value",
-              "graphMode": "none",
-              "justifyMode": "center",
-              "orientation": "auto",
-              "reduceOptions": {
-                "calcs": [
-                  "lastNotNull"
-                ],
-                "fields": "",
-                "values": false
-              },
-              "textMode": "auto",
-              "wideLayout": true
-            },
-            "pluginVersion": "10.2.2",
-            "targets": [
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "$${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "avg(prefect_flow_runs_total_run_time_total)",
-                "instant": false,
-                "legendFormat": "__auto",
-                "range": true,
-                "refId": "A"
-              }
-            ],
-            "title": "Flow Runs average run time",
-            "type": "stat"
-          },
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "$${datasource_prometheus}"
-            },
-            "fieldConfig": {
-              "defaults": {
-                "color": {
-                  "mode": "thresholds"
-                },
-                "decimals": 0,
-                "mappings": [],
-                "thresholds": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "green",
-                      "value": null
-                    }
-                  ]
-                },
                 "unit": "none"
               },
               "overrides": []
             },
             "gridPos": {
               "h": 5,
-              "w": 4,
-              "x": 12,
+              "w": 8,
+              "x": 8,
               "y": 6
             },
             "id": 51,
@@ -25715,7 +25890,7 @@ configs:
                       "uid": "$${datasource_prometheus}"
                     },
                     "editorMode": "code",
-                    "expr": "sum(probe_success{instance=~\".*prefect.*health\"})",
+                    "expr": "max(up{job=~\"$$task_manager_job\"})",
                     "instant": false,
                     "legendFormat": "__auto",
                     "range": true,
@@ -25784,14 +25959,14 @@ configs:
                       "uid": "$${datasource_prometheus}"
                     },
                     "editorMode": "code",
-                    "expr": "sum(kube_pod_info{namespace=\"$$namespace\", pod=~\"prefect-server.*\"})",
+                    "expr": "count(container_last_seen{container_label_com_docker_compose_service=~\"$$task_manager_service\"} > time() - 60)",
                     "instant": false,
                     "legendFormat": "__auto",
                     "range": true,
                     "refId": "A"
                   }
                 ],
-                "title": "Prefect Server replicas",
+                "title": "Prefect Server containers",
                 "type": "stat"
               },
               {
@@ -25830,325 +26005,6 @@ configs:
                 ],
                 "title": "Logs",
                 "type": "logs"
-              },
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "$${datasource_prometheus}"
-                },
-                "fieldConfig": {
-                  "defaults": {
-                    "color": {
-                      "mode": "thresholds"
-                    },
-                    "custom": {
-                      "align": "auto",
-                      "cellOptions": {
-                        "type": "auto"
-                      },
-                      "filterable": false,
-                      "inspect": false
-                    },
-                    "decimals": 2,
-                    "displayName": "",
-                    "mappings": [],
-                    "noValue": "-",
-                    "thresholds": {
-                      "mode": "absolute",
-                      "steps": [
-                        {
-                          "color": "green",
-                          "value": null
-                        },
-                        {
-                          "color": "red",
-                          "value": 80
-                        }
-                      ]
-                    },
-                    "unit": "short"
-                  },
-                  "overrides": [
-                    {
-                      "matcher": {
-                        "id": "byName",
-                        "options": "Time"
-                      },
-                      "properties": [
-                        {
-                          "id": "displayName",
-                          "value": "Time"
-                        },
-                        {
-                          "id": "custom.align"
-                        }
-                      ]
-                    },
-                    {
-                      "matcher": {
-                        "id": "byName",
-                        "options": "Value #A"
-                      },
-                      "properties": [
-                        {
-                          "id": "displayName",
-                          "value": "CPU Usage"
-                        },
-                        {
-                          "id": "unit",
-                          "value": "short"
-                        },
-                        {
-                          "id": "decimals",
-                          "value": 2
-                        },
-                        {
-                          "id": "custom.align"
-                        }
-                      ]
-                    },
-                    {
-                      "matcher": {
-                        "id": "byName",
-                        "options": "Value #B"
-                      },
-                      "properties": [
-                        {
-                          "id": "displayName",
-                          "value": "CPU Requests"
-                        },
-                        {
-                          "id": "unit",
-                          "value": "short"
-                        },
-                        {
-                          "id": "decimals",
-                          "value": 2
-                        },
-                        {
-                          "id": "custom.align"
-                        }
-                      ]
-                    },
-                    {
-                      "matcher": {
-                        "id": "byName",
-                        "options": "Value #C"
-                      },
-                      "properties": [
-                        {
-                          "id": "displayName",
-                          "value": "CPU Requests %"
-                        },
-                        {
-                          "id": "unit",
-                          "value": "percentunit"
-                        },
-                        {
-                          "id": "decimals",
-                          "value": 2
-                        },
-                        {
-                          "id": "custom.align"
-                        }
-                      ]
-                    },
-                    {
-                      "matcher": {
-                        "id": "byName",
-                        "options": "Value #D"
-                      },
-                      "properties": [
-                        {
-                          "id": "displayName",
-                          "value": "CPU Limits"
-                        },
-                        {
-                          "id": "unit",
-                          "value": "short"
-                        },
-                        {
-                          "id": "decimals",
-                          "value": 2
-                        },
-                        {
-                          "id": "custom.align"
-                        }
-                      ]
-                    },
-                    {
-                      "matcher": {
-                        "id": "byName",
-                        "options": "Value #E"
-                      },
-                      "properties": [
-                        {
-                          "id": "displayName",
-                          "value": "CPU Limits %"
-                        },
-                        {
-                          "id": "unit",
-                          "value": "percentunit"
-                        },
-                        {
-                          "id": "decimals",
-                          "value": 2
-                        },
-                        {
-                          "id": "custom.align"
-                        }
-                      ]
-                    },
-                    {
-                      "matcher": {
-                        "id": "byName",
-                        "options": "pod"
-                      },
-                      "properties": [
-                        {
-                          "id": "displayName",
-                          "value": "Pod"
-                        },
-                        {
-                          "id": "unit",
-                          "value": "short"
-                        },
-                        {
-                          "id": "decimals",
-                          "value": 2
-                        },
-                        {
-                          "id": "links",
-                          "value": [
-                            {
-                              "targetBlank": false,
-                              "title": "Drill down",
-                              "url": "/d/6581e46e4e5c7ba40a07646395ef7b23/k8s-resources-pod?var-datasource=$${datasource_prometheus}&var-cluster=$$cluster&var-namespace=$$namespace&var-pod=$$__cell"
-                            }
-                          ]
-                        },
-                        {
-                          "id": "custom.align"
-                        }
-                      ]
-                    }
-                  ]
-                },
-                "gridPos": {
-                  "h": 6,
-                  "w": 12,
-                  "x": 0,
-                  "y": 19
-                },
-                "id": 25,
-                "interval": "1m",
-                "links": [],
-                "options": {
-                  "cellHeight": "sm",
-                  "footer": {
-                    "countRows": false,
-                    "fields": "",
-                    "reducer": [
-                      "sum"
-                    ],
-                    "show": false
-                  },
-                  "showHeader": true,
-                  "sortBy": [
-                    {
-                      "desc": true,
-                      "displayName": "CPU Usage"
-                    }
-                  ]
-                },
-                "pluginVersion": "10.2.2",
-                "targets": [
-                  {
-                    "datasource": {
-                      "type": "prometheus",
-                      "uid": "$${datasource_prometheus}"
-                    },
-                    "editorMode": "code",
-                    "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace=\"$$namespace\", pod=~\"prefect-server.*\"}) by (pod)",
-                    "format": "table",
-                    "instant": true,
-                    "intervalFactor": 2,
-                    "legendFormat": "",
-                    "refId": "A"
-                  },
-                  {
-                    "datasource": {
-                      "type": "prometheus",
-                      "uid": "$${datasource_prometheus}"
-                    },
-                    "editorMode": "code",
-                    "expr": "sum(cluster:namespace:pod_cpu:active:kube_pod_container_resource_requests{namespace=\"$$namespace\", pod=~\"prefect-server.*\"}) by (pod)",
-                    "format": "table",
-                    "instant": true,
-                    "intervalFactor": 2,
-                    "legendFormat": "",
-                    "refId": "B"
-                  },
-                  {
-                    "datasource": {
-                      "type": "prometheus",
-                      "uid": "$${datasource_prometheus}"
-                    },
-                    "editorMode": "code",
-                    "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace=\"$$namespace\", pod=~\"prefect-server.*\"}) by (pod) / sum(cluster:namespace:pod_cpu:active:kube_pod_container_resource_requests{namespace=\"$$namespace\", pod=~\"prefect-server.*\"}) by (pod)",
-                    "format": "table",
-                    "instant": true,
-                    "intervalFactor": 2,
-                    "legendFormat": "",
-                    "refId": "C"
-                  },
-                  {
-                    "datasource": {
-                      "type": "prometheus",
-                      "uid": "$${datasource_prometheus}"
-                    },
-                    "editorMode": "code",
-                    "expr": "sum(cluster:namespace:pod_cpu:active:kube_pod_container_resource_limits{namespace=\"$$namespace\", pod=~\"prefect-server.*\"}) by (pod)",
-                    "format": "table",
-                    "instant": true,
-                    "intervalFactor": 2,
-                    "legendFormat": "",
-                    "refId": "D"
-                  },
-                  {
-                    "datasource": {
-                      "type": "prometheus",
-                      "uid": "$${datasource_prometheus}"
-                    },
-                    "editorMode": "code",
-                    "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace=\"$$namespace\", pod=~\"prefect-server.*\"}) by (pod) / sum(cluster:namespace:pod_cpu:active:kube_pod_container_resource_limits{namespace=\"$$namespace\", pod=~\"prefect-server.*\"}) by (pod)",
-                    "format": "table",
-                    "instant": true,
-                    "intervalFactor": 2,
-                    "legendFormat": "",
-                    "refId": "E"
-                  }
-                ],
-                "title": "CPU Quota",
-                "transformations": [
-                  {
-                    "id": "merge",
-                    "options": {
-                      "reducers": []
-                    }
-                  },
-                  {
-                    "id": "organize",
-                    "options": {
-                      "excludeByName": {
-                        "Time": true
-                      },
-                      "indexByName": {},
-                      "renameByName": {}
-                    }
-                  }
-                ],
-                "type": "table"
               },
               {
                 "datasource": {
@@ -26295,7 +26151,7 @@ configs:
                 "gridPos": {
                   "h": 6,
                   "w": 12,
-                  "x": 12,
+                  "x": 0,
                   "y": 19
                 },
                 "id": 42,
@@ -26321,500 +26177,15 @@ configs:
                       "uid": "$${datasource_prometheus}"
                     },
                     "editorMode": "code",
-                    "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace=\"$$namespace\", pod=~\"prefect-server.*\"}) by (pod)",
+                    "expr": "sum(rate(container_cpu_usage_seconds_total{container_label_com_docker_compose_service=~\"$$task_manager_service\"}[$$__rate_interval])) by (name)",
                     "format": "time_series",
-                    "intervalFactor": 2,
-                    "legendFormat": "{{pod}}",
+                    "legendFormat": "{{name}}",
                     "range": true,
                     "refId": "A"
                   }
                 ],
                 "title": "CPU Usage",
                 "type": "timeseries"
-              },
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "$${datasource_prometheus}"
-                },
-                "fieldConfig": {
-                  "defaults": {
-                    "color": {
-                      "mode": "thresholds"
-                    },
-                    "custom": {
-                      "align": "auto",
-                      "cellOptions": {
-                        "type": "auto"
-                      },
-                      "filterable": false,
-                      "inspect": false
-                    },
-                    "decimals": 2,
-                    "displayName": "",
-                    "mappings": [],
-                    "thresholds": {
-                      "mode": "absolute",
-                      "steps": [
-                        {
-                          "color": "green",
-                          "value": null
-                        },
-                        {
-                          "color": "red",
-                          "value": 80
-                        }
-                      ]
-                    },
-                    "unit": "short"
-                  },
-                  "overrides": [
-                    {
-                      "matcher": {
-                        "id": "byName",
-                        "options": "Time"
-                      },
-                      "properties": [
-                        {
-                          "id": "displayName",
-                          "value": "Time"
-                        },
-                        {
-                          "id": "custom.align"
-                        }
-                      ]
-                    },
-                    {
-                      "matcher": {
-                        "id": "byName",
-                        "options": "Value #A"
-                      },
-                      "properties": [
-                        {
-                          "id": "displayName",
-                          "value": "Mem Usage"
-                        },
-                        {
-                          "id": "unit",
-                          "value": "bytes"
-                        },
-                        {
-                          "id": "decimals",
-                          "value": 2
-                        },
-                        {
-                          "id": "custom.align"
-                        }
-                      ]
-                    },
-                    {
-                      "matcher": {
-                        "id": "byName",
-                        "options": "Value #B"
-                      },
-                      "properties": [
-                        {
-                          "id": "displayName",
-                          "value": "Mem Requests"
-                        },
-                        {
-                          "id": "unit",
-                          "value": "bytes"
-                        },
-                        {
-                          "id": "decimals",
-                          "value": 2
-                        },
-                        {
-                          "id": "custom.align"
-                        }
-                      ]
-                    },
-                    {
-                      "matcher": {
-                        "id": "byName",
-                        "options": "Value #C"
-                      },
-                      "properties": [
-                        {
-                          "id": "displayName",
-                          "value": "Mem Requests %"
-                        },
-                        {
-                          "id": "unit",
-                          "value": "percentunit"
-                        },
-                        {
-                          "id": "decimals",
-                          "value": 2
-                        },
-                        {
-                          "id": "custom.align"
-                        }
-                      ]
-                    },
-                    {
-                      "matcher": {
-                        "id": "byName",
-                        "options": "Value #D"
-                      },
-                      "properties": [
-                        {
-                          "id": "displayName",
-                          "value": "Mem Limits"
-                        },
-                        {
-                          "id": "unit",
-                          "value": "bytes"
-                        },
-                        {
-                          "id": "decimals",
-                          "value": 2
-                        },
-                        {
-                          "id": "custom.align"
-                        }
-                      ]
-                    },
-                    {
-                      "matcher": {
-                        "id": "byName",
-                        "options": "Value #E"
-                      },
-                      "properties": [
-                        {
-                          "id": "displayName",
-                          "value": "Mem Limits %"
-                        },
-                        {
-                          "id": "unit",
-                          "value": "percentunit"
-                        },
-                        {
-                          "id": "decimals",
-                          "value": 2
-                        },
-                        {
-                          "id": "custom.align"
-                        }
-                      ]
-                    },
-                    {
-                      "matcher": {
-                        "id": "byName",
-                        "options": "Value #F"
-                      },
-                      "properties": [
-                        {
-                          "id": "displayName",
-                          "value": "Mem Usage (RSS)"
-                        },
-                        {
-                          "id": "unit",
-                          "value": "bytes"
-                        },
-                        {
-                          "id": "decimals",
-                          "value": 2
-                        },
-                        {
-                          "id": "custom.align"
-                        }
-                      ]
-                    },
-                    {
-                      "matcher": {
-                        "id": "byName",
-                        "options": "Value #G"
-                      },
-                      "properties": [
-                        {
-                          "id": "displayName",
-                          "value": "Mem Usage (Cache)"
-                        },
-                        {
-                          "id": "unit",
-                          "value": "bytes"
-                        },
-                        {
-                          "id": "decimals",
-                          "value": 2
-                        },
-                        {
-                          "id": "custom.align"
-                        }
-                      ]
-                    },
-                    {
-                      "matcher": {
-                        "id": "byName",
-                        "options": "Value #H"
-                      },
-                      "properties": [
-                        {
-                          "id": "displayName",
-                          "value": "Mem Usage (Swap)"
-                        },
-                        {
-                          "id": "unit",
-                          "value": "bytes"
-                        },
-                        {
-                          "id": "decimals",
-                          "value": 2
-                        },
-                        {
-                          "id": "custom.align"
-                        }
-                      ]
-                    },
-                    {
-                      "matcher": {
-                        "id": "byName",
-                        "options": "pod"
-                      },
-                      "properties": [
-                        {
-                          "id": "displayName",
-                          "value": "Pod"
-                        },
-                        {
-                          "id": "unit",
-                          "value": "short"
-                        },
-                        {
-                          "id": "decimals",
-                          "value": 2
-                        },
-                        {
-                          "id": "links",
-                          "value": [
-                            {
-                              "targetBlank": false,
-                              "title": "Drill down",
-                              "url": "/d/6581e46e4e5c7ba40a07646395ef7b23/k8s-resources-pod?var-datasource=$${datasource_prometheus}&var-cluster=$$cluster&var-namespace=$$namespace&var-pod=$$__cell"
-                            }
-                          ]
-                        },
-                        {
-                          "id": "custom.align"
-                        }
-                      ]
-                    },
-                    {
-                      "matcher": {
-                        "id": "byName",
-                        "options": "Pod"
-                      },
-                      "properties": [
-                        {
-                          "id": "custom.width",
-                          "value": 208
-                        }
-                      ]
-                    },
-                    {
-                      "matcher": {
-                        "id": "byName",
-                        "options": "Mem Usage"
-                      },
-                      "properties": [
-                        {
-                          "id": "custom.width"
-                        }
-                      ]
-                    },
-                    {
-                      "matcher": {
-                        "id": "byName",
-                        "options": "Mem Requests"
-                      },
-                      "properties": [
-                        {
-                          "id": "custom.width"
-                        }
-                      ]
-                    },
-                    {
-                      "matcher": {
-                        "id": "byName",
-                        "options": "Mem Usage (RSS)"
-                      },
-                      "properties": [
-                        {
-                          "id": "custom.width"
-                        }
-                      ]
-                    },
-                    {
-                      "matcher": {
-                        "id": "byName",
-                        "options": "Mem Usage (Cache)"
-                      },
-                      "properties": [
-                        {
-                          "id": "custom.width",
-                          "value": 162
-                        }
-                      ]
-                    }
-                  ]
-                },
-                "gridPos": {
-                  "h": 6,
-                  "w": 12,
-                  "x": 0,
-                  "y": 25
-                },
-                "id": 46,
-                "interval": "1m",
-                "links": [],
-                "options": {
-                  "cellHeight": "sm",
-                  "footer": {
-                    "countRows": false,
-                    "enablePagination": false,
-                    "fields": "",
-                    "reducer": [
-                      "sum"
-                    ],
-                    "show": false
-                  },
-                  "showHeader": true,
-                  "sortBy": [
-                    {
-                      "desc": false,
-                      "displayName": "Mem Requests"
-                    }
-                  ]
-                },
-                "pluginVersion": "10.2.2",
-                "targets": [
-                  {
-                    "datasource": {
-                      "type": "prometheus",
-                      "uid": "$${datasource_prometheus}"
-                    },
-                    "editorMode": "code",
-                    "expr": "sum(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$$namespace\", pod=~\"prefect-server.*\", container!=\"\", image!=\"\"}) by (pod)",
-                    "format": "table",
-                    "instant": true,
-                    "intervalFactor": 2,
-                    "legendFormat": "",
-                    "refId": "A"
-                  },
-                  {
-                    "datasource": {
-                      "type": "prometheus",
-                      "uid": "$${datasource_prometheus}"
-                    },
-                    "editorMode": "code",
-                    "expr": "sum(cluster:namespace:pod_memory:active:kube_pod_container_resource_requests{namespace=\"$$namespace\", pod=~\"prefect-server.*\"}) by (pod)",
-                    "format": "table",
-                    "instant": true,
-                    "intervalFactor": 2,
-                    "legendFormat": "",
-                    "refId": "B"
-                  },
-                  {
-                    "datasource": {
-                      "type": "prometheus",
-                      "uid": "$${datasource_prometheus}"
-                    },
-                    "editorMode": "code",
-                    "expr": "sum(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$$namespace\", pod=~\"prefect-server.*\", container!=\"\", image!=\"\"}) by (pod) / sum(cluster:namespace:pod_memory:active:kube_pod_container_resource_requests{namespace=\"$$namespace\", pod=~\"prefect-server.*\"}) by (pod)",
-                    "format": "table",
-                    "instant": true,
-                    "intervalFactor": 2,
-                    "legendFormat": "",
-                    "refId": "C"
-                  },
-                  {
-                    "datasource": {
-                      "type": "prometheus",
-                      "uid": "$${datasource_prometheus}"
-                    },
-                    "editorMode": "code",
-                    "expr": "sum(cluster:namespace:pod_memory:active:kube_pod_container_resource_limits{namespace=\"$$namespace\", pod=~\"prefect-server.*\"}) by (pod)",
-                    "format": "table",
-                    "instant": true,
-                    "intervalFactor": 2,
-                    "legendFormat": "",
-                    "refId": "D"
-                  },
-                  {
-                    "datasource": {
-                      "type": "prometheus",
-                      "uid": "$${datasource_prometheus}"
-                    },
-                    "editorMode": "code",
-                    "expr": "sum(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$$namespace\", pod=~\"prefect-server.*\", container!=\"\", image!=\"\"}) by (pod) / sum(cluster:namespace:pod_memory:active:kube_pod_container_resource_limits{namespace=\"$$namespace\", pod=~\"prefect-server.*\"}) by (pod)",
-                    "format": "table",
-                    "instant": true,
-                    "intervalFactor": 2,
-                    "legendFormat": "",
-                    "refId": "E"
-                  },
-                  {
-                    "datasource": {
-                      "type": "prometheus",
-                      "uid": "$${datasource_prometheus}"
-                    },
-                    "editorMode": "code",
-                    "expr": "sum(container_memory_rss{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$$namespace\", pod=~\"prefect-server.*\", container!=\"\"}) by (pod)",
-                    "format": "table",
-                    "instant": true,
-                    "intervalFactor": 2,
-                    "legendFormat": "",
-                    "refId": "F"
-                  },
-                  {
-                    "datasource": {
-                      "type": "prometheus",
-                      "uid": "$${datasource_prometheus}"
-                    },
-                    "editorMode": "code",
-                    "expr": "sum(container_memory_cache{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$$namespace\", pod=~\"prefect-server.*\", container!=\"\"}) by (pod)",
-                    "format": "table",
-                    "instant": true,
-                    "intervalFactor": 2,
-                    "legendFormat": "",
-                    "refId": "G"
-                  },
-                  {
-                    "datasource": {
-                      "type": "prometheus",
-                      "uid": "$${datasource_prometheus}"
-                    },
-                    "editorMode": "code",
-                    "expr": "sum(container_memory_swap{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$$namespace\", pod=~\"prefect-server.*\", container!=\"\"}) by (pod)",
-                    "format": "table",
-                    "instant": true,
-                    "intervalFactor": 2,
-                    "legendFormat": "",
-                    "refId": "H"
-                  }
-                ],
-                "title": "Memory Quota",
-                "transformations": [
-                  {
-                    "id": "merge",
-                    "options": {
-                      "reducers": []
-                    }
-                  },
-                  {
-                    "id": "organize",
-                    "options": {
-                      "excludeByName": {
-                        "Time": true
-                      },
-                      "indexByName": {},
-                      "renameByName": {}
-                    }
-                  }
-                ],
-                "type": "table"
               },
               {
                 "datasource": {
@@ -26962,7 +26333,7 @@ configs:
                   "h": 6,
                   "w": 12,
                   "x": 12,
-                  "y": 25
+                  "y": 19
                 },
                 "id": 27,
                 "interval": "1m",
@@ -26987,15 +26358,14 @@ configs:
                       "uid": "$${datasource_prometheus}"
                     },
                     "editorMode": "code",
-                    "expr": "sum(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$$namespace\", pod=~\"prefect-server.*\", container!=\"\", image!=\"\"}) by (pod)",
+                    "expr": "sum(container_memory_working_set_bytes{container_label_com_docker_compose_service=~\"$$task_manager_service\"}) by (name)",
                     "format": "time_series",
-                    "intervalFactor": 2,
-                    "legendFormat": "{{pod}}",
+                    "legendFormat": "{{name}}",
                     "range": true,
                     "refId": "A"
                   }
                 ],
-                "title": "Memory Usage (w/o cache)",
+                "title": "Memory Usage (WSS)",
                 "type": "timeseries"
               }
             ],
@@ -27074,14 +26444,14 @@ configs:
                   "uid": "$${datasource_prometheus}"
                 },
                 "editorMode": "code",
-                "expr": "sum(kube_deployment_status_replicas{deployment=~\".*agent|.*worker\"})",
+                "expr": "count(container_last_seen{container_label_com_docker_compose_service=~\"$$task_worker_service\"} > time() - 60)",
                 "instant": false,
                 "legendFormat": "__auto",
                 "range": true,
                 "refId": "A"
               }
             ],
-            "title": "Agents/Worker total",
+            "title": "Task workers",
             "type": "stat"
           },
           {
@@ -27120,325 +26490,6 @@ configs:
             ],
             "title": "Logs",
             "type": "logs"
-          },
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "$${datasource_prometheus}"
-            },
-            "fieldConfig": {
-              "defaults": {
-                "color": {
-                  "mode": "thresholds"
-                },
-                "custom": {
-                  "align": "auto",
-                  "cellOptions": {
-                    "type": "auto"
-                  },
-                  "filterable": false,
-                  "inspect": false
-                },
-                "decimals": 2,
-                "displayName": "",
-                "mappings": [],
-                "noValue": "-",
-                "thresholds": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "green",
-                      "value": null
-                    },
-                    {
-                      "color": "red",
-                      "value": 80
-                    }
-                  ]
-                },
-                "unit": "short"
-              },
-              "overrides": [
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Time"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "Time"
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Value #A"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "CPU Usage"
-                    },
-                    {
-                      "id": "unit",
-                      "value": "short"
-                    },
-                    {
-                      "id": "decimals",
-                      "value": 2
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Value #B"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "CPU Requests"
-                    },
-                    {
-                      "id": "unit",
-                      "value": "short"
-                    },
-                    {
-                      "id": "decimals",
-                      "value": 2
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Value #C"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "CPU Requests %"
-                    },
-                    {
-                      "id": "unit",
-                      "value": "percentunit"
-                    },
-                    {
-                      "id": "decimals",
-                      "value": 2
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Value #D"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "CPU Limits"
-                    },
-                    {
-                      "id": "unit",
-                      "value": "short"
-                    },
-                    {
-                      "id": "decimals",
-                      "value": 2
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Value #E"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "CPU Limits %"
-                    },
-                    {
-                      "id": "unit",
-                      "value": "percentunit"
-                    },
-                    {
-                      "id": "decimals",
-                      "value": 2
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "pod"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "Pod"
-                    },
-                    {
-                      "id": "unit",
-                      "value": "short"
-                    },
-                    {
-                      "id": "decimals",
-                      "value": 2
-                    },
-                    {
-                      "id": "links",
-                      "value": [
-                        {
-                          "targetBlank": false,
-                          "title": "Drill down",
-                          "url": "/d/6581e46e4e5c7ba40a07646395ef7b23/k8s-resources-pod?var-datasource=$${datasource_prometheus}&var-cluster=$$cluster&var-namespace=$$namespace&var-pod=$$__cell"
-                        }
-                      ]
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                }
-              ]
-            },
-            "gridPos": {
-              "h": 6,
-              "w": 12,
-              "x": 0,
-              "y": 20
-            },
-            "id": 41,
-            "interval": "1m",
-            "links": [],
-            "options": {
-              "cellHeight": "sm",
-              "footer": {
-                "countRows": false,
-                "fields": "",
-                "reducer": [
-                  "sum"
-                ],
-                "show": false
-              },
-              "showHeader": true,
-              "sortBy": [
-                {
-                  "desc": true,
-                  "displayName": "CPU Usage"
-                }
-              ]
-            },
-            "pluginVersion": "10.2.2",
-            "targets": [
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "$${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace=\"$$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\"}) by (pod)",
-                "format": "table",
-                "instant": true,
-                "intervalFactor": 2,
-                "legendFormat": "",
-                "refId": "A"
-              },
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "$${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "sum(cluster:namespace:pod_cpu:active:kube_pod_container_resource_requests{namespace=\"$$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\"}) by (pod)",
-                "format": "table",
-                "instant": true,
-                "intervalFactor": 2,
-                "legendFormat": "",
-                "refId": "B"
-              },
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "$${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace=\"$$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\"}) by (pod) / sum(cluster:namespace:pod_cpu:active:kube_pod_container_resource_requests{namespace=\"$$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\"}) by (pod)",
-                "format": "table",
-                "instant": true,
-                "intervalFactor": 2,
-                "legendFormat": "",
-                "refId": "C"
-              },
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "$${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "sum(cluster:namespace:pod_cpu:active:kube_pod_container_resource_limits{namespace=\"$$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\"}) by (pod)",
-                "format": "table",
-                "instant": true,
-                "intervalFactor": 2,
-                "legendFormat": "",
-                "refId": "D"
-              },
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "$${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace=\"$$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\"}) by (pod) / sum(cluster:namespace:pod_cpu:active:kube_pod_container_resource_limits{namespace=\"$$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\"}) by (pod)",
-                "format": "table",
-                "instant": true,
-                "intervalFactor": 2,
-                "legendFormat": "",
-                "refId": "E"
-              }
-            ],
-            "title": "CPU Quota",
-            "transformations": [
-              {
-                "id": "merge",
-                "options": {
-                  "reducers": []
-                }
-              },
-              {
-                "id": "organize",
-                "options": {
-                  "excludeByName": {
-                    "Time": true
-                  },
-                  "indexByName": {},
-                  "renameByName": {}
-                }
-              }
-            ],
-            "type": "table"
           },
           {
             "datasource": {
@@ -27585,7 +26636,7 @@ configs:
             "gridPos": {
               "h": 6,
               "w": 12,
-              "x": 12,
+              "x": 0,
               "y": 20
             },
             "id": 24,
@@ -27611,500 +26662,15 @@ configs:
                   "uid": "$${datasource_prometheus}"
                 },
                 "editorMode": "code",
-                "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace=\"$$namespace\", pod=~\"prefect-agent.*\"}) by (pod)",
+                "expr": "sum(rate(container_cpu_usage_seconds_total{container_label_com_docker_compose_service=~\"$$task_worker_service\"}[$$__rate_interval])) by (name)",
                 "format": "time_series",
-                "intervalFactor": 2,
-                "legendFormat": "{{pod}}",
+                "legendFormat": "{{name}}",
                 "range": true,
                 "refId": "A"
               }
             ],
             "title": "CPU Usage",
             "type": "timeseries"
-          },
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "$${datasource_prometheus}"
-            },
-            "fieldConfig": {
-              "defaults": {
-                "color": {
-                  "mode": "thresholds"
-                },
-                "custom": {
-                  "align": "auto",
-                  "cellOptions": {
-                    "type": "auto"
-                  },
-                  "filterable": false,
-                  "inspect": false
-                },
-                "decimals": 2,
-                "displayName": "",
-                "mappings": [],
-                "thresholds": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "green",
-                      "value": null
-                    },
-                    {
-                      "color": "red",
-                      "value": 80
-                    }
-                  ]
-                },
-                "unit": "short"
-              },
-              "overrides": [
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Time"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "Time"
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Value #A"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "Mem Usage"
-                    },
-                    {
-                      "id": "unit",
-                      "value": "bytes"
-                    },
-                    {
-                      "id": "decimals",
-                      "value": 2
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Value #B"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "Mem Requests"
-                    },
-                    {
-                      "id": "unit",
-                      "value": "bytes"
-                    },
-                    {
-                      "id": "decimals",
-                      "value": 2
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Value #C"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "Mem Requests %"
-                    },
-                    {
-                      "id": "unit",
-                      "value": "percentunit"
-                    },
-                    {
-                      "id": "decimals",
-                      "value": 2
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Value #D"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "Mem Limits"
-                    },
-                    {
-                      "id": "unit",
-                      "value": "bytes"
-                    },
-                    {
-                      "id": "decimals",
-                      "value": 2
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Value #E"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "Mem Limits %"
-                    },
-                    {
-                      "id": "unit",
-                      "value": "percentunit"
-                    },
-                    {
-                      "id": "decimals",
-                      "value": 2
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Value #F"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "Mem Usage (RSS)"
-                    },
-                    {
-                      "id": "unit",
-                      "value": "bytes"
-                    },
-                    {
-                      "id": "decimals",
-                      "value": 2
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Value #G"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "Mem Usage (Cache)"
-                    },
-                    {
-                      "id": "unit",
-                      "value": "bytes"
-                    },
-                    {
-                      "id": "decimals",
-                      "value": 2
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Value #H"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "Mem Usage (Swap)"
-                    },
-                    {
-                      "id": "unit",
-                      "value": "bytes"
-                    },
-                    {
-                      "id": "decimals",
-                      "value": 2
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "pod"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "Pod"
-                    },
-                    {
-                      "id": "unit",
-                      "value": "short"
-                    },
-                    {
-                      "id": "decimals",
-                      "value": 2
-                    },
-                    {
-                      "id": "links",
-                      "value": [
-                        {
-                          "targetBlank": false,
-                          "title": "Drill down",
-                          "url": "/d/6581e46e4e5c7ba40a07646395ef7b23/k8s-resources-pod?var-datasource=$${datasource_prometheus}&var-cluster=$$cluster&var-namespace=$$namespace&var-pod=$$__cell"
-                        }
-                      ]
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Pod"
-                  },
-                  "properties": [
-                    {
-                      "id": "custom.width",
-                      "value": 208
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Mem Usage"
-                  },
-                  "properties": [
-                    {
-                      "id": "custom.width"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Mem Requests"
-                  },
-                  "properties": [
-                    {
-                      "id": "custom.width"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Mem Usage (RSS)"
-                  },
-                  "properties": [
-                    {
-                      "id": "custom.width"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Mem Usage (Cache)"
-                  },
-                  "properties": [
-                    {
-                      "id": "custom.width",
-                      "value": 162
-                    }
-                  ]
-                }
-              ]
-            },
-            "gridPos": {
-              "h": 6,
-              "w": 12,
-              "x": 0,
-              "y": 26
-            },
-            "id": 43,
-            "interval": "1m",
-            "links": [],
-            "options": {
-              "cellHeight": "sm",
-              "footer": {
-                "countRows": false,
-                "enablePagination": false,
-                "fields": "",
-                "reducer": [
-                  "sum"
-                ],
-                "show": false
-              },
-              "showHeader": true,
-              "sortBy": [
-                {
-                  "desc": false,
-                  "displayName": "Mem Requests"
-                }
-              ]
-            },
-            "pluginVersion": "10.2.2",
-            "targets": [
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "$${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "sum(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\", container!=\"\", image!=\"\"}) by (pod)",
-                "format": "table",
-                "instant": true,
-                "intervalFactor": 2,
-                "legendFormat": "",
-                "refId": "A"
-              },
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "$${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "sum(cluster:namespace:pod_memory:active:kube_pod_container_resource_requests{namespace=\"$$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\"}) by (pod)",
-                "format": "table",
-                "instant": true,
-                "intervalFactor": 2,
-                "legendFormat": "",
-                "refId": "B"
-              },
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "$${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "sum(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\", container!=\"\", image!=\"\"}) by (pod) / sum(cluster:namespace:pod_memory:active:kube_pod_container_resource_requests{namespace=\"$$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\"}) by (pod)",
-                "format": "table",
-                "instant": true,
-                "intervalFactor": 2,
-                "legendFormat": "",
-                "refId": "C"
-              },
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "$${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "sum(cluster:namespace:pod_memory:active:kube_pod_container_resource_limits{namespace=\"$$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\"}) by (pod)",
-                "format": "table",
-                "instant": true,
-                "intervalFactor": 2,
-                "legendFormat": "",
-                "refId": "D"
-              },
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "$${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "sum(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\", container!=\"\", image!=\"\"}) by (pod) / sum(cluster:namespace:pod_memory:active:kube_pod_container_resource_limits{namespace=\"$$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\"}) by (pod)",
-                "format": "table",
-                "instant": true,
-                "intervalFactor": 2,
-                "legendFormat": "",
-                "refId": "E"
-              },
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "$${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "sum(container_memory_rss{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\", container!=\"\"}) by (pod)",
-                "format": "table",
-                "instant": true,
-                "intervalFactor": 2,
-                "legendFormat": "",
-                "refId": "F"
-              },
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "$${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "sum(container_memory_cache{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\", container!=\"\"}) by (pod)",
-                "format": "table",
-                "instant": true,
-                "intervalFactor": 2,
-                "legendFormat": "",
-                "refId": "G"
-              },
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "$${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "sum(container_memory_swap{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\", container!=\"\"}) by (pod)",
-                "format": "table",
-                "instant": true,
-                "intervalFactor": 2,
-                "legendFormat": "",
-                "refId": "H"
-              }
-            ],
-            "title": "Memory Quota",
-            "transformations": [
-              {
-                "id": "merge",
-                "options": {
-                  "reducers": []
-                }
-              },
-              {
-                "id": "organize",
-                "options": {
-                  "excludeByName": {
-                    "Time": true
-                  },
-                  "indexByName": {},
-                  "renameByName": {}
-                }
-              }
-            ],
-            "type": "table"
           },
           {
             "datasource": {
@@ -28252,7 +26818,7 @@ configs:
               "h": 6,
               "w": 12,
               "x": 12,
-              "y": 26
+              "y": 20
             },
             "id": 44,
             "interval": "1m",
@@ -28277,15 +26843,14 @@ configs:
                   "uid": "$${datasource_prometheus}"
                 },
                 "editorMode": "code",
-                "expr": "sum(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$$namespace\", pod=~\"prefect-agent.*\", container!=\"\", image!=\"\"}) by (pod)",
+                "expr": "sum(container_memory_working_set_bytes{container_label_com_docker_compose_service=~\"$$task_worker_service\"}) by (name)",
                 "format": "time_series",
-                "intervalFactor": 2,
-                "legendFormat": "{{pod}}",
+                "legendFormat": "{{name}}",
                 "range": true,
                 "refId": "A"
               }
             ],
-            "title": "Memory Usage (w/o cache)",
+            "title": "Memory Usage (WSS)",
             "type": "timeseries"
           },
           {
@@ -28294,7 +26859,7 @@ configs:
               "h": 1,
               "w": 24,
               "x": 0,
-              "y": 32
+              "y": 26
             },
             "id": 10,
             "panels": [
@@ -28600,7 +27165,7 @@ configs:
               "h": 1,
               "w": 24,
               "x": 0,
-              "y": 33
+              "y": 27
             },
             "id": 9,
             "panels": [
@@ -28739,7 +27304,7 @@ configs:
               "h": 1,
               "w": 24,
               "x": 0,
-              "y": 34
+              "y": 28
             },
             "id": 8,
             "panels": [
@@ -28958,12 +27523,15 @@ configs:
         "templating": {
           "list": [
             {
-              "current": {},
-              "datasource": {
-                "type": "prometheus",
-                "uid": "$${datasource_prometheus}"
+              "current": {
+                "text": "prefect",
+                "value": "prefect"
               },
-              "definition": "label_values(namespace)",
+              "datasource": {
+                "type": "loki",
+                "uid": "$${datasource_loki}"
+              },
+              "definition": "",
               "hide": 0,
               "includeAll": false,
               "label": "Namespace",
@@ -28971,8 +27539,10 @@ configs:
               "name": "namespace",
               "options": [],
               "query": {
-                "query": "label_values(namespace)",
-                "refId": "PrometheusVariableQueryEditor-VariableQuery"
+                "label": "namespace",
+                "refId": "LokiVariableQueryEditor-VariableQuery",
+                "stream": "",
+                "type": 1
               },
               "refresh": 1,
               "regex": "",
@@ -29057,6 +27627,63 @@ configs:
               "regex": "",
               "skipUrlSync": false,
               "type": "datasource"
+            },
+            {
+              "current": {
+                "text": "task-manager",
+                "value": "task-manager"
+              },
+              "description": "Docker Compose service of the Prefect server (task manager), as cAdvisor reports it in the container_label_com_docker_compose_service label. Change it to match your deployment.",
+              "hide": 2,
+              "label": "Task manager service",
+              "name": "task_manager_service",
+              "options": [
+                {
+                  "selected": true,
+                  "text": "task-manager",
+                  "value": "task-manager"
+                }
+              ],
+              "query": "task-manager",
+              "type": "textbox"
+            },
+            {
+              "current": {
+                "text": "task-worker",
+                "value": "task-worker"
+              },
+              "description": "Docker Compose service of the task workers, as cAdvisor reports it in the container_label_com_docker_compose_service label. Change it to match your deployment.",
+              "hide": 2,
+              "label": "Task worker service",
+              "name": "task_worker_service",
+              "options": [
+                {
+                  "selected": true,
+                  "text": "task-worker",
+                  "value": "task-worker"
+                }
+              ],
+              "query": "task-worker",
+              "type": "textbox"
+            },
+            {
+              "current": {
+                "text": "task-manager",
+                "value": "task-manager"
+              },
+              "description": "Prometheus job label of the Prefect server metrics. Change it to match your scrape configuration.",
+              "hide": 2,
+              "label": "Task manager job",
+              "name": "task_manager_job",
+              "options": [
+                {
+                  "selected": true,
+                  "text": "task-manager",
+                  "value": "task-manager"
+                }
+              ],
+              "query": "task-manager",
+              "type": "textbox"
             }
           ]
         },

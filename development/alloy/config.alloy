@@ -306,10 +306,21 @@ prometheus.scrape "message_queue" {
 }
 
 // --- Database ---
-prometheus.scrape "database" {
+// Only Neo4j Enterprise has a metrics endpoint, so NEO4J_METRICS_TARGET is empty unless one is enabled.
+discovery.relabel "database" {
 	targets = [
-		{"__address__" = "database:2004"},
+		{"__address__" = env("NEO4J_METRICS_TARGET")},
 	]
+
+	rule {
+		source_labels = ["__address__"]
+		regex         = ""
+		action        = "drop"
+	}
+}
+
+prometheus.scrape "database" {
+	targets         = discovery.relabel.database.output
 	forward_to      = [prometheus.remote_write.prometheus.receiver]
 	job_name        = "database"
 	scrape_interval = "15s"

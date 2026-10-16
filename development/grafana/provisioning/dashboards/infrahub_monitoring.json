@@ -461,7 +461,7 @@
                 "uid": "${datasource_loki}"
               },
               "editorMode": "code",
-              "expr": "{container=~\".*(database|server|task|git|cache|queue).*\", container!~\".*run.*\", container=~\"$container\" , level=~\"(?i)WARN.*\"}| line_format \"{{__timestamp__ | date `2006-01-02 15:04:05.00` }}\\t{{.container| replace `infrahub-` ``}}\\t{{.level}}\\t{{.logger}}\\t{{.message}}\"",
+              "expr": "{container=~\"$log_containers\", container!~\"$log_containers_excluded\", container=~\"$container\" , level=~\"(?i)WARN.*\"}| line_format \"{{__timestamp__ | date `2006-01-02 15:04:05.00` }}\\t{{.container| replace `infrahub-` ``}}\\t{{.level}}\\t{{.logger}}\\t{{.message}}\"",
               "queryType": "range",
               "refId": "A"
             }
@@ -503,7 +503,7 @@
                 "uid": "${datasource_loki}"
               },
               "editorMode": "code",
-              "expr": "{container=~\".*(database|server|task|git|cache).*\", container!~\".*run.*\", container=~\"$container\" , level=~\"(?i)ERR.*|CRIT|FATAL.*\"}| line_format \"{{__timestamp__ | date `2006-01-02 15:04:05.00` }}\\t{{.container| replace `infrahub-` ``}}\\t{{.level}}\\t{{.logger}}\\t{{.message}}\"",
+              "expr": "{container=~\"$log_containers\", container!~\"$log_containers_excluded\", container=~\"$container\" , level=~\"(?i)ERR.*|CRIT|FATAL.*\"}| line_format \"{{__timestamp__ | date `2006-01-02 15:04:05.00` }}\\t{{.container| replace `infrahub-` ``}}\\t{{.level}}\\t{{.logger}}\\t{{.message}}\"",
               "queryType": "range",
               "refId": "A"
             }
@@ -672,7 +672,7 @@
             "type": "prometheus",
             "uid": "${datasource_prometheus}"
           },
-          "description": "In-flight admitted requests as a share of total pool capacity, summed over every worker process. Slots are shared across priority classes.",
+          "description": "In-flight admitted requests as a share of total pool capacity, summed over every worker process. Slots are shared across priority classes. This is not the Neo4j connection pool.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -737,7 +737,7 @@
               "refId": "A"
             }
           ],
-          "title": "Slot Pool Saturation",
+          "title": "Admission Limit Usage",
           "type": "stat"
         },
         {
@@ -1046,7 +1046,7 @@
             "type": "prometheus",
             "uid": "${datasource_prometheus}"
           },
-          "description": "Concurrent admitted requests by priority class, stacked, against total pool capacity (dashed). Both are summed across worker processes, since admission state is per-worker. Stack touching the line = saturated; further arrivals queue.",
+          "description": "Concurrent admitted requests by priority class, stacked, against total pool capacity (dashed). Both are summed across worker processes, since admission state is per-worker. Stack touching the line = saturated; further arrivals queue. This is not the Neo4j connection pool.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1188,7 +1188,7 @@
               "refId": "B"
             }
           ],
-          "title": "In-Flight vs Pool Capacity",
+          "title": "Running API Requests vs Admission Limit",
           "type": "timeseries"
         },
         {
@@ -4432,11 +4432,549 @@
     },
     {
       "collapsed": true,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prometheus}"
+      },
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
         "y": 5
+      },
+      "id": 236,
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "description": "Highest share of its connection pool that one process (API worker or task worker) used, in percent. Each process has its own pool of INFRAHUB_DB_MAX_CONNECTION_POOL_SIZE connections. A value near 100 means queries in that process wait for a connection; check the connection wait panel.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 0,
+              "mappings": [],
+              "max": 100,
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 70
+                  },
+                  {
+                    "color": "red",
+                    "value": 90
+                  }
+                ]
+              },
+              "unit": "percent"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 0,
+            "y": 180
+          },
+          "id": 237,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.4.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource_prometheus}"
+              },
+              "editorMode": "code",
+              "expr": "100 * max(infrahub_db_last_connection_pool_usage / infrahub_db_connection_pool_size)",
+              "legendFormat": "",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Highest Connection Pool Usage",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "description": "Connections in use (solid) against the pool size (dashed), one series per process. The usage is read when a query starts, so it is the last known value. Processes that stopped are not shown.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": ".* size$"
+                },
+                "properties": [
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "dash": [
+                        10,
+                        10
+                      ],
+                      "fill": "dash"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 9,
+            "x": 6,
+            "y": 180
+          },
+          "id": 238,
+          "options": {
+            "legend": {
+              "calcs": [
+                "mean",
+                "max"
+              ],
+              "displayMode": "table",
+              "placement": "right",
+              "showLegend": true,
+              "sortBy": "Max",
+              "sortDesc": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "11.4.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource_prometheus}"
+              },
+              "editorMode": "code",
+              "expr": "infrahub_db_last_connection_pool_usage",
+              "legendFormat": "{{instance}} pid {{pid}} in use",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource_prometheus}"
+              },
+              "editorMode": "code",
+              "expr": "infrahub_db_connection_pool_size",
+              "legendFormat": "{{instance}} pid {{pid}} size",
+              "range": true,
+              "refId": "B"
+            }
+          ],
+          "title": "Connection Pool Usage vs Size (per process)",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "description": "Time a query waited to get a connection from the pool. The neo4j driver gives up after 60 seconds, which is the highest bucket. A rising value means the pool is too small for the load, or queries hold connections for a long time.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  }
+                ]
+              },
+              "unit": "s"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 9,
+            "x": 15,
+            "y": 180
+          },
+          "id": 239,
+          "options": {
+            "legend": {
+              "calcs": [
+                "mean",
+                "max"
+              ],
+              "displayMode": "table",
+              "placement": "right",
+              "showLegend": true,
+              "sortBy": "Max",
+              "sortDesc": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "11.4.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource_prometheus}"
+              },
+              "editorMode": "code",
+              "expr": "histogram_quantile($percentile, sum by (le, instance) (rate(infrahub_db_connection_wait_seconds_bucket[$__rate_interval])))",
+              "legendFormat": "{{instance}}",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Connection Wait ($percentile)",
+          "type": "timeseries"
+        }
+      ],
+      "title": "Connection Pool",
+      "type": "row"
+    },
+    {
+      "collapsed": true,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prometheus}"
+      },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 6
+      },
+      "id": 244,
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "description": "Time a flow run waited between its expected start time and the moment a task worker started it, 95th percentile, one series per priority queue. A rising value on the high queue means users wait for their changes. The highest bucket is one hour.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  }
+                ]
+              },
+              "unit": "s"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 190
+          },
+          "id": 245,
+          "options": {
+            "legend": {
+              "calcs": [
+                "mean",
+                "max"
+              ],
+              "displayMode": "table",
+              "placement": "right",
+              "showLegend": true,
+              "sortBy": "Max",
+              "sortDesc": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "11.4.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource_prometheus}"
+              },
+              "editorMode": "code",
+              "expr": "histogram_quantile(0.95, sum by (le, queue) (rate(infrahub_task_flow_run_start_delay_seconds_bucket{queue=~\"high|medium|low\"}[$__rate_interval])))",
+              "legendFormat": "{{queue}}",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Flow Run Start Delay p95 by Queue",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "description": "Number of flow runs that the task workers are running now, summed over all task workers, one series per priority queue. Compare it with the start delay: a delay that rises while this count stays flat means the task workers do not start more runs.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  }
+                ]
+              },
+              "unit": "short",
+              "decimals": 0
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 190
+          },
+          "id": 246,
+          "options": {
+            "legend": {
+              "calcs": [
+                "mean",
+                "max"
+              ],
+              "displayMode": "table",
+              "placement": "right",
+              "showLegend": true,
+              "sortBy": "Max",
+              "sortDesc": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "11.4.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource_prometheus}"
+              },
+              "editorMode": "code",
+              "expr": "sum by (queue) (infrahub_task_flow_runs_in_progress{queue=~\"high|medium|low\"})",
+              "legendFormat": "{{queue}}",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Flow Runs in Progress by Queue",
+          "type": "timeseries"
+        }
+      ],
+      "title": "Priority Queues",
+      "type": "row"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 7
       },
       "id": 23,
       "panels": [
@@ -4499,7 +5037,7 @@
             "h": 17,
             "w": 6,
             "x": 0,
-            "y": 95
+            "y": 75
           },
           "id": 14,
           "options": {
@@ -4526,7 +5064,7 @@
                 "uid": "${datasource_loki}"
               },
               "editorMode": "code",
-              "expr": "sum by (container, level) (rate({container=~\".*(queue|database|server|git|task|cache).*\", container!~\".*run.*\", container=~\"$container\"} | label_format container=`{{.container| replace \"infrahub-\" \"\"}}`| label_format level=`{{.level|lower}}` | level != \"\" [$__rate_interval]))",
+              "expr": "sum by (container, level) (rate({container=~\"$log_containers\", container!~\"$log_containers_excluded\", container=~\"$container\"} | label_format container=`{{.container| replace \"infrahub-\" \"\"}}`| label_format level=`{{.level|lower}}` | level != \"\" [$__rate_interval]))",
               "hide": false,
               "legendFormat": "{{ container }} - {{level}}",
               "queryType": "range",
@@ -4549,7 +5087,7 @@
             "h": 17,
             "w": 18,
             "x": 6,
-            "y": 95
+            "y": 75
           },
           "id": 2,
           "options": {
@@ -4570,7 +5108,7 @@
                 "uid": "${datasource_loki}"
               },
               "editorMode": "code",
-              "expr": "{container=~\".*(queue|database|server|git|task|cache).*\", container!~\".*run.*\", container=~\"$container\"} | line_format \"{{__timestamp__ | date `2006-01-02 15:04:05.00` }}\\t{{.container| replace `infrahub-` ``}}\\t{{.level}}\\t{{.logger}}\\t{{.message}}\"",
+              "expr": "{container=~\"$log_containers\", container!~\"$log_containers_excluded\", container=~\"$container\"} | line_format \"{{__timestamp__ | date `2006-01-02 15:04:05.00` }}\\t{{.container| replace `infrahub-` ``}}\\t{{.level}}\\t{{.logger}}\\t{{.message}}\"",
               "hide": false,
               "legendFormat": "",
               "queryType": "range",
@@ -4672,6 +5210,44 @@
         "regex": "^infrahub.+",
         "sort": 1,
         "type": "query"
+      },
+      {
+        "current": {
+          "text": ".*(queue|database|server|git|task|cache).*",
+          "value": ".*(queue|database|server|git|task|cache).*"
+        },
+        "description": "Regular expression that selects the containers whose logs the log panels show. Change it to match the container names of your deployment.",
+        "hide": 2,
+        "label": "Log containers",
+        "name": "log_containers",
+        "options": [
+          {
+            "selected": true,
+            "text": ".*(queue|database|server|git|task|cache).*",
+            "value": ".*(queue|database|server|git|task|cache).*"
+          }
+        ],
+        "query": ".*(queue|database|server|git|task|cache).*",
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": ".*run.*",
+          "value": ".*run.*"
+        },
+        "description": "Regular expression that removes containers from the log panels. Change it to match the container names of your deployment.",
+        "hide": 2,
+        "label": "Excluded log containers",
+        "name": "log_containers_excluded",
+        "options": [
+          {
+            "selected": true,
+            "text": ".*run.*",
+            "value": ".*run.*"
+          }
+        ],
+        "query": ".*run.*",
+        "type": "textbox"
       },
       {
         "current": {
