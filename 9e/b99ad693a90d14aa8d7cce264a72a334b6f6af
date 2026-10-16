@@ -1,0 +1,25 @@
+backend/tests/component/core/regeneration/impact/helpers.py
+  s_fb819cbbe44071::t_b5b48b3efd99cf 1-8
+backend/tests/component/core/regeneration/impact/test_field_level_impact.py
+  s_fb819cbbe44071::t_13501b9e569f0f 13,16-17
+backend/tests/component/core/regeneration/impact/test_generic_owner_impact.py
+  s_fb819cbbe44071::t_95baab3a235e82 1-241
+backend/tests/component/core/regeneration/impact/test_root_and_relationship_reads.py
+  s_fb819cbbe44071::t_5ad64ba56b65d9 1-182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9eb99ad693a90d14aa8d7cce264a72a334b6f6af",
+  "prompts": {},
+  "sessions": {
+    "s_fb819cbbe44071": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65a68a98-fa9c-4142-8730-a06dd94f203b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
