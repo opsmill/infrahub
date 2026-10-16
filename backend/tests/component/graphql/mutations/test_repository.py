@@ -173,7 +173,8 @@ async def test_import_last_commit_rejects_non_read_only_repository(
 ) -> None:
     """Calling InfrahubReadOnlyRepositoryImportLastCommit on a CoreRepository must fail.
 
-    with a clear error instead of an AttributeError on the missing 'ref' attribute.
+    The lookup rejects the wrong-kind id with the same not-found error as an id that exists
+    nowhere, so it never discloses that the id belongs to a CoreRepository.
 
     """
     repository_model = registry.schema.get_node_schema(name=InfrahubKind.REPOSITORY, branch=default_branch)
@@ -207,7 +208,8 @@ async def test_import_last_commit_rejects_non_read_only_repository(
     )
 
     assert result.errors
-    assert "not a CoreReadOnlyRepository" in str(result.errors[0].message)
+    assert result.errors[0].message == f"Unable to find the node {repo.id} / CoreReadOnlyRepository in the database."
+    assert "CoreRepository" not in result.errors[0].message
 
 
 async def test_import_read_only_repository_last_commit(

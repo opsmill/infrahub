@@ -7,6 +7,7 @@ from infrahub_sdk.utils import is_valid_uuid
 
 from infrahub.core.constants import (
     SYSTEM_USER_ID,
+    InfrahubKind,
     MetadataOptions,
     RelationshipCardinality,
     RelationshipDirection,
@@ -76,7 +77,8 @@ def get_schema[SchemaProtocol](
 ) -> MainSchemaTypes:
     if isinstance(node_schema, str):
         return db.schema.get(name=node_schema, branch=branch.name, duplicate=duplicate)
-    if isinstance(node_schema, type) and issubclass(node_schema, CoreNode):
+    # A protocol or a concrete Node subclass both name their kind by class name.
+    if isinstance(node_schema, type) and issubclass(node_schema, (CoreNode, Node)):
         return db.schema.get(name=node_schema.__name__, branch=branch.name, duplicate=duplicate)
     if not isinstance(node_schema, (MainSchemaTypes)):
         raise ValueError(f"Invalid schema provided {node_schema}")
@@ -851,16 +853,23 @@ class NodeManager:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
-        node = await cls.get_one(
-            id=id,
-            fields=fields,
-            at=at,
-            branch=branch,
-            include_metadata=include_metadata,
-            db=db,
-            prefetch_relationships=prefetch_relationships,
-            branch_agnostic=branch_agnostic,
-        )
+        try:
+            node = await cls.get_one(
+                id=id,
+                kind=kind,
+                fields=fields,
+                at=at,
+                branch=branch,
+                include_metadata=include_metadata,
+                db=db,
+                prefetch_relationships=prefetch_relationships,
+                branch_agnostic=branch_agnostic,
+            )
+        except NodeNotFoundError:
+            # An id that resolves to a node of another kind is treated as unresolved, so the
+            # outcome is indistinguishable from an id that exists nowhere and cannot be used to
+            # read back the kind of an arbitrary node.
+            node = None
         if node:
             return node
 
@@ -1066,27 +1075,33 @@ class NodeManager:
         node_schema = node.get_schema()
 
         kind_validation = None
+        kind_matches = True
         if kind:
             node_schema_validation = get_schema(db=db, branch=branch, node_schema=kind)
             kind_validation = node_schema_validation.kind
+            # Every node is implicitly a CoreNode, a base no node lists in its inherit_from.
+            kind_matches = (
+                node_schema.kind == kind_validation
+                or kind_validation in node_schema.inherit_from
+                or kind_validation == InfrahubKind.NODE
+            )
 
         # Temporary list of exception to the validation of the kind
         kind_validation_exceptions = [
             ("CoreChangeThread", "CoreObjectThread"),  # issue/3318
         ]
 
-        if kind_validation and (
-            node_schema.kind != kind_validation and kind_validation not in node_schema.inherit_from
-        ):
+        if kind_validation and not kind_matches:
             for item in kind_validation_exceptions:
                 if item[0] == kind_validation and item[1] == node.get_kind():
                     return node
 
+            # A wrong-kind id must be indistinguishable from an unknown id so the error cannot
+            # be used to read back the kind of an arbitrary node.
             raise NodeNotFoundError(
                 branch_name=branch.name,
                 node_type=kind_validation,
                 identifier=id,
-                message=f"Node with id {id} exists, but it is a {node.get_kind()}, not {kind_validation}",
             )
 
         return node
