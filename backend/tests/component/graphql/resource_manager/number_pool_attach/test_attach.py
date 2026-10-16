@@ -31,6 +31,7 @@ from .helpers import (
     open_is_reserved_edges,
     pool_source,
     pooled_numbers,
+    refused_write,
     session_for,
     tracking_pool_id,
     update_ticket,
@@ -645,3 +646,95 @@ class TestNumberPoolAttach:
         assert (attached.from_user_id, attached.to_user_id) == (THIRD_ACTOR_ID, None)
         after_attach = await node_metadata(db=db, node_id=pool.get_id())
         assert (after_attach.updated_at, after_attach.updated_by) == (attached.from_time, THIRD_ACTOR_ID)
+
+    async def test_attaching_a_number_outside_the_range_is_refused_and_writes_nothing(
+        self, db: InfrahubDatabase, main_branch: Branch
+    ) -> None:
+        pool = await new_pool(db=db, name="range-refused-update", start_range=6000, end_range=6009)
+        ticket = await create_ticket(db=db, branch=main_branch, title="range-refused-update", ticket_id={"value": 6003})
+
+        message = await refused_write(
+            db=db,
+            branch=main_branch,
+            source=UPDATE_TICKET,
+            variables={"id": ticket["id"], "ticket_id": {"value": 6900, "from_pool": {"id": pool.id}}},
+        )
+
+        assert message == (
+            "The range-refused-update pool cannot track 6900 on 'ticket_id', because 6900 is outside its ranges: "
+            "6000-6009. Send a number inside those ranges. at ticket_id.from_pool"
+        )
+        reloaded = await NodeManager.get_one(db=db, id=ticket["id"], branch=main_branch)
+        assert reloaded is not None
+        assert reloaded.get_attribute(name="ticket_id").value == 6003
+        assert await is_reserved_edges(db=db, node_id=ticket["id"]) == []
+        assert await used_numbers(db=db, branch=main_branch, pool=pool) == []
+
+    async def test_creating_an_object_with_a_number_outside_the_range_is_refused_and_creates_nothing(
+        self, db: InfrahubDatabase, main_branch: Branch
+    ) -> None:
+        pool = await new_pool(db=db, name="range-refused-create", start_range=6100, end_range=6109)
+
+        message = await refused_write(
+            db=db,
+            branch=main_branch,
+            source=CREATE_TICKET,
+            variables={"title": "range-refused-create", "ticket_id": {"value": 6900, "from_pool": {"id": pool.id}}},
+        )
+
+        assert message == (
+            "The range-refused-create pool cannot track 6900 on 'ticket_id', because 6900 is outside its ranges: "
+            "6100-6109. Send a number inside those ranges. at ticket_id.from_pool"
+        )
+        assert (
+            await NodeManager.query(db=db, schema=TICKET.kind, filters={"title__value": "range-refused-create"}) == []
+        )
+        assert await open_is_reserved_edges(db=db, pool=pool) == set()
+        assert await used_numbers(db=db, branch=main_branch, pool=pool) == []
+
+    async def test_moving_a_number_to_a_pool_whose_range_excludes_it_is_refused_and_the_first_pool_keeps_it(
+        self, db: InfrahubDatabase, main_branch: Branch
+    ) -> None:
+        first_pool = await new_pool(db=db, name="range-refused-first", start_range=6200, end_range=6299)
+        second_pool = await new_pool(db=db, name="range-refused-second", start_range=6200, end_range=6240)
+        ticket = await create_ticket(
+            db=db,
+            branch=main_branch,
+            title="range-refused-move",
+            ticket_id={"value": 6250, "from_pool": {"id": first_pool.id}},
+        )
+
+        message = await refused_write(
+            db=db,
+            branch=main_branch,
+            source=UPDATE_TICKET,
+            variables={"id": ticket["id"], "ticket_id": {"value": 6250, "from_pool": {"id": second_pool.id}}},
+        )
+
+        assert message == (
+            "The range-refused-second pool cannot track 6250 on 'ticket_id', because 6250 is outside its ranges: "
+            "6200-6240. Send a number inside those ranges. at ticket_id.from_pool"
+        )
+        assert await tracking_pool_id(db=db, node_id=ticket["id"]) == first_pool.get_id()
+        assert await used_numbers(db=db, branch=main_branch, pool=first_pool) == [6250]
+        assert await open_is_reserved_edges(db=db, pool=second_pool) == set()
+
+    async def test_a_number_between_two_ranges_is_refused_and_every_range_is_listed(
+        self, db: InfrahubDatabase, main_branch: Branch
+    ) -> None:
+        pool = await new_pool(db=db, name="range-refused-gap", start_range=6320, end_range=6330)
+        await add_pool_range(db=db, pool=pool, start=6300, end=6310)
+        ticket = await create_ticket(db=db, branch=main_branch, title="range-refused-gap", ticket_id={"value": 6315})
+
+        message = await refused_write(
+            db=db,
+            branch=main_branch,
+            source=UPDATE_TICKET,
+            variables={"id": ticket["id"], "ticket_id": {"value": 6315, "from_pool": {"id": pool.id}}},
+        )
+
+        assert message == (
+            "The range-refused-gap pool cannot track 6315 on 'ticket_id', because 6315 is outside its ranges: "
+            "6300-6310, 6320-6330. Send a number inside those ranges. at ticket_id.from_pool"
+        )
+        assert await is_reserved_edges(db=db, node_id=ticket["id"]) == []
