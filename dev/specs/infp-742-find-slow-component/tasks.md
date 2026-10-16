@@ -136,7 +136,7 @@ its trace and its task worker logs in Grafana (quickstart, manual checks 1 to 3)
 - [ ] T033 [US1] Declare `INFRAHUB_TRACE_SAMPLE_RATIO: ${INFRAHUB_TRACE_SAMPLE_RATIO:-0.1}` in the `environment:` block of `development/docker-compose.yml`, and update the root `docker-compose.yml` with `uv run invoke release.validate-dockercomposeenv` (backend `AGENTS.md`: Compose forwards only declared variables)
 - [ ] T034 [US1] In `development/docker-compose-observability.yml`, add an `environment` block for the `infrahub-server` and `task-worker` services with the five variables of [contracts/trace-log-links.md](contracts/trace-log-links.md) "Tracing in Compose" (FR-032, research R2); keep `INFRAHUB_TRACE_ENABLE` at `false` in the root `docker-compose.yml`
 - [ ] T035 [US1] Regenerate `development/docker-compose-observability-standalone.yml` with `development/convert_compose_standalone.py`, and check that the diff contains only the T034 change
-- [ ] T036 [US1] Write the question for the owner of the service behind `https://infrahub.opsmill.io/?observability=true` (owner not known; research R2): does it merge the observability file into the services of `docker-compose.yml`, so the T034 override applies? Give the text to Daniel; do not send it
+- [ ] T036 [US1] Write the question for the owner of the service behind `https://infrahub.opsmill.io/?observability=true` (owner not known; research R2): does it merge the observability file into the services of `docker-compose.yml`, so the T034 override applies? And can it set `INFRAHUB_NEO4J_METRICS_TARGET` to an empty value in the Community file only, so Community stops collecting from a Neo4j endpoint that does not exist (FR-025)? Give the text to Daniel; do not send it
 - [ ] T037 [P] [US1] (Write the text in "Changelog entries for the top layer", not in `changelog/`; created by T095.) Add changelog fragments in `changelog/`: port `+trace-sample-ratio.added.md` and `+task-worker-log-trace-id.added.md` from the draft; add a `changed` fragment that starts with `**Breaking:**` for the `trace_id` format (old `0x…` form, new 32-character form, update queries and alerts; research R5); add a `fixed` fragment for the trace and log links in Grafana (B10); add a `changed` fragment for tracing turned on in Compose with the observability stack (FR-032)
 - [ ] T038 [US1] Run T024 to T027 and `uv run invoke format lint`; with the submodule on `dp-20261015-trace-context-ifc-3419`, run a generator locally and check quickstart manual checks 1 to 3
 
@@ -168,7 +168,7 @@ and an `/api/…` request; open the Infrahub dashboard (quickstart, manual check
 - [x] T045 [US3] Find the cause of B13 in `backend/infrahub/server.py` (the `PrometheusMiddleware` setup and the middlewares around it), record it in [research.md](research.md) R4, and fix it so T040 passes (FR-016) (Done differently: the cause is in a dependency, so the fix is the `starlette-exporter` upgrade to 0.24 in `pyproject.toml` and `uv.lock`, approved by Daniel on 2026-10-16; see R4.)
 - [x] T046 [US3] Change the buckets: `REQUEST_DURATION_BUCKETS` in `backend/infrahub/server.py`, `infrahub_db_query_execution_seconds` in `backend/infrahub/database/metrics.py`, and both lock histograms in `backend/infrahub/lock.py`, with the values of [contracts/metrics.md](contracts/metrics.md) (FR-014)
 - [x] T047 [US3] Port `CONNECTION_POOL_SIZE` and `CONNECTION_WAIT_METRICS` to `backend/infrahub/database/metrics.py`, create `backend/infrahub/database/connection_metrics.py` with `instrument_connection_pool` from the draft, and call it where the draft does in `backend/infrahub/database/__init__.py` (FR-017)
-- [ ] T048 [US3] In `development/grafana/provisioning/dashboards/infrahub_monitoring.json`, port the "Connection Pool" row from the draft (pool usage against pool size per process, connection wait p95), the renamed admission panels "Running API Requests vs Admission Limit" and "Admission Limit Usage" with "This is not the Neo4j connection pool" in their descriptions (B5, FR-019), and the duration panels corrected for the new highest buckets (FR-015); do not port the "Redis" row
+- [x] T048 [US3] In `development/grafana/provisioning/dashboards/infrahub_monitoring.json`, port the "Connection Pool" row from the draft (pool usage against pool size per process, connection wait p95), the renamed admission panels "Running API Requests vs Admission Limit" and "Admission Limit Usage" with "This is not the Neo4j connection pool" in their descriptions (B5, FR-019), and the duration panels corrected for the new highest buckets (FR-015); do not port the "Redis" row
 - [x] T049 [P] [US3] (Write the text in "Changelog entries for the top layer", not in `changelog/`; created by T095.) Add changelog fragments: port `+longer-duration-buckets.changed.md`, `+metric-files-kept-on-worker-start.fixed.md` and `+admission-panel-names.fixed.md` from the draft; port `+connection-pool-and-redis-metrics.added.md` as `+connection-pool-metrics.added.md` without the Redis part; add a `fixed` fragment for API and GraphQL requests in the HTTP metrics (B13)
 - [x] T050 [US3] Run T039 to T042 and `uv run invoke format lint`
 
@@ -192,7 +192,7 @@ queue; the dashboard shows a "Priority queues" row (FR-020, FR-021).
 
 - [x] T052 [US4] Create `backend/infrahub/workers/metrics.py` from the draft (`FLOW_RUN_START_DELAY`, `FLOW_RUNS_IN_PROGRESS`, `observe_start_delay`, `track_flow_run`) (FR-020)
 - [x] T053 [US4] In `backend/infrahub/workers/infrahub_async.py`, port the calls to `observe_start_delay` and `track_flow_run` around the flow run, as the draft does (FR-020)
-- [ ] T054 [US4] In `development/grafana/provisioning/dashboards/infrahub_monitoring.json`, port the "Priority Queues" row from the draft (start delay p95 and runs in progress per queue) (FR-021); this file is also changed by T048 and T062, so do not run these tasks in parallel
+- [x] T054 [US4] In `development/grafana/provisioning/dashboards/infrahub_monitoring.json`, port the "Priority Queues" row from the draft (start delay p95 and runs in progress per queue) (FR-021); this file is also changed by T048 and T062, so do not run these tasks in parallel
 - [x] T055 [P] [US4] (Write the text in "Changelog entries for the top layer", not in `changelog/`; created by T095.) Port `changelog/+task-worker-queue-metrics.added.md` from the draft
 - [x] T056 [US4] Run T051 and `uv run invoke format lint`
 
@@ -210,17 +210,17 @@ Infrahub's metrics (quickstart, manual check 7, required before release).
 
 ### Tests for User Story 5
 
-- [ ] T057 [P] [US5] Port `backend/tests/unit/test_grafana_dashboards.py` from the draft (no fixed `job`, `instance` or `container` in panel queries; no misleading admission title) and add: panel identifiers are unique in each dashboard (critique X3); no panel reads `le="1"` for database queries or `le="0.5"` for HTTP as the highest limit (FR-015, research R6)
+- [x] T057 [P] [US5] Port `backend/tests/unit/test_grafana_dashboards.py` from the draft (no fixed `job`, `instance` or `container` in panel queries; no misleading admission title) and add: panel identifiers are unique in each dashboard (critique X3); no panel reads `le="1"` for database queries or `le="0.5"` for HTTP as the highest limit (FR-015, research R6)
 
 ### Implementation for User Story 5
 
-- [ ] T058 [P] [US5] In `development/grafana/provisioning/dashboards/prefect_flow_run_overview.json`, port the draft changes: run counts with `sum(...)` instead of `count(...)`, no `flow_run_name` variable, no run time panels that read `prefect_flow_runs_total_run_time_total`, `namespace` read from Loki (B12, FR-023), and CPU and memory panels on the stack's own metrics or removed (B2, FR-024)
-- [ ] T059 [P] [US5] In `development/grafana/provisioning/dashboards/prefect_platform_overview.json`, port the same draft changes (B2, B12)
-- [ ] T060 [P] [US5] In `development/grafana/provisioning/dashboards/neo4j_monitoring.json`, port the draft changes: template variables for job and instance, and a text panel that says the server panels need Neo4j Enterprise (B3, FR-025)
-- [ ] T061 [P] [US5] In `development/alloy/config.alloy`, port the draft `discovery.relabel "database"` that drops the Neo4j target when `NEO4J_METRICS_TARGET` is empty, and in `development/docker-compose-database-neo4j.yml` port the variable that sets it for Enterprise; do not port the Redis scrape (B3, FR-025)
-- [ ] T062 [US5] In `development/grafana/provisioning/dashboards/infrahub_monitoring.json`, port the draft template variables for job, instance and container, each defaulting to today's value (FR-022); run after T048 and T054
-- [ ] T063 [P] [US5] (Write the text in "Changelog entries for the top layer", not in `changelog/`; created by T095.) Port `changelog/+dashboard-template-variables.fixed.md`, `changelog/+prefect-dashboard-resources.fixed.md` and `changelog/+neo4j-community-metrics.fixed.md` from the draft
-- [ ] T064 [US5] Run T057 and `uv run invoke format lint`; on a Linux host, check the Prefect CPU and memory panels (research R6)
+- [x] T058 [P] [US5] In `development/grafana/provisioning/dashboards/prefect_flow_run_overview.json`, port the draft changes: run counts with `sum(...)` instead of `count(...)`, no `flow_run_name` variable, no run time panels that read `prefect_flow_runs_total_run_time_total`, `namespace` read from Loki (B12, FR-023), and CPU and memory panels on the stack's own metrics or removed (B2, FR-024) (The draft has only the CPU and memory part; the run counts, the run time panels, `flow_run_name` and `namespace` were written from design document B12.)
+- [x] T059 [P] [US5] In `development/grafana/provisioning/dashboards/prefect_platform_overview.json`, port the same draft changes (B2, B12) (The draft has only the CPU and memory part; the run counts, the run time panels, `flow_run_name` and `namespace` were written from design document B12.)
+- [x] T060 [P] [US5] In `development/grafana/provisioning/dashboards/neo4j_monitoring.json`, port the draft changes: template variables for job and instance, and a text panel that says the server panels need Neo4j Enterprise (B3, FR-025)
+- [x] T061 [P] [US5] In `development/alloy/config.alloy`, port the draft `discovery.relabel "database"` that drops the Neo4j target when `NEO4J_METRICS_TARGET` is empty, and in `development/docker-compose-observability.yml` give the `infrahub-alloy` service `NEO4J_METRICS_TARGET: "${INFRAHUB_NEO4J_METRICS_TARGET-database:2004}"`, so the published standalone file keeps collecting by default (done differently from the draft, which set it only in the development Neo4j Compose file; Daniel, 2026-10-16); do not port the Redis scrape (B3, FR-025)
+- [x] T062 [US5] In `development/grafana/provisioning/dashboards/infrahub_monitoring.json`, port the draft template variables for job, instance and container, each defaulting to today's value (FR-022); run after T048 and T054
+- [x] T063 [P] [US5] (Write the text in "Changelog entries for the top layer", not in `changelog/`; created by T095.) Port `changelog/+dashboard-template-variables.fixed.md`, `changelog/+prefect-dashboard-resources.fixed.md` and `changelog/+neo4j-community-metrics.fixed.md` from the draft
+- [x] T064 [US5] Run T057 and `uv run invoke format lint`; on a Linux host, check the Prefect CPU and memory panels (research R6)
 
 **Checkpoint**: Story 5 is complete and testable on its own.
 
@@ -449,3 +449,34 @@ Created by T095 in IFC-3430. Each layer adds its entries here, with the file nam
   `infrahub_request_duration_seconds` and `infrahub_requests_total`, which recorded no request to
   `/api/…` or `/graphql/…` since the upgrade to FastAPI 0.141; these requests are now recorded with
   their route as `path`. The fix upgrades `starlette-exporter` to 0.24.
+
+### IFC-3429 (layer 3)
+
+- `+dashboard-template-variables.fixed.md`: Fixed the bundled Grafana dashboards so that their panel
+  queries select job, instance and container values through dashboard variables instead of fixed
+  values. Each variable defaults to the value the panels used before: `job` and `instance` on the Neo4j
+  dashboard, `log_containers` and `log_containers_excluded` on the log panels of the Infrahub
+  dashboard, and `task_manager_job`, `task_manager_service` and `task_worker_service` on the Prefect
+  dashboards.
+- `+prefect-dashboard-resources.fixed.md`: Fixed the CPU, memory and replica panels of both Prefect
+  dashboards, which were always empty. They now read the cAdvisor container metrics of the
+  observability stack, selected by Docker Compose service name. On Docker Desktop for macOS, cAdvisor
+  sends no Compose labels, so these panels stay empty there.
+- `+prefect-dashboard-run-counts.fixed.md`: Fixed the Prefect dashboards so that the flow run counts
+  add up the runs instead of counting flow and state combinations, and so that the `namespace`
+  variable of the log panels is read from Loki. Removed the `flow_run_name` variable and the run time
+  panels, which read labels and metrics that the Prefect exporter does not publish.
+- `+neo4j-community-metrics.fixed.md`: Fixed the failing Neo4j scrape target of the observability
+  stack on Neo4j Community: set `INFRAHUB_NEO4J_METRICS_TARGET` to an empty value to stop the scrape.
+  By default Alloy still scrapes `database:2004`, so Neo4j Enterprise keeps its metrics. The Neo4j
+  dashboard now states which panels need Neo4j Enterprise.
+- `+admission-panel-names.fixed.md`: Renamed the admission limit panels of the Infrahub dashboard,
+  "In-Flight vs Pool Capacity" to "Running API Requests vs Admission Limit" and "Slot Pool Saturation"
+  to "Admission Limit Usage", and their descriptions now say that they do not show the Neo4j
+  connection pool.
+- `+connection-pool-dashboard-row.added.md`: Added the "Connection Pool" row to the Infrahub
+  dashboard, with the highest connection pool usage, the pool usage against the pool size of each
+  process, and the connection wait time at the selected percentile.
+- `+priority-queues-dashboard-row.added.md`: Added the "Priority Queues" row to the Infrahub
+  dashboard, with the flow run start delay p95 and the flow runs in progress of the `high`, `medium`
+  and `low` queues.

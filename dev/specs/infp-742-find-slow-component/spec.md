@@ -92,6 +92,12 @@ Decided by Daniel, after the approval:
   done in this feature, in the `python_sdk` submodule, with one pull request per ticket.
 - Q: Does the SDK add a dependency on OpenTelemetry? → A: No. It uses OpenTelemetry only when the
   caller's process already has it (FR-001).
+- Q: Should the stack stop collecting Neo4j metrics by default, because Neo4j Community has no metrics
+  endpoint? → A: No. The published Compose file cannot tell Community from Enterprise, and stopping by
+  default would remove the Neo4j metrics of every Enterprise operator. The stack keeps collecting from
+  `database:2004` by default, and a Community operator stops it with an empty
+  `INFRAHUB_NEO4J_METRICS_TARGET` (FR-025). The service behind `infrahub.opsmill.io` could set the value
+  per edition; that question is added to T036.
 
 ## Personas
 
@@ -471,7 +477,10 @@ is traced, then check that the default applies after 2 minutes.
 - **FR-024**: The Prefect CPU and memory panels MUST show data with the stack's own metrics, or MUST be
   removed (B2).
 - **FR-025**: On Neo4j Community, the Neo4j dashboard MUST NOT show panels that cannot have data and
-  MUST explain why. The stack MUST NOT collect from a Neo4j metrics endpoint that does not exist (B3).
+  MUST explain why. The stack MUST let the operator stop collecting from a Neo4j metrics endpoint that
+  does not exist (B3), with `INFRAHUB_NEO4J_METRICS_TARGET` set to an empty value. By default the stack
+  still collects from `database:2004`, so Neo4j Enterprise operators keep their Neo4j metrics after the
+  upgrade (decided by Daniel on 2026-10-16).
 
 **Ratio without restart (story 6)**
 
