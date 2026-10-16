@@ -13,13 +13,14 @@ import { REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
 interface PendingPushPermissions {
   canActOnPendingPushes: boolean;
   canReimportOnDefaultBranch: boolean;
+  isPending: boolean;
 }
 
 // These actions run on the default branch whatever branch the user selected, so the backend checks the rights held there.
 export function usePendingPushPermissions(): PendingPushPermissions {
   const auth = useAuth();
   const defaultBranch = useDefaultBranch();
-  const { data: permission } = useQuery({
+  const { data: permission, isPending: isPermissionPending } = useQuery({
     ...getObjectPermissionsQueryOptions({
       kind: REPOSITORY_KIND,
       branchName: defaultBranch?.name ?? "",
@@ -27,12 +28,15 @@ export function usePendingPushPermissions(): PendingPushPermissions {
     }),
     enabled: !!defaultBranch,
   });
-  const { data: canManageRepositories = false } = useHasGlobalPermission(MANAGE_REPOSITORIES);
-  const { data: canEditDefaultBranch = false } = useHasGlobalPermission(EDIT_DEFAULT_BRANCH);
+  const { data: canManageRepositories = false, isPending: isManageRepositoriesPending } =
+    useHasGlobalPermission(MANAGE_REPOSITORIES);
+  const { data: canEditDefaultBranch = false, isPending: isEditDefaultBranchPending } =
+    useHasGlobalPermission(EDIT_DEFAULT_BRANCH);
   const canUpdate = permission?.update.isAllowed ?? false;
 
   return {
     canActOnPendingPushes: canUpdate && canManageRepositories && canEditDefaultBranch,
     canReimportOnDefaultBranch: canUpdate && canEditDefaultBranch,
+    isPending: isPermissionPending || isManageRepositoriesPending || isEditDefaultBranchPending,
   };
 }

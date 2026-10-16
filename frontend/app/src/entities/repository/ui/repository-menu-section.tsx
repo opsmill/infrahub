@@ -98,18 +98,31 @@ export function RepositoryMenuSection({
   );
 }
 
+const ACCESS_DENIED_TOOLTIP = "Ask an administrator for access";
+const NOTHING_TO_PUSH_TOOLTIP = "Nothing to push";
+const UNREADABLE_PUSH_STATE_TOOLTIP = "Couldn't load the pending pushes. Reload the page";
+
 interface RepositoryPushMenuItemsProps {
   repositoryId: string;
   onAbandonPush: () => void;
 }
 
 function RepositoryPushMenuItems({ repositoryId, onAbandonPush }: RepositoryPushMenuItemsProps) {
-  const { data: state, isError } = useGetRepositoryPushState({ repositoryId });
-  const { canActOnPendingPushes } = usePendingPushPermissions();
+  const { data: state, isPending, isError } = useGetRepositoryPushState({ repositoryId });
+  const permissions = usePendingPushPermissions();
   // Until the state loads, nothing is known to be pending.
   const pushActions = getPushActions(state?.status ?? "none");
   // The backend refuses a retry when nothing is pending, so an unreadable state still allows one.
   const canRetry = isError || pushActions.canRetry;
+  // A failed reload keeps the last state, whose queue version the backend would refuse.
+  const canAbandon = !isError && pushActions.canAbandon;
+
+  const accessTooltip =
+    permissions.isPending || permissions.canActOnPendingPushes ? undefined : ACCESS_DENIED_TOOLTIP;
+  const retryTooltip =
+    accessTooltip ?? (isPending || canRetry ? undefined : NOTHING_TO_PUSH_TOOLTIP);
+  const abandonTooltip =
+    accessTooltip ?? getAbandonStateTooltip({ isPending, isError, canAbandon });
 
   const { mutate: retryPush } = useRetryPushMutation({
     onSuccess: async (result) => {
@@ -129,7 +142,8 @@ function RepositoryPushMenuItems({ repositoryId, onAbandonPush }: RepositoryPush
   return (
     <>
       <MenuItem
-        isDisabled={!canActOnPendingPushes || !canRetry}
+        isDisabled={!permissions.canActOnPendingPushes || !canRetry}
+        tooltip={retryTooltip}
         onAction={() => retryPush({ repositoryId })}
       >
         <Icon icon="mdi:upload" />
@@ -137,7 +151,8 @@ function RepositoryPushMenuItems({ repositoryId, onAbandonPush }: RepositoryPush
       </MenuItem>
 
       <MenuItem
-        isDisabled={!canActOnPendingPushes || !pushActions.canAbandon}
+        isDisabled={!permissions.canActOnPendingPushes || !canAbandon}
+        tooltip={abandonTooltip}
         onAction={onAbandonPush}
       >
         <Icon icon="mdi:upload-off" />
@@ -145,4 +160,16 @@ function RepositoryPushMenuItems({ repositoryId, onAbandonPush }: RepositoryPush
       </MenuItem>
     </>
   );
+}
+
+interface GetAbandonStateTooltipParams {
+  isPending: boolean;
+  isError: boolean;
+  canAbandon: boolean;
+}
+
+function getAbandonStateTooltip({ isPending, isError, canAbandon }: GetAbandonStateTooltipParams) {
+  if (isError) return UNREADABLE_PUSH_STATE_TOOLTIP;
+  if (isPending || canAbandon) return;
+  return NOTHING_TO_PUSH_TOOLTIP;
 }

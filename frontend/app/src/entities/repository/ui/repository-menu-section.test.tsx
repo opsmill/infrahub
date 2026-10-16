@@ -16,6 +16,7 @@ import { useImportCurrentCommitMutation } from "@/entities/repository/ui/queries
 import { useReimportLastCommitMutation } from "@/entities/repository/ui/queries/reimport-last-commit.mutation";
 
 import { render } from "../../../../tests/components/render";
+import { initPointerTracking } from "../../../../tests/components/utils";
 import { generateBranch } from "../../../../tests/fake/branch";
 import { generatePermission } from "../../../../tests/fake/permission";
 import { generateNodeSchema } from "../../../../tests/fake/schema";
@@ -436,6 +437,67 @@ describe("RepositoryMenuSection", () => {
     await expect
       .element(component.getByRole("menuitem", { name: "Abandon pending push" }))
       .toHaveAttribute("aria-disabled", "true");
+  });
+
+  test("disables Abandon pending push when a reload of the push state fails", async () => {
+    // GIVEN
+    vi.mocked(useGetRepositoryPushState).mockReturnValue({
+      data: refusedPush,
+      isPending: false,
+      isError: true,
+    } as unknown as ReturnType<typeof useGetRepositoryPushState>);
+
+    // WHEN
+    const component = await renderRepositoryMenu();
+
+    // THEN
+    await expect
+      .element(component.getByRole("menuitem", { name: "Abandon pending push" }))
+      .toHaveAttribute("aria-disabled", "true");
+  });
+
+  test.each([
+    {
+      itemName: "Retry push",
+      reason: "without the permission",
+      arrange: () => mockGlobalPermissions([EDIT_DEFAULT_BRANCH]),
+      tooltip: "Ask an administrator for access",
+    },
+    {
+      itemName: "Abandon pending push",
+      reason: "without the permission",
+      arrange: () => mockGlobalPermissions([EDIT_DEFAULT_BRANCH]),
+      tooltip: "Ask an administrator for access",
+    },
+    {
+      itemName: "Retry push",
+      reason: "when nothing is pending",
+      arrange: () => mockPushState(nothingPending),
+      tooltip: "Nothing to push",
+    },
+    {
+      itemName: "Abandon pending push",
+      reason: "when nothing is pending",
+      arrange: () => mockPushState(nothingPending),
+      tooltip: "Nothing to push",
+    },
+    {
+      itemName: "Abandon pending push",
+      reason: "when the push state cannot be read",
+      arrange: mockUnreadablePushState,
+      tooltip: "Couldn't load the pending pushes. Reload the page",
+    },
+  ])("explains why $itemName is disabled $reason", async ({ itemName, arrange, tooltip }) => {
+    // GIVEN
+    arrange();
+    const component = await renderRepositoryMenu();
+    await initPointerTracking(component.locator);
+
+    // WHEN
+    await component.getByRole("menuitem", { name: itemName }).hover();
+
+    // THEN
+    await expect.element(component.getByRole("tooltip", { name: tooltip })).toBeVisible();
   });
 
   test("disables Reimport current commit without update permission", async () => {
