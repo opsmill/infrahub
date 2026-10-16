@@ -49,7 +49,7 @@ function AppSidebarHeader() {
           focusVisibleStyle,
           "absolute bottom-0 left-1.75 -m-1 max-w-40 overflow-hidden rounded-md border border-transparent p-0.75",
           "transition-all duration-200 ease-linear",
-          "group-data-[state=collapsed]:max-w-8"
+          "group-data-[state=collapsed]:max-w-8.25"
         )}
       >
         <InfrahubLogo aria-hidden className="h-8 max-w-none" />
