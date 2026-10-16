@@ -52,6 +52,12 @@ class FlowRunMaintenance(Protocol):
         ...
 
 
+class FlowRunTagging(Protocol):
+    async def update_flow_run(self, flow_run_id: UUID, tags: list[str]) -> None:
+        """Replace the flow run's whole tag list."""
+        ...
+
+
 class FlowRunCancellationReading(Protocol):
     async def cancellation_requested(self, flow_run_id: UUID) -> bool:
         """Return whether a cancellation was ever recorded for the flow run.
@@ -70,6 +76,9 @@ class WriterPrefectClient(FlowRunArtifactWriting, Protocol): ...
 
 
 class RetentionPrefectClient(FlowRunQuerying, FlowRunMaintenance, Protocol): ...
+
+
+class BranchCleanupPrefectClient(FlowRunQuerying, FlowRunTagging, Protocol): ...
 
 
 class PrefectClientAdapter:
@@ -121,6 +130,9 @@ class PrefectClientAdapter:
 
     async def delete_flow_run(self, flow_run_id: UUID) -> None:
         await self.client.delete_flow_run(flow_run_id=flow_run_id)
+
+    async def update_flow_run(self, flow_run_id: UUID, tags: list[str]) -> None:
+        await self.client.update_flow_run(flow_run_id=flow_run_id, tags=tags)
 
     async def set_flow_run_state(self, flow_run_id: UUID, state: State, force: bool) -> StateType | None:
         result = await self.client.set_flow_run_state(flow_run_id=flow_run_id, state=state, force=force)
