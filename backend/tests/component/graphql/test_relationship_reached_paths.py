@@ -78,7 +78,6 @@ query {
 }
 """
 
-
 SFP_INSIDE_A_SPREAD_IN_AN_INLINE_FRAGMENT = """
 fragment PhysicalInterfaceSfp on TestingPhysicalInterface { sfp { node { serial_number { value } } } }
 
@@ -108,6 +107,15 @@ query {
         interfaces { edges { node {
             ... on TestingInterface { ... on TestingPhysicalInterface { sfp { node { serial_number { value } } } } }
         } } }
+    } } }
+}
+"""
+
+# The interface generic is the query root, and the SFP is read inside a fragment on one implementation.
+SFP_INSIDE_A_FRAGMENT_ON_A_GENERIC_ROOT = """
+query {
+    TestingInterface { edges { node {
+        ... on TestingPhysicalInterface { sfp { node { serial_number { value } } } }
     } } }
 }
 """
@@ -205,12 +213,28 @@ class TestReachedPathsFromQueryCarSchema(TestInfrahubApp):
             ),
         }
 
-    async def test_a_kind_read_at_a_root_and_through_a_relationship_widens(
+    async def test_a_kind_read_at_a_root_and_through_a_relationship_keeps_an_empty_chain_besides_its_chain(
         self, db: InfrahubDatabase, default_branch: Branch, car_schema: None
     ) -> None:
+        owner = registry.schema.get(name=TestKind.CAR, branch=default_branch).get_relationship("owner")
+        assert owner.identifier is not None
+
         result = await _reached_paths(db, default_branch, ROOT_AND_TRAVERSED)
 
-        assert result == {}
+        assert result == {
+            TestKind.PERSON: (
+                ReachedPath(hops=()),
+                ReachedPath(
+                    hops=(
+                        RelationshipHop(
+                            node_kind=TestKind.CAR,
+                            relationship_identifier=owner.identifier,
+                            relationship_direction=owner.direction,
+                        ),
+                    )
+                ),
+            )
+        }
 
 
 class TestReachedPathsFromQueryDeviceSchema(TestInfrahubApp):
@@ -278,6 +302,25 @@ class TestReachedPathsFromQueryDeviceSchema(TestInfrahubApp):
             TestKind.PHYSICAL_INTERFACE: (interface_chain,),
             TestKind.VIRTUAL_INTERFACE: (interface_chain,),
             TestKind.SFP: (sfp_chain,),
+        }
+
+    async def test_a_fragment_on_an_implementation_of_a_generic_root_reaches_from_the_root(
+        self, db: InfrahubDatabase, default_branch: Branch, device_schema: None
+    ) -> None:
+        physical_interface = registry.schema.get(name=TestKind.PHYSICAL_INTERFACE, branch=default_branch)
+        sfp = physical_interface.get_relationship("sfp")
+        assert sfp.identifier is not None
+
+        result = await _reached_paths(db, default_branch, SFP_INSIDE_A_FRAGMENT_ON_A_GENERIC_ROOT)
+
+        sfp_hop = RelationshipHop(
+            node_kind=TestKind.PHYSICAL_INTERFACE,
+            relationship_identifier=sfp.identifier,
+            relationship_direction=sfp.direction,
+        )
+        assert result == {
+            TestKind.PHYSICAL_INTERFACE: (ReachedPath(hops=()),),
+            TestKind.SFP: (ReachedPath(hops=(sfp_hop,)),),
         }
 
     async def test_a_named_fragment_spread_at_two_places_keeps_a_chain_for_each(

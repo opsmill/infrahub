@@ -56,6 +56,18 @@ IP_PATH = ReachedPath(
     )
 )
 
+# A device read at the root and through its ``peers`` relationship: a changed device walks back to the
+# devices listing it as a peer.
+PEER_PATH = ReachedPath(
+    hops=(
+        RelationshipHop(
+            node_kind="TestDevice",
+            relationship_identifier="device__peer",
+            relationship_direction=RelationshipDirection.OUTBOUND,
+        ),
+    )
+)
+
 NON_UNIQUE_TARGETS = EveryTarget(widening=Widening(reason=WideningReason.NON_UNIQUE_TARGETS))
 UNSCOPABLE_DERIVED_READ = EveryTarget(widening=Widening(reason=WideningReason.UNSCOPABLE_DERIVED_READ))
 
@@ -131,12 +143,24 @@ ASSESS_CASES = [
         readable_fields_by_kind={"TestCar": {"name"}, "TestElectricCar": {"name"}, "TestGazCar": {"name"}},
     ),
     AssessCase(
-        name="unique_targets_kind_read_at_root_and_through_a_relationship_widens",
+        name="unique_targets_kind_read_at_root_and_through_a_relationship_without_a_chain_widens",
         only_has_unique_targets=True,
         diff_summary=[node_diff(node_id="dev2", kind="TestDevice", branch=BRANCH, field_names=["name"])],
         expected=relationship_reached("TestDevice"),
         traversed_kinds={"TestDevice"},
         readable_fields_by_kind={"TestDevice": {"name", "peers"}},
+    ),
+    AssessCase(
+        name="unique_targets_kind_read_at_root_and_through_a_relationship_narrows_through_both_reads",
+        only_has_unique_targets=True,
+        diff_summary=[node_diff(node_id="dev2", kind="TestDevice", branch=BRANCH, field_names=["name"])],
+        expected=RelationshipReachedChanges(
+            direct_member_node_ids=[],
+            reached=[ReachedChange(node_ids=["dev2"], paths=(ReachedPath(hops=()), PEER_PATH))],
+        ),
+        traversed_kinds={"TestDevice"},
+        readable_fields_by_kind={"TestDevice": {"name", "peers"}},
+        reached_paths_by_kind={"TestDevice": (ReachedPath(hops=()), PEER_PATH)},
     ),
     AssessCase(
         name="a_traversed_kind_the_query_reads_no_field_from_is_skipped",

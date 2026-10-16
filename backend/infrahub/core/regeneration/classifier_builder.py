@@ -100,7 +100,8 @@ class QueryClassifierBuilder:
         reaches that peer in a way that cannot itself be narrowed, the derived chain alone would miss those
         readers, so the whole query widens to every target instead. A peer whose reading kind is itself
         relationship-reached carries a chain that stops at the reading kind, so it is extended with that kind's
-        chains back to the root.
+        chains back to the root. A peer the query also reads at a root keeps an empty chain besides the derived
+        one, so a change to it maps to itself and to the members reading it.
         """
         merged_readable = {kind: set(fields) for kind, fields in readable_fields_by_kind.items()}
         merged_traversed = set(traversed_kinds)
@@ -109,7 +110,7 @@ class QueryClassifierBuilder:
         for peer in dependencies.peers:
             already_traversed = peer.kind in traversed_kinds
             read_at_root = peer.kind in readable_fields_by_kind and not already_traversed
-            if read_at_root or (already_traversed and peer.kind not in reached_paths_by_kind):
+            if already_traversed and peer.kind not in reached_paths_by_kind:
                 widen = True
                 continue
             if peer.reading_kind in traversed_kinds:
@@ -122,6 +123,8 @@ class QueryClassifierBuilder:
                 )
             else:
                 peer_paths = (peer.path,)
+            if read_at_root:
+                peer_paths = (ReachedPath(hops=()), *peer_paths)
             merged_traversed.add(peer.kind)
             merged_readable.setdefault(peer.kind, set()).add(peer.field_name)
             # Two derived reads can resolve to the same peer path; keep each once so the member
