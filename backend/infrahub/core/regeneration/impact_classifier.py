@@ -72,9 +72,9 @@ class QueryImpactClassifier:
     to its members. A change on a kind reached through a relationship maps back only when the
     chains down to it were reconstructed; otherwise it widens to every target.
 
-    A kind read both at a root and through a relationship widens: the two read paths are
-    indistinguishable once a change is in hand, so narrowing would drop the members reached only
-    by the relationship.
+    When a query reads a kind both at a root and through a relationship, a change to it cannot be
+    traced to one of the two reads, so the kind narrows only through chains covering both: an empty
+    chain for the root read, which maps a changed node to itself, besides the relationship chains.
 
     ``depends_on_everything`` marks a query whose read surface cannot be pinned down at all -- a read
     of a derived value composed from a peer the read set never names -- so any relevant change widens
