@@ -11,15 +11,11 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import { useDefaultBranch } from "@/entities/branches/ui/hooks/use-default-branch";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import {
-  EDIT_DEFAULT_BRANCH,
-  type Permission,
-} from "@/entities/permission/domain/model/permission";
-import { useHasGlobalPermission } from "@/entities/permission/ui/queries/has-global-permission.query";
 import type {
   AbandonmentRecord,
   PushFailureCause,
 } from "@/entities/repository/domain/model/repository-push-state";
+import { usePendingPushPermissions } from "@/entities/repository/ui/hooks/use-pending-push-permissions";
 import { PendingMergeList } from "@/entities/repository/ui/pending-merge-list";
 import { useGetRepositoryPushState } from "@/entities/repository/ui/queries/get-repository-push-state.query";
 import { useImportCurrentCommitMutation } from "@/entities/repository/ui/queries/import-current-commit.mutation";
@@ -44,25 +40,18 @@ const REQUIRED_ACTION_BY_CAUSE: Record<PushFailureCause, string> = {
 
 interface RepositoryPushToRemoteCardProps {
   repositoryId: string;
-  permission: Permission;
 }
 
-export function RepositoryPushToRemoteCard({
-  repositoryId,
-  permission,
-}: RepositoryPushToRemoteCardProps) {
+export function RepositoryPushToRemoteCard({ repositoryId }: RepositoryPushToRemoteCardProps) {
   return (
     <Card>
       <CardHeader>Push to remote</CardHeader>
-      <RepositoryPushToRemoteState repositoryId={repositoryId} permission={permission} />
+      <RepositoryPushToRemoteState repositoryId={repositoryId} />
     </Card>
   );
 }
 
-function RepositoryPushToRemoteState({
-  repositoryId,
-  permission,
-}: RepositoryPushToRemoteCardProps) {
+function RepositoryPushToRemoteState({ repositoryId }: RepositoryPushToRemoteCardProps) {
   const { data: state, isPending, error } = useGetRepositoryPushState({ repositoryId });
 
   if (isPending) {
@@ -82,11 +71,7 @@ function RepositoryPushToRemoteState({
   }
 
   const lastAbandonment = state.lastAbandonment && (
-    <LastAbandonment
-      repositoryId={repositoryId}
-      record={state.lastAbandonment}
-      isUpdateAllowed={permission.update.isAllowed}
-    />
+    <LastAbandonment repositoryId={repositoryId} record={state.lastAbandonment} />
   );
 
   if (state.status === "none") {
@@ -136,12 +121,11 @@ function RepositoryPushToRemoteState({
 interface LastAbandonmentProps {
   repositoryId: string;
   record: AbandonmentRecord;
-  isUpdateAllowed: boolean;
 }
 
-function LastAbandonment({ repositoryId, record, isUpdateAllowed }: LastAbandonmentProps) {
+function LastAbandonment({ repositoryId, record }: LastAbandonmentProps) {
   const defaultBranch = useDefaultBranch();
-  const { data: canEditDefaultBranch = false } = useHasGlobalPermission(EDIT_DEFAULT_BRANCH);
+  const { canReimportOnDefaultBranch } = usePendingPushPermissions();
 
   const { mutate: importCurrentCommit, isPending } = useImportCurrentCommitMutation({
     onSuccess: async (result) => {
@@ -186,7 +170,7 @@ function LastAbandonment({ repositoryId, record, isUpdateAllowed }: LastAbandonm
           <Button
             size="sm"
             variant="outline"
-            isDisabled={!isUpdateAllowed || !canEditDefaultBranch || !defaultBranch}
+            isDisabled={!canReimportOnDefaultBranch || !defaultBranch}
             isPending={isPending}
             onPress={() =>
               defaultBranch && importCurrentCommit({ repositoryId, branchName: defaultBranch.name })

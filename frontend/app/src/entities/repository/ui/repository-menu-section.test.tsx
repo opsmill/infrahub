@@ -7,6 +7,7 @@ import {
   MANAGE_REPOSITORIES,
   type Permission,
 } from "@/entities/permission/domain/model/permission";
+import { getObjectPermissions } from "@/entities/permission/domain/use-cases/get-object-permissions";
 import { useHasGlobalPermission } from "@/entities/permission/ui/queries/has-global-permission.query";
 import type { RepositoryPushState } from "@/entities/repository/domain/model/repository-push-state";
 import { retryPush } from "@/entities/repository/domain/use-cases/retry-push";
@@ -26,6 +27,7 @@ vi.mock("@/entities/repository/ui/queries/get-repository-push-state.query");
 vi.mock("@/entities/repository/domain/use-cases/retry-push");
 vi.mock("@/entities/branches/ui/queries/get-branches.query");
 vi.mock("@/entities/permission/ui/queries/has-global-permission.query");
+vi.mock("@/entities/permission/domain/use-cases/get-object-permissions");
 
 const refusedPush: RepositoryPushState = {
   status: "action-required",
@@ -105,6 +107,7 @@ describe("RepositoryMenuSection", () => {
 
     mockPushState(refusedPush);
     mockGlobalPermissions(ALL_GLOBAL_PERMISSIONS);
+    vi.mocked(getObjectPermissions).mockResolvedValue(generatePermission());
     vi.mocked(retryPush).mockResolvedValue({ ok: true, taskId: "task-1" });
   });
 
@@ -345,53 +348,79 @@ describe("RepositoryMenuSection", () => {
     ["Retry push", "Abandon pending push"].flatMap((itemName) => [
       {
         itemName,
-        reason: "without update permission",
+        reason: "without update permission on the default branch",
         state: refusedPush,
-        permission: generatePermission({ update: false }),
+        defaultBranchPermission: generatePermission({ update: false }),
         globalPermissions: ALL_GLOBAL_PERMISSIONS,
       },
       {
         itemName,
         reason: "without the global permission to manage repositories",
         state: refusedPush,
-        permission: generatePermission(),
+        defaultBranchPermission: generatePermission(),
         globalPermissions: [EDIT_DEFAULT_BRANCH],
       },
       {
         itemName,
         reason: "without the global permission to edit the default branch",
         state: refusedPush,
-        permission: generatePermission(),
+        defaultBranchPermission: generatePermission(),
         globalPermissions: [MANAGE_REPOSITORIES],
       },
       {
         itemName,
         reason: "when nothing is pending",
         state: nothingPending,
-        permission: generatePermission(),
+        defaultBranchPermission: generatePermission(),
         globalPermissions: ALL_GLOBAL_PERMISSIONS,
       },
       {
         itemName,
         reason: "while the push state loads",
         state: undefined,
-        permission: generatePermission(),
+        defaultBranchPermission: generatePermission(),
         globalPermissions: ALL_GLOBAL_PERMISSIONS,
       },
     ])
-  )("disables $itemName $reason", async ({ itemName, state, permission, globalPermissions }) => {
-    // GIVEN
-    mockPushState(state);
-    mockGlobalPermissions(globalPermissions);
+  )(
+    "disables $itemName $reason",
+    async ({ itemName, state, defaultBranchPermission, globalPermissions }) => {
+      // GIVEN
+      mockPushState(state);
+      mockGlobalPermissions(globalPermissions);
+      vi.mocked(getObjectPermissions).mockResolvedValue(defaultBranchPermission);
 
-    // WHEN
-    const component = await renderRepositoryMenu({ permission });
+      // WHEN
+      const component = await renderRepositoryMenu();
 
-    // THEN
-    await expect
-      .element(component.getByRole("menuitem", { name: itemName }))
-      .toHaveAttribute("aria-disabled", "true");
-  });
+      // THEN
+      await vi.waitFor(() => expect(getObjectPermissions).toHaveBeenCalled());
+      await expect
+        .element(component.getByRole("menuitem", { name: itemName }))
+        .toHaveAttribute("aria-disabled", "true");
+    }
+  );
+
+  test.each(["Retry push", "Abandon pending push"])(
+    "enables %s from the update permission on the default branch while the selected branch denies it",
+    async (itemName) => {
+      // GIVEN
+      mockPushState(refusedPush);
+
+      // WHEN
+      const component = await renderRepositoryMenu({
+        permission: generatePermission({ update: false }),
+      });
+
+      // THEN
+      await expect
+        .element(component.getByRole("menuitem", { name: itemName }))
+        .not.toHaveAttribute("aria-disabled", "true");
+      expect(getObjectPermissions).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: "CoreRepository", branchName: "primary" })
+      );
+    }
+  );
 
   test("keeps Retry push and disables Abandon pending push when the push state cannot be read", async () => {
     // GIVEN

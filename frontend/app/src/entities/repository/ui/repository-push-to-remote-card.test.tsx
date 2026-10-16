@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
-import type { Permission } from "@/entities/permission/domain/model/permission";
+import { getObjectPermissions } from "@/entities/permission/domain/use-cases/get-object-permissions";
 import { useHasGlobalPermission } from "@/entities/permission/ui/queries/has-global-permission.query";
 import type {
   AbandonmentRecord,
@@ -19,6 +19,7 @@ vi.mock("@/entities/branches/ui/queries/get-branches.query");
 vi.mock("@/entities/repository/domain/use-cases/get-repository-push-state");
 vi.mock("@/entities/repository/domain/use-cases/import-current-commit");
 vi.mock("@/entities/permission/ui/queries/has-global-permission.query");
+vi.mock("@/entities/permission/domain/use-cases/get-object-permissions");
 
 const IMPORTS_PAUSED =
   "Imports from the remote default branch are paused until the pending pushes clear.";
@@ -77,8 +78,7 @@ const nothingPendingAfterAbandonment: RepositoryPushState = {
   lastAbandonment,
 };
 
-const renderCard = (permission: Permission = generatePermission()) =>
-  render(<RepositoryPushToRemoteCard repositoryId="repo-1" permission={permission} />);
+const renderCard = () => render(<RepositoryPushToRemoteCard repositoryId="repo-1" />);
 
 describe("RepositoryPushToRemoteCard", () => {
   beforeEach(() => {
@@ -94,6 +94,7 @@ describe("RepositoryPushToRemoteCard", () => {
     vi.mocked(useHasGlobalPermission).mockReturnValue({
       data: true,
     } as unknown as ReturnType<typeof useHasGlobalPermission>);
+    vi.mocked(getObjectPermissions).mockResolvedValue(generatePermission());
   });
 
   test("reads the push state from the default branch while another branch is selected", async () => {
@@ -305,14 +306,32 @@ describe("RepositoryPushToRemoteCard", () => {
       .toBeVisible();
   });
 
-  test("disables Reimport current commit without update permission", async () => {
+  test("enables Reimport current commit from the update permission on the default branch while another branch is selected", async () => {
     // GIVEN
     vi.mocked(getRepositoryPushState).mockResolvedValue(nothingPendingAfterAbandonment);
 
     // WHEN
-    const component = await renderCard(generatePermission({ update: false }));
+    const component = await renderCard();
 
     // THEN
+    await expect
+      .element(component.getByRole("button", { name: "Reimport current commit" }))
+      .toBeEnabled();
+    expect(getObjectPermissions).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "CoreRepository", branchName: "primary" })
+    );
+  });
+
+  test("disables Reimport current commit without update permission on the default branch", async () => {
+    // GIVEN
+    vi.mocked(getRepositoryPushState).mockResolvedValue(nothingPendingAfterAbandonment);
+    vi.mocked(getObjectPermissions).mockResolvedValue(generatePermission({ update: false }));
+
+    // WHEN
+    const component = await renderCard();
+
+    // THEN
+    await vi.waitFor(() => expect(getObjectPermissions).toHaveBeenCalled());
     await expect
       .element(component.getByRole("button", { name: "Reimport current commit" }))
       .toBeDisabled();
