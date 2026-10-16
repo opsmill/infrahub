@@ -7,7 +7,6 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.regeneration.models import ReachedPath, RelationshipHop
-from infrahub.core.schema import GenericSchema
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.constants import TestKind
@@ -57,6 +56,28 @@ GENERIC_PEER = """
 query { TestingDevice { edges { node { interfaces { edges { node { name { value } } } } } } } }
 """
 
+# The SFP is reached through a relationship that only the physical interface has, so the query selects
+# it inside a fragment on that kind.
+SFP_INSIDE_AN_INLINE_FRAGMENT = """
+query {
+    TestingDevice { edges { node {
+        interfaces { edges { node {
+            ... on TestingPhysicalInterface { sfp { node { serial_number { value } } } }
+        } } }
+    } } }
+}
+"""
+
+SFP_INSIDE_A_NAMED_FRAGMENT = """
+fragment PhysicalInterfaceSfp on TestingPhysicalInterface { sfp { node { serial_number { value } } } }
+
+query {
+    TestingDevice { edges { node {
+        interfaces { edges { node { ...PhysicalInterfaceSfp } } }
+    } } }
+}
+"""
+
 
 SFP_INSIDE_A_SPREAD_IN_AN_INLINE_FRAGMENT = """
 fragment PhysicalInterfaceSfp on TestingPhysicalInterface { sfp { node { serial_number { value } } } }
@@ -81,9 +102,34 @@ query {
 }
 """
 
+SFP_INSIDE_NESTED_INLINE_FRAGMENTS = """
+query {
+    TestingDevice { edges { node {
+        interfaces { edges { node {
+            ... on TestingInterface { ... on TestingPhysicalInterface { sfp { node { serial_number { value } } } } }
+        } } }
+    } } }
+}
+"""
+
+# One named fragment spread both under the device's interfaces and under an interface root.
+SFP_SPREAD_AT_TWO_PLACES = """
+fragment PhysicalInterfaceSfp on TestingPhysicalInterface { sfp { node { serial_number { value } } } }
+
+query {
+    TestingDevice { edges { node {
+        interfaces { edges { node { ...PhysicalInterfaceSfp } } }
+    } } }
+    TestingInterface { edges { node { ...PhysicalInterfaceSfp } } }
+}
+"""
+
 SFP_FRAGMENT_QUERIES = [
+    QueryCase(name="inline_fragment", query=SFP_INSIDE_AN_INLINE_FRAGMENT),
+    QueryCase(name="named_fragment", query=SFP_INSIDE_A_NAMED_FRAGMENT),
     QueryCase(name="spread_in_an_inline_fragment", query=SFP_INSIDE_A_SPREAD_IN_AN_INLINE_FRAGMENT),
     QueryCase(name="spread_in_a_named_fragment", query=SFP_INSIDE_A_SPREAD_IN_A_NAMED_FRAGMENT),
+    QueryCase(name="nested_inline_fragments", query=SFP_INSIDE_NESTED_INLINE_FRAGMENTS),
 ]
 
 
@@ -178,12 +224,10 @@ class TestReachedPathsFromQueryDeviceSchema(TestInfrahubApp):
         device = registry.schema.get(name=TestKind.DEVICE, branch=default_branch)
         interfaces = device.get_relationship("interfaces")
         assert interfaces.identifier is not None
-        interface_generic = registry.schema.get(name=TestKind.INTERFACE, branch=default_branch)
-        assert isinstance(interface_generic, GenericSchema)
 
         result = await _reached_paths(db, default_branch, GENERIC_PEER)
 
-        chain = ReachedPath(
+        interface_chain = ReachedPath(
             hops=(
                 RelationshipHop(
                     node_kind=TestKind.DEVICE,
@@ -192,7 +236,10 @@ class TestReachedPathsFromQueryDeviceSchema(TestInfrahubApp):
                 ),
             )
         )
-        assert result == dict.fromkeys(interface_generic.used_by, (chain,))
+        assert result == {
+            TestKind.PHYSICAL_INTERFACE: (interface_chain,),
+            TestKind.VIRTUAL_INTERFACE: (interface_chain,),
+        }
 
     @pytest.mark.parametrize("case", SFP_FRAGMENT_QUERIES, ids=lambda case: case.name)
     async def test_a_field_read_inside_a_fragment_is_in_the_read_set(
@@ -201,3 +248,61 @@ class TestReachedPathsFromQueryDeviceSchema(TestInfrahubApp):
         report = await _query_report(db, default_branch, case.query)
 
         assert report.requested_read[TestKind.SFP].attributes == {"serial_number"}
+
+    @pytest.mark.parametrize("case", SFP_FRAGMENT_QUERIES, ids=lambda case: case.name)
+    async def test_a_kind_reached_through_a_fragment_keeps_the_chain_through_it(
+        self, db: InfrahubDatabase, default_branch: Branch, device_schema: None, case: QueryCase
+    ) -> None:
+        device = registry.schema.get(name=TestKind.DEVICE, branch=default_branch)
+        interfaces = device.get_relationship("interfaces")
+        assert interfaces.identifier is not None
+        physical_interface = registry.schema.get(name=TestKind.PHYSICAL_INTERFACE, branch=default_branch)
+        sfp = physical_interface.get_relationship("sfp")
+        assert sfp.identifier is not None
+
+        result = await _reached_paths(db, default_branch, case.query)
+
+        interfaces_hop = RelationshipHop(
+            node_kind=TestKind.DEVICE,
+            relationship_identifier=interfaces.identifier,
+            relationship_direction=interfaces.direction,
+        )
+        sfp_hop = RelationshipHop(
+            node_kind=TestKind.PHYSICAL_INTERFACE,
+            relationship_identifier=sfp.identifier,
+            relationship_direction=sfp.direction,
+        )
+        interface_chain = ReachedPath(hops=(interfaces_hop,))
+        sfp_chain = ReachedPath(hops=(sfp_hop, interfaces_hop))
+        assert result == {
+            TestKind.PHYSICAL_INTERFACE: (interface_chain,),
+            TestKind.VIRTUAL_INTERFACE: (interface_chain,),
+            TestKind.SFP: (sfp_chain,),
+        }
+
+    async def test_a_named_fragment_spread_at_two_places_keeps_a_chain_for_each(
+        self, db: InfrahubDatabase, default_branch: Branch, device_schema: None
+    ) -> None:
+        device = registry.schema.get(name=TestKind.DEVICE, branch=default_branch)
+        interfaces = device.get_relationship("interfaces")
+        assert interfaces.identifier is not None
+        physical_interface = registry.schema.get(name=TestKind.PHYSICAL_INTERFACE, branch=default_branch)
+        sfp = physical_interface.get_relationship("sfp")
+        assert sfp.identifier is not None
+
+        result = await _reached_paths(db, default_branch, SFP_SPREAD_AT_TWO_PLACES)
+
+        interfaces_hop = RelationshipHop(
+            node_kind=TestKind.DEVICE,
+            relationship_identifier=interfaces.identifier,
+            relationship_direction=interfaces.direction,
+        )
+        sfp_hop = RelationshipHop(
+            node_kind=TestKind.PHYSICAL_INTERFACE,
+            relationship_identifier=sfp.identifier,
+            relationship_direction=sfp.direction,
+        )
+        assert set(result[TestKind.SFP]) == {
+            ReachedPath(hops=(sfp_hop,)),
+            ReachedPath(hops=(sfp_hop, interfaces_hop)),
+        }

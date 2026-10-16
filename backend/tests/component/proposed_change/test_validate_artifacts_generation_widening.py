@@ -37,7 +37,7 @@ query GetDeviceWithTags($ids: [ID!]!) {
 }
 """
 
-# Reads the tag name through an inline fragment, a hop that cannot be mapped back to the owning device.
+# Reads the tag name inside a fragment on BuiltinTag, which maps back to the owning device like a read outside the fragment.
 QUERY_UNIQUE_WITH_FRAGMENT_TAGS = """
 query GetDeviceWithFragmentTags($ids: [ID!]!) {
     TestNetworkDevice(ids: $ids) {
@@ -114,15 +114,12 @@ ARTIFACT_WIDENING_LOG_CASES = [
         expected_devices=DEVICES,
     ),
     ArtifactWideningLogCase(
-        name="change_on_a_related_kind_names_that_kind_not_target_uniqueness",
+        name="change_read_through_a_fragment_narrows_to_its_owner_and_logs_no_widening",
         definition_name="artifact-with-fragment-tags",
         changed_device=None,
         changed_kind=InfrahubKind.TAG,
-        expected_warnings=[
-            f"Artifact definition artifact-with-fragment-tags: the query reads {InfrahubKind.TAG} through a relationship, "
-            "and a change there cannot be traced back to specific targets. All targets will be processed."
-        ],
-        expected_devices=DEVICES,
+        expected_warnings=[],
+        expected_devices=["dev1"],
     ),
     ArtifactWideningLogCase(
         name="unscopable_derived_read_names_the_derived_read_not_target_uniqueness",
@@ -147,7 +144,7 @@ ARTIFACT_WIDENING_LOG_CASES = [
 
 
 class TestValidateArtifactsGenerationWidening(ArtifactRegenTestBase):
-    """The artifact validator explains in the task log why it processes every target."""
+    """The artifact validator logs why it processes every target, and logs nothing when it narrows."""
 
     @pytest.fixture(scope="class")
     async def dataset(
@@ -165,7 +162,8 @@ class TestValidateArtifactsGenerationWidening(ArtifactRegenTestBase):
         devices: dict[str, Node] = {}
         for name in DEVICES:
             device = await Node.init(db=db, schema="TestNetworkDevice")
-            await device.new(db=db, name=name, tags=[tag])
+            # Only the first device carries the tag, so a tag change maps back to that device alone.
+            await device.new(db=db, name=name, tags=[tag] if name == "dev1" else [])
             await device.save(db=db)
             devices[name] = device
 
