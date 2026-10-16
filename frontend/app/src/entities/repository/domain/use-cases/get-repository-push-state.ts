@@ -3,6 +3,7 @@ import {
   getRepositoryPushStateFromApi,
 } from "@/entities/repository/api/get-repository-push-state-from-api";
 import {
+  AbandonedPushSchema,
   PendingMergeQueueSchema,
   PushFailureCauseSchema,
   PushStatusSchema,
@@ -26,6 +27,13 @@ export const getRepositoryPushState: GetRepositoryPushState = async (params) => 
     throw new Error("Cannot read the pending pushes of this repository.");
   }
 
+  const lastAbandonedPush = AbandonedPushSchema.nullish().safeParse(
+    repository?.delivery_last_abandonment?.value
+  );
+  if (!lastAbandonedPush.success) {
+    throw new Error("Cannot read the last abandoned push of this repository.");
+  }
+
   // A value this page does not know still shows with the backend's label, and still asks the user to act.
   const status =
     PushStatusSchema.nullish().catch("action-required").parse(repository?.delivery_status?.value) ??
@@ -43,5 +51,7 @@ export const getRepositoryPushState: GetRepositoryPushState = async (params) => 
     causeLabel: repository?.delivery_failure_cause?.label ?? cause,
     error: repository?.delivery_error?.value ?? null,
     pendingMerges: queue.data?.entries ?? [],
+    queueVersion: queue.data?.version ?? 0,
+    lastAbandonedPush: lastAbandonedPush.data ?? null,
   };
 };

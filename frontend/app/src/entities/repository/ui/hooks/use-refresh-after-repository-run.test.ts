@@ -31,9 +31,16 @@ const COMMITS_KEY = [
   "commits",
 ];
 const BRANCH_STATUS_KEY = [...repositoryQueryKeys.branchStatuses(), { id: REPOSITORY_ID }];
+const PUSH_STATE_KEY = repositoriesQueryKeys.pushState({ repositoryId: REPOSITORY_ID });
 const REPOSITORY_OBJECT_KEY = ["objects", "main", null, "CoreRepository", REPOSITORY_ID];
 const OTHER_OBJECT_KEY = ["objects", "main", null, "InfraDevice", "device-1"];
-const SEEDED_KEYS = [COMMITS_KEY, BRANCH_STATUS_KEY, REPOSITORY_OBJECT_KEY, OTHER_OBJECT_KEY];
+const SEEDED_KEYS = [
+  COMMITS_KEY,
+  BRANCH_STATUS_KEY,
+  PUSH_STATE_KEY,
+  REPOSITORY_OBJECT_KEY,
+  OTHER_OBJECT_KEY,
+];
 
 const SYNC_AT_10 = generateLastRun({ operation: "SYNC", finishedAt: "2026-10-14T10:00:00Z" });
 const SYNC_AT_14 = generateLastRun({ operation: "SYNC", finishedAt: "2026-10-14T14:00:00Z" });
@@ -78,7 +85,7 @@ describe("useRefreshAfterRepositoryRun", () => {
     vi.resetAllMocks();
   });
 
-  it("refreshes the commits, branch statuses and this repository's details when a run finishes", async () => {
+  it("refreshes the commits, branch statuses, push state and this repository's details when a run finishes", async () => {
     // GIVEN
     const { answer, invalidatedKeys } = await renderRefresh(
       generateActivity({ activeRuns: [generateActiveRun()], lastRuns: [SYNC_AT_10] })
@@ -88,7 +95,12 @@ describe("useRefreshAfterRepositoryRun", () => {
     await answer(generateActivity({ lastRuns: [SYNC_AT_14] }));
 
     // THEN
-    expect(invalidatedKeys()).toEqual([COMMITS_KEY, BRANCH_STATUS_KEY, REPOSITORY_OBJECT_KEY]);
+    expect(invalidatedKeys()).toEqual([
+      COMMITS_KEY,
+      BRANCH_STATUS_KEY,
+      PUSH_STATE_KEY,
+      REPOSITORY_OBJECT_KEY,
+    ]);
   });
 
   it("refreshes them for a run that started and finished between two checks", async () => {
@@ -101,7 +113,12 @@ describe("useRefreshAfterRepositoryRun", () => {
     await answer(generateActivity({ lastRuns: [SYNC_AT_14] }));
 
     // THEN
-    expect(invalidatedKeys()).toEqual([COMMITS_KEY, BRANCH_STATUS_KEY, REPOSITORY_OBJECT_KEY]);
+    expect(invalidatedKeys()).toEqual([
+      COMMITS_KEY,
+      BRANCH_STATUS_KEY,
+      PUSH_STATE_KEY,
+      REPOSITORY_OBJECT_KEY,
+    ]);
   });
 
   it("refreshes them when the first recorded run finishes", async () => {
@@ -112,7 +129,12 @@ describe("useRefreshAfterRepositoryRun", () => {
     await answer(generateActivity({ lastRuns: [SYNC_AT_14] }));
 
     // THEN
-    expect(invalidatedKeys()).toEqual([COMMITS_KEY, BRANCH_STATUS_KEY, REPOSITORY_OBJECT_KEY]);
+    expect(invalidatedKeys()).toEqual([
+      COMMITS_KEY,
+      BRANCH_STATUS_KEY,
+      PUSH_STATE_KEY,
+      REPOSITORY_OBJECT_KEY,
+    ]);
   });
 
   it("refreshes nothing while no run has finished", async () => {

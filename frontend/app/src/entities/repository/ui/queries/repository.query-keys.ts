@@ -22,6 +22,10 @@ export interface RepositoryActivityKeyParams {
   repositoryId: string;
 }
 
+export interface RepositoryPushStateKeyParams {
+  repositoryId: string;
+}
+
 export const repositoriesQueryKeys = {
   all: ["repositories"] as const,
   repository: ({ repositoryId, branchName }: RepositoryKeyParams) =>
@@ -35,6 +39,9 @@ export const repositoriesQueryKeys = {
   // commit-log refetch a finished run triggers must not refetch it.
   activity: ({ repositoryId }: RepositoryActivityKeyParams) =>
     [...repositoriesQueryKeys.all, "activity", { repositoryId }] as const,
+  // Without the branch: only the default branch holds the push state.
+  pushState: ({ repositoryId }: RepositoryPushStateKeyParams) =>
+    [...repositoriesQueryKeys.all, "push-state", { repositoryId }] as const,
 } as const;
 
 export const repositoryQueryKeys = {
