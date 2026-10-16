@@ -1627,7 +1627,7 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6,<7" },
     { name = "redis", extras = ["hiredis"], specifier = "==6.0.0" },
     { name = "rich", specifier = ">=13,<14" },
-    { name = "starlette-exporter", specifier = ">=0.23,<0.24" },
+    { name = "starlette-exporter", specifier = ">=0.24,<0.25" },
     { name = "structlog", specifier = "==24.1.0" },
     { name = "tomli", marker = "python_full_version < '3.12'", specifier = ">=1.1.0" },
     { name = "typer", specifier = "==0.19.2" },
@@ -4227,15 +4227,15 @@ wheels = [
 
 [[package]]
 name = "starlette-exporter"
-version = "0.23.0"
+version = "0.24.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "prometheus-client" },
     { name = "starlette" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b9/74/173c13e7257a358f275938b767bb8c4ac6a750f199095e1b09e4e7468555/starlette_exporter-0.23.0.tar.gz", hash = "sha256:f80998db2d4a3462808a9bce56950046b113d3fab6ec6c20cb6de4431d974969", size = 22383, upload-time = "2024-06-26T04:05:28.55Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/33/6a/93a504757e44ec4f3ea1538c71e6ec20786045563e6e7f58b806d8b20b19/starlette_exporter-0.24.0.tar.gz", hash = "sha256:c09cb9be59d3d43f69d717c0108b90858ff226f33431493033803f8b7d3dec78", size = 24815, upload-time = "2026-07-29T04:04:07.603Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a8/70/935e2ae3ca22a90aec8c935570115bf978cfb58c90110c179d79762d699c/starlette_exporter-0.23.0-py3-none-any.whl", hash = "sha256:ea1a27f2aae48122931e2384a361a03e00261efbb4a665ce1ae2e46f29123d5e", size = 16034, upload-time = "2024-06-26T04:05:26.423Z" },
+    { url = "https://files.pythonhosted.org/packages/7c/ad/c64d699b6078c3e2b3f7795799eab6d2b60d64296328ac2f9904a0d4fbcc/starlette_exporter-0.24.0-py3-none-any.whl", hash = "sha256:fd6c3209473df4235d34c658e51979ef860bf5971422ecbfdfd9906ac3ed2b10", size = 16428, upload-time = "2026-07-29T04:04:06.601Z" },
 ]
 
 [[package]]

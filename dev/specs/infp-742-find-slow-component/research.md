@@ -35,7 +35,7 @@ not use them.
 | FR-012, FR-013, FR-013a masking | `infrahub.masking`, `infrahub.trace::MaskingSpanExporter`, `infrahub.log::LogMaskingFilter` and `mask_personal_data` | Marker is `***`; FR-013a needs `[MASKED]`. `infrahub.trace::mask_span` copies span events unchanged, so exception messages are not masked (critique E4). Log messages and exception text are not searched for URLs (critique E10) |
 | FR-035 log line when a process applies a ratio | `infrahub.message_bus.operations.refresh.settings::trace_sample_ratio` logs "Set the temporary trace sampling ratio" and "Cleared the temporary trace sampling ratio" | None |
 | FR-014, FR-015 buckets | Database, HTTP, lock and connection wait buckets | None |
-| FR-016 API and GraphQL requests in HTTP metrics (B13) | No | Cause not known (R4) |
+| FR-016 API and GraphQL requests in HTTP metrics (B13) | No | The draft has no fix; fixed by upgrading `starlette-exporter` (R4) |
 | FR-017 pool size, connection wait | `infrahub.database.connection_metrics::instrument_connection_pool` | None |
 | FR-018 metric values kept across worker restarts (B9) | `infrahub.serve.gunicorn_config::on_starting`, `child_exit`; `multiprocess_mode` on gauges | None |
 | FR-019 admission panel names (B5) | Dashboard JSON, test in `test_grafana_dashboards.py` | None |
@@ -92,14 +92,37 @@ not use them.
 
 ## R4. Why the HTTP metrics record no API or GraphQL request (B13)
 
-- **Decision**: Investigate as the first task of phase 2, with a failing test first: after a GraphQL
-  request and an `/api/…` request, both appear in `infrahub_request_duration_seconds` with their route
-  as `path`.
-- **What is known**: The HTTP metrics middleware (`starlette_exporter`, added in `infrahub.server` with
-  `group_paths=True`) drops a request when it cannot find the route after the response (design
-  document, B13). The admission middleware passes the request unchanged. The cause is not known.
-- **Alternatives considered**: Measure requests with a new Infrahub middleware. Rejected until the
-  cause is known.
+- **Decision**: Upgrade `starlette-exporter` from 0.23 to 0.24, which supports FastAPI 0.137 and later.
+  The pin in `pyproject.toml` becomes `>=0.24,<0.25`. Daniel approved this dependency change on
+  2026-10-16 (`AGENTS.md`, "Ask First"). It is done in layer IFC-3428. `uv.lock` was regenerated with
+  `uv` 0.11.8, the version CI uses (`.github/workflows/define-versions.yml`), and changes only
+  `starlette-exporter`; `uv lock --check` passes with 0.11.8 and with 0.13.1.
+- **Cause** (found on 2026-10-16): FastAPI 0.137 changed how `include_router` stores the routes of an
+  included router ([fastapi#15745](https://github.com/fastapi/fastapi/pull/15745)). Before, the
+  application router held a flat list of routes. Since 0.137, it holds one internal `_IncludedRouter`
+  entry per included router, and that entry has no `path` attribute. Infrahub moved to FastAPI 0.141.1
+  in commit `7e35e67b7`. After each response, `starlette_exporter` 0.23
+  (`starlette_exporter.middleware::get_matching_route_path`) walks `router.routes` to find the route of
+  the request. For a route of an included router, the matching entry is an `_IncludedRouter`, so the
+  lookup returns no path. `PrometheusMiddleware` then drops the request, because its option
+  `filter_unhandled_paths` is `True` by default. The `/api` router and the GraphQL router are both
+  included with `include_router`, so none of their requests is recorded. Routes declared on the
+  application itself, such as `/metrics` and the frontend route `/{rest_of_path:path}`, are recorded.
+  The admission middleware and the other middlewares are not involved.
+- **Evidence**: with the current code, `get_matching_route_path` returns `None` for `GET /api/config`
+  and `POST /graphql/main`, and `/metrics` for `GET /metrics`. The two cases of
+  `test_request_is_recorded_with_its_route_as_path` fail: the request count for `/api/config` and for
+  `/graphql/{branch_name:path}` stays at 0.
+- **Upstream fix**: `starlette-exporter` 0.24.0, released on 2026-07-29, "Support for FastAPI versions
+  0.137.0 and up" ([release notes](https://github.com/stephenhillier/starlette_exporter/releases/tag/v0.24.0),
+  [pull request #108](https://github.com/stephenhillier/starlette_exporter/pull/108),
+  [issue #107](https://github.com/stephenhillier/starlette_exporter/issues/107)). It reads the routes
+  through `iter_route_contexts`, which FastAPI 0.137.2 added for third-party tools. Checked after the
+  upgrade: the two cases of `test_request_is_recorded_with_its_route_as_path` pass, so 0.24.0 also finds
+  the routes of the `/api` routers, which are included in another included router.
+- **Alternatives considered**: set `filter_unhandled_paths=False`. Rejected: the requests are then
+  recorded with their raw path, one series per branch name or node ID. Measure requests with a new
+  Infrahub middleware. Rejected: the upstream fix exists.
 
 ## R5. The trace ID format (FR-004)
 

@@ -47,5 +47,6 @@ dead. A worker no longer deletes the files of the others when it starts (B9).
 ## HTTP request metrics (B13)
 
 After the fix, `infrahub_request_duration_seconds` and `infrahub_requests_total` count `/graphql/…`
-and `/api/…` requests with their route as `path` (`group_paths=True`). The cause of the current gap is
-not known ([research.md](../research.md) R4).
+and `/api/…` requests with their route as `path` (`group_paths=True`). Before this feature they were
+dropped, because `starlette-exporter` 0.23 cannot find the route of a router included with FastAPI
+0.137 or later. Upgrading `starlette-exporter` to 0.24 fixes it ([research.md](../research.md) R4).

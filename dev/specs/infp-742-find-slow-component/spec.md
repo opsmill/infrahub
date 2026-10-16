@@ -39,7 +39,6 @@ into spans and logs. Every slowness report then becomes an OpsMill investigation
 
 - The cost of tracing at the default sampling ratio of 0.1. It is not measured. The limit is in
   SC-006.
-- Why the HTTP metrics record no API or GraphQL request (B13). The cause is not known.
 - Which personal data Infrahub writes into logs today. The audit is
   [INFP-745](https://opsmill.atlassian.net/browse/INFP-745); its results add fields to FR-013.
 
@@ -84,6 +83,10 @@ of the API changes. Answers decided by Daniel.
   [research.md](research.md) R12.
 
 Decided by Daniel, after the approval:
+
+- Q: How is B13 fixed, the HTTP metrics that record no API or GraphQL request? → A: Upgrade
+  `starlette-exporter` from 0.23 to 0.24, in layer IFC-3428 (approved by Daniel on 2026-10-16). The
+  cause is a change in FastAPI 0.137 that version 0.23 does not support (research R4).
 
 - Q: Is the SDK work part of this feature's tasks, and how is it split? → A: Yes. Both SDK tickets are
   done in this feature, in the `python_sdk` submodule, with one pull request per ticket.

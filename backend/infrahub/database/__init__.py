@@ -41,9 +41,11 @@ from infrahub.exceptions import DatabaseError, QueryTimeoutError
 from infrahub.log import get_logger
 from infrahub.utils import InfrahubStringEnum
 
+from .connection_metrics import instrument_connection_pool
 from .load_signal_registry import get_reference_query_load_tracker
 from .metrics import (
     CONNECTION_POOL_USAGE,
+    CONNECTION_WAIT_METRICS,
     QUERY_EXECUTION_METRICS,
     REFERENCE_QUERY_NAME,
     TRANSACTION_RETRIES,
@@ -603,6 +605,11 @@ async def get_db(retry: int = 0) -> AsyncDriver:
         notifications_min_severity=NotificationMinimumSeverity.WARNING,
         max_connection_pool_size=config.SETTINGS.database.max_connection_pool_size,
         **pool_connection_kwargs,
+    )
+    instrument_connection_pool(
+        driver=driver,
+        pool_size=config.SETTINGS.database.max_connection_pool_size,
+        record_wait=CONNECTION_WAIT_METRICS.observe,
     )
 
     if config.SETTINGS.database.database_name not in validated_database:

@@ -1,6 +1,7 @@
 import contextlib
 import logging
 import os
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -44,6 +45,7 @@ from infrahub.workers.dependencies import (
     get_workflow,
     set_component_type,
 )
+from infrahub.workers.metrics import observe_start_delay, track_flow_run
 from infrahub.workers.reservations import CacheFlowRunReservations
 from infrahub.workers.submission import SubmissionWindow
 from infrahub.workers.utils import get_parameter_name, load_flow_function
@@ -223,9 +225,16 @@ class InfrahubWorkerAsync(BaseWorker):
         if task_status:
             task_status.started(True)
 
-        async with AsyncClientContext(httpx_settings={"verify": get_http().verify_tls()}) as ctx:
-            ctx._httpx_settings = None  # Hack to make all child task/flow runs use the same client
-            await run_flow_async(flow=flow_func, flow_run=flow_run, parameters=params, return_type="state")
+        observe_start_delay(
+            flow=flow_func.name,
+            queue=flow_run.work_queue_name,
+            expected_start_time=flow_run.expected_start_time,
+            started_at=datetime.now(UTC),
+        )
+        with track_flow_run(flow=flow_func.name, queue=flow_run.work_queue_name):
+            async with AsyncClientContext(httpx_settings={"verify": get_http().verify_tls()}) as ctx:
+                ctx._httpx_settings = None  # Hack to make all child task/flow runs use the same client
+                await run_flow_async(flow=flow_func, flow_run=flow_run, parameters=params, return_type="state")
 
         return InfrahubWorkerAsyncResult(status_code=0, identifier=str(flow_run.id))
 

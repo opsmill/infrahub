@@ -64,7 +64,7 @@ requires the single sign-on fixes to ship before tracing is turned on for more o
 **Purpose**: Test helpers that several stories use.
 
 - [x] T005 [P] Port `backend/tests/helpers/trace.py` from the draft (in-memory span exporter and tracer provider fixtures for tests)
-- [ ] T006 [P] Port `backend/tests/helpers/metrics.py` from the draft (helpers that read metric samples from the Prometheus registry)
+- [x] T006 [P] Port `backend/tests/helpers/metrics.py` from the draft (helpers that read metric samples from the Prometheus registry)
 
 **Checkpoint**: Test helpers exist; story phases can start.
 
@@ -156,21 +156,21 @@ and an `/api/…` request; open the Infrahub dashboard (quickstart, manual check
 
 ### Tests for User Story 3
 
-- [ ] T039 [P] [US3] Port `backend/tests/unit/serve/__init__.py`, `backend/tests/unit/serve/test_gunicorn_config.py` and `backend/tests/unit/test_metrics_multiprocess.py` from the draft: `on_starting` empties the metric folder once; `child_exit` marks the worker dead; a second worker keeps the values of the first; a dead worker no longer shows on `liveall` gauges (B9, FR-018)
-- [ ] T040 [P] [US3] Write a test in `backend/tests/unit/test_server_metrics.py` that sends a GraphQL request and an `/api/…` request through the application and finds both in `infrahub_request_duration_seconds` with their route as `path`; it must fail on `develop` (B13, FR-016, research R4)
-- [ ] T041 [P] [US3] Port the bucket tests from the draft `backend/tests/unit/test_server_metrics.py`, `backend/tests/unit/database/test_metrics.py` and `backend/tests/unit/test_lock.py`: every new limit of [contracts/metrics.md](contracts/metrics.md) appears as an `le` label, and a 30-second value is counted in `le="30"` (FR-014)
-- [ ] T042 [P] [US3] Port `backend/tests/unit/database/test_connection_metrics.py` from the draft: the pool size gauge is set; each acquisition records its wait; a failure while recording is logged and the acquisition still returns; the test fails if the driver pool has no `acquire` method (FR-017)
+- [x] T039 [P] [US3] Port `backend/tests/unit/serve/__init__.py`, `backend/tests/unit/serve/test_gunicorn_config.py` and `backend/tests/unit/test_metrics_multiprocess.py` from the draft: `on_starting` empties the metric folder once; `child_exit` marks the worker dead; a second worker keeps the values of the first; a dead worker no longer shows on `liveall` gauges (B9, FR-018)
+- [x] T040 [P] [US3] Write a test in `backend/tests/unit/test_server_metrics.py` that sends a GraphQL request and an `/api/…` request through the application and finds both in `infrahub_request_duration_seconds` with their route as `path`; it must fail on `develop` (B13, FR-016, research R4)
+- [x] T041 [P] [US3] Port the bucket tests from the draft `backend/tests/unit/test_server_metrics.py`, `backend/tests/unit/database/test_metrics.py` and `backend/tests/unit/test_lock.py`: every new limit of [contracts/metrics.md](contracts/metrics.md) appears as an `le` label, and a 30-second value is counted in `le="30"` (FR-014)
+- [x] T042 [P] [US3] Port `backend/tests/unit/database/test_connection_metrics.py` from the draft: the pool size gauge is set; each acquisition records its wait; a failure while recording is logged and the acquisition still returns; the test fails if the driver pool has no `acquire` method (FR-017)
 
 ### Implementation for User Story 3
 
-- [ ] T043 [US3] Create `backend/infrahub/serve/gunicorn_config.py` hooks `on_starting` and `child_exit` from the draft, keeping the existing settings of that file, and remove the deletion of metric files from `backend/infrahub/serve/worker.py` (B9, FR-018; research R10)
-- [ ] T044 [US3] Add `multiprocess_mode` to the gauges listed in [contracts/metrics.md](contracts/metrics.md) "Changed multiprocess modes", in `backend/infrahub/database/metrics.py`, `backend/infrahub/worker.py` and `backend/infrahub/api/admission/metrics.py`, as the draft does, and replace the old multiprocess comment in the admission metrics with the draft's one-sentence comment (FR-018)
-- [ ] T045 [US3] Find the cause of B13 in `backend/infrahub/server.py` (the `PrometheusMiddleware` setup and the middlewares around it), record it in [research.md](research.md) R4, and fix it so T040 passes (FR-016)
-- [ ] T046 [US3] Change the buckets: `REQUEST_DURATION_BUCKETS` in `backend/infrahub/server.py`, `infrahub_db_query_execution_seconds` in `backend/infrahub/database/metrics.py`, and both lock histograms in `backend/infrahub/lock.py`, with the values of [contracts/metrics.md](contracts/metrics.md) (FR-014)
-- [ ] T047 [US3] Port `CONNECTION_POOL_SIZE` and `CONNECTION_WAIT_METRICS` to `backend/infrahub/database/metrics.py`, create `backend/infrahub/database/connection_metrics.py` with `instrument_connection_pool` from the draft, and call it where the draft does in `backend/infrahub/database/__init__.py` (FR-017)
+- [x] T043 [US3] Create `backend/infrahub/serve/gunicorn_config.py` hooks `on_starting` and `child_exit` from the draft, keeping the existing settings of that file, and remove the deletion of metric files from `backend/infrahub/serve/worker.py` (B9, FR-018; research R10)
+- [x] T044 [US3] Add `multiprocess_mode` to the gauges listed in [contracts/metrics.md](contracts/metrics.md) "Changed multiprocess modes", in `backend/infrahub/database/metrics.py`, `backend/infrahub/worker.py` and `backend/infrahub/api/admission/metrics.py`, as the draft does, and replace the old multiprocess comment in the admission metrics with the draft's one-sentence comment (FR-018)
+- [x] T045 [US3] Find the cause of B13 in `backend/infrahub/server.py` (the `PrometheusMiddleware` setup and the middlewares around it), record it in [research.md](research.md) R4, and fix it so T040 passes (FR-016) (Done differently: the cause is in a dependency, so the fix is the `starlette-exporter` upgrade to 0.24 in `pyproject.toml` and `uv.lock`, approved by Daniel on 2026-10-16; see R4.)
+- [x] T046 [US3] Change the buckets: `REQUEST_DURATION_BUCKETS` in `backend/infrahub/server.py`, `infrahub_db_query_execution_seconds` in `backend/infrahub/database/metrics.py`, and both lock histograms in `backend/infrahub/lock.py`, with the values of [contracts/metrics.md](contracts/metrics.md) (FR-014)
+- [x] T047 [US3] Port `CONNECTION_POOL_SIZE` and `CONNECTION_WAIT_METRICS` to `backend/infrahub/database/metrics.py`, create `backend/infrahub/database/connection_metrics.py` with `instrument_connection_pool` from the draft, and call it where the draft does in `backend/infrahub/database/__init__.py` (FR-017)
 - [ ] T048 [US3] In `development/grafana/provisioning/dashboards/infrahub_monitoring.json`, port the "Connection Pool" row from the draft (pool usage against pool size per process, connection wait p95), the renamed admission panels "Running API Requests vs Admission Limit" and "Admission Limit Usage" with "This is not the Neo4j connection pool" in their descriptions (B5, FR-019), and the duration panels corrected for the new highest buckets (FR-015); do not port the "Redis" row
-- [ ] T049 [P] [US3] (Write the text in "Changelog entries for the top layer", not in `changelog/`; created by T095.) Add changelog fragments: port `+longer-duration-buckets.changed.md`, `+metric-files-kept-on-worker-start.fixed.md` and `+admission-panel-names.fixed.md` from the draft; port `+connection-pool-and-redis-metrics.added.md` as `+connection-pool-metrics.added.md` without the Redis part; add a `fixed` fragment for API and GraphQL requests in the HTTP metrics (B13)
-- [ ] T050 [US3] Run T039 to T042 and `uv run invoke format lint`
+- [x] T049 [P] [US3] (Write the text in "Changelog entries for the top layer", not in `changelog/`; created by T095.) Add changelog fragments: port `+longer-duration-buckets.changed.md`, `+metric-files-kept-on-worker-start.fixed.md` and `+admission-panel-names.fixed.md` from the draft; port `+connection-pool-and-redis-metrics.added.md` as `+connection-pool-metrics.added.md` without the Redis part; add a `fixed` fragment for API and GraphQL requests in the HTTP metrics (B13)
+- [x] T050 [US3] Run T039 to T042 and `uv run invoke format lint`
 
 **Checkpoint**: Story 3 is complete and testable on its own.
 
@@ -186,15 +186,15 @@ queue; the dashboard shows a "Priority queues" row (FR-020, FR-021).
 
 ### Tests for User Story 4
 
-- [ ] T051 [P] [US4] Port `backend/tests/unit/workers/test_metrics.py` from the draft: the delay equals start time minus expected start time and is never negative; no value without an expected start time; the gauge rises and falls, also when the run raises; a run on `high` is counted with `queue="high"`; an empty queue gives `unknown`
+- [x] T051 [P] [US4] Port `backend/tests/unit/workers/test_metrics.py` from the draft: the delay equals start time minus expected start time and is never negative; no value without an expected start time; the gauge rises and falls, also when the run raises; a run on `high` is counted with `queue="high"`; an empty queue gives `unknown`
 
 ### Implementation for User Story 4
 
-- [ ] T052 [US4] Create `backend/infrahub/workers/metrics.py` from the draft (`FLOW_RUN_START_DELAY`, `FLOW_RUNS_IN_PROGRESS`, `observe_start_delay`, `track_flow_run`) (FR-020)
-- [ ] T053 [US4] In `backend/infrahub/workers/infrahub_async.py`, port the calls to `observe_start_delay` and `track_flow_run` around the flow run, as the draft does (FR-020)
+- [x] T052 [US4] Create `backend/infrahub/workers/metrics.py` from the draft (`FLOW_RUN_START_DELAY`, `FLOW_RUNS_IN_PROGRESS`, `observe_start_delay`, `track_flow_run`) (FR-020)
+- [x] T053 [US4] In `backend/infrahub/workers/infrahub_async.py`, port the calls to `observe_start_delay` and `track_flow_run` around the flow run, as the draft does (FR-020)
 - [ ] T054 [US4] In `development/grafana/provisioning/dashboards/infrahub_monitoring.json`, port the "Priority Queues" row from the draft (start delay p95 and runs in progress per queue) (FR-021); this file is also changed by T048 and T062, so do not run these tasks in parallel
-- [ ] T055 [P] [US4] (Write the text in "Changelog entries for the top layer", not in `changelog/`; created by T095.) Port `changelog/+task-worker-queue-metrics.added.md` from the draft
-- [ ] T056 [US4] Run T051 and `uv run invoke format lint`
+- [x] T055 [P] [US4] (Write the text in "Changelog entries for the top layer", not in `changelog/`; created by T095.) Port `changelog/+task-worker-queue-metrics.added.md` from the draft
+- [x] T056 [US4] Run T051 and `uv run invoke format lint`
 
 **Checkpoint**: Story 4 is complete and testable on its own.
 
@@ -324,13 +324,18 @@ infrahub-sdk-python: infrahub-develop ← S1 ← S2
   B1 and B2 depend on nothing else and can merge early. A2 is fully tested only with S1, and A3 is
   fully used only with S2, so a slow SDK review blocks only the top of the stack. C1 is last.
 - Merging: bottom up, with `gh stack merge <PR> --yes`, which merges that pull request and every
-  unmerged one below it. Reviews of all layers can run at the same time.
+  unmerged one below it.
+- Review: a layer is marked ready for review when the layer below it is approved (decided by Daniel on
+  2026-10-16). The spec layer and IFC-3425 merge together, so both were marked ready at once. Each
+  pull request shows only its own diff, so several layers can be under review at the same time.
+  Before marking a layer ready, run `gh stack sync` and check that its CI passes.
 - A fix in a lower layer is made in that layer, then `gh stack rebase --upstack` replays the layers
   above. Each layer ticks its own tasks in this file and records its own spec updates.
 - A2 is tested with `python_sdk` on the S1 branch; it does not wait for S1 to merge. Only C1 commits
   the `python_sdk` pointer, after S1 and S2 merge. Then Daniel runs `opsmill-dev-guiding-manual-tests`
   (T093).
-- Each pull request opens as a draft (`gh stack submit --auto`). Force-pushing commands
+- Each pull request opens as a draft (`gh stack submit --auto`), after Daniel's manual test of the
+  layer. Force-pushing commands
   (`gh stack sync`, `gh stack rebase`) run only while it is a draft, or after its review has landed.
   Push and open pull requests only when Daniel asks.
 - IFC-3425 also fixes [IFC-3330](https://opsmill.atlassian.net/browse/IFC-3330).
@@ -424,3 +429,23 @@ Created by T095 in IFC-3430. Each layer adds its entries here, with the file nam
   attributes, including exception events, so that tokens, passwords, secrets, email addresses, user
   names, client IP addresses and URL query strings are exported as `[MASKED]`, while URL paths, Cypher
   text and query names stay readable.
+
+### IFC-3428 (layer 2)
+
+- `+longer-duration-buckets.changed.md`: Changed the database query and lock duration metrics to record
+  values up to 300 seconds, and the HTTP request duration metric up to 1200 seconds, instead of stopping
+  at 1 second for queries, 5 or 10 seconds for locks and 0.5 seconds for HTTP requests.
+- `+metric-files-kept-on-worker-start.fixed.md`: Fixed the API server metrics so that starting a worker
+  process no longer deletes the values recorded by the other running worker processes, and gauges no
+  longer report worker processes that stopped. gunicorn must start with the Infrahub configuration
+  file (`--config backend/infrahub/serve/gunicorn_config.py`), as in the Docker Compose files and the
+  Helm charts.
+- `+connection-pool-metrics.added.md`: Added the `infrahub_db_connection_pool_size` metric, the
+  maximum number of database connections of each process, and the `infrahub_db_connection_wait_seconds`
+  metric, the time each query waits to get a connection from the pool.
+- `+task-worker-queue-metrics.added.md`: Added the `infrahub_task_flow_run_start_delay_seconds` and
+  `infrahub_task_flow_runs_in_progress` task worker metrics, per flow and priority queue.
+- `+http-metrics-api-graphql-requests.fixed.md`: Fixed the HTTP request metrics
+  `infrahub_request_duration_seconds` and `infrahub_requests_total`, which recorded no request to
+  `/api/…` or `/graphql/…` since the upgrade to FastAPI 0.141; these requests are now recorded with
+  their route as `path`. The fix upgrades `starlette-exporter` to 0.24.
