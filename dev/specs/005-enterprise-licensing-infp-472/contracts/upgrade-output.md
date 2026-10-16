@@ -44,6 +44,7 @@ License: could not be verified (bad_signature). Check INFRAHUB_LICENSE_KEY on th
 
 - Nothing is printed when the state is `not_required`.
 - Dates show the last day covered (`ends_at` minus one second), in UTC.
+- When fewer than one whole day has passed since the end (`days_since_expiry` is 0), the count reads "today" instead of "0 days ago", as the About dialog's "expired today".
 - The command never prompts because of the license and never changes its exit code because of it.
 - An error while building the section is logged and the section is skipped.
 - The key itself is never printed.

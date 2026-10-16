@@ -2535,6 +2535,23 @@
                 "type": "object",
                 "title": "AttributeParametersWrite"
             },
+            "BannerAPI": {
+                "properties": {
+                    "audience": {
+                        "$ref": "#/components/schemas/NoticeAudience"
+                    },
+                    "dismissible": {
+                        "type": "boolean",
+                        "title": "Dismissible"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "audience",
+                    "dismissible"
+                ],
+                "title": "BannerAPI"
+            },
             "Body_upload_file_api_storage_upload_file_post": {
                 "properties": {
                     "file": {
@@ -4260,12 +4277,24 @@
                     "version": {
                         "type": "string",
                         "title": "Version"
+                    },
+                    "license": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/LicenseInfoAPI"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "License state and details, null unless the session is signed in"
                     }
                 },
                 "type": "object",
                 "required": [
                     "deployment_id",
-                    "version"
+                    "version",
+                    "license"
                 ],
                 "title": "InfoAPI"
             },
@@ -4480,6 +4509,191 @@
                 },
                 "type": "object",
                 "title": "LDAPInfo"
+            },
+            "LicenseFailureReason": {
+                "type": "string",
+                "enum": [
+                    "malformed",
+                    "bad_signature",
+                    "unknown_key",
+                    "wrong_issuer",
+                    "wrong_product",
+                    "internal_error"
+                ],
+                "title": "LicenseFailureReason",
+                "description": "Why a supplied license could not be verified; also exposed to API clients."
+            },
+            "LicenseInfoAPI": {
+                "properties": {
+                    "state": {
+                        "$ref": "#/components/schemas/LicenseState"
+                    },
+                    "reason": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/LicenseFailureReason"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Why the license could not be verified, set only when invalid"
+                    },
+                    "license_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "License Id"
+                    },
+                    "license_type": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "License Type"
+                    },
+                    "customer_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Customer Name"
+                    },
+                    "product_tier": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Product Tier"
+                    },
+                    "support_tier": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Support Tier"
+                    },
+                    "starts_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Starts At"
+                    },
+                    "ends_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Ends At",
+                        "description": "First instant the license is no longer valid"
+                    },
+                    "days_remaining": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Days Remaining",
+                        "description": "Whole days until the license ends, rounded up"
+                    },
+                    "days_since_expiry": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Days Since Expiry",
+                        "description": "Whole days since the license ended, rounded down"
+                    },
+                    "notice_mode": {
+                        "$ref": "#/components/schemas/NoticeMode"
+                    },
+                    "enforcing_release": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Enforcing Release",
+                        "description": "Release in which every user starts seeing license problem notices, when known"
+                    },
+                    "banner": {
+                        "$ref": "#/components/schemas/BannerAPI"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "state",
+                    "reason",
+                    "license_id",
+                    "license_type",
+                    "customer_name",
+                    "product_tier",
+                    "support_tier",
+                    "starts_at",
+                    "ends_at",
+                    "days_remaining",
+                    "days_since_expiry",
+                    "notice_mode",
+                    "enforcing_release",
+                    "banner"
+                ],
+                "title": "LicenseInfoAPI"
+            },
+            "LicenseState": {
+                "type": "string",
+                "enum": [
+                    "not_required",
+                    "unlicensed",
+                    "invalid",
+                    "not_yet_valid",
+                    "expired",
+                    "expiring",
+                    "valid"
+                ],
+                "title": "LicenseState",
+                "description": "The single license state derived for a moment in time; also exposed to API clients and telemetry."
             },
             "ListAttributeParametersRead": {
                 "properties": {
@@ -5994,6 +6208,24 @@
                     "namespace"
                 ],
                 "title": "NodeSchemaWrite"
+            },
+            "NoticeAudience": {
+                "type": "string",
+                "enum": [
+                    "none",
+                    "super_admins",
+                    "all_users"
+                ],
+                "title": "NoticeAudience"
+            },
+            "NoticeMode": {
+                "type": "string",
+                "enum": [
+                    "quiet",
+                    "enforce"
+                ],
+                "title": "NoticeMode",
+                "description": "Release-wide rule for license notices: super-admins only and no header, or enforced for every user."
             },
             "NumberAttributeParametersRead": {
                 "properties": {

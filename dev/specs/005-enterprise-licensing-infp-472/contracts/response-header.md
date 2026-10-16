@@ -20,5 +20,6 @@ X-Infrahub-License-Status: expired
 
 - One value, the state name. Clients map it to their own message.
 - Error responses (4xx, 5xx) on eligible paths carry it too.
-- It is sent whatever the authentication, including to callers who are not signed in. This is deliberate: it carries only the state, never the customer name or any other license detail.
+- It is sent whatever the authentication, including to callers who are not signed in. This is deliberate: it carries only the state, never the customer name, the failure reason or any other license detail.
+- It is the one deliberate place where a caller who is not signed in sees the state: `GET /api/info` gives such callers `license: null` ([api-info.md](api-info.md)).
 - If computing the notice raises, the response is sent without the header and the error is logged.

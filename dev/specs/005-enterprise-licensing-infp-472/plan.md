@@ -44,7 +44,7 @@ Add the community side of Infrahub Enterprise licensing: a replaceable `LicenseS
 - **V. Query Performance & Efficiency**: PASS. No queries added.
 - **VI. Security & Input Boundaries**:
   - PASS. The key is configuration input read only by the Enterprise service; this repository never logs, returns or reports it (FR-012, enforced by a test).
-  - `/api/info` keeps its sign-in requirement; `/api/config` stays license-free.
+  - `/api/info` returns the license object to signed-in sessions only; anonymous callers, allowed by default through `main.allow_anonymous_access`, get `license: null`. `/api/config` stays license-free.
   - Users see short reason codes; tracebacks stay in logs.
   - The dependency change adds no package (research R11).
 - **VII. Simplicity & Maintainability**: PASS. One abstract service with a community default, the same pattern as LDAP and log forwarding. The second implementation lives in the Enterprise package by design. No configurability beyond the one key setting; the release mode is a constant owned by Enterprise.
