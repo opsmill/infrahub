@@ -44,6 +44,7 @@ export function AbandonRepositoryPushModal({
   return (
     <ModalDanger
       title="Abandon pending push"
+      className="w-lg"
       description={
         <Col className="gap-3">
           <p className="text-foreground">
