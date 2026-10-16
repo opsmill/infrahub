@@ -20,7 +20,7 @@ import { usePendingPushPermissions } from "@/entities/repository/ui/hooks/use-pe
 import { PendingMergeList } from "@/entities/repository/ui/pending-merge-list";
 import { useGetRepositoryPushState } from "@/entities/repository/ui/queries/get-repository-push-state.query";
 import { useImportCurrentCommitMutation } from "@/entities/repository/ui/queries/import-current-commit.mutation";
-import { toastTaskStarted } from "@/entities/repository/ui/toast-task-started";
+import { toastTaskStarted } from "@/entities/tasks/ui/toast-task-started";
 
 const REQUIRED_ACTION_BY_CAUSE: Record<PushFailureCause, string> = {
   "remote-unreachable": "Wait, or retry once the remote is reachable.",

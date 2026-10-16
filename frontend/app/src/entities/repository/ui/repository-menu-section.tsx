@@ -15,9 +15,9 @@ import { useGetRepositoryPushState } from "@/entities/repository/ui/queries/get-
 import { useImportCurrentCommitMutation } from "@/entities/repository/ui/queries/import-current-commit.mutation";
 import { useReimportLastCommitMutation } from "@/entities/repository/ui/queries/reimport-last-commit.mutation";
 import { useRetryPushMutation } from "@/entities/repository/ui/queries/retry-push.mutation";
-import { toastTaskStarted } from "@/entities/repository/ui/toast-task-started";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
+import { toastTaskStarted } from "@/entities/tasks/ui/toast-task-started";
 
 interface RepositoryMenuSectionProps {
   repositoryId: string;

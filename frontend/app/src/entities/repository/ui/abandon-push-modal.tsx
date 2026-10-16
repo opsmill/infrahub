@@ -9,7 +9,7 @@ import { useDefaultBranch } from "@/entities/branches/ui/hooks/use-default-branc
 import { PendingMergeList } from "@/entities/repository/ui/pending-merge-list";
 import { useAbandonPushMutation } from "@/entities/repository/ui/queries/abandon-push.mutation";
 import { useGetRepositoryPushState } from "@/entities/repository/ui/queries/get-repository-push-state.query";
-import { toastTaskStarted } from "@/entities/repository/ui/toast-task-started";
+import { toastTaskStarted } from "@/entities/tasks/ui/toast-task-started";
 
 interface AbandonPushModalProps {
   repositoryId: string;

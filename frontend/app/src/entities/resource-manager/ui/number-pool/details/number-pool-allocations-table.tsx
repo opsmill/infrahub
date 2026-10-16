@@ -20,7 +20,7 @@ import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 import { formatNumberDisplay } from "@/shared/utils/number";
 
-import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
+import { useDefaultBranch } from "@/entities/branches/ui/hooks/use-default-branch";
 import { getBranchDetailsUrl } from "@/entities/branches/ui/routing/branch-urls";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import type {
@@ -134,12 +134,12 @@ export function NumberPoolAllocationsTable({
     division,
     filters,
   });
-  const { data: branches } = useGetBranches();
+  const defaultBranch = useDefaultBranch();
   const { schema: nodeSchema } = useSchema(nodeKind);
 
   if (error) return <ErrorScreen message={error.message} />;
 
-  const defaultBranchName = branches?.find((branch) => branch.is_default)?.name;
+  const defaultBranchName = defaultBranch?.name;
   const allocations = data?.pages.flat() ?? [];
   const showRangeColumn = selectedRange === null && ranges.length > 1;
   const rangeById = new Map(ranges.map((range) => [range.id, range]));
