@@ -171,18 +171,20 @@ class _RaisingChangelogCollector:
 
 
 class _RecordingCollectorFactory:
-    """Hands out one collector and records the diff and branch it was asked to collect for."""
+    """Hands out one collector and records the diff and branches it was asked to collect for."""
 
     def __init__(self, collector: _ProbingChangelogCollector | _RaisingChangelogCollector) -> None:
         self._collector = collector
         self.diff: EnrichedDiffRoot | None = None
         self.branch: Branch | None = None
+        self.label_branch: Branch | None = None
 
     def __call__(
-        self, *, diff: EnrichedDiffRoot, db: InfrahubDatabase, branch: Branch
+        self, *, diff: EnrichedDiffRoot, db: InfrahubDatabase, branch: Branch, label_branch: Branch
     ) -> _ProbingChangelogCollector | _RaisingChangelogCollector:
         self.diff = diff
         self.branch = branch
+        self.label_branch = label_branch
         return self._collector
 
 
@@ -300,6 +302,7 @@ class TestMergeChangelogCollection:
 
         assert harness.collector_factory.diff is harness.diff
         assert harness.collector_factory.branch is source_branch
+        assert harness.collector_factory.label_branch is default_branch
         assert harness.post_merge_dispatcher.dispatched_node_events == [collector.events]
         assert harness.rollback_handler.calls == 0
         assert source_branch.status == BranchStatus.MERGED

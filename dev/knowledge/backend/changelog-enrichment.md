@@ -69,7 +69,9 @@ attribute changes, so `ChangelogHfidResolver` (`hfid_resolver.py`) fills them af
 - a node whose diff carries its current HFID (created, or HFID changed) takes it from the diff
 - a removed node, gone by the time labels are read, takes the previous value the diff recorded, also
   where it appears as a peer
-- every other node, and every peer outside the diff, is loaded in one batch
+- every other node, and every peer outside the diff, is loaded in one batch: on the destination
+  branch after a merge, since the merged branch sees the destination only as of its branch point,
+  and on the rebased branch after a rebase
 - a node or peer whose kind was dropped by a schema migration stays unresolved, even when the diff
   records its HFID, and never joins the batch, so it cannot fail the load for the others
 

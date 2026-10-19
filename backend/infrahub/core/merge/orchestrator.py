@@ -49,9 +49,14 @@ class ChangelogCollector(Protocol):
 
 
 class ChangelogCollectorFactory(Protocol):
-    """Builds a changelog collector for a diff, reading the graph through the given database and branch."""
+    """Builds a changelog collector for a diff, reading the graph through the given database and branch.
 
-    def __call__(self, *, diff: EnrichedDiffRoot, db: InfrahubDatabase, branch: Branch) -> ChangelogCollector: ...
+    The HFIDs are read on ``label_branch``.
+    """
+
+    def __call__(
+        self, *, diff: EnrichedDiffRoot, db: InfrahubDatabase, branch: Branch, label_branch: Branch
+    ) -> ChangelogCollector: ...
 
 
 class BranchMergeOrchestrator:
@@ -244,7 +249,10 @@ class BranchMergeOrchestrator:
 
     async def _collect_node_events(self, branch_diff: EnrichedDiffRoot) -> Sequence[tuple[DiffAction, NodeChangelog]]:
         """Collect the node changelogs from the merged branch's enriched diff."""
-        changelog_collector = self.changelog_collector_factory(diff=branch_diff, db=self.db, branch=self.source_branch)
+        # The merged branch sees the destination only as of its branch point, so labels are read on the destination.
+        changelog_collector = self.changelog_collector_factory(
+            diff=branch_diff, db=self.db, branch=self.source_branch, label_branch=self.destination_branch
+        )
         with trace.get_tracer(__name__).start_as_current_span("merge.collect_changelogs") as span:
             node_events = await changelog_collector.collect_changelogs()
             span.set_attribute("changelog.changelog_count", len(node_events))

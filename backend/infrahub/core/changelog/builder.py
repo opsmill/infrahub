@@ -32,10 +32,17 @@ def build_node_label_loader(db: InfrahubDatabase, branch: Branch) -> NodeLabelLo
 
 
 def build_diff_changelog_collector(
-    diff: EnrichedDiffRoot, db: InfrahubDatabase, branch: Branch, migration_tracker: MigrationTracker | None = None
+    diff: EnrichedDiffRoot,
+    db: InfrahubDatabase,
+    branch: Branch,
+    label_branch: Branch | None = None,
+    migration_tracker: MigrationTracker | None = None,
 ) -> DiffChangelogCollector:
-    """Build a changelog collector whose HFID resolver reads from the same database and branch."""
-    label_loader = build_node_label_loader(db=db, branch=branch)
+    """Build a changelog collector whose HFID resolver reads from the same database.
+
+    The HFIDs are read on ``label_branch`` when given, and on ``branch`` otherwise.
+    """
+    label_loader = build_node_label_loader(db=db, branch=label_branch or branch)
     return DiffChangelogCollector(
         diff=diff,
         db=db,

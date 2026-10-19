@@ -12,7 +12,11 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.changelog.builder import build_node_label_loader, build_relationship_changelog_getter
+from infrahub.core.changelog.builder import (
+    build_diff_changelog_collector,
+    build_node_label_loader,
+    build_relationship_changelog_getter,
+)
 from infrahub.core.changelog.diff import DiffChangelogCollector, MigrationTracker
 from infrahub.core.changelog.enrichment import NodeLabelLoader, NodeLabels
 from infrahub.core.changelog.hfid_resolver import ChangelogHfidResolver
@@ -359,6 +363,41 @@ async def test_merge_enriches_node_hfid_and_peer_label(
     # The peer's HFID comes from the batch: the owner is a changed node too on this merge.
     assert owner_rel.peer_hfid == await owner.get_hfid(db=db)
     assert owner_rel.peer_hfid
+
+
+async def test_merge_reads_the_hfids_the_default_branch_holds_after_the_merge(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_simplified_proposed_change_schema: SchemaBranch,
+    car_person_schema: None,
+) -> None:
+    owner = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await owner.new(db=db, name="John", height=180)
+    await owner.save(db=db)
+
+    branch = await create_branch(db=db, branch_name="merge_after_rename")
+    car = await Node.init(db=db, schema="TestCar", branch=branch)
+    await car.new(db=db, name="Volvo", nbr_seats=5, is_electric=False, owner={"id": owner.id})
+    await car.save(db=db)
+
+    renamed = await NodeManager.get_one(db=db, id=owner.id, kind="TestPerson", branch=default_branch)
+    renamed.name.value = "Johnny"
+    await renamed.save(db=db)
+
+    diff = await _merge_and_get_diff(db=db, default_branch=default_branch, branch=branch)
+
+    changelogs = await build_diff_changelog_collector(
+        diff=diff, db=db, branch=branch, label_branch=default_branch
+    ).collect_changelogs()
+
+    # The branch still sees the owner as it was when the branch was created; the merged event names
+    # it as the default branch holds it.
+    owner_changelog = next(changelog for _, changelog in changelogs if changelog.node_id == owner.id)
+    assert owner_changelog.hfid == ["Johnny"]
+    car_changelog = next(changelog for _, changelog in changelogs if changelog.node_id == car.id)
+    owner_rel = car_changelog.relationships["owner"]
+    assert isinstance(owner_rel, RelationshipCardinalityOneChangelog)
+    assert owner_rel.peer_hfid == ["Johnny"]
 
 
 async def test_merge_changelog_survives_label_reader_failure(
