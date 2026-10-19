@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 import shutil
@@ -135,6 +136,15 @@ ABANDONMENT_WRITER = """
 query AbandonmentWriter($id: ID!) {
     CoreRepository(ids: [$id]) {
         edges { node { delivery_last_abandonment { updated_by { id } } } }
+    }
+}
+"""
+
+
+DELIVERY_STATE = """
+query DeliveryState($id: ID!) {
+    CoreRepository(ids: [$id]) {
+        edges { node { delivery_status { value } delivery_failure_cause { value } delivery_progress { value } } }
     }
 }
 """
@@ -2028,6 +2038,243 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         )
         assert await _recorded_commit(db=db, repository_id=first.node_id) == head
         assert gogs_commit_parents(gogs_server.container, first.name, head) == [delivered, second.source_commit]
+
+    async def test_a_transient_fault_that_outlasts_every_retry_waits_for_a_user_and_a_retry_delivers(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+        fast_forward_merges: None,
+        immediate_delivery_retries: None,
+        synced_branch_repository: Callable[[str], Awaitable[SyncedBranchRepository]],
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """A merge whose four attempts all find the remote unreachable waits for a user, and a manual retry delivers it."""
+        repository = await synced_branch_repository("transient-fault-every-attempt")
+        clone = (
+            await InfrahubRepository.init(
+                id=repository.node_id, name=repository.name, client=client, infrahub_branch_name=registry.default_branch
+            )
+        ).get_git_repo_main()
+        location = clone.remotes.origin.url
+        caplog.set_level(logging.INFO, logger=SYNC_LOGGER)
+
+        with socket.socket() as closed_port:
+            closed_port.bind(("127.0.0.1", 0))
+            blocked_location = gogs_clone_url(f"http://127.0.0.1:{closed_port.getsockname()[1]}", repository.name)
+            # The merge flow points the clone at the location before its first attempt, so each attempt blocks it again.
+            with _on_log_line(
+                prefix=f"Delivery attempt of repository {repository.name} starts",
+                action=lambda: clone.remotes.origin.set_url(blocked_location),
+            ):
+                await client.branch.merge(branch_name=repository.branch_name)
+
+        failed = await _delivery_state(db=db, repository_id=repository.node_id)
+        assert (
+            failed.status,
+            failed.cause,
+            failed.error,
+            [entry.source_commit for entry in failed.queue.entries],
+            failed.progress.retry_due_at,
+        ) == (
+            RepositoryDeliveryStatus.ACTION_REQUIRED,
+            RepositoryDeliveryFailureCause.REMOTE_UNREACHABLE,
+            f"Unable to fetch from the remote of repository {repository.name}, please check that the remote is reachable.",
+            [repository.source_commit],
+            None,
+        )
+        retried = (
+            f"The fetch step of the delivery to repository {repository.name} failed, and a later attempt retries it: "
+            f"Unable to fetch from the remote of repository {repository.name}, please check that the remote is reachable."
+        )
+        assert _delivery_log_lines(caplog=caplog, repository_name=repository.name) == [
+            f"Delivery attempt of repository {repository.name} starts (final attempt: False, manual: False).",
+            retried,
+            f"Delivery attempt of repository {repository.name} starts (final attempt: False, manual: False).",
+            retried,
+            f"Delivery attempt of repository {repository.name} starts (final attempt: False, manual: False).",
+            retried,
+            f"Delivery attempt of repository {repository.name} starts (final attempt: True, manual: False).",
+            f"The fetch step of the delivery to repository {repository.name} failed: "
+            f"Unable to fetch from the remote of repository {repository.name}, please check that the remote is reachable.",
+        ]
+        assert gogs_repo_branch_commit(gogs_server.container, repository.name, "main") == repository.trunk_commit
+        clone.remotes.origin.set_url(location)
+
+        await self._retry_delivery(client=client, repository=repository)
+
+        assert await _retry_states(client=client, repository_id=repository.node_id) == [TaskState.COMPLETED]
+        state = await _delivery_state(db=db, repository_id=repository.node_id)
+        assert (state.status, state.cause, state.error, state.queue.entries, state.last_delivered_commit) == (
+            RepositoryDeliveryStatus.NONE,
+            None,
+            None,
+            (),
+            repository.source_commit,
+        )
+        assert await _recorded_commit(db=db, repository_id=repository.node_id) == repository.source_commit
+        assert gogs_repo_branch_commit(gogs_server.container, repository.name, "main") == repository.source_commit
+
+    async def test_a_delivery_reads_pending_through_graphql_while_its_automatic_retry_waits(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+        fast_forward_merges: None,
+        monkeypatch: pytest.MonkeyPatch,
+        synced_branch_repository: Callable[[str], Awaitable[SyncedBranchRepository]],
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """While an automatic retry waits, the repository reads `pending`, with the cause and the due time of the retry."""
+        # The wait leaves the test time to read the state before the retry runs.
+        monkeypatch.setattr(
+            "infrahub.git.tasks.deliver_pending_merges", deliver_pending_merges.with_options(retry_delay_seconds=10)
+        )
+        repository = await synced_branch_repository("pending-while-retry-waits")
+        clone = (
+            await InfrahubRepository.init(
+                id=repository.node_id, name=repository.name, client=client, infrahub_branch_name=registry.default_branch
+            )
+        ).get_git_repo_main()
+        location = clone.remotes.origin.url
+        caplog.set_level(logging.INFO, logger=SYNC_LOGGER)
+
+        with socket.socket() as closed_port:
+            closed_port.bind(("127.0.0.1", 0))
+            blocked_location = gogs_clone_url(f"http://127.0.0.1:{closed_port.getsockname()[1]}", repository.name)
+            first_attempt_location = iter([blocked_location])
+            with _on_log_line(
+                prefix=f"Delivery attempt of repository {repository.name} starts",
+                action=lambda: clone.remotes.origin.set_url(next(first_attempt_location, location)),
+            ):
+                merge = asyncio.create_task(client.branch.merge(branch_name=repository.branch_name))
+                async with asyncio.timeout(120):
+                    waiting = await _graphql_delivery_state(client=client, repository=repository)
+                    while not merge.done() and not (waiting["delivery_progress"]["value"] or {}).get("retry_due_at"):
+                        await asyncio.sleep(0.1)
+                        waiting = await _graphql_delivery_state(client=client, repository=repository)
+                read_at = datetime.now(UTC)
+                await merge
+
+        assert (waiting["delivery_status"]["value"], waiting["delivery_failure_cause"]["value"]) == (
+            RepositoryDeliveryStatus.PENDING.value,
+            RepositoryDeliveryFailureCause.REMOTE_UNREACHABLE.value,
+        )
+        assert datetime.fromisoformat(waiting["delivery_progress"]["value"]["retry_due_at"]) > read_at
+        state = await _delivery_state(db=db, repository_id=repository.node_id)
+        assert (state.status, state.cause, state.queue.entries, state.last_delivered_commit) == (
+            RepositoryDeliveryStatus.NONE,
+            None,
+            (),
+            repository.source_commit,
+        )
+        assert gogs_repo_branch_commit(gogs_server.container, repository.name, "main") == repository.source_commit
+
+    async def test_an_abandonment_lets_the_repository_sync_and_merge_again_and_its_kept_branch_comes_back(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+        caplog: pytest.LogCaptureFixture,
+        delete_branch_after_merge_reset_config: None,
+        delete_git_branch_after_merge_reset_config: None,
+        synced_branch_repository: Callable[[str], Awaitable[SyncedBranchRepository]],
+        reject_pushes_to_main: Callable[[str], Callable[[], None]],
+    ) -> None:
+        """After an abandonment, the sync records the moved remote trunk, a refused merge goes through, and the kept branch comes back.
+
+        The remote keeps the source branch of the abandoned merge, and the next sync imports it as a new Infrahub branch.
+        """
+        config.SETTINGS.main.delete_branch_after_merge = True
+        config.SETTINGS.git.delete_git_branch_after_merge = True
+        first = await synced_branch_repository("abandon-then-sync")
+        second = await _sync_another_branch(
+            db=db, client=client, container=gogs_server.container, repository=first, branch_name="abandon-then-merge"
+        )
+        lift_rejection = reject_pushes_to_main(first.name)
+        await client.branch.merge(branch_name=first.branch_name)
+        queued = await _delivery_state(db=db, repository_id=first.node_id)
+        assert [(entry.source_git_branch, entry.delete_source_git_branch) for entry in queued.queue.entries] == [
+            (first.branch_name, True)
+        ]
+        lift_rejection()
+        moved = commit_to_remote_branch(gogs_server.container, first.name, branch="main", files={"moved.txt": "m\n"})
+
+        with caplog.at_level(logging.INFO, logger=SYNC_LOGGER):
+            await sync_remote_repositories()
+        assert _deferral_messages(caplog=caplog, repository=first) == [
+            f"Deferred the synchronization of main of repository {first.name} until its pending pushes reach the remote"
+        ]
+        assert await _recorded_commit(db=db, repository_id=first.node_id) == first.trunk_commit
+        with pytest.raises(GraphQLError) as refused:
+            await client.branch.merge(branch_name=second.branch_name)
+        assert [error["message"] for error in refused.value.errors] == [
+            f"Unable to merge branch {second.branch_name}, because Infrahub has not recorded the latest commit of "
+            f"branch main of repository {first.name} ({moved} on the remote, {first.trunk_commit} in Infrahub). "
+            "Merge again after Infrahub records the latest commit of that branch."
+        ]
+        # A blanket regeneration of the default branch holds this marker under each repository with queued merges.
+        await (await _delivery_store(db=db)).hold(
+            repository_id=first.node_id,
+            held=HeldRegeneration(
+                widen=HeldWiden(scope="all", reason=FullRegenerationReason.SUMMARY_UNAVAILABLE, hold_seq=0)
+            ),
+        )
+        pending = await _delivery_state(db=db, repository_id=first.node_id)
+
+        await client.execute_graphql(
+            query=ABANDON_DELIVERY, variables={"id": first.node_id, "queue_version": pending.queue.version}
+        )
+
+        abandoned = await _delivery_state(db=db, repository_id=first.node_id)
+        assert abandoned.last_abandonment is not None
+        assert (
+            abandoned.status,
+            abandoned.queue.entries,
+            abandoned.held.is_empty,
+            abandoned.last_abandonment.entries,
+        ) == (RepositoryDeliveryStatus.NONE, (), True, queued.queue.entries)
+        assert gogs_repo_branch_commit(gogs_server.container, first.name, first.branch_name) == first.source_commit
+        assert first.branch_name not in await client.branch.all()
+        worker = await InfrahubRepository.init(
+            id=first.node_id, name=first.name, client=client, infrahub_branch_name=registry.default_branch
+        )
+        assert sorted(worker.get_branches_from_local()) == [second.branch_name, "main", "master"]
+
+        caplog.clear()
+        with caplog.at_level(logging.INFO, logger=SYNC_LOGGER):
+            await sync_remote_repositories()
+
+        assert _deferral_messages(caplog=caplog, repository=first) == []
+        assert await _recorded_commit(db=db, repository_id=first.node_id) == moved
+        returned: CoreRepository = await NodeManager.get_one(
+            db=db, id=first.node_id, kind=InfrahubKind.REPOSITORY, branch=first.branch_name, raise_on_error=True
+        )
+        assert returned.commit.value == first.source_commit
+
+        await client.branch.merge(branch_name=second.branch_name)
+
+        assert second.branch_name not in await client.branch.all()
+        head = gogs_repo_branch_commit(gogs_server.container, first.name, "main")
+        state = await _delivery_state(db=db, repository_id=first.node_id)
+        assert (state.status, state.queue.entries, state.last_delivered_commit) == (
+            RepositoryDeliveryStatus.NONE,
+            (),
+            head,
+        )
+        assert await _recorded_commit(db=db, repository_id=first.node_id) == head
+        assert _remote_branch_contains(gogs_server.container, first.name, branch="main", commit=moved)
+        assert _remote_branch_contains(gogs_server.container, first.name, branch="main", commit=second.source_commit)
+        assert not _remote_branch_contains(gogs_server.container, first.name, branch="main", commit=first.source_commit)
+
+
+async def _graphql_delivery_state(client: InfrahubClient, repository: SyncedBranchRepository) -> dict[str, Any]:
+    """Return the delivery fields of the repository, as a client reads them on the default branch."""
+    result = await client.execute_graphql(
+        query=DELIVERY_STATE, variables={"id": repository.node_id}, branch_name=registry.default_branch
+    )
+    [edge] = result["CoreRepository"]["edges"]
+    return edge["node"]
 
 
 async def _tracked_graph_state(db: InfrahubDatabase, tracked: TrackedBranchRepository) -> tuple[str | None, str | None]:
