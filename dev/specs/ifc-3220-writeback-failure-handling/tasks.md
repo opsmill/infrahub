@@ -61,10 +61,10 @@ T080 of Phase 6, T085 to T093 of Phase 7, and Phase 8.** Phase 3 queues merges.
 Phase 3 already contains the import deferral, which stops the synchronisation from deleting
 undelivered objects.
 
-The rest of Phase 6 (T078 and T081 to T084) can follow. The Python-family tasks T070 to T073 of
-Phase 5 (plan part H) can follow too, coordinated with IFC-3002. Until they ship, Python-transform
-computed attributes are not held, as today. After a delayed delivery, such an attribute can reflect
-the commit recorded before the merge until its next recompute.
+The rest of Phase 6 (T078, T081 to T084, T113 and T114) can follow. The Python-family tasks T070
+to T073 of Phase 5 (plan part H) can follow too, coordinated with IFC-3002. Until they ship,
+Python-transform computed attributes are not held, as today. After a delayed delivery, such an
+attribute can reflect the commit recorded before the merge until its next recompute.
 
 ---
 
@@ -549,8 +549,8 @@ deployment rule.** T070 to T073 are not.
 
 **Independent test**: block the Gogs port during the first attempt, open it before the second.
 
-**Maps to**: FR-004, FR-027, SC-003. **T077, T079 and T080 are in the deployment rule.** T078 and
-T081 to T084 are not.
+**Maps to**: FR-004, FR-027, SC-003. **T077, T079 and T080 are in the deployment rule.** T078,
+T081 to T084, T113 and T114 are not.
 
 - [X] T077 [US4] Give `deliver_pending_merges` in `backend/infrahub/git/tasks.py` its `retries`,
       `retry_delay_seconds` and `retry_condition_fn`, and compute `final_attempt` from
@@ -601,6 +601,12 @@ T081 to T084 are not.
       `unclassified`, and no `index.lock` stays behind in the worktree. The driver uses `exec`
       because GitPython kills only the direct children of the Git process. The test keeps the
       existing stalled-merge test, with a merge driver and not a `pre-merge-commit` hook.
+- [X] T113 [US4] Add `test_a_transient_fault_that_outlasts_every_retry_waits_for_a_user_and_a_retry_delivers`
+      to the same module (US4 #2): each of the four attempts finds the remote closed, the delivery
+      ends `action-required` with the cause `remote-unreachable`, and a manual retry delivers.
+- [X] T114 [US4] Add `test_a_delivery_reads_pending_through_graphql_while_its_automatic_retry_waits`
+      to the same module (US4 #4): while an automatic retry waits, a GraphQL read of the repository
+      shows `pending`, the cause and a retry due time later than the read.
 
 ---
 
@@ -782,8 +788,9 @@ The task retries transient failures, a failed release included. The recovery che
 lost attempt, and releases held work after a crash between the settle and the clear.
 Python-transform computed attributes are not held yet, as today.
 
-**Second increment**: the rest of Phase 6, T078 and T081 to T084. A merge joins a retry chain that
-already waits, and the integration and timeout tests cover transient faults and lost workers.
+**Second increment**: the rest of Phase 6, T078, T081 to T084, T113 and T114. A merge joins a
+retry chain that already waits, and the integration and timeout tests cover transient faults and
+lost workers.
 
 **Third increment**: T070 to T073 of Phase 5, coordinated with IFC-3002. Python-transform computed
 attributes wait for the final content too.
