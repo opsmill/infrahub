@@ -1,0 +1,19 @@
+backend/tests/component/core/merge/test_orchestrator.py
+  s_9fb2844a4c70ac::t_c3012990850b44 24,27,33,68-75,245-248
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "34d4b5205e2689d07bde3772bccfe27161a83ccd",
+  "prompts": {},
+  "sessions": {
+    "s_9fb2844a4c70ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e99ffdbe-347d-498e-b8d1-63f456d31c13",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
