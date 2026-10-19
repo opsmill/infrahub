@@ -1,0 +1,34 @@
+backend/tests/unit/core/merge/selective_regen/test_generator_diff_capturer.py
+  s_b2b53418d6f8ed::t_70e3a117402ce6 52
+  s_b2b53418d6f8ed::t_1dccab3341abdb 46,50,59,61,65-69,87,89,112-113,117,125-126,133,139-140,145,153-154,159,167-168,173
+backend/infrahub/core/diff/calculator.py
+  s_b2b53418d6f8ed::t_50be2c5502e9b4 39,108-109,150-154,189,195,221
+backend/tests/component/core/diff/diff_calculator/test_kind_migration.py
+  s_b2b53418d6f8ed::t_9ca5944125db1f 1595
+  s_b2b53418d6f8ed::t_4d91cbdc360e25 1522,1529-1534,1577-1578,1585,1593-1594
+dev/knowledge/backend/selective-merge-regeneration.md
+  s_b2b53418d6f8ed::t_ae97a42b508377 55
+backend/tests/component/core/diff/test_coordinator.py
+  s_b2b53418d6f8ed::t_4d91cbdc360e25 599-605,622-630
+  s_b2b53418d6f8ed::t_40c4acee582dbb 483
+backend/infrahub/core/merge/selective_regen/generator_diff_capturer.py
+  s_b2b53418d6f8ed::t_294f2b96d30a3b 38-41,60-65
+backend/infrahub/core/diff/coordinator.py
+  s_b2b53418d6f8ed::t_45ca412b558fa5 349,357,371,817-821,832
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0a7767fb5b3489ecd274d76b17e71cdbfcd8b94e",
+  "prompts": {},
+  "sessions": {
+    "s_b2b53418d6f8ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a06fd280-ced2-4ade-b525-6f2d0f72e799",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}
