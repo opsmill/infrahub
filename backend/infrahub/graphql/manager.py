@@ -1237,7 +1237,7 @@ class GraphQLSchemaManager:
 
         main_attrs: dict[str, Any] = {
             "node": graphene.Field(base_interface, required=False),
-            "node_metadata": graphene.Field(node_metadata, required=True),
+            "node_metadata": graphene.Field(node_metadata, required=False),
             "Meta": type("Meta", (object,), meta_attrs),
         }
 
