@@ -5,6 +5,11 @@
 Runnable scenarios that prove each phase works. Contracts are in `contracts/`, shapes in
 `data-model.md`. Implementation detail belongs in `tasks.md`.
 
+**Scope change, 2026-10-19 ([IFC-3448](https://opsmill.atlassian.net/browse/IFC-3448))**: the drift
+query was removed with User Story 3 before any release, see spec.md's
+[Scope change](spec.md#scope-change-user-story-3-deferred). The drift scenarios are removed from the
+phases below, and Phase D is kept only as the record of the deferred design: do not run it.
+
 ## Prerequisites
 
 ```bash
@@ -30,16 +35,8 @@ uv run invoke dev.build && uv run invoke dev.start   # full stack with at least 
    `git_ref` is the remote branch or tracked ref the branch resolves (a ref name, not a hash), and
    `imported_commit` equals the repository's `commit` attribute on that branch.
 
-3. Run the drift query against a repository with several branches. Expected: one row per branch in
-   the row set, each carrying the tracked commit its own branch resolves, with `remote_head` null and
-   the column's unavailable state set. Switch to another Infrahub branch and confirm the commit-view
-   answer follows it.
-
-   Every row's `condition` is `UNAVAILABLE` until the worker read path ships, except a branch with
-   no tracked ref, which reports `NOT_TRACKED` from the graph alone. A branch that resolves a ref but
-   has nothing tracked or inherited stays `UNAVAILABLE`: whether it is `NOT_TRACKED` or `REF_MISSING`
-   depends on the clone, so the worker decides it. Add `?at=` with a timestamp from before an import and confirm the rows report the commit
-   that was tracked then, not the current one.
+3. Switch to another Infrahub branch and confirm the commit-view answer follows it. (This step also
+   ran the drift query; that half was removed with it.)
 
    The branch-switch half does hold from the contract pull request onward, and is worth running
    because it exercises the branch mapping in both directions: on the default branch `git_ref` is
@@ -95,9 +92,7 @@ uv run pytest backend/tests/unit/git/state/test_classification.py backend/tests/
 
 1. Timeout, shared-path PR: stop every task worker, run the commit-view query. Expected within
    `INFRAHUB_BROKER_RPC_TIMEOUT` seconds (default 120): a `WORKER_TIMEOUT` error with
-   `http_status 504` and `data.retry_after_seconds`. Run the drift query with the workers still
-   stopped and expect the opposite: no error, every branch row present with its Infrahub-side values,
-   `remote_head` null, and `unavailable.reason: TIMEOUT` on the column alone. `GET /api/file/...`
+   `http_status 504` and `data.retry_after_seconds`. `GET /api/file/...`
    inherits the same bound and now fails with 504 instead of hanging; its separate defect, where a
    worker-side *error* still returns 200, is a different ticket and is not asserted here. Adding a
    repository while the workers are stopped must still leave no repository behind (T099).
@@ -148,7 +143,7 @@ uv run pytest backend/tests/unit/git/state/test_classification.py backend/tests/
 Tests:
 
 ```bash
-uv run pytest backend/tests/component/message_bus/operations/git/test_commit_log.py backend/tests/component/message_bus/operations/git/test_branch_heads.py backend/tests/unit/services/adapters/message_bus/test_rpc_timeout.py backend/tests/unit/errors
+uv run pytest backend/tests/component/message_bus/operations/git/test_commit_log.py backend/tests/unit/services/adapters/message_bus/test_rpc_timeout.py backend/tests/unit/errors
 ```
 
 ## Phase C: read-only refs check
@@ -219,7 +214,10 @@ cd frontend/app && pnpm exec vitest run src/entities/repository/ui/repository-ch
 INFRAHUB_TESTING_IMAGE_VER=local INFRAHUB_TESTING_DOCKER_PULL=false uv run pytest -c tests/e2e/pytest.ini tests/e2e/repository/test_repository_check_remote.py
 ```
 
-## Phase D: branch drift
+## Phase D: branch drift *(removed, do not run)*
+
+The drift query, its handler and the tests named below were removed with User Story 3. This phase
+records how the deferred design was validated.
 
 Repository with many branches, three behind their remote. `InfrahubRepositoryBranchDrift` returns one
 row per branch in the row set, exactly three with `condition: BEHIND` and a `remote_head` that differs
@@ -250,9 +248,8 @@ the query runs exactly once, returning one row per branch, for a fixture with 5 
 whether or not the query carries its own bound, so a lowered limit with 20 branches tests the bound
 and 200 would add nothing.
 
-```bash
-INFRAHUB_USE_TEST_CONTAINERS=true uv run pytest -n 0 backend/tests/component/core/query/test_repository_branch_values.py backend/tests/component/message_bus/operations/git/test_branch_heads.py backend/tests/component/graphql/queries/test_repository_git_state.py
-```
+The command this phase ran named `test_repository_branch_values.py` and `test_branch_heads.py`, which
+were deleted with the code they tested.
 
 ## Phase E: frontend and end to end
 

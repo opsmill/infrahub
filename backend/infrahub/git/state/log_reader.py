@@ -1,4 +1,4 @@
-"""Read a repository's commit log and branch heads from a worker's existing clone.
+"""Read a repository's commit log from a worker's existing clone.
 
 The read itself never clones, fetches, pulls or takes the repository lock: it runs against git's
 own consistent object store and must not queue behind an import. A worker holding no clone says so
@@ -10,13 +10,11 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from git.exc import GitCommandError
-from git.objects import Commit, Object
-from git.refs import Reference, TagReference
+from git.objects import Commit
 
 from infrahub.core.constants import InfrahubKind, RepositoryGitCondition, RepositoryGitUnavailableReason
 from infrahub.exceptions import RepositoryError, RepositoryInvalidFileSystemError
@@ -28,7 +26,7 @@ from infrahub.workflows.catalogue import GIT_REPOSITORY_WARM_UP
 
 from .cache_keys import WARM_UP_TTL, warm_up_key
 from .classification import classify, classify_commit
-from .models import BranchDriftResult, BranchDriftRow, CommitEntry, CommitLogResult, GitStateFacts
+from .models import CommitEntry, CommitLogResult, GitStateFacts
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -38,7 +36,7 @@ if TYPE_CHECKING:
     from infrahub.services.adapters.cache import InfrahubCache
     from infrahub.services.adapters.workflow import InfrahubWorkflow
 
-    from .models import BranchHeadsRequest, BranchRef, CommitLogRequest
+    from .models import CommitLogRequest
 
 log = get_logger()
 
@@ -66,7 +64,7 @@ _WARM_UP_PENDING = _NotCloned(error_message=NOT_CLONED_WARM_UP_PENDING_MESSAGE)
 
 
 class RepositoryLogReader:
-    """Answer a repository's commit log for one Infrahub branch, or the remote head of every branch, from the local clone."""
+    """Answer a repository's commit log for one Infrahub branch from the local clone."""
 
     def __init__(self, cache: InfrahubCache, workflow: InfrahubWorkflow, worker_identity: str) -> None:
         self._cache = cache
@@ -112,53 +110,6 @@ class RepositoryLogReader:
             repository_name=request.repository_name,
             subject="the commit log",
             read=lambda: _read_commit_log(repo=opened, request=request),
-        )
-
-    async def branch_heads(self, request: BranchHeadsRequest) -> BranchDriftResult:
-        """Return every requested branch with its remote head and condition, reading only the refs the request names.
-
-        Raises:
-            ValueError: When the repository kind has no branch heads.
-            RepositoryError: When a local copy exists but fails validation while no warm-up is in
-                progress, or git fails while reading it.
-
-        """
-        repository = _build_repository(
-            repository_id=request.repository_id,
-            repository_name=request.repository_name,
-            repository_kind=request.repository_kind,
-            location=request.location,
-            subject="branch heads",
-        )
-        if not request.branches:
-            return BranchDriftResult()
-
-        # A read-write repository is warmed up only for a branch with something imported, so prefer such a branch.
-        warm_up_branch = next(
-            (branch for branch in request.branches if branch.tracked_commit is not None), request.branches[0]
-        )
-        opened = await self._open_clone(
-            repository=repository,
-            warm_up=GitRepositoryWarmUp(
-                repository_id=request.repository_id,
-                repository_name=request.repository_name,
-                repository_kind=request.repository_kind,
-                infrahub_branch_name=warm_up_branch.branch_name,
-            ),
-            has_imported_commit=warm_up_branch.tracked_commit is not None,
-        )
-        if isinstance(opened, _NotCloned):
-            return BranchDriftResult(
-                unavailable_reason=RepositoryGitUnavailableReason.NOT_CLONED,
-                warm_up_task_id=opened.warm_up_task_id,
-                error_message=opened.error_message,
-            )
-
-        return await _read_and_close(
-            repo=opened,
-            repository_name=request.repository_name,
-            subject="the branch heads",
-            read=lambda: _read_branch_heads(repo=opened, request=request),
         )
 
     async def _open_clone(
@@ -266,7 +217,7 @@ class _LocalCopy(InfrahubRepositoryBase):
         raise NotImplementedError(_READ_ONLY_COPY)
 
 
-_READ_ONLY_COPY = "A local copy opened to read its commit log or branch heads is never mapped, checked out or updated"
+_READ_ONLY_COPY = "A local copy opened to read its commit log is never mapped, checked out or updated"
 
 
 def _build_repository(
@@ -408,88 +359,4 @@ def _read_commit_log(repo: Repo, request: CommitLogRequest) -> CommitLogResult:
         pending_count=pending_count,
         commits=commits,
         fetched_at=read_fetched_at(repo=repo),
-    )
-
-
-def _read_tag_head(repo: Repo, git_ref: str) -> str | None:
-    try:
-        commit = TagReference(repo=repo, path=f"refs/tags/{git_ref}").commit
-        # An annotated tag names its target without the clone necessarily holding it.
-        repo.odb.info(commit.binsha)
-    # An absent or malformed tag, or one at a tree, a blob or an object the clone does not hold, tracks nothing.
-    except ValueError:
-        return None
-    return commit.hexsha
-
-
-def _read_remote_head(repo: Repo, git_ref: str, repository_name: str) -> str | None:
-    # The remote's HEAD points at its default branch and is never a branch of its own.
-    if git_ref == "HEAD":
-        return None
-    path = f"refs/remotes/origin/{git_ref}"
-    try:
-        hexsha = Reference.dereference_recursive(repo=repo, ref_path=path)
-    # An absent or malformed ref name means the remote has no such branch.
-    except ValueError:
-        return None
-    try:
-        target = Object.new_from_sha(repo=repo, sha1=bytes.fromhex(hexsha))
-    # A remote ref at an object the clone does not hold must not fail every other branch.
-    except ValueError:
-        target = None
-    if isinstance(target, Commit):
-        return target.hexsha
-    log.warning(
-        "Skipping a remote ref that names no commit the clone holds", repository_name=repository_name, ref=git_ref
-    )
-    return None
-
-
-def _read_branch_heads(repo: Repo, request: BranchHeadsRequest) -> BranchDriftResult:
-    is_read_only = request.repository_kind == InfrahubKind.READONLYREPOSITORY
-
-    # Many branches share a tracked commit and a remote head, so each lookup is made once per pass.
-    @cache
-    def resolve_imported(commit: str) -> str | None:
-        resolved = resolve_commit(repo=repo, revisions=(commit,))
-        return resolved.hexsha if resolved is not None else None
-
-    is_ancestor = cache(_is_ancestor_in(repo=repo))
-
-    @cache
-    def head_of(git_ref: str) -> str | None:
-        head = _read_remote_head(repo=repo, git_ref=git_ref, repository_name=request.repository_name)
-        if head is not None or not is_read_only:
-            return head
-        head = _read_tag_head(repo=repo, git_ref=git_ref)
-        if head is not None:
-            return head
-        pinned = resolve_pinned_commit(repo=repo, git_ref=git_ref)
-        return pinned.hexsha if pinned is not None else None
-
-    return BranchDriftResult(
-        branches=tuple(
-            _drift_row(
-                branch=branch,
-                facts=_measure_facts(
-                    head=head_of(branch.git_ref),
-                    imported_commit=branch.tracked_commit,
-                    imported=resolve_imported(branch.tracked_commit) if branch.tracked_commit is not None else None,
-                    is_read_only=is_read_only,
-                    is_ancestor=is_ancestor,
-                ),
-            )
-            for branch in request.branches
-        ),
-        fetched_at=read_fetched_at(repo=repo),
-    )
-
-
-def _drift_row(branch: BranchRef, facts: GitStateFacts) -> BranchDriftRow:
-    return BranchDriftRow(
-        branch_name=branch.branch_name,
-        git_ref=branch.git_ref,
-        tracked_commit=branch.tracked_commit,
-        remote_head=facts.head,
-        condition=classify(facts=facts),
     )

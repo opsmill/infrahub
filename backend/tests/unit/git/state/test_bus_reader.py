@@ -15,10 +15,9 @@ from infrahub.core.constants import (
 )
 from infrahub.exceptions import RPCError
 from infrahub.git.state.bus_reader import BusRepositoryGitStateReader
-from infrahub.git.state.models import BranchHeadsRequest, BranchRef, CommitEntry, CommitLogRequest, CommitLogResult
+from infrahub.git.state.models import CommitEntry, CommitLogRequest, CommitLogResult
 from infrahub.message_bus import InfrahubMessage, InfrahubResponse, RPCErrorResponse
 from infrahub.message_bus.messages import ROUTING_KEY_MAP
-from infrahub.message_bus.messages.git_branch_heads_get import GitBranchHeadsGetResponse, GitBranchHeadsGetResponseData
 from infrahub.message_bus.messages.git_commit_log_get import (
     GitCommitLogEntry,
     GitCommitLogGet,
@@ -227,7 +226,7 @@ class UnusableReplyCase:
                 name="contradictory_fields",
                 data=GitCommitLogGetResponseData(
                     condition=RepositoryGitCondition.IN_SYNC,
-                    unavailable_reason=RepositoryGitUnavailableReason.TIMEOUT,
+                    unavailable_reason=RepositoryGitUnavailableReason.NOT_CLONED,
                 ),
                 message="The worker answered with an inconsistent result: "
                 "A result carrying an unavailable_reason must have condition UNAVAILABLE, not IN_SYNC",
@@ -253,31 +252,3 @@ async def test_an_unusable_reply_raises_as_a_worker_failure(case: UnusableReplyC
         await reader.commits(request=REQUEST)
 
     assert raised.value.message == case.message
-
-
-async def test_a_contradictory_branch_heads_reply_raises_as_a_worker_failure() -> None:
-    bus = RecordingRPCBus(
-        replies=[
-            GitBranchHeadsGetResponse(
-                data=GitBranchHeadsGetResponseData(
-                    unavailable_reason=RepositoryGitUnavailableReason.TIMEOUT, warm_up_task_id=WARM_UP_TASK_ID
-                )
-            )
-        ]
-    )
-    reader = BusRepositoryGitStateReader(message_bus=bus, timeout=30)
-
-    with pytest.raises(RPCError) as raised:
-        await reader.branch_heads(
-            request=BranchHeadsRequest(
-                repository_id="18d39e83-0000-0000-0000-000000000001",
-                repository_name="edge",
-                repository_kind=InfrahubKind.REPOSITORY,
-                location="https://git.example.com/edge.git",
-                branches=(BranchRef(branch_name="main", git_ref="trunk", tracked_commit=IMPORTED),),
-            )
-        )
-
-    assert raised.value.message == (
-        "The worker answered with an inconsistent result: A warm-up is only started for NOT_CLONED, not TIMEOUT"
-    )

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
@@ -29,7 +30,6 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 IMPORTED_COMMIT = "1111111111111111111111111111111111111111"
-BRANCH_COMMIT = "2222222222222222222222222222222222222222"
 
 COMMITS_QUERY = """
 query RepositoryCommits($id: String!) {
@@ -37,23 +37,6 @@ query RepositoryCommits($id: String!) {
     branch_name
     imported_commit
     condition
-  }
-}
-"""
-
-DRIFT_QUERY = """
-query RepositoryBranchDrift($id: String!) {
-  InfrahubRepositoryBranchDrift(repository_id: $id) {
-    repository_id
-    unavailable { reason }
-  }
-}
-"""
-
-DRIFT_QUERY_WITH_ROWS = """
-query RepositoryBranchDrift($id: String!) {
-  InfrahubRepositoryBranchDrift(repository_id: $id) {
-    edges { node { branch_name tracked_commit } }
   }
 }
 """
@@ -139,7 +122,7 @@ async def _account_session(db: InfrahubDatabase, name: str, permissions: list[Ob
     return AccountSession(authenticated=True, account_id=account.id, session_id=None, auth_type=AuthType.API)
 
 
-async def test_repository_view_permission_reads_both_queries(
+async def test_repository_view_permission_reads_the_commit_log(
     db: InfrahubDatabase,
     default_branch: Branch,
     default_permission_backend: None,
@@ -167,154 +150,13 @@ async def test_repository_view_permission_reads_both_queries(
         variables={"id": repository.id},
         account_session=session,
     )
-    drift = await graphql_query(
-        query=DRIFT_QUERY,
-        db=db,
-        branch=default_branch,
-        service=service,
-        variables={"id": repository.id},
-        account_session=session,
-    )
 
     assert not commits.errors
     assert commits.data
     assert commits.data["InfrahubRepositoryCommits"]["imported_commit"] == IMPORTED_COMMIT
-    assert not drift.errors
-    assert drift.data
-    assert drift.data["InfrahubRepositoryBranchDrift"]["repository_id"] == repository.id
 
 
-async def _synced_branch_tracking_its_own_commit(db: InfrahubDatabase, repository: Node) -> Branch:
-    """A read-write repository reports a row only for a branch Git synchronises, so opt this one in."""
-    branch = await create_branch(branch_name="branch2", db=db)
-    branch.sync_with_git = True
-    await branch.save(db=db)
-
-    repo_on_branch = await NodeManager.get_one(db=db, id=repository.id, branch=branch, raise_on_error=True)
-    repo_on_branch.commit.value = BRANCH_COMMIT
-    await repo_on_branch.save(db=db)
-
-    return branch
-
-
-async def test_drift_answers_only_the_default_branch_without_the_other_branches_decision(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    default_permission_backend: None,
-    service: InfrahubServices,
-    repository: Node,
-) -> None:
-    """The request branch's decision gates the query, so every other branch's row needs its own."""
-    await _synced_branch_tracking_its_own_commit(db=db, repository=repository)
-
-    session = await _account_session(
-        db=db,
-        name="default-branch-repository-viewer",
-        permissions=[
-            ObjectPermission(
-                namespace="Core",
-                name="Repository",
-                action=PermissionAction.VIEW.value,
-                decision=PermissionDecision.ALLOW_DEFAULT.value,
-            )
-        ],
-    )
-
-    response = await graphql_query(
-        query=DRIFT_QUERY_WITH_ROWS,
-        db=db,
-        branch=default_branch,
-        service=service,
-        variables={"id": repository.id},
-        account_session=session,
-    )
-
-    assert not response.errors
-    assert response.data
-    assert response.data["InfrahubRepositoryBranchDrift"]["edges"] == [
-        {"node": {"branch_name": default_branch.name, "tracked_commit": IMPORTED_COMMIT}}
-    ]
-
-
-async def test_drift_answers_every_branch_with_the_other_branches_decision(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    default_permission_backend: None,
-    service: InfrahubServices,
-    repository: Node,
-) -> None:
-    branch = await _synced_branch_tracking_its_own_commit(db=db, repository=repository)
-
-    session = await _account_session(
-        db=db,
-        name="all-branches-repository-viewer",
-        permissions=[
-            ObjectPermission(
-                namespace="Core",
-                name="Repository",
-                action=PermissionAction.VIEW.value,
-                decision=PermissionDecision.ALLOW_ALL.value,
-            )
-        ],
-    )
-
-    response = await graphql_query(
-        query=DRIFT_QUERY_WITH_ROWS,
-        db=db,
-        branch=default_branch,
-        service=service,
-        variables={"id": repository.id},
-        account_session=session,
-    )
-
-    assert not response.errors
-    assert response.data
-    rows = {
-        edge["node"]["branch_name"]: edge["node"]["tracked_commit"]
-        for edge in response.data["InfrahubRepositoryBranchDrift"]["edges"]
-    }
-    assert rows == {default_branch.name: IMPORTED_COMMIT, branch.name: BRANCH_COMMIT}
-
-
-async def test_drift_omits_the_default_branch_without_its_decision(
-    db: InfrahubDatabase,
-    default_permission_backend: None,
-    service: InfrahubServices,
-    repository: Node,
-) -> None:
-    """Holding only the other-branches decision reads those branches, never the default one's row."""
-    branch = await _synced_branch_tracking_its_own_commit(db=db, repository=repository)
-
-    session = await _account_session(
-        db=db,
-        name="other-branches-repository-viewer",
-        permissions=[
-            ObjectPermission(
-                namespace="Core",
-                name="Repository",
-                action=PermissionAction.VIEW.value,
-                decision=PermissionDecision.ALLOW_OTHER.value,
-            )
-        ],
-    )
-
-    response = await graphql_query(
-        query=DRIFT_QUERY_WITH_ROWS,
-        db=db,
-        branch=branch,
-        service=service,
-        variables={"id": repository.id},
-        account_session=session,
-    )
-
-    assert not response.errors
-    assert response.data
-    assert response.data["InfrahubRepositoryBranchDrift"]["edges"] == [
-        {"node": {"branch_name": branch.name, "tracked_commit": BRANCH_COMMIT}}
-    ]
-
-
-async def test_missing_repository_view_permission_denies_both_queries(
+async def test_missing_repository_view_permission_denies_the_commit_log(
     db: InfrahubDatabase,
     default_branch: Branch,
     default_permission_backend: None,
@@ -331,20 +173,10 @@ async def test_missing_repository_view_permission_denies_both_queries(
         variables={"id": repository.id},
         account_session=session,
     )
-    drift = await graphql_query(
-        query=DRIFT_QUERY,
-        db=db,
-        branch=default_branch,
-        service=service,
-        variables={"id": repository.id},
-        account_session=session,
-    )
 
     denial = "You do not have the following permission: object:Core:Repository:view:allow_default"
     assert commits.errors
     assert commits.errors[0].message == denial
-    assert drift.errors
-    assert drift.errors[0].message == denial
 
     reloaded = await NodeManager.get_one(db=db, id=repository.id, branch=default_branch, raise_on_error=True)
     assert reloaded.commit.value == IMPORTED_COMMIT
@@ -447,20 +279,9 @@ async def test_the_id_of_another_kind_is_reported_as_a_missing_repository(
         variables={"id": tag.id},
         account_session=session,
     )
-    drift = await graphql_query(
-        query=DRIFT_QUERY,
-        db=db,
-        branch=default_branch,
-        service=service,
-        variables={"id": tag.id},
-        account_session=session,
-    )
 
-    missing = f"Unable to find the node {tag.id} / CoreGenericRepository in the database."
     assert commits.errors
-    assert commits.errors[0].message == missing
-    assert drift.errors
-    assert drift.errors[0].message == missing
+    assert commits.errors[0].message == f"Unable to find the node {tag.id} / CoreGenericRepository in the database."
 
 
 async def test_the_id_of_another_kind_denies_without_naming_that_kind(
@@ -590,11 +411,52 @@ async def test_activity_is_refused_with_the_answer_for_an_unknown_id(
     ]
 
 
+@dataclass
+class BranchVisibilityCase:
+    name: str
+    decision: PermissionDecision
+    on_default_branch: bool
+    """Whether the query runs on the default branch rather than on branch2."""
+    run_ids: list[str]
+    sees_default_branch: bool
+    sees_branch2: bool
+
+
+BRANCH_VISIBILITY_CASES: list[BranchVisibilityCase] = [
+    BranchVisibilityCase(
+        name="default_branch_only",
+        decision=PermissionDecision.ALLOW_DEFAULT,
+        on_default_branch=True,
+        run_ids=["fetching", "on-default"],
+        sees_default_branch=True,
+        sees_branch2=False,
+    ),
+    BranchVisibilityCase(
+        name="other_branches_only",
+        decision=PermissionDecision.ALLOW_OTHER,
+        on_default_branch=False,
+        run_ids=["fetching", "on-branch2"],
+        sees_default_branch=False,
+        sees_branch2=True,
+    ),
+    BranchVisibilityCase(
+        name="every_branch",
+        decision=PermissionDecision.ALLOW_ALL,
+        on_default_branch=True,
+        run_ids=["fetching", "on-default", "on-branch2"],
+        sees_default_branch=True,
+        sees_branch2=True,
+    ),
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in BRANCH_VISIBILITY_CASES])
 async def test_activity_leaves_out_the_branches_the_caller_cannot_view(
     db: InfrahubDatabase,
     default_branch: Branch,
     default_permission_backend: None,
     repository: Node,
+    case: BranchVisibilityCase,
 ) -> None:
     branch = await create_branch(branch_name="branch2", db=db)
     cache = MemoryCache()
@@ -625,13 +487,13 @@ async def test_activity_leaves_out_the_branches_the_caller_cannot_view(
     )
     session = await _account_session(
         db=db,
-        name="default-branch-activity-viewer",
+        name=f"{case.name}-activity-viewer",
         permissions=[
             ObjectPermission(
                 namespace="Core",
                 name="Repository",
                 action=PermissionAction.VIEW.value,
-                decision=PermissionDecision.ALLOW_DEFAULT.value,
+                decision=case.decision.value,
             )
         ],
     )
@@ -639,7 +501,7 @@ async def test_activity_leaves_out_the_branches_the_caller_cannot_view(
     response = await graphql_query(
         query=ACTIVITY_QUERY,
         db=db,
-        branch=default_branch,
+        branch=default_branch if case.on_default_branch else branch,
         service=service,
         variables={"id": repository.id},
         account_session=session,
@@ -648,10 +510,13 @@ async def test_activity_leaves_out_the_branches_the_caller_cannot_view(
     assert not response.errors
     assert response.data
     activity = response.data["InfrahubRepositoryActivity"]
-    assert [edge["node"]["run_id"] for edge in activity["active_runs"]["edges"]] == ["fetching", "on-default"]
-    assert activity["last_runs"]["edges"][0]["node"]["branches"] == {
-        "edges": [{"node": {"branch_name": default_branch.name, "outcome": "IMPORTED"}}]
-    }
+    assert [edge["node"]["run_id"] for edge in activity["active_runs"]["edges"]] == case.run_ids
+    expected_branches = []
+    if case.sees_default_branch:
+        expected_branches.append({"node": {"branch_name": default_branch.name, "outcome": "IMPORTED"}})
+    if case.sees_branch2:
+        expected_branches.append({"node": {"branch_name": branch.name, "outcome": "FAILED"}})
+    assert activity["last_runs"]["edges"][0]["node"]["branches"] == {"edges": expected_branches}
 
 
 async def test_check_refs_mutation_requires_update_permission(

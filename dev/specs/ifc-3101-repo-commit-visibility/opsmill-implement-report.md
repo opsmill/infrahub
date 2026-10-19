@@ -148,3 +148,12 @@ After the run, the user asked for the review to be repeated against the parent b
 1. Write the T084 hand-off note on the IFC-3104 epic. It should say that the Branches card decides drift from `condition`, since `remote_head` is also set for `NOT_TRACKED` and `ORPHANED` rows.
 2. Raise the `origin/` handling in `get_branches_from_remote()` (`git/base.py:567`) as a separate change, since repository sync uses it.
 3. Run `/pre-ci`, then open the PR for PR 10.
+
+## Erratum, 2026-10-19
+
+The code this report covers was removed before any release by
+[IFC-3448](https://opsmill.atlassian.net/browse/IFC-3448), with User Story 3 deferred; see spec.md's
+"Scope change: User Story 3 deferred". Every review finding against the drift resolver, the
+branch-heads message, `bus_reader.branch_heads` and `test_branch_heads.py` no longer applies, the
+Medium `RPCError` finding included. Suggested next step 1 (the T084 hand-off) is closed with nothing
+to hand off. The report above is left as written.

@@ -2,11 +2,12 @@
 
 **Feature**: IFC-3101
 
-Two new request/reply pairs, one new broadcast and one changed adapter method. Message classes follow
-`infrahub.message_bus.messages.git_file_get`; registration goes in
+One new request/reply pair, one new broadcast and one changed adapter method. A second pair,
+`git.branch_heads.get`, was removed with the drift query (see its section below). Message classes
+follow `infrahub.message_bus.messages.git_file_get`; registration goes in
 `infrahub.message_bus.messages::MESSAGE_MAP`, `RESPONSE_MAP`, `PRIORITY_MAP` and the handler in
-`infrahub.message_bus.operations::COMMAND_MAP`. Both routing keys match the existing
-`git.*.*` worker binding, so they land in the shared `{namespace}.rpcs` queue and one worker answers.
+`infrahub.message_bus.operations::COMMAND_MAP`. The routing key matches the existing `git.*.*`
+worker binding, so it lands in the shared `{namespace}.rpcs` queue and one worker answers.
 
 ## `git.commit_log.get`
 
@@ -48,6 +49,11 @@ own. The reader performs, in order:
 
 ## `git.branch_heads.get`
 
+**Removed, 2026-10-19 ([IFC-3448](https://opsmill.atlassian.net/browse/IFC-3448)).** This message pair
+served only the drift query, which was removed with User Story 3 before any release; see spec.md's
+[Scope change](../spec.md#scope-change-user-story-3-deferred). The contract below records the removed
+design.
+
 | Direction | Class | Fields |
 | --- | --- | --- |
 | request | `GitBranchHeadsGet` | `repository_id`, `repository_name`, `repository_kind`, `location`, `branches: [{branch_name, git_ref, tracked_commit}]` |
@@ -83,8 +89,9 @@ connectivity check already has for a failure verdict (T099), or a slow remote le
 repository behind a 504.
 
 Whether a timeout reaches the client as an error is a resolver decision, not an adapter one:
-`InfrahubRepositoryCommits` lets it propagate, `InfrahubRepositoryBranchDrift` catches it and reports
-`UNAVAILABLE / TIMEOUT` on the column while still returning its graph-resolved rows.
+`InfrahubRepositoryCommits` lets it propagate. The removed `InfrahubRepositoryBranchDrift` caught it
+and reported `UNAVAILABLE / TIMEOUT` on its column while still returning its graph-resolved rows; the
+`TIMEOUT` reason went with it.
 
 ## Reused unchanged: `refresh.git.fetch`
 
