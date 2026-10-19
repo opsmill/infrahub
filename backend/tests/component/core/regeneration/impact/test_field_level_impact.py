@@ -10,8 +10,10 @@ from infrahub.core.regeneration.impact import FieldLevelImpactResolver
 from infrahub.core.regeneration.models import TargetSelection, Widening, WideningReason
 from tests.constants import TestKind
 from tests.helpers.diff_summary import node_diff
-from tests.helpers.schema import CAR_SCHEMA, RACK_SCHEMA, load_schema
+from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
+
+from .helpers import SUBSCRIBER_KIND, query_report
 
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
@@ -78,11 +80,6 @@ query GetImpactCarsByAnyValue($value: String!) {
     }
 }
 """
-
-# The car is the group member; the tag stands in for an artifact or generator definition. The impact
-# mapping reads only the subscriber's id and typename, so a plain kind keeps the fixture free of the
-# transformation and repository wiring a real definition would demand.
-SUBSCRIBER_KIND = TestKind.TAG
 
 
 class TestFieldLevelImpact(TestInfrahubApp):
@@ -160,8 +157,13 @@ class TestFieldLevelImpact(TestInfrahubApp):
         client: InfrahubClient,
         diff_summary: list[NodeDiff],
     ) -> TargetSelection:
+<<<<<<< HEAD:backend/tests/component/core/regeneration/test_impact.py
         return await FieldLevelImpactResolver(db=db, client=client).resolve(
             query_payload=QUERY_CAR_WITH_OWNER,
+=======
+        return await get_field_level_impacted_subscribers(
+            query_report=query_report(QUERY_CAR_WITH_OWNER, default_branch),
+>>>>>>> origin/stable:backend/tests/component/core/regeneration/impact/test_field_level_impact.py
             diff_summary=diff_summary,
             query_branch=default_branch.name,
             subscriber_kind=SUBSCRIBER_KIND,
@@ -209,8 +211,13 @@ class TestFieldLevelImpact(TestInfrahubApp):
         exact-name match would drop it and leave the artifact stale. The label is built from the
         car's own attributes, so the routing narrows to the car's subscriber rather than widening.
         """
+<<<<<<< HEAD:backend/tests/component/core/regeneration/test_impact.py
         resolved = await FieldLevelImpactResolver(db=db, client=client).resolve(
             query_payload=QUERY_CAR_DISPLAY_LABEL,
+=======
+        resolved = await get_field_level_impacted_subscribers(
+            query_report=query_report(QUERY_CAR_DISPLAY_LABEL, default_branch),
+>>>>>>> origin/stable:backend/tests/component/core/regeneration/impact/test_field_level_impact.py
             diff_summary=[
                 node_diff(
                     node_id=dataset["car_id"],
@@ -295,8 +302,13 @@ class TestFieldLevelImpact(TestInfrahubApp):
         another owner changes which cars answer the query for both owners, so every target has to run
         even though no field the query reads back changed.
         """
+<<<<<<< HEAD:backend/tests/component/core/regeneration/test_impact.py
         resolved = await FieldLevelImpactResolver(db=db, client=client).resolve(
             query_payload=QUERY_CARS_BY_OWNER_NAME,
+=======
+        resolved = await get_field_level_impacted_subscribers(
+            query_report=query_report(QUERY_CARS_BY_OWNER_NAME, default_branch),
+>>>>>>> origin/stable:backend/tests/component/core/regeneration/impact/test_field_level_impact.py
             diff_summary=[
                 node_diff(
                     node_id=dataset["car_id"],
@@ -327,8 +339,13 @@ class TestFieldLevelImpact(TestInfrahubApp):
         The query reads only the car's ``name``, but its filter matches on every attribute, so a
         change to ``color`` can move which cars answer the query.
         """
+<<<<<<< HEAD:backend/tests/component/core/regeneration/test_impact.py
         resolved = await FieldLevelImpactResolver(db=db, client=client).resolve(
             query_payload=QUERY_CARS_BY_ANY_VALUE,
+=======
+        resolved = await get_field_level_impacted_subscribers(
+            query_report=query_report(QUERY_CARS_BY_ANY_VALUE, default_branch),
+>>>>>>> origin/stable:backend/tests/component/core/regeneration/impact/test_field_level_impact.py
             diff_summary=[
                 node_diff(
                     node_id=dataset["car_id"],
@@ -345,6 +362,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
             ids=[dataset["subscriber_id"]],
             widening=Widening(reason=WideningReason.NON_UNIQUE_TARGETS),
         )
+<<<<<<< HEAD:backend/tests/component/core/regeneration/test_impact.py
 
 
 QUERY_RACK_WITH_CARD = """
@@ -476,3 +494,5 @@ class TestGenericOwnerFieldLevelImpact(TestInfrahubApp):
             every_target=[dataset["subscriber_id"], dataset["other_subscriber_id"]],
         )
         assert resolved == TargetSelection(ids=[dataset["subscriber_id"]])
+=======
+>>>>>>> origin/stable:backend/tests/component/core/regeneration/impact/test_field_level_impact.py

@@ -3,11 +3,18 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, assert_never
 
 from infrahub.core import registry
+<<<<<<< HEAD
 from infrahub.core.query_group.subscribers import fetch_subscriber_refs
 from infrahub.core.relationship.dependent_resolver import QueryDependentNodeResolver
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.execution import cached_parse
 from infrahub.graphql.initialization import prepare_graphql_params
+=======
+from infrahub.core.constants import InfrahubKind
+from infrahub.core.validators.uniqueness.dependent_resolver import UniquenessDependentResolver
+from infrahub.message_bus.types import ProposedChangeSubscriber
+from infrahub.workers.dependencies import get_database
+>>>>>>> origin/stable
 
 from .classifier_builder import QueryClassifierBuilder
 from .derived_dependencies import SchemaDerivedFieldDependencyResolver
@@ -18,19 +25,50 @@ if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
     from infrahub_sdk.diff import NodeDiff
 
+<<<<<<< HEAD
     from infrahub.core.relationship.dependent_resolver import DependentNodeResolver
     from infrahub.database import InfrahubDatabase
+=======
+    from infrahub.core.validators.uniqueness.dependent_resolver import UniquenessDependentResolverInterface
+    from infrahub.graphql.analyzer import GraphQLQueryReport
+>>>>>>> origin/stable
 
 
 class FieldLevelImpactResolver:
     """Map data changes on a branch to the subscribers a GraphQL query depends on.
 
+<<<<<<< HEAD
     A change matters only when a modified field is one the query reads. The query analysis,
     the diff-summary tag and the subscriber lookup all run on the branch passed to `resolve`, so the
     caller passes the branch the changed data lives on (a proposed change's source branch, a merge's
     target branch).
+=======
+
+async def get_field_level_impacted_subscribers(
+    query_report: GraphQLQueryReport,
+    diff_summary: list[NodeDiff],
+    query_branch: str,
+    subscriber_kind: str,
+    every_target: list[str],
+    client: InfrahubClient,
+) -> TargetSelection:
+    """Map data changes on a branch to the subscribers a GraphQL query actually depends on.
+
+    A change is relevant only when at least one field that was modified is also read by the
+    query. This lets us skip regeneration when, for example, only a `description` field changed
+    but the query only reads `name` and `color`. The caller analyzes the query against
+    `query_branch`, and the diff-summary branch tag and the subscriber lookup run against it too,
+    so the caller passes the branch on which the changed data lives (the source branch for a
+    proposed change, the merge target branch for a merge follow-up).
+
+    `every_target` is what the caller must fall back to when a change cannot be traced to specific
+    subscribers. Taking it as an argument keeps that fallback out of the return type: the caller
+    always receives one authoritative list and never has to resolve a "process everything" case.
+    Only the narrowed outcome costs a subscriber lookup.
+>>>>>>> origin/stable
     """
 
+<<<<<<< HEAD
     def __init__(self, db: InfrahubDatabase, client: InfrahubClient) -> None:
         self.db = db
         self.client = client
@@ -45,6 +83,12 @@ class FieldLevelImpactResolver:
         every_target: list[str],
     ) -> TargetSelection:
         """Return the subscribers a change implicates, widening to `every_target` when it cannot narrow.
+=======
+    classifier = QueryClassifierBuilder(query_branch=query_branch, schema_branch=query_schema_branch).build(
+        query_report
+    )
+    assessment = classifier.assess(diff_summary=diff_summary)
+>>>>>>> origin/stable
 
         `every_target` is the fallback when a change cannot be traced to specific subscribers;
         taking it as an argument keeps "process everything" out of the return type, so the caller

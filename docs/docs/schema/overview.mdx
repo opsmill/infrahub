@@ -10,6 +10,8 @@ The schema is Infrahub's data model — a flexible, organization-specific defini
 
 Because the schema is stored in the database like any other object, Infrahub supports a different schema per branch. Schema changes go through the same branch-and-propose workflow as data changes, meaning you can test schema evolution in isolation before merging it to the main branch.
 
+You write the schema as YAML files and keep them in your own Git repository. Those files are not the schema itself — loading a file is what creates or updates the schema Infrahub stores. For how to write and load them, see [Create and load schema](./create-and-load).
+
 ## Building blocks
 
 A schema is composed of four primary types:

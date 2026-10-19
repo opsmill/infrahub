@@ -27,7 +27,6 @@ def _generator_definition(name: str = "gen") -> ProposedChangeGeneratorDefinitio
         execute_in_proposed_change=False,
         execute_after_merge=True,
         query_id="q-1",
-        query_models=["TestDevice"],
         query_payload="query {}",
         repository_id="repo-1",
     )
