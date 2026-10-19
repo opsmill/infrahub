@@ -112,7 +112,7 @@ mutation {
 
 - [ ] Kind without an HFID: create an `IpamIPAddress` → its `infrahub.node.created` changelog has `hfid` `null` and a `display_label`.
 - [ ] HFID change: rename a device → the event carries the new name in `hfid`.
-- [ ] Peer without an HFID, one-way relationship: `RelationshipAdd` two tags to the device (`nodes: [{id: "<tag-id>"}]`) → the device event lists both under `relationships.tags.peers` with `peer_display_label` set and `peer_hfid` `null`; the tags receive no event, since a tag does not list what points at it.
+- [ ] Peer without an HFID, one-way relationship: add two tags to the device with `mutation { RelationshipAdd(data: {id: "<device-id>", name: "tags", nodes: [{id: "<tag1-id>"}, {id: "<tag2-id>"}]}) { ok } }` → the device event lists both under `relationships.tags.peers` with `peer_display_label` set and `peer_hfid` `null`; the tags receive no event, since a tag does not list what points at it.
 - [ ] Cascade delete: delete a device → every event is delivered; no delivery fails in the webhook's task list.
 
 ## Teardown
