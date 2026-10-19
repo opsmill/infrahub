@@ -9,7 +9,6 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.regeneration.predicates import (
     definition_changed,
     query_changed,
-    reads_kind,
     repo_diff_or_none,
     transform_changed,
 )
@@ -42,7 +41,6 @@ def _build_definition(
         artifact_name="device-config",
         query_name="GetNetworkDevice",
         query_id=query_id,
-        query_models=["TestNetworkDevice"],
         query_payload="query { TestNetworkDevice { edges { node { id } } } }",
         repository_id="44444444-4444-4444-4444-444444444444",
         transform_kind=InfrahubKind.TRANSFORMJINJA2,
@@ -392,10 +390,3 @@ def test_repo_diff_or_none_returns_none_for_absent_repository() -> None:
     """
     branch_diff = ProposedChangeBranchDiff(repositories=[_build_repo_diff()], pipeline_id=uuid.uuid4())
     assert repo_diff_or_none(branch_diff, "00000000-0000-0000-0000-000000000000") is None
-
-
-def test_reads_kind_matches_only_a_kind_the_query_reads() -> None:
-    """reads_kind is true for a kind the definition's query reads, false otherwise."""
-    definition = _build_definition()
-    assert reads_kind(definition, "TestNetworkDevice") is True
-    assert reads_kind(definition, "TestOtherKind") is False

@@ -13,8 +13,11 @@ from infrahub.core.merge.selective_regen.impacted import ImpactedSubscriberResol
 from infrahub.core.merge.selective_regen.models import GateResult, LoadedDefinition
 from infrahub.core.regeneration.models import TargetSelection, Widening, WideningReason
 from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
+from infrahub.graphql.analyzer import GraphQLQueryReport
 
 if TYPE_CHECKING:
+    from collections.abc import Collection
+
     from infrahub_sdk.diff import NodeDiff
 
 TARGET_BRANCH = "main"
@@ -70,7 +73,6 @@ def _generator_definition(
         execute_in_proposed_change=False,
         execute_after_merge=True,
         query_id="q-1",
-        query_models=[],
         query_payload="query {}",
         repository_id="repo-1",
         dependencies=dependencies if dependencies is not None else [],
@@ -86,7 +88,13 @@ class _StubGate(DefinitionGate):
         self.results = results
 
     def evaluate(
-        self, *, definition: object, diff_summary: list[NodeDiff], modified_kinds: list[str], group_id: str
+        self,
+        *,
+        definition: object,
+        diff_summary: list[NodeDiff],
+        modified_kinds: list[str],
+        read_kinds: Collection[str],
+        group_id: str,
     ) -> GateResult:
         return self.results[definition.definition_name]  # type: ignore[attr-defined]
 
@@ -98,10 +106,13 @@ class _StubImpactedResolver(ImpactedSubscriberResolver):
         self.impacted = impacted
         self.widening = widening
 
+    def analyze(self, *, query_payload: str, target_branch: str) -> GraphQLQueryReport:
+        return GraphQLQueryReport(queries=[])
+
     async def resolve(
         self,
         *,
-        query_payload: str,
+        query_report: GraphQLQueryReport,
         diff_summary: list[NodeDiff],
         target_branch: str,
         subscriber_kind: str,

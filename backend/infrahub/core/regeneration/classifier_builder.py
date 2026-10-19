@@ -46,6 +46,7 @@ class QueryClassifierBuilder:
 
     def __init__(self, *, query_branch: str, schema_branch: SchemaBranch) -> None:
         self._query_branch = query_branch
+        self._schema_branch = schema_branch
         self._dependency_resolver = DerivedFieldDependencyResolver(schema_branch=schema_branch)
 
     def build(self, query_report: AnalyzedQuery) -> QueryImpactClassifier:
@@ -53,14 +54,35 @@ class QueryClassifierBuilder:
         # A change to a filtered field moves which objects answer the query, so it counts as a read.
         for kind, fields in query_report.filtered_fields_by_kind.items():
             readable_fields_by_kind.setdefault(kind, set()).update(fields)
+        traversed_kinds = set(query_report.traversed_kinds)
+        self._extend_generic_reads_to_implementations(
+            readable_fields_by_kind=readable_fields_by_kind, traversed_kinds=traversed_kinds
+        )
         dependencies = self._dependency_resolver.resolve(readable_fields_by_kind)
         return self.build_query_classifier(
             only_has_unique_targets=query_report.only_has_unique_targets,
             readable_fields_by_kind=readable_fields_by_kind,
-            traversed_kinds=query_report.traversed_kinds,
+            traversed_kinds=traversed_kinds,
             reached_paths_by_kind=query_report.relationship_reached_paths_by_kind,
             dependencies=dependencies,
         )
+
+    def _extend_generic_reads_to_implementations(
+        self, *, readable_fields_by_kind: dict[str, set[str]], traversed_kinds: set[str]
+    ) -> None:
+        """Count what the query reads off a generic as read off each of its implementations.
+
+        A diff reports a node under its concrete kind, so a field read only through a fragment on a
+        generic would otherwise never match a change. An implementation of a generic reached through a
+        relationship is reached through that relationship too.
+        """
+        generic_kinds = set(self._schema_branch.generic_names)
+        for kind in sorted(readable_fields_by_kind.keys() & generic_kinds):
+            generic = self._schema_branch.get_generic(name=kind, duplicate=False)
+            for concrete_kind in generic.concrete_kinds:
+                readable_fields_by_kind.setdefault(concrete_kind, set()).update(readable_fields_by_kind[kind])
+                if kind in traversed_kinds:
+                    traversed_kinds.add(concrete_kind)
 
     def build_query_classifier(
         self,
@@ -78,7 +100,8 @@ class QueryClassifierBuilder:
         reaches that peer in a way that cannot itself be narrowed, the derived chain alone would miss those
         readers, so the whole query widens to every target instead. A peer whose reading kind is itself
         relationship-reached carries a chain that stops at the reading kind, so it is extended with that kind's
-        chains back to the root.
+        chains back to the root. A peer the query also reads at a root keeps an empty chain besides the derived
+        one, so a change to it maps to itself and to the members reading it.
         """
         merged_readable = {kind: set(fields) for kind, fields in readable_fields_by_kind.items()}
         merged_traversed = set(traversed_kinds)
@@ -87,7 +110,7 @@ class QueryClassifierBuilder:
         for peer in dependencies.peers:
             already_traversed = peer.kind in traversed_kinds
             read_at_root = peer.kind in readable_fields_by_kind and not already_traversed
-            if read_at_root or (already_traversed and peer.kind not in reached_paths_by_kind):
+            if already_traversed and peer.kind not in reached_paths_by_kind:
                 widen = True
                 continue
             if peer.reading_kind in traversed_kinds:
@@ -100,6 +123,8 @@ class QueryClassifierBuilder:
                 )
             else:
                 peer_paths = (peer.path,)
+            if read_at_root:
+                peer_paths = (ReachedPath(hops=()), *peer_paths)
             merged_traversed.add(peer.kind)
             merged_readable.setdefault(peer.kind, set()).add(peer.field_name)
             # Two derived reads can resolve to the same peer path; keep each once so the member

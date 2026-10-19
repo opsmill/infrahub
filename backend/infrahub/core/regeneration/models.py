@@ -23,7 +23,10 @@ class RelationshipHop:
 
 @dataclass(frozen=True, slots=True)
 class ReachedPath:
-    """The relationship chain a query follows from a root object down to a related kind."""
+    """The relationship chain a query follows from a root object down to a related kind.
+
+    An empty chain stands for a read at the root itself, so a changed node maps to its own member.
+    """
 
     hops: tuple[RelationshipHop, ...]
 
@@ -131,7 +134,6 @@ class RegenerationDefinition(Protocol):
     definition_name: str
     query_id: str
     query_name: str
-    query_models: list[str]
     dependencies: list[str] | None
     dependencies_complete: bool | None
 

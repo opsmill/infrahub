@@ -182,10 +182,8 @@ class TestMergeSelectiveRegenSelection(TestInfrahubAppWithoutLocalWorkflow):
         await repo.new(db=db, name="merge-selective-repo", location="https://github.com/test/merge-selective-repo.git")
         await repo.save(db=db)
 
-        # ``models`` is populated by the GraphQL mutation analyzer in production; nodes created directly
-        # against the database must set it so the data-change (MODIFIED_KINDS) gate has kinds to match.
         query = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY)
-        await query.new(db=db, name="GetDevice", query=DEVICE_QUERY, models=["TestNetworkDevice"])
+        await query.new(db=db, name="GetDevice", query=DEVICE_QUERY)
         await query.save(db=db)
 
         transform = await Node.init(db=db, schema=InfrahubKind.TRANSFORMJINJA2)

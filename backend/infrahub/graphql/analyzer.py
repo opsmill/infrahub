@@ -178,6 +178,7 @@ class GraphQLQueryNode:
     infrahub_relationships: set[str] = field(default_factory=set)
     field_node: FieldNode | None = field(default=None)
     mutate_actions: list[MutateAction] = field(default_factory=list)
+    is_fragment: bool = field(default=False)
 
     def context_model(self) -> MainSchemaTypes | None:
         """Return the closest Infrahub object by going up in the tree."""
@@ -283,10 +284,13 @@ def _reached_path_sort_key(path: ReachedPath) -> tuple[tuple[str, str, str], ...
 class ReachedPathResolver:
     """Reconstruct, from a query's node tree, the relationship chains reaching each related kind.
 
-    A kind maps to every relationship chain that reaches it; a kind reached as a generic peer is
-    resolved to the generic's concrete implementations, since a data change reports the concrete kind.
-    A kind is absent -- so a change there widens -- when a way it is reached cannot be pinned: a hop
-    along it is an inline/named fragment refinement, or the kind is also read at a root.
+    A kind maps to every relationship chain that reaches it; a kind reached as a generic peer, or
+    through a fragment on a generic, is resolved to the generic's concrete implementations, since a
+    data change reports the concrete kind. An inline or named fragment restricts the type of the node it
+    sits on rather than reaching another node, so it adds no hop. A kind also read at a root keeps an
+    empty chain besides its relationship chains, which maps a changed node to itself. A kind is absent
+    -- so a change there widens -- when a way it is reached cannot be pinned: a hop whose field is not a
+    relationship with an identifier on an owner that stands for an Infrahub object.
     """
 
     queries: list[GraphQLQueryNode]
@@ -308,10 +312,12 @@ class ReachedPathResolver:
                     else:
                         chains_by_kind[kind].add(chain)
 
+        for kind in root_kinds & chains_by_kind.keys():
+            chains_by_kind[kind].add(ReachedPath(hops=()))
         return {
             kind: tuple(sorted(chains, key=_reached_path_sort_key))
             for kind, chains in chains_by_kind.items()
-            if kind not in ambiguous_kinds and kind not in root_kinds
+            if kind not in ambiguous_kinds
         }
 
     def _reached_kinds(self, node: GraphQLQueryNode) -> list[str]:
@@ -320,6 +326,8 @@ class ReachedPathResolver:
         if model is None:
             return []
         if isinstance(model, GenericSchema):
+            if node.is_fragment:
+                return list(model.concrete_kinds)
             return [implementation.kind for implementation in node.infrahub_node_models]
         return [model.kind]
 
@@ -333,8 +341,10 @@ class ReachedPathResolver:
     def _hop_chain_to_root(self, node: GraphQLQueryNode) -> ReachedPath | None:
         """The chain of reverse relationship hops from a related node back to the query root, or None when a hop cannot be pinned.
 
-        Returns None when a hop's field is not a relationship on its owner (an inline or named
-        fragment refinement), which cannot resolve a changed node to a reverse relationship.
+        A fragment stands for the node it sits on, so the walk steps over it without a hop. Returns
+        None when a hop's field is not a relationship on its owner, or when a fragment sits under the
+        metadata of a field rather than on a node, as neither resolves a changed node to a reverse
+        relationship.
         """
         hops: list[RelationshipHop] = []
         current = node
@@ -342,6 +352,11 @@ class ReachedPathResolver:
             owner = self._nearest_object_ancestor(current)
             if owner is None or owner.infrahub_model is None:
                 return None
+            if current.is_fragment:
+                if current.parent is None or not current.parent.in_property_level:
+                    return None
+                current = owner
+                continue
             relationship = owner.infrahub_model.get_relationship_or_none(name=current.path)
             if relationship is None or not relationship.identifier:
                 return None
@@ -431,8 +446,8 @@ class GraphQLQueryReport:
 
         A kind is reported here even when a root query also resolves to it. Both read paths share
         one entry in the requested-read map, so a caller given a changed node of that kind cannot
-        tell which path saw it; reporting the kind as traversed keeps that ambiguity visible rather
-        than resolving it optimistically.
+        tell which path saw it, so the kind is reported as traversed and its reached chains cover both
+        reads.
 
         The concrete kinds standing behind a generic or interface peer are included, because a data
         change is reported against the concrete kind.
@@ -823,13 +838,9 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
                 path=fragment_definition.type_condition.name.value,
                 context_type=ContextType.DIRECT,
                 infrahub_model=infrahub_model,
+                is_fragment=True,
             )
-            for field_node in selections.field_nodes:
-                named_fragment.children.append(self._populate_field_node(node=field_node, query_node=named_fragment))
-            for inline_fragment_node in selections.inline_fragment_nodes:
-                named_fragment.children.append(
-                    self._populate_inline_fragment_node(node=inline_fragment_node, query_node=named_fragment)
-                )
+            self._populate_children(selections=selections, query_node=named_fragment)
 
             self._named_fragments[fragment_name] = named_fragment
 
@@ -866,19 +877,26 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
         )
 
         if node.selection_set:
-            selections = self._get_selections(selection_set=node.selection_set)
-            for field_node in selections.field_nodes:
-                current_node.children.append(self._populate_field_node(node=field_node, query_node=current_node))
-            for inline_fragment_node in selections.inline_fragment_nodes:
-                current_node.children.append(
-                    self._populate_inline_fragment_node(node=inline_fragment_node, query_node=current_node)
-                )
-            for fragment_spread_node in selections.fragment_spread_nodes:
-                current_node.children.append(
-                    self._populate_fragment_spread_node(node=fragment_spread_node, query_node=current_node)
-                )
+            self._populate_children(
+                selections=self._get_selections(selection_set=node.selection_set), query_node=current_node
+            )
 
         return current_node
+
+    def _populate_children(self, selections: GraphQLSelectionSet, query_node: GraphQLQueryNode) -> None:
+        """Add a child node for every field, inline fragment and fragment spread of a selection set."""
+        for field_node in selections.field_nodes:
+            query_node.children.append(self._populate_field_node(node=field_node, query_node=query_node))
+        for inline_fragment_node in selections.inline_fragment_nodes:
+            query_node.children.append(
+                self._populate_inline_fragment_node(node=inline_fragment_node, query_node=query_node)
+            )
+        for fragment_spread_node in selections.fragment_spread_nodes:
+            if fragment_spread_node.name.value not in self._named_fragments:
+                continue
+            query_node.children.append(
+                self._populate_fragment_spread_node(node=fragment_spread_node, query_node=query_node)
+            )
 
     def _populate_inline_fragment_node(
         self, node: InlineFragmentNode, query_node: GraphQLQueryNode
@@ -891,15 +909,12 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
             path=node.type_condition.name.value,
             context_type=context_type,
             infrahub_model=infrahub_model,
+            is_fragment=True,
         )
         if node.selection_set:
-            selections = self._get_selections(selection_set=node.selection_set)
-            for field_node in selections.field_nodes:
-                current_node.children.append(self._populate_field_node(node=field_node, query_node=current_node))
-            for inline_fragment_node in selections.inline_fragment_nodes:
-                current_node.children.append(
-                    self._populate_inline_fragment_node(node=inline_fragment_node, query_node=current_node)
-                )
+            self._populate_children(
+                selections=self._get_selections(selection_set=node.selection_set), query_node=current_node
+            )
 
         return current_node
 

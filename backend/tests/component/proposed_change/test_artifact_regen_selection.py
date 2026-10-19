@@ -173,6 +173,7 @@ class TestArtifactRegenSelection(ArtifactRegenTestBase):
             "repository_id": repo.id,
             "repository_name": "regen-repo",
             "source_branch": SOURCE_BRANCH,
+            "device_id": device.id,
             "query_jinja_id": query_jinja.id,
             "query_python_id": query_python.id,
             "artdef_jinja_id": artdef_jinja.id,
@@ -198,6 +199,29 @@ class TestArtifactRegenSelection(ArtifactRegenTestBase):
             files_changed=["README.md"],
         )
         assert selected == []
+
+    async def test_data_change_selects_every_definition_whose_query_reads_the_kind(
+        self,
+        dataset: dict[str, Any],
+        default_branch: Branch,
+        admin_account: CoreAccount,
+        memory_cache: MemoryCache,
+        workflow_recorder: WorkflowRecorder,
+    ) -> None:
+        """A data change selects the definitions whose query text reads the changed kind.
+
+        The queries are saved without the kinds an analysis would store with them, as a query saved
+        before the analyzer could read a kind would be, so the match comes from the query text alone.
+        """
+        selected = await self._selected_definitions(
+            dataset=dataset,
+            default_branch=default_branch,
+            admin_account=admin_account,
+            memory_cache=memory_cache,
+            workflow_recorder=workflow_recorder,
+            diff_summary=[make_node_diff(dataset["device_id"], "TestNetworkDevice", SOURCE_BRANCH, ["name"])],
+        )
+        assert selected == ["artifact-jinja", "artifact-python"]
 
     async def test_query_edit_selects_only_owning_definition(
         self,

@@ -65,7 +65,7 @@ query GetDeviceWithTags($ids: [ID!]!) {
 }
 """
 
-# Reads the tag name through an inline fragment, a hop that cannot be mapped back to the owning device.
+# Reads the tag name inside a fragment on BuiltinTag, which maps back to the owning device like a read outside the fragment.
 QUERY_UNIQUE_WITH_FRAGMENT_TAGS = """
 query GetDeviceWithFragmentTags($ids: [ID!]!) {
     TestNetworkDevice(ids: $ids) {
@@ -214,18 +214,11 @@ GENERATOR_WIDENING_LOG_CASES = [
         expected_keys=ALL_INSTANCES,
     ),
     GeneratorWideningLogCase(
-        name="change_on_a_related_kind_names_that_kind_not_target_uniqueness",
+        name="change_read_through_a_fragment_narrows_to_its_owner_and_logs_no_widening",
         definition_key="gendef_fragment_tags",
-        diff=[
-            DiffEntry(
-                id_key="00000000-0000-0000-0000-000000000000", kind=InfrahubKind.TAG, fields=["name"], literal_id=True
-            )
-        ],
-        expected_warnings=[
-            f"Generator definition device-generator: the query reads {InfrahubKind.TAG} through a relationship, "
-            "and a change there cannot be traced back to specific targets. All targets will be processed."
-        ],
-        expected_keys=ALL_INSTANCES,
+        diff=[DiffEntry(id_key="tag_id", kind=InfrahubKind.TAG, fields=["name"])],
+        expected_warnings=[],
+        expected_keys=["dev1_id"],
     ),
     GeneratorWideningLogCase(
         name="narrowed_selection_logs_no_widening",
@@ -292,9 +285,14 @@ class TestRequestGeneratorDefinitionCheck(TestInfrahubAppWithoutLocalWorkflow):
     ) -> dict[str, Any]:
         await load_schema(db=db, schema=GENERATOR_SCHEMA, update_db=True)
 
+        tag = await Node.init(db=db, schema=InfrahubKind.TAG)
+        await tag.new(db=db, name="blue")
+        await tag.save(db=db)
+
         # --- Devices on the default branch (inherited by the source branch on fork) ---
+        # Only the first device carries the tag, so a tag change maps back to that device alone.
         dev1 = await Node.init(db=db, schema="TestNetworkDevice")
-        await dev1.new(db=db, name="dev1", color="red", description="Device 1")
+        await dev1.new(db=db, name="dev1", color="red", description="Device 1", tags=[tag])
         await dev1.save(db=db)
 
         dev2 = await Node.init(db=db, schema="TestNetworkDevice")
@@ -438,7 +436,6 @@ class TestRequestGeneratorDefinitionCheck(TestInfrahubAppWithoutLocalWorkflow):
                 definition_name="device-generator",
                 query_name=query_name,
                 query_id=query_id,
-                query_models=["TestNetworkDevice"],
                 query_payload=query_payload,
                 repository_id=repo.id,
                 class_name="DeviceGenerator",
@@ -453,6 +450,7 @@ class TestRequestGeneratorDefinitionCheck(TestInfrahubAppWithoutLocalWorkflow):
         return {
             "source_branch": SOURCE_BRANCH,
             "proposed_change_id": pc.id,
+            "tag_id": tag.id,
             "dev1_id": dev1.id,
             "dev2_id": dev2.id,
             "dev3_id": dev3.id,
