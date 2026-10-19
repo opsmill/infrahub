@@ -36,6 +36,7 @@ Validation (mutation layer and schema declaration):
 | `start <= end` | range mutation, `NumberPoolParameters` |
 | No overlap with another range of the same pool; error names the clashing ranges | range mutation, pool mutation after a `ranges` edit, `NumberPoolParameters` |
 | Parent pool `pool_type == Schema` | range create / update / delete refused, pointing at the default-branch schema |
+| A write leaving a number a user pool tracks, on a live branch, outside every range, including one already outside before the write; the error lists the lowest 20 such numbers with their holders and branches | range create / update / delete, pool update with `ranges` or the shorthand |
 
 A range partly or wholly outside the attribute's `[min_value, max_value]` is accepted. The
 effective-space calculator clips it, and a range clipped to nothing counts as exhausted for
