@@ -215,6 +215,7 @@ class TestReachedPathsFromQueryCarSchema(TestInfrahubApp):
         self, db: InfrahubDatabase, default_branch: Branch, car_schema: None
     ) -> None:
         owner = registry.schema.get(name=TestKind.CAR, branch=default_branch).get_relationship("owner")
+        assert owner.identifier is not None
 
         result = await _reached_paths(db, default_branch, SINGLE_HOP)
 
@@ -237,7 +238,9 @@ class TestReachedPathsFromQueryCarSchema(TestInfrahubApp):
     ) -> None:
         car = registry.schema.get(name=TestKind.CAR, branch=default_branch)
         owner = car.get_relationship("owner")
+        assert owner.identifier is not None
         previous_owner = car.get_relationship("previous_owner")
+        assert previous_owner.identifier is not None
 
         result = await _reached_paths(db, default_branch, TWO_RELATIONSHIPS_TO_THE_SAME_KIND)
 
