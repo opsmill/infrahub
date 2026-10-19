@@ -4,7 +4,7 @@ from uuid import uuid4
 import pytest
 
 from infrahub.core.branch import Branch
-from infrahub.core.constants import DiffAction, RelationshipCardinality
+from infrahub.core.constants import DiffAction, InfrahubKind, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.conflicts_enricher import ConflictsEnricher
 from infrahub.core.diff.model.path import EnrichedDiffConflict, EnrichedDiffRoot
@@ -1007,6 +1007,31 @@ class TestConflictsEnricher:
         await self.__call_system_under_test(db=db, base_enriched_diff=base_root, branch_enriched_diff=branch_root)
 
         assert self._get_value_conflict(branch_root, node_uuid, "config") is not None
+
+    @pytest.mark.parametrize(
+        "node_kind",
+        [
+            InfrahubKind.GRAPHQLQUERY,
+            InfrahubKind.TRANSFORMJINJA2,
+            InfrahubKind.TRANSFORMPYTHON,
+            InfrahubKind.ARTIFACTDEFINITION,
+            InfrahubKind.GENERATORDEFINITION,
+        ],
+    )
+    async def test_repository_definition_fingerprint_no_conflict(
+        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, node_kind: str
+    ) -> None:
+        # each branch imports its own commit, so the two fingerprints differ and neither one is a choice to make
+        base_root, branch_root, node_uuid = self._build_value_conflict_roots(
+            node_kind=node_kind,
+            attribute_name="fingerprint",
+            base_value="fingerprint-of-the-main-commit",
+            branch_value="fingerprint-of-the-branch-commit",
+        )
+
+        await self.__call_system_under_test(db=db, base_enriched_diff=base_root, branch_enriched_diff=branch_root)
+
+        assert self._get_value_conflict(branch_root, node_uuid, "fingerprint") is None
 
     async def test_manually_fixed_node_conflict_cleared(self, db: InfrahubDatabase) -> None:
         node_uuid = str(uuid4())
