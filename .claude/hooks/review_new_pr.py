@@ -10,7 +10,9 @@ import sys
 from typing import Any
 
 # Requires gh in command position so a grep or echo that quotes the command does not count.
-GH_PR_CREATE = re.compile(r"(?:^|[;&|(`\n]\s*)(?:rtk\s+(?:proxy\s+)?)?gh\s+pr\s+create\b")
+GH_PR_CREATE = re.compile(r"(?:^|[;&|(`\n]\s*)(?:rtk\s+(?:proxy\s+)?)?gh\s+pr\s+create\b([^;&|\n]*)")
+# These flags exit successfully without opening a pull request.
+NO_PR_FLAGS = re.compile(r"\s(?:--help|-h|--dry-run)\b")
 PR_URL = re.compile(r"https://github\.com/[\w.-]+/[\w.-]+/pull/(\d+)")
 
 
@@ -24,8 +26,11 @@ def find_opened_pr(payload: dict[str, Any]) -> tuple[str, str] | None:
         return str(record["number"]), str(record["url"])
 
     command = (payload.get("tool_input") or {}).get("command") or ""
+    create = GH_PR_CREATE.search(command)
+    if create is None or NO_PR_FLAGS.search(create.group(1)):
+        return None
     # A failed create chained to a lookup prints the URL of a pull request that already existed.
-    if not GH_PR_CREATE.search(command) or "already exists" in (response.get("stderr") or ""):
+    if "already exists" in (response.get("stderr") or ""):
         return None
     match = PR_URL.search(response.get("stdout") or "")
     if match is None:
