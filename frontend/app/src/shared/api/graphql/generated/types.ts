@@ -26312,8 +26312,6 @@ export type Query = {
   InfrahubReachableNodes: ReachableNodesResultType;
   /** What is running on a repository now, the last run of each operation, and which worker holds the repository lock. The answer is the same on every branch. */
   InfrahubRepositoryActivity: RepositoryActivity;
-  /** Per-branch drift for a repository. */
-  InfrahubRepositoryBranchDrift: RepositoryBranchDrifts;
   /** Status of one repository as seen from every relevant branch, one row per branch. Resolved entirely from the graph; never contacts a task worker. Requires view permission on the repository's kind covering both the default and non-default branches (ALLOW_ALL, or ALLOW_DEFAULT plus ALLOW_OTHER). Always reports the present: a request carrying an 'at' query parameter is rejected, because the branch list this query builds its rows from has no historical form. */
   InfrahubRepositoryBranchStatus: InfrahubRepositoryBranchStatusType;
   /** Paged commit log for a repository on the request branch. */
@@ -38867,11 +38865,6 @@ export type QueryInfrahubRepositoryActivityArgs = {
 };
 
 
-export type QueryInfrahubRepositoryBranchDriftArgs = {
-  repository_id: Scalars['String']['input'];
-};
-
-
 export type QueryInfrahubRepositoryBranchStatusArgs = {
   id: Scalars['String']['input'];
   internal_status__value?: InputMaybe<Scalars['String']['input']>;
@@ -39967,36 +39960,6 @@ export type RepositoryActivityRuns = {
   edges: Array<RepositoryActivityRunEdge>;
 };
 
-/** Drift of one Infrahub branch of a repository. */
-export type RepositoryBranchDrift = {
-  __typename: 'RepositoryBranchDrift';
-  branch_name: Scalars['String']['output'];
-  condition: RepositoryGitCondition;
-  /** Remote branch or tracked ref compared for this branch. Null when the branch is not tracked. */
-  git_ref: Maybe<Scalars['String']['output']>;
-  /** Latest remote commit. Null when there is no remote counterpart or when condition is UNAVAILABLE. */
-  remote_head: Maybe<Scalars['String']['output']>;
-  tracked_commit: Maybe<Scalars['String']['output']>;
-};
-
-export type RepositoryBranchDriftNode = {
-  __typename: 'RepositoryBranchDriftNode';
-  node: RepositoryBranchDrift;
-};
-
-/** Drift for every branch of a repository, produced by a single worker request. */
-export type RepositoryBranchDrifts = {
-  __typename: 'RepositoryBranchDrifts';
-  /** When the remote was last checked for movement. Read-only repositories only. */
-  checked_at: Maybe<Scalars['DateTime']['output']>;
-  /** One row per open branch the caller may view, and for a read-write repository only those synchronised with Git. The set is the branch list as it stands now: an `at` in the past changes the values each row reports, never which branches are listed. */
-  edges: Array<RepositoryBranchDriftNode>;
-  fetched_at: Maybe<Scalars['DateTime']['output']>;
-  repository_id: Scalars['String']['output'];
-  /** Set when the git-derived drift answer could not be produced. It does not suppress edges, which is resolved separately. */
-  unavailable: Maybe<RepositoryGitUnavailable>;
-};
-
 /** A commit read live from a worker's local clone. Never persisted. */
 export type RepositoryCommit = {
   __typename: 'RepositoryCommit';
@@ -40040,7 +40003,7 @@ export type RepositoryCommits = {
   edges: Array<RepositoryCommitNode>;
   /** When the answering worker last fetched from the remote. Null before the first fetch, and after a failed fetch. */
   fetched_at: Maybe<Scalars['DateTime']['output']>;
-  /** Remote branch or tracked ref whose history is listed. Null when the branch tracks nothing, matching RepositoryBranchDrift.git_ref. */
+  /** Remote branch or tracked ref whose history is listed. Null when the branch tracks nothing. */
   git_ref: Maybe<Scalars['String']['output']>;
   /** Commit Infrahub has imported on this branch, from the repository's commit attribute. */
   imported_commit: Maybe<Scalars['String']['output']>;
@@ -40100,8 +40063,7 @@ export type RepositoryGitUnavailable = {
 /** Why no git-derived answer was produced. */
 export const RepositoryGitUnavailableReason = {
   NOT_CLONED: 'NOT_CLONED',
-  NOT_IMPLEMENTED: 'NOT_IMPLEMENTED',
-  TIMEOUT: 'TIMEOUT'
+  NOT_IMPLEMENTED: 'NOT_IMPLEMENTED'
 } as const;
 
 export type RepositoryGitUnavailableReason = typeof RepositoryGitUnavailableReason[keyof typeof RepositoryGitUnavailableReason];

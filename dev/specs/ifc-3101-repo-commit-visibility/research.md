@@ -6,6 +6,13 @@ Phase 0 output. Every unknown from the plan's Technical Context is resolved here
 rationale and the alternatives that were weighed. Code is cited as `module::symbol`; line numbers
 are deliberately absent.
 
+**Scope change, 2026-10-19 ([IFC-3448](https://opsmill.atlassian.net/browse/IFC-3448))**: User Story 3
+is deferred and the drift query was removed before any release, see spec.md's
+[Scope change](spec.md#scope-change-user-story-3-deferred). The decisions below that cover
+`InfrahubRepositoryBranchDrift`, the `git.branch_heads.get` message pair,
+`RepositoryBranchValuesQuery` and the `TIMEOUT` unavailable reason were built and then removed; they
+are marked *(removed)* where they appear and otherwise left as written.
+
 ## Delivery order: contract first
 
 **Decision**: Ship the GraphQL contract as the first pull request, with resolvers that are real for
@@ -47,7 +54,7 @@ which costs a few lines and reads as obviously fake.
 **Decision**: Message-bus RPC, point-to-point, following `infrahub.api.file::get_file` and
 `infrahub.message_bus.messages.git_file_get::GitFileGet`. Two new message pairs:
 `GitCommitLogGet` / `GitCommitLogGetResponse` (routing key `git.commit_log.get`) and
-`GitBranchHeadsGet` / `GitBranchHeadsGetResponse` (routing key `git.branch_heads.get`), both with
+`GitBranchHeadsGet` / `GitBranchHeadsGetResponse` (routing key `git.branch_heads.get`, *(removed)*), both with
 priority 4 in `infrahub.message_bus.messages::PRIORITY_MAP` like `git.file.get`.
 
 **Rationale**: `dev/knowledge/backend/message-bus.md` reserves the bus for broadcasts and "rapid
@@ -97,7 +104,7 @@ the bounded wait alone. Sequence the separate ticket immediately after Phase B1.
 
 ## Warm-up when the answering worker has no clone
 
-**Decision**: The `git.commit_log.get` and `git.branch_heads.get` handlers must not call
+**Decision**: The `git.commit_log.get` and `git.branch_heads.get` *(removed)* handlers must not call
 `infrahub.git.repository::get_initialized_repo`. They build the repository object without `init`
 and call `InfrahubRepositoryBase.validate_local_directories()`; on
 `RepositoryInvalidFileSystemError` they reply `condition = UNAVAILABLE`,
@@ -230,6 +237,10 @@ make a read-only inspection write to disk, and the value is per repository rathe
 reusing the due key for `checked_at` (rejected above).
 
 ## Per-branch drift in one worker request
+
+**Erratum, 2026-10-19**: this decision was built and then removed before any release by
+[IFC-3448](https://opsmill.atlassian.net/browse/IFC-3448), with User Story 3 deferred; see spec.md's
+[Scope change](spec.md#scope-change-user-story-3-deferred). The research below is left as written.
 
 **Decision**: `InfrahubRepositoryBranchDrift(repository_id)` resolves the tracked values per Infrahub
 branch with a new `RepositoryBranchValuesQuery` (`infrahub.core.query.repository`) in one database
@@ -428,7 +439,7 @@ the checker would, which is what FR-009 means by "the same rule". The mutation i
 
 ## GraphQL surface and naming
 
-**Decision**: Top-level queries `InfrahubRepositoryCommits` and `InfrahubRepositoryBranchDrift`,
+**Decision**: Top-level queries `InfrahubRepositoryCommits` and `InfrahubRepositoryBranchDrift` *(removed)*,
 mutation `InfrahubReadOnlyRepositoryCheckRefs`, all registered on
 `infrahub.graphql.schema::InfrahubBaseQuery` / `InfrahubBaseMutation`. Types in
 `infrahub.graphql.types.repository` (new), enums wrapped with `graphene.Enum.from_enum` from
@@ -457,11 +468,11 @@ as a `Commits` tab on the generic object detail page
 `isOfKind(GENERIC_REPOSITORY_KIND, ...)` like the existing `repository_objects` tab), backed by the
 three-file query chain under `frontend/app/src/entities/repository/`. While the answer is
 `UNAVAILABLE` the query retries rather than polls: `retry` with a fixed 10-second `retryDelay`,
-capped at 30 retries (`ui/queries/repository-commits.constants.ts`), for `NOT_CLONED`, `TIMEOUT` and
-a missing reason, and no retry for `NOT_IMPLEMENTED`. `refetchInterval` was the planned pattern and
-was dropped because an interval refetch of a query with no data resets it to pending. The drift column has no rows to
-annotate yet: IFC-3104 has not landed and no per-repository branch list exists in the frontend, so
-User Story 3's UI waits for that card while its query ships now.
+capped at 30 retries (`ui/queries/repository-commits.constants.ts`), for `NOT_CLONED` and a missing
+reason (`TIMEOUT` was also retried until it was removed with the drift query), and no retry for
+`NOT_IMPLEMENTED`. `refetchInterval` was the planned pattern and was dropped because an interval
+refetch of a query with no data resets it to pending. The drift column is deferred with User Story 3,
+and its query was removed before any page called it.
 
 ## Configuration additions
 

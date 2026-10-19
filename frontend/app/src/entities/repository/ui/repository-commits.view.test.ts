@@ -77,12 +77,9 @@ describe("getEmptyState", () => {
     });
   });
 
-  test("says no worker answered and asks for a refresh once retrying a timeout has stopped", () => {
+  test("says no worker answered and asks for a refresh once retrying an answer without a reason has stopped", () => {
     // WHEN
-    const emptyState = getEmptyState(
-      { reason: RepositoryGitUnavailableReason.TIMEOUT, message: "Timed out" },
-      { isRetrying: false }
-    );
+    const emptyState = getEmptyState({ reason: null, message: "No answer" }, { isRetrying: false });
 
     // THEN
     expect(emptyState).toEqual({
@@ -122,15 +119,12 @@ describe("getEmptyState", () => {
     });
   });
 
-  test("still says not available yet when the read timed out", () => {
+  test("still says not available yet when the answer carries no reason", () => {
     // WHEN
-    const emptyState = getEmptyState(
-      { reason: RepositoryGitUnavailableReason.TIMEOUT, message: "Timed out" },
-      { isRetrying: true }
-    );
+    const emptyState = getEmptyState({ reason: null, message: "No answer" }, { isRetrying: true });
 
     // THEN
-    expect(emptyState).toEqual({ title: "Commit log not available yet", message: "Timed out" });
+    expect(emptyState).toEqual({ title: "Commit log not available yet", message: "No answer" });
   });
 
   test.each([

@@ -15,7 +15,6 @@ from .reachable import InfrahubReachableNodes
 from .relationship import Relationship
 from .repository_git_state import (
     InfrahubRepositoryActivity,
-    InfrahubRepositoryBranchDrift,
     InfrahubRepositoryCommits,
 )
 from .resource_manager import InfrahubResourcePoolAllocated, InfrahubResourcePoolUtilization
@@ -40,7 +39,6 @@ __all__ = [
     "InfrahubPathTraversal",
     "InfrahubReachableNodes",
     "InfrahubRepositoryActivity",
-    "InfrahubRepositoryBranchDrift",
     "InfrahubRepositoryCommits",
     "InfrahubResourcePoolAllocated",
     "InfrahubResourcePoolUtilization",
