@@ -1,7 +1,4 @@
-"""Rules that mask personal data and secrets in span attributes and log fields.
-
-This module has no third-party dependencies, so that logging can use it without importing the tracing exporters.
-"""
+"""Rules that mask personal data and secrets in span attributes."""
 
 from __future__ import annotations
 
@@ -71,7 +68,7 @@ def mask_value(key: str, value: Any, rules: Sequence[MaskingRule] = MASKING_RULE
 def mask_nested(value: Any, rules: Sequence[MaskingRule] = MASKING_RULES) -> Any:
     """Return a copy of `value` with the values of matching keys masked at every level of its mappings and lists.
 
-    A copy is returned, because the caller may still use the mapping it passed to the logger.
+    A copy is returned, because the caller may still use the mapping it passed in.
     """
     if isinstance(value, Mapping):
         return mask_mapping(data=value, rules=rules)

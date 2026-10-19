@@ -40,7 +40,7 @@ from infrahub.lock import initialize_lock
 from infrahub.log import clear_log_context, get_logger, set_log_data
 from infrahub.middleware import ConditionalGZipMiddleware, InfrahubCORSMiddleware
 from infrahub.services import InfrahubServices
-from infrahub.trace import add_span_exception, configure_trace, get_traceid
+from infrahub.trace import add_span_exception, configure_trace, get_traceid, mask_recording_span_attributes
 from infrahub.worker import WORKER_IDENTITY
 from infrahub.workers.dependencies import (
     get_cache,
@@ -158,6 +158,7 @@ app = FastAPI(
 def server_request_hook(span: Span, scope: dict) -> None:  # noqa: ARG001
     if span and span.is_recording():
         span.set_attribute("worker", WORKER_IDENTITY)
+        mask_recording_span_attributes(span=span)
 
 
 FastAPIInstrumentor().instrument_app(app, excluded_urls=".*/metrics", server_request_hook=server_request_hook)

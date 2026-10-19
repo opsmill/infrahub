@@ -14,6 +14,7 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
 )
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import Event, ReadableSpan, TracerProvider
+from opentelemetry.sdk.trace import Span as SDKSpan
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter, SpanExporter, SpanExportResult
 from opentelemetry.trace import StatusCode
 from opentelemetry.util.types import Attributes
@@ -105,6 +106,16 @@ def mask_span(span: ReadableSpan, rules: Sequence[MaskingRule] = MASKING_RULES) 
         end_time=span.end_time,
         instrumentation_scope=span.instrumentation_scope,
     )
+
+
+def mask_recording_span_attributes(span: trace.Span, rules: Sequence[MaskingRule] = MASKING_RULES) -> None:
+    """Replace, on a span that is still recording, the attribute values that `rules` mask."""
+    if not isinstance(span, SDKSpan) or not span.is_recording():
+        return
+    attributes = dict(span.attributes or {})
+    for key, value in mask_mapping(data=attributes, rules=rules).items():
+        if value != attributes[key]:
+            span.set_attribute(key, value)
 
 
 class MaskingSpanExporter(SpanExporter):
