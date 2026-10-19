@@ -1,1 +1,0 @@
-Changed proposed-change and post-merge regeneration to select only the targets that read a changed node when the query reads its kind both at the root and through a relationship, instead of every target of the definition.

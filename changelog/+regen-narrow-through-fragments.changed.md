@@ -1,1 +1,0 @@
-Changed proposed-change and post-merge regeneration to select only the targets that read a changed node when the query reaches that node through an inline or named fragment, instead of every target of the definition.
