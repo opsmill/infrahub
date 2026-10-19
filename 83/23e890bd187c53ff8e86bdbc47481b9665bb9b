@@ -1,0 +1,28 @@
+backend/infrahub/core/graph/__init__.py
+  s_b2b53418d6f8ed::t_63b1bc5483063e 1
+backend/infrahub/core/migrations/graph/m080_delete_generator_capture_diffs.py
+  s_b2b53418d6f8ed::t_e11dfe0c258c7e 109-111
+  s_b2b53418d6f8ed::t_5d8a21835ed289 1-41,43-44,46-108,112-117
+  s_b2b53418d6f8ed::t_8cbf7797117fbc 42,45
+changelog/+generator-capture-unstored-diff.fixed.md
+  s_b2b53418d6f8ed::t_331fd119c828bb 1
+backend/tests/component/core/migrations/graph/test_080_delete_generator_capture_diffs.py
+  s_b2b53418d6f8ed::t_e8eed00219fcf8 59,132-133,137,142,144-160,169-170
+  s_b2b53418d6f8ed::t_2e6dad67810399 1-58,60-131,134-136,138-141,143,161-168,171-221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8323e890bd187c53ff8e86bdbc47481b9665bb9b",
+  "prompts": {},
+  "sessions": {
+    "s_b2b53418d6f8ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a06fd280-ced2-4ade-b525-6f2d0f72e799",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}
