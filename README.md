@@ -57,7 +57,7 @@ Infrahub is purpose-built for network and infrastructure automation. It combines
 Three ways to try Infrahub:
 
 - **[Sandbox](https://sandbox.infrahub.app/)** — a hosted demo of the Infrahub UI with sample data — explore the interface without installing anything.
-- **[Getting Started Lab](https://opsmill.instruqt.com/pages/labs)** — a guided browser tutorial covering branches, schemas, and unified storage.
+- **[Getting Started Lab](https://docs.infrahub.app/labs)** — a guided browser tutorial covering branches, schemas, and unified storage.
 - **[Quick Start guide](https://docs.infrahub.app/overview/quickstart)** — set up a local Infrahub instance and walk through the basics in your own environment.
 
 For production deployments on Kubernetes, see [`opsmill/infrahub-helm`](https://github.com/opsmill/infrahub-helm) and the [installation guide](https://docs.infrahub.app/guides/installation).
