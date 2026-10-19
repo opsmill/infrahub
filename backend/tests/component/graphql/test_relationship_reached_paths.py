@@ -306,11 +306,7 @@ class TestReachedPathsFromQueryDeviceSchema(TestInfrahubApp):
     ) -> None:
         device = registry.schema.get(name=TestKind.DEVICE, branch=default_branch)
         interfaces = device.get_relationship("interfaces")
-<<<<<<< HEAD
-        interface_generic = registry.schema.get(name=TestKind.INTERFACE, branch=default_branch)
-=======
         assert interfaces.identifier is not None
->>>>>>> origin/stable
 
         result = await _reached_paths(db, default_branch, GENERIC_PEER)
 
