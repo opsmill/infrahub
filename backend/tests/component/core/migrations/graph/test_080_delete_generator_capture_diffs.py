@@ -76,6 +76,16 @@ RETURN elementId(n) AS id
     return {result["id"] for result in results}
 
 
+async def link_partner(db: InfrahubDatabase, root_uuid: str, partner_uuid: str) -> None:
+    await db.execute_query(
+        query="""
+MATCH (root:DiffRoot {uuid: $root_uuid}), (partner:DiffRoot {uuid: $partner_uuid})
+CREATE (root)-[:DIFF_HAS_PARTNER]->(partner)
+        """,
+        params={"root_uuid": root_uuid, "partner_uuid": partner_uuid},
+    )
+
+
 async def stored_root_uuids(db: InfrahubDatabase) -> set[str]:
     results = await db.execute_query(query="MATCH (root:DiffRoot) RETURN root.uuid AS uuid")
     return {result["uuid"] for result in results}
@@ -131,6 +141,13 @@ class TestMigration080:
         ]
         # A diff of the default branch against itself is stored as a single root, with no partner.
         assert [root_uuids(diff) for diff in capture_diffs] == [[diff.uuid] for diff in capture_diffs]
+        linked_capture_diffs = [
+            await self._store_capture_diff(
+                diff_coordinator=diff_coordinator, default_branch=default_branch, from_time=from_time
+            )
+            for _ in range(2)
+        ]
+        await link_partner(db=db, root_uuid=linked_capture_diffs[0].uuid, partner_uuid=linked_capture_diffs[1].uuid)
         named_diff = await self._store_named_diff(
             diff_coordinator=diff_coordinator, default_branch=default_branch, from_time=from_time, name=str(uuid4())
         )
@@ -151,13 +168,7 @@ class TestMigration080:
         for capture_diff, kept_partner in zip(
             capture_diffs_with_kept_partner, [named_diff, frozen_capture_diff], strict=True
         ):
-            await db.execute_query(
-                query="""
-MATCH (root:DiffRoot {uuid: $root_uuid}), (partner:DiffRoot {uuid: $partner_uuid})
-CREATE (root)-[:DIFF_HAS_PARTNER]->(partner)
-                """,
-                params={"root_uuid": capture_diff.uuid, "partner_uuid": kept_partner.uuid},
-            )
+            await link_partner(db=db, root_uuid=capture_diff.uuid, partner_uuid=kept_partner.uuid)
         branch = await create_branch(db=db, branch_name="branch1")
         car_on_branch = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
         car_on_branch.nbr_seats.value = 3
@@ -170,7 +181,7 @@ CREATE (root)-[:DIFF_HAS_PARTNER]->(partner)
             *[uuid for diff in capture_diffs_with_kept_partner for uuid in root_uuids(diff)],
             *root_uuids(branch_diff),
         ]
-        capture_root_uuids = [uuid for diff in capture_diffs for uuid in root_uuids(diff)]
+        capture_root_uuids = [uuid for diff in [*capture_diffs, *linked_capture_diffs] for uuid in root_uuids(diff)]
         all_vertices_before = await diff_vertex_ids(db=db)
         kept_vertices_before = await diff_vertex_ids(db=db, of_root_uuids=kept_root_uuids)
         assert await stored_root_uuids(db=db) == {*kept_root_uuids, *capture_root_uuids}
