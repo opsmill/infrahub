@@ -1,0 +1,35 @@
+backend/infrahub/core/node/__init__.py
+  s_bca69773a4f3cf::t_13e180c0a2bee9 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4242a1c290bed33408fc1be3cf59357ca0291a11",
+  "prompts": {},
+  "sessions": {
+    "s_bca69773a4f3cf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eb85e3f9-d1c8-43e9-87f0-e2ea95e20a6b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_c29bc2a8dbf032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79ee2d68-517a-4978-9862-3a65b01b3f78",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_d263ff49a5ea02": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "319ef207-c6fd-4b54-a05e-c28f35fada0e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
