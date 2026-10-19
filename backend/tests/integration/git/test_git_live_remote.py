@@ -496,60 +496,8 @@ def _deferral_messages(caplog: pytest.LogCaptureFixture, repository: SyncedBranc
     ]
 
 
-class TestRepositoryRemoteOperations(TestInfrahubApp):
-    """Live-remote tests for InfrahubRepository and InfrahubReadOnlyRepository.
-
-    Each fixture sets up an isolated Gogs repository and Infrahub node for its
-    scenario.  Tests are isolated by repo name and node ID; they share the same
-    Infrahub stack instance to avoid paying per-class setup costs.
-    """
-
-    @pytest.fixture(scope="class")
-    async def auth_failure_dataset(
-        self,
-        db: InfrahubDatabase,
-        initialize_registry: None,
-        git_repos_dir_module_scope: Path,
-        gogs_server: GogsServer,
-    ) -> dict:
-        repo_name = "auth-failure-repo"
-        # Create the repo as *private* so the server requires authentication even
-        # for clone operations.  Public repos allow anonymous read access, which means
-        # the embedded bad credentials are never presented to the server and the clone
-        # succeeds — defeating the purpose of this test.
-        create_gogs_repo(
-            gogs_server.base_url,
-            gogs_server.token,
-            repo_name,
-            gogs_server.container,
-            private=True,
-        )
-        bad_url = bad_credentials_clone_url(gogs_server.base_url, repo_name)
-
-        # Pre-create the Infrahub node directly in the DB — not via the HTTP API — so
-        # that no automatic sync is triggered and _update_operational_status() has a
-        # node to write to when the clone fails.
-        obj = await Node.init(schema=InfrahubKind.REPOSITORY, db=db)
-        await obj.new(db=db, name=repo_name, location=bad_url)
-        await obj.save(db=db)
-        return {"repo_name": repo_name, "node_id": obj.id, "bad_url": bad_url}
-
-    @pytest.fixture(scope="class")
-    async def push_rejection_dataset(
-        self,
-        initialize_registry: None,
-        git_repos_dir_module_scope: Path,
-        client: InfrahubClient,
-        gogs_server: GogsServer,
-    ) -> dict:
-        repo_name = "push-rejection-repo"
-        repo_url = create_gogs_repo(gogs_server.base_url, gogs_server.token, repo_name, gogs_server.container)
-        node = await client.create(
-            kind=InfrahubKind.REPOSITORY,
-            data={"name": repo_name, "location": repo_url},
-        )
-        await node.save()
-        return {"repo_name": repo_name, "node_id": node.id}
+class LiveDeliveryFixtures:
+    """The fixtures and the retry step that the live tests of the push queue share."""
 
     @pytest.fixture
     def reject_pushes_to_main(
@@ -613,6 +561,72 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
             )
 
         return create
+
+    async def _retry_delivery(self, client: InfrahubClient, repository: SyncedBranchRepository) -> None:
+        """Ask for a retry of the pending pushes of the repository, as a user does, on the default branch.
+
+        The local workflow runs the retry inside the request, so a retry run that fails comes back as the error of the
+        mutation.
+        """
+        await client.execute_graphql(
+            query=RETRY_DELIVERY, variables={"id": repository.node_id}, branch_name=registry.default_branch
+        )
+
+
+class TestRepositoryRemoteOperations(LiveDeliveryFixtures, TestInfrahubApp):
+    """Live-remote tests for InfrahubRepository and InfrahubReadOnlyRepository.
+
+    Each fixture sets up an isolated Gogs repository and Infrahub node for its
+    scenario.  Tests are isolated by repo name and node ID; they share the same
+    Infrahub stack instance to avoid paying per-class setup costs.
+    """
+
+    @pytest.fixture(scope="class")
+    async def auth_failure_dataset(
+        self,
+        db: InfrahubDatabase,
+        initialize_registry: None,
+        git_repos_dir_module_scope: Path,
+        gogs_server: GogsServer,
+    ) -> dict:
+        repo_name = "auth-failure-repo"
+        # Create the repo as *private* so the server requires authentication even
+        # for clone operations.  Public repos allow anonymous read access, which means
+        # the embedded bad credentials are never presented to the server and the clone
+        # succeeds — defeating the purpose of this test.
+        create_gogs_repo(
+            gogs_server.base_url,
+            gogs_server.token,
+            repo_name,
+            gogs_server.container,
+            private=True,
+        )
+        bad_url = bad_credentials_clone_url(gogs_server.base_url, repo_name)
+
+        # Pre-create the Infrahub node directly in the DB — not via the HTTP API — so
+        # that no automatic sync is triggered and _update_operational_status() has a
+        # node to write to when the clone fails.
+        obj = await Node.init(schema=InfrahubKind.REPOSITORY, db=db)
+        await obj.new(db=db, name=repo_name, location=bad_url)
+        await obj.save(db=db)
+        return {"repo_name": repo_name, "node_id": obj.id, "bad_url": bad_url}
+
+    @pytest.fixture(scope="class")
+    async def push_rejection_dataset(
+        self,
+        initialize_registry: None,
+        git_repos_dir_module_scope: Path,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+    ) -> dict:
+        repo_name = "push-rejection-repo"
+        repo_url = create_gogs_repo(gogs_server.base_url, gogs_server.token, repo_name, gogs_server.container)
+        node = await client.create(
+            kind=InfrahubKind.REPOSITORY,
+            data={"name": repo_name, "location": repo_url},
+        )
+        await node.save()
+        return {"repo_name": repo_name, "node_id": node.id}
 
     @pytest.fixture
     def block_commit_worktree(self) -> Generator[Callable[[Path], Callable[[], None]], None, None]:
@@ -1085,16 +1099,6 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
             raise_on_error=True,
         )
         assert created.name.value == repo_name
-
-    async def _retry_delivery(self, client: InfrahubClient, repository: SyncedBranchRepository) -> None:
-        """Ask for a retry of the pending pushes of the repository, as a user does, on the default branch.
-
-        The local workflow runs the retry inside the request, so a retry run that fails comes back as the error of the
-        mutation.
-        """
-        await client.execute_graphql(
-            query=RETRY_DELIVERY, variables={"id": repository.node_id}, branch_name=registry.default_branch
-        )
 
     async def _run_merge_flow(
         self, client: InfrahubClient, repository: SyncedBranchRepository, entry: PendingMerge, enqueued: bool
@@ -1885,6 +1889,14 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
             for record in caplog.records
             if record.getMessage().startswith("Submitted a delivery run of repository ")
         ] == [f"Submitted a delivery run of repository {repository.name}, whose delivery lost its attempt."]
+
+
+class TestPushQueueEndToEnd(LiveDeliveryFixtures, TestInfrahubApp):
+    """Live tests of the push queue, its recovery and its abandonment, through the API.
+
+    These tests have a class of their own so that they run on another xdist worker, which keeps the integration
+    shard within its time limit.
+    """
 
     async def test_the_merge_after_a_fixed_cause_delivers_the_whole_queue(
         self,
