@@ -1,0 +1,21 @@
+backend/tests/unit/core/regeneration/helpers.py
+  s_fb819cbbe44071::t_54582e52b0334c 1-33
+backend/tests/unit/core/regeneration/test_reached_resolver.py
+  s_fb819cbbe44071::t_c9e7fa92ac17d2 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "afe08c8c163f8ca903608c8a2c8e696f7bc997c4",
+  "prompts": {},
+  "sessions": {
+    "s_fb819cbbe44071": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65a68a98-fa9c-4142-8730-a06dd94f203b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
