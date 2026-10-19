@@ -249,7 +249,8 @@ Every port method that runs Git gives each of its Git commands a bound, as GitPy
   raises `RepositoryConnectionError` as well. `push` also passes `PUSH_TIMEOUT_SECONDS` (300 s) to
   the lookup of the worktree that it pushes from (`git worktree list`), not
   `LOCAL_GIT_TIMEOUT_SECONDS`. The lookup is local, so a lookup past that limit raises
-  `RepositoryError`, not `RepositoryConnectionError`.
+  `RepositoryError`, not `RepositoryConnectionError`. Known limit: a transfer that sends data and
+  then stalls can take up to about twice the bound.
 - `remote_head`, `is_ancestor`, `replay`, `reset` and `record` by `LOCAL_GIT_TIMEOUT_SECONDS`, for
   each local command. GitPython stops a local command at the bound only where `ps` exists, so the
   backend image installs `procps`. `remote_head` reads with `git rev-parse`, not through GitPython's object

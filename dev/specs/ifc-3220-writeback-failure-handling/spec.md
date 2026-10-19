@@ -471,7 +471,11 @@ system, and the new delivery path must keep them true.*
   outside the repository import, MUST be bounded in time, so that a remote that stops answering
   produces a transient failure. FR-027 covers the import. Note: the bound holds for a fetch, a push
   and a remote branch deletion over HTTP(S). A transfer over SSH has no bound. A local Git command
-  is bounded where `ps` exists, and the backend image installs it (`research.md` R6).
+  is bounded where `ps` exists, and the backend image installs it (`research.md` R6). Two known
+  limits: a transfer that sends data and then stalls can take up to about twice its bound; and a
+  release that fails every time gets a new automatic run every `STALE_AFTER` (15 minutes), with no
+  limit on the number of runs (`research.md` R20). The retries of one run stay bounded; the limit
+  is on the runs that the recovery check starts.
 - **FR-005**: The system MUST keep, per repository and destination branch, an ordered queue of
   merges awaiting delivery. A later merge MUST be appended and MUST NOT displace an earlier one. An
   entry MUST hold the merge inputs, the remote source branch and the source commit that Infrahub
