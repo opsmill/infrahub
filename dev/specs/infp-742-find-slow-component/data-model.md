@@ -67,7 +67,7 @@ applied.
 
 ## Masking rule
 
-`infrahub.masking::MaskingRule`, used by spans and logs. Rules in `infrahub.masking::MASKING_RULES`;
+`infrahub.masking::MaskingRule`, used by spans. Rules in `infrahub.masking::MASKING_RULES`;
 the first rule that applies to a key wins.
 
 | Rule | Keys | Masked result |
@@ -76,7 +76,6 @@ the first rule that applies to a key wins.
 | URL | `http.url`, `http.target`, `url.full`, `url` | Path kept, query string replaced: `/path?[MASKED]` |
 | Query string and account name | `url.query`, `account_name` | `[MASKED]` |
 | Secrets and personal data | Any key that contains `token`, `password`, `secret`, `email`, `user_name` or `username`, in any case | `[MASKED]` |
-| Log audit fields | Added when [INFP-745](https://opsmill.atlassian.net/browse/INFP-745) lists them | `[MASKED]` |
 
 Cypher text (`db.statement` and the query attributes), URL paths and query names never match a rule.
 

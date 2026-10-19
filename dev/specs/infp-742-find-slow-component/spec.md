@@ -31,8 +31,8 @@ into spans and logs. Every slowness report then becomes an OpsMill investigation
   priority queue.
 - Raise the sampling ratio for a chosen time during an incident, without a restart, and record who
   changed it.
-- Keep tokens, user names, email addresses, client IP addresses and URL query strings out of spans and
-  logs before any monitoring system stores them.
+- Keep tokens, user names, email addresses, client IP addresses and URL query strings out of spans
+  before any monitoring system stores them, and stop the known log lines from writing them.
 - Fix the shipped dashboards so that they show correct data in any Grafana.
 
 **Not decided yet.**
@@ -41,7 +41,8 @@ into spans and logs. Every slowness report then becomes an OpsMill investigation
   SC-006.
 - Why the HTTP metrics record no API or GraphQL request (B13). The cause is not known.
 - Which personal data Infrahub writes into logs today. The audit is
-  [INFP-745](https://opsmill.atlassian.net/browse/INFP-745); its results add fields to FR-013.
+  [INFP-745](https://opsmill.atlassian.net/browse/INFP-745); each field it finds is fixed where the
+  log line is written (FR-013).
 
 ## Clarifications
 
@@ -104,6 +105,25 @@ Source: [review by Fatih Acar on GitHub](https://github.com/opsmill/infrahub/pul
   impact on disk use. For a trace older than 24 hours, the link from the trace to its log lines finds
   nothing. Fatih proposed the same retention for both, possibly 1 week; the values are decided after
   customer feedback in [INBOX-388](https://opsmill.atlassian.net/browse/INBOX-388).
+
+Masking. Source: [review by Fatih Acar in Slack](https://opsmillworkspace.slack.com/archives/C08075KCU3A/p1792152428875419?thread_ts=1792142101.457379&cid=C08075KCU3A) (performance, code size and too much
+masking, a setting at least, keep the URL hostname), [the proposal](https://opsmillworkspace.slack.com/archives/C08075KCU3A/p1792160740142069?thread_ts=1792142101.457379&cid=C08075KCU3A) and
+[its acceptance](https://opsmillworkspace.slack.com/archives/C08075KCU3A/p1792397716395709?thread_ts=1792142065.171369&cid=C08075KCU3A). This replaces the masking of log lines decided on 2026-10-14.
+
+- Q: Are log lines masked? → A: No. Infrahub does not mask log lines. The single sign-on changes stop
+  the known log line from writing the user name, and Infrahub writes no access log. A leak that the
+  log audit ([INFP-745](https://opsmill.atlassian.net/browse/INFP-745)) finds is fixed where the line
+  is written (FR-013).
+- Q: Are spans still masked? → A: Yes, always on, with the same rules. Spans are masked on export, in
+  a background thread, so not while a request is handled, and only the sampled spans (FR-012).
+- Q: Why are the single sign-on changes not enough for spans? → A: The token endpoint receives `code`
+  and `state` as URL parameters, and the HTTP instrumentation writes the full URL into `http.url`.
+  The API server also removes them when the request span starts (FR-012).
+- Q: Does a URL keep its hostname? → A: Yes. Only the query string is replaced (FR-013a).
+- Q: Is the client IP address still masked? → A: Yes. The review asked to keep only the hostname
+  readable.
+- Q: Is there a setting to turn masking off? → A: No. What remains is small and runs off the request
+  path.
 
 ## Personas
 
@@ -184,20 +204,21 @@ SDK, then open its trace and its task worker logs in Grafana.
 
 ### User Story 2 - Operator stores spans and logs that hold no secrets or personal data (Priority: P1)
 
-The operator turns tracing on and sends spans and logs to their monitoring system. Before any span or
-log line leaves the API server or the task worker, Infrahub masks tokens, user names, email
-addresses, client IP addresses and URL query strings. The Cypher text, URL paths and query names stay
+The operator turns tracing on and sends spans and logs to their monitoring system. Before any span
+leaves the API server or the task worker, Infrahub masks tokens, user names, email addresses, client
+IP addresses and URL query strings. The Cypher text, URL paths and query names stay
 readable, so the operator can still diagnose a slow query. Single sign-on no longer writes the access
 token, the user information, the authorization code, the state or the user name.
 
-Delivered in phase 1: B7, B8, and the masking step for spans and the redaction step for logs of D9.
+Delivered in phase 1: B7, B8, and the masking step for spans of D9. The redaction step for logs of D9
+is not delivered (clarification of 2026-10-19).
 
 **Why this priority**: Today anyone with access to the trace store can read single sign-on tokens and
 user details. The card requires that B8 ships before tracing is turned on for more operators.
 
 **Independent Test**: With tracing on, log in through single sign-on, send requests with query strings
 and a client IP address, then search the trace store and the log store for the token, the code, the
-state, the user name, the email address and the IP address.
+state, the user name, the email address and the IP address. Search the log store for the user name.
 
 **Acceptance Scenarios**:
 
@@ -213,17 +234,12 @@ state, the user name, the email address and the IP address.
    and the attribute name is still present.
 5. **Given** a span of a database query, **When** it reaches the trace store, **Then** its Cypher text,
    URL path and query name are still readable.
-6. **Given** a log line, including a Prefect or gunicorn log line, with a key that names a token, a
-   password, an email address or a user name, **When** it reaches the log store, **Then** the value of
-   that key is masked.
+6. Removed on 2026-10-19: log lines are not masked (FR-013).
 7. **Given** a request fails with an exception whose message contains a URL with a `code` and a `state`
    in its query string, **When** the span reaches the trace store, **Then** its exception event shows
    the URL path followed by `?[MASKED]`.
-8. **Given** a flow run writes a log line with a token, **When** the line is sent to the Prefect
-   server, **Then** the token reads `[MASKED]`.
-9. **Given** a single sign-on login fails with an exception whose message contains a URL with a `code`
-   and a `state`, **When** the log line reaches the log store, **Then** the URL shows its path
-   followed by `?[MASKED]`.
+8. Removed on 2026-10-19: log lines are not masked (FR-013).
+9. Removed on 2026-10-19: log lines are not masked (FR-013).
 
 ---
 
@@ -387,12 +403,12 @@ is traced, then check that the default applies after 2 minutes.
 - **Masking changes what the operator views**: masked values are no longer readable in their own
   Grafana, and the operator cannot tell whether two slow requests came from the same user or IP
   address. Cypher text, URL paths and query names stay readable.
-- **Text inside a log message that is not a known field**, such as an email address in an exception
-  message, is not masked until the log audit lists it (design document, D9). URL query strings are the
-  one exception: they are replaced in the message and exception text of every log line (FR-013). Only
-  URLs with a scheme (`https://…?…`) are found in free text; a request target without one
-  (`GET /api/…?code=…`) keeps its query string. Infrahub writes no access log today (uvicorn's access
-  logger has a null handler and gunicorn has no access log configured), so no such line exists.
+- **Personal data inside a log line**, such as an email address in an exception message, reaches the
+  log store, because log lines are not masked. It is fixed where the line is written, when the log
+  audit lists it (design document, D9; FR-013). In span exception events, only URLs with a scheme
+  (`https://…?…`) are found in free text; a request target without one (`GET /api/…?code=…`) keeps its
+  query string. Infrahub writes no access log today (uvicorn's access logger has a null handler and
+  gunicorn has no access log configured), so no such log line exists.
 - **Docker Desktop for macOS**: cAdvisor sends container metrics without the container name, so panels
   that filter by container are empty there. The Prefect panel fix must be checked on a Linux host
   (design document, B2).
@@ -441,16 +457,16 @@ is traced, then check that the default applies after 2 minutes.
   names, email addresses, client IP addresses and URL query strings in its attributes and in the
   attributes of its events, including the exception events. In `exception.message` and
   `exception.stacktrace`, URL query strings MUST be replaced, because the stack trace repeats the
-  message. Cypher text, URL paths and query names MUST stay readable.
-- **FR-013**: In every log line, including Prefect and gunicorn log lines, Infrahub MUST mask, before
-  any log pipeline reads it, the values of keys that name a token, a password, an email address or a
-  user name, and the fields that the log audit
-  ([INFP-745](https://opsmill.atlassian.net/browse/INFP-745)) lists. In the message and the exception
-  text of every log line, the query string of each URL MUST be replaced, as in `exception.message` of
-  spans (FR-012).
+  message. Cypher text, URL paths and query names MUST stay readable. The API server MUST also mask
+  the client IP address and the URL query string in the request span when the span starts.
+- **FR-013**: Infrahub MUST NOT mask log lines (clarification of 2026-10-19). A log line MUST NOT
+  contain a token, a password, an email address or a user name that Infrahub writes on purpose. A
+  field that the log audit ([INFP-745](https://opsmill.atlassian.net/browse/INFP-745)) finds is fixed
+  where the line is written.
 - **FR-013a**: To mask a value, Infrahub MUST replace it with the fixed marker `[MASKED]` and keep the
-  attribute or field name. In a URL, only the query string is replaced; the path stays readable. Two
-  masked values cannot be told apart. Masking is always on: no setting turns it off.
+  attribute name. In a URL, only the query string is replaced; the scheme, the hostname and the path
+  stay readable. Two masked values cannot be told apart. Masking of spans is always on: no setting
+  turns it off.
 
 **Durations and connection pool (story 3)**
 
@@ -562,8 +578,8 @@ is traced, then check that the default applies after 2 minutes.
 - **SC-004**: After an administrator raises the ratio, every running process applies it within 10
   seconds, without a restart.
 - **SC-005**: No token, authorization code, state, user name, email address, client IP address or URL
-  query string appears unmasked in the trace store. No URL query string and no field listed by the log
-  audit appears unmasked in the log store.
+  query string appears unmasked in the trace store. No single sign-on token, authorization code, state
+  or user name appears in the log store.
 - **SC-006**: At the default sampling ratio, tracing adds at most 5 % to the API p95 response time and
   at most 5 % to CPU use, compared with tracing off on the same load. If the measurement is higher, the
   default ratio is lowered until it passes. This is measured before tracing is turned on for more

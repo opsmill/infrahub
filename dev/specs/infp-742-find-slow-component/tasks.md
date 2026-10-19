@@ -72,30 +72,38 @@ requires the single sign-on fixes to ship before tracing is turned on for more o
 
 ## Phase 3: User Story 2 - Spans and logs hold no secrets or personal data (Priority: P1)
 
-**Goal**: Before a span or a log line leaves the API server or a task worker, tokens, user names,
-email addresses, client IP addresses and URL query strings read `[MASKED]`; single sign-on records no
-token, code, state or user name (FR-009 to FR-013a; [contracts/masking.md](contracts/masking.md)).
+**Goal**: Before a span leaves the API server or a task worker, tokens, user names, email addresses,
+client IP addresses and URL query strings read `[MASKED]`; single sign-on records no token, code,
+state or user name; log lines are not masked (FR-009 to FR-013a, clarification of 2026-10-19;
+[contracts/masking.md](contracts/masking.md)).
 
 **Independent Test**: With tracing on, log in through single sign-on and send requests with query
-strings; search the trace store and the log store for the secrets (quickstart, manual check 4).
+strings; search the trace store for the secrets and the log store for the user name (quickstart,
+manual check 4).
 
 ### Tests for User Story 2
 
 - [x] T007 [P] [US2] Write unit tests for the masking rules in `backend/tests/unit/test_masking.py`: each rule of [data-model.md](data-model.md) "Masking rule" gives `[MASKED]` and keeps the key; a URL keeps its path and gets `?[MASKED]`; a URL without a query string is unchanged; nested mappings and lists are masked; the input mapping is not changed; Cypher text (`query`) and `query_name` are unchanged; a free-text message that contains a URL with a query string gets the query string replaced
 - [x] T008 [P] [US2] Write a unit test in `backend/tests/unit/test_masking.py` that lists the attribute and field keys Infrahub sets on its own spans and log lines (start from the draft keys: `query`, `query_name`, `rows`, `provider_name`, `sso_group_count`, `account_id`, `request_id`, `trace_id`, `branch`, `groups`) and fails when a masking rule would mask one of them (critique E1)
 - [x] T009 [P] [US2] Port the masking exporter tests from the draft `backend/tests/unit/test_trace.py` (tests of `mask_span` and `MaskingSpanExporter`) into `backend/tests/unit/test_trace.py`, with `[MASKED]` as the expected value, and add a test: an exception event whose `exception.message` contains `https://idp.example.com/token?code=abc&state=xyz` is exported with `https://idp.example.com/token?[MASKED]` (FR-012, spec story 2 scenario 7)
-- [x] T010 [P] [US2] Port the log masking tests from the draft `backend/tests/unit/test_log.py` (structlog processor `mask_personal_data`, `LogMaskingFilter` on a standard logging record with `msg`, `args` and `extra`) into `backend/tests/unit/test_log.py`, with `[MASKED]`, and add tests: a log line whose message or exception text contains a URL with `code` and `state` shows `?[MASKED]` (FR-013, story 2 scenario 9); a record that reaches a handler registered like the Prefect API handler is masked (story 2 scenario 8, critique E5)
+- [x] T010 (Reverted by T018b on 2026-10-19: log lines are not masked.) [P] [US2] Port the log masking tests from the draft `backend/tests/unit/test_log.py` (structlog processor `mask_personal_data`, `LogMaskingFilter` on a standard logging record with `msg`, `args` and `extra`) into `backend/tests/unit/test_log.py`, with `[MASKED]`, and add tests: a log line whose message or exception text contains a URL with `code` and `state` shows `?[MASKED]` (FR-013, story 2 scenario 9); a record that reaches a handler registered like the Prefect API handler is masked (story 2 scenario 8, critique E5)
 - [x] T011 [P] [US2] Port `backend/tests/component/api/test_sso_token_telemetry.py` from the draft: after an OIDC and an OAuth2 login, no span contains the token response or the user information, the token endpoint span has the path and no `code` or `state`, and the login log line has `account_id` and no user name (FR-009, FR-010)
 
 ### Implementation for User Story 2
 
 - [x] T012 [US2] Create `backend/infrahub/masking.py` from the draft, with `MASKED_VALUE = "[MASKED]"` (research R8); keep `MaskingRule`, `MASKING_RULES`, `mask_value`, `mask_nested`, `mask_mapping`, `replace_url_query`; add a function that replaces the query string of every URL found in a free-text string, for use on exception messages and log messages
 - [x] T013 [US2] In `backend/infrahub/trace.py`, port `mask_span` and `MaskingSpanExporter` from the draft and wrap the exporter in `create_tracer_provider`; extend `mask_span` so the attributes of every span event are masked with the same rules and URL query strings inside `exception.message` are replaced (FR-012; critique E4)
-- [x] T014 [US2] In `backend/infrahub/log.py`, port `LogMaskingFilter`, `add_log_masking_filter`, `install_log_masking_filter` and the structlog processor `mask_personal_data` from the draft, and register them as the draft does; extend both so the message and the exception text of every line have URL query strings replaced (FR-013)
-- [x] T015 [US2] In `backend/infrahub/workers/infrahub_async.py`, port the call `add_log_masking_filter(api_handler)` from the draft, so flow run logs sent to the Prefect server are masked (FR-013)
+- [x] T014 (Reverted by T018b on 2026-10-19: log lines are not masked.) [US2] In `backend/infrahub/log.py`, port `LogMaskingFilter`, `add_log_masking_filter`, `install_log_masking_filter` and the structlog processor `mask_personal_data` from the draft, and register them as the draft does; extend both so the message and the exception text of every line have URL query strings replaced (FR-013)
+- [x] T015 (Reverted by T018b on 2026-10-19: log lines are not masked.) [US2] In `backend/infrahub/workers/infrahub_async.py`, port the call `add_log_masking_filter(api_handler)` from the draft, so flow run logs sent to the Prefect server are masked (FR-013)
 - [x] T016 [P] [US2] In `backend/infrahub/api/oidc.py` and `backend/infrahub/api/oauth2.py`, port the draft changes: no `token_request_data` or `account_name` span attribute with the provider responses; record `provider_name` and `sso_group_count`; the "SSO user authenticated" log line has `account_id` and `groups`, not `user_name` (FR-009, FR-010)
 - [x] T017 [P] [US2] (Write the text in "Changelog entries for the top layer", not in `changelog/`; created by T095.) Add changelog fragments: port `changelog/+sso-secrets-in-traces.security.md`, `changelog/+log-field-masking.security.md` and `changelog/+trace-attribute-masking.added.md` from the draft and correct them to say `[MASKED]`, span events, and URL query strings in log messages
 - [x] T018 [US2] Run T007 to T011 and `uv run invoke format lint`; all pass
+
+### Changes after the review of 2026-10-19
+
+- [x] T018a [US2] In `backend/infrahub/server.py`, mask the request span attributes in the request hook passed to the FastAPI instrumentation, with the rules of `backend/infrahub/masking.py`: the URL query string in `http.url`, `url.full` and `url.query`, and the client IP address; add a unit test that sends `?code=…&state=…` through the instrumented app without the masking exporter and finds neither value in any attribute (FR-012)
+- [x] T018b [US2] Remove log masking: in `backend/infrahub/log.py`, `LogMaskingFilter`, `add_log_masking_filter`, `install_log_masking_filter`, `mask_personal_data` and the traceback wrapper; in `backend/infrahub/workers/infrahub_async.py`, `add_log_masking_filter`; their tests in `backend/tests/unit/test_log.py`; and the functions of `backend/infrahub/masking.py` that nothing uses any more (FR-013)
+- [ ] T018c [US2] Run the masking, trace, log and worker unit tests, the single sign-on component test and `uv run invoke format lint`; all pass. Daniel runs the manual checks of this layer again
 
 **Checkpoint**: Story 2 is complete and testable on its own. FR-011 is met: masking can ship before
 tracing is turned on for more operators.
@@ -275,13 +283,13 @@ traced; the default applies after 2 minutes (quickstart, manual check 8).
 **Purpose**: Documentation for every story, the submodule pointer, the manual test and the release
 checks.
 
-- [ ] T085 [P] Create `dev/knowledge/backend/observability.md` from the draft without the Redis exporter and the Grafana MCP server, and with: `[MASKED]`, span event masking, URL query strings in log messages, the `trace_id` format, the public `/api/troubleshooting` endpoints, and the `--config` requirement of gunicorn for B9 (research R10); link it in `dev/README.md` and `dev/knowledge/backend/architecture.md`, and port the draft changes to `dev/knowledge/backend/api-backpressure.md`, `backend/AGENTS.md` and `development/grafana/AGENTS.md` without the Grafana MCP content
+- [ ] T085 [P] Create `dev/knowledge/backend/observability.md` from the draft without the Redis exporter and the Grafana MCP server, and with: `[MASKED]`, span event masking, the request span hook, why log lines are not masked (clarification of 2026-10-19), the `trace_id` format, the public `/api/troubleshooting` endpoints, and the `--config` requirement of gunicorn for B9 (research R10); link it in `dev/README.md` and `dev/knowledge/backend/architecture.md`, and port the draft changes to `dev/knowledge/backend/api-backpressure.md`, `backend/AGENTS.md` and `development/grafana/AGENTS.md` without the Grafana MCP content
 - [ ] T086 After both SDK pull requests merge on `infrahub-develop`: in `python_sdk/`, check out `origin/infrahub-develop`, check that it contains both SDK commits, and commit the new `python_sdk` pointer on the Infrahub branch (root `AGENTS.md`, "Submodules")
 - [ ] T087 [P] Update `docs/docs/deploy-manage/run-observe/metrics.mdx` with the new and changed metrics of [contracts/metrics.md](contracts/metrics.md) and a short "which panel answers which question" section, using the `opsmill-docs-writing-infrahub-docs` skill
 - [ ] T088 [P] Update `docs/docs/deploy-manage/install-configure/install/observability-stack.mdx`: tracing on with the stack and `INFRAHUB_TRACE_SAMPLE_RATIO`; the Grafana data source settings of B10; how to raise the ratio during an incident (`infrahubctl` and the REST call); how to check every process applied it from the log line (FR-035); how to reduce the cost of tracing (FR-034); the trace retention (96 hours) and the log retention (24 hours) with the setting that changes each, and the Tempo disk use measured by T091 (FR-037); no Grafana MCP or Redis content
 - [ ] T089 [P] Create `docs/docs/deploy-manage/run-observe/own-monitoring.mdx`, "Send Infrahub telemetry to your own monitoring" (metrics scraping, traces to any OTLP collector, logs with `trace_id`, the data source settings), and add it to `docs/sidebars.ts` next to "Metrics" (FR-034)
 - [ ] T090 Update `docs/docs/reference/metrics.mdx` from the draft (it is not generated) and run `uv run invoke docs.lint` and `uv run invoke docs.validate`
-- [ ] T091 Measure the cost of tracing as [research.md](research.md) R9 says (three configurations, the named load) and record the host, the commit and the results, including the Tempo disk use per 1,000 traced requests at ratio 0.1 and 1, in `specs/infp-742-find-slow-component/measurements.md`; if tracing at 0.1 adds more than 5 %, lower the default in `backend/infrahub/config.py` and the Compose files and measure again (SC-006)
+- [ ] T091 Measure the cost of tracing as [research.md](research.md) R9 says (two configurations, the named load) and record the host, the commit and the results, including the Tempo disk use per 1,000 traced requests at ratio 0.1 and 1, in `specs/infp-742-find-slow-component/measurements.md`; if tracing at 0.1 adds more than 5 %, lower the default in `backend/infrahub/config.py` and the Compose files and measure again (SC-006)
 - [ ] T092 Run `/pre-ci` and fix every failure
 - [ ] T093 Daniel runs the `opsmill-dev-guiding-manual-tests` skill on the Infrahub branch, with `python_sdk` on `origin/infrahub-develop` (needs T086), using the checks of [quickstart.md](quickstart.md)
 - [ ] T094 Before release: quickstart manual check 7 (each dashboard in a Grafana with only Prometheus) and manual check 1 repeated with the file downloaded from `https://infrahub.opsmill.io/?observability=true` (needs the answer to T036)
@@ -420,11 +428,7 @@ Created by T095 in IFC-3430. Each layer adds its entries here, with the file nam
 - `+sso-secrets-in-traces.security.md`: Removed single sign-on access tokens, user information,
   authorization codes and state values from exported traces, and the single sign-on login log line now
   records the account ID instead of the user name.
-- `+log-field-masking.security.md`: Masked with `[MASKED]` the values of log fields that name a token,
-  a password, a secret, an email address, a user name, an account name or a client IP address, and the
-  query string of every URL in log fields, log messages and exception text, in log lines on standard
-  output and in task logs sent to the task manager.
 - `+trace-attribute-masking.added.md`: Added masking of exported span attributes and span event
   attributes, including exception events, so that tokens, passwords, secrets, email addresses, user
-  names, client IP addresses and URL query strings are exported as `[MASKED]`, while URL paths, Cypher
-  text and query names stay readable.
+  names, client IP addresses and URL query strings are exported as `[MASKED]`, while URL hostnames and
+  paths, Cypher text and query names stay readable.

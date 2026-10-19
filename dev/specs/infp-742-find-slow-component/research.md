@@ -32,7 +32,7 @@ not use them.
 | FR-006, FR-007 default ratio, parent-based | `infrahub.trace::RatioSampler` in `ParentBased`, `TraceSettings.sample_ratio` | None |
 | FR-008 query spans under the request span | `tests/component/api/test_trace_spans.py` | None |
 | FR-009, FR-010 single sign-on | `infrahub.api.oidc`, `infrahub.api.oauth2` no longer record the token response or user info; log line has `account_id` | None |
-| FR-012, FR-013, FR-013a masking | `infrahub.masking`, `infrahub.trace::MaskingSpanExporter`, `infrahub.log::LogMaskingFilter` and `mask_personal_data` | Marker is `***`; FR-013a needs `[MASKED]`. `infrahub.trace::mask_span` copies span events unchanged, so exception messages are not masked (critique E4). Log messages and exception text are not searched for URLs (critique E10) |
+| FR-012, FR-013, FR-013a masking | `infrahub.masking`, `infrahub.trace::MaskingSpanExporter`, `infrahub.log::LogMaskingFilter` and `mask_personal_data` (log masking removed on 2026-10-19) | Marker is `***`; FR-013a needs `[MASKED]`. `infrahub.trace::mask_span` copies span events unchanged, so exception messages are not masked (critique E4). Log messages and exception text are not searched for URLs (critique E10) |
 | FR-035 log line when a process applies a ratio | `infrahub.message_bus.operations.refresh.settings::trace_sample_ratio` logs "Set the temporary trace sampling ratio" and "Cleared the temporary trace sampling ratio" | None |
 | FR-014, FR-015 buckets | Database, HTTP, lock and connection wait buckets | None |
 | FR-016 API and GraphQL requests in HTTP metrics (B13) | No | Cause not known (R4) |
@@ -149,9 +149,10 @@ not use them.
   sends queries through the SDK. Record the host (CPU, memory), the Infrahub commit and the results in
   `specs/infp-742-find-slow-component/measurements.md`, so the measurement can be repeated.
 - **Configurations to compare**:
-  - `develop` before this feature (no masking, tracing off): the baseline.
-  - This feature with tracing off: the cost of log masking alone, which runs on every instance.
-  - This feature with tracing on at ratio 0.1: the cost SC-006 limits.
+  - `develop` before this feature (tracing off): the baseline.
+  - This feature with tracing on at ratio 0.1: the cost SC-006 limits. Span masking runs only on
+    sampled spans, on export. Log lines are not masked (clarification of 2026-10-19), so there is no
+    configuration for log masking alone.
 - **Note**: The design document notes that each query produces two spans today, which doubles the span
   count.
 - **Disk use** (clarification of 2026-10-19): in the runs at ratio 0.1, and in one more run at ratio 1,
@@ -173,9 +174,9 @@ not use them.
 
 ## R11. The log audit (FR-013)
 
-- **Decision**: The masking rules use key names. Fields that the audit in
-  [INFP-745](https://opsmill.atlassian.net/browse/INFP-745) lists are added to
-  `infrahub.masking::MASKING_RULES` when it is done. This feature does not wait for it.
+- **Decision** (changed on 2026-10-19): Log lines are not masked. Each field that the audit in
+  [INFP-745](https://opsmill.atlassian.net/browse/INFP-745) finds is fixed where the log line is
+  written. This feature does not wait for it.
 
 ## R12. How other tools change the sampling ratio without a restart
 
