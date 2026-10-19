@@ -1,0 +1,37 @@
+backend/infrahub/core/merge/selective_regen/definition_selector/base.py
+  s_fb819cbbe44071::t_6bb8f8fb37da9a 77-79,109
+backend/infrahub/core/merge/selective_regen/impacted.py
+  s_fb819cbbe44071::t_f33c3be032ff43 5,7-8,15,28-36,40,47
+backend/infrahub/core/regeneration/impact.py
+  s_fb819cbbe44071::t_1127a52cf1cda3 20,44,55-58
+backend/infrahub/proposed_change/tasks.py
+  s_fb819cbbe44071::t_ac524eaba9a35a 87-88,816-821,1112-1117
+backend/tests/component/core/regeneration/impact/helpers.py
+  s_fb819cbbe44071::t_58f64075c56299 3-6,9-12,17-22
+backend/tests/component/core/regeneration/impact/test_field_level_impact.py
+  s_fb819cbbe44071::t_01ac2a9b00e42d 16,160,207,289,321
+backend/tests/component/core/regeneration/impact/test_generic_owner_impact.py
+  s_fb819cbbe44071::t_79ce1040ad5e84 16-17,172,201,229
+backend/tests/component/core/regeneration/impact/test_root_and_relationship_reads.py
+  s_fb819cbbe44071::t_472976e6e1dbce 16,131
+backend/tests/helpers/selective_regen.py
+  s_fb819cbbe44071::t_1086f824312bc4 13,38-40,44
+backend/tests/unit/core/merge/selective_regen/definition_selector/test_base.py
+  s_fb819cbbe44071::t_992211d268ad3d 16,102-104,108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "17e4b17ca1939aca8f947a406485c538131c40a4",
+  "prompts": {},
+  "sessions": {
+    "s_fb819cbbe44071": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65a68a98-fa9c-4142-8730-a06dd94f203b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
