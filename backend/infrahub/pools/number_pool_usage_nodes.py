@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 from infrahub.core.manager import NodeManager
 from infrahub.pools.number_pool_usage import HoldingObject, PeerSummary
@@ -12,8 +12,17 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from infrahub.core.branch import Branch
-    from infrahub.core.query.resource_manager import NumberPoolAllocatedResult
     from infrahub.database import InfrahubDatabase
+
+
+class HeldRow(Protocol):
+    """An object holding a number, and a branch it holds it on."""
+
+    @property
+    def id(self) -> str: ...
+
+    @property
+    def branch(self) -> str: ...
 
 
 class PeerSummaryReader:
@@ -40,7 +49,7 @@ class HoldingObjectReader:
     def __init__(self, db: InfrahubDatabase) -> None:
         self.db = db
 
-    async def read(self, rows: Sequence[NumberPoolAllocatedResult], kind: str) -> dict[tuple[str, str], HoldingObject]:
+    async def read(self, rows: Sequence[HeldRow], kind: str) -> dict[tuple[str, str], HoldingObject]:
         """Return each row's holding object by branch and id, with one read per branch.
 
         An object that cannot be read on its branch is reported with `kind` and its id as display label.

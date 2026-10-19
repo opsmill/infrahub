@@ -39,6 +39,7 @@ from .common import (
     pool_lock,
     pool_target_attribute,
     range_bounds,
+    refuse_ranges_leaving_held_numbers,
     refuse_ranges_outside_attribute,
     refuse_schema_pool,
     sync_shorthand,
@@ -404,6 +405,10 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
                     pool=number_pool, declared=declared_ranges, user_id=graphql_context.assigned_user_id
                 )
             cls._raise_for_range_permissions(graphql_context=graphql_context, reconciliation=reconciliation)
+            if reconciliation.changed:
+                await refuse_ranges_leaving_held_numbers(
+                    db=dbt, pool=number_pool, ranges=range_bounds(reconciliation.ranges)
+                )
             stored_pool = await sync_shorthand(
                 db=dbt, pool_id=pool_id, ranges=reconciliation.ranges, user_id=graphql_context.assigned_user_id
             )
