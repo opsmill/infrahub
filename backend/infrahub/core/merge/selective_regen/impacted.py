@@ -1,15 +1,6 @@
 from __future__ import annotations
 
-<<<<<<< HEAD
 from typing import TYPE_CHECKING, Protocol
-=======
-from typing import TYPE_CHECKING
-
-from infrahub.core import registry
-from infrahub.core.regeneration.impact import get_field_level_impacted_subscribers
-from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
-from infrahub.graphql.execution import cached_parse
->>>>>>> origin/stable
 
 if TYPE_CHECKING:
     from infrahub_sdk.diff import NodeDiff
@@ -25,21 +16,8 @@ class ImpactedSubscriberResolver(Protocol):
     analysis and database.
     """
 
-<<<<<<< HEAD
-=======
-    def __init__(self, client: InfrahubClient) -> None:
-        self.client = client
+    def analyze(self, *, query_payload: str, query_branch: str) -> GraphQLQueryReport: ...
 
-    def analyze(self, *, query_payload: str, target_branch: str) -> GraphQLQueryReport:
-        """What the query reads, from its text analyzed against the target branch schema."""
-        return InfrahubGraphQLQueryAnalyzer(
-            query=query_payload,
-            branch=registry.get_branch_from_registry(branch=target_branch),
-            schema_branch=registry.schema.get_schema_branch(name=target_branch),
-            document=cached_parse(query_payload),
-        ).query_report
-
->>>>>>> origin/stable
     async def resolve(
         self,
         *,
@@ -48,16 +26,4 @@ class ImpactedSubscriberResolver(Protocol):
         query_branch: str,
         subscriber_kind: str,
         every_target: list[str],
-<<<<<<< HEAD
     ) -> TargetSelection: ...
-=======
-    ) -> TargetSelection:
-        return await get_field_level_impacted_subscribers(
-            query_report=query_report,
-            diff_summary=diff_summary,
-            query_branch=target_branch,
-            subscriber_kind=subscriber_kind,
-            every_target=every_target,
-            client=self.client,
-        )
->>>>>>> origin/stable

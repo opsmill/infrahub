@@ -828,32 +828,18 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
     repository = model.branch_diff.get_repository(repository_id=model.artifact_definition.repository_id)
 
     diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
-<<<<<<< HEAD
     database = await get_database()
     async with database.start_session() as db:
         impact_resolver = FieldLevelImpactResolver(db=db, client=client)
         selection = await impact_resolver.resolve(
-            query_payload=model.artifact_definition.query_payload,
+            query_report=impact_resolver.analyze(
+                query_payload=model.artifact_definition.query_payload, query_branch=model.source_branch
+            ),
             diff_summary=diff_summary,
             query_branch=model.source_branch,
             subscriber_kind=InfrahubKind.ARTIFACT,
             every_target=list(artifacts_by_member.values()),
         )
-=======
-    selection = await get_field_level_impacted_subscribers(
-        query_report=InfrahubGraphQLQueryAnalyzer(
-            query=model.artifact_definition.query_payload,
-            branch=registry.get_branch_from_registry(branch=model.source_branch),
-            schema_branch=registry.schema.get_schema_branch(name=model.source_branch),
-            document=cached_parse(model.artifact_definition.query_payload),
-        ).query_report,
-        diff_summary=diff_summary,
-        query_branch=model.source_branch,
-        subscriber_kind=InfrahubKind.ARTIFACT,
-        every_target=list(artifacts_by_member.values()),
-        client=client,
-    )
->>>>>>> origin/stable
     impacted_artifacts = selection.ids
     if selection.widening is not None:
         log.warning(
@@ -1138,32 +1124,18 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
     requested_instances = 0
 
     diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
-<<<<<<< HEAD
     database = await get_database()
     async with database.start_session() as db:
         impact_resolver = FieldLevelImpactResolver(db=db, client=client)
         selection = await impact_resolver.resolve(
-            query_payload=model.generator_definition.query_payload,
+            query_report=impact_resolver.analyze(
+                query_payload=model.generator_definition.query_payload, query_branch=model.source_branch
+            ),
             diff_summary=diff_summary,
             query_branch=model.source_branch,
             subscriber_kind=InfrahubKind.GENERATORINSTANCE,
             every_target=list(instance_by_member.values()),
         )
-=======
-    selection = await get_field_level_impacted_subscribers(
-        query_report=InfrahubGraphQLQueryAnalyzer(
-            query=model.generator_definition.query_payload,
-            branch=registry.get_branch_from_registry(branch=model.source_branch),
-            schema_branch=registry.schema.get_schema_branch(name=model.source_branch),
-            document=cached_parse(model.generator_definition.query_payload),
-        ).query_report,
-        diff_summary=diff_summary,
-        query_branch=model.source_branch,
-        subscriber_kind=InfrahubKind.GENERATORINSTANCE,
-        every_target=list(instance_by_member.values()),
-        client=client,
-    )
->>>>>>> origin/stable
     definition_name = model.generator_definition.definition_name
     impacted_instances = selection.ids
     if selection.widening is not None:

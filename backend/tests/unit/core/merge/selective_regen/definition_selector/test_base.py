@@ -107,7 +107,7 @@ class _StubImpactedResolver(ImpactedSubscriberResolver):
         self.impacted = impacted
         self.widening = widening
 
-    def analyze(self, *, query_payload: str, target_branch: str) -> GraphQLQueryReport:
+    def analyze(self, *, query_payload: str, query_branch: str) -> GraphQLQueryReport:
         return GraphQLQueryReport(queries=[])
 
     async def resolve(

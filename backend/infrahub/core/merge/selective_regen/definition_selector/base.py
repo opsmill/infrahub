@@ -81,7 +81,7 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
         for loaded in loaded_definitions:
             definition = loaded.definition
             query_report = self.impacted_resolver.analyze(
-                query_payload=definition.query_payload, target_branch=target_branch
+                query_payload=definition.query_payload, query_branch=target_branch
             )
             gate_result = self.gate.evaluate(
                 definition=definition,

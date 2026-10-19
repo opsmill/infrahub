@@ -24,11 +24,7 @@ from infrahub.workflows.catalogue import (
 )
 
 if TYPE_CHECKING:
-<<<<<<< HEAD
-    from collections.abc import Sequence
-=======
-    from collections.abc import Collection
->>>>>>> origin/stable
+    from collections.abc import Collection, Sequence
 
     from infrahub_sdk.diff import NodeDiff
 
@@ -75,15 +71,9 @@ class RejectingGate(DefinitionGate):
 class NoImpactResolver(ImpactedSubscriberResolver):
     """A resolver that reports no impacted subscribers."""
 
-<<<<<<< HEAD
-=======
-    def __init__(self) -> None:
-        pass
-
-    def analyze(self, *, query_payload: str, target_branch: str) -> GraphQLQueryReport:
+    def analyze(self, *, query_payload: str, query_branch: str) -> GraphQLQueryReport:
         return GraphQLQueryReport(queries=[])
 
->>>>>>> origin/stable
     async def resolve(
         self,
         *,

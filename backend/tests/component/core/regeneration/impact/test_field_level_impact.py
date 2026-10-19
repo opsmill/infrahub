@@ -157,13 +157,8 @@ class TestFieldLevelImpact(TestInfrahubApp):
         client: InfrahubClient,
         diff_summary: list[NodeDiff],
     ) -> TargetSelection:
-<<<<<<< HEAD:backend/tests/component/core/regeneration/test_impact.py
         return await FieldLevelImpactResolver(db=db, client=client).resolve(
-            query_payload=QUERY_CAR_WITH_OWNER,
-=======
-        return await get_field_level_impacted_subscribers(
             query_report=query_report(QUERY_CAR_WITH_OWNER, default_branch),
->>>>>>> origin/stable:backend/tests/component/core/regeneration/impact/test_field_level_impact.py
             diff_summary=diff_summary,
             query_branch=default_branch.name,
             subscriber_kind=SUBSCRIBER_KIND,
@@ -211,13 +206,8 @@ class TestFieldLevelImpact(TestInfrahubApp):
         exact-name match would drop it and leave the artifact stale. The label is built from the
         car's own attributes, so the routing narrows to the car's subscriber rather than widening.
         """
-<<<<<<< HEAD:backend/tests/component/core/regeneration/test_impact.py
         resolved = await FieldLevelImpactResolver(db=db, client=client).resolve(
-            query_payload=QUERY_CAR_DISPLAY_LABEL,
-=======
-        resolved = await get_field_level_impacted_subscribers(
             query_report=query_report(QUERY_CAR_DISPLAY_LABEL, default_branch),
->>>>>>> origin/stable:backend/tests/component/core/regeneration/impact/test_field_level_impact.py
             diff_summary=[
                 node_diff(
                     node_id=dataset["car_id"],
@@ -302,13 +292,8 @@ class TestFieldLevelImpact(TestInfrahubApp):
         another owner changes which cars answer the query for both owners, so every target has to run
         even though no field the query reads back changed.
         """
-<<<<<<< HEAD:backend/tests/component/core/regeneration/test_impact.py
         resolved = await FieldLevelImpactResolver(db=db, client=client).resolve(
-            query_payload=QUERY_CARS_BY_OWNER_NAME,
-=======
-        resolved = await get_field_level_impacted_subscribers(
             query_report=query_report(QUERY_CARS_BY_OWNER_NAME, default_branch),
->>>>>>> origin/stable:backend/tests/component/core/regeneration/impact/test_field_level_impact.py
             diff_summary=[
                 node_diff(
                     node_id=dataset["car_id"],
@@ -339,13 +324,8 @@ class TestFieldLevelImpact(TestInfrahubApp):
         The query reads only the car's ``name``, but its filter matches on every attribute, so a
         change to ``color`` can move which cars answer the query.
         """
-<<<<<<< HEAD:backend/tests/component/core/regeneration/test_impact.py
         resolved = await FieldLevelImpactResolver(db=db, client=client).resolve(
-            query_payload=QUERY_CARS_BY_ANY_VALUE,
-=======
-        resolved = await get_field_level_impacted_subscribers(
             query_report=query_report(QUERY_CARS_BY_ANY_VALUE, default_branch),
->>>>>>> origin/stable:backend/tests/component/core/regeneration/impact/test_field_level_impact.py
             diff_summary=[
                 node_diff(
                     node_id=dataset["car_id"],
@@ -362,137 +342,3 @@ class TestFieldLevelImpact(TestInfrahubApp):
             ids=[dataset["subscriber_id"]],
             widening=Widening(reason=WideningReason.NON_UNIQUE_TARGETS),
         )
-<<<<<<< HEAD:backend/tests/component/core/regeneration/test_impact.py
-
-
-QUERY_RACK_WITH_CARD = """
-query GetImpactRack($ids: [ID!]!) {
-    TestingRack(ids: $ids) {
-        edges {
-            node {
-                name { value }
-                slots { edges { node {
-                    card { node { name { value } } }
-                } } }
-            }
-        }
-    }
-}
-"""
-
-
-class TestGenericOwnerFieldLevelImpact(TestInfrahubApp):
-    """Narrow a change reached through a relationship whose owner is a generic.
-
-    The query pins its root rack by id and reads ``name`` off a card reached through the rack's slots.
-    The slot is a concrete ``TestingPowerSlot`` labelled with the ``TestingSlot`` generic, so the
-    reverse traversal keyed on the generic label walks the card change back through the slot to the
-    rack.
-    """
-
-    @pytest.fixture(scope="class")
-    async def dataset(
-        self,
-        db: InfrahubDatabase,
-        default_branch: Branch,
-        client: InfrahubClient,
-    ) -> dict[str, Any]:
-        await load_schema(db=db, schema=RACK_SCHEMA, update_db=True)
-
-        card = await Node.init(db=db, schema="TestingCard")
-        await card.new(db=db, name="card-1")
-        await card.save(db=db)
-
-        slot = await Node.init(db=db, schema="TestingPowerSlot")
-        await slot.new(db=db, name="slot-1", card=card)
-        await slot.save(db=db)
-
-        rack = await Node.init(db=db, schema="TestingRack")
-        await rack.new(db=db, name="rack-1", slots=[slot])
-        await rack.save(db=db)
-
-        # A second rack with its own slot and card: the reverse traversal must reach only the rack that
-        # owns the changed card, never every member of the group.
-        other_card = await Node.init(db=db, schema="TestingCard")
-        await other_card.new(db=db, name="card-2")
-        await other_card.save(db=db)
-
-        other_slot = await Node.init(db=db, schema="TestingPowerSlot")
-        await other_slot.new(db=db, name="slot-2", card=other_card)
-        await other_slot.save(db=db)
-
-        other_rack = await Node.init(db=db, schema="TestingRack")
-        await other_rack.new(db=db, name="rack-2", slots=[other_slot])
-        await other_rack.save(db=db)
-
-        subscriber = await Node.init(db=db, schema=TestKind.TAG)
-        await subscriber.new(db=db, name="rack-artifact")
-        await subscriber.save(db=db)
-
-        other_subscriber = await Node.init(db=db, schema=TestKind.TAG)
-        await other_subscriber.new(db=db, name="other-rack-artifact")
-        await other_subscriber.save(db=db)
-
-        stored_query = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY)
-        await stored_query.new(
-            db=db, name="GetImpactRack", query=QUERY_RACK_WITH_CARD, models=["TestingRack", "TestingCard"]
-        )
-        await stored_query.save(db=db)
-
-        # Each rack stands for a separate definition, so it gets its own group with its own subscriber.
-        # Subscribers resolve per group, so narrowing to one rack must return only that rack's group's
-        # subscriber -- the other rack's subscriber proves the traversal did not widen.
-        query_group = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERYGROUP)
-        await query_group.new(
-            db=db, name="rack-impact-targets", query=stored_query, members=[rack], subscribers=[subscriber]
-        )
-        await query_group.save(db=db)
-
-        other_group = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERYGROUP)
-        await other_group.new(
-            db=db,
-            name="other-rack-impact-targets",
-            query=stored_query,
-            members=[other_rack],
-            subscribers=[other_subscriber],
-        )
-        await other_group.save(db=db)
-
-        return {
-            "rack_id": rack.id,
-            "other_rack_id": other_rack.id,
-            "card_id": card.id,
-            "subscriber_id": subscriber.id,
-            "other_subscriber_id": other_subscriber.id,
-        }
-
-    async def test_generic_owner_reached_change_narrows_to_the_owning_member(
-        self,
-        db: InfrahubDatabase,
-        dataset: dict[str, Any],
-        default_branch: Branch,
-        client: InfrahubClient,
-    ) -> None:
-        """A change on a card reached through a generic-owned relationship narrows to its rack alone.
-
-        Both racks are members of the group, so a widen would return both subscribers. The reverse
-        traversal keyed on the generic slot label reaches only the slot holding the changed card, and
-        through it only the owning rack, so a single subscriber comes back.
-        """
-        resolved = await FieldLevelImpactResolver(db=db, client=client).resolve(
-            query_payload=QUERY_RACK_WITH_CARD,
-            diff_summary=[
-                node_diff(
-                    node_id=dataset["card_id"],
-                    kind="TestingCard",
-                    branch=default_branch.name,
-                    field_names=["name"],
-                )
-            ],
-            query_branch=default_branch.name,
-            subscriber_kind=TestKind.TAG,
-            every_target=[dataset["subscriber_id"], dataset["other_subscriber_id"]],
-        )
-        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]])
-=======
->>>>>>> origin/stable:backend/tests/component/core/regeneration/impact/test_field_level_impact.py
