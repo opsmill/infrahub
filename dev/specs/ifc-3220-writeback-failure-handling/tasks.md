@@ -289,7 +289,7 @@ SC-002, SC-007.
       before the commit is recorded. The release and the clear run after the lock is released, under
       the lease the settle returned. A held-only run takes its lease through `lease_owed_release`.
       When the release raises, the service calls `expire_lease` on its lease, then handles the
-      failure with the stage `release` (R10, rule 4).
+      failure with the stage `release` (R10, rule 4), and never sets `action-required` for it.
 - [X] T033 [US1] Write `backend/tests/unit/git/writeback/test_service.py`: nothing pending; an
       `entry` that step 0 enqueues before the snapshot, and an enqueue that raises, which is
       retryable on a non-final attempt and, on the final one, returns `failed` with an error-level
@@ -350,7 +350,7 @@ SC-002, SC-007.
 - [X] T039 [US1] Change `InfrahubRepository.collect_pending_imports` in
       `backend/infrahub/git/repository.py`: in the active loop, skip the default branch, and every new
       or updated remote branch that a pending entry names, while the state is not `none`. Leave
-      `_collect_staging_imports` unchanged. Pass the state port in from the sync flow in
+      the staging path of the same method unchanged. Pass the state port in from the sync flow in
       `backend/infrahub/git/tasks.py` and `backend/infrahub/git/sync.py`.
 - [X] T040 [US1] Change `bootstrap_local_repository` in `backend/infrahub/git/tasks.py`: skip the seed
       import of the default branch while the state is not `none`, and log it.
