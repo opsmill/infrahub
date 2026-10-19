@@ -1,1 +1,0 @@
-Fixed the scheduled job that revokes approvals on updated proposed changes (Enterprise) checking every proposed change, including merged, closed and canceled ones, instead of only the open ones. On an instance with many old proposed changes, the job started one whole-graph scan per proposed change every 10 minutes and could make the database too slow to log in.

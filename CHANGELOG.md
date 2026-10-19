@@ -11,6 +11,26 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.11.8](https://github.com/opsmill/infrahub/tree/infrahub-v1.11.8) - 2026-10-19
+
+### Added
+
+- Added support for Python 3.15 to the `infrahub-testcontainers` package.
+
+### Changed
+
+- Changed proposed-change and post-merge regeneration to follow a `display_label` or `human_friendly_id` read on a generic through the value that each implementation defines or inherits, instead of selecting every target when the generic defines none.
+- Changed proposed-change and post-merge regeneration to select only the targets that read a changed node when the query reaches that node through an inline or named fragment, instead of every target of the definition.
+- Changed proposed-change and post-merge regeneration to select only the targets that read a changed node when the query reads its kind both at the root and through a relationship, instead of every target of the definition.
+
+### Fixed
+
+- Fixed GraphQL queries ignoring the fields read through a named fragment used inside another fragment, such as `... on InfraDevice { ...DeviceInterfaces }`. When such a field changes, artifacts and Generators that read it are now regenerated and computed attributes based on a Python transform are recomputed. Object permissions are now checked on these fields.
+- Fixed artifacts and Generators not being selected after a change to an object whose kind was added to a generic after their query was saved, when the query reads that generic. The kinds a query reads are now taken from the query text each time a change is checked, instead of from the list stored when the query was saved. The `models` attribute of a GraphQL query is still computed only when the query text is saved, so it can miss kinds the query reads, such as a kind added to a generic afterwards. It no longer affects which artifacts and Generators are regenerated.
+- Fixed artifacts not being regenerated and Generators not being run after a change to a field that their query reads only inside a fragment on a generic.
+- Fixed the `infrahub-git-credential` helper returning "No such command 'erase'" in the task log after Git fails to authenticate with a remote repository.
+- Fixed the scheduled job that revokes approvals on updated proposed changes (Enterprise) checking every proposed change, including merged, closed and canceled ones, instead of only the open ones. On an instance with many old proposed changes, the job started one whole-graph scan per proposed change every 10 minutes and could make the database too slow to log in.
+
 ## [Infrahub - v1.11.7](https://github.com/opsmill/infrahub/tree/infrahub-v1.11.7) - 2026-10-14
 
 ### Fixed
