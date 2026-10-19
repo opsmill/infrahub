@@ -1,0 +1,21 @@
+frontend/app/tests/e2e/objects/file-upload/file-upload-helpers.ts
+  s_4e7f701e8c4e49::t_0d25f936396b57 33-68
+frontend/app/tests/e2e/objects/file-upload/file-upload.spec.ts
+  s_4e7f701e8c4e49::t_93c58f1a2cbbc1 6-10,64,106,125,154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e5098c436dbee40407d2fac837d17b80c4441d50",
+  "prompts": {},
+  "sessions": {
+    "s_4e7f701e8c4e49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9386701a-7e1e-47e7-8072-02959e13c3a7",
+        "model": "unknown"
+      },
+      "human_author": "Fatih Acar <fatih@opsmill.com>"
+    }
+  }
+}

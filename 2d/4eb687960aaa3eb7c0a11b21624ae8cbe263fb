@@ -1,0 +1,30 @@
+backend/infrahub/serve/__init__.py
+  h_846b829e71a038 1-9
+backend/infrahub/server.py
+  h_846b829e71a038 143-145
+development/Dockerfile
+  h_846b829e71a038 34-52,141-148
+development/docker-compose.yml
+  h_846b829e71a038 191-194
+development/infrahub-serve.sh
+  h_846b829e71a038 1-70
+docker-compose.yml
+  h_846b829e71a038 253-255
+pyproject.toml
+  h_846b829e71a038 43-44
+python_testcontainers/infrahub_testcontainers/container.py
+  h_846b829e71a038 36,152
+uv.lock
+  h_846b829e71a038 1036-1096,1459,1547
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2d4eb687960aaa3eb7c0a11b21624ae8cbe263fb",
+  "prompts": {},
+  "humans": {
+    "h_846b829e71a038": {
+      "author": "Fatih Acar <fatih@opsmill.com>"
+    }
+  }
+}

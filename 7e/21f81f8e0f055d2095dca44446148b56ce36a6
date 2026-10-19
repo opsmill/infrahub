@@ -1,0 +1,31 @@
+backend/infrahub/config.py
+  s_4e7f701e8c4e49::t_c5d0739ca4c7b0 303-307,343-347,350-357,362-376
+backend/infrahub/database/__init__.py
+  s_4e7f701e8c4e49::t_16879b727e16bc 12,488-506,514-525,531
+backend/tests/unit/config/test_config.py
+  s_4e7f701e8c4e49::t_902047c324128c 11,78-105
+backend/tests/unit/test_address_resolver.py
+  s_4e7f701e8c4e49::t_6db35d47c32796 1-25
+changelog/+neo4j-address-resolver.added.md
+  s_4e7f701e8c4e49::t_5154598db4b5f8 1
+docs/docs/deploy-manage/install-configure/production-deployment/high-availability.mdx
+  s_4e7f701e8c4e49::t_3553fb6a99c761 127-142
+docs/docs/reference/configuration.mdx
+  s_4e7f701e8c4e49::t_d1da66be131710 93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7e21f81f8e0f055d2095dca44446148b56ce36a6",
+  "prompts": {},
+  "sessions": {
+    "s_4e7f701e8c4e49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9386701a-7e1e-47e7-8072-02959e13c3a7",
+        "model": "unknown"
+      },
+      "human_author": "Fatih Acar <fatih@opsmill.com>"
+    }
+  }
+}

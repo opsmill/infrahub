@@ -1,0 +1,31 @@
+backend/infrahub/core/merge/selective_regen/impacted.py
+  s_fb819cbbe44071::t_47c0b977ee25c5 12,22,24
+backend/infrahub/core/regeneration/impact.py
+  s_fb819cbbe44071::t_d53768e224efd8 21-22,51,65-66,71
+backend/infrahub/proposed_change/tasks.py
+  s_fb819cbbe44071::t_26b4415ce7991f 823,1115
+backend/tests/component/core/regeneration/impact/test_field_level_impact.py
+  s_fb819cbbe44071::t_1d9acdbd43bf43 11,167,222,306,338
+backend/tests/component/core/regeneration/impact/test_generic_owner_impact.py
+  s_fb819cbbe44071::t_97936c1d2085e6 11,184,214,243
+backend/tests/component/core/regeneration/impact/test_root_and_relationship_reads.py
+  s_fb819cbbe44071::t_c69d90f3133d57 11,140
+backend/tests/unit/core/merge/selective_regen/definition_selector/conftest.py
+  s_fb819cbbe44071::t_bbbfdd27ae2843 12,32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4bba04a672e51473a9959dc7706dd2299679c6ac",
+  "prompts": {},
+  "sessions": {
+    "s_fb819cbbe44071": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65a68a98-fa9c-4142-8730-a06dd94f203b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

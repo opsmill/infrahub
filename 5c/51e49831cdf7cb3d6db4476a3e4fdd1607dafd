@@ -1,0 +1,19 @@
+backend/infrahub/proposed_change/branch_diff.py
+  s_4e7f701e8c4e49::t_debfe8755e0c32 79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5c51e49831cdf7cb3d6db4476a3e4fdd1607dafd",
+  "prompts": {},
+  "sessions": {
+    "s_4e7f701e8c4e49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9386701a-7e1e-47e7-8072-02959e13c3a7",
+        "model": "unknown"
+      },
+      "human_author": "Fatih Acar <fatih@opsmill.com>"
+    }
+  }
+}

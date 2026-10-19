@@ -1,0 +1,19 @@
+.vale/styles/Infrahub/sentence-case.yml
+  s_4e7f701e8c4e49::t_9d35fe0c345be5 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b6f05c73154c638e6caa0d1e64e299f1d2f66666",
+  "prompts": {},
+  "sessions": {
+    "s_4e7f701e8c4e49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9386701a-7e1e-47e7-8072-02959e13c3a7",
+        "model": "unknown"
+      },
+      "human_author": "Fatih Acar <fatih@opsmill.com>"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+backend/infrahub/core/regeneration/query_analysis.py
+  s_fb819cbbe44071::t_1d86b70c03119c 13-14,16-18,20-33,36-38
+backend/infrahub/core/merge/selective_regen/impacted.py
+  s_fb819cbbe44071::t_1eb1625b12f792 6,22,24,28,46
+backend/infrahub/core/merge/selective_regen/orchestrator.py
+  s_fb819cbbe44071::t_65fce398e21934 7,119,121
+backend/infrahub/core/regeneration/impact.py
+  s_fb819cbbe44071::t_7d2eb1abf27399 14,50,64-65,70
+backend/infrahub/proposed_change/tasks.py
+  s_fb819cbbe44071::t_882017f789187e 66,430,462,464,1350,1375,1377
+backend/tests/component/core/regeneration/test_query_analysis.py
+  s_fb819cbbe44071::t_c61d9e062b9908 7,29,37-39,41,43-44,46,48-51
+dev/knowledge/backend/selective-merge-regeneration.md
+  s_fb819cbbe44071::t_148e791ecb6904 33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bae60fb0e29c4fde914e46b8e56fcb2dd31b67fa",
+  "prompts": {},
+  "sessions": {
+    "s_fb819cbbe44071": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65a68a98-fa9c-4142-8730-a06dd94f203b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

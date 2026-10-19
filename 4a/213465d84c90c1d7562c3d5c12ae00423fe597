@@ -1,0 +1,14 @@
+changelog/+regen-query-kinds-from-text.fixed.md
+  h_bd00275aefc321 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4a213465d84c90c1d7562c3d5c12ae00423fe597",
+  "prompts": {},
+  "humans": {
+    "h_bd00275aefc321": {
+      "author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

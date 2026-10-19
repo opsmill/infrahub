@@ -1,0 +1,16 @@
+development/Dockerfile
+  h_846b829e71a038 6,43-48,50,53-56
+tasks/container_ops.py
+  h_846b829e71a038 49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4c7c5280e4a8833a3090717919d25bef2f8893b5",
+  "prompts": {},
+  "humans": {
+    "h_846b829e71a038": {
+      "author": "Fatih Acar <fatih@opsmill.com>"
+    }
+  }
+}

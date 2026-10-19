@@ -1,0 +1,41 @@
+backend/infrahub/core/regeneration/classifier_builder.py
+  s_fb819cbbe44071::t_973b1f41a80d99 103-104,113,126-127
+backend/infrahub/core/regeneration/impact_classifier.py
+  s_fb819cbbe44071::t_375c10610b4a8a 75-77
+backend/infrahub/core/regeneration/models.py
+  s_fb819cbbe44071::t_1a89e4d15842df 26-29
+backend/infrahub/graphql/analyzer.py
+  s_fb819cbbe44071::t_2e92101b926dc9 290-293,315-316,320,446-447
+backend/tests/unit/core/regeneration/test_impact_classifier.py
+  s_fb819cbbe44071::t_ac93d3b7eaddf3 59-70,146,153-164
+backend/tests/unit/core/regeneration/test_reached_resolver.py
+  s_fb819cbbe44071::t_964014daa78f02 62-77
+backend/tests/unit/graphql/test_reached_path_resolver.py
+  s_fb819cbbe44071::t_eca78d930f3116 177,182-185,207,212-223
+changelog/+regen-narrow-root-and-relationship-reads.changed.md
+  s_fb819cbbe44071::t_9d2714f9f83209 1
+backend/tests/component/core/regeneration/test_impact.py
+  s_fb819cbbe44071::t_24f34e896ebfb3 344-504
+backend/tests/component/graphql/test_relationship_reached_paths.py
+  s_fb819cbbe44071::t_b17c13d791fc90 114-122,216,219-221,224-237,309-327
+backend/tests/unit/core/regeneration/test_classifier_builder.py
+  s_fb819cbbe44071::t_10de1dbac1a89e 238,244,246-247
+dev/knowledge/backend/selective-merge-regeneration.md
+  s_fb819cbbe44071::t_fc65434f13c9a5 35-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1bdc3277bca6cea3192295479d4e79dfb9623d3a",
+  "prompts": {},
+  "sessions": {
+    "s_fb819cbbe44071": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65a68a98-fa9c-4142-8730-a06dd94f203b",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

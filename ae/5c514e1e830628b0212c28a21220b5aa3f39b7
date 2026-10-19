@@ -1,0 +1,14 @@
+development/docker-compose-deps.yml
+  h_846b829e71a038 27-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ae5c514e1e830628b0212c28a21220b5aa3f39b7",
+  "prompts": {},
+  "humans": {
+    "h_846b829e71a038": {
+      "author": "Fatih Acar <fatih@opsmill.com>"
+    }
+  }
+}

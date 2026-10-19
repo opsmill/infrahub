@@ -1,0 +1,23 @@
+backend/infrahub/core/regeneration/impact.py
+  s_fb819cbbe44071::t_e4820ca1851859 14,68
+backend/infrahub/core/regeneration/query_analysis.py
+  s_fb819cbbe44071::t_c340f1dacbbdac 1-40
+backend/tests/component/core/regeneration/test_query_analysis.py
+  s_fb819cbbe44071::t_ae232706d52318 1-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7dfb4e25c9b9a893b51142ef727fe521ea4a726e",
+  "prompts": {},
+  "sessions": {
+    "s_fb819cbbe44071": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65a68a98-fa9c-4142-8730-a06dd94f203b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

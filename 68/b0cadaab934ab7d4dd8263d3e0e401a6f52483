@@ -1,0 +1,14 @@
+backend/tests/helpers/utils.py
+  h_846b829e71a038 56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "68b0cadaab934ab7d4dd8263d3e0e401a6f52483",
+  "prompts": {},
+  "humans": {
+    "h_846b829e71a038": {
+      "author": "Fatih Acar <fatih@opsmill.com>"
+    }
+  }
+}
