@@ -1,14 +1,24 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 from infrahub.pools.number_ranges import EffectiveSpace, NumberDomain
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Mapping, Sequence
 
+    from infrahub.core.query.resource_manager import HeldNumber
+    from infrahub.pools.number_pool_usage import HoldingObject
     from infrahub.pools.number_ranges import PoolRange
+
+
+class Bounded(Protocol):
+    @property
+    def start(self) -> int: ...
+
+    @property
+    def end(self) -> int: ...
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -93,7 +103,38 @@ def other_branch_refusal(
     return f"{message} {remedy}"
 
 
-def _describe_ranges(ranges: Sequence[PoolRange]) -> str:
+def ranges_leave_held_numbers_refusal(
+    pool_name: str,
+    ranges: Sequence[Bounded],
+    held: Sequence[HeldNumber],
+    holders: Mapping[str, HoldingObject],
+    total: int,
+) -> str:
+    """Return why the pool cannot take `ranges`, listing the first numbers it tracks outside them out of `total`.
+
+    `holders` gives, by attribute id, the object holding each number; a number without one is named by its attribute.
+    """
+    listed = "; ".join(
+        _describe_held(held_number=held_number, holder=holders.get(held_number.attribute_id)) for held_number in held
+    )
+    if total > len(held):
+        listed += f"; and {total - len(held)} more"
+    return (
+        f"Changing the ranges of the {pool_name} pool to {_describe_ranges(ranges)} would leave numbers it tracks "
+        f"outside every range: {listed}. Keep a range covering each of these numbers, or change those numbers first."
+    )
+
+
+def _describe_held(held_number: HeldNumber, holder: HoldingObject | None) -> str:
+    holder_name = (
+        f"{holder.kind} '{holder.display_label}'" if holder is not None else f"attribute {held_number.attribute_id}"
+    )
+    branches = ", ".join(f"'{branch}'" for branch in sorted(held_number.branches))
+    noun = "branch" if len(held_number.branches) == 1 else "branches"
+    return f"{holder_name} holds {held_number.value} on {noun} {branches}"
+
+
+def _describe_ranges(ranges: Sequence[Bounded]) -> str:
     if not ranges:
         return "no ranges"
     ordered = sorted(ranges, key=lambda pool_range: (pool_range.start, pool_range.end))
