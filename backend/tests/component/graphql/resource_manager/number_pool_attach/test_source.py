@@ -1,14 +1,23 @@
 from collections import Counter
+from copy import deepcopy
+from dataclasses import dataclass
 from typing import Any
+
+import pytest
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, MetadataOptions
-from infrahub.core.initialization import create_account, create_branch
+from infrahub.core.initialization import create_account, create_branch, initialize_registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
+from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema.attribute_schema import AttributeSchema
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
+from tests.helpers.schema import TICKET, load_schema
 
 from .helpers import (
     AttributeRead,
@@ -18,7 +27,9 @@ from .helpers import (
     new_pool,
     pool_source,
     pooled_numbers,
+    tracking_pool_id,
     update_ticket,
+    used_numbers,
 )
 
 CREATE_TICKET_READING_SOURCE = """
@@ -447,3 +458,160 @@ class TestPooledSourceRead:
         assert dict(with_both) == PAGE_READ_WITH_ONE_BATCHED_OBJECT_READ, (
             "the sources and owners of the page are loaded together, with one batched object read"
         )
+
+
+CREATE_TICKET_WITH_PROFILE = """
+mutation CreateTicketProfile($title: String!, $ticket_id: NumberAttributeCreate!, $profile_id: String!) {
+    TestingTicketCreate(
+        data: { title: { value: $title }, ticket_id: $ticket_id, profiles: [{ id: $profile_id }] }
+    ) {
+        ok
+        object { id sequence { value is_from_profile } }
+    }
+}
+"""
+
+ASSIGN_PROFILE = """
+mutation AssignProfile($id: String!, $profile_id: String!) {
+    TestingTicketUpdate(data: { id: $id, profiles: [{ id: $profile_id }] }) {
+        ok
+    }
+}
+"""
+
+REFRESH_PROFILES = """
+mutation RefreshProfiles($id: String!) {
+    InfrahubProfilesRefresh(data: { id: $id }) { ok }
+}
+"""
+
+TICKET_WITH_DEFAULTED_SEQUENCE = deepcopy(TICKET)
+TICKET_WITH_DEFAULTED_SEQUENCE.attributes.append(
+    AttributeSchema(name="sequence", kind="Number", optional=True, default_value=4850)
+)
+
+
+async def new_profile(db: InfrahubDatabase, branch: Branch, name: str, sequence: int) -> Node:
+    profile = await Node.init(db=db, schema="ProfileTestingTicket", branch=branch)
+    await profile.new(db=db, profile_name=name, profile_priority=1000, sequence=sequence)
+    await profile.save(db=db)
+    return profile
+
+
+async def edit_profile_sequence(db: InfrahubDatabase, branch: Branch, profile: Node, sequence: int) -> None:
+    stored = await NodeManager.get_one(db=db, id=profile.id, branch=branch)
+    assert stored is not None
+    stored.get_attribute(name="sequence").value = sequence
+    await stored.save(db=db)
+
+
+async def refresh_profiles(db: InfrahubDatabase, branch: Branch, node_id: str) -> None:
+    data = await execute(db=db, branch=branch, source=REFRESH_PROFILES, variables={"id": node_id})
+    assert data
+    assert data["InfrahubProfilesRefresh"]["ok"] is True
+
+
+async def sequence_with_profile_flag(db: InfrahubDatabase, branch: Branch, node_id: str) -> dict[str, Any]:
+    data = await execute(db=db, branch=branch, source=TICKET_SEQUENCE_WITH_PROFILE, variables={"id": node_id})
+    assert data
+    [edge] = data["TestingTicket"]["edges"]
+    return edge["node"]["sequence"]
+
+
+@dataclass(frozen=True)
+class AttachedTicket:
+    pool: CoreNumberPool
+    profile: Node
+    ticket_id: str
+
+
+class TestProfileCannotMoveAnAttachedNumber:
+    """An attach takes the number away from the profile or schema default that supplied it, so a profile leaves it alone.
+
+    The schema gives `sequence` a default, and each starting state is set up once for the class over a number range no
+    other test uses.
+    """
+
+    @pytest.fixture(scope="class")
+    async def main_branch(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        register_core_models_schema_scope_class: SchemaBranch,
+    ) -> Branch:
+        await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET_WITH_DEFAULTED_SEQUENCE]))
+        await initialize_registry(db=db)
+        default_branch_scope_class.update_schema_hash()
+        return default_branch_scope_class
+
+    @pytest.fixture(scope="class")
+    async def attached_profile_number(self, db: InfrahubDatabase, main_branch: Branch) -> AttachedTicket:
+        pool = await new_pool(db=db, name="attach-profile", start_range=6000, end_range=6009, node_attribute="sequence")
+        profile = await new_profile(db=db, branch=main_branch, name="attach-profile", sequence=6005)
+        data = await execute(
+            db=db,
+            branch=main_branch,
+            source=CREATE_TICKET_WITH_PROFILE,
+            variables={"title": "attach-profile", "ticket_id": {"value": 6050}, "profile_id": profile.id},
+        )
+        assert data
+        ticket = data["TestingTicketCreate"]["object"]
+        assert ticket["sequence"] == {"value": 6005, "is_from_profile": True}
+
+        await update_ticket(
+            db=db, branch=main_branch, node_id=ticket["id"], sequence={"value": 6005, "from_pool": {"id": pool.id}}
+        )
+        return AttachedTicket(pool=pool, profile=profile, ticket_id=ticket["id"])
+
+    @pytest.fixture(scope="class")
+    async def attached_schema_default(self, db: InfrahubDatabase, main_branch: Branch) -> AttachedTicket:
+        pool = await new_pool(db=db, name="attach-default", start_range=4850, end_range=4859, node_attribute="sequence")
+        ticket = await create_ticket(db=db, branch=main_branch, title="attach-default")
+        assert ticket["sequence"] == {"value": 4850}
+        await update_ticket(
+            db=db, branch=main_branch, node_id=ticket["id"], sequence={"value": 4850, "from_pool": {"id": pool.id}}
+        )
+        profile = await new_profile(db=db, branch=main_branch, name="attach-default", sequence=4855)
+
+        data = await execute(
+            db=db, branch=main_branch, source=ASSIGN_PROFILE, variables={"id": ticket["id"], "profile_id": profile.id}
+        )
+        assert data
+        assert data["TestingTicketUpdate"]["ok"] is True
+        return AttachedTicket(pool=pool, profile=profile, ticket_id=ticket["id"])
+
+    async def test_an_attached_number_is_no_longer_reported_as_from_the_profile(
+        self, db: InfrahubDatabase, main_branch: Branch, attached_profile_number: AttachedTicket
+    ) -> None:
+        sequence = await sequence_with_profile_flag(
+            db=db, branch=main_branch, node_id=attached_profile_number.ticket_id
+        )
+
+        assert sequence["is_from_profile"] is False
+        assert attribute_read(sequence) == pool_source(6005, attached_profile_number.pool)
+
+    async def test_refreshing_an_edited_profile_does_not_move_an_attached_number(
+        self, db: InfrahubDatabase, main_branch: Branch, attached_profile_number: AttachedTicket
+    ) -> None:
+        pool, ticket_id = attached_profile_number.pool, attached_profile_number.ticket_id
+
+        await edit_profile_sequence(db=db, branch=main_branch, profile=attached_profile_number.profile, sequence=6900)
+        await refresh_profiles(db=db, branch=main_branch, node_id=ticket_id)
+
+        sequence = await sequence_with_profile_flag(db=db, branch=main_branch, node_id=ticket_id)
+        assert sequence["is_from_profile"] is False
+        assert attribute_read(sequence) == pool_source(6005, pool)
+        assert await tracking_pool_id(db=db, node_id=ticket_id, attribute_name="sequence") == pool.id
+        assert 6005 in await used_numbers(db=db, branch=main_branch, pool=pool)
+
+    async def test_applying_a_profile_does_not_change_an_attached_schema_default(
+        self, db: InfrahubDatabase, main_branch: Branch, attached_schema_default: AttachedTicket
+    ) -> None:
+        pool, ticket_id = attached_schema_default.pool, attached_schema_default.ticket_id
+
+        await refresh_profiles(db=db, branch=main_branch, node_id=ticket_id)
+
+        sequence = await sequence_with_profile_flag(db=db, branch=main_branch, node_id=ticket_id)
+        assert sequence["is_from_profile"] is False
+        assert attribute_read(sequence) == pool_source(4850, pool)
+        assert await tracking_pool_id(db=db, node_id=ticket_id, attribute_name="sequence") == pool.id

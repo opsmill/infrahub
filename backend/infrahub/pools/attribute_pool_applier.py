@@ -323,6 +323,7 @@ class AttributePoolApplier:
                         node=node, pool=attach_pool, attribute=attribute, ranges=ranges
                     )
                 await self._attach(node=node, pool=attach_pool, attribute=attribute, user_id=user_id)
+                attribute.is_default = False
             case FromPoolIntent.ALLOCATE:
                 allocate_pool = self._require_pool(pool=pool, intent=intent)
                 if attribute.id is not None and tracking_pool_id != allocate_pool.get_id():
