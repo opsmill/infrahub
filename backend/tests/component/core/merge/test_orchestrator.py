@@ -21,13 +21,16 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.merge.graph_merger import GraphMerger
 from infrahub.core.merge.orchestrator import BranchMergeOrchestrator
 from infrahub.core.merge.post_merge import PostMergeDispatcher
+from infrahub.core.merge.repository_import_guard import RepositoryImportGuard
 from infrahub.core.merge.rollback_handler import MergeRollbackHandler, PreMergeState
 from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
+from infrahub.core.merge.start_gate import MergeStartGate
 from infrahub.core.merge.write_blocker import MergeProtection, MergeProtectionState, MergeWriteBlocker
 from infrahub.core.registry import registry
 from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema.update_coordinator import SchemaUpdateCoordinator
 from infrahub.core.timestamp import Timestamp
+from infrahub.git.sync_status import RepositoryBranchSyncStatus, RepositoryBranchSyncStatusReader
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.adapters.cache import MemoryCache
 
@@ -60,6 +63,14 @@ class _NoSchemaChangeAnalyzer(MergeSchemaAnalyzer):
 
     async def has_schema_changes(self) -> bool:
         return False
+
+
+class _NoRepositoryStatusReader(RepositoryBranchSyncStatusReader):
+    def __init__(self) -> None:
+        pass
+
+    async def list_statuses_on_branch(self, branch: Branch) -> list[RepositoryBranchSyncStatus]:
+        return []
 
 
 class _StaticDiffRepository(DiffRepository):
@@ -231,6 +242,10 @@ class _Harness:
             rollback_handler=self.rollback_handler,
             post_merge_dispatcher=self.post_merge_dispatcher,
             merge_write_blocker=merge_write_blocker,
+            merge_start_gate=MergeStartGate(
+                merge_write_blocker=merge_write_blocker,
+                repository_import_guard=RepositoryImportGuard(status_reader=_NoRepositoryStatusReader()),
+            ),
             ipam_diff_parser=_EmptyIpamDiffParser(),
             diff_repository=_StaticDiffRepository(diff=self.diff),
             diff_serializer=serializer,
