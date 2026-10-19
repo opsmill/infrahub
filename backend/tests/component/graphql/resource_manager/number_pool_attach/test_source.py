@@ -114,7 +114,6 @@ PAGE_READ_WITH_ONE_BATCHED_OBJECT_READ = {
     "node_get_list": 1,
     "node_list_get_info": 2,
     "node_list_get_attribute": 2,
-    "node_list_get_relationship": 2,
 }
 """The page read is one of each. The attributes name other objects, which account for the second reads."""
 
