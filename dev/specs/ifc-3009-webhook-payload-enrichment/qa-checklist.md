@@ -49,12 +49,13 @@ uv run --with fastapi --with uvicorn python /tmp/qa_receiver.py | tee /tmp/qa-we
 mutation {
   CoreStandardWebhookCreate(data: {
     name: {value: "qa-enrichment"}, branch_scope: {value: "all_branches"},
-    url: {value: "http://host.docker.internal:8200/"}
+    url: {value: "http://host.docker.internal:8200/"},
+    shared_key: {value: "qa-shared-key"}
   }) { ok }
 }
 ```
 
-4. Wait 30 seconds before the first scenario; the first event after creating a webhook can be missed.
+4. Update the description of any device and wait until its `infrahub.node.updated` event appears in `/tmp/qa-webhooks.jsonl`. Repeat if it does not arrive within a minute: the events sent just after a webhook is created can be missed, for longer while the workers still process the demo data load.
 
 ## Test Scenarios
 
@@ -98,15 +99,83 @@ mutation {
 
 ### 4. A rebase delivers enriched node events
 
-**What this verifies**: node events emitted by a rebase on the rebased branch carry the labels.
+**What this verifies**: the node events a rebase emits on the rebased branch, for the changes made on that branch, carry the labels.
 
 **Steps**:
 
-- [ ] Run: `mutation { BranchCreate(data: {name: "qa-rebase"}) { ok } }`, then on `main` update another device's description.
+- [ ] Run: `mutation { BranchCreate(data: {name: "qa-rebase"}) { ok } }`
+- [ ] Open the sandbox on branch `qa-rebase` and run: `mutation { InfraDeviceUpdate(data: {hfid: ["atl1-edge2"], description: {value: "qa-rebase"}}) { ok } }`
+- [ ] On `main`, update the description of `atl1-core1`.
 - [ ] Run: `mutation { BranchRebase(data: {name: "qa-rebase"}) { ok } }`
 - [ ] Run: `jq -c 'select(.branch=="qa-rebase" and .event=="infrahub.node.updated") | .data.changelog | {node_kind, hfid, display_label}' /tmp/qa-webhooks.jsonl`
 
-**Expected result**: the rebase emits an event for that device on `qa-rebase`, with its `hfid` and display label.
+**Expected result**: the rebase emits an event on `qa-rebase` for `atl1-edge2`, with `hfid` `["atl1-edge2"]` and its display label. It emits no event on `qa-rebase` for `atl1-core1`, because a rebase replays the changes made on `main` only for the kinds whose schema the branch changed.
+
+### 5. The display label mutation publishes the full HFID
+
+**What this verifies**: `InfrahubUpdateDisplayLabel` loads only the node's display label, and its event still carries the node's full HFID, including the part read through a relationship.
+
+**Steps**:
+
+- [ ] Get an interface of `atl1-edge1`: `query { InfraInterfaceL3(device__name__value: "atl1-edge1", limit: 1) { edges { node { id hfid } } } }`. Its `hfid` has two parts: the device name and the interface name.
+- [ ] Run: `mutation { InfrahubUpdateDisplayLabel(data: {id: "<interface-id>", kind: "InfraInterfaceL3", value: "qa-label"}) { ok } }`
+- [ ] Run: `jq -c 'select(.event=="infrahub.node.updated" and .data.kind=="InfraInterfaceL3") | .data.changelog | {display_label, hfid}' /tmp/qa-webhooks.jsonl | tail -1`
+
+**Expected result**: `display_label` is `qa-label`, and `hfid` is the two-part HFID the query returned.
+
+### 6. The computed attribute mutation publishes the full HFID
+
+**What this verifies**: `InfrahubUpdateComputedAttribute` loads only the attribute it sets, and its event still carries the node's full HFID.
+
+**Steps**:
+
+- [ ] Run: `mutation { InfrahubUpdateComputedAttribute(data: {id: "<atl1-edge1-id>", kind: "InfraDevice", attribute: "computed_description", value: "qa-computed"}) { ok } }`
+- [ ] Run: `jq -c 'select(.event=="infrahub.node.updated" and .data.kind=="InfraDevice") | .data.changelog | {hfid, computed_description: .attributes.computed_description.value}' /tmp/qa-webhooks.jsonl | tail -1`
+
+**Expected result**: `computed_description` is `qa-computed`, and `hfid` is `["atl1-edge1"]`, not an empty list.
+
+### 7. A relationship that feeds the display label
+
+**What this verifies**: after a relationship mutation on a relationship that the display label reads, the event carries the display label computed from the new peer, not the value stored before the mutation.
+
+**Steps**:
+
+- [ ] Load a schema in which the display label of a shirt reads its color:
+
+```bash
+cat > /tmp/qa_shirt_schema.yml <<'EOF'
+version: "1.0"
+nodes:
+  - name: Color
+    namespace: Testing
+    display_label: "{{ name__value }}"
+    human_friendly_id: ["name__value"]
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+  - name: Shirt
+    namespace: Testing
+    display_label: "{{ name__value }} {{ color__name__value }}"
+    human_friendly_id: ["name__value"]
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+    relationships:
+      - name: color
+        peer: TestingColor
+        cardinality: one
+        optional: true
+EOF
+INFRAHUB_ADDRESS=http://localhost:8000 INFRAHUB_API_TOKEN=06438eb2-8019-4776-878c-0941b1f1d1ec uv run infrahubctl schema load /tmp/qa_shirt_schema.yml
+```
+
+- [ ] Create a color and a shirt without a color: `mutation { TestingColorCreate(data: {name: {value: "red"}}) { object { id } } TestingShirtCreate(data: {name: {value: "polo"}}) { object { id } } }`
+- [ ] Run: `mutation { RelationshipAdd(data: {id: "<shirt-id>", name: "color", nodes: [{id: "<color-id>"}]}) { ok } }`
+- [ ] Run: `jq -c 'select(.event=="infrahub.node.updated" and .data.kind=="TestingShirt") | .data.changelog | {display_label, hfid}' /tmp/qa-webhooks.jsonl | tail -1`
+
+**Expected result**: `display_label` is `polo red` and `hfid` is `["polo"]`.
 
 ## Edge Cases
 
@@ -119,7 +188,7 @@ mutation {
 
 ```bash
 uv run invoke dev.destroy
-rm -f /tmp/qa_receiver.py /tmp/qa-webhooks.jsonl
+rm -f /tmp/qa_receiver.py /tmp/qa-webhooks.jsonl /tmp/qa_shirt_schema.yml
 ```
 
 Stop the receiver with Ctrl+C.
