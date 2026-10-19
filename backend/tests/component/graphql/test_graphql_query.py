@@ -2025,6 +2025,66 @@ async def test_hierarchical_location_parent_filter(
     assert nodes == ["london-r1", "london-r2", "paris-r1", "paris-r2"]
 
 
+async def test_hierarchical_location_parent_node_metadata_without_parent(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: dict[str, Node]
+) -> None:
+    query = """
+    query {
+        LocationRegion(name__value: "europe") {
+            edges {
+                node {
+                    parent {
+                        node {
+                            id
+                        }
+                        node_metadata {
+                            created_at
+                        }
+                    }
+                }
+                node_metadata {
+                    created_at
+                }
+            }
+        }
+        LocationSite(name__value: "paris") {
+            edges {
+                node {
+                    parent {
+                        node {
+                            id
+                        }
+                        node_metadata {
+                            created_at
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data
+    region_edge = result.data["LocationRegion"]["edges"][0]
+    site_edge = result.data["LocationSite"]["edges"][0]
+    assert region_edge["node_metadata"]["created_at"] is not None
+    assert region_edge["node"]["parent"] == {"node": None, "node_metadata": None}
+    assert site_edge["node"]["parent"] == {
+        "node": {"id": hierarchical_location_data["europe"].id},
+        "node_metadata": {"created_at": region_edge["node_metadata"]["created_at"]},
+    }
+
+
 async def test_hierarchical_location_ancestors(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: dict[str, Node]
 ) -> None:
