@@ -98,7 +98,6 @@ def _generator_run(
             execute_in_proposed_change=False,
             execute_after_merge=True,
             query_id="q1",
-            query_models=["TestDevice"],
             query_payload="query { TestDevice { edges { node { id } } } }",
             repository_id=REPOSITORY_X,
         ),
