@@ -7,14 +7,31 @@ repos:
       # trailing spaces in their banner and the missing final newline. Normalising
       # them here only makes the next `gh aw compile` undo it.
       - id: trailing-whitespace
-        exclude: ^\.github/workflows/.*\.lock\.yml$
+        # The GraphQL schema export keeps the indentation on blank lines inside multi-line
+        # descriptions, and CI compares the committed file byte for byte with a fresh export.
+        exclude: |
+          (?x)^(
+            schema/schema\.graphql|
+            \.github/workflows/.*\.lock\.yml
+          )$
       - id: check-ast
       - id: check-case-conflict
       - id: check-merge-conflict
       - id: check-toml
       - id: check-yaml
       - id: end-of-file-fixer
-        exclude: ^(schema/schema\.graphql|schema/openapi\.json|\.gitattributes|\.github/workflows/.*\.lock\.yml)$
+        # Generator output, committed byte-exact. These generators emit no trailing newline, so
+        # appending one here would guarantee a mismatch against what CI regenerates.
+        exclude: |
+          (?x)^(
+            schema/schema\.graphql|
+            schema/openapi\.json|
+            docs/docs/reference/configuration\.mdx|
+            docs/docs/reference/error-catalogue\.mdx|
+            frontend/app/src/shared/api/graphql/generated/graphql-env\.d\.ts|
+            \.gitattributes|
+            \.github/workflows/.*\.lock\.yml
+          )$
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
