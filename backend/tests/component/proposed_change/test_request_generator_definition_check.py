@@ -436,7 +436,6 @@ class TestRequestGeneratorDefinitionCheck(TestInfrahubAppWithoutLocalWorkflow):
                 definition_name="device-generator",
                 query_name=query_name,
                 query_id=query_id,
-                query_models=["TestNetworkDevice"],
                 query_payload=query_payload,
                 repository_id=repo.id,
                 class_name="DeviceGenerator",

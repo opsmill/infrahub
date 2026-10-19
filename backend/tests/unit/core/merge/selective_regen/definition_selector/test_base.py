@@ -73,7 +73,6 @@ def _generator_definition(
         execute_in_proposed_change=False,
         execute_after_merge=True,
         query_id="q-1",
-        query_models=[],
         query_payload="query {}",
         repository_id="repo-1",
         dependencies=dependencies if dependencies is not None else [],

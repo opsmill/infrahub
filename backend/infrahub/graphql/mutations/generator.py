@@ -65,7 +65,6 @@ class GeneratorDefinitionRequestRun(Mutation):
                 file_path=generator_definition.file_path.value,
                 query_name=query.name.value,
                 query_id=query.id,
-                query_models=query.models.value or [],
                 query_payload=query.query.value,
                 repository_id=repository.id,
                 parameters=generator_definition.parameters.value

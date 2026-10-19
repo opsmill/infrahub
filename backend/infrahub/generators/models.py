@@ -79,7 +79,6 @@ class GeneratorDefinitionModel(BaseModel):
 
 class ProposedChangeGeneratorDefinition(GeneratorDefinitionModel):
     query_id: str = Field(..., description="The id of the query to use when collecting data.")
-    query_models: list[str] = Field(..., description="The models to use when collecting data.")
     query_payload: str = Field(..., description="The GraphQL query string used to collect data.")
     repository_id: str = Field(..., description="The id of the repository.")
     dependencies: list[str] | None = Field(
@@ -118,7 +117,6 @@ def build_generator_definition(generator: CoreGeneratorDefinition) -> ProposedCh
         file_path=generator.file_path.value,
         query_name=generator.query.peer.name.value,
         query_id=generator.query.peer.id,
-        query_models=generator.query.peer.models.value,
         query_payload=generator.query.peer.query.value,
         repository_id=generator.repository.peer.id,
         parameters=generator.parameters.value,
