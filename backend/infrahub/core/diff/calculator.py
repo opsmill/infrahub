@@ -36,6 +36,7 @@ class DiffCalculationRequest:
     current_node_field_specifiers: NodeFieldSpecifierMap | None = field(default=None)
     new_node_field_specifiers: NodeFieldSpecifierMap | None = field(default=None)
     node_kinds: list[str] | None = field(default=None)
+    node_uuids: set[str] | None = field(default=None)
 
 
 class DiffCalculator:
@@ -104,6 +105,8 @@ class DiffCalculator:
         )
         await nodes_query.execute(db=self.db)
         node_uuids = nodes_query.get_node_uuids()
+        if calculation_request.node_uuids is not None:
+            node_uuids = [node_uuid for node_uuid in node_uuids if node_uuid in calculation_request.node_uuids]
         log.info(f"Diff calculation covers {len(node_uuids)} changed nodes, {node_chunk_size=}")
         for node_uuids_chunk in batched(node_uuids, node_chunk_size):
             await self._run_diff_calculation_query(
@@ -144,6 +147,11 @@ class DiffCalculator:
                     and migrated_kind_node.kind not in calculation_request.node_kinds
                 ):
                     continue
+                if (
+                    calculation_request.node_uuids is not None
+                    and migrated_kind_node.uuid not in calculation_request.node_uuids
+                ):
+                    continue
                 migrated_kind_identifier = NodeIdentifier(
                     uuid=migrated_kind_node.uuid,
                     kind=migrated_kind_node.kind,
@@ -178,11 +186,13 @@ class DiffCalculator:
         include_unchanged: bool = True,
         previous_node_specifiers: NodeFieldSpecifierMap | None = None,
         node_kinds: list[str] | None = None,
+        node_uuids: set[str] | None = None,
     ) -> CalculatedDiffs:
         """Calculate the diff of the diff branch against the base branch over a time range.
 
         Args:
             node_kinds: Calculate the changes of the diff branch for nodes of these kinds only.
+            node_uuids: Calculate the changes of the diff branch for the nodes with these uuids only.
 
         """
         if diff_branch.name == registry.default_branch:
@@ -208,6 +218,7 @@ class DiffCalculator:
             from_time=from_time,
             to_time=to_time,
             node_kinds=node_kinds,
+            node_uuids=node_uuids,
         )
 
         log.info("Beginning diff node-level calculation queries for branch")

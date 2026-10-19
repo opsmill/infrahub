@@ -35,10 +35,10 @@ class GeneratorTrackingGroupDiffCapturer:
     """Capture a post-merge generator's own writes, scoped to the nodes it tracked.
 
     A time-window diff of the branch alone would also carry any concurrent write landing on it while the
-    generators ran. Each generator records the nodes it saves into a tracking group, so intersecting the
-    window diff with those nodes yields the generator's own output with per-field detail, free of the
-    concurrent noise. When no tracked node can be resolved the window diff is read unscoped, so a lookup
-    miss widens the selection rather than dropping a consuming artifact.
+    generators ran. Each generator records the nodes it saves into a tracking group, so calculating the
+    window diff for those nodes only yields the generator's own output with per-field detail, free of the
+    concurrent noise. When no tracked node can be resolved the window diff is calculated unscoped, so a
+    lookup miss widens the selection rather than dropping a consuming artifact.
     """
 
     def __init__(
@@ -57,10 +57,13 @@ class GeneratorTrackingGroupDiffCapturer:
         node_ids = await self._output_node_ids(generator_definition_names=generator_definition_names)
 
         diff = await self.diff_coordinator.calculate_arbitrary_timeframe_diff(
-            base_branch=self.branch, diff_branch=self.branch, from_time=since, to_time=Timestamp()
+            base_branch=self.branch,
+            diff_branch=self.branch,
+            from_time=since,
+            to_time=Timestamp(),
+            # an empty tracking group widens the read like a missing one, instead of selecting no node
+            node_uuids=node_ids or None,
         )
-        if node_ids:
-            diff.nodes = {node for node in diff.nodes if node.uuid in node_ids}
         return self.serializer.serialize(root=diff, target_branch_name=self.branch.name)
 
     async def _output_node_ids(self, *, generator_definition_names: list[str]) -> set[str] | None:

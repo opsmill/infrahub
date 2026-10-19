@@ -43,23 +43,30 @@ def _group(name: str, member_ids: list[str]) -> SimpleNamespace:
 
 
 class _WindowDiffCoordinator(DiffCoordinator):
-    """Returns a diff of the requested window that changed the given nodes."""
+    """Returns a diff of the requested window that changed the given nodes, recording the nodes it was scoped to."""
 
     def __init__(self, changed_node_ids: list[str]) -> None:
         self._changed_node_ids = changed_node_ids
+        self.requested_node_uuids: list[set[str] | None] = []
 
-    async def calculate_arbitrary_timeframe_diff(
+    async def calculate_arbitrary_timeframe_diff(  # noqa: PLR0913, PLR0917
         self,
         base_branch: Branch,
         diff_branch: Branch,
         from_time: Timestamp,
         to_time: Timestamp,
         node_kinds: list[str] | None = None,
+        node_uuids: set[str] | None = None,
     ) -> EnrichedDiffRoot:
+        self.requested_node_uuids.append(node_uuids)
         return EnrichedRootFactory.build(
             base_branch_name=base_branch.name,
             diff_branch_name=diff_branch.name,
-            nodes={_changed_node(uuid=node_id) for node_id in self._changed_node_ids},
+            nodes={
+                _changed_node(uuid=node_id)
+                for node_id in self._changed_node_ids
+                if node_uuids is None or node_id in node_uuids
+            },
         )
 
 
@@ -77,9 +84,9 @@ class _FakeClient:
         return self._groups_by_name.get(name__value, [])
 
 
-def _capturer(client: _FakeClient, changed_node_ids: list[str]) -> GeneratorTrackingGroupDiffCapturer:
+def _capturer(client: _FakeClient, coordinator: _WindowDiffCoordinator) -> GeneratorTrackingGroupDiffCapturer:
     return GeneratorTrackingGroupDiffCapturer(
-        diff_coordinator=_WindowDiffCoordinator(changed_node_ids=changed_node_ids),
+        diff_coordinator=coordinator,
         serializer=DiffSummarySerializer(),
         client=cast("InfrahubClient", client),
         branch=Branch(name="main"),
@@ -102,10 +109,12 @@ async def test_capture_returns_only_the_changes_to_the_nodes_the_generators_trac
             ]
         }
     )
-    capturer = _capturer(client, changed_node_ids=["n1", "n2", "n3", "nX", "concurrent"])
+    coordinator = _WindowDiffCoordinator(changed_node_ids=["n1", "n2", "n3", "nX", "concurrent"])
+    capturer = _capturer(client, coordinator)
 
     result = await capturer.capture(since=Timestamp(), generator_definition_names=["set_description"])
 
+    assert coordinator.requested_node_uuids == [{"n1", "n2", "n3"}]
     assert _captured_ids(result) == {"n1", "n2", "n3"}
 
 
@@ -113,23 +122,27 @@ async def test_capture_returns_every_change_in_the_window_when_no_tracking_group
     # A generator ran but no tracking group is found: keep the window diff unscoped so a lookup miss
     # over-selects rather than dropping a consuming artifact.
     client = _FakeClient({})
-    capturer = _capturer(client, changed_node_ids=["n1", "concurrent"])
+    coordinator = _WindowDiffCoordinator(changed_node_ids=["n1", "concurrent"])
+    capturer = _capturer(client, coordinator)
 
     result = await capturer.capture(since=Timestamp(), generator_definition_names=["set_description"])
 
     # The full window alone would also come back if the lookup stopped happening: no query leaves no
     # ids, which widens too. The queried names separate a miss from a skipped lookup.
     assert client.queried_names == ["set_description"]
+    assert coordinator.requested_node_uuids == [None]
     assert _captured_ids(result) == {"n1", "concurrent"}
 
 
 async def test_capture_returns_every_change_in_the_window_when_the_tracking_group_is_empty() -> None:
     client = _FakeClient({"set_description": [_group(f"set_description-{_HASH_A}", [])]})
-    capturer = _capturer(client, changed_node_ids=["n1", "concurrent"])
+    coordinator = _WindowDiffCoordinator(changed_node_ids=["n1", "concurrent"])
+    capturer = _capturer(client, coordinator)
 
     result = await capturer.capture(since=Timestamp(), generator_definition_names=["set_description"])
 
     assert client.queried_names == ["set_description"]
+    assert coordinator.requested_node_uuids == [None]
     assert _captured_ids(result) == {"n1", "concurrent"}
 
 
@@ -137,11 +150,13 @@ async def test_capture_ignores_groups_whose_name_is_not_a_tracking_group() -> No
     # Only "<definition name>-<32 hex>" names count; a suffix that is not a bare hash is excluded, which
     # leaves no tracking group and keeps the window diff unscoped.
     client = _FakeClient({"set_description": [_group(f"set_description-{_HASH_A}xyz", ["n1"])]})
-    capturer = _capturer(client, changed_node_ids=["n1", "concurrent"])
+    coordinator = _WindowDiffCoordinator(changed_node_ids=["n1", "concurrent"])
+    capturer = _capturer(client, coordinator)
 
     result = await capturer.capture(since=Timestamp(), generator_definition_names=["set_description"])
 
     assert client.queried_names == ["set_description"]
+    assert coordinator.requested_node_uuids == [None]
     assert _captured_ids(result) == {"n1", "concurrent"}
 
 
@@ -149,9 +164,11 @@ async def test_capture_returns_every_change_when_any_definition_lacks_a_tracking
     # One generator resolved its group, another did not; narrowing on only the resolved ids would drop
     # the unresolved generator's output, so the capture must widen instead of filtering on the aggregate.
     client = _FakeClient({"genA": [_group(f"genA-{_HASH_A}", ["n1", "n2"])]})
-    capturer = _capturer(client, changed_node_ids=["n1", "n2", "written-by-genB"])
+    coordinator = _WindowDiffCoordinator(changed_node_ids=["n1", "n2", "written-by-genB"])
+    capturer = _capturer(client, coordinator)
 
     result = await capturer.capture(since=Timestamp(), generator_definition_names=["genA", "genB"])
 
     assert client.queried_names == ["genA", "genB"]
+    assert coordinator.requested_node_uuids == [None]
     assert _captured_ids(result) == {"n1", "n2", "written-by-genB"}
