@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 from uuid import uuid4
@@ -273,6 +274,18 @@ query {
 """
 
 
+@dataclass(frozen=True)
+class QueryCase:
+    name: str
+    query: str
+
+
+REPO_READ_THROUGH_A_SPREAD_INSIDE_A_FRAGMENT = [
+    QueryCase(name="spread_in_an_inline_fragment", query=QUERY_GRAPHQL_AND_REPO_IN_A_SPREAD_IN_AN_INLINE_FRAGMENT),
+    QueryCase(name="spread_in_a_named_fragment", query=QUERY_GRAPHQL_AND_REPO_IN_A_SPREAD_IN_A_NAMED_FRAGMENT),
+]
+
+
 class TestObjectPermissions:
     async def test_setup(
         self,
@@ -467,15 +480,9 @@ class TestObjectPermissions:
                 query_parameters=gql_params,
             )
 
-    @pytest.mark.parametrize(
-        "query",
-        [
-            pytest.param(QUERY_GRAPHQL_AND_REPO_IN_A_SPREAD_IN_AN_INLINE_FRAGMENT, id="spread_in_an_inline_fragment"),
-            pytest.param(QUERY_GRAPHQL_AND_REPO_IN_A_SPREAD_IN_A_NAMED_FRAGMENT, id="spread_in_a_named_fragment"),
-        ],
-    )
+    @pytest.mark.parametrize("case", REPO_READ_THROUGH_A_SPREAD_INSIDE_A_FRAGMENT, ids=lambda case: case.name)
     async def test_first_account_repos_read_through_a_spread_inside_a_fragment(
-        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper, query: str
+        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper, case: QueryCase
     ) -> None:
         """A kind read only through a fragment spread inside another fragment needs its view permission."""
         checker = ObjectPermissionChecker()
@@ -488,7 +495,7 @@ class TestObjectPermissions:
         )
         schema_branch = registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
         analyzed_query = InfrahubGraphQLQueryAnalyzer(
-            query=query,
+            query=case.query,
             schema=gql_params.schema,
             branch=permissions_helper.default_branch,
             schema_branch=schema_branch,
