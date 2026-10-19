@@ -16,7 +16,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
 from infrahub.pools.number_pool_repository import NumberPoolRepository
-from tests.component.core.migrations.graph.m076_heal_missing_attribute_rows.conftest import delete_attribute_rows
+from tests.helpers.attribute_rows import delete_attribute_rows
 from tests.helpers.schema import TICKET
 
 USER_POOL_BOUNDS = (1, 10)
