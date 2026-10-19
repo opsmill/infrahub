@@ -3,12 +3,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.core.regeneration.models import DefinitionSelect
-from infrahub.core.regeneration.predicates import definition_changed, query_changed, reads_kind
+from infrahub.core.regeneration.predicates import definition_changed, query_changed
 
 from .models import GateResult
 
 if TYPE_CHECKING:
     import logging
+    from collections.abc import Collection
 
     from infrahub_sdk.diff import NodeDiff
 
@@ -31,6 +32,7 @@ class DefinitionGate:
         definition: DefinitionModel,
         diff_summary: list[NodeDiff],
         modified_kinds: list[str],
+        read_kinds: Collection[str],
         group_id: str,
     ) -> GateResult:
         query_outcome = query_changed(definition=definition, diff_summary=diff_summary)
@@ -40,7 +42,7 @@ class DefinitionGate:
                 self.log.debug(outcome.reason)
         regenerate_all_members = query_outcome.matched or definition_outcome.matched
 
-        matches_modified_kind = any(reads_kind(definition, changed_model) for changed_model in modified_kinds)
+        matches_modified_kind = any(changed_model in read_kinds for changed_model in modified_kinds)
 
         select = DefinitionSelect.NONE
         select = select.add_flag(current=select, flag=DefinitionSelect.QUERY_CHANGED, condition=query_outcome.matched)

@@ -14,6 +14,8 @@ from infrahub.graphql.analyzer import GraphQLQueryReport
 from infrahub.message_bus.types import ProposedChangeArtifactDefinition
 
 if TYPE_CHECKING:
+    from collections.abc import Collection
+
     from infrahub_sdk.diff import NodeDiff
 
 
@@ -24,7 +26,13 @@ class RejectingGate(DefinitionGate):
         pass
 
     def evaluate(
-        self, *, definition: object, diff_summary: list[NodeDiff], modified_kinds: list[str], group_id: str
+        self,
+        *,
+        definition: object,
+        diff_summary: list[NodeDiff],
+        modified_kinds: list[str],
+        read_kinds: Collection[str],
+        group_id: str,
     ) -> GateResult:
         return GateResult(regenerate_all_members=False, selected=False)
 

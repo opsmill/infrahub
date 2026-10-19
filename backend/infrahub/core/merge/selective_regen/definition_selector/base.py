@@ -81,6 +81,7 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
                 definition=definition,
                 diff_summary=diff_summary,
                 modified_kinds=modified_kinds,
+                read_kinds=query_report.impacted_models,
                 group_id=loaded.group_id,
             )
 

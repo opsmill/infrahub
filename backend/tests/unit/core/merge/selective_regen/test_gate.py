@@ -25,13 +25,13 @@ def _node_diff(*, node_id: str) -> NodeDiff:
     return node_diff(node_id=node_id, kind="TestDevice", branch=TARGET_BRANCH)
 
 
-def _generator_definition(*, query_models: list[str]) -> ProposedChangeGeneratorDefinition:
+def _generator_definition() -> ProposedChangeGeneratorDefinition:
     return ProposedChangeGeneratorDefinition(
         definition_id=DEFINITION_ID,
         definition_name="gen-def",
         query_name="gen-query",
         query_id=QUERY_ID,
-        query_models=query_models,
+        query_models=[],
         query_payload="query { TestDevice { edges { node { id } } } }",
         repository_id="repo-1",
         convert_query_response=False,
@@ -44,14 +44,14 @@ def _generator_definition(*, query_models: list[str]) -> ProposedChangeGenerator
     )
 
 
-def _artifact_definition(*, query_models: list[str]) -> ProposedChangeArtifactDefinition:
+def _artifact_definition() -> ProposedChangeArtifactDefinition:
     return ProposedChangeArtifactDefinition(
         definition_id=DEFINITION_ID,
         definition_name="art-def",
         artifact_name="my-artifact",
         query_name="art-query",
         query_id=QUERY_ID,
-        query_models=query_models,
+        query_models=[],
         query_payload="query { TestDevice { edges { node { id } } } }",
         repository_id="repo-1",
         transform_kind="CoreTransformJinja2",
@@ -64,7 +64,7 @@ def _artifact_definition(*, query_models: list[str]) -> ProposedChangeArtifactDe
 class GateCase:
     name: str
     is_artifact: bool = False
-    query_models: list[str] = field(default_factory=lambda: ["TestDevice"])
+    read_kinds: list[str] = field(default_factory=lambda: ["TestDevice"])
     modified_kinds: list[str] = field(default_factory=list)
     diff_node_ids: list[str] = field(default_factory=list)
     expected: GateResult
@@ -129,17 +129,14 @@ GATE_CASES = [
 
 @pytest.mark.parametrize("case", GATE_CASES, ids=lambda case: case.name)
 def test_definition_gate_evaluate(case: GateCase) -> None:
-    definition = (
-        _artifact_definition(query_models=case.query_models)
-        if case.is_artifact
-        else _generator_definition(query_models=case.query_models)
-    )
+    definition = _artifact_definition() if case.is_artifact else _generator_definition()
     gate = DefinitionGate(log=logging.getLogger("test_definition_gate"))
 
     result = gate.evaluate(
         definition=definition,
         diff_summary=[_node_diff(node_id=node_id) for node_id in case.diff_node_ids],
         modified_kinds=case.modified_kinds,
+        read_kinds=case.read_kinds,
         group_id=GROUP_ID,
     )
 

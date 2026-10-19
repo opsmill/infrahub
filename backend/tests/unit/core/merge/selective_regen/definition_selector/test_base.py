@@ -16,6 +16,8 @@ from infrahub.generators.models import ProposedChangeGeneratorDefinition, Reques
 from infrahub.graphql.analyzer import GraphQLQueryReport
 
 if TYPE_CHECKING:
+    from collections.abc import Collection
+
     from infrahub_sdk.diff import NodeDiff
 
 TARGET_BRANCH = "main"
@@ -87,7 +89,13 @@ class _StubGate(DefinitionGate):
         self.results = results
 
     def evaluate(
-        self, *, definition: object, diff_summary: list[NodeDiff], modified_kinds: list[str], group_id: str
+        self,
+        *,
+        definition: object,
+        diff_summary: list[NodeDiff],
+        modified_kinds: list[str],
+        read_kinds: Collection[str],
+        group_id: str,
     ) -> GateResult:
         return self.results[definition.definition_name]  # type: ignore[attr-defined]
 
