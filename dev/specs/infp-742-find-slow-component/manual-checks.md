@@ -60,3 +60,55 @@ backend/tests/unit/test_log.py backend/tests/unit/workers -q`: 178 passed.
 
 All 5 checks passed on 2026-10-16. No bug and no skipped check. Next step: open the draft pull
 request of IFC-3425.
+
+## Re-run on 2026-10-19 (after the review)
+
+- **Change tested:** `9aeec2bcf` ("fix(security): mask request spans at the source and stop masking log
+  lines [IFC-3425]"): the request span hook masks the URL query string and the client IP address; log
+  lines are no longer masked; span masking on export is unchanged.
+- **Branch tested:** `dp-20261016-portable-dashboards-ifc-3429` at `bd416fa5a`, the top of the stack,
+  which contains `9aeec2bcf`. The layers above IFC-3425 do not change the masking code.
+- **Stack:** tracing on (OTLP to Tempo), test OIDC provider `provider1` with a discovery URL on
+  `.invalid`.
+- **Not repeated:** check 2 above (Cypher text readable), because the export masking and its rules did
+  not change.
+
+| # | Check | Source | Outcome |
+|---|-------|--------|---------|
+| R1 | A request span hides the client IP and the URL query string, and keeps the hostname and the path | Story 2 scenario 4; FR-012, FR-013a; T018a | pass |
+| R2 | The single sign-on token endpoint span has no `code` or `state` | Story 2 scenario 2; FR-010; T018a | pass |
+| R3 | A log line is no longer masked | FR-013; T018b | pass |
+| R4 | Automated tests | Story 2 scenarios 1, 3, 7; T018c | pass |
+
+### R1: pass
+
+`GET /api/schema/summary?branch=main&manual_check=secret789`. On the parent server span: `http.url` =
+`http://localhost:8000/api/schema/summary?[MASKED]`, `net.peer.ip` = `[MASKED]`; `secret789` in no
+attribute.
+
+### R2: pass
+
+`GET /api/oidc/provider1/token?code=manualcode789&state=manualstate789` returned 400 "Invalid 'state'
+parameter". On the parent span: `http.url` = `http://localhost:8000/api/oidc/provider1/token?[MASKED]`,
+`http.route` = `/api/oidc/{provider_name}/token`; the code and the state appear in no attribute or
+event.
+
+### R3: pass
+
+`configure_logging(production=True)` in the server container, then one structlog line with an `email`
+field and a URL with `?code=…`, and one `prefect.flow_runs` line with a URL with `?state=…`. Both lines
+are written as they were logged: the email address and the query strings are readable, and no line
+contains `[MASKED]`. This is the expected result since log lines are no longer masked (FR-013).
+
+### R4: pass
+
+`uv run pytest backend/tests/unit/test_masking.py backend/tests/unit/test_trace.py
+backend/tests/unit/test_log.py backend/tests/unit/test_server.py backend/tests/unit/workers -q`, with the
+`INFRAHUB_TRACE_*` variables unset: 167 passed. `test_server.py` sends `?code=…&state=…` through an
+instrumented app without the masking exporter and finds neither value. `uv run pytest
+backend/tests/component/api/test_sso_token_telemetry.py -q`: 2 passed.
+
+### Summary of the re-run
+
+All 4 checks passed on 2026-10-19. No bug and no skipped check. Next step: update the descriptions of
+the pull requests and push the stack.

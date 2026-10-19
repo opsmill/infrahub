@@ -103,7 +103,7 @@ manual check 4).
 
 - [x] T018a [US2] In `backend/infrahub/server.py`, mask the request span attributes in the request hook passed to the FastAPI instrumentation, with the rules of `backend/infrahub/masking.py`: the URL query string in `http.url`, `url.full` and `url.query`, and the client IP address; add a unit test that sends `?code=…&state=…` through the instrumented app without the masking exporter and finds neither value in any attribute (FR-012)
 - [x] T018b [US2] Remove log masking: in `backend/infrahub/log.py`, `LogMaskingFilter`, `add_log_masking_filter`, `install_log_masking_filter`, `mask_personal_data` and the traceback wrapper; in `backend/infrahub/workers/infrahub_async.py`, `add_log_masking_filter`; their tests in `backend/tests/unit/test_log.py`; and the functions of `backend/infrahub/masking.py` that nothing uses any more (FR-013)
-- [ ] T018c [US2] Run the masking, trace, log and worker unit tests, the single sign-on component test and `uv run invoke format lint`; all pass. Daniel runs the manual checks of this layer again
+- [x] T018c [US2] Run the masking, trace, log and worker unit tests, the single sign-on component test and `uv run invoke format lint`; all pass. Daniel runs the manual checks of this layer again
 
 **Checkpoint**: Story 2 is complete and testable on its own. FR-011 is met: masking can ship before
 tracing is turned on for more operators.
