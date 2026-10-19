@@ -1033,6 +1033,21 @@ class TestConflictsEnricher:
 
         assert self._get_value_conflict(branch_root, node_uuid, "fingerprint") is None
 
+    async def test_fingerprint_of_other_kind_still_conflicts(
+        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+    ) -> None:
+        # a schema of the user can name an attribute "fingerprint", and a person sets its value
+        base_root, branch_root, node_uuid = self._build_value_conflict_roots(
+            node_kind="TestingDevice",
+            attribute_name="fingerprint",
+            base_value="fingerprint-of-the-main-commit",
+            branch_value="fingerprint-of-the-branch-commit",
+        )
+
+        await self.__call_system_under_test(db=db, base_enriched_diff=base_root, branch_enriched_diff=branch_root)
+
+        assert self._get_value_conflict(branch_root, node_uuid, "fingerprint") is not None
+
     async def test_manually_fixed_node_conflict_cleared(self, db: InfrahubDatabase) -> None:
         node_uuid = str(uuid4())
         node_kind = "SomethingSmelly"
