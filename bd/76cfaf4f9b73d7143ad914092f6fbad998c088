@@ -1,0 +1,30 @@
+backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py
+  s_1bb7a99c5eb9a8::t_8ec6e995d2f160 204-205,212
+  s_1bb7a99c5eb9a8::t_cde977f813e4b9 23
+  s_1bb7a99c5eb9a8::t_a9ea4e61e60279 64,213
+backend/infrahub/pools/pool_kinds.py
+  s_1bb7a99c5eb9a8::t_0a660dcb3fa568 1-18
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_create.py
+  s_1bb7a99c5eb9a8::t_a9ea4e61e60279 16,440-444,446-452,460-466
+  s_1bb7a99c5eb9a8::t_4ea48fb56f3018 1-2,39-51,439,445,453-459
+  s_1bb7a99c5eb9a8::t_39f46c12ac18ce 467
+backend/tests/unit/pools/test_pool_kinds.py
+  s_1bb7a99c5eb9a8::t_dcb1ce0fa9c179 1-31,35-43
+  s_1bb7a99c5eb9a8::t_82135576233f04 32-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bd76cfaf4f9b73d7143ad914092f6fbad998c088",
+  "prompts": {},
+  "sessions": {
+    "s_1bb7a99c5eb9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dcf0b992-85d6-410b-a484-060d05b1526d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

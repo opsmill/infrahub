@@ -1,0 +1,35 @@
+backend/tests/unit/pools/test_attribute_pool_applier.py
+  s_21d220db8cb5b7::t_27f7273757010d 755-769
+backend/tests/component/graphql/resource_manager/number_pool_attach/test_value_edit.py
+  s_21d220db8cb5b7::t_c8bc9ff84e2282 283
+  s_21d220db8cb5b7::t_7cfb2582f6e3a7 242-282
+backend/infrahub/pools/attribute_pool_applier.py
+  s_21d220db8cb5b7::t_27f7273757010d 17,126-127,317-318,329-335
+  s_21d220db8cb5b7::t_c6dc203782b314 336
+backend/tests/component/graphql/resource_manager/number_pool_attach/test_provenance.py
+  s_1bb7a99c5eb9a8::t_2c5483908f3f7f 116,118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "663e607bb07dfb86c8ce512d85f593b639519417",
+  "prompts": {},
+  "sessions": {
+    "s_1bb7a99c5eb9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dcf0b992-85d6-410b-a484-060d05b1526d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    },
+    "s_21d220db8cb5b7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fb889ea-ba8a-4b97-b620-568e7cb0b097",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
