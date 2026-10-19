@@ -1,0 +1,21 @@
+backend/infrahub/graphql/mutations/ipam.py
+  s_bb840c84eedb2c::t_4ab70819dde26d 160-174
+changelog/11059.fixed.md
+  s_bb840c84eedb2c::t_121ace8271cf66 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "72a716ba27dac78839dd4321dfed1e39a4a95e7d",
+  "prompts": {},
+  "sessions": {
+    "s_bb840c84eedb2c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "951ca1fd-b4cd-42b0-b61a-2fb65fe22bcd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

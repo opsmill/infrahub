@@ -1,0 +1,21 @@
+backend/tests/functional/convert_object_type/test_convert_object_type.py
+  s_42b74b2708abe7::t_ed5d050b7a236f 12,224-229
+backend/tests/functional/pools/test_numberpool_branch.py
+  s_42b74b2708abe7::t_d9259ebd96821e 10,31-38,48-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a217a56b0d7e1e446a1db3cc979ec52dc60046f2",
+  "prompts": {},
+  "sessions": {
+    "s_42b74b2708abe7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc83edeb-4a31-4a75-aa76-de0ccd8856b9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

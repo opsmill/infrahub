@@ -1,0 +1,33 @@
+docs/docs/snippets/attribute-kind-params.mdx
+  s_c29bc2a8dbf032::t_35325c9d71cfa9 8-12,23-25
+frontend/app/src/shared/api/rest/types.generated.ts
+  s_c29bc2a8dbf032::t_d0310760cc64ab 2686,2688,2691,2693-2698,2709,2711,2714,2716-2721,2728-2763
+python_sdk
+  s_42b74b2708abe7::t_813202e25661c1 1
+schema/openapi.json
+  s_c29bc2a8dbf032::t_4c04175cb7d781 7113-7120,7122,7125-7132,7134-7142,7163-7170,7172,7175-7182,7184-7192,7210-7273
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bc886ae05f53c706c1e6d970ed6acebde3b442eb",
+  "prompts": {},
+  "sessions": {
+    "s_42b74b2708abe7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc83edeb-4a31-4a75-aa76-de0ccd8856b9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_c29bc2a8dbf032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79ee2d68-517a-4978-9862-3a65b01b3f78",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

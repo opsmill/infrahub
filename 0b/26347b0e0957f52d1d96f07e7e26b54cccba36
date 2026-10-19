@@ -1,0 +1,53 @@
+backend/infrahub/pools/number_pool_repository.py
+  s_c29bc2a8dbf032::t_2cc03b54933a4e 25-34,41
+  s_c29bc2a8dbf032::t_2f865dee06333e 35-40
+  s_c29bc2a8dbf032::t_b8290822e9721c 3
+backend/infrahub/pools/number_pool_shorthand.py
+  s_c29bc2a8dbf032::t_9ab296c28acd6c 14
+  s_c29bc2a8dbf032::t_ff1a885bd52d77 25
+backend/infrahub/pools/schema_number_pool_upserter.py
+  s_c29bc2a8dbf032::t_9ee6164a12e5f1 46-47,55,59
+  s_c29bc2a8dbf032::t_15fc18d1203c4d 24
+backend/infrahub/core/migrations/graph/m076_heal_missing_attribute_rows/migration.py
+  s_c29bc2a8dbf032::t_af1d4bec63294c 23,424-426
+backend/infrahub/core/migrations/schema/node_attribute_add.py
+  s_c29bc2a8dbf032::t_61596bbadf5f98 9,94
+backend/infrahub/pools/tasks.py
+  s_c29bc2a8dbf032::t_adc27f1be41474 10,31-33
+backend/tests/component/core/constraint_validators/test_attribute_numberpool_constraints.py
+  s_c29bc2a8dbf032::t_19fcd171c32011 20,31
+backend/tests/component/core/resource_manager/test_number_pool_query.py
+  s_c29bc2a8dbf032::t_1dc6bbc0bb7e6f 34,90
+backend/tests/component/core/schema/test_attribute_parameters.py
+  s_c29bc2a8dbf032::t_99f4cdf75a6376 28,36
+backend/tests/component/graphql/resource_manager/number_pools/test_schema_pools.py
+  s_c29bc2a8dbf032::t_54685f7dfff213 12,43-45
+backend/tests/component/pools/test_schema_number_pool_upserter.py
+  s_c29bc2a8dbf032::t_78df170427aaae 13,68,84,100,122,146,169,195,264,287,302,322
+backend/tests/functional/convert_object_type/test_convert_object_type.py
+  s_c29bc2a8dbf032::t_42ff5bfa763f52 13,212-214
+backend/tests/functional/pools/test_numberpool_branch.py
+  s_c29bc2a8dbf032::t_929cc800462325 12,72-74
+backend/tests/functional/pools/test_numberpool_lifecycle.py
+  s_c29bc2a8dbf032::t_23a2e8bbacaaa2 17,63-65
+backend/tests/helpers/number_pool.py
+  s_c29bc2a8dbf032::t_6c0d4a91cabd27 45
+backend/tests/integration/schema_lifecycle/test_number_pool_branch_merge.py
+  s_c29bc2a8dbf032::t_b3655e8054d08d 17,161-163,405-407,449-451,668-670
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0b26347b0e0957f52d1d96f07e7e26b54cccba36",
+  "prompts": {},
+  "sessions": {
+    "s_c29bc2a8dbf032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79ee2d68-517a-4978-9862-3a65b01b3f78",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

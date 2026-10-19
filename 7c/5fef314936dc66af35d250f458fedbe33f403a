@@ -1,0 +1,94 @@
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_allocation_scope.py
+  s_9a65b7e7908928::t_14789f34780302 23,316-339,342
+  s_9a65b7e7908928::t_23b372442a8a8d 8,340-341,343
+  s_04e9c61d1d4032::t_fbced144184159 802-838
+  s_04e9c61d1d4032::t_4639bb4f3bc627 700-704
+  s_04e9c61d1d4032::t_02fdc0515579b6 22
+  s_04e9c61d1d4032::t_1256bfb33d2191 33
+backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py
+  s_9a65b7e7908928::t_318baf1cc93f3d 7,81-86,91-94
+  s_04e9c61d1d4032::t_46dbc379de7a5a 9,31,87-90
+backend/tests/unit/core/validators/number_pool_scope/test_accepted_changes.py
+  s_04e9c61d1d4032::t_d3ca63a37c150f 150
+backend/infrahub/pools/scoped_number_pool_reader.py
+  s_04e9c61d1d4032::t_4e3b44f108a5a7 50-51
+backend/infrahub/core/validators/pool/scope.py
+  s_04e9c61d1d4032::t_8881f6cb2738fc 128-130,137-138
+  s_04e9c61d1d4032::t_4d3c296cc80bef 8,155,232,240-242,268-269
+backend/tests/functional/pools/test_numberpool_lifecycle.py
+  s_04e9c61d1d4032::t_4639bb4f3bc627 93-97
+  s_04e9c61d1d4032::t_606b59fb4b1688 21
+backend/tests/functional/pools/test_numberpool_branch.py
+  s_04e9c61d1d4032::t_4639bb4f3bc627 104-108
+  s_04e9c61d1d4032::t_591b7df98eea00 15
+backend/tests/component/core/resource_manager/test_number_pool_query.py
+  s_04e9c61d1d4032::t_4639bb4f3bc627 97,618-622
+  s_04e9c61d1d4032::t_0e818dd8d01fe6 39
+backend/infrahub/pools/tasks.py
+  s_04e9c61d1d4032::t_4639bb4f3bc627 31
+  s_04e9c61d1d4032::t_e7864243f59681 13
+backend/tests/component/core/constraint_validators/test_attribute_numberpool_constraints.py
+  s_04e9c61d1d4032::t_4639bb4f3bc627 33-37
+  s_04e9c61d1d4032::t_1f07d0f14d8735 22
+backend/tests/integration/schema_lifecycle/test_number_pool_branch_merge.py
+  s_04e9c61d1d4032::t_4639bb4f3bc627 167,413,459,679-683
+  s_04e9c61d1d4032::t_1943e1687218f8 20
+backend/tests/component/graphql/resource_manager/number_pools/test_schema_pool_range_writes.py
+  s_04e9c61d1d4032::t_4639bb4f3bc627 205-209
+  s_04e9c61d1d4032::t_3481dea8320bb0 21
+backend/tests/functional/convert_object_type/test_convert_object_type.py
+  s_04e9c61d1d4032::t_4639bb4f3bc627 217-221
+  s_04e9c61d1d4032::t_c2d9f78e392e7f 16
+backend/tests/component/pools/test_schema_number_pool_synchronizer.py
+  s_04e9c61d1d4032::t_a3dcf785cc925c 20,80-84,221-225
+  s_04e9c61d1d4032::t_1256bfb33d2191 23,274,284,299,314,321
+backend/tests/component/graphql/resource_manager/number_pools/test_schema_pools.py
+  s_04e9c61d1d4032::t_4639bb4f3bc627 48-52
+  s_04e9c61d1d4032::t_44385cc56cd1c1 15
+backend/tests/component/core/schema/test_attribute_parameters.py
+  s_04e9c61d1d4032::t_4639bb4f3bc627 45-49
+  s_04e9c61d1d4032::t_8dd06e99c35de9 34
+backend/infrahub/pools/schema_number_pool_synchronizer.py
+  s_04e9c61d1d4032::t_d447131c373253 56,63,84
+  s_04e9c61d1d4032::t_4639bb4f3bc627 31
+  s_04e9c61d1d4032::t_b559e3584763f5 45
+backend/tests/helpers/number_pool.py
+  s_04e9c61d1d4032::t_4639bb4f3bc627 61-65
+  s_04e9c61d1d4032::t_5e2829bffc6957 28
+backend/tests/helpers/schema/__init__.py
+  s_04e9c61d1d4032::t_1256bfb33d2191 61-66
+backend/infrahub/core/models.py
+  s_ea68b47011e5c9::t_48759f98dde1cf 438,641-642
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7c5fef314936dc66af35d250f458fedbe33f403a",
+  "prompts": {},
+  "sessions": {
+    "s_04e9c61d1d4032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7cd7a867-c728-45f2-af2b-cf1bc4f2f88a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_9a65b7e7908928": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "60976836-eea3-41a5-9ac8-f10bf4fbc0fc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_ea68b47011e5c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "94a2b130-8bbf-412f-bee7-36f1ad4ec84f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

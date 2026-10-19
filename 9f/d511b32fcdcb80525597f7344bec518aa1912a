@@ -1,0 +1,32 @@
+frontend/app/src/entities/license/ui/hooks/use-license-banner-dismissal.test.ts
+  s_1df8eb94da3d51::t_0d9da03075b846 113-129
+dev/specs/005-enterprise-licensing-infp-472/contracts/frontend-banner.md
+  s_1df8eb94da3d51::t_a346dd279b6843 17-18
+backend/tests/unit/license/test_notices.py
+  s_1df8eb94da3d51::t_908854a4453a04 16,30-31,138,161,167,173,179,185,191,197,203,209,215
+frontend/app/src/entities/license/domain/rules/license-banner.ts
+  s_1df8eb94da3d51::t_e626c99835225e 1-2,8,73
+frontend/app/src/entities/license/ui/license-about-rows.tsx
+  s_1df8eb94da3d51::t_e626c99835225e 3,7,73,78,84
+frontend/app/src/entities/license/ui/license-banner.test.tsx
+  s_1df8eb94da3d51::t_0d9da03075b846 66-70,179,191,205,283-299
+  s_1df8eb94da3d51::t_3d654257746551 300-301
+frontend/app/src/entities/license/ui/hooks/use-license-banner-dismissal.ts
+  s_1df8eb94da3d51::t_e626c99835225e 7,9-10,30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9fd511b32fcdcb80525597f7344bec518aa1912a",
+  "prompts": {},
+  "sessions": {
+    "s_1df8eb94da3d51": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6a82980-5a58-459a-a19c-297b9025dff8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

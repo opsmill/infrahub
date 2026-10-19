@@ -1,0 +1,52 @@
+backend/tests/component/core/schema/test_attribute_parameters.py
+  s_e9f9432ba904ca::t_fc459fd79bc52a 37-39
+  s_e9f9432ba904ca::t_975764151528aa 28
+backend/tests/component/graphql/resource_manager/number_pools/test_schema_pools.py
+  s_e9f9432ba904ca::t_975764151528aa 12
+  s_e9f9432ba904ca::t_fc459fd79bc52a 44-46
+backend/tests/functional/convert_object_type/test_convert_object_type.py
+  s_e9f9432ba904ca::t_975764151528aa 12
+  s_e9f9432ba904ca::t_fc459fd79bc52a 212-214
+backend/tests/integration/schema_lifecycle/test_number_pool_branch_merge.py
+  s_e9f9432ba904ca::t_975764151528aa 17,167,410,453
+  s_e9f9432ba904ca::t_fc459fd79bc52a 666-668
+backend/tests/functional/pools/test_numberpool_branch.py
+  s_e9f9432ba904ca::t_975764151528aa 11
+  s_e9f9432ba904ca::t_fc459fd79bc52a 85-87
+backend/tests/functional/pools/test_numberpool_lifecycle.py
+  s_e9f9432ba904ca::t_fc459fd79bc52a 17,89-91
+backend/infrahub/pools/schema_number_pool_synchronizer.py
+  s_e9f9432ba904ca::t_580e715dc168c2 22
+  s_e9f9432ba904ca::t_deafc0922e75a7 39,48,55
+backend/tests/component/core/resource_manager/test_number_pool_query.py
+  s_e9f9432ba904ca::t_975764151528aa 34,81
+backend/tests/component/core/constraint_validators/test_attribute_numberpool_constraints.py
+  s_e9f9432ba904ca::t_975764151528aa 19
+  s_e9f9432ba904ca::t_fc459fd79bc52a 31-33
+backend/tests/helpers/number_pool.py
+  s_e9f9432ba904ca::t_fc459fd79bc52a 46-48
+backend/infrahub/pools/tasks.py
+  s_e9f9432ba904ca::t_975764151528aa 10
+  s_e9f9432ba904ca::t_0190ce1fa581b6 32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "83736ffcd44a75fefcfa696496575ec45853a094",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_e9f9432ba904ca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5a193993-fdd2-4e6d-9438-486a1a88d0d9",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

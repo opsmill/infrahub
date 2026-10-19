@@ -1,0 +1,19 @@
+backend/tests/unit/errors/test_sdk_bindings_generator.py
+  s_11b290ce23f17a::t_2044dc3bad0283 254-287
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "52f5143a14115eaf89b20cbaab5546d4826fd60f",
+  "prompts": {},
+  "sessions": {
+    "s_11b290ce23f17a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74d1e25c-20b5-4f47-a1d3-f70aeb7472e8",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

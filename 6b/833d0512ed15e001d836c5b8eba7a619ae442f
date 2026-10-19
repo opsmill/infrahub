@@ -1,0 +1,29 @@
+backend/infrahub/core/schema/__init__.py
+  s_42b74b2708abe7::t_f6d8a61d64231c 15,50-54,172,175-187
+backend/infrahub/core/schema/write_json_schema.py
+  s_42b74b2708abe7::t_0046921e81c481 28-32
+backend/tests/component/api/test_40_schema.py
+  s_42b74b2708abe7::t_bfc7d2cf22640b 703-743
+backend/tests/component/core/test_schema.py
+  s_42b74b2708abe7::t_9cb9ce90726d1e 25-30,35-38,176-280
+backend/tests/integration/schema_lifecycle/test_number_pool_ranges_load.py
+  s_42b74b2708abe7::t_adde9813f0df83 1-105
+backend/tests/unit/core/schema/test_write_json_schema.py
+  s_42b74b2708abe7::t_589f86bdba94d8 249-256
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6b833d0512ed15e001d836c5b8eba7a619ae442f",
+  "prompts": {},
+  "sessions": {
+    "s_42b74b2708abe7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc83edeb-4a31-4a75-aa76-de0ccd8856b9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

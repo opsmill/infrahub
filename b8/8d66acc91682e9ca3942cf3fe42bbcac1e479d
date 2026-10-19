@@ -1,0 +1,23 @@
+backend/infrahub/core/attribute.py
+  s_2fdf558427eaa2::t_e120172cdc409b 628,632,655,661,664-667
+backend/tests/component/graphql/test_graphql_query.py
+  s_2fdf558427eaa2::t_ce89b66adb89e0 10,1615-1659,1666-1667,1670-1671,1673
+  s_2fdf558427eaa2::t_2a365f90d97ca6 1660-1665,1668-1669,1672
+  s_2fdf558427eaa2::t_5424d3ea1113a4 1674-1675
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b88d66acc91682e9ca3942cf3fe42bbcac1e479d",
+  "prompts": {},
+  "sessions": {
+    "s_2fdf558427eaa2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "abafed1e-c4e8-407e-9a07-14cf48e361b4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

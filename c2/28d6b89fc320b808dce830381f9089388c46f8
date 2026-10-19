@@ -1,0 +1,61 @@
+dev/specs/infp-631-resource-telemetry/contracts/telemetry-resources.md
+  s_2dcffc265e72b7::t_48a0e3e02bab0c 81
+  s_2dcffc265e72b7::t_3e476bb0d85dcd 71
+  s_2dcffc265e72b7::t_a15df35c87014e 78
+  s_2dcffc265e72b7::t_0bdd6a62fafbc6 5,7,13,17-19,25,35-40,43,45-50,57-59,61,65-68,70,72-75,77,79,82-86
+  s_2dcffc265e72b7::t_651197cad51124 76
+dev/specs/infp-631-resource-telemetry/data-model.md
+  s_2dcffc265e72b7::t_d6f2651669f751 30,32-34
+  s_2dcffc265e72b7::t_323d27cdb51b35 40-51,55
+  s_2dcffc265e72b7::t_67784bed1216ac 61
+  s_2dcffc265e72b7::t_f9bd17daae294e 3
+  s_2dcffc265e72b7::t_9352acde1e475b 73
+  s_2dcffc265e72b7::t_1fe0a9aa542f6a 7,11-13
+  s_2dcffc265e72b7::t_ea74658c4c6bc1 36,65,74-75
+  s_2dcffc265e72b7::t_f8b6b9353b533c 76-77
+  s_2dcffc265e72b7::t_ad8953f6cc10ae 79
+  s_2dcffc265e72b7::t_e8d50a40e49513 88-91,93,95,97-100,102,106-109,111
+dev/specs/infp-631-resource-telemetry/plan.md
+  s_2dcffc265e72b7::t_b316ef024d10d2 31
+  s_2dcffc265e72b7::t_184d94cbc9aa25 13
+  s_2dcffc265e72b7::t_1edf84d04e9493 5,9,11,23,25,29,43-47,56,60
+  s_2dcffc265e72b7::t_03c5a40f3f2b7b 19,78,80-83,92-93,96-106,109,114-124,133-139,141,147
+dev/specs/infp-631-resource-telemetry/tasks.md
+  s_2dcffc265e72b7::t_5bb647b2406d32 66,79,94
+  s_2dcffc265e72b7::t_4444072c142b90 26,54,113
+  s_2dcffc265e72b7::t_f280bb56488ba5 7,32,34-37,39,41,47,49,51,53,75,77,80,89,92,104,108,127,145
+  s_2dcffc265e72b7::t_67784bed1216ac 38
+dev/specs/infp-631-resource-telemetry/spec.md
+  s_2dcffc265e72b7::t_23473ce02edeb0 17,21,26,46,50,54-55,60,63,69-77,80,84,86,96,104-105,107-108,114
+  s_2dcffc265e72b7::t_3ce8d2088cd3ef 61,85,92,101
+  s_2dcffc265e72b7::t_4444072c142b90 78,95
+dev/specs/infp-631-resource-telemetry/quickstart.md
+  s_2dcffc265e72b7::t_67784bed1216ac 51
+  s_2dcffc265e72b7::t_c3c62259bdcff7 21-22,26,28,30-36,47,53-55,59,63
+dev/specs/infp-631-resource-telemetry/research.md
+  s_2dcffc265e72b7::t_04425bd9413ca2 52,54-56
+  s_2dcffc265e72b7::t_b02e4e5a27fb45 80,82-83
+  s_2dcffc265e72b7::t_3e476bb0d85dcd 28
+  s_2dcffc265e72b7::t_4444072c142b90 48
+  s_2dcffc265e72b7::t_48a0e3e02bab0c 108
+  s_2dcffc265e72b7::t_b84b97288e7480 110-119
+  s_2dcffc265e72b7::t_e9566d0ee094a5 14,17,21,23,26,37,39-40,47,50,58,64,88,99
+dev/specs/infp-631-resource-telemetry/opsmill-implement-report.md
+  s_2dcffc265e72b7::t_2142ec364cbf3c 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c228d6b89fc320b808dce830381f9089388c46f8",
+  "prompts": {},
+  "sessions": {
+    "s_2dcffc265e72b7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "78aac985-d023-4ff2-aa1b-866be0dd0cde",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

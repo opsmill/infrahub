@@ -1,0 +1,14 @@
+backend/tests/component/core/resource_manager/test_number_pool_divisions.py
+  h_bd00275aefc321 42-43,81,165,168-171,178-179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d21e88f72c1474e46201a67fc1f10a5c58161321",
+  "prompts": {},
+  "humans": {
+    "h_bd00275aefc321": {
+      "author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

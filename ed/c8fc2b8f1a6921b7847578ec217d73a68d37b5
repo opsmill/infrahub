@@ -1,0 +1,21 @@
+backend/infrahub/graphql/mutations/resource_manager.py
+  s_849d53d45b72cc::t_ed1339b6697a14 370-373
+backend/tests/component/graphql/resource_manager/test_number_pool_mutation.py
+  s_849d53d45b72cc::t_a4cc71a77b556c 1,8,15,26,306-315,700-735
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "edc8fc2b8f1a6921b7847578ec217d73a68d37b5",
+  "prompts": {},
+  "sessions": {
+    "s_849d53d45b72cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33e8b1a5-ca5e-459e-81c0-5c7a3ca4db19",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

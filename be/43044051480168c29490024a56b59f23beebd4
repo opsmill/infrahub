@@ -1,0 +1,29 @@
+backend/tests/component/pools/schema_number_pool_synchronizer/test_declared_scope_provisioning.py
+  s_04e9c61d1d4032::t_48108f4b516fd0 1-118
+backend/tests/component/pools/schema_number_pool_synchronizer/helpers.py
+  s_04e9c61d1d4032::t_48108f4b516fd0 1-6,9-15,17-18,20-57
+  s_04e9c61d1d4032::t_58d5c8712088f7 19
+  s_04e9c61d1d4032::t_ec4ba8d933ec41 7-8,16,58-70
+backend/tests/component/pools/schema_number_pool_synchronizer/test_scope_name_refresh.py
+  s_04e9c61d1d4032::t_ec4ba8d933ec41 16
+  s_04e9c61d1d4032::t_48108f4b516fd0 1-15,17-179
+backend/tests/component/pools/schema_number_pool_synchronizer/test_range_reconciliation.py
+  s_04e9c61d1d4032::t_48108f4b516fd0 1-19,21-175
+  s_04e9c61d1d4032::t_ec4ba8d933ec41 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "be43044051480168c29490024a56b59f23beebd4",
+  "prompts": {},
+  "sessions": {
+    "s_04e9c61d1d4032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7cd7a867-c728-45f2-af2b-cf1bc4f2f88a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

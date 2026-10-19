@@ -1,0 +1,25 @@
+frontend/app/src/shared/api/graphql/generated/graphql-cache.d.ts
+  s_af773984d674d3::t_5371249527b615 29,32,35,38,41,44,47,50,53,56,59,62,65,68,71,74,77,80,83,86,89,92,95,98,101,104,107,110,113,116,119,122,125,128,131,134,137,140,143,146,149,152,155,158,161,164,167,170,173,176,179,182,185,188,191,194,197,200,203,206,209,212,215,218,221
+frontend/app/src/shared/api/graphql/generated/graphql-env.d.ts
+  s_af773984d674d3::t_bf8c20f02df95a 995-1006,1173
+frontend/app/src/shared/api/graphql/generated/types.ts
+  s_af773984d674d3::t_ab5dccff512185 23883-24026,24970,26212-26217,26223,26225,38636-38657
+schema/schema.graphql
+  s_af773984d674d3::t_c4707f69e468fa 11830-11988,26584-26593,26599-26601,26603-26605
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "135a7a3e808b81fb0db88673bf40a1400d830318",
+  "prompts": {},
+  "sessions": {
+    "s_af773984d674d3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ad96be44b4a6927d2",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

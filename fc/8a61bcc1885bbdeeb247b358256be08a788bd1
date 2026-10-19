@@ -1,0 +1,39 @@
+dev/specs/ifc-3184-pool-number-attach/research.md
+  s_1b659ceedf2b91::t_324d30cf1e31db 96,98-99
+dev/specs/ifc-3184-pool-number-attach/contracts/from-pool-intent.md
+  s_1b659ceedf2b91::t_f8e0fcc13ac919 47-48,69-70,74
+dev/specs/ifc-3184-pool-number-attach/tasks.md
+  s_1b659ceedf2b91::t_f8e0fcc13ac919 99-100,474,518,525-528,538-539,633-636
+dev/specs/ifc-3184-pool-number-attach/spec.md
+  s_1b659ceedf2b91::t_324d30cf1e31db 211
+  s_1b659ceedf2b91::t_f8e0fcc13ac919 272-299,315-316,474,548
+dev/specs/ifc-3184-pool-number-attach/contracts/reservation-ledger.md
+  s_1b659ceedf2b91::t_f8e0fcc13ac919 23-26,30-35,46-62
+dev/specs/ifc-3184-pool-number-attach/contracts/graphql-pool-query.md
+  s_1b659ceedf2b91::t_f8e0fcc13ac919 35-39,43-44,47-49
+dev/specs/ifc-3184-pool-number-attach/data-model.md
+  s_1b659ceedf2b91::t_f8e0fcc13ac919 33,56,58-63,156-158
+dev/specs/ifc-3184-pool-number-attach/plan.md
+  s_1b659ceedf2b91::t_324d30cf1e31db 209,232,259-260,266-267
+dev/knowledge/backend/database-schema.md
+  s_1b659ceedf2b91::t_82e8bd01d5f7f7 180,191-197
+  s_1b659ceedf2b91::t_210b57380c9796 198
+dev/specs/ifc-3184-pool-number-attach/alignment-check.md
+  s_1b659ceedf2b91::t_324d30cf1e31db 73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fc8a61bcc1885bbdeeb247b358256be08a788bd1",
+  "prompts": {},
+  "sessions": {
+    "s_1b659ceedf2b91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "41971668-9608-4279-954f-681ac371c4e7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

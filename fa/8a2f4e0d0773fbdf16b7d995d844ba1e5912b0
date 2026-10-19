@@ -1,0 +1,14 @@
+backend/tests/unit/graphql/snapshots/number_pool_surface.graphql
+  h_bd00275aefc321 198,205,212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fa8a2f4e0d0773fbdf16b7d995d844ba1e5912b0",
+  "prompts": {},
+  "humans": {
+    "h_bd00275aefc321": {
+      "author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

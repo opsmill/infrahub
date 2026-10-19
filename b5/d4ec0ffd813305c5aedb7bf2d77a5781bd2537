@@ -1,0 +1,21 @@
+dev/specs/infp-507-task-history-retention/spec.md
+  s_cfd0841cea4d76::t_0974fda383d3e1 1-237
+dev/specs/infp-507-task-history-retention/checklists/requirements.md
+  s_cfd0841cea4d76::t_5cdb283094ab7d 1-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b5d4ec0ffd813305c5aedb7bf2d77a5781bd2537",
+  "prompts": {},
+  "sessions": {
+    "s_cfd0841cea4d76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9acd83a-988e-4ad7-b6b4-f8da4ae196af",
+        "model": "unknown"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

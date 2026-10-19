@@ -1,0 +1,18 @@
+backend/tests/component/core/constraint_validators/test_number_pool_scope.py
+  h_bd00275aefc321 14-20,221
+backend/tests/component/pools/test_schema_number_pool_scope.py
+  h_bd00275aefc321 30,257
+backend/tests/helpers/number_pool.py
+  h_bd00275aefc321 6,25-27,85-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a059c1c39e0ca33d451578502c1f5bcdf5744295",
+  "prompts": {},
+  "humans": {
+    "h_bd00275aefc321": {
+      "author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+dev/specs/infp-631-resource-telemetry/research.md
+  s_b134b1501718e5::t_2d3b9520a43938 17
+changelog/+resource-telemetry.added.md
+  s_b134b1501718e5::t_843fbb207ab675 1
+dev/specs/infp-631-resource-telemetry/tasks.md
+  s_b134b1501718e5::t_2d3b9520a43938 24,89,91,96,110
+backend/infrahub/telemetry/resources.py
+  s_b134b1501718e5::t_0867d724944131 439-440,469-470,481-482,505-506
+dev/specs/infp-631-resource-telemetry/plan.md
+  s_b134b1501718e5::t_2d3b9520a43938 23,82,128-129,131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "35438a66d5e0035830d8b96e307e224375fec1a7",
+  "prompts": {},
+  "sessions": {
+    "s_b134b1501718e5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "94683ba3-7a9a-45ea-9335-07384e00b903",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

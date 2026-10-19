@@ -1,0 +1,48 @@
+backend/tests/component/core/constraint_validators/test_number_pool_scope.py
+  s_f4cdafdd905485::t_1a6ae44089eef2 10,16-17,320-362
+backend/infrahub/core/validators/pool/scope.py
+  s_f4cdafdd905485::t_f43089dd8fbf0e 336,346-349,496-497
+backend/infrahub/api/schema.py
+  s_f4cdafdd905485::t_e8261e9024bb99 357,525
+backend/tests/unit/core/validators/number_pool_scope/test_candidate_on_destination.py
+  s_f4cdafdd905485::t_c39b2fa4decf82 5-6,11,29,31,36-41,53
+  s_f4cdafdd905485::t_9e0d8779ee2345 28,30,42-43
+backend/infrahub/core/merge/constraints.py
+  s_f4cdafdd905485::t_e8261e9024bb99 116-119,134-139
+backend/infrahub/core/validators/models/validate_migration.py
+  s_f4cdafdd905485::t_f43089dd8fbf0e 17-19
+  s_f4cdafdd905485::t_e8261e9024bb99 27
+backend/infrahub/core/merge/graph_merger.py
+  s_f4cdafdd905485::t_e8261e9024bb99 127-129
+backend/infrahub/core/validators/model.py
+  s_f4cdafdd905485::t_e8261e9024bb99 19-22,36
+backend/tests/component/core/constraint_validators/test_models.py
+  s_f4cdafdd905485::t_09516c63c92253 25-27
+backend/infrahub/proposed_change/tasks.py
+  s_f4cdafdd905485::t_e8261e9024bb99 575-578
+backend/infrahub/core/branch/tasks.py
+  s_f4cdafdd905485::t_e8261e9024bb99 282-285
+backend/infrahub/cli/db.py
+  s_f4cdafdd905485::t_e8261e9024bb99 1066
+backend/tests/component/core/constraint_validators/test_task_schema_validate_migrations.py
+  s_f4cdafdd905485::t_09516c63c92253 35-37
+backend/infrahub/core/validators/tasks.py
+  s_f4cdafdd905485::t_f23e0e50570ba5 70
+  s_f4cdafdd905485::t_e8261e9024bb99 49,81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0de14aad2a268c50be523857f6fa71ca8d380f11",
+  "prompts": {},
+  "sessions": {
+    "s_f4cdafdd905485": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d80b27f2-528a-4331-bd46-39778bf01130",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

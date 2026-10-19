@@ -1,0 +1,19 @@
+dev/specs/ifc-3185-number-pool-scopes/tasks.md
+  s_a8a133dd3a7907::t_753856a8100b9b 9,25,27,29-33,37,39,41-45,47,53,55,59-62,66-72,80,82,86-87,91-95,103,105,109-110,114-116,118,126,130-132,136-138,144,146,148-161,169,172-176,181-183,193-195,203,205,221,223,225-227,232-249,257
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7a2d06ebae0272d3ebdfe9652643c75aaa5b2548",
+  "prompts": {},
+  "sessions": {
+    "s_a8a133dd3a7907": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "125da3d6-bd83-4066-a232-ce4d6528c3d7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

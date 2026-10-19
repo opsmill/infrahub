@@ -1,0 +1,27 @@
+backend/infrahub/license/reporting.py
+  s_1df8eb94da3d51::t_b634393fa5a5af 86-88,101-102,106,130-131,153-154,162
+backend/tests/unit/license/test_reporting.py
+  s_1df8eb94da3d51::t_63f0da1b718ea5 494-502,526
+backend/tests/unit/cli/test_upgrade_license.py
+  s_1df8eb94da3d51::t_c9075fe3f67428 4,7,12-13,15,17,21-25,30-34,178-255
+backend/infrahub/cli/upgrade.py
+  s_1df8eb94da3d51::t_b634393fa5a5af 278
+dev/specs/005-enterprise-licensing-infp-472/contracts/upgrade-output.md
+  s_1df8eb94da3d51::t_87b21affca86f0 68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "87b7e20b85eb5aa742c502575786eba71a1f16d0",
+  "prompts": {},
+  "sessions": {
+    "s_1df8eb94da3d51": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6a82980-5a58-459a-a19c-297b9025dff8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

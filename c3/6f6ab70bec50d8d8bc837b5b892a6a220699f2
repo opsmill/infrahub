@@ -1,0 +1,37 @@
+tasks/docs.py
+  s_42b74b2708abe7::t_fe0d6c9c934ec2 234,238,244
+tasks/backend.py
+  s_42b74b2708abe7::t_f000b4d0c92619 1106-1109
+  s_42b74b2708abe7::t_5bb039b711e841 882,888
+  s_42b74b2708abe7::t_3e2fae2de4f5c0 1228
+  s_42b74b2708abe7::t_07a5c31e572a96 873-877,883,886-887,889-895
+  s_42b74b2708abe7::t_212711b1939da9 1105
+dev/specs/ifc-3065-number-pool-ranges/tasks.md
+  s_42b74b2708abe7::t_571d7a41c858b7 134-136,198
+docs/_templates/schema/attribute_kind_params.j2
+  s_42b74b2708abe7::t_ab9b04659fe304 1,7,12-13,17
+docs/docs/snippets/attribute-kind-params.mdx
+  s_42b74b2708abe7::t_38f83d92b1095e 8-12,16-18,23-25,30-32,37-39,41
+frontend/app/src/shared/api/rest/types.generated.ts
+  s_42b74b2708abe7::t_62c30953e3d444 2686,2688,2691,2693-2698,2709,2711,2714,2716-2721,2728-2763
+python_sdk
+  s_42b74b2708abe7::t_39d1ad0b7c137a 1
+schema/openapi.json
+  s_42b74b2708abe7::t_4c2dc1b68d0c0f 7113-7120,7122,7125-7132,7134-7142,7163-7170,7172,7175-7182,7184-7192,7210-7273
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c36f6ab70bec50d8d8bc837b5b892a6a220699f2",
+  "prompts": {},
+  "sessions": {
+    "s_42b74b2708abe7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc83edeb-4a31-4a75-aa76-de0ccd8856b9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

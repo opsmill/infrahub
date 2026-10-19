@@ -1,0 +1,21 @@
+backend/tests/component/core/schema/test_attribute_parameters.py
+  s_f79f241964f1cc::t_771438a1a47d5c 8,11,34,723-775
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_scope.py
+  s_f79f241964f1cc::t_14323fb5e7b768 1-117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "18050309b4ea7914c2110215900f32f4a1f33b35",
+  "prompts": {},
+  "sessions": {
+    "s_f79f241964f1cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a94f430-9532-473e-8415-d7b8aa7f8024",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

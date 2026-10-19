@@ -1,0 +1,24 @@
+tasks/docs.py
+  s_c29bc2a8dbf032::t_67713b230de18f 243
+  s_c29bc2a8dbf032::t_ee15c8cc71d259 237,261-262
+docs/_templates/schema/attribute_kind_params.j2
+  s_c29bc2a8dbf032::t_1ceecbb3dcd8ea 1,7,12-13,17
+tasks/backend.py
+  s_c29bc2a8dbf032::t_24feed5842580e 873-877,882-884,887-896,1106-1110,1229
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a57778620f692b0e4f064da04efa1d0c62082757",
+  "prompts": {},
+  "sessions": {
+    "s_c29bc2a8dbf032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79ee2d68-517a-4978-9862-3a65b01b3f78",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

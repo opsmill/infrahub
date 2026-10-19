@@ -1,0 +1,38 @@
+backend/infrahub/pools/number_pool_range_reconciler.py
+  s_bec9166785f63a::t_fc700618e0bb84 4,10,13-69,73,76-79,87,93,96,101,105-110,112,114,116,120,142,146,154,158-159,173,181-200,204-208,210,214
+backend/tests/component/pools/test_number_pool_range_reconciler.py
+  s_76a758843ef9fd::t_12941a3be0fc8c 29,44,47-50,55-57,61-63,65-69,72,75
+backend/tests/unit/pools/helpers.py
+  s_bec9166785f63a::t_08c64238cfdac6 69-76,102,124
+  s_bec9166785f63a::t_c13a73da852561 3,8,67-68,77-101,103-116,118-120,122-123,125-140,142-155,157-161
+  s_bec9166785f63a::t_22fdddb43fad06 4,13,117,121,141,156
+backend/tests/unit/pools/test_number_pool_range_reconciler.py
+  s_bec9166785f63a::t_08c64238cfdac6 8-10
+  s_bec9166785f63a::t_ae8448c82a35e1 1,6,11,15,17,19-23,26-27,35-36,38,40,42-44,46,48,50-52,54,62-64,66,68-73,75-76,80,82,84-147,152-173
+backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py
+  s_bec9166785f63a::t_01ccfe3a66afa8 45,143-145,171-175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "db17cd3a38e082e2f1c4d5145312cc1a63114b71",
+  "prompts": {},
+  "sessions": {
+    "s_76a758843ef9fd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c30d01e-9d1b-4bb8-a37a-7efb5307c4f5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_bec9166785f63a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "66373eb4-60d0-4641-be9f-f5b6e09e2092",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

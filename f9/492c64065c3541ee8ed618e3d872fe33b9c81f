@@ -1,0 +1,22 @@
+dev/specs/ifc-3185-number-pool-scopes/checklists/requirements.md
+  s_a8a133dd3a7907::t_056e0e92d7e9f7 1-36
+dev/specs/ifc-3185-number-pool-scopes/spec.md
+  s_a8a133dd3a7907::t_0aa283dcbcf1d6 1,3,5,9,11-15,17,19-23,25,27,29,31,33-34,37-46,50,52,54,56,60-65,69,71,73,75,79-83,87,89,91,93,95-104,106-119,122-134,136-142,144,146-152,154-171,174-178,184-190,194-216
+  s_a8a133dd3a7907::t_0c6529a4d56ab4 2,4,6-8,10,16,18,24,26,28,30,32,35-36,47-49,51,53,55,57-59,66-68,70,72,74,76-78,84-86,88,90,92,94,105,120-121,135,143,145,153,172-173,179-183,191-193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f9492c64065c3541ee8ed618e3d872fe33b9c81f",
+  "prompts": {},
+  "sessions": {
+    "s_a8a133dd3a7907": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "125da3d6-bd83-4066-a232-ce4d6528c3d7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

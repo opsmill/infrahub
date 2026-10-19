@@ -1,0 +1,35 @@
+backend/tests/component/task_manager/test_stored_event_types.py
+  s_cfd0841cea4d76::t_340be9ee190f86 33
+  s_cfd0841cea4d76::t_92554c670e256f 1-32,34-105
+backend/tests/integration_docker/test_prefect_event_types.py
+  s_cfd0841cea4d76::t_688e6c322a4320 5,17,42-47,83,85-101,202-208,213-224,226-228
+  s_cfd0841cea4d76::t_33ae28e3a6180a 48-52,82,84,225
+  s_cfd0841cea4d76::t_c1bb862bf15c4e 209-212
+backend/infrahub/prefect_server/app.py
+  s_cfd0841cea4d76::t_d1b5177483f92d 6-7,12-14,18-25,64-91,112-115
+backend/tests/unit/prefect_server/test_prefect_event_types.py
+  s_cfd0841cea4d76::t_92554c670e256f 8,39-54
+backend/infrahub/prefect_server/retention.py
+  s_cfd0841cea4d76::t_ff4c07a9531c25 13,109-114
+  s_cfd0841cea4d76::t_d1b5177483f92d 115-116
+  s_cfd0841cea4d76::t_8272b85f161d2b 117
+backend/infrahub/prefect_server/database.py
+  s_cfd0841cea4d76::t_ff4c07a9531c25 6,22-39
+  s_cfd0841cea4d76::t_c25e14b115847a 40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "88b7cde2314434575efdf22180ad5a8335d5fb15",
+  "prompts": {},
+  "sessions": {
+    "s_cfd0841cea4d76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9acd83a-988e-4ad7-b6b4-f8da4ae196af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

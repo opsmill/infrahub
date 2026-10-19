@@ -1,0 +1,21 @@
+backend/tests/component/proposed_change/test_request_generator_definition_check.py
+  s_06345c7791eb4e::t_98e14cf4483756 438-446
+backend/tests/component/proposed_change/test_generator_definition_run_orphan.py
+  s_06345c7791eb4e::t_31af1221a9d2b7 65-67,175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "51bb8ecc9816e4e885d9862fd59c1da0c93acda3",
+  "prompts": {},
+  "sessions": {
+    "s_06345c7791eb4e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "13a0a049-a9b5-4717-b3ac-ed553d3e2d70",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}

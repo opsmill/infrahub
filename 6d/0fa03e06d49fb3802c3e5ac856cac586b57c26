@@ -1,0 +1,21 @@
+backend/infrahub/config.py
+  s_cfd0841cea4d76::t_31139c1eb24924 685-687
+backend/tests/unit/config/test_task_manager_retention_settings.py
+  s_cfd0841cea4d76::t_31139c1eb24924 102-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6d0fa03e06d49fb3802c3e5ac856cac586b57c26",
+  "prompts": {},
+  "sessions": {
+    "s_cfd0841cea4d76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9acd83a-988e-4ad7-b6b4-f8da4ae196af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

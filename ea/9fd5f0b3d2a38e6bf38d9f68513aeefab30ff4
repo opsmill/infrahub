@@ -1,0 +1,21 @@
+backend/infrahub/pools/number_pool_space.py
+  s_0bc59054fef4ea::t_80819700fe55f2 60-61,67,76
+backend/tests/unit/pools/test_number_pool_space.py
+  s_0bc59054fef4ea::t_dcbc38d75fb495 90,106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ea9fd5f0b3d2a38e6bf38d9f68513aeefab30ff4",
+  "prompts": {},
+  "sessions": {
+    "s_0bc59054fef4ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "373c6d27-fa2a-4490-8e9d-d14c775f400c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

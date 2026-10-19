@@ -1,0 +1,28 @@
+backend/tests/unit/graphql/mutations/test_attribute.py
+  s_2499241a5a10fa::t_dafdffd585b4db 1-54
+schema/schema.graphql
+  s_2499241a5a10fa::t_ac273658ac4b14 11678,11686
+backend/infrahub/graphql/mutations/attribute.py
+  s_2499241a5a10fa::t_ac273658ac4b14 3,51,56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2d60756b6b266cab0b590065b4730a57ad505f19",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_2499241a5a10fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92729d40-159c-4d72-beb5-e9ff006e755a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

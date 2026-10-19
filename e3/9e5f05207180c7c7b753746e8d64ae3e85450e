@@ -1,0 +1,46 @@
+backend/infrahub/core/node/__init__.py
+  s_bca69773a4f3cf::t_fae2a08eb628fb 1193-1198,1202-1203
+  s_bca69773a4f3cf::t_e37b9805993f3b 305-314
+  s_bca69773a4f3cf::t_a1fa770d5bf14d 1204
+  s_bca69773a4f3cf::t_13e180c0a2bee9 24,29
+backend/infrahub/core/changelog/relationship_getter.py
+  s_bca69773a4f3cf::t_84caf48db61ccc 71-86
+  s_bca69773a4f3cf::t_7d2bf74548a824 33-34
+  s_bca69773a4f3cf::t_2a424db125f6a8 62
+backend/infrahub/graphql/mutations/relationship.py
+  s_bca69773a4f3cf::t_d2f37c6280b266 195-197,207-212,214
+backend/tests/component/graphql/test_mutation_relationship_enrichment.py
+  s_bca69773a4f3cf::t_a006de487aaa45 256,259,263,266,271-272,274
+backend/infrahub/core/changelog/peer_labels.py
+  s_bca69773a4f3cf::t_ec92955f3b718d 14,22,27,35,39-40,51-55,60-66
+backend/infrahub/graphql/mutations/computed_attribute.py
+  s_bca69773a4f3cf::t_178ac960e3d92f 8,109-113
+backend/infrahub/graphql/mutations/display_label.py
+  s_bca69773a4f3cf::t_51c156338269db 8,100-104
+backend/tests/component/core/changelog/test_models.py
+  s_bca69773a4f3cf::t_a3171805b828c1 18,23,871,874,884-892,895
+backend/tests/component/graphql/mutations/test_computed_attribute.py
+  s_bca69773a4f3cf::t_b91583882528d6 103-104
+backend/tests/component/graphql/mutations/test_display_label.py
+  s_bca69773a4f3cf::t_cba875d7ce3dae 14,159-162
+backend/tests/unit/core/changelog/test_peer_labels.py
+  s_bca69773a4f3cf::t_bcccf17188701c 121-147
+dev/knowledge/backend/changelog-enrichment.md
+  s_bca69773a4f3cf::t_aba939a65875cf 22,37,46-51,54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e39e5f05207180c7c7b753746e8d64ae3e85450e",
+  "prompts": {},
+  "sessions": {
+    "s_bca69773a4f3cf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eb85e3f9-d1c8-43e9-87f0-e2ea95e20a6b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

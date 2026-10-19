@@ -1,0 +1,29 @@
+docs/docs/deploy-manage/install-configure/production-deployment/private-ca.mdx
+  s_d0cbee354b87ca::t_74966aa3637e4a 276
+  s_d0cbee354b87ca::t_c9f21537171210 265
+  s_d0cbee354b87ca::t_925b9de25d9b0d 252-253
+  s_d0cbee354b87ca::t_82bcadc1855102 204-211,217,221,224,230-251,254-264,266-275,278
+  s_d0cbee354b87ca::t_b207003baf7e7f 277
+docs/docs/git-integration/connect-repository.mdx
+  s_d0cbee354b87ca::t_1879e7317931ac 491
+  s_d0cbee354b87ca::t_5f66fc930a052d 377-380,382-395,397-420
+  s_d0cbee354b87ca::t_a286c91051521b 507
+  s_d0cbee354b87ca::t_a070b1d969bf54 396
+  s_d0cbee354b87ca::t_fe0e9d491ca19d 381
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6eb3824a6bedfed3e50e3bfc61faa6c20fa5995b",
+  "prompts": {},
+  "sessions": {
+    "s_d0cbee354b87ca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9ef6ea09-82e9-47df-8dd7-f904066bc29a",
+        "model": "unknown"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}

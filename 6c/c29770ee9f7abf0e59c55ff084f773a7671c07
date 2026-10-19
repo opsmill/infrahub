@@ -1,0 +1,37 @@
+dev/knowledge/backend/database-schema.md
+  s_4e40d3932a4480::t_136e89e16e4a52 199-214
+dev/specs/ifc-3184-pool-number-attach/contracts/graphql-pool-query.md
+  s_4e40d3932a4480::t_2be33e36655f6b 6-7,16,22-23,26-27,102,107-108,112-116,120-128,130-196,198-200,204,208,210-212
+dev/specs/ifc-3184-pool-number-attach/research.md
+  s_4e40d3932a4480::t_5b763fbaf0e9ae 193,234-249
+dev/knowledge/backend/templates.md
+  s_4e40d3932a4480::t_30c3884956dca7 135
+dev/specs/ifc-3184-pool-number-attach/contracts/effective-space.md
+  s_4e40d3932a4480::t_e9e1c298a6ed5d 126-127
+dev/specs/ifc-3184-pool-number-attach/data-model.md
+  s_4e40d3932a4480::t_fa303c9dff1f6c 195-197,200-202,232-233,299-300,305-306,313-315,358-360
+dev/specs/ifc-3184-pool-number-attach/plan.md
+  s_4e40d3932a4480::t_ee85fa76fb6680 185,299,301-308,312-317,319-320,350,366,371-372,385
+dev/specs/ifc-3184-pool-number-attach/quickstart.md
+  s_4e40d3932a4480::t_9f6f3ba4c745a8 163,165-168,170-180,286-288
+dev/specs/ifc-3184-pool-number-attach/spec.md
+  s_4e40d3932a4480::t_416fec003d7a42 227,330-332,336-346,415-417,427,475,487-488,525-528,573-575,581-585,680-682,702-705,707-708,734-739,756-757,777-781,786-790
+dev/specs/ifc-3184-pool-number-attach/tasks.md
+  s_4e40d3932a4480::t_b46733b2eff113 76-78,367-370,375-376,612-618,666-667,681-684,707-708,766
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6cc29770ee9f7abf0e59c55ff084f773a7671c07",
+  "prompts": {},
+  "sessions": {
+    "s_4e40d3932a4480": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8f02a017-4e80-45de-9d17-f4bd994f113c",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

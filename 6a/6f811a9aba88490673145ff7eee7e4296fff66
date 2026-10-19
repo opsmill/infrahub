@@ -1,0 +1,32 @@
+dev/specs/ifc-3185-scoped-number-pools/alignment-check.md
+  h_bd00275aefc321 50
+dev/specs/ifc-3185-scoped-number-pools/checklists/requirements.md
+  h_bd00275aefc321 36
+dev/specs/ifc-3185-scoped-number-pools/contracts/graphql-number-pool-surface.md
+  h_bd00275aefc321 11-13,240,292,296,323,327,334-335,346-385,387-390,392-394,396-419,522-523,528,538-541,653-655
+dev/specs/ifc-3185-scoped-number-pools/data-model.md
+  h_bd00275aefc321 93-95,102-106,125,128,130-135
+dev/specs/ifc-3185-scoped-number-pools/opsmill-implement-report.md
+  h_bd00275aefc321 1-76
+dev/specs/ifc-3185-scoped-number-pools/plan.md
+  h_bd00275aefc321 30-32,86,138,142,192,195,198,295-297,302-316,349-356,404-405,409-411,441,445,459
+dev/specs/ifc-3185-scoped-number-pools/quickstart.md
+  h_bd00275aefc321 75,79-87,103-104
+dev/specs/ifc-3185-scoped-number-pools/research.md
+  h_bd00275aefc321 17,259,267-268,330,333-338,340-347,369-370,375,381,390-391,412-413
+dev/specs/ifc-3185-scoped-number-pools/spec.md
+  h_bd00275aefc321 56,88-90,95-96,114-115,146-151,158-159,163-167,225-226,253-258,421,424-425,526-532,549-556,567-572,597-598,684-688,726-728,763-765
+dev/specs/ifc-3185-scoped-number-pools/tasks.md
+  h_bd00275aefc321 48,103,107-113,120-126,130-131,134-135,137-152,160,168-172,177-178,180-182,187,189-195,199,208-209,213-220,222-226,233,237,244,252,257,266-267,411,419-422,436,442,597,599-602,604-607,693,720-721,726
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6a6f811a9aba88490673145ff7eee7e4296fff66",
+  "prompts": {},
+  "humans": {
+    "h_bd00275aefc321": {
+      "author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

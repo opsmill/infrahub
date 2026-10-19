@@ -1,0 +1,51 @@
+backend/tests/integration/workers/test_infrahubasync.py
+  s_1df8eb94da3d51::t_2ace43dc3ede52 3,15,144-150,155,160-167
+backend/infrahub/api/internal.py
+  s_1df8eb94da3d51::t_2ace43dc3ede52 4,25,31,33,40,44,121-149,177
+backend/tests/adapters/license.py
+  s_1df8eb94da3d51::t_2ace43dc3ede52 3-4,6-15,17-55,102-119
+frontend/app/src/entities/license/ui/license-about-rows.test.tsx
+  s_1df8eb94da3d51::t_2ace43dc3ede52 170-200
+dev/specs/005-enterprise-licensing-infp-472/data-model.md
+  s_1df8eb94da3d51::t_2ace43dc3ede52 33-36,57-69
+frontend/app/src/entities/license/domain/rules/license-dates.test.ts
+  s_1df8eb94da3d51::t_2ace43dc3ede52 1-15
+frontend/app/src/entities/license/ui/license-about-rows.tsx
+  s_1df8eb94da3d51::t_2ace43dc3ede52 38-39,51
+backend/tests/helpers/log.py
+  s_1df8eb94da3d51::t_2ace43dc3ede52 41
+backend/tests/unit/api/test_internal_license.py
+  s_1df8eb94da3d51::t_2ace43dc3ede52 10,17-22,24,275-284,286-340
+  s_1df8eb94da3d51::t_8b873dcfa3fb43 285
+dev/specs/005-enterprise-licensing-infp-472/contracts/api-info.md
+  s_1df8eb94da3d51::t_2ace43dc3ede52 64
+backend/tests/unit/license/test_status.py
+  s_1df8eb94da3d51::t_2ace43dc3ede52 10,18
+dev/specs/005-enterprise-licensing-infp-472/contracts/frontend-banner.md
+  s_1df8eb94da3d51::t_2ace43dc3ede52 63,66
+  s_1df8eb94da3d51::t_391c0851690bb4 67
+dev/specs/005-enterprise-licensing-infp-472/contracts/license-service.md
+  s_1df8eb94da3d51::t_2ace43dc3ede52 55-61
+backend/infrahub/license/models.py
+  s_1df8eb94da3d51::t_2ace43dc3ede52 3,6,10,22,38,50-52,54-55,63,80-83,104-117,120-121,127,130,133-141
+backend/tests/unit/license/test_models.py
+  s_1df8eb94da3d51::t_2ace43dc3ede52 10-11,17,36,69,73,96-244
+frontend/app/src/entities/license/domain/rules/license-dates.ts
+  s_1df8eb94da3d51::t_2ace43dc3ede52 1-2,6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a5907290e022bcf11ddd5b86ae75f6272742fa1b",
+  "prompts": {},
+  "sessions": {
+    "s_1df8eb94da3d51": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6a82980-5a58-459a-a19c-297b9025dff8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+dev/specs/ifc-3184-pool-number-attach/contracts/from-pool-intent.md
+  s_2499241a5a10fa::t_410a4c8344c3e9 28,30,32-36,53,57-61,71,73,75-77,79,81,86-88,90-91,102,156-158
+dev/specs/ifc-3184-pool-number-attach/contracts/reservation-ledger.md
+  s_2499241a5a10fa::t_fb7af1c7b2ad3c 46-50,63-68
+dev/specs/ifc-3184-pool-number-attach/opsmill-implement-report-phase2.md
+  s_2499241a5a10fa::t_85e2fcdb2135c1 1-129
+dev/specs/ifc-3184-pool-number-attach/plan.md
+  s_2499241a5a10fa::t_bd940dcdd0029a 233,235,237,239,241,246-249,360
+dev/specs/ifc-3184-pool-number-attach/quickstart.md
+  s_2499241a5a10fa::t_fd76b2e2c684a4 145,147-148
+dev/specs/ifc-3184-pool-number-attach/research.md
+  s_2499241a5a10fa::t_bf4df491f1a44c 22,148-152,164-167,172-176,239-244,563
+dev/specs/ifc-3184-pool-number-attach/spec.md
+  s_2499241a5a10fa::t_c7be61307149a7 251-253,255-259,514,516,532-533,557,625
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d3f2cfd53d90f893543c7ee37ca55c36d71fa9c4",
+  "prompts": {},
+  "sessions": {
+    "s_2499241a5a10fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92729d40-159c-4d72-beb5-e9ff006e755a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

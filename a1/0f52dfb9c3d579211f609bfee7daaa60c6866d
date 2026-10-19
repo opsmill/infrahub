@@ -1,0 +1,25 @@
+frontend/app/src/shared/api/rest/types.generated.ts
+  s_42b74b2708abe7::t_43df8f2e84338a 2686,2688,2691,2693-2698,2709,2711,2714,2716-2721,2728-2763
+docs/docs/snippets/attribute-kind-params.mdx
+  s_42b74b2708abe7::t_20bee85ddc3210 8-12,16-18,23-25,30-32,37-39
+schema/openapi.json
+  s_42b74b2708abe7::t_595d87b592a81b 7113-7120,7122,7125-7132,7134-7142,7163-7170,7172,7175-7182,7184-7192,7210-7273
+python_sdk
+  s_42b74b2708abe7::t_bb65b534c37dc7 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a10f52dfb9c3d579211f609bfee7daaa60c6866d",
+  "prompts": {},
+  "sessions": {
+    "s_42b74b2708abe7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc83edeb-4a31-4a75-aa76-de0ccd8856b9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

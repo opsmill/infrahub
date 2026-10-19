@@ -1,0 +1,23 @@
+docs/docs/resource-manager/overview.mdx
+  s_fd0c128a7b3dd4::t_4a54f63210ad13 79
+docs/docs/resource-manager/allocate-number.mdx
+  s_fd0c128a7b3dd4::t_daa5b4542f6a1f 60-62,74-75
+docs/docs/schema/number-pool.mdx
+  s_fd0c128a7b3dd4::t_323a07a62cf061 17-25,51-53,111,113,144-146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "16cadb193fd2e8b5eb88553819958217dd7037db",
+  "prompts": {},
+  "sessions": {
+    "s_fd0c128a7b3dd4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e92e46bb-6843-4c8c-ba3a-944b2c66f5ae",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

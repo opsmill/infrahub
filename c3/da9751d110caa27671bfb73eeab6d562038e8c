@@ -1,0 +1,163 @@
+dev/specs/ifc-3185-scoped-number-pools/contracts/number-pool-parameters.md
+  s_f79f241964f1cc::t_1731fc200acd36 33-37
+  s_f79f241964f1cc::t_cc1aeb37bef4c3 46
+  s_f79f241964f1cc::t_6c8b5f7f697c9d 53,57-59
+dev/specs/ifc-3185-scoped-number-pools/opsmill-implement-report.md
+  s_f79f241964f1cc::t_30b3150ccfd623 87-95
+dev/specs/ifc-3184-pool-number-attach/tasks.md
+  s_f79f241964f1cc::t_db55758da71894 612
+  s_f79f241964f1cc::t_7d9a07659d66d6 616-618
+  s_f79f241964f1cc::t_8601bfb5bae899 632-635
+  s_f79f241964f1cc::t_85b82d0f75b433 624-630
+  s_f79f241964f1cc::t_4a7684e92903ea 638-639
+  s_f79f241964f1cc::t_4975881d70a255 550-551
+dev/specs/ifc-3185-scoped-number-pools/data-model.md
+  s_f79f241964f1cc::t_63f81d1684a43f 92-95
+  s_f79f241964f1cc::t_bb236e046a890f 171-172
+  s_f79f241964f1cc::t_fab5b3cbdb2b06 43,45-47
+  s_f79f241964f1cc::t_5eca06fb8c438c 125,128
+  s_f79f241964f1cc::t_b4efd7c12439fc 156
+  s_f79f241964f1cc::t_4ce649a6d4ab14 108-110
+dev/specs/ifc-3185-scoped-number-pools/contracts/graphql-number-pool-surface.md
+  s_f79f241964f1cc::t_764422fcce11d3 665-667
+  s_f79f241964f1cc::t_713306e23d01ef 314-318
+  s_f79f241964f1cc::t_8af51d8c7ebadb 588,595-597
+  s_f79f241964f1cc::t_0fb81ad76e2554 436
+  s_f79f241964f1cc::t_cfd476ba1270f4 550-551
+  s_f79f241964f1cc::t_d0c2041235e728 450-453
+  s_f79f241964f1cc::t_5dea00a81b1072 299-300
+  s_f79f241964f1cc::t_9ff8968d7794a4 344-346
+  s_f79f241964f1cc::t_7c0b1a59dfaa6c 239
+  s_f79f241964f1cc::t_9d81fb4bbec1a9 375
+  s_f79f241964f1cc::t_ad2ef5c2000cc7 403,406,408
+dev/specs/ifc-3185-scoped-number-pools/research.md
+  s_f79f241964f1cc::t_b72c65f0dc4a5e 455-457
+  s_f79f241964f1cc::t_00f9f0aa0f0874 19
+  s_f79f241964f1cc::t_78a429c4b136e8 198-202
+  s_f79f241964f1cc::t_720cef5154acca 312
+  s_f79f241964f1cc::t_4577a4600004ed 336-345,347-349
+  s_f79f241964f1cc::t_a55c3a4d149865 20
+  s_f79f241964f1cc::t_1e03ac9f7600e1 225-230
+  s_f79f241964f1cc::t_9184d570384bf6 359,362-375
+  s_f79f241964f1cc::t_d1b96a504177e4 65
+  s_f79f241964f1cc::t_f69df98cf65ee4 423-433
+  s_f79f241964f1cc::t_6985cefe84af70 252-260,262-263
+  s_f79f241964f1cc::t_7e1b0a7547e3fd 320-321
+  s_f79f241964f1cc::t_f3aece0632cd82 73
+  s_f79f241964f1cc::t_fb7bd101ed98cd 71
+  s_f79f241964f1cc::t_d7767b5314567e 187-189
+dev/specs/ifc-3185-scoped-number-pools/critiques/critique-20261002.md
+  s_f79f241964f1cc::t_a328b032c01084 255,259
+  s_f79f241964f1cc::t_0af10277148ce8 254,256-258,260-268
+dev/specs/ifc-3185-scoped-number-pools/plan.md
+  s_f79f241964f1cc::t_12d3952161780a 87
+  s_f79f241964f1cc::t_bae8a56062e0a6 155
+  s_f79f241964f1cc::t_e298e8488fda1e 184
+  s_f79f241964f1cc::t_f8d5a47452a3b8 400-402,405,408,413-418
+  s_f79f241964f1cc::t_c6eb893d21411b 332-333
+  s_f79f241964f1cc::t_58d57fe66cc226 26-27
+  s_f79f241964f1cc::t_d1c2644edbe4ad 47-48
+  s_f79f241964f1cc::t_699b9f676fc032 204-208
+  s_f79f241964f1cc::t_d767de5be18652 457-459
+  s_f79f241964f1cc::t_9c89cddd6b518e 513-514
+  s_f79f241964f1cc::t_3707157d2f9f1c 163,165-167,169-171,174-176
+  s_f79f241964f1cc::t_f46af31044661a 280-283
+  s_f79f241964f1cc::t_7cfa003c9587b2 129,131-135,138,144-145
+  s_f79f241964f1cc::t_392866c500c3c6 481
+  s_f79f241964f1cc::t_8be30efb542be7 294-296,299-308
+  s_f79f241964f1cc::t_450e7eb790288f 496-497
+dev/specs/ifc-3185-scoped-number-pools/contracts/graphql-pool-scope.md
+  s_f79f241964f1cc::t_81fc882d904b31 94
+dev/specs/ifc-3185-scoped-number-pools/tasks.md
+  s_f79f241964f1cc::t_d08fc49ee4b988 337-339
+  s_f79f241964f1cc::t_ab38da8a0d9c2f 560-561
+  s_f79f241964f1cc::t_30cc1367b9e426 299-301
+  s_f79f241964f1cc::t_09689a882b5774 567-569
+  s_f79f241964f1cc::t_0bf8755ab81268 968-970
+  s_f79f241964f1cc::t_e93422a3584147 457-459
+  s_f79f241964f1cc::t_2843f313dd8fd1 487-489,491
+  s_f79f241964f1cc::t_c6455e09cc9e4d 940
+  s_f79f241964f1cc::t_8fc4bd509b6539 531
+  s_f79f241964f1cc::t_4bd46a183e4d02 740-741
+  s_f79f241964f1cc::t_e544cdae2ec158 578,580-581
+  s_f79f241964f1cc::t_c59a7d98b84a4b 993,995,997
+  s_f79f241964f1cc::t_b3b677aaf3d64f 854-863,865-869
+  s_f79f241964f1cc::t_b76a0eebbff554 258-259
+  s_f79f241964f1cc::t_43ef046ac12917 635-643
+  s_f79f241964f1cc::t_b222f441a43c04 112
+  s_f79f241964f1cc::t_2396a6490fe920 136-138,142-143
+  s_f79f241964f1cc::t_8cbb9653f9703a 61,63-65
+  s_f79f241964f1cc::t_8e6aa856b2f058 388,393-399
+  s_f79f241964f1cc::t_823404dcd4287b 676-681
+  s_f79f241964f1cc::t_56d86bb4d5494e 236
+  s_f79f241964f1cc::t_9128d77f6c4a29 471-475
+  s_f79f241964f1cc::t_b2d67ae9905c13 81-85
+  s_f79f241964f1cc::t_f8b57787be9a0b 833-835
+  s_f79f241964f1cc::t_6cb37fc02a7bf0 879,881-886
+  s_f79f241964f1cc::t_48f7f259cde7df 903-907
+  s_f79f241964f1cc::t_e74ad7ba60501e 817-819,821
+  s_f79f241964f1cc::t_793d9359d33627 24
+  s_f79f241964f1cc::t_c53653f8c8f4cf 74-76
+  s_f79f241964f1cc::t_3e4ffccc4c870f 348-376
+  s_f79f241964f1cc::t_7776da3d80facf 286-288
+  s_f79f241964f1cc::t_f84175abc48301 595-597
+  s_f79f241964f1cc::t_16960b640534f7 1007,1009-1010,1013,1017-1018
+  s_f79f241964f1cc::t_ff83e38f9b6201 414-420,425-428,432-436,441-446
+  s_f79f241964f1cc::t_18b5f3cc1df7b1 723-725
+  s_f79f241964f1cc::t_c55ec7f9a3202c 208-223
+  s_f79f241964f1cc::t_9d196028759ffb 9
+  s_f79f241964f1cc::t_6726c55725e97d 400
+dev/specs/ifc-3185-scoped-number-pools/quickstart.md
+  s_f79f241964f1cc::t_0a14d7dbad84de 111-113
+  s_f79f241964f1cc::t_6788e804a9f062 115,117-118,120-124
+  s_f79f241964f1cc::t_4ce7a4d217146a 84-86
+dev/specs/ifc-3185-scoped-number-pools/spec.md
+  s_f79f241964f1cc::t_4783ce14c87d0d 794-796
+  s_f79f241964f1cc::t_223df133954a84 804-805,808-811
+  s_f79f241964f1cc::t_def644055c4c54 862-863,865-870
+  s_f79f241964f1cc::t_945671c375fc6c 718-729
+  s_f79f241964f1cc::t_63d23403ebc7b3 880-881
+  s_f79f241964f1cc::t_af5a15182cd5e7 624-629
+  s_f79f241964f1cc::t_2ab40ac1c1dc64 301-303,309,316-319
+  s_f79f241964f1cc::t_3735c8eafb2267 584-592
+  s_f79f241964f1cc::t_5fb3e5020ae0c3 122
+  s_f79f241964f1cc::t_878031e92e7f5a 248-254
+  s_f79f241964f1cc::t_4f96ada0eaf9db 194-195
+  s_f79f241964f1cc::t_8ade3021ac8843 896-897
+  s_f79f241964f1cc::t_62003e0a254b0c 960-964
+  s_f79f241964f1cc::t_f511be8d86a189 925-947
+  s_f79f241964f1cc::t_84ed2fceed11c6 745
+  s_f79f241964f1cc::t_a31663c475d731 3
+  s_f79f241964f1cc::t_84b1431edc3e50 672-677
+  s_f79f241964f1cc::t_a442ce99e171e0 479-485
+  s_f79f241964f1cc::t_0412585ed221d7 564-565
+  s_f79f241964f1cc::t_ebc142b8e0275d 127
+  s_f79f241964f1cc::t_8c8c926725f2d9 348-355
+  s_f79f241964f1cc::t_86943b4c4b7857 114,116,118
+  s_f79f241964f1cc::t_e48e9b463f5a32 713-715
+  s_f79f241964f1cc::t_63c1d1cb238a9b 662-663
+  s_f79f241964f1cc::t_a23807af2abe0f 756
+dev/specs/ifc-3185-scoped-number-pools/checklists/requirements.md
+  s_f79f241964f1cc::t_ad5c460adc9090 36
+  s_f79f241964f1cc::t_d8d1a319debb24 22-23
+  s_f79f241964f1cc::t_4b2da1f5495ba7 34
+dev/specs/ifc-3185-scoped-number-pools/alignment-check.md
+  s_f79f241964f1cc::t_1c22ce07d5bafc 78-81,84-99
+  s_f79f241964f1cc::t_d8ca4625f8864e 82-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c3da9751d110caa27671bfb73eeab6d562038e8c",
+  "prompts": {},
+  "sessions": {
+    "s_f79f241964f1cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a94f430-9532-473e-8415-d7b8aa7f8024",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

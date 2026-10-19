@@ -1,0 +1,26 @@
+docs/docs/generators/overview.mdx
+  s_06345c7791eb4e::t_406e2269100415 234,236-238
+docs/docs/generators/remove.mdx
+  s_06345c7791eb4e::t_61f5f0c8a1ce40 48
+  s_06345c7791eb4e::t_71e7190bafa2dc 7,9,31-39,43,46
+changelog/6293.fixed.md
+  s_06345c7791eb4e::t_64f2536e3f976c 1
+docs/docs/groups/overview.mdx
+  s_06345c7791eb4e::t_406e2269100415 41,54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ebd71f042cf92c0916081b012e1676a9381690ef",
+  "prompts": {},
+  "sessions": {
+    "s_06345c7791eb4e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "13a0a049-a9b5-4717-b3ac-ed553d3e2d70",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}

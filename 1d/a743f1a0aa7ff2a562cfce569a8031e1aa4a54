@@ -1,0 +1,28 @@
+dev/specs/ifc-3185-number-pool-scopes/tasks.md
+  s_b221a4e981ff67::t_51ffd8659a2bc9 31-33
+backend/tests/component/core/resource_manager/test_number_pool_scope.py
+  s_b221a4e981ff67::t_9004df242e8196 55
+  s_b221a4e981ff67::t_be7679df51d985 1-11,13-28,44-47,49,51-54,56
+  s_b221a4e981ff67::t_874613b6883d60 12,29-43,48,50
+backend/tests/helpers/number_pool.py
+  s_b221a4e981ff67::t_5056f57699ee1d 18,156-173,184-186,196-209,213-245
+backend/tests/component/core/resource_manager/conftest.py
+  s_b221a4e981ff67::t_4af5dc2f650038 102-104
+  s_b221a4e981ff67::t_5853100493e199 16,29-32,99-101,105-178
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1da743f1a0aa7ff2a562cfce569a8031e1aa4a54",
+  "prompts": {},
+  "sessions": {
+    "s_b221a4e981ff67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3cc9618a-9cab-4d92-8799-c95598cb67b5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

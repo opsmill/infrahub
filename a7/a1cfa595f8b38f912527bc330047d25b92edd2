@@ -1,0 +1,43 @@
+backend/infrahub/core/validators/enum.py
+  s_42b74b2708abe7::t_721d98e26c4712 13
+backend/tests/component/core/constraint_validators/test_attribute_numberpool_constraints.py
+  s_42b74b2708abe7::t_0e453e928bcf33 148-249
+  s_42b74b2708abe7::t_c4d32192d7aa9f 10,12
+  s_42b74b2708abe7::t_9d20d5bef8c24e 250-252
+  s_fa8668d4832b81::t_b941d71ff4eb18 253
+backend/tests/unit/core/schema/test_schema_update_validation.py
+  s_42b74b2708abe7::t_9a9c80fec83a58 5-9
+  s_42b74b2708abe7::t_43b8da0ea1e81f 86-125
+backend/infrahub/core/validators/__init__.py
+  s_42b74b2708abe7::t_aaf30289ad7b57 37
+backend/infrahub/core/validators/attribute/number_pool.py
+  s_42b74b2708abe7::t_db313a2f953d21 88
+  s_42b74b2708abe7::t_d191a119ad50f3 50
+  s_42b74b2708abe7::t_837d0bc388e492 31-34
+dev/specs/ifc-3065-number-pool-ranges/tasks.md
+  s_42b74b2708abe7::t_fb88f2b0603855 115,127-128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a7a1cfa595f8b38f912527bc330047d25b92edd2",
+  "prompts": {},
+  "sessions": {
+    "s_42b74b2708abe7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc83edeb-4a31-4a75-aa76-de0ccd8856b9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_fa8668d4832b81": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-adf86233ef9bc085d",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+schema/schema.graphql
+  s_78603417e7799d::t_7a4e35fb78a906 10336,10344,10352,10394,10430,10454,10480,10496,10504,10554,10628,10636,10668,10704,10722,10730,10746,10764,10806,10822,10846,10898,10954,10962,10994,11004,11020,11028,11038,11096,11104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "06261f7ddfc488b544dfd6901ab5349d8f2e34e5",
+  "prompts": {},
+  "sessions": {
+    "s_78603417e7799d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f5e57e0-ed36-4b58-b93a-7592ce8f9ab3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

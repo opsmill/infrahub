@@ -1,0 +1,29 @@
+dev/specs/ifc-3185-number-pool-scopes/tasks.md
+  s_b221a4e981ff67::t_ac0f3ee04b5d78 30,94,97
+dev/specs/ifc-3185-number-pool-scopes/quickstart.md
+  s_b221a4e981ff67::t_ac0f3ee04b5d78 19
+dev/specs/ifc-3185-number-pool-scopes/opsmill-implement-report.md
+  s_b221a4e981ff67::t_ac0f3ee04b5d78 19-20
+dev/specs/ifc-3185-number-pool-scopes/plan.md
+  s_b221a4e981ff67::t_ac0f3ee04b5d78 155
+dev/specs/ifc-3185-number-pool-scopes/contracts/graphql-number-pool-queries.md
+  s_b221a4e981ff67::t_ac0f3ee04b5d78 15
+dev/specs/ifc-3185-number-pool-scopes/research.md
+  s_b221a4e981ff67::t_ac0f3ee04b5d78 125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c4b68023f48513662d9ab6f13068e2cca183ed7e",
+  "prompts": {},
+  "sessions": {
+    "s_b221a4e981ff67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3cc9618a-9cab-4d92-8799-c95598cb67b5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+backend/infrahub/core/schema/generated/relationship_schema.py
+  s_9a65b7e7908928::t_3e1d1b33835bfb 30
+backend/infrahub/core/validators/pool/scope.py
+  s_9a65b7e7908928::t_a7d99c79c4ed69 1-51,55-95,97-125,127-175
+  s_9a65b7e7908928::t_7a628b8c95f093 96,126
+  s_9a65b7e7908928::t_2b6b56e4eacd43 52-54
+backend/infrahub/core/schema/definitions/internal.py
+  s_9a65b7e7908928::t_3e1d1b33835bfb 878
+backend/infrahub/core/validators/enum.py
+  s_9a65b7e7908928::t_3f3483bbf3c131 14
+backend/infrahub/pools/scoped_number_pool_reader.py
+  s_9a65b7e7908928::t_c4bd7bda921e2e 1-39,41-55
+  s_9a65b7e7908928::t_7a628b8c95f093 40
+docs/docs/reference/schema/validator-migration.mdx
+  s_9a65b7e7908928::t_c2ac634225ac98 83
+backend/infrahub/dependencies/builder/constraint/schema/aggregated.py
+  s_9a65b7e7908928::t_6c9ecb50f25e25 16,44
+backend/infrahub/core/validators/__init__.py
+  s_9a65b7e7908928::t_6c9ecb50f25e25 18,55-59
+backend/infrahub/dependencies/builder/constraint/schema/number_pool_scope.py
+  s_9a65b7e7908928::t_7a628b8c95f093 10
+  s_9a65b7e7908928::t_6c9ecb50f25e25 1-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "da7412577a464028b225eadd2ff7922d74745ed4",
+  "prompts": {},
+  "sessions": {
+    "s_9a65b7e7908928": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "60976836-eea3-41a5-9ac8-f10bf4fbc0fc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

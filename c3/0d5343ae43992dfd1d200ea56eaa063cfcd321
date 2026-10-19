@@ -1,0 +1,41 @@
+backend/tests/component/graphql/resource_manager/number_pool_attach/test_provenance.py
+  s_19d4ea08b89ab1::t_6b30c33410ed80 172,184-186
+backend/infrahub/pools/number_pool_attribute_allocator.py
+  s_19d4ea08b89ab1::t_8a24b06e1977a3 35,57,73
+  s_19d4ea08b89ab1::t_5b9e1c3c903c1d 51,56
+backend/tests/component/graphql/resource_manager/number_pool_attach/test_attach.py
+  s_19d4ea08b89ab1::t_63988fe65daf50 323
+  s_19d4ea08b89ab1::t_6b30c33410ed80 320
+  s_19d4ea08b89ab1::t_3c0806f7f0dc22 8,15,322
+  s_19d4ea08b89ab1::t_1667e53aed6fd5 301-319
+  s_19d4ea08b89ab1::t_2140017fc2fbee 321
+backend/tests/unit/pools/test_attribute_pool_applier.py
+  s_19d4ea08b89ab1::t_6e617a84283e12 187-189,202-207,312-314,375-377
+  s_19d4ea08b89ab1::t_5b9e1c3c903c1d 58-59,72-79,88
+backend/infrahub/core/node/resource_manager/number_pool.py
+  s_19d4ea08b89ab1::t_8a24b06e1977a3 40,44-45,54
+backend/infrahub/pools/attribute_pool_applier.py
+  s_19d4ea08b89ab1::t_8a24b06e1977a3 65,240-244,283,292-295
+  s_19d4ea08b89ab1::t_5b9e1c3c903c1d 54-60,64,306-311
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c30d5343ae43992dfd1d200ea56eaa063cfcd321",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_19d4ea08b89ab1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c3965bce-23be-4c63-89e9-5ce1cad16d8c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

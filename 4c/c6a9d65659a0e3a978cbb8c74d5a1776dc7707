@@ -1,0 +1,48 @@
+dev/specs/ifc-3185-scoped-number-pools/research.md
+  s_f79f241964f1cc::t_9184d570384bf6 369-371
+  s_f79f241964f1cc::t_4577a4600004ed 342-344,347-349
+  s_f79f241964f1cc::t_1cbb405012f94c 121-128,135
+dev/specs/ifc-3185-scoped-number-pools/quickstart.md
+  s_f79f241964f1cc::t_6788e804a9f062 118
+  s_f79f241964f1cc::t_009ecdba4262b6 140-142
+dev/specs/ifc-3185-scoped-number-pools/tasks.md
+  s_f79f241964f1cc::t_b3b677aaf3d64f 855-856
+  s_f79f241964f1cc::t_7776da3d80facf 286-288
+  s_f79f241964f1cc::t_9128d77f6c4a29 471,473-474
+  s_f79f241964f1cc::t_16960b640534f7 1018
+  s_f79f241964f1cc::t_b2d67ae9905c13 85
+  s_f79f241964f1cc::t_b76a0eebbff554 259
+  s_f79f241964f1cc::t_8a75e37f600a88 23,231-234,260-266,282-283,285,290,774-775,781-785,871-874,994,1008
+dev/specs/ifc-3185-scoped-number-pools/spec.md
+  s_f79f241964f1cc::t_a442ce99e171e0 484-485
+  s_f79f241964f1cc::t_223df133954a84 804
+  s_f79f241964f1cc::t_f511be8d86a189 945-946
+  s_f79f241964f1cc::t_878031e92e7f5a 252-253
+  s_f79f241964f1cc::t_945671c375fc6c 725-728
+  s_f79f241964f1cc::t_9a6db4583899f3 75,96-97,117,123,155-157,212-213,241-243,393-394,400-403,414-418,477-478,501-502,542-543,557-561,599-601,733-735,769-771,953
+dev/specs/ifc-3185-scoped-number-pools/plan.md
+  s_f79f241964f1cc::t_f8d5a47452a3b8 400-402
+  s_f79f241964f1cc::t_e298e8488fda1e 184
+  s_f79f241964f1cc::t_699b9f676fc032 207
+  s_f79f241964f1cc::t_ceea3ffed49966 15,160,456
+dev/specs/ifc-3185-scoped-number-pools/contracts/graphql-pool-scope.md
+  s_f79f241964f1cc::t_71f07d5f81ee29 39-42,44,47-49,65,86
+dev/specs/ifc-3185-scoped-number-pools/data-model.md
+  s_f79f241964f1cc::t_941e502aa1c092 28-33,166,168,185,189-192
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4cc6a9d65659a0e3a978cbb8c74d5a1776dc7707",
+  "prompts": {},
+  "sessions": {
+    "s_f79f241964f1cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a94f430-9532-473e-8415-d7b8aa7f8024",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

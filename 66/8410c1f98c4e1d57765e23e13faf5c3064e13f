@@ -1,0 +1,45 @@
+backend/infrahub/graphql/manager.py
+  s_86fff168c93aab::t_d67878e78b551f 43
+backend/infrahub/graphql/mutations/resource_manager/ip_pools.py
+  s_86fff168c93aab::t_b4a4cf33e15b9d 1-156
+backend/infrahub/graphql/schema.py
+  s_86fff168c93aab::t_d16b07b7c62705 35
+dev/specs/ifc-3065-number-pool-ranges/plan.md
+  s_86fff168c93aab::t_69ac9d61bd79da 91,101
+dev/specs/ifc-3065-number-pool-ranges/quickstart.md
+  s_86fff168c93aab::t_80ce281c053f0d 42
+dev/specs/ifc-3065-number-pool-ranges/research.md
+  s_86fff168c93aab::t_1e2b27329cd78a 20,115
+dev/specs/ifc-3065-number-pool-ranges/tasks.md
+  s_86fff168c93aab::t_9af6521c86d4b5 44,52,91,97,118,146,155
+pyproject.toml
+  s_86fff168c93aab::t_7c4883f1e6432e 1401,1419,1436
+backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py
+  s_86fff168c93aab::t_f4a628c8b5c50b 5,9,14,17,26
+backend/tests/component/graphql/resource_manager/number_pools/helpers.py
+  s_86fff168c93aab::t_ab3fbeac8e5d76 1-109
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_create.py
+  s_86fff168c93aab::t_798d13661d8b2d 1-168
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_immutable_fields.py
+  s_86fff168c93aab::t_a3824996769544 11,13
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_update.py
+  s_86fff168c93aab::t_532b698529c844 1-112
+backend/tests/component/graphql/resource_manager/number_pools/test_schema_pools.py
+  s_86fff168c93aab::t_f9f5367db86887 1-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "668410c1f98c4e1d57765e23e13faf5c3064e13f",
+  "prompts": {},
+  "sessions": {
+    "s_86fff168c93aab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7cff568f-f1a2-413f-81d2-b41800811650",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

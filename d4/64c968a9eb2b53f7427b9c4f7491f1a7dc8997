@@ -1,0 +1,33 @@
+backend/tests/component/core/migrations/graph/m081_reanchor_number_pool_reservations/test_migration.py
+  s_1b659ceedf2b91::t_54fa5ba059a3c1 19,690,697-701,724,732,744-748
+  s_1b659ceedf2b91::t_ca3db5318bb9f0 703,723,726-730
+  s_1b659ceedf2b91::t_b3afaad406f254 702,704-722,725,731,737-743,749-750
+  s_1b659ceedf2b91::t_4e1dba8c595b0e 733-736
+backend/infrahub/core/migrations/graph/m081_reanchor_number_pool_reservations/queries.py
+  s_1b659ceedf2b91::t_e8aca7781ee140 131,135,139
+  h_7ec9b28dd2a5ab 129
+  s_1b659ceedf2b91::t_0d19bde460f7db 126,128,130
+backend/tests/component/core/migrations/graph/m081_reanchor_number_pool_reservations/conftest.py
+  s_1b659ceedf2b91::t_54fa5ba059a3c1 189,212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d464c968a9eb2b53f7427b9c4f7491f1a7dc8997",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_1b659ceedf2b91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "41971668-9608-4279-954f-681ac371c4e7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+backend/tests/component/graphql/mutations/test_object_conversion.py
+  s_21336fa36014ab::t_b6a68c1d2bbed7 7,16,157-198
+backend/tests/component/graphql/resource_manager/number_pool_attach/test_source.py
+  s_21336fa36014ab::t_c125f00c69c66f 11-12,496-528
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9789677df1893db6cb6a2c77ab4c5086ef27f293",
+  "prompts": {},
+  "sessions": {
+    "s_21336fa36014ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "820c3ac2-f712-4830-a5e2-c0287e3dfac0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

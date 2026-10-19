@@ -1,0 +1,32 @@
+docs/docs/generators/remove.mdx
+  s_06345c7791eb4e::t_849528850eb0fe 7,9,33-37,39,41-42,48-52
+  s_06345c7791eb4e::t_daa330dcf8b0af 38
+  s_06345c7791eb4e::t_59cf4fd45481dc 40,43-47
+  s_06345c7791eb4e::t_de45a8350017d1 53
+docs/docs/groups/use-in-automation.mdx
+  s_06345c7791eb4e::t_714e14eca17151 56,61
+docs/docs/generators/overview.mdx
+  s_06345c7791eb4e::t_c30bf5eaac810c 236
+  s_06345c7791eb4e::t_7f2d306b4e6224 162
+  s_06345c7791eb4e::t_e67bb230ac5388 210,214,219-220,222-223,225-235
+  s_06345c7791eb4e::t_e0d91d52893f74 224
+docs/docs/groups/overview.mdx
+  s_06345c7791eb4e::t_714e14eca17151 38,41
+  s_06345c7791eb4e::t_9f10dc4b833f05 42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7d860ec36eac1d300f388f0f7a01cebab2f83079",
+  "prompts": {},
+  "sessions": {
+    "s_06345c7791eb4e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "13a0a049-a9b5-4717-b3ac-ed553d3e2d70",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}

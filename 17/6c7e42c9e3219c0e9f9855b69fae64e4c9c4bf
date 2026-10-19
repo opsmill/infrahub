@@ -1,0 +1,41 @@
+backend/AGENTS.md
+  s_bca69773a4f3cf::t_4543195cf1648b 130
+changelog/+changelog-peer-events.fixed.md
+  s_c29bc2a8dbf032::t_c0222e3cde4cdc 1
+changelog/9671.added.md
+  s_c29bc2a8dbf032::t_ea98e7f4118549 1
+dev/knowledge/backend/events.md
+  s_c29bc2a8dbf032::t_6677ea0c8e1800 208
+dev/knowledge/backend/webhooks.md
+  s_c29bc2a8dbf032::t_b6689c69041561 318
+dev/knowledge/backend/changelog-enrichment.md
+  s_c29bc2a8dbf032::t_8cc4248b8f0e6c 1-83
+dev/specs/ifc-3009-webhook-payload-enrichment/qa-checklist.md
+  s_c29bc2a8dbf032::t_7c42fee4488ef5 1-131
+docs/docs/webhooks/overview.mdx
+  s_c29bc2a8dbf032::t_2d1eaae6dd4874 197-199,222-223,248-267,282-299
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "176c7e42c9e3219c0e9f9855b69fae64e4c9c4bf",
+  "prompts": {},
+  "sessions": {
+    "s_bca69773a4f3cf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eb85e3f9-d1c8-43e9-87f0-e2ea95e20a6b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_c29bc2a8dbf032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79ee2d68-517a-4978-9862-3a65b01b3f78",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

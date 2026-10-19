@@ -1,0 +1,111 @@
+backend/infrahub/graphql/mutations/main.py
+  s_2499241a5a10fa::t_3ccbe5d7a30a6b 356
+  s_2499241a5a10fa::t_f80bae65cd7dff 31
+backend/tests/component/core/test_attribute.py
+  s_2499241a5a10fa::t_2d73e2d282f642 34,456-460
+backend/infrahub/pools/attribute_pool_applier_factory.py
+  s_2499241a5a10fa::t_19258f6fbd5d87 1-4,6-15
+  s_2499241a5a10fa::t_328f88cc1c0c1a 16,19
+  s_19d862ad1ee813::t_981012b59090b5 5
+  s_19d862ad1ee813::t_e8b4cb7c892392 17-18
+backend/tests/unit/core/test_attribute.py
+  s_2499241a5a10fa::t_ff50ba6332580a 144,153,163
+  s_2499241a5a10fa::t_2d73e2d282f642 11
+backend/infrahub/core/node/create.py
+  s_2499241a5a10fa::t_62c542920c0036 515-517,519,535
+  s_2499241a5a10fa::t_3ccbe5d7a30a6b 442,555
+  s_2499241a5a10fa::t_f7d924c1323f76 36,428
+  s_2499241a5a10fa::t_f80bae65cd7dff 24
+backend/tests/component/core/resource_manager/test_number_pool.py
+  s_2499241a5a10fa::t_2d73e2d282f642 21,88-90
+backend/tests/component/core/constraint_validators/test_node_uniqueness.py
+  s_2499241a5a10fa::t_2d73e2d282f642 16,169-173
+backend/infrahub/pools/number_pool_attribute_allocator.py
+  s_2499241a5a10fa::t_149af5b114ab67 1-10,12-14,15-35,37-52
+  s_19d862ad1ee813::t_cb979fe504fce1 11
+  s_19d862ad1ee813::t_a3883927559cb8 36
+backend/infrahub/core/node/__init__.py
+  s_2499241a5a10fa::t_e2b01581fd679b 1379
+  s_2499241a5a10fa::t_d780bdac4af26b 42,497,503,552-556,631-633,635-636,668,951-955,957-958,968-974,1365-1368,1370-1371,1378,1380
+  s_2499241a5a10fa::t_cfaea091d60995 62
+  s_2499241a5a10fa::t_e90344b9b02bdf 498-500,502
+  s_2499241a5a10fa::t_328f88cc1c0c1a 22-23,37,39-40
+  s_2499241a5a10fa::t_f7d924c1323f76 41,66,501,634,956,1047,1369
+backend/infrahub/core/node/lock_utils.py
+  s_2499241a5a10fa::t_f7d924c1323f76 8,30
+backend/infrahub/core/protocols_base.py
+  s_2499241a5a10fa::t_e3e187c66b1145 133-139
+  s_2499241a5a10fa::t_ff50ba6332580a 16
+backend/tests/unit/pools/test_attribute_pool_applier.py
+  s_2499241a5a10fa::t_46fdaae441853c 1-17,20-21,23,24-26,27-30,32-52,54-59,62-63,65-81,89-92,94-97,99,101-104,107-108,112-115,117-120,122-126,128-132,134-146,148-152,154-155,157-167,169-174,176-185,187,189-197,199,201-205
+  s_2499241a5a10fa::t_9186e029ec79bf 64,93,98,109-111,121,133,168,175,186,198
+  s_19d862ad1ee813::t_a3883927559cb8 18-19,22,31,53
+  s_19d862ad1ee813::t_b64134d3a6d0f3 60-61,82-88,100,105-106,116,127,147,153,156,188,200
+backend/infrahub/core/attribute.py
+  s_2499241a5a10fa::t_f7d924c1323f76 52,645,664
+  s_2499241a5a10fa::t_d780bdac4af26b 642-644,646-647
+backend/infrahub/pools/attribute_pool_applier.py
+  s_2499241a5a10fa::t_20898262ea8237 14-15
+  s_2499241a5a10fa::t_bf47f97ae6a6f8 1-7,9-12,16,18-27,29-35,60-120,122-146
+  s_2499241a5a10fa::t_328f88cc1c0c1a 121
+  s_2499241a5a10fa::t_f7d924c1323f76 8,36-59
+  s_19d862ad1ee813::t_a3883927559cb8 13,17,28
+backend/infrahub/pools/number_pool_lookup.py
+  s_2499241a5a10fa::t_868603c1237205 1-2,4-6,7-11,14-16,29-31,33,35-43,46-48
+  s_19d862ad1ee813::t_e8b4cb7c892392 12-13,17
+  s_19d862ad1ee813::t_a3883927559cb8 21,25
+  s_19d862ad1ee813::t_981012b59090b5 3,16,18-20,23-24,32,34,44
+  s_19d862ad1ee813::t_843e04f105b67d 15,45
+  s_19d862ad1ee813::t_5765142d1b5bb5 22,26,36
+backend/tests/component/core/migrations/graph/m081_reanchor_number_pool_reservations/conftest.py
+  s_2499241a5a10fa::t_2d73e2d282f642 33,143-147,168-172
+backend/tests/component/core/node/test_lock_utils.py
+  s_2499241a5a10fa::t_2d73e2d282f642 9,40
+backend/tests/unit/pools/test_number_pool_lookup.py
+  s_19d862ad1ee813::t_62f611e25c3dca 1-3,5-6,8-10,12-14,17,19-20,21-42,44,46,53,55,58-60,68-69,75-77,79,82-84,88-91,93,97
+  s_19d862ad1ee813::t_3ef6aa43dce5f4 86,94-96
+  s_19d862ad1ee813::t_9dadac40b9fb04 85,87
+  s_19d862ad1ee813::t_3bc787f2658ce2 4,7,11,18,45,47-52,54,66-67,70,72,81,92,98
+  s_19d862ad1ee813::t_b64134d3a6d0f3 43,56-57,61-65,71,74,78,80
+  s_19d862ad1ee813::t_24fdd9e01a109c 99-114
+  s_19d862ad1ee813::t_a3883927559cb8 15-16
+  s_19d862ad1ee813::t_bcc0d0c29f6a6d 73
+backend/tests/unit/pools/helpers.py
+  s_19d862ad1ee813::t_cb979fe504fce1 20-22
+  s_19d862ad1ee813::t_d472ed97b941d0 1-19,23-35
+backend/tests/unit/graphql/mutations/test_attribute.py
+  s_2499241a5a10fa::t_dafdffd585b4db 1-54
+schema/schema.graphql
+  s_2499241a5a10fa::t_ac273658ac4b14 11678,11686
+backend/infrahub/graphql/mutations/attribute.py
+  s_2499241a5a10fa::t_ac273658ac4b14 3,51,56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "27882d7ba7233e5edc5685e84c3efcb49f2da654",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_19d862ad1ee813": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9e358822-026e-4e6f-b17b-43375764d869",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    },
+    "s_2499241a5a10fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92729d40-159c-4d72-beb5-e9ff006e755a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

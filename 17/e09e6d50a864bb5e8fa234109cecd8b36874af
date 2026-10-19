@@ -1,0 +1,862 @@
+backend/tests/component/git/test_repository_config.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 6,14-15,18-20,53,92,129,166,181,196,209-211,223-225
+dev/knowledge/backend/computed-attributes.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 94-96,150
+backend/infrahub/core/merge/selective_regen/definition_selector/base.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 120-124
+changelog/+ifc-3105-warm-clone-default-branch.fixed.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-7
+frontend/app/index.html
+  s_5e2325ba340dbd::t_acd78215e1c95c 14-22
+backend/infrahub/core/query/relationship.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1046-1047
+backend/tests/component/message_bus/operations/git/test_refresh_git_branch_deleted.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 7,10,14-17,36-45
+backend/infrahub/message_bus/messages/git_file_get.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 11
+changelog/+ifc-3105-connect-time-trunk-validation.added.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1
+dev/specs/ifc-3185-number-pool-scopes/tasks.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-259
+dev/specs/ifc-3210-history-rewrite-reconciliation/research.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-608
+frontend/app/src/entities/config/ui/hooks/use-feature-flag.ts
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-8
+dev/knowledge/backend/display-labels-and-hfid.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 129,133-135,138,140-142
+dev/specs/ifc-3185-number-pool-scopes/critiques/critique-20261008.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-172
+backend/tests/helpers/flow.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-22
+dev/specs/ifc-3185-number-pool-scopes/spec.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1,3,5,7-39,41-64,68-84,88-104,108-121,125-244
+backend/tests/component/core/diff/test_unfrozen_deleter.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-416
+frontend/app/src/shared/api/graphql/generated/types.ts
+  s_5e2325ba340dbd::t_acd78215e1c95c 7261-7266,7275-7276,7648-7653,7662-7663,12514-12519,12530-12531,12902-12907,12918-12919,12953-12958,12969-12970,12998-13003,13014-13015,13043-13048,13057-13058,13431-13436,13445-13446,13704-13709,13718-13719,13749-13754,13763-13764,28810-28824,28840-28844,30012-30026,30042-30046,30657-30671,30687-30691,31493-31510,31606-31611,31913-31927,31943-31947,35032-35049,35151-35156,35414-35431,35527-35532,35737-35751,35767-35771,35942-35956,35972-35976,37247-37261,37277-37281,37527-37541,37557-37561,37783-37797,37813-37817,38148-38162,38178-38182
+backend/tests/fixtures/repos/closure-failure-isolation/initial__main/templates/broken.j2
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-2
+backend/infrahub/core/node/create.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 181,442
+changelog/+merge-after-force-push.fixed.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1
+changelog/+dark-theme.added.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1
+backend/infrahub/message_bus/operations/git/repository.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 5,12-14,36-45,47-49,68-71,73,86-88
+changelog/+profile-data-query.fixed.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1
+dev/specs/ifc-3210-history-rewrite-reconciliation/checklists/requirements.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-49
+backend/tests/conftest.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 86,1305
+backend/tests/unit/computed_attribute/test_tasks.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 11,35,115-119,121,128,134-136
+changelog/+missing-transform-class.fixed.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1
+frontend/app/src/app/app.tsx
+  s_5e2325ba340dbd::t_acd78215e1c95c 29-35,39-46
+backend/infrahub/core/schema/schema_branch.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 189-201,1777-1778,1799,1801
+backend/tests/adapters/repository_file_diff.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 11,33,42
+backend/infrahub/core/query/resource_manager.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 10,494,507,565,567-568,577-583,913,953,983,986,990-991,994,999-1005,1011-1085
+  s_5e2325ba340dbd::t_bb8301a5ff8d92 1086-1087
+dev/specs/ifc-3185-number-pool-scopes/quickstart.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-80
+dev/specs/ifc-3185-number-pool-scopes/data-model.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-89
+backend/tests/unit/core/graphql_query/test_node_id_query.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-97
+dev/specs/ifc-3210-history-rewrite-reconciliation/contracts/internal-interfaces.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1,3-4,6-7,9-17,19,21-24,26-27,29,31,33-38,40-42,44-48,50,52,54-210,212,214-250,252-254,256-258,260-262,264-266,268-272,274-276,278-281,285,287-369,371-374,378,380,382-384,386-417,421-456,460,462,464,466-474,476-540,544-567,571,573-574,576-578,580-583,585-587,589-601,603-664,666,668,670-766,768-776,778,780-894
+frontend/app/src/shared/components/editor/markdown/markdown-render.test.tsx
+  s_5e2325ba340dbd::t_acd78215e1c95c 3-4,62-66,79-83,94-98
+dev/specs/ifc-3105-honour-default-branch/tasks.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-373
+backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 377-384
+backend/tests/component/profiles/queries/conftest.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-29
+development/docker-compose-observability.yml
+  s_5e2325ba340dbd::t_acd78215e1c95c 76-77
+frontend/app/src/shared/api/rest/error-message.test.ts
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-33
+backend/tests/component/graphql/resource_manager/test_number_pool_attach.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 7-8,10,23,46-59,72-79,86-90,92,104-117,123-127,129-131,182-193,196,212-221,508-765
+frontend/app/src/shared/api/graphql/generated/graphql-cache.d.ts
+  s_5e2325ba340dbd::t_554b22e0ea4f10 29,32,35,38,41,44,47,50,53,56,59,62,65,68,71,74,77,80,83,86,89,92,95,98,101,104,107,110,113,116,119,122,125,128,131,134,137,140,143,146,149,152,155,158,161,164,167,170,173,176,179,182,185,188,191,194,197,200,203,206,209,212,215,218,221
+backend/infrahub/graphql/parser.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 49-54,191-195,202-203,206,208-212
+backend/tests/unit/git/test_merge_readiness.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-345
+dev/knowledge/backend/git-integration.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 32-36,38-41,58-59,71-85,97-111,119,132-133,152-179,191-250,260,263-266,274-288,297,299-300,325-326,328-331,340-348
+dev/specs/ifc-3220-writeback-failure-handling/critiques/critique-20261002-1800.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-389
+dev/specs/infp-546-git-solid-refactor/data-model.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 19,216,218,226-255
+backend/tests/unit/git/divergence/test_suppression.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-120
+changelog/5430.fixed.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1
+frontend/app/src/entities/nodes/object-file/domain/use-cases/get-object-file.ts
+  s_5e2325ba340dbd::t_acd78215e1c95c 1,13-14,29,36
+frontend/app/src/entities/artifacts/domain/use-cases/get-artifact-file.ts
+  s_5e2325ba340dbd::t_acd78215e1c95c 1,12-13,25,32
+backend/infrahub/core/diff/query/roots_metadata.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 24,35,46,58
+backend/tests/unit/git/test_import_errors.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-354
+backend/tests/unit/core/regeneration/test_impact_classifier.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 17,59-65,90,99-117,137,153,159,221,233,273,281
+dev/knowledge/frontend/theming.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 100-102,105-127,169-172,178-179,181,184-185
+dev/specs/infp-546-git-solid-refactor/contracts/protocols.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 7-21,30
+frontend/app/src/entities/user-profile/ui/account-menu.tsx
+  s_5e2325ba340dbd::t_acd78215e1c95c 39,60-63,65,67-69,71-73,75-78,80-83,85,87-98
+backend/tests/unit/git/test_jinja2_entry_template.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-143
+tests/e2e/helpers.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 75-77,81,84-85
+backend/infrahub/profiles/queries/get_profile_data.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 27,36,42,54,65,67,81,115-123,125-126,129-130,185
+backend/infrahub/workflows/catalogue.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 587-593,733
+backend/infrahub/core/graphql_query/node_id_query.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 6,9-10,29-31,63-79
+backend/tests/component/git/test_git_rpc.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 10,39,152,155-161,184-185,205,211-212,214-219,225,229-233,403,412-418,420
+backend/infrahub/core/regeneration/impact.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 72-73,84
+backend/infrahub/git/divergence/models.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-99
+backend/tests/integration/git/test_closure_failure_isolation.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 9,13,28,31,63-64,73,84,107,111-114
+dev/specs/ifc-3220-writeback-failure-handling/research.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-1453
+frontend/app/src/shared/api/graphql/generated/graphql-env.d.ts
+  s_5e2325ba340dbd::t_acd78215e1c95c 286,288,452,454,457,459-460,462,473,475
+backend/infrahub/artifacts/queries.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-55
+backend/tests/fixtures/repos/closure-failure-isolation/initial__main/.infrahub.yml
+  s_5e2325ba340dbd::t_acd78215e1c95c 12
+backend/tests/functional/computed_attributes/test_computed_attribute_task_optimization.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 68,76,78-86,96-103,122-123
+backend/tests/component/git/test_git_branch_create.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-91
+backend/tests/component/graphql/test_parser.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 183-417
+backend/infrahub/core/diff/query/all_conflicts.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 8,42,46,50,55,58,61,63-67
+backend/infrahub/core/diff/enricher/aggregated.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 13-14
+backend/tests/component/graphql/mutations/test_proposed_change.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1,5,17-23,27,43,721-869
+  s_5e2325ba340dbd::t_75664dd39daabb 870-871
+backend/tests/functional/convert_object_type/test_convert_repositories.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 12,62-81,574-575
+backend/tests/helpers/agnostic_edges.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 62-63,245,454,551-562
+  s_5e2325ba340dbd::t_fcf380f46de3a5 563-564
+backend/infrahub/display_labels/scoping.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 38-43
+backend/tests/component/core/diff/test_coordinator.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 29,336-378,482,556-615
+  s_5e2325ba340dbd::t_dcdeffb3579f2f 616
+backend/infrahub/core/schema/definitions/core/repository.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 254-288
+dev/specs/ifc-3105-honour-default-branch/research.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-665
+backend/tests/component/git/test_artifact_composition.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 16-17,21,24-27,51,73-89,91-94,103-106
+backend/infrahub/core/merge/repository_merge_dispatcher.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 8-9,66-68,73-77,86,89-146
+backend/tests/component/git/test_import_failure_containment.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-153
+backend/tests/unit/core/merge/selective_regen/definition_selector/test_base.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 15,96,98,100,111-113,325-383
+.github/workflows/ci.yml
+  s_5e2325ba340dbd::t_acd78215e1c95c 885-886,1417,1426
+backend/tests/helpers/selective_regen.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 76
+backend/tests/unit/git/test_git_error_enrichment.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 185-191
+  s_5e2325ba340dbd::t_28b5c162bd1a62 184
+backend/infrahub/core/merge/recompute_coalescing.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 142,144,212,214-218,220,285-290,582
+backend/tests/unit/git/test_integrator.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 2,6-13,17-55,119-173
+docs/docs/deploy-manage/run-observe/metrics.mdx
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-95
+backend/infrahub/core/diff/unfrozen_deleter.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-168
+backend/tests/functional/git/test_repository_default_branch.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 7-8,12,27-28,39-60,62-234,265,304
+backend/tests/component/message_bus/operations/git/test_file.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 6,9,13-16,24,29-34,36-39
+backend/tests/integration/proposed_change/test_proposed_change_repository.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 106
+backend/infrahub/git/divergence/suppression.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-40
+backend/infrahub/core/branch/tasks.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 18,21-27,46,73-79,94,111-135,233-236,239-243,245-249,255-260,351-365,401-404,406-416,436-441,451,466,472-479,487-492,494-495,517-533
+  s_5e2325ba340dbd::t_5bba6449e5174b 534-535
+backend/tests/integration/git/test_repository.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 9,116,119-129,153,178
+backend/infrahub/artifacts/content.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-76
+backend/tests/unit/graphql/test_field_extractor.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-132
+dev/adr/0016-node-mutation-origin-label-suppression.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 31-33,37,45,61-63
+backend/tests/integration/schema_lifecycle/test_migration_attribute_branch.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 382,386-400
+backend/tests/component/core/changelog/test_diff.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 3,10,23-28,309-336
+backend/tests/integration/message_bus/operations/request/test_proposed_change.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 14,17,39,42,107-111,113-115,157,167-169
+dev/knowledge/backend/git-sync.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 5,9-37,41,46-80,90-274
+  s_5e2325ba340dbd::t_f711336c8d5909 275
+dev/specs/ifc-3105-honour-default-branch/critiques/critique-20260903-143257.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-306
+dev/specs/ifc-3105-honour-default-branch/quickstart.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-209
+backend/infrahub/webhook/models.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 19,402-405,409,412-414,416
+dev/specs/ifc-3184-pool-number-attach/tasks.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 571,576,578,580,582,584,598-608
+frontend/app/src/shared/components/data-viewer/data-viewer.tsx
+  s_5e2325ba340dbd::t_acd78215e1c95c 7,59-61
+backend/infrahub/core/diff/coordinator.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 342-375,400-403,814,824
+backend/infrahub/profiles/mandatory_fields_checker.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 99
+backend/infrahub/git/branch_status.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-24
+changelog/10109.fixed.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1
+docs/docs/branches/resolve-conflicts.mdx
+  s_5e2325ba340dbd::t_acd78215e1c95c 22-28
+dev/specs/ifc-3210-history-rewrite-reconciliation/spec.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-497
+docker-compose.yml
+  s_5e2325ba340dbd::t_acd78215e1c95c 184,282,315,361
+backend/tests/functional/display_labels/test_display_label_task_optimization.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 16,62,70,72-81,90-97
+docs/docs/reference/configuration.mdx
+  s_5e2325ba340dbd::t_acd78215e1c95c 364
+backend/tests/component/git/test_graphql_query_import.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 12,24-25,28-30,69,92,148,164,184,264,270
+backend/tests/unit/core/schema/test_schema_branch.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 14,363-408
+dev/specs/ifc-3185-number-pool-scopes/contracts/number-pool-parameters.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-58
+dev/adr/README.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 28
+docs/docs/proposed-changes/overview.mdx
+  s_5e2325ba340dbd::t_acd78215e1c95c 52
+backend/infrahub/git/base.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 32,34,179,181,189-190,192-195,215-229,422,431-432,459,461,470-475,621-629,717-720,873,882,943-947,950-957,965-969,973,981,984-1004,1014,1138,1212-1216,1241-1242,1245
+frontend/app/src/entities/config/ui/hooks/use-system-theme.test.ts
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-80
+backend/infrahub/git/closure_builder/dispatcher.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 8,29-34,42-44,66-71
+dev/specs/ifc-3220-writeback-failure-handling/spec.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-760
+backend/infrahub/core/diff/conflicts_enricher.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 48-50
+backend/infrahub/git/repository.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 6,13,17,20-27,29,31,34-39,44-47,50-53,57-70,78-86,94-95,105-117,126-128,133-139,148-152,154-193,195-197,202-232,234-276,278,280-299,323-326,328-331,341-342,367-373,381-396,403-450,453-457,460-467,469-472,475,479-489,492,495-497,500-507,511-519,522-535,537-591,593-634,637-656,659-718,720-737,739-745,747-762,764,766-870,872-952,989-992,997-1185,1191-1196,1198-1199,1222-1241,1245-1263,1283-1289,1293-1300,1304-1306,1311-1317,1326-1330,1335-1343,1410-1414,1422,1426-1428,1431-1433,1448,1456
+backend/infrahub/git/tasks.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-2,7-8,33-34,39-46,49,53-60,67,75-80,82,92,100-111,115-124,140-174,180-191,194,196-203,206-207,210-212,233-235,325-326,333,335-352,354-368,371,373-374,376-407,432-435,438,447,460,471-475,477,479-480,482,489-527,533,535,537-543,545,547,555,557-559,562-640,648,655-661,679-691,694,700-709,740-753,806,911,1003-1028,1039-1065,1067-1070,1073,1088-1093,1129,1170,1243,1266,1327,1385,1387,1394,1397-1404,1406-1438,1443,1450-1512,1532-1534,1542,1563,1586,1617-1618
+backend/infrahub/templates/node_applier.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 111
+changelog/6299.fixed.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1
+backend/infrahub/profiles/node_applier.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 83,92,109,218
+frontend/app/src/entities/config/ui/theme-provider.test.tsx
+  s_5e2325ba340dbd::t_acd78215e1c95c 1,3-4,6,10,14-16,24-38,40-44,47-51,60,65-67,69-74,76-78,82-109,111-112,116-126,128-130,133-143,145-149,151-158,160-162,164-166,169-171,173-178,180-182,184-187,189-209,212-215,217-222,224-258
+dev/knowledge/backend/database-schema.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 182-190
+dev/knowledge/backend/code-generation.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 20-22,48,73,75-83
+backend/tests/component/pools/test_number_pool_repository.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-2,4,6,8,11,15,20-21,24,26,28,31-38,41-42,44-205
+backend/infrahub/artifacts/tasks.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 27
+backend/tests/integration/proposed_change/test_merge_selective_regen.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 38,155,157-163,165
+backend/infrahub/core/diff/branch_differ.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 156
+dev/specs/ifc-3105-honour-default-branch/call-sites.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-141
+frontend/app/src/shared/components/editor/markdown/markdown-with-mermaid.tsx
+  s_5e2325ba340dbd::t_acd78215e1c95c 10-12,80,82-85
+backend/infrahub/core/changelog/diff.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 69-70,72-75
+backend/tests/helpers/git.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 3,5-16,19-23,35-285
+backend/infrahub/core/merge/post_merge.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 145,183
+backend/tests/integration/git/test_sync_branch_flag.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 7,43,52
+backend/infrahub/hfid/scoping.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 38-42
+backend/tests/unit/core/diff/test_aggregated_enricher.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-59
+backend/infrahub/proposed_change/branch_diff.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 47,70,79,107
+backend/tests/component/proposed_change/test_validate_artifacts_generation_widening.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-311
+backend/tests/component/git/test_repository_rewrite_branch_safety.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-225
+dev/specs/infp-546-git-solid-refactor/quickstart.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 113,137-139,168,173-174,180-192
+backend/tests/component/git/test_git_repository.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1,4-5,11,13,25-26,28,43,48-51,55-59,61,63-64,69,83,112,116,127,145,163,177,181,189-194,261-263,274-276,286-288,428,457-469,515,521-525,527,529-571,606,612-614,620-638,653-713,738-745,750,752,793,795,820,822,827,830,837-841,845-850,852,854-858,1179-1343,1687,1691
+frontend/app/src/pages/graphql/index.tsx
+  s_5e2325ba340dbd::t_acd78215e1c95c 9-10,20
+pyproject.toml
+  s_5e2325ba340dbd::t_acd78215e1c95c 51
+changelog/+invalid-infrahub-yml-entry.changed.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1
+backend/infrahub/git/models.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 87-90,128-130,143-152,173-175,184,204,224,243,257-274
+tests/e2e/test_theme.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1,3-6,10,23,43-50,52,55-58,63-69,71,79-80,90-91,105-107,109,114-117,119-120,122-126,128-131
+changelog/7498.fixed.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1
+backend/tests/component/core/resource_manager/test_number_pool_object_conversion.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 17,29,168-172
+frontend/app/src/shared/components/display/pan-zoom.tsx
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-59
+backend/tests/integration_docker/test_artifact_composition.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 8,26-27,54-79,165-204
+backend/tests/component/profiles/queries/test_get_profile_data.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-442
+backend/tests/unit/git/test_transform_python_information.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 132,134-135,159,169
+backend/infrahub/git/sync_status.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-47
+CHANGELOG.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 14-52
+backend/tests/unit/core/merge/test_build_coalesced_recompute.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 9-12,96-135
+  s_5e2325ba340dbd::t_8139ba458fbbbb 136-137
+backend/infrahub/core/regeneration/models.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 5,31-65,68,71,76
+backend/infrahub/pools/number_pool_repository.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 5,14,18-19,62-65,191,201,204-219
+backend/infrahub/graphql/field_extractor.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-2,6,13-22,26,31,33-39,41-42,44-46,48-50,55,58,60-63,67-76,78
+backend/infrahub/git/closure_builder/canonicalizer.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 4-7,26,30,43-45
+backend/tests/component/api/test_11_artifact.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1,18,26-32,92-93,98,167,182-396
+  s_5e2325ba340dbd::t_0925f2a6896add 397
+backend/tests/component/git/conftest.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 23,30,41-61,118,131,156,193,225,288,388,426,456
+backend/tests/integration/git/fingerprint_base.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 70
+backend/tests/integration/git/test_git_repository.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 13,26,129-130,140,147,149,157,161,169,209,289,339,394,403,441-442,448-452
+backend/tests/integration/git/test_sync_merged_branch.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 8,45,54
+dev/knowledge/backend/merge-recompute.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 29-33,49,52,78,114
+backend/infrahub/core/diff/calculator.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 38,103,141-146,180,182-187,210
+backend/infrahub/api/artifact.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 8,17,64-67
+backend/tests/component/core/diff/diff_calculator/test_kind_migration.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 2-3,7-9,1507-1583
+backend/infrahub/core/diff/model/path.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 177-185,672-676,683-690,698-703
+  s_5e2325ba340dbd::t_ea73605eca0c47 704
+backend/tests/component/conftest.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 74-75,84,86,245,3173-3178
+  s_5e2325ba340dbd::t_a253c8113703da 3179-3180
+dev/adr/0017-coalesced-merge-rebase-recompute.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 36-39,64-65
+dev/knowledge/frontend/entities-structure.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 146-148
+backend/infrahub/pools/number_pool_attribute_allocator.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 5-10,33,38,43,59,62,79,82-92
+  s_5e2325ba340dbd::t_637e70a8662b0c 93
+backend/tests/component/git/test_sync_repository.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-3,8,10-12,14-15,17-25,27,30,32-42,44-49,51-65,108-113,145-153,157-159,175,178,200,209-1013
+backend/infrahub/core/merge/python_target_sources.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 88-90,101-103,111-113,161,212-214,222
+backend/infrahub/core/attribute.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 672,674,692
+dev/knowledge/backend/selective-merge-regeneration.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 38
+dev/specs/ifc-3105-honour-default-branch/contracts/sync-task-log.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-224
+dev/specs/ifc-3105-honour-default-branch/critiques/critique-20260904-094130.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-296
+dev/specs/ifc-3185-number-pool-scopes/checklists/requirements.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-37
+backend/tests/unit/git/test_repository_branch_resolution.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-96
+backend/tests/fixtures/repos/closure-failure-isolation/initial__main/templates/broken_partial.j2
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-2
+backend/infrahub/generators/tasks.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 52
+backend/infrahub/pools/attribute_pool_applier.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 36,45,49-52,60,79,112,138-142,190,192-194,196-198,203,221,223,227,229,238-240
+dev/specs/ifc-3185-number-pool-scopes/critiques/critique-20261008-2.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-171
+dev/specs/ifc-3220-writeback-failure-handling/quickstart.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-102
+dev/specs/ifc-3220-writeback-failure-handling/tasks.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-737
+backend/infrahub/git/divergence/protocols.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-43
+backend/tests/component/graphql/test_graphql_read_rel_query.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1304-1354
+backend/tests/adapters/repository_record_store.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-54
+backend/tests/functional/hfid/test_hfid_task_optimization.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 16,62,70,72-80,89-96
+changelog/10653.fixed.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1
+dev/specs/infp-546-git-solid-refactor/research.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 50-55,114
+docs/docs/faq/faq.mdx
+  s_5e2325ba340dbd::t_acd78215e1c95c 150,152,156
+dev/knowledge/frontend/shared-components.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 117
+dev/specs/ifc-3210-history-rewrite-reconciliation/alignment-check.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-67
+docs/sidebars.ts
+  s_5e2325ba340dbd::t_acd78215e1c95c 423-425,641
+development/docker-compose-observability-standalone.yml
+  s_5e2325ba340dbd::t_acd78215e1c95c 70-71
+backend/tests/integration/transform/test_transform.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 7,87-90,96-100
+frontend/app/src/entities/config/domain/model/config.ts
+  s_5e2325ba340dbd::t_acd78215e1c95c 5-6
+frontend/app/src/entities/config/ui/theme-provider.tsx
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-72,75,77-83,86,89-98
+backend/infrahub/message_bus/messages/git_repository_connectivity.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 15-17
+backend/tests/component/proposed_change/test_request_generator_definition_check.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 3,32,68-76,194-239,337-340,471-473,569-608
+backend/tests/fixtures/repos/closure-failure-isolation/initial__main/README.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 5
+backend/templates/generate_sdk_errors.j2
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-117
+backend/tests/unit/git/test_merge_preparation.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-558
+changelog/+profile-removal-constraint.fixed.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1
+backend/tests/component/merge_recompute_coalescing/test_merge_submits_coalesced.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 12,19,21-22,33,124,133,137-138,142-147,165-171,173-325,327-332
+backend/tests/unit/message_bus/test_refresh_git_fetch.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-110
+dev/specs/ifc-3105-honour-default-branch/checklists/requirements.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-47
+backend/infrahub/core/query/vertex_metadata.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-19
+backend/infrahub/api/file.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 55
+backend/infrahub/core/node/resource_manager/number_pool.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 7,82,105
+backend/infrahub/computed_attribute/tasks.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 7,380,459-464,470,498,500-502,557-561,591-607
+backend/infrahub/message_bus/operations/git/file.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 22
+backend/tests/helpers/test_client.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 9-10,19-53
+  s_5e2325ba340dbd::t_23a8ac07152311 54-55
+backend/tests/integration/git/test_generator_import_closure.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 14,99,104
+backend/tests/unit/errors/test_sdk_bindings_generator.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-680
+changelog/+failed-branch-blocks-other-branches.fixed.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1
+backend/tests/functional/display_labels/test_display_label_render_failure.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-94
+frontend/app/src/pages/schema/graph.tsx
+  s_5e2325ba340dbd::t_acd78215e1c95c 7,21
+backend/infrahub/display_labels/tasks.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 3,13,19,80-84,169-184
+backend/tests/component/git/test_git_transform.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-2,4,14,16,24-46,48-52,76-80,107,129-133
+schema/schema.graphql
+  s_5e2325ba340dbd::t_acd78215e1c95c 3563-3570,3579-3582,3609-3616,3625-3628,5779-5786,5797-5800,5828-5835,5846-5849,5885-5892,5903-5906,5935-5942,5953-5956,5985-5992,6001-6004,6034-6041,6050-6053,6185-6192,6201-6204,6235-6242,6251-6254,16238-16252,16268-16272,17512-17526,17542-17546,18189-18203,18219-18223,19055-19072,19178-19183,19501-19515,19531-19535,22806-22823,22935-22940,23196-23213,23319-23324,23537-23551,23567-23571,23750-23764,23780-23784,25143-25157,25173-25177,25431-25445,25461-25465,25695-25709,25725-25729,26076-26090,26106-26110
+dev/specs/ifc-3105-honour-default-branch/plan.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-336
+tasks/backend.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 5,373,376,431-513,528-542
+  s_5e2325ba340dbd::t_6a89f78f782d86 543-544
+backend/infrahub/graphql/mutations/repository.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 16,107-133,135-138,140-141,143-144,146-198,200-218,220-235,237
+frontend/app/src/shared/api/rate-limit/retry-notice.ts
+  s_5e2325ba340dbd::t_acd78215e1c95c 21-24,47-54,79
+dev/specs/ifc-3105-honour-default-branch/data-model.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-233
+backend/infrahub/git/divergence/detector.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-86
+backend/infrahub/git/merge_readiness.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-219
+backend/infrahub/transformations/tasks.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 27,52
+backend/tests/unit/core/merge/test_coalesced_python_family.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 101,105,125,189
+changelog/+svg-viewer-pan-zoom.added.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1
+docs/docs/deploy-manage/install-configure/install/community.mdx
+  s_5e2325ba340dbd::t_acd78215e1c95c 65-68
+backend/tests/unit/git/test_remote_refs.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-250
+changelog/10793.fixed.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1
+docs/docs/git-integration/overview.mdx
+  s_5e2325ba340dbd::t_acd78215e1c95c 57-67
+backend/infrahub/core/query/diff.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 927-928,931-938,957,978,1000
+docs/docs/deploy-manage/install-configure/install/observability-stack.mdx
+  s_5e2325ba340dbd::t_acd78215e1c95c 6-7,18,20,26-37,44-47,84
+backend/infrahub/core/protocols.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 131-134
+backend/tests/unit/core/merge/test_python_target_resolution.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 80,85,314-339,409-410
+changelog/+repository-rewrite-record.added.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1
+dev/specs/ifc-3105-honour-default-branch/contracts/connect-time-trunk-validation.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-129
+frontend/app/src/entities/nodes/object-file/ui/object-file.tsx
+  s_5e2325ba340dbd::t_acd78215e1c95c 8,37
+frontend/app/src/shared/components/data-viewer/data-viewer.test.tsx
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-51
+backend/tests/helpers/repository_sync.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-153
+frontend/app/src/shared/api/rest/error-message.ts
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-10
+backend/tests/component/git/test_import_failure_logs.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-704
+dev/specs/ifc-3105-honour-default-branch/contracts/repository-object.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-243
+backend/tests/unit/git/divergence/test_detector.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-240
+dev/specs/infp-546-git-solid-refactor/spec.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 119-131,182-191,193,195,197,201,203,227-228
+backend/infrahub/git/divergence/recorder.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-59
+backend/tests/unit/git/test_branch_reconciliation.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-1143
+backend/infrahub/git/jinja2_entry_template.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-49
+backend/infrahub/git/constants.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 9-23
+backend/tests/integration/proposed_change/test_artifact_regen_e2e.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 8,14,81-82,91,95
+backend/tests/adapters/diff_repository.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-30
+backend/tests/unit/git/test_git_repository.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1,4,7,11,13,23,29,32-35,37,40,47,94,98,156,160,199,203,218-220,224,256,260,272-278,281-377,379-380,382-592,656,661,690-694,706,741,746,749,755-763,777,779-781,851-1050
+backend/infrahub/core/merge/python_target_resolution.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 146-149,157,161,183-185,195,198,266,268,272,274,285-287,312-316
+backend/tests/integration/git/test_import_removed_definitions.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-319
+dev/specs/ifc-3220-writeback-failure-handling/checklists/requirements.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-72
+backend/tests/adapters/cache.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 9-10,14,29
+dev/knowledge/frontend/file-components.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 44,197
+backend/tests/unit/git/closure_builder/test_dispatcher.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 14,19-21,112-113,129-134,165-195
+backend/infrahub/core/migrations/graph/m076_heal_missing_attribute_rows/migration.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 466
+backend/tests/unit/git/divergence/test_recorder.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-108
+dev/specs/ifc-3210-history-rewrite-reconciliation/data-model.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-279
+dev/specs/ifc-3185-number-pool-scopes/contracts/graphql-number-pool-queries.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-204,207-247,249-262
+backend/tests/component/message_bus/operations/git/test_refresh_git_fetch.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 16,25,64-70,83,111-117
+dev/specs/ifc-3220-writeback-failure-handling/plan.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-310
+backend/tests/integration/git/test_git_live_remote.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 5-10,16,19-25,28-34,36-41,43-46,49-50,52,55,57-59,62,66-67,71,73-74,77-78,99-134,207-256,278-402,423,493,507-511,542,569-757,849,855,865,868,884,948-1672
+dev/specs/ifc-3185-number-pool-scopes/alignment-check.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-49
+backend/tests/unit/pools/test_attribute_pool_applier.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 31-32,53,56,61,67,69-75,81,83-100,146,164-177,228,250,260,269-296,306
+backend/infrahub/artifacts/models.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 34-37
+backend/infrahub/config.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 376-379
+.github/workflows/chromatic.yml
+  s_5e2325ba340dbd::t_acd78215e1c95c 44
+backend/tests/adapters/remote_heads.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-76
+backend/tests/integration/proposed_change/test_proposed_change_repository_import_status.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-353
+backend/tests/integration_docker/test_computed_attributes.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 602,604-606,613
+backend/tests/protocols.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 131-134
+backend/tests/unit/git/test_convergence.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-333
+changelog/+read-only-repository-upsert-target.fixed.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1
+.github/workflows/bug-agent-review.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 14,29-116,122-123,202-203
+backend/infrahub/core/regeneration/impact_classifier.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 6,19-20,23-24,96,101-103,111,123-124,127-130
+backend/infrahub/graphql/mutations/profile.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 24-25,36-37,112-121,161-163,169
+backend/infrahub/graphql/mutations/main.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 356-361
+backend/tests/component/proposed_change/test_artifact_definition_generate_members.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 211-249
+dev/specs/ifc-3105-honour-default-branch/spec.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-184
+docs/docs/git-integration/connect-repository.mdx
+  s_5e2325ba340dbd::t_acd78215e1c95c 228-243,252-262
+  s_5e2325ba340dbd::t_a72a306b697d45 263
+docs/docs/reference/message-bus-events.mdx
+  s_5e2325ba340dbd::t_acd78215e1c95c 33,59,86
+changelog/+repository-import-check.added.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1
+frontend/app/src/entities/artifacts/domain/use-cases/get-artifact-file.test.ts
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-39
+dev/specs/ifc-3210-history-rewrite-reconciliation/critiques/critique-20260929-1530.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-317
+frontend/app/src/entities/config/ui/hooks/use-system-theme.ts
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-19
+backend/tests/adapters/message_bus.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 9,41-62
+  s_5e2325ba340dbd::t_5b7769110151fb 63-64
+dev/adr/0020-python-transform-recompute-targets.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-161
+backend/infrahub/message_bus/messages/refresh_git_fetch.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-3,8-18,32-60
+backend/tests/component/core/test_branch_rebase.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-2,16-18,26,30,123-254,258-259,263-264,266-322,494,604
+frontend/app/src/shared/components/editor/markdown/markdown-with-mermaid.test.tsx
+  s_5e2325ba340dbd::t_acd78215e1c95c 1,5-7,33-37,39,41-42,44,50-51,53,59-60,64-65,67-68,82,85-86,88
+frontend/app/src/shared/components/editor/markdown/mermaid-diagram.tsx
+  s_5e2325ba340dbd::t_acd78215e1c95c 4,17-19
+  s_5e2325ba340dbd::t_f963eb971f991a 3
+dev/specs/ifc-3185-number-pool-scopes/research.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-133
+backend/tests/unit/git/test_graph_settings.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-125
+backend/tests/unit/git/test_transform_jinja2_information.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 11,13
+backend/infrahub/computed_attribute/scoping.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 252
+backend/tests/integration/git/conftest.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 3,5,7,16-17,21-26,142-147,157-159,182,184-186,198-349,419-430
+  s_5e2325ba340dbd::t_66bd96983d2012 431-432
+backend/tests/component/core/constraint_validators/test_relationship_profiles_removal.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 2-4,8,10,13,16,21,110-113,255-258,338-341,466-469,532-848
+backend/tests/component/profiles/queries/helpers.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-74
+dev/specs/ifc-3185-number-pool-scopes/plan.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-174
+frontend/app/src/entities/user-profile/ui/account-menu.test.tsx
+  s_5e2325ba340dbd::t_acd78215e1c95c 46-54,67-75,89-90,93-101,103,105-117,120-121,123-134,136,138-139,141-143
+frontend/app/src/entities/config/ui/hooks/use-feature-flag.test.ts
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-56
+frontend/app/src/entities/nodes/object-file/domain/use-cases/get-object-file.test.ts
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-41
+backend/infrahub/git/divergence/gateway.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-212
+backend/infrahub/core/migrations/schema/node_attribute_add.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 120
+docs/docs/artifact-file-storage/overview.mdx
+  s_5e2325ba340dbd::t_acd78215e1c95c 80-83
+backend/infrahub/exceptions.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 138-145,477-484,610-637
+backend/tests/component/core/merge/test_post_merge.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 19,139,146,148-158,160-177,180
+backend/infrahub/git/convergence.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-140
+backend/infrahub/pools/schema_number_pool_synchronizer.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 95,97-98
+backend/infrahub/core/diff/repository/repository.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 23,263,300,369,420,548,559,570-575,612-622,627-632
+dev/specs/ifc-3185-number-pool-scopes/contracts/pool-allocation-scope.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-74
+dev/specs/ifc-3220-writeback-failure-handling/alignment-check.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-93
+backend/tests/unit/git/divergence/conftest.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-60
+dev/specs/ifc-3220-writeback-failure-handling/critiques/critique-20261002-1500.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1,3-6,8,10-12,14-15,17,19-49,53,55,57-60,62,64-69,71,73-76,78,80-85,87,89-93,97-167,169,171,173-178,182-194,198-254,258-419,423,425,427-431,433,435-438,442-443
+backend/infrahub/git/divergence/store.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-60
+backend/tests/unit/core/branch/test_tasks.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-62
+backend/tests/component/core/test_branch_merge_remote_heads.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-51
+backend/tests/integration/git/test_auth_and_access.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 110,136
+changelog/+profile-update-mutation.fixed.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1
+.github/workflows/ci-docker-image.yml
+  s_5e2325ba340dbd::t_acd78215e1c95c 242
+backend/infrahub/core/node/__init__.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 503,558,639,671-673,962,980,1378,1380,1387
+backend/infrahub/git/integrator.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 6,11,15-16,36,66-68,84-85,93,97-98,101,249-324,334-343,347-362,364-378,431-434,436-444,480-493,497,500,504,508,513,522,525,528,545-559,576-605,610-631,642,647,655-659,674-675,677-686,688-693,703-707,732-733,749-755,759,762,766-771,773,848-851,858-860,904-909,920-925,1042-1048,1056-1059,1062-1076,1084-1088,1136,1140,1142,1159,1169-1178,1209-1215,1230-1231,1233,1258-1259,1286-1293,1296-1302,1308-1311,1322-1323,1339-1341,1344,1346,1350-1354,1356,1365,1370,1395-1396,1398-1403,1405,1407-1410,1420-1423,1468-1474,1480-1481,1484,1487-1496,1498,1555,1560,1589-1596,1599-1602,1604-1611,1620-1624,1652-1653,1669-1675,1679,1682,1687-1692,1694,1697,1699-1710,1715-1718,1743,1754-1755,1759-1761,1766-1768,1774-1782,1786-1787,1816,1869-1870,1873-1884,1886,1896-1898,1906-1919,1921,2373-2391,2436-2440
+backend/tests/adapters/lock/mocks/importer.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 40-55
+backend/tests/adapters/python_target_sources.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 67,73-74,95
+backend/infrahub/hfid/tasks.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 10,16,154-169
+backend/tests/component/graphql/profiles/test_mutation_update.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-191
+backend/tests/unit/git/divergence/test_gateway.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-244
+changelog/+merge-push-rejection-not-recorded.fixed.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1
+backend/tests/integration/proposed_change/test_artifact_regen_watch.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 8,14,78-79,88,98,158-159,168,172
+backend/infrahub/repositories/create_repository.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 5,26-44,77
+backend/tests/component/computed_attribute/test_coalesced_recompute_python.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 11,14,24-25,28,36,40,45,61,179-189,218,220-222,363-382,390-398,400-415,418-423,426-432,731-732,734-735,739-744,749,751,753-754,758-759,767-808,810
+changelog/+ifc-3105-skipped-branch-task-log.added.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1
+backend/tests/helpers/schema/core_api.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-20
+dev/knowledge/backend/async-tasks.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 337,343,346
+backend/infrahub/cli/db.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 31-35,48,72,558-648
+  s_5e2325ba340dbd::t_0ba7a7b7895efa 649-650
+backend/tests/adapters/lock/mocks/__init__.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1,3
+dev/specs/ifc-3210-history-rewrite-reconciliation/plan.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-193
+dev/specs/ifc-3220-writeback-failure-handling/contracts/internal-interfaces.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-537
+dev/specs/infp-46-dark-theme-completion/tasks.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 128
+backend/infrahub/git/commit_id.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-8
+backend/tests/unit/git/test_tasks.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 5,7,10-19,52,56-57,120-305
+dev/specs/ifc-3105-honour-default-branch/baseline.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-46
+dev/specs/infp-46-dark-theme-completion/handoff-schema-visualizer.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 74-76,115-119,121,129
+frontend/app/src/entities/config/domain/model/theme.ts
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-8
+development/docker-compose.yml
+  s_5e2325ba340dbd::t_acd78215e1c95c 129
+backend/infrahub/api/storage/storage.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 11,14,47-49
+backend/tests/component/core/merge/test_repository_merge_dispatcher.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-199
+dev/specs/ifc-3210-history-rewrite-reconciliation/contracts/repository_rewrite.graphql
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-101
+backend/infrahub/core/query/node.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 41,276,300-301
+backend/tests/adapters/lock/__init__.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1,6
+dev/specs/ifc-3210-history-rewrite-reconciliation/quickstart.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-192
+backend/infrahub/proposed_change/tasks.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 79-80,217-218,629-644,650,743,828,830-831,924,1123,1125,1204-1217,1584-1589
+backend/infrahub/errors/sdk_bindings.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-514
+dev/specs/ifc-3220-writeback-failure-handling/contracts/repository_delivery.graphql
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-171
+backend/tests/component/graphql/mutations/test_repository.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 3,17-23,27-32,34,40-42,289-655
+changelog/+expand-directive-through-fragment.fixed.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1
+backend/tests/unit/git/divergence/test_models.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-162
+dev/specs/ifc-3210-history-rewrite-reconciliation/tasks.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-863
+backend/infrahub/git/remote_refs.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-193
+dev/specs/ifc-3220-writeback-failure-handling/data-model.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-411
+frontend/app/src/shared/api/rate-limit/retry-notice.test.ts
+  s_5e2325ba340dbd::t_acd78215e1c95c 150-167
+docs/docs/reference/metrics.mdx
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-95
+frontend/app/src/entities/config/ui/theme-menu-item.tsx
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-66
+dev/specs/ifc-3105-honour-default-branch/critiques/critique-20260904-104854.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-528
+backend/tests/functional/core/graphql_query/test_node_id_query.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-65
+backend/tests/component/core/resource_manager/test_number_pool_query.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 10,25,27,40,134-162,319,326,340,343-348,355,367,370-374,381,384-385,399,402-407,414,417-418,445-451,458,461-462,478,481-484,547-639,821
+dev/specs/infp-546-git-solid-refactor/tasks.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 181,183,185,187-197
+docs/docs/release-notes/infrahub/release-1_11_4.mdx
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-59
+frontend/app/src/entities/artifacts/ui/artifact-file.tsx
+  s_5e2325ba340dbd::t_acd78215e1c95c 6,29
+backend/tests/component/git/test_sync_lock_scope.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 7,9,11,28-31
+backend/infrahub/git/import_errors.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-131
+backend/infrahub/git/graph_settings.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-72
+changelog/+relationship-peer-paging.fixed.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 1
+docs/docs/reference/infrahub-cli/infrahub-db.mdx
+  s_5e2325ba340dbd::t_acd78215e1c95c 25,169-196
+  s_5e2325ba340dbd::t_1a0336009b69c9 197-198
+backend/infrahub/git/sync.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 4,7-8,10,14-15,20-22,27-108,121-127,130-173,209-214,231-234,246-252,255-264,266-274,276-281,284-286,288-301,303-304,306-312
+backend/infrahub/core/relationship/constraints/profiles_removal.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 3,9-10,12,20,55-60,64-70,73-132,152,159,171-174,195-196
+backend/tests/component/core/regeneration/test_impact.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 169,198,227,255,386
+dev/knowledge/backend/branch-status.md
+  s_5e2325ba340dbd::t_acd78215e1c95c 98
+backend/infrahub/core/property.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 53-54
+backend/tests/functional/computed_attributes/test_computed_attribute_render_failure.py
+  s_5e2325ba340dbd::t_acd78215e1c95c 1-104
+.github/workflows/bug-agent-review.lock.yml
+  s_5e2325ba340dbd::t_c044424e61cc9e 1,39,63-64,85-87,93-94,306,381,397,419,457-466,1142,1654,1691-1787
+python_sdk
+  s_5e2325ba340dbd::t_a6785ca02d8bb7 1
+python_testcontainers/uv.lock
+  s_5e2325ba340dbd::t_eaf24dc38f5322 1756,1758,1760
+uv.lock
+  s_5e2325ba340dbd::t_564af918b864fe 1123,1128,1130,1623,2448,2450,2452,3444,3446,3448,4504,4506,4508
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "17e09e6d50a864bb5e8fa234109cecd8b36874af",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_5e2325ba340dbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4f13d975-fc0a-496a-904d-6e1b5a6aec1e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

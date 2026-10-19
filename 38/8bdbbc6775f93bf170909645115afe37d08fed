@@ -1,0 +1,66 @@
+dev/specs/005-enterprise-licensing-infp-472/alignment-check.md
+  s_1df8eb94da3d51::t_8cbaba70e314aa 1-35
+dev/specs/005-enterprise-licensing-infp-472/critiques/critique-20261004-1100.md
+  s_1df8eb94da3d51::t_3a531e837db57f 183-196
+  s_1df8eb94da3d51::t_70149cc94fe8cf 1-33,35-39,41-43,45-47,49-53,55-63,65-70,72-78,80-84,86-88,90-95,97-101,103-152,154-158,160-168,170-174,176-182
+  s_1df8eb94da3d51::t_282f7e28dacc58 34,40,44,48,54,64,71,79,85,89,96,102,153,159,169,175
+dev/specs/005-enterprise-licensing-infp-472/spec.md
+  s_1df8eb94da3d51::t_063cf28a42719c 203
+  s_1df8eb94da3d51::t_269e6104c13ed0 27
+  s_1df8eb94da3d51::t_1aeed341434570 158
+  s_1df8eb94da3d51::t_548b79b2327623 39
+  s_1df8eb94da3d51::t_8a555d37631db0 216
+  s_1df8eb94da3d51::t_d15898c1afa402 1-26,28-38,40-137,140-144,146-152,154-157,159-162,164-174,176,178-186,188-202,204-215,217-228
+  s_1df8eb94da3d51::t_c549a851b74073 145,153,163,175,187
+  s_1df8eb94da3d51::t_2a747341066b5e 177
+  s_1df8eb94da3d51::t_f73058311894c1 138-139
+dev/specs/005-enterprise-licensing-infp-472/contracts/api-info.md
+  s_1df8eb94da3d51::t_d33b35417ccac7 1-54
+dev/specs/005-enterprise-licensing-infp-472/plan.md
+  s_1df8eb94da3d51::t_e964df9a073b19 142-148
+  s_1df8eb94da3d51::t_64cfca9468eb56 2,4,6-8,10-12,14,16,18,20,22,24,26,28,33,35-39,53-58,73-77,121-122,151-153,155
+  s_1df8eb94da3d51::t_4048d80d658980 1,3,5,9,13,15,17,19,21,23,25,27,29-32,34,40-52,59-72,78-120,123-141,149-150,154,156-157
+dev/specs/005-enterprise-licensing-infp-472/research.md
+  s_1df8eb94da3d51::t_25f831843b25d3 25
+  s_1df8eb94da3d51::t_1fa037e855606f 1-24,26-92
+dev/specs/005-enterprise-licensing-infp-472/contracts/upgrade-output.md
+  s_1df8eb94da3d51::t_d744a0b10b5e90 1-49
+dev/specs/005-enterprise-licensing-infp-472/contracts/license-service.md
+  s_1df8eb94da3d51::t_5094573e34bea9 53-58
+  s_1df8eb94da3d51::t_4740a2fc6a8d74 1-52,59-63
+dev/specs/005-enterprise-licensing-infp-472/data-model.md
+  s_1df8eb94da3d51::t_a789a1e552a04d 47
+  s_1df8eb94da3d51::t_8c6e75c6160f6e 1-32,35-46,48-56,58,61-62,69-121
+  s_1df8eb94da3d51::t_653f4862c48994 33-34
+  s_1df8eb94da3d51::t_f7745be9d3b7f7 57,59-60,63-68
+dev/specs/005-enterprise-licensing-infp-472/quickstart.md
+  s_1df8eb94da3d51::t_041fe0fc3b94ad 1-66
+dev/specs/005-enterprise-licensing-infp-472/contracts/telemetry-license-block.md
+  s_1df8eb94da3d51::t_b8be2ef628ebc2 1-36
+dev/specs/005-enterprise-licensing-infp-472/contracts/frontend-banner.md
+  s_1df8eb94da3d51::t_660f666d325de8 1-9,11-48
+  s_1df8eb94da3d51::t_f7d517e8ef62ab 10
+dev/specs/005-enterprise-licensing-infp-472/checklists/requirements.md
+  s_1df8eb94da3d51::t_d2a892b65d66ea 1-36
+dev/specs/005-enterprise-licensing-infp-472/tasks.md
+  s_1df8eb94da3d51::t_ff8f5e94d7d68a 1-336
+dev/specs/005-enterprise-licensing-infp-472/contracts/response-header.md
+  s_1df8eb94da3d51::t_9a0076fb4cf707 1-22,24
+  s_1df8eb94da3d51::t_edd9dc393a4384 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "388bdbbc6775f93bf170909645115afe37d08fed",
+  "prompts": {},
+  "sessions": {
+    "s_1df8eb94da3d51": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6a82980-5a58-459a-a19c-297b9025dff8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}
