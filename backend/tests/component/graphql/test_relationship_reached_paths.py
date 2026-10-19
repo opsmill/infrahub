@@ -171,6 +171,29 @@ SFP_FRAGMENT_QUERIES = [
 ]
 
 
+# Each query spreads a fragment that is not defined, which GraphQL validation reports; the reads around
+# the spread are still analyzed.
+SFP_BESIDE_A_SPREAD_OF_AN_UNDEFINED_FRAGMENT = [
+    QueryCase(
+        name="spread_in_an_inline_fragment",
+        query="""
+query { TestingDevice { edges { node { interfaces { edges { node {
+    ... on TestingPhysicalInterface { sfp { node { serial_number { value } } } ...DoesNotExist }
+} } } } } } }
+""",
+    ),
+    QueryCase(
+        name="spread_under_a_field",
+        query="""
+query { TestingDevice { edges { node { interfaces { edges { node {
+    ... on TestingPhysicalInterface { sfp { node { serial_number { value } } } }
+    ...DoesNotExist
+} } } } } } }
+""",
+    ),
+]
+
+
 async def _query_report(db: InfrahubDatabase, branch: Branch, query: str) -> GraphQLQueryReport:
     schema_branch = registry.schema.get_schema_branch(name=branch.name)
     gql_params = await prepare_graphql_params(db=db, branch=branch)
@@ -306,6 +329,14 @@ class TestReachedPathsFromQueryDeviceSchema(TestInfrahubApp):
 
     @pytest.mark.parametrize("case", SFP_FRAGMENT_QUERIES, ids=lambda case: case.name)
     async def test_a_field_read_inside_a_fragment_is_in_the_read_set(
+        self, db: InfrahubDatabase, default_branch: Branch, device_schema: None, case: QueryCase
+    ) -> None:
+        report = await _query_report(db, default_branch, case.query)
+
+        assert report.requested_read[TestKind.SFP].attributes == {"serial_number"}
+
+    @pytest.mark.parametrize("case", SFP_BESIDE_A_SPREAD_OF_AN_UNDEFINED_FRAGMENT, ids=lambda case: case.name)
+    async def test_a_spread_of_an_undefined_fragment_is_skipped(
         self, db: InfrahubDatabase, default_branch: Branch, device_schema: None, case: QueryCase
     ) -> None:
         report = await _query_report(db, default_branch, case.query)

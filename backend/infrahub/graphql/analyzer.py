@@ -892,6 +892,8 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
                 self._populate_inline_fragment_node(node=inline_fragment_node, query_node=query_node)
             )
         for fragment_spread_node in selections.fragment_spread_nodes:
+            if fragment_spread_node.name.value not in self._named_fragments:
+                continue
             query_node.children.append(
                 self._populate_fragment_spread_node(node=fragment_spread_node, query_node=query_node)
             )
