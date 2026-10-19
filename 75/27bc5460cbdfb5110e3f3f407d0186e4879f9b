@@ -1,0 +1,39 @@
+backend/tests/component/core/regeneration/impact/test_fixed_root_impact.py
+  s_fb819cbbe44071::t_f12a2d96e5e64b 1-231
+  s_fb819cbbe44071::t_48ab735df368ef 232-288
+backend/tests/unit/core/regeneration/test_fixed_root_resolver.py
+  s_fb819cbbe44071::t_2b07881ca871ad 1-111
+  s_fb819cbbe44071::t_6e793ff4611278 112
+backend/infrahub/core/regeneration/classifier_builder.py
+  s_fb819cbbe44071::t_e635aa20a86147 7,26-27,45-50,76-77,105-106,116-117,122-123,126-134,151,164-166
+backend/infrahub/core/regeneration/impact.py
+  s_fb819cbbe44071::t_85bd3ab82c9d5a 3-5,17-18,87-99,147-189
+backend/infrahub/core/regeneration/impact_classifier.py
+  s_fb819cbbe44071::t_babea6cbb10bf5 7,12,26-39,44-45,49,74,99-103,112-114,130-137,145,165-199,205-209
+backend/infrahub/core/regeneration/models.py
+  s_fb819cbbe44071::t_614db8d946aaef 57,83-87
+backend/infrahub/core/regeneration/predicates.py
+  s_fb819cbbe44071::t_be22e965f5a56a 100-111
+backend/tests/unit/core/regeneration/test_classifier_builder.py
+  s_fb819cbbe44071::t_992e3c39dacd3c 3,11,28-29,290-291,294-297,406-443,455-456
+backend/tests/unit/core/regeneration/test_impact_classifier.py
+  s_fb819cbbe44071::t_11649d04be6fd7 12,18,90-112,331-425,438-440
+changelog/+regen-fixed-root-reads.fixed.md
+  s_fb819cbbe44071::t_1c109f54b204e9 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7527bc5460cbdfb5110e3f3f407d0186e4879f9b",
+  "prompts": {},
+  "sessions": {
+    "s_fb819cbbe44071": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65a68a98-fa9c-4142-8730-a06dd94f203b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
