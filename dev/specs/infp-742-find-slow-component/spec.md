@@ -90,6 +90,21 @@ Decided by Daniel, after the approval:
 - Q: Does the SDK add a dependency on OpenTelemetry? → A: No. It uses OpenTelemetry only when the
   caller's process already has it (FR-001).
 
+### Session 2026-10-19
+
+Source: [review by Fatih Acar on GitHub](https://github.com/opsmill/infrahub/pull/11097#discussion_r4294412803) and the
+[decision in Slack](https://opsmillworkspace.slack.com/archives/C08075KCU3A/p1792394441879849?thread_ts=1792142065.171369&cid=C08075KCU3A).
+
+- Q: How long does the stack keep traces, now that Compose turns tracing on? → A: 96 hours, as today,
+  in Compose and in the Helm chart. The two must use the same values. The retention is not raised,
+  because disk use was the concern (FR-037).
+- Q: How much disk do traces use? → A: Not known. The cost measurement records the Tempo disk use per
+  1,000 traced requests (SC-006).
+- Q: Does Loki keep logs as long as traces? → A: No. Loki keeps logs 24 hours, as today, because of the
+  impact on disk use. For a trace older than 24 hours, the link from the trace to its log lines finds
+  nothing. Fatih proposed the same retention for both, possibly 1 week; the values are decided after
+  customer feedback in [INBOX-388](https://opsmill.atlassian.net/browse/INBOX-388).
+
 ## Personas
 
 From section "Personas" of the design document and "Customer use cases" of the card:
@@ -382,6 +397,9 @@ is traced, then check that the default applies after 2 minutes.
   32 lowercase hexadecimal characters. Queries and alerts that operators wrote against the old form
   must change. This is a breaking change: the changelog names it as one, with the old and the new
   form, and the upgrade notes tell operators to update their queries.
+- **Trace older than 24 hours**: Loki keeps logs 24 hours and Tempo keeps traces 96 hours, so the
+  link from such a trace to its log lines finds nothing. The spans stay readable. The link from a log
+  line to its trace always works (FR-037).
 - **Upgrade**: no data migration. Provisioned dashboards are replaced, so edits to them are lost, as
   today.
 
@@ -508,6 +526,9 @@ is traced, then check that the default applies after 2 minutes.
 - **FR-036**: The endpoints that read, set and clear the temporary ratio MUST be public: listed in the
   API schema, under a troubleshooting area of the API, and documented with what they do, who may call
   them and why they exist. Infrahub MUST NOT add a hidden REST endpoint for this feature.
+- **FR-037**: The observability stack MUST keep traces 96 hours and logs 24 hours, the values of today,
+  with the same values in the Compose files and in the Helm chart. The documentation of the stack MUST
+  give both values, the setting that changes each one, and the measured Tempo disk use (SC-006).
 
 ### Key Entities
 
@@ -542,7 +563,8 @@ is traced, then check that the default applies after 2 minutes.
 - **SC-006**: At the default sampling ratio, tracing adds at most 5 % to the API p95 response time and
   at most 5 % to CPU use, compared with tracing off on the same load. If the measurement is higher, the
   default ratio is lowered until it passes. This is measured before tracing is turned on for more
-  operators.
+  operators. The same measurement records the Tempo disk use per 1,000 traced requests, at the default
+  ratio and at ratio 1.
 - **SC-007**: From a trace, the operator reaches its log lines, and from a task worker log line, its
   trace, in one step, for every trace ID including those that start with a zero.
 - **SC-008**: Measured after release: for the slowness reports that OpsMill support receives in the
@@ -587,6 +609,8 @@ is traced, then check that the default applies after 2 minutes.
   (phase 7, D8, D10): not in the 1.13 goals of the card.
 - **Sampling by GraphQL operation**: a follow-up, not planned.
 - **Publishing the dashboards for import**, for example on grafana.com: a follow-up, not planned.
+- **Changing how long the stack keeps logs and traces**: [INBOX-388](https://opsmill.atlassian.net/browse/INBOX-388), decided after customer feedback
+  (clarification of 2026-10-19).
 - **Alerting**: [INFP-746](https://opsmill.atlassian.net/browse/INFP-746) (design document, section 6).
 - **A maximum number of concurrent flow runs per task worker**: the start delay per queue shows
   saturation instead (design document, section 6).

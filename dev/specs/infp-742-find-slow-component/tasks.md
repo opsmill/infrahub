@@ -272,10 +272,10 @@ checks.
 - [ ] T085 [P] Create `dev/knowledge/backend/observability.md` from the draft without the Redis exporter and the Grafana MCP server, and with: `[MASKED]`, span event masking, URL query strings in log messages, the `trace_id` format, the public `/api/troubleshooting` endpoints, and the `--config` requirement of gunicorn for B9 (research R10); link it in `dev/README.md` and `dev/knowledge/backend/architecture.md`, and port the draft changes to `dev/knowledge/backend/api-backpressure.md`, `backend/AGENTS.md` and `development/grafana/AGENTS.md` without the Grafana MCP content
 - [ ] T086 After both SDK pull requests merge on `infrahub-develop`: in `python_sdk/`, check out `origin/infrahub-develop`, check that it contains both SDK commits, and commit the new `python_sdk` pointer on the Infrahub branch (root `AGENTS.md`, "Submodules")
 - [ ] T087 [P] Update `docs/docs/deploy-manage/run-observe/metrics.mdx` with the new and changed metrics of [contracts/metrics.md](contracts/metrics.md) and a short "which panel answers which question" section, using the `opsmill-docs-writing-infrahub-docs` skill
-- [ ] T088 [P] Update `docs/docs/deploy-manage/install-configure/install/observability-stack.mdx`: tracing on with the stack and `INFRAHUB_TRACE_SAMPLE_RATIO`; the Grafana data source settings of B10; how to raise the ratio during an incident (`infrahubctl` and the REST call); how to check every process applied it from the log line (FR-035); how to reduce the cost of tracing (FR-034); no Grafana MCP or Redis content
+- [ ] T088 [P] Update `docs/docs/deploy-manage/install-configure/install/observability-stack.mdx`: tracing on with the stack and `INFRAHUB_TRACE_SAMPLE_RATIO`; the Grafana data source settings of B10; how to raise the ratio during an incident (`infrahubctl` and the REST call); how to check every process applied it from the log line (FR-035); how to reduce the cost of tracing (FR-034); the trace retention (96 hours) and the log retention (24 hours) with the setting that changes each, and the Tempo disk use measured by T091 (FR-037); no Grafana MCP or Redis content
 - [ ] T089 [P] Create `docs/docs/deploy-manage/run-observe/own-monitoring.mdx`, "Send Infrahub telemetry to your own monitoring" (metrics scraping, traces to any OTLP collector, logs with `trace_id`, the data source settings), and add it to `docs/sidebars.ts` next to "Metrics" (FR-034)
 - [ ] T090 Update `docs/docs/reference/metrics.mdx` from the draft (it is not generated) and run `uv run invoke docs.lint` and `uv run invoke docs.validate`
-- [ ] T091 Measure the cost of tracing as [research.md](research.md) R9 says (three configurations, the named load) and record the host, the commit and the results in `specs/infp-742-find-slow-component/measurements.md`; if tracing at 0.1 adds more than 5 %, lower the default in `backend/infrahub/config.py` and the Compose files and measure again (SC-006)
+- [ ] T091 Measure the cost of tracing as [research.md](research.md) R9 says (three configurations, the named load) and record the host, the commit and the results, including the Tempo disk use per 1,000 traced requests at ratio 0.1 and 1, in `specs/infp-742-find-slow-component/measurements.md`; if tracing at 0.1 adds more than 5 %, lower the default in `backend/infrahub/config.py` and the Compose files and measure again (SC-006)
 - [ ] T092 Run `/pre-ci` and fix every failure
 - [ ] T093 Daniel runs the `opsmill-dev-guiding-manual-tests` skill on the Infrahub branch, with `python_sdk` on `origin/infrahub-develop` (needs T086), using the checks of [quickstart.md](quickstart.md)
 - [ ] T094 Before release: quickstart manual check 7 (each dashboard in a Grafana with only Prometheus) and manual check 1 repeated with the file downloaded from `https://infrahub.opsmill.io/?observability=true` (needs the answer to T036)
@@ -312,12 +312,16 @@ infrahub:            develop ← spec ← A1 ← B1 ← B2 ← A2 ← A3 ← C1
 infrahub-sdk-python: infrahub-develop ← S1 ← S2
 ```
 
-- Why this order: the spec is reviewed in its own layer but lands together with A1, never alone. A1
-  comes first because the masking must reach `develop` before tracing reaches more operators (FR-011).
-  B1 and B2 depend on nothing else and can merge early. A2 is fully tested only with S1, and A3 is
-  fully used only with S2, so a slow SDK review blocks only the top of the stack. C1 is last.
-- Merging: bottom up, with `gh stack merge <PR> --yes`, which merges that pull request and every
-  unmerged one below it. Reviews of all layers can run at the same time.
+- Why this order: A1 comes first because the masking must reach `develop` before tracing reaches more
+  operators (FR-011). A2 is fully tested only with S1, and A3 is fully used only with S2. C1 is last.
+- Merging: the whole stack merges at once, after the top pull request is validated, with
+  `gh stack merge <top PR> --yes`, which merges that pull request and every unmerged one below it
+  (proposed by Fatih Acar on 2026-10-19 in
+  [Slack](https://opsmillworkspace.slack.com/archives/C08075KCU3A/p1792395618543469?thread_ts=1792142065.171369&cid=C08075KCU3A),
+  accepted by Daniel). CI runs the large test jobs only on the top pull request of a stack
+  (`dev/guidelines/git-workflow.md`, "Stacked Pull Requests"), and the changelog fragments are created
+  in the top layer. Reviews of all layers can run at the same time, so each layer can be approved
+  before the merge.
 - A fix in a lower layer is made in that layer, then `gh stack rebase --upstack` replays the layers
   above. Each layer ticks its own tasks in this file and records its own spec updates.
 - A2 is tested with `python_sdk` on the S1 branch; it does not wait for S1 to merge. Only C1 commits

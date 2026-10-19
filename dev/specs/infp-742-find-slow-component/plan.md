@@ -251,12 +251,16 @@ infrahub:            develop ← spec ← A1 ← B1 ← B2 ← A2 ← A3 ← C1
 infrahub-sdk-python: infrahub-develop ← S1 ← S2
 ```
 
-- Why this order: the spec is reviewed in its own layer but lands together with A1, never alone. A1
-  comes first because the masking must reach `develop` before tracing reaches more operators (FR-011).
-  B1 and B2 depend on nothing else and can merge early. A2 is fully tested only with S1, and A3 is
-  fully used only with S2, so a slow SDK review blocks only the top of the stack. C1 is last.
-- Merging: bottom up, with `gh stack merge <PR> --yes`, which merges that pull request and every
-  unmerged one below it. Reviews of all layers can run at the same time.
+- Why this order: A1 comes first because the masking must reach `develop` before tracing reaches more
+  operators (FR-011). A2 is fully tested only with S1, and A3 is fully used only with S2. C1 is last.
+- Merging: the whole stack merges at once, after the top pull request is validated, with
+  `gh stack merge <top PR> --yes`, which merges that pull request and every unmerged one below it
+  (proposed by Fatih Acar on 2026-10-19 in
+  [Slack](https://opsmillworkspace.slack.com/archives/C08075KCU3A/p1792395618543469?thread_ts=1792142065.171369&cid=C08075KCU3A),
+  accepted by Daniel). CI runs the large test jobs only on the top pull request of a stack
+  (`dev/guidelines/git-workflow.md`, "Stacked Pull Requests"), and the changelog fragments are created
+  in the top layer. Reviews of all layers can run at the same time, so each layer can be approved
+  before the merge.
 - A fix in a lower layer is made in that layer, then `gh stack rebase --upstack` replays the layers
   above. Each layer ticks its own tasks in this file and records its own spec updates.
 - A2 is tested with `python_sdk` on the S1 branch; it does not wait for S1 to merge. Only C1 commits

@@ -154,6 +154,11 @@ not use them.
   - This feature with tracing on at ratio 0.1: the cost SC-006 limits.
 - **Note**: The design document notes that each query produces two spans today, which doubles the span
   count.
+- **Disk use** (clarification of 2026-10-19): in the runs at ratio 0.1, and in one more run at ratio 1,
+  record the size of the Tempo data volume (`tempo_data`) before and after the load, and compute the
+  disk use per 1,000 traced requests. Operators use it to compute the disk that 96 hours of traces
+  need, and it shows whether the 10Gi Tempo volume of the Helm chart is enough. The retention stays
+  96 hours whatever the result; changing it is [INBOX-388](https://opsmill.atlassian.net/browse/INBOX-388).
 
 ## R10. The Helm chart starts gunicorn with the Infrahub configuration (FR-018)
 
