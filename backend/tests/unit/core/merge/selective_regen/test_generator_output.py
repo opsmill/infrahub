@@ -199,7 +199,6 @@ def _generator_run(name: str) -> RequestGeneratorDefinitionRun:
             execute_in_proposed_change=False,
             execute_after_merge=True,
             query_id="q-1",
-            query_models=[],
             query_payload="query {}",
             repository_id="repo-1",
         ),
