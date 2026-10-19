@@ -946,6 +946,28 @@ LIVE_ATTRIBUTE_VALUES_QUERY = """
 """
 
 
+# Reads `attr`, `branch_windows`, `$at` and `$default_branch_name`, and returns `value` and `branch`; joined to
+# LIVE_ATTRIBUTE_VALUES_QUERY by a UNION, it adds the branches inheriting an open default-branch value.
+INHERITED_OPEN_VALUES_QUERY = """
+            // --------------
+            // A branch that forked while the default branch's edge was open, and has written no edge of its own
+            // since, inherits the value without an edge carrying its name
+            // --------------
+            MATCH (attr)-[hv:HAS_VALUE {branch: $default_branch_name}]->(av)
+            WHERE hv.status = "active"
+            AND hv.from <= $at AND (hv.to IS NULL OR hv.to > $at)
+            WITH hv, av, branch_windows, COLLECT {
+                MATCH (attr)-[hiding:HAS_VALUE]->()
+                WHERE hiding.from <= $at AND (hiding.to IS NULL OR hiding.to > $at)
+                RETURN hiding.branch AS branch_name
+            } AS hiding_branches
+            UNWIND [window IN branch_windows WHERE window.origin_name = hv.branch
+                AND hv.from <= window.fork_at
+                AND NOT window.name IN hiding_branches | window.name] AS branch
+            RETURN av.value AS value, branch
+"""
+
+
 def reserved_values_query(
     pool_id: str,
     attribute_name: str,
@@ -1026,26 +1048,14 @@ class NumberPoolAttributeBranchValuesQuery(Query):
         CALL (attr, deleting_branches, branch_windows) {
 %(live_values)s
             UNION
-            // --------------
-            // A branch that forked while the default branch's edge was open, and has written no edge of its own
-            // since, inherits the value without an edge carrying its name
-            // --------------
-            MATCH (attr)-[hv:HAS_VALUE {branch: $default_branch_name}]->(av)
-            WHERE hv.status = "active"
-            AND hv.from <= $at AND (hv.to IS NULL OR hv.to > $at)
-            WITH hv, av, branch_windows, COLLECT {
-                MATCH (attr)-[hiding:HAS_VALUE]->()
-                WHERE hiding.from <= $at AND (hiding.to IS NULL OR hiding.to > $at)
-                RETURN hiding.branch AS branch_name
-            } AS hiding_branches
-            UNWIND [window IN branch_windows WHERE window.origin_name = hv.branch
-                AND hv.from <= window.fork_at
-                AND NOT window.name IN hiding_branches | window.name] AS branch
-            RETURN av.value AS value, branch
-        }
+%(inherited_values)s        }
         WITH DISTINCT attr.uuid AS attribute_id, branch, value
         WHERE value <> $null_value
-        """ % {"live_branches": LIVE_BRANCHES_QUERY, "live_values": LIVE_ATTRIBUTE_VALUES_QUERY}
+        """ % {
+            "live_branches": LIVE_BRANCHES_QUERY,
+            "live_values": LIVE_ATTRIBUTE_VALUES_QUERY,
+            "inherited_values": INHERITED_OPEN_VALUES_QUERY,
+        }
         self.add_to_query(query)
         self.return_labels = ["attribute_id", "branch", "value"]
         self.order_by = ["attribute_id", "branch", "value"]
