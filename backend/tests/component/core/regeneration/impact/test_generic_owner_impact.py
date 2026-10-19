@@ -13,6 +13,8 @@ from tests.helpers.diff_summary import node_diff
 from tests.helpers.schema import RACK_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
+from .helpers import query_report
+
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
 
@@ -167,7 +169,7 @@ class TestGenericOwnerFieldLevelImpact(TestInfrahubApp):
         through it only the owning rack, so a single subscriber comes back.
         """
         resolved = await get_field_level_impacted_subscribers(
-            query_payload=QUERY_RACK_WITH_CARD,
+            query_report=query_report(QUERY_RACK_WITH_CARD, default_branch),
             diff_summary=[
                 node_diff(
                     node_id=dataset["card_id"],
@@ -196,7 +198,7 @@ class TestGenericOwnerFieldLevelImpact(TestInfrahubApp):
         the rack holding the slot.
         """
         resolved = await get_field_level_impacted_subscribers(
-            query_payload=QUERY_RACK_WITH_SLOT_NAMES_ON_THE_GENERIC,
+            query_report=query_report(QUERY_RACK_WITH_SLOT_NAMES_ON_THE_GENERIC, default_branch),
             diff_summary=[
                 node_diff(
                     node_id=dataset["slot_id"],
@@ -224,7 +226,7 @@ class TestGenericOwnerFieldLevelImpact(TestInfrahubApp):
         walks the card back through the slot to the rack holding it, as it does without the fragment.
         """
         resolved = await get_field_level_impacted_subscribers(
-            query_payload=QUERY_RACK_WITH_CARD_THROUGH_A_FRAGMENT,
+            query_report=query_report(QUERY_RACK_WITH_CARD_THROUGH_A_FRAGMENT, default_branch),
             diff_summary=[
                 node_diff(
                     node_id=dataset["card_id"],

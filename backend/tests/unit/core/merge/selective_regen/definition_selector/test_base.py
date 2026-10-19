@@ -13,6 +13,7 @@ from infrahub.core.merge.selective_regen.impacted import ImpactedSubscriberResol
 from infrahub.core.merge.selective_regen.models import GateResult, LoadedDefinition
 from infrahub.core.regeneration.models import TargetSelection, Widening, WideningReason
 from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
+from infrahub.graphql.analyzer import GraphQLQueryReport
 
 if TYPE_CHECKING:
     from infrahub_sdk.diff import NodeDiff
@@ -98,10 +99,13 @@ class _StubImpactedResolver(ImpactedSubscriberResolver):
         self.impacted = impacted
         self.widening = widening
 
+    def analyze(self, *, query_payload: str, target_branch: str) -> GraphQLQueryReport:
+        return GraphQLQueryReport(queries=[])
+
     async def resolve(
         self,
         *,
-        query_payload: str,
+        query_report: GraphQLQueryReport,
         diff_summary: list[NodeDiff],
         target_branch: str,
         subscriber_kind: str,

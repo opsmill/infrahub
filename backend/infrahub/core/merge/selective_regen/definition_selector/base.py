@@ -74,6 +74,9 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
         requests: list[RequestT] = []
         for loaded in loaded_definitions:
             definition = loaded.definition
+            query_report = self.impacted_resolver.analyze(
+                query_payload=definition.query_payload, target_branch=target_branch
+            )
             gate_result = self.gate.evaluate(
                 definition=definition,
                 diff_summary=diff_summary,
@@ -103,7 +106,7 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
             impacted: list[str] = []
             if not regenerate_all_members:
                 selection = await self.impacted_resolver.resolve(
-                    query_payload=definition.query_payload,
+                    query_report=query_report,
                     diff_summary=diff_summary,
                     target_branch=target_branch,
                     subscriber_kind=self.subscriber_kind,

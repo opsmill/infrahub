@@ -13,7 +13,7 @@ from tests.helpers.diff_summary import node_diff
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
-from .helpers import SUBSCRIBER_KIND
+from .helpers import SUBSCRIBER_KIND, query_report
 
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
@@ -128,7 +128,7 @@ class TestRootAndRelationshipReadImpact(TestInfrahubApp):
         query: str = QUERY_CAR_WITH_ITS_OWNER_CARS,
     ) -> TargetSelection:
         return await get_field_level_impacted_subscribers(
-            query_payload=query,
+            query_report=query_report(query, default_branch),
             diff_summary=[
                 node_diff(node_id=car_id, kind=TestKind.CAR, branch=default_branch.name, field_names=["name"])
             ],

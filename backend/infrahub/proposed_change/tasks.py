@@ -84,6 +84,8 @@ from infrahub.git.base import extract_repo_file_information
 from infrahub.git.models import TriggerRepositoryInternalChecks, TriggerRepositoryUserChecks
 from infrahub.git.repository import InfrahubRepository, get_initialized_repo
 from infrahub.git.utils import fetch_artifact_definition_targets, fetch_proposed_change_generator_definition_targets
+from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
+from infrahub.graphql.execution import cached_parse
 from infrahub.log import get_logger
 from infrahub.message_bus.types import (
     ProposedChangeBranchDiff,
@@ -811,7 +813,12 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
 
     diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
     selection = await get_field_level_impacted_subscribers(
-        query_payload=model.artifact_definition.query_payload,
+        query_report=InfrahubGraphQLQueryAnalyzer(
+            query=model.artifact_definition.query_payload,
+            branch=registry.get_branch_from_registry(branch=model.source_branch),
+            schema_branch=registry.schema.get_schema_branch(name=model.source_branch),
+            document=cached_parse(model.artifact_definition.query_payload),
+        ).query_report,
         diff_summary=diff_summary,
         query_branch=model.source_branch,
         subscriber_kind=InfrahubKind.ARTIFACT,
@@ -1102,7 +1109,12 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
 
     diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
     selection = await get_field_level_impacted_subscribers(
-        query_payload=model.generator_definition.query_payload,
+        query_report=InfrahubGraphQLQueryAnalyzer(
+            query=model.generator_definition.query_payload,
+            branch=registry.get_branch_from_registry(branch=model.source_branch),
+            schema_branch=registry.schema.get_schema_branch(name=model.source_branch),
+            document=cached_parse(model.generator_definition.query_payload),
+        ).query_report,
         diff_summary=diff_summary,
         query_branch=model.source_branch,
         subscriber_kind=InfrahubKind.GENERATORINSTANCE,

@@ -13,7 +13,7 @@ from tests.helpers.diff_summary import node_diff
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
-from .helpers import SUBSCRIBER_KIND
+from .helpers import SUBSCRIBER_KIND, query_report
 
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
@@ -157,7 +157,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
         diff_summary: list[NodeDiff],
     ) -> TargetSelection:
         return await get_field_level_impacted_subscribers(
-            query_payload=QUERY_CAR_WITH_OWNER,
+            query_report=query_report(QUERY_CAR_WITH_OWNER, default_branch),
             diff_summary=diff_summary,
             query_branch=default_branch.name,
             subscriber_kind=SUBSCRIBER_KIND,
@@ -204,7 +204,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
         car's own attributes, so the routing narrows to the car's subscriber rather than widening.
         """
         resolved = await get_field_level_impacted_subscribers(
-            query_payload=QUERY_CAR_DISPLAY_LABEL,
+            query_report=query_report(QUERY_CAR_DISPLAY_LABEL, default_branch),
             diff_summary=[
                 node_diff(
                     node_id=dataset["car_id"],
@@ -286,7 +286,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
         even though no field the query reads back changed.
         """
         resolved = await get_field_level_impacted_subscribers(
-            query_payload=QUERY_CARS_BY_OWNER_NAME,
+            query_report=query_report(QUERY_CARS_BY_OWNER_NAME, default_branch),
             diff_summary=[
                 node_diff(
                     node_id=dataset["car_id"],
@@ -318,7 +318,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
         change to ``color`` can move which cars answer the query.
         """
         resolved = await get_field_level_impacted_subscribers(
-            query_payload=QUERY_CARS_BY_ANY_VALUE,
+            query_report=query_report(QUERY_CARS_BY_ANY_VALUE, default_branch),
             diff_summary=[
                 node_diff(
                     node_id=dataset["car_id"],
