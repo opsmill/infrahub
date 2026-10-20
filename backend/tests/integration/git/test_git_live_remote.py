@@ -1892,11 +1892,7 @@ class TestRepositoryRemoteOperations(LiveDeliveryFixtures, TestInfrahubApp):
 
 
 class TestPushQueueEndToEnd(LiveDeliveryFixtures, TestInfrahubApp):
-    """Live tests of the push queue, its recovery and its abandonment, through the API.
-
-    These tests have a class of their own so that they run on another xdist worker, which keeps the integration
-    shard within its time limit.
-    """
+    """Live tests of the push queue, its recovery and its abandonment, through the API."""
 
     async def test_the_merge_after_a_fixed_cause_delivers_the_whole_queue(
         self,
