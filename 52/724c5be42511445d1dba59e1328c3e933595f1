@@ -1,0 +1,24 @@
+pyproject.toml
+  s_fd720d10ce69fc::t_3f37f1119300a5 782-789
+.agents/hooks/test_review_new_pr.py
+  s_fd720d10ce69fc::t_6b2c8d33d88a3d 10,14-16,21
+  s_fd720d10ce69fc::t_c60733a24e8d07 1-9,11-13,17-20,22-65,69-211,213-252,254-255
+  s_fd720d10ce69fc::t_fc03a2133b9671 212,253
+  s_fd720d10ce69fc::t_1f53f6939fffd3 66-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "52724c5be42511445d1dba59e1328c3e933595f1",
+  "prompts": {},
+  "sessions": {
+    "s_fd720d10ce69fc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd1e6989-2412-46dc-874b-841d76996a2e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}
