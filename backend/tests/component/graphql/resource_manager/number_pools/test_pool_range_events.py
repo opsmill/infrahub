@@ -45,6 +45,14 @@ mutation UpsertPool($data: CoreNumberPoolUpsertInput!) {
 }
 """
 
+DELETE_POOL = """
+mutation DeletePool($data: DeleteInput!) {
+  CoreNumberPoolDelete(data: $data) {
+    ok
+  }
+}
+"""
+
 POOL = "pool"
 EVENT_ACTIONS: dict[type[NodeMutatedEvent], str] = {
     NodeCreatedEvent: "created",
@@ -390,3 +398,36 @@ async def test_pool_write_events(
     labels |= await _range_labels(db=db, pool_id=pool_id)
 
     assert _summarize(events=events, labels=labels) == case.expected
+
+
+async def test_pool_deletion_events(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    ticket_schema: None,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+) -> None:
+    pool = await create_range_only_pool(db=db)
+    for start, end in [(1, 10), (20, 30)]:
+        await add_pool_range(db=db, pool=pool, start=start, end=end)
+    labels = {pool.get_id(): POOL} | await _range_labels(db=db, pool_id=pool.get_id())
+
+    _, events = await _execute_with_events(
+        db=db,
+        branch=default_branch,
+        session=session_admin,
+        source=DELETE_POOL,
+        variables={"data": {"id": pool.get_id()}},
+    )
+
+    assert _summarize(events=events, labels=labels) == [
+        SummarizedEvent(
+            action="deleted",
+            node=POOL,
+            fields=("display_label", "human_friendly_id", "name", "node", "node_attribute", "pool_type", "ranges"),
+            attributes={"name": ("ranged", None)},
+            ranges={"range 1-10": "removed", "range 20-30": "removed"},
+        ),
+        SummarizedEvent(action="deleted", node="range 1-10", fields=("display_label", "end", "start"), parent=POOL),
+        SummarizedEvent(action="deleted", node="range 20-30", fields=("display_label", "end", "start"), parent=POOL),
+    ]

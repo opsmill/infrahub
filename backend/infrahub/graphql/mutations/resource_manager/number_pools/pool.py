@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
 from typing_extensions import Self
@@ -564,7 +565,12 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
             )
 
         async with pool_lock(pool_id=number_pool.get_id()):
-            return await super().mutate_delete(info=info, data=data, branch=branch)
+            result = await super().mutate_delete(info=info, data=data, branch=branch)
+        # The pool is deleted through its own copy, which is the one carrying the change log the events are built from.
+        deleted_pool = next(
+            (node for node in result.deleted_nodes if node.get_id() == number_pool.get_id()), result.node
+        )
+        return replace(result, node=deleted_pool)
 
     @classmethod
     async def _delete_obj(cls, graphql_context: GraphqlContext, branch: Branch, obj: Node) -> list[Node]:  # noqa: ARG003
