@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from infrahub.core.query.resource_manager import HeldNumber
+from infrahub.pools.number_pool_usage import HoldingObject
 from infrahub.pools.number_ranges import PoolRange
 from infrahub.pools.range_refusal import (
     BranchValue,
     other_branch_refusal,
+    ranges_leave_held_numbers_refusal,
     tracked_edit_refusal,
     tracked_empty_refusal,
     tracked_reset_refusal,
@@ -122,4 +125,37 @@ def test_a_branch_value_on_a_pool_without_ranges_is_refused_and_says_it_has_none
     assert message == (
         "Cannot use the 'tickets' pool for 'ticket_id': the pool would also apply to branch 'main', where this "
         "object has the value 5, outside the pool's ranges (no ranges)."
+    )
+
+
+def test_a_range_change_leaving_held_numbers_outside_lists_each_holder_with_its_branches() -> None:
+    held = [
+        HeldNumber(attribute_id="attr-1", node_id="node-1", value=150, branches=("main",)),
+        HeldNumber(attribute_id="attr-2", node_id="node-2", value=900, branches=("zeta", "alpha")),
+    ]
+    holders = {
+        "attr-1": HoldingObject(id="node-1", hfid=None, kind="TestingTicket", display_label="first"),
+        "attr-2": HoldingObject(id="node-2", hfid=None, kind="TestingTicket", display_label="second"),
+    }
+
+    message = ranges_leave_held_numbers_refusal(
+        pool_name="tickets", ranges=[HIGH_RANGE, LOW_RANGE], held=held, holders=holders, total=2
+    )
+
+    assert message == (
+        "Changing the ranges of the tickets pool to 1-100, 200-300 would leave numbers it tracks outside every "
+        "range: TestingTicket 'first' holds 150 on branch 'main'; TestingTicket 'second' holds 900 on branches "
+        "'alpha', 'zeta'. Keep a range covering each of these numbers, or change those numbers first."
+    )
+
+
+def test_a_range_change_leaving_more_held_numbers_than_listed_names_an_unknown_holder_by_attribute() -> None:
+    held = [HeldNumber(attribute_id="attr-1", node_id=None, value=5, branches=("main",))]
+
+    message = ranges_leave_held_numbers_refusal(pool_name="tickets", ranges=[], held=held, holders={}, total=4)
+
+    assert message == (
+        "Changing the ranges of the tickets pool to no ranges would leave numbers it tracks outside every range: "
+        "attribute attr-1 holds 5 on branch 'main'; and 3 more. "
+        "Keep a range covering each of these numbers, or change those numbers first."
     )

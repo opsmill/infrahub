@@ -1,6 +1,5 @@
 from typing import Any
 
-import pytest
 from graphql import ExecutionResult
 
 from infrahub.core.branch import Branch
@@ -12,11 +11,8 @@ from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
-from infrahub.exceptions import ValidationError
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.pools.number_pool_repository import NumberPoolRepository
-from infrahub.pools.number_ranges import EffectiveSpace, NumberDomain, PoolRange
-from tests.helpers.agnostic_edges import pool_reservation_edges
 from tests.helpers.graphql import graphql
 from tests.helpers.number_pool import add_pool_range, pool_used_numbers
 from tests.helpers.schema import TICKET, load_schema
@@ -296,47 +292,6 @@ async def test_adding_a_range_to_a_pool_in_use_leaves_allocated_values_untouched
     assert await pool_used_numbers(db=db, pool=pool, branch=default_branch) == [100, 101]
 
 
-async def test_removing_a_range_holding_an_allocated_value_keeps_the_value(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
-) -> None:
-    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
-    await initialize_registry(db=db)
-    pool, held_range = await _create_pool_with_range(db=db, start=205, end=300)
-    await _allocate_ticket(db=db, pool=pool, title="held")
-    await _create_range(db=db, branch=default_branch, pool=pool, start=100, end=200)
-    assert await _range_bounds(db=db, pool=pool) == [(100, 200), (205, 300)]
-
-    result = await _execute(
-        db=db, branch=default_branch, source=DELETE_RANGE, variables={"range_id": held_range.get_id()}
-    )
-
-    assert not result.errors
-    assert result.data
-    assert result.data["CoreNumberPoolRangeDelete"]["ok"]
-    assert await NodeManager.get_one(id=held_range.get_id(), db=db, branch=default_branch) is None
-    assert await _range_bounds(db=db, pool=pool) == [(100, 200)]
-    assert await _ticket_ids(db=db, branch=default_branch) == {"held": 205}
-    assert await pool_used_numbers(db=db, pool=pool, branch=default_branch) == [], (
-        "a number outside every range of the pool is not counted"
-    )
-    (held_ticket,) = await NodeManager.query(db=db, schema=TICKET.kind, branch=default_branch)
-    records = await pool_reservation_edges(
-        db=db, pool_id=pool.get_id(), attribute_id=held_ticket.get_attribute("ticket_id").id
-    )
-    assert [record.is_open for record in records] == [True], "the pool still records that it handed out 205"
-    repository = NumberPoolRepository(db=db)
-    space_around_held = EffectiveSpace(
-        ranges=[PoolRange(id=held_range.get_id(), start=205, end=205)], domain=NumberDomain()
-    )
-    assert await repository.get_used(pool=pool, branch=default_branch, space=space_around_held) == [205]
-
-    # A heavier range covering 205 again counts it and allocates around it.
-    await _create_range(db=db, branch=default_branch, pool=pool, start=205, end=300, weight=10)
-    assert await pool_used_numbers(db=db, pool=pool, branch=default_branch) == [205]
-    await _allocate_ticket(db=db, pool=pool, title="next")
-    assert await _ticket_ids(db=db, branch=default_branch) == {"held": 205, "next": 206}
-
-
 POOL_UTILIZATION = """
 query PoolUtilization($pool_id: String!) {
     InfrahubResourcePoolUtilization(pool_id: $pool_id) {
@@ -364,14 +319,10 @@ def _percent(used: int, size: int) -> float:
     return used / size * 100
 
 
-async def test_a_number_held_outside_the_ranges_stays_recorded_until_a_range_covers_it_again(
+async def test_widening_and_adding_ranges_keeps_the_numbers_already_handed_out(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
-    """Removing and re-adding a range changes what the pool counts, never what it recorded.
-
-    The pool holds 10-12 (weight 10) and 14-18, and hands out 10-12 then 16, which a range edit
-    moved into the second range.
-    """
+    """The pool holds 10-12 (weight 10) and 16-18, and hands out 10-12 then 16."""
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
     await initialize_registry(db=db)
     pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
@@ -399,33 +350,8 @@ async def test_a_number_held_outside_the_ranges_stays_recorded_until_a_range_cov
             {"node": {"display_label": "14 - 18", "utilization": _percent(1, 5)}},
         ],
     }
-
-    removed = await _execute(db=db, branch=default_branch, source=DELETE_RANGE, variables={"range_id": upper_range_id})
-    assert not removed.errors
-    assert await _utilization(db=db, branch=default_branch, pool=pool) == {
-        "count": 1,
-        "utilization": _percent(3, 3),
-        "edges": [{"node": {"display_label": "10 - 12", "utilization": 100.0}}],
-    }
-    with pytest.raises(ValidationError) as exc_info:
-        await _allocate_ticket(db=db, pool=pool, title="refused")
-    assert exc_info.value.message == (
-        f"Pool drained-pool ({pool.get_id()}) has no free number left in its ranges. at ticket_id.from_pool"
-    )
-
-    await _create_range(db=db, branch=default_branch, pool=pool, start=14, end=18)
-    assert await _utilization(db=db, branch=default_branch, pool=pool) == {
-        "count": 2,
-        "utilization": _percent(4, 8),
-        "edges": [
-            {"node": {"display_label": "10 - 12", "utilization": 100.0}},
-            {"node": {"display_label": "14 - 18", "utilization": _percent(1, 5)}},
-        ],
-    }
-    await _allocate_ticket(db=db, pool=pool, title="after-re-add")
-    assert (await _ticket_ids(db=db, branch=default_branch))["after-re-add"] == 14, (
-        "16 stays recorded, so the pool hands out the lowest free number of the re-added range"
-    )
+    await _allocate_ticket(db=db, pool=pool, title="after-widening")
+    assert (await _ticket_ids(db=db, branch=default_branch))["after-widening"] == 14
 
     await _create_range(db=db, branch=default_branch, pool=pool, start=20, end=22)
     assert await _utilization(db=db, branch=default_branch, pool=pool) == {

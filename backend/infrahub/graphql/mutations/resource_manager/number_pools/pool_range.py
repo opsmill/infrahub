@@ -18,6 +18,7 @@ from .common import (
     pool_lock,
     pool_target_attribute,
     range_bounds,
+    refuse_ranges_leaving_held_numbers,
     refuse_ranges_outside_attribute,
     refuse_schema_pool,
     sync_shorthand,
@@ -71,7 +72,11 @@ class InfrahubNumberPoolRangeMutation(InfrahubMutation):
                 info=info, data=data, branch=branch, database=dbt, override_data=override_data
             )
             await cls._validate_and_sync(
-                db=dbt, pool=pool, branch=branch, range_id=range_node.get_id(), user_id=graphql_context.assigned_user_id
+                db=dbt,
+                pool=pool,
+                branch=branch,
+                range_id=range_node.get_id(),
+                user_id=graphql_context.assigned_user_id,
             )
 
         return range_node, result
@@ -91,31 +96,36 @@ class InfrahubNumberPoolRangeMutation(InfrahubMutation):
         pool_id = pool.get_id()
 
         async with pool_lock(pool_id=pool_id), within_transaction(db=db) as dbt:
+            stored_bounds = (obj.get_attribute("start").value, obj.get_attribute("end").value)
             range_node, result = await super()._call_mutate_update(
                 info=info, data=data, branch=branch, db=dbt, obj=obj, skip_uniqueness_check=skip_uniqueness_check
             )
             if await cls._get_pool_id(db=dbt, range_node=range_node) != pool_id:
                 raise ValidationError(input_value="The field 'pool' can't be changed.")
             await cls._validate_and_sync(
-                db=dbt, pool=pool, branch=branch, range_id=range_node.get_id(), user_id=graphql_context.assigned_user_id
+                db=dbt,
+                pool=pool,
+                branch=branch,
+                range_id=range_node.get_id(),
+                user_id=graphql_context.assigned_user_id,
+                bounds_changed=(range_node.get_attribute("start").value, range_node.get_attribute("end").value)
+                != stored_bounds,
             )
 
         return range_node, result
 
     @classmethod
     async def _delete_obj(cls, graphql_context: GraphqlContext, branch: Branch, obj: Node) -> list[Node]:
-        pool_id = (await cls._get_editable_pool(db=graphql_context.db, range_node=obj)).get_id()
+        pool = await cls._get_editable_pool(db=graphql_context.db, range_node=obj)
+        pool_id = pool.get_id()
 
         async with pool_lock(pool_id=pool_id), graphql_context.db.start_transaction() as dbt:
             deleted = await NodeManager.delete(
                 db=dbt, branch=branch, nodes=[obj], user_id=graphql_context.assigned_user_id
             )
-            await sync_shorthand(
-                db=dbt,
-                pool_id=pool_id,
-                ranges=await NumberPoolRepository(db=dbt).get_ranges(pool_id=pool_id),
-                user_id=graphql_context.assigned_user_id,
-            )
+            ranges = await NumberPoolRepository(db=dbt).get_ranges(pool_id=pool_id)
+            await refuse_ranges_leaving_held_numbers(db=dbt, pool=pool, ranges=range_bounds(ranges))
+            await sync_shorthand(db=dbt, pool_id=pool_id, ranges=ranges, user_id=graphql_context.assigned_user_id)
 
         return deleted
 
@@ -136,8 +146,18 @@ class InfrahubNumberPoolRangeMutation(InfrahubMutation):
 
     @classmethod
     async def _validate_and_sync(
-        cls, db: InfrahubDatabase, pool: Node, branch: Branch, range_id: str, user_id: str
+        cls,
+        db: InfrahubDatabase,
+        pool: Node,
+        branch: Branch,
+        range_id: str,
+        user_id: str,
+        bounds_changed: bool = True,
     ) -> None:
+        """Validate the saved range against the pool's other ranges and the attribute, then mirror the shorthand.
+
+        Without `bounds_changed` the ranges cover the same numbers as before, so the tracked numbers are not read.
+        """
         pool_id = pool.get_id()
         ranges = await NumberPoolRepository(db=db).get_ranges(pool_id=pool_id)
         bounds_by_id = {bounds.id: bounds for bounds in range_bounds(ranges)}
@@ -147,4 +167,6 @@ class InfrahubNumberPoolRangeMutation(InfrahubMutation):
             attribute=pool_target_attribute(db=db, pool=pool, branch=branch),
             ranges=[NumberPoolRangeParameters(start=candidate.start, end=candidate.end)],
         )
+        if bounds_changed:
+            await refuse_ranges_leaving_held_numbers(db=db, pool=pool, ranges=list(bounds_by_id.values()))
         await sync_shorthand(db=db, pool_id=pool_id, ranges=ranges, user_id=user_id)

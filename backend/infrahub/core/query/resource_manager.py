@@ -297,6 +297,96 @@ class NumberPoolGetAllocated(Query):
         ]
 
 
+@dataclass(frozen=True, kw_only=True)
+class HeldNumber:
+    """A number a pool tracks, the object holding it and the live branches holding that number."""
+
+    attribute_id: str
+    node_id: str | None
+    value: int
+    branches: tuple[str, ...]
+
+
+class NumberPoolGetHeldOutsideRanges(Query):
+    """Report the numbers live branches hold for the pool outside every given range.
+
+    A number is reported once per holding attribute and value, with every live branch holding it, including a branch
+    that inherits the default branch's value without an edge of its own. Only the first `listed` numbers are returned,
+    lowest first, each row also carrying the total. The holding object is matched on the pool's kind and is left out
+    when no such object holds the attribute.
+    """
+
+    name = "numberpool_get_held_outside_ranges"
+    type = QueryType.READ
+
+    def __init__(
+        self,
+        pool_id: str,
+        attribute_name: str,
+        node_kind: str,
+        ranges: list[list[int]],
+        listed: int,
+        **kwargs: Unpack[QueryInitKwargs],
+    ) -> None:
+        self.pool_id = pool_id
+        self.attribute_name = attribute_name
+        self.node_kind = node_kind
+        self.ranges = ranges
+        self.listed = listed
+
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["ranges"] = self.ranges
+        self.params["listed"] = self.listed
+        reserved_values, reserved_values_params = reserved_values_query(
+            pool_id=self.pool_id,
+            attribute_name=self.attribute_name,
+            at=self.at.to_string(),
+            default_branch_name=registry.default_branch,
+            include_inherited_open_values=True,
+        )
+        self.params.update(reserved_values_params)
+
+        # The page is taken before the holder lookup, so the lookup runs only for the numbers listed.
+        query = """
+        %(reserved_values)s
+        WITH attr, branch, toInteger(value) AS value
+        WHERE value IS NOT NULL AND none(r IN $ranges WHERE value >= r[0] AND value <= r[1])
+        WITH attr, value, collect(DISTINCT branch) AS branches
+        ORDER BY value, attr.uuid
+        WITH collect({attr: attr, value: value, branches: branches}) AS held
+        UNWIND held[..$listed] AS held_number
+        WITH size(held) AS total, held_number.attr AS attr, held_number.value AS value, held_number.branches AS branches
+        CALL (attr) {
+            OPTIONAL MATCH (node:%(node_kind)s)-[:HAS_ATTRIBUTE]->(attr)
+            RETURN node.uuid AS node_id
+            ORDER BY node_id
+            LIMIT 1
+        }
+        WITH total, attr.uuid AS attribute_id, node_id, value, branches
+        """ % {"reserved_values": reserved_values, "node_kind": self.node_kind}
+        self.add_to_query(query)
+
+        self.return_labels = ["total", "attribute_id", "node_id", "value", "branches"]
+        self.order_by = ["value", "attribute_id"]
+
+    def get_data(self) -> tuple[int, list[HeldNumber]]:
+        """Return how many numbers are outside the ranges, and the listed ones."""
+        results = list(self.get_results())
+        if not results:
+            return 0, []
+        return results[0].get_as_type("total", int), [
+            HeldNumber(
+                attribute_id=result.get_as_type("attribute_id", str),
+                node_id=result.get_as_optional_type("node_id", str),
+                value=result.get_as_type("value", int),
+                branches=tuple(result.get_as_list_of_type("branches", str)),
+            )
+            for result in results
+        ]
+
+
 class NumberPoolGetReserved(Query):
     """Resolve a pool's reservation(s) to the value(s) on this branch.
 
@@ -946,12 +1036,35 @@ LIVE_ATTRIBUTE_VALUES_QUERY = """
 """
 
 
+# Reads `attr`, `branch_windows`, `$at` and `$default_branch_name`, and returns `value` and `branch`; joined to
+# LIVE_ATTRIBUTE_VALUES_QUERY by a UNION, it adds the branches inheriting an open default-branch value.
+INHERITED_OPEN_VALUES_QUERY = """
+            // --------------
+            // A branch that forked while the default branch's edge was open, and has written no edge of its own
+            // since, inherits the value without an edge carrying its name
+            // --------------
+            MATCH (attr)-[hv:HAS_VALUE {branch: $default_branch_name}]->(av)
+            WHERE hv.status = "active"
+            AND hv.from <= $at AND (hv.to IS NULL OR hv.to > $at)
+            WITH hv, av, branch_windows, COLLECT {
+                MATCH (attr)-[hiding:HAS_VALUE]->()
+                WHERE hiding.from <= $at AND (hiding.to IS NULL OR hiding.to > $at)
+                RETURN hiding.branch AS branch_name
+            } AS hiding_branches
+            UNWIND [window IN branch_windows WHERE window.origin_name = hv.branch
+                AND hv.from <= window.fork_at
+                AND NOT window.name IN hiding_branches | window.name] AS branch
+            RETURN av.value AS value, branch
+"""
+
+
 def reserved_values_query(
     pool_id: str,
     attribute_name: str,
     at: str,
     default_branch_name: str,
     division_filter: str = "",
+    include_inherited_open_values: bool = False,
 ) -> tuple[str, dict[str, Any]]:
     """Cypher fragment to find all Attributes reserved for a given NumberPool, with the parameters it reads.
 
@@ -960,6 +1073,8 @@ def reserved_values_query(
     edge's branch while the edge was open and has written no edge of its own that hides the default-branch version.
 
     `division_filter` is inserted after the reserved Attributes are matched, to keep only those of a division.
+    `include_inherited_open_values` also reports a value on each branch inheriting a default-branch value that is
+    still open, which otherwise counts on the default branch only.
 
     Final values are res (IS_RESERVED edge), attr (the reserved Attribute), value (an active Attribute value),
     branch (a branch holding the value), deleting_branches and branch_windows.
@@ -978,13 +1093,16 @@ def reserved_values_query(
     MATCH (pool:Node:%(number_pool)s { uuid: $pool_id })-[res:IS_RESERVED]->(attr:Attribute { name: $attribute_name })
     WHERE res.status = "active" AND res.from <= $at AND (res.to IS NULL OR res.to > $at)
 %(division)s    CALL (attr, deleting_branches, branch_windows) {
-%(live_values)s    }
+%(live_values)s%(inherited_values)s    }
     WITH DISTINCT res, attr, value, branch, deleting_branches, branch_windows
     """ % {
         "number_pool": InfrahubKind.NUMBERPOOL,
         "division": division_filter,
         "live_branches": LIVE_BRANCHES_QUERY,
         "live_values": LIVE_ATTRIBUTE_VALUES_QUERY,
+        "inherited_values": f"            UNION\n{INHERITED_OPEN_VALUES_QUERY}"
+        if include_inherited_open_values
+        else "",
     }
     return query, params
 
@@ -1026,26 +1144,14 @@ class NumberPoolAttributeBranchValuesQuery(Query):
         CALL (attr, deleting_branches, branch_windows) {
 %(live_values)s
             UNION
-            // --------------
-            // A branch that forked while the default branch's edge was open, and has written no edge of its own
-            // since, inherits the value without an edge carrying its name
-            // --------------
-            MATCH (attr)-[hv:HAS_VALUE {branch: $default_branch_name}]->(av)
-            WHERE hv.status = "active"
-            AND hv.from <= $at AND (hv.to IS NULL OR hv.to > $at)
-            WITH hv, av, branch_windows, COLLECT {
-                MATCH (attr)-[hiding:HAS_VALUE]->()
-                WHERE hiding.from <= $at AND (hiding.to IS NULL OR hiding.to > $at)
-                RETURN hiding.branch AS branch_name
-            } AS hiding_branches
-            UNWIND [window IN branch_windows WHERE window.origin_name = hv.branch
-                AND hv.from <= window.fork_at
-                AND NOT window.name IN hiding_branches | window.name] AS branch
-            RETURN av.value AS value, branch
-        }
+%(inherited_values)s        }
         WITH DISTINCT attr.uuid AS attribute_id, branch, value
         WHERE value <> $null_value
-        """ % {"live_branches": LIVE_BRANCHES_QUERY, "live_values": LIVE_ATTRIBUTE_VALUES_QUERY}
+        """ % {
+            "live_branches": LIVE_BRANCHES_QUERY,
+            "live_values": LIVE_ATTRIBUTE_VALUES_QUERY,
+            "inherited_values": INHERITED_OPEN_VALUES_QUERY,
+        }
         self.add_to_query(query)
         self.return_labels = ["attribute_id", "branch", "value"]
         self.order_by = ["attribute_id", "branch", "value"]

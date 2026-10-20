@@ -18,8 +18,10 @@ from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.protocols import CoreNumberPool as CoreNumberPoolProtocol
 from infrahub.core.query.node import NodeCreateAllQuery
 from infrahub.core.query.resource_manager import (
+    HeldNumber,
     NumberPoolChangeReserved,
     NumberPoolGetAllocated,
+    NumberPoolGetHeldOutsideRanges,
     NumberPoolGetReserved,
     NumberPoolGetTaken,
     NumberPoolGetTrackingPool,
@@ -828,4 +830,47 @@ class TestCreateRecordsItsReservation:
         await second.save(db=db)
         assert second.get_attribute(name="number").value != first_number, (
             "the number the first object holds must not be handed out again"
+        )
+
+
+class TestNumberPoolGetHeldOutsideRanges:
+    async def test_a_branch_keeps_the_value_main_held_when_it_forked(
+        self,
+        db: InfrahubDatabase,
+        register_test_schema: SchemaBranch,
+        default_branch: Branch,
+        run_number_pool_validation: None,
+    ) -> None:
+        """Main holds 1 when the branch forks, then moves to 5; the branch, which never writes the number, keeps 1."""
+        incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
+        (incident,) = await create_objects(db=db, schema=incident_schema, branch=default_branch.name, start=1, end=1)
+        assert incident.get_attribute("number").value == 1
+        pools: list[CoreNumberPoolProtocol] = await NodeManager.query(
+            db=db, schema=CoreNumberPoolProtocol, branch=default_branch
+        )
+        incident_pool = next(pool for pool in pools if pool.get_attribute("node").value == INCIDENT.kind)
+        await create_branch(db=db, branch_name="forked")
+        incident_on_main = await NodeManager.get_one(db=db, id=incident.get_id(), branch=default_branch)
+        incident_on_main.get_attribute("number").value = 5
+        await incident_on_main.save(db=db)
+
+        query = await NumberPoolGetHeldOutsideRanges.init(
+            db=db,
+            pool_id=incident_pool.get_id(),
+            attribute_name="number",
+            node_kind=INCIDENT.kind,
+            ranges=[[100, 200]],
+            listed=20,
+        )
+        await query.execute(db=db)
+
+        attribute_id = incident.get_attribute("number").id
+        assert query.get_data() == (
+            2,
+            [
+                HeldNumber(attribute_id=attribute_id, node_id=incident.get_id(), value=1, branches=("forked",)),
+                HeldNumber(
+                    attribute_id=attribute_id, node_id=incident.get_id(), value=5, branches=(default_branch.name,)
+                ),
+            ],
         )

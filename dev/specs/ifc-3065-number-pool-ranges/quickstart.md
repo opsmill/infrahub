@@ -42,7 +42,7 @@ Expected: every pre-existing pool holds one range with its old bounds, figures u
 cd backend && uv run pytest tests/component/graphql/resource_manager/number_pools/test_pool_ranges.py tests/component/graphql/resource_manager/test_resource_manager.py -k "range or shorthand"
 ```
 
-Expected: removal of a range holding allocations succeeds and hides them; re-adding restores them; overlap and backwards ranges refused with named ranges; shorthand on a multi-range pool refused with the range list; zero ranges legal.
+Expected: removal of a range holding allocations is refused, listing each object holding a number outside the remaining ranges and the branches holding it; adding or widening a range succeeds; overlap and backwards ranges refused with named ranges; shorthand on a multi-range pool refused with the range list; zero ranges legal.
 
 ## User Story 4: schema-declared ranges
 

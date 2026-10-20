@@ -56,6 +56,7 @@ Every create or update that carries the shorthand or `ranges` runs under the poo
 | update with shorthand, pool has 1 range | that range rewritten in place |
 | update with shorthand, pool has more than 1 range | refused: message states the shorthand applies to a pool holding at most one range and lists each range as `<start>-<end> (<id>)` |
 | update with shorthand or `ranges` on `pool_type: Schema` | refused with the existing message "…update the schema in the default branch instead" (fires first) |
+| update with shorthand or `ranges` leaving a tracked number outside every range | refused, listing the lowest 20 such numbers with their holders and branches |
 | update changing `node` or `node_attribute` | refused (unchanged) |
 
 ### `InfrahubNumberPoolRangeMutation` (new, registered for `CoreNumberPoolRange`)
@@ -65,7 +66,7 @@ Every create or update that carries the shorthand or `ranges` runs under the poo
 | create | pool lock taken; parent pool exists; pool not `Schema`; `start <= end`; no overlap with the pool's other ranges (message names them); bounds outside the attribute's `[min_value, max_value]` are accepted and clamped at allocation time |
 | update | same as create against the pool's other ranges; the parent pool cannot change |
 | delete | pool not `Schema` |
-| after create / update / delete | pool's `start_range` / `end_range` re-synced from the range set |
+| after create / update / delete | when the pool tracks, on a live branch, a number outside every range after the write (including one already outside before it): refused, listing the lowest 20 such numbers with their holders and branches; then the pool's `start_range` / `end_range` re-synced from the range set |
 
 `RelationshipAdd` and `RelationshipRemove` on a pool's `ranges` are refused, because a range's `pool` is mandatory with cardinality one. A range is removed through the range delete mutation or the pool's `ranges` on update.
 

@@ -42,14 +42,6 @@ mutation CreateRange($pool_id: String!, $start: BigInt!, $end: BigInt!, $weight:
 }
 """
 
-DELETE_RANGE = """
-mutation DeleteRange($range_id: String!) {
-    CoreNumberPoolRangeDelete(data: { id: $range_id }) {
-        ok
-    }
-}
-"""
-
 POOL_UTILIZATION = """
 query PoolUtilization($pool_id: String!) {
     InfrahubResourcePoolUtilization(pool_id: $pool_id) {
@@ -72,8 +64,6 @@ class RangedPool:
     """A user pool holding a heavier 100-102 range and a 205-207 range."""
 
     pool_id: str
-    heavy_range_id: str
-    light_range_id: str
 
 
 def _percent(used: int, size: int) -> float:
@@ -100,11 +90,9 @@ class TestNumberPoolRanges(TestInfrahubApp):
 
         created = await client.execute_graphql(query=CREATE_POOL, variables={"name": "ticket-numbers"})
         pool_id = created["CoreNumberPoolCreate"]["object"]["id"]
-        return RangedPool(
-            pool_id=pool_id,
-            heavy_range_id=await self._create_range(client=client, pool_id=pool_id, start=100, end=102, weight=10),
-            light_range_id=await self._create_range(client=client, pool_id=pool_id, start=205, end=207),
-        )
+        await self._create_range(client=client, pool_id=pool_id, start=100, end=102, weight=10)
+        await self._create_range(client=client, pool_id=pool_id, start=205, end=207)
+        return RangedPool(pool_id=pool_id)
 
     @staticmethod
     async def _create_range(
@@ -143,27 +131,3 @@ class TestNumberPoolRanges(TestInfrahubApp):
                 {"node": {"display_label": "205 - 207", "weight": 0, "utilization": _percent(1, 3)}},
             ],
         }
-
-    async def test_a_removed_range_keeps_its_number_recorded_until_it_is_re_added(
-        self, client: InfrahubClient, ranged_pool: RangedPool
-    ) -> None:
-        deleted = await client.execute_graphql(query=DELETE_RANGE, variables={"range_id": ranged_pool.light_range_id})
-        assert deleted["CoreNumberPoolRangeDelete"]["ok"]
-        assert await self._utilization(client=client, pool_id=ranged_pool.pool_id) == {
-            "count": 1,
-            "utilization": 100.0,
-            "edges": [{"node": {"display_label": "100 - 102", "weight": 10, "utilization": 100.0}}],
-        }
-
-        await self._create_range(client=client, pool_id=ranged_pool.pool_id, start=205, end=207)
-        assert await self._utilization(client=client, pool_id=ranged_pool.pool_id) == {
-            "count": 2,
-            "utilization": _percent(4, 6),
-            "edges": [
-                {"node": {"display_label": "100 - 102", "weight": 10, "utilization": 100.0}},
-                {"node": {"display_label": "205 - 207", "weight": 0, "utilization": _percent(1, 3)}},
-            ],
-        }
-        assert await self._allocate(client=client, pool_id=ranged_pool.pool_id, title="after-re-add") == 206, (
-            "205 stayed recorded while its range was gone"
-        )
