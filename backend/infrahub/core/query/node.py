@@ -612,7 +612,7 @@ class NodeCreateAllQuery(NodeQuery):
 
     def get_self_ids(self) -> tuple[str, str]:
         result = self.get_result()
-        node = result.get("n")
+        node = result.get_optional_node("n") if result else None
 
         if node is None:
             rendered = self.render()
@@ -623,9 +623,9 @@ class NodeCreateAllQuery(NodeQuery):
     def get_ids(self) -> dict[str, tuple[str, str]]:
         data = {}
         for result in self.get_results():
-            node = result.get("rn")
+            node = result.get_node("rn")
             if "Relationship" in node.labels:
-                peer = result.get("rv")
+                peer = result.get_node("rv")
                 name = f"{node.get('name')}::{peer.get('uuid')}"
             elif "Attribute" in node.labels:
                 name = node.get("name")
@@ -1043,7 +1043,7 @@ CALL (a) {
             content=attr_value._properties,
             branch=self.branch.name,
             flag_properties={
-                "is_protected": result.get("isp").get("value"),
+                "is_protected": result.get_node("isp").get("value"),
             },
         )
 
@@ -1386,29 +1386,29 @@ CALL (rel) {
     def get_peers_group_by_node(self) -> GroupedPeerNodes:
         gpn = GroupedPeerNodes()
         for result in self.get_results():
-            node_id = result.get("n_uuid")
-            rel_name = result.get("rel_name")
-            peer_id = result.get("peer_uuid")
+            node_id = result.get_as_type("n_uuid", return_type=str)
+            rel_name = result.get_as_type("rel_name", return_type=str)
+            peer_id = result.get_as_type("peer_uuid", return_type=str)
             peer_kind = result.get_as_type("peer_kind", return_type=str)
             direction = str(result.get("direction"))
 
             created_at = None
             if self.include_metadata & MetadataOptions.CREATED_AT:
-                created_at_str = result.get("created_at")
+                created_at_str = result.get_as_optional_type("created_at", return_type=str)
                 created_at = Timestamp(created_at_str) if created_at_str else None
 
             created_by_str = None
             if self.include_metadata & MetadataOptions.CREATED_BY:
-                created_by_str = result.get("created_by")
+                created_by_str = result.get_as_optional_type("created_by", return_type=str)
 
             updated_at = None
             if self.include_metadata & MetadataOptions.UPDATED_AT:
-                updated_at_str = result.get("updated_at")
+                updated_at_str = result.get_as_optional_type("updated_at", return_type=str)
                 updated_at = Timestamp(updated_at_str) if updated_at_str else None
 
             updated_by_str = None
             if self.include_metadata & MetadataOptions.UPDATED_BY:
-                updated_by_str = result.get("updated_by")
+                updated_by_str = result.get_as_optional_type("updated_by", return_type=str)
 
             is_protected: bool | None = None
             if self.include_metadata & MetadataOptions.IS_PROTECTED:
@@ -2858,12 +2858,12 @@ class NodeGetHierarchyQuery(Query):
 
     def get_peer_ids(self) -> Generator[str, None, None]:
         for result in self.get_results_group_by(("peer", "uuid")):
-            data = result.get("peer").get("uuid")
+            data = result.get_node("peer").get("uuid")
             yield data
 
     def get_relatives(self) -> Generator[PeerInfo, None, None]:
         for result in self.get_results_group_by(("peer", "uuid")):
-            peer_node = result.get("peer")
+            peer_node = result.get_node("peer")
             yield PeerInfo(
                 uuid=peer_node.get("uuid"),
                 kind=peer_node.get("kind"),

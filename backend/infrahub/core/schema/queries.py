@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
+    from infrahub.core.query import CypherValue
     from infrahub.database import InfrahubDatabase
 
 
@@ -334,13 +335,19 @@ WITH n.uuid AS uuid, kind, is_generic, attributes, relationships
         index = SchemaSummaryIndex()
         for result in self.get_results():
             kind = result.get_as_type("kind", return_type=str)
-            attributes_raw = cast("list[list[str]]", result.get("attributes") or [])
-            relationships_raw = cast("list[list[str]]", result.get("relationships") or [])
             summary = SchemaSummary(
                 uuid=result.get_as_type("uuid", return_type=str),
                 is_generic=result.get_as_type("is_generic", return_type=bool),
-                attributes={pair[1]: pair[0] for pair in attributes_raw if pair and pair[1] is not None},
-                relationships={pair[1]: pair[0] for pair in relationships_raw if pair and pair[1] is not None},
+                attributes=self._map_names_to_uuids(pairs=result.get_list("attributes")),
+                relationships=self._map_names_to_uuids(pairs=result.get_list("relationships")),
             )
             index.add(kind=kind, summary=summary)
         return index
+
+    def _map_names_to_uuids(self, pairs: list[CypherValue]) -> dict[str, str]:
+        names_to_uuids: dict[str, str] = {}
+        for pair in pairs:
+            match pair:
+                case [str() as uuid, str() as name]:
+                    names_to_uuids[name] = uuid
+        return names_to_uuids

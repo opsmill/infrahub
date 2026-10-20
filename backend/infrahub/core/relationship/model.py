@@ -475,8 +475,8 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         if not result:
             return
 
-        self.db_id = result.get("rl").element_id
-        self.id = result.get("rl").get("uuid")
+        self.db_id = result.get_node("rl").element_id
+        self.id = result.get_node("rl").get("uuid")
 
     async def update(
         self,

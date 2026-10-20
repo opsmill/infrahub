@@ -68,7 +68,7 @@ class AttributeChoicesUpdateValidatorQuery(AttributeSchemaValidatorQuery):
             value = str(result.get("attribute_value"))
             grouped_data_paths.add_data_path(
                 DataPath(
-                    branch=str(result.get("value_relationship").get("branch")),
+                    branch=str(result.get_rel("value_relationship").get("branch")),
                     path_type=PathType.ATTRIBUTE,
                     node_id=str(result.get("node.uuid")),
                     field_name=self.attribute_schema.name,

@@ -42,7 +42,7 @@ class NodeNotPresentValidatorQuery(SchemaValidatorQuery):
         for result in self.results:
             grouped_data_paths.add_data_path(
                 DataPath(
-                    branch=str(result.get("root_relationship").get("branch")),
+                    branch=str(result.get_rel("root_relationship").get("branch")),
                     path_type=PathType.NODE,
                     node_id=str(result.get("node.uuid")),
                     kind=self.node_schema.kind,
