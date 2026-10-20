@@ -166,7 +166,7 @@ function RepositoryBranchesCardInScope({ repositoryId, schema }: RepositoryBranc
         )}
       </CardHeader>
 
-      <RepositoryBranchesToolbar />
+      <RepositoryBranchesToolbar schema={schema} />
 
       <RepositoryBranchesCardBoundary resetKeys={[data]}>
         <RepositoryBranchesBody

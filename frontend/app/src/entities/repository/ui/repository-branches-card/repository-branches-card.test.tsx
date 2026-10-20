@@ -100,6 +100,12 @@ async function applyBranchStatusFilter(component: RenderedCard, status: string) 
   await component.getByRole("button", { name: "Apply", exact: true }).click();
 }
 
+async function applySyncStatusFilter(component: RenderedCard, label: string) {
+  await openFilterField(component, "Sync status");
+  await component.getByRole("option", { name: new RegExp(`^${label}`) }).click();
+  await component.getByRole("button", { name: "Apply", exact: true }).click();
+}
+
 async function applySort(component: RenderedCard, field: string, direction: string) {
   await component.getByRole("button", { name: /^Sort/ }).click();
   await component.getByRole("menuitem", { name: field, exact: true }).click();
@@ -684,6 +690,164 @@ describe("RepositoryBranchesCard", () => {
     expect(
       component.getByRole("option", { name: "DELETING", exact: true }).elements()
     ).toHaveLength(0);
+  });
+
+  it("offers the sync status values by their labels, in schema order", async () => {
+    // GIVEN
+    apiMock.mockResolvedValue(
+      toApiResult(generateRepositoryBranchStatusPayloadBefore({ count: 45 }))
+    );
+
+    // WHEN
+    const component = await renderCard();
+    await openFilterField(component, "Sync status");
+
+    // THEN
+    await expect.element(component.getByRole("option", { name: /^Import Error/ })).toBeVisible();
+    const labels = generateRepositorySyncStatusChoices().map(({ label }) => label);
+    expect(
+      component
+        .getByRole("listbox", { name: "Suggestions" })
+        .getByRole("option")
+        .elements()
+        .map((option) => option.textContent)
+    ).toEqual(labels.map((label) => expect.stringMatching(new RegExp(`^${label}`))));
+  });
+
+  it("sends the stored sync status value and states the total the server matched", async () => {
+    // GIVEN
+    const unfiltered = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
+    const matched = generateRepositoryBranchStatusPage({
+      rows: [generateRepositoryBranchStatus({ name: { value: "release-2-0" } })],
+    });
+    apiMock.mockResolvedValueOnce(toApiResult(unfiltered)).mockResolvedValue(toApiResult(matched));
+
+    // WHEN
+    const component = await renderCard();
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 0,
+      variables: FIRST_PAGE_VARIABLES,
+      payload: toApiResult(unfiltered),
+      rowVisibleAfter: "feature-auth",
+    });
+    await applySyncStatusFilter(component, "Import Error");
+
+    // THEN the choice name goes out, not the label the user picked
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 1,
+      variables: { ...FIRST_PAGE_VARIABLES, sync_status__value: "error-import" },
+      payload: toApiResult(matched),
+      rowVisibleAfter: "release-2-0",
+    });
+    await expect.element(component.getByText("1 branch", { exact: true })).toBeVisible();
+  });
+
+  it("labels the sync status tag by its choice and leaves the status tag as stored", async () => {
+    // GIVEN
+    const unfiltered = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
+    const matched = generateRepositoryBranchStatusPayloadAfter({ count: 3 });
+    apiMock.mockResolvedValueOnce(toApiResult(unfiltered)).mockResolvedValue(toApiResult(matched));
+
+    // WHEN
+    const component = await renderCard();
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 0,
+      variables: FIRST_PAGE_VARIABLES,
+      payload: toApiResult(unfiltered),
+      rowVisibleAfter: "feature-auth",
+    });
+    await applySyncStatusFilter(component, "Import Error");
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 1,
+      variables: { ...FIRST_PAGE_VARIABLES, sync_status__value: "error-import" },
+      payload: toApiResult(matched),
+      rowVisibleAfter: "release-2-0",
+    });
+    await applyBranchStatusFilter(component, "OPEN");
+
+    // THEN
+    await expect
+      .element(component.getByRole("row", { name: "Sync status contains Import Error" }))
+      .toBeVisible();
+    await expect
+      .element(component.getByRole("row", { name: "Status contains OPEN" }))
+      .toBeVisible();
+  });
+
+  it("says no branch matches the filters when no branch has the sync status", async () => {
+    // GIVEN
+    apiMock
+      .mockResolvedValueOnce(
+        toApiResult(generateRepositoryBranchStatusPayloadBefore({ count: 45 }))
+      )
+      .mockResolvedValue(toApiResult(generateRepositoryBranchStatusPage({ rows: [] })));
+
+    // WHEN
+    const component = await renderCard();
+    await expect.element(component.getByRole("row", { name: /feature-auth/ })).toBeVisible();
+    await applySyncStatusFilter(component, "Syncing");
+
+    // THEN
+    await expect
+      .element(component.getByText("No branch matches these filters", { exact: true }))
+      .toBeVisible();
+  });
+
+  it("lists every branch again once the sync status tag is removed", async () => {
+    // GIVEN a sync status filter already applied
+    const unfiltered = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
+    const matched = generateRepositoryBranchStatusPayloadAfter({ count: 3 });
+    apiMock
+      .mockResolvedValueOnce(toApiResult(unfiltered))
+      .mockResolvedValueOnce(toApiResult(matched))
+      .mockResolvedValue(toApiResult(unfiltered));
+    const component = await renderCard();
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 0,
+      variables: FIRST_PAGE_VARIABLES,
+      payload: toApiResult(unfiltered),
+      rowVisibleAfter: "feature-auth",
+    });
+    await applySyncStatusFilter(component, "Import Error");
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 1,
+      variables: { ...FIRST_PAGE_VARIABLES, sync_status__value: "error-import" },
+      payload: toApiResult(matched),
+      rowVisibleAfter: "release-2-0",
+    });
+
+    // WHEN
+    await component
+      .getByRole("row", { name: "Sync status contains Import Error" })
+      .getByRole("button", { name: "Remove" })
+      .click();
+
+    // THEN the unfiltered rows and total come back
+    await expect.element(component.getByRole("row", { name: /feature-auth/ })).toBeVisible();
+    await expect.element(component.getByText("45 branches", { exact: true })).toBeVisible();
+    expect(
+      component.getByRole("row", { name: "Sync status contains Import Error" }).elements()
+    ).toHaveLength(0);
+  });
+
+  it("offers the sync status filter on a read-only repository", async () => {
+    // GIVEN
+    apiMock.mockResolvedValue(
+      toApiResult(generateRepositoryBranchStatusPayloadBefore({ count: 45 }))
+    );
+
+    // WHEN
+    const component = await renderCard(readOnlyRepositorySchema);
+    await openFilterField(component, "Sync status");
+
+    // THEN
+    await expect.element(component.getByRole("option", { name: /^Import Error/ })).toBeVisible();
   });
 
   it("offers no filter condition the query is unable to narrow on", async () => {

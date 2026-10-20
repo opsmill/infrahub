@@ -8,15 +8,16 @@ import { SortPicker } from "@/entities/nodes/sort/ui/sort-picker";
 import {
   BRANCH_NAME_FILTER,
   BRANCH_ROW_FILTER_CONDITIONS,
-  BRANCH_ROW_FILTER_DEFINITIONS,
-  BRANCH_ROW_FILTER_DEFINITIONS_BY_NAME,
   BRANCH_ROW_MAX_SORTS,
   BRANCH_ROW_SORT_SCHEMA,
+  getBranchRowFilterDefinitions,
 } from "@/entities/repository/ui/repository-branches-card/branch-row-fields";
 import { SEARCH_BRANCHES_LABEL } from "@/entities/repository/ui/repository-branches-card/messages";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
-export function RepositoryBranchesToolbar() {
+export function RepositoryBranchesToolbar({ schema }: { schema: ModelSchema }) {
   const [filters, setFilters] = useFilters();
+  const filterDefinitions = getBranchRowFilterDefinitions(schema);
 
   return (
     <Col className="shrink-0 gap-0">
@@ -30,7 +31,7 @@ export function RepositoryBranchesToolbar() {
         <SortPicker schema={BRANCH_ROW_SORT_SCHEMA} maxSorts={BRANCH_ROW_MAX_SORTS} />
 
         <FilterPicker
-          filterDefinitions={BRANCH_ROW_FILTER_DEFINITIONS}
+          filterDefinitions={filterDefinitions.list}
           filterConditions={BRANCH_ROW_FILTER_CONDITIONS}
           filters={filters}
         />
@@ -40,7 +41,8 @@ export function RepositoryBranchesToolbar() {
         filters={filters}
         setFilters={setFilters}
         filterConditions={BRANCH_ROW_FILTER_CONDITIONS}
-        filterDefinitions={BRANCH_ROW_FILTER_DEFINITIONS_BY_NAME}
+        filterDefinitions={filterDefinitions.byName}
+        showChoiceLabels
       />
     </Col>
   );
