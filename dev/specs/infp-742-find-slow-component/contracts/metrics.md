@@ -23,6 +23,7 @@ flow name, never a run ID.
 |--------|-----------------------|-------------------|
 | `infrahub_db_query_execution_seconds` | 1 | 2.5, 5, 10, 30, 60, 120, 300 |
 | `infrahub_request_duration_seconds` | 0.5 | 1, 2.5, 5, 10, 30, 60, 120, 300, 600, 1200 |
+| `infrahub_graphql_duration_seconds` | 60 | 120, 300, 600, 1200 (review of 2026-10-20) |
 | `infrahub_lock_acquire_seconds` | 5 | 30, 60, 120, 300 |
 | `infrahub_lock_reserved_duration_seconds` | 10 | 30, 60, 120, 300 |
 

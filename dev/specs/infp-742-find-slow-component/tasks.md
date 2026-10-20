@@ -180,6 +180,12 @@ and an `/api/…` request; open the Infrahub dashboard (quickstart, manual check
 - [x] T049 [P] [US3] (Write the text in "Changelog entries for the top layer", not in `changelog/`; created by T095.) Add changelog fragments: port `+longer-duration-buckets.changed.md`, `+metric-files-kept-on-worker-start.fixed.md` and `+admission-panel-names.fixed.md` from the draft; port `+connection-pool-and-redis-metrics.added.md` as `+connection-pool-metrics.added.md` without the Redis part; add a `fixed` fragment for API and GraphQL requests in the HTTP metrics (B13)
 - [x] T050 [US3] Run T039 to T042 and `uv run invoke format lint`
 
+### Changes after the review of 2026-10-20
+
+- [x] T050a [US3] Write `backend/tests/unit/graphql/test_duration_metrics.py`: a 300-second GraphQL query is counted in `le="300.0"` and the highest bucket is 1200 (FR-014)
+- [x] T050b [US3] Add 120, 300, 600 and 1200 to the buckets of `GRAPHQL_DURATION_METRICS` in `backend/infrahub/graphql/metrics.py` (FR-014)
+- [x] T050c [US3] Change the help text of `infrahub_admission_max_concurrency` in `backend/infrahub/api/admission/metrics.py` and its row in `docs/docs/reference/metrics.mdx` to say the value is summed over the live API workers (`livesum`)
+
 **Checkpoint**: Story 3 is complete and testable on its own.
 
 ---
@@ -441,8 +447,9 @@ Created by T095 in IFC-3430. Each layer adds its entries here, with the file nam
 ### IFC-3428 (layer 2)
 
 - `+longer-duration-buckets.changed.md`: Changed the database query and lock duration metrics to record
-  values up to 300 seconds, and the HTTP request duration metric up to 1200 seconds, instead of stopping
-  at 1 second for queries, 5 or 10 seconds for locks and 0.5 seconds for HTTP requests.
+  values up to 300 seconds, and the HTTP request and GraphQL query duration metrics up to 1200 seconds,
+  instead of stopping at 1 second for queries, 5 or 10 seconds for locks, 0.5 seconds for HTTP requests
+  and 60 seconds for GraphQL queries.
 - `+metric-files-kept-on-worker-start.fixed.md`: Fixed the API server metrics so that starting a worker
   process no longer deletes the values recorded by the other running worker processes, and gauges no
   longer report worker processes that stopped. gunicorn must start with the Infrahub configuration

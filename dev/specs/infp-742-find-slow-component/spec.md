@@ -128,6 +128,21 @@ masking, a setting at least, keep the URL hostname), [the proposal](https://opsm
 - Q: Is there a setting to turn masking off? → A: No. What remains is small and runs off the request
   path.
 
+### Session 2026-10-20
+
+Source: [review by Fatih Acar on GitHub](https://github.com/opsmill/infrahub/pull/11104) of the metrics layer. Answers decided by Daniel.
+
+- Q: Which request duration histogram must record long durations? → A: Both. The GraphQL query
+  duration (`infrahub_graphql_duration_seconds`) stopped at 60 seconds; it now goes up to 1200
+  seconds, as the HTTP request duration does, because it names the slow query (FR-014).
+- Q: Is the connection pool size metric needed, since the size is set at startup? → A: Yes. The
+  dashboard compares pool usage with pool size in any Grafana, which cannot read the Infrahub
+  configuration (FR-017).
+- Q: Is the admission slot cap combined with `max` over the API workers? → A: No, `livesum`. The
+  dashboard divides the sum of running requests by the sum of slots; with `max` the ratio could pass
+  100 %. The metric help text and the reference documentation now say the value is summed over the
+  live API workers.
+
 ## Personas
 
 From section "Personas" of the design document and "Customer use cases" of the card:
@@ -473,8 +488,8 @@ is traced, then check that the default applies after 2 minutes.
 
 **Durations and connection pool (story 3)**
 
-- **FR-014**: Database query durations MUST be recorded up to 300 seconds, HTTP request durations up to
-  1200 seconds, connection wait up to 60 seconds and lock durations up to 300 seconds. The bucket limits
+- **FR-014**: Database query durations MUST be recorded up to 300 seconds, HTTP request and GraphQL query
+  durations up to 1200 seconds, connection wait up to 60 seconds and lock durations up to 300 seconds. The bucket limits
   are listed in decision D6 of the design document.
 - **FR-015**: Panels that read the old highest bucket limits MUST be checked and corrected.
 - **FR-016**: The HTTP request metrics MUST record API and GraphQL requests with their route (B13).
