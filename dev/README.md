@@ -123,3 +123,5 @@ Agent commands live in [../.agents/commands/](../.agents/commands/); run one by 
 
 The flows read their shared testing options and execution checklist from `_shared.md` in the same
 folder, which is not a command.
+
+<!-- PR review hook smoke test, do not merge -->
