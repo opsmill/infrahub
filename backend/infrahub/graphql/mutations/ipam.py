@@ -208,7 +208,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
             kind=cls._meta.schema.kind,
             id=data.get("id"),
             branch=branch,
-            include_metadata=MetadataOptions.LINKED_NODES,
+            include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.TRACKING_POOL,
         )
         namespace = await address.ip_namespace.get_peer(db)
         namespace_id = await validate_namespace(db=db, branch=branch, data=data, existing_namespace_id=namespace.id)
@@ -371,7 +371,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
             kind=cls._meta.schema.kind,
             id=data.get("id"),
             branch=branch,
-            include_metadata=MetadataOptions.LINKED_NODES,
+            include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.TRACKING_POOL,
         )
         namespace = await prefix.ip_namespace.get_peer(db)
         namespace_id = await validate_namespace(db=db, branch=branch, data=data, existing_namespace_id=namespace.id)

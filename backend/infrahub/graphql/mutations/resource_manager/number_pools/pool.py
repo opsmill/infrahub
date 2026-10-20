@@ -20,6 +20,7 @@ from infrahub.pools.number_pool_range_validation import (
     validate_shorthand_target,
 )
 from infrahub.pools.number_pool_repository import NumberPoolRepository
+from infrahub.pools.pool_kinds import is_resource_pool_schema
 from infrahub.pools.registration import get_branches_with_schema_number_pool
 from infrahub.pools.scope import (
     SCOPE_FIELD,
@@ -60,6 +61,7 @@ if TYPE_CHECKING:
 BOUNDS_DESCRIBE_ONE_RANGE = "start_range and end_range are the two bounds of a single range"
 BOUNDS_REQUIRED = f"{BOUNDS_DESCRIBE_ONE_RANGE}, both are required"
 BOUNDS_NOT_CLEARABLE = f"{BOUNDS_DESCRIBE_ONE_RANGE}, neither can be cleared"
+RESOURCE_POOL_TARGET_REFUSED = "A number pool cannot allocate numbers for a resource pool"
 SHORTHAND_WITH_RANGES = "start_range/end_range cannot be combined with ranges"
 RANGES_NOT_NULLABLE = "ranges cannot be null, send an empty list to remove every range"
 
@@ -199,13 +201,16 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
 
         Raises:
             SchemaNotFoundError: When the selected model does not exist.
-            ValidationError: When the model is not a node or a generic, or the attribute is missing or not a Number.
+            ValidationError: When the model is not a node or a generic, when it is a resource pool or the range of
+                one, or when the attribute is missing or not a Number.
 
         """
         try:
             schema_node = db.schema.get(name=data["node"].value, branch=branch, duplicate=False)
             if not schema_node.is_generic_schema and not schema_node.is_node_schema:
                 raise ValidationError(input_value="The selected model is not a Node or a Generic")
+            if is_resource_pool_schema(schema=schema_node):
+                raise ValidationError(input_value=RESOURCE_POOL_TARGET_REFUSED)
         except SchemaNotFoundError as exc:
             exc.message = "The selected model does not exist"
             raise exc

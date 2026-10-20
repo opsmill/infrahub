@@ -3,13 +3,21 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol, assert_never
 
 from infrahub.core.attribute import PayloadPresence
-from infrahub.core.constants import PoolRecordProvenance
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, PoolRecordProvenance
 from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX
 from infrahub.core.query.resource_manager import TrackingPool
 from infrahub.core.schema import TemplateSchema
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExhaustedError, ValidationError
 from infrahub.pools.intent import FromPoolIntent, FromPoolIntentResolver, FromPoolRequest, Sent
+from infrahub.pools.range_refusal import (
+    is_within_ranges,
+    other_branch_refusal,
+    tracked_edit_refusal,
+    tracked_empty_refusal,
+    tracked_reset_refusal,
+    untracked_attach_refusal,
+)
 from infrahub.pools.scope import AllocationScope
 
 if TYPE_CHECKING:
@@ -17,6 +25,8 @@ if TYPE_CHECKING:
     from infrahub.core.node import Node
     from infrahub.core.protocols import CoreNumberPool
     from infrahub.core.schema import NonGenericSchemaTypes
+    from infrahub.pools.number_ranges import PoolRange
+    from infrahub.pools.range_refusal import BranchValue
     from infrahub.pools.scope import Division
 
 
@@ -32,6 +42,18 @@ class NumberPoolFinder(Protocol):
 
     async def get_tracking_pool_id(self, attribute_id: str) -> str | None:
         """Return the id of the number pool currently tracking the attribute, or None when none does."""
+        ...
+
+
+class PoolRangeReader(Protocol):
+    async def get_pool_ranges(self, pool_id: str) -> list[PoolRange]:
+        """Return the ranges the pool allocates from."""
+        ...
+
+
+class AttributeBranchValuesReader(Protocol):
+    async def read(self, attribute_ids: list[str]) -> list[BranchValue]:
+        """Return the number each live branch holds for each of the attributes."""
         ...
 
 
@@ -98,6 +120,29 @@ class AttributePoolApplierInterface(Protocol):
         """
         ...
 
+    async def check_value_change(self, node: Node, attribute: BaseAttribute) -> None:
+        """Refuse a new number the pool tracking the saved attribute cannot hold.
+
+        Raises:
+            ValidationError: When the number is outside the ranges of the pool tracking the attribute, or when the
+                attribute is emptied.
+            InitializationError: When the attribute was loaded without the pool tracking it.
+            NodeNotFoundError: When the pool tracking the attribute cannot be read.
+
+        """
+        ...
+
+    async def check_reset_to_default(self, node: Node, attribute: BaseAttribute) -> None:
+        """Refuse a reset to the default of a saved attribute a pool tracks.
+
+        Raises:
+            ValidationError: When a pool tracks the attribute.
+            InitializationError: When the attribute was loaded without the pool tracking it.
+            NodeNotFoundError: When the pool tracking the attribute cannot be read.
+
+        """
+        ...
+
 
 class LoadedNodePoolApplier:
     """Stands in for the applier on a node loaded from the database, which never draws from a pool."""
@@ -117,6 +162,28 @@ class LoadedNodePoolApplier:
         """
         raise InitializationError(f"The loaded node {node.get_id()} cannot draw '{attribute.name}' from a pool")
 
+    async def check_value_change(self, node: Node, attribute: BaseAttribute) -> None:
+        """Refuse, since reaching this means a loaded node was asked to check a number against a pool.
+
+        Raises:
+            InitializationError: Always.
+
+        """
+        raise InitializationError(
+            f"The loaded node {node.get_id()} cannot check '{attribute.name}' against the pool tracking it"
+        )
+
+    async def check_reset_to_default(self, node: Node, attribute: BaseAttribute) -> None:
+        """Refuse, since reaching this means a loaded node was asked to check a reset against a pool.
+
+        Raises:
+            InitializationError: Always.
+
+        """
+        raise InitializationError(
+            f"The loaded node {node.get_id()} cannot check a reset of '{attribute.name}' against the pool tracking it"
+        )
+
 
 class AttributePoolApplier:
     """Apply what a write naming a number pool on an attribute asks for.
@@ -131,11 +198,15 @@ class AttributePoolApplier:
         number_allocator: AttributeNumberAllocator,
         intent_resolver: FromPoolIntentResolver,
         division_reader: DivisionReader,
+        range_reader: PoolRangeReader,
+        branch_values_reader: AttributeBranchValuesReader,
     ) -> None:
         self.pool_finder = pool_finder
         self.number_allocator = number_allocator
         self.intent_resolver = intent_resolver
         self.division_reader = division_reader
+        self.range_reader = range_reader
+        self.branch_values_reader = branch_values_reader
 
     async def apply(
         self,
@@ -154,7 +225,10 @@ class AttributePoolApplier:
                 pool is not provisioned or cannot be found, when the pool cannot be used for the attribute,
                 when the pool or the writer's division is exhausted, when `from_pool` alone names a pool over
                 a non-default number the attribute holds and that pool does not already track it, or when the
-                schema of the node's branch does not define an element of the pool's scope.
+                schema of the node's branch does not define an element of the pool's scope, or when a number sent
+                with `from_pool` is outside the ranges of the pool it names, or when the pool would start tracking
+                an attribute another live branch holds outside those ranges, or when `is_default` is sent without a
+                value together with the pool already tracking the attribute.
             NodeNotFoundError: When a relationship element of the pool's scope names, by a human-friendly id or a
                 default filter value, a peer that does not exist.
 
@@ -204,6 +278,9 @@ class AttributePoolApplier:
         if attribute.id is not None:
             tracking_pool_id = await self.pool_finder.get_tracking_pool_id(attribute_id=attribute.id)
 
+        if pool is not None and tracking_pool_id == pool.get_id():
+            self._refuse_reset_of_tracked_number(pool=pool, attribute=attribute)
+
         number = self._get_number(attribute=attribute)
         intent = self.intent_resolver.resolve(
             request=FromPoolRequest(
@@ -232,19 +309,133 @@ class AttributePoolApplier:
                 await self.number_allocator.release(attribute=attribute, user_id=user_id)
                 attribute.tracking_pool = None
             case FromPoolIntent.ATTACH:
-                await self._attach(
-                    node=node, pool=self._require_pool(pool=pool, intent=intent), attribute=attribute, user_id=user_id
+                attach_pool = self._require_pool(pool=pool, intent=intent)
+                ranges = await self.range_reader.get_pool_ranges(pool_id=attach_pool.get_id())
+                self._check_attach_within_ranges(
+                    pool=attach_pool,
+                    attribute=attribute,
+                    number=number,
+                    ranges=ranges,
+                    tracking_pool_id=tracking_pool_id,
                 )
+                if tracking_pool_id != attach_pool.get_id():
+                    await self._check_other_branches_within_ranges(
+                        node=node, pool=attach_pool, attribute=attribute, ranges=ranges
+                    )
+                await self._attach(node=node, pool=attach_pool, attribute=attribute, user_id=user_id)
             case FromPoolIntent.ALLOCATE:
+                allocate_pool = self._require_pool(pool=pool, intent=intent)
+                if attribute.id is not None and tracking_pool_id != allocate_pool.get_id():
+                    ranges = await self.range_reader.get_pool_ranges(pool_id=allocate_pool.get_id())
+                    await self._check_other_branches_within_ranges(
+                        node=node, pool=allocate_pool, attribute=attribute, ranges=ranges
+                    )
                 await self._allocate(
                     node=node,
-                    pool=self._require_pool(pool=pool, intent=intent),
+                    pool=allocate_pool,
                     attribute=attribute,
                     user_id=user_id,
                     reuse_reservation=False,
                 )
             case _:
                 assert_never(intent)
+
+    async def check_value_change(self, node: Node, attribute: BaseAttribute) -> None:
+        """Refuse a new number the pool tracking the saved attribute cannot hold.
+
+        The pool tracking the attribute is the one loaded with the node, and the pool itself is read only to name it
+        in a refusal.
+
+        Raises:
+            ValidationError: When the number is outside the ranges of the pool tracking the attribute, or when the
+                attribute is emptied.
+            InitializationError: When the attribute was loaded without the pool tracking it.
+            NodeNotFoundError: When the pool tracking the attribute cannot be read.
+
+        """
+        tracking_pool = self._loaded_tracking_pool(node=node, attribute=attribute)
+        if tracking_pool is None:
+            return
+
+        number = self._get_number(attribute=attribute)
+        if number is None:
+            pool = await self.pool_finder.find(pool_ref=tracking_pool.pool_id)
+            raise ValidationError(
+                {
+                    f"{attribute.name}.value": tracked_empty_refusal(
+                        pool_name=pool.name.value, attribute_name=attribute.name
+                    )
+                }
+            )
+
+        ranges = await self.range_reader.get_pool_ranges(pool_id=tracking_pool.pool_id)
+        if is_within_ranges(ranges=ranges, value=number):
+            return
+        pool = await self.pool_finder.find(pool_ref=tracking_pool.pool_id)
+        raise ValidationError(
+            {
+                f"{attribute.name}.value": tracked_edit_refusal(
+                    pool_name=pool.name.value, attribute_name=attribute.name, ranges=ranges, value=number
+                )
+            }
+        )
+
+    async def check_reset_to_default(self, node: Node, attribute: BaseAttribute) -> None:
+        """Refuse a reset to the default of a saved attribute a pool tracks, whatever that default is.
+
+        The pool tracking the attribute is the one loaded with the node, and the pool itself is read only to name it
+        in the refusal.
+
+        Raises:
+            ValidationError: When a pool tracks the attribute.
+            InitializationError: When the attribute was loaded without the pool tracking it.
+            NodeNotFoundError: When the pool tracking the attribute cannot be read.
+
+        """
+        tracking_pool = self._loaded_tracking_pool(node=node, attribute=attribute)
+        if tracking_pool is None:
+            return
+        pool = await self.pool_finder.find(pool_ref=tracking_pool.pool_id)
+        raise ValidationError(
+            {
+                f"{attribute.name}.is_default": tracked_reset_refusal(
+                    pool_name=pool.name.value, attribute_name=attribute.name
+                )
+            }
+        )
+
+    def _refuse_reset_of_tracked_number(self, pool: CoreNumberPool, attribute: BaseAttribute) -> None:
+        """Refuse an `is_default` sent without a value, which resets the number the pool tracks with no check.
+
+        Raises:
+            ValidationError: When `is_default` is sent without a value.
+
+        """
+        if (
+            attribute.is_default_presence is PayloadPresence.ABSENT
+            or attribute.value_presence is not PayloadPresence.ABSENT
+        ):
+            return
+        raise ValidationError(
+            {
+                f"{attribute.name}.is_default": tracked_reset_refusal(
+                    pool_name=pool.name.value, attribute_name=attribute.name
+                )
+            }
+        )
+
+    def _loaded_tracking_pool(self, node: Node, attribute: BaseAttribute) -> TrackingPool | None:
+        """Return the pool tracking the saved attribute, as loaded with the node.
+
+        Raises:
+            InitializationError: When the attribute was loaded without the pool tracking it.
+
+        """
+        if not attribute.tracking_pool_known:
+            raise InitializationError(
+                f"'{attribute.name}' of {node.get_id()} was loaded without the pool tracking it, so it cannot be checked"
+            )
+        return attribute.tracking_pool
 
     async def _apply_schema_number_pool(
         self,
@@ -281,6 +472,62 @@ class AttributePoolApplier:
         attribute.from_pool = {"id": pool.get_id()}
         self._check_pool_targets_attribute(schema=node.get_schema(), pool=pool, attribute=attribute)
         await self._allocate(node=node, pool=pool, attribute=attribute, user_id=user_id, reuse_reservation=True)
+
+    def _check_attach_within_ranges(
+        self,
+        pool: CoreNumberPool,
+        attribute: BaseAttribute,
+        number: int | None,
+        ranges: list[PoolRange],
+        tracking_pool_id: str | None,
+    ) -> None:
+        """Refuse a number sent with `from_pool` that is outside the ranges of the pool it names.
+
+        Raises:
+            ValidationError: When the number is outside the pool's ranges.
+            InitializationError: When no number was sent.
+
+        """
+        if number is None:
+            raise InitializationError(f"Attaching '{attribute.name}' to a number pool needs a number")
+        if is_within_ranges(ranges=ranges, value=number):
+            return
+        describe_refusal = tracked_edit_refusal if tracking_pool_id == pool.get_id() else untracked_attach_refusal
+        raise ValidationError(
+            {
+                f"{attribute.name}.from_pool": describe_refusal(
+                    pool_name=pool.name.value, attribute_name=attribute.name, ranges=ranges, value=number
+                )
+            }
+        )
+
+    async def _check_other_branches_within_ranges(
+        self, node: Node, pool: CoreNumberPool, attribute: BaseAttribute, ranges: list[PoolRange]
+    ) -> None:
+        """Refuse to start tracking an attribute that has an out-of-range value on another branch.
+
+        An attribute not saved yet holds no number on any branch. The write replaces the number of the branch it is
+        made on, and of every branch at once when the attribute is branch-agnostic, so only the other branches' numbers
+        are checked.
+
+        Raises:
+            ValidationError: When another live branch holds a number outside the pool's ranges.
+
+        """
+        if attribute.id is None:
+            return
+        replaced_branches = {node.get_branch().name, GLOBAL_BRANCH_NAME}
+        branch_values = await self.branch_values_reader.read(attribute_ids=[attribute.id])
+        refusal = other_branch_refusal(
+            pool_name=pool.name.value,
+            attribute_name=attribute.name,
+            ranges=ranges,
+            branch_values=[
+                branch_value for branch_value in branch_values if branch_value.branch not in replaced_branches
+            ],
+        )
+        if refusal is not None:
+            raise ValidationError({f"{attribute.name}.from_pool": refusal})
 
     async def _attach(self, node: Node, pool: CoreNumberPool, attribute: BaseAttribute, user_id: str) -> None:
         # An attribute not saved yet is attached to the pool when the node is created.
@@ -377,7 +624,7 @@ class AttributePoolApplier:
         if pool.node.value in [schema.kind, *schema.inherit_from] and pool.node_attribute.value == attribute.name:
             return
         raise ValidationError(
-            {f"{attribute.name}.from_pool": f"The {pool.name.value} pool can't be used for '{attribute.name}'."}
+            {f"{attribute.name}.from_pool": f"The '{pool.name.value}' pool can't be used for '{attribute.name}'."}
         )
 
     @staticmethod

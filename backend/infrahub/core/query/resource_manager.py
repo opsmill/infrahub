@@ -902,38 +902,9 @@ class NumberPoolGetDivisions(Query):
         ]
 
 
-def reserved_values_query(
-    pool_id: str,
-    attribute_name: str,
-    at: str,
-    default_branch_name: str,
-    division_filter: str = "",
-) -> tuple[str, dict[str, Any]]:
-    """Cypher fragment to find all Attributes reserved for a given NumberPool, with the parameters it reads.
-
-    Finds every value some non-deleting branch holds on each reserved Attribute, with the branch that holds it. A
-    value counts on the edge's branch when its HAS_VALUE edge is open now, and on each branch that forked from the
-    edge's branch while the edge was open and has written no edge of its own that hides the default-branch version.
-
-    `division_filter` is inserted after the reserved Attributes are matched, to keep only those of a division.
-
-    Final values are res (IS_RESERVED edge), attr (the reserved Attribute), value (an active Attribute value),
-    branch (a branch holding the value), deleting_branches and branch_windows.
-    """
-    params: dict[str, Any] = {
-        "pool_id": pool_id,
-        "attribute_name": attribute_name,
-        "at": at,
-        "default_branch_name": default_branch_name,
-    }
-    query = """
-%(live_branches)s
-    // --------------
-    // Start with all the Attributes currently reserved for this pool
-    // --------------
-    MATCH (pool:Node:%(number_pool)s { uuid: $pool_id })-[res:IS_RESERVED]->(attr:Attribute { name: $attribute_name })
-    WHERE res.status = "active" AND res.from <= $at AND (res.to IS NULL OR res.to > $at)
-%(division)s    CALL (attr, deleting_branches, branch_windows) {
+# Reads `attr`, `deleting_branches`, `branch_windows`, `$at` and `$default_branch_name`; each branch of the UNION
+# returns `value` and `branch`.
+LIVE_ATTRIBUTE_VALUES_QUERY = """
         // --------------
         // Every value edge open now, on any branch that is not being deleted
         // --------------
@@ -972,10 +943,122 @@ def reserved_values_query(
             AND hv.from <= window.fork_at AND window.fork_at < hv.to
             AND NOT window.name IN hiding_branches | window.name] AS branch
         RETURN av.value AS value, branch
+"""
+
+
+def reserved_values_query(
+    pool_id: str,
+    attribute_name: str,
+    at: str,
+    default_branch_name: str,
+    division_filter: str = "",
+) -> tuple[str, dict[str, Any]]:
+    """Cypher fragment to find all Attributes reserved for a given NumberPool, with the parameters it reads.
+
+    Finds every value some non-deleting branch holds on each reserved Attribute, with the branch that holds it. A
+    value counts on the edge's branch when its HAS_VALUE edge is open now, and on each branch that forked from the
+    edge's branch while the edge was open and has written no edge of its own that hides the default-branch version.
+
+    `division_filter` is inserted after the reserved Attributes are matched, to keep only those of a division.
+
+    Final values are res (IS_RESERVED edge), attr (the reserved Attribute), value (an active Attribute value),
+    branch (a branch holding the value), deleting_branches and branch_windows.
+    """
+    params: dict[str, Any] = {
+        "pool_id": pool_id,
+        "attribute_name": attribute_name,
+        "at": at,
+        "default_branch_name": default_branch_name,
     }
+    query = """
+%(live_branches)s
+    // --------------
+    // Start with all the Attributes currently reserved for this pool
+    // --------------
+    MATCH (pool:Node:%(number_pool)s { uuid: $pool_id })-[res:IS_RESERVED]->(attr:Attribute { name: $attribute_name })
+    WHERE res.status = "active" AND res.from <= $at AND (res.to IS NULL OR res.to > $at)
+%(division)s    CALL (attr, deleting_branches, branch_windows) {
+%(live_values)s    }
     WITH DISTINCT res, attr, value, branch, deleting_branches, branch_windows
-    """ % {"number_pool": InfrahubKind.NUMBERPOOL, "division": division_filter, "live_branches": LIVE_BRANCHES_QUERY}
+    """ % {
+        "number_pool": InfrahubKind.NUMBERPOOL,
+        "division": division_filter,
+        "live_branches": LIVE_BRANCHES_QUERY,
+        "live_values": LIVE_ATTRIBUTE_VALUES_QUERY,
+    }
     return query, params
+
+
+@dataclass(frozen=True)
+class NumberPoolAttributeBranchValuesQueryResult:
+    """The number one live branch holds for one attribute."""
+
+    attribute_id: str
+    branch: str
+    value: int
+
+
+class NumberPoolAttributeBranchValuesQuery(Query):
+    """Report the number each live branch holds for each attribute, one row per attribute and branch.
+
+    A branch holds the value of its own open edge, or else the value of the default branch it inherits, whether that
+    value is still open or was closed on the default branch after the branch forked. A branch being deleted holds
+    nothing, and neither does a branch whose attribute holds no number.
+    """
+
+    name = "number_pool_attribute_branch_values"
+    type = QueryType.READ
+
+    def __init__(self, attribute_ids: list[str], **kwargs: Unpack[QueryInitKwargs]) -> None:
+        self.attribute_ids = attribute_ids
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["attribute_ids"] = self.attribute_ids
+        self.params["at"] = self.at.to_string()
+        self.params["default_branch_name"] = registry.default_branch
+        self.params["null_value"] = NULL_VALUE
+
+        query = """
+        %(live_branches)s
+        UNWIND $attribute_ids AS attribute_id
+        MATCH (attr:Attribute { uuid: attribute_id })
+        CALL (attr, deleting_branches, branch_windows) {
+%(live_values)s
+            UNION
+            // --------------
+            // A branch that forked while the default branch's edge was open, and has written no edge of its own
+            // since, inherits the value without an edge carrying its name
+            // --------------
+            MATCH (attr)-[hv:HAS_VALUE {branch: $default_branch_name}]->(av)
+            WHERE hv.status = "active"
+            AND hv.from <= $at AND (hv.to IS NULL OR hv.to > $at)
+            WITH hv, av, branch_windows, COLLECT {
+                MATCH (attr)-[hiding:HAS_VALUE]->()
+                WHERE hiding.from <= $at AND (hiding.to IS NULL OR hiding.to > $at)
+                RETURN hiding.branch AS branch_name
+            } AS hiding_branches
+            UNWIND [window IN branch_windows WHERE window.origin_name = hv.branch
+                AND hv.from <= window.fork_at
+                AND NOT window.name IN hiding_branches | window.name] AS branch
+            RETURN av.value AS value, branch
+        }
+        WITH DISTINCT attr.uuid AS attribute_id, branch, value
+        WHERE value <> $null_value
+        """ % {"live_branches": LIVE_BRANCHES_QUERY, "live_values": LIVE_ATTRIBUTE_VALUES_QUERY}
+        self.add_to_query(query)
+        self.return_labels = ["attribute_id", "branch", "value"]
+        self.order_by = ["attribute_id", "branch", "value"]
+
+    def get_data(self) -> list[NumberPoolAttributeBranchValuesQueryResult]:
+        return [
+            NumberPoolAttributeBranchValuesQueryResult(
+                attribute_id=result.get_as_type("attribute_id", str),
+                branch=result.get_as_type("branch", str),
+                value=result.get_as_type("value", int),
+            )
+            for result in self.get_results()
+        ]
 
 
 class NumberPoolGetUsed(Query):

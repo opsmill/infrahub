@@ -6,7 +6,9 @@ import pytest
 
 from infrahub.core.attribute import Integer, IPAddress, IPAddressOptional, IPHost, PayloadPresence
 from infrahub.core.branch import Branch
+from infrahub.core.constants import PoolRecordProvenance
 from infrahub.core.node import Node
+from infrahub.core.query.resource_manager import TrackingPool
 from infrahub.core.schema import AttributeSchema, NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError
@@ -208,3 +210,39 @@ async def test_from_graphql_records_whether_value_and_from_pool_were_sent(
 
     assert attr.value_presence is test_case.value_presence
     assert attr.from_pool_presence is test_case.from_pool_presence
+
+
+@dataclass
+class TrackingPoolKnownTestCase:
+    name: str
+    assigned: list[TrackingPool | None]
+    known: bool
+
+
+TRACKING_POOL_KNOWN_TEST_CASES = [
+    TrackingPoolKnownTestCase(name="never_assigned", assigned=[], known=False),
+    TrackingPoolKnownTestCase(
+        name="assigned_a_pool",
+        assigned=[TrackingPool(pool_id="pool-1", provenance=PoolRecordProvenance.PROVIDED)],
+        known=True,
+    ),
+    TrackingPoolKnownTestCase(
+        name="pool_assigned_then_cleared",
+        assigned=[TrackingPool(pool_id="pool-1", provenance=PoolRecordProvenance.ALLOCATED), None],
+        known=True,
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in TRACKING_POOL_KNOWN_TEST_CASES])
+def test_assigning_the_tracking_pool_makes_it_known(branch: Branch, test_case: TrackingPoolKnownTestCase) -> None:
+    schema = AttributeSchema(name="ticket_id", kind="Number", optional=True)
+    at = Timestamp()
+    node = Node(schema=NodeSchema(name="Ticket", namespace="Test", attributes=[schema]), branch=branch, at=at)
+    attr = Integer(name=schema.name, schema=schema, branch=branch, at=at, node=node, data={"value": 3})
+
+    for tracking_pool in test_case.assigned:
+        attr.tracking_pool = tracking_pool
+
+    assert attr.tracking_pool_known is test_case.known
+    assert attr.tracking_pool == (test_case.assigned[-1] if test_case.assigned else None)
