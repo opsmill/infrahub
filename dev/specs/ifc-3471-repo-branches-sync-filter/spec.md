@@ -8,6 +8,13 @@
 
 **Input**: Jira [IFC-3471](https://opsmill.atlassian.net/browse/IFC-3471), the follow-up identified in [IFC-3156](https://opsmill.atlassian.net/browse/IFC-3156): "The Branches section on the repository's page has no Sync Status filter. It should have one, so a user can list only the failing branches without the GraphQL sandbox."
 
+## Clarifications
+
+### Session 2026-10-20
+
+- Q: Should the active filter tag show the Sync Status label or the stored value? → A: The label ("Import Error"), without changing the tag display of other object tables; a dedicated tag display for the Branches section is acceptable.
+- Q: Should the Status filter tag also show a label? → A: No. Only the Sync Status tag shows a label; the Status tag keeps its current display (`OPEN`).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - List only the branches that failed to import (Priority: P1)
@@ -81,7 +88,7 @@ The operator narrows the list with several criteria and shares the result with a
 - **FR-008**: The Sync Status filter MUST be stored with the section's other filters in the page URL, so a reload or a shared URL restores it.
 - **FR-009**: A stored Sync Status value that is not one of the five values MUST be ignored, so the list is not narrowed by it.
 - **FR-010**: The filter MUST be available on the Branches section of both read-write and read-only repositories.
-- **FR-011**: The active filter tag for the Sync Status filter MUST show the value's label ("Import Error"), not the stored value ("error-import"). Filter tags in other object tables MUST keep their current display; if the shared tag display cannot show the label without changing them, the Branches section uses a dedicated tag display of its own (decided by the user on 2026-10-20).
+- **FR-011**: The active filter tag for the Sync Status filter MUST show the value's label ("Import Error"), not the stored value ("error-import"). The Status filter tag in the Branches section and filter tags in other object tables MUST keep their current display; if the shared tag display cannot show the label without changing them, the Branches section uses a dedicated tag display of its own (decided by the user on 2026-10-20).
 
 ### Key Entities
 
