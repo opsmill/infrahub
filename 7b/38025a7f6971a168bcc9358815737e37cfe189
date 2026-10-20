@@ -1,0 +1,20 @@
+dev/knowledge/backend/query-pattern.md
+  s_2b1e801e7b575c::t_9e2290b3b5405f 396-401
+  s_2b1e801e7b575c::t_786b6d4e690d81 402-404
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7b38025a7f6971a168bcc9358815737e37cfe189",
+  "prompts": {},
+  "sessions": {
+    "s_2b1e801e7b575c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "188d9ad4-2f02-4897-bb57-c4e26b308cb6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}
