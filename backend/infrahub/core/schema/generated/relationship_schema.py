@@ -27,7 +27,7 @@ class GeneratedRelationshipSchema(HashableModel):
         pattern=r"^[a-z0-9\_]+$",
         min_length=3,
         max_length=64,
-        json_schema_extra={"update": "allowed"},
+        json_schema_extra={"update": "validate_constraint"},
     )
     peer: str = Field(
         ...,

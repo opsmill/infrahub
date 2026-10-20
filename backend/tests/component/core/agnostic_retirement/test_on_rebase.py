@@ -12,13 +12,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub import lock
-from infrahub.auth.session import AccountSession
-from infrahub.auth.types import AuthType
-from infrahub.context import InfrahubContext
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.branch.tasks import rebase_branch
 from infrahub.core.constants import SchemaPathType
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -30,10 +25,7 @@ from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.query.node_agnostic_retirement import RetireNodeAgnosticFieldsQuery
 from infrahub.core.timestamp import Timestamp
-from infrahub.workers.dependencies import build_cache, build_database
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
-from tests.helpers.dependency_override import override_dependency
-from tests.helpers.workflow_override import override_workflow
 
 if TYPE_CHECKING:
     from fast_depends import Provider
@@ -41,12 +33,11 @@ if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
-from tests.adapters.cache import MemoryCache
-from tests.adapters.workflow import WorkflowRecorder
 from tests.component.core.agnostic_retirement.support import (
     FailingRetirementDatabase,
     RetirementFailureError,
     delete_node,
+    rebase_branch,
 )
 from tests.helpers.agnostic_edges import (
     TEST_ACTOR_ID,
@@ -93,32 +84,6 @@ async def _change_widget_inheritance(db: InfrahubDatabase, branch: Branch) -> No
     )
     query = await NodeKindUpdateMigrationQuery01.init(db=db, branch=branch, migration=migration)
     await query.execute(db=db)
-
-
-async def _rebase_branch(
-    db: InfrahubDatabase, default_branch: Branch, branch: Branch, dependency_provider: Provider
-) -> Branch:
-    """Rebase the branch through the real rebase flow, and return its refreshed Branch object.
-
-    The enforcement point under test lives inside the rebase flow's own transaction, so the real flow
-    is the only faithful driver. Refreshed, because the rebase moves the branch's fork point and every
-    later read through the stale object would still see the pre-rebase window.
-    """
-    lock.initialize_lock(local_only=True)
-    context = InfrahubContext.init(
-        branch=default_branch,
-        account=AccountSession(account_id=TEST_ACTOR_ID, auth_type=AuthType.NONE),
-    )
-    # The doubles must come off even when an exception propagates through this block.
-    with (
-        override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider),  # noqa: ARG005
-        override_workflow(WorkflowRecorder(), dependency_provider=dependency_provider),
-        # A lambda rather than the bare class: fast_depends reads the callable's return annotation,
-        # and a class used as the factory resolves to `None` and fails its validation.
-        override_dependency(build_cache, lambda: MemoryCache(), dependency_provider=dependency_provider),  # noqa: PLW0108
-    ):
-        await rebase_branch(branch=branch.name, context=context, send_events=False)
-    return await Branch.get_by_name(db=db, name=branch.name)
 
 
 class TestAgnosticRetirementOnRebase:
@@ -169,7 +134,7 @@ class TestAgnosticRetirementOnRebase:
             edge_summary(attribute_before)
         ), "the branch still reads the object, so the default-branch delete released nothing"
 
-        rebased = await _rebase_branch(
+        rebased = await rebase_branch(
             db=db, default_branch=default_branch, branch=branch, dependency_provider=dependency_provider
         )
         rebase_at = Timestamp(rebased.get_branched_from())
@@ -202,7 +167,7 @@ class TestAgnosticRetirementOnRebase:
         attribute_before = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
 
         await delete_node(db=db, node_id=widget.id, branch=default_branch, at=Timestamp())
-        rebased = await _rebase_branch(
+        rebased = await rebase_branch(
             db=db, default_branch=default_branch, branch=branch, dependency_provider=dependency_provider
         )
         rebase_at = Timestamp(rebased.get_branched_from())
@@ -233,7 +198,7 @@ class TestAgnosticRetirementOnRebase:
             "the branch still reads the object, so the default-branch delete released nothing"
         )
 
-        rebased = await _rebase_branch(
+        rebased = await rebase_branch(
             db=db, default_branch=default_branch, branch=branch, dependency_provider=dependency_provider
         )
         rebase_at = Timestamp(rebased.get_branched_from())
@@ -264,7 +229,7 @@ class TestAgnosticRetirementOnRebase:
         before = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
 
         counting_db = CountingInfrahubDatabase.from_db(db=db)
-        rebased = await _rebase_branch(
+        rebased = await rebase_branch(
             db=counting_db, default_branch=default_branch, branch=branch, dependency_provider=dependency_provider
         )
 
@@ -294,7 +259,7 @@ class TestAgnosticRetirementOnRebase:
         assert open_edge_types(before) == {"HAS_ATTRIBUTE", "HAS_VALUE", "IS_PROTECTED"}
 
         await delete_node(db=db, node_id=widget.id, branch=default_branch, at=Timestamp())
-        rebased = await _rebase_branch(
+        rebased = await rebase_branch(
             db=db, default_branch=default_branch, branch=branch, dependency_provider=dependency_provider
         )
 
@@ -330,7 +295,7 @@ class TestAgnosticRetirementOnRebase:
             "the delete point closed the branch-only object's global edges; the rebase must not reopen or orphan them"
         )
 
-        rebased = await _rebase_branch(
+        rebased = await rebase_branch(
             db=db, default_branch=default_branch, branch=branch, dependency_provider=dependency_provider
         )
 
@@ -371,7 +336,7 @@ class TestAgnosticRetirementOnRebase:
 
         failing_db = FailingRetirementDatabase.from_db(db=db)
         with pytest.raises(RetirementFailureError, match=r"^the retirement run could not complete$"):
-            await _rebase_branch(
+            await rebase_branch(
                 db=failing_db, default_branch=default_branch, branch=branch, dependency_provider=dependency_provider
             )
 

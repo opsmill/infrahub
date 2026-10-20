@@ -13,6 +13,9 @@ from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import UniquenessViolationError
+from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
+from infrahub.profiles.data_reader import ProfileDataReader
+from infrahub.profiles.node_applier import NodeProfilesApplier
 from tests.helpers.schema import LOCATION_SCHEMA, load_schema
 
 
@@ -165,7 +168,17 @@ async def test_attribute_uniqueness_matches_canonical_ip_on_update(
     await second.save(db=db)
 
     reloaded = await NodeManager.get_one(id=second.id, db=db, branch=default_branch)
-    await reloaded.from_graphql(db=db, data={"address": {"value": first_address_short_format}})
+    await reloaded.from_graphql(
+        db=db,
+        data={"address": {"value": first_address_short_format}},
+        pool_applier=build_attribute_pool_applier(
+            profiles_applier=NodeProfilesApplier(
+                db=db, branch=default_branch, profile_data_reader=ProfileDataReader(db=db, branch=default_branch)
+            ),
+            db=db,
+            schema_branch=db.schema.get_schema_branch(name=default_branch.name),
+        ),
+    )
 
     constraint = NodeAttributeUniquenessConstraint(db=db, branch=default_branch)
     with pytest.raises(

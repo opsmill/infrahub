@@ -27,6 +27,7 @@ import {
 } from "@/entities/diff/ui/content-diff/collapsed-lines";
 
 import "react-diff-view/style/index.css";
+import "./react-diff-view-overrides.css";
 
 // The parser only reads a diff that starts with a git header.
 const GIT_DIFF_HEADER = "diff --git a/content b/content";
@@ -62,9 +63,9 @@ function CollapsedLinesDecoration({
   return (
     // The library stylesheet is unlayered, so its cell padding and alignment beat plain utilities.
     <Decoration
-      className="bg-sky-50"
-      gutterClassName="bg-sky-100 p-0!"
-      contentClassName="px-2! align-middle! text-neutral-600"
+      className="bg-info-surface"
+      gutterClassName="bg-info-surface p-0!"
+      contentClassName="px-2! align-middle! text-foreground-muted"
     >
       <Col className="gap-0">
         {getExpandActions(collapsedLines).map((action) => {
@@ -77,7 +78,7 @@ function CollapsedLinesDecoration({
                 variant="ghost"
                 size="xxs"
                 aria-label={label}
-                className="h-5 w-full rounded-none text-sky-800"
+                className="h-5 w-full rounded-none text-info"
                 onPress={() => onExpand(action.range)}
               >
                 <Icon />

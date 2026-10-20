@@ -13,6 +13,7 @@ from infrahub.exceptions import InitializationError
 from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.graphql.resolvers.account_metadata import AccountMetadataResolver
 from infrahub.graphql.resolvers.many_relationship import ManyRelationshipResolver
+from infrahub.graphql.resolvers.object_by_id import ObjectByIdResolver
 from infrahub.graphql.resolvers.single_relationship import SingleRelationshipResolver
 from infrahub.permissions import PermissionManager
 
@@ -41,6 +42,7 @@ class GraphqlContext:
     single_relationship_resolver: SingleRelationshipResolver
     many_relationship_resolver: ManyRelationshipResolver
     account_metadata_resolver: AccountMetadataResolver
+    object_by_id_resolver: ObjectByIdResolver
     service: InfrahubServices | None = None
     at: Timestamp | None = None
     related_node_ids: set | None = None
@@ -138,6 +140,7 @@ async def prepare_graphql_params(
             single_relationship_resolver=SingleRelationshipResolver(),
             many_relationship_resolver=ManyRelationshipResolver(),
             account_metadata_resolver=AccountMetadataResolver(),
+            object_by_id_resolver=ObjectByIdResolver(),
             at=Timestamp(at),
             types=gqlm.get_graphql_types(),
             related_node_ids=set(),

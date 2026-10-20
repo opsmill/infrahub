@@ -1,5 +1,4 @@
 @import "./Alert.css" layer(base);
-@import "./DiffView.css" layer(base);
 
 @import "tailwindcss";
 @import "../../../../packages/ui/src/styles/theme.css";

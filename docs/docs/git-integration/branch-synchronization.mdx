@@ -343,6 +343,158 @@ This query always reports the present. A request that includes an `at` query par
 
 The account running the query needs the `view` permission on the repository's kind, `Core/Repository` or `Core/ReadOnlyRepository`, with a decision that covers both the default branch and other branches. A single `ALLOW_ALL` grant satisfies this, and so does `ALLOW_DEFAULT` together with `ALLOW_OTHER`. Granting only one of the two is refused with an error rather than a shortened list of branches.
 
+## When a push to the remote fails
+
+When you merge a branch that syncs with Git, Infrahub merges the branch in its database first. A background task then merges the matching Git branch of each read-write repository and pushes the result to the remote. That push can fail after the merge in Infrahub is complete: the remote can be unreachable, a token can expire, a branch protection can refuse the push, or someone can rewrite the history of the remote branch. The merge in Infrahub stays complete, and Infrahub records the failure on the repository. You can then see which merges wait, fix the cause, and retry the push or abandon it.
+
+### How Infrahub pushes a merge
+
+Infrahub adds each merge that changes the files of a read-write repository to the push queue of that repository. The log of the merge task shows a line such as `The merge of branch infra/vlan-update waits for its push to repository network-config.` For a merge that changes only data, and no file of the repository, Infrahub pushes nothing.
+
+Infrahub pushes the whole queue of a repository in one push. It fetches the remote, checks each queued merge against it, merges each queued commit in merge order onto the current head of the remote default branch, and pushes the result. With the default settings, Git fast-forwards when it can, as described in [merging branches](./overview.mdx#merging-branches). When the push succeeds, Infrahub records the new commit on its default branch and removes the merges from the queue. If someone pushed a commit to the remote default branch since the last synchronization, Infrahub merges the queue onto that commit, and imports it too.
+
+When the push fails:
+
+- If the cause can clear without a change on your side, such as an unreachable remote, Infrahub tries the push again after 30 seconds, 2 minutes and 5 minutes. The status of the repository stays **Pending** meanwhile.
+- If the last automatic retry fails, or if the cause needs a change on your side, the status becomes **Action required**. Infrahub tries to push the whole queue again when you retry it, or at the next merge into the same repository that Infrahub accepts.
+- If Infrahub refuses the queue because of a conflict, a removed source commit or a rewritten history, each later merge into the repository is blocked until you resolve the cause or abandon the queue. When the remote default branch has a commit that Infrahub has not recorded, as after a rewritten history, Infrahub refuses the merge itself, as described in [what waits while a push is pending](#what-waits-while-a-push-is-pending). Otherwise, Infrahub adds the merge to the same queue and refuses its push for the same cause.
+- If a task worker stops during a push, Infrahub starts the push again after about 15 minutes without progress. The synchronization of the repository checks for such a push every minute.
+
+### Read the push state of a repository
+
+Infrahub records the push state of a read-write repository in nine read-only attributes whose names start with `delivery_`. Read them on the default branch: on another branch, their value is an old copy. To read the push state with GraphQL, query the repository on the default branch:
+
+```graphql
+query RepositoryPushState($name: String!) {
+  CoreRepository(name__value: $name) {
+    edges {
+      node {
+        id
+        delivery_status { value label }
+        delivery_failure_cause { value label }
+        delivery_error { value }
+        delivery_queue { value }
+        delivery_last_abandonment { value }
+        delivery_reverted { value }
+      }
+    }
+  }
+}
+```
+
+| Attribute | What it holds |
+|---|---|
+| `delivery_status` | `none`, or no value, when no merge waits. `pending` while a push runs, is about to run, or waits for an automatic retry. `action-required` when no automatic retry is planned. |
+| `delivery_failure_cause` | Why the last push failed, as the next table describes. |
+| `delivery_error` | The message of the last failure, with credentials removed. When the remote refused the push, this is the remote's own text, such as the message of a pre-receive hook. |
+| `delivery_queue` | The pending merges in merge order, in `entries`, each with its `source_branch`, its `source_commit` and the time of the merge (`merged_at`). It also holds the `version` of the queue, which an abandonment needs. |
+| `delivery_last_abandonment` | The record of the last abandonment. |
+| `delivery_reverted` | A pushed commit that a later rewrite of the remote default branch removed. |
+
+The other three attributes, `delivery_held_regeneration`, `delivery_last_delivered_commit` and `delivery_progress`, hold the regeneration that waits, the last pushed commit, and the times of the last push attempt.
+
+In the web interface, the details page of the repository lists the nine attributes in the **On this branch** card when you select **Extra**. The card shows the values of the branch that you selected, so select the default branch first.
+
+For each value of `delivery_failure_cause`, the following table gives its label, whether Infrahub retries the push by itself, and what you can do:
+
+| Value | Label | Retried automatically | What to do |
+|---|---|---|---|
+| `remote-unreachable` | Remote unreachable | Yes | Wait, or retry when the remote is reachable again. |
+| `remote-advanced` | Remote moved during the push | Yes | Wait, or retry. |
+| `record-failed` | Pushed, not recorded | Yes | Wait, or retry. The remote can already have the content. |
+| `import-interrupted` | Import of the delivered commit was interrupted | Yes | Wait, or retry when the database, the Infrahub server and the remote are reachable. The remote already has the content. |
+| `not-found` | Repository not found on the remote | No | Check the location of the repository, and that the credential can see it, then retry. |
+| `certificate` | Certificate verification failed | No | Fix the certificate configuration, then retry. |
+| `credentials` | Credentials rejected | No | Fix the credential, then retry. |
+| `permission` | Push refused by the remote | No | Give the credential push permission, or lift the branch protection, then retry. |
+| `import-failed` | Import of the delivered commit failed | No | Fix the content on the remote, then retry. |
+| `replay-conflict` | A pending merge conflicts with the remote | No | Merge the source branch into the default branch on the remote manually, then retry. Or abandon. |
+| `source-discarded` | A source commit is no longer on the remote | No | Abandon. |
+| `destination-rewritten` | The remote branch history was rewritten | No | Abandon. |
+| `unclassified` | Unclassified failure | No | Read the message, then retry or abandon. |
+
+For a conflict, a source commit that is no longer on the remote, or a rewritten history, Infrahub pushes nothing. A removed source commit or a rewritten history comes from a force push or a deleted branch on the remote, and a push would put the removed commits back on the remote. A conflict needs a resolution that only a person can make.
+
+### What waits while a push is pending
+
+While a repository has pending pushes, with `delivery_status` at `pending` or `action-required`, Infrahub does not import the remote default branch of that repository. An import of the default branch removes the repository objects, such as Transformations, Generator definitions and checks, that the imported commit does not contain. The remote does not contain the pending merges yet, so an import would remove the objects that they added.
+
+- The synchronization skips the remote default branch and the remote branches that the pending merges come from. Infrahub imports a commit pushed to the remote default branch in the meantime when the push succeeds, or at the first synchronization after the queue is empty. Other branches synchronize as usual.
+- A task worker that clones the repository again does not import its default branch.
+- **Reimport current commit** is refused on every branch, with the message `Repository <name> has pending pushes; a reimport now would remove the objects they added. Retry or abandon the pending pushes first.` If a merge enters the queue after Infrahub accepted the request, the import task fails with the same message.
+- If someone pushes to the remote default branch while pushes are pending, Infrahub refuses to merge a branch whose Git branch in that repository is at another commit than the default branch, for example a branch that changes files of the repository. The message starts with `Unable to merge branch <branch>, because Infrahub has not recorded the latest commit of branch <default branch> of repository <name>`. Infrahub refuses before the merge, so the branch stays open. Retry the pending pushes, then merge the branch again after the push succeeds. After an abandonment, merge again after the next synchronization imports the remote default branch.
+- Infrahub refuses to convert the repository to a read-only repository, and keeps refusing until the regeneration that waited for the push has run.
+
+The regeneration that the repository defines also waits: its artifact definitions, its Generator definitions, and the computed attributes that its Python Transformations calculate. After the merge, they would use the files of the repository from before the merge. Infrahub runs them once, after the push succeeds or after you abandon the pending pushes. The regeneration that other repositories define runs at once.
+
+### Retry the pending pushes
+
+Retry after you fix the cause, or when you do not want to wait for the next automatic retry.
+
+1. Fix the cause that `delivery_failure_cause` and `delivery_error` show, for example renew the credential or lift the branch protection.
+2. Send the `InfrahubRepositoryDeliveryRetry` mutation on the default branch, with the `id` of the repository:
+
+   ```graphql
+   mutation RetryPush($id: String!) {
+     InfrahubRepositoryDeliveryRetry(data: { id: $id }) {
+       ok
+       task { id }
+     }
+   }
+   ```
+
+3. The mutation returns the `id` of the task at once. Wait for the task to complete. After a successful push, `delivery_status` is `none`.
+
+If the push fails again for a cause that can clear by itself, the task retries it automatically, as after a merge.
+
+### Abandon the pending pushes
+
+Abandon the queue when the pending merges cannot reach the remote, for example after a rewrite of the remote history, or after a conflict that you do not want to resolve on the remote.
+
+1. Read the `delivery_queue` value of the repository on the default branch. Check the merges in `entries`: an abandonment drops every pending merge of the repository. You cannot abandon one merge and keep the others.
+2. Send the `InfrahubRepositoryDeliveryAbandon` mutation on the default branch, with the `id` of the repository and the `version` of the queue as `queue_version`:
+
+   ```graphql
+   mutation AbandonPush($id: String!, $version: Int!) {
+     InfrahubRepositoryDeliveryAbandon(data: { id: $id, queue_version: $version }) {
+       ok
+       task { id }
+     }
+   }
+   ```
+
+3. The mutation returns the `id` of the task at once. Wait for the task to complete.
+
+If a merge was added to or removed from the queue since you read the version, Infrahub refuses the request with `The pending pushes of repository <name> changed since version <n>; reload and try again.`
+
+Both mutations need the `update` permission on repositories, such as `object:Core:Repository:update:allow_all`, and the global permissions `manage_repositories` and `edit_default_branch` (see [permissions](../reference/permissions.mdx)). Infrahub refuses a request on another branch than the default branch, with `Send this request on the default branch <name>; the pending pushes live there.` It also refuses both mutations for a read-only repository, for a staging repository, and when nothing is pending. An id that is not the id of a repository gets the same "not found" error as an unknown id. A push that runs, or an automatic retry that waits, does not block them: the task starts after the running push.
+
+### What an abandonment leaves behind
+
+An abandonment pushes nothing and imports nothing. After it:
+
+- The remote is unchanged. Infrahub removes nothing from it and deletes no remote branch.
+- The branches stay merged in Infrahub. The default branch keeps the repository objects that the abandoned merges added, although the remote does not have their files. If an import was still due, the default branch can also lack objects that its recorded commit holds.
+- `delivery_last_abandonment` holds the record of the abandonment: when, by whom, the abandoned merges, the version of the queue, and the commit that the default branch kept.
+- Infrahub runs the regeneration that waited, from the commit that the default branch kept. If that regeneration fails, the abandonment task fails, and Infrahub runs the regeneration again after about 15 minutes. To regenerate before that, run the artifact definitions, the Generator definitions and the computed attributes of the repository manually, as the log of the task says.
+- Infrahub never adds an abandoned merge to the queue again.
+
+To make the repository objects match the remote again, run **Reimport current commit** on the default branch, from the actions of the repository or with the `InfrahubRepositoryProcess` mutation. To get the abandoned changes to the remote, merge the source branch on the remote manually, or merge again the branch that Infrahub creates from a kept source branch, as the next section describes.
+
+### The source branch is kept until its merge is pushed
+
+With `delete_branch_after_merge` and `delete_git_branch_after_merge` enabled, Infrahub deletes the remote branch of a merged branch. While a merge from that branch waits in the push queue, Infrahub keeps the remote branch, because it holds the commit that the push needs, and logs a warning in the log of the branch deletion. After the push succeeds, Infrahub deletes the remote branch, unless another pending merge comes from it.
+
+If you abandon the pending pushes, the remote branch stays. At the next synchronization, Infrahub imports it again as a new branch, unless your [synchronization rules](#rule-processing) exclude its name. You can then merge that branch again, and Infrahub pushes the new merge.
+
+### Limitations of the push queue
+
+- Infrahub stops a stalled fetch or push of the pending merges only on an HTTP or HTTPS remote. Over SSH, a stalled push or fetch keeps the repository locked until the connection ends, and a retry waits for it.
+- A branch created in Infrahub from the default branch while pushes are pending holds the objects of the pending merges, but its Git branch does not hold their files. When the synchronization imports that Git branch, it removes those objects on the branch, and a merge of the branch removes them from the default branch. Check `delivery_status` of the repository before you create a branch that syncs with Git.
+- If a Generator of the held regeneration never ends, Infrahub waits for it as long as the task worker runs, and no other task runs the held regeneration of the repository in that time.
+- If the task worker stops while it runs the held regeneration, and the task manager still shows the task as running, Infrahub runs the regeneration again only after the task manager marks the task as crashed.
+- If the synchronization does not process a change of the `default_branch` of a repository within seven days, for example because pushes stay pending that long, Infrahub reads the change as a rewrite of the remote history. It can then record in `delivery_reverted` a removed push that did not happen.
+
 ## Troubleshooting
 
 ### Branches not appearing after configuration

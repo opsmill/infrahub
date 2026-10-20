@@ -1,9 +1,14 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import NULL_VALUE, RelationshipDirection
 from infrahub.core.query import Query, QueryType
-from infrahub.database import InfrahubDatabase
+
+if TYPE_CHECKING:
+    from infrahub.core.schema import RelationshipSchema
+    from infrahub.database import InfrahubDatabase
 
 
 @dataclass
@@ -14,6 +19,11 @@ class RelationshipFilter:
     def __hash__(self) -> int:
         return hash((self.relationship_identifier, self.direction))
 
+    @classmethod
+    def for_relationship(cls, relationship: RelationshipSchema) -> RelationshipFilter:
+        """Return the filter that selects, on a profile, the peers it holds for the relationship."""
+        return cls(relationship_identifier=f"profile_{relationship.get_identifier()}", direction=relationship.direction)
+
 
 @dataclass
 class ProfileData:
@@ -21,6 +31,10 @@ class ProfileData:
     priority: float | int
     attribute_values: dict[str, Any]
     relationship_peers: dict[RelationshipFilter, list[str]]
+
+    def peers_of(self, relationship: RelationshipSchema) -> list[str]:
+        """Return the ids of the peers the profile holds for the relationship, empty when it holds none."""
+        return self.relationship_peers.get(RelationshipFilter.for_relationship(relationship=relationship), [])
 
 
 class GetProfileDataQuery(Query):

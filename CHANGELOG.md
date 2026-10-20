@@ -11,6 +11,62 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.11.8](https://github.com/opsmill/infrahub/tree/infrahub-v1.11.8) - 2026-10-19
+
+### Added
+
+- Added support for Python 3.15 to the `infrahub-testcontainers` package.
+
+### Changed
+
+- Changed proposed-change and post-merge regeneration to follow a `display_label` or `human_friendly_id` read on a generic through the value that each implementation defines or inherits, instead of selecting every target when the generic defines none.
+- Changed proposed-change and post-merge regeneration to select only the targets that read a changed node when the query reaches that node through an inline or named fragment, instead of every target of the definition.
+- Changed proposed-change and post-merge regeneration to select only the targets that read a changed node when the query reads its kind both at the root and through a relationship, instead of every target of the definition.
+
+### Fixed
+
+- Fixed GraphQL queries ignoring the fields read through a named fragment used inside another fragment, such as `... on InfraDevice { ...DeviceInterfaces }`. When such a field changes, artifacts and Generators that read it are now regenerated and computed attributes based on a Python transform are recomputed. Object permissions are now checked on these fields.
+- Fixed artifacts and Generators not being selected after a change to an object whose kind was added to a generic after their query was saved, when the query reads that generic. The kinds a query reads are now taken from the query text each time a change is checked, instead of from the list stored when the query was saved. The `models` attribute of a GraphQL query is still computed only when the query text is saved, so it can miss kinds the query reads, such as a kind added to a generic afterwards. It no longer affects which artifacts and Generators are regenerated.
+- Fixed artifacts not being regenerated and Generators not being run after a change to a field that their query reads only inside a fragment on a generic.
+- Fixed the `infrahub-git-credential` helper returning "No such command 'erase'" in the task log after Git fails to authenticate with a remote repository.
+- Fixed the scheduled job that revokes approvals on updated proposed changes (Enterprise) checking every proposed change, including merged, closed and canceled ones, instead of only the open ones. On an instance with many old proposed changes, the job started one whole-graph scan per proposed change every 10 minutes and could make the database too slow to log in.
+
+## [Infrahub - v1.11.7](https://github.com/opsmill/infrahub/tree/infrahub-v1.11.7) - 2026-10-14
+
+### Fixed
+
+- Concurrent creates of the same IP address on a branch other than the default branch now leave a single IP address when the schema declares a uniqueness constraint on it. The extra creates are rejected with the uniqueness error, as they are on the default branch. ([#11059](https://github.com/opsmill/infrahub/issues/11059))
+- Fixed the "info" severity badge in task logs having the same color as the "warning" badge; it is now blue.
+
+## [Infrahub - v1.11.6](https://github.com/opsmill/infrahub/tree/infrahub-v1.11.6) - 2026-10-13
+
+### Changed
+
+- Post-merge and proposed-change regeneration now regenerate only the affected members when a Generator or artifact query reads a `display_label` or `human_friendly_id` built from a related node's attribute and that related node changes. A query that does not target unique objects, or whose `display_label` or `human_friendly_id` path cannot be resolved, still regenerates every member of the definition.
+- Post-merge regeneration now narrows to the affected members when the changed data is read through a relationship (for example an owner's name rendered by an artifact, or an interface's field on a device), instead of regenerating every member of the definition. Changes that cannot be attributed to specific members unambiguously still regenerate the whole group.
+
+### Fixed
+
+- Fixed artifacts and Generators not being regenerated after a merge or in a proposed change when the change was to a field their query filters on, such as moving an object to the related node the query selects by. ([#11024](https://github.com/opsmill/infrahub/issues/11024))
+- Fixed Generators not running in a proposed change or after a merge when the only change was to a Profile of a kind their query reads.
+
+## [Infrahub - v1.11.5](https://github.com/opsmill/infrahub/tree/infrahub-v1.11.5) - 2026-10-08
+
+### Security
+
+- Updated `PyJWT` to 2.15.0, `urllib3` to 2.8.0, `oauthlib` to 4.0.0, `dulwich` to 1.2.9, `fsspec` to 2026.6.0 and `GitPython` to 3.1.62 to fix published security vulnerabilities, including the critical PyJWT vulnerability [CVE-2026-102268](https://github.com/advisories/GHSA-ffc3-869f-jxw9). ([#10803](https://github.com/opsmill/infrahub/pull/10803), [#10903](https://github.com/opsmill/infrahub/pull/10903), [#10837](https://github.com/opsmill/infrahub/pull/10837))
+
+### Fixed
+
+- Fixed the repository import getting stuck in an error state when a single commit removed a GraphQL query from `.infrahub.yml` and also removed the Transformations or Generator definitions that used it, or pointed them at another query. A query removed from `.infrahub.yml` is now deleted even when the repository declares no other queries. Deleting a removed Transformation also deletes every artifact definition that references it, including artifact definitions created outside the repository, along with their artifacts. ([#10109](https://github.com/opsmill/infrahub/issues/10109))
+- Fixed a node getting a duplicate uniqueness constraint when an existing constraint lists its human-friendly ID fields in a different order. Infrahub removes the duplicate from an existing schema the next time that node's schema is loaded. ([#10793](https://github.com/opsmill/infrahub/issues/10793))
+- Fixed a slow creation, update and refresh of objects when many objects use the same Profile.
+- Fixed a slow deletion of a Profile, and a slow removal of objects from a Profile, when many objects use the Profile.
+- Fixed a slow update of a Profile with many objects, when the update does not include `related_nodes` or `related_templates`.
+- Fixed branch creation and other high-priority tasks waiting behind a large backlog of background tasks before they start.
+- Fixed missing related objects in large GraphQL queries, when objects share related objects and the relationship has more rows than the query size limit (5,000 by default).
+- Fixed searches returning no results when the search text starts or ends with a space, for example after pasting it from another application. This affects the search box on node list views and on the branches, tasks, proposed changes and IPAM namespaces pages. It also affects the search in relationship fields on create and edit forms, and in the relationship filter of list views.
+
 ## [Infrahub - v1.11.4](https://github.com/opsmill/infrahub/tree/infrahub-v1.11.4) - 2026-10-01
 
 ### Security

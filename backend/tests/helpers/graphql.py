@@ -19,6 +19,7 @@ from infrahub.log import get_logger
 
 if TYPE_CHECKING:
     from infrahub.auth.session import AccountSession
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
 
@@ -91,6 +92,7 @@ async def graphql_query(
     service: InfrahubServices | None = None,
     variables: dict[str, Any] | None = None,
     account_session: AccountSession | None = None,
+    at: Timestamp | str | None = None,
 ) -> ExecutionResult:
     branch = branch or await Branch.get_by_name(name="main", db=db)
     variables = variables or {}
@@ -99,6 +101,7 @@ async def graphql_query(
     gql_params = await prepare_graphql_params(
         db=db,
         branch=branch,
+        at=at,
         service=service,
         account_session=account_session,
     )

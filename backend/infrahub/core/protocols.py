@@ -16,6 +16,7 @@ if TYPE_CHECKING:
         DateTime,
         DateTimeOptional,
         Dropdown,
+        DropdownOptional,
         HashedPassword,
         Integer,
         IntegerOptional,
@@ -505,9 +506,17 @@ class CoreNodeTriggerRule(CoreTriggerRule):
 class CoreNumberPool(CoreResourcePool, LineageSource):
     node: String
     node_attribute: String
-    start_range: Integer
-    end_range: Integer
+    start_range: IntegerOptional
+    end_range: IntegerOptional
     pool_type: Enum
+    allocation_scope: ListAttributeOptional
+    ranges: RelationshipManager[CoreNumberPoolRange]
+
+
+class CoreNumberPoolRange(CoreWeightedPoolResource):
+    start: Integer
+    end: Integer
+    pool: RelationshipManager[CoreNumberPool]
 
 
 class CoreObjectPermission(CoreBasePermission):
@@ -550,6 +559,15 @@ class CoreReadOnlyRepository(LineageOwner, LineageSource, CoreGenericRepository,
 class CoreRepository(LineageOwner, LineageSource, CoreGenericRepository, CoreTaskTarget):
     default_branch: String
     commit: StringOptional
+    delivery_status: DropdownOptional
+    delivery_failure_cause: DropdownOptional
+    delivery_error: StringOptional
+    delivery_queue: JSONAttributeOptional
+    delivery_held_regeneration: JSONAttributeOptional
+    delivery_last_abandonment: JSONAttributeOptional
+    delivery_last_delivered_commit: StringOptional
+    delivery_reverted: JSONAttributeOptional
+    delivery_progress: JSONAttributeOptional
 
 
 class CoreRepositoryGroup(CoreGroup):

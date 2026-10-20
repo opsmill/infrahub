@@ -37,6 +37,12 @@ from tests.helpers.test_client import dummy_async_request
 
 TLS_HINT = "SSL verification failed for net-repo, please validate the certificate chain."
 CONNECTION_HINT = "Unable to clone the repository net-repo, please check the address and the credential"
+FETCH_CONNECTION_HINT = (
+    "Unable to fetch from the remote of repository net-repo, please check that the remote is reachable."
+)
+FETCH_NOT_FOUND_HINT = (
+    "Unable to fetch from the remote of repository net-repo, please check the address and the credential."
+)
 TIME_LIMIT_HINT = (
     "The Git command for repository net-repo did not complete within its time limit, "
     "please check that the remote is reachable."
@@ -98,9 +104,11 @@ ENRICHMENT_CASES = [
         expected=RepositoryConnectionError,
     ),
     EnrichmentCase(
+        # Only a clone or a read of the remote keeps the host's "remote:" line.
         name="repository_not_found",
         stderr=NOT_FOUND_STDERR,
         expected=RepositoryNotFoundError,
+        command=["git", "clone", "-v", "--", "https://gitlab.example.com/net/repo.git", "/opt/infrahub/git/net-repo"],
         message=CONNECTION_HINT,
     ),
     EnrichmentCase(
@@ -108,7 +116,7 @@ ENRICHMENT_CASES = [
         name="repository_not_found_http_404",
         stderr="fatal: repository 'http://127.0.0.1:18765/missing.git/' not found",
         expected=RepositoryNotFoundError,
-        message=CONNECTION_HINT,
+        message=FETCH_NOT_FOUND_HINT,
     ),
     EnrichmentCase(
         # Git's line for a missing branch also says "not found", but it names no missing repository.
@@ -127,6 +135,14 @@ ENRICHMENT_CASES = [
         # The line GitPython adds to the error lines of a fetch or a push when Git ran past its kill_after_timeout.
         name="fetch_or_push_past_its_time_limit",
         stderr="error: process killed because it timed out. kill_after_timeout=60 seconds",
+        expected=RepositoryConnectionError,
+        message=TIME_LIMIT_HINT,
+    ),
+    EnrichmentCase(
+        # libcurl's line when an HTTP(S) transfer sent no data for GIT_HTTP_LOW_SPEED_TIME.
+        name="stalled_transfer_past_its_low_speed_time",
+        stderr="fatal: unable to access 'https://gitlab.example.com/repo.git/': "
+        "Operation too slow. Less than 1 bytes/sec transferred the last 300 seconds",
         expected=RepositoryConnectionError,
         message=TIME_LIMIT_HINT,
     ),
@@ -413,6 +429,13 @@ class FetchConnectionFailureCase:
 @pytest.mark.parametrize(
     "case",
     [
+        FetchConnectionFailureCase(
+            name="remote_unreachable",
+            stderr="fatal: unable to access 'https://git.example.com/net/repo.git/': "
+            "Failed to connect to git.example.com port 443 after 5 ms: Couldn't connect to server",
+            expected=RepositoryConnectionError,
+            message=FETCH_CONNECTION_HINT,
+        ),
         FetchConnectionFailureCase(
             name="certificate_not_accepted", stderr=TLS_STDERR, expected=RepositoryTLSError, message=TLS_HINT
         ),

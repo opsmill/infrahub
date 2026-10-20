@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, Any, Literal, Protocol, assert_never
+
+from pydantic import BaseModel, ConfigDict
 
 from infrahub.display_labels.scoping import derive_display_label_targets
 from infrahub.events.limits import get_submission_chunk_size
+from infrahub.git.writeback.models import HeldPythonAttribute, HeldRegeneration
 from infrahub.hfid.scoping import derive_hfid_targets
 from infrahub.log import get_logger
 from infrahub.utilities.chunks import chunked
@@ -19,6 +22,8 @@ from infrahub.workflows.catalogue import (
 )
 from infrahub.workflows.constants import WorkflowTag
 
+from .regeneration_barrier import OwnedRegeneration
+
 log = get_logger()
 
 if TYPE_CHECKING:
@@ -29,6 +34,8 @@ if TYPE_CHECKING:
     from infrahub.events.models import EventContext
     from infrahub.services.adapters.workflow import InfrahubWorkflow
     from infrahub.workflows.models import WorkflowDefinition
+
+    from .regeneration_barrier import RegenerationBarrier
 
 RecomputeFamily = Literal["computed_attribute", "python_computed_attribute", "display_label", "hfid"]
 
@@ -139,9 +146,87 @@ class CoalescedRecompute:
 
 
 class PythonTargetResolver(Protocol):
-    """The Python transform computed attributes a merge or rebase change set affects."""
+    """The Python transform computed attributes a merge or rebase change set affects, and who owns each."""
 
     async def resolve(self, *, changes: Iterable[MergeChange], branch: str) -> list[AffectedTarget]: ...
+
+    def owner_of(self, *, kind: str, attribute_name: str, branch: str) -> str | None:
+        """Return the id of the repository whose transform computes the attribute, or None when it is not known.
+
+        It is None until a resolution on the branch has loaded the read sets, and a None holds the target under
+        every pending repository.
+        """
+
+
+class PythonTargetRequest(BaseModel):
+    """One Python computed attribute target, as a model so that the narrowed-hold cache can store it."""
+
+    model_config = ConfigDict(frozen=True)
+
+    target: AffectedTarget
+
+
+def whole_kind_python_target(*, kind: str, attribute_name: str) -> AffectedTarget:
+    """The recompute of the attribute on every node of its kind."""
+    return AffectedTarget(
+        family=PYTHON_COMPUTED_ATTRIBUTE,
+        target_kind=kind,
+        attribute_name=attribute_name,
+        reads_across_relationship=False,
+        reader_lookups=frozenset(),
+        precise=False,
+        whole_kind=True,
+    )
+
+
+def owned_python_target(*, target: AffectedTarget, repository_id: str | None) -> OwnedRegeneration[PythonTargetRequest]:
+    """The barrier candidate of one Python computed attribute target.
+
+    Raises:
+        ValueError: The target names no attribute, so it has no identity to hold.
+
+    """
+    if target.attribute_name is None:
+        raise ValueError(f"Cannot hold a Python target of {target.target_kind} that names no attribute")
+    return OwnedRegeneration(
+        repository_id=repository_id,
+        held=HeldRegeneration(
+            python_attributes=(
+                HeldPythonAttribute(kind=target.target_kind, attribute=target.attribute_name, hold_seq=0),
+            )
+        ),
+        request=PythonTargetRequest(target=target),
+        union=_join_python_requests,
+    )
+
+
+def _join_python_requests(previous: BaseModel, new: BaseModel) -> BaseModel:
+    """Join two holds of one attribute: the whole kind covers any node, otherwise the node ids of both are kept.
+
+    Raises:
+        TypeError: A request is not the request of a Python computed attribute.
+
+    """
+    if not isinstance(previous, PythonTargetRequest) or not isinstance(new, PythonTargetRequest):
+        raise TypeError(f"Cannot join a {type(previous).__name__} and a {type(new).__name__}")
+    if previous.target.whole_kind:
+        return previous
+    if new.target.whole_kind:
+        return new
+    ids_by_lookup: dict[tuple[str, str], set[str]] = {}
+    for lookup in (*previous.target.reader_lookups, *new.target.reader_lookups):
+        ids_by_lookup.setdefault((lookup.source_kind, lookup.filter_key), set()).update(lookup.source_node_ids)
+    return PythonTargetRequest(
+        target=replace(
+            previous.target,
+            reads_across_relationship=previous.target.reads_across_relationship or new.target.reads_across_relationship,
+            reader_lookups=frozenset(
+                ReaderLookup(source_kind=source_kind, filter_key=filter_key, source_node_ids=frozenset(ids))
+                for (source_kind, filter_key), ids in ids_by_lookup.items()
+            ),
+            precise=previous.target.precise and new.target.precise,
+        )
+    )
 
 
 @dataclass
@@ -546,15 +631,7 @@ def _every_python_attribute_widened(schema_branch: SchemaBranch) -> list[Affecte
     schema branch it is given declares.
     """
     return [
-        AffectedTarget(
-            family=PYTHON_COMPUTED_ATTRIBUTE,
-            target_kind=kind,
-            attribute_name=attribute.name,
-            reads_across_relationship=False,
-            reader_lookups=frozenset(),
-            precise=False,
-            whole_kind=True,
-        )
+        whole_kind_python_target(kind=kind, attribute_name=attribute.name)
         for kind, attributes in schema_branch.computed_attributes.get_python_attributes_per_node().items()
         for attribute in attributes
     ]
@@ -563,14 +640,16 @@ def _every_python_attribute_widened(schema_branch: SchemaBranch) -> list[Affecte
 async def _resolve_python_targets(
     *,
     resolver: PythonTargetResolver,
+    barrier: RegenerationBarrier,
     changes: list[MergeChange],
     branch: str,
     schema_branch: SchemaBranch,
 ) -> list[AffectedTarget]:
-    """The affected Python targets, or every declared one widened when the resolution fails.
+    """The Python targets that the barrier admits, from the resolution or, when it fails, every declared one over its whole kind.
 
     Never raises: this is the only family that reads the database, and the four are submitted
-    together.
+    together. A target whose repository waits for a delivery is held, and a target with no known
+    repository is held under every pending one.
     """
     if not changes:
         # Targets come only from the changes, and the schema half is the backfill's. The read-set
@@ -579,12 +658,27 @@ async def _resolve_python_targets(
         return []
 
     try:
-        return await resolver.resolve(changes=changes, branch=branch)
+        targets = await resolver.resolve(changes=changes, branch=branch)
     except Exception:
         log.exception(
             "Widening every Python computed attribute on branch %s to its whole kind: the resolution failed", branch
         )
-        return _every_python_attribute_widened(schema_branch)
+        targets = _every_python_attribute_widened(schema_branch)
+
+    candidates = [
+        owned_python_target(
+            target=target,
+            repository_id=resolver.owner_of(
+                kind=target.target_kind, attribute_name=target.attribute_name, branch=branch
+            ),
+        )
+        for target in targets
+        if target.attribute_name is not None
+    ]
+    admitted = await barrier.admit(branch=branch, candidates=candidates, releasing=None)
+    # A target that names no attribute has no identity to hold, so the barrier never sees it.
+    unnamed = [target for target in targets if target.attribute_name is None]
+    return [*unnamed, *(candidate.request.target for candidate in admitted)]
 
 
 class MergeRecomputeCoordinator:
@@ -592,7 +686,7 @@ class MergeRecomputeCoordinator:
 
     Build and submit are always run together, so this holds one of each and hands the builder's
     output to the submitter. The Python transform family is derived separately, since it reads the
-    database and the query groups instead of the schema alone.
+    database and the query groups instead of the schema alone, and it passes the barrier.
     """
 
     def __init__(
@@ -600,10 +694,12 @@ class MergeRecomputeCoordinator:
         builder: CoalescedRecomputeBuilder,
         submitter: CoalescedRecomputeSubmitter,
         python_resolver: PythonTargetResolver,
+        barrier: RegenerationBarrier,
     ) -> None:
         self.builder = builder
         self.submitter = submitter
         self.python_resolver = python_resolver
+        self.barrier = barrier
 
     async def run(
         self,
@@ -616,6 +712,7 @@ class MergeRecomputeCoordinator:
         coalesced = self.builder.build(changes=change_list, branch=branch)
         python_targets = await _resolve_python_targets(
             resolver=self.python_resolver,
+            barrier=self.barrier,
             changes=change_list,
             branch=branch,
             schema_branch=self.builder.schema_branch,
@@ -649,10 +746,12 @@ class RecomputeChainSubmitter:
         builder: CoalescedRecomputeBuilder,
         submitter: CoalescedRecomputeSubmitter,
         python_resolver: PythonTargetResolver,
+        barrier: RegenerationBarrier,
     ) -> None:
         self.builder = builder
         self.submitter = submitter
         self.python_resolver = python_resolver
+        self.barrier = barrier
 
     async def submit(
         self,
@@ -690,6 +789,7 @@ class RecomputeChainSubmitter:
         coalesced = self.builder.build(changes=changes, branch=branch)
         python_targets = await _resolve_python_targets(
             resolver=self.python_resolver,
+            barrier=self.barrier,
             changes=changes,
             branch=branch,
             schema_branch=self.builder.schema_branch,

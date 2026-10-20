@@ -201,26 +201,81 @@ When a CA setting and the matching `*_TLS_INSECURE` setting are both set, the in
 
 ## Step 4: Restart and verify
 
-Restart the containers so they pick up the new mount and setting:
+Restart the server and the task worker so they pick up the new mount and setting, then check three things: both started, the startup logs hold no CA or git configuration error, and the task worker wrote the bundle into its git configuration file.
+
+Infrahub writes its git settings to the file named by `INFRAHUB_GIT_GLOBAL_CONFIG_FILE` (default `/opt/infrahub/.gitconfig`) and points git at it through `GIT_CONFIG_GLOBAL` in its own process only. The commands below therefore read that file explicitly: a `git config --global` call from an exec shell does not see the variable and reads a different file.
+
+<Tabs groupId="installation-method" queryString>
+<TabItem value="docker-compose" label="Docker Compose" default>
+
+Restart the containers:
 
 ```shell
 docker compose up -d
 ```
 
-Confirm that the containers started. A wrong path fails fast with a message such as `tls.ca_bundle must be the path to an existing file`:
+Confirm that the containers started and search their logs:
 
 ```shell
 docker compose ps
-docker compose logs infrahub-server task-worker | grep -i "ca_bundle"
+docker compose logs infrahub-server task-worker | grep -iE "ca_bundle|could not lock config file"
 ```
 
-Confirm that the task worker configured git with the bundle. Infrahub writes its git settings to the file named by `INFRAHUB_GIT_GLOBAL_CONFIG_FILE` (default `/opt/infrahub/.gitconfig`) and points git at it through `GIT_CONFIG_GLOBAL` in its own process only, so read that file explicitly: a `git config --global` call from an exec shell does not see the variable and reads a different file.
+Read the CA setting from the task worker's git configuration file:
 
 ```shell
 docker compose exec task-worker sh -c 'git config --file "${INFRAHUB_GIT_GLOBAL_CONFIG_FILE:-/opt/infrahub/.gitconfig}" --get http.sslCAInfo'
 ```
 
-The command prints the path of the bundle, or the path of the file Infrahub wrote under the temporary directory when the setting holds PEM text. Then add or refresh a repository hosted on your internal Git server, following [How to connect external Git repositories](../../../git-integration/connect-repository.mdx). The repository reaches the `Online` operational status instead of failing with `SSL verification failed`.
+</TabItem>
+<TabItem value="docker" label="Docker">
+
+Remove the server and task worker containers and start them again with the `docker run` options from the mount step. Then search the logs of each container, replacing `<container>` with its name:
+
+```shell
+docker logs <container> 2>&1 | grep -iE "ca_bundle|could not lock config file"
+```
+
+Read the CA setting from the task worker's git configuration file:
+
+```shell
+docker exec <task-worker-container> sh -c 'git config --file "${INFRAHUB_GIT_GLOBAL_CONFIG_FILE:-/opt/infrahub/.gitconfig}" --get http.sslCAInfo'
+```
+
+</TabItem>
+<TabItem value="helm" label="Helm">
+
+Apply the values to your release with the chart you installed it from. Kubernetes replaces the server and task worker pods because their volumes and environment changed:
+
+```shell
+helm upgrade infrahub -f values.yaml oci://registry.opsmill.io/opsmill/chart/infrahub
+kubectl rollout status deployment/infrahub-infrahub-server
+kubectl rollout status deployment/infrahub-infrahub-task-worker
+```
+
+The deployment names are those of a release named `infrahub`. To find yours, run `kubectl get deployments -l service=infrahub-task-worker`, and the same with `service=infrahub-server`.
+
+Search the logs of the new pods:
+
+```shell
+kubectl logs deployment/infrahub-infrahub-server | grep -iE "ca_bundle|could not lock config file"
+kubectl logs deployment/infrahub-infrahub-task-worker | grep -iE "ca_bundle|could not lock config file"
+```
+
+`kubectl logs deployment/<name>` reads one pod of the deployment. With several task worker replicas, read every pod with `kubectl logs -l service=infrahub-task-worker --prefix --tail=-1`.
+
+Read the CA setting from the task worker's git configuration file:
+
+```shell
+kubectl exec deployment/infrahub-infrahub-task-worker -- sh -c 'git config --file "${INFRAHUB_GIT_GLOBAL_CONFIG_FILE:-/opt/infrahub/.gitconfig}" --get http.sslCAInfo'
+```
+
+</TabItem>
+</Tabs>
+
+With a wrong path, Infrahub refuses to start and logs a message such as `tls.ca_bundle must be the path to an existing file`. A `could not lock config file` message means the task worker could not write its git configuration file, so git does not use the bundle; see [Repository fails certificate verification with a CA bundle configured](../../../git-integration/connect-repository.mdx#repository-fails-certificate-verification-with-a-ca-bundle-configured).
+
+The last command prints the path of the bundle, or the path of the file Infrahub wrote under the temporary directory when the setting holds PEM text. Then add or refresh a repository hosted on your internal Git server, following [How to connect external Git repositories](../../../git-integration/connect-repository.mdx). The repository reaches the `Online` operational status instead of failing with `SSL verification failed`.
 
 To verify the HTTP client, trigger a webhook targeting an internal endpoint or log in through your SSO provider. A remaining `Unable to validate TLS certificate` error means the bundle is missing an intermediate certificate for that endpoint.
 

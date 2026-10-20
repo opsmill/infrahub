@@ -27,6 +27,7 @@ operations_without_flows = [
     "refresh.settings.response_delay",
     "trigger.webhook.actions",
     "git.file.get",
+    "git.commit_log.get",
 ]
 
 

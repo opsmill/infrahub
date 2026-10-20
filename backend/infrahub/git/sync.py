@@ -4,9 +4,12 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from prefect import flow
+
 from infrahub.exceptions import RepositoryConnectionError, RepositoryCredentialsError, RepositoryError
 from infrahub.log import suppress_traceback_in_logs
 
+from .activity.models import RepositoryActivityBranchOutcome, RepositoryActivityPhase
 from .import_errors import RepositoryImportError, log_import_failure
 from .repository import FailedImport, ImportStep, InfrahubRepository, PendingObjectImport
 
@@ -17,11 +20,13 @@ if TYPE_CHECKING:
 
     from infrahub.lock import InfrahubLockRegistry
 
+    from .activity.recorder import ActivityRun
     from .divergence.models import ReconciledBranch
     from .divergence.recorder import HistoryRewriteRecorder
     from .divergence.suppression import RetargetMarkers
     from .integrator import ObjectImportPlan
     from .models import GitRepositoryAdd
+    from .writeback.ports import DeliveryStatePort
 
 
 @dataclass(frozen=True)
@@ -29,20 +34,13 @@ class SyncReport:
     """What a synchronization run did, for the caller to report on.
 
     ``skipped_branches`` are the remote branches left out because their name collides with Infrahub's
-    default branch. ``imported_branches`` are the Infrahub branches whose import was applied, and
-    ``failed_import_branches`` those whose import was attempted and failed. ``advanced_skipped_branches``
-    are the skipped branches whose remote head moved during the run.
+    default branch. ``imported_branches`` are the Infrahub branches whose import was applied.
+    ``advanced_skipped_branches`` are the skipped branches whose remote head moved during the run.
     """
 
     skipped_branches: tuple[str, ...]
     imported_branches: tuple[str, ...]
-    failed_import_branches: tuple[str, ...]
     advanced_skipped_branches: tuple[str, ...]
-
-    @property
-    def attempted_import_branches(self) -> tuple[str, ...]:
-        """The Infrahub branches the run tried to import, whether or not the import succeeded."""
-        return self.imported_branches + self.failed_import_branches
 
     @property
     def reports_skipped_branches(self) -> bool:
@@ -141,27 +139,45 @@ async def import_branch(
     importer: RepositoryImporter,
     repo: InfrahubRepository,
     pending_import: PendingObjectImport,
+    activity: ActivityRun,
 ) -> RepositoryImportError | None:
-    """Import one branch, applying it under the repository lock, and return its failure instead of raising it.
+    """Import one branch in a flow run of its own, applying it under the repository lock, and return its failure.
 
-    Any failure is returned, logged once, so a failed branch never stops the import of the other branches.
+    The run of its own keeps the import's logs and failure on the branch it imports into, rather than on
+    the branch of the run that started the import. Any failure is returned, logged once, so a failed
+    branch never stops the import of the other branches.
 
     Raises:
         RepositoryConnectionError: When the remote repository is unreachable.
         RepositoryCredentialsError: When the credentials for the remote repository are invalid.
 
     """
+
+    # Defined here so the collaborators are captured rather than passed, since Prefect stores a flow's parameters.
+    @flow(name="import-branch-objects", flow_run_name="Import objects into branch {branch_name}", persist_result=False)
+    async def import_branch_flow(branch_name: str) -> None:
+        try:
+            await activity.set_phase(phase=RepositoryActivityPhase.BUILDING, branch_name=branch_name)
+            plan = await importer.build_branch_import(repo, pending_import)
+            async with lock_registry.get(name=repo.name, namespace="repository"):
+                await activity.set_phase(phase=RepositoryActivityPhase.APPLYING, branch_name=branch_name)
+                await importer.apply_branch_import(repo, plan)
+        except (RepositoryConnectionError, RepositoryCredentialsError, RepositoryImportError):
+            raise
+        except Exception as exc:
+            # A failure the import did not convert is still recorded on its branch, so the other branches import.
+            raise log_import_failure(identifier=repo.name, branch_name=branch_name, exc=exc) from exc
+
+    branch_name = pending_import.infrahub_branch_name
     try:
-        plan = await importer.build_branch_import(repo, pending_import)
-        async with lock_registry.get(name=repo.name, namespace="repository"):
-            await importer.apply_branch_import(repo, plan)
-    except (RepositoryConnectionError, RepositoryCredentialsError):
-        raise
+        await import_branch_flow(branch_name=branch_name)
     except RepositoryImportError as exc:
+        activity.record_branch(branch_name=branch_name, outcome=RepositoryActivityBranchOutcome.FAILED)
         return exc
-    except Exception as exc:  # noqa: BLE001
-        # A failure the import did not convert is still recorded on its branch, so the other branches import.
-        return log_import_failure(identifier=repo.name, branch_name=pending_import.infrahub_branch_name, exc=exc)
+    except (RepositoryConnectionError, RepositoryCredentialsError):
+        activity.record_branch(branch_name=branch_name, outcome=RepositoryActivityBranchOutcome.FAILED)
+        raise
+    activity.record_branch(branch_name=branch_name, outcome=RepositoryActivityBranchOutcome.IMPORTED)
     return None
 
 
@@ -206,13 +222,14 @@ class RepositoryAdder:
         self._importer = importer
         self._client = client
 
-    async def add(self, model: GitRepositoryAdd) -> AddedRepository:
+    async def add(self, model: GitRepositoryAdd, activity: ActivityRun) -> AddedRepository:
         """Clone the repository and import its default branch.
 
         A failed default-branch import is returned rather than raised, so the caller can still
         synchronize the other branches.
         """
         async with self._lock_registry.get(name=model.repository_name, namespace="repository"):
+            await activity.set_phase(phase=RepositoryActivityPhase.FETCHING)
             repo = await InfrahubRepository.new(
                 id=model.repository_id,
                 name=model.repository_name,
@@ -229,7 +246,11 @@ class RepositoryAdder:
             commit=default_commit,
         )
         import_error = await import_branch(
-            lock_registry=self._lock_registry, importer=self._importer, repo=repo, pending_import=pending_import
+            lock_registry=self._lock_registry,
+            importer=self._importer,
+            repo=repo,
+            pending_import=pending_import,
+            activity=activity,
         )
         return AddedRepository(repository=repo, import_error=import_error)
 
@@ -240,7 +261,8 @@ class RepositorySyncer:
     The lock serializes mutations of the repository's on-disk git state. Each synced branch is then
     built outside the lock, reading from the per-commit worktree pinned during the locked phase, and
     applied to the graph under the lock so that concurrent imports of the same repository are
-    serialized.
+    serialized. While the repository has pending pushes, the default branch and the source branch of
+    each pending merge are left out.
     """
 
     def __init__(
@@ -249,15 +271,18 @@ class RepositorySyncer:
         importer: RepositoryImporter,
         recorder: HistoryRewriteRecorder,
         retarget_markers: RetargetMarkers,
+        state: DeliveryStatePort,
     ) -> None:
         self._lock_registry = lock_registry
         self._importer = importer
         self._recorder = recorder
         self._retarget_markers = retarget_markers
+        self._state = state
 
     async def sync(
         self,
         repo: InfrahubRepository,
+        activity: ActivityRun,
         staging_branch: str | None = None,
         graph_commits: Mapping[str, str | None] | None = None,
     ) -> SyncOutcome:
@@ -273,40 +298,52 @@ class RepositorySyncer:
 
         """
         async with self._lock_registry.get(name=repo.name, namespace="repository"):
+            await activity.set_phase(phase=RepositoryActivityPhase.FETCHING)
             collected = await repo.collect_pending_imports(
                 staging_branch=staging_branch,
                 graph_commits=graph_commits,
                 recorder=self._recorder,
                 retarget_markers=self._retarget_markers,
+                state=self._state,
             )
 
         failed_imports = list(collected.failed_imports)
         reconciled: list[ReconciledBranch] = []
         imported_branches: list[str] = []
-        failed_import_branches: list[str] = []
-        for pending_import in collected.imports:
-            import_error = await import_branch(
-                lock_registry=self._lock_registry, importer=self._importer, repo=repo, pending_import=pending_import
-            )
-            if import_error is None:
-                imported_branches.append(pending_import.infrahub_branch_name)
-                if pending_import.reconciled is not None:
-                    reconciled.append(pending_import.reconciled)
-                continue
-            failed_imports.append(
-                FailedImport(
-                    branch_name=pending_import.infrahub_branch_name,
-                    step=ImportStep.IMPORT,
-                    reason=import_error.message,
-                    on_default_branch=pending_import.on_default_branch,
+        try:
+            for pending_import in collected.imports:
+                import_error = await import_branch(
+                    lock_registry=self._lock_registry,
+                    importer=self._importer,
+                    repo=repo,
+                    pending_import=pending_import,
+                    activity=activity,
                 )
-            )
-            failed_import_branches.append(pending_import.infrahub_branch_name)
+                if import_error is None:
+                    imported_branches.append(pending_import.infrahub_branch_name)
+                    if pending_import.reconciled is not None:
+                        reconciled.append(pending_import.reconciled)
+                    continue
+                failed_imports.append(
+                    FailedImport(
+                        branch_name=pending_import.infrahub_branch_name,
+                        infrahub_branch_name=pending_import.infrahub_branch_name,
+                        step=ImportStep.IMPORT,
+                        reason=import_error.message,
+                        on_default_branch=pending_import.on_default_branch,
+                    )
+                )
+        finally:
+            # After the imports, so a failed rewrite record overrides the import of its branch that still ran, and
+            # also when an unreachable remote stops the imports early.
+            for failed in collected.failed_imports:
+                activity.record_branch(
+                    branch_name=failed.infrahub_branch_name, outcome=RepositoryActivityBranchOutcome.FAILED
+                )
 
         report = SyncReport(
             skipped_branches=tuple(collected.skipped_branches),
             imported_branches=tuple(imported_branches),
-            failed_import_branches=tuple(failed_import_branches),
             advanced_skipped_branches=tuple(collected.advanced_skipped_branches),
         )
         return SyncOutcome(report=report, reconciled=tuple(reconciled), failed=tuple(failed_imports))

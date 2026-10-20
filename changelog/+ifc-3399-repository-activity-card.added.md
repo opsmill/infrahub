@@ -1,0 +1,1 @@
+Added a Repository activity card to the repository page, which shows the run working on the repository now with its step, branch and running time, who holds the repository lock, and what the last run of each operation changed or failed on.

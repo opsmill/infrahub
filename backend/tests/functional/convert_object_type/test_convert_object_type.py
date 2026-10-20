@@ -9,8 +9,11 @@ from infrahub.core.constants.infrahubkind import NUMBERPOOL
 from infrahub.core.query.resource_manager import NumberPoolGetReserved
 from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters
+from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
+from infrahub.pools.scoped_number_pool_reader import ScopedNumberPoolReader
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -207,8 +210,16 @@ class TestConvertObjectType(TestInfrahubApp):
 
 class TestConvertObjectTypeResourcePool(TestInfrahubApp):
     async def _run_number_pool_validator(self, db: InfrahubDatabase) -> None:
-        upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
-        snps = SchemaNumberPoolSynchronizer(db=db, schema_manager=registry.schema, upserter=upserter)
+        upserter = SchemaNumberPoolUpserter(
+            db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository
+        )
+        snps = SchemaNumberPoolSynchronizer(
+            db=db,
+            scope_reader=ScopedNumberPoolReader(db=db),
+            schema_manager=registry.schema,
+            upserter=upserter,
+            range_store_factory=NumberPoolRepository,
+        )
         await snps.run()
 
     @pytest.fixture
@@ -220,7 +231,12 @@ class TestConvertObjectTypeResourcePool(TestInfrahubApp):
             attributes=[
                 AttributeSchema(name="name", kind="Text", unique=True),
                 AttributeSchema(name="height", kind="Number", optional=True),
-                AttributeSchema(name="random_id", kind="NumberPool", read_only=True),
+                AttributeSchema(
+                    name="random_id",
+                    kind="NumberPool",
+                    read_only=True,
+                    parameters=NumberPoolParameters(start_range=1, end_range=1000),
+                ),
             ],
         )
 
@@ -266,7 +282,7 @@ class TestConvertObjectTypeResourcePool(TestInfrahubApp):
         # Check the state of the pool before converting the object
         query1 = await NumberPoolGetReserved.init(db=db, pool_id=pool.id, branch=default_branch)
         await query1.execute(db=db)
-        reservations_before = {item.identifier: item.value for item in query1.get_reservations()}
+        reservations_before = {item.identifier: item.value for item in query1.get_data()}
 
         response = await client.execute_graphql(
             query=CONVERT_OBJECT_MUTATION,
@@ -282,6 +298,6 @@ class TestConvertObjectTypeResourcePool(TestInfrahubApp):
 
         query1 = await NumberPoolGetReserved.init(db=db, pool_id=pool.id, branch=default_branch)
         await query1.execute(db=db)
-        reservations_after = {item.identifier: item.value for item in query1.get_reservations()}
+        reservations_after = {item.identifier: item.value for item in query1.get_data()}
 
         assert reservations_after[new_id] == reservations_before[str(persons["jack"].id)]

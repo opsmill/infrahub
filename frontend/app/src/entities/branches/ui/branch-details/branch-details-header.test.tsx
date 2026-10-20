@@ -34,7 +34,9 @@ describe("BranchDetailsHeader", () => {
     // THEN
     const row = component.getByTestId("branch-details-header");
     await expect.element(row).toBeVisible();
-    const parts = Array.from(row.element().children).map((el) => el.textContent);
+    const parts = Array.from(row.element().children)
+      .filter((el) => el.getAttribute("role") !== "status")
+      .map((el) => el.textContent);
     expect(parts).toEqual(["feature-x", "", "Metadata", "Rebase needed", "Refresh data"]);
     await expect
       .element(component.getByRole("heading", { level: 1, name: "feature-x" }))

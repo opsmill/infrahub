@@ -10,6 +10,7 @@ from infrahub.core.protocols import CoreGraphQLQuery
 from infrahub.core.timestamp import Timestamp
 from infrahub.graphql.resolvers.account_metadata import AccountMetadataResolver
 from infrahub.graphql.resolvers.many_relationship import ManyRelationshipResolver
+from infrahub.graphql.resolvers.object_by_id import ObjectByIdResolver
 from infrahub.graphql.resolvers.single_relationship import SingleRelationshipResolver
 from infrahub.log import get_logger
 
@@ -52,6 +53,7 @@ async def resolver_graphql_query(
                     single_relationship_resolver=SingleRelationshipResolver(),
                     many_relationship_resolver=ManyRelationshipResolver(),
                     account_metadata_resolver=AccountMetadataResolver(),
+                    object_by_id_resolver=ObjectByIdResolver(),
                 ),
                 root_value=None,
                 variable_values=params or {},

@@ -27,7 +27,8 @@ import {
 import { getPoolKindFromSchema } from "@/entities/resource-manager/domain/rules/get-pool-kind-from-schema";
 import { IpAddressPoolForm } from "@/entities/resource-manager/ui/ip-address-pool-form";
 import { IpPrefixPoolForm } from "@/entities/resource-manager/ui/ip-prefix-pool-form";
-import { NumberPoolForm } from "@/entities/resource-manager/ui/number-pool-form";
+import { NumberPoolCreateForm } from "@/entities/resource-manager/ui/number-pool/form/number-pool-create-form";
+import { NumberPoolEditForm } from "@/entities/resource-manager/ui/number-pool/form/number-pool-edit-form";
 import {
   ACCOUNT_GROUP_OBJECT,
   ACCOUNT_OBJECT,
@@ -101,7 +102,13 @@ const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
   }
 
   if (kind === NUMBER_POOL_KIND) {
-    return <NumberPoolForm {...props} />;
+    const poolId = props.currentObject?.id;
+    if (props.isUpdate && typeof poolId === "string") {
+      return (
+        <NumberPoolEditForm poolId={poolId} onSuccess={props.onSuccess} onCancel={props.onCancel} />
+      );
+    }
+    return <NumberPoolCreateForm onSuccess={props.onSuccess} onCancel={props.onCancel} />;
   }
 
   if (kind === ACCOUNT_OBJECT) {

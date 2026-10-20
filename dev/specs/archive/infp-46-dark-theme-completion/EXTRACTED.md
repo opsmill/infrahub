@@ -5,8 +5,8 @@
 
 ## ADRs Created
 
-- `dev/adr/0021-experimental-flag-gates-pre-release-ui.md` (from R1)
-- `dev/adr/0022-application-owned-theme-resolution.md` (from R3, generalising R4 and R7)
+- `dev/adr/0022-experimental-flag-gates-pre-release-ui.md` (from R1)
+- `dev/adr/0023-application-owned-theme-resolution.md` (from R3, generalising R4 and R7)
 
 ## Knowledge Updated
 

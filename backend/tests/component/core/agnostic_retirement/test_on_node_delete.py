@@ -43,6 +43,7 @@ from tests.helpers.agnostic_edges import (
     relationship_global_edges,
     remove_attribute_on_branch,
 )
+from tests.helpers.number_pool import add_pool_range, pool_used_numbers
 from tests.helpers.schema.agnostic_retirement import (
     AGNOSTIC_RETIREMENT_SCHEMA,
     GADGET_KIND,
@@ -87,6 +88,7 @@ class TestAgnosticRetirementOnDelete:
             end_range=SERIAL_POOL_END,
         )
         await pool.save(db=db)
+        await add_pool_range(db=db, pool=pool, start=SERIAL_POOL_START, end=SERIAL_POOL_END)
         return pool
 
     async def test_a_field_created_and_deleted_on_the_same_user_branch_is_closed_by_the_delete(
@@ -413,11 +415,18 @@ class TestAgnosticRetirementOnDelete:
         await holder.save(db=db)
 
         assert holder.get_attribute(name="serial").value == SERIAL_POOL_START
-        assert await serial_pool.get_used(db=db, branch=default_branch) == [SERIAL_POOL_START]
+        assert await pool_used_numbers(db=db, pool=serial_pool, branch=default_branch) == [SERIAL_POOL_START]
 
         before = await attribute_global_edges(db=db, node_id=holder.id, attribute_name="serial")
-        assert open_edge_types(before) == {"HAS_ATTRIBUTE", "HAS_VALUE", "IS_PROTECTED", "HAS_SOURCE"}
-        reserved_before = await pool_reservation_edges(db=db, pool_id=serial_pool.id, identifier=holder.id)
+        assert open_edge_types(before) == {
+            "HAS_ATTRIBUTE",
+            "HAS_VALUE",
+            "IS_PROTECTED",
+            "IS_RESERVED",
+        }
+        reserved_before = await pool_reservation_edges(
+            db=db, pool_id=serial_pool.id, attribute_id=holder.get_attribute("serial").id
+        )
         assert [(edge.edge_type, edge.branch, edge.status, edge.to_time) for edge in reserved_before] == [
             ("IS_RESERVED", GLOBAL_BRANCH_NAME, "active", None)
         ]
@@ -427,14 +436,17 @@ class TestAgnosticRetirementOnDelete:
 
         after = await attribute_global_edges(db=db, node_id=holder.id, attribute_name="serial")
         assert_attribute_retired_at(after=after, before=before, at=deleted_at, by=TEST_ACTOR_ID)
-        assert await pool_reservation_edges(db=db, pool_id=serial_pool.id, identifier=holder.id) == reserved_before, (
-            "the reservation is never cleaned up on delete, and does not need to be"
+        reserved_after = await pool_reservation_edges(
+            db=db, pool_id=serial_pool.id, attribute_id=holder.get_attribute("serial").id
         )
-        assert await serial_pool.get_used(db=db, branch=default_branch) == []
+        assert [(edge.edge_type, edge.branch, edge.status, edge.to_time) for edge in reserved_after] == [
+            ("IS_RESERVED", GLOBAL_BRANCH_NAME, "active", deleted_at.to_string())
+        ], "the record hangs off the attribute, so retirement closes it with the rest of the field"
+        assert await pool_used_numbers(db=db, pool=serial_pool, branch=default_branch) == []
 
         reallocated = await Node.init(db=db, schema=WIDGET_KIND, branch=default_branch)
         await reallocated.new(db=db, name="takes-the-freed-serial", serial={"from_pool": {"id": serial_pool.id}})
         await reallocated.save(db=db)
 
         assert reallocated.get_attribute(name="serial").value == SERIAL_POOL_START
-        assert await serial_pool.get_used(db=db, branch=default_branch) == [SERIAL_POOL_START]
+        assert await pool_used_numbers(db=db, pool=serial_pool, branch=default_branch) == [SERIAL_POOL_START]

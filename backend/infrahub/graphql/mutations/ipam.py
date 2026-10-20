@@ -157,13 +157,21 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         ip_address = ipaddress.ip_interface(data["address"]["value"])
         namespace_id = await validate_namespace(db=db, branch=branch, data=data)
 
-        lock_names = cls._get_lock_names(namespace_id, branch)
-        async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
-            async with db.start_transaction() as dbt:
-                reconciled_address = await cls._mutate_create_object_and_reconcile(
-                    data=data, branch=branch, db=dbt, ip_address=ip_address, namespace_id=namespace_id
-                )
-                graphql_response = await build_graphql_response(info=info, db=dbt, obj=reconciled_address)
+        schema = cls._meta.active_schema
+        preview_obj = await registry.node.get(schema.kind, Node).init(db=db, schema=schema, branch=branch)
+        await preview_obj.new(db=db, process_pools=False, **dict(data))
+        schema_branch = db.schema.get_schema_branch(name=branch.name)
+        object_lock_names = get_lock_names_on_object_mutation(node=preview_obj, schema_branch=schema_branch)
+
+        namespace_lock_names = cls._get_lock_names(namespace_id, branch)
+        async with InfrahubMultiLock(lock_registry=lock.registry, locks=namespace_lock_names):
+            # The uniqueness check reads committed data only, so the object locks must outlive the commit.
+            async with InfrahubMultiLock(lock_registry=lock.registry, locks=object_lock_names, metrics=False):
+                async with db.start_transaction() as dbt:
+                    reconciled_address = await cls._mutate_create_object_and_reconcile(
+                        data=data, branch=branch, db=dbt, ip_address=ip_address, namespace_id=namespace_id
+                    )
+                    graphql_response = await build_graphql_response(info=info, db=dbt, obj=reconciled_address)
 
         return reconciled_address, cls(**graphql_response)
 

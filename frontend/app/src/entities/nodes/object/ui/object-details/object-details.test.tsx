@@ -11,6 +11,9 @@ import { generatePermission } from "../../../../../../tests/fake/permission";
 import { generateAttributeSchema, generateNodeSchema } from "../../../../../../tests/fake/schema";
 
 vi.mock("@/entities/repository/domain/use-cases/get-repository-branch-status");
+vi.mock("@/entities/repository/ui/repository-push-to-remote-card", () => ({
+  RepositoryPushToRemoteCard: () => <p>Push to remote</p>,
+}));
 
 const branchStatusMock = vi.mocked(getRepositoryBranchStatus);
 

@@ -1,14 +1,23 @@
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, cast
 
-from infrahub.core.constants import SYSTEM_USER_ID, NumberPoolType
+from infrahub import lock
+from infrahub.core.constants import SYSTEM_USER_ID, InfrahubKind, NumberPoolType
 from infrahub.core.manager import NodeManager
+from infrahub.core.node.lock_utils import RESOURCE_POOL_LOCK_NAMESPACE
 from infrahub.core.protocols import CoreNumberPool
 from infrahub.core.registry import registry
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
+from infrahub.core.timestamp import Timestamp
+from infrahub.database import within_transaction
+from infrahub.exceptions import ValidationError
 from infrahub.log import get_logger
+from infrahub.pools.number_pool_range_reconciler import NumberPoolRangeReconciler
+from infrahub.pools.number_pool_shorthand import NumberPoolShorthandMirror
 from infrahub.pools.registration import get_branches_with_schema_number_pool
+from infrahub.pools.scope import AllocationScopeResolver
 
 if TYPE_CHECKING:
     from logging import Logger, LoggerAdapter
@@ -19,9 +28,27 @@ if TYPE_CHECKING:
     from infrahub.core.schema.manager import SchemaManager
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
+    from infrahub.pools.number_pool_repository import NumberPoolRangeStoreFactory
     from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
+    from infrahub.pools.scoped_number_pool_reader import ScopedNumberPoolReader
 
 default_log = get_logger()
+
+
+@dataclass(frozen=True)
+class SchemaNumberPoolSyncResult:
+    """The branches whose schema the synchronization saved, and the attributes it left without a pool, with why."""
+
+    updated_branches: set[str]
+    refused_pools: list[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class SchemaNodePoolUpdate:
+    """The schema of a node with the pool of its attributes set, when one was set, and the attributes left without a pool, with why."""
+
+    updated_schema: NodeSchema | GenericSchema | None
+    refused_pools: list[str]
 
 
 class SchemaNumberPoolSynchronizer:
@@ -33,32 +60,61 @@ class SchemaNumberPoolSynchronizer:
 
     Args:
         db: Database connection.
+        scope_reader: Reads the pools that store an allocation scope.
         log: Logger instance.
         schema_manager: Schema manager for looking up schemas.
+        range_store_factory: Builds the store that rewrites a pool's ranges, from the database running
+            the reconciliation transaction.
 
     """
 
     def __init__(
         self,
         db: InfrahubDatabase,
+        scope_reader: ScopedNumberPoolReader,
         schema_manager: SchemaManager,
         upserter: SchemaNumberPoolUpserter,
+        range_store_factory: NumberPoolRangeStoreFactory,
         log: Logger | LoggerAdapter | BoundLogger | None = None,
     ) -> None:
         self.db = db
+        self.scope_reader = scope_reader
         self.log = log or default_log
         self.schema_manager = schema_manager
         self.upserter = upserter
+        self._range_store_factory = range_store_factory
 
-    async def run(self, user_id: str = SYSTEM_USER_ID) -> set[str]:
+    async def run(self, user_id: str = SYSTEM_USER_ID) -> SchemaNumberPoolSyncResult:
         """Execute the full synchronization process.
 
         Returns:
-            Set of branch names where schema changes were persisted.
+            The branches where schema changes were persisted, and the attributes left without a pool.
 
         """
         await self._sync_existing_pools_with_schema(user_id=user_id)
+        await self._refresh_scope_names(user_id=user_id)
         return await self._process_all_branches(user_id=user_id)
+
+    async def _refresh_scope_names(self, user_id: str) -> None:
+        """Rewrite the stored name of each scope element whose field the default branch now names differently."""
+        schema_branch = self.schema_manager.get_schema_branch(name=registry.default_branch)
+        resolver = AllocationScopeResolver(schema_branch=schema_branch)
+        for pool in await self.scope_reader.get_with_scope():
+            # A pool outlives the removal of its kind from the default branch, which leaves no field to rename.
+            if not schema_branch.has(name=pool.kind):
+                continue
+            refreshed = resolver.refresh_names(scope=pool.scope, kind=pool.kind)
+            if refreshed == pool.scope:
+                continue
+            async with lock.registry.get(name=pool.id, namespace=RESOURCE_POOL_LOCK_NAMESPACE):
+                number_pool = await NodeManager.get_one(
+                    db=self.db, id=pool.id, kind=CoreNumberPool, branch_agnostic=True, raise_on_error=True
+                )
+                self.log.info(
+                    f"Renaming the allocation scope of NumberPool={pool.id} to {list(refreshed.element_names)}"
+                )
+                number_pool.allocation_scope.value = refreshed.to_stored()
+                await number_pool.save(db=self.db, user_id=user_id)
 
     async def _sync_existing_pools_with_schema(self, user_id: str) -> None:
         """Update or delete existing pools based on current schema definitions."""
@@ -78,38 +134,62 @@ class SchemaNumberPoolSynchronizer:
                 self.log.info(
                     f"Deleting number pool (id={schema_number_pool.id}) as it is no longer defined in the schema"
                 )
-                await schema_number_pool.delete(db=self.db, user_id=user_id)
+                await self._delete_pool(schema_number_pool, user_id=user_id)
+
+    async def _delete_pool(self, schema_number_pool: CoreNumberPool, user_id: str = SYSTEM_USER_ID) -> None:
+        """Delete a pool with its ranges and end the records it holds, so each number stays on its object untracked."""
+        pool_id = schema_number_pool.get_id()
+        async with lock.registry.get(name=pool_id, namespace=RESOURCE_POOL_LOCK_NAMESPACE):
+            await self._range_store_factory(db=self.db).delete_pool(pool_id=pool_id, user_id=user_id)
 
     async def _update_pool_from_schema(self, schema_number_pool: CoreNumberPool, user_id: str = SYSTEM_USER_ID) -> None:
-        """Update a pool's range parameters if they differ from the schema."""
+        """Reconcile a pool's ranges with the declaration on the default branch.
+
+        A range keeps its identity whenever the reconciliation can rewrite it in place, and the numbers the pool
+        has handed out are left untouched.
+        """
         schema = self.schema_manager.get(
             name=schema_number_pool.node.value, branch=registry.default_branch, duplicate=False
         )
         attribute = schema.get_attribute(name=schema_number_pool.node_attribute.value)
-        number_pool_updated = False
+        if not isinstance(attribute.parameters, NumberPoolParameters):
+            return
 
-        if isinstance(attribute.parameters, NumberPoolParameters):
-            if schema_number_pool.start_range.value != attribute.parameters.start_range:
-                schema_number_pool.start_range.value = attribute.parameters.start_range
-                number_pool_updated = True
-            if schema_number_pool.end_range.value != attribute.parameters.end_range:
-                schema_number_pool.end_range.value = attribute.parameters.end_range
-                number_pool_updated = True
+        declared_ranges = attribute.parameters.effective_ranges()
+        pool_id = schema_number_pool.get_id()
 
-        if number_pool_updated:
-            self.log.info(
-                f"Updating NumberPool={schema_number_pool.id} based on changes in the schema on {registry.default_branch}"
+        # One timestamp and one transaction, so the pool never shows a half-reconciled range set.
+        async with (
+            lock.registry.get(name=pool_id, namespace=RESOURCE_POOL_LOCK_NAMESPACE),
+            within_transaction(db=self.db) as dbt,
+        ):
+            at = Timestamp()
+            repository = self._range_store_factory(db=dbt)
+            # Read inside the lock so the mirror compares against the shorthand any earlier writer left.
+            pool_node = await NodeManager.get_one(
+                db=dbt, id=pool_id, kind=InfrahubKind.NUMBERPOOL, branch_agnostic=True, raise_on_error=True
             )
-            await schema_number_pool.save(db=self.db, user_id=user_id)
+            reconciliation = await NumberPoolRangeReconciler(range_store=repository).reconcile(
+                pool=pool_node, declared=declared_ranges, at=at, user_id=user_id
+            )
+            if reconciliation.changed:
+                self.log.info(
+                    f"Updating NumberPool={pool_id} based on changes in the schema on {registry.default_branch}"
+                )
 
-    async def _process_all_branches(self, user_id: str) -> set[str]:
+            await NumberPoolShorthandMirror(repository=repository).sync(
+                pool=pool_node, ranges=reconciliation.ranges, at=at, user_id=user_id
+            )
+
+    async def _process_all_branches(self, user_id: str) -> SchemaNumberPoolSyncResult:
         """Process all branches to create any missing number pools.
 
         Returns:
-            Set of branch names where schema changes were persisted.
+            The branches where schema changes were persisted, and the attributes left without a pool.
 
         """
         updated_branches: set[str] = set()
+        refused_pools: list[str] = []
 
         for branch_name in self.schema_manager.get_branches():
             schemas_to_update: list[str] = []
@@ -118,27 +198,29 @@ class SchemaNumberPoolSynchronizer:
             # Process generics first so their pool IDs are available for inheriting nodes
             for generic_name in schema_branch.generic_names:
                 generic_schema = schema_branch.get_generic(name=generic_name, duplicate=False)
-                updated_schema = await self._process_schema_node(
+                node_update = await self._process_schema_node(
                     schema_node=generic_schema,
                     branch_name=branch_name,
                     schema_branch=schema_branch,
                     user_id=user_id,
                 )
-                if updated_schema:
-                    schema_branch.set(name=generic_schema.kind, schema=updated_schema)
+                refused_pools.extend(node_update.refused_pools)
+                if node_update.updated_schema:
+                    schema_branch.set(name=generic_schema.kind, schema=node_update.updated_schema)
                     schemas_to_update.append(generic_schema.kind)
 
             # Process nodes after generics - inherited attributes will look up pool IDs from generics
             for node_name in schema_branch.node_names:
                 node_schema = schema_branch.get_node(name=node_name, duplicate=False)
-                updated_schema = await self._process_schema_node(
+                node_update = await self._process_schema_node(
                     schema_node=node_schema,
                     branch_name=branch_name,
                     schema_branch=schema_branch,
                     user_id=user_id,
                 )
-                if updated_schema:
-                    schema_branch.set(name=node_schema.kind, schema=updated_schema)
+                refused_pools.extend(node_update.refused_pools)
+                if node_update.updated_schema:
+                    schema_branch.set(name=node_schema.kind, schema=node_update.updated_schema)
                     schemas_to_update.append(node_schema.kind)
 
             if schemas_to_update:
@@ -148,7 +230,7 @@ class SchemaNumberPoolSynchronizer:
                 )
                 updated_branches.add(branch_name)
 
-        return updated_branches
+        return SchemaNumberPoolSyncResult(updated_branches=updated_branches, refused_pools=refused_pools)
 
     async def _process_schema_node(
         self,
@@ -156,8 +238,11 @@ class SchemaNumberPoolSynchronizer:
         branch_name: str,
         schema_branch: SchemaBranch,
         user_id: str,
-    ) -> NodeSchema | GenericSchema | None:
+    ) -> SchemaNodePoolUpdate:
         """Process NumberPool attributes for a schema node, creating pools as needed.
+
+        An attribute whose declared scope does not resolve on the default branch gets no pool, and the refusal is
+        returned so that the other attributes and branches are still processed.
 
         Args:
             schema_node: The schema node to process.
@@ -165,10 +250,12 @@ class SchemaNumberPoolSynchronizer:
             schema_branch: The SchemaBranch for schema lookups.
             user_id: The user ID for any save operations.
 
-        Returns a NodeSchema or GenericSchema if the schema was updated.
+        Returns:
+            The updated schema when a pool ID was set, and each attribute left without a pool, with the reason.
 
         """
         updated_schema: NodeSchema | GenericSchema | None = None
+        refused_pools: list[str] = []
 
         for attribute_name in schema_node.attribute_names:
             attribute = schema_node.get_attribute(name=attribute_name)
@@ -189,13 +276,17 @@ class SchemaNumberPoolSynchronizer:
 
             # If no pool ID, create one
             if not new_pool_id:
-                new_pool = await self.upserter.upsert_number_pool(
-                    schema_node=schema_node,
-                    attribute=attribute,
-                    branch_name=branch_name,
-                    schema_branch=schema_branch,
-                    user_id=user_id,
-                )
+                try:
+                    new_pool = await self.upserter.upsert_number_pool(
+                        schema_node=schema_node,
+                        attribute=attribute,
+                        branch_name=branch_name,
+                        schema_branch=schema_branch,
+                        user_id=user_id,
+                    )
+                except ValidationError as exc:
+                    refused_pools.append(f"{schema_node.kind}.{attribute_name} on {branch_name}: {exc.message}")
+                    continue
                 new_pool_id = new_pool.id
 
             self.log.info(f"Setting {schema_node.kind}.{attribute_name} number_pool_id to {new_pool_id}")
@@ -205,4 +296,4 @@ class SchemaNumberPoolSynchronizer:
             attribute_parameters = cast("NumberPoolParameters", updated_attribute.parameters)
             attribute_parameters.number_pool_id = new_pool_id
 
-        return updated_schema
+        return SchemaNodePoolUpdate(updated_schema=updated_schema, refused_pools=refused_pools)

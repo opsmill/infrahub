@@ -1,6 +1,6 @@
-"""Close the edges of branch-agnostic fields schema removal made unreachable from any branch.
+"""Close the global edges of fields a schema change made unreachable from any branch.
 
-The candidates are handed in as a list of vertices.
+The candidates are handed in as a list of Attribute or Relationship vertices.
 """
 
 from infrahub.core.query.agnostic_retention import UNRETAINED_AGNOSTIC_FIELD_PREDICATE

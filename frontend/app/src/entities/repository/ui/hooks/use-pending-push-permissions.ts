@@ -1,0 +1,44 @@
+import { useQuery } from "@tanstack/react-query";
+
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
+import { useDefaultBranch } from "@/entities/branches/ui/hooks/use-default-branch";
+import {
+  EDIT_DEFAULT_BRANCH,
+  MANAGE_REPOSITORIES,
+} from "@/entities/permission/domain/model/permission";
+import { getObjectPermissionsQueryOptions } from "@/entities/permission/ui/queries/get-object-permissions.query";
+import { useHasGlobalPermission } from "@/entities/permission/ui/queries/has-global-permission.query";
+import { REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
+
+export const ACCESS_DENIED_TOOLTIP = "Ask an administrator for access";
+
+interface PendingPushPermissions {
+  canActOnPendingPushes: boolean;
+  canReimportOnDefaultBranch: boolean;
+  isPending: boolean;
+}
+
+// These actions run on the default branch whatever branch the user selected, so the backend checks the rights held there.
+export function usePendingPushPermissions(): PendingPushPermissions {
+  const auth = useAuth();
+  const defaultBranch = useDefaultBranch();
+  const { data: permission, isPending: isPermissionPending } = useQuery({
+    ...getObjectPermissionsQueryOptions({
+      kind: REPOSITORY_KIND,
+      branchName: defaultBranch?.name ?? "",
+      userId: auth.user?.id,
+    }),
+    enabled: !!defaultBranch,
+  });
+  const { data: canManageRepositories = false, isPending: isManageRepositoriesPending } =
+    useHasGlobalPermission(MANAGE_REPOSITORIES);
+  const { data: canEditDefaultBranch = false, isPending: isEditDefaultBranchPending } =
+    useHasGlobalPermission(EDIT_DEFAULT_BRANCH);
+  const canUpdate = permission?.update.isAllowed ?? false;
+
+  return {
+    canActOnPendingPushes: canUpdate && canManageRepositories && canEditDefaultBranch,
+    canReimportOnDefaultBranch: canUpdate && canEditDefaultBranch,
+    isPending: isPermissionPending || isManageRepositoriesPending || isEditDefaultBranchPending,
+  };
+}

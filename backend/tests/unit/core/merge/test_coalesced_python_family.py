@@ -7,6 +7,9 @@ these tests pin the wiring between the two, not the narrowing itself.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
+
 from infrahub.core.merge.python_target_sources import UnavailablePythonTargetResolver
 from infrahub.core.merge.recompute_coalescing import (
     COMPUTED_ATTRIBUTE,
@@ -20,8 +23,6 @@ from infrahub.core.merge.recompute_coalescing import (
     RecomputeChainSubmitter,
 )
 from infrahub.core.recompute.bulk_write import WrittenNode
-from infrahub.core.schema import AttributeSchema
-from infrahub.core.schema.computed_attribute import ComputedAttribute, ComputedAttributeKind
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.events.models import EventBranchContext, EventContext
 from tests.adapters.python_target_sources import (
@@ -30,7 +31,16 @@ from tests.adapters.python_target_sources import (
     ResolveCall,
 )
 from tests.adapters.workflow import WorkflowRecorder
-from tests.helpers.merge_recompute.dataset import build_chain_schema, chain_kind
+from tests.helpers.merge_recompute.dataset import (
+    build_chain_schema,
+    build_chain_schema_with_a_python_attribute,
+    chain_kind,
+)
+from tests.helpers.regeneration_barrier import regeneration_barrier
+from tests.unit.git.writeback.fakes import FixedClock, InMemoryDeliveryState
+
+if TYPE_CHECKING:
+    from infrahub.core.merge.regeneration_barrier import RegenerationBarrier
 
 BRANCH = "main"
 PYTHON_KIND = "TestingProbe"
@@ -44,24 +54,18 @@ def _schema_branch() -> SchemaBranch:
 
 
 def _schema_branch_with_a_python_attribute() -> SchemaBranch:
-    """The chain schema, plus one Python transform computed attribute on its first level."""
-    schema = build_chain_schema(levels=3)
-    node = next(item for item in schema.nodes if item.kind == chain_kind(1))
-    node.attributes.append(
-        AttributeSchema(
-            name="digest",
-            kind="Text",
-            optional=True,
-            read_only=True,
-            computed_attribute=ComputedAttribute(
-                kind=ComputedAttributeKind.TRANSFORM_PYTHON, transform="transform_digest"
-            ),
-        )
-    )
     schema_branch = SchemaBranch(cache={}, name="test")
-    schema_branch.load_schema(schema=schema)
+    schema_branch.load_schema(schema=build_chain_schema_with_a_python_attribute(levels=3))
     schema_branch.process()
     return schema_branch
+
+
+def _barrier() -> RegenerationBarrier:
+    """A barrier on the branch of these tests, where no repository waits for a delivery."""
+    return regeneration_barrier(
+        state=InMemoryDeliveryState(clock=FixedClock(now=datetime(2026, 10, 8, tzinfo=UTC)), repository_names={}),
+        default_branch_name=BRANCH,
+    )
 
 
 def _event_context() -> EventContext:
@@ -94,6 +98,7 @@ async def test_the_coordinator_submits_the_python_family_alongside_the_schema_on
         builder=CoalescedRecomputeBuilder(schema_branch=_schema_branch()),
         submitter=CoalescedRecomputeSubmitter(workflow=WorkflowRecorder()),
         python_resolver=resolver,
+        barrier=_barrier(),
     )
 
     # A generator, since both derivations read the change set and the second would find it empty.
@@ -114,6 +119,7 @@ async def test_a_chained_level_derives_the_python_targets_of_its_writes() -> Non
         builder=CoalescedRecomputeBuilder(schema_branch=_schema_branch()),
         submitter=CoalescedRecomputeSubmitter(workflow=recorder),
         python_resolver=resolver,
+        barrier=_barrier(),
     ).submit(
         written=[WrittenNode(node_id="l1-0", kind=chain_kind(1), fields=("name",))],
         branch=BRANCH,
@@ -138,6 +144,7 @@ async def test_a_failing_resolution_widens_python_and_keeps_the_other_families()
         builder=CoalescedRecomputeBuilder(schema_branch=_schema_branch_with_a_python_attribute()),
         submitter=CoalescedRecomputeSubmitter(workflow=WorkflowRecorder()),
         python_resolver=resolver,
+        barrier=_barrier(),
     )
 
     submissions = await coordinator.run(changes=[_root_change()], branch=BRANCH, context=_event_context())
@@ -157,6 +164,7 @@ async def test_a_failing_resolution_on_a_chained_level_widens_the_same_way() -> 
         builder=CoalescedRecomputeBuilder(schema_branch=_schema_branch_with_a_python_attribute()),
         submitter=CoalescedRecomputeSubmitter(workflow=WorkflowRecorder()),
         python_resolver=resolver,
+        barrier=_barrier(),
     ).submit(
         written=[WrittenNode(node_id="l1-0", kind=chain_kind(1), fields=("name",))],
         branch=BRANCH,
@@ -174,6 +182,7 @@ async def test_a_resolver_that_could_not_be_built_widens_every_declared_attribut
         builder=CoalescedRecomputeBuilder(schema_branch=_schema_branch_with_a_python_attribute()),
         submitter=CoalescedRecomputeSubmitter(workflow=WorkflowRecorder()),
         python_resolver=UnavailablePythonTargetResolver(),
+        barrier=_barrier(),
     )
 
     submissions = await coordinator.run(changes=[_root_change()], branch=BRANCH, context=_event_context())
@@ -196,6 +205,7 @@ async def test_an_empty_change_set_resolves_nothing_without_reading_the_database
         builder=CoalescedRecomputeBuilder(schema_branch=_schema_branch_with_a_python_attribute()),
         submitter=CoalescedRecomputeSubmitter(workflow=WorkflowRecorder()),
         python_resolver=resolver,
+        barrier=_barrier(),
     )
 
     submissions = await coordinator.run(changes=[], branch=BRANCH, context=_event_context())

@@ -17,6 +17,9 @@ import { generateAttributeSchema, generateNodeSchema } from "../../../../tests/f
 import { RepositoryObjectDetails } from "./repository-object-details";
 
 vi.mock("@/entities/repository/api/get-repository-branch-status-from-api");
+vi.mock("@/entities/repository/ui/repository-push-to-remote-card", () => ({
+  RepositoryPushToRemoteCard: () => <p>Push to remote</p>,
+}));
 
 // A cell that throws while rendering a row is the failure a rejected query cannot reproduce. It
 // throws for one branch only, so a row set without that branch is a recovery rather than a retry.

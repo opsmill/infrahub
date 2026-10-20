@@ -223,7 +223,7 @@ def evaluate_candidate_schemas(
         schema = _merge_candidate_schemas(schemas=schemas_to_evaluate)
 
         candidate_schema.load_schema(schema=schema)
-        candidate_schema.process()
+        candidate_schema.process(default_branch_schema=registry.schema.get_schema_branch(name=registry.default_branch))
 
         schema_diff = branch_schema.diff(other=candidate_schema)
         candidate_schema.validate_node_deletions(diff=schema_diff)

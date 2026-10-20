@@ -22,15 +22,22 @@ class NodeAgnosticRetirementResult:
 
 _RETIRE_UNRETAINED_FIELDS_OF_NODES = """
 // -----------------
-// MATCH on the branch-agnostic edges we care about to start with.
+// Start with all fields on the objects we care about
 // -----------------
-MATCH (anchor_node:Node)-[anchor:HAS_ATTRIBUTE|IS_RELATED]-(field:Attribute|Relationship)
-WHERE anchor_node.uuid IN $node_uuids
-  AND anchor.branch = $global_branch_name
-  AND anchor.status = "active"
-  AND anchor.from <= $at
-  AND anchor.to IS NULL
-WITH collect(DISTINCT field) AS agnostic_candidates
+MATCH (node:Node)-[:HAS_ATTRIBUTE|IS_RELATED]-(field:Attribute|Relationship)
+WHERE node.uuid IN $node_uuids
+WITH DISTINCT field
+// -----------------
+// Filter to only those fields that have an open global edge
+// -----------------
+WHERE EXISTS {
+    MATCH (field)-[global_edge:HAS_ATTRIBUTE|IS_RELATED|IS_RESERVED]-()
+    WHERE global_edge.branch = $global_branch_name
+      AND global_edge.status = "active"
+      AND global_edge.from <= $at
+      AND global_edge.to IS NULL
+}
+WITH collect(field) AS agnostic_candidates
 %(unretained_predicate)s
 
 MATCH (field)-[e]-()
@@ -44,10 +51,12 @@ RETURN count(e) AS edges_closed
 
 
 class RetireNodeAgnosticFieldsQuery(Query):
-    """Close the open global edges of the given nodes' branch-agnostic fields that no branch retains.
+    """Close the open global edges of the given nodes' fields that no branch retains.
 
-    Checks if the field is reachable from ANY branch. It is only deleted if it is completely
-    unreachable.
+    The fields are the nodes' branch-agnostic fields plus any global IS_RESERVED edges linked to
+    those fields. Checks if the field is reachable from ANY branch, and closes its global edges
+    only if it is completely unreachable. A branch-aware attribute's only global edge is a pool's
+    IS_RESERVED edge, so that is all this closes on it.
     """
 
     name: str = "retire_node_agnostic_fields"
@@ -77,12 +86,30 @@ class RetireNodeAgnosticFieldsQuery(Query):
         return NodeAgnosticRetirementResult(edges_closed=0)
 
 
-_NODES_DELETED_ON_BRANCH = """
-MATCH (node:Node)-[deletion:IS_PART_OF]->(:Root)
-WHERE deletion.branch = $branch_name
-  AND deletion.status = "deleted"
-  AND deletion.from >= $from_time
-  AND deletion.from <= $to_time
+_NODES_TO_CHECK_FOR_GLOBAL_EDGES = """
+CALL () {
+    MATCH (node:Node)-[deletion:IS_PART_OF]->(:Root)
+    WHERE deletion.branch = $branch_name
+      AND deletion.status = "deleted"
+      AND deletion.from >= $from_time
+      AND deletion.from <= $to_time
+    RETURN node
+  UNION
+    // -----------------
+    // Attribute vertices with open IS_RESERVED edges might need to have those edges retired
+    // so they must be included in this list
+    // -----------------
+    MATCH ()-[is_reserved:IS_RESERVED]->(:Attribute)<-[owning:HAS_ATTRIBUTE]-(node:Node)
+    WHERE is_reserved.branch = $global_branch_name
+      AND is_reserved.status = "active"
+      AND is_reserved.from <= $to_time
+      AND is_reserved.to IS NULL
+      AND owning.branch = $branch_name
+      AND owning.status = "active"
+      AND owning.to >= $from_time
+      AND owning.to <= $to_time
+    RETURN node
+}
 // -----------------
 // One row holding every uuid, so the existence edges are scanned once rather than once per page.
 // -----------------
@@ -90,14 +117,15 @@ RETURN collect(DISTINCT node.uuid) AS node_uuids
 """
 
 
-class NodesDeletedOnBranchQuery(Query):
-    """Return the uuids of the nodes deleted on a branch between two timestamps, both included.
+class NodesToCheckForGlobalEdgesQuery(Query):
+    """Return the uuids of objects to check for branch-agnostic edges that may need to be retired.
 
-    A kind or inheritance change deletes the superseded vertex of a node that stays live under the same
-    uuid, so a returned uuid is a node whose retention needs re-evaluating, not proof that it is gone.
+    Includes both objects deleted on the branch within the timestamps and objects with pool-reserved
+    attributes that lost their owning edge on the branch in the same window. Not all objects actually
+    need to have branch-agnostic retirement applied, but they all do need to be checked.
     """
 
-    name: str = "nodes_deleted_on_branch"
+    name: str = "nodes_to_check_for_global_edges"
     type: QueryType = QueryType.READ
 
     insert_return: bool = False
@@ -110,10 +138,11 @@ class NodesDeletedOnBranchQuery(Query):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["branch_name"] = self.branch_name
+        self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
         self.params["from_time"] = self.from_time.to_string()
         self.params["to_time"] = self.to_time.to_string()
 
-        self.add_to_query(_NODES_DELETED_ON_BRANCH)
+        self.add_to_query(_NODES_TO_CHECK_FOR_GLOBAL_EDGES)
         self.return_labels = ["node_uuids"]
 
     def get_node_uuids(self) -> list[str]:

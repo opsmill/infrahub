@@ -17,11 +17,13 @@ from infrahub.core import registry
 from infrahub.core.changelog.models import AttributeChangelog
 from infrahub.core.constants import (
     NULL_VALUE,
+    POOL_TRACKED_ATTRIBUTE_KINDS,
     SYSTEM_USER_ID,
     AttributeDBNodeType,
     BranchSupportType,
     InfrahubKind,
     MetadataOptions,
+    PoolRecordProvenance,
 )
 from infrahub.core.metadata.interface import MetadataInterface
 from infrahub.core.metadata.model import MetadataInfo
@@ -47,6 +49,7 @@ from .schema.attribute_parameters import NumberAttributeParameters
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
+    from infrahub.core.query.resource_manager import TrackingPool
     from infrahub.core.schema import AttributeSchema, MainSchemaTypes
     from infrahub.database import InfrahubDatabase
 
@@ -77,6 +80,25 @@ def validate_string_length(value: str | None) -> None:
         raise ValidationError(f"Text attribute length should be less than {MAX_STRING_LENGTH} characters.")
 
 
+class PayloadPresence(Enum):
+    """Whether a payload field was left out, sent as an explicit null, or sent with a value."""
+
+    ABSENT = "absent"
+    NULL = "null"
+    SET = "set"
+
+    @classmethod
+    def of(cls, data: dict, key: str) -> PayloadPresence:
+        if key not in data:
+            return cls.ABSENT
+        return cls.NULL if data[key] is None else cls.SET
+
+
+class PoolPropertyData(NodePropertyData):
+    allocated_value: int | None
+    """The number the pool allocated to the attribute, None when a user provided the value."""
+
+
 class AttributeCreateData(BaseModel):
     uuid: str
     name: str
@@ -90,6 +112,7 @@ class AttributeCreateData(BaseModel):
     is_protected: bool
     source_prop: list[NodePropertyData] = Field(default_factory=list)
     owner_prop: list[NodePropertyData] = Field(default_factory=list)
+    pool_prop: list[PoolPropertyData] = Field(default_factory=list)
 
 
 class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
@@ -123,6 +146,9 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         self.is_default = is_default
         self.is_from_profile = is_from_profile
         self.from_pool: dict | None = None
+        self.value_presence = PayloadPresence.ABSENT
+        self.from_pool_presence = PayloadPresence.ABSENT
+        self.tracking_pool: TrackingPool | None = None
 
         self._init_node_property_mixin(kwargs)
         self._init_flag_property_mixin(kwargs)
@@ -142,6 +168,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         elif isinstance(data, dict):
             self.value = data.get("value")
             self.from_pool = data.get("from_pool")
+            self.value_presence = PayloadPresence.of(data=data, key="value")
+            self.from_pool_presence = PayloadPresence.of(data=data, key="from_pool")
 
             if "is_default" in data:
                 self.is_default = data.get("is_default")
@@ -156,6 +184,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
             self.is_default = True
         else:
             self.value = data
+            self.value_presence = PayloadPresence.SET
 
         # Assign default values
         if self.value is None and self.schema.default_value is not None:
@@ -339,6 +368,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         self.value = self.value_from_db(data=data)
         self.is_default = data.is_default
         self.is_from_profile = data.is_from_profile
+        self.tracking_pool = data.tracking_pool
 
         self.id = data.attr_uuid
         self.db_id = data.attr_id
@@ -551,7 +581,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
     async def to_graphql(
         self,
-        db: InfrahubDatabase,
+        db: InfrahubDatabase,  # noqa: ARG002  # the render signature is shared with objects and relationships
         fields: dict | None = None,
         related_node_ids: set | None = None,
         filter_sensitive: bool = False,
@@ -594,21 +624,12 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 response[field_name] = {"update_value": permissions["update"]} if permissions else None
                 continue
 
-            if field_name in ["source", "owner"]:
-                node_attr_getter = getattr(self, f"get_{field_name}")
-                node_attr = await node_attr_getter(db=db)
-                if not node_attr:
-                    response[field_name] = None
-                elif fields and isinstance(fields, dict):
-                    response[field_name] = await node_attr.to_graphql(
-                        db=db, fields=fields[field_name], related_node_ids=related_node_ids
-                    )
-                else:
-                    response[field_name] = await node_attr.to_graphql(
-                        db=db,
-                        fields={"id": None, "display_label": None, "__typename": None},
-                        related_node_ids=related_node_ids,
-                    )
+            if field_name == "source":
+                response[field_name] = self._source_reference_for_graphql()
+                continue
+
+            if field_name == "owner":
+                response[field_name] = self._owner_reference_for_graphql()
                 continue
 
             if field_name.startswith("_"):
@@ -631,15 +652,31 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
         return response
 
+    def _owner_reference_for_graphql(self) -> dict[str, Any] | None:
+        """The object `owner` names, for its field resolver to load."""
+        if not self.owner_id:
+            return None
+        return {"id": str(self.owner_id)}
+
+    def _source_reference_for_graphql(self) -> dict[str, Any] | None:
+        """The object `source` names, for its field resolver to load: a tracking pool ahead of a user-set source."""
+        if self.schema.kind in POOL_TRACKED_ATTRIBUTE_KINDS and (tracking_pool := self.tracking_pool) is not None:
+            return {"id": tracking_pool.pool_id, "__kind__": InfrahubKind.NUMBERPOOL}
+        if self.source_id:
+            return {"id": str(self.source_id)}
+        return None
+
     def _filter_sensitive(self, value: str, filter_sensitive: bool) -> str:
         if filter_sensitive and self.schema.kind in ["HashedPassword", "Password"]:
             return "***"
 
         return value
 
-    async def from_graphql(self, data: dict, db: InfrahubDatabase, process_pools: bool = True) -> bool:
-        """Update attr from GraphQL payload."""
+    async def from_graphql(self, data: dict) -> bool:
+        """Update attr from GraphQL payload; records `from_pool` without drawing from it."""
         changed = False
+        self.value_presence = PayloadPresence.of(data=data, key="value")
+        self.from_pool_presence = PayloadPresence.of(data=data, key="from_pool")
         if "value" in data:
             if self.is_enum:
                 value_to_set = self.schema.convert_value_to_enum(data["value"])
@@ -653,8 +690,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 changed = True
         if "from_pool" in data:
             self.from_pool = data["from_pool"]
-            if process_pools:
-                await self.node.handle_pool(db=db, attribute=self)
             changed = True
 
         if changed and self.is_from_profile:
@@ -713,6 +748,12 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         if self.owner_id:
             data.owner_prop.append(NodePropertyData(name="owner", peer_id=self.owner_id))
 
+        if (tracking_pool := self.tracking_pool) is not None and self.value is not None:
+            allocated_value = self.value if tracking_pool.provenance is PoolRecordProvenance.ALLOCATED else None
+            data.pool_prop.append(
+                PoolPropertyData(name="pool", peer_id=tracking_pool.pool_id, allocated_value=allocated_value)
+            )
+
         return data
 
 
@@ -766,7 +807,6 @@ class HashedPasswordOptional(HashedPassword):
 class Integer(BaseAttribute):
     type = int
     value: int
-    from_pool: str | None = None
 
     @classmethod
     def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:

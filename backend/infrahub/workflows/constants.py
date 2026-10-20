@@ -36,6 +36,7 @@ class WorkflowTag(InfrahubStringEnum):
     WORKFLOWTYPE = "workflow-type/{identifier}"
     DATABASE_CHANGE = "database-change"
     RELATED_NODE = "node/{identifier}"
+    REPOSITORY_DELIVERY = "repository-delivery"
 
     def render(self, identifier: str | None = None) -> str:
         if identifier is None:

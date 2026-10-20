@@ -1,7 +1,7 @@
 import type React from "react";
 
-import InfrahubLogoDark from "@/assets/Infrahub-SVG-hori-dark.svg?react";
-import InfrahubLogoLight from "@/assets/Infrahub-SVG-hori-light.svg?react";
+import InfrahubLogoDark from "@/assets/infrahub-logo-dark-theme.svg?react";
+import InfrahubLogoLight from "@/assets/infrahub-logo-light-theme.svg?react";
 
 import { classNames } from "@/shared/utils/common";
 

@@ -391,6 +391,141 @@ describe("getUpdateMutationFromFormData - test", () => {
     });
   });
 
+  describe("Number attribute served by a number pool", () => {
+    it("sends only the typed number when no pool tracks it", () => {
+      const fields: Array<DynamicFieldProps> = [
+        buildFormField({
+          name: "vlan_id",
+          type: "Number",
+          pool: { kind: "CoreNumberPool", defaultAllocatedObjectKind: "TestDevice" },
+          defaultValue: { source: { type: "user" }, value: 10 },
+        }),
+      ];
+      const formData: Record<string, FormAttributeValue> = {
+        vlan_id: { source: { type: "user" }, value: 42 },
+      };
+
+      const mutationData = getUpdateMutationFromFormData({ fields, formData });
+
+      expect(mutationData).to.deep.equal({ vlan_id: { value: 42 } });
+    });
+
+    const numberPoolField = (defaultValue: FormAttributeValue) =>
+      buildFormField({
+        name: "vlan_id",
+        type: "Number",
+        pool: { kind: "CoreNumberPool", defaultAllocatedObjectKind: "TestDevice" },
+        defaultValue,
+      });
+
+    const fromNumberPool = (poolId: string, number: number | null): AttributeValueFromPool => ({
+      source: { type: "pool", label: `pool ${poolId}`, id: poolId, kind: "CoreNumberPool" },
+      value: { from_pool: { id: poolId, number } },
+    });
+
+    const untrackedDefault: FormAttributeValue = { source: { type: "user" }, value: 10 };
+    const trackedDefault = fromNumberPool("pool-p", 10);
+
+    it.each([
+      {
+        title: "adopts the current number into the picked pool when no pool tracks it",
+        defaultValue: untrackedDefault,
+        formValue: fromNumberPool("pool-b", 10),
+        expected: { vlan_id: { value: 10, from_pool: { id: "pool-b" } } },
+      },
+      {
+        title:
+          "asks the picked pool for its next number when no pool tracks it and the number is emptied",
+        defaultValue: untrackedDefault,
+        formValue: fromNumberPool("pool-b", null),
+        expected: { vlan_id: { value: null, from_pool: { id: "pool-b" } } },
+      },
+      {
+        title: "sends nothing when the tracked number and its pool are left unchanged",
+        defaultValue: trackedDefault,
+        formValue: fromNumberPool("pool-p", 10),
+        expected: {},
+      },
+      {
+        title: "sends the new number with the same pool when the tracked number changes",
+        defaultValue: trackedDefault,
+        formValue: fromNumberPool("pool-p", 42),
+        expected: { vlan_id: { value: 42, from_pool: { id: "pool-p" } } },
+      },
+      {
+        title: "sends an empty number with the same pool when the tracked number is emptied",
+        defaultValue: trackedDefault,
+        formValue: fromNumberPool("pool-p", null),
+        expected: { vlan_id: { value: null, from_pool: { id: "pool-p" } } },
+      },
+      {
+        title: "moves the tracked number to another pool",
+        defaultValue: trackedDefault,
+        formValue: fromNumberPool("pool-b", 10),
+        expected: { vlan_id: { value: 10, from_pool: { id: "pool-b" } } },
+      },
+      {
+        title: "asks another pool for its next number when the tracked number is emptied",
+        defaultValue: trackedDefault,
+        formValue: fromNumberPool("pool-b", null),
+        expected: { vlan_id: { value: null, from_pool: { id: "pool-b" } } },
+      },
+      {
+        title: "removes the number from its pool when a number is typed on the value tab",
+        defaultValue: trackedDefault,
+        formValue: { source: { type: "user" }, value: 42 } satisfies FormAttributeValue,
+        expected: { vlan_id: { value: 42, from_pool: null } },
+      },
+      {
+        title: "removes the number from its pool when the same number is typed on the value tab",
+        defaultValue: trackedDefault,
+        formValue: { source: { type: "user" }, value: 10 } satisfies FormAttributeValue,
+        expected: { vlan_id: { value: 10, from_pool: null } },
+      },
+      {
+        title: "sends nothing when the value tab is visited and the pool default is restored",
+        defaultValue: trackedDefault,
+        formValue: trackedDefault,
+        expected: {},
+      },
+    ])("$title", ({ defaultValue, formValue, expected }) => {
+      const fields = [numberPoolField(defaultValue)];
+      const formData: Record<string, FormAttributeValue> = { vlan_id: formValue };
+
+      const mutationData = getUpdateMutationFromFormData({ fields, formData });
+
+      expect(mutationData).to.deep.equal(expected);
+    });
+
+    it("clears the from-pool relationship instead of sending a null pool for a template-backed number", () => {
+      const fields: Array<DynamicFieldProps> = [
+        buildFormField({
+          name: "vlan_id",
+          type: "Number",
+          pool: {
+            kind: "CoreNumberPool",
+            defaultAllocatedObjectKind: "TestDevice",
+            fromPoolRelationshipName: "vlan_id_from_resource_pool",
+          },
+          defaultValue: {
+            source: { type: "pool", label: "pool P", id: "pool-p", kind: "CoreNumberPool" },
+            value: { from_pool: { id: "pool-p" } },
+          },
+        }),
+      ];
+      const formData: Record<string, FormAttributeValue> = {
+        vlan_id: { source: { type: "user" }, value: 42 },
+      };
+
+      const mutationData = getUpdateMutationFromFormData({ fields, formData });
+
+      expect(mutationData).to.deep.equal({
+        vlan_id: { value: 42 },
+        vlan_id_from_resource_pool: null,
+      });
+    });
+  });
+
   describe("Resource pool from-pool relationship", () => {
     it("sends only the pool id on the _from_resource_pool field, since its peer is the pool kind", () => {
       // That relationship is a plain RelatedNodeInput: sending either override is rejected before any resolver runs.

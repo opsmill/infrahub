@@ -321,7 +321,7 @@ async def update_registry(
         tmp_schema = branch_schema.duplicate()
 
         tmp_schema.set(name=kind.kind, schema=kind)
-        tmp_schema.process()
+        tmp_schema.process(default_branch_schema=registry.schema.get_schema_branch(name=registry.default_branch))
 
         diff = tmp_schema.diff(branch_schema)
 

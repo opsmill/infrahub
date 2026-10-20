@@ -2,6 +2,7 @@ import React from "react";
 
 import { Col, Row } from "@/shared/components/container";
 import { LabelFormField } from "@/shared/components/form/fields/common";
+import { usePreventScrollOnNumberInput } from "@/shared/components/form/fields/usePreventScrollOnNumber";
 import { type PoolKindOption, PoolKindSelect } from "@/shared/components/form/pool-kind-select";
 import { PoolPrefixLengthInput } from "@/shared/components/form/pool-prefix-length-input";
 import type { FormFieldValue, PoolValue } from "@/shared/components/form/type";
@@ -14,6 +15,8 @@ import {
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
 import { FormField } from "@/shared/components/ui/form";
+import { Input } from "@/shared/components/ui/input";
+import { inputErrorStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
 import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
@@ -358,6 +361,71 @@ export function PoolKindOverrideField({
           )}
         />
       </Row>
+    </Col>
+  );
+}
+
+export interface PoolNumberFieldProps {
+  /** Name of the host form field; used to register the nested number field. */
+  name: string;
+  poolKind: string;
+  value: FormFieldValue;
+  disabled?: boolean;
+  className?: string;
+}
+
+/**
+ * The number to reserve in a staged number pool; left empty, the pool allocates its next free
+ * number. Owns the whole visibility decision (hence the bare `null`).
+ */
+export function PoolNumberField({
+  name,
+  poolKind,
+  value,
+  disabled,
+  className,
+}: PoolNumberFieldProps) {
+  const id = React.useId();
+  const numberRef = usePreventScrollOnNumberInput();
+
+  if (!getPendingFromPool(value) || poolKind !== NUMBER_POOL_KIND) return null;
+
+  return (
+    <Col className={classNames("gap-2", className)}>
+      <LabelFormField
+        label="Number"
+        description="Leave empty to allocate the next free number from the pool."
+        variant="small"
+        htmlFor={id}
+      />
+      <FormField
+        name={`${name}.value.from_pool.number`}
+        // No unmount unregister, for the same reason as the prefix-length override.
+        shouldUnregister={false}
+        rules={{
+          validate: (number: number | null | undefined) =>
+            typeof number !== "number" ||
+            Number.isInteger(number) ||
+            "Number must be a whole number",
+        }}
+        render={({ field, fieldState }) => (
+          <Input
+            id={id}
+            ref={numberRef}
+            type="number"
+            step={1}
+            value={typeof field.value === "number" ? field.value : ""}
+            onChange={(event) => {
+              const next = event.target.valueAsNumber;
+              field.onChange(Number.isNaN(next) ? null : next);
+            }}
+            onBlur={field.onBlur}
+            className={classNames(fieldState.error && inputErrorStyle)}
+            disabled={disabled}
+            data-testid="pool-number-input"
+          />
+        )}
+      />
     </Col>
   );
 }

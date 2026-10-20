@@ -1,6 +1,6 @@
 # Git Sync
 
-> Part of: `dev/knowledge/backend/` | Related: [Architecture](architecture.md)
+> Part of: `dev/knowledge/backend/` | Related: [Architecture](architecture.md), [Git Push Queue](git-push-queue.md)
 
 How Infrahub maps and imports branches from external git repositories, how the sync flow reads the
 per-branch state of each repository, and how git and import errors surface. Read this before
@@ -75,19 +75,41 @@ The read-write kind implements the mapping described below; the read-only kind r
   Prefect's run logger. The add flow writes it whenever its first sync skips a branch. The
   per-repository sync flow writes it only when the run imported a branch or saw a skipped branch
   advance (`SyncReport.reports_skipped_branches`).
-- That sync flow's run is linked to the repository node when it imports a branch (the import tags the
-  run itself), when it writes the warning, or when it fails while the repository is online. A
-  successful run where nothing moved adds nothing to the repository's task history. Every tag update
-  is rebuilt from the tags the run started with, so a later `add_tags` call must repeat the branches
-  the imports tagged, or it drops them.
-- The reverse mapping — from an Infrahub branch name to the remote git branch — is
-  `_get_mapped_remote_branch`. Any git operation that names a remote ref (`pull`, `push`) must
-  route the branch name through it: when the repository's default branch differs from Infrahub's,
-  the remote has no branch named after the Infrahub default, and the raw name fails with
-  "couldn't find remote ref".
+- Each branch import runs as a flow run of its own (`git/sync.py::import_branch`), linked to the
+  repository node and tagged only with the branch it imports into, so its logs and failure show on
+  that branch. The sync flow's run is linked to its own branch when it writes the warning and, while
+  the repository is online, to each branch that failed before its import. A failed import does not
+  link the sync run, because its own run already shows it. A successful run where nothing moved adds
+  nothing to the repository's task history.
+- The reverse mapping — from an Infrahub branch name to the remote git branch — is the pure
+  function `get_mapped_remote_branch` in `backend/infrahub/git/branch_mapping.py`. Any git
+  operation that names a remote ref (`pull`, `push`) must route the branch name through it: when
+  the repository's default branch differs from Infrahub's, the remote has no branch named after
+  the Infrahub default, and the raw name fails with "couldn't find remote ref".
+  `InfrahubRepository._get_mapped_remote_branch` is the read-write kind's implementation of the
+  abstract hook, and it supplies the repository's own `default_branch` and
+  `registry.default_branch`; code that has no repository object — the API server, which must never
+  build one — calls the function directly. The function takes all three inputs as required
+  parameters, so no caller can fall back to Infrahub's default branch by omitting the repository's
+  trunk.
 - `git.import_sync_branch_names` (settings) is a list of names or regex patterns selecting which
   other remote branches are imported during sync; branches created in Infrahub with
-  `sync_with_git` are imported regardless.
+  `sync_with_git` are imported regardless. **The list is empty by default, and an empty list
+  filters nothing**: every remote branch then reaches import validation, `sync_with_git` or not.
+  Passing the filter is not the last word, because `validate_remote_branch` still rejects a name
+  the database cannot hold and the mismatched default branch described above. So `sync_with_git`
+  alone never answers "does Infrahub import this branch".
+- Two functions express that filter, and they answer different questions. They are not
+  interchangeable:
+  - `get_filtered_remote_branches` in `backend/infrahub/git/base.py` is the filter the sync itself
+    runs, over every remote branch. Where an Infrahub branch of that name exists, either trunk
+    name, `sync_with_git`, or a filter match admits it. Where no Infrahub branch of that name
+    exists, only a filter match admits it: that arm has no trunk exemption.
+  - `remote_branch_is_imported` in `backend/infrahub/git/branch_mapping.py` answers the narrower
+    question the API side asks about a branch that already exists in Infrahub: does a sync import
+    this remote branch onto the Infrahub branch that maps to it. It admits both trunks
+    unconditionally, so it must not be reused to decide whether a remote branch with no Infrahub
+    counterpart is imported.
 
 ### A push to the skipped branch can go unreported
 
@@ -195,17 +217,24 @@ apart, because they drive different outcomes:
   moves a worktree by a hard reset onto the remote head it classified, so a worktree behind the
   remote fast-forwards and the commit imported is the one classified. A worktree that does not lead
   to the remote head, because the remote was rewritten or rewound, loses the commits it held, and
-  that includes a worktree ahead of the remote. Such a commit is rare: `InfrahubRepository.merge`
-  pushes before it records the commit, and resets the destination worktree when either step fails.
-  Only a failed reset, which `merge` logs as needing manual reconciliation, leaves an unpushed merge
-  commit there, and the sync reset then discards it
-  ([Git Integration](git-integration.md#the-writeback-direction-has-no-reconciliation)). A worktree
-  already on the remote head stays there. When the graph records another commit, the sync resets the
-  worktree onto the same commit, which records it, and imports the branch again: a pull would move
-  nothing, so it would record nothing.
+  that includes a worktree ahead of the remote. Such a commit is rare: a delivery resets the
+  destination worktree when its replay, its push or its record fails. Only a failed reset, which the
+  delivery logs, leaves an unpushed merge commit there. The next delivery attempt discards it,
+  because it resets the worktree onto the remote head before its replay, and once the queue is empty
+  the sync reset discards it too ([Git Push Queue](git-push-queue.md#a-delivery-attempt)). A
+  worktree already on the remote head stays there. When the graph records another commit, the sync
+  resets the worktree onto the same commit, which records it, and imports the branch again: a pull
+  would move nothing, so it would record nothing.
 
 A worker whose graph already holds the remote head can still hold the discarded history on disk. It
 resets and logs the reconciliation, and its classification stays unchanged.
+
+While a read-write repository has pending pushes, the sync leaves out its default branch and the
+remote source branch of each pending merge before the classification, so none of them is
+classified, moved or recorded until the queue clears. When the default branch is classified as a
+rewrite, the sync also checks whether the new head still holds the last pushed commit, and records a
+reverted push when it does not
+([Git Push Queue](git-push-queue.md#the-reverted-push-record)).
 
 The sync considers the branches whose local head differs from the remote, and also the local
 branches whose graph commit differs from the remote head. Only branches that can still record a
@@ -239,6 +268,11 @@ worktree records nothing.
 - **A failed record is logged once, where it is caught, the way a failed import is.** The store
   chains the SDK error, so the reason is the API's own message for a known failure, and the
   traceback is kept only for an error that is not recognised, such as a lost connection.
+- **A rewrite of the default branch also records a reverted push.** When the new head does not hold
+  the last pushed commit, the delivery state records it in `delivery_reverted`, through
+  `WritebackIntentStore.record_reverted`; a re-target clears the last pushed commit instead. A
+  failure fails the default branch at step `record` and keeps its import, as above. A later rewrite
+  records a pushed commit that is still unrecorded.
 - **The count is what the branch reads, not what it did.** A branch-local read falls back to the
   origin branch, so a branch created after a trunk record reads that record and counts on from it.
 
@@ -269,7 +303,8 @@ trunk and records no rewrite.
   stay.
 - **Cleared only by the cycle that reconciles it.** After the collection, the sync clears a marker
   it read once the trunk records the remote head of the branch the marker names. A failed trunk, an
-  inactive repository, or a default branch the remote does not hold yet keeps it.
+  inactive repository, a default branch the remote does not hold yet, or a default branch that the
+  sync skips for pending pushes keeps it.
 - **Expires after seven days**, which only removes a marker that no cycle reconciles.
 
 A read-only repository uses no marker. An update or an upsert that changes its `ref` or `commit`
@@ -307,6 +342,93 @@ The check before the lock still raises on a broken copy rather than replacing it
 The lock is reentrant per context, so a caller that already holds it for a wider critical section
 pays nothing extra.
 
+## Repository activity records
+
+The `InfrahubRepositoryActivity` query answers what is running on a repository across every branch.
+The per-branch statuses of a repository (`sync_status`, `internal_status`) each describe one branch,
+and its connectivity status (`operational_status`, the same on every branch) records no run, so the
+answer comes from records in the cache instead (`git/activity/`, keys in `git/state/cache_keys.py`).
+The design targets the Redis cache driver.
+
+- **A run record per run.** `RepositoryActivity.track` writes
+  `git:activity:run:{repository_id}:{run_id}` when a run starts, with a lifetime of 300 seconds, and a
+  background task rewrites it every 60 seconds. Each run has its own key, so two runs on one
+  repository never overwrite each other. The record holds the operation, the phase (`fetching`,
+  `building`, `applying`), the branch being built or applied, the worker and two times.
+- **The lifetime is several renewals long** because a git fetch runs synchronously and blocks the
+  event loop, which can delay a renewal by more than a minute. A fetch or a first clone that blocks
+  for longer than 300 seconds lets the record expire until the next renewal. A killed worker leaves a
+  record that expires within 300 seconds.
+- **Every exit removes the record.** When the run ends, by success, failure or cancellation, the
+  run leaves the per-process table and its renewal task is cancelled before anything is awaited. The
+  renewal task is then awaited, so it cannot write the record again, the last-run record is written
+  and the run record is deleted. That cleanup runs as a shielded task, because a cancel scope, such as
+  a flow timeout, cancels again at every await and would otherwise skip it. Every cache call is best
+  effort: a failure is logged and never fails the run.
+- **One last-run record per operation.** `git:activity:last:{repository_id}:{operation}` keeps the
+  most recent finished run of each operation for 30 days, so a periodic sync that imports nothing
+  does not hide the result of another operation. It lists only the branches the run changed or
+  failed on, by Infrahub branch name, and the last outcome of a branch wins. The syncer
+  reports collection and rewrite-record failures after its imports, so a branch whose commit was
+  imported but whose rewrite record failed is reported as failed. A run that fails before any branch
+  outcome, for example on a fetch that cannot reach the remote, is recorded with no branches. A run
+  whose work another run records calls `keep_last_run`, and the earlier last run stays in place.
+- **Which flows write them.** The periodic sync writes one `sync` run per repository, created in
+  `sync_remote_repository`. It covers the clone and default-branch import of the bootstrap and the
+  syncer run in the `sync-git-repo-with-origin` subflow. Adding a read-write repository writes an
+  `add` run. The syncer, `import_branch` and `RepositoryAdder.add` take the run as a required
+  `activity` argument and report their phases and branch outcomes through it.
+- **The flows outside the syncer record their own run.** Each one targets a single Infrahub branch.
+  It records the branch as imported once the import, the push or the merge succeeds, so a broadcast
+  that fails afterwards does not turn it into a failure, and as failed when the work before that
+  raises. A cancelled run lists no branch, and every finished run except a last-commit import that
+  imports nothing replaces the last run of its operation:
+  - `git-repository-import-object` writes a `reimport` run: `building` while the plan is built, then
+    `applying` once the repository lock is held. It has no `fetching` phase.
+  - `git-read-only-repository-import-last-commit` writes a `reimport` run: `fetching` once the lock
+    is held, then `building` and `applying` when it imports the objects of the commit. When the local
+    ref already points at the commit, only the commit is written and the run keeps the earlier
+    `reimport` last run, so it does not hide a failed import; the pull that the write submits imports
+    the objects. The local branch of a ref never moves, so once
+    the remote has moved past the commit the clone was created at, a branch ref is imported on every
+    run, while a fetch can move a tag. The run ends when the commit
+    is written, and that write submits the pull, which writes its own `pull` run.
+  - `git-repository-pull-read-only` writes a `pull` run and `git-repository-add-read-only` an `add`
+    run: `fetching` once the lock is held, then `building` and `applying` for each import. Adding an
+    active repository sets `fetching` again before it resolves the tracked ref.
+  - The task `git-branch-create` writes a `branch_create` run per repository, with no phase. A
+    branch that already existed in git lists no branch, and a repository skipped because it cannot
+    be read lists the branch as failed.
+  - `git-repository-merge` writes a `merge` run on the destination branch, with no phase. A
+    read-write repository delivers the merge through its push queue, so the run lists the branch as
+    imported only when the delivery pushed, and as failed when the delivery fails or the merge was
+    lost before it was queued. A delivery that pushes nothing, and a read-only repository whose
+    destination already holds the source ref and commit, list no branch.
+- **Read-only imports report their steps from inside the import.** `import_objects_from_files` takes
+  the run id, like the sync subflow, and sets `building` and `applying` itself, because the read-only
+  flows build and apply in that single subflow. `sync_from_remote` and `update_latest_commit` pass
+  the run on to it. Without a run id nothing is reported.
+- **The subflow receives the run id, not the run.** Subflow parameters are stored with the run, so
+  the subflow looks the run up by id in `ACTIVE_RUNS`, a per-process table in
+  `git/activity/factory.py`. The parent flow and the subflow therefore share one run object, and its
+  write lock keeps a renewal from writing back an older phase after a newer one.
+- **The repository lock is not part of the record.** In the syncer runs and the
+  `git-repository-import-object` run, the lock is held for one phase at a time, never for a whole
+  run, and the build phase runs without it. The read-only add, pull and last-commit import runs hold
+  it through every phase. The `branch_create` run holds it while it creates and pushes the branch,
+  records its commit and broadcasts it, and the delivery of a `merge` run while it replays, pushes,
+  records and broadcasts. The
+  query reports the lock holder separately, from the lock token (`{timestamp}::{worker_id}`). The
+  token is written before the worker waits for the lock, so its time is when the worker asked for
+  the lock (`requested_at`). Many flows take the lock without importing anything, so a held lock
+  does not mean that a run is active. The lock key uses the repository name, so a repository
+  renamed while a flow holds the lock does not report that lock.
+- **Reading the records.** The resolver lists the run keys with `list_keys`, which scans the whole
+  Redis keyspace, and returns early when it finds none, which saves a second round trip for an idle
+  repository. A record that expires between the listing and the read is skipped. The six last-run keys are known,
+  so they are read directly. The cache reads ignore the time-travel date. Branch names are mapped to
+  existing branches and filtered by the caller's view permission.
+
 ## Import failures
 
 A branch import is built by `build_import_plan` and applied by `apply_import_plan`. Each runs inside
@@ -329,10 +451,16 @@ read-only flows through `import_objects_from_files`.
   that the function needs a new entry. Both become `RepositoryImportError`. To make a new error
   type expected, add a `case` to that function and nothing else. The SDK `Error` base class is
   deliberately not mapped, because it also covers connection errors.
-- **One log entry per failure.** The error entry carries `repository`, `branch`, `step` (`import`)
+- **One error entry per failure.** The error entry carries `repository`, `branch`, `step` (`import`)
   and `reason` as log record fields for log shippers and alert rules. `raise_if_branches_failed`
   logs its warning with the same fields only for branches that failed before the import (step
-  `collection`), so each failure appears once in the task log.
+  `collection`), so each failure appears once in the task log as an entry with these fields.
+- **Summary of the import steps.** After the error entry, and before the branch is set to
+  `ERROR_IMPORT`, the boundary logs a warning without these fields that names the import step that was running, the steps that ran before it and the steps
+  that did not run, in the order of `ImportSummaryStep` in `backend/infrahub/git/integrator.py`.
+  A step with nothing to import is still listed as completed. When the build step fails, the
+  warning states that no import step ran. Connection and credential errors, and failures outside
+  the boundary, are logged without this warning.
 - **Naming the `.infrahub.yml` entry.** The mapping function only receives the exception, so the
   loops over `.infrahub.yml` entries, in the build and in the apply step, wrap their body in
   `import_entry(label)`. That context manager adds the entry's name and file as an exception note,

@@ -1,14 +1,14 @@
 import re
-from unittest.mock import MagicMock
+from dataclasses import dataclass
+from typing import Any
 
 import pytest
 
-from infrahub.core.attribute import IPAddress, IPAddressOptional, IPHost
+from infrahub.core.attribute import Integer, IPAddress, IPAddressOptional, IPHost, PayloadPresence
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema
 from infrahub.core.timestamp import Timestamp
-from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
 
 
@@ -142,7 +142,7 @@ def build_iphost_attribute(branch: Branch, data: str) -> IPHost:
 async def test_from_graphql_stores_canonical_iphost_value(branch: Branch) -> None:
     attr = build_iphost_attribute(branch=branch, data="192.0.2.10/32")
 
-    changed = await attr.from_graphql(data={"value": "192.0.2.20"}, db=MagicMock(spec=InfrahubDatabase))
+    changed = await attr.from_graphql(data={"value": "192.0.2.20"})
 
     assert changed is True
     assert attr.value == "192.0.2.20/32"
@@ -151,7 +151,7 @@ async def test_from_graphql_stores_canonical_iphost_value(branch: Branch) -> Non
 async def test_from_graphql_reports_no_change_for_equivalent_iphost_value(branch: Branch) -> None:
     attr = build_iphost_attribute(branch=branch, data="192.0.2.10/32")
 
-    changed = await attr.from_graphql(data={"value": "192.0.2.10"}, db=MagicMock(spec=InfrahubDatabase))
+    changed = await attr.from_graphql(data={"value": "192.0.2.10"})
 
     assert changed is False
     assert attr.value == "192.0.2.10/32"
@@ -161,5 +161,50 @@ async def test_from_graphql_rejects_invalid_iphost_value(branch: Branch) -> None
     attr = build_iphost_attribute(branch=branch, data="192.0.2.10/32")
 
     with pytest.raises(ValidationError, match=r"^not-an-ip is not a valid IPHost at address$"):
-        await attr.from_graphql(data={"value": "not-an-ip"}, db=MagicMock(spec=InfrahubDatabase))
+        await attr.from_graphql(data={"value": "not-an-ip"})
     assert attr.value == "192.0.2.10/32"
+
+
+@dataclass(frozen=True)
+class PayloadPresenceTestCase:
+    name: str
+    payload: dict[str, Any]
+    value_presence: PayloadPresence
+    from_pool_presence: PayloadPresence
+
+
+PAYLOAD_PRESENCE_TEST_CASES = [
+    PayloadPresenceTestCase(
+        name="both_omitted",
+        payload={"is_protected": True},
+        value_presence=PayloadPresence.ABSENT,
+        from_pool_presence=PayloadPresence.ABSENT,
+    ),
+    PayloadPresenceTestCase(
+        name="value_only",
+        payload={"value": 5},
+        value_presence=PayloadPresence.SET,
+        from_pool_presence=PayloadPresence.ABSENT,
+    ),
+    PayloadPresenceTestCase(
+        name="explicit_nulls",
+        payload={"value": None, "from_pool": None},
+        value_presence=PayloadPresence.NULL,
+        from_pool_presence=PayloadPresence.NULL,
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in PAYLOAD_PRESENCE_TEST_CASES])
+async def test_from_graphql_records_whether_value_and_from_pool_were_sent(
+    branch: Branch, test_case: PayloadPresenceTestCase
+) -> None:
+    schema = AttributeSchema(name="ticket_id", kind="Number", optional=True)
+    at = Timestamp()
+    node = Node(schema=NodeSchema(name="Ticket", namespace="Test", attributes=[schema]), branch=branch, at=at)
+    attr = Integer(name=schema.name, schema=schema, branch=branch, at=at, node=node, data={"value": 3})
+
+    await attr.from_graphql(data=test_case.payload)
+
+    assert attr.value_presence is test_case.value_presence
+    assert attr.from_pool_presence is test_case.from_pool_presence

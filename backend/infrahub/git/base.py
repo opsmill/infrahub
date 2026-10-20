@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import math
 import re
 import shutil
 from abc import ABC, abstractmethod
@@ -32,15 +33,27 @@ from infrahub.exceptions import (
     RepositoryPermissionError,
     RepositoryTLSError,
 )
-from infrahub.git.constants import BRANCHES_DIRECTORY_NAME, COMMITS_DIRECTORY_NAME, TEMPORARY_DIRECTORY_NAME
+from infrahub.git.bounded_command import run_git_with_deadline
+from infrahub.git.constants import (
+    BRANCHES_DIRECTORY_NAME,
+    COMMITS_DIRECTORY_NAME,
+    READ_ONLY_FETCH_STOP_GRACE_SECONDS,
+    READ_ONLY_FETCH_TIMEOUT_SECONDS,
+    REMOTE_TRANSPORT_ENVIRONMENT,
+    TEMPORARY_DIRECTORY_NAME,
+    UPDATE_SYNC_STATUS_MUTATION,
+)
 from infrahub.git.directory import get_repositories_directory, initialize_repositories_directory
 from infrahub.git.divergence.gateway import GitAncestryGateway
+from infrahub.git.ref_resolution import resolve_commit
 from infrahub.git.utils import branch_name_in_import_sync_branches
 from infrahub.git.worktree import Worktree
 from infrahub.log import get_logger
 from infrahub.workers.dependencies import get_client
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from infrahub_sdk.branch import BranchData
 
 log = get_logger("infrahub.git")
@@ -77,6 +90,23 @@ GIT_CALL_TIME_LIMIT = re.compile(
     r'Timeout: the command "\S*git (?P<command>\S+)[^"]*" did not complete in (?P<seconds>\S+) secs'
 )
 
+# A fetch or a push runs from a clone that exists, so its failure must not carry the message of a first clone.
+REMOTE_COMMAND_ACTIONS = {"fetch": "fetch from", "push": "push to"}
+
+
+def _remote_command_failure(error: GitCommandError, name: str, hint: str) -> str | None:
+    """Return a message that names the fetch or the push that `error` comes from, or None for any other command."""
+    subcommand = error.command[1] if len(error.command) > 1 else ""
+    action = REMOTE_COMMAND_ACTIONS.get(subcommand)
+    if action is None:
+        return None
+    return f"Unable to {action} the remote of repository {name}, please check {hint}."
+
+
+def _clone_carries_ref(repo: Repo, ref: str) -> bool:
+    """Return whether a fresh clone can check `ref` out, as a remote branch, a tag or a commit it holds."""
+    return resolve_commit(repo=repo, revisions=(f"refs/remotes/origin/{ref}", ref)) is not None
+
 
 def operational_status_for_error(error: RepositoryError) -> RepositoryOperationalStatus:
     """Return the operational status that a repository records for a failed Git operation."""
@@ -88,6 +118,19 @@ def operational_status_for_error(error: RepositoryError) -> RepositoryOperationa
             return RepositoryOperationalStatus.ERROR_CRED
         case _:
             return RepositoryOperationalStatus.ERROR
+
+
+@contextlib.contextmanager
+def stalled_transfer_limit(repo: Repo, timeout_seconds: float | None) -> Iterator[None]:
+    """Make Git end an HTTP(S) transfer of the repo that sends no data for ``timeout_seconds``; ``None`` sets no limit."""
+    if timeout_seconds is None:
+        yield
+        return
+    # GitPython 3.1 does not stop a hung fetch or push at kill_after_timeout, so Git must end a stalled transfer.
+    with repo.git.custom_environment(
+        GIT_HTTP_LOW_SPEED_LIMIT="1", GIT_HTTP_LOW_SPEED_TIME=str(max(1, math.ceil(timeout_seconds)))
+    ):
+        yield
 
 
 class RepoFileInformation(BaseModel):
@@ -306,25 +349,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         )
 
     async def _update_sync_status(self, branch_name: str, status: RepositorySyncStatus) -> None:
-        update_status = """
-        mutation UpdateRepositoryStatus(
-            $repo_id: String!,
-            $status: String!,
-        ) {
-            CoreGenericRepositoryUpdate(
-                data: {
-                    id: $repo_id,
-                    sync_status: { value: $status },
-                }
-            ) {
-                ok
-            }
-        }
-        """
-
         await self.sdk.execute_graphql(
             branch_name=branch_name,
-            query=update_status,
+            query=UPDATE_SYNC_STATUS_MUTATION,
             variables={"repo_id": str(self.id), "status": status.value},
             tracker="mutation-repository-update-admin-status",
         )
@@ -344,17 +371,20 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         return self.cache_repo
 
-    def get_git_repo_worktree(self, identifier: str) -> Repo:
+    def get_git_repo_worktree(self, identifier: str, timeout_seconds: float | None = None) -> Repo:
         """Return Git Repo object of the given worktree.
 
+        Args:
+            timeout_seconds: Passed to GitPython as ``kill_after_timeout``; ``None`` sets no limit.
+
         Returns:
-            Repo: git object of the main repository
+            Repo: git object of the worktree
 
         Raises:
             RepositoryError: When no worktree matches the provided identifier.
 
         """
-        if worktree := self.get_worktree(identifier=identifier):
+        if worktree := self.get_worktree(identifier=identifier, timeout_seconds=timeout_seconds):
             return Repo(worktree.directory)
 
         raise RepositoryError(identifier=self.name, message=f"Unable to find the worktree {identifier}.")
@@ -443,9 +473,17 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         return True
 
     async def create_locally(
-        self, checkout_ref: str, infrahub_branch_name: str | None, update_commit_value: bool = True
+        self,
+        checkout_ref: str,
+        infrahub_branch_name: str | None,
+        update_commit_value: bool = True,
+        allow_missing_checkout_ref: bool = False,
     ) -> bool:
         """Ensure the required directory already exist in the filesystem or create them if needed.
+
+        Args:
+            allow_missing_checkout_ref: Leave the clone on the remote's default branch when the clone does not
+                carry `checkout_ref`, rather than failing and leaving a copy no later read can open.
 
         Returns:
             True if the directory has been created,
@@ -480,7 +518,13 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         try:
             repo = Repo.clone_from(self.location, self.directory_default)
-            repo.git.checkout(checkout_ref)
+            if allow_missing_checkout_ref and not _clone_carries_ref(repo=repo, ref=checkout_ref):
+                log.warning(
+                    f"The remote does not carry {checkout_ref}, leaving the clone on the remote's default branch",
+                    repository=self.name,
+                )
+            else:
+                repo.git.checkout(checkout_ref)
         except GitCommandError as exc:
             await self._raise_enriched_error(error=exc, branch_name=checkout_ref)
 
@@ -510,14 +554,17 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         return False
 
-    def get_worktree(self, identifier: str) -> Worktree:
+    def get_worktree(self, identifier: str, timeout_seconds: float | None = None) -> Worktree:
         """Access a specific worktree by its identifier.
+
+        Args:
+            timeout_seconds: Passed to GitPython as ``kill_after_timeout``; ``None`` sets no limit.
 
         Raises:
             RepositoryError: When no worktree matches the provided identifier.
 
         """
-        worktrees = self.get_worktrees()
+        worktrees = self.get_worktrees(timeout_seconds=timeout_seconds)
         for worktree in worktrees:
             if worktree.identifier == identifier:
                 return worktree
@@ -625,7 +672,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         """Delete branch_name from origin; a failure is typed as for a push and never writes the operational status.
 
         Args:
-            timeout_seconds: Passed to GitPython as ``kill_after_timeout``; ``None`` sets no limit.
+            timeout_seconds: Passed to GitPython as ``kill_after_timeout``, and ends an HTTP(S) transfer that
+                sends no data for that long; ``None`` sets no limit.
 
         Raises:
             RepositoryConnectionError: When the remote is unreachable, or the deletion did not complete within
@@ -639,7 +687,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             return
         repo = self.get_git_repo_main()
         try:
-            repo.git.push("origin", "--delete", branch_name, kill_after_timeout=timeout_seconds)
+            with stalled_transfer_limit(repo=repo, timeout_seconds=timeout_seconds):
+                repo.git.push("origin", "--delete", branch_name, kill_after_timeout=timeout_seconds)
         except GitCommandError as exc:
             self._raise_enriched_error_static(
                 error=exc, name=self.name, location=self.location, branch_name=branch_name, is_write_operation=True
@@ -906,7 +955,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         """Fetch the latest update from the remote repository and bring a copy locally.
 
         Args:
-            timeout_seconds: Passed to GitPython as ``kill_after_timeout``; ``None`` sets no limit.
+            timeout_seconds: Passed to GitPython as ``kill_after_timeout``, and ends an HTTP(S) transfer that
+                sends no data for that long; ``None`` sets no limit.
 
         """
         if not self.has_origin:
@@ -916,15 +966,44 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         self.relocate_directory_root()
 
-        repo = self.get_git_repo_main()
         try:
-            repo.remotes.origin.fetch(prune=True, tags=True, prune_tags=True, kill_after_timeout=timeout_seconds)
+            self.fetch_from_origin(git_repo=self.get_git_repo_main(), timeout_seconds=timeout_seconds)
         except GitCommandError as exc:
             await self._raise_enriched_error(error=exc)
 
         await self._update_operational_status(status=RepositoryOperationalStatus.ONLINE)
 
         return True
+
+    def fetch_from_origin(self, git_repo: Repo, timeout_seconds: float | None = None) -> None:
+        """Fetch every branch and tag from origin into the main clone.
+
+        Args:
+            timeout_seconds: Passed to GitPython as ``kill_after_timeout``, and ends an HTTP(S) transfer that
+                sends no data for that long; ``None`` sets no limit. A read-only fetch is always bounded, by this
+                limit when given and by its own default otherwise.
+
+        Raises:
+            GitCommandError: When git cannot complete the fetch, or a read-only fetch runs out of time.
+
+        """
+        if not self.is_read_only:
+            with stalled_transfer_limit(repo=git_repo, timeout_seconds=timeout_seconds):
+                git_repo.remotes.origin.fetch(
+                    prune=True, tags=True, prune_tags=True, kill_after_timeout=timeout_seconds
+                )
+            return
+
+        # A stalled remote must not hold the repository lock, which has no expiry, and GitPython <=3.2.0
+        # never stops `Remote.fetch(kill_after_timeout=...)` on a remote that sends nothing.
+        # git refuses to move an existing tag unless forced; the tag's old commit stays readable through its own worktree.
+        run_git_with_deadline(
+            ["fetch", "--prune", "--tags", "--prune-tags", "--force", "origin"],
+            working_directory=git_repo.working_dir,
+            environment=REMOTE_TRANSPORT_ENVIRONMENT,
+            timeout_seconds=READ_ONLY_FETCH_TIMEOUT_SECONDS if timeout_seconds is None else timeout_seconds,
+            stop_grace_seconds=READ_ONLY_FETCH_STOP_GRACE_SECONDS,
+        )
 
     async def get_filtered_remote_branches(self) -> dict[str, BranchInRemote]:
         branches = self.get_branches_from_remote()
@@ -1227,7 +1306,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             "The requested URL returned error: 5xx" (git http.c) plus
             "RPC failed; HTTP 5xx" (git remote-curl.c); and "does not appear to be a git".
           - time limit: "process killed because it timed out", the line GitPython adds to the error
-            lines of a fetch or a push when Git ran past its ``kill_after_timeout``; and for a direct
+            lines of a fetch or a push when Git ran past its ``kill_after_timeout``; "Operation too slow"
+            (libcurl), when an HTTP(S) transfer sent no data for ``GIT_HTTP_LOW_SPEED_TIME``; and for a direct
             Git call stopped at its limit, "Timeout: the command ... did not complete"
             (``GIT_CALL_TIME_LIMIT``), whose message keeps the Git command and the limit but not the
             arguments, which can name worker paths. A write operation is a push to the remote, so past
@@ -1263,7 +1343,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         """
         if "Repository not found" in error.stderr or GIT_HTTP_REPOSITORY_NOT_FOUND.search(error.stderr):
-            raise RepositoryNotFoundError(identifier=name) from error
+            raise RepositoryNotFoundError(
+                identifier=name,
+                message=_remote_command_failure(error=error, name=name, hint="the address and the credential"),
+            ) from error
 
         if any(
             err in error.stderr
@@ -1277,10 +1360,17 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 "RPC failed; HTTP 5",
             )
         ):
-            raise RepositoryConnectionError(identifier=name) from error
+            raise RepositoryConnectionError(
+                identifier=name,
+                message=_remote_command_failure(error=error, name=name, hint="that the remote is reachable"),
+            ) from error
 
         time_limit = GIT_CALL_TIME_LIMIT.search(error.stderr)
-        if "process killed because it timed out" in error.stderr or (time_limit and is_write_operation):
+        if (
+            "process killed because it timed out" in error.stderr
+            or "Operation too slow" in error.stderr
+            or (time_limit and is_write_operation)
+        ):
             raise RepositoryConnectionError(
                 identifier=name,
                 message=(

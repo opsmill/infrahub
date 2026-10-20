@@ -64,6 +64,7 @@ Backend architecture documentation in [knowledge/backend/](knowledge/backend/):
 - [testing.md](knowledge/backend/testing.md) - Testing infrastructure and patterns
 - [events.md](knowledge/backend/events.md) - Events system
 - [async-tasks.md](knowledge/backend/async-tasks.md) - Asynchronous tasks (Prefect)
+- [task-workers.md](knowledge/backend/task-workers.md) - How task workers claim and start flow runs
 - [message-bus.md](knowledge/backend/message-bus.md) - Message bus system
 - [api-backpressure.md](knowledge/backend/api-backpressure.md) - Priority-aware load shedding and the database-stress signal
 - [telemetry.md](knowledge/backend/telemetry.md) - Anonymous usage telemetry (categories, windowing, retention, degradation)
@@ -99,8 +100,9 @@ Architecture Decision Records in [adr/](adr/):
 - [0017-coalesced-merge-rebase-recompute.md](adr/0017-coalesced-merge-rebase-recompute.md) - Coalesced deduplicated recompute pass on merge and rebase
 - [0018-static-transform-lifecycle-triggers.md](adr/0018-static-transform-lifecycle-triggers.md) - Static kind-scoped lifecycle triggers for Python-transform recompute
 - [0019-transform-lifecycle-owns-node-input-reconciliation.md](adr/0019-transform-lifecycle-owns-node-input-reconciliation.md) - Transform lifecycle flow owns node-input automation reconciliation
-- [0021-experimental-flag-gates-pre-release-ui.md](adr/0021-experimental-flag-gates-pre-release-ui.md) - A pre-release UI feature is gated by an experimental settings flag, not by the running version
-- [0022-application-owned-theme-resolution.md](adr/0022-application-owned-theme-resolution.md) - The application resolves the theme once and hands the answer down
+- [0021-resource-allocation-telemetry.md](adr/0021-resource-allocation-telemetry.md) - Resource-allocation telemetry: container limits, stored by each process, in new blocks
+- [0022-experimental-flag-gates-pre-release-ui.md](adr/0022-experimental-flag-gates-pre-release-ui.md) - A pre-release UI feature is gated by an experimental settings flag, not by the running version
+- [0023-application-owned-theme-resolution.md](adr/0023-application-owned-theme-resolution.md) - The application resolves the theme once and hands the answer down
 
 Start a new ADR from [template.md](adr/template.md).
 

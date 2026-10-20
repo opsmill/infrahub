@@ -22,11 +22,19 @@ from infrahub.core.schema import (
     core_models,
     internal_schema,
 )
-from infrahub.core.schema.attribute_parameters import TextAttributeParameters
-from infrahub.core.schema.attribute_schema import TextAttributeSchema
+from infrahub.core.schema.attribute_parameters import (
+    NumberPoolParameters,
+    NumberPoolRangeParameters,
+    TextAttributeParameters,
+)
+from infrahub.core.schema.attribute_schema import NumberPoolSchema, TextAttributeSchema
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
+
+NUMBER_POOL_SHORTHAND_WARNING = (
+    "Use of 'start_range' and 'end_range' on NumberPool attributes is deprecated, use 'ranges' instead"
+)
 
 
 @dataclass
@@ -159,6 +167,111 @@ SCHEMA_WARNING_TESTCASES: list[SchemaWarningTestCaseData] = [
                             kind="Text",
                             parameters=TextAttributeParameters(regex="^[a-zA-Z][a-zA-Z0-9._-]*$"),
                         )
+                    ],
+                )
+            ]
+        ),
+        warnings=[],
+    ),
+    SchemaWarningTestCaseData(
+        name="number_pool_shorthand_warns_once_per_attribute",
+        schema=SchemaRoot(
+            nodes=[
+                NodeSchema(
+                    namespace="Test",
+                    name="Vlan",
+                    attributes=[
+                        NumberPoolSchema(
+                            name="vlan_id",
+                            kind="NumberPool",
+                            parameters=NumberPoolParameters(start_range=100, end_range=200),
+                        ),
+                        NumberPoolSchema(
+                            name="tag",
+                            kind="NumberPool",
+                            parameters=NumberPoolParameters(start_range=5),
+                        ),
+                        NumberPoolSchema(
+                            name="ranked",
+                            kind="NumberPool",
+                            parameters=NumberPoolParameters(end_range=50),
+                        ),
+                    ],
+                )
+            ]
+        ),
+        warnings=[
+            SchemaWarning(
+                type=SchemaWarningType.DEPRECATION,
+                kinds=[SchemaWarningKind(kind="TestVlan", field=field)],
+                message=NUMBER_POOL_SHORTHAND_WARNING,
+            )
+            for field in ("vlan_id", "tag", "ranked")
+        ],
+    ),
+    SchemaWarningTestCaseData(
+        name="number_pool_shorthand_on_generic_and_extension_warns",
+        schema=SchemaRoot(
+            generics=[
+                GenericSchema(
+                    namespace="Test",
+                    name="Numbered",
+                    attributes=[
+                        NumberPoolSchema(
+                            name="number",
+                            kind="NumberPool",
+                            parameters=NumberPoolParameters(start_range=1, end_range=9),
+                        )
+                    ],
+                )
+            ],
+            extensions=SchemaExtension(
+                nodes=[
+                    NodeExtensionSchema(
+                        kind="TestDevice",
+                        attributes=[
+                            NumberPoolSchema(
+                                name="slot",
+                                kind="NumberPool",
+                                parameters=NumberPoolParameters(start_range=1, end_range=9),
+                            )
+                        ],
+                    )
+                ]
+            ),
+        ),
+        warnings=[
+            SchemaWarning(
+                type=SchemaWarningType.DEPRECATION,
+                kinds=[SchemaWarningKind(kind="TestNumbered", field="number")],
+                message=NUMBER_POOL_SHORTHAND_WARNING,
+            ),
+            SchemaWarning(
+                type=SchemaWarningType.DEPRECATION,
+                kinds=[SchemaWarningKind(kind="TestDevice", field="slot")],
+                message=NUMBER_POOL_SHORTHAND_WARNING,
+            ),
+        ],
+    ),
+    SchemaWarningTestCaseData(
+        name="number_pool_ranges_or_no_range_no_warning",
+        schema=SchemaRoot(
+            nodes=[
+                NodeSchema(
+                    namespace="Test",
+                    name="Vlan",
+                    attributes=[
+                        NumberPoolSchema(
+                            name="vlan_id",
+                            kind="NumberPool",
+                            parameters=NumberPoolParameters(
+                                ranges=[
+                                    NumberPoolRangeParameters(start=100, end=200, weight=10),
+                                    NumberPoolRangeParameters(start=205, end=300),
+                                ]
+                            ),
+                        ),
+                        NumberPoolSchema(name="tag", kind="NumberPool", parameters=NumberPoolParameters()),
                     ],
                 )
             ]

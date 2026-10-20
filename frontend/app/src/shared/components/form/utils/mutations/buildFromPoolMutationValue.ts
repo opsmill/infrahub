@@ -48,3 +48,20 @@ export const buildFromPoolPayload = (
 
   return payload;
 };
+
+type NumberPoolMutationValue = {
+  value: number | null;
+  from_pool: { id: string };
+};
+
+/**
+ * Build the attribute payload for a number staged from a number pool. A `null` value asks the pool
+ * for its next free number, while a number reserves that one in the pool.
+ */
+export const buildNumberPoolMutationValue = (fromPool: {
+  id: string;
+  number?: number | null;
+}): NumberPoolMutationValue => ({
+  value: fromPool.number ?? null,
+  from_pool: { id: fromPool.id },
+});
