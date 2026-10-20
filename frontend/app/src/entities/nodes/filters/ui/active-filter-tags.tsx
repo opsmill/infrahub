@@ -25,7 +25,7 @@ import {
   SHOW_INTERNAL_GROUPS_ID,
 } from "@/entities/nodes/object/ui/filters/internal-groups-filter-tag";
 import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
-import type { AttributeKind, AttributeSchema } from "@/entities/schema/domain/model/schema";
+import type { AttributeSchema } from "@/entities/schema/domain/model/schema";
 
 export function formatAttributeFilterValue({
   schema,
@@ -38,15 +38,16 @@ export function formatAttributeFilterValue({
   formatDate: UseFormatDateResult["formatDate"];
   showChoiceLabels?: boolean;
 }) {
-  switch (schema.kind as AttributeKind) {
+  if (showChoiceLabels && schema.kind === ATTRIBUTE_KIND.DROPDOWN) {
+    const label = schema.choices?.find(({ name }) => name === value)?.label;
+    if (label) return label;
+  }
+
+  switch (schema.kind) {
     case ATTRIBUTE_KIND.BOOLEAN:
       return String(value);
     case ATTRIBUTE_KIND.DATETIME:
       return formatDate(value as string | number | Date, "datetime");
-    case ATTRIBUTE_KIND.DROPDOWN:
-      if (!showChoiceLabels) return value as React.ReactNode;
-      return (schema.choices?.find(({ name }) => name === value)?.label ??
-        value) as React.ReactNode;
     default:
       return value as React.ReactNode;
   }

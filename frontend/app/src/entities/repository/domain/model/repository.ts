@@ -64,22 +64,7 @@ export type RepositoryCommitLog = Pick<
 export const REPOSITORY_SYNC_STATUS_SYNCING = "syncing";
 export const REPOSITORY_SYNC_STATUS_IN_SYNC = "in-sync";
 export const REPOSITORY_SYNC_STATUS_UNKNOWN = "unknown";
-export const REPOSITORY_SYNC_STATUS_ERROR_REF_MISSING = "error-ref-missing";
 export const REPOSITORY_OPERATIONAL_ERRORS = ["error-cred", "error-connection", "error"] as const;
-
-export const FILTERABLE_SYNC_STATUSES = [
-  REPOSITORY_SYNC_STATUS_UNKNOWN,
-  REPOSITORY_SYNC_STATUS_ERROR_VALUE,
-  REPOSITORY_SYNC_STATUS_ERROR_REF_MISSING,
-  REPOSITORY_SYNC_STATUS_IN_SYNC,
-  REPOSITORY_SYNC_STATUS_SYNCING,
-] as const;
-
-export type FilterableSyncStatus = (typeof FILTERABLE_SYNC_STATUSES)[number];
-
-export function isFilterableSyncStatus(value: unknown): value is FilterableSyncStatus {
-  return FILTERABLE_SYNC_STATUSES.some((status) => status === value);
-}
 
 export const IMPORT_WORKFLOWS = [
   "git-repository-add-read-write",

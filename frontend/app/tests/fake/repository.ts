@@ -96,7 +96,7 @@ export const generateRepositoryBranchStatusPayloadAfter = (options?: {
     count: options?.count,
   });
 
-// Mirrors the `sync_status` choices the backend declares on `GenericRepository`, in schema order.
+// Mirrors the repository schema's `sync_status` choices, in schema order.
 export const generateRepositorySyncStatusChoices = (): DropdownChoiceRead[] => [
   {
     name: "unknown",

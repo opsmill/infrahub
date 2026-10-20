@@ -7,7 +7,6 @@ import {
   type Sort,
 } from "@/entities/nodes/sort/domain/model/sort";
 import type { GetRepositoryBranchStatusFromApiParams } from "@/entities/repository/api/get-repository-branch-status-from-api";
-import { isFilterableSyncStatus } from "@/entities/repository/domain/model/repository";
 import {
   BRANCH_NAME_FILTER,
   isFilterableBranchStatus,
@@ -46,10 +45,15 @@ function toStatusArguments(filters: Filter[]): RepositoryBranchArguments {
   return isFilterableBranchStatus(status) ? { status__value: status } : {};
 }
 
-function toSyncStatusArguments(filters: Filter[]): RepositoryBranchArguments {
+function toSyncStatusArguments(
+  filters: Filter[],
+  syncStatusChoices: readonly string[]
+): RepositoryBranchArguments {
   const syncStatus = findFilterValue(filters, SYNC_STATUS_FILTER);
 
-  return isFilterableSyncStatus(syncStatus) ? { sync_status__value: syncStatus } : {};
+  return typeof syncStatus === "string" && syncStatusChoices.includes(syncStatus)
+    ? { sync_status__value: syncStatus }
+    : {};
 }
 
 // The query rejects an order naming both timestamps, so only the first sort key reaches the
@@ -71,12 +75,13 @@ function toOrderArgument(sorts: Sort[]): RepositoryBranchArguments {
 /** Every filter the toolbar can produce that the query is able to apply, plus the order. */
 export function toRepositoryBranchArguments(
   filters: Filter[],
-  sorts: Sort[]
+  sorts: Sort[],
+  syncStatusChoices: readonly string[]
 ): RepositoryBranchArguments {
   return {
     ...toNameArguments(filters),
     ...toStatusArguments(filters),
-    ...toSyncStatusArguments(filters),
+    ...toSyncStatusArguments(filters, syncStatusChoices),
     ...toOrderArgument(sorts),
   };
 }
@@ -86,10 +91,14 @@ export function toRepositoryBranchArguments(
  * from the arguments themselves, so a filter the query has no argument for cannot make an empty
  * result claim it was filtered.
  */
-export function hasRepositoryBranchFilters(filters: Filter[]): boolean {
+export function hasRepositoryBranchFilters(
+  filters: Filter[],
+  syncStatusChoices: readonly string[]
+): boolean {
   const { name__value, status__value, sync_status__value } = toRepositoryBranchArguments(
     filters,
-    []
+    [],
+    syncStatusChoices
   );
 
   return (

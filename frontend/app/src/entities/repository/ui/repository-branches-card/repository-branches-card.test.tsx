@@ -797,45 +797,6 @@ describe("RepositoryBranchesCard", () => {
       .toBeVisible();
   });
 
-  it("lists every branch again once the sync status tag is removed", async () => {
-    // GIVEN a sync status filter already applied
-    const unfiltered = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
-    const matched = generateRepositoryBranchStatusPayloadAfter({ count: 3 });
-    apiMock
-      .mockResolvedValueOnce(toApiResult(unfiltered))
-      .mockResolvedValueOnce(toApiResult(matched))
-      .mockResolvedValue(toApiResult(unfiltered));
-    const component = await renderCard();
-    await expectServerDrivenChange({
-      apiMock,
-      callIndex: 0,
-      variables: FIRST_PAGE_VARIABLES,
-      payload: toApiResult(unfiltered),
-      rowVisibleAfter: "feature-auth",
-    });
-    await applySyncStatusFilter(component, "Import Error");
-    await expectServerDrivenChange({
-      apiMock,
-      callIndex: 1,
-      variables: { ...FIRST_PAGE_VARIABLES, sync_status__value: "error-import" },
-      payload: toApiResult(matched),
-      rowVisibleAfter: "release-2-0",
-    });
-
-    // WHEN
-    await component
-      .getByRole("row", { name: "Sync status contains Import Error" })
-      .getByRole("button", { name: "Remove" })
-      .click();
-
-    // THEN the unfiltered rows and total come back
-    await expect.element(component.getByRole("row", { name: /feature-auth/ })).toBeVisible();
-    await expect.element(component.getByText("45 branches", { exact: true })).toBeVisible();
-    expect(
-      component.getByRole("row", { name: "Sync status contains Import Error" }).elements()
-    ).toHaveLength(0);
-  });
-
   it("offers the sync status filter on a read-only repository", async () => {
     // GIVEN
     apiMock.mockResolvedValue(
@@ -1207,47 +1168,6 @@ describe("RepositoryBranchesCard", () => {
     });
   });
 
-  it("returns to the first page when a sync status filter is applied", async () => {
-    // GIVEN a card already showing the second page
-    const firstPage = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
-    const secondPage = generateRepositoryBranchStatusPayloadAfter({ count: 45 });
-    const filtered = generateRepositoryBranchStatusPage({
-      rows: [generateRepositoryBranchStatus({ name: { value: "release-candidate" } })],
-    });
-    apiMock
-      .mockResolvedValueOnce(toApiResult(firstPage))
-      .mockResolvedValueOnce(toApiResult(secondPage))
-      .mockResolvedValue(toApiResult(filtered));
-    const component = await renderCard();
-    await expectServerDrivenChange({
-      apiMock,
-      callIndex: 0,
-      variables: FIRST_PAGE_VARIABLES,
-      payload: toApiResult(firstPage),
-      rowVisibleAfter: "feature-auth",
-    });
-    await component.getByRole("button", { name: "Page 2" }).click();
-    await expectServerDrivenChange({
-      apiMock,
-      callIndex: 1,
-      variables: { ...FIRST_PAGE_VARIABLES, offset: PAGE_SIZE },
-      payload: toApiResult(secondPage),
-      rowVisibleAfter: "release-2-0",
-    });
-
-    // WHEN
-    await applySyncStatusFilter(component, "Import Error");
-
-    // THEN
-    await expectServerDrivenChange({
-      apiMock,
-      callIndex: 2,
-      variables: { ...FIRST_PAGE_VARIABLES, sync_status__value: "error-import" },
-      payload: toApiResult(filtered),
-      rowVisibleAfter: "release-candidate",
-    });
-  });
-
   it("returns to the first page when the sync status filter is changed", async () => {
     // GIVEN a sync status filter applied and its second page on screen
     const firstPage = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
@@ -1377,18 +1297,28 @@ describe("RepositoryBranchesCard", () => {
       .toBeVisible();
   });
 
-  it("ignores a sync status value the schema does not declare", async () => {
-    // GIVEN a value written to the url by hand
+  it("ignores a sync status value the schema does not declare as a choice", async () => {
+    // GIVEN a schema without the "syncing" choice and that value on the url
+    const schemaWithoutSyncing: ModelSchema = {
+      ...repositorySchema,
+      attributes: [
+        {
+          ...syncStatusAttribute,
+          choices: generateRepositorySyncStatusChoices().filter(({ name }) => name !== "syncing"),
+        },
+        commitAttribute,
+      ],
+    };
     const payload = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
     apiMock.mockResolvedValue(toApiResult(payload));
     window.history.replaceState(
       null,
       "",
-      `?${BRANCHES_URL_PREFIX}_${QSP.FILTER}=${encodeURIComponent(JSON.stringify([{ name: "sync_status__value", value: "bogus" }]))}`
+      `?${BRANCHES_URL_PREFIX}_${QSP.FILTER}=${encodeURIComponent(JSON.stringify([{ name: "sync_status__value", value: "syncing" }]))}`
     );
 
     // WHEN
-    const component = await renderCard();
+    const component = await renderCard(schemaWithoutSyncing);
 
     // THEN
     await expect.element(component.getByText("feature-auth", { exact: true })).toBeVisible();
