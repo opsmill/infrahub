@@ -20,10 +20,11 @@
 
 ## R4. Showing the label in the Sync Status tag only
 
-- **Decision**: Optional `formatFilterValue` prop on `ActiveFilterTags`, used only for attribute `value`/`values` tags, falling back to `formatAttributeFilterValue`.
-- **Rationale**: `ActiveFilterTags` has three callers (object tables, the branches list, this card). The other two do not pass the prop and run unchanged code, which matches the user's request not to touch the display of other tables. The tag's edit popover renders its own Dropdown input, which already shows labels, so the tag text is the only place to change. The Status filter schema is `Text` with an `enum`, so its tag stays `OPEN`.
+- **Decision**: Optional `showChoiceLabels` flag on `ActiveFilterTags`. `formatAttributeFilterValue` receives the attribute schema and, when the flag is set and the kind is Dropdown, returns the matching choice label, or the stored value when no choice matches. Chosen by the user on 2026-10-20.
+- **Rationale**: Showing a Dropdown value by its label is a rule of the tag display, not of this card, so it belongs in the shared formatter; showing labels in every table later becomes a change of default. `ActiveFilterTags` has three callers (object tables, the branches list, this card); the other two do not set the flag and keep the stored value. The tag's edit popover renders its own Dropdown input, which already shows labels, so the tag text is the only place to change. The Status filter schema is `Text` with an `enum`, so its tag stays `OPEN` without a special case.
+- **Cost**: `formatAttributeFilterValue` changes signature (kind to schema); its call sites and tests change with it. Guard tests prove that a Dropdown tag without the flag and a `Text` + `enum` tag with the flag keep the stored value.
 - **Alternatives**:
-  - A `showChoiceLabels` flag that changes `formatAttributeFilterValue` for Dropdown kinds. Rejected: changes a function every tag goes through. It remains the path if labels are later wanted in every table.
+  - An optional `formatFilterValue` callback supplied by the card. Rejected by the user: the label rule would live in the card instead of the shared formatter.
   - A copied tag component for the card. Rejected: duplicates about 150 lines of selection, edit and remove logic.
 - **Choice lookup**: inline `schema.choices?.find(({ name }) => name === value)?.label`, as in two other places; no new shared rule (Principle VII).
 
@@ -40,4 +41,5 @@
 ## R7. End-to-end test
 
 - **Decision**: Add `tests/e2e/repository/test_repository_branches_sync_filter.py`, marked `shard_branches_repo`.
-- **Rationale**: Constitution Principle IV requires an end-to-end test for user-facing features. The pattern in `test_repository_sync_status.py` sets `sync_status` to `error-import` on the `demo-edge` repository of a throwaway branch through the SDK. On a read-write repository the Branches section lists only branches with Sync with Git turned on (IFC-3156), so the test branch must be listed on the repository's page; the implementer verifies which `sync_with_git` value lists it and records the choice in the test's fixture docstring.
+- **Rationale**: Constitution Principle IV requires an end-to-end test for user-facing features.
+- **Branch setup** (critique E1): On a read-write repository the Branches section lists only branches with Sync with Git turned on (`repository_branch_status/kind_dispatch.py`, `sync_with_git_filter=True`), so the pattern of `test_repository_sync_status.py`, which uses `sync_with_git=False`, would not list the branch. The test creates the branch with `sync_with_git=True`, waits until `demo-edge` is imported on it, sets its `sync_status` to `error-import` through the SDK, and asserts with `expect` polling. Because a synchronization cycle can overwrite a hand-set value, if the value proves unstable the test falls back to values no cycle changes (Import Error yielding the filtered empty state on a shard with no failing branch, then In Sync listing the default branch), and the fixture docstring records why.

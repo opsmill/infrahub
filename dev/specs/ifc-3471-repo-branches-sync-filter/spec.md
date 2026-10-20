@@ -14,6 +14,7 @@
 
 - Q: Should the active filter tag show the Sync Status label or the stored value? → A: The label ("Import Error"), without changing the tag display of other object tables; a dedicated tag display for the Branches section is acceptable.
 - Q: Should the Status filter tag also show a label? → A: No. Only the Sync Status tag shows a label; the Status tag keeps its current display (`OPEN`).
+- Q: How does the shared tag display show the label without changing other tables? → A: An opt-in `showChoiceLabels` flag on the shared filter tags, set only by the Branches section (user, during planning).
 
 ## User Scenarios & Testing *(mandatory)*
 

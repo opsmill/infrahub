@@ -6,7 +6,7 @@
 
 ## Summary
 
-The Branches section of a repository's page gains a Sync Status filter, offered from the filter picker and from the Sync Status column header. The server already narrows `InfrahubRepositoryBranchStatus` by `sync_status__value`, counts the filtered rows and pages them after filtering, so the change is frontend only: declare the query variable, map the stored filter to it behind a five-value guard, build the filter definitions from the repository schema's `sync_status` Dropdown attribute (which carries the labels), enable the column header filter, and show the label in the Sync Status filter tag through an optional formatter on the shared `ActiveFilterTags` that no other caller passes.
+The Branches section of a repository's page gains a Sync Status filter, offered from the filter picker and from the Sync Status column header. The server already narrows `InfrahubRepositoryBranchStatus` by `sync_status__value`, counts the filtered rows and pages them after filtering, so the change is frontend only: declare the query variable, map the stored filter to it behind a five-value guard, build the filter definitions from the repository schema's `sync_status` Dropdown attribute (which carries the labels), enable the column header filter, and show the label in the Sync Status filter tag through an optional `showChoiceLabels` flag on the shared `ActiveFilterTags` that no other caller sets.
 
 ## Technical Context
 
@@ -40,7 +40,7 @@ The Branches section of a repository's page gains a Sync Status filter, offered 
 | IV. Test Discipline | Pass after change | Unit and component tests for each layer. The spec's assumption "no new end-to-end test" conflicted with "E2E tests MUST be included for all user-facing features"; the plan adds one end-to-end test and the spec assumption is updated. |
 | V. Query Performance | Pass | No new query; filtering happens on the server before paging. |
 | VI. Security & Input Boundaries | Pass | A URL value outside the five values is dropped before the request. Read-only feature, no permission change. |
-| VII. Simplicity | Pass | One optional prop on a shared component instead of a copied tag component; no new shared helper (the choice lookup stays inline, as in two other places). |
+| VII. Simplicity | Pass | One optional flag on a shared component instead of a copied tag component; no new shared helper (the choice lookup stays inline, as in two other places). |
 
 Re-check after Phase 1 design: no change.
 
@@ -73,7 +73,7 @@ frontend/app/src/entities/repository/
     ├── repository-branches-toolbar.tsx             # schema prop, formatter
     ├── repository-branches-card.tsx                # passes schema
     └── columns.tsx                                 # header filter enabled
-frontend/app/src/entities/nodes/filters/ui/active-filter-tags.tsx   # optional formatFilterValue
+frontend/app/src/entities/nodes/filters/ui/active-filter-tags.tsx   # optional showChoiceLabels
 frontend/app/src/shared/api/graphql/generated/graphql-cache.d.ts    # regenerated
 frontend/app/tests/fake/repository.ts                               # five choices fixture
 tests/e2e/repository/test_repository_branches_sync_filter.py        # new
@@ -86,7 +86,7 @@ changelog/+ifc-3471-repo-branches-sync-filter.added.md              # new
 
 See [research.md](research.md) for rationale and rejected alternatives.
 
-1. **Tag label**: optional `formatFilterValue({ filter, filterDefinition })` prop on `ActiveFilterTags`, threaded to `getFilterTagDisplay` and used only for attribute `value`/`values` tags, falling back to `formatAttributeFilterValue`. The Branches toolbar passes `formatBranchRowFilterValue`, which returns the choice label for `sync_status` only.
+1. **Tag label**: optional `showChoiceLabels?: boolean` prop on `ActiveFilterTags`, threaded through `EditableFilterTag` to `getFilterTagDisplay` and on to `formatAttributeFilterValue`. When the flag is set and the attribute kind is Dropdown, the tag shows the matching choice label, falling back to the stored value when no choice matches. `formatAttributeFilterValue` receives the attribute schema instead of its kind alone, so it can read `choices`. The Branches toolbar passes `showChoiceLabels`; the Status filter is `Text` with an `enum`, so its tag stays `OPEN` without a special case. The other two callers do not pass the flag, so their tags keep the stored value (decided by the user on 2026-10-20, so that labels can later be turned on for every table by changing the default).
 2. **Toolbar input**: `RepositoryBranchesToolbar({ schema })` builds `getBranchRowFilterDefinitions(schema)` itself, mirroring `getRepositoryBranchesColumns(schema)`. `getSyncStatusAttribute(schema)` in `branch-row-fields.ts` replaces the literal lookup in `columns.tsx`.
 3. **Value guard**: static `FILTERABLE_SYNC_STATUSES` and `isFilterableSyncStatus` in `domain/model/repository.ts`, mirroring `isFilterableBranchStatus`.
 4. **`hasRepositoryBranchFilters`**: one explicit check per argument.
@@ -95,10 +95,10 @@ See [research.md](research.md) for rationale and rejected alternatives.
 
 Test first, red then green. Wave 1 units share no file and can run in parallel; waves 2 and 3 are sequential because wave 3 edits one test file throughout.
 
-- **Wave 1**: domain values and guard; query variable and codegen; optional formatter on shared tags (with a guard test that a Dropdown tag keeps its raw value without a formatter).
+- **Wave 1**: domain values and guard; query variable and codegen; optional `showChoiceLabels` flag on shared tags (with guard tests that a Dropdown tag keeps its stored value without the flag, and that a `Text` + `enum` tag keeps its stored value with it).
 - **Wave 2**: request arguments.
 - **Wave 3**: five-choice fixture; Sync Status in the picker; column header; tag labels.
-- **Last**: end-to-end test, changelog fragment, frontend CI gate.
+- **Last**: end-to-end test (see research R7 for the branch setup), changelog fragment, frontend CI gate. On a `graphql-cache.d.ts` rebase conflict, take either side and rerun `pnpm codegen:graphql`.
 
 ## Complexity Tracking
 

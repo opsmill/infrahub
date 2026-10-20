@@ -27,4 +27,4 @@ InfrahubRepositoryBranchStatus(
 
 - Sync Status tag: `Sync status contains <label>`, for example `Sync status contains Import Error`.
 - Status tag: unchanged, for example `Status contains OPEN`.
-- Other object tables: unchanged (they do not pass `formatFilterValue`).
+- Other object tables: unchanged (they do not set `showChoiceLabels`).
