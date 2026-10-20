@@ -9,18 +9,18 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.migrations.graph.m076_heal_missing_attribute_rows import Migration076
+from infrahub.core.migrations.graph.m082_heal_missing_number_pool_rows import Migration082
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
-from infrahub.core.schema import SchemaRoot, core_models, internal_schema
+from infrahub.core.schema import AttributeSchema, SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
 from tests.db_snapshot import DbSnapshotter
 from tests.helpers.agnostic_edges import pool_reservation_edges
-
-from .conftest import (
+from tests.helpers.attribute_rows import (
     build_generic,
     build_inheriting_kind,
     build_rack_unit_attribute,
@@ -86,7 +86,7 @@ class TestNumberPoolHeal:
     @pytest.fixture(scope="class")
     async def healed(self, db: InfrahubDatabase, seeded: PoolSeed) -> PoolHealRun:
         console = recording_console()
-        result = await Migration076.init().execute(migration_input=MigrationInput(db=db, console=console))
+        result = await Migration082.init().execute(migration_input=MigrationInput(db=db, console=console))
         return PoolHealRun(
             errors=result.errors,
             nbr_migrations_executed=result.nbr_migrations_executed,
@@ -100,7 +100,7 @@ class TestNumberPoolHeal:
         assert "TestServer: 3 missing attribute row(s) across 3 node(s); repairing" in healed.console_output
         assert "TestServer.rack_unit: allocated 3 pool value(s)" in healed.console_output
 
-        validation_result = await Migration076.init().validate_migration(db=db)
+        validation_result = await Migration082.init().validate_migration(db=db)
         assert validation_result.errors == []
 
     async def test_single_pool_served_all_allocations(
@@ -183,7 +183,7 @@ class TestNumberPoolHeal:
         )
         values_before = {node_id: node.get_attribute(name="rack_unit").value for node_id, node in nodes_before.items()}
 
-        second_result = await Migration076.init().execute(migration_input=MigrationInput(db=db))
+        second_result = await Migration082.init().execute(migration_input=MigrationInput(db=db))
         assert second_result.errors == []
         assert second_result.nbr_migrations_executed == 0
 
@@ -213,7 +213,7 @@ async def test_numberpool_missing_pool_upserted_and_healed(
 
     assert await get_schema_pools(db=db) == []
 
-    migration = Migration076.init()
+    migration = Migration082.init()
     execution_result = await migration.execute(migration_input=MigrationInput(db=db))
     assert execution_result.errors == []
     assert execution_result.nbr_migrations_executed == 1
@@ -294,7 +294,7 @@ async def test_branch_pool_allocations_follow_default_branch_allocations(
         db=db, branch=branch, labels="TestCar:TestAsset", kind="TestCar", created_at=Timestamp().subtract(seconds=30)
     )
 
-    migration = Migration076.init()
+    migration = Migration082.init()
 
     execution_result = await migration.execute(migration_input=MigrationInput(db=db))
     assert execution_result.errors == []
@@ -328,5 +328,71 @@ async def test_branch_pool_allocations_follow_default_branch_allocations(
     assert second_result.errors == []
     assert second_result.nbr_migrations_executed == 0
     assert await snapshotter.snapshot() == before_second_run
+
+    await verify_graph(db=db)
+
+
+async def test_pool_rows_are_left_to_this_migration_by_the_default_value_heal(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """A kind inheriting both a default-backed and a pool-backed attribute is healed in two steps.
+
+    The earlier heal creates the default-backed row, reports no error for the pool-backed row it
+    leaves behind, and validates clean; this migration then allocates the pool-backed row.
+    """
+    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+    pool = await create_schema_number_pool(db=db, node="TestAsset", node_attribute="rack_unit")
+    schema = SchemaRoot(
+        generics=[
+            build_generic(
+                name="Asset",
+                attributes=[
+                    build_rack_unit_attribute(number_pool_id=pool.get_id()),
+                    AttributeSchema(name="status", kind="Text", default_value="active", optional=True),
+                ],
+            )
+        ],
+        nodes=[build_inheriting_kind(name="Server", inherit_from=["TestAsset"])],
+    )
+    schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    await registry.schema.load_schema_to_db(
+        schema=schema_branch,
+        branch=default_branch,
+        db=db,
+        at=Timestamp().subtract(seconds=120),
+        limit=["TestAsset", "TestServer"],
+    )
+    default_branch.update_schema_hash()
+    damaged = await create_damaged_node(
+        db=db,
+        branch=default_branch,
+        labels="TestServer:TestAsset",
+        kind="TestServer",
+        created_at=Timestamp().subtract(seconds=240),
+    )
+
+    default_value_heal = Migration076.init()
+    earlier_result = await default_value_heal.execute(migration_input=MigrationInput(db=db))
+    assert earlier_result.errors == []
+    assert earlier_result.nbr_migrations_executed == 1
+    assert set(
+        await get_active_attribute_edge_details(db=db, node_uuid=damaged, attribute_names=("status", "rack_unit"))
+    ) == {"status"}
+    assert (await default_value_heal.validate_migration(db=db)).errors == []
+
+    migration = Migration082.init()
+    result = await migration.execute(migration_input=MigrationInput(db=db))
+    assert result.errors == []
+    assert result.nbr_migrations_executed == 1
+    assert set(
+        await get_active_attribute_edge_details(db=db, node_uuid=damaged, attribute_names=("status", "rack_unit"))
+    ) == {
+        "status",
+        "rack_unit",
+    }
+    node = await NodeManager.get_one(db=db, branch=default_branch, id=damaged, raise_on_error=True)
+    assert node.get_attribute(name="status").value == "active"
+    assert node.get_attribute(name="rack_unit").value == 1
+    assert (await migration.validate_migration(db=db)).errors == []
 
     await verify_graph(db=db)

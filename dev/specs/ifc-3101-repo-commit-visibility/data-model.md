@@ -6,6 +6,13 @@ One graph schema change, landing with T108: a new choice on the existing `sync_s
 addition" below). No new node kind, attribute or relationship. Everything else below is an in-memory
 value object, a wire message, a cache key, an enum or a configuration setting.
 
+**Scope change, 2026-10-19 ([IFC-3448](https://opsmill.atlassian.net/browse/IFC-3448))**: User Story 3
+is deferred and the drift query's data path was removed before any release, see spec.md's
+[Scope change](spec.md#scope-change-user-story-3-deferred). The sections marked *(removed)* below
+record that design: the per-branch graph read and its row set, `RepositoryBranchValuesQuery`, the
+`git.branch_heads.get` messages and the reader's `branch_heads` method. The `TIMEOUT` unavailable
+reason was removed with them.
+
 ## Existing graph data this feature reads (never writes, except `sync_status` below)
 
 | Kind | Attribute | Branch support | Role |
@@ -13,14 +20,14 @@ value object, a wire message, a cache key, an enum or a configuration setting.
 | `CoreGenericRepository` | `commit` (Text, optional) | LOCAL on `CoreRepository`, AWARE on `CoreReadOnlyRepository` | The imported commit for the request branch |
 | `CoreRepository` | `default_branch` (Text) | AGNOSTIC | Remote branch the Infrahub default branch maps to; other Infrahub branches map to the same-named remote branch via `infrahub.git.branch_mapping.get_mapped_remote_branch` |
 | `CoreReadOnlyRepository` | `ref` (Text) | AWARE | Branch or tag whose history the log describes; may differ per Infrahub branch |
-| `Branch` (registry) | `sync_with_git` | n/a | Selects the drift list's row set for the read-write kind; a branch with `sync_with_git = false` is excluded rather than shown as drifted |
+| `Branch` (registry) | `sync_with_git` | n/a | *(removed with the drift query)* Selected the drift list's row set for the read-write kind; a branch with `sync_with_git = false` was excluded rather than shown as drifted |
 
-Source of the per-branch values: `RepositoryBranchValuesQuery` (below). The existing
+*(Removed with the drift query.)* Source of the per-branch values: `RepositoryBranchValuesQuery` (below). The existing
 `infrahub.git.utils::get_repositories_commit_per_branch` is not the drift resolver's source and is
 not modified by this feature. It is still used, unchanged, for one purpose: the read-only refs-check
 cycle calls it to enumerate the repositories to check.
 
-### Per-branch resolution this feature must reproduce
+### Per-branch resolution this feature must reproduce *(removed)*
 
 For each branch in the row set, the value is the first of: the branch's own active edge; the origin
 branch's edge active at `branched_from` (branches are isolated by default); the global-branch edge.
@@ -33,7 +40,7 @@ inherited value follows its origin branch forward with no git activity on that b
 branch is usually the default branch but is not necessarily it, which is why `source_branch` names it
 per row rather than being assumed.
 
-### Row set
+### Row set *(removed)*
 
 | Repository kind | Branches included |
 | --- | --- |
@@ -90,11 +97,14 @@ Precedence when one commit qualifies for several states, applied in this order:
 | --- | --- | --- |
 | `NOT_CLONED` | `not_cloned` | the answering worker has no local copy; a warm-up was triggered |
 | `NOT_IMPLEMENTED` | `not_implemented` | the worker read path is not wired for this query yet. Stops being produced by the commit log at T046 and by the drift column at T079, and stays in the schema after that: it is published to consumers at checkpoint 2A, and removing a member of a published enum breaks them |
-| `TIMEOUT` | `timeout` | no worker answered the drift read within the bound. Produced by `InfrahubRepositoryBranchDrift` only, whose rows are graph-resolved and still render (FR-022, SC-012). The commit log has nothing to show without a worker answer and raises `WORKER_TIMEOUT` instead (FR-012), which is also where the retry hint lives |
+
+There is no timeout member. The commit log has nothing to show without a worker answer and raises
+`WORKER_TIMEOUT` instead (FR-012), which is also where the retry hint lives. A `TIMEOUT` member,
+produced only by the drift query, was removed with that query before any release.
 
 ## Value objects (frozen dataclasses)
 
-### `infrahub.core.query.repository` (new module, one database query)
+### `infrahub.core.query.repository` (new module, one database query) *(removed)*
 
 ```text
 RepositoryBranchValuesQuery(Query)
@@ -188,7 +198,7 @@ into `infrahub.message_bus.messages` and cycle.
 GitCommitLogGetResponse(InfrahubResponse)     routing key git.commit_log.get
 ```
 
-### `infrahub.message_bus.messages.git_branch_heads_get`
+### `infrahub.message_bus.messages.git_branch_heads_get` *(removed)*
 
 ```text
 GitBranchHeadsGet(InfrahubMessage)            routing key git.branch_heads.get, priority 4
@@ -263,7 +273,7 @@ message-bus `*ResponseData` model: registering a message pair before its handler
 ```text
 RepositoryGitStateReader (Protocol)              git/state/reader.py
   async commits(request: CommitLogRequest) -> CommitLogResult
-  async branch_heads(request: BranchHeadsRequest) -> BranchDriftResult
+  (a second method, branch_heads, served the drift query and was removed with it)
 
 UnavailableRepositoryGitStateReader              git/state/reader.py
                                  Answers UNAVAILABLE / NOT_IMPLEMENTED. The placeholder until the

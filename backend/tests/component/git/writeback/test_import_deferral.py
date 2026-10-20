@@ -229,7 +229,7 @@ class TestImportDeferral(TestInfrahubApp):
         remote = LocalRemote.create(directory=tmp_path / name, trunk=TRUNK, branches=[])
         imported = remote.commit(branch_name=TRUNK, files=query_files(query_name))
         node = await self._add(db=db, remote=remote, name=name)
-        await create_branch(branch_name=other_branch, db=db)
+        await create_branch(branch_name=other_branch, db=db, sync_with_git=True)
         other_commit = remote.commit(branch_name=other_branch, files={"data.txt": "other\n"})
         advanced = remote.commit(branch_name=TRUNK, files={".infrahub.yml": EMPTY_CONFIG})
         if case.pending:

@@ -56,7 +56,7 @@ class TestSyncMergedBranch(TestInfrahubApp):
         )
 
         # The branch has been merged: it is read-only but its branch object persists in the graph.
-        branch = await create_branch(branch_name=MERGED_BRANCH, db=db)
+        branch = await create_branch(branch_name=MERGED_BRANCH, db=db, sync_with_git=True)
         branch.status = BranchStatus.MERGED
         await branch.save(db=db)
 

@@ -191,7 +191,6 @@ def _plan_with_one_of_each(source_output: _FakeSourceOutput | None = None) -> Se
         execute_in_proposed_change=False,
         execute_after_merge=True,
         query_id="q1",
-        query_models=["TestDevice"],
         query_payload="query { TestDevice { edges { node { id } } } }",
         repository_id="repo-1",
     )
@@ -219,7 +218,6 @@ def _generator_run(*, definition_id: str, repository_id: str = "repo-1") -> Requ
         execute_in_proposed_change=False,
         execute_after_merge=True,
         query_id="q1",
-        query_models=["TestDevice"],
         query_payload="query { TestDevice { edges { node { id } } } }",
         repository_id=repository_id,
     )

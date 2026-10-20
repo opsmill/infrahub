@@ -4,23 +4,21 @@ from typing import TYPE_CHECKING, Protocol
 
 from infrahub.core.constants import RepositoryGitCondition, RepositoryGitUnavailableReason
 
-from .models import BranchDriftResult, CommitLogResult
+from .models import CommitLogResult
 
 if TYPE_CHECKING:
-    from .models import BranchHeadsRequest, CommitLogRequest
+    from .models import CommitLogRequest
 
 NOT_IMPLEMENTED_MESSAGE = "Reading git state from a worker is not available in this version."
 
 
 class RepositoryGitStateReader(Protocol):
-    """Answer a repository's git state for one Infrahub branch, or for every branch at once.
+    """Answer a repository's git state for one Infrahub branch.
 
     An implementation never clones, fetches or takes a repository lock.
     """
 
     async def commits(self, request: CommitLogRequest) -> CommitLogResult: ...
-
-    async def branch_heads(self, request: BranchHeadsRequest) -> BranchDriftResult: ...
 
 
 class UnavailableRepositoryGitStateReader:
@@ -29,12 +27,6 @@ class UnavailableRepositoryGitStateReader:
     async def commits(self, request: CommitLogRequest) -> CommitLogResult:  # noqa: ARG002
         return CommitLogResult(
             condition=RepositoryGitCondition.UNAVAILABLE,
-            unavailable_reason=RepositoryGitUnavailableReason.NOT_IMPLEMENTED,
-            error_message=NOT_IMPLEMENTED_MESSAGE,
-        )
-
-    async def branch_heads(self, request: BranchHeadsRequest) -> BranchDriftResult:  # noqa: ARG002
-        return BranchDriftResult(
             unavailable_reason=RepositoryGitUnavailableReason.NOT_IMPLEMENTED,
             error_message=NOT_IMPLEMENTED_MESSAGE,
         )

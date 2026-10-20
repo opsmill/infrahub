@@ -5,11 +5,10 @@ import pytest
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.graph.m076_heal_missing_attribute_rows.queries import AttributeHealDetectionQuery
+from infrahub.core.migrations.graph.missing_attribute_rows.queries import AttributeHealDetectionQuery
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-
-from .conftest import (
+from tests.helpers.attribute_rows import (
     INHERITED_CAR_ATTRIBUTE_NAMES,
     create_damaged_car,
     create_healthy_car,

@@ -59,7 +59,6 @@ from .queries import (
     InfrahubPathTraversal,
     InfrahubReachableNodes,
     InfrahubRepositoryActivity,
-    InfrahubRepositoryBranchDrift,
     InfrahubRepositoryCommits,
     InfrahubResourcePoolAllocated,
     InfrahubResourcePoolUtilization,
@@ -111,7 +110,6 @@ class InfrahubBaseQuery(ObjectType):
     InfrahubSearchAnywhere = InfrahubSearchAnywhere
 
     InfrahubRepositoryCommits = InfrahubRepositoryCommits
-    InfrahubRepositoryBranchDrift = InfrahubRepositoryBranchDrift
     InfrahubRepositoryActivity = InfrahubRepositoryActivity
 
     InfrahubTask = Task

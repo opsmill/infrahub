@@ -230,7 +230,7 @@ async def test_a_branch_that_cannot_be_pushed_records_the_branch_as_failed(
 
     with pytest.raises(
         RepositoryConnectionError,
-        match=rf"^Unable to clone the repository {name}, please check the address and the credential$",
+        match=rf"^Unable to push to the remote of repository {name}, please check that the remote is reachable\.$",
     ):
         await _create_branch_recording_activity(repository=repository, cache=cache)
 

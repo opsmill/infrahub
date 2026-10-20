@@ -98,12 +98,12 @@ class LocalRemote:
         self.repo.git.branch("-D", branch_name)
 
 
-def branch_payload(name: str, status: str = "OPEN") -> dict[str, Any]:
+def branch_payload(name: str, status: str = "OPEN", sync_with_git: bool = True) -> dict[str, Any]:
     return {
         "id": f"{name}-id",
         "name": name,
         "description": None,
-        "sync_with_git": True,
+        "sync_with_git": sync_with_git,
         "is_default": name == "main",
         "has_schema_changes": False,
         "graph_version": None,
@@ -116,8 +116,9 @@ def branch_payload(name: str, status: str = "OPEN") -> dict[str, Any]:
 class GraphRecordingClient(InfrahubClient):
     """An SDK client whose graph holds the given Infrahub branches and keeps every commit recorded on them.
 
-    ``branch_statuses`` sets the status the listing reports for a branch, OPEN otherwise, and
-    ``rejecting_branches`` refuse a commit write the way the API refuses one on a branch that needs a rebase.
+    ``branch_statuses`` sets the status the listing reports for a branch, OPEN otherwise,
+    ``rejecting_branches`` refuse a commit write the way the API refuses one on a branch that needs a rebase,
+    and ``unsynced_branches`` are reported with ``sync_with_git`` off.
     """
 
     def __init__(self, branch_names: tuple[str, ...]) -> None:
@@ -125,6 +126,7 @@ class GraphRecordingClient(InfrahubClient):
         self.branch_names = branch_names
         self.branch_statuses: dict[str, str] = {}
         self.rejecting_branches: frozenset[str] = frozenset()
+        self.unsynced_branches: frozenset[str] = frozenset()
         self.recorded_commits: list[tuple[str, str]] = []
 
     async def execute_graphql(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
@@ -133,14 +135,19 @@ class GraphRecordingClient(InfrahubClient):
         if tracker == "query-branch-all":
             return {
                 "Branch": [
-                    branch_payload(name=name, status=self.branch_statuses.get(name, "OPEN"))
+                    branch_payload(
+                        name=name,
+                        status=self.branch_statuses.get(name, "OPEN"),
+                        sync_with_git=name not in self.unsynced_branches,
+                    )
                     for name in self.branch_names
                 ]
             }
         if tracker == "mutation-branch-create":
             raise GraphQLError(errors=[{"message": "The branch already exists"}])
         if tracker == "query-branch":
-            return {"Branch": [branch_payload(name=variables["branch_name"])]}
+            name = variables["branch_name"]
+            return {"Branch": [branch_payload(name=name, sync_with_git=name not in self.unsynced_branches)]}
         if tracker == "mutation-repository-update-commit":
             if kwargs["branch_name"] in self.rejecting_branches:
                 raise GraphQLError(errors=[{"message": rejected_commit_message(kwargs["branch_name"])}])

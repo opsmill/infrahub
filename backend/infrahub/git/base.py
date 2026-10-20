@@ -34,6 +34,7 @@ from infrahub.exceptions import (
     RepositoryTLSError,
 )
 from infrahub.git.bounded_command import run_git_with_deadline
+from infrahub.git.branch_mapping import infrahub_branch_receives_imports
 from infrahub.git.constants import (
     BRANCHES_DIRECTORY_NAME,
     COMMITS_DIRECTORY_NAME,
@@ -89,6 +90,18 @@ GIT_HTTP_REPOSITORY_NOT_FOUND = re.compile(r"repository '[^']+' not found")
 GIT_CALL_TIME_LIMIT = re.compile(
     r'Timeout: the command "\S*git (?P<command>\S+)[^"]*" did not complete in (?P<seconds>\S+) secs'
 )
+
+# A fetch or a push runs from a clone that exists, so its failure must not carry the message of a first clone.
+REMOTE_COMMAND_ACTIONS = {"fetch": "fetch from", "push": "push to"}
+
+
+def _remote_command_failure(error: GitCommandError, name: str, hint: str) -> str | None:
+    """Return a message that names the fetch or the push that `error` comes from, or None for any other command."""
+    subcommand = error.command[1] if len(error.command) > 1 else ""
+    action = REMOTE_COMMAND_ACTIONS.get(subcommand)
+    if action is None:
+        return None
+    return f"Unable to {action} the remote of repository {name}, please check {hint}."
 
 
 def _clone_carries_ref(repo: Repo, ref: str) -> bool:
@@ -994,40 +1007,48 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         )
 
     async def get_filtered_remote_branches(self) -> dict[str, BranchInRemote]:
-        branches = self.get_branches_from_remote()
+        """Return the remote branches a sync imports.
 
-        if not config.SETTINGS.git.import_sync_branch_names:
-            return branches
-
+        A remote branch whose Infrahub branch exists is imported when that branch receives imports. A
+        remote branch with no Infrahub branch is selected by the import filters, and every one is imported
+        when no filter is configured; Infrahub's default branch is never filtered. The registry this reads
+        can lag behind the database.
+        """
+        filters_configured = bool(config.SETTINGS.git.import_sync_branch_names)
         filtered_branches = {}
-        skipped_branch_names = []
-        always_imported = {registry.default_branch, self._get_mapped_remote_branch(registry.default_branch)}
+        unsynced_branch_names = []
+        unmatched_branch_names = []
 
-        for short_name, branch_data in branches.items():
+        for short_name, branch_data in self.get_branches_from_remote().items():
+            infrahub_branch_name = self._get_mapped_target_branch(branch_name=short_name)
             branch = None
-
             with contextlib.suppress(BranchNotFoundError):
-                branch = registry.get_branch_from_registry(branch=short_name)
+                branch = registry.get_branch_from_registry(branch=infrahub_branch_name)
 
-            branch_exists_import_sync_condition = branch and (
-                branch.name not in always_imported
-                and not branch.sync_with_git
+            if branch is not None:
+                if not infrahub_branch_receives_imports(
+                    infrahub_branch_name=infrahub_branch_name,
+                    branch_is_synced_with_git=branch.sync_with_git,
+                    infrahub_default_branch=registry.default_branch,
+                ):
+                    unsynced_branch_names.append(short_name)
+                    continue
+            elif (
+                infrahub_branch_name != registry.default_branch
+                and filters_configured
                 and not branch_name_in_import_sync_branches(branch_short_name=short_name)
-            )
-            branch_does_not_exist_import_sync_condition = not branch and not branch_name_in_import_sync_branches(
-                branch_short_name=short_name
-            )
-
-            if branch_exists_import_sync_condition or branch_does_not_exist_import_sync_condition:
-                skipped_branch_names.append(short_name)
+            ):
+                unmatched_branch_names.append(short_name)
                 continue
 
             filtered_branches[short_name] = branch_data
 
-        if skipped_branch_names:
+        if unsynced_branch_names:
+            log.debug(f"Skipped the branches {unsynced_branch_names}, which do not sync with Git")
+        if unmatched_branch_names:
             log.debug(
-                f"Skipped the following branches {skipped_branch_names} "
-                f"because no match was found in import_sync_branch_names {config.SETTINGS.git.import_sync_branch_names}"
+                f"Skipped the branches {unmatched_branch_names}, which match no entry "
+                f"in import_sync_branch_names {config.SETTINGS.git.import_sync_branch_names}"
             )
         return filtered_branches
 
@@ -1331,7 +1352,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         """
         if "Repository not found" in error.stderr or GIT_HTTP_REPOSITORY_NOT_FOUND.search(error.stderr):
-            raise RepositoryNotFoundError(identifier=name) from error
+            raise RepositoryNotFoundError(
+                identifier=name,
+                message=_remote_command_failure(error=error, name=name, hint="the address and the credential"),
+            ) from error
 
         if any(
             err in error.stderr
@@ -1345,7 +1369,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 "RPC failed; HTTP 5",
             )
         ):
-            raise RepositoryConnectionError(identifier=name) from error
+            raise RepositoryConnectionError(
+                identifier=name,
+                message=_remote_command_failure(error=error, name=name, hint="that the remote is reachable"),
+            ) from error
 
         time_limit = GIT_CALL_TIME_LIMIT.search(error.stderr)
         if (

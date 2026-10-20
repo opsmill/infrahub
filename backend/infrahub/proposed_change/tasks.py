@@ -59,7 +59,6 @@ from infrahub.core.regeneration.models import DefinitionSelect
 from infrahub.core.regeneration.predicates import (
     definition_changed,
     query_changed,
-    reads_kind,
     repo_diff_or_none,
     transform_changed,
 )
@@ -87,6 +86,8 @@ from infrahub.git.base import extract_repo_file_information
 from infrahub.git.models import TriggerRepositoryInternalChecks, TriggerRepositoryUserChecks
 from infrahub.git.repository import InfrahubRepository, get_initialized_repo
 from infrahub.git.utils import fetch_artifact_definition_targets, fetch_proposed_change_generator_definition_targets
+from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
+from infrahub.graphql.execution import cached_parse
 from infrahub.log import get_logger
 from infrahub.message_bus.types import (
     ProposedChangeBranchDiff,
@@ -466,12 +467,17 @@ async def run_generators(model: RequestProposedChangeRunGenerators, context: Inf
             if transform_outcome.reason is not None:
                 log.info(transform_outcome.reason)
 
-        for changed_model in modified_kinds:
-            select = select.add_flag(
-                current=select,
-                flag=DefinitionSelect.MODIFIED_KINDS,
-                condition=reads_kind(generator_definition, changed_model),
-            )
+        read_kinds = InfrahubGraphQLQueryAnalyzer(
+            query=generator_definition.query_payload,
+            branch=registry.get_branch_from_registry(branch=model.source_branch),
+            schema_branch=registry.schema.get_schema_branch(name=model.source_branch),
+            document=cached_parse(generator_definition.query_payload),
+        ).query_report.impacted_models
+        select = select.add_flag(
+            current=select,
+            flag=DefinitionSelect.MODIFIED_KINDS,
+            condition=any(changed_model in read_kinds for changed_model in modified_kinds),
+        )
 
         if select:
             request_generator_def_check_model = RequestGeneratorDefinitionCheck(
@@ -826,7 +832,9 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
     async with database.start_session() as db:
         impact_resolver = FieldLevelImpactResolver(db=db, client=client)
         selection = await impact_resolver.resolve(
-            query_payload=model.artifact_definition.query_payload,
+            query_report=impact_resolver.analyze(
+                query_payload=model.artifact_definition.query_payload, query_branch=model.source_branch
+            ),
             diff_summary=diff_summary,
             query_branch=model.source_branch,
             subscriber_kind=InfrahubKind.ARTIFACT,
@@ -1120,7 +1128,9 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
     async with database.start_session() as db:
         impact_resolver = FieldLevelImpactResolver(db=db, client=client)
         selection = await impact_resolver.resolve(
-            query_payload=model.generator_definition.query_payload,
+            query_report=impact_resolver.analyze(
+                query_payload=model.generator_definition.query_payload, query_branch=model.source_branch
+            ),
             diff_summary=diff_summary,
             query_branch=model.source_branch,
             subscriber_kind=InfrahubKind.GENERATORINSTANCE,
@@ -1387,12 +1397,17 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
             if transform_outcome.reason is not None:
                 log.info(transform_outcome.reason)
 
-        for changed_model in modified_kinds:
-            select = select.add_flag(
-                current=select,
-                flag=DefinitionSelect.MODIFIED_KINDS,
-                condition=reads_kind(artifact_definition, changed_model),
-            )
+        read_kinds = InfrahubGraphQLQueryAnalyzer(
+            query=artifact_definition.query_payload,
+            branch=registry.get_branch_from_registry(branch=model.source_branch),
+            schema_branch=registry.schema.get_schema_branch(name=model.source_branch),
+            document=cached_parse(artifact_definition.query_payload),
+        ).query_report.impacted_models
+        select = select.add_flag(
+            current=select,
+            flag=DefinitionSelect.MODIFIED_KINDS,
+            condition=any(changed_model in read_kinds for changed_model in modified_kinds),
+        )
 
         if select:
             log.info(f"Trigger processing of {artifact_definition.definition_name}")

@@ -6,8 +6,6 @@ import pytest
 
 from infrahub.core.constants import RepositoryCommitState, RepositoryGitCondition, RepositoryGitUnavailableReason
 from infrahub.git.state.models import (
-    BranchDriftResult,
-    BranchDriftRow,
     CommitEntry,
     CommitLogResult,
     GitStateFacts,
@@ -29,7 +27,7 @@ def test_a_reason_requires_the_unavailable_condition() -> None:
     ):
         CommitLogResult(
             condition=RepositoryGitCondition.BEHIND,
-            unavailable_reason=RepositoryGitUnavailableReason.TIMEOUT,
+            unavailable_reason=RepositoryGitUnavailableReason.NOT_CLONED,
         )
 
 
@@ -50,38 +48,17 @@ def test_a_pending_count_belongs_to_a_branch_that_is_behind() -> None:
 
 
 def test_a_warm_up_belongs_to_the_not_cloned_reason() -> None:
-    with pytest.raises(ValueError, match=r"^A warm-up is only started for NOT_CLONED, not TIMEOUT$"):
+    with pytest.raises(ValueError, match=r"^A warm-up is only started for NOT_CLONED, not NOT_IMPLEMENTED$"):
         CommitLogResult(
             condition=RepositoryGitCondition.UNAVAILABLE,
-            unavailable_reason=RepositoryGitUnavailableReason.TIMEOUT,
+            unavailable_reason=RepositoryGitUnavailableReason.NOT_IMPLEMENTED,
             warm_up_task_id="18d39e83-1ef7-d650-5424-000000000000",
         )
 
 
-def test_drift_rows_survive_an_unavailable_column() -> None:
-    """The rows are graph-resolved, so they stand whatever the git-derived column says."""
-    row = BranchDriftRow(
-        branch_name="main",
-        git_ref="trunk",
-        tracked_commit=IMPORTED,
-        remote_head=None,
-        condition=RepositoryGitCondition.UNAVAILABLE,
-    )
-
-    result = BranchDriftResult(
-        branches=(row,),
-        unavailable_reason=RepositoryGitUnavailableReason.TIMEOUT,
-        error_message="No worker answered within the configured time.",
-    )
-
-    assert result.branches == (row,)
-    assert result.unavailable_reason is RepositoryGitUnavailableReason.TIMEOUT
-    assert result.error_message == "No worker answered within the configured time."
-
-
 def test_an_error_message_belongs_to_an_unavailable_result() -> None:
     with pytest.raises(ValueError, match=r"^An error_message belongs to an unavailable result$"):
-        BranchDriftResult(error_message="something went wrong")
+        CommitLogResult(condition=RepositoryGitCondition.BEHIND, error_message="something went wrong")
 
 
 def test_ancestry_needs_a_resolved_commit_and_a_head() -> None:

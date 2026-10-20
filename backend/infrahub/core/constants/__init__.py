@@ -301,7 +301,6 @@ class RepositoryCommitState(InfrahubStringEnum):
 class RepositoryGitUnavailableReason(InfrahubStringEnum):
     NOT_CLONED = "not_cloned"
     NOT_IMPLEMENTED = "not_implemented"
-    TIMEOUT = "timeout"
 
 
 class DiffAction(InfrahubStringEnum):

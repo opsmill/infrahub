@@ -3,10 +3,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.core.constants import RepositoryGitCondition
-from infrahub.git.state.models import BranchDriftResult, CommitLogResult
+from infrahub.git.state.models import CommitLogResult
 
 if TYPE_CHECKING:
-    from infrahub.git.state.models import BranchHeadsRequest, CommitLogRequest
+    from infrahub.git.state.models import CommitLogRequest
 
 
 class RecordingRepositoryGitStateReader:
@@ -16,27 +16,15 @@ class RecordingRepositoryGitStateReader:
     and this flag" assertable as full dataclass equality.
     """
 
-    def __init__(
-        self,
-        commit_results: list[CommitLogResult] | None = None,
-        branch_heads_results: list[BranchDriftResult] | None = None,
-    ) -> None:
+    def __init__(self, commit_results: list[CommitLogResult] | None = None) -> None:
         self.commit_requests: list[CommitLogRequest] = []
-        self.branch_heads_requests: list[BranchHeadsRequest] = []
         self.commit_results = list(commit_results or [])
-        self.branch_heads_results = list(branch_heads_results or [])
 
     async def commits(self, request: CommitLogRequest) -> CommitLogResult:
         self.commit_requests.append(request)
         if self.commit_results:
             return self.commit_results.pop(0)
         return CommitLogResult(condition=RepositoryGitCondition.NOT_TRACKED)
-
-    async def branch_heads(self, request: BranchHeadsRequest) -> BranchDriftResult:
-        self.branch_heads_requests.append(request)
-        if self.branch_heads_results:
-            return self.branch_heads_results.pop(0)
-        return BranchDriftResult()
 
 
 class FailingRepositoryGitStateReader:
@@ -46,7 +34,4 @@ class FailingRepositoryGitStateReader:
         self._error = error
 
     async def commits(self, request: CommitLogRequest) -> CommitLogResult:
-        raise self._error
-
-    async def branch_heads(self, request: BranchHeadsRequest) -> BranchDriftResult:
         raise self._error

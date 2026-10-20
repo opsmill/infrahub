@@ -55,8 +55,7 @@ class RepositoryCommits(ObjectType):
     repository_id = String(required=True)
     branch_name = String(required=True, description="The Infrahub branch the answer was computed for.")
     git_ref = String(
-        description="Remote branch or tracked ref whose history is listed. Null when the branch tracks nothing, "
-        "matching RepositoryBranchDrift.git_ref."
+        description="Remote branch or tracked ref whose history is listed. Null when the branch tracks nothing."
     )
     condition = RepositoryGitCondition(required=True)
     imported_commit = String(
@@ -77,44 +76,6 @@ class RepositoryCommits(ObjectType):
     )
     unavailable = Field(RepositoryGitUnavailable)
     edges = List(NonNull(RepositoryCommitNode), required=True)
-
-
-class RepositoryBranchDrift(ObjectType):
-    """Drift of one Infrahub branch of a repository."""
-
-    branch_name = String(required=True)
-    git_ref = String(
-        description="Remote branch or tracked ref compared for this branch. Null when the branch is not tracked."
-    )
-    tracked_commit = String()
-    remote_head = String(
-        description="Latest remote commit. Null when there is no remote counterpart or when condition is UNAVAILABLE."
-    )
-    condition = RepositoryGitCondition(required=True)
-
-
-class RepositoryBranchDriftNode(ObjectType):
-    node = Field(RepositoryBranchDrift, required=True)
-
-
-class RepositoryBranchDrifts(ObjectType):
-    """Drift for every branch of a repository, produced by a single worker request."""
-
-    repository_id = String(required=True)
-    fetched_at = DateTime()
-    checked_at = DateTime(description="When the remote was last checked for movement. Read-only repositories only.")
-    unavailable = Field(
-        RepositoryGitUnavailable,
-        description="Set when the git-derived drift answer could not be produced. It does not suppress edges, "
-        "which is resolved separately.",
-    )
-    edges = List(
-        NonNull(RepositoryBranchDriftNode),
-        required=True,
-        description="One row per open branch the caller may view, and for a read-write repository only those "
-        "synchronised with Git. The set is the branch list as it stands now: an `at` in the past changes the "
-        "values each row reports, never which branches are listed.",
-    )
 
 
 def _value_descriptions(type_description: str, values: dict[Any, str]) -> Callable[[Any], str]:

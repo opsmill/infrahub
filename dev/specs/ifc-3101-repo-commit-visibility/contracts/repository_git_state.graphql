@@ -4,6 +4,11 @@
 # Wire names are snake_case (the schema is built with auto_camelcase=False).
 # Keep every description on a single line; the SDL printer dedents multi-line
 # descriptions differently across graphql-core versions.
+#
+# 2026-10-19 (IFC-3448): InfrahubRepositoryBranchDrift, its RepositoryBranchDrift,
+# RepositoryBranchDriftNode and RepositoryBranchDrifts types, and the TIMEOUT value
+# of RepositoryGitUnavailableReason were removed before any release, with User
+# Story 3 deferred. See spec.md, "Scope change: User Story 3 deferred".
 
 "How the remote head relates to the commit Infrahub has imported on the request branch."
 enum RepositoryGitCondition {
@@ -26,14 +31,12 @@ enum RepositoryCommitState {
   UNRELATED
 }
 
-# TIMEOUT is producible by InfrahubRepositoryBranchDrift only. The commit log has
-# nothing to show without a worker answer, so it fails with WORKER_TIMEOUT instead;
-# the drift query has graph-resolved rows worth returning without the remote head.
+# No timeout value: the commit log has nothing to show without a worker answer,
+# so it fails with WORKER_TIMEOUT instead.
 "Why no git-derived answer was produced."
 enum RepositoryGitUnavailableReason {
   NOT_CLONED
   NOT_IMPLEMENTED
-  TIMEOUT
 }
 
 "A commit read live from a worker's local clone. Never persisted."
@@ -68,7 +71,7 @@ type RepositoryCommits {
   repository_id: String!
   "The Infrahub branch the answer was computed for."
   branch_name: String!
-  "Remote branch or tracked ref whose history is listed. Null when the branch tracks nothing, matching RepositoryBranchDrift.git_ref."
+  "Remote branch or tracked ref whose history is listed. Null when the branch tracks nothing."
   git_ref: String
   condition: RepositoryGitCondition!
   "Commit Infrahub has imported on this branch, from the repository's commit attribute."
@@ -85,32 +88,6 @@ type RepositoryCommits {
   edges: [RepositoryCommitNode!]!
 }
 
-"Drift of one Infrahub branch of a repository."
-type RepositoryBranchDrift {
-  branch_name: String!
-  "Remote branch or tracked ref compared for this branch. Null when the branch is not tracked."
-  git_ref: String
-  tracked_commit: String
-  "Latest remote commit. Null when there is no remote counterpart or when condition is UNAVAILABLE."
-  remote_head: String
-  condition: RepositoryGitCondition!
-}
-
-type RepositoryBranchDriftNode {
-  node: RepositoryBranchDrift!
-}
-
-"Drift for every branch of a repository, produced by a single worker request."
-type RepositoryBranchDrifts {
-  repository_id: String!
-  fetched_at: DateTime
-  "When the remote was last checked for movement. Read-only repositories only."
-  checked_at: DateTime
-  "Set when the git-derived drift answer could not be produced. It does not suppress edges, which is resolved separately."
-  unavailable: RepositoryGitUnavailable
-  edges: [RepositoryBranchDriftNode!]!
-}
-
 extend type Query {
   "Paged commit log for a repository on the request branch."
   InfrahubRepositoryCommits(
@@ -120,9 +97,6 @@ extend type Query {
     "Default 0."
     offset: Int
   ): RepositoryCommits!
-
-  "Per-branch drift for a repository."
-  InfrahubRepositoryBranchDrift(repository_id: String!): RepositoryBranchDrifts!
 }
 
 "Result of scheduling an on-demand refs check for a read-only repository."
@@ -147,15 +121,6 @@ extend type Mutation {
 #   }
 # }
 #
-# Example: drift column
-#
-# query RepositoryBranchDrift($id: String!) {
-#   InfrahubRepositoryBranchDrift(repository_id: $id) {
-#     fetched_at checked_at unavailable { reason message }
-#     edges { node { branch_name tracked_commit remote_head condition } }
-#   }
-# }
-#
 # Example: on-demand check
 #
 # mutation { InfrahubReadOnlyRepositoryCheckRefs(data: { id: "..." }) { ok task { id } } }
@@ -165,12 +130,6 @@ extend type Mutation {
 # within the bound that query fails rather than returning an UNAVAILABLE result,
 # and the retry hint lives here on the catalogued error rather than on
 # RepositoryGitUnavailable, so a consumer never has two places to look for it.
-#
-# InfrahubRepositoryBranchDrift does not fail on a timeout: its rows are
-# graph-resolved and still render, with the column reporting
-# UNAVAILABLE / TIMEOUT (FR-022, SC-012). That column carries no retry hint,
-# because the consumer polls while the state is unavailable rather than
-# scheduling a retry from a hint.
 #
 # {
 #   "errors": [{

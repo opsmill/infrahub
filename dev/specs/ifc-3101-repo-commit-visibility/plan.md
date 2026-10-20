@@ -5,15 +5,23 @@
 direction to deliver the GraphQL API first, with sample data if necessary, so the frontend team can
 start immediately.
 
+**Scope change, 2026-10-19 ([IFC-3448](https://opsmill.atlassian.net/browse/IFC-3448))**: User Story 3
+is deferred and its code was removed before any release, for the reason in spec.md's
+[Scope change](spec.md#scope-change-user-story-3-deferred). This plan still describes the
+`InfrahubRepositoryBranchDrift` query, the `git.branch_heads.get` message pair, the reader's
+`branch_heads` method, `RepositoryBranchValuesQuery` and the `TIMEOUT` unavailable reason as they
+were designed. None of them exists in the code any more; entries for them are marked *(removed)*
+below.
+
 ## Summary
 
 Expose a repository's git state on the request branch through two new top-level GraphQL queries
 (`InfrahubRepositoryCommits`, a paged newest-first commit log with per-commit state and the imported
-and remote-head markers; `InfrahubRepositoryBranchDrift`, per-branch drift from one worker request)
+and remote-head markers; `InfrahubRepositoryBranchDrift` *(removed)*, per-branch drift from one worker request)
 and one mutation (`InfrahubReadOnlyRepositoryCheckRefs`). Commits are read live from a task worker's
 existing clone over a point-to-point message-bus RPC with a bounded wait; they are never stored.
 Infrahub's own per-branch tracked values for the drift list come from one new Cypher query rather
-than one query per branch.
+than one query per branch *(removed)*.
 Read-only repositories gain an every-minute cron flow that, per repository and on a configurable
 interval, lists remote refs and fetches only when the tracked ref moved, then converges every worker
 through the existing `RefreshGitFetch` broadcast without ever writing the tracked commit.
@@ -65,7 +73,7 @@ remains.
 | IV. Test Discipline | PASS | Unit tests for classification; component tests for the per-branch query, resolvers, permission denial, laziness, handlers; a unit test for the RPC timeout, whose never-replying doubles open no connection; integration tests for behind, rewritten, tag move, lock serialisation, and the broadcast binding that makes convergence per-worker; e2e for the Commits tab. Test adapters (`BusRecorder`, `WorkflowRecorder`, `RecordingLockRegistry`) instead of mocks. FR-017 is covered as three deterministic links rather than a multi-worker fixture, per `checklists/requirements.md`. |
 | V. Query Performance & Efficiency | PASS | Worker cost per page is constant in history length (`iter_commits` with skip and at most `limit` ancestry checks). Graph side: the drift list reads every branch's tracked values in one parameterised query (`core/query/repository.py`), so the query count is independent of branch count, asserted by instrumentation at 5 and 20 branches under a lowered `query_size_limit`, which a query that lost its own bound would fail and 200 branches at the default limit would not. The existing per-branch sync helper is left untouched; IFC-3104 refactors it onto the same query. |
 | VI. Security & Input Boundaries | PASS | `limit` bounded to 1..100 and `offset` non-negative in the resolver; repository view permission enforced imperatively (the analyzer cannot see custom queries); timeout error message names the operation only, never the worker or paths; credentials for `ls-remote` come from the worker's existing git config, never from the message. |
-| VII. Simplicity & Maintainability | PASS | Reuses `GitFileGet`, `RefreshGitFetch`, `WorkflowDefinition` cron with `CANCEL_NEW`, cache `not_exists`, `define_object_permission_from_branch`, and `get_repositories_commit_per_branch` for the refs-check flow's repository list. The reader protocol earns its place by keeping the message-bus dependency out of the resolver, and its second and third implementations are the test doubles. The one new abstraction, `RepositoryBranchValuesQuery`, is required by Principle V rather than anticipated: it follows the existing Query-class pattern, has a caller in this feature, and a second in IFC-3104. No sample-data path, no throwaway setting. No new dependency. |
+| VII. Simplicity & Maintainability | PASS | Reuses `GitFileGet`, `RefreshGitFetch`, `WorkflowDefinition` cron with `CANCEL_NEW`, cache `not_exists`, `define_object_permission_from_branch`, and `get_repositories_commit_per_branch` for the refs-check flow's repository list. The reader protocol earns its place by keeping the message-bus dependency out of the resolver, and its second and third implementations are the test doubles. The one new abstraction, `RepositoryBranchValuesQuery` *(removed)*, is required by Principle V rather than anticipated: it follows the existing Query-class pattern, has a caller in this feature, and a second in IFC-3104. No sample-data path, no throwaway setting. No new dependency. |
 
 **Verdict**: all gates pass. No complexity justification required. Re-evaluated after Phase 1 design:
 unchanged.
@@ -113,7 +121,7 @@ specs/ifc-3101-repo-commit-visibility/
 ```text
 backend/infrahub/
 ├── core/constants/__init__.py                    # EDIT  RepositoryGitCondition, RepositoryCommitState, RepositoryGitUnavailableReason
-├── core/query/repository.py                      # NEW   RepositoryBranchValuesQuery: per-branch attribute values for one
+├── core/query/repository.py                      # NEW   RepositoryBranchValuesQuery (removed): per-branch attribute values for one
 │                                                 #       repository in a single query, explicit branch list and attribute set
 ├── config.py                                     # EDIT  BrokerSettings.rpc_timeout, GitSettings.read_only_refs_check_interval_mins
 ├── exceptions.py                                 # EDIT  WorkerTimeoutError
@@ -131,7 +139,7 @@ backend/infrahub/
 ├── git/state/bus_reader.py                       # NEW   BusRepositoryGitStateReader, the only module knowing a routing key
 ├── git/state/log_reader.py                       # NEW   every git read against an existing clone; both handlers are thin over it
 ├── git/state/commit_log_wire.py                  # NEW   both-way conversion between the commit-log messages and the dataclasses
-├── git/state/branch_heads_wire.py                # NEW   both-way conversion between the branch-heads messages and the dataclasses
+├── git/state/branch_heads_wire.py                # (removed) both-way conversion between the branch-heads messages and the dataclasses
 ├── git/state/warm_up.py                          # NEW   RepositoryWarmUp: clone, broadcast RefreshGitClone, then fetch a copy never fetched
 ├── git/state/cache_keys.py                       # NEW   prefix + the five key builders, shared by resolver and flows
 ├── git/branch_mapping.py                         # NEW   extracted remote-branch mapping, required parameters, no fallback
@@ -141,12 +149,12 @@ backend/infrahub/
 │                                                 #       check_read_only_repository_refs
 ├── workflows/catalogue.py                        # EDIT  three WorkflowDefinition constants
 ├── message_bus/messages/git_commit_log_get.py    # NEW
-├── message_bus/messages/git_branch_heads_get.py  # NEW
+├── message_bus/messages/git_branch_heads_get.py  # (removed)
 ├── message_bus/messages/refresh_git_clone.py     # NEW   clone-only broadcast, sent by the warm-up when nothing is imported
 ├── message_bus/operations/git/repository.py      # EDIT  clone handler: create a missing copy, change nothing else
 ├── message_bus/messages/__init__.py              # EDIT  MESSAGE_MAP, RESPONSE_MAP, PRIORITY_MAP
 ├── message_bus/operations/git/commit_log.py      # NEW   shallow handler: unpack, delegate to log_reader, reply
-├── message_bus/operations/git/branch_heads.py    # NEW   shallow handler, same shape
+├── message_bus/operations/git/branch_heads.py    # (removed) shallow handler, same shape
 ├── message_bus/operations/__init__.py            # EDIT  COMMAND_MAP
 ├── repositories/create_repository.py             # EDIT  route WorkerTimeoutError into the existing delete-and-raise path
 └── services/adapters/message_bus/{__init__,rabbitmq,nats,local}.py   # EDIT  rpc(timeout=...)
@@ -161,12 +169,12 @@ backend/tests/
 ├── unit/errors/                                                  # existing suites gain WORKER_TIMEOUT via parametrisation
 ├── unit/workflows/test_catalogue.py                              # existing, picks up new definitions
 ├── component/git/                                                # NEW  FR-002 stored-node delta independent of history length
-├── component/core/query/test_repository_branch_values.py         # NEW  per-branch resolution, inheritance, query count at 5 vs 20 branches
+├── component/core/query/test_repository_branch_values.py         # (removed) per-branch resolution, inheritance, query count at 5 vs 20 branches
 ├── component/graphql/queries/test_repository_git_state.py        # NEW  resolvers, permission, laziness
 ├── component/graphql/mutations/test_repository.py                # EDIT  check-refs mutation with WorkflowRecorder
 ├── unit/services/adapters/message_bus/test_rpc_timeout.py        # NEW  no broker: the doubles open no connection
 ├── component/message_bus/operations/git/test_commit_log.py       # NEW  handler on FileRepo fixtures, NOT_CLONED path
-├── component/message_bus/operations/git/test_branch_heads.py     # NEW
+├── component/message_bus/operations/git/test_branch_heads.py     # (removed)
 ├── component/git/test_check_refs.py                              # NEW  due check, ls-remote only when idle, lock scope
 ├── integration/git/test_repository_commits_query.py              # NEW  GraphQL query end to end through a real worker read, plus laziness
 ├── integration/git/test_readonly_refs_check.py                   # NEW  Gogs: advance, force-push, tag move, tag delete
@@ -236,7 +244,7 @@ Ordered for the fastest frontend hand-off. Each phase is independently reviewabl
   imported commit and the branch or ref, validate `limit` and `offset`, gate `pending_count` on
   selection with `extract_graphql_fields`. There is no `count` field to gate: FR-024 removes the
   total from the contract entirely.
-- `RepositoryBranchValuesQuery` in `core/query/repository.py`: one statement returning the
+- *(Removed.)* `RepositoryBranchValuesQuery` in `core/query/repository.py`: one statement returning the
   branch-resolved `commit`, and `ref` for the read-only kind, for one repository across an explicit
   branch list, with an explicit attribute-name set and a frozen-dataclass `get_data()`. It unwinds a
   per-branch scope (target branch, origin branch, fork-point time, query time) and applies the
@@ -427,7 +435,8 @@ determinism logic, no test and no documentation entry.
   reports the claim it found; the run records it, but the button does not show it.
 - Waiting for a worker uses capped retries, not polling. The use-case throws an `UNAVAILABLE` answer
   as `RepositoryGitUnavailableError`, and the query retries it every 10 seconds, up to 30 times
-  (about five minutes), for `NOT_CLONED`, `TIMEOUT` and a missing reason. `NOT_IMPLEMENTED` is not
+  (about five minutes), for `NOT_CLONED` and a missing reason (`TIMEOUT` was removed with the drift
+  query, its only producer). `NOT_IMPLEMENTED` is not
   retried, because it does not change for a deployment. `refetchInterval` was tried first and
   dropped: each interval refetch of a query with no data resets it to pending and clears its error,
   so the not-yet-available state flickered to a spinner. The cap exists because a clone that failed
@@ -444,8 +453,8 @@ determinism logic, no test and no documentation entry.
   accessible name, never colour alone. The hash copy is confirmed by a toast, and the shared
   `CopyToClipboardButton` now announces a copy to screen readers. Asserted in the Vitest tests by
   querying on accessible names rather than on classes.
-- The drift column is specified (`InfrahubRepositoryBranchDrift` is live) but has no rows until the
-  IFC-3104 Branches card exists; User Story 3's UI is tracked against that card.
+- The drift column is deferred with User Story 3, and `InfrahubRepositoryBranchDrift` was removed
+  before any page called it.
 - Vitest tests:
   - the list, its empty and error states, retries, stale rows and loading more
     (`repository-commits-manager.test.tsx`, `repository-commits-manager-load-more.test.tsx`)

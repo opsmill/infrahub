@@ -1191,7 +1191,7 @@ class _BranchSyncRepository(InfrahubRepository):
     def get_branches_from_remote(self) -> dict[str, BranchInRemote]:
         return {}
 
-    def _exclude_read_only_branches(
+    def _exclude_unimportable_branches(
         self, new_branches: list[str], updated_branches: list[str], graph_branches: dict[str, BranchData]
     ) -> tuple[list[str], list[str]]:
         return (new_branches, updated_branches)

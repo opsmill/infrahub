@@ -84,15 +84,6 @@ class GitStateFacts:
 
 
 @dataclass(frozen=True)
-class BranchRef:
-    """One branch of a repository and the remote ref it is compared against."""
-
-    branch_name: str
-    git_ref: str
-    tracked_commit: str | None = None
-
-
-@dataclass(frozen=True)
 class CommitLogRequest:
     repository_id: str
     repository_name: str
@@ -104,15 +95,6 @@ class CommitLogRequest:
     limit: int
     offset: int
     include_pending_count: bool
-
-
-@dataclass(frozen=True)
-class BranchHeadsRequest:
-    repository_id: str
-    repository_name: str
-    repository_kind: str
-    location: str
-    branches: tuple[BranchRef, ...]
 
 
 def _raise_unless_unavailable_fields_agree(
@@ -167,38 +149,6 @@ class CommitLogResult:
             )
         if self.pending_count is not None and self.condition is not RepositoryGitCondition.BEHIND:
             raise ValueError(f"A pending count is only reported under BEHIND, not {self.condition.name}")
-        _raise_unless_unavailable_fields_agree(
-            unavailable_reason=self.unavailable_reason,
-            warm_up_task_id=self.warm_up_task_id,
-            error_message=self.error_message,
-        )
-
-
-@dataclass(frozen=True)
-class BranchDriftRow:
-    branch_name: str
-    git_ref: str
-    tracked_commit: str | None
-    remote_head: str | None
-    condition: RepositoryGitCondition
-
-
-@dataclass(frozen=True)
-class BranchDriftResult:
-    branches: tuple[BranchDriftRow, ...] = ()
-    fetched_at: datetime | None = None
-    unavailable_reason: RepositoryGitUnavailableReason | None = None
-    warm_up_task_id: str | None = None
-    error_message: str | None = None
-    """Display-safe explanation, set whenever no git-derived answer was produced."""
-
-    def __post_init__(self) -> None:
-        """Reject a result whose unavailable fields contradict the reason it carries.
-
-        Raises:
-            ValueError: When a field belonging to the unavailable path is set without it.
-
-        """
         _raise_unless_unavailable_fields_agree(
             unavailable_reason=self.unavailable_reason,
             warm_up_task_id=self.warm_up_task_id,

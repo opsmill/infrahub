@@ -80,20 +80,19 @@ describe("getRepositoryCommitsQueryOptions", () => {
     focusManager.setFocused(undefined);
   });
 
-  test.each([
-    RepositoryGitUnavailableReason.NOT_CLONED,
-    RepositoryGitUnavailableReason.TIMEOUT,
-    null,
-  ])("retries an unavailable answer with reason %s", (reason) => {
-    // GIVEN
-    const error = buildUnavailableError(reason);
+  test.each([RepositoryGitUnavailableReason.NOT_CLONED, null])(
+    "retries an unavailable answer with reason %s",
+    (reason) => {
+      // GIVEN
+      const error = buildUnavailableError(reason);
 
-    // WHEN
-    const shouldRetry = resolveRetry(error);
+      // WHEN
+      const shouldRetry = resolveRetry(error);
 
-    // THEN
-    expect(shouldRetry).toBe(true);
-  });
+      // THEN
+      expect(shouldRetry).toBe(true);
+    }
+  );
 
   test("stops retrying a repository that stays not cloned", () => {
     // GIVEN
