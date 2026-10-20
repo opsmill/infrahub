@@ -41,11 +41,14 @@ from infrahub.core.schema import (
 )
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import NodeNotFoundError, ProcessingError, SchemaNotFoundError
+from infrahub.log import get_logger
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.constants import RelationshipHierarchyDirection
     from infrahub.database import InfrahubDatabase
+
+log = get_logger()
 
 SchemaProtocol = TypeVar("SchemaProtocol")
 
@@ -1362,7 +1365,15 @@ class NodeManager:
             else:
                 continue
             if rel_schema.cardinality is RelationshipCardinality.ONE and len(rel_peers) > 1:
-                raise ValueError("At most, one relationship expected")
+                log.warning(
+                    "Relationship of cardinality one has more than one peer in the database",
+                    node_id=node.get_id(),
+                    node_kind=node.get_kind(),
+                    relationship_name=rel_schema.name,
+                    peer_ids=sorted(peer_ids),
+                )
+                await rel_manager.load_stored_peers(db=db)
+                continue
 
             rel_peers_with_metadata: list[PeerWithRelationshipMetadata] = []
             for peer in rel_peers:

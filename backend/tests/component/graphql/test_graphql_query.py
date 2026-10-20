@@ -12,6 +12,8 @@ from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigra
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
+from infrahub.core.query.relationship import RelationshipCreateQuery
+from infrahub.core.relationship import Relationship
 from infrahub.core.schema import NodeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
@@ -2079,6 +2081,63 @@ async def test_hierarchical_location_ancestors(
 
     assert ancestor_names == ["europe", "paris"]
     assert descendants == []
+
+
+async def test_hierarchical_location_with_two_parent_edges(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: dict[str, Node]
+) -> None:
+    """A node holding two live parent edges resolves with the first parent and lists both as ancestors."""
+    paris = hierarchical_location_data["paris"]
+    second_parent_edge = await RelationshipCreateQuery.init(
+        db=db,
+        source=paris,
+        destination=hierarchical_location_data["north-america"],
+        schema=paris.get_schema().get_relationship(name="parent"),
+        rel=Relationship,
+        branch=default_branch,
+        at=Timestamp(),
+    )
+    await second_parent_edge.execute(db=db)
+
+    query = """
+    query {
+        LocationSite(name__value: "paris") {
+            edges {
+                node {
+                    display_label
+                    parent {
+                        node {
+                            display_label
+                        }
+                    }
+                    ancestors {
+                        edges {
+                            node {
+                                display_label
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data
+    site = result.data["LocationSite"]["edges"][0]["node"]
+    assert site["display_label"] == "paris"
+    assert site["parent"]["node"]["display_label"] == "europe"
+    assert [edge["node"]["display_label"] for edge in site["ancestors"]["edges"]] == ["europe", "north-america"]
 
 
 async def test_hierarchical_location_descendants(

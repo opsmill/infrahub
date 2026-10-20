@@ -21,13 +21,26 @@ import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 export interface ObjectHierarchyTreeProps {
   treeSchema: ModelSchema;
   currentNodeId?: string;
-  defaultExpandedIds?: Array<string>;
+  /** Ids of the objects to expand, from a top-level object down. */
+  defaultExpandedPath?: Array<string>;
+}
+
+// An object with more than one parent is listed under each of them, so a tree item is identified
+// by its position (the ids from the top level down) rather than by the object id alone.
+const TREE_ITEM_ID_SEPARATOR = "/";
+
+function getTreeItemId(parentTreeItemId: string | undefined, nodeId: string): string {
+  return parentTreeItemId ? `${parentTreeItemId}${TREE_ITEM_ID_SEPARATOR}${nodeId}` : nodeId;
+}
+
+function getTreeItemIdsAlongPath(nodeIds: Array<string>): Array<string> {
+  return nodeIds.map((_, index) => nodeIds.slice(0, index + 1).join(TREE_ITEM_ID_SEPARATOR));
 }
 
 export function ObjectHierarchyTree({
   treeSchema,
   currentNodeId,
-  defaultExpandedIds,
+  defaultExpandedPath,
 }: ObjectHierarchyTreeProps) {
   const { data, isPending, error, hasNextPage, fetchNextPage, isFetchingNextPage } =
     useGetTreeNodesByParent({
@@ -68,7 +81,9 @@ export function ObjectHierarchyTree({
 
       <Tree
         aria-label="Hierarchy tree"
-        defaultExpandedKeys={defaultExpandedIds}
+        defaultExpandedKeys={
+          defaultExpandedPath ? getTreeItemIdsAlongPath(defaultExpandedPath) : undefined
+        }
         renderEmptyState={() => <Row className="justify-center py-2 text-gray-600">No item</Row>}
       >
         <Collection items={items} dependencies={[currentNodeId]}>
@@ -96,6 +111,7 @@ export interface ObjectTreeItemProps {
   treeObjectKind: string;
   currentNodeId?: string;
   defaultExpanded?: boolean;
+  parentTreeItemId?: string;
 }
 
 export function ObjectTreeItem({
@@ -104,7 +120,9 @@ export function ObjectTreeItem({
   treeObjectKind,
   currentNodeId,
   defaultExpanded = false,
+  parentTreeItemId,
 }: ObjectTreeItemProps) {
+  const treeItemId = getTreeItemId(parentTreeItemId, node.id);
   const [isExpanded, setExpanded] = React.useState(defaultExpanded);
   const { data, fetchNextPage, isFetchingNextPage, isPending, hasNextPage } =
     useGetTreeNodesByParent(
@@ -121,7 +139,7 @@ export function ObjectTreeItem({
 
   return (
     <TreeItem
-      id={node.id}
+      id={treeItemId}
       textValue={nodeLabel}
       href={getObjectDetailsUrl(node.__typename, node.id)}
       className={classNames(currentNodeId === node.id && "bg-neutral-100")}
@@ -140,6 +158,7 @@ export function ObjectTreeItem({
                 hasChildren={childNode.children.count > 0}
                 treeObjectKind={treeObjectKind}
                 currentNodeId={currentNodeId}
+                parentTreeItemId={treeItemId}
               />
             )}
           </Collection>

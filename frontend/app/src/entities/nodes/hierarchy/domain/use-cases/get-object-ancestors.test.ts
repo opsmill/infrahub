@@ -83,15 +83,19 @@ describe("getObjectAncestors", () => {
     });
 
     // THEN: Should be ordered from root to leaf
-    expect(result).toHaveLength(4);
-    expect(result[0]!.id).toBe("grandparent-id");
-    expect(result[0]!.display_label).toBe("USA");
-    expect(result[1]!.id).toBe("parent-id");
-    expect(result[1]!.display_label).toBe("California");
-    expect(result[2]!.id).toBe("child-id");
-    expect(result[2]!.display_label).toBe("Los Angeles");
-    expect(result[3]!.id).toBe("grandchild-id");
-    expect(result[3]!.display_label).toBe("Hollywood");
+    expect(result.chain.map((node) => node.id)).toEqual([
+      "grandparent-id",
+      "parent-id",
+      "child-id",
+      "grandchild-id",
+    ]);
+    expect(result.chain.map((node) => node.display_label)).toEqual([
+      "USA",
+      "California",
+      "Los Angeles",
+      "Hollywood",
+    ]);
+    expect(result.otherAncestors).toEqual([]);
   });
 
   it("should handle a single object with no ancestors", async () => {
@@ -132,9 +136,9 @@ describe("getObjectAncestors", () => {
     });
 
     // THEN: Should return just the root node
-    expect(result).toHaveLength(1);
-    expect(result[0]!.id).toBe("root-id");
-    expect(result[0]!.display_label).toBe("USA");
+    expect(result.chain.map((node) => node.id)).toEqual(["root-id"]);
+    expect(result.chain.map((node) => node.display_label)).toEqual(["USA"]);
+    expect(result.otherAncestors).toEqual([]);
   });
 
   it("should handle a two-level hierarchy (parent -> child)", async () => {
@@ -182,11 +186,9 @@ describe("getObjectAncestors", () => {
     });
 
     // THEN: Should be ordered parent first, then child
-    expect(result).toHaveLength(2);
-    expect(result[0]!.id).toBe("parent-id");
-    expect(result[0]!.display_label).toBe("USA");
-    expect(result[1]!.id).toBe("child-id");
-    expect(result[1]!.display_label).toBe("California");
+    expect(result.chain.map((node) => node.id)).toEqual(["parent-id", "child-id"]);
+    expect(result.chain.map((node) => node.display_label)).toEqual(["USA", "California"]);
+    expect(result.otherAncestors).toEqual([]);
   });
 
   it("should throw an error when object is not found", async () => {
@@ -274,8 +276,8 @@ describe("getObjectAncestors", () => {
     });
 
     // THEN: Should handle gracefully and return just the current node
-    expect(result).toHaveLength(1);
-    expect(result[0]!.id).toBe("root-id");
+    expect(result.chain.map((node) => node.id)).toEqual(["root-id"]);
+    expect(result.otherAncestors).toEqual([]);
   });
 
   it("should handle ancestors with null nodes in edges", async () => {
@@ -324,7 +326,8 @@ describe("getObjectAncestors", () => {
     });
 
     // THEN: Should filter out null nodes and still maintain order
-    expect(result[1]!.id).toBe("child-id");
+    expect(result.chain.map((node) => node.id)).toEqual(["parent-id", "child-id"]);
+    expect(result.otherAncestors).toEqual([]);
   });
 
   it("should return partial ancestors chain when root is missing from response", async () => {
@@ -374,8 +377,115 @@ describe("getObjectAncestors", () => {
     });
 
     // THEN
-    expect(result).toHaveLength(2);
-    expect(result[0]!.id).toBe("parent-id");
-    expect(result[1]!.id).toBe("child-id");
+    expect(result.chain.map((node) => node.id)).toEqual(["parent-id", "child-id"]);
+    expect(result.otherAncestors).toEqual([]);
+  });
+
+  it("should list the ancestors outside the chain when the object has a second parent", async () => {
+    // GIVEN: The object's parent is Europe, but the API also returns Americas as an ancestor
+    const europe: NodeCoreWithParent = {
+      id: "europe-id",
+      __typename: "LocationRegion",
+      display_label: "Europe",
+      parent: { node: null },
+    };
+    const americas: NodeCoreWithParent = {
+      id: "americas-id",
+      __typename: "LocationRegion",
+      display_label: "Americas",
+      parent: { node: null },
+    };
+    const belgium: NodeCoreWithParent = {
+      id: "belgium-id",
+      __typename: "LocationCountry",
+      display_label: "Belgium",
+      parent: { node: { id: "europe-id", __typename: "LocationRegion", display_label: "Europe" } },
+    };
+
+    const mockApiResponse = {
+      data: {
+        [objectKind]: {
+          edges: [
+            {
+              node: {
+                ...belgium,
+                ancestors: {
+                  edges: [{ node: americas }, { node: europe }],
+                },
+              },
+            },
+          ],
+        },
+      },
+    };
+
+    vi.mocked(getObjectAncestorsFromApiModule.getObjectAncestorsFromApi).mockResolvedValue(
+      mockApiResponse as any
+    );
+
+    // WHEN
+    const result = await getObjectAncestors({
+      branchName,
+      objectKind,
+      objectId,
+    });
+
+    // THEN
+    expect(result.chain.map((node) => node.id)).toEqual(["europe-id", "belgium-id"]);
+    expect(result.otherAncestors.map((node) => node.display_label)).toEqual(["Americas"]);
+  });
+
+  it("should stop following parents when they loop back", async () => {
+    // GIVEN: Paris is in France, and France and Europe are each other's parent
+    const europe: NodeCoreWithParent = {
+      id: "europe-id",
+      __typename: "LocationRegion",
+      display_label: "Europe",
+      parent: { node: { id: "france-id", __typename: "LocationCountry", display_label: "France" } },
+    };
+    const france: NodeCoreWithParent = {
+      id: "france-id",
+      __typename: "LocationCountry",
+      display_label: "France",
+      parent: { node: { id: "europe-id", __typename: "LocationRegion", display_label: "Europe" } },
+    };
+    const paris: NodeCoreWithParent = {
+      id: "paris-id",
+      __typename: "LocationCity",
+      display_label: "Paris",
+      parent: { node: { id: "france-id", __typename: "LocationCountry", display_label: "France" } },
+    };
+
+    const mockApiResponse = {
+      data: {
+        [objectKind]: {
+          edges: [
+            {
+              node: {
+                ...paris,
+                ancestors: {
+                  edges: [{ node: europe }, { node: france }],
+                },
+              },
+            },
+          ],
+        },
+      },
+    };
+
+    vi.mocked(getObjectAncestorsFromApiModule.getObjectAncestorsFromApi).mockResolvedValue(
+      mockApiResponse as any
+    );
+
+    // WHEN
+    const result = await getObjectAncestors({
+      branchName,
+      objectKind,
+      objectId,
+    });
+
+    // THEN
+    expect(result.chain.map((node) => node.id)).toEqual(["europe-id", "france-id", "paris-id"]);
+    expect(result.otherAncestors).toEqual([]);
   });
 });

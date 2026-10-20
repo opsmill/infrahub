@@ -12,7 +12,7 @@ from infrahub.core.node import Node
 from infrahub.core.protocols import CoreMenuItem
 from infrahub.core.protocols_base import CoreNode
 from infrahub.core.query.node import NodeToProcess
-from infrahub.core.query.relationship import RelationshipGetPeerQuery
+from infrahub.core.query.relationship import RelationshipCreateQuery, RelationshipGetPeerQuery
 from infrahub.core.registry import registry
 from infrahub.core.relationship import Relationship
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
@@ -517,6 +517,37 @@ async def test_get_many_prefetch_hierarchical(
     assert len(children_europe) == 2
     parent_europe = await nodes[europe_id].parent.get(db=db)
     assert parent_europe is None
+
+
+async def test_get_many_prefetch_hierarchical_with_two_parent_edges(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: dict[str, Node]
+) -> None:
+    """A node holding two live parent edges loads with its first parent, and saving it keeps both edges."""
+    paris = hierarchical_location_data["paris"]
+    europe_id = hierarchical_location_data["europe"].id
+    north_america_id = hierarchical_location_data["north-america"].id
+    second_parent_edge = await RelationshipCreateQuery.init(
+        db=db,
+        source=paris,
+        destination=hierarchical_location_data["north-america"],
+        schema=paris.get_schema().get_relationship(name="parent"),
+        rel=Relationship,
+        branch=default_branch,
+        at=Timestamp(),
+    )
+    await second_parent_edge.execute(db=db)
+
+    nodes = await NodeManager.get_many(db=db, ids=[paris.id], prefetch_relationships=True)
+    parent = await nodes[paris.id].parent.get_peer(db=db)
+    assert parent.get_id() == europe_id
+
+    nodes[paris.id].status.value = "offline"
+    await nodes[paris.id].save(db=db)
+
+    reloaded = await NodeManager.get_one(db=db, id=paris.id, raise_on_error=True)
+    assert reloaded.status.value.value == "offline"
+    parent_peers = await reloaded.parent.get_db_peers(db=db)
+    assert {str(peer.peer_id) for peer in parent_peers} == {europe_id, north_america_id}
 
 
 async def test_get_many_branch_agnostic(

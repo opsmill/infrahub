@@ -30,9 +30,10 @@ export function ObjectHierarchyTreeLite({
     return <LoadingIndicator />;
   }
 
-  const currentSelectedNode = data?.at(-1);
+  const chain = data?.chain;
+  const currentSelectedNode = chain?.at(-1);
   const parentId = currentSelectedNode?.parent?.node?.id;
-  const parentNode = parentId && data ? data.find((node) => node.id === parentId) : undefined;
+  const parentNode = parentId && chain ? chain.find((node) => node.id === parentId) : undefined;
 
   // Fall back to full tree if there's an error (e.g., initial node was deleted),
   // no parent node found, or user requested full tree
@@ -41,7 +42,7 @@ export function ObjectHierarchyTreeLite({
       <ObjectHierarchyTree
         treeSchema={treeSchema}
         currentNodeId={currentNodeId}
-        defaultExpandedIds={data?.length ? data.map((node) => node.id) : undefined}
+        defaultExpandedPath={chain?.length ? chain.map((node) => node.id) : undefined}
       />
     );
   }

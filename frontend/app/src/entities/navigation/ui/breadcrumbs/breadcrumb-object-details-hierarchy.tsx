@@ -7,6 +7,7 @@ import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 import { BreadcrumbItemObject } from "@/entities/navigation/ui/breadcrumbs/items/breadcrumb-item-object";
 import { useGetObjectAncestors } from "@/entities/nodes/hierarchy/ui/queries/get-object-ancestors.query";
 import type { NodeCoreWithParent } from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import type { GetRelationshipsParams } from "@/entities/nodes/relationships/domain/use-cases/get-relationships";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -40,7 +41,8 @@ export function BreadcrumbObjectDetailsHierarchy({
     return <BreadcrumbItemError error={error} />;
   }
 
-  const hasTopLevelNode = data.some((node) => !node.parent.node);
+  const { chain, otherAncestors } = data;
+  const hasTopLevelNode = chain.some((node) => !node.parent.node);
 
   return (
     <>
@@ -68,7 +70,11 @@ export function BreadcrumbObjectDetailsHierarchy({
         </Tooltip>
       )}
 
-      {data.map((ancestor) => (
+      {otherAncestors.length > 0 && (
+        <BreadcrumbItemOtherAncestors otherAncestors={otherAncestors} />
+      )}
+
+      {chain.map((ancestor) => (
         <BreadcrumbItemObjectHierarchy
           key={ancestor.id}
           node={ancestor}
@@ -76,6 +82,30 @@ export function BreadcrumbObjectDetailsHierarchy({
         />
       ))}
     </>
+  );
+}
+
+function BreadcrumbItemOtherAncestors({
+  otherAncestors,
+}: {
+  otherAncestors: Array<NodeCoreWithParent>;
+}) {
+  return (
+    <Tooltip
+      message={
+        <div className="max-w-xs">
+          <p className="mb-2 font-semibold">More than one parent</p>
+          <p>
+            This object or one of its ancestors has more than one parent. The breadcrumb follows
+            only one of them. Other ancestors found: {otherAncestors.map(getNodeLabel).join(", ")}.
+          </p>
+        </div>
+      }
+    >
+      <BreadcrumbItem className="gap-1 text-amber-600">
+        <TriangleAlertIcon className="size-4" /> More than one parent
+      </BreadcrumbItem>
+    </Tooltip>
   );
 }
 

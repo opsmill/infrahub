@@ -58,7 +58,7 @@ export function IpamTree({ className, currentNodeId, search }: IpamTreeProps) {
   const items = data.pages.flat();
 
   const defaultExpandedKeys = ancestorsData
-    ? ancestorsData
+    ? ancestorsData.chain
         .filter((ancestor) => ancestor.id !== currentNodeId)
         .map((ancestor) => (ancestor.parent.node?.id ?? null) + ancestor.id)
     : undefined;

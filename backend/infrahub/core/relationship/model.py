@@ -815,6 +815,14 @@ class RelationshipValidatorList:
         self._relationships.append(rel)
         self._relationships_count += 1
 
+    def append_stored(self, rel: Relationship) -> None:
+        """Append a relationship read from the database, skipping the max count check that stored data can exceed."""
+        if rel in self._relationships:
+            return
+
+        self._relationships.append(rel)
+        self._relationships_count += 1
+
     def clear(self) -> None:
         self._relationships.clear()
         self._relationships_count = len(self._relationships)
@@ -1266,21 +1274,46 @@ class RelationshipManager[RelationshipManagerPeerType]:
 
         for peer_id in details.peer_ids_present_database_only:
             self._relationships.append(
-                Relationship(
-                    schema=self.schema,
-                    branch=self.branch,
-                    source_kind=self.node.get_kind(),
-                    at=at or self.at,
-                    node=self.node,
-                    is_from_profile=details.peers_database[peer_id].is_from_profile,
-                    profile_id=details.peers_database[peer_id].profile_id,
-                ).load(db=db, data=details.peers_database[peer_id])
+                self._build_stored_relationship(db=db, peer_data=details.peers_database[peer_id], at=at or self.at)
             )
 
         self.has_fetched_relationships = True
 
         for peer_id in details.peer_ids_present_local_only:
             await self.remove_locally(peer_id=peer_id, db=db)
+
+    async def load_stored_peers(self, db: InfrahubDatabase) -> None:
+        """Fetch the stored peers into the local cache in database order, even when they exceed the max count.
+
+        Holding every stored peer lets a node whose data breaks the count limit be read, and keeps a later save
+        from deleting the peers that a read of a single peer does not show.
+        """
+        details = await self.fetch_relationship_ids(db=db)
+        database_only = set(details.peer_ids_present_database_only)
+
+        for peer_id, peer_data in details.peers_database.items():
+            if peer_id in database_only:
+                self._relationships.append_stored(
+                    self._build_stored_relationship(db=db, peer_data=peer_data, at=self.at)
+                )
+
+        self.has_fetched_relationships = True
+
+        for peer_id in details.peer_ids_present_local_only:
+            await self.remove_locally(peer_id=peer_id, db=db)
+
+    def _build_stored_relationship(
+        self, db: InfrahubDatabase, peer_data: RelationshipPeerData, at: Timestamp
+    ) -> Relationship:
+        return Relationship(
+            schema=self.schema,
+            branch=self.branch,
+            source_kind=self.node.get_kind(),
+            at=at,
+            node=self.node,
+            is_from_profile=peer_data.is_from_profile,
+            profile_id=peer_data.profile_id,
+        ).load(db=db, data=peer_data)
 
     async def get(self, db: InfrahubDatabase) -> Relationship | list[Relationship] | None:
         rels = await self.get_relationships(db=db)

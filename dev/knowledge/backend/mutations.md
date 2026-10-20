@@ -160,6 +160,9 @@ peers the manager already read rather than reading them again:
   schemas of the nodes declare, and `NodeManager.prefetch_relationships()` narrows it further to the
   relationships the caller names — reading a node's every edge would pull in the relationships that
   point *at* it, such as the objects created from an object template or the nodes using a profile.
+- A cardinality-one relationship that a batched read finds with more than one stored peer, which only
+  damaged data produces, is read again on its own instead of failing the read. The manager then holds
+  every stored peer in database order, returns the first one, and a later save deletes none of them.
 - The peers of a prefetched relationship come back as nodes rather than ids, so a caller that
   prefetched walks them without reading them back. Applying an object template leans on this: each
   level of subtemplates arrives with the read of the level above it (see

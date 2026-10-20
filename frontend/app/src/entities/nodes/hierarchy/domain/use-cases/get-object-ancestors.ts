@@ -2,17 +2,24 @@ import {
   type GetObjectAncestorsFromApiParams,
   getObjectAncestorsFromApi,
 } from "@/entities/nodes/hierarchy/api/get-object-ancestors-from-api";
-import type {
-  NodeCoreWithParent,
-  NodeObject,
-  NodeRelationshipMany,
-} from "@/entities/nodes/object/domain/model/node";
+import type { NodeCoreWithParent, NodeObject } from "@/entities/nodes/object/domain/model/node";
 
 export interface GetObjectAncestorsParams extends GetObjectAncestorsFromApiParams {}
 
+export interface GetObjectAncestorsResult {
+  /** From the top-level ancestor (or as far up as the ancestors go) down to the object itself. */
+  chain: Array<NodeCoreWithParent>;
+  /** Ancestors the chain does not reach, which only happens when an object in it has more than one parent. */
+  otherAncestors: Array<NodeCoreWithParent>;
+}
+
 export type GetObjectAncestors = (
   params: GetObjectAncestorsParams
-) => Promise<Array<NodeCoreWithParent>>;
+) => Promise<GetObjectAncestorsResult>;
+
+interface NodeWithAncestors extends NodeCoreWithParent {
+  ancestors?: { edges?: Array<{ node: NodeCoreWithParent | null }> };
+}
 
 export const getObjectAncestors: GetObjectAncestors = async ({
   branchName,
@@ -32,7 +39,7 @@ export const getObjectAncestors: GetObjectAncestors = async ({
   }
 
   const result = data[objectKind]?.edges?.map((edge: { node: NodeObject }) => edge.node)?.[0] as
-    | (NodeCoreWithParent & { ancestors: NodeRelationshipMany })
+    | NodeWithAncestors
     | undefined;
 
   if (!result) {
@@ -41,19 +48,22 @@ export const getObjectAncestors: GetObjectAncestors = async ({
 
   const { ancestors, ...currentObject } = result;
   const ancestorNodes = ancestors?.edges?.map((edge) => edge.node).filter((n) => !!n) ?? [];
+  const ancestorsById = new Map(ancestorNodes.map((node) => [node.id, node]));
 
-  // Build an ordered list from current object to root (or as far up as we can go)
-  const allNodes = [...ancestorNodes, currentObject] as Array<NodeCoreWithParent>;
-  const nodeMap = new Map(allNodes.map((node) => [node.id, node]));
-
-  const orderedNodes: Array<NodeCoreWithParent> = [];
+  const chain: Array<NodeCoreWithParent> = [];
+  const chainIds = new Set<string>();
   let current: NodeCoreWithParent | undefined = currentObject;
 
-  while (current) {
-    orderedNodes.unshift(current);
+  // Damaged hierarchy data can make the parents loop back, so stop at the first object seen twice.
+  while (current && !chainIds.has(current.id)) {
+    chain.unshift(current);
+    chainIds.add(current.id);
     const parentId: string | undefined = current.parent?.node?.id;
-    current = parentId ? nodeMap.get(parentId) : undefined;
+    current = parentId ? ancestorsById.get(parentId) : undefined;
   }
 
-  return orderedNodes;
+  return {
+    chain,
+    otherAncestors: ancestorNodes.filter((node) => !chainIds.has(node.id)),
+  };
 };
