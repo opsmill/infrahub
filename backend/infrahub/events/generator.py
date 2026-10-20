@@ -1,8 +1,13 @@
 from typing import TYPE_CHECKING, cast
 
 from infrahub.core.branch import Branch
-from infrahub.core.changelog.models import RelationshipChangelogGetter
-from infrahub.core.constants import InfrahubKind, MutationAction
+from infrahub.core.changelog.models import (
+    NodeChangelog,
+    RelationshipCardinalityManyChangelog,
+    RelationshipCardinalityOneChangelog,
+    RelationshipChangelogGetter,
+)
+from infrahub.core.constants import DiffAction, InfrahubKind, MutationAction
 from infrahub.core.mutation_context import RecordedNode
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
@@ -20,6 +25,28 @@ from infrahub.worker import WORKER_IDENTITY
 
 from .models import EventContext, EventMeta, InfrahubEvent
 from .proposed_change_action import ProposedChangeThreadCreatedEvent, ProposedChangeThreadUpdatedEvent
+
+
+def _peer_changes(
+    relationship: RelationshipCardinalityOneChangelog | RelationshipCardinalityManyChangelog,
+) -> set[tuple[str, DiffAction]]:
+    """Return each peer the relationship change names, with whether the change added or removed it."""
+    if isinstance(relationship, RelationshipCardinalityManyChangelog):
+        return {(peer.peer_id, peer.peer_status) for peer in relationship.peers}
+    changes = set()
+    if relationship.peer_id:
+        changes.add((relationship.peer_id, DiffAction.ADDED))
+    if relationship.peer_id_previous:
+        changes.add((relationship.peer_id_previous, DiffAction.REMOVED))
+    return changes
+
+
+def _holds_relationships(changelog: NodeChangelog, relationships: NodeChangelog) -> bool:
+    """Return whether the changelog already lists every relationship change of the other one, peer and direction."""
+    return all(
+        name in changelog.relationships and _peer_changes(relationship) <= _peer_changes(changelog.relationships[name])
+        for name, relationship in relationships.relationships.items()
+    )
 
 
 async def generate_node_mutation_events(
@@ -53,7 +80,20 @@ async def generate_node_mutation_events(
     events: list[NodeMutatedEvent] = [main_event]
 
     deleted_changelogs = [deleted_node.node_changelog for deleted_node in deleted_nodes if deleted_node.id != node.id]
-    deleted_ids = {deleted_node.node_id for deleted_node in deleted_changelogs}
+    recorded_events: list[NodeMutatedEvent] = [
+        get_node_event(recorded.action)(
+            kind=recorded.node.get_kind(),
+            node_id=recorded.node.id,
+            changelog=recorded.node.node_changelog,
+            fields=recorded.node.node_changelog.updated_fields,
+            meta=EventMeta.from_parent(parent=main_event),
+        )
+        for recorded in recorded_nodes or []
+        if recorded.node.has_changelog and recorded.node.node_changelog.has_changes
+    ]
+
+    deleted_node_ids = {node_changelog.node_id for node_changelog in deleted_changelogs}
+    own_changelogs = {recorded_event.node_id: recorded_event.changelog for recorded_event in recorded_events}
 
     for node_changelog in deleted_changelogs:
         meta = EventMeta.from_parent(parent=main_event)
@@ -67,7 +107,10 @@ async def generate_node_mutation_events(
         events.append(delete_event)
 
     for node_changelog in node_changelogs:
-        if node_changelog.node_id not in deleted_ids:
+        own_changelog = own_changelogs.get(node_changelog.node_id)
+        if node_changelog.node_id not in deleted_node_ids and not (
+            own_changelog and _holds_relationships(changelog=own_changelog, relationships=node_changelog)
+        ):
             meta = EventMeta.from_parent(parent=main_event)
             update_event = NodeUpdatedEvent(
                 kind=node_changelog.node_kind,
@@ -78,20 +121,8 @@ async def generate_node_mutation_events(
             )
             events.append(update_event)
 
-    recorded_events: list[NodeMutatedEvent] = [
-        get_node_event(recorded.action)(
-            kind=recorded.node.get_kind(),
-            node_id=recorded.node.id,
-            changelog=recorded.node.node_changelog,
-            fields=recorded.node.node_changelog.updated_fields,
-            meta=EventMeta.from_parent(parent=main_event),
-        )
-        for recorded in recorded_nodes or []
-        if recorded.node.has_changelog and recorded.node.node_changelog.has_changes
-    ]
-
     group_parser = GroupNodeMutationParser(db=db, branch=branch)
-    group_events = await group_parser.group_events_from_node_actions(events=events)
+    group_events = await group_parser.group_events_from_node_actions(events=events + recorded_events)
 
     specific_events: list[InfrahubEvent] = []
     if (kind := node.get_kind()) in [

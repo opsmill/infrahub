@@ -1,3 +1,4 @@
+from infrahub.auth.session import AccountSession
 from infrahub.core import registry
 from infrahub.core.branch.models import Branch
 from infrahub.core.constants import MetadataOptions, RelationshipKind
@@ -5,10 +6,68 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
+from infrahub.events.node_action import NodeCreatedEvent, NodeUpdatedEvent
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.services import InfrahubServices
+from tests.adapters.event import MemoryInfrahubEvent
 from tests.constants import TestKind
 from tests.helpers.graphql import graphql
 from tests.helpers.schema import CAR_SCHEMA, DEVICE_SCHEMA
+
+
+async def test_components_created_from_an_object_template_get_only_their_created_event(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    branch: Branch,
+    session_first_account: AccountSession,
+) -> None:
+    """Each interface the template creates is reported once, as created, and not also as updated by its device."""
+    registry.schema.register_schema(schema=DEVICE_SCHEMA, branch=branch.name)
+    branch.update_schema_hash()
+    device_template: Node = await Node.init(schema=f"Template{TestKind.DEVICE}", db=db, branch=branch)
+    await device_template.new(
+        db=db, template_name="MX204 Router", manufacturer="Juniper", height=1, weight=0, airflow="Front to rear"
+    )
+    await device_template.save(db=db)
+    interface_templates = []
+    for if_name in ("et-0/0/0", "et-0/0/1"):
+        interface_template: Node = await Node.init(
+            schema=f"Template{TestKind.PHYSICAL_INTERFACE}", db=db, branch=branch
+        )
+        await interface_template.new(
+            db=db, template_name=f"MX204 {if_name}", device=device_template, name=if_name, phys_type="QSFP28 (100GE)"
+        )
+        await interface_template.save(db=db)
+        interface_templates.append(interface_template)
+    await device_template.interfaces.update(db=db, data=interface_templates)
+    await device_template.save(db=db)
+    memory_event = MemoryInfrahubEvent()
+    service = await InfrahubServices.new(event=memory_event)
+    gql_params = await prepare_graphql_params(
+        db=db, branch=branch, service=service, account_session=session_first_account
+    )
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source="""
+        mutation NewDevice($template_id: String!) {
+          TestingDeviceCreate(data: {object_template: {id: $template_id}, name: {value: "th2.par.asbr01"}}) { ok }
+        }
+        """,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"template_id": device_template.id},
+    )
+    assert not result.errors
+    assert gql_params.context.background
+    await gql_params.context.background()
+
+    interface_events = [
+        type(event) for event in memory_event.events if getattr(event, "kind", None) == TestKind.PHYSICAL_INTERFACE
+    ]
+    assert interface_events == [NodeCreatedEvent, NodeCreatedEvent]
+    assert NodeUpdatedEvent not in interface_events
 
 
 async def test_create_with_object_template(
