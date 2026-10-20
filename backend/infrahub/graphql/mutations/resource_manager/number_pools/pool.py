@@ -7,8 +7,11 @@ from typing_extensions import Self
 from infrahub import lock
 from infrahub.core import protocols, registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind, PermissionAction
+from infrahub.core.changelog.models import RelationshipCardinalityManyChangelog, RelationshipPeerChangelog
+from infrahub.core.constants import DiffAction, InfrahubKind, MutationAction, PermissionAction
 from infrahub.core.manager import NodeManager
+from infrahub.core.mutation_context import NodeMutationContext
+from infrahub.core.node import Node
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters, NumberPoolRangeParameters
 from infrahub.database import retry_db_transaction, within_transaction
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
@@ -20,6 +23,7 @@ from infrahub.pools.number_pool_range_validation import (
     validate_shorthand_target,
 )
 from infrahub.pools.number_pool_repository import NumberPoolRepository
+from infrahub.pools.number_pool_shorthand import shorthand_bounds
 from infrahub.pools.pool_kinds import is_resource_pool_schema
 from infrahub.pools.registration import get_branches_with_schema_number_pool
 from infrahub.pools.scope import (
@@ -51,7 +55,6 @@ if TYPE_CHECKING:
     from graphene import InputObjectType
     from graphql import GraphQLResolveInfo
 
-    from infrahub.core.node import Node
     from infrahub.core.protocols import CoreNumberPoolRange
     from infrahub.core.schema import AttributeSchema
     from infrahub.database import InfrahubDatabase
@@ -107,13 +110,18 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
             return await super().mutate_create(info=info, data=data, branch=branch)
         refuse_ranges_outside_attribute(attribute=attribute, ranges=declared_ranges)
 
+        mirrored_bounds: dict[str, Any] = {}
+        if shorthand is None:
+            # Written with the pool so the creation records the bounds the mirror would otherwise write afterwards.
+            start, end = shorthand_bounds(bounds=[(declared.start, declared.end) for declared in declared_ranges])
+            mirrored_bounds = {
+                "start_range": dict(data.get("start_range") or {}) | {"value": start},
+                "end_range": dict(data.get("end_range") or {}) | {"value": end},
+            }
+        pool_data = cls._without_ranges(data=data, replacements=mirrored_bounds)
+
         async with graphql_context.db.start_transaction() as dbt:
-            number_pool, _ = await super().mutate_create(
-                info=info,
-                data=cls._without_ranges(data=data),
-                branch=branch,
-                database=dbt,
-            )
+            number_pool, _ = await super().mutate_create(info=info, data=pool_data, branch=branch, database=dbt)
             pool_id = number_pool.get_id()
             async with pool_lock(pool_id=pool_id):
                 reconciler = NumberPoolRangeReconciler(range_store=NumberPoolRepository(db=dbt))
@@ -129,6 +137,7 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
                 stored_pool = await sync_shorthand(
                     db=dbt, pool_id=pool_id, ranges=reconciliation.ranges, user_id=graphql_context.assigned_user_id
                 )
+                cls._report_range_writes(pool=number_pool, reconciliation=reconciliation, mirrored_pool=stored_pool)
                 result = cls(**await build_graphql_response(info=info, db=dbt, obj=stored_pool))
 
         return number_pool, result
@@ -192,9 +201,54 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
                 )
 
     @classmethod
-    def _without_ranges(cls, data: InputObjectType) -> InputObjectType:
+    def _report_range_writes(
+        cls, pool: Node, reconciliation: RangeReconciliation[CoreNumberPoolRange], mirrored_pool: Node
+    ) -> None:
+        """Add the range writes and the mirrored bounds to the pool's change log, and give each written range its own event.
+
+        The ranges and the mirrored bounds are written outside the pool's own save, so its change log, which the
+        mutation's events are built from, would otherwise leave them out.
+
+        Raises:
+            TypeError: When a written range is not a node.
+
+        """
+        changelog = pool.node_changelog
+        peers = [
+            RelationshipPeerChangelog(peer_id=pool_range.get_id(), peer_kind=pool_range.get_kind(), peer_status=status)
+            for status, pool_ranges in (
+                (DiffAction.ADDED, reconciliation.created),
+                (DiffAction.REMOVED, reconciliation.deleted),
+            )
+            for pool_range in pool_ranges
+        ]
+        if peers:
+            ranges_changelog = changelog.relationships.setdefault(
+                "ranges", RelationshipCardinalityManyChangelog(name="ranges")
+            )
+            if isinstance(ranges_changelog, RelationshipCardinalityManyChangelog):
+                ranges_changelog.peers.extend(peers)
+
+        if mirrored_pool.has_changelog:
+            for attribute in mirrored_pool.node_changelog.attributes.values():
+                changelog.add_attribute(attribute=attribute)
+
+        if pool._mutation_context is None:
+            pool._mutation_context = NodeMutationContext()
+        for range_action, written_ranges in (
+            (MutationAction.CREATED, reconciliation.created),
+            (MutationAction.UPDATED, reconciliation.updated),
+            (MutationAction.DELETED, reconciliation.deleted),
+        ):
+            for written_range in written_ranges:
+                if not isinstance(written_range, Node):
+                    raise TypeError(f"expected a range node, got {type(written_range).__name__}")
+                pool._mutation_context.record(node=written_range, action=range_action)
+
+    @classmethod
+    def _without_ranges(cls, data: InputObjectType, replacements: dict[str, Any] | None = None) -> InputObjectType:
         """Return the payload without `ranges`, which the generic node write would read as references to peers."""
-        return type(data)({key: value for key, value in data.items() if key != "ranges"})
+        return type(data)({key: value for key, value in data.items() if key != "ranges"} | (replacements or {}))
 
     @classmethod
     def _resolve_target_attribute(cls, db: InfrahubDatabase, data: InputObjectType, branch: Branch) -> AttributeSchema:
@@ -412,6 +466,7 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
             stored_pool = await sync_shorthand(
                 db=dbt, pool_id=pool_id, ranges=reconciliation.ranges, user_id=graphql_context.assigned_user_id
             )
+            cls._report_range_writes(pool=number_pool, reconciliation=reconciliation, mirrored_pool=stored_pool)
             result = await cls.mutate_update_to_graphql(db=dbt, info=info, obj=stored_pool)
 
         return number_pool, result
