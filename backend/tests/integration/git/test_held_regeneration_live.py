@@ -271,7 +271,6 @@ class TestHeldRegenerationLive(TestInfrahubApp):
         }
         assert await _all_outputs(db=db, client=client) == initial
 
-        # The branch changes the device that every definition reads, and every file of the definitions of X.
         await client.branch.create(branch_name=BRANCH_NAME, sync_with_git=True)
         source_commit = commit_to_remote_branch(
             gogs_server.container, x.name, branch=BRANCH_NAME, files=_repository_files(prefix="x", version=2)
