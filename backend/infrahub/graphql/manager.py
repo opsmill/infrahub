@@ -123,6 +123,24 @@ def get_attr_kind(node_schema: MainSchemaTypes, attr_schema: AttributeSchema) ->
     return get_enum_attribute_type_name(node_schema=node_schema, attr_schema=attr_schema)
 
 
+def build_edge_fields(
+    node: type[graphene.Interface | InfrahubObject],
+    node_metadata: type[InfrahubObject],
+    relation_property: type[InfrahubObject] | None = None,
+    relationship_metadata: type[InfrahubObject] | None = None,
+) -> dict[str, graphene.Field]:
+    """Return the fields of an Edged or NestedEdged type, for node kinds and generics alike."""
+    fields = {
+        "node": graphene.Field(node, required=False),
+        "node_metadata": graphene.Field(node_metadata, required=False),
+    }
+    if relation_property:
+        fields["properties"] = graphene.Field(relation_property, required=False)
+    if relationship_metadata:
+        fields["relationship_metadata"] = graphene.Field(relationship_metadata, required=False)
+    return fields
+
+
 class GraphQLSchemaManager:
     def __init__(self, schema: SchemaBranch) -> None:
         self.schema = schema
@@ -1155,15 +1173,14 @@ class GraphQLSchemaManager:
         }
 
         main_attrs: dict[str, Any] = {
-            "node": graphene.Field(node.reference, required=False),
-            "node_metadata": graphene.Field(node_metadata, required=False),
+            **build_edge_fields(
+                node=node.reference,
+                node_metadata=node_metadata,
+                relation_property=relation_property,
+                relationship_metadata=relationship_metadata,
+            ),
             "Meta": type("Meta", (object,), meta_attrs),
         }
-
-        if relation_property:
-            main_attrs["properties"] = graphene.Field(relation_property, required=False)
-        if relationship_metadata:
-            main_attrs["relationship_metadata"] = graphene.Field(relationship_metadata, required=False)
 
         graphql_edged_object = registry.get_edge_type(reference_hash=edge_hash, schema_hash=self.schema_hash)
         if not graphql_edged_object:
@@ -1236,15 +1253,14 @@ class GraphQLSchemaManager:
         }
 
         main_attrs: dict[str, Any] = {
-            "node": graphene.Field(base_interface, required=False),
-            "node_metadata": graphene.Field(node_metadata, required=False),
+            **build_edge_fields(
+                node=base_interface,
+                node_metadata=node_metadata,
+                relation_property=relation_property,
+                relationship_metadata=relationship_metadata,
+            ),
             "Meta": type("Meta", (object,), meta_attrs),
         }
-
-        if relation_property:
-            main_attrs["properties"] = graphene.Field(relation_property, required=False)
-        if relationship_metadata:
-            main_attrs["relationship_metadata"] = graphene.Field(relationship_metadata, required=False)
 
         object_name = f"NestedEdged{schema.kind}"
         md5hash = hashlib.md5(usedforsecurity=False)
