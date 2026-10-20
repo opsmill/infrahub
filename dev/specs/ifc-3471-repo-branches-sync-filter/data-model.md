@@ -13,4 +13,4 @@ No stored data changes. The feature reads existing values and adds one filter en
 - A filter is `{ name, value }`, stored in the list under the URL key `branches_filter`.
 - Fields: `name__value` (search and Branch), `status__value` (Status), and new `sync_status__value` (Sync Status).
 - Condition: "contains" only, for all three fields.
-- Validation: `sync_status__value` is sent only when its value is one of the five values; otherwise it is ignored.
+- Validation: `sync_status__value` is sent only when its value is one of the `sync_status` attribute's choices in the repository schema; otherwise it is ignored.

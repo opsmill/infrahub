@@ -64,7 +64,7 @@ The operator narrows the list with several criteria and shares the result with a
 1. **Given** a name search "feat" and Status "Open", **When** the operator adds Sync Status "Import Error", **Then** only open branches whose name contains "feat" and whose Sync Status is "Import Error" are listed.
 2. **Given** the operator is on page 3 of the list, **When** they apply, change or remove the Sync Status filter, **Then** the list returns to page 1.
 3. **Given** a Sync Status filter is applied, **When** the operator reloads the page or opens the shared URL, **Then** the filter, its active filter tag and the filtered list are restored.
-4. **Given** a URL whose stored Sync Status value is not one of the five values, **When** the page loads, **Then** the list is not narrowed by sync status.
+4. **Given** a URL whose stored Sync Status value is not one of the Sync Status values, **When** the page loads, **Then** the list is not narrowed by sync status.
 
 ---
 
@@ -80,14 +80,14 @@ The operator narrows the list with several criteria and shares the result with a
 ### Functional Requirements
 
 - **FR-001**: The Branches section MUST offer a Sync Status filter in its filter picker, next to the branch name and Status filters.
-- **FR-002**: The Sync Status filter MUST offer exactly the five sync status values (Unknown, In Sync, Import Error, Tracked Ref Missing, Syncing), shown with the same labels as the Sync Status column.
+- **FR-002**: The Sync Status filter MUST offer exactly the five sync status values (Unknown, Import Error, Tracked Ref Missing, In Sync, Syncing), shown with the same labels as the Sync Status column.
 - **FR-003**: Applying a Sync Status value MUST list only the branches whose Sync Status equals that value, as the Sync Status column shows it, including values inherited from the default branch.
 - **FR-004**: The number next to the "Branches" heading and the paging controls MUST reflect the filtered set.
 - **FR-005**: The Sync Status filter MUST combine with the branch name search and the Status filter: a branch is listed only when it matches all active filters.
 - **FR-006**: The Sync Status column header MUST offer the same filter, and MUST NOT offer sorting.
 - **FR-007**: Applying, changing or removing the Sync Status filter MUST return the list to its first page.
 - **FR-008**: The Sync Status filter MUST be stored with the section's other filters in the page URL, so a reload or a shared URL restores it.
-- **FR-009**: A stored Sync Status value that is not one of the five values MUST be ignored, so the list is not narrowed by it.
+- **FR-009**: A stored Sync Status value that is not one of the Sync Status values MUST be ignored, so the list is not narrowed by it.
 - **FR-010**: The filter MUST be available on the Branches section of both read-write and read-only repositories.
 - **FR-011**: The active filter tag for the Sync Status filter MUST show the value's label ("Import Error"), not the stored value ("error-import"). The Status filter tag in the Branches section and filter tags in other object tables MUST keep their current display; if the shared tag display cannot show the label without changing them, the Branches section uses a dedicated tag display of its own (decided by the user on 2026-10-20).
 

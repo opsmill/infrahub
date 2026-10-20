@@ -20,7 +20,7 @@ InfrahubRepositoryBranchStatus(
 ## URL state
 
 - Key: `branches_filter` (card scope `branches`).
-- Entry: `{ "name": "sync_status__value", "value": "<one of the five values>" }`.
+- Entry: `{ "name": "sync_status__value", "value": "<one of the sync_status choices>" }`.
 - Written identically by the filter picker and the Sync Status column header.
 
 ## Active filter tag

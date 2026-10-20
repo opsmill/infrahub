@@ -40,6 +40,8 @@ Paths are relative to `frontend/app/` unless they start with `tests/e2e/`, `chan
 
 **Checkpoint**: domain guard, query variable, shared tag flag and request arguments are green.
 
+**Changed during review**: the five-value list and guard of T002, T003, T008 and T009 were replaced by a check against the `sync_status` attribute's choices in the repository schema (research R3).
+
 ## Phase 3: User Story 1 - List only the branches that failed to import (P1) 🎯 MVP
 
 **Goal**: The filter picker offers Sync Status with five labelled values; applying one lists only matching branches, with the filtered count, the label in the tag and the filtered empty state.
@@ -75,7 +77,7 @@ Paths are relative to `frontend/app/` unless they start with `tests/e2e/`, `chan
 
 - [ ] T017 Add `tests/e2e/repository/test_repository_branches_sync_filter.py` (marker `shard_branches_repo`), following `tests/e2e/repository/test_repository_sync_status.py` and research R7: create a branch with `sync_with_git=True`, wait until `demo-edge` is imported on it, set its `sync_status` to `error-import` with the SDK, open the `demo-edge` repository page, apply Sync Status "Import Error" from the Branches section, and assert with `expect` that the branch is listed and a branch with another sync status is not. If the value is overwritten by a synchronization cycle, use the fallback in R7 and state the reason in the fixture docstring. Run it with `uv run pytest -c tests/e2e/pytest.ini tests/e2e/repository/test_repository_branches_sync_filter.py -s --pdb` (prefix `sleep infinity |` in a non-interactive shell)
 - [x] T018 [P] Extend the unreleased Branches section fragment `changelog/+ifc-3130-repository-branches-card.added.md` (no new fragment, the section has not shipped) with the `creating-changelog-entries` skill: a user can filter a repository's Branches section by Sync Status, from the filter picker or the Sync Status column header
-- [ ] T019 Run the frontend CI gate and paste the output: `node_modules/.bin/biome ci .` in `frontend`, then `pnpm knip`, `pnpm exec betterer ci` and `pnpm test` in `frontend/app`; on a `graphql-cache.d.ts` conflict after a rebase, take either side and rerun `pnpm codegen:graphql`
+- [x] T019 Run the frontend CI gate and paste the output: `node_modules/.bin/biome ci .` in `frontend`, then `pnpm knip`, `pnpm exec betterer ci` and `pnpm test` in `frontend/app`; on a `graphql-cache.d.ts` conflict after a rebase, take either side and rerun `pnpm codegen:graphql`
 - [ ] T020 Walk `dev/specs/ifc-3471-repo-branches-sync-filter/quickstart.md` scenarios 1 to 7 against the running stack
 
 ## Dependencies

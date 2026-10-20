@@ -14,9 +14,9 @@
 
 ## R3. Validating the stored value
 
-- **Decision**: Static `FILTERABLE_SYNC_STATUSES` guard in `entities/repository/domain/model/repository.ts`.
-- **Rationale**: Mirrors `isFilterableBranchStatus`, keeps the argument mapping independent of the schema, and turns a hand-edited URL value into "no filter" instead of an empty list.
-- **Alternatives**: Validate against the schema's choices. Rejected: makes argument mapping depend on the schema. Tradeoff accepted: a sixth backend value would be offered in the picker but not sent until the list is updated, the same limit the Status filter has.
+- **Decision**: Check the stored value against the choices of the repository schema's `sync_status` attribute, and send it only when it is one of them. Changed during review on 2026-10-20, approved by the user.
+- **Rationale**: The picker, the column header and the tag already read the schema's choices, so the request uses the same source. A hand-edited URL value outside the choices becomes "no filter" instead of an empty list. The frontend architecture rule forbids copying server values into client constants.
+- **Alternatives**: A static five-value list in `entities/repository/domain/model/repository.ts`, mirroring `isFilterableBranchStatus`. This was the first implementation; review found that a value present in the schema but missing from the list showed a tag but was not sent.
 
 ## R4. Showing the label in the Sync Status tag only
 
@@ -25,7 +25,7 @@
 - **Cost**: `formatAttributeFilterValue` changes signature (kind to schema); its call sites and tests change with it. Guard tests prove that a Dropdown tag without the flag and a `Text` + `enum` tag with the flag keep the stored value.
 - **Alternatives**:
   - An optional `formatFilterValue` callback supplied by the card. Rejected by the user: the label rule would live in the card instead of the shared formatter.
-  - A copied tag component for the card. Rejected: duplicates about 150 lines of selection, edit and remove logic.
+  - A copied tag component for the card. Rejected: duplicates the selection, edit and remove logic of the shared component.
 - **Choice lookup**: inline `schema.choices?.find(({ name }) => name === value)?.label`, as in two other places; no new shared rule (Principle VII).
 
 ## R5. Column header
