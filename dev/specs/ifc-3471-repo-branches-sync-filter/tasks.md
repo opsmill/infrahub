@@ -14,7 +14,7 @@ Paths are relative to `frontend/app/` unless they start with `tests/e2e/`, `chan
 
 ## Phase 2: Foundational (blocks every user story)
 
-### Sync status values (domain)
+### Sync Status values (domain)
 
 - [x] T002 [P] Write failing tests in `src/entities/repository/domain/model/repository.test.ts` (new file): `isFilterableSyncStatus` accepts each of `unknown`, `in-sync`, `error-import`, `error-ref-missing`, `syncing` and rejects `"bogus"`, `""` and `42`
 - [x] T003 [P] In `src/entities/repository/domain/model/repository.ts`, add `REPOSITORY_SYNC_STATUS_ERROR_REF_MISSING = "error-ref-missing"`, `FILTERABLE_SYNC_STATUSES` (the five values in schema order, `as const`, built from the existing `REPOSITORY_SYNC_STATUS_*` constants), type `FilterableSyncStatus` and type guard `isFilterableSyncStatus(value: unknown): value is FilterableSyncStatus`, mirroring `isFilterableBranchStatus` in `<card>/branch-row-fields.ts`; make T002 pass
@@ -44,9 +44,9 @@ Paths are relative to `frontend/app/` unless they start with `tests/e2e/`, `chan
 
 **Goal**: The filter picker offers Sync Status with five labelled values; applying one lists only matching branches, with the filtered count, the label in the tag and the filtered empty state.
 
-**Independent test**: apply Sync Status "Import Error" from the picker; only matching rows, `1 branch` next to the heading, tag `Sync status contains Import Error`.
+**Independent test**: apply Sync Status "Import Error" from the picker; only matching rows, `1 branch` next to the heading, tag `Sync Status contains Import Error`.
 
-- [x] T011 [US1] In `<card>/repository-branches-card.test.tsx`, copying the Status filter tests and the `openFilterField` / `expectServerDrivenChange` helpers, write failing tests: the picker offers a Sync status field whose value list shows the five labels in schema order; choosing "Import Error" sends `sync_status__value: "error-import"` (the stored value, not the label) and the total changes to the server count; with both filters applied, the tags read `Sync status contains Import Error` and `Status contains OPEN`; a filter matching nothing shows "No branch matches these filters"; removing the tag returns the unfiltered list; with `readOnlyRepositorySchema` the picker also offers Sync status
+- [x] T011 [US1] In `<card>/repository-branches-card.test.tsx`, copying the Status filter tests and the `openFilterField` / `expectServerDrivenChange` helpers, write failing tests: the picker offers a Sync Status field whose value list shows the five labels in schema order; choosing "Import Error" sends `sync_status__value: "error-import"` (the stored value, not the label) and the total changes to the server count; with both filters applied, the tags read `Sync Status contains Import Error` and `Status contains OPEN`; a filter matching nothing shows "No branch matches these filters"; removing the tag returns the unfiltered list; with `readOnlyRepositorySchema` the picker also offers Sync Status
 - [x] T012 [US1] In `<card>/branch-row-fields.ts`, add `getSyncStatusAttribute(schema: ModelSchema)` using `REPOSITORY_SYNC_STATUS_ATTRIBUTE_NAME`, and replace `BRANCH_ROW_FILTER_DEFINITIONS` and `BRANCH_ROW_FILTER_DEFINITIONS_BY_NAME` with `getBranchRowFilterDefinitions(schema: ModelSchema): { list: FilterDefinition[]; byName: Record<string, FilterDefinition> }` returning Name, Status and, when the attribute exists, `{ type: "attribute", schema: syncStatusAttribute }`; update the comments that say the card filters on two fields
 - [x] T013 [US1] In `<card>/repository-branches-toolbar.tsx`, take `{ schema }: { schema: ModelSchema }`, build `getBranchRowFilterDefinitions(schema)` while rendering, pass `list` to `FilterPicker`, and pass `byName` plus `showChoiceLabels` to `ActiveFilterTags`; in `<card>/repository-branches-card.tsx`, render `<RepositoryBranchesToolbar schema={schema} />`; make T011 pass and fix any remaining import of the removed constants (`pnpm knip` must stay clean)
 
@@ -58,7 +58,7 @@ Paths are relative to `frontend/app/` unless they start with `tests/e2e/`, `chan
 
 **Independent test**: apply Import Error from the column header; same rows, tag and URL as from the picker; no sort action.
 
-- [x] T014 [US2] In `<card>/repository-branches-card.test.tsx` (and `<card>/columns.test.tsx` for the header alone), write failing tests: the Sync status header button opens a menu with "Filter" and no sort item; applying a value from it sends the same variables and writes `sync_status__value` to `${BRANCHES_URL_PREFIX}_filter`; the same holds with `readOnlyRepositorySchema`
+- [x] T014 [US2] In `<card>/repository-branches-card.test.tsx` (and `<card>/columns.test.tsx` for the header alone), write failing tests: the Sync Status header button opens a menu with "Filter" and no sort item; applying a value from it sends the same variables and writes `sync_status__value` to `${BRANCHES_URL_PREFIX}_filter`; the same holds with `readOnlyRepositorySchema`
 - [x] T015 [US2] In `<card>/columns.tsx` (`getSyncStatusColumn`), remove `isDisabled` and its comment, pass `filterConditions={BRANCH_ROW_FILTER_CONDITIONS}` without a `schema` prop, and replace `findAttribute(schema, "sync_status")` with `getSyncStatusAttribute(schema)`; remove `findAttribute` if it has no caller left; make T014 pass
 
 **Checkpoint**: User Stories 1 and 2 work independently.
@@ -74,7 +74,7 @@ Paths are relative to `frontend/app/` unless they start with `tests/e2e/`, `chan
 ## Phase 6: Polish and cross-cutting
 
 - [ ] T017 Add `tests/e2e/repository/test_repository_branches_sync_filter.py` (marker `shard_branches_repo`), following `tests/e2e/repository/test_repository_sync_status.py` and research R7: create a branch with `sync_with_git=True`, wait until `demo-edge` is imported on it, set its `sync_status` to `error-import` with the SDK, open the `demo-edge` repository page, apply Sync Status "Import Error" from the Branches section, and assert with `expect` that the branch is listed and a branch with another sync status is not. If the value is overwritten by a synchronization cycle, use the fallback in R7 and state the reason in the fixture docstring. Run it with `uv run pytest -c tests/e2e/pytest.ini tests/e2e/repository/test_repository_branches_sync_filter.py -s --pdb` (prefix `sleep infinity |` in a non-interactive shell)
-- [ ] T018 [P] Add the changelog fragment `changelog/+ifc-3471-repo-branches-sync-filter.added.md` with the `creating-changelog-entries` skill: a user can filter a repository's Branches section by Sync Status, from the filter picker or the Sync Status column header
+- [x] T018 [P] Extend the unreleased Branches section fragment `changelog/+ifc-3130-repository-branches-card.added.md` (no new fragment, the section has not shipped) with the `creating-changelog-entries` skill: a user can filter a repository's Branches section by Sync Status, from the filter picker or the Sync Status column header
 - [ ] T019 Run the frontend CI gate and paste the output: `node_modules/.bin/biome ci .` in `frontend`, then `pnpm knip`, `pnpm exec betterer ci` and `pnpm test` in `frontend/app`; on a `graphql-cache.d.ts` conflict after a rebase, take either side and rerun `pnpm codegen:graphql`
 - [ ] T020 Walk `dev/specs/ifc-3471-repo-branches-sync-filter/quickstart.md` scenarios 1 to 7 against the running stack
 

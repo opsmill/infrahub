@@ -9,7 +9,7 @@
 ## Scenarios
 
 1. **Filter picker** (User Story 1): open the repository's page, open Filter in the Branches section, choose Sync Status. Expect five labelled values. Choose Import Error and apply. Expect only the failing branch, and `1` next to the "Branches" heading.
-2. **Tag**: expect the tag `Sync status contains Import Error`. Add a Status filter Open; expect `Status contains OPEN` next to it.
+2. **Tag**: expect the tag `Sync Status contains Import Error`. Add a Status filter Open; expect `Status contains OPEN` next to it.
 3. **Column header** (User Story 2): remove the filters, open the Sync Status column header. Expect a Filter action and no sort action. Apply Import Error; expect the same rows, tag and URL as in scenario 1.
 4. **Combine, page, share** (User Story 3): with a name search, a Status filter and the Sync Status filter, reload the page; expect all three restored. Change the filter while on page 2; expect page 1.
 5. **Invalid URL value**: edit the URL so the stored sync status value is `bogus`; expect the unfiltered list.
