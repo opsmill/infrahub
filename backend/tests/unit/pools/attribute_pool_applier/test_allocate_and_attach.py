@@ -122,6 +122,18 @@ async def test_a_number_provided_on_update_is_attached_to_the_pool(
     assert allocator.calls == [PoolCall(action="attach", pool_id=POOL_ID, node_id=NODE_ID, attribute_name="ticket_id")]
 
 
+async def test_an_attached_number_equal_to_the_schema_default_stops_being_a_default(
+    applier: AttributePoolApplier, allocator: RecordingNumberAllocator
+) -> None:
+    ticket_id = make_ticket_id(payload={"value": 7, "from_pool": {"id": POOL_ID}}, saved=True)
+    ticket_id.is_default = True
+
+    await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True, user_id=ACTOR_ID)
+
+    assert ticket_id.is_default is False, "a profile overwrites an attribute that holds its default"
+    assert allocator.calls == [PoolCall(action="attach", pool_id=POOL_ID, node_id=NODE_ID, attribute_name="ticket_id")]
+
+
 async def test_a_number_the_pool_reports_as_allocated_stays_allocated_when_attached(
     applier: AttributePoolApplier, finder: InMemoryNumberPoolFinder, allocator: RecordingNumberAllocator
 ) -> None:
