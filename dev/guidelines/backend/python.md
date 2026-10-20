@@ -78,7 +78,9 @@ by several routes, so cutting one edge rarely frees it. Then fix the dependency 
 - Depend on the narrower interface the code actually uses: a lock that only calls `service.cache`
   takes the cache adapter, not the services container that owns it.
 - When the import only served a runtime `isinstance`, give each accepted type its own parameter so
-  the branches narrow on `None` and the type stays a `TYPE_CHECKING` import.
+  the branches narrow on `None` and the type stays a `TYPE_CHECKING` import. This does not apply
+  when the types are two backends for the same role: those go behind one interface (see
+  [Interfaces for multiple implementations](component-design.md#interfaces-for-multiple-implementations)).
 - Move a helper next to its only caller when that module already sits at the right layer.
 
 ```python
