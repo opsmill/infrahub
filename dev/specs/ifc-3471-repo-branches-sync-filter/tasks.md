@@ -69,7 +69,7 @@ Paths are relative to `frontend/app/` unless they start with `tests/e2e/`, `chan
 
 **Independent test**: search + Status + Sync Status, reload; all three restored and sent together.
 
-- [ ] T016 [US3] In `<card>/repository-branches-card.test.tsx`, write tests (they should pass on the code from T009 and T013; if one fails, fix the cause in the card files): search text, Status and Sync Status are sent in one request; applying, changing or removing the Sync Status filter returns to page 1; a `branches_filter` URL entry `sync_status__value: "error-import"` restores the filter and its tag on load; an entry `sync_status__value: "bogus"` sends `FIRST_PAGE_VARIABLES` with no sync status
+- [x] T016 [US3] In `<card>/repository-branches-card.test.tsx`, write tests (they should pass on the code from T009 and T013; if one fails, fix the cause in the card files): search text, Status and Sync Status are sent in one request; applying, changing or removing the Sync Status filter returns to page 1; a `branches_filter` URL entry `sync_status__value: "error-import"` restores the filter and its tag on load; an entry `sync_status__value: "bogus"` sends `FIRST_PAGE_VARIABLES` with no sync status
 
 ## Phase 6: Polish and cross-cutting
 

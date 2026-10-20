@@ -1152,6 +1152,249 @@ describe("RepositoryBranchesCard", () => {
     });
   });
 
+  it("combines the search text, the status and the sync status into one request", async () => {
+    // GIVEN
+    const unfiltered = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
+    const matched = generateRepositoryBranchStatusPayloadAfter({ count: 3 });
+    apiMock.mockResolvedValueOnce(toApiResult(unfiltered)).mockResolvedValue(toApiResult(matched));
+
+    // WHEN
+    const component = await renderCard();
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 0,
+      variables: FIRST_PAGE_VARIABLES,
+      payload: toApiResult(unfiltered),
+      rowVisibleAfter: "feature-auth",
+    });
+    await component.getByRole("searchbox", { name: "Search branches" }).fill("release");
+    // The search is debounced, so wait for its request before adding the next filter.
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 1,
+      variables: { ...FIRST_PAGE_VARIABLES, name__value: "release", partial_match: true },
+      payload: toApiResult(matched),
+      rowVisibleAfter: "release-2-0",
+    });
+    await applyBranchStatusFilter(component, "OPEN");
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 2,
+      variables: {
+        ...FIRST_PAGE_VARIABLES,
+        name__value: "release",
+        partial_match: true,
+        status__value: "OPEN",
+      },
+      payload: toApiResult(matched),
+      rowVisibleAfter: "release-2-0",
+    });
+    await applySyncStatusFilter(component, "Import Error");
+
+    // THEN
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 3,
+      variables: {
+        ...FIRST_PAGE_VARIABLES,
+        name__value: "release",
+        partial_match: true,
+        status__value: "OPEN",
+        sync_status__value: "error-import",
+      },
+      payload: toApiResult(matched),
+      rowVisibleAfter: "release-2-0",
+    });
+  });
+
+  it("returns to the first page when a sync status filter is applied", async () => {
+    // GIVEN a card already showing the second page
+    const firstPage = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
+    const secondPage = generateRepositoryBranchStatusPayloadAfter({ count: 45 });
+    const filtered = generateRepositoryBranchStatusPage({
+      rows: [generateRepositoryBranchStatus({ name: { value: "release-candidate" } })],
+    });
+    apiMock
+      .mockResolvedValueOnce(toApiResult(firstPage))
+      .mockResolvedValueOnce(toApiResult(secondPage))
+      .mockResolvedValue(toApiResult(filtered));
+    const component = await renderCard();
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 0,
+      variables: FIRST_PAGE_VARIABLES,
+      payload: toApiResult(firstPage),
+      rowVisibleAfter: "feature-auth",
+    });
+    await component.getByRole("button", { name: "Page 2" }).click();
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 1,
+      variables: { ...FIRST_PAGE_VARIABLES, offset: PAGE_SIZE },
+      payload: toApiResult(secondPage),
+      rowVisibleAfter: "release-2-0",
+    });
+
+    // WHEN
+    await applySyncStatusFilter(component, "Import Error");
+
+    // THEN
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 2,
+      variables: { ...FIRST_PAGE_VARIABLES, sync_status__value: "error-import" },
+      payload: toApiResult(filtered),
+      rowVisibleAfter: "release-candidate",
+    });
+  });
+
+  it("returns to the first page when the sync status filter is changed", async () => {
+    // GIVEN a sync status filter applied and its second page on screen
+    const firstPage = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
+    const secondPage = generateRepositoryBranchStatusPayloadAfter({ count: 45 });
+    const changed = generateRepositoryBranchStatusPage({
+      rows: [generateRepositoryBranchStatus({ name: { value: "release-candidate" } })],
+    });
+    apiMock
+      .mockResolvedValueOnce(toApiResult(firstPage))
+      .mockResolvedValueOnce(toApiResult(firstPage))
+      .mockResolvedValueOnce(toApiResult(secondPage))
+      .mockResolvedValue(toApiResult(changed));
+    const component = await renderCard();
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 0,
+      variables: FIRST_PAGE_VARIABLES,
+      payload: toApiResult(firstPage),
+      rowVisibleAfter: "feature-auth",
+    });
+    await applySyncStatusFilter(component, "Import Error");
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 1,
+      variables: { ...FIRST_PAGE_VARIABLES, sync_status__value: "error-import" },
+      payload: toApiResult(firstPage),
+      rowVisibleAfter: "feature-auth",
+    });
+    await component.getByRole("button", { name: "Page 2" }).click();
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 2,
+      variables: { ...FIRST_PAGE_VARIABLES, offset: PAGE_SIZE, sync_status__value: "error-import" },
+      payload: toApiResult(secondPage),
+      rowVisibleAfter: "release-2-0",
+    });
+
+    // WHEN the tag is reopened and another value chosen
+    await component.getByRole("row", { name: "Sync status contains Import Error" }).click();
+    await component.getByRole("option", { name: /^Syncing/ }).click();
+    await component.getByRole("button", { name: "Apply", exact: true }).click();
+
+    // THEN
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 3,
+      variables: { ...FIRST_PAGE_VARIABLES, sync_status__value: "syncing" },
+      payload: toApiResult(changed),
+      rowVisibleAfter: "release-candidate",
+    });
+  });
+
+  it("returns to the first page when the sync status filter is removed", async () => {
+    // GIVEN a sync status filter applied and its second page on screen
+    const firstPage = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
+    const filteredFirstPage = generateRepositoryBranchStatusPage({
+      rows: [generateRepositoryBranchStatus({ name: { value: "release-candidate" } })],
+      count: 45,
+    });
+    const filteredSecondPage = generateRepositoryBranchStatusPayloadAfter({ count: 45 });
+    apiMock
+      .mockResolvedValueOnce(toApiResult(firstPage))
+      .mockResolvedValueOnce(toApiResult(filteredFirstPage))
+      .mockResolvedValueOnce(toApiResult(filteredSecondPage))
+      .mockResolvedValue(toApiResult(firstPage));
+    const component = await renderCard();
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 0,
+      variables: FIRST_PAGE_VARIABLES,
+      payload: toApiResult(firstPage),
+      rowVisibleAfter: "feature-auth",
+    });
+    await applySyncStatusFilter(component, "Import Error");
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 1,
+      variables: { ...FIRST_PAGE_VARIABLES, sync_status__value: "error-import" },
+      payload: toApiResult(filteredFirstPage),
+      rowVisibleAfter: "release-candidate",
+    });
+    await component.getByRole("button", { name: "Page 2" }).click();
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 2,
+      variables: { ...FIRST_PAGE_VARIABLES, offset: PAGE_SIZE, sync_status__value: "error-import" },
+      payload: toApiResult(filteredSecondPage),
+      rowVisibleAfter: "release-2-0",
+    });
+
+    // WHEN
+    await component
+      .getByRole("row", { name: "Sync status contains Import Error" })
+      .getByRole("button", { name: "Remove" })
+      .click();
+
+    // THEN the unfiltered first page is back on screen
+    await expect.element(component.getByRole("row", { name: /feature-auth/ })).toBeVisible();
+    await expect
+      .element(component.getByRole("button", { name: "Page 1" }))
+      .toHaveAttribute("aria-current", "page");
+  });
+
+  it("restores a sync status filter and its tag from the url", async () => {
+    // GIVEN
+    const payload = generateRepositoryBranchStatusPayloadAfter({ count: 3 });
+    apiMock.mockResolvedValue(toApiResult(payload));
+    window.history.replaceState(
+      null,
+      "",
+      `?${BRANCHES_URL_PREFIX}_${QSP.FILTER}=${encodeURIComponent(JSON.stringify([{ name: "sync_status__value", value: "error-import" }]))}`
+    );
+
+    // WHEN
+    const component = await renderCard();
+
+    // THEN
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 0,
+      variables: { ...FIRST_PAGE_VARIABLES, sync_status__value: "error-import" },
+      payload: toApiResult(payload),
+      rowVisibleAfter: "release-2-0",
+    });
+    await expect
+      .element(component.getByRole("row", { name: "Sync status contains Import Error" }))
+      .toBeVisible();
+  });
+
+  it("ignores a sync status value the schema does not declare", async () => {
+    // GIVEN a value written to the url by hand
+    const payload = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
+    apiMock.mockResolvedValue(toApiResult(payload));
+    window.history.replaceState(
+      null,
+      "",
+      `?${BRANCHES_URL_PREFIX}_${QSP.FILTER}=${encodeURIComponent(JSON.stringify([{ name: "sync_status__value", value: "bogus" }]))}`
+    );
+
+    // WHEN
+    const component = await renderCard();
+
+    // THEN
+    await expect.element(component.getByText("feature-auth", { exact: true })).toBeVisible();
+    expect(apiMock.mock.calls[0]?.[0]).toEqual(FIRST_PAGE_VARIABLES);
+  });
+
   it("offers no second sort key, which the request could not carry", async () => {
     // GIVEN a card already ordered by one timestamp
     apiMock.mockResolvedValue(
