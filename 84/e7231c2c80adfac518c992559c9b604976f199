@@ -1,0 +1,59 @@
+dev/knowledge/backend/mutations.md
+  s_7ebedf29eda896::t_a4446a1783a76c 163-165
+backend/tests/component/core/test_manager_node.py
+  s_7ebedf29eda896::t_60c73bb4f5e29d 522-547,549-552
+  s_7ebedf29eda896::t_884747c1037fff 548
+  s_7ebedf29eda896::t_2e785c256d11a1 15
+frontend/app/src/entities/navigation/ui/breadcrumbs/breadcrumb-object-details-hierarchy.test.tsx
+  s_7ebedf29eda896::t_26bf1f8092edf0 1-120
+changelog/11128.fixed.md
+  s_7ebedf29eda896::t_4c5e5cec63056f 1
+backend/tests/component/graphql/test_graphql_query.py
+  s_7ebedf29eda896::t_1487c78674beaa 2086-2142
+  s_7ebedf29eda896::t_1dda3679704985 15-16
+frontend/app/src/entities/nodes/hierarchy/domain/use-cases/get-object-ancestors.ts
+  s_7ebedf29eda896::t_adceb9268112f2 9-15,18,51,53-54,57-60,62,65-68
+  s_7ebedf29eda896::t_add4ab88406469 5,20-22,42
+  s_7ebedf29eda896::t_1789d722a7014c 19
+frontend/app/src/entities/nodes/hierarchy/ui/object-hierarchy-tree.test.tsx
+  s_7ebedf29eda896::t_072deb04503a80 1-111
+frontend/app/src/entities/nodes/hierarchy/domain/use-cases/get-object-ancestors.test.ts
+  s_7ebedf29eda896::t_070e1407a1e6fd 86-98,139-141,189-191,279-280,329-330,380-489
+backend/infrahub/core/relationship/model.py
+  s_7ebedf29eda896::t_8fcdf4a673e5f2 818,820-825
+  s_7ebedf29eda896::t_ba430d14193210 819,1286,1289,1296-1298
+  s_7ebedf29eda896::t_92bbe993d8d355 1277,1285,1287-1288,1290-1295,1299-1316
+  s_7ebedf29eda896::t_1391556c577872 1317
+frontend/app/src/entities/navigation/ui/breadcrumbs/breadcrumb-object-details-hierarchy.tsx
+  s_7ebedf29eda896::t_c53173a4bbe252 10,44-45,76-77,88-98,101-108
+  s_7ebedf29eda896::t_0aa1de27713011 73-75,99-100
+  s_7ebedf29eda896::t_eefef02d17d2c8 109-111
+frontend/app/src/entities/nodes/hierarchy/ui/object-hierarchy-tree-lite.tsx
+  s_7ebedf29eda896::t_e4562e7c6583e2 33-34,36,45
+backend/infrahub/core/manager.py
+  s_7ebedf29eda896::t_ba430d14193210 1369
+  s_7ebedf29eda896::t_848a40fd6abc2f 1368,1370-1374,1376
+  s_7ebedf29eda896::t_19bd0313a32bcd 1375
+  s_7ebedf29eda896::t_3c6ec4035283d0 44,51
+  s_7ebedf29eda896::t_dc0eebef66e5c2 52
+frontend/app/src/entities/ipam/ipam-tree/ui/ipam-tree.tsx
+  s_7ebedf29eda896::t_e4562e7c6583e2 61
+frontend/app/src/entities/nodes/hierarchy/ui/object-hierarchy-tree.tsx
+  s_7ebedf29eda896::t_e4562e7c6583e2 24-37,43,84-86,114,123,125,142,161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "84e7231c2c80adfac518c992559c9b604976f199",
+  "prompts": {},
+  "sessions": {
+    "s_7ebedf29eda896": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1779f3c1-034c-4bf1-9396-d48c01aa32b9",
+        "model": "unknown"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}
