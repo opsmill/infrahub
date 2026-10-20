@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import calendar
+import hashlib
 import json
 import os
 import re
@@ -138,12 +139,15 @@ def wait_for_new_pr(payload: dict[str, Any]) -> dict[str, Any] | None:
 
 
 def claim(url: str) -> bool:
-    STATE_DIR.mkdir(parents=True, exist_ok=True)
-    started = STATE_DIR / "started.txt"
-    if started.exists() and url in started.read_text(encoding="utf-8").split():
+    claims = STATE_DIR / "claimed"
+    claims.mkdir(parents=True, exist_ok=True)
+    # Several hooks can fire for the same command at once, so creating this file is the one step that only one wins.
+    try:
+        os.close(os.open(claims / hashlib.sha256(url.encode()).hexdigest(), os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+    except FileExistsError:
         return False
-    with started.open("a", encoding="utf-8") as file:
-        file.write(url + "\n")
+    with (STATE_DIR / "started.txt").open("a", encoding="utf-8") as log:
+        log.write(url + "\n")
     return True
 
 
