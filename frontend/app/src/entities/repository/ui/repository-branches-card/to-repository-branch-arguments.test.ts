@@ -6,6 +6,7 @@ import {
   SORT_DIRECTION,
   type Sort,
 } from "@/entities/nodes/sort/domain/model/sort";
+import { FILTERABLE_SYNC_STATUSES } from "@/entities/repository/domain/model/repository";
 import {
   BRANCH_NAME_FILTER,
   BRANCH_ROW_FILTER_CONDITIONS,
@@ -86,6 +87,58 @@ describe("toRepositoryBranchArguments", () => {
       partial_match: true,
       status__value: "OPEN",
     });
+  });
+
+  it.each(FILTERABLE_SYNC_STATUSES)("sends the sync status %s the query accepts", (syncStatus) => {
+    // GIVEN
+    const filters: Filter[] = [{ name: "sync_status__value", value: syncStatus }];
+
+    // WHEN
+    const result = toRepositoryBranchArguments(filters, []);
+
+    // THEN
+    expect(result).toEqual({ sync_status__value: syncStatus });
+  });
+
+  it.each([
+    ["an unknown word", "bogus"],
+    ["an empty string", ""],
+    ["a number", 42],
+  ])("drops a sync status that is %s", (_label, value) => {
+    // GIVEN a value written to the url by hand
+    const filters: Filter[] = [{ name: "sync_status__value", value }];
+
+    // THEN
+    expect(toRepositoryBranchArguments(filters, [])).toEqual({});
+    expect(hasRepositoryBranchFilters(filters)).toBe(false);
+  });
+
+  it("combines a name fragment, a status and a sync status in one request", () => {
+    // GIVEN
+    const filters: Filter[] = [
+      { name: "name__value", value: "release" },
+      { name: "status__value", value: "OPEN" },
+      { name: "sync_status__value", value: "error-import" },
+    ];
+
+    // WHEN
+    const result = toRepositoryBranchArguments(filters, []);
+
+    // THEN
+    expect(result).toEqual({
+      name__value: "release",
+      partial_match: true,
+      status__value: "OPEN",
+      sync_status__value: "error-import",
+    });
+  });
+
+  it("counts a sync status filter alone as active", () => {
+    // GIVEN
+    const filters: Filter[] = [{ name: "sync_status__value", value: "error-import" }];
+
+    // THEN
+    expect(hasRepositoryBranchFilters(filters)).toBe(true);
   });
 
   it.each([

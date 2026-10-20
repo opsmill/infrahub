@@ -7,6 +7,7 @@ import {
   type Sort,
 } from "@/entities/nodes/sort/domain/model/sort";
 import type { GetRepositoryBranchStatusFromApiParams } from "@/entities/repository/api/get-repository-branch-status-from-api";
+import { isFilterableSyncStatus } from "@/entities/repository/domain/model/repository";
 import {
   BRANCH_NAME_FILTER,
   isFilterableBranchStatus,
@@ -14,10 +15,11 @@ import {
 
 export type RepositoryBranchArguments = Pick<
   GetRepositoryBranchStatusFromApiParams,
-  "name__value" | "partial_match" | "status__value" | "order"
+  "name__value" | "partial_match" | "status__value" | "sync_status__value" | "order"
 >;
 
 const STATUS_FILTER = "status__value";
+const SYNC_STATUS_FILTER = "sync_status__value";
 const CREATED_AT_SORT_FIELD: NodeMetadataSortField = "node_metadata__created_at";
 const UPDATED_AT_SORT_FIELD: NodeMetadataSortField = "node_metadata__updated_at";
 
@@ -44,6 +46,12 @@ function toStatusArguments(filters: Filter[]): RepositoryBranchArguments {
   return isFilterableBranchStatus(status) ? { status__value: status } : {};
 }
 
+function toSyncStatusArguments(filters: Filter[]): RepositoryBranchArguments {
+  const syncStatus = findFilterValue(filters, SYNC_STATUS_FILTER);
+
+  return isFilterableSyncStatus(syncStatus) ? { sync_status__value: syncStatus } : {};
+}
+
 // The query rejects an order naming both timestamps, so only the first sort key reaches the
 // request — it is the one that decides the order on screen, the rest only break its ties.
 function toOrderArgument(sorts: Sort[]): RepositoryBranchArguments {
@@ -68,6 +76,7 @@ export function toRepositoryBranchArguments(
   return {
     ...toNameArguments(filters),
     ...toStatusArguments(filters),
+    ...toSyncStatusArguments(filters),
     ...toOrderArgument(sorts),
   };
 }
@@ -78,7 +87,12 @@ export function toRepositoryBranchArguments(
  * result claim it was filtered.
  */
 export function hasRepositoryBranchFilters(filters: Filter[]): boolean {
-  const { name__value, status__value } = toRepositoryBranchArguments(filters, []);
+  const { name__value, status__value, sync_status__value } = toRepositoryBranchArguments(
+    filters,
+    []
+  );
 
-  return name__value !== undefined || status__value !== undefined;
+  return (
+    name__value !== undefined || status__value !== undefined || sync_status__value !== undefined
+  );
 }
