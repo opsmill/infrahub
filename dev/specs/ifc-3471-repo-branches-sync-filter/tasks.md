@@ -58,8 +58,8 @@ Paths are relative to `frontend/app/` unless they start with `tests/e2e/`, `chan
 
 **Independent test**: apply Import Error from the column header; same rows, tag and URL as from the picker; no sort action.
 
-- [ ] T014 [US2] In `<card>/repository-branches-card.test.tsx` (and `<card>/columns.test.tsx` for the header alone), write failing tests: the Sync status header button opens a menu with "Filter" and no sort item; applying a value from it sends the same variables and writes `sync_status__value` to `${BRANCHES_URL_PREFIX}_filter`; the same holds with `readOnlyRepositorySchema`
-- [ ] T015 [US2] In `<card>/columns.tsx` (`getSyncStatusColumn`), remove `isDisabled` and its comment, pass `filterConditions={BRANCH_ROW_FILTER_CONDITIONS}` without a `schema` prop, and replace `findAttribute(schema, "sync_status")` with `getSyncStatusAttribute(schema)`; remove `findAttribute` if it has no caller left; make T014 pass
+- [x] T014 [US2] In `<card>/repository-branches-card.test.tsx` (and `<card>/columns.test.tsx` for the header alone), write failing tests: the Sync status header button opens a menu with "Filter" and no sort item; applying a value from it sends the same variables and writes `sync_status__value` to `${BRANCHES_URL_PREFIX}_filter`; the same holds with `readOnlyRepositorySchema`
+- [x] T015 [US2] In `<card>/columns.tsx` (`getSyncStatusColumn`), remove `isDisabled` and its comment, pass `filterConditions={BRANCH_ROW_FILTER_CONDITIONS}` without a `schema` prop, and replace `findAttribute(schema, "sync_status")` with `getSyncStatusAttribute(schema)`; remove `findAttribute` if it has no caller left; make T014 pass
 
 **Checkpoint**: User Stories 1 and 2 work independently.
 

@@ -978,6 +978,43 @@ describe("RepositoryBranchesCard", () => {
     expect(params.get(QSP.FILTER)).toBeNull();
   });
 
+  it.each([
+    ["a repository", repositorySchema],
+    ["a read-only repository", readOnlyRepositorySchema],
+  ])("applies a sync status from its column header on %s", async (_label, schema) => {
+    // GIVEN
+    const unfiltered = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
+    const matched = generateRepositoryBranchStatusPayloadAfter({ count: 3 });
+    apiMock.mockResolvedValueOnce(toApiResult(unfiltered)).mockResolvedValue(toApiResult(matched));
+
+    // WHEN
+    const component = await renderCard(schema);
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 0,
+      variables: FIRST_PAGE_VARIABLES,
+      payload: toApiResult(unfiltered),
+      rowVisibleAfter: "feature-auth",
+    });
+    await component.getByRole("button", { name: "Sync status", exact: true }).click();
+    await component.getByRole("menuitem", { name: "Filter", exact: true }).click();
+    await component.getByRole("option", { name: /^Import Error/ }).click();
+    await component.getByRole("button", { name: "Apply", exact: true }).click();
+
+    // THEN the request and the url hold what the filter picker would have written
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 1,
+      variables: { ...FIRST_PAGE_VARIABLES, sync_status__value: "error-import" },
+      payload: toApiResult(matched),
+      rowVisibleAfter: "release-2-0",
+    });
+    const params = new URLSearchParams(window.location.search);
+    expect(JSON.parse(params.get(`${BRANCHES_URL_PREFIX}_${QSP.FILTER}`) ?? "[]")).toContainEqual(
+      expect.objectContaining({ name: "sync_status__value", value: "error-import" })
+    );
+  });
+
   it("narrows the column header's filter conditions the same way the toolbar does", async () => {
     // GIVEN
     apiMock.mockResolvedValue(

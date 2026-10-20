@@ -11,6 +11,7 @@ import type { RepositoryBranchStatusRow } from "@/entities/repository/domain/mod
 import {
   BRANCH_ROW_FILTER_CONDITIONS,
   BRANCH_STATUS_FIELD_SCHEMA,
+  getSyncStatusAttribute,
 } from "@/entities/repository/ui/repository-branches-card/branch-row-fields";
 import { BranchNameCell } from "@/entities/repository/ui/repository-branches-card/cells/branch-name-cell";
 import { SyncStatusCell } from "@/entities/repository/ui/repository-branches-card/cells/sync-status-cell";
@@ -29,11 +30,15 @@ function findAttribute(schema: ModelSchema, name: string): AttributeSchema | und
 function getSyncStatusColumn(
   columnSchema: AttributeSchema
 ): ColumnDef<RepositoryBranchStatusRow, unknown> {
-  // Disabled because nothing in this column's menu could be honoured: the query orders by branch
-  // node metadata alone, and this card offers no sync-status filter.
   return columnHelper.display({
     id: "sync_status",
-    header: () => <TableColumnHeader columnSchema={columnSchema} isDisabled role="columnheader" />,
+    header: () => (
+      <TableColumnHeader
+        columnSchema={columnSchema}
+        filterConditions={BRANCH_ROW_FILTER_CONDITIONS}
+        role="columnheader"
+      />
+    ),
     cell: ({ row }) => (
       <TableCell role="cell">
         {row.original.syncStatus && <SyncStatusCell syncStatus={row.original.syncStatus} />}
@@ -75,7 +80,7 @@ function getRefColumn(
 export function getRepositoryBranchesColumns(
   schema: ModelSchema
 ): Array<ColumnDef<RepositoryBranchStatusRow, unknown>> {
-  const syncStatus = findAttribute(schema, "sync_status");
+  const syncStatus = getSyncStatusAttribute(schema);
   const commit = findAttribute(schema, "commit");
   const ref = findAttribute(schema, "ref");
 
