@@ -28,9 +28,9 @@ class AttributeNumberPoolUpdateValidatorQuery(AttributeSchemaValidatorQuery):
             raise ValueError("attribute parameters are not a NumberPoolParameters")
 
         self.params["attr_name"] = self.attribute_schema.name
-        # With no range declared, none() holds for every value, so every held value is reported.
+        # A null bound would make none() null and hide every value held outside the ranges, so the bounds are resolved.
         self.params["ranges"] = [
-            [pool_range.start, pool_range.end] for pool_range in self.attribute_schema.parameters.effective_ranges()
+            [pool_range.lower, pool_range.upper] for pool_range in self.attribute_schema.parameters.effective_ranges()
         ]
 
         query = """

@@ -278,7 +278,7 @@ RELOADED_POOL_DECLARATION_CASES = [
 
 @dataclass(frozen=True)
 class ReloadOutcome:
-    declaration: tuple[int | None, int | None, list[tuple[int, int]]]
+    declaration: tuple[int | None, int | None, list[tuple[int | None, int | None]]]
     """The stored declaration after the reload, as (start_range, end_range, ranges)."""
     changed_parameters: list[str]
     """The NumberPool parameters the update validation checks against the stored data, sorted."""

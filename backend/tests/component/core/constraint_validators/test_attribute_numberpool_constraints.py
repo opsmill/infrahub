@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 import pytest
 
 from infrahub.core import registry
@@ -21,6 +23,22 @@ from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynch
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from infrahub.pools.scoped_number_pool_reader import ScopedNumberPoolReader
 from tests.helpers.schema.snow import SNOW_INCIDENT, SNOW_REQUEST, SNOW_TASK
+
+
+@dataclass
+class DeclarationTestCase:
+    name: str
+    parameters: NumberPoolParameters
+
+
+VALUE_OUTSIDE_OPEN_OR_EMPTY_DECLARATION_TEST_CASES: list[DeclarationTestCase] = [
+    DeclarationTestCase(name="explicitly_empty_range_list", parameters=NumberPoolParameters(ranges=[])),
+    DeclarationTestCase(name="start_only_shorthand_above_the_value", parameters=NumberPoolParameters(start_range=10)),
+    DeclarationTestCase(
+        name="open_ended_range_above_the_value",
+        parameters=NumberPoolParameters(ranges=[NumberPoolRangeParameters(start=10)]),
+    ),
+]
 
 
 async def build_snow_incident(db: InfrahubDatabase, branch: Branch) -> Node:
@@ -215,11 +233,27 @@ class TestNumberPoolConstraintQueries:
 
         assert all_data_paths == []
 
-    async def test_query_numberpool_constraints_reports_every_value_when_no_range_is_declared(
+    async def test_query_numberpool_constraints_accepts_every_value_when_no_range_is_declared(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, snow_incident_01: Node
     ) -> None:
         all_data_paths = await self._held_values_outside(
             db=db, branch=default_branch_scope_class, parameters=NumberPoolParameters()
+        )
+
+        assert all_data_paths == []
+
+    @pytest.mark.parametrize(
+        "test_case", [pytest.param(tc, id=tc.name) for tc in VALUE_OUTSIDE_OPEN_OR_EMPTY_DECLARATION_TEST_CASES]
+    )
+    async def test_query_numberpool_constraints_reports_a_value_outside_an_open_or_empty_declaration(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        snow_incident_01: Node,
+        test_case: DeclarationTestCase,
+    ) -> None:
+        all_data_paths = await self._held_values_outside(
+            db=db, branch=default_branch_scope_class, parameters=test_case.parameters
         )
 
         assert all_data_paths == [
