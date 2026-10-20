@@ -7,8 +7,9 @@ from graphql import GraphQLError
 from graphql.type.definition import GraphQLNonNull
 from opentelemetry import trace
 
-from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipHierarchyDirection
+from infrahub.core.constants import BranchSupportType, InfrahubKind, MetadataOptions, RelationshipHierarchyDirection
 from infrahub.core.manager import NodeManager
+from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.order import OrderModel
 from infrahub.database import retry_db_transaction
 from infrahub.exceptions import NodeNotFoundError
@@ -369,6 +370,12 @@ async def hierarchy_resolver(
     fields = extract_graphql_fields(info=info)
     edges = fields.get("edges", {})
     node_fields = edges.get("node", {})
+    node_metadata_fields = edges.get("node_metadata", {})
+    include_metadata = MetadataQueryOptions(
+        node_level=MetadataOptions.LINKED_NODES,
+        attribute_level=MetadataOptions.LINKED_NODES,
+        relationship_level=MetadataOptions.LINKED_NODES,
+    ) | build_metadata_query_options(node_metadata_fields=node_metadata_fields, node_fields=node_fields)
 
     # Extract only the filters from the kwargs and prepend the name of the field to the filters
     offset = kwargs.pop("offset", None)
@@ -412,16 +419,17 @@ async def hierarchy_resolver(
             at=graphql_context.at,
             branch=graphql_context.branch,
             order=order_model,
+            include_metadata=include_metadata,
         )
 
         if not objs:
             return response
-        node_graph = [await obj.to_graphql(db=db, fields=node_fields) for obj in objs.values()]
 
         entries = []
-        for node in node_graph:
-            entry = {"node": {}, "properties": {}}
-            entry["node"] = node
+        for obj in objs.values():
+            entry: dict[str, Any] = {"node": await obj.to_graphql(db=db, fields=node_fields), "properties": {}}
+            if node_metadata_fields:
+                entry["node_metadata"] = await obj._build_meta_response("node_metadata", edges)
             entries.append(entry)
         response["edges"] = entries
 
