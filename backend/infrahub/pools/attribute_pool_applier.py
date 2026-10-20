@@ -624,7 +624,7 @@ class AttributePoolApplier:
         if pool.node.value in [schema.kind, *schema.inherit_from] and pool.node_attribute.value == attribute.name:
             return
         raise ValidationError(
-            {f"{attribute.name}.from_pool": f"The {pool.name.value} pool can't be used for '{attribute.name}'."}
+            {f"{attribute.name}.from_pool": f"The '{pool.name.value}' pool can't be used for '{attribute.name}'."}
         )
 
     @staticmethod

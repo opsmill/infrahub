@@ -206,9 +206,9 @@ class TestPrefixUpdateChecksTheTrackedNumber:
         )
 
         assert message == (
-            "'vlan_id' is tracked by the vlans pool, so it cannot hold 900, which is outside the pool's ranges: 1-20. "
-            "To set 900 and stop the pool tracking 'vlan_id', send 'value: 900' together with 'from_pool: null'. "
-            "at vlan_id.value"
+            "'vlan_id' is tracked by the 'vlans' pool, so it cannot hold 900, which is outside the pool's ranges: 1-20. "
+            "Choose a number inside those ranges, or remove the 'vlans' pool from 'vlan_id' in the same change that "
+            "sets it to 900. at vlan_id.value"
         )
         stored = await NodeManager.get_one(db=db, id=prefix.id, branch=default_branch_scope_class)
         assert stored is not None

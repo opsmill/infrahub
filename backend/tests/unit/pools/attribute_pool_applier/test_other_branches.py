@@ -28,12 +28,7 @@ if TYPE_CHECKING:
     from infrahub.pools.attribute_pool_applier import AttributePoolApplier
 
 
-def _other_branch_message(held: str) -> str:
-    return (
-        f"The tickets pool cannot track 'ticket_id', because a pool tracks an attribute on every branch and {held} "
-        "outside its ranges: 1-100. Change the number on that branch, or delete the branch, before attaching to or allocating from this pool. "
-        "at ticket_id.from_pool"
-    )
+OTHER_BRANCH_REFUSAL = "Cannot use the 'tickets' pool for 'ticket_id': the pool would also apply to"
 
 
 def _held(branch: str, value: int) -> BranchValue:
@@ -69,7 +64,11 @@ async def test_an_attach_is_refused_when_another_branch_holds_a_number_outside_t
     with pytest.raises(ValidationError) as exc_info:
         await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True, user_id=ACTOR_ID)
 
-    assert exc_info.value.message == _other_branch_message(held="branch 'feature' holds 950, branch 'old' holds 900")
+    assert exc_info.value.message == (
+        f"{OTHER_BRANCH_REFUSAL} other branches where this object has a value outside the pool's range (1-100): "
+        "'feature' has 950, 'old' has 900. First change the value on those branches or delete them. "
+        "at ticket_id.from_pool"
+    )
     assert branch_values.reads == [[ATTRIBUTE_ID]]
     assert allocator.calls == []
 
@@ -188,7 +187,10 @@ async def test_an_allocation_from_a_new_pool_is_refused_when_another_branch_hold
     with pytest.raises(ValidationError) as exc_info:
         await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True, user_id=ACTOR_ID)
 
-    assert exc_info.value.message == _other_branch_message(held="branch 'old' holds 950")
+    assert exc_info.value.message == (
+        f"{OTHER_BRANCH_REFUSAL} branch 'old', where this object has the value 950, outside the pool's range "
+        "(1-100). First change the value on 'old' or delete that branch. at ticket_id.from_pool"
+    )
     assert branch_values.reads == [[ATTRIBUTE_ID]]
     assert allocator.calls == []
 

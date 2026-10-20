@@ -45,9 +45,9 @@ async def test_editing_a_tracked_number_to_one_outside_the_ranges_is_refused(
         await applier.check_value_change(node=ticket_id.node, attribute=ticket_id)
 
     assert exc_info.value.message == (
-        "'ticket_id' is tracked by the tickets pool, so it cannot hold 900, which is outside the pool's ranges: "
-        "1-100. To set 900 and stop the pool tracking 'ticket_id', send 'value: 900' together with "
-        "'from_pool: null'. at ticket_id.value"
+        "'ticket_id' is tracked by the 'tickets' pool, so it cannot hold 900, which is outside the pool's ranges: "
+        "1-100. Choose a number inside those ranges, or remove the 'tickets' pool from 'ticket_id' in the same "
+        "change that sets it to 900. at ticket_id.value"
     )
     assert range_reader.reads == [POOL_ID]
 
@@ -74,8 +74,8 @@ async def test_emptying_a_tracked_number_is_refused_without_reading_the_ranges(
         await applier.check_value_change(node=ticket_id.node, attribute=ticket_id)
 
     assert exc_info.value.message == (
-        "'ticket_id' is tracked by the tickets pool, so it cannot be emptied. To empty 'ticket_id' and stop the pool "
-        "tracking it, send 'value: null' together with 'from_pool: null'. at ticket_id.value"
+        "'ticket_id' is tracked by the 'tickets' pool, so it cannot be emptied. To empty 'ticket_id', remove the "
+        "'tickets' pool from it in the same change. at ticket_id.value"
     )
     assert range_reader.reads == []
 
@@ -139,8 +139,8 @@ async def test_resetting_a_tracked_number_to_its_default_is_refused_without_read
         await applier.check_reset_to_default(node=ticket_id.node, attribute=ticket_id)
 
     assert exc_info.value.message == (
-        "'ticket_id' is tracked by the tickets pool, so it cannot be reset to its default. To reset 'ticket_id' and "
-        "stop the pool tracking it, send 'is_default: true' together with 'from_pool: null'. at ticket_id.is_default"
+        "'ticket_id' is tracked by the 'tickets' pool, so it cannot be reset to its default. To reset 'ticket_id', "
+        "remove the 'tickets' pool from it in the same change. at ticket_id.is_default"
     )
     assert range_reader.reads == []
     assert allocator.calls == []
@@ -213,8 +213,8 @@ async def test_a_reset_naming_the_pool_tracking_the_number_is_refused(
         await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True, user_id=ACTOR_ID)
 
     assert exc_info.value.message == (
-        "'ticket_id' is tracked by the tickets pool, so it cannot be reset to its default. To reset 'ticket_id' and "
-        "stop the pool tracking it, send 'is_default: true' together with 'from_pool: null'. at ticket_id.is_default"
+        "'ticket_id' is tracked by the 'tickets' pool, so it cannot be reset to its default. To reset 'ticket_id', "
+        "remove the 'tickets' pool from it in the same change. at ticket_id.is_default"
     )
     assert range_reader.reads == []
     assert allocator.calls == []

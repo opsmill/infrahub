@@ -661,8 +661,8 @@ class TestNumberPoolAttach:
         )
 
         assert message == (
-            "The range-refused-update pool cannot track 6900 on 'ticket_id', because 6900 is outside its ranges: "
-            "6000-6009. Send a number inside those ranges. at ticket_id.from_pool"
+            "The 'range-refused-update' pool cannot track 6900 on 'ticket_id', because 6900 is outside its ranges: "
+            "6000-6009. Choose a number inside those ranges. at ticket_id.from_pool"
         )
         reloaded = await NodeManager.get_one(db=db, id=ticket["id"], branch=main_branch)
         assert reloaded is not None
@@ -683,8 +683,8 @@ class TestNumberPoolAttach:
         )
 
         assert message == (
-            "The range-refused-create pool cannot track 6900 on 'ticket_id', because 6900 is outside its ranges: "
-            "6100-6109. Send a number inside those ranges. at ticket_id.from_pool"
+            "The 'range-refused-create' pool cannot track 6900 on 'ticket_id', because 6900 is outside its ranges: "
+            "6100-6109. Choose a number inside those ranges. at ticket_id.from_pool"
         )
         assert (
             await NodeManager.query(db=db, schema=TICKET.kind, filters={"title__value": "range-refused-create"}) == []
@@ -712,8 +712,8 @@ class TestNumberPoolAttach:
         )
 
         assert message == (
-            "The range-refused-second pool cannot track 6250 on 'ticket_id', because 6250 is outside its ranges: "
-            "6200-6240. Send a number inside those ranges. at ticket_id.from_pool"
+            "The 'range-refused-second' pool cannot track 6250 on 'ticket_id', because 6250 is outside its ranges: "
+            "6200-6240. Choose a number inside those ranges. at ticket_id.from_pool"
         )
         assert await tracking_pool_id(db=db, node_id=ticket["id"]) == first_pool.get_id()
         assert await used_numbers(db=db, branch=main_branch, pool=first_pool) == [6250]
@@ -734,7 +734,7 @@ class TestNumberPoolAttach:
         )
 
         assert message == (
-            "The range-refused-gap pool cannot track 6315 on 'ticket_id', because 6315 is outside its ranges: "
-            "6300-6310, 6320-6330. Send a number inside those ranges. at ticket_id.from_pool"
+            "The 'range-refused-gap' pool cannot track 6315 on 'ticket_id', because 6315 is outside its ranges: "
+            "6300-6310, 6320-6330. Choose a number inside those ranges. at ticket_id.from_pool"
         )
         assert await is_reserved_edges(db=db, node_id=ticket["id"]) == []

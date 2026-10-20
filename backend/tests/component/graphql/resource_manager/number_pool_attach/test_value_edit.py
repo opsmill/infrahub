@@ -41,9 +41,9 @@ mutation UpsertTicket($data: TestingTicketUpsertInput!) {
 def _tracked_edit_message(pool_name: str, value: int, ranges: str, key: str = "ticket_id.value") -> str:
     attribute_name = key.split(".", maxsplit=1)[0]
     return (
-        f"'{attribute_name}' is tracked by the {pool_name} pool, so it cannot hold {value}, which is outside the "
-        f"pool's ranges: {ranges}. To set {value} and stop the pool tracking '{attribute_name}', send "
-        f"'value: {value}' together with 'from_pool: null'. at {key}"
+        f"'{attribute_name}' is tracked by the '{pool_name}' pool, so it cannot hold {value}, which is outside the "
+        f"pool's ranges: {ranges}. Choose a number inside those ranges, or remove the '{pool_name}' pool from "
+        f"'{attribute_name}' in the same change that sets it to {value}. at {key}"
     )
 
 
@@ -273,8 +273,8 @@ class TestNumberPoolValueEdit:
         )
 
         assert message == (
-            "'ticket_id' is tracked by the value-edit pool, so it cannot be emptied. To empty 'ticket_id' and stop "
-            "the pool tracking it, send 'value: null' together with 'from_pool: null'. at ticket_id.value"
+            "'ticket_id' is tracked by the 'value-edit' pool, so it cannot be emptied. To empty 'ticket_id', remove "
+            "the 'value-edit' pool from it in the same change. at ticket_id.value"
         )
         assert await _held_value(db=db, branch=main_branch, node_id=ticket["id"]) == 7065
         assert await is_reserved_edges(db=db, node_id=ticket["id"]) == before
@@ -328,9 +328,8 @@ class TestNumberPoolValueEdit:
         )
 
         assert message == (
-            "'ticket_id' is tracked by the value-edit pool, so it cannot be reset to its default. To reset "
-            "'ticket_id' and stop the pool tracking it, send 'is_default: true' together with 'from_pool: null'. "
-            "at ticket_id.is_default"
+            "'ticket_id' is tracked by the 'value-edit' pool, so it cannot be reset to its default. To reset "
+            "'ticket_id', remove the 'value-edit' pool from it in the same change. at ticket_id.is_default"
         )
         assert await _held_value(db=db, branch=main_branch, node_id=ticket["id"]) == 7135
         assert await is_reserved_edges(db=db, node_id=ticket["id"]) == before

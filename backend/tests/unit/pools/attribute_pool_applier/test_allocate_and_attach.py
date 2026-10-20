@@ -266,7 +266,7 @@ async def test_a_pool_for_another_attribute_is_refused(
     ticket_id = make_ticket_id(payload={"from_pool": {"id": OTHER_ATTRIBUTE_POOL_ID}})
 
     with pytest.raises(
-        ValidationError, match=r"^The titles pool can't be used for 'ticket_id'\. at ticket_id\.from_pool$"
+        ValidationError, match=r"^The 'titles' pool can't be used for 'ticket_id'\. at ticket_id\.from_pool$"
     ):
         await apply_on_create(applier=applier, attribute=ticket_id)
     assert allocator.calls == []

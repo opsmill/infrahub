@@ -23,11 +23,11 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-def _other_branch_message(pool_name: str, held: str, ranges: str) -> str:
+def _other_branch_message(pool_name: str, branch: str, value: int, ranges: str) -> str:
     return (
-        f"The {pool_name} pool cannot track 'ticket_id', because a pool tracks an attribute on every branch and "
-        f"{held} outside its ranges: {ranges}. Change the number on that branch, or delete the branch, before attaching "
-        "to or allocating from this pool. at ticket_id.from_pool"
+        f"Cannot use the '{pool_name}' pool for 'ticket_id': the pool would also apply to branch '{branch}', where "
+        f"this object has the value {value}, outside the pool's range ({ranges}). First change the value on "
+        f"'{branch}' or delete that branch. at ticket_id.from_pool"
     )
 
 
@@ -50,7 +50,7 @@ class TestAttachAcrossBranches:
         )
 
         assert message == _other_branch_message(
-            pool_name="other-branch-outside", held="branch 'holds-8900' holds 8900", ranges="8000-8009"
+            pool_name="other-branch-outside", branch="holds-8900", value=8900, ranges="8000-8009"
         )
         assert await tracking_pool_id(db=db, node_id=ticket["id"]) is None
         assert await used_numbers(db=db, branch=main_branch, pool=pool) == []
@@ -71,7 +71,7 @@ class TestAttachAcrossBranches:
         )
 
         assert message == _other_branch_message(
-            pool_name="older-branch-outside", held=f"branch '{older.name}' holds 8910", ranges="8010-8019"
+            pool_name="older-branch-outside", branch=older.name, value=8910, ranges="8010-8019"
         )
         assert await tracking_pool_id(db=db, node_id=ticket["id"]) is None
         assert await used_numbers(db=db, branch=main_branch, pool=pool) == []
@@ -92,7 +92,7 @@ class TestAttachAcrossBranches:
         )
 
         assert message == _other_branch_message(
-            pool_name="newer-branch-outside", held=f"branch '{newer.name}' holds 8950", ranges="8050-8059"
+            pool_name="newer-branch-outside", branch=newer.name, value=8950, ranges="8050-8059"
         )
         reloaded = await NodeManager.get_one(db=db, id=ticket["id"], branch=main_branch)
         assert reloaded is not None
@@ -150,7 +150,7 @@ class TestAttachAcrossBranches:
         )
 
         assert message == _other_branch_message(
-            pool_name="default-branch-outside", held=f"branch '{main_branch.name}' holds 8940", ranges="8040-8049"
+            pool_name="default-branch-outside", branch=main_branch.name, value=8940, ranges="8040-8049"
         )
         assert await tracking_pool_id(db=db, node_id=ticket["id"]) is None
         assert await used_numbers(db=db, branch=main_branch, pool=pool) == []
@@ -177,7 +177,7 @@ class TestAttachAcrossBranches:
         )
 
         assert message == _other_branch_message(
-            pool_name="allocation-target", held="branch 'holds-8065' holds 8065", ranges="8070-8079"
+            pool_name="allocation-target", branch="holds-8065", value=8065, ranges="8070-8079"
         )
         assert await tracking_pool_id(db=db, node_id=ticket["id"]) == tracking.id
         assert await used_numbers(db=db, branch=main_branch, pool=target) == []

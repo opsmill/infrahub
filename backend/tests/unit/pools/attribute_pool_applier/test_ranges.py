@@ -67,9 +67,9 @@ async def test_restating_the_tracking_pool_with_a_number_outside_its_ranges_is_r
         await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True, user_id=ACTOR_ID)
 
     assert exc_info.value.message == (
-        "'ticket_id' is tracked by the tickets pool, so it cannot hold 900, which is outside the pool's ranges: "
-        "1-100. To set 900 and stop the pool tracking 'ticket_id', send 'value: 900' together with "
-        "'from_pool: null'. at ticket_id.from_pool"
+        "'ticket_id' is tracked by the 'tickets' pool, so it cannot hold 900, which is outside the pool's ranges: "
+        "1-100. Choose a number inside those ranges, or remove the 'tickets' pool from 'ticket_id' in the same "
+        "change that sets it to 900. at ticket_id.from_pool"
     )
     assert allocator.calls == []
 

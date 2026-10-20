@@ -172,6 +172,6 @@ async def apply_on_create(applier: AttributePoolApplier, attribute: BaseAttribut
 
 def untracked_attach_message(ranges: str, value: int = 900) -> str:
     return (
-        f"The tickets pool cannot track {value} on 'ticket_id', because {value} is outside its ranges: {ranges}. "
-        f"Send a number inside those ranges. at ticket_id.from_pool"
+        f"The 'tickets' pool cannot track {value} on 'ticket_id', because {value} is outside its ranges: {ranges}. "
+        f"Choose a number inside those ranges. at ticket_id.from_pool"
     )
