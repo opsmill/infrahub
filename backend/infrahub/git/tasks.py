@@ -550,9 +550,10 @@ async def bootstrap_local_repository(
     Returns None when the repository should be skipped for this cycle: the clone fails, or the
     default-branch import cannot reach the remote or its credentials are invalid. Any other failed
     default-branch import is already logged and recorded on the branch, so the repository is still
-    returned and its other branches still synchronize. While the repository has pending pushes, a
-    fresh clone that seeds the default branch records no commit and skips the seed import, because
-    the import would remove the objects of the pending merges.
+    returned and its other branches still synchronize. A fresh clone records its commit before the
+    seed import. While the repository has pending pushes, a fresh clone that seeds the default branch
+    records no commit and skips the seed import, because the import would remove the objects of the
+    pending merges.
     """
     log = get_run_logger()
     pending_import: PendingObjectImport | None = None
@@ -611,6 +612,9 @@ async def bootstrap_local_repository(
                 git_branch_name=default_import_git_branch,
                 commit=repo.get_commit_value(branch_name=default_import_git_branch, remote=False),
             )
+            # The flows that the import starts read the commit from the graph, and the clone recorded none.
+            if repo.reinitialized:
+                await repo.update_commit_value(branch_name=infrahub_branch, commit=pending_import.commit)
 
     if pending_import is not None:
         try:

@@ -353,6 +353,9 @@ class TestImportDeferral(TestInfrahubApp):
                 )
             )
             assert repo is not None
+            assert await self._graph_commit(client=client, node=node, branch_name=TRUNK) == (
+                imported if case.pending else advanced
+            )
             await call_in_flow(
                 lambda: sync_repository_from_origin(
                     repository=repository,
@@ -385,6 +388,44 @@ class TestImportDeferral(TestInfrahubApp):
             if case.pending
             else []
         )
+
+    async def test_the_seed_import_of_a_new_repository_records_its_commit(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """The periodic sync can clone a repository before its add flow runs, so the graph holds no commit yet."""
+        name = "clone-new-repository"
+        remote = LocalRemote.create(directory=tmp_path / name, trunk=TRUNK, branches=[])
+        head = remote.commit(branch_name=TRUNK, files=query_files("clone_new_repository"))
+        node = await create_repository_node(
+            db=db,
+            name=name,
+            location=str(remote.directory),
+            default_branch=TRUNK,
+            operational_status=RepositoryOperationalStatus.ONLINE.value,
+        )
+        repository = await client.get(kind=CoreRepository, id=node.id)
+        delivery_state = await build_intent_store(db=db, lock_registry=lock.registry)
+
+        async with activity_run() as run:
+            repo = await call_in_flow(
+                lambda: bootstrap_local_repository(
+                    repo_name=name,
+                    repository=repository,
+                    infrahub_branch=registry.default_branch,
+                    client=client,
+                    state=delivery_state,
+                    activity=run,
+                )
+            )
+
+        assert repo is not None
+        assert await self._graph_commit(client=client, node=node, branch_name=TRUNK) == head
+        assert await self._query_names(client=client, node=node) == {"clone_new_repository"}
 
     async def test_a_fresh_clone_seeds_a_staging_branch_while_a_push_is_pending(
         self,

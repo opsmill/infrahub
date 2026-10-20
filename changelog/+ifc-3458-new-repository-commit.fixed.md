@@ -1,0 +1,1 @@
+Fixed Python computed attributes that could stay empty, and artifacts that could be missing, after you added a read-write repository. When the periodic Git synchronization imported the new repository first, it imported the objects before it recorded the repository's commit, so the computed attribute and artifact tasks failed and did not run again.

@@ -354,6 +354,13 @@ The check before the lock still raises on a broken copy rather than replacing it
 The lock is reentrant per context, so a caller that already holds it for a wider critical section
 pays nothing extra.
 
+Record the commit before the import of its objects. The flows that an import starts, such as the
+recompute of a Python computed attribute or an artifact generation, read the commit from the graph.
+A later import of the same commit does not start them again, because no fingerprint changes. The add
+flow, the sync and the seed import of a fresh clone record it first. The seed import matters because
+the periodic sync can clone a new repository before its add flow runs, while the graph has no commit.
+A clone made only to read files records nothing, because no import follows it.
+
 ## Repository activity records
 
 The `InfrahubRepositoryActivity` query answers what is running on a repository across every branch.
