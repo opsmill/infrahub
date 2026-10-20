@@ -110,5 +110,5 @@ The operator narrows the list with several criteria and shares the result with a
 - The filter takes one value at a time. A filter for "any failure" (Import Error or Tracked Ref Missing) is out of scope, because the list can be narrowed to one value per request.
 - The values are offered in the order the repository's sync status attribute declares them.
 - Sorting by sync status is out of scope.
-- No new end-to-end test is added. Component tests cover the behaviour, and no end-to-end test covers the Branches section today.
+- One end-to-end test covers User Story 1, as the project constitution requires for user-facing features (Principle IV). Component tests cover the other scenarios.
 - The API documentation already describes the sync status argument of the branch status query. Whether the user documentation needs a note about the new filter is decided in the documentation phase.
