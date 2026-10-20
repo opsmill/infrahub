@@ -90,6 +90,30 @@ async def test_get_field_values_reads_the_profiles_without_changing_the_node(
     assert await NodeManager.get_many(db=db, branch=branch, ids=[node.id]) == {}
 
 
+async def test_get_field_values_ranks_a_profile_without_a_priority_last(
+    db: InfrahubDatabase, criticality_schema: NodeSchema, branch: Branch
+) -> None:
+    profile_schema = registry.schema.get("ProfileTestCriticality", branch=branch)
+    unranked = await Node.init(db=db, branch=branch, schema=profile_schema)
+    await unranked.new(db=db, profile_name="unranked", color="green", description="from-unranked")
+    await unranked.save(db=db)
+    unranked.get_attribute("profile_priority").value = None
+    await unranked.save(db=db)
+    ranked = await Node.init(db=db, branch=branch, schema=profile_schema)
+    await ranked.new(db=db, profile_name="ranked", color="blue", profile_priority=2000)
+    await ranked.save(db=db)
+    node = await Node.init(db=db, branch=branch, schema=criticality_schema)
+    await node.new(db=db, name="not-saved-unranked", level=4, profiles=[unranked, ranked])
+
+    field_values = await NodeProfilesApplier(
+        db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+    ).get_field_values(node=node, attr_names=["color", "description"], rel_names=[])
+
+    assert field_values == ProfileFieldValues(
+        attribute_values={"color": "blue", "description": "from-unranked"}, relationship_peers={}
+    )
+
+
 async def test_get_many_with_profile(
     db: InfrahubDatabase,
     criticality_schema: NodeSchema,
