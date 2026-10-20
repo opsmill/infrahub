@@ -73,8 +73,7 @@ async def execute_graphql_query(
     if validation_errors:
         return ExecutionResult(data=None, errors=validation_errors)
 
-    # Execute. Pass every argument by name: graphql-core 3.2.10 inserted `max_coercion_errors`
-    # before `middleware`, which shifts any positional argument after it.
+    # Execute
     result = execute(
         schema=schema,
         document=document,
