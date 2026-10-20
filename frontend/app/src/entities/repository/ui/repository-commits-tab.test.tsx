@@ -1,10 +1,16 @@
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getRepositoryCommitsFromApi } from "@/entities/repository/api/get-repository-commits-from-api";
+import {
+  READONLY_REPOSITORY_KIND,
+  REPOSITORY_KIND,
+} from "@/entities/repository/domain/model/repository";
 import { REPOSITORY_COMMITS_RETRY_DELAY_MS } from "@/entities/repository/ui/queries/repository-commits.constants";
 
 import { render } from "../../../../tests/components/render";
+import { generateBranch } from "../../../../tests/fake/branch";
 import {
   generateBehindCommitsResponse,
   generateCommitsApiResult,
@@ -14,6 +20,7 @@ import {
 import { RepositoryCommitsManager } from "./repository-commits-manager";
 import { RepositoryCommitsTab } from "./repository-commits-tab";
 
+vi.mock("@/entities/branches/ui/branches-provider");
 vi.mock("@/entities/repository/api/get-repository-commits-from-api");
 
 const apiMock = vi.mocked(getRepositoryCommitsFromApi);
@@ -27,11 +34,17 @@ function CaptureQueryClient() {
   return null;
 }
 
-const renderTab = () =>
+const useBranch = ({ syncWithGit }: { syncWithGit: boolean }) =>
+  vi.mocked(useCurrentBranch).mockReturnValue({
+    currentBranch: generateBranch({ name: "test-branch", sync_with_git: syncWithGit }),
+    setCurrentBranch: () => {},
+  });
+
+const renderTab = (objectKind: string = REPOSITORY_KIND) =>
   render(
     <>
       <CaptureQueryClient />
-      <RepositoryCommitsTab objectKind="CoreRepository" objectId="repo-1" />
+      <RepositoryCommitsTab objectKind={objectKind} objectId="repo-1" />
     </>
   );
 
@@ -42,6 +55,10 @@ const expectNoCount = async (component: Awaited<ReturnType<typeof renderTab>>) =
 };
 
 describe("RepositoryCommitsTab", () => {
+  beforeEach(() => {
+    useBranch({ syncWithGit: true });
+  });
+
   afterEach(() => {
     vi.useRealTimers();
     vi.resetAllMocks();
@@ -71,6 +88,39 @@ describe("RepositoryCommitsTab", () => {
     // THEN
     await expect
       .element(component.getByRole("link", { name: "Commits 0 pending import" }))
+      .toBeVisible();
+  });
+
+  test.each([
+    { condition: "in sync", response: generateInSyncCommitsResponse },
+    { condition: "behind", response: generateBehindCommitsResponse },
+  ])(
+    "shows no count when a branch that does not sync with Git is $condition",
+    async ({ response }) => {
+      // GIVEN
+      useBranch({ syncWithGit: false });
+      apiMock.mockResolvedValue(generateCommitsApiResult(response()));
+
+      // WHEN
+      const component = await renderTab();
+
+      // THEN
+      await expect.poll(() => apiMock.mock.calls.length).toBe(1);
+      await expectNoCount(component);
+    }
+  );
+
+  test("shows the count of a read-only repository on a branch that does not sync with Git", async () => {
+    // GIVEN
+    useBranch({ syncWithGit: false });
+    apiMock.mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));
+
+    // WHEN
+    const component = await renderTab(READONLY_REPOSITORY_KIND);
+
+    // THEN
+    await expect
+      .element(component.getByRole("link", { name: "Commits 3 pending import" }))
       .toBeVisible();
   });
 
@@ -144,9 +194,10 @@ describe("RepositoryCommitsTab", () => {
     // WHEN
     const component = await render(
       <>
-        <RepositoryCommitsTab objectKind="CoreRepository" objectId="repo-1" />
+        <RepositoryCommitsTab objectKind={REPOSITORY_KIND} objectId="repo-1" />
         <RepositoryCommitsManager
           repositoryId="repo-1"
+          repositoryKind={REPOSITORY_KIND}
           repositoryLocation="/remote/repo"
           remoteCheck={null}
         />

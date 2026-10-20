@@ -150,14 +150,24 @@ const UNRELATED_BADGE: CommitStateBadge = {
   label: "Not on current history",
   variant: "gray-outline",
 };
+const NOT_ON_BRANCH_BADGE: CommitStateBadge = { label: "Not on this branch", variant: "gray" };
+
+export interface CommitStateContext {
+  importedCommit: string | null;
+  showsTrunkHistory: boolean;
+}
 
 export function getStateBadges(
   { hash, state }: Pick<RepositoryCommit, "hash" | "state">,
-  importedCommit: string | null
+  { importedCommit, showsTrunkHistory }: CommitStateContext
 ): CommitStateBadge[] {
   switch (state) {
     case RepositoryCommitState.HEAD:
-      return hash === importedCommit ? [REMOTE_HEAD_BADGE, IMPORTED_BADGE] : [REMOTE_HEAD_BADGE];
+      if (hash === importedCommit) return [REMOTE_HEAD_BADGE, IMPORTED_BADGE];
+      // The backend keeps HEAD ahead of every other state, so a trunk head the branch does not run still arrives as HEAD.
+      return showsTrunkHistory ? [REMOTE_HEAD_BADGE, NOT_ON_BRANCH_BADGE] : [REMOTE_HEAD_BADGE];
+    case RepositoryCommitState.NOT_ON_BRANCH:
+      return [NOT_ON_BRANCH_BADGE];
     case RepositoryCommitState.IMPORTED:
       return [IMPORTED_BADGE];
     case RepositoryCommitState.PENDING:
