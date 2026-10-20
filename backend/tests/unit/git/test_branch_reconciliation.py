@@ -450,6 +450,210 @@ async def test_a_branch_that_needs_a_rebase_is_left_alone(tmp_path: Path, monkey
     assert tracked.worktree_head(branch_name=TRACKED) == imported
 
 
+@dataclass(frozen=True)
+class ImportFiltersCase:
+    name: str
+    import_sync_branch_names: list[str]
+
+
+IMPORT_FILTERS_CASES: list[ImportFiltersCase] = [
+    ImportFiltersCase(name="no_import_filters", import_sync_branch_names=[]),
+    ImportFiltersCase(name="import_filters_matching_every_branch", import_sync_branch_names=[TRACKED, OTHER]),
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in IMPORT_FILTERS_CASES])
+async def test_a_branch_that_does_not_sync_with_git_receives_no_commit(
+    case: ImportFiltersCase, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A branch with sync with Git off opts out of imports, whatever the import filters match."""
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch, branches=(TRACKED, OTHER))
+    monkeypatch.setattr(config.SETTINGS.git, "import_sync_branch_names", case.import_sync_branch_names)
+    imported = tracked.imported_commits[TRACKED]
+    tracked.remote.commit(branch_name=TRACKED, files={"data.txt": "feature v2\n"})
+    advanced = tracked.remote.commit(branch_name=OTHER, files={"data.txt": "other v2\n"})
+    tracked.client.unsynced_branches = frozenset({TRACKED})
+
+    collected = await tracked.repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)), graph_commits=tracked.graph_commits()
+    )
+
+    assert collected.failed_imports == []
+    assert collected.imports == [
+        queued(
+            commit=advanced,
+            divergence=divergence(
+                tracked.imported_commits[OTHER], advanced, RefClassification.FAST_FORWARD, branch_name=OTHER
+            ),
+            branch_name=OTHER,
+        )
+    ]
+    assert tracked.client.recorded_commits == [(OTHER, advanced)]
+    assert tracked.worktree_head(branch_name=TRACKED) == imported
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in IMPORT_FILTERS_CASES])
+async def test_a_branch_that_does_not_sync_with_git_is_not_created_on_a_worker_without_it(
+    case: ImportFiltersCase, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tracked = await clone_with_tracked_branches(
+        tmp_path=tmp_path, monkeypatch=monkeypatch, branches=(TRACKED, OTHER), local_branches=(OTHER,)
+    )
+    monkeypatch.setattr(config.SETTINGS.git, "import_sync_branch_names", case.import_sync_branch_names)
+    advanced = tracked.remote.commit(branch_name=OTHER, files={"data.txt": "other v2\n"})
+    tracked.client.unsynced_branches = frozenset({TRACKED})
+
+    collected = await tracked.repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)), graph_commits=tracked.graph_commits()
+    )
+
+    assert collected.failed_imports == []
+    assert collected.imports == [
+        queued(
+            commit=advanced,
+            divergence=divergence(
+                tracked.imported_commits[OTHER], advanced, RefClassification.FAST_FORWARD, branch_name=OTHER
+            ),
+            branch_name=OTHER,
+        )
+    ]
+    assert tracked.client.recorded_commits == [(OTHER, advanced)]
+    assert set(tracked.repository.get_branches_from_local(include_worktree=False)) == {"main", OTHER}
+
+
+async def test_a_branch_created_without_sync_with_git_after_the_listing_is_not_imported(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The branch listing does not show it yet, so it is only found when creating it reports that it exists."""
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch, local_branches=())
+    tracked.client.branch_names = ("main",)
+    tracked.client.unsynced_branches = frozenset({TRACKED})
+
+    collected = await tracked.repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)), graph_commits=tracked.graph_commits()
+    )
+
+    assert collected.failed_imports == []
+    assert collected.imports == []
+    assert tracked.client.recorded_commits == []
+    assert set(tracked.repository.get_branches_from_local(include_worktree=False)) == {"main"}
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in IMPORT_FILTERS_CASES])
+async def test_a_branch_that_does_not_sync_with_git_is_not_brought_onto_the_remote_head_in_the_graph(
+    case: ImportFiltersCase, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The worktree is already on the remote head, so only the commit the graph records differs from it."""
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    monkeypatch.setattr(config.SETTINGS.git, "import_sync_branch_names", case.import_sync_branch_names)
+    tracked.client.unsynced_branches = frozenset({TRACKED})
+
+    collected = await tracked.repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)),
+        graph_commits=tracked.graph_commits(**{TRACKED: tracked.trunk_commit}),
+    )
+
+    assert collected.failed_imports == []
+    assert collected.imports == []
+    assert tracked.client.recorded_commits == []
+
+
+async def test_the_default_branch_is_imported_when_it_does_not_sync_with_git(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    advanced = tracked.remote.commit(branch_name="main", files={"data.txt": "main v2\n"})
+    tracked.client.unsynced_branches = frozenset({"main"})
+
+    collected = await tracked.repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(tracked.repository.id)), graph_commits=tracked.graph_commits()
+    )
+
+    assert collected.failed_imports == []
+    assert collected.imports == [
+        queued(
+            commit=advanced,
+            divergence=divergence(tracked.trunk_commit, advanced, RefClassification.FAST_FORWARD, branch_name="main"),
+            branch_name="main",
+        )
+    ]
+    assert tracked.client.recorded_commits == [("main", advanced)]
+
+
+async def test_the_repository_default_branch_is_imported_when_the_import_filters_do_not_match_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The filters select the branches new to Infrahub, and the default branch feeds a branch Infrahub always has."""
+    configure_repositories(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    monkeypatch.setattr(config.SETTINGS.git, "import_sync_branch_names", ["release/.*"])
+    remote = LocalRemote.create(directory=tmp_path / "remote", trunk="master", branches=[])
+    trunk_commit = str(remote.repo.commit("master"))
+    client = GraphRecordingClient(branch_names=("main",))
+    repository = await clone_repository(
+        id=UUIDT.new(),
+        name="tracked-repo",
+        location=str(remote.directory),
+        client=client,
+        default_branch="master",
+        update_commit_value=False,
+    )
+    advanced = remote.commit(branch_name="master", files={"data.txt": "master v2\n"})
+
+    collected = await repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(repository.id)), graph_commits={"main": trunk_commit}
+    )
+
+    assert collected.failed_imports == []
+    assert [(pending.infrahub_branch_name, pending.commit) for pending in collected.imports] == [("main", advanced)]
+    assert client.recorded_commits == [("main", advanced)]
+
+
+async def test_the_repository_default_branch_is_imported_beside_an_unsynced_branch_of_the_same_name(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The repository's default branch feeds Infrahub's default branch, not the Infrahub branch that shares its name."""
+    configure_repositories(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    remote = LocalRemote.create(directory=tmp_path / "remote", trunk="master", branches=[])
+    trunk_commit = str(remote.repo.commit("master"))
+    client = GraphRecordingClient(branch_names=("main", "master"))
+    client.unsynced_branches = frozenset({"master"})
+    repository = await clone_repository(
+        id=UUIDT.new(),
+        name="tracked-repo",
+        location=str(remote.directory),
+        client=client,
+        default_branch="master",
+        update_commit_value=False,
+    )
+    advanced = remote.commit(branch_name="master", files={"data.txt": "master v2\n"})
+
+    collected = await repository.collect_pending_imports(
+        state=build_idle_delivery_state(repository_id=str(repository.id)), graph_commits={"main": trunk_commit}
+    )
+
+    assert collected.failed_imports == []
+    assert collected.imports == [
+        PendingObjectImport(
+            infrahub_branch_name="main",
+            commit=advanced,
+            on_default_branch=True,
+            reconciled=ReconciledBranch(
+                infrahub_branch_name="main",
+                infrahub_branch_id="main-id",
+                commit=advanced,
+                divergence=RefDivergence(
+                    branch_name="master",
+                    infrahub_branch_name="main",
+                    imported_commit=trunk_commit,
+                    remote_head=advanced,
+                    classification=RefClassification.FAST_FORWARD,
+                ),
+            ),
+        )
+    ]
+    assert client.recorded_commits == [("main", advanced)]
+
+
 async def test_a_branch_whose_commit_the_graph_refuses_fails_alone(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

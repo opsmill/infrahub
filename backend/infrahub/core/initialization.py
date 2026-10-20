@@ -295,7 +295,12 @@ async def create_global_branch(db: InfrahubDatabase) -> Branch:
 
 
 async def create_branch(
-    branch_name: str, db: InfrahubDatabase, description: str = "", isolated: bool = True, at: str | None = None
+    branch_name: str,
+    db: InfrahubDatabase,
+    description: str = "",
+    isolated: bool = True,
+    at: str | None = None,
+    sync_with_git: bool = False,
 ) -> Branch:
     """Create a new Branch, currently all the branches are based on Main.
 
@@ -308,7 +313,7 @@ async def create_branch(
         hierarchy_level=2,
         description=description,
         is_default=False,
-        sync_with_git=False,
+        sync_with_git=sync_with_git,
         created_at=at,
         branched_from=at,
         is_isolated=isolated,
