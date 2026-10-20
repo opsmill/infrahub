@@ -1,0 +1,23 @@
+backend/tests/unit/pools/test_number_ranges.py
+  s_cd4a2edbf12382::t_a22e91fc20b046 1,7-15,235-236,243-244,253,255,278-346
+  s_cd4a2edbf12382::t_6e95dedd8d511c 237-242,245-252,254,256-277
+backend/infrahub/pools/number_ranges.py
+  s_cd4a2edbf12382::t_a22e91fc20b046 3,12-24,58-68
+  s_cd4a2edbf12382::t_694869ccabcbb2 69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a94ffd4d2a4ed27f9d1b9d58b49735ee9930e87e",
+  "prompts": {},
+  "sessions": {
+    "s_cd4a2edbf12382": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ce0cb49-e396-4200-916d-01f7c39a1bb0",
+        "model": "unknown"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
