@@ -210,8 +210,8 @@ class ReloadedPoolDeclarationCase:
     stored_parameters: dict[str, Any]
     reloaded_attribute: dict[str, Any]
     """The NumberPool attribute fields of the reloaded schema, besides its name and kind."""
-    expected_declaration: tuple[int | None, int | None, list[tuple[int, int]]]
-    """The stored declaration after the reload, as (start_range, end_range, ranges)."""
+    expected_declaration: tuple[int | None, int | None, list[tuple[int | None, int | None]] | None]
+    """The declaration after the reload and once saved, as (start_range, end_range, ranges); ranges is None when unset."""
     expected_changed_parameters: list[str]
     """The NumberPool parameters the reload changes, each one checked against the stored data before the load."""
 
@@ -242,14 +242,14 @@ RELOADED_POOL_DECLARATION_CASES = [
         name="empty-parameters-keep-the-shorthand",
         stored_parameters={"start_range": 50, "end_range": 1200},
         reloaded_attribute={"parameters": {}},
-        expected_declaration=(50, 1200, []),
+        expected_declaration=(50, 1200, None),
         expected_changed_parameters=[],
     ),
     ReloadedPoolDeclarationCase(
         name="parameters-without-a-range-key-keep-the-shorthand",
         stored_parameters={"start_range": 50, "end_range": 1200},
         reloaded_attribute={"parameters": {"allocation_scope": ["name"]}},
-        expected_declaration=(50, 1200, []),
+        expected_declaration=(50, 1200, None),
         expected_changed_parameters=["allocation_scope"],
     ),
     ReloadedPoolDeclarationCase(
@@ -257,7 +257,35 @@ RELOADED_POOL_DECLARATION_CASES = [
         stored_parameters={"start_range": 50, "end_range": 1200},
         reloaded_attribute={"parameters": {"ranges": []}},
         expected_declaration=(None, None, []),
-        expected_changed_parameters=["end_range", "start_range"],
+        expected_changed_parameters=["end_range", "ranges", "start_range"],
+    ),
+    ReloadedPoolDeclarationCase(
+        name="empty-parameters-keep-no-range-declaration",
+        stored_parameters={},
+        reloaded_attribute={"parameters": {}},
+        expected_declaration=(None, None, None),
+        expected_changed_parameters=[],
+    ),
+    ReloadedPoolDeclarationCase(
+        name="empty-parameters-keep-the-empty-range-list",
+        stored_parameters={"ranges": []},
+        reloaded_attribute={"parameters": {}},
+        expected_declaration=(None, None, []),
+        expected_changed_parameters=[],
+    ),
+    ReloadedPoolDeclarationCase(
+        name="empty-range-list-replaces-a-declaration-without-range",
+        stored_parameters={},
+        reloaded_attribute={"parameters": {"ranges": []}},
+        expected_declaration=(None, None, []),
+        expected_changed_parameters=["ranges"],
+    ),
+    ReloadedPoolDeclarationCase(
+        name="ranges-replace-an-empty-range-list",
+        stored_parameters={"ranges": []},
+        reloaded_attribute={"parameters": {"ranges": [{"start": 1, "end": 100}]}},
+        expected_declaration=(None, None, [(1, 100)]),
+        expected_changed_parameters=["ranges"],
     ),
     ReloadedPoolDeclarationCase(
         name="omitted-parameters-keep-the-ranges",
@@ -270,18 +298,33 @@ RELOADED_POOL_DECLARATION_CASES = [
         name="omitted-parameters-keep-the-shorthand",
         stored_parameters={"start_range": 50, "end_range": 1200},
         reloaded_attribute={},
-        expected_declaration=(50, 1200, []),
+        expected_declaration=(50, 1200, None),
         expected_changed_parameters=[],
     ),
 ]
 
 
+Declaration = tuple[int | None, int | None, list[tuple[int | None, int | None]] | None]
+
+
 @dataclass(frozen=True)
 class ReloadOutcome:
-    declaration: tuple[int | None, int | None, list[tuple[int | None, int | None]]]
-    """The stored declaration after the reload, as (start_range, end_range, ranges)."""
+    declaration: Declaration
+    """The declaration after the reload, as (start_range, end_range, ranges); ranges is None when unset."""
+    saved_declaration: Declaration
+    """The declaration read back from the parameters the attribute writes to the database."""
     changed_parameters: list[str]
     """The NumberPool parameters the update validation checks against the stored data, sorted."""
+
+
+def _declaration(parameters: NumberPoolParameters) -> Declaration:
+    if parameters.ranges is None:
+        return parameters.start_range, parameters.end_range, None
+    return (
+        parameters.start_range,
+        parameters.end_range,
+        [(pool_range.start, pool_range.end) for pool_range in parameters.ranges],
+    )
 
 
 def _reload_number_pool_declaration(
@@ -301,14 +344,12 @@ def _reload_number_pool_declaration(
     result = schema.validate_update(other=candidate, diff=schema.diff(other=candidate))
     assert result.errors == []
 
-    parameters = candidate.get_node(name="TestWidget", duplicate=False).get_attribute(name="number").parameters
-    assert isinstance(parameters, NumberPoolParameters)
+    attribute = candidate.get_node(name="TestWidget", duplicate=False).get_attribute(name="number")
+    assert isinstance(attribute.parameters, NumberPoolParameters)
+    saved_parameters = attribute.to_node()["parameters"]["value"]
     return ReloadOutcome(
-        declaration=(
-            parameters.start_range,
-            parameters.end_range,
-            [(pool_range.start, pool_range.end) for pool_range in parameters.ranges],
-        ),
+        declaration=_declaration(attribute.parameters),
+        saved_declaration=_declaration(NumberPoolParameters.model_validate(saved_parameters)),
         changed_parameters=sorted(
             constraint.constraint_name.removeprefix("attribute.parameters.").removesuffix(".update")
             for constraint in result.constraints
@@ -321,8 +362,11 @@ async def test_reloaded_number_pool_declaration(case: ReloadedPoolDeclarationCas
     """Only an explicitly empty range list removes the stored ranges, a reload that leaves the ranges out keeps them."""
     outcome = _reload_number_pool_declaration(case=case, other_files=[])
 
-    assert outcome.declaration == case.expected_declaration
-    assert outcome.changed_parameters == case.expected_changed_parameters
+    assert outcome == ReloadOutcome(
+        declaration=case.expected_declaration,
+        saved_declaration=case.expected_declaration,
+        changed_parameters=case.expected_changed_parameters,
+    )
 
 
 UNRELATED_SCHEMA_FILE: dict[str, Any] = {
@@ -334,6 +378,13 @@ MERGED_LOAD_CASES = [
     ReloadedPoolDeclarationCase(
         name="empty-range-list-still-removes-the-ranges",
         stored_parameters={"ranges": [{"start": 1, "end": 100}, {"start": 200, "end": 300}]},
+        reloaded_attribute={"parameters": {"ranges": []}},
+        expected_declaration=(None, None, []),
+        expected_changed_parameters=["ranges"],
+    ),
+    ReloadedPoolDeclarationCase(
+        name="empty-range-list-still-replaces-a-declaration-without-range",
+        stored_parameters={},
         reloaded_attribute={"parameters": {"ranges": []}},
         expected_declaration=(None, None, []),
         expected_changed_parameters=["ranges"],
@@ -353,5 +404,8 @@ async def test_reloaded_number_pool_declaration_in_a_load_of_several_files(case:
     """A load of several files merges them through a dump and a parse, which must keep the declared ranges as sent."""
     outcome = _reload_number_pool_declaration(case=case, other_files=[UNRELATED_SCHEMA_FILE])
 
-    assert outcome.declaration == case.expected_declaration
-    assert outcome.changed_parameters == case.expected_changed_parameters
+    assert outcome == ReloadOutcome(
+        declaration=case.expected_declaration,
+        saved_declaration=case.expected_declaration,
+        changed_parameters=case.expected_changed_parameters,
+    )

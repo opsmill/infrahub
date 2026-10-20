@@ -188,9 +188,55 @@ def test_hash_of_a_range_with_open_bounds_is_stable_and_differs_from_the_resolve
     assert first.get_hash() != resolved.get_hash()
 
 
+@dataclass
+class RangeDeclarationDiffTestCase:
+    name: str
+    current: dict[str, Any]
+    new: dict[str, Any]
+    expected_changed: set[str]
+    """The NumberPool parameters the diff reports as changed."""
+
+
+RANGE_DECLARATION_DIFF_TEST_CASES: list[RangeDeclarationDiffTestCase] = [
+    RangeDeclarationDiffTestCase(
+        name="nothing_declared_to_empty_range_list", current={}, new={"ranges": []}, expected_changed={"ranges"}
+    ),
+    RangeDeclarationDiffTestCase(
+        name="empty_range_list_to_nothing_declared", current={"ranges": []}, new={}, expected_changed={"ranges"}
+    ),
+    RangeDeclarationDiffTestCase(
+        name="empty_range_list_unchanged", current={"ranges": []}, new={"ranges": []}, expected_changed=set()
+    ),
+    RangeDeclarationDiffTestCase(name="nothing_declared_unchanged", current={}, new={}, expected_changed=set()),
+    RangeDeclarationDiffTestCase(
+        name="empty_range_list_to_ranges",
+        current={"ranges": []},
+        new={"ranges": [{"start": 1, "end": 100}]},
+        expected_changed={"ranges"},
+    ),
+    RangeDeclarationDiffTestCase(
+        name="shorthand_to_empty_range_list",
+        current={"start_range": 40, "end_range": 60},
+        new={"ranges": []},
+        expected_changed={"start_range", "end_range", "ranges"},
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in RANGE_DECLARATION_DIFF_TEST_CASES])
+def test_diff_of_range_declarations(test_case: RangeDeclarationDiffTestCase) -> None:
+    current = NumberPoolParameters(**test_case.current)
+    new = NumberPoolParameters(**test_case.new)
+
+    assert set(new.diff(other=current).changed) == test_case.expected_changed
+    assert set(current.diff(other=new).changed) == test_case.expected_changed
+
+
 def _declared(
     parameters: NumberPoolParameters,
-) -> tuple[int | None, int | None, list[tuple[int | None, int | None, int | None]]]:
+) -> tuple[int | None, int | None, list[tuple[int | None, int | None, int | None]] | None]:
+    if parameters.ranges is None:
+        return parameters.start_range, parameters.end_range, None
     return (
         parameters.start_range,
         parameters.end_range,
@@ -211,7 +257,7 @@ def test_update_with_the_shorthand_replaces_the_ranges() -> None:
 
     current.update(NumberPoolParameters(start_range=40, end_range=60))
 
-    assert _declared(current) == (40, 60, [])
+    assert _declared(current) == (40, 60, None)
 
 
 def test_update_with_a_single_bound_shorthand_leaves_the_other_bound_open() -> None:
@@ -262,7 +308,7 @@ def test_zero_range_declaration_survives_a_dump_and_a_parse() -> None:
 
     reparsed = NumberPoolParameters.model_validate(declaration.model_dump())
 
-    assert reparsed.declares_zero_ranges is True
+    assert reparsed.ranges == []
 
 
 @dataclass
@@ -308,6 +354,6 @@ def test_update_without_any_range_spelling_keeps_the_current_declaration() -> No
     shorthand.update(NumberPoolParameters(number_pool_id="pool-id"))
     explicit.update(NumberPoolParameters(number_pool_id="pool-id"))
 
-    assert _declared(shorthand) == (40, 60, [])
+    assert _declared(shorthand) == (40, 60, None)
     assert _declared(explicit) == (None, None, [(45, 55, None)])
     assert shorthand.number_pool_id == explicit.number_pool_id == "pool-id"

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Self
 
-from pydantic import ConfigDict, Field, SerializerFunctionWrapHandler, model_serializer, model_validator
+from pydantic import ConfigDict, Field, model_validator
 
 from infrahub import config
 from infrahub.core.constants.schema import UpdateSupport
@@ -217,7 +217,7 @@ class NumberPoolRangeParameters(HashableModel):
         return self.lower <= other.upper and other.lower <= self.upper
 
 
-def _is_unset(value: int | None) -> bool:
+def _is_unset(value: object) -> bool:
     return value is None
 
 
@@ -241,9 +241,13 @@ class NumberPoolParameters(AttributeParameters):
         exclude_if=_is_unset,
         json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
     )
-    ranges: list[NumberPoolRangeParameters] = Field(
-        default_factory=list,
-        description="Ranges of numbers the associated NumberPool allocates from, they must not overlap",
+    ranges: list[NumberPoolRangeParameters] | None = Field(
+        default=None,
+        description=(
+            "Ranges the NumberPool allocates from, without overlap. "
+            "Unset means one range with no start or end; an empty list means no range"
+        ),
+        exclude_if=_is_unset,
         json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
     )
     number_pool_id: str | None = Field(
@@ -267,19 +271,6 @@ class NumberPoolParameters(AttributeParameters):
     def has_shorthand(self) -> bool:
         return self.start_range is not None or self.end_range is not None
 
-    @property
-    def declares_zero_ranges(self) -> bool:
-        """Whether the declaration sets an empty range list, as opposed to leaving the ranges unset."""
-        return "ranges" in self.model_fields_set and not self.ranges and not self.has_shorthand
-
-    @model_serializer(mode="wrap")
-    def _serialize(self, handler: SerializerFunctionWrapHandler) -> Any:
-        data = handler(self)
-        # Kept in the dump only when declared, so a dumped and reloaded declaration still removes every range.
-        if isinstance(data, dict) and not self.ranges and not self.declares_zero_ranges:
-            data.pop("ranges", None)
-        return data
-
     def update(self, other: HashableModel) -> Self:
         # A declaration carrying either spelling, an empty range list included, replaces the previous ranges wholesale:
         # a field-wise merge would combine the two spellings or keep a previous bound or range the new one leaves out.
@@ -287,8 +278,8 @@ class NumberPoolParameters(AttributeParameters):
             if other.has_shorthand:
                 self.start_range = other.start_range
                 self.end_range = other.end_range
-                self.ranges = []
-            elif other.ranges or other.declares_zero_ranges:
+                self.ranges = None
+            elif other.ranges is not None:
                 self.start_range = None
                 self.end_range = None
                 self.ranges = list(other.ranges)
@@ -303,9 +294,11 @@ class NumberPoolParameters(AttributeParameters):
             shorthand = self._shorthand_range()
             if shorthand.lower > shorthand.upper:
                 raise ValueError("`start_range` can't be less than `end_range`")
+            # An empty list sent beside the shorthand declares nothing more, so the declaration keeps one spelling.
+            self.ranges = None
             return self
 
-        ordered = sorted(self.ranges)
+        ordered = sorted(self.ranges or [])
         for candidate in ordered:
             if candidate.upper < candidate.lower:
                 raise ValueError(f"Range end ({candidate.upper}) cannot be lower than start ({candidate.lower})")
@@ -322,11 +315,11 @@ class NumberPoolParameters(AttributeParameters):
         """Return the declared ranges ordered by start, whichever spelling declared them.
 
         A bound left unset stays None. A declaration using neither spelling has one range open at both ends,
-        and an explicitly empty range list has no range.
+        and an empty range list has no range.
         """
         if self.has_shorthand:
             return [self._shorthand_range()]
-        if not self.ranges and not self.declares_zero_ranges:
+        if self.ranges is None:
             return [NumberPoolRangeParameters(start=None, end=None)]
         return sorted(self.ranges)
 
