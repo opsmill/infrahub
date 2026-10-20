@@ -71,7 +71,7 @@ def notify(title: str, message: str) -> None:
 
 
 def as_dict(value: object) -> dict[str, Any]:
-    return value if isinstance(value, dict) else {}
+    return {str(key): item for key, item in value.items()} if isinstance(value, dict) else {}
 
 
 def is_new(pr: dict[str, Any]) -> bool:
