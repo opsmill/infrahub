@@ -6,7 +6,6 @@ from typing_extensions import Self
 
 from infrahub.core.constants import InfrahubKind, MutationAction
 from infrahub.core.manager import NodeManager
-from infrahub.core.mutation_context import NodeMutationContext
 from infrahub.core.schema.attribute_parameters import NumberPoolRangeParameters
 from infrahub.database import retry_db_transaction, within_transaction
 from infrahub.exceptions import ValidationError
@@ -181,6 +180,4 @@ class InfrahubNumberPoolRangeMutation(InfrahubMutation):
         """Give the pool its own event when the range write changed its start_range and end_range."""
         if not (mirrored_pool.has_changelog and mirrored_pool.node_changelog.has_changes):
             return
-        if range_node._mutation_context is None:
-            range_node._mutation_context = NodeMutationContext()
-        range_node._mutation_context.record(node=mirrored_pool, action=MutationAction.UPDATED)
+        range_node.record_mutation_write(node=mirrored_pool, action=MutationAction.UPDATED)

@@ -11,7 +11,6 @@ from infrahub.core.branch import Branch
 from infrahub.core.changelog.models import RelationshipCardinalityManyChangelog, RelationshipPeerChangelog
 from infrahub.core.constants import DiffAction, InfrahubKind, MutationAction, PermissionAction
 from infrahub.core.manager import NodeManager
-from infrahub.core.mutation_context import NodeMutationContext
 from infrahub.core.node import Node
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters, NumberPoolRangeParameters
 from infrahub.database import retry_db_transaction, within_transaction
@@ -234,8 +233,6 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
             for attribute in mirrored_pool.node_changelog.attributes.values():
                 changelog.add_attribute(attribute=attribute)
 
-        if pool._mutation_context is None:
-            pool._mutation_context = NodeMutationContext()
         for range_action, written_ranges in (
             (MutationAction.CREATED, reconciliation.created),
             (MutationAction.UPDATED, reconciliation.updated),
@@ -244,7 +241,7 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
             for written_range in written_ranges:
                 if not isinstance(written_range, Node):
                     raise TypeError(f"expected a range node, got {type(written_range).__name__}")
-                pool._mutation_context.record(node=written_range, action=range_action)
+                pool.record_mutation_write(node=written_range, action=range_action)
 
     @classmethod
     def _without_ranges(cls, data: InputObjectType, replacements: dict[str, Any] | None = None) -> InputObjectType:
