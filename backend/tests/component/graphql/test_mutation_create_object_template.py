@@ -1,3 +1,5 @@
+import pytest
+
 from infrahub.auth.session import AccountSession
 from infrahub.core import registry
 from infrahub.core.branch.models import Branch
@@ -15,16 +17,20 @@ from tests.helpers.graphql import graphql
 from tests.helpers.schema import CAR_SCHEMA, DEVICE_SCHEMA
 
 
+@pytest.fixture
+def device_schema_on_branch(register_core_models_schema: SchemaBranch, branch: Branch) -> None:
+    registry.schema.register_schema(schema=DEVICE_SCHEMA, branch=branch.name)
+    branch.update_schema_hash()
+
+
 async def test_components_created_from_an_object_template_get_only_their_created_event(
     db: InfrahubDatabase,
     default_branch: Branch,
-    register_core_models_schema: SchemaBranch,
+    device_schema_on_branch: None,
     branch: Branch,
     session_first_account: AccountSession,
 ) -> None:
     """Each interface the template creates is reported once, as created, and not also as updated by its device."""
-    registry.schema.register_schema(schema=DEVICE_SCHEMA, branch=branch.name)
-    branch.update_schema_hash()
     device_template: Node = await Node.init(schema=f"Template{TestKind.DEVICE}", db=db, branch=branch)
     await device_template.new(
         db=db, template_name="MX204 Router", manufacturer="Juniper", height=1, weight=0, airflow="Front to rear"
@@ -71,11 +77,8 @@ async def test_components_created_from_an_object_template_get_only_their_created
 
 
 async def test_create_with_object_template(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, branch: Branch
+    db: InfrahubDatabase, default_branch: Branch, device_schema_on_branch: None, branch: Branch
 ) -> None:
-    registry.schema.register_schema(schema=DEVICE_SCHEMA, branch=branch.name)
-    branch.update_schema_hash()
-
     query = """
     mutation NewDevice($device_name: String!, $template_id: String!) {
       TestingDeviceCreate(data: {
@@ -354,11 +357,8 @@ async def test_create_with_object_template_and_real_object(
 
 
 async def test_create_without_object_template(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, branch: Branch
+    db: InfrahubDatabase, default_branch: Branch, device_schema_on_branch: None, branch: Branch
 ) -> None:
-    registry.schema.register_schema(schema=DEVICE_SCHEMA, branch=branch.name)
-    branch.update_schema_hash()
-
     query = """
     mutation NewDevice($device_name: String!, $manufacturer: String!) {
       TestingDeviceCreate(data: {
@@ -397,11 +397,8 @@ async def test_create_without_object_template(
 
 
 async def test_create_sub_object_template_by_hfid(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, branch: Branch
+    db: InfrahubDatabase, default_branch: Branch, device_schema_on_branch: None, branch: Branch
 ) -> None:
-    registry.schema.register_schema(schema=DEVICE_SCHEMA, branch=branch.name)
-    branch.update_schema_hash()
-
     device_template = await Node.init(db=db, schema=f"Template{TestKind.DEVICE}", branch=branch)
     await device_template.new(
         db=db, template_name="MX204 Router", manufacturer="Juniper", height=1, weight=6, airflow="Front to rear"
