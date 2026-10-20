@@ -10,6 +10,7 @@ import type { RepositoryCommit } from "@/entities/repository/domain/model/reposi
 import { getCommitWebUrl } from "@/entities/repository/domain/rules/get-commit-web-url";
 import { RepositoryCommitRowActions } from "@/entities/repository/ui/repository-commit-row-actions";
 import { RepositoryCommitStateBadges } from "@/entities/repository/ui/repository-commit-state-badges";
+import type { CommitStateContext } from "@/entities/repository/ui/repository-commits.view";
 
 const columnHelper = createColumnHelper<RepositoryCommit>();
 
@@ -19,9 +20,9 @@ function ColumnHeader({ children }: { children: string }) {
 
 export function getRepositoryCommitsColumns({
   importedCommit,
+  showsTrunkHistory,
   repositoryLocation,
-}: {
-  importedCommit: string | null;
+}: CommitStateContext & {
   repositoryLocation: string | null;
 }): Array<ColumnDef<RepositoryCommit>> {
   return [
@@ -70,7 +71,11 @@ export function getRepositoryCommitsColumns({
       header: () => <ColumnHeader>State</ColumnHeader>,
       cell: ({ row }) => (
         <TableCell>
-          <RepositoryCommitStateBadges commit={row.original} importedCommit={importedCommit} />
+          <RepositoryCommitStateBadges
+            commit={row.original}
+            importedCommit={importedCommit}
+            showsTrunkHistory={showsTrunkHistory}
+          />
         </TableCell>
       ),
     }),

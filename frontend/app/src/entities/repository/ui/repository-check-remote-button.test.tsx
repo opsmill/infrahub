@@ -8,6 +8,10 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { checkRemoteRefsFromApi } from "@/entities/repository/api/check-remote-refs-from-api";
 import { getRemoteCheckTaskFromApi } from "@/entities/repository/api/get-remote-check-task-from-api";
 import { getRepositoryCommitsFromApi } from "@/entities/repository/api/get-repository-commits-from-api";
+import {
+  READONLY_REPOSITORY_KIND,
+  REPOSITORY_KIND,
+} from "@/entities/repository/domain/model/repository";
 import { CHECK_REMOTE_REFS_MUTATION_KEY } from "@/entities/repository/ui/queries/check-remote-refs.mutation";
 import { repositoriesQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 import type { RepositoryRemoteCheck } from "@/entities/repository/ui/repository-check-remote-button";
@@ -58,6 +62,7 @@ const commitLog = (remoteCheck: RepositoryRemoteCheck | null) => (
     <div className="h-96">
       <RepositoryCommitsManager
         repositoryId={REPOSITORY_ID}
+        repositoryKind={remoteCheck ? READONLY_REPOSITORY_KIND : REPOSITORY_KIND}
         repositoryLocation={null}
         remoteCheck={remoteCheck}
       />
@@ -70,7 +75,7 @@ const renderCommitLog = (remoteCheck: RepositoryRemoteCheck | null = generateRem
 
 const useBranch = (name: string) =>
   vi.mocked(useCurrentBranch).mockReturnValue({
-    currentBranch: generateBranch({ name }),
+    currentBranch: generateBranch({ name, sync_with_git: true }),
     setCurrentBranch: () => {},
   });
 

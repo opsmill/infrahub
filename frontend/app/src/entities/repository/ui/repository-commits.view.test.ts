@@ -177,7 +177,10 @@ describe("getStateBadges", () => {
     const commit = { hash: IMPORTED_HASH, state: RepositoryCommitState.HEAD };
 
     // WHEN
-    const badges = getStateBadges(commit, IMPORTED_HASH);
+    const badges = getStateBadges(commit, {
+      importedCommit: IMPORTED_HASH,
+      showsTrunkHistory: false,
+    });
 
     // THEN
     expect(badges.map(({ label }) => label)).toEqual(["Remote head", "Imported"]);
@@ -188,7 +191,10 @@ describe("getStateBadges", () => {
     const commit = { hash: OTHER_HASH, state: RepositoryCommitState.HEAD };
 
     // WHEN
-    const badges = getStateBadges(commit, IMPORTED_HASH);
+    const badges = getStateBadges(commit, {
+      importedCommit: IMPORTED_HASH,
+      showsTrunkHistory: false,
+    });
 
     // THEN
     expect(badges.map(({ label }) => label)).toEqual(["Remote head"]);
@@ -202,10 +208,55 @@ describe("getStateBadges", () => {
     { state: RepositoryCommitState.NOT_ON_BRANCH, labels: [] },
   ])("labels a $state commit from its state", ({ state, labels }) => {
     // WHEN
-    const badges = getStateBadges({ hash: OTHER_HASH, state }, IMPORTED_HASH);
+    const badges = getStateBadges(
+      { hash: OTHER_HASH, state },
+      { importedCommit: IMPORTED_HASH, showsTrunkHistory: false }
+    );
 
     // THEN
     expect(badges.map(({ label }) => label)).toEqual(labels);
+  });
+
+  test("marks a commit the branch does not run as not on this branch", () => {
+    // GIVEN
+    const commit = { hash: OTHER_HASH, state: RepositoryCommitState.NOT_ON_BRANCH };
+
+    // WHEN
+    const badges = getStateBadges(commit, {
+      importedCommit: IMPORTED_HASH,
+      showsTrunkHistory: true,
+    });
+
+    // THEN
+    expect(badges.map(({ label }) => label)).toEqual(["Not on this branch"]);
+  });
+
+  test("marks a trunk head ahead of the branch's commit as not on this branch", () => {
+    // GIVEN
+    const commit = { hash: OTHER_HASH, state: RepositoryCommitState.HEAD };
+
+    // WHEN
+    const badges = getStateBadges(commit, {
+      importedCommit: IMPORTED_HASH,
+      showsTrunkHistory: true,
+    });
+
+    // THEN
+    expect(badges.map(({ label }) => label)).toEqual(["Remote head", "Not on this branch"]);
+  });
+
+  test("marks a trunk head that the branch runs as imported", () => {
+    // GIVEN
+    const commit = { hash: IMPORTED_HASH, state: RepositoryCommitState.HEAD };
+
+    // WHEN
+    const badges = getStateBadges(commit, {
+      importedCommit: IMPORTED_HASH,
+      showsTrunkHistory: true,
+    });
+
+    // THEN
+    expect(badges.map(({ label }) => label)).toEqual(["Remote head", "Imported"]);
   });
 
   test("shows no badge for a state this client does not know", () => {
@@ -214,7 +265,7 @@ describe("getStateBadges", () => {
 
     // WHEN
     // @ts-expect-error A newer server can send a state this client's generated enum does not list.
-    const badges = getStateBadges(commit, null);
+    const badges = getStateBadges(commit, { importedCommit: null, showsTrunkHistory: false });
 
     // THEN
     expect(badges).toEqual([]);

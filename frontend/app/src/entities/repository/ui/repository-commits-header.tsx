@@ -31,18 +31,27 @@ export interface RepositoryCommitsToolbarProps {
 
 export interface RepositoryCommitsHeaderProps
   extends RepositoryCommitsLogProps,
-    Omit<RepositoryCommitsToolbarProps, "children"> {}
+    Omit<RepositoryCommitsToolbarProps, "children"> {
+  showsTrunkHistory: boolean;
+}
 
 export function RepositoryCommitsHeader({
   log,
   repositoryId,
   remoteCheck,
+  showsTrunkHistory,
 }: RepositoryCommitsHeaderProps) {
   return (
     <Col className="gap-1.5 p-2">
       <RepositoryCommitsToolbar repositoryId={repositoryId} remoteCheck={remoteCheck}>
         <FreshnessLine log={log} />
       </RepositoryCommitsToolbar>
+      {showsTrunkHistory && (
+        <p className="text-foreground-muted text-sm">
+          This branch does not sync with Git, so it shows the history of the repository's default
+          branch.
+        </p>
+      )}
       <ConditionNotice log={log} />
     </Col>
   );

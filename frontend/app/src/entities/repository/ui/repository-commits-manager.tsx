@@ -7,7 +7,9 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { DataTable } from "@/shared/components/table/data-table";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import type { RepositoryCommitLog } from "@/entities/repository/domain/model/repository";
+import { isShowingTrunkHistory } from "@/entities/repository/domain/rules/is-showing-trunk-history";
 import { getRepositoryCommitsColumns } from "@/entities/repository/ui/get-repository-commits-columns";
 import { useGetRepositoryCommits } from "@/entities/repository/ui/queries/get-repository-commits.query";
 import {
@@ -31,6 +33,7 @@ type RepositoryCheckRemoteProps = Pick<RepositoryCommitsToolbarProps, "remoteChe
 
 export interface RepositoryCommitsManagerProps extends RepositoryCheckRemoteProps {
   repositoryId: string;
+  repositoryKind: string;
   repositoryLocation: string | null;
 }
 
@@ -39,9 +42,11 @@ const gridTemplateColumns = () =>
 
 export function RepositoryCommitsManager({
   repositoryId,
+  repositoryKind,
   repositoryLocation,
   remoteCheck,
 }: RepositoryCommitsManagerProps) {
+  const { currentBranch } = useCurrentBranch();
   const {
     data,
     error,
@@ -94,6 +99,8 @@ export function RepositoryCommitsManager({
     failureReason,
   });
 
+  const showsTrunkHistory = isShowingTrunkHistory({ repositoryKind, branch: currentBranch });
+
   if (noCommitLogState) {
     return (
       <RepositoryCommitsEmptyState
@@ -107,7 +114,12 @@ export function RepositoryCommitsManager({
 
   return (
     <Col className="h-full gap-0">
-      <RepositoryCommitsHeader log={log} repositoryId={repositoryId} remoteCheck={remoteCheck} />
+      <RepositoryCommitsHeader
+        log={log}
+        repositoryId={repositoryId}
+        remoteCheck={remoteCheck}
+        showsTrunkHistory={showsTrunkHistory}
+      />
       {isShowingStaleCommits({ isRefetchError, isRefetching, failureReason }) && (
         <RepositoryCommitsNotice>
           <p>
@@ -126,6 +138,7 @@ export function RepositoryCommitsManager({
         <DataTable
           columns={getRepositoryCommitsColumns({
             importedCommit: log.imported_commit,
+            showsTrunkHistory,
             repositoryLocation,
           })}
           data={commits}
@@ -166,7 +179,12 @@ function RepositoryCommitsEmptyState({
 }: RepositoryCommitsEmptyStateProps) {
   return (
     <Col className="h-full gap-0">
-      <RepositoryCommitsHeader log={log} repositoryId={repositoryId} remoteCheck={remoteCheck} />
+      <RepositoryCommitsHeader
+        log={log}
+        repositoryId={repositoryId}
+        remoteCheck={remoteCheck}
+        showsTrunkHistory={false}
+      />
       <NoDataFound title={emptyState.title} message={emptyState.message} />
     </Col>
   );

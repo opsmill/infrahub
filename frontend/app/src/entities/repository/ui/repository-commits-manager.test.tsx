@@ -6,7 +6,11 @@ import { formatWithPreferences } from "@/shared/context/date-preferences-context
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getRepositoryCommitsFromApi } from "@/entities/repository/api/get-repository-commits-from-api";
-import type { RepositoryGitCondition } from "@/entities/repository/domain/model/repository";
+import {
+  READONLY_REPOSITORY_KIND,
+  REPOSITORY_KIND,
+  type RepositoryGitCondition,
+} from "@/entities/repository/domain/model/repository";
 import { getRepositoryCommitsQueryOptions } from "@/entities/repository/ui/queries/get-repository-commits.query";
 import {
   REPOSITORY_COMMITS_MAX_RETRIES,
@@ -30,6 +34,7 @@ import {
   generateRepositoryCommitsResponse,
   generateRewrittenCommitsResponse,
   generateSecondCommitsPage,
+  generateTrunkHistoryCommitsResponse,
   IN_SYNC_HEAD,
   JUST_CHECKED_AT,
   NOT_CLONED_MESSAGE,
@@ -40,6 +45,8 @@ import {
   READ_ONLY_CHECKED_AT,
   READ_ONLY_FETCHED_AT,
   type RepositoryCommitsWire,
+  TRUNK_HEAD,
+  TRUNK_IMPORTED,
 } from "../../../../tests/fake/repository-commit";
 import { RepositoryCommitsManager } from "./repository-commits-manager";
 
@@ -56,6 +63,9 @@ const formatDate = (date: string) =>
 const formatDateTime = (date: string) =>
   formatWithPreferences(date, { pattern: null, timezone: null }, "datetime");
 
+const TRUNK_HISTORY_NOTE =
+  "This branch does not sync with Git, so it shows the history of the repository's default branch.";
+
 const STALE_NOTICE =
   "Couldn't refresh the commit log right now. Showing the last loaded commits; older commits load after a successful refresh.";
 
@@ -66,13 +76,14 @@ function CaptureQueryClient() {
   return null;
 }
 
-const tab = () => (
+const tab = (repositoryKind: string = REPOSITORY_KIND) => (
   <>
     <CaptureQueryClient />
     {/* Bounded like the tab panel, or the scroll sentinel can start in view and load page two on its own. */}
     <div className="h-96">
       <RepositoryCommitsManager
         repositoryId="repo-1"
+        repositoryKind={repositoryKind}
         repositoryLocation="https://github.com/opsmill/infrahub-demo.git"
         remoteCheck={null}
       />
@@ -80,11 +91,11 @@ const tab = () => (
   </>
 );
 
-const renderTab = () => render(tab());
+const renderTab = (repositoryKind?: string) => render(tab(repositoryKind));
 
-const useBranch = (name: string) =>
+const useBranch = (name: string, { syncWithGit = true }: { syncWithGit?: boolean } = {}) =>
   useCurrentBranchMock.mockReturnValue({
-    currentBranch: generateBranch({ name }),
+    currentBranch: generateBranch({ name, sync_with_git: syncWithGit }),
     setCurrentBranch: () => {},
   });
 
@@ -806,5 +817,78 @@ describe("RepositoryCommitsManager", () => {
     // Footer cells carry no accessible role; only they carry the sticky-bottom class.
     expect(grid?.querySelectorAll(":scope > .bottom-0")).toHaveLength(0);
     expect(component.getByRole("navigation").query()).toBeNull();
+  });
+
+  describe("on a branch that does not sync with Git", () => {
+    beforeEach(() => {
+      useBranch("test-branch", { syncWithGit: false });
+    });
+
+    test("explains that the log shows the trunk's history", async () => {
+      // GIVEN
+      apiMock.mockResolvedValue(generateCommitsApiResult(generateTrunkHistoryCommitsResponse()));
+
+      // WHEN
+      const component = await renderTab();
+
+      // THEN
+      await expect.element(component.getByText(TRUNK_HISTORY_NOTE)).toBeVisible();
+      await expect.element(component.getByText("main", { exact: true })).toBeVisible();
+    });
+
+    test("marks the trunk commits the branch does not run", async () => {
+      // GIVEN
+      apiMock.mockResolvedValue(generateCommitsApiResult(generateTrunkHistoryCommitsResponse()));
+
+      // WHEN
+      const component = await renderTab();
+
+      // THEN
+      const rows = component.getByTestId("data-table-row");
+      await expect.element(rows.nth(0).getByText(TRUNK_HEAD)).toBeVisible();
+      await expect.element(rows.nth(0).getByText("Remote head")).toBeVisible();
+      await expect.element(rows.nth(0).getByText("Not on this branch")).toBeVisible();
+      await expect.element(rows.nth(1).getByText("Not on this branch")).toBeVisible();
+      await expect.element(rows.nth(2).getByText(TRUNK_IMPORTED)).toBeVisible();
+      await expect.element(rows.nth(2).getByText("Imported")).toBeVisible();
+      expect(rows.nth(3).getByText("Not on this branch").query()).toBeNull();
+      expect(component.getByText(/pending import/i).query()).toBeNull();
+    });
+
+    test("shows no note for a read-only repository", async () => {
+      // GIVEN
+      apiMock.mockResolvedValue(generateCommitsApiResult(generateReadOnlyCommitsResponse()));
+
+      // WHEN
+      const component = await renderTab(READONLY_REPOSITORY_KIND);
+
+      // THEN
+      await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
+      expect(component.getByText(TRUNK_HISTORY_NOTE).query()).toBeNull();
+    });
+
+    test("shows no note while the commit log is not available", async () => {
+      // GIVEN
+      apiMock.mockResolvedValue(generateCommitsApiResult(generateNotClonedCommitsResponse()));
+
+      // WHEN
+      const component = await renderTab();
+
+      // THEN
+      await expect.element(component.getByText("Commit log not available yet")).toBeVisible();
+      expect(component.getByText(TRUNK_HISTORY_NOTE).query()).toBeNull();
+    });
+  });
+
+  test("shows no trunk note on a branch that syncs with Git", async () => {
+    // GIVEN
+    apiMock.mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));
+
+    // WHEN
+    const component = await renderTab();
+
+    // THEN
+    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
+    expect(component.getByText(TRUNK_HISTORY_NOTE).query()).toBeNull();
   });
 });

@@ -107,6 +107,22 @@ export const generateRewrittenCommitsResponse = () =>
     ],
   });
 
+export const TRUNK_HEAD = "7f8e9d0";
+export const TRUNK_IMPORTED = "4c5d6e7";
+
+export const generateTrunkHistoryCommitsResponse = () =>
+  generateRepositoryCommitsResponse({
+    condition: "BEHIND",
+    imported_commit: fullHash(TRUNK_IMPORTED),
+    remote_head: fullHash(TRUNK_HEAD),
+    edges: [
+      { node: node(TRUNK_HEAD, "HEAD", "Add site Berlin", "Grace Hopper") },
+      { node: node("6e7f8a9", "NOT_ON_BRANCH", "Rename core switches", "Ada Lovelace") },
+      { node: node(TRUNK_IMPORTED, "IMPORTED", "Add device inventory", "Ada Lovelace") },
+      { node: node("e5f6a7b", "HISTORY", "Initial import", "Linus Torvalds") },
+    ],
+  });
+
 export const generateOrphanedCommitsResponse = () =>
   generateRepositoryCommitsResponse({
     condition: "ORPHANED",

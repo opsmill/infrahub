@@ -9,6 +9,7 @@ export function Component() {
   return (
     <RepositoryCommitsManager
       repositoryId={objectData.id}
+      repositoryKind={objectSchema.kind}
       repositoryLocation={getRepositoryLocation(objectData)}
       remoteCheck={
         isReadOnlyRepository(objectSchema)
