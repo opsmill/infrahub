@@ -48,7 +48,7 @@ SOJOURN_SECONDS = Histogram(
 
 MAX_CONCURRENCY = Gauge(
     f"{METRIC_PREFIX}_max_concurrency",
-    "Effective derived per-worker admission slot cap",
+    "Effective derived admission slot cap, summed over live API workers",
     multiprocess_mode="livesum",
 )
 

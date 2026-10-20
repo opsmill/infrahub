@@ -72,7 +72,7 @@ Recorded by the API server when priority-aware backpressure is enabled (`INFRAHU
 | `infrahub_admission_in_flight` | Gauge | `priority` | Admitted requests currently running |
 | `infrahub_admission_waiters` | Gauge | `priority` | Requests queued for a slot |
 | `infrahub_admission_sojourn_seconds` | Histogram | `priority` | Time a request waited for a slot |
-| `infrahub_admission_max_concurrency` | Gauge | | Effective number of admission slots per API worker |
+| `infrahub_admission_max_concurrency` | Gauge | | Effective number of admission slots, summed over the live API workers |
 | `infrahub_admission_missing_priority_total` | Counter | | Requests with a missing or invalid `X-Priority` header |
 | `infrahub_admission_sustained_load_seconds` | Gauge | | Seconds the worker has continuously seen database stress at or above the significant-load ratio, `0` below it |
 
