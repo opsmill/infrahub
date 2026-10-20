@@ -90,25 +90,16 @@ def claude_hook(payload: dict[str, Any]) -> dict[str, Any] | None:
     if (pr is not None and not is_new(pr)) or not claim(url):
         return None
 
-    review = f"/code-review xhigh {url}"
-    if os.environ.get("CLAUDE_CODE_ENTRYPOINT") != "claude-desktop":
-        return {"systemMessage": f"PR #{number} opened. To review it, run `{review}` in a new session."}
-
-    background = (
-        f"The user's PR review hook started this session to review pull request #{number} right after it was "
-        f"opened. {pinned_commit(pr)}Report the findings without changing files, pushing, or posting on GitHub "
-        "unless the user asks."
-    )
+    sha = (pr or {}).get("headRefOid")
+    task = f"Review pull request {url}." + (f" Its head commit is {sha}." if sha else "")
     instruction = (
-        f"Pull request #{number} was just opened ({url}). The user's PR review hook asks you to start its review now "
-        "in a child session. Call mcp__ccd_session__start_session (load it with ToolSearch first if it is deferred) "
-        f'with initiation "user_asked", context "fresh", use_worktree false, title "Review PR #{number}", '
-        f'name "review-pr-{number}", prompt "{review}", and background "{background}" '
-        'If the start is refused, propose the same session with initiation "own_initiative" instead. '
-        "Then continue with your current task."
+        f"Pull request #{number} was just opened ({url}). The user's PR review hook asks you to review it now: "
+        f'call the Agent tool with subagent_type "pr-reviewer", description "Review PR #{number}", and prompt '
+        f'"{task}" Then continue with your current task. When the review finishes, pass its findings on to the user '
+        "without acting on them unless the user asks."
     )
     return {
-        "systemMessage": f"PR #{number} opened: starting `{review}` in a child session.",
+        "systemMessage": f"PR #{number} opened: running `/code-review xhigh {url}` in a background subagent.",
         "hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": instruction},
     }
 

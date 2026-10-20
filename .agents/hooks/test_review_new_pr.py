@@ -107,24 +107,19 @@ def env(tmp_path: Path) -> dict[str, str]:
     }
 
 
-def test_claude_desktop_asks_for_a_review_session_pinned_to_the_head_commit(env: dict[str, str]) -> None:
+@pytest.mark.parametrize("entrypoint", ["claude-desktop", "cli"])
+def test_claude_asks_for_the_review_subagent_with_the_head_commit(env: dict[str, str], entrypoint: str) -> None:
+    env["CLAUDE_CODE_ENTRYPOINT"] = entrypoint
+
     result = run_claude_hook(env, bash_payload("rtk gh pr create --fill", URL, RECORD))
 
-    context = json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
+    output = json.loads(result.stdout)
+    context = output["hookSpecificOutput"]["additionalContext"]
     assert result.returncode == 0
     assert not result.stderr
-    assert f'prompt "/code-review xhigh {URL}"' in context
-    assert '"user_asked"' in context
-    assert "as of commit abc123" in context
-
-
-def test_claude_outside_the_desktop_app_only_shows_the_command(env: dict[str, str]) -> None:
-    env["CLAUDE_CODE_ENTRYPOINT"] = "cli"
-
-    output = json.loads(run_claude_hook(env, bash_payload("gh pr create --fill", URL, RECORD)).stdout)
-
     assert f"/code-review xhigh {URL}" in output["systemMessage"]
-    assert "hookSpecificOutput" not in output
+    assert 'subagent_type "pr-reviewer"' in context
+    assert f'prompt "Review pull request {URL}. Its head commit is abc123."' in context
 
 
 @pytest.mark.parametrize(
@@ -158,7 +153,8 @@ def test_claude_still_asks_when_github_does_not_answer(env: dict[str, str]) -> N
     result = run_claude_hook(env, bash_payload("gh pr create --fill", URL, RECORD))
 
     context = json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
-    assert "as of commit" not in context
+    assert f'prompt "Review pull request {URL}."' in context
+    assert "head commit" not in context
 
 
 @pytest.mark.parametrize(
