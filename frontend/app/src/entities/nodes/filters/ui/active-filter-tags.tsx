@@ -25,22 +25,28 @@ import {
   SHOW_INTERNAL_GROUPS_ID,
 } from "@/entities/nodes/object/ui/filters/internal-groups-filter-tag";
 import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
-import type { AttributeKind } from "@/entities/schema/domain/model/schema";
+import type { AttributeKind, AttributeSchema } from "@/entities/schema/domain/model/schema";
 
 export function formatAttributeFilterValue({
-  kind,
+  schema,
   value,
   formatDate,
+  showChoiceLabels = false,
 }: {
-  kind: AttributeKind;
+  schema: AttributeSchema;
   value: unknown;
   formatDate: UseFormatDateResult["formatDate"];
+  showChoiceLabels?: boolean;
 }) {
-  switch (kind) {
+  switch (schema.kind as AttributeKind) {
     case ATTRIBUTE_KIND.BOOLEAN:
       return String(value);
     case ATTRIBUTE_KIND.DATETIME:
       return formatDate(value as string | number | Date, "datetime");
+    case ATTRIBUTE_KIND.DROPDOWN:
+      if (!showChoiceLabels) return value as React.ReactNode;
+      return (schema.choices?.find(({ name }) => name === value)?.label ??
+        value) as React.ReactNode;
     default:
       return value as React.ReactNode;
   }
@@ -53,6 +59,8 @@ export interface ActiveFilterTagsProps extends Omit<TagGroupProps, "children"> {
   /** Narrows the conditions the edit form offers, for a caller whose request cannot honour them all. */
   filterConditions?: FilterConditionSelectProps["filterConditions"];
   additionalTags?: React.ReactNode;
+  /** Shows a Dropdown filter value as its choice label instead of the stored choice name. */
+  showChoiceLabels?: boolean;
 }
 
 export function ActiveFilterTags({
@@ -61,6 +69,7 @@ export function ActiveFilterTags({
   filterDefinitions,
   filterConditions,
   additionalTags,
+  showChoiceLabels,
   className,
   ...props
 }: ActiveFilterTagsProps) {
@@ -178,6 +187,7 @@ export function ActiveFilterTags({
                   filter={filter}
                   fieldKey={fieldKey}
                   filterDefinition={definition}
+                  showChoiceLabels={showChoiceLabels}
                   ref={(el: HTMLDivElement | null) => {
                     if (el) tagElements.current.set(filter.name, el);
                   }}
@@ -215,15 +225,23 @@ interface EditableFilterTagProps {
   filter: Filter;
   fieldKey: string;
   filterDefinition: FilterDefinition;
+  showChoiceLabels?: boolean;
 }
 
-function EditableFilterTag({ ref, filter, fieldKey, filterDefinition }: EditableFilterTagProps) {
+function EditableFilterTag({
+  ref,
+  filter,
+  fieldKey,
+  filterDefinition,
+  showChoiceLabels,
+}: EditableFilterTagProps) {
   const { formatDate } = useFormatDate();
   const display = getFilterTagDisplay({
     filter,
     fieldKey,
     filterDefinition,
     formatDate,
+    showChoiceLabels,
   });
 
   if (!display) return null;
@@ -240,11 +258,13 @@ export function getFilterTagDisplay({
   fieldKey,
   filterDefinition,
   formatDate,
+  showChoiceLabels,
 }: {
   filter: Filter;
   fieldKey: string;
   filterDefinition: FilterDefinition;
   formatDate: UseFormatDateResult["formatDate"];
+  showChoiceLabels?: boolean;
 }): FilterTagDisplay | null {
   const name = getFilterDefinitionLabel(filterDefinition);
   const isRelationship =
@@ -266,9 +286,10 @@ export function getFilterTagDisplay({
       label: name,
       condition: "contains",
       value: formatAttributeFilterValue({
-        kind: filterDefinition.schema.kind as AttributeKind,
+        schema: filterDefinition.schema,
         value: filter.value,
         formatDate,
+        showChoiceLabels,
       }),
     };
   }
