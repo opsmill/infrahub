@@ -11,6 +11,7 @@ from infrahub.core.protocols import CoreNumberPool
 from infrahub.core.schema import AttributeSchema, NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.pools.number_pool_range_reconciler import ReconcilableRangeStore
+from infrahub.pools.number_ranges import allocation_bounds
 
 if TYPE_CHECKING:
     from infrahub.core.node.resource_manager.number_pool import CoreNumberPool as CoreNumberPoolNode
@@ -87,11 +88,6 @@ class PoolReference:
 
 
 @dataclass
-class StoredInteger:
-    value: int
-
-
-@dataclass
 class StoredOptionalInteger:
     value: int | None
 
@@ -99,27 +95,27 @@ class StoredOptionalInteger:
 @dataclass
 class InMemoryRange:
     id: str
-    start: StoredInteger
-    end: StoredInteger
+    start: StoredOptionalInteger
+    end: StoredOptionalInteger
     allocation_weight: StoredOptionalInteger
 
     def get_id(self) -> str:
         return self.id
 
     @property
-    def details(self) -> tuple[str, int, int, int | None]:
+    def details(self) -> tuple[str, int | None, int | None, int | None]:
         return self.id, self.start.value, self.end.value, self.allocation_weight.value
 
 
 class InMemoryRangeStore(ReconcilableRangeStore[InMemoryRange, PoolReference]):
     """Holds the ranges of one pool, named stored-<n> and created-<n>, and records every write in order."""
 
-    def __init__(self, ranges: list[tuple[int, int, int | None]] | None = None) -> None:
+    def __init__(self, ranges: list[tuple[int | None, int | None, int | None]] | None = None) -> None:
         self.ranges = {
             f"stored-{index}": InMemoryRange(
                 id=f"stored-{index}",
-                start=StoredInteger(value=start),
-                end=StoredInteger(value=end),
+                start=StoredOptionalInteger(value=start),
+                end=StoredOptionalInteger(value=end),
                 allocation_weight=StoredOptionalInteger(value=weight),
             )
             for index, (start, end, weight) in enumerate(ranges or [])
@@ -128,22 +124,25 @@ class InMemoryRangeStore(ReconcilableRangeStore[InMemoryRange, PoolReference]):
 
     @override
     async def get_ranges(self, pool_id: str) -> list[InMemoryRange]:
-        return sorted(self.ranges.values(), key=lambda pool_range: pool_range.start.value)
+        return sorted(
+            self.ranges.values(),
+            key=lambda pool_range: allocation_bounds(start=pool_range.start.value, end=pool_range.end.value),
+        )
 
     @override
     async def create_range(
         self,
         pool: PoolReference,
-        start: int,
-        end: int,
+        start: int | None,
+        end: int | None,
         weight: int | None = None,
         at: Timestamp | None = None,
         user_id: str = SYSTEM_USER_ID,
     ) -> InMemoryRange:
         pool_range = InMemoryRange(
             id=f"created-{len(self.writes)}",
-            start=StoredInteger(value=start),
-            end=StoredInteger(value=end),
+            start=StoredOptionalInteger(value=start),
+            end=StoredOptionalInteger(value=end),
             allocation_weight=StoredOptionalInteger(value=weight),
         )
         self.ranges[pool_range.id] = pool_range
@@ -154,8 +153,8 @@ class InMemoryRangeStore(ReconcilableRangeStore[InMemoryRange, PoolReference]):
     async def save_range(
         self,
         pool_range: InMemoryRange,
-        start: int,
-        end: int,
+        start: int | None,
+        end: int | None,
         weight: int | None,
         at: Timestamp | None = None,
         user_id: str = SYSTEM_USER_ID,

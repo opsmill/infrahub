@@ -42,8 +42,8 @@ class NumberPoolRangeStore(Protocol):
     async def create_range(
         self,
         pool: Node,
-        start: int,
-        end: int,
+        start: int | None,
+        end: int | None,
         weight: int | None = None,
         at: Timestamp | None = None,
         user_id: str = SYSTEM_USER_ID,
@@ -52,8 +52,8 @@ class NumberPoolRangeStore(Protocol):
     async def save_range(
         self,
         pool_range: CoreNumberPoolRange,
-        start: int,
-        end: int,
+        start: int | None,
+        end: int | None,
         weight: int | None,
         at: Timestamp | None = None,
         user_id: str = SYSTEM_USER_ID,
@@ -92,8 +92,8 @@ class NumberPoolRepository(NumberPoolRangeStore):
     async def create_range(
         self,
         pool: Node,
-        start: int,
-        end: int,
+        start: int | None,
+        end: int | None,
         weight: int | None = None,
         at: Timestamp | None = None,
         user_id: str = SYSTEM_USER_ID,
@@ -107,8 +107,8 @@ class NumberPoolRepository(NumberPoolRangeStore):
     async def save_range_bounds(
         self,
         pool_range: CoreNumberPoolRange,
-        start: int,
-        end: int,
+        start: int | None,
+        end: int | None,
         at: Timestamp | None = None,
         user_id: str = SYSTEM_USER_ID,
     ) -> None:
@@ -120,8 +120,8 @@ class NumberPoolRepository(NumberPoolRangeStore):
     async def save_range(
         self,
         pool_range: CoreNumberPoolRange,
-        start: int,
-        end: int,
+        start: int | None,
+        end: int | None,
         weight: int | None,
         at: Timestamp | None = None,
         user_id: str = SYSTEM_USER_ID,

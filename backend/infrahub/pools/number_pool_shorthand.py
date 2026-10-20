@@ -46,8 +46,8 @@ class NumberPoolShorthandMirror:
         start: int | None = None
         end: int | None = None
         if len(ranges) == 1:
-            start = int(ranges[0].start.value)
-            end = int(ranges[0].end.value)
+            start = ranges[0].start.value
+            end = ranges[0].end.value
 
         if pool.get_attribute("start_range").value == start and pool.get_attribute("end_range").value == end:
             return
