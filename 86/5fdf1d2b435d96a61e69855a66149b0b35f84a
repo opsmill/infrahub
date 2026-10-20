@@ -1,11 +1,29 @@
 backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py
   s_760cbcf248de37::t_00853d9e55120b 10-11,13-14,26,110-119,121,137,201-244,246,457
+  s_760cbcf248de37::t_d8f73ba01c8f0a 10-11,13,26,110-119,121,137,201-207,212-232,233-238,242-244,246,457
+  s_760cbcf248de37::t_71fb1a413fd1df 26,111,113,115-116,118,244,246
 backend/infrahub/pools/number_pool_shorthand.py
   s_760cbcf248de37::t_8ea54c18700c8f 16-22,53-55
+  s_760cbcf248de37::t_cac4a86e622d48 16-22,53-55
+  s_760cbcf248de37::t_173a363d667e06 16-22,53-55
 backend/tests/component/graphql/resource_manager/number_pools/test_pool_create.py
   s_760cbcf248de37::t_27717a6e7ebb51 440-461
+  s_760cbcf248de37::t_f489990adc5c8d 440-461
+  s_760cbcf248de37::t_8f7dff50234a94 440-461
 backend/tests/component/graphql/resource_manager/number_pools/test_pool_range_events.py
   s_760cbcf248de37::t_a4fd39913d019e 1-392
+  s_760cbcf248de37::t_fe0055cd63c7f0 1-159,161-392
+  s_760cbcf248de37::t_072050bd4feb4e 48,55-67,69,86-92,140,180-188,193-202,207-217,223,239,241,243-246,266-275,282-293,306-310,312-316,331,333-334,341-350,357-360,381
+  s_760cbcf248de37::t_77090978f8027c 1,9,49-54,68,70-85,126-127,130-135,138-139,141-159,161-165,249-257,260-262,264-265,276-278,280-281,294-296,298-304,317,325-326,328-330,335-340,351-356,361-362,365-366,372,374-380,387-388,390,392
+  s_760cbcf248de37::t_fc448223ef5941 172,179
+backend/infrahub/events/generator.py
+  s_760cbcf248de37::t_e202b1a57e5d02 4-9,33,41-43,45,47-50,112,126-129
+  s_760cbcf248de37::t_f62c334e2ff092 140
+backend/tests/component/events/test_node_mutation_events.py
+  s_760cbcf248de37::t_c5a925aad3c922 17,25-43,61,64,73-99,101-102
+  s_760cbcf248de37::t_ee46d31166e597 15-16,103-127
+backend/tests/component/core/node/test_template_pool_allocation.py
+  s_760cbcf248de37::t_43b0b4719ef51b 510
 ---
 {
   "schema_version": "authorship/3.0.0",
