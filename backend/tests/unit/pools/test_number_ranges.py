@@ -1,9 +1,18 @@
+import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 
 import pytest
 
-from infrahub.pools.number_ranges import EffectiveSegment, EffectiveSpace, NumberDomain, NumberSpan, PoolRange
+from infrahub.pools.number_ranges import (
+    EffectiveSegment,
+    EffectiveSpace,
+    NumberDomain,
+    NumberSpan,
+    PoolRange,
+    allocation_bounds,
+    format_range_label,
+)
 
 
 @dataclass
@@ -223,3 +232,115 @@ def test_empty_space_contains_nothing() -> None:
     assert space.as_query_ranges() == []
     assert space.range_for(1) is None
     assert not space.contains(1)
+
+
+@dataclass
+class AllocationBoundsTestCase:
+    name: str
+    start: int | None
+    end: int | None
+    expected: tuple[int, int]
+
+
+ALLOCATION_BOUNDS_TEST_CASES: list[AllocationBoundsTestCase] = [
+    AllocationBoundsTestCase(name="both_open", start=None, end=None, expected=(1, sys.maxsize)),
+    AllocationBoundsTestCase(name="open_end", start=100, end=None, expected=(100, sys.maxsize)),
+    AllocationBoundsTestCase(name="open_start", start=None, end=4094, expected=(1, 4094)),
+    AllocationBoundsTestCase(name="both_entered", start=100, end=4094, expected=(100, 4094)),
+]
+
+
+@pytest.mark.parametrize(
+    "test_case", ALLOCATION_BOUNDS_TEST_CASES, ids=[case.name for case in ALLOCATION_BOUNDS_TEST_CASES]
+)
+def test_an_open_bound_spans_to_the_widest_number(test_case: AllocationBoundsTestCase) -> None:
+    assert allocation_bounds(start=test_case.start, end=test_case.end) == test_case.expected
+
+
+@dataclass
+class RangeLabelTestCase:
+    name: str
+    start: int
+    end: int
+    expected: str
+
+
+RANGE_LABEL_TEST_CASES: list[RangeLabelTestCase] = [
+    RangeLabelTestCase(name="entered_end", start=100, end=4094, expected="100 - 4094"),
+    RangeLabelTestCase(name="widest_end", start=1, end=sys.maxsize, expected="1 - MAX"),
+    RangeLabelTestCase(name="single_number", start=5, end=5, expected="5 - 5"),
+]
+
+
+@pytest.mark.parametrize("test_case", RANGE_LABEL_TEST_CASES, ids=[case.name for case in RANGE_LABEL_TEST_CASES])
+def test_a_range_label_writes_the_widest_end_as_max(test_case: RangeLabelTestCase) -> None:
+    assert format_range_label(start=test_case.start, end=test_case.end) == test_case.expected
+
+
+def test_carving_the_widest_range_clips_it_to_the_domain_bounds() -> None:
+    domain = NumberDomain(lower=100, upper=4094, exclusions=(NumberSpan(start=200, end=299),))
+
+    assert domain.carve(1, sys.maxsize) == [NumberSpan(start=100, end=199), NumberSpan(start=300, end=4094)]
+
+
+@dataclass
+class ResolveTestCase:
+    name: str
+    domain: NumberDomain
+    start: int | None
+    end: int | None
+    expected: tuple[int, int]
+
+
+RESOLVE_TEST_CASES: list[ResolveTestCase] = [
+    ResolveTestCase(
+        name="open_bounds_without_limits", domain=NumberDomain(), start=None, end=None, expected=(1, sys.maxsize)
+    ),
+    ResolveTestCase(
+        name="open_bounds_follow_min_and_max_value",
+        domain=NumberDomain(lower=100, upper=4094),
+        start=None,
+        end=None,
+        expected=(100, 4094),
+    ),
+    ResolveTestCase(
+        name="open_end_follows_max_value",
+        domain=NumberDomain(lower=100, upper=4094),
+        start=200,
+        end=None,
+        expected=(200, 4094),
+    ),
+    ResolveTestCase(
+        name="open_start_follows_min_value",
+        domain=NumberDomain(lower=100, upper=4094),
+        start=None,
+        end=300,
+        expected=(100, 300),
+    ),
+    ResolveTestCase(
+        name="min_value_below_one_keeps_the_open_start_at_one",
+        domain=NumberDomain(lower=-10),
+        start=None,
+        end=50,
+        expected=(1, 50),
+    ),
+    ResolveTestCase(
+        name="entered_bounds_unchanged_outside_the_limits",
+        domain=NumberDomain(lower=100, upper=4094),
+        start=10,
+        end=5000,
+        expected=(10, 5000),
+    ),
+    ResolveTestCase(
+        name="open_start_above_an_entered_end",
+        domain=NumberDomain(lower=100),
+        start=None,
+        end=50,
+        expected=(100, 50),
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", RESOLVE_TEST_CASES, ids=[case.name for case in RESOLVE_TEST_CASES])
+def test_resolve_reads_open_bounds_through_the_domain_limits(test_case: ResolveTestCase) -> None:
+    assert test_case.domain.resolve(start=test_case.start, end=test_case.end) == test_case.expected
