@@ -24,6 +24,7 @@ import {
   generateRepositoryBranchStatusPage,
   generateRepositoryBranchStatusPayloadAfter,
   generateRepositoryBranchStatusPayloadBefore,
+  generateRepositorySyncStatusChoices,
 } from "../../../../../tests/fake/repository";
 import { generateAttributeSchema, generateNodeSchema } from "../../../../../tests/fake/schema";
 import { expectServerDrivenChange } from "../../../../../tests/helpers/expect-server-driven-change";
@@ -40,6 +41,7 @@ const syncStatusAttribute = generateAttributeSchema({
   name: "sync_status",
   kind: "Dropdown",
   label: "Sync status",
+  choices: generateRepositorySyncStatusChoices(),
 });
 
 const commitAttribute = generateAttributeSchema({ name: "commit", label: "Commit" });

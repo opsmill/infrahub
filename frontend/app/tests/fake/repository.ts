@@ -4,9 +4,12 @@ import type {
   StatusField,
   TextAttribute,
 } from "@/shared/api/graphql/generated/types";
+import type { components } from "@/shared/api/rest/types.generated";
 
 import { BranchStatus } from "../../src/shared/api/graphql/generated/types";
 import { type DropdownSelection, generateDropdown } from "./dropdown";
+
+type DropdownChoiceRead = components["schemas"]["DropdownChoiceRead"];
 
 export type RepositoryBranchStatusWire = {
   name: Pick<RequiredStringValueField, "value">;
@@ -92,3 +95,39 @@ export const generateRepositoryBranchStatusPayloadAfter = (options?: {
     rows: BRANCH_NAMES_AFTER.map((name) => branchRow(name)),
     count: options?.count,
   });
+
+// Mirrors the `sync_status` choices the backend declares on `GenericRepository`, in schema order.
+export const generateRepositorySyncStatusChoices = (): DropdownChoiceRead[] => [
+  {
+    name: "unknown",
+    label: "Unknown",
+    description:
+      "Status of the repository is unknown and mostlikely because it hasn't been synced yet",
+    color: "#9ca3af",
+  },
+  {
+    name: "error-import",
+    label: "Import Error",
+    description: "Repository import error observed",
+    color: "#f87171",
+  },
+  {
+    name: "error-ref-missing",
+    label: "Tracked Ref Missing",
+    description:
+      "The tracked ref was missing from the remote when it was last checked. Infrahub keeps running the commit it imported last.",
+    color: "#f87171",
+  },
+  {
+    name: "in-sync",
+    label: "In Sync",
+    description: "The repository is syncing correctly",
+    color: "#60a5fa",
+  },
+  {
+    name: "syncing",
+    label: "Syncing",
+    description: "A sync job is currently running against the repository.",
+    color: "#a855f7",
+  },
+];

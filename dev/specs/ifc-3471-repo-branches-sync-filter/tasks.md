@@ -36,7 +36,7 @@ Paths are relative to `frontend/app/` unless they start with `tests/e2e/`, `chan
 
 ### Test data
 
-- [ ] T010 In `tests/fake/repository.ts`, add `generateRepositorySyncStatusChoices()` returning five `DropdownChoiceRead` entries in schema order with the labels of `backend/infrahub/core/schema/definitions/core/repository.py` (`GenericRepository`, attribute `sync_status`): Unknown, Import Error, Tracked Ref Missing, In Sync, Syncing (copy `color` and `description` too). Use it as `choices` of `syncStatusAttribute` in `<card>/repository-branches-card.test.tsx` for both `repositorySchema` and `readOnlyRepositorySchema`; run the card tests and confirm they still pass
+- [x] T010 In `tests/fake/repository.ts`, add `generateRepositorySyncStatusChoices()` returning five `DropdownChoiceRead` entries in schema order with the labels of `backend/infrahub/core/schema/definitions/core/repository.py` (`GenericRepository`, attribute `sync_status`): Unknown, Import Error, Tracked Ref Missing, In Sync, Syncing (copy `color` and `description` too). Use it as `choices` of `syncStatusAttribute` in `<card>/repository-branches-card.test.tsx` for both `repositorySchema` and `readOnlyRepositorySchema`; run the card tests and confirm they still pass
 
 **Checkpoint**: domain guard, query variable, shared tag flag and request arguments are green.
 
