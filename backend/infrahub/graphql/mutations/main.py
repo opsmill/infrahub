@@ -58,12 +58,10 @@ async def emit_node_mutation_events(
     deleted_nodes: list[Node] | None = None,
     recorded_nodes: list[RecordedNode] | None = None,
 ) -> None:
-    if (
-        not graphql_context.background
-        or not graphql_context.account_session
-        or not graphql_context.service
-        or not node.has_changelog
-        or not node.node_changelog.has_changes
+    if not graphql_context.background or not graphql_context.account_session or not graphql_context.service:
+        return
+    if not (node.has_changelog and node.node_changelog.has_changes) and not any(
+        recorded.node.has_changelog and recorded.node.node_changelog.has_changes for recorded in recorded_nodes or []
     ):
         return
 

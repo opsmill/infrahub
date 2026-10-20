@@ -66,18 +66,36 @@ async def generate_node_mutation_events(
         branch=branch,
         context=context,
     )
-    node_event_class = get_node_event(action)
-    main_event = node_event_class(
-        kind=node.get_kind(),
-        node_id=node.id,
-        changelog=node.node_changelog,
-        fields=node.node_changelog.updated_fields,
-        meta=meta,
+    main_node_changed = node.has_changelog and node.node_changelog.has_changes
+    main_event = (
+        get_node_event(action)(
+            kind=node.get_kind(),
+            node_id=node.id,
+            changelog=node.node_changelog,
+            fields=node.node_changelog.updated_fields,
+            meta=meta,
+        )
+        if main_node_changed
+        else None
     )
-    relationship_changelogs = RelationshipChangelogGetter(db=db, branch=branch)
-    node_changelogs = await relationship_changelogs.get_changelogs(primary_changelog=node.node_changelog)
+    node_changelogs = (
+        await RelationshipChangelogGetter(db=db, branch=branch).get_changelogs(primary_changelog=node.node_changelog)
+        if main_node_changed
+        else []
+    )
+    events: list[NodeMutatedEvent] = [main_event] if main_event else []
 
-    events: list[NodeMutatedEvent] = [main_event]
+    def child_meta() -> EventMeta:
+        if main_event:
+            return EventMeta.from_parent(parent=main_event)
+        # Without an event of its own for the main node, a recorded node's event has no parent to point to.
+        return EventMeta(
+            account_id=context.account_id,
+            initiator_id=WORKER_IDENTITY,
+            request_id=request_id,
+            branch=branch,
+            context=context,
+        )
 
     deleted_changelogs = [deleted_node.node_changelog for deleted_node in deleted_nodes if deleted_node.id != node.id]
     recorded_events: list[NodeMutatedEvent] = [
@@ -86,7 +104,7 @@ async def generate_node_mutation_events(
             node_id=recorded.node.id,
             changelog=recorded.node.node_changelog,
             fields=recorded.node.node_changelog.updated_fields,
-            meta=EventMeta.from_parent(parent=main_event),
+            meta=child_meta(),
         )
         for recorded in recorded_nodes or []
         if recorded.node.has_changelog and recorded.node.node_changelog.has_changes
@@ -96,13 +114,12 @@ async def generate_node_mutation_events(
     own_changelogs = {recorded_event.node_id: recorded_event.changelog for recorded_event in recorded_events}
 
     for node_changelog in deleted_changelogs:
-        meta = EventMeta.from_parent(parent=main_event)
         delete_event = NodeDeletedEvent(
             kind=node_changelog.node_kind,
             node_id=node_changelog.node_id,
             changelog=node_changelog,
             fields=node_changelog.updated_fields,
-            meta=meta,
+            meta=child_meta(),
         )
         events.append(delete_event)
 
@@ -111,13 +128,12 @@ async def generate_node_mutation_events(
         if node_changelog.node_id not in deleted_node_ids and not (
             own_changelog and _holds_relationships(changelog=own_changelog, relationships=node_changelog)
         ):
-            meta = EventMeta.from_parent(parent=main_event)
             update_event = NodeUpdatedEvent(
                 kind=node_changelog.node_kind,
                 node_id=node_changelog.node_id,
                 changelog=node_changelog,
                 fields=node_changelog.updated_fields,
-                meta=meta,
+                meta=child_meta(),
             )
             events.append(update_event)
 

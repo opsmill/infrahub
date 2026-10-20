@@ -219,3 +219,31 @@ async def test_an_updated_group_already_holding_the_main_node_sends_one_member_a
 
     member_added = [(event.node_id, event.members) for event in events if isinstance(event, GroupMemberAddedEvent)]
     assert member_added == [(group.id, [EventNode(id=member.id, kind="TestPerson")])]
+
+
+async def test_a_main_node_without_changes_sends_only_the_recorded_nodes_events(
+    db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch
+) -> None:
+    """Only the recorded node changed, so its event is the only one sent, with no main event to be its parent."""
+    owner = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await owner.new(db=db, name="Jack")
+    await owner.save(db=db)
+    dog = await Node.init(db=db, schema="TestDog", branch=default_branch)
+    await dog.new(db=db, name="Rocky", breed="Labrador", owner=owner)
+    await dog.save(db=db)
+    weighed_dog = await NodeManager.get_one(db=db, id=dog.id, branch=default_branch, raise_on_error=True)
+    weighed_dog.get_attribute("weight").value = 12
+    await weighed_dog.save(db=db)
+    unchanged_owner = await NodeManager.get_one(db=db, id=owner.id, branch=default_branch, raise_on_error=True)
+
+    events = await _generate_events(
+        db=db,
+        branch=default_branch,
+        node=unchanged_owner,
+        action=MutationAction.UPDATED,
+        recorded_nodes=[RecordedNode(node=weighed_dog, action=MutationAction.UPDATED)],
+    )
+
+    assert [(type(event), event.node_id, sorted(event.fields), event.meta.parent) for event in events] == [
+        (NodeUpdatedEvent, dog.id, ["weight"], None)
+    ]
