@@ -180,3 +180,238 @@ async def test_directive_merge_fields(
             },
         }
     }
+
+
+async def test_same_root_field_selected_twice_reads_all_selections(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
+    """A root field repeated as siblings reads the union of every occurrence."""
+    obj = await Node.init(db=db, schema=criticality_schema)
+    await obj.new(db=db, name="low", level=4)
+    await obj.save(db=db)
+
+    query = """
+    query {
+        TestCriticality { count }
+        TestCriticality {
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data == {"TestCriticality": {"count": 1, "edges": [{"node": {"name": {"value": "low"}}}]}}
+
+
+async def test_sibling_fragment_spreads_merge_overlapping_selections(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
+    """Two fragment spreads reaching the same field keep the sub-selections of both."""
+    obj = await Node.init(db=db, schema=criticality_schema)
+    await obj.new(db=db, name="low", level=4)
+    await obj.save(db=db)
+
+    query = """
+    query {
+        TestCriticality {
+            ...NameFields
+            ...LevelFields
+        }
+    }
+
+    fragment NameFields on PaginatedTestCriticality {
+        edges { node { name { value } } }
+    }
+
+    fragment LevelFields on PaginatedTestCriticality {
+        edges { node { level { value } } }
+    }
+    """
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data == {"TestCriticality": {"edges": [{"node": {"name": {"value": "low"}, "level": {"value": 4}}}]}}
+
+
+async def test_repeated_field_merges_overlapping_selections(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
+    """A field repeated under one response key keeps the nested sub-selections of every occurrence."""
+    obj = await Node.init(db=db, schema=criticality_schema)
+    await obj.new(db=db, name="low", level=4)
+    await obj.save(db=db)
+
+    query = """
+    query {
+        TestCriticality {
+            edges { node { name { value } } }
+            edges { node { level { value } } }
+        }
+    }
+    """
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data == {"TestCriticality": {"edges": [{"node": {"name": {"value": "low"}, "level": {"value": 4}}}]}}
+
+
+async def test_fragment_spread_nested_in_inline_fragment(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
+    """A selection reached through a fragment spread nested inside an inline fragment is read like an inline selection."""
+    obj = await Node.init(db=db, schema=criticality_schema)
+    await obj.new(db=db, name="low", level=4)
+    await obj.save(db=db)
+
+    query = """
+    query {
+        TestCriticality {
+            ... on PaginatedTestCriticality {
+                ...Edges
+            }
+        }
+    }
+
+    fragment Edges on PaginatedTestCriticality {
+        edges { node { name { value } } }
+    }
+    """
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data == {"TestCriticality": {"edges": [{"node": {"name": {"value": "low"}}}]}}
+
+
+async def test_inline_fragment_nested_in_inline_fragment(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
+    """A selection inside an inline fragment nested in another inline fragment is read like an inline selection."""
+    obj = await Node.init(db=db, schema=criticality_schema)
+    await obj.new(db=db, name="low", level=4)
+    await obj.save(db=db)
+
+    query = """
+    query {
+        TestCriticality {
+            ... on PaginatedTestCriticality {
+                ... on PaginatedTestCriticality {
+                    edges { node { name { value } } }
+                }
+            }
+        }
+    }
+    """
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data == {"TestCriticality": {"edges": [{"node": {"name": {"value": "low"}}}]}}
+
+
+async def test_expand_directive_through_fragment_spread(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
+    """The @expand directive applies at the same path whether the node selection is inline or reached through a fragment."""
+    obj = await Node.init(db=db, schema=criticality_schema)
+    await obj.new(db=db, name="low", level=4)
+    await obj.save(db=db)
+
+    query = """
+    query {
+        TestCriticality {
+            edges {
+                ...EdgeFields
+            }
+        }
+    }
+
+    fragment EdgeFields on EdgedTestCriticality {
+        node @expand {
+            id
+        }
+    }
+    """
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data
+    assert result.data["TestCriticality"]["edges"] == [
+        {
+            "node": {
+                "id": obj.id,
+                "__typename": "TestCriticality",
+                "name": {"value": "low", "is_default": False, "is_from_profile": False},
+                "label": {"value": "Low", "is_default": False, "is_from_profile": False},
+                "level": {"value": 4, "is_default": False, "is_from_profile": False},
+                "color": {"value": "#444444", "is_default": True, "is_from_profile": False},
+                "mylist": {"value": ["one", "two"], "is_default": True, "is_from_profile": False},
+                "is_true": {"value": True, "is_default": True, "is_from_profile": False},
+                "is_false": {"value": False, "is_default": True, "is_from_profile": False},
+                "json_no_default": {"value": None, "is_default": True, "is_from_profile": False},
+                "json_default": {"value": {"value": "bob"}, "is_default": True, "is_from_profile": False},
+                "description": {"value": None, "is_default": True, "is_from_profile": False},
+                "time": {"value": None, "is_default": True, "is_from_profile": False},
+                "status": {"value": None, "is_default": True, "is_from_profile": False},
+            }
+        }
+    ]

@@ -1,7 +1,6 @@
 import { Card } from "@infrahub/ui";
 import { Link } from "react-router";
 
-import { constructPath } from "@/shared/api/rest/fetch";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { Icon } from "@/shared/components/display/icon";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
@@ -12,6 +11,7 @@ import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-u
 import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
 import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 import type { TaskHomepageNode } from "@/entities/tasks/domain/use-cases/get-tasks-homepage";
+import { getTaskDetailsUrl } from "@/entities/tasks/ui/routing/task-urls";
 
 export const TaskHomepageItem = ({
   id,
@@ -28,7 +28,7 @@ export const TaskHomepageItem = ({
           "line-clamp-2 font-semibold transition-colors",
           "hover:text-accent"
         )}
-        to={constructPath(`/tasks/${id}`)}
+        to={getTaskDetailsUrl(id)}
       >
         {title}
       </Link>

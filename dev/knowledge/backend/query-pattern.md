@@ -117,6 +117,8 @@ self.add_to_query(f"MATCH (n {{ uuid: '{user_provided_id}' }})")
 
 Readability of the raw query outranks deduplication. Do not extract repeated Cypher blocks into shared Python string-building helpers or fragment formatters just to avoid duplication — a query assembled from indirected fragments is much harder to read, review, and paste into a Neo4j console. Duplicating a few similar Cypher blocks inline is the accepted trade-off.
 
+The bar for a shared fragment constant is a substantial body with several consumers: a predicate of dozens of lines composed into three or four queries earns a named constant, while a few-line `MATCH` used twice is pasted into both call sites — especially when the copies are not quite identical anyway.
+
 ### Return Labels
 
 The RETURN clause is automatically generated from `return_labels`. Call `update_return_labels()` to specify what to return.
@@ -253,6 +255,47 @@ Example: `NodeGetListByAttributeValueQuery` and `NodeGetByHFIDQuery` chain three
 
 The outer `MATCH` returns one row per matching edge, and the graph keeps one `HAS_ATTRIBUTE` edge per branch that touched the attribute — so an attribute edited on three branches yields three rows, and the `CALL` subquery then runs three times to elect the same winning edge. Add `WITH DISTINCT <keys>` before the `CALL` and group at the natural cardinality: an Attribute has exactly one active AttributeValue per branch/time, so group by `(n, attr)` and re-apply value predicates after the subquery. Keep the outer edge anonymous (`-[:HAS_ATTRIBUTE]->`) while you are there — binding a variable you never read does not change the row count, but it does collide with the subquery's own edge variable (see below). See [Database Schema — Key Points](database-schema.md#key-points).
 
+### Cross-branch grouped attribute read
+
+The section above resolves one branch's view. When a read needs the *same* attributes as *many* branches resolve them - a per-branch status table, a cross-branch integrity check - do not loop the single-branch query once per branch. Drive the branch set through the statement as a parameter, so the query count stays flat as branches are added:
+
+```cypher
+MATCH (n:Node) WHERE n.uuid IN $node_ids
+MATCH (n)-[:HAS_ATTRIBUTE]->(a:Attribute)
+WHERE a.name IN $attribute_names
+WITH DISTINCT n, a
+UNWIND $branch_names AS branch_name
+MATCH (br:Branch {name: branch_name})
+WITH n, a, branch_name,
+     CASE WHEN br.branched_from < $at THEN br.branched_from ELSE $at END AS default_window
+CALL (n, a, branch_name, default_window) {
+    MATCH (n)-[r:HAS_ATTRIBUTE]->(a)
+    WHERE (r.branch IN [branch_name, $global_branch_name] AND r.from <= $at AND r.to IS NULL)
+       OR (r.branch IN [branch_name, $global_branch_name] AND r.from <= $at AND r.to > $at)
+       OR (branch_name <> $default_branch_name AND r.branch = $default_branch_name
+           AND r.from <= default_window AND r.to IS NULL)
+       OR (branch_name <> $default_branch_name AND r.branch = $default_branch_name
+           AND r.from <= default_window AND r.to > default_window)
+    RETURN r
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    LIMIT 1
+}
+```
+
+Four things carry the pattern:
+
+1. **`UNWIND` over the branch names, joined to `Branch`.** The row set becomes the cross product of the branch list and the matched attributes, and every branch-dependent value the election needs is read off the `Branch` node in the same pass. Index `Branch.name` (`node_indexes` in `core/graph/index.py`) before shipping such a query: without it the `MATCH (br:Branch {name: branch_name})` under the `UNWIND` compiles to a `NodeByLabelScan` under an `Apply` and rescans every branch once per unwound name, which is quadratic in the branch-set size.
+2. **`WITH DISTINCT` before the election subqueries, and the node match before the `UNWIND`.** Deduplicate for the same reason as the single-branch case - one `HAS_ATTRIBUTE` edge exists per branch that touched the attribute - since the cardinality is otherwise multiplied by the branch list, running the election `branches x edges` times instead of once per `(node, attribute, branch)`. Match the nodes *above* the `UNWIND` rather than below it: a node match that sits after it shares no variable with `branch_name`, so the planner drives it as the right side of a cartesian `Apply` and repeats the uuid seek and the attribute expansion once per branch. Profiled over 200 branches, one repository and three attributes, hoisting it cut that subtree from 8,960 to 3,068 dbHits for an identical 600-row result.
+3. **The per-branch visibility predicate and its fork-point window.** A branch sees edges on itself, edges on the global branch at query time, and default-branch edges as of the fork point. Substitute the fork point only when it is *earlier* than the requested time - `Branch.get_branches_and_times_to_query_global` guards the same substitution with `at > branched_from`. For a time before the branch existed the requested time is already the tighter bound, and widening the window forward to the fork would expose default-branch writes made after the time asked for. That helper additionally skips the substitution for a branch whose deprecated `is_isolated` flag is false; nothing creates such a branch any more, so a new query does not read the flag, but until the flag is removed platform-wide a query that must match the standard read byte for byte on a pre-existing branch would have to. Copy the comparison operators off `Branch.get_query_filter_path`'s branch loop - non-strict `from <=` with strict `to >` - not off the `branch_agnostic` shortcut higher in that method, whose strict `from <` drops an edge written exactly at the query time or exactly at a branch's `branched_from`.
+4. **Backfill the missing branches in Python.** A branch that resolved nothing produces no row at all; there is no null row to find. Iterate the branch list you asked for and look each one up in the grouped result, rather than iterating the rows that came back.
+
+A trap worth knowing when reasoning about what a branch "should" see: for a node kind marked `AGNOSTIC`, `BaseAttribute.get_create_data` writes an `AGNOSTIC` or `LOCAL` attribute on the **global** branch at creation time, but they diverge afterwards. An `AGNOSTIC` attribute stays global for every later write on such a node, because `get_branch_based_on_support_type` returns the global branch for it. (On an `AWARE` node it is a deletion that differs: `get_branch_for_delete` makes that edge branch-scoped.) A `LOCAL` attribute is global only at creation; its later updates land on the branch being written on. An `AWARE` attribute is global at neither - it lands on the current branch even on an `AGNOSTIC` node, at creation as at every later write. Global edges are visible from every branch regardless of fork point, so a node created *after* a branch forked still resolves the **creation** values of its global attributes on that branch; what the fork point windows is the later writes of a `LOCAL` attribute, and an `AWARE` attribute throughout. Two attributes of the same kind can therefore answer differently on the same branch purely because one is declared `LOCAL` and the other `AWARE`, so check the declared branch support before concluding a value is wrong.
+
+Two earlier queries hold halves of this shape, and are the ones to read alongside a new instance:
+
+- `_check_duplicate_attributes` (`infrahub/database/validation.py`) - the per-branch election with the `branched_from` window and the `branch_level DESC, from DESC, status ASC / LIMIT 1` subquery. It derives its branch set from the graph instead of taking one as a parameter, and its default-branch arm uses a strict `from <`.
+- `DiffCountChanges` (`infrahub/core/query/diff.py`) - the grouped read over a `branch_names` list in one statement, and the Python-side backfill: `get_num_changes_by_branch` walks `self.branch_names` and fills `0` for every branch the statement returned no row for.
+
 ### Query performance
 
 `AttributeValueIndexed` values are stored natively typed (a number attribute's `av.value` is an integer). Compare `av.value` directly in `WHERE` predicates — wrapping the property in a function (`toInteger(av.value) >= $x`) prevents Neo4j from using the index, so the query scans every row of the kind instead of seeking the matching range.
@@ -278,7 +321,11 @@ CALL (attr) {
 }
 ```
 
-Similarly, `CALL ... IN TRANSACTIONS` requires the `MATCH` to be outside the subquery — transform the input first with `MATCH`, then `CALL` only the write operations:
+### Batched writes: server-side or driver-side
+
+Use `CALL { ... } IN TRANSACTIONS` when the rows to write come from the graph: a `MATCH` streams the candidates and each batch commits on its own, so the transaction memory a run needs is bounded by the batch size and the fan-out of its rows, not by the dataset; a row that reaches many edges or attributes, such as `DETACH DELETE` on a high-degree vertex, still holds all of them in its batch. The branch-agnostic retirement, the rollback and the `delete_all_nodes` helper are written this way. Neo4j accepts it only in an auto-commit transaction, so a query that may run inside a caller's transaction needs a plain fallback when `db.is_transaction` is set, and Memgraph does not support it at all.
+
+The `MATCH` that produces the rows stays outside the subquery — transform the input first, then `CALL` only the write operations:
 
 ```cypher
 UNWIND $updates AS update
@@ -288,6 +335,10 @@ CALL (update, attr, old_r, old_av) {
     // write operations here
 } IN TRANSACTIONS OF 500 ROWS
 ```
+
+Add `IN n CONCURRENT TRANSACTIONS` when the batches write disjoint subgraphs, with no vertex two batches would both lock, such as a root. Add `ON ERROR RETRY THEN FAIL` when those concurrent batches can still deadlock on an incidental shared vertex, a parent link or a peer: the server replays the failed batch instead of failing the statement and leaving the client to re-run everything. Committed batches stay committed whichever `ON ERROR` mode is chosen. Per-batch progress is only visible afterwards through `REPORT STATUS AS s`, which Neo4j accepts only with `ON ERROR CONTINUE` or `ON ERROR BREAK`, so a `THEN FAIL` form rules it out.
+
+Do not use it to push the content the batches write. A parameter that only names the rows, as in the example above, stays small, but a payload carrying every value to write travels as one parameter and sits in the outer transaction's memory before the first batch runs, and the concurrency stays inside that one statement. Driver-side batches, one `db.start_session()` per batch under a semaphore with each batch wrapped in `retry_db_transaction`, stream small messages and overlap Python parameter building with database work. They need the same caller-transaction guard: when `db.is_transaction` is set, run the batches on the caller's database one after the other, since a batch on its own session commits independently and the caller's transaction never sees it. For the diff save they were roughly twice as fast as the concurrent server-side form, whose parameter transfer alone took as long as the whole driver-side save.
 
 ## Result Dataclass Pattern
 
@@ -384,28 +435,7 @@ This section documents internal implementation details. External callers should 
 
 ### Query Base Class
 
-**Location:** `backend/infrahub/core/query/__init__.py`
-
-```python
-class Query:
-    name: str = "base-query"
-    type: QueryType  # READ or WRITE
-
-    def __init__(
-        self,
-        branch: Branch | None = None,
-        at: Timestamp | str | None = None,
-        limit: int | None = None,
-        offset: int | None = None,
-        order_by: list[str] | None = None,
-        branch_agnostic: bool = False,
-        user_id: str = SYSTEM_USER_ID,
-    ) -> None:
-        self.params: dict = {}
-        self.query_lines: list[str] = []
-        self.return_labels: list[str] = []
-        self.results: list[QueryResult] = []
-```
+**Location:** `backend/infrahub/core/query/__init__.py`. The constructor also takes `branch`, `at`, `limit`/`offset`, `order_by`, `branch_agnostic` and `user_id`.
 
 | Attribute | Purpose |
 |-----------|---------|

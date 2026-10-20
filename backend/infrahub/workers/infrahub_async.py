@@ -1,9 +1,8 @@
-import asyncio
 import contextlib
 import logging
 import os
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import typer
 from anyio.abc import TaskStatus
@@ -27,9 +26,12 @@ from infrahub.database.graph import validate_graph_version
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.exceptions import InitializationError
 from infrahub.git import initialize_repositories_directory
+from infrahub.git.global_config import apply_git_tls_config, set_git_global_setting
 from infrahub.lock import initialize_lock
+from infrahub.message_bus.types import KVTTL
 from infrahub.services import InfrahubServices
 from infrahub.trace import configure_trace
+from infrahub.worker import WORKER_IDENTITY
 from infrahub.workers.dependencies import (
     get_cache,
     get_component,
@@ -37,15 +39,25 @@ from infrahub.workers.dependencies import (
     get_http,
     get_log_forwarding_service,
     get_message_bus,
+    get_tls_registry,
     get_workflow,
     set_component_type,
 )
+from infrahub.workers.reservations import CacheFlowRunReservations
+from infrahub.workers.submission import SubmissionWindow
 from infrahub.workers.utils import get_parameter_name, load_flow_function
 from infrahub.workflows.models import TASK_RESULT_STORAGE_NAME
+
+if TYPE_CHECKING:
+    from prefect.client.schemas.responses import WorkerFlowRunResponse
 
 WORKER_QUERY_SECONDS = "2"
 WORKER_DEFAULT_RESULT_STORAGE_BLOCK = f"redisstoragecontainer/{TASK_RESULT_STORAGE_NAME}"
 DEFAULT_TASK_LOGGERS = ["infrahub.tasks"]
+# Half of the Prefect client's connection pool, so that polls and state proposals never queue behind submissions.
+# Prefect 3.8.6 fixes that pool at 16 connections, with no setting to change it:
+# https://github.com/PrefectHQ/prefect/blob/3.8.6/src/prefect/client/orchestration/__init__.py#L388-L399
+SUBMISSION_WINDOW_CAPACITY = 8
 
 
 def inject_service_parameter(func: Flow, parameters: dict[str, Any], service: InfrahubServices) -> None:
@@ -62,6 +74,25 @@ def inject_service_parameter(func: Flow, parameters: dict[str, Any], service: In
         if any(isinstance(param_value, InfrahubServices) for param_value in parameters.values()):
             raise ValueError(f"{func.name} parameters contains an InfrahubServices object while it should be injected")
         parameters[service_parameter_name] = service
+
+
+def build_worker_client_config(log: Any | None = None) -> Config:
+    """Build the SDK configuration the worker uses for its own client to the Infrahub API.
+
+    The client reaches the API like every other outbound component, so it uses the HTTP TLS settings
+    instead of the trust store the SDK would pick on its own.
+
+    Raises:
+        InitializationError: When `internal_address` has not been configured.
+
+    """
+    client_config = Config(address=config.SETTINGS.main.infrahub_address, retry_on_failure=True, log=log)
+    client_config.set_ssl_context(
+        context=get_tls_registry().get(
+            insecure=config.SETTINGS.http.tls_insecure, ca_bundle=config.SETTINGS.http.tls_ca_bundle
+        )
+    )
+    return client_config
 
 
 class InfrahubWorkerAsyncConfiguration(BaseJobConfiguration):
@@ -91,6 +122,7 @@ class InfrahubWorkerAsync(BaseWorker):
     _description = "Infrahub worker designed to run the flow in the main async loop."
     service: InfrahubServices  # keep a reference to `service` so we can inject it within flows parameters.
     component_type = ComponentType.GIT_AGENT
+    _submission_window: SubmissionWindow
 
     async def setup(
         self,
@@ -149,6 +181,10 @@ class InfrahubWorkerAsync(BaseWorker):
         set_component_type(component_type=self.component_type)
         await self.set_git_global_config()
         await self._init_services(client=client)
+        self._submission_window = SubmissionWindow(
+            capacity=SUBMISSION_WINDOW_CAPACITY,
+            reservations=CacheFlowRunReservations(cache=self.service.cache, owner=WORKER_IDENTITY, ttl=KVTTL.FIFTEEN),
+        )
 
         if not registry.schema_has_been_initialized():
             initialize_lock(service=self.service)
@@ -192,6 +228,47 @@ class InfrahubWorkerAsync(BaseWorker):
 
         return InfrahubWorkerAsyncResult(status_code=0, identifier=str(flow_run.id))
 
+    async def _submit_scheduled_flow_runs(self, flow_run_response: list["WorkerFlowRunResponse"]) -> list[FlowRun]:
+        # Runs left out of the window stay scheduled on the server, where the next poll orders them by priority again.
+        self._submission_window.replace_candidates(entries=flow_run_response)
+        return await self._fill_submission_window()
+
+    async def _submit_from_window(self) -> list[FlowRun]:
+        entries = await self._submission_window.take()
+        if not entries:
+            return []
+        try:
+            submitted = await super()._submit_scheduled_flow_runs(flow_run_response=entries)
+        except BaseException:
+            # A run already handed to the run task group frees its own slot once its submission finishes.
+            self._submission_window.abandon(
+                flow_run_ids=[
+                    entry.flow_run.id for entry in entries if entry.flow_run.id not in self._submitting_flow_run_ids
+                ]
+            )
+            raise
+        submitted_ids = {flow_run.id for flow_run in submitted}
+        await self._submission_window.return_unsubmitted(
+            flow_run_ids=[entry.flow_run.id for entry in entries if entry.flow_run.id not in submitted_ids]
+        )
+        return submitted
+
+    async def _submit_run(self, flow_run: FlowRun) -> None:
+        try:
+            await super()._submit_run(flow_run)
+        finally:
+            self._submission_window.complete(flow_run_id=flow_run.id)
+            if self._runs_task_group is not None:
+                self._runs_task_group.start_soon(self._fill_submission_window)
+
+    async def _fill_submission_window(self) -> list[FlowRun]:
+        # A failed submission must not stop the poll loop or the run task group, since the next poll submits again.
+        try:
+            return await self._submit_from_window()
+        except Exception:
+            self._logger.exception("Unable to submit the next scheduled flow runs, waiting for the next poll")
+            return []
+
     def _init_logger(self) -> None:
         """Initialize loggers to use the API handle provided by Prefect."""
         api_handler = APILogHandler()
@@ -205,16 +282,14 @@ class InfrahubWorkerAsync(BaseWorker):
         if not client:
             self._logger.debug(f"Using Infrahub API at {config.SETTINGS.main.internal_address}")
             try:
-                client = InfrahubClient(
-                    config=Config(
-                        address=config.SETTINGS.main.infrahub_address, retry_on_failure=True, log=self._logger
-                    )
-                )
+                client_config = build_worker_client_config(log=self._logger)
             except InitializationError as err:
                 self._logger.error(
                     "Infrahub client initialization failed due to missing configuration for internal_address."
                 )
                 raise typer.Exit(1) from err
+
+            client = InfrahubClient(config=client_config)
 
         try:
             await client.branch.all()
@@ -252,27 +327,9 @@ class InfrahubWorkerAsync(BaseWorker):
             os.environ["GIT_CONFIG_GLOBAL"] = global_config_file
             self._logger.info(f"Set git config file to {global_config_file}")
 
-        await self._run_git_config_global(config.SETTINGS.git.user_name, setting_name="user.name")
-        await self._run_git_config_global(config.SETTINGS.git.user_email, setting_name="user.email")
-        await self._run_git_config_global("*", "--replace-all", setting_name="safe.directory")
-        await self._run_git_config_global("true", setting_name="credential.usehttppath")
-        await self._run_git_config_global(
-            f"/usr/bin/env {config.SETTINGS.dev.git_credential_helper}", setting_name="credential.helper"
-        )
-
-    async def _run_git_config_global(self, *args: str, setting_name: str) -> None:
-        proc = await asyncio.create_subprocess_exec(
-            "git",
-            "config",
-            "--global",
-            setting_name,
-            *args,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        _, stderr = await proc.communicate()
-        if proc.returncode != 0:
-            error_msg = stderr.decode("utf-8", errors="ignore").strip() or "unknown error"
-            self._logger.error(f"Failed to set git {setting_name}: %s", error_msg)
-        else:
-            self._logger.info(f"Git {setting_name} set")
+        await set_git_global_setting("user.name", config.SETTINGS.git.user_name)
+        await set_git_global_setting("user.email", config.SETTINGS.git.user_email)
+        await set_git_global_setting("safe.directory", "*", replace_all=True)
+        await set_git_global_setting("credential.usehttppath", "true")
+        await set_git_global_setting("credential.helper", f"/usr/bin/env {config.SETTINGS.dev.git_credential_helper}")
+        await apply_git_tls_config(settings=config.SETTINGS.git)

@@ -1,0 +1,1 @@
+Fixed the `@expand` directive being ignored when the node it annotates is selected through a named fragment (for example `edges { ...EdgeFields }` with `node @expand` inside `EdgeFields`); the node's attributes are now expanded the same way as when the selection is written inline.

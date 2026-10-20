@@ -1,0 +1,60 @@
+---
+title: Release 1.11.3
+release_date: 2026-09-23
+release_type: patch
+breaking: true
+description: "Adds a configurable CA bundle for outbound TLS, a command to reset the databases, and a load-shed marker header that the web UI uses to wait and retry. Schema load and check errors now return one 422 entry per offending field, and many fixes improve diff, merge, and listing performance on large branches."
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.11.3</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>September 23rd, 2026</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.11.3](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.11.3)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Added
+
+- Added an `X-Infrahub-Admission: shed` marker header to load-shed `429` responses, exposed to cross-origin clients along with the `Retry-After` hint, so a client can tell an admission shed from any other `429`.
+- Added the `INFRAHUB_TLS_CA_BUNDLE` setting, a CA bundle given as a file path or as PEM text and trusted by every component that opens outbound TLS connections, including git repositories and S3 object storage, so Infrahub can run against a private certificate authority without a custom Docker image; git also gained `INFRAHUB_GIT_TLS_CA_FILE` and `INFRAHUB_GIT_TLS_INSECURE`. Every component CA setting now accepts PEM text as well as a path and is validated at startup. The clients the task worker and the git credential commands use to reach the Infrahub API now follow these settings as well, instead of the `INFRAHUB_TLS_CA_FILE` and `INFRAHUB_TLS_INSECURE` environment variables read by the Python SDK.
+- Added the `infrahub db reset` command to delete all data from the graph database and the task manager database, resetting whichever of the two the current environment is configured for, for example to start over on a development or test deployment without recreating the containers.
+
+### Changed
+
+- **Breaking:** `POST /api/schema/load` and `POST /api/schema/check` now return one `422` entry per offending field, located on that field through `loc` and carrying the value received there in `input`. Previously a rejected schema produced a single entry located at the schema index, with every violation concatenated into its `msg` and the whole submitted schema as its `input`. A consumer that read the joined message text now sees only the first violation there and must read `loc` and `input` on each entry instead. The wording of each reason, the set of payloads accepted or rejected, and the offline `validate_schema` output are unchanged. ([#10601](https://github.com/opsmill/infrahub/issues/10601))
+- Changed the web UI to wait and retry when the server is shedding load, telling the user how long the wait is, instead of failing the request immediately.
+- Replaced the per-lab documentation pages under Learn with a single "Infrahub Labs" link to the labs catalogue at [docs.infrahub.app/labs](https://docs.infrahub.app/labs), which describes every lab in full and also covers labs hosted for partners and the community.
+- Updated the homepage's Getting Started "Schema Library" card to point to the Infrahub Marketplace instead of the GitHub schema-library repository.
+- Upgraded Prefect to `3.8.6` (from `3.7.5`) and `prefect-redis` to `0.2.15` (from `0.2.14`). The first start after this upgrade can take longer than usual while the task manager database is updated, on deployments with a long task history. Later starts are unaffected.
+
+### Fixed
+
+- Branch-agnostic attributes and relationships on branch-aware objects no longer stay reserved forever after the object is deleted. Previously the value was left in place for every branch, so it still counted towards uniqueness constraints and an allocated resource pool value stayed allocated to an object that no longer existed. An attribute's value is now released once no branch can still read its object, and a relationship's once no branch can still read both of its peers; released pool values become allocatable again. Upgrading releases the values earlier versions left behind. See [Branch-agnostic data](https://docs.infrahub.app/branches/branch-agnostic-data). ([#9762](https://github.com/opsmill/infrahub/issues/9762))
+- Fixed a repository's first import failing when its objects declared Generator actions or trigger rules referencing a Generator definition from the same repository; those objects are now imported after the definitions they depend on, so the import succeeds on an empty instance without a manual reload. ([#10063](https://github.com/opsmill/infrahub/issues/10063))
+- The Tasks tab of a Generator instance now lists the flow runs that executed the Generator for that target, so an instance's execution history is visible from the instance itself. ([#10107](https://github.com/opsmill/infrahub/issues/10107))
+- Fixed the sidebar menu hiding your object items on a short window. The lower (built-in) menu no longer takes all the vertical space: both menu sections now shrink and scroll, and the object section keeps a minimum height so its items stay reachable at any window size or zoom level. ([#10158](https://github.com/opsmill/infrahub/issues/10158))
+- Running a Generator definition whose targets include a failing member now reports which targets failed and how many succeeded, instead of collapsing into a single opaque failure. ([#10199](https://github.com/opsmill/infrahub/issues/10199))
+- Attaching or removing a child now reports the change on the hierarchical parent's `children` relationship, instead of on its `parent` relationship. A Python transform computed attribute or an action rule that matches `children` now reacts. Deleting a node that has both a parent and a child now reports both sides. ([#10485](https://github.com/opsmill/infrahub/issues/10485))
+- Fixed repository sync failures reporting only the branch name; the failing step and reason are now included in the error and surfaced in the Tasks tab. ([#10526](https://github.com/opsmill/infrahub/issues/10526))
+- Fixed the branch merge mutation reporting a "branch not found" error for a merge that succeeded when automatic branch deletion after merge is enabled. ([#10578](https://github.com/opsmill/infrahub/issues/10578))
+- Converting a node that has already been converted now returns a clear not-found error instead of an HTTP 500. ([#10646](https://github.com/opsmill/infrahub/issues/10646))
+- Fix refreshing the diff of a proposed change failing with "Cannot find diff" when no diff had been stored yet. A diff update that found the update lock already held assumed the holder had saved a diff, but the queries that read a diff take the same lock only to wait for any update in flight, so the update can now find nothing stored. It calculates the diff itself in that case instead of returning an error.
+- Fixed HTTPS clones of repositories whose certificate cannot be verified being reported as a generic error instead of the connection error status and certificate hint.
+- Fixed `INFRAHUB_HTTP_TLS_INSECURE` being ignored when a CA bundle was configured alongside it, which made the clients that reach the Infrahub API keep validating certificates. Disabling verification no longer requires removing the bundle first, matching the documented precedence and the behavior of the other components.
+- Fixed a long rebase, merge or diff update of a large branch failing with "Cannot release a lock that's no longer owned" after all its work was done: a worker busy on a CPU-heavy step could miss its heartbeat, and the periodic deadlock cleanup then deleted the locks it was still holding. The heartbeat now runs on its own thread, so a worker only looks inactive once it has actually stopped.
+- Fixed a merge or schema-update rollback leaving branch-agnostic object, attribute, and relationship timestamps wrong: it could revert the timestamps of an unrelated branch-agnostic change made in the same window, and could clear timestamps it had already restored.
+- Fixed large listings slowing down as they page through results: Neo4j planned every page of a paginated database query from scratch because the page bounds were written into the query text, and all pages now share one cached plan.
+- Fixed saving the diff of a large branch slowing down as more nodes were written: every batch of diff nodes now costs the same however many nodes the diff already holds.
+- Fixed the diff calculation of a large branch re-reading every change on the branch for each page of results: attribute, relationship and property changes are now calculated one chunk of changed nodes at a time.
+- Fixed the diff update of a branch with an open proposed change stalling for minutes after the diff was saved when the branch holds tens of thousands of changed objects, which also blocked every other task on that worker for the duration.
+- Fixed the display label enrichment of a large diff keeping a worker busy for tens of seconds: the labels are now read from the display labels stored on the nodes instead of being recomputed through a full node object for every changed node.
+- In graph traversal results (path and dependency modes), both ends of a hierarchy edge were reported as `parent`. Each end now reports its own side (`children` on the parent end); when the hierarchy does not pin its parent and children kinds, the sides are a consistent best guess.

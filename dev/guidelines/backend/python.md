@@ -20,7 +20,17 @@ def get_node(db, node_id):
     return db.get(node_id)
 ```
 
-## Imports
+## Module layout
+
+### constants.py holds constants only
+
+Do not put functions or classes in a file named `constants.py` — only module-level constant values (plain literals, enums, frozen containers). A value that must be computed, read from the environment, or resolved at runtime is not a constant; give it a home in a purpose-named module (e.g. `limits.py`, `settings.py`) instead.
+
+Why: readers grep and import from `constants.py` expecting inert values with no behavior and no import-time or call-time side effects. A function hiding there muddies that contract and gets overlooked when reasoning about runtime behavior.
+
+If the value genuinely never changes at runtime, prefer an actual constant over a function returning one.
+
+### Imports
 
 All imports must be at the top of the file. Never import inside functions, methods, or classes (ruff
 `PLC0415`). The only function-local imports we keep defer an optional or heavy dependency that must
@@ -167,24 +177,38 @@ class NodeDiffBuilder:
     changed_attributes: list[str]  # Will be appended to during processing
 ```
 
-**Document attributes with inline docstrings** below each attribute, not in the class docstring:
+**Don't store what you can derive.** A field whose value restates another field, or is cheaply
+computed from one (a boolean mirroring `other is not None`, a summary line cut from a message),
+goes out of sync the moment one is written without the other — expose it as a `property` instead.
+When only some combinations of field values are producible, reject the impossible ones in
+`__post_init__` (or a model validator) so an inconsistent instance fails at construction rather
+than surfacing as a downstream bug.
+
+**Document an attribute with an inline docstring below it**, not in the class docstring, and only
+when the name does not already say what the field holds:
 
 ```python
-# ✅ Good - Attribute docstrings below each field
+# ✅ Good - a docstring only where the name leaves a question
 @dataclass(frozen=True)
 class RelationshipPeerData:
     branch: str
+    source_id: UUID
+    peer_kind: str
+    rel_node_db_id: str | None = None
 
+    rels: list[RelData] | None = None
+    """Both relationships pointing at this Relationship Node."""
+
+# ❌ Bad - the docstring restates the field name
+@dataclass(frozen=True)
+class RelationshipPeerData:
     source_id: UUID
     """UUID of the Source Node."""
 
     peer_kind: str
     """Kind of the Peer Node."""
 
-    rel_node_db_id: str | None = None
-    """Internal DB ID of the Relationship Node."""
-
-# ❌ Bad - Attributes documented in class docstring
+# ❌ Bad - attributes documented in the class docstring
 @dataclass(frozen=True)
 class RelationshipPeerData:
     """Data about a relationship peer.
@@ -276,16 +300,31 @@ Name the validator after the invariant it enforces. Name the offending fields in
 
 Testing note: don't test that Pydantic enforces `ge`/`le` (see [Testing Standards](./testing.md#what-not-to-test)), but *do* test the model validator and the shipped defaults — the invariant and the defaults are ours.
 
-## Docstrings (Google-style)
+## Docstrings
 
-All public functions and classes must have Google-style docstrings:
+A docstring states the contract in one line. Add a Google-style `Args`, `Returns` or `Raises`
+section only for what the signature does not already say. Write one on a public function or class
+that other modules call; a private helper whose name says what it does gets none. What belongs in
+a comment at all is in [Code Documentation Style](../code-doc-style.md).
 
 ```python
-async def create_branch(
-    db: InfrahubDatabase,
-    name: str,
-    description: str | None = None,
-) -> Branch:
+# ✅ Good - one line; the signature already documents the parameters
+async def create_branch(db: InfrahubDatabase, name: str, description: str | None = None) -> Branch:
+    """Create a branch, raising ValidationError when the name is already taken."""
+
+
+# ✅ Good - a section for the one parameter the name does not explain
+def load_nodes(db: InfrahubDatabase, ids: list[str], *, strict: bool = False) -> list[Node]:
+    """Load the nodes behind the given ids.
+
+    Args:
+        strict: Raise on an unknown id instead of dropping it from the result.
+
+    """
+
+
+# ❌ Bad - every section restates the signature
+async def create_branch(db: InfrahubDatabase, name: str, description: str | None = None) -> Branch:
     """Create a new branch in the database.
 
     Args:
@@ -297,7 +336,7 @@ async def create_branch(
         The newly created Branch object.
 
     Raises:
-        BranchExistsError: If branch name already exists.
+        ValidationError: If branch name already exists.
     """
 ```
 
@@ -310,18 +349,16 @@ async def create_branch(
 
 ## Query Pattern
 
-Use the Query class pattern for database operations:
+Database reads and writes go through the `Query` class pattern — the lifecycle, Cypher
+conventions and result dataclasses are in [Query Pattern](../../knowledge/backend/query-pattern.md).
 
-```python
-from infrahub.core.query import Query
+## Methods stay on the instance
 
-class MyQuery(Query):
-    name: str = "my_query"
-
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
-        self.params["node_id"] = kwargs["node_id"]
-        self.add_to_query("MATCH (n:Node {uuid: $node_id}) RETURN n")
-```
+A private helper that happens to read no instance state is still an instance method. Do not demote
+it to a `@staticmethod`, a `@classmethod`, or a module-level function to satisfy a
+"method could be a function" hint — the repo suppresses ruff's `PLR6301` deliberately. The demotion
+rewrites call sites and tests for zero behavior change, and the next edit that needs `self`
+reverses it.
 
 ## Type Hints
 
@@ -381,13 +418,8 @@ Exceptions where positional arguments are acceptable:
 
 ## Testing
 
-- Unit tests: no external dependencies only file access
-- Component tests: Similar to unit tests with regards to small testing scope but can require database access
-- Integration tests: require Neo4j via testcontainers
-- Test files mirror source: `infrahub/core/node.py` → `tests/unit/core/test_node.py`
-- Async tests auto-configured via pytest-asyncio
-
-For additional information around testing patterns refer to [./testing.md](./testing.md)
+Test tiers, file layout, fixtures and assertion standards are in
+[Python Testing Standards](testing.md).
 
 ## See Also
 

@@ -1,0 +1,91 @@
+# Data Model: Number pool allocation scopes
+
+## Entities
+
+### Number pool (`CoreNumberPool`, existing)
+
+| Field | Type | Change | Notes |
+|-------|------|--------|-------|
+| `node` | Text, required | unchanged | Kind the pool is attached to (node or generic) |
+| `node_attribute` | Text, required | unchanged | Tracked attribute of that kind |
+| `start_range`, `end_range` | Number, optional, deprecated | unchanged | Single-range shorthand, mirrored from the ranges |
+| `pool_type` | Text enum `User` / `Schema`, read-only | unchanged | |
+| `ranges` | relationship to `CoreNumberPoolRange`, many | unchanged | |
+| `allocation_scope` | List, optional | **content changes** | Exists today and stores element names. Stores ordered scope elements (below) instead. Absent or empty means unscoped. Branch-agnostic like the pool. Set at creation only |
+
+### Scope element (stored inside `allocation_scope`)
+
+| Key | Type | Notes |
+|-----|------|-------|
+| `id` | string | Schema element id of the attribute or relationship on the default branch. The reference |
+| `name` | string | Readable name of the element at the time of the last schema update of the default branch. Display only |
+
+Order inside the list is the scope order; division tuples follow it.
+
+**Reading the stored value** (`backend/infrahub/pools/scope.py::AllocationScope.from_stored`): an entry that is not an object with `id` and `name` (a plain name written before this change, on a database built from the feature branch) is refused with an error naming the pool and asking to recreate it. No migration rewrites the old shape, because no released version stores a scope.
+
+**Validation rules at creation** (`backend/infrahub/pools/scope.py::AllocationScopeResolver`), each refusal names the element:
+
+1. Every entry resolves, by id or by name, to one attribute or one relationship declared on the pool's kind in the schema of the default branch. When the kind is a generic, the element must be declared on the generic itself.
+2. An attribute entry is `optional: false`; any attribute kind is accepted except `List`, `JSON` and `Any`, so a division holds only scalar values (decision 10). A relationship entry is `optional: false` with `cardinality: one`.
+3. An entry does not contain `__` (no path into a peer or into an attribute property).
+4. An entry is not the pool's `node_attribute`.
+5. No entry appears twice (by id).
+6. The pool's tracked attribute is not `unique: true` when the scope is not empty.
+
+**Immutability**: an update whose `allocation_scope` differs from the stored list, or is `null`, is refused. An update carrying the stored list unchanged (same ids in the same order) is accepted.
+
+### Division (derived, not stored)
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `values` | ordered list | One value per scope element, in scope order |
+
+Value of an element for the node being written: read on the branch of the request, from the node as it will be saved.
+
+Values of an element for a holding object: every value that a branch not being deleted gives it, including a value a branch still reads from the default branch as it was when the branch was created:
+
+- relationship element: the peer's id; a holding object with no peer matches no division;
+- attribute element: the scalar attribute value as stored, compared with no normalisation, or an empty string when the holding object has no value.
+
+A holding object counts in every division whose value, for each element, is one of its values for that element. A holding object that exists only on another branch counts.
+
+`key`: the values joined by dots, used in lock names (`<pool id>.<key>`). Two divisions may share a key, for example when a text value contains a dot; they then share a lock, which delays writers but never gives a wrong number.
+
+Equality: two divisions are equal when their element paths and their values are equal element by element. A division also records where a Node keeps each value on the branch it was read on (`elements`: an attribute name, or a relationship identifier and direction), which the queries read. The values of one element are peer ids or come from one scalar attribute, so they share a type.
+
+**Refusal**: when the schema of the request branch does not define an element on the pool's kind, the division cannot be read; the request is refused naming the element and the branch.
+
+### Tracked number record (`IS_RESERVED` edge, existing)
+
+Unchanged: pool to the holding object's attribute, on the global branch, with `identifier` and `allocated_values`, the list of the values the pool allocated; a value the record accounts for and does not list was provided by a user (provenance `provided`), and a record without the list reads as `allocated` for every value. The division of a record is the division of its holding object on the branch considered.
+
+### Number-pool attribute parameters (`NumberPoolParameters`, existing)
+
+| Field | Type | Update support | Change |
+|-------|------|----------------|--------|
+| `start_range`, `end_range`, `ranges` | int, list | validate constraint | unchanged |
+| `number_pool_id` | str or None | not supported | unchanged |
+| `allocation_scope` | list of str or None | **validate constraint** (was not supported) | Exists today. Element names, resolved and validated against the default branch's schema at load; stored on the pool the schema creates as ids and names; compared by id, in any order, to the stored scope on a later load that changes the declaration or renames an element it names |
+
+## Figures (returned by the dedicated queries)
+
+For one space (the pool, one range, or one division over the pool or over a range):
+
+| Figure | Definition |
+|--------|------------|
+| `size` | Number of values the space holds: the effective space (ranges clipped to the attribute's bounds, minus its excluded values), or the part of it one range contributes. 0 when the pool has no range |
+| `used` | Distinct values of the space held on any live branch by a holding object that occupies the measured division on some live branch |
+| `used_default_branch` | Those values held on the default branch |
+| `used_branches` | Those values held on other branches and not on the default branch |
+| `utilization`, `utilization_default_branch`, `utilization_branches` | The three counts as a percentage of `size`; 0 when `size` is 0 |
+
+The denominators keep the rule of today's `NumberUtilizationGetter`: `EffectiveSpace.size` for the pool and `EffectiveSpace.size_of(range_id)` for a range.
+
+## State transitions
+
+- Pool creation: scope resolved, validated, stored. No later transition of the scope.
+- Schema update on the default branch: stored names refreshed from the ids (no change of ids or order).
+- Schema update that breaks an element (optional, cardinality, an attribute changed to the kind `List`, `JSON` or `Any`, removal, `unique: true` on the tracked attribute), or that changes a declared scope to other ids, or that renames an element without updating the declaration: refused, no transition.
+- Schema update that renames an element and declares its new name: accepted; the stored name follows.
+- Pool deletion: the scope goes with the pool; no record changes.

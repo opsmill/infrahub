@@ -45,6 +45,9 @@ class ConflictsEnricher:
     async def add_conflicts_to_branch_diff(
         self, base_diff_root: EnrichedDiffRoot, branch_diff_root: EnrichedDiffRoot
     ) -> None:
+        # a root compared with itself holds no change that differs from the other side
+        if base_diff_root is branch_diff_root:
+            return
         self._base_branch_name = branch_diff_root.base_branch_name
         self._diff_branch_name = branch_diff_root.diff_branch_name
         self._order_insensitive_attrs = {}

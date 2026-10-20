@@ -97,35 +97,34 @@ wrong token for it, and retuning error states must not restyle diffs.
 
 ## How dark mode switches on
 
-The `dark` class on `document.documentElement` is the only switch. The primitives live in the
-design system (`frontend/packages/ui/src/theme/`), so anything built on `@infrahub/ui` can read and
-offer the theme; the application owns only the *policy* that decides it. Three things manage the
-class:
+The `dark` class on `document.documentElement` is the only switch. The application owns all of the
+theme machinery in `entities/config`; the design system (`@infrahub/ui`) only ships the tokens.
+Two things manage the class, and one way reads it:
 
 1. **The pre-paint script** in `frontend/app/index.html` — a blocking inline script in `<head>`
-   that applies the class before the first frame, from the `infrahub.theme.resolved` localStorage
-   mirror. It is deliberately outside the module graph (it must run before any bundle loads), so
-   the storage key is duplicated there verbatim — renaming the key means changing both files in
-   the same commit.
-2. **`ThemeProvider`** (`frontend/app/src/entities/config/ui/theme-provider.tsx`) — the policy.
-   Decides the real theme once config arrives: the `dark_theme` experimental flag gates whether
-   dark is offered at all, `infrahub.theme.choice` holds this browser's explicit choice, and the
-   resolved outcome is applied to the class and mirrored back to storage (`applyTheme` and the
-   storage helpers come from `@infrahub/ui`). It fills the design system's `ThemeContext`, which is
-   what makes `ThemeSwitchMenuItem` — the ready-made switch a menu can drop in — render and work.
-   An absent flag (backend predates it) counts as enabled under a Vite dev server only — see
-   `entities/config/domain/rules/can-offer-dark-theme.ts`. A browser with no stored choice follows
-   the desktop's `prefers-color-scheme`; a Vite dev server overrides that to dark so whoever is
-   working on the theme has it on screen — see
-   `entities/config/domain/rules/get-default-theme.ts`.
-3. **`useResolvedTheme`** (from `@infrahub/ui`) — how components *read* the current theme: a
-   `useSyncExternalStore` subscription to the class via MutationObserver. Components never read
-   storage or config for this; the document element is the single source of truth.
+   that applies the class before the first frame, from the `infrahub.theme.choice` localStorage key. It
+   is deliberately outside the module graph (it must run before any bundle loads), so the key is
+   duplicated there, along with the rule that resolves it. The key holds `light`, `dark`, or
+   `system`; `system` is resolved by the script against `prefers-color-scheme`, so a desktop that
+   changed appearance between visits reloads into its current appearance. A missing key, a value
+   that is not a theme, and blocked site data all resolve like `system`, so a first visit on a dark
+   desktop paints dark before the app boots. Unit tests run the script, so a renamed key or a broken
+   rule fails `pnpm test`.
+2. **`ThemeProvider`** (`entities/config/ui/theme-provider.tsx`) — the app's own implementation,
+   no library. It is the outermost component in `app/app.tsx`, above the error boundary, because
+   it depends on nothing and every screen, the error fallback included, can then read it.
+   `infrahub.theme.choice` holds the user's pick; a browser with no stored choice follows
+   `system`, and other tabs pick up a change through the `storage` event.
 
-The deployment gate is `INFRAHUB_EXPERIMENTAL_DARK_THEME`, in the shared config block of both
-compose files: `development/docker-compose.yml` defaults it to `true` and the root compose file to
-`false`, so our own stacks carry the theme and a shipped deployment stays without it until an
-operator opts in.
+   While the choice is `system` it follows the desktop live (`matchMedia`). It applies the class
+   in a layout effect, so none of its own frames shows the wrong palette, and freezes transitions
+   during a flip so every surface changes palette at once. The stored choice is validated by `ThemeSchema`
+   (`entities/config/domain/model/theme.ts`). The app's control is `ThemeMenuItem`
+   (`entities/config/ui/theme-menu-item.tsx`), the "Theme" submenu in the account menu.
+3. **Reading the painted theme** — `useTheme().resolvedTheme` (`light` or `dark`, with `system`
+   resolved); `useTheme().theme` is the choice, `system` included, which only
+   the theme picker needs. `useTheme()` throws outside a `ThemeProvider`, so a test rendering a
+   theme consumer mounts one. Components never read storage or the class for this.
 
 ## Content that carries its own colours
 
@@ -167,21 +166,20 @@ once. The two legitimate exceptions, both from
 - **Probing gotcha**: Tailwind only generates classes that appear in source. A class assembled
   dynamically in a devtools probe (`bg-${hue}-400/15`) silently resolves to nothing and reads as
   transparent — probe with the exact class strings the component ships.
-- **Both themes, always**: toggle via the account-menu switch, or
-  `document.documentElement.classList.toggle("dark")` in the console. The light theme is the
-  shipped default; a dark fix must not move light pixels unless that is the intent.
+- **Both themes, always**: switch through the Theme submenu in the account menu. Toggling the
+  class from the console re-themes the CSS but not Mermaid, GraphiQL or the schema visualizer,
+  which read the provider. The light theme is the shipped default; a dark fix must not move light
+  pixels unless that is the intent.
 
 ## Test coverage
 
 | Concern | Test |
 |---|---|
-| Flag/choice resolution, retention across flag flips | `entities/config/ui/theme-provider.test.tsx`, `entities/config/domain/rules/can-offer-dark-theme.test.ts` |
-| Reading the theme from the class | `shared/hooks/use-resolved-theme.test.tsx` |
-| The switch in the account menu, alpha tag, gating | `entities/user-profile/ui/account-menu.test.tsx` |
+| Choice, desktop tracking, cross-tab sync, transition freeze, pre-paint script | `entities/config/ui/theme-provider.test.tsx` |
+| The Theme submenu in the account menu, alpha tag | `entities/user-profile/ui/account-menu.test.tsx` |
 | Mermaid renders in the active theme, reacts to a flip, author directive wins | `shared/components/editor/markdown/markdown-with-mermaid.test.tsx` (asserts the colours baked into the real SVG) |
-| First-paint, persistence, flag-off journeys | `tests/e2e/test_theme.py` (pytest-playwright, needs a stack) |
+| First paint in both palettes, persistence | `tests/e2e/test_theme.py` (pytest-playwright, needs a stack) |
 | Docs screenshots stay light | pinned in `tests/e2e/helpers.py::save_screenshot_for_docs` |
 
-The design-system package has no test runner, so tests for its theme primitives are hosted in the
-application suite. The pre-paint script itself is reachable only by the e2e suite — it sits outside
-the module graph, so no vitest test can import it.
+The pre-paint script sits outside the module graph, so the unit tests read it through
+`index.html?raw` and runs it in the test page; the e2e suite covers it in a real first load.

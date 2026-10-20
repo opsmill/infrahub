@@ -11,6 +11,140 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.11.8](https://github.com/opsmill/infrahub/tree/infrahub-v1.11.8) - 2026-10-19
+
+### Added
+
+- Added support for Python 3.15 to the `infrahub-testcontainers` package.
+
+### Changed
+
+- Changed proposed-change and post-merge regeneration to follow a `display_label` or `human_friendly_id` read on a generic through the value that each implementation defines or inherits, instead of selecting every target when the generic defines none.
+- Changed proposed-change and post-merge regeneration to select only the targets that read a changed node when the query reaches that node through an inline or named fragment, instead of every target of the definition.
+- Changed proposed-change and post-merge regeneration to select only the targets that read a changed node when the query reads its kind both at the root and through a relationship, instead of every target of the definition.
+
+### Fixed
+
+- Fixed GraphQL queries ignoring the fields read through a named fragment used inside another fragment, such as `... on InfraDevice { ...DeviceInterfaces }`. When such a field changes, artifacts and Generators that read it are now regenerated and computed attributes based on a Python transform are recomputed. Object permissions are now checked on these fields.
+- Fixed artifacts and Generators not being selected after a change to an object whose kind was added to a generic after their query was saved, when the query reads that generic. The kinds a query reads are now taken from the query text each time a change is checked, instead of from the list stored when the query was saved. The `models` attribute of a GraphQL query is still computed only when the query text is saved, so it can miss kinds the query reads, such as a kind added to a generic afterwards. It no longer affects which artifacts and Generators are regenerated.
+- Fixed artifacts not being regenerated and Generators not being run after a change to a field that their query reads only inside a fragment on a generic.
+- Fixed the `infrahub-git-credential` helper returning "No such command 'erase'" in the task log after Git fails to authenticate with a remote repository.
+- Fixed the scheduled job that revokes approvals on updated proposed changes (Enterprise) checking every proposed change, including merged, closed and canceled ones, instead of only the open ones. On an instance with many old proposed changes, the job started one whole-graph scan per proposed change every 10 minutes and could make the database too slow to log in.
+
+## [Infrahub - v1.11.7](https://github.com/opsmill/infrahub/tree/infrahub-v1.11.7) - 2026-10-14
+
+### Fixed
+
+- Concurrent creates of the same IP address on a branch other than the default branch now leave a single IP address when the schema declares a uniqueness constraint on it. The extra creates are rejected with the uniqueness error, as they are on the default branch. ([#11059](https://github.com/opsmill/infrahub/issues/11059))
+- Fixed the "info" severity badge in task logs having the same color as the "warning" badge; it is now blue.
+
+## [Infrahub - v1.11.6](https://github.com/opsmill/infrahub/tree/infrahub-v1.11.6) - 2026-10-13
+
+### Changed
+
+- Post-merge and proposed-change regeneration now regenerate only the affected members when a Generator or artifact query reads a `display_label` or `human_friendly_id` built from a related node's attribute and that related node changes. A query that does not target unique objects, or whose `display_label` or `human_friendly_id` path cannot be resolved, still regenerates every member of the definition.
+- Post-merge regeneration now narrows to the affected members when the changed data is read through a relationship (for example an owner's name rendered by an artifact, or an interface's field on a device), instead of regenerating every member of the definition. Changes that cannot be attributed to specific members unambiguously still regenerate the whole group.
+
+### Fixed
+
+- Fixed artifacts and Generators not being regenerated after a merge or in a proposed change when the change was to a field their query filters on, such as moving an object to the related node the query selects by. ([#11024](https://github.com/opsmill/infrahub/issues/11024))
+- Fixed Generators not running in a proposed change or after a merge when the only change was to a Profile of a kind their query reads.
+
+## [Infrahub - v1.11.5](https://github.com/opsmill/infrahub/tree/infrahub-v1.11.5) - 2026-10-08
+
+### Security
+
+- Updated `PyJWT` to 2.15.0, `urllib3` to 2.8.0, `oauthlib` to 4.0.0, `dulwich` to 1.2.9, `fsspec` to 2026.6.0 and `GitPython` to 3.1.62 to fix published security vulnerabilities, including the critical PyJWT vulnerability [CVE-2026-102268](https://github.com/advisories/GHSA-ffc3-869f-jxw9). ([#10803](https://github.com/opsmill/infrahub/pull/10803), [#10903](https://github.com/opsmill/infrahub/pull/10903), [#10837](https://github.com/opsmill/infrahub/pull/10837))
+
+### Fixed
+
+- Fixed the repository import getting stuck in an error state when a single commit removed a GraphQL query from `.infrahub.yml` and also removed the Transformations or Generator definitions that used it, or pointed them at another query. A query removed from `.infrahub.yml` is now deleted even when the repository declares no other queries. Deleting a removed Transformation also deletes every artifact definition that references it, including artifact definitions created outside the repository, along with their artifacts. ([#10109](https://github.com/opsmill/infrahub/issues/10109))
+- Fixed a node getting a duplicate uniqueness constraint when an existing constraint lists its human-friendly ID fields in a different order. Infrahub removes the duplicate from an existing schema the next time that node's schema is loaded. ([#10793](https://github.com/opsmill/infrahub/issues/10793))
+- Fixed a slow creation, update and refresh of objects when many objects use the same Profile.
+- Fixed a slow deletion of a Profile, and a slow removal of objects from a Profile, when many objects use the Profile.
+- Fixed a slow update of a Profile with many objects, when the update does not include `related_nodes` or `related_templates`.
+- Fixed branch creation and other high-priority tasks waiting behind a large backlog of background tasks before they start.
+- Fixed missing related objects in large GraphQL queries, when objects share related objects and the relationship has more rows than the query size limit (5,000 by default).
+- Fixed searches returning no results when the search text starts or ends with a space, for example after pasting it from another application. This affects the search box on node list views and on the branches, tasks, proposed changes and IPAM namespaces pages. It also affects the search in relationship fields on create and edit forms, and in the relationship filter of list views.
+
+## [Infrahub - v1.11.4](https://github.com/opsmill/infrahub/tree/infrahub-v1.11.4) - 2026-10-01
+
+### Security
+
+- Prevented Infrahub from serving an artifact file that no longer matches its checksum, for example after it was modified in the object storage; reading it now returns an error asking to regenerate the artifact, and Re-generate on the artifact page stores a correct copy.
+
+### Added
+
+- Added `INFRAHUB_STORAGE_TLS_INSECURE` to skip certificate validation of the S3 endpoint, and a per-destination `tls_insecure` setting that does the same for log-forwarding syslog servers (Enterprise), for test environments.
+- Added the `infrahub db delete-diffs` command, which deletes the stored named diffs that are not frozen, and with `--include-branch-diffs` the unfrozen branch diffs too, for every branch or for a single branch with `--branch`.
+
+### Changed
+
+- Changed the node events sent when a branch is rebased: every rebase now replays all of the branch's own changes onto the new base, and the default branch's changes only for the object types whose schema the branch changed, instead of every change made on the default branch since the branch was created or last rebased. Webhooks and action rules receive an event for each of the branch's changes on every rebase.
+
+### Fixed
+
+- Fixed the file and artifact diffs displaying the lines around hidden unchanged lines as if they were adjacent; a separator now marks each block of hidden lines and expands it on click. ([#6938](https://github.com/opsmill/infrahub/issues/6938))
+- Fixed IPHost, IPNetwork and IPAddress attribute values not being normalized when updated. This broke value filters and the Schema Integrity check on proposed changes, and let an update bypass a uniqueness constraint when the address was written without its prefix length ([#10616](https://github.com/opsmill/infrahub/issues/10616))
+- Fixed a branch with conflicts against the default branch being unable to leave the `NEED_UPGRADE_REBASE` status: a rebase now accepts a conflict on an attribute once it is resolved in favor of the branch, and its error says, for each conflict that still blocks it, whether to resolve it in favor of the branch or to update the data.
+- Fixed a conflict going unreported when the default branch changed a relationship before a branch first changed the same relationship.
+- Fixed a display label or Jinja2 computed attribute that fails to render on one node preventing the refresh of the other nodes processed with it.
+- Fixed diff updates and branch rebases slowing down sharply when the diff contains a node related to thousands of objects, such as an IP namespace after a bulk IP address import.
+- Fixed diff updates on large branches stalling for tens of seconds after the diff was computed and storing a copy of the whole diff in Redis.
+- Fixed display labels, human-friendly IDs and computed attributes taking too long to refresh on kinds with many nodes after their schema definition or their Python transform changed.
+- Fixed rebasing a branch after large changes on the default branch taking a long time and exhausting worker memory.
+- Fixed rebasing a branch with changes of its own not releasing the branch-agnostic attribute and relationship values of objects deleted on the default branch, which kept counting towards uniqueness constraints and kept resource pool values allocated.
+- Fixed recreating a branch's diff, as happens after a rebase, reading the whole default branch side of the previous diff. A diff stored by an earlier version can hold every change made on the default branch since the branch was created, so the refresh could take minutes, exhaust worker memory and hold up a merge of the branch.
+- Fixed refreshing a computed attribute for a whole kind skipping some nodes when the kind is sorted on that computed attribute.
+- Fixed startup failing on a CA bundle setting left empty, such as a blanked `INFRAHUB_TLS_CA_BUNDLE` or `AWS_CA_BUNDLE` variable; an empty value is now read as unset
+- Fixed the "Infrahub is busy" notice closing early, and reopening instead of updating, when several retried requests completed within half a second of each other
+- Fixed the artifact and file viewers showing "Sorry, no data found." when the content could not be loaded; they now show the reason returned by the server.
+- Fixed the diff of a branch showing a relationship peer as added on the default branch when the default branch had added and removed it again before the branch changed that relationship.
+- Fixed the diff of a branch without changes of its own collecting every change made on the default branch since the branch was created, which made updating its diff and rebasing it slow and could exhaust database memory.
+- Fixed the diff update of a branch with tens of thousands of changed nodes taking many minutes longer than its data justifies: the diff is now calculated one chunk of changed nodes at a time, saved in batches that cost the same at any size and are written several at a time (bounded by the new `diff_save_concurrency` database setting), and its display labels are read from the nodes instead of being recomputed for every changed node.
+- Fixed the warning logged when an artifact or Generator definition regenerates every target, which always blamed target uniqueness; it now states the actual reason, and the reason is also logged after a merge.
+- Fixed the web UI being replaced by a raw JSON error body when the server is shedding load: a page load is no longer shed, so opening or refreshing Infrahub under heavy load reaches the app and its own retry handles the requests the page then makes.
+- Sped up artifact generation and transform rendering when the GraphQL query returns a large response.
+
+## [Infrahub - v1.11.3](https://github.com/opsmill/infrahub/tree/infrahub-v1.11.3) - 2026-09-23
+
+### Added
+
+- Added an `X-Infrahub-Admission: shed` marker header to load-shed `429` responses, exposed to cross-origin clients along with the `Retry-After` hint, so a client can tell an admission shed from any other `429`.
+- Added the `INFRAHUB_TLS_CA_BUNDLE` setting, a CA bundle given as a file path or as PEM text and trusted by every component that opens outbound TLS connections, including git repositories and S3 object storage, so Infrahub can run against a private certificate authority without a custom Docker image; git also gained `INFRAHUB_GIT_TLS_CA_FILE` and `INFRAHUB_GIT_TLS_INSECURE`. Every component CA setting now accepts PEM text as well as a path and is validated at startup. The clients the task worker and the git credential commands use to reach the Infrahub API now follow these settings as well, instead of the `INFRAHUB_TLS_CA_FILE` and `INFRAHUB_TLS_INSECURE` environment variables read by the Python SDK.
+- Added the `infrahub db reset` command to delete all data from the graph database and the task manager database, resetting whichever of the two the current environment is configured for, for example to start over on a development or test deployment without recreating the containers.
+
+### Changed
+
+- **Breaking:** `POST /api/schema/load` and `POST /api/schema/check` now return one `422` entry per offending field, located on that field through `loc` and carrying the value received there in `input`. Previously a rejected schema produced a single entry located at the schema index, with every violation concatenated into its `msg` and the whole submitted schema as its `input`. A consumer that read the joined message text now sees only the first violation there and must read `loc` and `input` on each entry instead. The wording of each reason, the set of payloads accepted or rejected, and the offline `validate_schema` output are unchanged. ([#10601](https://github.com/opsmill/infrahub/issues/10601))
+- Changed the web UI to wait and retry when the server is shedding load, telling the user how long the wait is, instead of failing the request immediately.
+- Replaced the per-lab documentation pages under Learn with a single "Infrahub Labs" link to the labs catalogue at [docs.infrahub.app/labs](https://docs.infrahub.app/labs), which describes every lab in full and also covers labs hosted for partners and the community.
+- Updated the homepage's Getting Started "Schema Library" card to point to the Infrahub Marketplace instead of the GitHub schema-library repository.
+- Upgraded Prefect to `3.8.6` (from `3.7.5`) and `prefect-redis` to `0.2.15` (from `0.2.14`). The first start after this upgrade can take longer than usual while the task manager database is updated, on deployments with a long task history. Later starts are unaffected.
+
+### Fixed
+
+- Branch-agnostic attributes and relationships on branch-aware objects no longer stay reserved forever after the object is deleted. Previously the value was left in place for every branch, so it still counted towards uniqueness constraints and an allocated resource pool value stayed allocated to an object that no longer existed. An attribute's value is now released once no branch can still read its object, and a relationship's once no branch can still read both of its peers; released pool values become allocatable again. Upgrading releases the values earlier versions left behind. See [Branch-agnostic data](https://docs.infrahub.app/branches/branch-agnostic-data). ([#9762](https://github.com/opsmill/infrahub/issues/9762))
+- Fixed a repository's first import failing when its objects declared Generator actions or trigger rules referencing a Generator definition from the same repository; those objects are now imported after the definitions they depend on, so the import succeeds on an empty instance without a manual reload. ([#10063](https://github.com/opsmill/infrahub/issues/10063))
+- The Tasks tab of a Generator instance now lists the flow runs that executed the Generator for that target, so an instance's execution history is visible from the instance itself. ([#10107](https://github.com/opsmill/infrahub/issues/10107))
+- Fixed the sidebar menu hiding your object items on a short window. The lower (built-in) menu no longer takes all the vertical space: both menu sections now shrink and scroll, and the object section keeps a minimum height so its items stay reachable at any window size or zoom level. ([#10158](https://github.com/opsmill/infrahub/issues/10158))
+- Running a Generator definition whose targets include a failing member now reports which targets failed and how many succeeded, instead of collapsing into a single opaque failure. ([#10199](https://github.com/opsmill/infrahub/issues/10199))
+- Attaching or removing a child now reports the change on the hierarchical parent's `children` relationship, instead of on its `parent` relationship. A Python transform computed attribute or an action rule that matches `children` now reacts. Deleting a node that has both a parent and a child now reports both sides. ([#10485](https://github.com/opsmill/infrahub/issues/10485))
+- Fixed repository sync failures reporting only the branch name; the failing step and reason are now included in the error and surfaced in the Tasks tab. ([#10526](https://github.com/opsmill/infrahub/issues/10526))
+- Fixed the branch merge mutation reporting a "branch not found" error for a merge that succeeded when automatic branch deletion after merge is enabled. ([#10578](https://github.com/opsmill/infrahub/issues/10578))
+- Converting a node that has already been converted now returns a clear not-found error instead of an HTTP 500. ([#10646](https://github.com/opsmill/infrahub/issues/10646))
+- Fix refreshing the diff of a proposed change failing with "Cannot find diff" when no diff had been stored yet. A diff update that found the update lock already held assumed the holder had saved a diff, but the queries that read a diff take the same lock only to wait for any update in flight, so the update can now find nothing stored. It calculates the diff itself in that case instead of returning an error.
+- Fixed HTTPS clones of repositories whose certificate cannot be verified being reported as a generic error instead of the connection error status and certificate hint.
+- Fixed `INFRAHUB_HTTP_TLS_INSECURE` being ignored when a CA bundle was configured alongside it, which made the clients that reach the Infrahub API keep validating certificates. Disabling verification no longer requires removing the bundle first, matching the documented precedence and the behavior of the other components.
+- Fixed a long rebase, merge or diff update of a large branch failing with "Cannot release a lock that's no longer owned" after all its work was done: a worker busy on a CPU-heavy step could miss its heartbeat, and the periodic deadlock cleanup then deleted the locks it was still holding. The heartbeat now runs on its own thread, so a worker only looks inactive once it has actually stopped.
+- Fixed a merge or schema-update rollback leaving branch-agnostic object, attribute, and relationship timestamps wrong: it could revert the timestamps of an unrelated branch-agnostic change made in the same window, and could clear timestamps it had already restored.
+- Fixed large listings slowing down as they page through results: Neo4j planned every page of a paginated database query from scratch because the page bounds were written into the query text, and all pages now share one cached plan.
+- Fixed saving the diff of a large branch slowing down as more nodes were written: every batch of diff nodes now costs the same however many nodes the diff already holds.
+- Fixed the diff calculation of a large branch re-reading every change on the branch for each page of results: attribute, relationship and property changes are now calculated one chunk of changed nodes at a time.
+- Fixed the diff update of a branch with an open proposed change stalling for minutes after the diff was saved when the branch holds tens of thousands of changed objects, which also blocked every other task on that worker for the duration.
+- Fixed the display label enrichment of a large diff keeping a worker busy for tens of seconds: the labels are now read from the display labels stored on the nodes instead of being recomputed through a full node object for every changed node.
+- In graph traversal results (path and dependency modes), both ends of a hierarchy edge were reported as `parent`. Each end now reports its own side (`children` on the parent end); when the hierarchy does not pin its parent and children kinds, the sides are a consistent best guess.
+
 ## [Infrahub - v1.11.2](https://github.com/opsmill/infrahub/tree/infrahub-v1.11.2) - 2026-09-03
 
 ### Fixed

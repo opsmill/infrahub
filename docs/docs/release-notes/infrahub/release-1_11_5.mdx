@@ -1,0 +1,37 @@
+---
+title: Release 1.11.5
+release_date: 2026-10-08
+release_type: security
+description: "Infrahub now uses updated versions of PyJWT, urllib3 and other dependencies that fix published security vulnerabilities, including a critical PyJWT vulnerability. Other fixes speed up operations on Profiles used by many objects, and resolve missing related objects in large GraphQL queries and searches that returned no results when the text starts or ends with a space."
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.11.5</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>October 8th, 2026</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.11.5](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.11.5)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Security
+
+- Updated `PyJWT` to 2.15.0, `urllib3` to 2.8.0, `oauthlib` to 4.0.0, `dulwich` to 1.2.9, `fsspec` to 2026.6.0 and `GitPython` to 3.1.62 to fix published security vulnerabilities, including the critical PyJWT vulnerability [CVE-2026-102268](https://github.com/advisories/GHSA-ffc3-869f-jxw9). ([#10803](https://github.com/opsmill/infrahub/pull/10803), [#10903](https://github.com/opsmill/infrahub/pull/10903), [#10837](https://github.com/opsmill/infrahub/pull/10837))
+
+### Fixed
+
+- Fixed the repository import getting stuck in an error state when a single commit removed a GraphQL query from `.infrahub.yml` and also removed the Transformations or Generator definitions that used it, or pointed them at another query. A query removed from `.infrahub.yml` is now deleted even when the repository declares no other queries. Deleting a removed Transformation also deletes every artifact definition that references it, including artifact definitions created outside the repository, along with their artifacts. ([#10109](https://github.com/opsmill/infrahub/issues/10109))
+- Fixed a node getting a duplicate uniqueness constraint when an existing constraint lists its human-friendly ID fields in a different order. Infrahub removes the duplicate from an existing schema the next time that node's schema is loaded. ([#10793](https://github.com/opsmill/infrahub/issues/10793))
+- Fixed a slow creation, update and refresh of objects when many objects use the same Profile.
+- Fixed a slow deletion of a Profile, and a slow removal of objects from a Profile, when many objects use the Profile.
+- Fixed a slow update of a Profile with many objects, when the update does not include `related_nodes` or `related_templates`.
+- Fixed branch creation and other high-priority tasks waiting behind a large backlog of background tasks before they start.
+- Fixed missing related objects in large GraphQL queries, when objects share related objects and the relationship has more rows than the query size limit (5,000 by default).
+- Fixed searches returning no results when the search text starts or ends with a space, for example after pasting it from another application. This affects the search box on node list views and on the branches, tasks, proposed changes and IPAM namespaces pages. It also affects the search in relationship fields on create and edit forms, and in the relationship filter of list views.

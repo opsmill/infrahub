@@ -1,0 +1,21 @@
+---
+# {{repo}}: one generator that succeeds and one that raises, both targeting the demo's edge_router group.
+queries:
+  - name: scn-device
+    file_path: queries/scn_device.gql
+
+generator_definitions:
+  - name: scn-gen-ok
+    file_path: generators/scn_generators.py
+    class_name: OkGenerator
+    query: scn-device
+    targets: edge_router
+    parameters:
+      name: name__value
+  - name: scn-gen-fail
+    file_path: generators/scn_generators.py
+    class_name: FailingGenerator
+    query: scn-device
+    targets: edge_router
+    parameters:
+      name: name__value

@@ -1,13 +1,14 @@
-import { type ResolvedTheme, useResolvedTheme } from "@infrahub/ui";
 import mermaid from "mermaid";
 import type React from "react";
-import { useMemo } from "react";
 import type { Components, Options } from "react-markdown";
 import { MarkdownHooks } from "react-markdown";
 import rehypeMermaid, { type RehypeMermaidOptions } from "rehype-mermaid";
 
 import { remarkPlugins } from "@/shared/components/editor/markdown/markdown-render";
 import { MermaidDiagram } from "@/shared/components/editor/markdown/mermaid-diagram";
+
+import type { ResolvedTheme } from "@/entities/config/domain/model/theme";
+import { useTheme } from "@/entities/config/ui/theme-provider";
 
 const rehypeMermaidOptions: RehypeMermaidOptions = {
   strategy: "inline-svg",
@@ -76,21 +77,15 @@ type MarkdownWithMermaidProps = {
 };
 
 export default function MarkdownWithMermaid({ markdownText, fallback }: MarkdownWithMermaidProps) {
-  const theme = useResolvedTheme();
+  const { resolvedTheme } = useTheme();
 
-  const rehypePlugins: Options["rehypePlugins"] = useMemo(
-    () => [
-      [rehypeConfigureMermaid, { theme }],
-      [rehypeMermaid, rehypeMermaidOptions],
-    ],
-    [theme]
-  );
+  const rehypePlugins: Options["rehypePlugins"] = [
+    [rehypeConfigureMermaid, { theme: resolvedTheme }],
+    [rehypeMermaid, rehypeMermaidOptions],
+  ];
 
-  // Mermaid bakes colors into the SVG it emits, and the source text does not change on a theme
-  // flip — remounting on the theme is what forces the pipeline to run again.
   return (
     <MarkdownHooks
-      key={theme}
       remarkPlugins={remarkPlugins}
       rehypePlugins={rehypePlugins}
       components={components}

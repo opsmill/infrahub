@@ -1,8 +1,12 @@
-"""The one predicate that decides whether a branch-agnostic field is still retained by any branch.
+"""The one predicate that decides whether a field with global edges is still retained by any branch.
 
 A branch-agnostic field keeps its value on edges carrying the global branch name, which every branch
 reads. Those edges may only be closed once **NO** branch can still reach a live owner over a live field
 edge. Cypher for this is consolidated here to ensure consistency.
+
+A branch-aware attribute a number pool tracks carries one global edge too: the pool's IS_RESERVED
+edge. The predicate reads each branch's own view of the owning and existence edges, so it answers the
+same question for that attribute, and the retirement queries hand it such attributes as candidates.
 
 Retention is decided per branch **and** per linked vertex: under that branch's view, the vertex's
 existence edge and its edge to the field must both resolve to `active`. Surviving edges are summed
@@ -20,31 +24,12 @@ Assumption: every branch forks from the default branch. A branch-of-branch featu
 this logic.
 """
 
-# Expects `agnostic_candidates` in scope: a list of the candidate `:Attribute` / `:Relationship`
-# vertices, plus the `$global_branch_name` and `$at` parameters. Emits one row per candidate that no
-# branch retains, with `field` as the only variable in scope.
-UNRETAINED_AGNOSTIC_FIELD_PREDICATE = """
-// ----------------------
-// The branches are read once for the whole run and carried as a list.
-// ----------------------
-MATCH (branch:Branch)
-WHERE branch.name <> $global_branch_name
-// ----------------------
-// Don't consider DELETING branches when determining reachability
-// ----------------------
-AND branch.status <> "DELETING"
-WITH
-    agnostic_candidates,
-    collect({
-        name: branch.name,
-        origin_name: CASE WHEN branch.is_default THEN NULL ELSE branch.origin_branch END,
-        origin_at: CASE
-            WHEN branch.is_default THEN NULL
-            WHEN branch.branched_from < $at THEN branch.branched_from
-            ELSE $at
-        END
-    }) AS branch_windows
-
+# Expects `agnostic_candidates` in scope -- a list of the candidate `:Attribute` / `:Relationship`
+# vertices -- together with `branch_windows`, the collected read window of every retaining branch,
+# plus the `$global_branch_name` and `$at` parameters. Emits one row per candidate that no branch
+# retains, with `field` as the only variable in scope. Batch evaluation reads the branches once and
+# imports the same `branch_windows` list into every batch.
+UNRETAINED_AGNOSTIC_FIELD_EVALUATION = """
 UNWIND agnostic_candidates AS field
 WITH DISTINCT field, branch_windows
 // ----------------------
@@ -123,3 +108,30 @@ WITH field, required_live_peers, max(live_peer_count) AS most_live_peers
 WHERE most_live_peers < required_live_peers
 WITH field
 """
+
+# Expects `agnostic_candidates` in scope: a list of the candidate `:Attribute` / `:Relationship`
+# vertices, plus the `$global_branch_name` and `$at` parameters. Emits one row per candidate that no
+# branch retains, with `field` as the only variable in scope.
+UNRETAINED_AGNOSTIC_FIELD_PREDICATE = """
+MATCH (branch:Branch)
+WHERE branch.name <> $global_branch_name
+// ----------------------
+// Don't consider DELETING branches when determining reachability
+// ----------------------
+AND branch.status <> "DELETING"
+// ----------------------
+// The branches are read once for the whole run and carried as a list.
+// ----------------------
+WITH
+    agnostic_candidates,
+    collect({
+        name: branch.name,
+        origin_name: CASE WHEN branch.is_default THEN NULL ELSE branch.origin_branch END,
+        origin_at: CASE
+            WHEN branch.is_default THEN NULL
+            WHEN branch.branched_from < $at THEN branch.branched_from
+            ELSE $at
+        END
+    }) AS branch_windows
+%(unretained_evaluation)s
+""" % {"unretained_evaluation": UNRETAINED_AGNOSTIC_FIELD_EVALUATION}

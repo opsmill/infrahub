@@ -41,9 +41,6 @@ query GatherArtifactDefinitions {
             query {
               node {
                 id
-                models {
-                  value
-                }
                 name {
                   value
                 }
@@ -99,7 +96,6 @@ def parse_artifact_definitions(definitions: list[dict]) -> list[ProposedChangeAr
             timeout=transformation["timeout"]["value"],
             query_name=transformation["query"]["node"]["name"]["value"],
             query_id=transformation["query"]["node"]["id"],
-            query_models=transformation["query"]["node"]["models"]["value"] or [],
             query_payload=transformation["query"]["node"]["query"]["value"],
             repository_id=transformation["repository"]["node"]["id"],
             transform_kind=transformation["__typename"],
@@ -117,3 +113,15 @@ def parse_artifact_definitions(definitions: list[dict]) -> list[ProposedChangeAr
         parsed.append(artifact_definition)
 
     return parsed
+
+
+def selects_repository(
+    *, repository_id: str | None, exclude_repository_ids: list[str] | None, include_repository_ids: list[str] | None
+) -> bool:
+    """Whether a run over every definition keeps a definition owned by this repository.
+
+    An empty include list restricts nothing, so a run never skips a definition by accident.
+    """
+    if exclude_repository_ids and repository_id in exclude_repository_ids:
+        return False
+    return not include_repository_ids or repository_id in include_repository_ids

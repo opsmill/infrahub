@@ -33,9 +33,10 @@ affected derived value, reusing the existing per-family process flows and chunki
 
 A shared coordinator serves both operations; only the branch differs, merge recomputing on the
 destination branch and rebase on the user branch. The pass covers Jinja2 computed attributes,
-display labels, and human-friendly ids; Python transform computed attributes joined later, as the
-Neutral section records. It reuses the computed-attribute deriver and adds
-display-label and HFID derivers built from the dependency metadata already recorded on those
+display labels, and human-friendly ids; Python transform computed attributes joined later
+([ADR 0020](0020-python-transform-recompute-targets.md)), as the Neutral section records. It
+reuses the computed-attribute deriver and adds display-label and HFID derivers built from the
+dependency metadata already recorded on those
 definitions. It recomputes all affected readers on the correct branch, which never
 under-recomputes, and defers any source-branch redundancy skip.
 
@@ -60,7 +61,8 @@ under-recomputes, and defers any source-branch redundancy skip.
 ### Neutral
 
 - Profile refresh stays on its own automations, outside this pass. Python-transform computed
-  attributes did too until they joined as a fourth family; its two trigger types carry the same
+  attributes did too until they joined as a fourth family
+  ([ADR 0020](0020-python-transform-recompute-targets.md)); its two trigger types carry the same
   `live` filter (ADR 0016), and `dev/knowledge/backend/merge-recompute.md` records that design.
 - Readers of a recompute write are handled by a schema-derived, depth-bounded chain submitter.
 

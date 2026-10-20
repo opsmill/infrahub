@@ -80,10 +80,14 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
         requests: list[RequestT] = []
         for loaded in loaded_definitions:
             definition = loaded.definition
+            query_report = self.impacted_resolver.analyze(
+                query_payload=definition.query_payload, query_branch=target_branch
+            )
             gate_result = self.gate.evaluate(
                 definition=definition,
                 diff_summary=diff_summary,
                 modified_kinds=modified_kinds,
+                read_kinds=query_report.impacted_models,
                 group_id=loaded.group_id,
             )
 
@@ -110,13 +114,18 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
             if not regenerate_all_members:
                 # The merge target branch is the branch the definition's query is analysed against.
                 selection = await self.impacted_resolver.resolve(
-                    query_payload=definition.query_payload,
+                    query_report=query_report,
                     diff_summary=diff_summary,
                     query_branch=target_branch,
                     subscriber_kind=self.subscriber_kind,
                     every_target=list(subscriber_by_member.values()),
                 )
                 impacted = selection.ids
+                if selection.widening is not None:
+                    self.log.info(
+                        f"{definition.definition_name}: {selection.widening.detail}. "
+                        f"All {definition.instance_noun} will be processed."
+                    )
 
             rendered_members = [
                 member_id
@@ -132,6 +141,10 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
             members = _narrow_members_filter(rendered_members, len(member_ids))
             requests.append(self._build_request(definition=definition, target_branch=target_branch, members=members))
         return requests
+
+    def unnarrowed_request(self, *, definition: DefinitionT, target_branch: str) -> RequestT:
+        """Build the request that regenerates every member of the definition."""
+        return self._build_request(definition=definition, target_branch=target_branch, members=[])
 
     def full_regeneration_parameters(self, *, target_branch: str) -> dict[str, Any]:
         """Parameters for the blanket regeneration of this kind; extended by kinds that need more."""

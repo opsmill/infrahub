@@ -9,11 +9,15 @@ import {
   mapExchange,
 } from "@urql/core";
 import { authExchange } from "@urql/exchange-auth";
+import { initGraphQLTada } from "gql.tada";
 
 import { ERROR_CODES } from "@/shared/api/errors";
 import { handleGraphQLErrors, hasCatalogueCode } from "@/shared/api/graphql/error-handling";
+import type { introspection } from "@/shared/api/graphql/generated/graphql-env";
 import type { GraphQLRequestContext, GraphQLResult } from "@/shared/api/graphql/types";
 import { DEFAULT_PRIORITY, PRIORITY_HEADER } from "@/shared/api/priority";
+import { retryingFetch } from "@/shared/api/rate-limit/retrying-fetch";
+import { isShedErrorItem, SHED_USER_MESSAGE } from "@/shared/api/rate-limit/shed-envelope";
 import { queryClient } from "@/shared/api/rest/client";
 import { CONFIG } from "@/shared/config/config";
 
@@ -21,8 +25,11 @@ import { getAccessToken } from "@/entities/authentication/api/token-storage";
 import { redirectToLogin } from "@/entities/authentication/domain/use-cases/redirect-to-login";
 import { refreshAccessTokenQueryOptions } from "@/entities/authentication/ui/queries/refresh-access-token.query";
 
-// biome-ignore lint/performance/noBarrelFile: Re-exported so authoring and running a query need only this module.
-export { graphql, type ResultOf, type VariablesOf } from "gql.tada";
+export type { ResultOf, VariablesOf } from "gql.tada";
+export const graphql = initGraphQLTada<{
+  introspection: introspection;
+  scalars: { BigInt: number };
+}>();
 
 // Add `__typename` to every selection set
 const addTypenameExchange = mapExchange({
@@ -64,6 +71,7 @@ function createGraphqlClient(branch?: string | null, date?: Date | null): Client
   return new Client({
     url: CONFIG.GRAPHQL_URL(branch, date),
     preferGetMethod: false,
+    fetch: retryingFetch,
     fetchOptions: {
       headers: {
         [PRIORITY_HEADER]: DEFAULT_PRIORITY,
@@ -86,7 +94,12 @@ function toGraphQLResult<TData>(
   }
 
   if (error?.graphQLErrors?.length) {
-    throw new Error(error.graphQLErrors.map((e) => e.message).join("; "), { cause: error });
+    // A shed item keeps the server's mechanism wording; callers that render
+    // `error.message` should show the same text as the toast.
+    const messages = error.graphQLErrors.map((e) =>
+      isShedErrorItem(e.extensions) ? SHED_USER_MESSAGE : e.message
+    );
+    throw new Error(messages.join("; "), { cause: error });
   }
 
   return { data: data as TData };

@@ -1,4 +1,5 @@
 import { constructPath, type overrideQueryParams } from "@/shared/api/rest/fetch";
+import { QSP } from "@/shared/config/qsp";
 
 export type BranchDetailsTab = "data" | "files" | "artifacts" | "schema";
 
@@ -13,4 +14,9 @@ export function getBranchDetailsUrl(
   const encodedBranchName = encodeURIComponent(branchName);
   const path = tab ? `/branches/${encodedBranchName}/${tab}` : `/branches/${encodedBranchName}`;
   return constructPath(path, overrideParams);
+}
+
+// Scopes a link to the page's branch rather than the branch selector's.
+export function getBranchQsp(branchName: string): overrideQueryParams {
+  return { name: QSP.BRANCH, value: branchName };
 }

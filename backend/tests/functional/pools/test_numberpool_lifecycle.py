@@ -14,9 +14,11 @@ from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.graphql.registry import registry as graphql_registry
+from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.registration import get_branches_with_schema_number_pool
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
+from infrahub.pools.scoped_number_pool_reader import ScopedNumberPoolReader
 from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.workers.dependencies import build_cache
 from tests.helpers.dependency_override import override_dependency
@@ -49,6 +51,31 @@ node_schema_definition = NodeSchema(
     ],
 )
 
+ticket_schema_definition = NodeSchema(
+    name="Ticket",
+    namespace="Test",
+    attributes=[
+        AttributeSchema(name="name", kind="Text", unique=True),
+        AttributeSchema(name="ticket_id", kind="Number", optional=True),
+    ],
+)
+
+ATTACH_TICKET_NUMBER = """
+mutation AttachTicketNumber($id: String!, $value: BigInt!, $pool_id: String!) {
+    TestTicketUpdate(data: { id: $id, ticket_id: { value: $value, from_pool: { id: $pool_id } } }) {
+        object { ticket_id { value } }
+    }
+}
+"""
+
+CREATE_TICKET_FROM_POOL = """
+mutation CreateTicketFromPool($name: String!, $ticket_id: NumberAttributeCreate!) {
+    TestTicketCreate(data: { name: { value: $name }, ticket_id: $ticket_id }) {
+        object { id ticket_id { value } }
+    }
+}
+"""
+
 number_pool_allocation_query = Query(
     query={
         "InfrahubResourcePoolAllocated": {"@filters": {"pool_id": "$pool_id", "resource_id": "$pool_id"}, "count": None}
@@ -59,8 +86,16 @@ number_pool_allocation_query = Query(
 
 class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
     async def _post_schema_load_updates(self, db: InfrahubDatabase) -> None:
-        upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
-        snps = SchemaNumberPoolSynchronizer(db=db, schema_manager=registry.schema, upserter=upserter)
+        upserter = SchemaNumberPoolUpserter(
+            db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository
+        )
+        snps = SchemaNumberPoolSynchronizer(
+            db=db,
+            scope_reader=ScopedNumberPoolReader(db=db),
+            schema_manager=registry.schema,
+            upserter=upserter,
+            range_store_factory=NumberPoolRepository,
+        )
         await snps.run()
         graphql_registry.clear_cache()
 
@@ -69,7 +104,7 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
         return SchemaRoot(
             version="1.0",
             generics=[SNOW_TASK],
-            nodes=[node_schema_definition, SNOW_INCIDENT, SNOW_REQUEST],
+            nodes=[node_schema_definition, SNOW_INCIDENT, SNOW_REQUEST, ticket_schema_definition],
         )
 
     @pytest.fixture(scope="class")
@@ -265,3 +300,79 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
         assert schema_load_response.errors["errors"][0]["message"] == (
             "The size of the NumberPool is smaller than the number of existing nodes 3 < 6."
         )
+
+    async def test_numberpool_attach_existing_numbers(
+        self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient, default_branch: Branch
+    ) -> None:
+        """Objects holding hand-set numbers are brought under a pool, then one of them moves to another pool."""
+        pool = await client.create(
+            kind="CoreNumberPool",
+            name="ticket-pool",
+            node=ticket_schema_definition.kind,
+            node_attribute="ticket_id",
+            start_range=1,
+            end_range=10,
+            branch=default_branch.name,
+        )
+        await pool.save()
+
+        hand_set_ids = []
+        for number in (1, 2):
+            ticket = await client.create(
+                kind=ticket_schema_definition.kind,
+                name=f"hand-set {number}",
+                ticket_id=number,
+                branch=default_branch.name,
+            )
+            await ticket.save()
+            hand_set_ids.append(ticket.id)
+        assert await self._allocation_count(client=client, pool_id=pool.id) == 0
+
+        for ticket_id, number in zip(hand_set_ids, (1, 2), strict=True):
+            attached = await client.execute_graphql(
+                query=ATTACH_TICKET_NUMBER, variables={"id": ticket_id, "value": number, "pool_id": pool.id}
+            )
+            assert attached["TestTicketUpdate"]["object"]["ticket_id"]["value"] == number
+
+        provided = await client.execute_graphql(
+            query=CREATE_TICKET_FROM_POOL,
+            variables={"name": "provided", "ticket_id": {"value": 5, "from_pool": {"id": pool.id}}},
+        )
+        provided_ticket = provided["TestTicketCreate"]["object"]
+        assert provided_ticket["ticket_id"]["value"] == 5
+
+        allocated = await client.execute_graphql(
+            query=CREATE_TICKET_FROM_POOL, variables={"name": "allocated", "ticket_id": {"from_pool": {"id": pool.id}}}
+        )
+        assert allocated["TestTicketCreate"]["object"]["ticket_id"]["value"] == 3, (
+            "the attached numbers 1 and 2 are taken although no uniqueness constraint skips them"
+        )
+        assert await self._allocation_count(client=client, pool_id=pool.id) == 4
+
+        await client.execute_graphql(
+            query=ATTACH_TICKET_NUMBER, variables={"id": hand_set_ids[0], "value": 1, "pool_id": pool.id}
+        )
+        assert await self._allocation_count(client=client, pool_id=pool.id) == 4
+
+        second_pool = await client.create(
+            kind="CoreNumberPool",
+            name="ticket-pool-2",
+            node=ticket_schema_definition.kind,
+            node_attribute="ticket_id",
+            start_range=1,
+            end_range=20,
+            branch=default_branch.name,
+        )
+        await second_pool.save()
+        moved = await client.execute_graphql(
+            query=ATTACH_TICKET_NUMBER, variables={"id": provided_ticket["id"], "value": 5, "pool_id": second_pool.id}
+        )
+        assert moved["TestTicketUpdate"]["object"]["ticket_id"]["value"] == 5
+        assert await self._allocation_count(client=client, pool_id=pool.id) == 3
+        assert await self._allocation_count(client=client, pool_id=second_pool.id) == 1
+
+    async def _allocation_count(self, client: InfrahubClient, pool_id: str) -> int:
+        allocation = await client.execute_graphql(
+            query=number_pool_allocation_query.render(), variables={"pool_id": pool_id}
+        )
+        return allocation["InfrahubResourcePoolAllocated"]["count"]

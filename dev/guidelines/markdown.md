@@ -218,5 +218,4 @@ Only keep imports the page uses — no linter flags unused MDX imports, so check
 ## See Also
 
 - [Documentation Guidelines](documentation.md) - Documentation writing guidelines
-- `docs/AGENTS.md` - Documentation-specific guidelines for user-facing docs
 - [Git Workflow](git-workflow.md) - Git workflow and commit conventions

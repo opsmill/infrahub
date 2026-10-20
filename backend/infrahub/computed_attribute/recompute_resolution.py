@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from typing_extensions import Self
+
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.core.schema.schema_branch_computed import PythonDefinition
 
 
@@ -16,6 +19,10 @@ class RecomputeResolver:
 
     def __init__(self, attributes_by_transform: Mapping[str, list[PythonDefinition]]) -> None:
         self._attributes_by_transform = attributes_by_transform
+
+    @classmethod
+    def from_schema_branch(cls, schema_branch: SchemaBranch) -> Self:
+        return cls(attributes_by_transform=schema_branch.computed_attributes.python_attributes_by_transform)
 
     def resolve(self, transform_name: str, transform_id: str) -> list[PythonDefinition]:
         # A transform can be wired by name for one attribute and by id for another, so union both

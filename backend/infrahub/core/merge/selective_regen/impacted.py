@@ -6,6 +6,7 @@ if TYPE_CHECKING:
     from infrahub_sdk.diff import NodeDiff
 
     from infrahub.core.regeneration.models import TargetSelection
+    from infrahub.graphql.analyzer import GraphQLQueryReport
 
 
 class ImpactedSubscriberResolver(Protocol):
@@ -15,10 +16,12 @@ class ImpactedSubscriberResolver(Protocol):
     analysis and database.
     """
 
+    def analyze(self, *, query_payload: str, query_branch: str) -> GraphQLQueryReport: ...
+
     async def resolve(
         self,
         *,
-        query_payload: str,
+        query_report: GraphQLQueryReport,
         diff_summary: list[NodeDiff],
         query_branch: str,
         subscriber_kind: str,

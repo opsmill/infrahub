@@ -23,7 +23,7 @@ import {
   ObjectTableToolbar,
 } from "@/entities/nodes/object/ui/object-table/toolbar/object-table-toolbar";
 
-export interface DataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> {
+interface DataTableBaseProps<T> extends React.HTMLAttributes<HTMLDivElement> {
   columnOrder?: ColumnOrderState;
   columns: ColumnDef<T>[];
   columnVisibility?: VisibilityState;
@@ -31,9 +31,30 @@ export interface DataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> 
   data: Array<T>;
   isLoading?: boolean;
   renderEmpty?: () => React.ReactNode;
+  gridTemplateColumns?: (columnCount: number) => string;
+  skeletonRowCount?: number;
+  skeletonShowSelection?: boolean;
+  // Requires every rendered header and cell to carry `role="columnheader"` / `role="cell"`.
+  semanticTable?: boolean;
+}
+
+interface NodeDataTableProps<T extends NodeCore> extends DataTableBaseProps<T> {
+  getRowId?: never;
   toolbarActions?: ObjectTableSelectionToolbarProps["renderMore"];
   enableRowSelection?: RowSelectionOptions<T>["enableRowSelection"];
-  gridTemplateColumns?: (columnCount: number) => string;
+}
+
+/** Rows that are not nodes have no `id` to key on and no node toolbar to select into. */
+interface PlainDataTableProps<T> extends DataTableBaseProps<T> {
+  getRowId: (row: T) => string;
+  toolbarActions?: never;
+  enableRowSelection?: never;
+}
+
+interface DataTableGridProps<T> extends DataTableBaseProps<T> {
+  getRowId: (row: T) => string;
+  enableRowSelection: RowSelectionOptions<T>["enableRowSelection"];
+  renderSelectionToolbar?: (selectedRows: T[], onClose: () => void) => React.ReactNode;
 }
 
 /**
@@ -52,7 +73,33 @@ const defaultGridTemplateColumns = (columnCount: number) =>
     ? "1fr 2.5rem"
     : `repeat(${columnCount - 2}, fit-content(${COLUMN_MAX_WIDTH})) 1fr 2.5rem`;
 
-export function DataTable<T extends NodeCore>({
+const getNodeId = (row: NodeCore) => row.id;
+
+export function DataTable<T extends NodeCore>(props: NodeDataTableProps<T>): React.ReactNode;
+export function DataTable<T>(props: PlainDataTableProps<T>): React.ReactNode;
+export function DataTable<T>(props: NodeDataTableProps<T & NodeCore> | PlainDataTableProps<T>) {
+  if (props.getRowId) {
+    return <DataTableGrid {...props} getRowId={props.getRowId} enableRowSelection={false} />;
+  }
+
+  const { toolbarActions, enableRowSelection = true, ...nodeProps } = props;
+  return (
+    <DataTableGrid
+      {...nodeProps}
+      getRowId={getNodeId}
+      enableRowSelection={enableRowSelection}
+      renderSelectionToolbar={(selectedRows, onClose) => (
+        <ObjectTableToolbar
+          selectedRows={selectedRows}
+          onClose={onClose}
+          renderMore={toolbarActions}
+        />
+      )}
+    />
+  );
+}
+
+function DataTableGrid<T>({
   columnOrder,
   columns,
   columnVisibility,
@@ -60,11 +107,15 @@ export function DataTable<T extends NodeCore>({
   data,
   isLoading,
   renderEmpty,
-  toolbarActions,
+  renderSelectionToolbar,
   enableRowSelection,
+  getRowId,
   gridTemplateColumns = defaultGridTemplateColumns,
+  skeletonRowCount,
+  skeletonShowSelection,
+  semanticTable = false,
   ...props
-}: DataTableProps<T>) {
+}: DataTableGridProps<T>) {
   const { isAuthenticated } = useAuth();
 
   const table = useReactTable({
@@ -73,7 +124,7 @@ export function DataTable<T extends NodeCore>({
     enableRowSelection,
     getCoreRowModel: getCoreRowModel(),
     manualSorting: true,
-    getRowId: (row) => row.id,
+    getRowId,
     state: {
       columnOrder,
       columnVisibility,
@@ -97,21 +148,44 @@ export function DataTable<T extends NodeCore>({
 
   const selectedRows = table.getSelectedRowModel().flatRows.map((row) => row.original);
 
+  // An ARIA table groups its cells into rows, while a plain grid needs them as direct children.
+  const wrapAsRow = (cells: React.ReactNode) =>
+    semanticTable ? (
+      // biome-ignore lint/a11y/useFocusableInteractive: rows are focusable only inside a grid or treegrid; this is a static table, so they stay out of the tab order.
+      <div className="contents" role="row">
+        {cells}
+      </div>
+    ) : (
+      cells
+    );
+
+  const headerCells = allHeaders.map((header) => {
+    return flexRender(header.column.columnDef.header, {
+      ...header.getContext(),
+      key: header.id,
+    });
+  });
+
   // `min-w-max` stops the grid from being squeezed into its scroll container.
   // Without it the tracks compress until columns are unreadably narrow instead of
   // keeping their width and letting the table scroll horizontally.
   return (
-    <div className="grid min-w-max content-start" style={style} {...props}>
-      {allHeaders.map((header) => {
-        return flexRender(header.column.columnDef.header, {
-          ...header.getContext(),
-          key: header.id,
-        });
-      })}
+    <div
+      role={semanticTable ? "table" : undefined}
+      className="grid min-w-max content-start"
+      style={style}
+      {...props}
+    >
+      {wrapAsRow(headerCells)}
 
       {allRows.map((row) => {
         return (
-          <div key={row.id} className="group contents" data-testid="data-table-row">
+          <div
+            key={row.id}
+            role={semanticTable ? "row" : undefined}
+            className="group contents"
+            data-testid="data-table-row"
+          >
             {row.getVisibleCells().map((cell) => {
               return flexRender(cell.column.columnDef.cell, {
                 ...cell.getContext(),
@@ -122,37 +196,52 @@ export function DataTable<T extends NodeCore>({
         );
       })}
 
-      {!isLoading && allRows.length === 0 && renderEmpty?.()}
+      {!isLoading &&
+        allRows.length === 0 &&
+        renderEmpty &&
+        wrapAsRow(
+          semanticTable ? (
+            <div aria-colspan={allHeaders.length} className="contents" role="cell">
+              {renderEmpty()}
+            </div>
+          ) : (
+            renderEmpty()
+          )
+        )}
 
-      {isLoading && <ObjectTableSkeleton headerCount={allHeaders.length} />}
-
-      {count !== undefined &&
-        Array.from({ length: allHeaders.length }).map((_, index) => (
-          <div
-            key={index}
-            // The whole footer bar has to outrank the sticky body cells, not just its
-            // first cell, or the last row's sticky action menu punches through it.
-            className={classNames(cellsStyle, cellFooterStyle, "z-10", index === 0 && "left-0")}
-          >
-            {index === 0 && (
-              <>
-                <Row className="gap-1">
-                  <span className="font-medium">{formatNumberDisplay(count)}</span>
-                  <span className="text-foreground-muted">count{count > 1 && "s"}</span>
-                </Row>
-                <StickyCellShadow side="left" />
-              </>
-            )}
-          </div>
-        ))}
-
-      {selectedRows.length > 0 && (
-        <ObjectTableToolbar
-          selectedRows={selectedRows}
-          onClose={table.resetRowSelection}
-          renderMore={toolbarActions}
+      {isLoading && (
+        <ObjectTableSkeleton
+          headerCount={allHeaders.length}
+          rowCount={skeletonRowCount}
+          semantic={semanticTable}
+          showSelection={skeletonShowSelection}
         />
       )}
+
+      {count !== undefined &&
+        wrapAsRow(
+          Array.from({ length: allHeaders.length }).map((_, index) => (
+            <div
+              key={index}
+              // The whole footer bar has to outrank the sticky body cells, not just its
+              // first cell, or the last row's sticky action menu punches through it.
+              className={classNames(cellsStyle, cellFooterStyle, "z-10", index === 0 && "left-0")}
+              role={semanticTable ? "cell" : undefined}
+            >
+              {index === 0 && (
+                <>
+                  <Row className="gap-1">
+                    <span className="font-medium">{formatNumberDisplay(count)}</span>
+                    <span className="text-foreground-muted">count{count > 1 && "s"}</span>
+                  </Row>
+                  <StickyCellShadow side="left" />
+                </>
+              )}
+            </div>
+          ))
+        )}
+
+      {selectedRows.length > 0 && renderSelectionToolbar?.(selectedRows, table.resetRowSelection)}
     </div>
   );
 }

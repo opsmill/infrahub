@@ -2,11 +2,12 @@ import { LinkButton } from "@infrahub/ui";
 import { BookTextIcon } from "lucide-react";
 
 import { constructPath } from "@/shared/api/rest/fetch";
+import { RefreshButton } from "@/shared/components/buttons/refresh-button";
 import { Icon } from "@/shared/components/display/icon";
+import { HeaderContainer } from "@/shared/components/layout/header-container";
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 
-import { HeaderContainer } from "@/entities/nodes/object/ui/object-details/object-details-header";
-import { RefreshButton } from "@/entities/nodes/object/ui/object-details/refresh-button";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 interface ObjectItemsHeaderProps {
@@ -21,7 +22,7 @@ export function ObjectItemsHeader({ schema }: ObjectItemsHeaderProps) {
         <div className="text-sm">{schema.description}</div>
       </div>
 
-      <RefreshButton className="ml-auto" />
+      <RefreshButton className="ml-auto" queryKeys={[objectQueryKeys.all]} />
       <LinkButton
         variant="outline"
         size="sm"

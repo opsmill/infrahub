@@ -153,6 +153,7 @@ class BranchDiffer:
             repository_id=repository.id,
             repository_name=repository.name.value,
             repository_kind=repository.get_kind(),
+            infrahub_branch_name=branch_name,
             first_commit=commit_from,
             second_commit=commit_to,
         )

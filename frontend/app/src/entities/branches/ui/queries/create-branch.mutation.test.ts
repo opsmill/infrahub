@@ -1,0 +1,59 @@
+import { QueryClientProvider } from "@tanstack/react-query";
+import React from "react";
+import { afterEach, describe, expect, test, vi } from "vitest";
+import { renderHook } from "vitest-browser-react";
+
+import { queryClient } from "@/shared/api/rest/client";
+
+import { branchGitStatusQueryKeys } from "@/entities/branch-git-status/ui/queries/branch-git-status.query-keys";
+import { createBranch } from "@/entities/branches/domain/use-cases/create-branch";
+import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
+import { useCreateBranchMutation } from "@/entities/branches/ui/queries/create-branch.mutation";
+
+import { generateBranch } from "../../../../../tests/fake/branch";
+
+vi.mock("@/entities/branches/domain/use-cases/create-branch");
+
+const wrapper = ({ children }: { children: React.ReactNode }) =>
+  React.createElement(QueryClientProvider, { client: queryClient }, children);
+
+const branchInput = { name: "feature-1" };
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  queryClient.clear();
+});
+
+describe("useCreateBranchMutation", () => {
+  test("refetches branches and invalidates branch Git status once a branch is created", async () => {
+    // GIVEN
+    vi.mocked(createBranch).mockResolvedValue(generateBranch({ name: "feature-1" }));
+    const refetchSpy = vi.spyOn(queryClient, "refetchQueries");
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    const { result } = await renderHook(() => useCreateBranchMutation(), { wrapper });
+
+    // WHEN
+    await result.current.mutateAsync(branchInput);
+
+    // THEN
+    await expect
+      .poll(() => invalidateSpy)
+      .toHaveBeenCalledWith({ queryKey: branchGitStatusQueryKeys.all });
+    expect(refetchSpy).toHaveBeenCalledWith({ queryKey: branchesQueryKeys.all });
+  });
+
+  test("touches no cache when the use case creates nothing", async () => {
+    // GIVEN
+    vi.mocked(createBranch).mockResolvedValue(null);
+    const refetchSpy = vi.spyOn(queryClient, "refetchQueries");
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    const { result } = await renderHook(() => useCreateBranchMutation(), { wrapper });
+
+    // WHEN
+    await result.current.mutateAsync(branchInput);
+
+    // THEN
+    expect(refetchSpy).not.toHaveBeenCalled();
+    expect(invalidateSpy).not.toHaveBeenCalled();
+  });
+});

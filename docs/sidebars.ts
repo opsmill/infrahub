@@ -22,13 +22,13 @@ const sidebars: SidebarsConfig = {
 
     {
       type: 'category',
-      label: 'Get started',
+      label: 'Introduction',
       collapsible: false,
       collapsed: false,
       items: [
         {
           type: 'category',
-          label: 'Introduction',
+          label: 'Overview',
           collapsible: true,
           collapsed: true,
           items: [
@@ -40,7 +40,7 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'category',
-          label: 'Getting Started',
+          label: 'Get Started',
           collapsible: true,
           collapsed: true,
           items: [
@@ -68,17 +68,10 @@ const sidebars: SidebarsConfig = {
       collapsible: false,
       collapsed: false,
       items: [
-        {
-          type: 'category',
-          label: 'Infrahub Labs',
-          link: { type: 'doc', id: 'learn/labs/overview' }, // hub
-          items: [
-            { type: 'doc', id: 'learn/labs/fundamentals-to-expert', label: 'Infrahub: Fundamentals to Expert' },
-            { type: 'doc', id: 'learn/labs/infrahub-introduction', label: 'First Tour of Infrahub' },
-            { type: 'doc', id: 'learn/labs/schema-deep-dive', label: 'Schema Deep Dive' },
-            'learn/labs/deploy-first-configuration',
-          ],
-        },
+        // Every lab is described in full in the labs catalogue, which also
+        // covers labs outside this repository, so there are no per-lab pages
+        // here to list.
+        { type: 'link', label: 'Infrahub Labs', href: 'https://docs.infrahub.app/labs' },
         {
           type: 'category',
           label: 'Tutorials',
@@ -263,6 +256,7 @@ const sidebars: SidebarsConfig = {
             'branches/rebase',
             'branches/delete',
             'branches/resolve-conflicts',
+            'branches/parallel-branches',
             'branches/branch-agnostic-data',
           ],
         },
@@ -405,6 +399,7 @@ const sidebars: SidebarsConfig = {
               link: { type: 'doc', id: 'deploy-manage/install-configure/production-deployment/overview' },
               items: [
                 { type: 'doc', id: 'deploy-manage/install-configure/production-deployment/high-availability', label: 'High availability' },
+                { type: 'doc', id: 'deploy-manage/install-configure/production-deployment/private-ca', label: 'Private CA' },
               ],
             },
             // Configure Infrahub (PR 4)
@@ -424,10 +419,11 @@ const sidebars: SidebarsConfig = {
           items: [
             // Tasks (PRs 5/6/7)
             { type: 'doc', id: 'deploy-manage/run-observe/tasks', label: 'Tasks' },
-            // Telemetry (PRs 5/6/7)
-            { type: 'doc', id: 'deploy-manage/run-observe/telemetry', label: 'Telemetry' },
             // Activity Log (PRs 5/6/7)
             { type: 'doc', id: 'deploy-manage/run-observe/activity-log', label: 'Activity log' },
+            // Telemetry (PRs 5/6/7)
+            { type: 'doc', id: 'deploy-manage/run-observe/telemetry', label: 'Telemetry' },
+            { type: 'doc', id: 'deploy-manage/run-observe/metrics', label: 'Metrics' },
             // Log Forwarding hub + spoke (PR 8)
             {
               type: 'category',
@@ -643,6 +639,7 @@ const sidebars: SidebarsConfig = {
         },
         { type: 'doc', id: 'reference/message-bus-events', label: 'Message Bus Events' },
         { type: 'doc', id: 'reference/error-catalogue', label: 'Error Catalogue' },
+        { type: 'doc', id: 'reference/metrics', label: 'Prometheus Metrics' },
         { type: 'doc', id: 'reference/graph-traversal', label: 'Graph Traversal' },
       ],
     },

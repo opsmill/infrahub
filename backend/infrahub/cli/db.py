@@ -28,6 +28,11 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.branch.tasks import rebase_branch
+from infrahub.core.diff.diff_locker import DiffLocker
+from infrahub.core.diff.parent_node_adder import DiffParentNodeAdder
+from infrahub.core.diff.repository.deserializer import EnrichedDiffDeserializer
+from infrahub.core.diff.repository.repository import DiffRepository
+from infrahub.core.diff.unfrozen_deleter import UnfrozenDiffDeleter, UnfrozenDiffDeletionPlanner
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.graph.constraints import ConstraintManagerBase, ConstraintManagerMemgraph, ConstraintManagerNeo4j
 from infrahub.core.graph.index import node_indexes, rel_indexes
@@ -40,6 +45,7 @@ from infrahub.core.graph.schema import (
     GraphRelationshipProperties,
 )
 from infrahub.core.initialization import get_root_node, initialize_registry, reset_deployment_id
+from infrahub.core.merge.merge_locker import MergeLocker
 from infrahub.core.migrations.exceptions import MigrationFailureError
 from infrahub.core.migrations.graph import MIGRATIONS, get_graph_migrations, get_migration_by_number
 from infrahub.core.migrations.shared import (
@@ -63,6 +69,7 @@ from infrahub.database.memgraph import IndexManagerMemgraph
 from infrahub.database.neo4j import IndexManagerNeo4j
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.exceptions import ValidationError
+from infrahub.lock import initialize_lock
 
 from .constants import APPLIED_BADGE, ERROR_BADGE, FAILED_BADGE, SUCCESS_BADGE
 from .db_commands.check_inheritance import check_inheritance
@@ -546,6 +553,99 @@ async def reset_cmd(
     finally:
         if dbdriver is not None:
             await dbdriver.close()
+
+
+@app.command(name="delete-diffs")
+async def delete_diffs_cmd(
+    ctx: typer.Context,
+    branch: str | None = typer.Option(
+        None,
+        "--branch",
+        "-b",
+        help="Only delete the diffs of this branch, which does not need to exist anymore.",
+    ),
+    include_branch_diffs: bool = typer.Option(
+        False,
+        "--include-branch-diffs",
+        help="Also delete the diffs that track a branch over its lifetime, not only the named diffs.",
+    ),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip the confirmation prompt."),
+    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+) -> None:
+    """Delete the stored diffs that are not frozen, for every branch or for a single one.
+
+    By default only named diffs are deleted: diffs computed under a name for a given time range,
+    which Infrahub also creates on its own. With --include-branch-diffs, the diffs tracking a branch
+    over its lifetime are deleted too, except those of a merged branch, which could not be calculated
+    again. A deleted branch diff is calculated again from the start of its branch the next time it is
+    requested, and the conflict resolutions recorded in it are lost. Frozen diffs are always kept:
+    they record what a closed or merged proposed change, or a merged or deleted branch, changed. The
+    diffs of a branch are deleted once any diff update of that branch in progress has finished, and
+    branch diffs once any merge in progress has finished.
+
+    Raises:
+        Exit: When the confirmation prompt is declined (raises typer.Exit to terminate the CLI
+            command).
+
+    """
+    logging.getLogger("infrahub").setLevel(logging.WARNING)
+    logging.getLogger("neo4j").setLevel(logging.ERROR)
+    logging.getLogger("prefect").setLevel(logging.ERROR)
+
+    console = Console()
+
+    config.load_and_exit(config_file_name=config_file)
+
+    context: CliContext = ctx.obj
+    dbdriver = await context.init_db(retry=1)
+
+    try:
+        initialize_lock()
+        diff_repository = DiffRepository(
+            db=dbdriver, deserializer=EnrichedDiffDeserializer(parent_adder=DiffParentNodeAdder())
+        )
+        planner = UnfrozenDiffDeletionPlanner(db=dbdriver, diff_repository=diff_repository)
+        deleter = UnfrozenDiffDeleter(
+            diff_repository=diff_repository, diff_locker=DiffLocker(), merge_locker=MergeLocker()
+        )
+
+        plan = await planner.plan(branch_name=branch, include_branch_diffs=include_branch_diffs)
+        kind = "unfrozen diff" if include_branch_diffs else "unfrozen named diff"
+
+        if plan.kept_root_uuids:
+            console.print(
+                f"[yellow]Keeping {len(plan.kept_root_uuids)} unfrozen diff root(s) paired with a frozen one: "
+                f"{', '.join(plan.kept_root_uuids)}[/yellow]"
+            )
+        if plan.kept_merged_branch_root_uuids:
+            console.print(
+                f"[yellow]Keeping {len(plan.kept_merged_branch_root_uuids)} unfrozen diff root(s) of merged "
+                f"branches, which cannot be calculated again: {', '.join(plan.kept_merged_branch_root_uuids)}[/yellow]"
+            )
+        if not plan.batches:
+            console.print(f"No {kind} to delete.")
+            return
+
+        table = Table(title=f"{kind.capitalize()}s")
+        table.add_column("Branch")
+        table.add_column("Base branch")
+        table.add_column("Diffs", justify="right")
+        for batch in plan.batches:
+            table.add_row(batch.diff_branch_name, batch.base_branch_name, str(len(batch.diffs)))
+        console.print(table)
+
+        if not yes and not typer.confirm(f"Delete these {plan.num_diffs} {kind}(s)?"):
+            console.print("Aborted; no diff was deleted.")
+            raise typer.Exit(code=1)
+
+        wait_note = "Each branch waits for any diff update of it in progress to finish before its diffs are deleted"
+        if any(batch.has_branch_diffs for batch in plan.batches):
+            wait_note += ", and branch diffs wait for any merge in progress"
+        console.print(f"{wait_note}.")
+        await deleter.delete(plan=plan)
+        console.print(f"[green]Deleted {plan.num_diffs} {kind}(s).[/green]")
+    finally:
+        await dbdriver.close()
 
 
 @app.command(name="check-duplicate-schema-fields")

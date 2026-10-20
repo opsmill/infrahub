@@ -29,6 +29,7 @@ export function BranchNameCell({ branch, isSelected, onClickCheckbox }: BranchNa
         <Checkbox
           isSelected={isSelected}
           onPress={onClickCheckbox}
+          aria-label={`Select ${branch.name}`}
           data-testid="branch-checkbox-cell"
           className="mt-2"
         />

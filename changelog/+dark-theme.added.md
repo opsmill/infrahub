@@ -1,1 +1,1 @@
-Added an experimental dark theme: it follows the operating system's appearance by default, and a switch in the account menu (marked alpha) toggles between light and dark, gated by the INFRAHUB_EXPERIMENTAL_DARK_THEME setting
+Added an alpha dark theme that follows the operating system's appearance by default, with System, Light, and Dark available from the Theme option in the account menu.

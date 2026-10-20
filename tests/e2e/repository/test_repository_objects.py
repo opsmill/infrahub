@@ -1,16 +1,17 @@
 """Port of frontend/app/tests/e2e/repository/repository-objects.spec.ts.
 
 Repository creation + objects view (a serial flow): register a NEW Read-Only
-CoreRepository through the UI pointing at the public GitHub demo-edge URL, view
-its (empty) repository-derived objects, then exercise the repository detail
-actions (check connectivity, import latest commit, reimport current commit).
+CoreRepository through the UI pointing at a local copy of the demo-edge fixture
+repository, view its (empty) repository-derived objects, then exercise the
+repository detail actions (check connectivity, import latest commit, reimport
+current commit).
 
 This spec creates its own repository through the UI, but the first test also
 asserts the `demo-edge` link is visible in the repository list, so the class
 depends on demo_edge_repo explicitly (relying on another domain's session
 fixture having run first would break standalone/per-domain runs). Registering
-the repo and the "Check connectivity" / "Import latest commit" actions require
-network egress to github.com.
+the repository, the connectivity check and the latest-commit import reach its
+location, so a local copy keeps them independent of network access to github.com.
 
 Serial handling: the source `describe.configure({ mode: "serial" })` shares a
 single branch created in beforeAll and deleted in afterAll (only used as
@@ -37,7 +38,6 @@ if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
     from playwright.async_api import Page
 
-GIT_REPO_URL = "https://github.com/opsmill/infrahub-demo-edge.git"
 REPO_NAME = "test repository"
 
 
@@ -51,13 +51,15 @@ class TestRepositoryCreationAndObjectsView:
         with contextlib.suppress(Exception):
             await infrahub_client.branch.delete(branch_name=name)
 
-    async def test_create_repository_and_access_objects_view(self, admin_page: Page, branch: str) -> None:
+    async def test_create_repository_and_access_objects_view(
+        self, admin_page: Page, branch: str, demo_edge_copy_location: str
+    ) -> None:
         await admin_page.goto("/objects/CoreGenericRepository")
         await expect(admin_page.get_by_role("link", name="demo-edge")).to_be_visible()
         await admin_page.get_by_test_id("create-object-button").click()
         await admin_page.get_by_role("combobox", name="Select an object type").click()
         await admin_page.get_by_role("option", name="Read-Only Repository Core").click()
-        await admin_page.get_by_role("textbox", name="Repository location *").fill(GIT_REPO_URL)
+        await admin_page.get_by_role("textbox", name="Repository location *").fill(demo_edge_copy_location)
         await admin_page.get_by_role("textbox", name="Name *").fill(REPO_NAME)
         await admin_page.get_by_role("button", name="Save").click()
         await expect(admin_page.get_by_role("link", name=REPO_NAME)).to_be_visible()

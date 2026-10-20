@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Sequence
 
 from infrahub import config
-from infrahub.computed_attribute.scoping import ChangedElementSet
 from infrahub.core import registry
 from infrahub.core.constants import MutationAction
 from infrahub.core.merge.recompute_coalescing import (
@@ -40,6 +39,7 @@ if TYPE_CHECKING:
     from infrahub.workflows.models import WorkflowDefinition
 
     from .recompute_coalescing import PythonTargetResolver
+    from .regeneration_barrier import RegenerationBarrier
     from .repository_merge_dispatcher import RepositoryMergeDispatcher
 
 
@@ -57,6 +57,7 @@ class PostMergeDispatcher:
         event_service: InfrahubEventService,
         default_branch: Branch,
         python_resolver: PythonTargetResolver,
+        barrier: RegenerationBarrier,
         logger: InfrahubLogger | None = None,
     ) -> None:
         self.repository_merge_dispatcher = repository_merge_dispatcher
@@ -64,6 +65,7 @@ class PostMergeDispatcher:
         self.event_service = event_service
         self.default_branch = default_branch
         self.python_resolver = python_resolver
+        self.barrier = barrier
         self.log = logger or get_logger()
 
     async def run_follow_ups(
@@ -75,16 +77,16 @@ class PostMergeDispatcher:
         ipam_node_details: list[IpamNodeDetails] | None,
         merge_diff_cache_key: str | None = None,
     ) -> None:
-        # The repository merge issues a GraphQL write to the default branch, so it must run after the
-        # write block is lifted; while protected it would be rejected as a write to the merging branch.
-        with log_exception_guard(self.log, "Repository merge failed after branch merge committed"):
-            await self.repository_merge_dispatcher.merge_repositories()
-
         # The user-visible merge is already done, so the follow-up trees must not inherit its
         # priority from the caller's context: each runs from a context stamped with its own lane,
         # which trickles down to all of its subtasks.
         medium_context = context.model_copy(update={"priority": WorkflowPriority.MEDIUM})
         low_context = context.model_copy(update={"priority": WorkflowPriority.LOW})
+
+        # The repository merge issues a GraphQL write to the default branch, so it must run after the
+        # write block is lifted; while protected it would be rejected as a write to the merging branch.
+        with log_exception_guard(self.log, "Repository merge failed after branch merge committed"):
+            await self.repository_merge_dispatcher.merge_repositories(context=medium_context)
 
         # Trigger the reconciliation of IPAM data now that the graph merge is complete.
         if ipam_node_details:
@@ -136,16 +138,14 @@ class PostMergeDispatcher:
         )
 
         events: list[InfrahubEvent] = [merge_event]
-        schema_changed_elements: ChangedElementSet | None = None
         if schema_diff is not None and schema_hash is not None:
-            changed_elements = build_changed_elements_payload(schema_diff)
             # Drive the display-label, HFID and computed-attribute backfills for destination-only nodes,
             # scoped to the elements the merge changed so the recompute stays narrow.
             events.append(
                 SchemaUpdatedEvent(
                     branch_name=self.default_branch.name,
                     schema_hash=schema_hash,
-                    changed_elements=changed_elements,
+                    changed_elements=build_changed_elements_payload(schema_diff),
                     meta=EventMeta.from_parent(parent=merge_event, branch=self.default_branch),
                 )
             )
@@ -175,9 +175,6 @@ class PostMergeDispatcher:
         for event in events:
             with log_exception_guard(self.log, f"Failed to send post-merge event '{type(event).__name__}'"):
                 await self.event_service.send(event=event)
-                if isinstance(event, SchemaUpdatedEvent) and event.changed_elements is not None:
-                    # The pass drops what this backfill covers, so only a sent event may license it.
-                    schema_changed_elements = ChangedElementSet.from_payload(event.changed_elements)
 
         with log_exception_guard(self.log, "Failed to submit the coalesced post-merge recompute"):
             schema_branch = registry.schema.get_schema_branch(name=self.default_branch.name)
@@ -185,13 +182,9 @@ class PostMergeDispatcher:
                 builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
                 submitter=CoalescedRecomputeSubmitter(workflow=self.workflow),
                 python_resolver=self.python_resolver,
+                barrier=self.barrier,
             )
-            await coordinator.run(
-                changes=changes,
-                branch=self.default_branch.name,
-                context=event_context,
-                schema_changed_elements=schema_changed_elements,
-            )
+            await coordinator.run(changes=changes, branch=self.default_branch.name, context=event_context)
 
     async def _submit_workflow(
         self,

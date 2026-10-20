@@ -37,6 +37,7 @@ dependencies = [
     "tomli>=1.1.0; python_version<='3.11'",
     "deepdiff==8.6.2",
     "httpx>=0.28.1",
+    "psutil==6.1.0",
     # Dependencies specific to the API Server
     "fastapi==0.141.1",
     "fastapi-storages>=0.3,<0.4",
@@ -48,7 +49,7 @@ dependencies = [
     "python-multipart==0.0.31", # Required by FastAPI to upload large files
     "asgi-correlation-id==4.2.0", # Middleware for FastAPI to generate ID per request
     "bcrypt>=4.1,<4.2", # Used to hash and validate password
-    "pyjwt==2.13.0", # Used to manage JWT tokens
+    "pyjwt==2.15.0", # Used to manage JWT tokens
     "uvicorn[standard]>=0.32,<0.33",
     "opentelemetry-instrumentation-aio-pika==0.65b0",
     "opentelemetry-instrumentation-fastapi==0.65b0",
@@ -63,7 +64,7 @@ dependencies = [
     "puremagic>=1.30,<2",
     # Dependencies specific to the SDK
     "rich>=13,<14",
-    "dulwich==1.2.6",
+    "dulwich==1.2.9",
     "whenever==0.9.3",
     "netutils==1.12.0",
     "ariadne-codegen==0.18.0",
@@ -118,7 +119,6 @@ dev = [
     # whose validation messages the schema tests assert verbatim.
     "jsonschema>=4.26",
     "docker==7.1.0",
-    "psutil==6.1.0",
     "jwcrypto==1.5.7",
     "ty==0.0.69",
     "prek>=0.3.0",
@@ -172,6 +172,7 @@ INFRAHUB_LOG_LEVEL = "CRITICAL"
 INFRAHUB_PRODUCTION = false
 
 [tool.mypy]
+plugins = ["pydantic.mypy"]
 pretty = true
 ignore_missing_imports = true
 disallow_untyped_defs = true
@@ -1397,7 +1398,7 @@ include = [
     "backend/infrahub/graphql/mutations/profile.py",
     "backend/infrahub/graphql/mutations/proposed_change.py",
     "backend/infrahub/graphql/mutations/repository.py",
-    "backend/infrahub/graphql/mutations/resource_manager.py",
+    "backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py",
 ]
 
 [tool.ty.overrides.rules]
@@ -1415,7 +1416,8 @@ include = [
     "backend/infrahub/graphql/mutations/profile.py",
     "backend/infrahub/graphql/mutations/proposed_change.py",
     "backend/infrahub/graphql/mutations/repository.py",
-    "backend/infrahub/graphql/mutations/resource_manager.py",
+    "backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py",
+    "backend/infrahub/graphql/mutations/resource_manager/number_pools/pool_range.py",
     "backend/infrahub/graphql/mutations/webhook.py",
     "backend/infrahub/graphql/types/node.py",
     "backend/infrahub/graphql/types/standard_node.py",
@@ -1432,7 +1434,7 @@ include = [
     "backend/infrahub/graphql/mutations/main.py",
     "backend/infrahub/graphql/mutations/profile.py",
     "backend/infrahub/graphql/mutations/repository.py",
-    "backend/infrahub/graphql/mutations/resource_manager.py",
+    "backend/infrahub/graphql/mutations/resource_manager/ip_pools.py",
     "backend/infrahub/graphql/queries/diff/tree.py",
     "backend/infrahub/graphql/queries/path.py",
     "backend/infrahub/graphql/queries/reachable.py",

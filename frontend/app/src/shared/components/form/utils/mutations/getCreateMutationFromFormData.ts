@@ -4,9 +4,13 @@ import {
   isFormFieldValueFromPool,
   isFormFieldValueFromTemplate,
 } from "@/shared/components/form/type";
-import { buildFromPoolPayload } from "@/shared/components/form/utils/mutations/buildFromPoolMutationValue";
+import {
+  buildFromPoolPayload,
+  buildNumberPoolMutationValue,
+} from "@/shared/components/form/utils/mutations/buildFromPoolMutationValue";
 
 import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { NUMBER_POOL_KIND } from "@/entities/resource-manager/domain/model/pool";
 
 export const getCreateMutationFromFormData = (
   fields: Array<DynamicFieldProps>,
@@ -32,6 +36,12 @@ export const getCreateMutationFromFormData = (
           // `<rel>_from_resource_pool` is typed as a plain RelatedNodeInput: sending `prefixlen` or
           // `address_type` there is rejected by GraphQL, so the overrides ride on the payload below.
           return { ...acc, [fromPoolField]: { id: fieldData.value.from_pool.id } };
+        }
+        if (fieldData.source.kind === NUMBER_POOL_KIND) {
+          return {
+            ...acc,
+            [field.name]: buildNumberPoolMutationValue(fieldData.value.from_pool),
+          };
         }
         return {
           ...acc,

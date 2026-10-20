@@ -6,10 +6,11 @@ from typing import TYPE_CHECKING
 import pytest
 from infrahub_sdk.protocols import CoreTransformJinja2
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.node import Node
 from infrahub.git import InfrahubRepository
 from tests.helpers.file_repo import FileRepo
+from tests.helpers.flow import call_in_flow
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -24,10 +25,10 @@ TASK_RUN_LOGGER = "prefect.task_runs"
 
 
 class TestClosureFailureIsolation(TestInfrahubApp):
-    """A malformed Jinja2 template in one transform must not poison its siblings.
+    """A malformed template included by one Jinja2 transform must not poison its siblings.
 
     The repository carries two Jinja2 transforms: one well-formed with a transitive
-    include and one whose template has a syntax error. After import, the malformed
+    include and one whose included template has a syntax error. After import, the malformed
     transform is still persisted but flagged ``dependencies_complete = False``, while
     the well-formed transform imports with a complete, populated closure. The
     closure-builder failure is reported in the import log naming the offending
@@ -59,7 +60,8 @@ class TestClosureFailureIsolation(TestInfrahubApp):
             db=db,
             name=git_repo.name,
             description="test repository",
-            location="git@github.com:mock/test.git",
+            location=git_repo.path,
+            internal_status=RepositoryInternalStatus.ACTIVE.value,
         )
         await obj.save(db=db)
 
@@ -68,6 +70,7 @@ class TestClosureFailureIsolation(TestInfrahubApp):
             name=git_repo.name,
             location=git_repo.path,
             client=client,
+            infrahub_branch_name="main",
         )
 
     async def test_malformed_transform_is_isolated_at_import(
@@ -78,7 +81,7 @@ class TestClosureFailureIsolation(TestInfrahubApp):
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         commit = repo.get_commit_value(branch_name="main")
-        config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[call-overload]
+        config_file = await call_in_flow(lambda: repo.get_repository_config(branch_name="main", commit=commit))
         assert config_file
 
         # Queries must exist before the Jinja2 transforms that reference them are imported.
@@ -101,9 +104,13 @@ class TestClosureFailureIsolation(TestInfrahubApp):
 
         broken = transforms["broken_report"]
         assert broken.dependencies_complete.value is False
+        assert set(broken.dependencies.value) == {"templates/broken.j2", "templates/broken_partial.j2"}
 
         # The closure-builder failure is reported against the offending transform only,
         # naming the unresolved reference and the resulting incomplete closure.
-        assert "Closure builder for transform 'broken_report' encountered unresolved reference" in caplog.text
+        assert (
+            "Closure builder for transform 'broken_report' encountered unresolved reference "
+            "in templates/broken_partial.j2: template syntax error" in caplog.text
+        )
         assert "dependencies_complete=False" in caplog.text
         assert "Closure builder for transform 'well_formed_report'" not in caplog.text

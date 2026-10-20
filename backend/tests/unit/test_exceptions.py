@@ -4,7 +4,7 @@ Prefect rebuilds errors using pickle.
 """
 
 import pickle  # noqa: S403
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import pytest
 
@@ -12,12 +12,15 @@ from infrahub.exceptions import (
     CommitNotFoundError,
     Error,
     GraphQLQueryError,
+    MergeRepositoryImportError,
     PropagatedFromWorkerError,
     RepositoryFileNotFoundError,
     RepositoryInvalidBranchError,
+    RepositoryPushRejectedError,
     RPCError,
     SchemaNotFoundError,
 )
+from infrahub.git.models import PushRejectionReason
 
 
 def _round_trip(error: Error) -> Error:
@@ -77,6 +80,23 @@ ERROR_PICKLE_CASES = [
         name="slotted_state",
         error=SlottedError(detail="slot-value"),
     ),
+    ErrorPickleCase(
+        name="merge_repository_import",
+        error=MergeRepositoryImportError(
+            failed_repositories=["repo-1"],
+            incomplete_repositories=["repo-2"],
+            ref_missing_repositories={"repo-3": "v1.0"},
+        ),
+    ),
+    ErrorPickleCase(
+        name="push_rejection_with_its_reason_and_remote_lines",
+        error=RepositoryPushRejectedError(
+            identifier="repo-1",
+            reason=PushRejectionReason.POLICY,
+            remote_message="remote: error: GH006: Protected branch update failed for refs/heads/main.",
+            message="Unable to push the branch main to the remote for repository repo-1: [remote rejected]",
+        ),
+    ),
 ]
 
 
@@ -109,6 +129,127 @@ def test_pickle_preserves_slot_state() -> None:
 
     assert isinstance(restored, SlottedError)
     assert restored.detail == "slot-value"
+
+
+@dataclass
+class MergeRepositoryImportMessageCase:
+    name: str
+    failed_repositories: list[str]
+    incomplete_repositories: list[str]
+    expected: str
+    ref_missing_repositories: dict[str, str | None] = field(default_factory=dict)
+
+
+MERGE_REPOSITORY_IMPORT_MESSAGE_CASES = [
+    MergeRepositoryImportMessageCase(
+        name="one_ref_missing",
+        failed_repositories=[],
+        incomplete_repositories=[],
+        ref_missing_repositories={"repo-1": "v1.0"},
+        expected=(
+            "Cannot merge. The tracked ref 'v1.0' of repository 'repo-1' was missing from the remote when last "
+            "checked: restore the ref or edit the ref of the repository, then reimport the current commit."
+        ),
+    ),
+    MergeRepositoryImportMessageCase(
+        name="one_ref_missing_with_an_unknown_ref",
+        failed_repositories=[],
+        incomplete_repositories=[],
+        ref_missing_repositories={"repo-1": None},
+        expected=(
+            "Cannot merge. The tracked ref of repository 'repo-1' was missing from the remote when last checked: "
+            "restore the ref or edit the ref of the repository, then reimport the current commit."
+        ),
+    ),
+    MergeRepositoryImportMessageCase(
+        name="two_ref_missing_sorted_by_repository",
+        failed_repositories=[],
+        incomplete_repositories=[],
+        ref_missing_repositories={"repo-2": "release", "repo-1": "v1.0"},
+        expected=(
+            "Cannot merge. The tracked ref 'v1.0' of repository 'repo-1', ref 'release' of repository 'repo-2' were "
+            "missing from the remote when last checked: restore the ref or edit the ref of the repositories, then "
+            "reimport the current commit."
+        ),
+    ),
+    MergeRepositoryImportMessageCase(
+        name="failed_and_ref_missing",
+        failed_repositories=["repo-1"],
+        incomplete_repositories=[],
+        ref_missing_repositories={"repo-2": "v1.0"},
+        expected=(
+            "Cannot merge. The last import of repository 'repo-1' failed: push a fix, reimport the current commit, "
+            "or set the repository to inactive. The tracked ref 'v1.0' of repository 'repo-2' was missing from the "
+            "remote when last checked: restore the ref or edit the ref of the repository, then reimport the current "
+            "commit."
+        ),
+    ),
+    MergeRepositoryImportMessageCase(
+        name="one_failed",
+        failed_repositories=["repo-1"],
+        incomplete_repositories=[],
+        expected=(
+            "Cannot merge. The last import of repository 'repo-1' failed: push a fix, reimport the current commit, "
+            "or set the repository to inactive."
+        ),
+    ),
+    MergeRepositoryImportMessageCase(
+        name="two_failed",
+        failed_repositories=["repo-1", "repo-2"],
+        incomplete_repositories=[],
+        expected=(
+            "Cannot merge. The last import of repositories 'repo-1', 'repo-2' failed: push a fix, reimport the "
+            "current commit, or set the repositories to inactive."
+        ),
+    ),
+    MergeRepositoryImportMessageCase(
+        name="one_incomplete",
+        failed_repositories=[],
+        incomplete_repositories=["Repo-1"],
+        expected=(
+            "Cannot merge. Repository 'Repo-1' has not finished importing: wait for the import, or reimport the "
+            "current commit if it does not finish."
+        ),
+    ),
+    MergeRepositoryImportMessageCase(
+        name="two_incomplete",
+        failed_repositories=[],
+        incomplete_repositories=["repo-1", "repo-2"],
+        expected=(
+            "Cannot merge. Repositories 'repo-1', 'repo-2' have not finished importing: wait for the import, or "
+            "reimport the current commit if it does not finish."
+        ),
+    ),
+    MergeRepositoryImportMessageCase(
+        name="failed_and_incomplete",
+        failed_repositories=["repo-1"],
+        incomplete_repositories=["repo-2"],
+        expected=(
+            "Cannot merge. The last import of repository 'repo-1' failed: push a fix, reimport the current commit, "
+            "or set the repository to inactive. Repository 'repo-2' has not finished importing: wait for the "
+            "import, or reimport the current commit if it does not finish."
+        ),
+    ),
+]
+
+
+@pytest.mark.parametrize("case", MERGE_REPOSITORY_IMPORT_MESSAGE_CASES, ids=lambda case: case.name)
+def test_merge_repository_import_error_names_each_repository(case: MergeRepositoryImportMessageCase) -> None:
+    error = MergeRepositoryImportError(
+        failed_repositories=case.failed_repositories,
+        incomplete_repositories=case.incomplete_repositories,
+        ref_missing_repositories=case.ref_missing_repositories,
+    )
+
+    assert error.message == case.expected
+
+
+def test_merge_repository_import_error_requires_a_repository() -> None:
+    with pytest.raises(
+        ValueError,
+        match=r"^A repository import refusal needs at least one failed, incomplete or ref-missing repository$",
+    ):
+        MergeRepositoryImportError(failed_repositories=[], incomplete_repositories=[], ref_missing_repositories={})
 
 
 def test_reconstructed_error_can_be_raised_and_caught() -> None:

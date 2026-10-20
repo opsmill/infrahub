@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import (
@@ -9,6 +10,7 @@ from infrahub.core.constants import (
     RelationshipKind,
 )
 from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX
+from infrahub.pools.scope import AllocationScope
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -42,6 +44,28 @@ def get_relationship_names_to_read(schema: MainSchemaTypes) -> set[str]:
     return {rel.name for rel in schema.relationships if rel.kind in TEMPLATE_APPLICATION_RELATIONSHIP_KINDS}
 
 
+@dataclass(frozen=True)
+class TemplatePoolFields:
+    """The fields an object template hands over to a resource pool."""
+
+    pending: set[str] = field(default_factory=set)
+    """Names of the fields whose allocation was deferred."""
+
+    allocated: dict[str, str] = field(default_factory=dict)
+    """Attribute name mapped to the id of the pool its value was drawn from."""
+
+
+@dataclass(frozen=True)
+class AppliedTemplate:
+    """Everything applying an object template produced."""
+
+    fields: dict[str, Any]
+    """The template's fields merged over the caller's, the caller's winning."""
+
+    pools: TemplatePoolFields
+    """What the template asked of resource pools while producing those fields."""
+
+
 class NodeTemplateApplier:
     """Applies a template to produce field data for a new node."""
 
@@ -49,7 +73,8 @@ class NodeTemplateApplier:
         self.db = db
         self.branch = branch
         self.pool_allocator = pool_allocator
-        self.pool_pending_fields: set[str] = set()
+        self._pool_pending_fields: set[str] = set()
+        self._allocated_attribute_pools: dict[str, str] = {}
 
     async def apply(
         self,
@@ -57,14 +82,23 @@ class NodeTemplateApplier:
         target_schema: MainSchemaTypes,
         target_id: str,
         user_fields: dict[str, Any],
-    ) -> dict[str, Any]:
-        """Apply template and return merged fields. User fields take precedence."""
+    ) -> AppliedTemplate:
+        """Apply the template and return what it produced. The caller's fields take precedence.
+
+        What the pools were asked for is reset here, so applying a template reports its own
+        allocations rather than those of anything applied before it.
+        """
+        self._pool_pending_fields = set()
+        self._allocated_attribute_pools = {}
         fields = dict(user_fields)
         await self._apply_attributes(template=template, fields=fields)
         await self._apply_relationships(
             template=template, target_schema=target_schema, target_id=target_id, fields=fields
         )
-        return fields
+        return AppliedTemplate(
+            fields=fields,
+            pools=TemplatePoolFields(pending=self._pool_pending_fields, allocated=self._allocated_attribute_pools),
+        )
 
     async def _apply_attributes(self, template: CoreObjectTemplate, fields: dict[str, Any]) -> None:
         for attr_name in template.get_schema().attribute_names:
@@ -75,8 +109,7 @@ class NodeTemplateApplier:
             if attr.value is None:
                 continue
 
-            # source_id is dynamically set by NodePropertyMixin._init_node_property_mixin hence the type hint ignore
-            field_data: dict[str, Any] = {"value": attr.value, "source": attr.source_id or template.id}  # type: ignore[attr-defined]
+            field_data: dict[str, Any] = {"value": attr.value, "source": attr.source_id or template.id}
             if attr.is_from_profile:
                 field_data["is_from_profile"] = True
             fields[attr_name] = field_data
@@ -145,7 +178,11 @@ class NodeTemplateApplier:
         target_id: str,
         fields: dict[str, Any],
     ) -> None:
-        """Allocate from pool and set the original relationship or attribute."""
+        """Allocate from pool and set the original relationship or attribute.
+
+        A number pool with an allocation scope is named by `from_pool` on the attribute instead, so that the node
+        draws within its division.
+        """
         original_name = pool_rel_name.removesuffix(RESOURCE_POOL_REL_SUFFIX)
 
         if original_name in fields:
@@ -154,6 +191,17 @@ class NodeTemplateApplier:
         pool_relationship = template.get_relationship(name=pool_rel_name)
 
         if original_name in target_schema.attribute_names:
+            pool = await pool_relationship.get_peer(db=self.db)
+            # if this pool has an allocation_scope, set {from_pool:...} and count on object creation
+            # to handle the correct scope after all template values are set
+            if (
+                pool is not None
+                and not AllocationScope.from_stored(
+                    value=pool.get_attribute("allocation_scope").value, pool=pool.get_id()
+                ).is_empty
+            ):
+                fields[original_name] = {"from_pool": {"id": pool.get_id()}}
+                return
             # Number pool: allocate a value for the attribute
             allocated_value = await self.pool_allocator.allocate_for_attribute(
                 pool_relationship=pool_relationship,
@@ -161,11 +209,11 @@ class NodeTemplateApplier:
                 attribute_name=original_name,
                 identifier=target_id,
             )
-            if allocated_value is not None:
-                pool_node = await pool_relationship.get_peer(db=self.db, raise_on_error=True)
-                fields[original_name] = {"value": allocated_value, "source": pool_node.id}
-            elif await pool_relationship.get_peer(db=self.db):
-                self.pool_pending_fields.add(original_name)
+            if allocated_value is not None and pool is not None:
+                fields[original_name] = {"value": allocated_value}
+                self._allocated_attribute_pools[original_name] = pool.get_id()
+            elif pool is not None:
+                self._pool_pending_fields.add(original_name)
             return
         # IP pool: allocate a node for the relationship
         allocated = await self.pool_allocator.allocate_for_relationship(
@@ -175,4 +223,4 @@ class NodeTemplateApplier:
             pool_node = await pool_relationship.get_peer(db=self.db, raise_on_error=True)
             fields[original_name] = {"peer": allocated, "_relation__source": pool_node.id}
         elif await pool_relationship.get_peer(db=self.db):
-            self.pool_pending_fields.add(original_name)
+            self._pool_pending_fields.add(original_name)

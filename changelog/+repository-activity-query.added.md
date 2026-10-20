@@ -1,0 +1,1 @@
+Added the `InfrahubRepositoryActivity` GraphQL query, which shows the runs working on a repository now, the last run of each operation and which worker holds the repository lock, with the same answer on every branch.

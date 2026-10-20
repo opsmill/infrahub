@@ -10,7 +10,7 @@ from infrahub_sdk.protocols import CoreCheckDefinition, CoreGraphQLQuery, CoreTr
 
 from infrahub import config
 from infrahub.core import registry
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.initialization import first_time_initialization, initialization
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
@@ -23,6 +23,7 @@ from infrahub.utils import get_models_dir
 from infrahub.workers.dependencies import build_database, clear_singletons
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.file_repo import FileRepo
+from tests.helpers.flow import call_in_flow
 from tests.helpers.task_manager import setup_task_manager_once
 from tests.helpers.test_app import TestInfrahubApp
 from tests.helpers.test_client import InfrahubTestClient
@@ -125,7 +126,8 @@ class TestInfrahubClient:
             db=db,
             name=git_repo_infrahub_demo_edge_integration.name,
             description="test repository",
-            location="git@github.com:mock/test.git",
+            location=git_repo_infrahub_demo_edge_integration.path,
+            internal_status=RepositoryInternalStatus.ACTIVE.value,
         )
         await obj.save(db=db)
 
@@ -135,15 +137,16 @@ class TestInfrahubClient:
             name=git_repo_infrahub_demo_edge_integration.name,
             location=git_repo_infrahub_demo_edge_integration.path,
             client=client,
+            infrahub_branch_name="main",
         )
 
     async def test_import_schema_files(
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository
     ) -> None:
         commit = repo.get_commit_value(branch_name="main")
-        config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[call-overload]
+        config_file = await call_in_flow(lambda: repo.get_repository_config(branch_name="main", commit=commit))
         assert config_file
-        await repo.import_schema_files(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
+        await call_in_flow(lambda: repo.import_schema_files(branch_name="main", commit=commit, config_file=config_file))
 
         assert await client.schema.get(kind="DemoEdgeFabric", refresh=True)
 
@@ -151,11 +154,11 @@ class TestInfrahubClient:
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository
     ) -> None:
         commit = repo.get_commit_value(branch_name="main")
-        config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[call-overload]
+        config_file = await call_in_flow(lambda: repo.get_repository_config(branch_name="main", commit=commit))
         assert config_file
 
         config_file.schemas = [Path("schemas")]
-        await repo.import_schema_files(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
+        await call_in_flow(lambda: repo.import_schema_files(branch_name="main", commit=commit, config_file=config_file))
 
         assert await client.schema.get(kind="DemoEdgeFabric", refresh=True)
 
@@ -163,7 +166,7 @@ class TestInfrahubClient:
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository
     ) -> None:
         commit = repo.get_commit_value(branch_name="main")
-        config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[call-overload]
+        config_file = await call_in_flow(lambda: repo.get_repository_config(branch_name="main", commit=commit))
         assert config_file
 
         await repo.import_all_graphql_query(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
@@ -203,7 +206,7 @@ class TestInfrahubClient:
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, query_99: Node
     ) -> None:
         commit = repo.get_commit_value(branch_name="main")
-        config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[call-overload]
+        config_file = await call_in_flow(lambda: repo.get_repository_config(branch_name="main", commit=commit))
         assert config_file
 
         await repo.import_python_check_definitions(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
@@ -283,7 +286,7 @@ class TestInfrahubClient:
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, query_99: Node
     ) -> None:
         commit = repo.get_commit_value(branch_name="main")
-        config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[call-overload]
+        config_file = await call_in_flow(lambda: repo.get_repository_config(branch_name="main", commit=commit))
         assert config_file
         await repo.import_jinja2_transforms(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
 
@@ -333,7 +336,7 @@ class TestInfrahubClient:
         validator too, so the delete succeeds and the import completes instead of aborting.
         """
         commit = repo.get_commit_value(branch_name="main")
-        config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[call-overload]
+        config_file = await call_in_flow(lambda: repo.get_repository_config(branch_name="main", commit=commit))
         assert config_file
 
         # A check definition present in the graph but not in the repository config, so the
@@ -388,6 +391,7 @@ class TestInfrahubClient:
             name=git_repo_same_repo_trigger_rule.name,
             description="trigger rule test repository",
             location="git@github.com:mock/trigger-rule.git",
+            internal_status=RepositoryInternalStatus.ACTIVE.value,
         )
         await obj.save(db=db)
 
@@ -396,6 +400,7 @@ class TestInfrahubClient:
             name=git_repo_same_repo_trigger_rule.name,
             location=git_repo_same_repo_trigger_rule.path,
             client=client,
+            infrahub_branch_name="main",
         )
 
     async def test_import_resolves_trigger_rules_referencing_generator_definition(
@@ -433,13 +438,18 @@ class TestGetMissingFile(TestInfrahubApp):
             db=db,
             name=git_repo_car_dealership.name,
             description="test repository",
-            location="git@github.com:mock/test.git",
+            location=git_repo_car_dealership.path,
+            internal_status=RepositoryInternalStatus.ACTIVE.value,
         )
         await obj.save(db=db)
 
         # Initialize the repository on the file system
         repo = await InfrahubRepository.new(
-            id=obj.id, name=git_repo_car_dealership.name, location=git_repo_car_dealership.path, client=client
+            id=obj.id,
+            name=git_repo_car_dealership.name,
+            location=git_repo_car_dealership.path,
+            client=client,
+            infrahub_branch_name="main",
         )
 
         commit = repo.get_commit_value(branch_name="main")

@@ -1,0 +1,1 @@
+Fixed converting an object to another kind freeing a number it held from a number pool, which let the pool hand the same number out again. The pool keeps accounting for the number when the new kind is one the pool tracks, such as another kind inheriting from the generic the pool is attached to.

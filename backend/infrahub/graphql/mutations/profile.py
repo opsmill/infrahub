@@ -15,12 +15,15 @@ from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.types.context import ContextInput
 from infrahub.log import get_logger
+from infrahub.profiles.data_reader import ProfileDataReader
 from infrahub.profiles.node_applier import NodeProfilesApplier
 from infrahub.workflows.catalogue import PROFILE_REFRESH_MULTIPLE
 
 from .main import InfrahubMutationMixin, InfrahubMutationOptions
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from graphql import GraphQLResolveInfo
 
     from infrahub.core.branch import Branch
@@ -30,6 +33,8 @@ if TYPE_CHECKING:
     from infrahub.services.adapters.workflow import InfrahubWorkflow
 
 log = get_logger()
+
+PROFILE_PEER_RELATIONSHIP_NAMES = ("related_nodes", "related_templates")
 
 
 class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
@@ -73,8 +78,9 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
             # Handle both single relationships and lists
             items = [rel_data] if not isinstance(rel_data, list) else rel_data
             for item in items:
-                # Check if from_pool is present and has a non-None value
-                # (graphene InputObjectType may include keys with None values for unset fields)
+                # An unset field is absent from the input rather than present as a None value, and
+                # an explicit null names no pool either, so only a `from_pool` carrying an actual
+                # pool reference reaches the raise.
                 if isinstance(item, dict) and item.get("from_pool") is not None:
                     raise ValidationError(
                         {rel_name: "Resource pools cannot be used as the source for relationship values in Profiles"}
@@ -104,17 +110,16 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
             )
 
     @classmethod
-    async def _get_profile_related_node_ids(cls, db: InfrahubDatabase, obj: Node) -> set[str]:
-        related_nodes = []
-        related_nodes.extend(await obj.related_nodes.get_relationships(db=db))  # type: ignore[attr-defined]
-
-        if hasattr(obj, "related_templates"):
-            related_nodes.extend(await obj.related_templates.get_relationships(db=db))  # type: ignore[attr-defined]
-
-        if related_nodes:
-            related_node_ids = {rel.peer_id for rel in related_nodes}
-        else:
-            related_node_ids = set()
+    async def _get_profile_related_node_ids(
+        cls, db: InfrahubDatabase, obj: Node, rel_names: Sequence[str] = PROFILE_PEER_RELATIONSHIP_NAMES
+    ) -> set[str]:
+        related_node_ids: set[str] = set()
+        for rel_name in rel_names:
+            if rel_name not in obj.get_schema().relationship_names:
+                continue
+            for rel in await obj.get_relationship(name=rel_name).get_relationships(db=db):
+                if rel.peer_id:
+                    related_node_ids.add(rel.peer_id)
         return related_node_ids
 
     @classmethod
@@ -154,13 +159,15 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
         cls._validate_no_resource_pools_in_data(data)
 
         workflow_service = info.context.active_service.workflow
-        original_related_node_ids = await cls._get_profile_related_node_ids(db=db, obj=obj)
+        # Only a payload with these relationships can remove peers, and a read of all peers is slow on a large profile.
+        rel_names = [rel_name for rel_name in PROFILE_PEER_RELATIONSHIP_NAMES if rel_name in data]
+        original_related_node_ids = await cls._get_profile_related_node_ids(db=db, obj=obj, rel_names=rel_names)
 
         obj, mutation = await super()._call_mutate_update(
             info=info, data=data, branch=branch, db=db, obj=obj, skip_uniqueness_check=skip_uniqueness_check
         )
 
-        updated_related_node_ids = await cls._get_profile_related_node_ids(db=db, obj=obj)
+        updated_related_node_ids = await cls._get_profile_related_node_ids(db=db, obj=obj, rel_names=rel_names)
 
         # Handle nodes removed from related_nodes - these need explicit refresh
         # since the async automation won't find them in the profile's related_nodes after the change.
@@ -224,7 +231,9 @@ class InfrahubProfilesRefresh(Mutation):
             include_metadata=MetadataOptions.SOURCE,
             raise_on_error=True,
         )
-        node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
+        node_profiles_applier = NodeProfilesApplier(
+            db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+        )
         updated_fields = await node_profiles_applier.apply_profiles(node=obj)
         if updated_fields:
             await obj.save(db=db, fields=updated_fields, user_id=graphql_context.assigned_user_id)

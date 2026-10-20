@@ -72,17 +72,17 @@ async def save_screenshot_for_docs(page: Page, filename: str) -> None:
     """
     if not os.environ.get("UPDATE_DOCS_SCREENSHOTS"):
         return
-    # The published documentation is written against the light theme, while a development stack now
-    # starts dark. Without pinning it here, a regeneration run would quietly turn every screenshot
-    # in the docs dark.
+    # The published documentation is written against the light theme, while a test may have chosen
+    # or emulated dark. Without pinning it here, a regeneration run would quietly turn those
+    # screenshots dark.
     await page.evaluate(
         """() => {
             localStorage.setItem("infrahub.theme.choice", "light");
-            document.documentElement.classList.remove("dark");
+            window.dispatchEvent(new StorageEvent("storage", { key: "infrahub.theme.choice" }));
         }"""
     )
-    # The flip triggers observer-driven re-renders (diagrams and the sandbox rebuild whole
-    # subtrees), so settle the network and let two frames paint before capturing.
+    # The flip re-renders every theme consumer (diagrams and the sandbox rebuild whole subtrees),
+    # so settle the network and let two frames paint before capturing.
     await page.wait_for_load_state("networkidle")
     await page.evaluate("() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))")
     await page.screenshot(path=str(_DOCS_MEDIA_DIR / f"{filename}.png"), animations="disabled")

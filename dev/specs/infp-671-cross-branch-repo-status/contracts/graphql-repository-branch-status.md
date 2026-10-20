@@ -1,0 +1,240 @@
+# Contract: `InfrahubRepositoryBranchStatus` GraphQL query
+
+**Branch**: `cross-branch-repo-status-infp-671` | **Date**: 2026-09-03 | **SDL**: [graphql-repository-branch-status.graphql](graphql-repository-branch-status.graphql)
+
+This is the document to hand to the frontend team. The SDL argument set is final from increment A.
+Increment B made the attribute values true and the three value filters real, and added the rejection
+of `at` and of an explicit null `limit` or `offset`.
+
+## Semantics
+
+### Anchoring
+
+`id` is required and accepts either the repository's uuid or its `name` (the repository kinds
+declare no human-friendly id; `name` is their default filter, so this is the same lookup other
+repository reads use). Both kinds, `CoreRepository` and `CoreReadOnlyRepository`, are accepted; the
+resolver dispatches on the resolved kind. A repository that does not resolve fails the way every other
+repository lookup fails. A caller with no qualifying grant on either kind is denied before the lookup
+runs, so denial does not reveal whether the id exists.
+
+### Row set
+
+| Repository kind | Rows |
+| --- | --- |
+| `CoreRepository` | Branches with `sync_with_git = true` |
+| `CoreReadOnlyRepository` | All branches |
+
+In both cases the global branch and branches in `MERGED` or `DELETING` status are excluded. Every
+other branch status is included. The branch the query is executed against does not affect the row set.
+
+### Row values
+
+- `name`, `status`, `is_default`, `sync_with_git`, `branched_from` are the branch's own, and carry the
+  **same value-field wrappers and nullability as `InfrahubBranch`** - `name { value }`,
+  `status { value }` and so on - so a client reads `name.value` and `commit.value` through one access
+  pattern across the whole row. Do not model them on the legacy flat `Branch` query.
+  `sync_with_git` is always `true` on a read-write repository's rows, because that is the row-set
+  criterion; on a read-only repository it varies, because every branch is a row.
+- Each edge also carries `node_metadata` (`created_at`, `updated_at`, `created_by`, `updated_by`),
+  the same type `InfrahubBranchEdge` carries. `order` sorts on this metadata, so it has to be
+  readable.
+- `commit`, `sync_status`, `internal_status`, `ref` are the repository's attribute values **as that
+  branch resolves them**. A branch that never wrote its own value shows the default branch's value at
+  the branch's fork point. This is the correct value for that branch and is not an error state.
+  One exception for `CoreReadOnlyRepository`: its `commit` and `ref` are branch-aware, so a
+  repository created on a user branch reads them as null on every other branch, as does a branch
+  forked before the repository was created.
+- `ref` is non-null only for `CoreReadOnlyRepository`; the other three are present for both kinds.
+- The `TextAttribute` and `Dropdown` payloads are the existing types. `value`, `label`, `color`,
+  `description`, `id` and `updated_at` are populated. `is_default`, `is_protected`, `is_from_profile`,
+  `permissions`, `source` and `owner` are always null on this query.
+- Do not render `updated_at` as a "last import" time. On an inherited row it is the default branch's
+  write time.
+
+### Filters, ordering and paging
+
+All filters apply server-side and `count` reflects them.
+
+| Argument | Effect |
+| --- | --- |
+| `name__value` + `partial_match` | Branch name equals, or contains when `partial_match` is true |
+| `status__value` | Branch status equals; asking for `MERGED` or `DELETING` returns an empty set |
+| `sync_status__value` | Keep rows whose resolved `sync_status.value` equals the given value |
+| `internal_status__value` | Keep rows whose resolved `internal_status.value` equals the given value |
+| `own_values_only` | Keep rows where the branch holds its own `commit` value, meaning it has imported on this branch. Independent of the selected fields |
+| `order` | Existing `MetadataOrderInput` on branch node metadata (`created_at` or `updated_at`) |
+| `limit` / `offset` | Default 40 / 0; `limit` has no maximum; `limit` below 1, `offset` below 0 and an explicit `null` for either are rejected with a `ValidationError` |
+
+Default ordering when `order` is omitted or expresses no ordering: the default branch first, then
+branch name ascending.
+
+### Point in time
+
+The query always reports the present. A request to `/graphql` carrying an `at` query parameter is
+rejected with a `ValidationError` reading:
+
+```text
+at is not supported on InfrahubRepositoryBranchStatus: the branch row set is always current
+```
+
+The rows come from the branch list, and that list has no historical form: it is read as it is now
+whatever `at` says. Serving it alongside values resolved at a past timestamp would return rows for
+branches that did not exist then and drop branches deleted since, so the pairing is refused rather
+than shipped as a silent inconsistency. Point-in-time reads of a single repository stay available on
+the ordinary node queries.
+
+Note that the request, not the resolved timestamp, is what carries the answer: an omitted `at`
+reaches the resolver already resolved to the current time, so the two are indistinguishable by the
+time the field runs.
+
+That is also the limit of the guarantee. The rejection reads the incoming HTTP request, so it covers
+`/graphql` but not the routes that build a GraphQL context without one: a document stored as a
+`CoreGraphQLQuery` and fetched through `GET /api/query/<name>?at=<past>`, or the transformation
+routes, still resolve values at the given timestamp while the branch rows stay current. Running this
+field that way is not supported and is not expected; treat a need for it as a new issue rather than
+as behaviour to rely on.
+
+### Permission
+
+The caller needs `view` on the repository's concrete kind (`Core/Repository` or
+`Core/ReadOnlyRepository`) with a decision covering both the default branch and other branches: one
+`ALLOW_ALL` grant, or `ALLOW_DEFAULT` and `ALLOW_OTHER` granted separately. `ALLOW_DEFAULT` alone or
+`ALLOW_OTHER` alone is denied, whatever branch the request runs against. Denial is an error, never a
+trimmed row set.
+
+### Guarantees
+
+- Resolved entirely from the graph. No git operation, no message-bus send, no task worker.
+- Database queries per page do not grow with the branch count.
+- `count` is computed only when selected.
+
+## Example document
+
+```graphql
+query RepositoryBranchStatus($id: String!, $limit: Int, $offset: Int, $syncStatus: String) {
+  InfrahubRepositoryBranchStatus(
+    id: $id
+    limit: $limit
+    offset: $offset
+    sync_status__value: $syncStatus
+  ) {
+    count
+    edges {
+      node {
+        name { value }
+        status { value }
+        is_default { value }
+        sync_with_git { value }
+        branched_from { value }
+        commit { value updated_at }
+        sync_status { value label color }
+        internal_status { value label color }
+        ref { value }
+      }
+      node_metadata { created_at updated_at }
+    }
+  }
+}
+```
+
+## Example response (read-write repository, three branches, one failed import)
+
+```json
+{
+  "data": {
+    "InfrahubRepositoryBranchStatus": {
+      "count": 3,
+      "edges": [
+        {
+          "node": {
+            "name": { "value": "main" },
+            "status": { "value": "OPEN" },
+            "is_default": { "value": true },
+            "sync_with_git": { "value": true },
+            "branched_from": { "value": "2026-08-01T09:00:00.000000Z" },
+            "commit": { "value": "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b", "updated_at": "2026-09-02T14:12:03.512000Z" },
+            "sync_status": { "value": "in-sync", "label": "In Sync", "color": "#60a5fa" },
+            "internal_status": { "value": "active", "label": "Active", "color": "#86efac" },
+            "ref": null
+          },
+          "node_metadata": { "created_at": "2026-08-01T09:00:00.000000Z", "updated_at": "2026-08-01T09:00:00.000000Z" }
+        },
+        {
+          "node": {
+            "name": { "value": "add-core-switches" },
+            "status": { "value": "OPEN" },
+            "is_default": { "value": false },
+            "sync_with_git": { "value": true },
+            "branched_from": { "value": "2026-09-01T08:30:00.000000Z" },
+            "commit": { "value": "0f9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e", "updated_at": "2026-09-02T15:40:11.001000Z" },
+            "sync_status": { "value": "error-import", "label": "Import Error", "color": "#f87171" },
+            "internal_status": { "value": "inactive", "label": "Inactive", "color": "#e5e7eb" },
+            "ref": null
+          },
+          "node_metadata": { "created_at": "2026-09-01T08:30:00.000000Z", "updated_at": "2026-09-01T08:30:00.000000Z" }
+        },
+        {
+          "node": {
+            "name": { "value": "wip-firewall-rules" },
+            "status": { "value": "OPEN" },
+            "is_default": { "value": false },
+            "sync_with_git": { "value": true },
+            "branched_from": { "value": "2026-09-02T10:00:00.000000Z" },
+            "commit": { "value": "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b", "updated_at": "2026-09-02T14:12:03.512000Z" },
+            "sync_status": { "value": "in-sync", "label": "In Sync", "color": "#60a5fa" },
+            "internal_status": { "value": "inactive", "label": "Inactive", "color": "#e5e7eb" },
+            "ref": null
+          },
+          "node_metadata": { "created_at": "2026-09-02T10:00:00.000000Z", "updated_at": "2026-09-02T10:00:00.000000Z" }
+        }
+      ]
+    }
+  }
+}
+```
+
+The third row inherits the default branch's commit and `updated_at`: it forked after the import and
+never imported itself.
+
+## Dropdown values and colours (from the schema, unchanged)
+
+Values are the wire values a filter must send, taken from `RepositorySyncStatus` and
+`RepositoryInternalStatus`. Note the hyphens in `in-sync` and `error-import`: the Python enum members
+are underscored (`IN_SYNC`, `ERROR_IMPORT`) but the stored values are not, and
+`sync_status__value` matches the stored value.
+
+| Attribute | value | label | color |
+| --- | --- | --- | --- |
+| `sync_status` | `unknown` | Unknown | `#9ca3af` |
+| `sync_status` | `error-import` | Import Error | `#f87171` |
+| `sync_status` | `in-sync` | In Sync | `#60a5fa` |
+| `sync_status` | `syncing` | Syncing | `#a855f7` |
+| `internal_status` | `staging` | Staging | `#fef08a` |
+| `internal_status` | `active` | Active | `#86efac` |
+| `internal_status` | `inactive` | Inactive | `#e5e7eb` |
+
+## Consuming the query from the frontend
+
+The card is built without the git-derived drift column for now; that column arrives on its own data
+path once the sibling PRD settles it, and nothing in this contract changes for it.
+
+Consuming the types: work from a branch that carries the merged epic. Then run **both**
+`pnpm --dir frontend/app codegen` and `pnpm --dir frontend/app codegen:graphql`: the first writes
+`types.ts` only, while `graphql-env.d.ts` and `graphql-cache.d.ts` come from the second, and skipping
+it leaves the new root field absent from introspection with every cached document hash stale, which
+fails CI's `frontend-validate-graphql-types`. Then write the document with the `graphql()` tag from
+`@/shared/api/graphql/client` in the `api/` layer of the repository entity slice
+(`frontend/app/src/entities/repository/api/`), as `get-repository-group-from-api.ts` does.
+
+Reading a row: the branch fields are wrapped exactly as `InfrahubBranch` wraps them, so it is
+`node.name.value`, `node.status.value`, `node.sync_with_git.value` alongside `node.commit.value` -
+one access pattern for the whole row. Creation and update timestamps are on the edge, as
+`node_metadata`, not on the node.
+
+## No companion change on the existing branch query
+
+`InfrahubBranch` is unchanged by this feature. An earlier draft of this contract gave it a
+`sync_with_git` filter argument; that was dropped, because nothing queries `InfrahubBranch` to build
+this feature. The row set is narrowed inside the resolver, which calls `Branch.get_list` in Python
+with `BranchListFilters(sync_with_git=...)`. The Branches card reads
+`InfrahubRepositoryBranchStatus` and gets its branches in that response.

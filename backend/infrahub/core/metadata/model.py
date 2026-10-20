@@ -15,6 +15,11 @@ class MetadataQueryOptions:
     attribute_level: MetadataOptions = MetadataOptions.NONE
     relationship_level: MetadataOptions = MetadataOptions.NONE
 
+    @classmethod
+    def at_every_level(cls, options: MetadataOptions) -> MetadataQueryOptions:
+        """The same options for the node, its attributes and its relationships."""
+        return cls(node_level=options, attribute_level=options, relationship_level=options)
+
     def __or__(self, other: MetadataQueryOptions) -> MetadataQueryOptions:
         return MetadataQueryOptions(
             node_level=self.node_level | other.node_level,

@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 
+class InvalidDependencyPathError(ValueError):
+    """Raised when a path entering a dependency closure does not name a file in the repository."""
+
+
 def canonicalize_path(path: str) -> str:
     """Return the canonical repo-relative form of a path entering a transform's dependency closure.
 
@@ -19,11 +23,11 @@ def canonicalize_path(path: str) -> str:
     they do not name a dependency and would silently match every entry in a diff.
 
     Raises:
-        ValueError: If ``path`` is empty or collapses to the repository root.
+        InvalidDependencyPathError: If ``path`` is empty or collapses to the repository root.
 
     """
     if not path:
-        raise ValueError("Path must not be empty")
+        raise InvalidDependencyPathError("Path must not be empty")
 
     normalized = path.replace("\\", "/")
 
@@ -36,6 +40,8 @@ def canonicalize_path(path: str) -> str:
             break
 
     if normalized in ("", "."):
-        raise ValueError(f"Path resolves to the repository root and is not a valid dependency: {path!r}")
+        raise InvalidDependencyPathError(
+            f"Path resolves to the repository root and is not a valid dependency: {path!r}"
+        )
 
     return normalized

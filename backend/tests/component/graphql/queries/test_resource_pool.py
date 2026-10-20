@@ -11,11 +11,15 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
-from infrahub.core.schema import SchemaRoot
+from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
+from infrahub.core.schema import NodeSchema, SchemaRoot
+from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.graphql.initialization import GraphqlParams, prepare_graphql_params
+from infrahub.pools.number_pool_repository import NumberPoolRepository
 from tests.helpers.graphql import graphql
+from tests.helpers.number_pool import add_pool_range, create_range_only_pool, ticket_schema_with_parameters
 from tests.helpers.schema import TICKET, load_schema
 
 
@@ -157,6 +161,7 @@ query Allocated($pool_id: String!, $resource_id: String!) {
         id
         identifier
         kind
+        provenance
       }
     }
   }
@@ -438,6 +443,9 @@ async def test_create_ipv4_address_and_read_allocations(
     assert device1_address in addresses
     assert device2_address in addresses
     assert device3_address in addresses
+    assert [node["node"]["provenance"] for node in nodes] == [None, None, None], (
+        "only a number pool says whether it allocated the value"
+    )
 
 
 async def test_read_resources_in_pool_with_branch(
@@ -818,6 +826,9 @@ async def test_number_pool_utilization(
 
     pool_id = create_ok.data["CoreNumberPoolCreate"]["object"]["id"]
 
+    (pool_range,) = await NumberPoolRepository(db=db).get_ranges(pool_id=pool_id)
+    range_id = pool_range.get_id()
+
     first = await graphql(
         schema=gql_params.schema,
         source=CREATE_TICKET,
@@ -875,11 +886,13 @@ async def test_number_pool_utilization(
     assert not utilization.errors
     assert utilization.data
 
-    # Number pools tied to an attribute always has a count of 1
+    # The pool reports its totals, and the one range it holds reports its own underneath
     assert utilization.data["InfrahubResourcePoolUtilization"]["count"] == 1
     assert utilization.data["InfrahubResourcePoolUtilization"]["utilization"] == 30.0
-    assert utilization.data["InfrahubResourcePoolUtilization"]["edges"][0]["node"]["display_label"] == "pool1"
-    assert utilization.data["InfrahubResourcePoolUtilization"]["edges"][0]["node"]["utilization"] == 30.0
+    range_edge = utilization.data["InfrahubResourcePoolUtilization"]["edges"][0]["node"]
+    assert range_edge["id"] == range_id
+    assert range_edge["kind"] == InfrahubKind.NUMBERPOOLRANGE
+    assert range_edge["utilization"] == 30.0
 
     allocation = await graphql(
         schema=gql_params.schema,
@@ -932,6 +945,155 @@ async def test_number_pool_utilization(
     assert allocation.data["InfrahubResourcePoolAllocated"]["count"] == 2
     numbers = [entry["node"]["display_label"] for entry in allocation.data["InfrahubResourcePoolAllocated"]["edges"]]
     assert sorted(numbers) == ["1", "3"]
+
+
+async def _ticket_graphql_params(db: InfrahubDatabase, default_branch: Branch, schema: NodeSchema) -> GraphqlParams:
+    await load_schema(db=db, schema=SchemaRoot(nodes=[schema]))
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    await initialization(db=db)
+    return gql_params
+
+
+async def _create_ticket(db: InfrahubDatabase, kind: str, pool: CoreNumberPool, title: str) -> Node:
+    ticket = await Node.init(db=db, schema=kind)
+    await ticket.new(db=db, title=title, ticket_id={"from_pool": {"id": pool.id}})
+    await ticket.save(db=db)
+    return ticket
+
+
+async def _query_allocation(gql_params: GraphqlParams, pool_id: str, resource_id: str | None = None) -> dict[str, Any]:
+    allocation = await graphql(
+        schema=gql_params.schema,
+        source=POOL_ALLOCATION,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"pool_id": pool_id, "resource_id": resource_id or pool_id},
+    )
+    assert not allocation.errors
+    assert allocation.data
+    return allocation.data["InfrahubResourcePoolAllocated"]
+
+
+async def test_number_pool_allocation_of_a_pool_without_range_is_empty(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    gql_params = await _ticket_graphql_params(db=db, default_branch=default_branch, schema=TICKET)
+    pool = await create_range_only_pool(db=db, kind=TICKET.kind)
+
+    assert await _query_allocation(gql_params=gql_params, pool_id=pool.get_id()) == {"count": 0, "edges": []}
+
+
+async def test_number_pool_allocation_is_empty_once_the_attribute_bounds_clip_every_range_to_nothing(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """Numbers the pool handed out from a range it no longer holds are not listed when nothing is allocatable."""
+    schema = ticket_schema_with_parameters(NumberAttributeParameters(min_value=15, max_value=50))
+    gql_params = await _ticket_graphql_params(db=db, default_branch=default_branch, schema=schema)
+    pool = await create_range_only_pool(db=db, kind=schema.kind)
+    within_bounds = await add_pool_range(db=db, pool=pool, start=20, end=30)
+    for title in ("first", "second"):
+        await _create_ticket(db=db, kind=schema.kind, pool=pool, title=title)
+    assert (await _query_allocation(gql_params=gql_params, pool_id=pool.get_id()))["count"] == 2
+
+    await within_bounds.delete(db=db)
+    await add_pool_range(db=db, pool=pool, start=60, end=80)
+
+    assert await _query_allocation(gql_params=gql_params, pool_id=pool.get_id()) == {"count": 0, "edges": []}
+
+
+async def test_number_pool_allocation_lists_only_the_numbers_inside_the_current_ranges(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """Numbers handed out from a range the pool no longer holds drop out of the count and the edges alike."""
+    gql_params = await _ticket_graphql_params(db=db, default_branch=default_branch, schema=TICKET)
+    pool = await create_range_only_pool(db=db, kind=TICKET.kind)
+    initial = await add_pool_range(db=db, pool=pool, start=1, end=10)
+    first, _, _, fourth = [
+        await _create_ticket(db=db, kind=TICKET.kind, pool=pool, title=title)
+        for title in ("first", "second", "third", "fourth")
+    ]
+    assert (await _query_allocation(gql_params=gql_params, pool_id=pool.get_id()))["count"] == 4
+
+    await initial.delete(db=db)
+    await add_pool_range(db=db, pool=pool, start=1, end=1)
+    await add_pool_range(db=db, pool=pool, start=4, end=10)
+
+    allocation = await _query_allocation(gql_params=gql_params, pool_id=pool.get_id())
+    assert allocation["count"] == 2
+    assert allocation["edges"] == [
+        {
+            "node": {
+                "branch": default_branch.name,
+                "display_label": str(number),
+                "id": ticket.get_id(),
+                "identifier": ticket.get_id(),
+                "kind": TICKET.kind,
+            }
+        }
+        for number, ticket in ((1, first), (4, fourth))
+    ]
+
+
+async def test_number_pool_allocation_of_one_range_lists_only_the_numbers_inside_it(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    gql_params = await _ticket_graphql_params(db=db, default_branch=default_branch, schema=TICKET)
+    pool = await create_range_only_pool(db=db, kind=TICKET.kind)
+    low = await add_pool_range(db=db, pool=pool, start=1, end=2)
+    high = await add_pool_range(db=db, pool=pool, start=10, end=20)
+    first, second, third = [
+        await _create_ticket(db=db, kind=TICKET.kind, pool=pool, title=title) for title in ("first", "second", "third")
+    ]
+
+    def edges(*allocated: tuple[int, Node]) -> list[dict[str, Any]]:
+        return [
+            {
+                "node": {
+                    "branch": default_branch.name,
+                    "display_label": str(number),
+                    "id": ticket.get_id(),
+                    "identifier": ticket.get_id(),
+                    "kind": TICKET.kind,
+                }
+            }
+            for number, ticket in allocated
+        ]
+
+    assert await _query_allocation(gql_params=gql_params, pool_id=pool.get_id(), resource_id=low.get_id()) == {
+        "count": 2,
+        "edges": edges((1, first), (2, second)),
+    }
+    assert await _query_allocation(gql_params=gql_params, pool_id=pool.get_id(), resource_id=high.get_id()) == {
+        "count": 1,
+        "edges": edges((10, third)),
+    }
+    assert (await _query_allocation(gql_params=gql_params, pool_id=pool.get_id()))["count"] == 3
+
+
+async def test_number_pool_allocation_rejects_a_range_of_another_pool(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    gql_params = await _ticket_graphql_params(db=db, default_branch=default_branch, schema=TICKET)
+    pool = await create_range_only_pool(db=db, kind=TICKET.kind)
+    await add_pool_range(db=db, pool=pool, start=1, end=10)
+    other_pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
+    await other_pool.new(db=db, name="other", node=TICKET.kind, node_attribute="ticket_id")
+    await other_pool.save(db=db)
+    foreign_range = await add_pool_range(db=db, pool=other_pool, start=1, end=10)
+
+    allocation = await graphql(
+        schema=gql_params.schema,
+        source=POOL_ALLOCATION,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"pool_id": pool.get_id(), "resource_id": foreign_range.get_id()},
+    )
+
+    assert allocation.errors
+    assert [error.message for error in allocation.errors] == [
+        f"The selected pool_id={pool.get_id()} doesn't contain the requested resource_id={foreign_range.get_id()}"
+    ]
 
 
 CREATE_NUMBER_POOL = """

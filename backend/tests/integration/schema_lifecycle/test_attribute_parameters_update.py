@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 from infrahub.core import registry
-from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema import NUMBER_POOL_SHORTHAND_DEPRECATION, SchemaRoot
 from infrahub.core.schema.attribute_parameters import (
     NumberAttributeParameters,
     NumberPoolParameters,
@@ -312,6 +312,11 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
                     "type": "deprecation",
                     "kinds": [{"kind": "TestingThingLegacy", "field": "value"}],
                     "message": "Use of 'min_length' on attributes is deprecated, use parameters instead",
+                },
+                {
+                    "type": "deprecation",
+                    "kinds": [{"kind": NEW_KIND, "field": "assigned_number"}],
+                    "message": NUMBER_POOL_SHORTHAND_DEPRECATION,
                 },
             ],
         }

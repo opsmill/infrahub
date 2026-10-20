@@ -7,7 +7,6 @@ from infrahub.core.query_group.subscribers import fetch_subscriber_refs
 from infrahub.core.relationship.dependent_resolver import QueryDependentNodeResolver
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.execution import cached_parse
-from infrahub.graphql.initialization import prepare_graphql_params
 
 from .classifier_builder import QueryClassifierBuilder
 from .derived_dependencies import SchemaDerivedFieldDependencyResolver
@@ -20,25 +19,35 @@ if TYPE_CHECKING:
 
     from infrahub.core.relationship.dependent_resolver import DependentNodeResolver
     from infrahub.database import InfrahubDatabase
+    from infrahub.graphql.analyzer import GraphQLQueryReport
 
 
 class FieldLevelImpactResolver:
     """Map data changes on a branch to the subscribers a GraphQL query depends on.
 
-    A change matters only when a modified field is one the query reads. The query analysis,
-    the diff-summary tag and the subscriber lookup all run on the branch passed to `resolve`, so the
-    caller passes the branch the changed data lives on (a proposed change's source branch, a merge's
-    target branch).
+    A change matters only when a modified field is one the query reads. The caller analyzes the query
+    against the branch passed to `resolve`, and the diff-summary tag and the subscriber lookup run on it
+    too, so the caller passes the branch the changed data lives on (a proposed change's source branch, a
+    merge's target branch).
     """
 
     def __init__(self, db: InfrahubDatabase, client: InfrahubClient) -> None:
         self.db = db
         self.client = client
 
+    def analyze(self, *, query_payload: str, query_branch: str) -> GraphQLQueryReport:
+        """What the query reads, from its text analyzed against the query branch schema."""
+        return InfrahubGraphQLQueryAnalyzer(
+            query=query_payload,
+            branch=registry.get_branch_from_registry(branch=query_branch),
+            schema_branch=registry.schema.get_schema_branch(name=query_branch),
+            document=cached_parse(query_payload),
+        ).query_report
+
     async def resolve(
         self,
         *,
-        query_payload: str,
+        query_report: GraphQLQueryReport,
         diff_summary: list[NodeDiff],
         query_branch: str,
         subscriber_kind: str,
@@ -53,24 +62,15 @@ class FieldLevelImpactResolver:
         query_schema_branch = registry.schema.get_schema_branch(name=query_branch)
         query_branch_obj = registry.get_branch_from_registry(branch=query_branch)
 
-        graphql_params = await prepare_graphql_params(db=self.db, branch=query_branch)
-        query_report = InfrahubGraphQLQueryAnalyzer(
-            query=query_payload,
-            branch=query_branch_obj,
-            schema_branch=query_schema_branch,
-            schema=graphql_params.schema,
-            document=cached_parse(query_payload),
-        ).query_report
-
         dependency_resolver = SchemaDerivedFieldDependencyResolver(schema_branch=query_schema_branch)
-        classifier = QueryClassifierBuilder(query_branch=query_branch, dependency_resolver=dependency_resolver).build(
-            query_report
-        )
+        classifier = QueryClassifierBuilder(
+            query_branch=query_branch, schema_branch=query_schema_branch, dependency_resolver=dependency_resolver
+        ).build(query_report)
         assessment = classifier.assess(diff_summary=diff_summary)
 
         match assessment:
-            case EveryTarget():
-                return TargetSelection(ids=every_target, widened=True)
+            case EveryTarget(widening=widening):
+                return TargetSelection(ids=every_target, widening=widening)
             case ChangedNodes(node_ids=node_ids):
                 member_ids = node_ids
             case RelationshipReachedChanges():
@@ -81,7 +81,7 @@ class FieldLevelImpactResolver:
 
         subscribers = await fetch_subscriber_refs(client=self.client, node_ids=member_ids, branch=query_branch)
         ids = [subscriber.id for subscriber in subscribers if subscriber.kind == subscriber_kind]
-        return TargetSelection(ids=ids, widened=False)
+        return TargetSelection(ids=ids)
 
 
 class ReachedMemberResolver:

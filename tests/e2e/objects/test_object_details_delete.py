@@ -10,6 +10,7 @@ that name.
 from __future__ import annotations
 
 import contextlib
+import re
 from typing import TYPE_CHECKING
 
 import pytest
@@ -53,7 +54,13 @@ class TestObjectDetailsDelete:
         )
         await admin_page.get_by_test_id("modal-delete-confirm").click()
         await expect(admin_page.get_by_text("Object blue deleted")).to_be_visible()
-        await expect(admin_page.get_by_role("link", name="blue")).to_be_hidden()
+
+        # user is redirected to the list view, which no longer lists the blue tag
+        await expect(admin_page).to_have_url(re.compile(r"/objects/BuiltinTag(\?|$)"))
+        # The toast can appear while the detail view, with its breadcrumb and activity links to blue, is still rendered.
+        object_items = admin_page.get_by_test_id("object-items")
+        await expect(object_items.get_by_role("link", name="red", exact=True)).to_be_visible()
+        await expect(object_items.get_by_role("link", name="blue", exact=True)).to_be_hidden()
 
         # user is still on the same branch after delete
         await expect(admin_page.get_by_test_id("branch-selector-trigger")).to_contain_text("object-details-delete")

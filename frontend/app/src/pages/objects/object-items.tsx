@@ -5,6 +5,9 @@ import Content from "@/shared/components/layout/content";
 
 import { ObjectItemsHeader } from "@/entities/nodes/object/ui/object-items-header";
 import { ObjectsManager } from "@/entities/nodes/object/ui/objects-manager";
+import { GENERIC_REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
+import { REPOSITORY_COLUMN_SURFACE } from "@/entities/repository/domain/rules/repository-column-surface";
+import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 function ObjectItemsPage() {
@@ -18,7 +21,12 @@ function ObjectItemsPage() {
     <Content.Card>
       <ObjectItemsHeader schema={schema} />
 
-      <ObjectsManager schema={schema} />
+      <ObjectsManager
+        schema={schema}
+        columnSurface={
+          isOfKind(GENERIC_REPOSITORY_KIND, schema) ? REPOSITORY_COLUMN_SURFACE : undefined
+        }
+      />
     </Content.Card>
   );
 }

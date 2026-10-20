@@ -20,7 +20,7 @@ const config: CodegenConfig = {
         nonOptionalTypename: true,
         skipTypeNameForRoot: true,
         scalars: {
-          BigInt: "string",
+          BigInt: "number",
           DateTime: "string",
           FixedGenericScalar: "any",
           GenericScalar: "any",

@@ -328,7 +328,7 @@ class DiffRelationshipIntermediate:
     properties_by_db_id: dict[str, set[DiffRelationshipPropertyIntermediate]] = field(default_factory=dict)
     _single_relationship_list: list[DiffSingleRelationshipIntermediate] = field(default_factory=list)
 
-    def add_path(self, database_path: DatabasePath, diff_from_time: Timestamp, diff_to_time: Timestamp) -> None:
+    def add_path(self, database_path: DatabasePath, diff_to_time: Timestamp) -> None:
         if database_path.property_type in [
             DatabaseEdgeType.IS_RELATED,
             DatabaseEdgeType.HAS_OWNER,
@@ -353,7 +353,7 @@ class DiffRelationshipIntermediate:
         # if the to time was set in the time frame, then it is effectively a delete
         if (
             to_time
-            and database_path.property_from_time < diff_from_time <= to_time <= diff_to_time
+            and database_path.property_from_time < self.from_time <= to_time <= diff_to_time
             and database_path.property_status is RelationshipStatus.ACTIVE
         ):
             self.properties_by_db_id[db_id].add(
@@ -536,12 +536,26 @@ class DiffQueryParser:
     def _parse_path(self, database_path: DatabasePath) -> None:
         to_time = database_path.property_to_time
         # this path was added and removed within the timeframe, so we ignore it
-        if to_time and self.from_time <= database_path.property_from_time <= to_time <= self.to_time:
+        if (
+            to_time
+            and self._get_path_from_time(database_path=database_path)
+            <= database_path.property_from_time
+            <= to_time
+            <= self.to_time
+        ):
             return
 
         diff_root = self._get_diff_root(database_path=database_path)
         diff_node = self._get_diff_node(database_path=database_path, diff_root=diff_root)
         self._update_attribute_level(database_path=database_path, diff_node=diff_node)
+
+    def _get_path_from_time(self, database_path: DatabasePath) -> Timestamp:
+        # the base branch history of a field the diff branch changes for the first time is read from the fork point
+        if database_path.deepest_branch == self.base_branch_name and self.is_new_node_field_specifier(
+            node_uuid=database_path.node_id, kind=database_path.node_kind, field_name=database_path.attribute_name
+        ):
+            return self.diff_branched_from_time
+        return self.from_time
 
     def _get_diff_root(self, database_path: DatabasePath) -> DiffRootIntermediate:
         branch = database_path.deepest_branch
@@ -601,9 +615,7 @@ class DiffQueryParser:
         diff_relationship = self._get_diff_relationship(
             diff_node=diff_node, relationship_schema=relationship_schema, database_path=database_path
         )
-        diff_relationship.add_path(
-            database_path=database_path, diff_from_time=self.from_time, diff_to_time=self.to_time
-        )
+        diff_relationship.add_path(database_path=database_path, diff_to_time=self.to_time)
 
     def _get_diff_attribute(
         self, database_path: DatabasePath, diff_node: DiffNodeIntermediate

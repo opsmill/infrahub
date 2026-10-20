@@ -9,8 +9,11 @@ from infrahub.core.constants.infrahubkind import NUMBERPOOL
 from infrahub.core.query.resource_manager import NumberPoolGetReserved
 from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters
+from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
+from infrahub.pools.scoped_number_pool_reader import ScopedNumberPoolReader
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -19,6 +22,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+    from tests.helpers.test_client import InfrahubTestClient
 
 CONVERT_OBJECT_MUTATION = """
     mutation($node_id: String!, $target_kind: String!, $fields_mapping: GenericScalar!) {
@@ -155,11 +159,67 @@ class TestConvertObjectType(TestInfrahubApp):
         assert res_node["height"]["value"] == 170
         assert res_node["favorite_color"]["value"] == "blue"
 
+    async def test_convert_already_converted_node_reports_not_found_over_http(
+        self,
+        client: InfrahubClient,
+        test_client: InfrahubTestClient,
+        api_admin_token: str,
+        schemas_conversion: dict,
+    ) -> None:
+        """The public response carries the not-found error in the GraphQL envelope under a 200 status line."""
+        response = await client.schema.load(schemas=[schemas_conversion])
+        assert len(response.errors) == 0, response.errors
+
+        person = await client.create(kind="TestconvPerson1", name="Jane")
+        await person.save()
+        person_id = str(person.id)
+
+        mapping = {
+            "name": ConversionFieldInput(source_field="name"),
+            "age": ConversionFieldInput(data=ConversionFieldValue(attribute_value=30)),
+        }
+        payload = {
+            "query": CONVERT_OBJECT_MUTATION,
+            "variables": {
+                "node_id": person_id,
+                "target_kind": "TestconvPerson2",
+                "fields_mapping": {name: model.model_dump(mode="json") for name, model in mapping.items()},
+            },
+        }
+        headers = {"X-INFRAHUB-KEY": api_admin_token}
+
+        first = await test_client.post("/graphql", json=payload, headers=headers)
+        assert first.status_code == 200
+        assert "errors" not in first.json()
+        assert first.json()["data"]["ConvertObjectType"]["ok"] is True
+
+        second = await test_client.post("/graphql", json=payload, headers=headers)
+        assert second.status_code == 200
+        body = second.json()
+        assert body["data"] == {"ConvertObjectType": None}
+        assert [error["message"] for error in body["errors"]] == [
+            f"Unable to find the node {person_id} / Node in the database."
+        ]
+        assert body["errors"][0]["path"] == ["ConvertObjectType"]
+        assert body["errors"][0]["extensions"] == {
+            "code": "NODE_NOT_FOUND",
+            "http_status": 404,
+            "data": {"node_kind": "Node", "identifier": person_id},
+        }
+
 
 class TestConvertObjectTypeResourcePool(TestInfrahubApp):
     async def _run_number_pool_validator(self, db: InfrahubDatabase) -> None:
-        upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
-        snps = SchemaNumberPoolSynchronizer(db=db, schema_manager=registry.schema, upserter=upserter)
+        upserter = SchemaNumberPoolUpserter(
+            db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository
+        )
+        snps = SchemaNumberPoolSynchronizer(
+            db=db,
+            scope_reader=ScopedNumberPoolReader(db=db),
+            schema_manager=registry.schema,
+            upserter=upserter,
+            range_store_factory=NumberPoolRepository,
+        )
         await snps.run()
 
     @pytest.fixture
@@ -171,7 +231,12 @@ class TestConvertObjectTypeResourcePool(TestInfrahubApp):
             attributes=[
                 AttributeSchema(name="name", kind="Text", unique=True),
                 AttributeSchema(name="height", kind="Number", optional=True),
-                AttributeSchema(name="random_id", kind="NumberPool", read_only=True),
+                AttributeSchema(
+                    name="random_id",
+                    kind="NumberPool",
+                    read_only=True,
+                    parameters=NumberPoolParameters(start_range=1, end_range=1000),
+                ),
             ],
         )
 
@@ -217,7 +282,7 @@ class TestConvertObjectTypeResourcePool(TestInfrahubApp):
         # Check the state of the pool before converting the object
         query1 = await NumberPoolGetReserved.init(db=db, pool_id=pool.id, branch=default_branch)
         await query1.execute(db=db)
-        reservations_before = {item.identifier: item.value for item in query1.get_reservations()}
+        reservations_before = {item.identifier: item.value for item in query1.get_data()}
 
         response = await client.execute_graphql(
             query=CONVERT_OBJECT_MUTATION,
@@ -233,6 +298,6 @@ class TestConvertObjectTypeResourcePool(TestInfrahubApp):
 
         query1 = await NumberPoolGetReserved.init(db=db, pool_id=pool.id, branch=default_branch)
         await query1.execute(db=db)
-        reservations_after = {item.identifier: item.value for item in query1.get_reservations()}
+        reservations_after = {item.identifier: item.value for item in query1.get_data()}
 
         assert reservations_after[new_id] == reservations_before[str(persons["jack"].id)]

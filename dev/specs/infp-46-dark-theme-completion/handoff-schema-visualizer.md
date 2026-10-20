@@ -71,10 +71,9 @@ The package renders in two hosts with different styling pipelines:
 - Theme comes **from the embedder**. In the app that's a prop; in VS Code the webview entry may
   map VS Code's own theme class (`body.vscode-dark`) to the package's dark state — that counts as
   "from the embedder".
-- The app side will pass the resolved theme from
-  `frontend/app/src/shared/hooks/use-resolved-theme.ts` (`useResolvedTheme()` — a
-  `useSyncExternalStore` over a MutationObserver on the document element's class). It re-renders
-  on toggle, so the graph re-themes live.
+- The app side passes the resolved theme from `useTheme().resolvedTheme`
+  (`frontend/app/src/entities/config/ui/theme-provider.tsx`). It
+  re-renders on toggle, so the graph re-themes live.
 - FR-016: no visualizer styling lands in the infrahub repo. Tokens/variants for the package live
   **in the package**.
 - Dark palette direction in the app is warm (stone-based, `--background: black`,
@@ -113,13 +112,13 @@ silently resolves to transparent — always echo the resolved color in the probe
 
 ## Verifying in the live app (after T054, or with a local `file:` link during development)
 
-- The user's stack: old backend image on `:8000` (its `/api/config` lacks `dark_theme` — that's
-  fine, the frontend dev-server fallback enables the theme when the flag is absent under
-  `import.meta.env.DEV`), Vite dev server on `:8080` (`.claude/launch.json`, name `frontend-dev`).
-- Dark is the default; the switch lives in the account menu (bottom-left ellipsis →
-  "Light theme / Dark theme", alpha badge). It works logged-out.
+- The user's stack: backend on `:8000`, Vite dev server on `:8080` (`.claude/launch.json`, name
+  `frontend-dev`). The backend must report `dark_theme: true` in `/api/config`; a backend that
+  predates the flag, or reports it off, keeps the app light.
+- System is the default; the switch lives in the account menu (bottom-left ellipsis → "Theme"
+  submenu: System / Light / Dark with the alpha badge). It works logged-out.
 - The visualizer page: `/schema` (renders `pages/schema/graph.tsx`).
-- Pre-paint script reads `localStorage["infrahub.theme.resolved"]`; clear storage for a
+- Pre-paint script reads `localStorage["infrahub-theme-effective"]`; clear storage for a
   fresh-visitor run.
 
 ## Workflow order (from the root AGENTS.md — submodule discipline)
@@ -127,7 +126,7 @@ silently resolves to transparent — always echo the resolved color in the probe
 1. Branch + implement + PR **on the upstream repo** first. Run the package's own gates
    (`npm run lint`, its vitest browser tests, both builds).
 2. Merge upstream (T053).
-3. Only then, in infrahub: bump the submodule pointer, pass `theme={useResolvedTheme()}` at the
+3. Only then, in infrahub: bump the submodule pointer, pass `theme={useTheme().resolvedTheme}` at the
    embed site(s), and open that as a follow-up commit/PR on the stacked branch
    `dark-theme-completion-infp-46` (draft PR #10295, base `bab-dark-theme-app`).
 4. T055 check: `git diff` on the infrahub side must contain no visualizer styling — only the

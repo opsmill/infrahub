@@ -9,15 +9,21 @@ from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.exceptions import TransformError
-from infrahub.git import InfrahubRepository
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.transformations.models import TransformJinjaTemplateData
 from infrahub.transformations.tasks import transform_render_jinja2_template
+from infrahub.workers.dependencies import build_client
+from tests.helpers.git import build_repository_client, clone_repository
 from tests.helpers.test_client import dummy_async_request
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
     from pathlib import Path
+
+    from fast_depends import Provider
+
+    from infrahub.git import InfrahubRepository
 
 
 @pytest.fixture
@@ -42,7 +48,7 @@ async def git_repo_filter_tests(git_upstream_repo_02: dict[str, str | Path], git
 
     upstream.index.commit("Add filter test templates")
 
-    return await InfrahubRepository.new(
+    return await clone_repository(
         id=UUIDT.new(),
         name=git_upstream_repo_02["name"],
         location=str(git_upstream_repo_02["path"]),
@@ -64,8 +70,28 @@ def _make_message(repo: InfrahubRepository, template: str) -> TransformJinjaTemp
     )
 
 
+@pytest.fixture
+def worker_client(
+    dependency_provider: Provider,
+    register_core_models_schema: None,
+    git_repo_filter_tests: InfrahubRepository,
+) -> Generator[None, None, None]:
+    """Serve the repository read the transform flow's own construction performs."""
+    client = build_repository_client(
+        repository_id=str(git_repo_filter_tests.id),
+        name=git_repo_filter_tests.name,
+        location=git_repo_filter_tests.get_location(),
+        default_branch="main",
+    )
+    with dependency_provider.scope(build_client, lambda: client):
+        yield
+
+
 async def test_worker_rejects_local_only_filter(
-    git_repo_filter_tests: InfrahubRepository, init_service: InfrahubServices, prefect_test_fixture: None
+    git_repo_filter_tests: InfrahubRepository,
+    init_service: InfrahubServices,
+    prefect_test_fixture: None,
+    worker_client: None,
 ) -> None:
     with pytest.raises(TransformError, match="'fqdn_to_ip' filter isn't allowed to be used"):
         await transform_render_jinja2_template(
@@ -74,7 +100,10 @@ async def test_worker_rejects_local_only_filter(
 
 
 async def test_worker_allows_trusted_filters(
-    git_repo_filter_tests: InfrahubRepository, init_service: InfrahubServices, prefect_test_fixture: None
+    git_repo_filter_tests: InfrahubRepository,
+    init_service: InfrahubServices,
+    prefect_test_fixture: None,
+    worker_client: None,
 ) -> None:
     result = await transform_render_jinja2_template(
         message=_make_message(git_repo_filter_tests, "template_trusted.tpl.j2")

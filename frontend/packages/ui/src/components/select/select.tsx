@@ -23,6 +23,7 @@ export const selectTriggerVariants = tv({
   ],
   variants: {
     size: {
+      xs: "h-7 px-2 pr-1.5 text-xs",
       sm: "h-8 px-2",
       md: "min-h-10 p-2",
     },

@@ -21,6 +21,7 @@ from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.profiles.data_reader import ProfileDataReader
 from infrahub.profiles.node_applier import NodeProfilesApplier
 from tests.helpers.schema import WIDGET
 
@@ -595,7 +596,9 @@ async def test_query_NodeGetListQuery_filter_with_profiles(
     await person_profile_2.new(db=db, profile_name="person_profile_2", height=177, profile_priority=1002)
     await person_profile_2.save(db=db)
 
-    node_applier = NodeProfilesApplier(db=db, branch=branch)
+    node_applier = NodeProfilesApplier(
+        db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+    )
 
     person_schema = registry.schema.get("TestPerson", branch=branch, duplicate=False)
     person_schema.order_by = ["height__value", "name__value"]
@@ -645,7 +648,9 @@ async def test_query_NodeGetListQuery_filter_with_generic_profiles(
     await dog_profile.new(db=db, profile_name="dog_profile", profile_priority=1002, weight=50)
     await dog_profile.save(db=db)
 
-    node_applier = NodeProfilesApplier(db=db, branch=default_branch)
+    node_applier = NodeProfilesApplier(
+        db=db, branch=default_branch, profile_data_reader=ProfileDataReader(db=db, branch=default_branch)
+    )
 
     person_schema = registry.schema.get("TestPerson", duplicate=False)
     person = await Node.init(db=db, schema=person_schema)
@@ -704,7 +709,9 @@ async def test_query_NodeGetListQuery_order_with_profiles(
     await car_profile_white.new(db=db, profile_name="car_profile_white", color="#ffffff", profile_priority=1002)
     await car_profile_white.save(db=db)
 
-    node_applier = NodeProfilesApplier(db=db, branch=branch)
+    node_applier = NodeProfilesApplier(
+        db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+    )
 
     car_schema = registry.schema.get("TestCar", branch=branch, duplicate=False)
     car_schema.order_by = ["color__value", "name__value"]

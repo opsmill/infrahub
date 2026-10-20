@@ -1,3 +1,4 @@
+import { getRestErrorMessage } from "@/shared/api/rest/error-message";
 import type { ContextParams } from "@/shared/api/types";
 import { INFRAHUB_API_SERVER_URL } from "@/shared/config/config";
 import { arrayBufferToBase64, isBinaryContentType } from "@/shared/utils/file";
@@ -8,6 +9,8 @@ export interface GetObjectFileParams extends ContextParams {
   nodeId: string;
   contentType?: string;
 }
+
+const DEFAULT_ERROR_MESSAGE = "Unable to load the file";
 
 export async function getObjectFile({
   nodeId,
@@ -23,14 +26,14 @@ export async function getObjectFile({
       parseAs: "arrayBuffer",
     });
 
-    if (error) throw error;
+    if (error) throw new Error(getRestErrorMessage(error) ?? DEFAULT_ERROR_MESSAGE);
 
     return arrayBufferToBase64(data as ArrayBuffer);
   }
 
   const { data, error } = await getObjectFileFromApi({ nodeId, branchName, atDate });
 
-  if (error) throw error;
+  if (error) throw new Error(getRestErrorMessage(error) ?? DEFAULT_ERROR_MESSAGE);
 
   return data as string;
 }

@@ -14,6 +14,7 @@ from infrahub.core.constants import (
     InfrahubKind,
     MetadataOptions,
     NumberPoolType,
+    PoolRecordProvenance,
     SchemaPathType,
 )
 from infrahub.core.initialization import create_branch
@@ -30,16 +31,19 @@ from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.path import SchemaPath
+from infrahub.core.protocols import CoreNumberPool as CoreNumberPoolProtocol
+from infrahub.core.query.resource_manager import TrackingPool
 from infrahub.core.query.rollback import RollbackScope
 from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
-from infrahub.core.schema.attribute_parameters import NumberPoolParameters
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters, NumberPoolRangeParameters
 from infrahub.core.schema.definitions.core.template import core_object_template
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
+from infrahub.pools.number_pool_repository import NumberPoolRepository
 from tests.component.core.migrations.schema.metadata_helpers import (
     VertexMetadata,
     branch_edge_fingerprint,
@@ -49,7 +53,9 @@ from tests.component.core.migrations.schema.metadata_helpers import (
 )
 from tests.component.core.node.test_branch_agnostic_edges import assert_no_global_edges_with_wrong_branch_level
 from tests.db_snapshot import DbSnapshotter
+from tests.helpers.agnostic_edges import pool_reservation_edges
 from tests.helpers.edge_timestamps import assert_edge_timestamps
+from tests.helpers.schema import save_schema
 
 
 @pytest.fixture
@@ -539,7 +545,7 @@ async def test_migration_numberpool_attribute(
     server_schema_with_numberpool: NodeSchema,
     servers_in_db: list[Node],
 ) -> None:
-    """Test that adding a NumberPool attribute creates the pool, allocates unique values, and sets the source."""
+    """Adding a NumberPool attribute creates the pool, allocates unique values and has the pool track each of them."""
     # Get the current schema (without NumberPool)
     current_schema = registry.schema.get_node_schema(name="TestServer", branch=branch)
 
@@ -595,7 +601,10 @@ async def test_migration_numberpool_attribute(
 
     # Query servers and verify they have unique rack_unit values
     servers_map = await NodeManager.get_many(
-        db=db, branch=branch, ids=[s.get_id() for s in servers_in_db], include_metadata=MetadataOptions.SOURCE
+        db=db,
+        branch=branch,
+        ids=[s.get_id() for s in servers_in_db],
+        include_metadata=MetadataOptions.SOURCE | MetadataOptions.TRACKING_POOL,
     )
     assert len(servers_map) == 3
 
@@ -610,11 +619,100 @@ async def test_migration_numberpool_attribute(
     # All values should be within the pool range
     assert all(1 <= v <= 100 for v in rack_unit_values), "All rack_unit values should be within range 1-100"
 
-    # Verify the source is set to the pool for all servers
     for server in servers_map.values():
-        source = await server.get_attribute("rack_unit").get_source(db=db)
-        assert source is not None, "rack_unit should have a source set"
-        assert source.id == number_pool.id, f"rack_unit source should be the pool {number_pool.id}"
+        rack_unit = server.get_attribute("rack_unit")
+        assert await rack_unit.get_source(db=db) is None, "the pool is never reported as the attribute's source"
+        assert rack_unit.tracking_pool == TrackingPool(
+            pool_id=number_pool.id, provenance=PoolRecordProvenance.ALLOCATED
+        )
+
+
+async def test_migration_numberpool_attribute_from_ranges_declaration(
+    db: InfrahubDatabase,
+    branch: Branch,
+    server_schema_with_numberpool: NodeSchema,
+    servers_in_db: list[Node],
+) -> None:
+    """A single-range declaration materialises the pool with its range and the existing nodes draw from it."""
+    current_schema = registry.schema.get_node_schema(name="TestServer", branch=branch)
+    new_schema = server_schema_with_numberpool.duplicate()
+    new_schema.get_attribute(name="rack_unit").parameters = NumberPoolParameters(
+        ranges=[NumberPoolRangeParameters(start=10, end=20)]
+    )
+
+    migration = NodeAttributeAddMigration(
+        previous_node_schema=current_schema,
+        new_node_schema=new_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestServer", field_name="rack_unit"),
+    )
+    registry.schema.set(name="TestServer", schema=new_schema, branch=branch.name)
+    registry.schema.process_schema_branch(name=branch.name)
+
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db, at=Timestamp()), branch=branch)
+    assert not execution_result.errors
+
+    pools = await NodeManager.query(
+        db=db,
+        schema="CoreNumberPool",
+        filters={"node__value": "TestServer", "node_attribute__value": "rack_unit"},
+        branch_agnostic=True,
+    )
+    assert len(pools) == 1
+    number_pool = pools[0]
+    ranges = await NumberPoolRepository(db=db).get_ranges(pool_id=number_pool.get_id())
+    assert [(item.start.value, item.end.value, item.allocation_weight.value) for item in ranges] == [(10, 20, None)]
+    assert (number_pool.get_attribute("start_range").value, number_pool.get_attribute("end_range").value) == (10, 20)
+
+    servers_map = await NodeManager.get_many(db=db, branch=branch, ids=[s.get_id() for s in servers_in_db])
+    rack_units = sorted(server.get_attribute("rack_unit").value for server in servers_map.values())
+    assert rack_units == [10, 11, 12]
+
+
+async def test_migration_numberpool_attribute_from_two_ranges_fills_the_heavier_range_first(
+    db: InfrahubDatabase,
+    branch: Branch,
+    server_schema_with_numberpool: NodeSchema,
+    servers_in_db: list[Node],
+) -> None:
+    """A two-range declaration materialises both ranges, and the existing nodes draw from the heavier one."""
+    current_schema = registry.schema.get_node_schema(name="TestServer", branch=branch)
+    new_schema = server_schema_with_numberpool.duplicate()
+    new_schema.get_attribute(name="rack_unit").parameters = NumberPoolParameters(
+        ranges=[NumberPoolRangeParameters(start=10, end=20), NumberPoolRangeParameters(start=30, end=40, weight=5)]
+    )
+
+    migration = NodeAttributeAddMigration(
+        previous_node_schema=current_schema,
+        new_node_schema=new_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestServer", field_name="rack_unit"),
+    )
+    registry.schema.set(name="TestServer", schema=new_schema, branch=branch.name)
+    registry.schema.process_schema_branch(name=branch.name)
+
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db, at=Timestamp()), branch=branch)
+    assert not execution_result.errors
+
+    pools = await NodeManager.query(
+        db=db,
+        schema="CoreNumberPool",
+        filters={"node__value": "TestServer", "node_attribute__value": "rack_unit"},
+        branch_agnostic=True,
+    )
+    assert len(pools) == 1
+    number_pool = pools[0]
+    ranges = await NumberPoolRepository(db=db).get_ranges(pool_id=number_pool.get_id())
+    assert [(item.start.value, item.end.value, item.allocation_weight.value) for item in ranges] == [
+        (10, 20, None),
+        (30, 40, 5),
+    ]
+    assert (number_pool.get_attribute("start_range").value, number_pool.get_attribute("end_range").value) == (
+        None,
+        None,
+    ), "the shorthand mirrors a single range only"
+
+    servers_map = await NodeManager.get_many(db=db, branch=branch, ids=[s.get_id() for s in servers_in_db])
+    rack_units = sorted(server.get_attribute("rack_unit").value for server in servers_map.values())
+    assert rack_units == [30, 31, 32]
 
 
 # -----------------------------------------------------------------------------
@@ -902,12 +1000,22 @@ async def test_migration_agnostic_numberpool_attribute(
     ) == AttributeEdgeBranches(
         branch_support=BranchSupportType.AGNOSTIC.value,
         owning_edge=(GLOBAL_BRANCH_NAME, 1),
+        # No `HAS_SOURCE`: the pool is never stored as the attribute's source
         property_edges=(
-            ("HAS_SOURCE", GLOBAL_BRANCH_NAME, 1),
             ("HAS_VALUE", GLOBAL_BRANCH_NAME, 1),
             ("IS_PROTECTED", GLOBAL_BRANCH_NAME, 1),
         ),
     )
+
+    # Verify pool reservation is in place
+    pools = await NodeManager.query(db=db, schema=CoreNumberPoolProtocol, branch=branch)
+    rack_unit_pool = next(pool for pool in pools if pool.get_attribute("node").value == "TestServer")
+    for server in servers:
+        attribute = servers_map[server.get_id()].get_attribute("rack_unit")
+        records = await pool_reservation_edges(db=db, pool_id=rack_unit_pool.get_id(), attribute_id=attribute.id)
+        assert [(edge.edge_type, edge.branch, edge.status, edge.to_time) for edge in records] == [
+            ("IS_RESERVED", GLOBAL_BRANCH_NAME, "active", None)
+        ], f"the migration allocated {attribute.value} for {server.get_id()} but left no record of it"
 
 
 PROBE_GENERIC = GenericSchema(
@@ -990,3 +1098,128 @@ async def test_local_attribute_of_generic_follows_each_node_kind(
 
     await assert_no_global_edges_with_wrong_branch_level(db=db)
     await verify_graph(db=db)
+
+
+async def _add_attribute_on_a_worker_holding_the_previous_schema(
+    db: InfrahubDatabase, default_branch: Branch, previous: SchemaRoot, loaded: SchemaRoot, kind: str, field_name: str
+) -> list[str]:
+    """Run the migration as a task worker does during a load.
+
+    The load saves the new schema before it runs the migrations, while the worker reloads its registry only after them,
+    so the migration runs with the registry put back to the previous schema.
+    """
+    await save_schema(db=db, schema=previous)
+    previous_schema_branch = registry.schema.get_schema_branch(name=default_branch.name).duplicate()
+    previous_branch = registry.get_branch_from_registry(default_branch.name).model_copy(deep=True)
+    await save_schema(db=db, schema=loaded)
+    new_schema = registry.schema.get_node_schema(name=kind, branch=default_branch, duplicate=True)
+    registry.schema.set_schema_branch(name=default_branch.name, schema=previous_schema_branch)
+    registry.branch[default_branch.name] = previous_branch
+    migration = NodeAttributeAddMigration(
+        previous_node_schema=previous_schema_branch.get_node(name=kind),
+        new_node_schema=new_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind=kind, field_name=field_name),
+    )
+    execution_result = await migration.execute(
+        migration_input=MigrationInput(db=db, at=Timestamp()),
+        branch=await Branch.get_by_name(db=db, name=default_branch.name),
+    )
+    return execution_result.errors
+
+
+async def _stored_scope(db: InfrahubDatabase, kind: str, attribute_name: str) -> list[object]:
+    pools = await NodeManager.query(
+        db=db,
+        schema=CoreNumberPoolProtocol,
+        filters={"node__value": kind, "node_attribute__value": attribute_name},
+        branch_agnostic=True,
+    )
+    return [pool.allocation_scope.value for pool in pools]
+
+
+def _scoped_counter(name: str, scope: list[str]) -> AttributeSchema:
+    return AttributeSchema(
+        name=name,
+        kind="NumberPool",
+        optional=False,
+        read_only=True,
+        parameters=NumberPoolParameters(start_range=1, end_range=100, allocation_scope=scope),
+    )
+
+
+async def test_migration_numberpool_attribute_resolves_its_scope_on_a_field_the_same_load_adds(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    server_schema_without_numberpool: NodeSchema,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The worker running the migration can still hold the schema from before the load that adds the scoped field."""
+    monkeypatch.setitem(registry.node, InfrahubKind.NUMBERPOOL, CoreNumberPool)
+    loaded = server_schema_without_numberpool.duplicate()
+    loaded.attributes.extend(
+        [AttributeSchema(name="zone", kind="Text", optional=False), _scoped_counter(name="rack_unit", scope=["zone"])]
+    )
+
+    errors = await _add_attribute_on_a_worker_holding_the_previous_schema(
+        db=db,
+        default_branch=default_branch,
+        previous=SchemaRoot(nodes=[server_schema_without_numberpool]),
+        loaded=SchemaRoot(nodes=[loaded]),
+        kind="TestServer",
+        field_name="rack_unit",
+    )
+
+    zone_id = (
+        registry.schema.get_schema_branch(name=default_branch.name)
+        .get_node(name="TestServer")
+        .get_attribute(name="zone")
+        .id
+    )
+    assert errors == []
+    assert await _stored_scope(db=db, kind="TestServer", attribute_name="rack_unit") == [
+        [{"id": zone_id, "name": "zone"}]
+    ]
+
+
+async def test_migration_numberpool_attribute_resolves_its_scope_on_a_generic_field_the_same_load_adds(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The worker running the migration can still hold the generic from before the load that adds the scoped field."""
+    monkeypatch.setitem(registry.node, InfrahubKind.NUMBERPOOL, CoreNumberPool)
+    holder = GenericSchema(
+        name="Holder", namespace="Testscope", attributes=[AttributeSchema(name="label", kind="Text", optional=True)]
+    )
+    rack = NodeSchema(
+        name="Rack",
+        namespace="Testscope",
+        inherit_from=["TestscopeHolder"],
+        attributes=[AttributeSchema(name="name", kind="Text")],
+    )
+    holder_with_zone = holder.duplicate()
+    holder_with_zone.attributes.append(AttributeSchema(name="zone", kind="Text", optional=False))
+    rack_with_counter = rack.duplicate()
+    rack_with_counter.attributes.append(_scoped_counter(name="counter", scope=["zone"]))
+
+    errors = await _add_attribute_on_a_worker_holding_the_previous_schema(
+        db=db,
+        default_branch=default_branch,
+        previous=SchemaRoot(generics=[holder], nodes=[rack]),
+        loaded=SchemaRoot(generics=[holder_with_zone], nodes=[rack_with_counter]),
+        kind="TestscopeRack",
+        field_name="counter",
+    )
+
+    zone_id = (
+        registry.schema.get_schema_branch(name=default_branch.name)
+        .get_generic(name="TestscopeHolder")
+        .get_attribute(name="zone")
+        .id
+    )
+    assert errors == []
+    assert await _stored_scope(db=db, kind="TestscopeRack", attribute_name="counter") == [
+        [{"id": zone_id, "name": "zone"}]
+    ]

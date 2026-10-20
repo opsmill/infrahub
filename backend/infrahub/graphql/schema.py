@@ -31,8 +31,15 @@ from .mutations.proposed_change import (
     ProposedChangeReview,
 )
 from .mutations.relationship import RelationshipAdd, RelationshipRemove
-from .mutations.repository import ProcessRepository, ReadOnlyRepositoryImportLastCommit, ValidateRepositoryConnectivity
-from .mutations.resource_manager import IPAddressPoolGetResource, IPPrefixPoolGetResource
+from .mutations.repository import (
+    ProcessRepository,
+    ReadOnlyRepositoryCheckRefs,
+    ReadOnlyRepositoryImportLastCommit,
+    RepositoryDeliveryAbandon,
+    RepositoryDeliveryRetry,
+    ValidateRepositoryConnectivity,
+)
+from .mutations.resource_manager.ip_pools import IPAddressPoolGetResource, IPPrefixPoolGetResource
 from .mutations.schema import SchemaDropdownAdd, SchemaDropdownRemove, SchemaEnumAdd, SchemaEnumRemove
 from .mutations.task import InfrahubTaskCancel, InfrahubTaskRetry
 from .queries import (
@@ -46,8 +53,13 @@ from .queries import (
     InfrahubInfo,
     InfrahubIPAddressGetNextAvailable,
     InfrahubIPPrefixGetNextAvailable,
+    InfrahubNumberPoolAllocations,
+    InfrahubNumberPoolDivisions,
+    InfrahubNumberPoolUtilization,
     InfrahubPathTraversal,
     InfrahubReachableNodes,
+    InfrahubRepositoryActivity,
+    InfrahubRepositoryCommits,
     InfrahubResourcePoolAllocated,
     InfrahubResourcePoolUtilization,
     InfrahubSearchAnywhere,
@@ -59,6 +71,7 @@ from .queries import (
 from .queries.convert_object_type_mapping import FieldsMappingTypeConversion
 from .queries.diff.tree import DiffTreeQuery, DiffTreeSummaryQuery
 from .queries.event import Event
+from .queries.repository_branch_status.field import InfrahubRepositoryBranchStatus
 from .queries.task import Task, TaskBranchStatus
 
 # Root query fields that require an authenticated session even when anonymous read access is
@@ -96,9 +109,13 @@ class InfrahubBaseQuery(ObjectType):
     InfrahubReachableNodes = InfrahubReachableNodes
     InfrahubSearchAnywhere = InfrahubSearchAnywhere
 
+    InfrahubRepositoryCommits = InfrahubRepositoryCommits
+    InfrahubRepositoryActivity = InfrahubRepositoryActivity
+
     InfrahubTask = Task
     InfrahubEvent = Event
     InfrahubTaskBranchStatus = TaskBranchStatus
+    InfrahubRepositoryBranchStatus = InfrahubRepositoryBranchStatus
 
     CoreProposedChangeAvailableActions = ProposedChangeAvailableActions
 
@@ -106,6 +123,9 @@ class InfrahubBaseQuery(ObjectType):
     InfrahubIPPrefixGetNextAvailable = InfrahubIPPrefixGetNextAvailable
     InfrahubResourcePoolAllocated = InfrahubResourcePoolAllocated
     InfrahubResourcePoolUtilization = InfrahubResourcePoolUtilization
+    InfrahubNumberPoolUtilization = InfrahubNumberPoolUtilization
+    InfrahubNumberPoolDivisions = InfrahubNumberPoolDivisions
+    InfrahubNumberPoolAllocations = InfrahubNumberPoolAllocations
 
     FieldsMappingTypeConversion = FieldsMappingTypeConversion
 
@@ -134,8 +154,19 @@ class InfrahubBaseMutation(ObjectType):
     InfrahubTaskRetry = InfrahubTaskRetry.Field()
     InfrahubTaskCancel = InfrahubTaskCancel.Field()
 
+    InfrahubReadOnlyRepositoryCheckRefs = ReadOnlyRepositoryCheckRefs.Field()
     InfrahubReadOnlyRepositoryImportLastCommit = ReadOnlyRepositoryImportLastCommit.Field()
     InfrahubRepositoryProcess = ProcessRepository.Field()
+    InfrahubRepositoryDeliveryRetry = RepositoryDeliveryRetry.Field(
+        description="Push every pending merge of a repository to its remote, in order, in a single push."
+    )
+    InfrahubRepositoryDeliveryAbandon = RepositoryDeliveryAbandon.Field(
+        description=(
+            "Abandon every pending merge of a repository. Nothing is removed from the remote, and no remote branch "
+            "is deleted. Repository objects of the abandoned merges can stay on the default branch until the current "
+            "commit is reimported."
+        )
+    )
     InfrahubRepositoryConnectivity = ValidateRepositoryConnectivity.Field()
     InfrahubUpdateComputedAttribute = UpdateComputedAttribute.Field()
     InfrahubUpdateDisplayLabel = UpdateDisplayLabel.Field()

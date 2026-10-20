@@ -100,7 +100,7 @@ export function CoreFileForm({
     parentData,
   });
 
-  const formDefaultValues: Record<string, unknown> = Object.fromEntries(
+  const formDefaultValues = Object.fromEntries(
     fields.map((field) => [field.name, field.defaultValue])
   );
 

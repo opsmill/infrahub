@@ -15,7 +15,7 @@ from ..model.path import (
     EnrichedDiffRelationship,
     EnrichedDiffRoot,
 )
-from ..payload_builder import get_display_labels
+from ..payload_builder import get_display_labels, get_stored_display_labels
 from .interface import DiffEnricherInterface
 
 log = get_logger()
@@ -175,12 +175,35 @@ class DiffLabelsEnricher(DiffEnricherInterface):
     async def _get_display_label_map(
         self, display_label_requests: set[DisplayLabelRequest]
     ) -> dict[str, dict[str, str]]:
-        node_ids = [dlr.node_id for dlr in display_label_requests]
-        query = await NodeGetKindQuery.init(db=self.db, ids=node_ids)
+        node_ids_by_branch: dict[str, set[str]] = defaultdict(set)
+        for dlr in display_label_requests:
+            node_ids_by_branch[dlr.branch_name].add(dlr.node_id)
+
+        # The stored display label is what a node reports as its label, so read it directly: building
+        # a node object per id to ask it for its label is what dominates the enrichment of a large diff.
+        display_label_map: dict[str, dict[str, str]] = {}
+        for branch_name, node_ids in node_ids_by_branch.items():
+            display_label_map[branch_name] = await get_stored_display_labels(
+                db=self.db, branch_name=branch_name, node_ids=node_ids
+            )
+        unresolved_requests = [
+            dlr for dlr in display_label_requests if dlr.node_id not in display_label_map[dlr.branch_name]
+        ]
+        log.info(
+            f"Display labels read from storage for {len(display_label_requests) - len(unresolved_requests)} nodes,"
+            f" computing the label of {len(unresolved_requests)} nodes"
+        )
+        if not unresolved_requests:
+            return display_label_map
+
+        # A node without a stored display label (a kind without a template, a schema node, a node created
+        # before display labels were stored) still gets its label computed from its fields.
+        unresolved_node_ids = [dlr.node_id for dlr in unresolved_requests]
+        query = await NodeGetKindQuery.init(db=self.db, ids=unresolved_node_ids)
         await query.execute(db=self.db)
         node_kind_map = await query.get_node_kind_map()
         display_label_request_map: dict[str, dict[str, list[str]]] = defaultdict(dict)
-        for dlr in display_label_requests:
+        for dlr in unresolved_requests:
             try:
                 node_kind = node_kind_map[dlr.node_id]
             except KeyError:
@@ -189,7 +212,10 @@ class DiffLabelsEnricher(DiffEnricherInterface):
             if node_kind not in branch_map:
                 branch_map[node_kind] = []
             branch_map[node_kind].append(dlr.node_id)
-        return await get_display_labels(db=self.db, nodes=display_label_request_map)
+        computed_display_labels = await get_display_labels(db=self.db, nodes=display_label_request_map)
+        for branch_name, labels in computed_display_labels.items():
+            display_label_map.setdefault(branch_name, {}).update(labels)
+        return display_label_map
 
     async def enrich(
         self,

@@ -14,6 +14,7 @@ from infrahub.core.merge.selective_regen.models import (
 from infrahub.core.regeneration.models import TargetSelection
 from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
 from infrahub.git.models import RequestArtifactDefinitionGenerate
+from infrahub.graphql.analyzer import GraphQLQueryReport
 from infrahub.message_bus.types import ProposedChangeArtifactDefinition
 from infrahub.workflows.catalogue import (
     REQUEST_ARTIFACT_DEFINITION_GENERATE,
@@ -23,7 +24,7 @@ from infrahub.workflows.catalogue import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Collection, Sequence
 
     from infrahub_sdk.diff import NodeDiff
 
@@ -56,7 +57,13 @@ class RejectingGate(DefinitionGate):
         pass
 
     def evaluate(
-        self, *, definition: object, diff_summary: list[NodeDiff], modified_kinds: list[str], group_id: str
+        self,
+        *,
+        definition: object,
+        diff_summary: list[NodeDiff],
+        modified_kinds: list[str],
+        read_kinds: Collection[str],
+        group_id: str,
     ) -> GateResult:
         return GateResult(regenerate_all_members=False, selected=False)
 
@@ -64,16 +71,19 @@ class RejectingGate(DefinitionGate):
 class NoImpactResolver(ImpactedSubscriberResolver):
     """A resolver that reports no impacted subscribers."""
 
+    def analyze(self, *, query_payload: str, query_branch: str) -> GraphQLQueryReport:
+        return GraphQLQueryReport(queries=[])
+
     async def resolve(
         self,
         *,
-        query_payload: str,
+        query_report: GraphQLQueryReport,
         diff_summary: list[NodeDiff],
         query_branch: str,
         subscriber_kind: str,
         every_target: list[str],
     ) -> TargetSelection:
-        return TargetSelection(ids=[], widened=False)
+        return TargetSelection(ids=[])
 
 
 class ForcingTemplateSelector[DefinitionT: DefinitionModel, RequestT](DefinitionSelectorBase[DefinitionT, RequestT]):

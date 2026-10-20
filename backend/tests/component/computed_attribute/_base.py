@@ -10,6 +10,7 @@ import pytest
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import InfrahubContext
+from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, RelationshipCardinality
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
@@ -25,6 +26,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.protocols import CoreAccount
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
     from infrahub.events.models import EventContext
     from infrahub.services import InfrahubServices
@@ -113,6 +115,18 @@ async def create_transform01(db: InfrahubDatabase, branch_name: str) -> Node:
     await transform.save(db=db)
 
     return repo
+
+
+async def commit_schema_branch(*, db: InfrahubDatabase, branch: Branch, schema_branch: SchemaBranch) -> None:
+    """Register an edited schema on its branch and persist the new hash.
+
+    Processed first, the way the API path does it, because the hash is taken from the registry and
+    has to describe the schema a gather then reads.
+    """
+    schema_branch.process()
+    registry.schema.set_schema_branch(name=branch.name, schema=schema_branch)
+    branch.update_schema_hash()
+    await branch.save(db=db)
 
 
 @dataclass

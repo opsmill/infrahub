@@ -3,12 +3,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ERROR_CODES } from "@/shared/api/errors";
 import { PRIORITY_HEADER } from "@/shared/api/priority";
+import { MAX_RETRIES } from "@/shared/api/rate-limit/policy";
+import { SHED_USER_MESSAGE } from "@/shared/api/rate-limit/shed-envelope";
 import { queryClient } from "@/shared/api/rest/client";
 import { INFRAHUB_API_SERVER_URL } from "@/shared/config/config";
 
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/entities/authentication/api/token-storage";
 import { __navigation } from "@/entities/authentication/domain/use-cases/redirect-to-login";
 
+import { shedResponse } from "../../../../tests/fake/shed-response";
 import { graphqlClient } from "./client";
 import { handleGraphQLErrors } from "./error-handling";
 
@@ -329,6 +332,22 @@ describe("graphqlClient — token refresh integration", () => {
     expect(fetchSpy).toHaveBeenCalledTimes(2);
     expect(fetchQuerySpy).toHaveBeenCalledOnce();
     expect(assignSpy).toHaveBeenCalled();
+  });
+
+  it("rejects a shed query with the busy message once the retries are spent", async () => {
+    // GIVEN
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    fetchSpy.mockImplementation(() => Promise.resolve(shedResponse()));
+
+    // WHEN
+    const querying = graphqlClient.query({
+      query: PING,
+      context: { processErrorMessage: () => {} },
+    });
+
+    // THEN
+    await expect(querying).rejects.toThrow(SHED_USER_MESSAGE);
+    expect(fetchSpy).toHaveBeenCalledTimes(MAX_RETRIES + 1);
   });
 
   it("rejects a query on GraphQL errors even when the response carries data", async () => {

@@ -12,11 +12,13 @@ from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.ipam.constants import PrefixMemberType
 from infrahub.core.manager import NodeManager
+from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.node import Node
 from infrahub.core.protocols import BuiltinIPNamespace, BuiltinIPPrefix
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.database import retry_db_transaction
 from infrahub.exceptions import ValidationError
+from infrahub.graphql.metadata import build_metadata_query_options
 from infrahub.graphql.parser import extract_selection
 from infrahub.graphql.permissions import get_permissions
 
@@ -401,6 +403,10 @@ async def ipam_paginated_list_resolver(  # noqa: PLR0915
 
         objs = []
         if edges or "hfid" in filters:
+            schema_branch = graphql_context.db.schema.get_schema_branch(name=graphql_context.branch.name)
+            include_metadata = build_metadata_query_options(
+                node_fields=node_fields, schema=schema, schema_branch=schema_branch
+            ) | MetadataQueryOptions.at_every_level(MetadataOptions.LINKED_NODES)
             objs = await NodeManager.query(
                 db=db,
                 schema=schema,
@@ -410,7 +416,7 @@ async def ipam_paginated_list_resolver(  # noqa: PLR0915
                 branch=graphql_context.branch,
                 limit=query_limit,
                 offset=offset,
-                include_metadata=MetadataOptions.LINKED_NODES,
+                include_metadata=include_metadata,
                 partial_match=partial_match,
                 order=order_model,
             )

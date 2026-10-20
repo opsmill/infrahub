@@ -1,9 +1,12 @@
 import re
 from pathlib import Path
 
+import httpx
 import pytest
 from fast_depends import Provider
 from git import Repo
+from infrahub_sdk import Config, InfrahubClient
+from infrahub_sdk.types import HTTPMethod
 from pytest_httpx import HTTPXMock
 
 from infrahub.core.constants import InfrahubKind
@@ -13,6 +16,7 @@ from infrahub.message_bus import messages
 from infrahub.message_bus.operations.git.repository import fetch
 from infrahub.workers.dependencies import build_client
 from tests.helpers.dependency_override import override_dependency
+from tests.helpers.git import build_repository_client
 
 
 @pytest.mark.httpx_mock(should_mock=lambda request: request.url.host == "mock")
@@ -21,6 +25,7 @@ async def test_fan_out_pins_to_orchestrator_commit_when_upstream_advances(
     git_sources_dir: Path,
     dependency_provider: Provider,
     httpx_mock: HTTPXMock,
+    register_core_models_schema: None,
 ) -> None:
     """Fan-out workers must land on the SHA pinned by the sync orchestrator.
 
@@ -59,11 +64,122 @@ async def test_fan_out_pins_to_orchestrator_commit_when_upstream_advances(
         commit=pinned_sha,
     )
 
-    with override_dependency(build_client, lambda: git_fixture_repo.sdk, dependency_provider=dependency_provider):
+    client = build_repository_client(
+        repository_id=str(git_fixture_repo.id),
+        name=git_fixture_repo.name,
+        location=git_fixture_repo.get_location(),
+        default_branch="main",
+    )
+    with override_dependency(build_client, lambda: client, dependency_provider=dependency_provider):
         await fetch.fn(message=message)
 
     worktree = git_fixture_repo.get_git_repo_worktree(identifier=branch_name)
     assert str(worktree.head.commit) == pinned_sha
+
+
+class RecordingRequester:
+    """Answers every SDK call with an empty payload and keeps the tracker each one carried."""
+
+    def __init__(self) -> None:
+        self.trackers: list[str | None] = []
+
+    async def __call__(
+        self,
+        url: str,
+        method: HTTPMethod,
+        headers: dict,
+        timeout: int,  # noqa: ASYNC109
+        payload: dict | None = None,
+    ) -> httpx.Response:
+        self.trackers.append(headers.get("X-Infrahub-Tracker"))
+        return httpx.Response(
+            status_code=200, json={"data": {}}, request=httpx.Request(method="POST", url="http://mock")
+        )
+
+
+async def test_fan_out_converges_the_local_copy_without_writing_the_tracked_commit(
+    git_fixture_repo: InfrahubRepository,
+    git_sources_dir: Path,
+    dependency_provider: Provider,
+) -> None:
+    """A pinned fan-out brings the new objects in and leaves the tracked commit in the graph alone."""
+    requester = RecordingRequester()
+    recording_client = InfrahubClient(config=Config(requester=requester, insert_tracker=True))
+
+    branch_name = "main"
+    branch_id = "8808dcea-f7b4-4f5a-b5e9-a0605d4c11ba"
+
+    upstream = Repo(str(git_sources_dir / "test_base"))
+    new_file = git_sources_dir / "test_base" / "moved_upstream.txt"
+    new_file.write_text("the tracked ref moved upstream", encoding="utf-8")
+    upstream.index.add(["moved_upstream.txt"])
+    upstream.index.commit("Tracked ref moved upstream")
+    moved_sha = str(upstream.head.commit)
+
+    message = messages.RefreshGitFetch(
+        location=str(git_sources_dir / "test_base"),
+        repository_id=str(git_fixture_repo.id),
+        repository_name=git_fixture_repo.name,
+        # The read-only kind, which is the only one the refs check broadcasts for, and which
+        # routes the handler through a different repository class than its sibling tests.
+        repository_kind=InfrahubKind.READONLYREPOSITORY,
+        infrahub_branch_name=branch_name,
+        infrahub_branch_id=branch_id,
+        commit=moved_sha,
+    )
+
+    with dependency_provider.scope(build_client, lambda: recording_client):
+        await fetch.fn(message=message)
+
+    worktree = git_fixture_repo.get_git_repo_worktree(identifier=branch_name)
+    assert str(worktree.head.commit) == moved_sha
+
+    # The status write proves the handler reached the graph at all, so the absence below is a
+    # decision rather than an unexercised path.
+    assert "mutation-repository-update-operational-status" in requester.trackers
+    assert "mutation-repository-update-commit" not in requester.trackers
+
+
+async def test_fan_out_to_a_read_only_repository_follows_a_tag_that_moved_upstream(
+    git_fixture_repo: InfrahubRepository,
+    git_sources_dir: Path,
+    dependency_provider: Provider,
+) -> None:
+    """A read-only repository may track a tag, and git refuses to move an existing tag without being forced."""
+    recording_client = InfrahubClient(config=Config(requester=RecordingRequester(), insert_tracker=True))
+
+    branch_name = "main"
+    branch_id = "8808dcea-f7b4-4f5a-b5e9-a0605d4c11ba"
+
+    upstream = Repo(str(git_sources_dir / "test_base"))
+    upstream.create_tag("release", message="Release")
+    local = git_fixture_repo.get_git_repo_main()
+    local.remotes.origin.fetch(tags=True)
+    tagged_before = str(local.commit("release"))
+
+    new_file = git_sources_dir / "test_base" / "tagged_change.txt"
+    new_file.write_text("the release tag moved upstream", encoding="utf-8")
+    upstream.index.add(["tagged_change.txt"])
+    upstream.index.commit("Change the release tag now points at")
+    moved_sha = str(upstream.head.commit)
+    upstream.create_tag("release", message="Release", force=True)
+    assert tagged_before != moved_sha
+
+    message = messages.RefreshGitFetch(
+        location=str(git_sources_dir / "test_base"),
+        repository_id=str(git_fixture_repo.id),
+        repository_name=git_fixture_repo.name,
+        repository_kind=InfrahubKind.READONLYREPOSITORY,
+        infrahub_branch_name=branch_name,
+        infrahub_branch_id=branch_id,
+        commit=moved_sha,
+    )
+
+    with override_dependency(build_client, lambda: recording_client, dependency_provider=dependency_provider):
+        await fetch.fn(message=message)
+
+    assert str(git_fixture_repo.get_git_repo_main().commit("release")) == moved_sha
+    assert str(git_fixture_repo.get_git_repo_worktree(identifier=branch_name).head.commit) == moved_sha
 
 
 @pytest.mark.httpx_mock(should_mock=lambda request: request.url.host == "mock")
@@ -72,6 +188,7 @@ async def test_fan_out_raises_when_pinned_commit_unreachable(
     git_sources_dir: Path,
     dependency_provider: Provider,
     httpx_mock: HTTPXMock,
+    register_core_models_schema: None,
 ) -> None:
     """Worker must raise when the broadcasted SHA is not reachable after fetch."""
     httpx_mock.add_response(
@@ -99,7 +216,13 @@ async def test_fan_out_raises_when_pinned_commit_unreachable(
         commit=unreachable_sha,
     )
 
-    with override_dependency(build_client, lambda: git_fixture_repo.sdk, dependency_provider=dependency_provider):
+    client = build_repository_client(
+        repository_id=str(git_fixture_repo.id),
+        name=git_fixture_repo.name,
+        location=git_fixture_repo.get_location(),
+        default_branch="main",
+    )
+    with override_dependency(build_client, lambda: client, dependency_provider=dependency_provider):
         with pytest.raises(RepositoryError, match=r"Commit not found in the local clone"):
             await fetch.fn(message=message)
 

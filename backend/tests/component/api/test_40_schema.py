@@ -700,6 +700,47 @@ async def test_schema_check_reserved_suffix_attribute(
     )
 
 
+async def test_schema_check_warns_on_number_pool_shorthand(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    prefect_test_fixture: None,
+    workflow_local: WorkflowLocalExecution,
+    authentication_base: Node,
+) -> None:
+    payload = {
+        "version": "1.0",
+        "nodes": [
+            {
+                "name": "Vlan",
+                "namespace": "Test",
+                "attributes": [
+                    {
+                        "name": "vlan_id",
+                        "kind": "NumberPool",
+                        "read_only": True,
+                        "parameters": {"start_range": 100, "end_range": 200},
+                    }
+                ],
+            }
+        ],
+    }
+
+    with client:
+        response = client.post("/api/schema/check", headers=admin_headers, json={"schemas": [payload]})
+
+    assert response.status_code == 202, response.text
+    assert response.json()["warnings"] == [
+        {
+            "type": "deprecation",
+            "kinds": [{"kind": "TestVlan", "field": "vlan_id"}],
+            "message": "Use of 'start_range' and 'end_range' on NumberPool attributes is deprecated, "
+            "use 'ranges' instead",
+        }
+    ]
+
+
 async def test_schema_check_reserved_suffix_relationship(
     db: InfrahubDatabase,
     client: TestClient,

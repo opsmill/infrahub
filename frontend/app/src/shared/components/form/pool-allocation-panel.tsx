@@ -4,6 +4,7 @@ import type { FormFieldPool, FormFieldValue, PoolValue } from "@/shared/componen
 import {
   PoolCombobox,
   PoolKindOverrideField,
+  PoolNumberField,
   PoolPrefixLengthField,
 } from "@/shared/components/inputs/pool-select";
 import { FormMessage } from "@/shared/components/ui/form";
@@ -23,8 +24,9 @@ export interface PoolAllocationPanelProps
 }
 
 /**
- * The "From pool" tab: which pool to allocate from, plus the two overrides of that pool's
- * defaults. It stages a new allocation and never displays a resolved one.
+ * The "From pool" tab: which pool to allocate from, plus either the number to reserve in a number
+ * pool or the two overrides of an IP pool's defaults. It stages a new allocation and never
+ * displays a resolved one.
  */
 export const PoolAllocationPanel = ({
   name,
@@ -54,6 +56,10 @@ export const PoolAllocationPanel = ({
         disabled={disabled}
         onChange={onChange}
       />
+
+      {canOverrideAllocation && (
+        <PoolNumberField name={name} poolKind={poolKind} value={value} disabled={disabled} />
+      )}
 
       {/* With neither override rendered the row is an empty flex item still taking the parent's gap; `empty:hidden` removes the hole. */}
       {canOverrideAllocation && (

@@ -11,6 +11,7 @@ on:
   github-app:
     client-id: ${{ secrets.GH_AW_APP_ID }}
     private-key: ${{ secrets.GH_AW_APP_PRIVATE_KEY }}
+  needs: [review-gate]
 engine: claude
 permissions:
   contents: read
@@ -25,43 +26,101 @@ network: defaults
 checkout:
   fetch-depth: 0
   submodules: true
+jobs:
+  review-gate:
+    if: |
+      startsWith(github.event.pull_request.head.ref, 'ai-bug-pipeline-') &&
+      (
+        contains(github.event.pull_request.body, 'AGENT_TEST_COMPLETE') ||
+        contains(github.event.pull_request.body, 'AGENT_FIX_COMPLETE')
+      )
+    runs-on: ubuntu-slim
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    outputs:
+      should_review: ${{ steps.review_gate.outputs.should_review }}
+    steps:
+      - name: Gate check - skip if current mode already approved
+        id: review_gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          REPO: ${{ github.repository }}
+          # Re-review tuning knobs, overridable via repository variables without editing this file.
+          REREVIEW_MIN_LINES: ${{ vars.BUG_REVIEW_REREVIEW_MIN_LINES }}
+          REREVIEW_IGNORE_REGEX: ${{ vars.BUG_REVIEW_REREVIEW_IGNORE_REGEX }}
+        run: |
+          set -euo pipefail
+          MIN_LINES="${REREVIEW_MIN_LINES:-1}"
+          IGNORE_REGEX="${REREVIEW_IGNORE_REGEX:-(^|/)(tests?|__tests__)/|(^|/)(test_[^/]*|[^/]*_test|conftest)\.py$|\.(test|spec)\.[cm]?[jt]sx?$}"
+
+          review() {
+            echo "::notice::$1"
+            echo "should_review=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+          skip() {
+            echo "::notice::$1"
+            echo "### Reviewer skipped" >> "$GITHUB_STEP_SUMMARY"
+            echo "$1" >> "$GITHUB_STEP_SUMMARY"
+            echo "should_review=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+
+          if [[ "$PR_BODY" == *"AGENT_FIX_COMPLETE"* ]]; then
+            MODE=fix
+            MARKER="AGENT_REVIEW_VERDICT: FIX_APPROVED"
+          else
+            MODE=test
+            MARKER="AGENT_REVIEW_VERDICT: TEST_APPROVED"
+          fi
+
+          # One line per approval comment: the reviewed SHA, or "none" when the comment predates the SHA marker.
+          APPROVALS=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
+            --jq ".[] | select((.user.login == \"opsmill-bug-pipeline[bot]\" or .user.login == \"github-actions[bot]\" or .user.login == \"claude[bot]\")
+              and (.body | contains(\"$MARKER\")))
+              | ((.body | capture(\"AGENT_REVIEW_SHA: (?<s>[0-9a-f]{40})\") | .s) // \"none\")")
+
+          if [ -z "$APPROVALS" ]; then
+            review "No $MARKER yet: reviewing."
+          fi
+
+          # Test mode stays approve-once: the fixer's pushes land before the PR body flips to fix mode.
+          if [ "$MODE" = "test" ]; then
+            skip "Skipping reviewer: test already TEST_APPROVED, waiting for fix."
+          fi
+
+          APPROVED_SHA=$(echo "$APPROVALS" | tail -n1)
+          if [ "$APPROVED_SHA" = "none" ]; then
+            review "Last FIX_APPROVED has no AGENT_REVIEW_SHA marker: re-reviewing."
+          fi
+          if [ "$APPROVED_SHA" = "$HEAD_SHA" ]; then
+            skip "Skipping reviewer: fix already FIX_APPROVED at $HEAD_SHA, pipeline complete."
+          fi
+
+          if ! FILES=$(gh api "repos/$REPO/compare/$APPROVED_SHA...$HEAD_SHA" \
+            --jq '.files[] | "\(.changes)\t\(.filename)"'); then
+            review "Cannot compare $APPROVED_SHA...$HEAD_SHA (force-push?): re-reviewing."
+          fi
+
+          export IGNORE_REGEX
+          CHANGED=$(printf '%s\n' "$FILES" \
+            | awk -F'\t' 'NF == 2 && $2 !~ ENVIRON["IGNORE_REGEX"] { n += $1 } END { print n + 0 }')
+          if [ "$CHANGED" -ge "$MIN_LINES" ]; then
+            review "$CHANGED non-test lines changed since FIX_APPROVED at $APPROVED_SHA (threshold $MIN_LINES): re-reviewing."
+          fi
+          skip "Skipping reviewer: fix already FIX_APPROVED, $CHANGED non-test lines changed since $APPROVED_SHA (threshold $MIN_LINES)."
 if: |
   startsWith(github.event.pull_request.head.ref, 'ai-bug-pipeline-') &&
   (
     contains(github.event.pull_request.body, 'AGENT_TEST_COMPLETE') ||
     contains(github.event.pull_request.body, 'AGENT_FIX_COMPLETE')
-  )
-steps:
-  - name: Gate check - skip if current mode already approved
-    env:
-      GH_TOKEN: ${{ github.token }}
-      PR_NUMBER: ${{ github.event.pull_request.number }}
-      PR_BODY: ${{ github.event.pull_request.body }}
-      REPO: ${{ github.repository }}
-    run: |
-      set -euo pipefail
-      skip() {
-        echo "::notice::$1"
-        echo "### Reviewer skipped" >> "$GITHUB_STEP_SUMMARY"
-        echo "$1" >> "$GITHUB_STEP_SUMMARY"
-        exit 1
-      }
-
-      if [[ "$PR_BODY" == *"AGENT_FIX_COMPLETE"* ]]; then
-        MARKER="AGENT_REVIEW_VERDICT: FIX_APPROVED"
-        SKIP_MSG="Skipping reviewer: fix already FIX_APPROVED, pipeline complete."
-      else
-        MARKER="AGENT_REVIEW_VERDICT: TEST_APPROVED"
-        SKIP_MSG="Skipping reviewer: test already TEST_APPROVED, waiting for fix."
-      fi
-
-      COUNT=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
-        --jq "[.[] | select((.user.login == \"opsmill-bug-pipeline[bot]\" or .user.login == \"github-actions[bot]\" or .user.login == \"claude[bot]\")
-          and (.body | contains(\"$MARKER\")))] | length")
-
-      if [ "$COUNT" -gt 0 ]; then
-        skip "$SKIP_MSG"
-      fi
+  ) &&
+  needs.review-gate.outputs.should_review == 'true'
 safe-outputs:
   github-app:
     client-id: ${{ secrets.GH_AW_APP_ID }}
@@ -140,6 +199,8 @@ If neither marker is present, do nothing and stop.
    - The marker `AGENT_REVIEW_ITERATION: test-N` or `AGENT_REVIEW_ITERATION: fix-N`
      where N is the current iteration number for this mode (1 for first review,
      2 for second, etc.)
+   - The marker `AGENT_REVIEW_SHA: ${{ github.event.pull_request.head.sha }}` on its own line,
+     copied verbatim. The pipeline uses it to decide whether later pushes need a new review.
 
    When your verdict is CHANGES REQUESTED:
    - Be specific: each requested change must reference a file, line, and what to do.

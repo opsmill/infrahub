@@ -85,6 +85,8 @@ migration). All three share the predicate and the closure clause.
 - **Merge and rebase already compute the diffs** that name exactly the affected nodes.
   `DiffMerger.merge_graph` calls `diff_repository.get_affected_node_uuids(...)`
   (`repository.py:570`) before running the bulk merges. That is the merge candidate set.
+  (Holds for merge only — see R4's 2026-09-28 note: the base-branch diff rebase would read does
+  not name the default-branch deletions.)
 - **Branch deletion has no diff.** Its candidate set is every node the discarded branch could
   reach, which is a fork-point-bounded query rather than an enumeration.
 - **The migration is the same query with the bound removed.**
@@ -119,6 +121,17 @@ this feature may need.
 **Alternatives considered**: Recomputing the base-branch deletions with a fresh query at rebase
 time — rejected, it duplicates work already done and risks a different window than the rebase
 actually closes.
+
+**Superseded 2026-09-28**: the finding above does not hold. The base-branch run of the diff
+calculation is scoped to the fields the branch changed, so the stored base-branch diff lists a
+default-branch deletion only when the branch changed that node too. It listed every deletion for a
+branch with no diffed changes, and only because an empty field-specifier map was read as no scope
+at all, which the same change fixes. Rebase now takes the rejected alternative: it queries the
+nodes whose default-branch existence edge turned `deleted` between the branch's previous fork point
+and `rebase_at`, both included, as branch deletion (R5) does from its fork point. The window is
+exactly the one the rebase closes. A kind or inheritance change on the default branch also deletes
+the superseded node vertex, so the query returns that uuid too, and the predicate keeps its fields
+because the node lives on.
 
 ## R5 — Branch-deletion selectivity (resolves the PRD's first open question)
 
@@ -303,6 +316,38 @@ Findings:
   population was deleted. The floor cost of proving that is the 1.13M db hits above — paid to find
   nothing, which is the honest price of the invariant.
 
+**Revision (2026-09-11): the branch-delete row above no longer describes the shipped query.** The
+delivered `RetireBranchAgnosticFieldsQuery` collected every candidate field of the branch into one
+list and ran the predicate over it in the outer transaction; only the closures were inside
+`CALL … IN TRANSACTIONS`. The predicate's per-field-per-branch aggregation (`count(DISTINCT …)`
+grouped by field and branch, then `max` per field) is eager, so the outer transaction held
+candidates × branches groups: on a `PROFILE` at 2,000 candidates and six branches the aggregation
+alone held 5.6 MiB, about 490 bytes per group, and the whole plan 24 MiB. On a 1 GiB heap (`dbms.memory.transaction.total.max` = 716.8 MiB, the CI
+docker-suite setting and the JVM default in a 4 GiB container) a branch of 60,000 nodes each
+carrying one agnostic attribute, with ten sibling branches open, failed with
+`Neo.TransientError.General.MemoryPoolOutOfMemoryError` in 2.2 s. T059 never measured this path:
+its memory harness covered rebase and merge, which are node-uuid bounded and slice before they
+query.
+
+The query now seeds from `IS_PART_OF(branch)` — two `DirectedRelationshipIndexSeek`s, one for the
+deleted branch's own existence edges and one for the default branch's edges closed after the fork,
+joined by `UNION ALL` inside a `CALL` subquery: written as one `MATCH` with an `OR`, the planner
+either expands every `IS_PART_OF` edge from `Root` or turns the `OR` into a union of seeks that it
+deduplicates with a `Distinct`, and that `Distinct` is the whole-run candidate set again — reads the
+retaining-branch windows once, and imports
+them into a `CALL (reachable_node, branch_windows) { … } IN TRANSACTIONS OF $batch_size ROWS` body
+that anchors the node's open global owning edges, runs `UNRETAINED_AGNOSTIC_FIELD_EVALUATION`, and
+closes the unretained edges. Nothing above the batch aggregates or deduplicates: a `DISTINCT` over
+the node stream was tried and rejected because it copies the branch-window list into every key
+(320 MiB at 60,000 rows). One buffer remains, and only a `PROFILE` of the *write* form shows it: the
+planner inserts an `Eager` between the candidate stream and `TransactionApply` because the stream
+reads `to` and the batches set it, so every candidate row is held before the first batch runs — at
+one node reference per row, 1.1 MiB for 20,000 candidates, linear and small, where the old form held
+candidates × branches × peers. Same dataset, same heap: 240,000 edges closed in 4.5 s with 0.2 MiB of
+outer-operator memory; 300,000 nodes with thirty sibling branches, 1,200,000 edges closed in
+36.7 s. This does invert the candidate seed that the finding above retired on wall-clock grounds —
+the inversion is not for time, it is what makes the candidate set streamable.
+
 Reproduce with `r07_dataset.py` then `r07_explain.py` (method recorded here; the scripts are scratch,
 not committed).
 
@@ -450,7 +495,7 @@ is the normal close path — so a guard has to count judging branches separately
 |---|---|
 | Branch-deletion candidate selectivity | Design fixed (R5); acceptance number measured during implementation against the FR-018 gate |
 | Acceptable timing regression | ≤10% median per operation (pinned in spec FR-018 / SC-008) |
-| Base-branch diff availability at rebase | Confirmed available (R4) |
+| Base-branch diff availability at rebase | Confirmed available (R4); superseded 2026-09-28, rebase queries the deletions instead |
 | Migration template and non-fatal reporting | Confirmed via `m075` (R7) |
 | Schema-removal leak mechanism | Confirmed by the shipped docstring (R8) |
 

@@ -1,5 +1,4 @@
 import { Button, Menu, MenuItem, MenuSection, MenuTrigger, Popover } from "@infrahub/ui";
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
 import { BookTextIcon, EllipsisVertical } from "lucide-react";
 
 import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
@@ -7,11 +6,14 @@ import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Icon } from "@/shared/components/display/icon";
 import { CopyToClipboardMenuItem } from "@/shared/components/menu/copy-to-clipboard-menu-item";
-import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
-import { QSP } from "@/shared/config/qsp";
 
 import type { ArtifactObject } from "@/entities/artifacts/domain/model/artifact";
 import { ARTIFACT_OBJECT } from "@/entities/artifacts/domain/model/artifact";
+import {
+  getDocumentationUrl,
+  getObjectGraphqlSandboxUrl,
+  getObjectTasksUrl,
+} from "@/entities/nodes/object/ui/routing/object-urls";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface ArtifactDetailsMenuProps {
@@ -48,11 +50,7 @@ export function ArtifactDetailsMenu({ artifact }: ArtifactDetailsMenuProps) {
             )}
           </MenuSection>
           <MenuSection title="Go to">
-            <MenuItem
-              href={constructPath(
-                `/tasks?${QSP.FILTER}=[{"name":"node__value","value":"${artifact.id}"}]`
-              )}
-            >
+            <MenuItem href={getObjectTasksUrl(artifact.id)}>
               <TasksStatusIcon width="12" height="12" className="ml-0.5" />
               Tasks
             </MenuItem>
@@ -62,44 +60,13 @@ export function ArtifactDetailsMenu({ artifact }: ArtifactDetailsMenuProps) {
               <Icon icon="mdi:code-json" />
               View Schema
             </MenuItem>
-            <MenuItem
-              href={constructPath("/graphql", [
-                {
-                  name: "query",
-                  value: jsonToGraphQLQuery(
-                    {
-                      query: {
-                        [artifact.__typename]: {
-                          __args: {
-                            ids: [artifact.id],
-                          },
-                          edges: {
-                            node: {
-                              id: true,
-                              hfid: true,
-                              display_label: true,
-                            },
-                          },
-                        },
-                      },
-                    },
-                    {
-                      pretty: true,
-                    }
-                  ),
-                },
-              ])}
-            >
+            <MenuItem href={getObjectGraphqlSandboxUrl(artifact.__typename, artifact.id)}>
               <Icon icon="mdi:graphql" />
               GraphQL sandbox
             </MenuItem>
             {schema?.documentation && (
               <MenuItem
-                href={
-                  schema.documentation.startsWith("http")
-                    ? schema.documentation
-                    : `${INFRAHUB_DOC_LOCAL}${schema.documentation}`
-                }
+                href={getDocumentationUrl(schema.documentation)}
                 target="_blank"
                 rel="noreferrer"
               >

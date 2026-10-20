@@ -1,8 +1,13 @@
-import type { CombinedError } from "@urql/core";
+import { CombinedError } from "@urql/core";
 import React from "react";
 import { toast } from "react-toastify";
 
 import { ERROR_CODES, parseCatalogueError } from "@/shared/api/errors";
+import {
+  HTTP_TOO_MANY_REQUESTS,
+  isShedErrorItem,
+  SHED_USER_MESSAGE,
+} from "@/shared/api/rate-limit/shed-envelope";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import { redirectToLogin } from "@/entities/authentication/domain/use-cases/redirect-to-login";
@@ -15,7 +20,38 @@ export function hasCatalogueCode(error: CombinedError | undefined, code: string)
   );
 }
 
-function notifyUser(message: string | undefined, context?: GraphQLRequestContext): void {
+const hasGraphQLErrors = (error: unknown): error is Pick<CombinedError, "graphQLErrors"> =>
+  error instanceof Error && "graphQLErrors" in error && Array.isArray(error.graphQLErrors);
+
+// The client throws a plain `Error` with the GraphQL errors on its `cause`, and a mixed failure
+// must not pass for the code.
+export function hasOnlyThrownCatalogueCode(error: unknown, code: string): boolean {
+  const cause = error instanceof Error ? error.cause : undefined;
+  const graphQLErrors = hasGraphQLErrors(cause) ? cause.graphQLErrors : [];
+  return (
+    graphQLErrors.length > 0 &&
+    graphQLErrors.every(({ extensions }) => parseCatalogueError(extensions).code === code)
+  );
+}
+
+// The transport rethrows the GraphQL detail as a bare `Error` carrying it on `.cause`, so anything
+// caught outside this module has to be unwrapped before its catalogue code can be read.
+export function hasThrownCatalogueCode(error: unknown, code: string): boolean {
+  if (error instanceof CombinedError) return hasCatalogueCode(error, code);
+
+  const cause = error instanceof Error ? error.cause : null;
+  return cause instanceof CombinedError && hasCatalogueCode(cause, code);
+}
+
+// Its own id so a page-load's worth of shed queries collapses into one toast
+// rather than fighting the generic error toast for the slot.
+const SHED_TOAST_ID = "alert-shed";
+
+function notifyUser(
+  message: string | undefined,
+  context?: GraphQLRequestContext,
+  toastId = "alert-error"
+): void {
   if (!message) return;
 
   if (context?.processErrorMessage) {
@@ -24,7 +60,7 @@ function notifyUser(message: string | undefined, context?: GraphQLRequestContext
   }
 
   toast(React.createElement(Alert, { type: ALERT_TYPES.ERROR, message }), {
-    toastId: "alert-error",
+    toastId,
   });
 }
 
@@ -35,6 +71,18 @@ export function handleGraphQLErrors(
   if (!error?.graphQLErrors?.length) return;
 
   for (const graphQLError of error.graphQLErrors) {
+    // A shed is a transport outcome, not a catalogue error, so routing it through
+    // the catalogue would ask a developer to register a code that must never be
+    // registered. The transport has already retried it by the time it lands here.
+    if (isShedErrorItem(graphQLError.extensions)) {
+      console.warn(
+        `[GraphQL]: Request shed under load (HTTP ${HTTP_TOO_MANY_REQUESTS}), ` +
+          `retries exhausted. Message: ${graphQLError.message}`
+      );
+      notifyUser(SHED_USER_MESSAGE, context, SHED_TOAST_ID);
+      continue;
+    }
+
     const parsed = parseCatalogueError(graphQLError.extensions);
 
     console.error(

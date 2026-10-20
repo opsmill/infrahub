@@ -15,12 +15,16 @@ from infrahub.constants.enums import OrderDirection
 from infrahub.core import registry
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
+    NULL_VALUE,
     PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
     PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER,
     AttributeDBNodeType,
+    InfrahubKind,
     MetadataOptions,
+    PoolRecordProvenance,
     RelationshipDirection,
     RelationshipHierarchyDirection,
+    RelationshipStatus,
 )
 from infrahub.core.constants import (
     NODE_METADATA_PREFIX as _NODE_METADATA_PREFIX,
@@ -33,8 +37,10 @@ from infrahub.core.order import (
     OrderModel,
 )
 from infrahub.core.query import Query, QueryResult, QueryType
+from infrahub.core.query.resource_manager import TrackingPool
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order, build_subquery_order_metadata
 from infrahub.core.query.utils import find_node_schema
+from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.order_by import (
     OrderByMetadataField,
@@ -51,6 +57,8 @@ from infrahub.core.utils import build_regex_attrs, extract_field_filters
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from neo4j.graph import Node as Neo4jNode
 
     from infrahub.core.attribute import AttributeCreateData, BaseAttribute
@@ -109,6 +117,7 @@ class AttributeFromDB:
 
     is_default: bool
     is_from_profile: bool = dataclass_field(default=False)
+    tracking_pool: TrackingPool | None = None
 
     updated_at: Timestamp | None = None
     updated_by: str | None = None
@@ -257,9 +266,20 @@ class NodeCreateAllQuery(NodeQuery):
         self.params["node_branch_prop"] = {
             "branch": self.branch.name,
             "branch_level": self.branch.hierarchy_level,
-            "status": "active",
+            "status": RelationshipStatus.ACTIVE.value,
             "from": at.to_string(),
             "from_user_id": self.user_id,
+        }
+
+        # A number pool's reservation record lives on the global branch.
+        global_branch = registry.get_global_branch()
+        self.params["pool_rel_prop"] = {
+            "branch": global_branch.name,
+            "branch_level": global_branch.hierarchy_level,
+            "status": RelationshipStatus.ACTIVE.value,
+            "from": at.to_string(),
+            "from_user_id": self.user_id,
+            "identifier": self.node.id,
         }
 
         # set all the property strings that we reuse
@@ -275,6 +295,21 @@ class NodeCreateAllQuery(NodeQuery):
             "{ branch: rel.branch, branch_level: rel.branch_level, "
             "status: rel.status, hierarchy: rel.hierarchical, from: $at, from_user_id: $user_id }"
         )
+        pool_reservation_subquery = """
+            WITH *
+            CALL (a, attr) {
+                UNWIND attr.pool_prop AS prop
+                MATCH (pool:%(number_pool)s { uuid: prop.peer_id })
+                // -------------------
+                // Lock the NumberPool vertex, so concurrent writes do not deadlock adding IS_RESERVED
+                // -------------------
+                SET pool._number_pool_lock = TRUE
+                REMOVE pool._number_pool_lock
+                CREATE (pool)-[reserved:IS_RESERVED $pool_rel_prop]->(a)
+                SET reserved.allocated_values = CASE WHEN prop.allocated_value IS NULL THEN [] ELSE [prop.allocated_value] END
+                %(stamp_pool)s
+            }""" % {"number_pool": InfrahubKind.NUMBERPOOL, "stamp_pool": stamp_vertex_metadata("pool")}
+
         rel_vertex_prop_str = "{ uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support"
         if self.branch.is_default or self.branch.is_global:
             rel_vertex_prop_str += ", created_at: $at, created_by: $user_id, updated_at: $at, updated_by: $user_id"
@@ -336,7 +371,12 @@ class NodeCreateAllQuery(NodeQuery):
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (a)-[:HAS_OWNER %(attr_edge)s]->(peer)
             )
-        }""" % {"attr_edge": attr_edge_prop_str, "attr_vertex": attr_vertex_prop_str}
+%(pool_reservation)s
+        }""" % {
+            "attr_edge": attr_edge_prop_str,
+            "attr_vertex": attr_vertex_prop_str,
+            "pool_reservation": pool_reservation_subquery,
+        }
 
         attrs_indexed_query = """
         WITH distinct n
@@ -358,7 +398,12 @@ class NodeCreateAllQuery(NodeQuery):
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (a)-[:HAS_OWNER %(attr_edge)s]->(peer)
             )
-        }""" % {"attr_edge": attr_edge_prop_str, "attr_vertex": attr_vertex_prop_str}
+%(pool_reservation)s
+        }""" % {
+            "attr_edge": attr_edge_prop_str,
+            "attr_vertex": attr_vertex_prop_str,
+            "pool_reservation": pool_reservation_subquery,
+        }
 
         attrs_iphost_query = """
         WITH distinct n
@@ -382,11 +427,13 @@ class NodeCreateAllQuery(NodeQuery):
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (a)-[:HAS_OWNER %(attr_edge)s]->(peer)
             )
+%(pool_reservation)s
         }
         """ % {
             "iphost_prop": ", ".join(iphost_prop_list),
             "attr_edge": attr_edge_prop_str,
             "attr_vertex": attr_vertex_prop_str,
+            "pool_reservation": pool_reservation_subquery,
         }
 
         attrs_ipnetwork_query = """
@@ -411,11 +458,13 @@ class NodeCreateAllQuery(NodeQuery):
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (a)-[:HAS_OWNER %(attr_edge)s]->(peer)
             )
+%(pool_reservation)s
         }
         """ % {
             "ipnetwork_prop": ", ".join(ipnetwork_prop_list),
             "attr_edge": attr_edge_prop_str,
             "attr_vertex": attr_vertex_prop_str,
+            "pool_reservation": pool_reservation_subquery,
         }
 
         deepest_branch = await registry.get_branch(db=db, branch=deepest_branch_name)
@@ -706,11 +755,20 @@ class NodeListGetAttributeQuery(Query):
         ids: list[str],
         fields: dict | None = None,
         include_metadata: MetadataOptions = MetadataOptions.NONE,
+        tracking_pool_attribute_names: Iterable[str] | None = None,
         **kwargs: Any,
     ) -> None:
+        """Read the attributes of the nodes `ids` name.
+
+        `tracking_pool_attribute_names` limits the tracking pool read to the attributes it names; None reads
+        it on every attribute, and an empty collection skips it.
+        """
         self.ids = ids
         self.fields = fields
         self.include_metadata = include_metadata
+        self.tracking_pool_attribute_names = (
+            frozenset(tracking_pool_attribute_names) if tracking_pool_attribute_names is not None else None
+        )
         super().__init__(order_by=["n.uuid", "a.name"], **kwargs)
 
     @property
@@ -722,6 +780,12 @@ class NodeListGetAttributeQuery(Query):
         return bool(self.include_metadata & MetadataOptions.OWNER)
 
     @property
+    def _include_tracking_pool(self) -> bool:
+        if not self.include_metadata & MetadataOptions.TRACKING_POOL:
+            return False
+        return self.tracking_pool_attribute_names is None or bool(self.tracking_pool_attribute_names)
+
+    @property
     def _include_updated_metadata(self) -> bool:
         return bool(self.include_metadata & (MetadataOptions.UPDATED_AT | MetadataOptions.UPDATED_BY))
 
@@ -730,6 +794,7 @@ class NodeListGetAttributeQuery(Query):
         return bool(self.include_metadata & (MetadataOptions.CREATED_AT | MetadataOptions.CREATED_BY))
 
     def _add_source_to_query(self, branch_filter_str: str) -> None:
+        """Resolve the source a user set on the attribute; the number pool tracking it is read separately."""
         if not self._include_source:
             return
         source_query = """
@@ -764,6 +829,39 @@ WITH *,
         """ % {"branch_filter": branch_filter_str}
         self.add_to_query(owner_query)
         self.return_labels.extend(["owner", "rel_owner"])
+
+    def _add_tracking_pool_to_query(self) -> None:
+        """Read the number pool tracking the attribute and if the branch's value is allocated.
+
+        The record is on the global branch, so every branch reads the same pool; the provenance compares
+        the value this branch holds with the numbers the pool allocated to the attribute.
+        """
+        if not self._include_tracking_pool:
+            return
+        attribute_filter = ""
+        if self.tracking_pool_attribute_names is not None:
+            attribute_filter = "a.name IN $tracking_pool_attribute_names AND "
+            self.params["tracking_pool_attribute_names"] = sorted(self.tracking_pool_attribute_names)
+        tracking_pool_query = """
+CALL (a, av) {
+    OPTIONAL MATCH (tracking_pool:Node:%(number_pool)s)-[reserved:IS_RESERVED]->(a)
+    WHERE %(attribute_filter)sreserved.branch = $global_branch_name
+      AND reserved.status = "active"
+      AND reserved.from <= $tracking_pool_at
+      AND (reserved.to IS NULL OR reserved.to > $tracking_pool_at)
+    RETURN
+        tracking_pool.uuid AS tracking_pool_uuid,
+        reserved.allocated_values IS NOT NULL
+            AND NOT coalesce(toInteger(av.value) IN reserved.allocated_values, FALSE)
+            AS tracking_pool_is_provided
+    ORDER BY reserved.from DESC
+    LIMIT 1
+}
+        """ % {"number_pool": InfrahubKind.NUMBERPOOL, "attribute_filter": attribute_filter}
+        self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
+        self.params["tracking_pool_at"] = self.at.to_string()
+        self.add_to_query(tracking_pool_query)
+        self.return_labels.extend(["tracking_pool_uuid", "tracking_pool_is_provided"])
 
     def _add_created_metadata_to_query(self) -> None:
         if not self._include_created_metadata:
@@ -900,6 +998,7 @@ CALL (a) {
 
         self._add_source_to_query(branch_filter_str=branch_filter)
         self._add_owner_to_query(branch_filter_str=branch_filter)
+        self._add_tracking_pool_to_query()
         self._add_created_metadata_to_query()
         self._add_updated_metadata_to_query(branch_filter_str=branch_filter)
 
@@ -968,6 +1067,15 @@ CALL (a) {
             data.node_properties["owner"] = AttributeNodePropertyFromDB(
                 uuid=result.get_node("owner").get("uuid"), labels=list(result.get_node("owner").labels)
             )
+
+        if self._include_tracking_pool:
+            data.tracking_pool = None
+            if tracking_pool_uuid := result.get_as_optional_type("tracking_pool_uuid", return_type=str):
+                is_provided = result.get_as_type("tracking_pool_is_provided", return_type=bool)
+                data.tracking_pool = TrackingPool(
+                    pool_id=tracking_pool_uuid,
+                    provenance=PoolRecordProvenance.PROVIDED if is_provided else PoolRecordProvenance.ALLOCATED,
+                )
 
         return data
 
@@ -1370,6 +1478,90 @@ WITH node_id, head(collect(node_kind)) AS node_kind
         for result in self.get_results():
             node_kind_map[str(result.get("node_id"))] = str(result.get("node_kind"))
         return node_kind_map
+
+
+class NodeListGetDisplayLabelQuery(Query):
+    """Read the display label stored on a list of nodes without instantiating the nodes.
+
+    The stored ``display_label`` attribute is what ``Node.get_display_label`` returns when it is
+    populated, so this is the cheap way to label many nodes at once. A node that is not active on
+    the branch, or that has no display label stored, is absent from the result.
+    """
+
+    name = "node_list_get_display_label"
+    type = QueryType.READ
+
+    def __init__(self, ids: list[str], **kwargs: Any) -> None:
+        self.ids = ids
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at, branch_agnostic=self.branch_agnostic
+        )
+        self.params.update(branch_params)
+        self.params["ids"] = self.ids
+
+        query = """
+        MATCH (n:Node)
+        WHERE n.uuid IN $ids
+        // --------------------------
+        // Keep the node vertex that is active on the branch: a deleted node has no active
+        // IS_PART_OF edge and a kind migration leaves several vertices with the same uuid
+        // --------------------------
+        CALL (n) {
+            MATCH (n)-[r:IS_PART_OF]->(:Root)
+            WHERE %(branch_filter)s
+            RETURN r AS root_edge
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH n
+        WHERE root_edge.status = "active"
+        MATCH (n)-[:HAS_ATTRIBUTE]->(attr:Attribute {name: "display_label"})
+        // a deleted or migrated node holds several edges to the same attribute: resolve each pair once
+        WITH DISTINCT n, attr
+        CALL (n, attr) {
+            MATCH (n)-[r:HAS_ATTRIBUTE]->(attr)
+            WHERE %(branch_filter)s
+            RETURN r AS attr_edge
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH n, attr
+        WHERE attr_edge.status = "active"
+        // --------------------------
+        // Resolve the value active on the branch at the requested point in time
+        // --------------------------
+        CALL (attr) {
+            MATCH (attr)-[r:HAS_VALUE]->(av:AttributeValue)
+            WHERE %(branch_filter)s
+            RETURN r AS value_edge, av
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH n, av
+        WHERE value_edge.status = "active"
+        """ % {"branch_filter": branch_filter}
+
+        self.add_to_query(query)
+        self.return_labels = ["n.uuid AS node_id", "av.value AS display_label"]
+
+    def get_display_label_map(self) -> dict[str, str]:
+        """Return the stored display label of every node that has a non-empty one, keyed by node id.
+
+        An empty stored label, including the ``NULL_VALUE`` sentinel a kind without a template
+        stores, is left out on purpose: whether it should read as an empty string or as the node's
+        default representation depends on the node's schema, which ``Node.get_display_label`` knows
+        and this query does not.
+        """
+        display_label_map: dict[str, str] = {}
+        for result in self.get_results():
+            display_label = result.get("display_label")
+            if not display_label or display_label == NULL_VALUE:
+                continue
+            display_label_map[str(result.get("node_id"))] = str(display_label)
+        return display_label_map
 
 
 class NodeListGetInfoQuery(Query):

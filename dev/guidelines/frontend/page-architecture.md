@@ -6,33 +6,44 @@ Rules for structuring page components and the forms / panels they contain. These
 
 ## State ownership
 
-Every piece of state has exactly one owner. When in doubt, push it up; never duplicate.
+Every piece of state has exactly one owner, placed as close as possible to where the state is used. Never duplicate it.
 
 | State | Owner | Mechanism |
 |---|---|---|
-| URL-shareable parameters (filters, current selection, mode) | Page | `useFilters` or `nuqs` |
+| Describes what is on screen and should travel with a link (filters, current selection, mode) | The URL | A named hook over `useFilters` or `nuqs` |
 | Form fields (in-flight edits before submit) | Form | `react-hook-form` `useForm` |
 | Server data | TanStack Query cache | `ui/queries/*.query.ts` |
-| Cross-page global state | Jotai atoms | `shared/stores/` or `entities/*/stores.ts` |
+| Personal preference for this browser (theme, sidebar state) | `localStorage` | `useLocalStorage` or `atomWithStorage` |
+| Personal preference that follows the account to other devices (date format, time zone) | Server-side user preferences | `entities/preferences` |
+| Other cross-page state | Jotai atoms | `shared/stores/` or `entities/*/stores.ts` |
 | Local UI state (open/closed, hover) | Component | `useState` |
 
 ### Forbidden patterns
 
-- **Page `useState` shadowed by selector `useState` for the same field.** Lift to a single owner. If the selector is a form, expose `onSubmit(values)` and let the page commit the values to the URL.
+- **Page `useState` shadowed by selector `useState` for the same field.** Lift to a single owner. If the selector is a form, expose `onSubmit(values)` and let its handler commit the values to the URL.
 - **`useEffect` to copy props into local state.** Derive during render or use `defaultValues` on the form.
-- **Reading `searchParams` in two places.** One hook call per param, at the page level. Pass values down.
+- **Parsing the same URL param in two places.** Wrap it once in a named hook and call that hook wherever the value is needed.
 - **Mirroring state that already has an owner into a second store.** URL state copied into a Jotai atom, or form values copied into a `useState`, gives you two values that can disagree and no way to tell which is current. Pick the owner from the table above and read from it; if you find yourself syncing the copy back, the owner is wrong, not missing.
 
-## Pages own URL sync
+## Preserved and shared state lives in the URL
 
-The page component is the binding layer between the URL and the rest of the tree. It:
+Put state in the URL when it describes what is on screen and should travel with a link, so reload, Back and a shared link restore it. If sharing it would override the other person's own setting, it is a preference: your link must not switch a colleague to dark mode. Store preferences as the table above shows.
 
-1. Reads URL params via `useFilters` / `nuqs`.
-2. Decides which mode/sub-tree to render.
-3. Passes values to forms as `defaultValues` and to data hooks as query inputs.
-4. Receives form submissions and writes back to the URL.
+Read URL state close to where it is used, through a named hook over `useFilters` or `nuqs`. A page may read it when the page itself uses the value. Avoid reading it only to pass it as props through components that just forward it.
 
-Children should not call `useSearchParams` for state the page already owns.
+```tsx
+// ✅ the table uses the filters, so it reads them
+function AllocationsTable() {
+  const [filters] = useAllocationFilters();
+  // ...
+}
+
+// ❌ the page reads the filters only to forward them through the card to the table
+function PoolPage() {
+  const [filters, setFilters] = useAllocationFilters();
+  return <AllocationsCard filters={filters} onFiltersChange={setFilters} />;
+}
+```
 
 ## Forms own form state
 
@@ -43,7 +54,7 @@ A form component:
 3. Calls `onSubmit(values)` on submit; does not write to the URL itself.
 4. Does not mirror its own values into a `useState` — the form is the source of truth.
 
-If the form is also a query builder (e.g. path traversal), the page receives submitted values and either updates the URL or directly enables a query.
+If the form is also a query builder (e.g. path traversal), its `onSubmit` handler either writes the values to the URL through the hook or directly enables a query.
 
 ## Component size budget
 

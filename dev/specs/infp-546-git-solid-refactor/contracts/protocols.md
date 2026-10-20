@@ -4,6 +4,21 @@
 
 Two structural `typing.Protocol` types. The exact method set is finalized by an FR-020 audit (grep all callers of `InfrahubRepository` / `InfrahubReadOnlyRepository` in the backend, list every method invoked) before the protocol PR opens. The lists below are the working surface from research.md.
 
+> **`default_branch` must not appear on `ReadOnlyRepositoryProtocol`.** research.md lists it among the
+> read-only "identification fields", which was true when `default_branch` was a property on the shared
+> base that fell back to `registry.default_branch` for every kind. IFC-3105
+> (`dev/specs/ifc-3105-honour-default-branch/`, FR-004) makes it a required field on
+> `InfrahubRepository` **only** and removes it from the read-only kind entirely — a
+> `InfrahubReadOnlyRepository` instance will not have the attribute. A protocol demanding it would
+> therefore be unsatisfiable by the very class it is written for, and `mypy` would reject the
+> assignment. It is removed above.
+>
+> The FR-020 audit must also confirm that no read-only *consumer* reads `default_branch`. IFC-3105
+> resolved the one known case (the transform webhook, which was reading the trunk where it meant
+> Infrahub's default branch) but the audit is the check that there is not another.
+
+
+
 ## `ReadOnlyRepositoryProtocol`
 
 ```python
@@ -12,7 +27,7 @@ from typing import Protocol
 class ReadOnlyRepositoryProtocol(Protocol):
     name: str
     id: str
-    default_branch: str
+    # default_branch: str  <- REMOVED, see below
 
     def get_commit_value(self, branch_name: str, remote: bool = False) -> str: ...
     def get_commit_worktree(self, commit: str) -> Worktree: ...

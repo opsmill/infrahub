@@ -83,6 +83,7 @@ from tests.helpers.constants import (
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.diagnostics import install_redis_loop_diagnostics, register_known_loop
 from tests.helpers.file_repo import FileRepo
+from tests.helpers.git import clone_repository
 from tests.helpers.prefect_services import prefect_api_target
 from tests.helpers.schema_cache import install_processed_core_schema_branch, install_processed_internal_schema_branch
 from tests.helpers.test_client import dummy_async_request
@@ -379,7 +380,24 @@ async def register_simplified_proposed_change_schema(default_branch: Branch) -> 
 
 
 @pytest.fixture(scope="session")
-def neo4j(request: pytest.FixtureRequest, load_settings_before_session: None) -> dict[int, int] | None:
+def neo4j_heap_size() -> str:
+    """Heap size the test Neo4j container is started with, written the way Neo4j reports it back."""
+    return "1.00GiB"
+
+
+@pytest.fixture(scope="session")
+def neo4j_pagecache_size() -> str:
+    """Page cache size the test Neo4j container is started with, written the way Neo4j reports it back."""
+    return "512.00MiB"
+
+
+@pytest.fixture(scope="session")
+def neo4j(
+    request: pytest.FixtureRequest,
+    load_settings_before_session: None,
+    neo4j_heap_size: str,
+    neo4j_pagecache_size: str,
+) -> dict[int, int] | None:
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.database.db_type == "memgraph":
         return None
 
@@ -388,9 +406,9 @@ def neo4j(request: pytest.FixtureRequest, load_settings_before_session: None) ->
     container = start_neo4j_container(
         NEO4J_IMAGE,
         extra_env={
-            "NEO4J_server_memory_heap_initial__size": "1g",
-            "NEO4J_server_memory_heap_max__size": "1g",
-            "NEO4J_server_memory_pagecache_size": "512m",
+            "NEO4J_server_memory_heap_initial__size": neo4j_heap_size,
+            "NEO4J_server_memory_heap_max__size": neo4j_heap_size,
+            "NEO4J_server_memory_pagecache_size": neo4j_pagecache_size,
         },
     )
     request.addfinalizer(container.stop)
@@ -1301,7 +1319,7 @@ def git_upstream_repo_01(git_sources_dir: Path) -> dict[str, str | Path]:
 @pytest.fixture
 async def git_repo_01(git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path) -> InfrahubRepository:
     """Git Repository with git_upstream_repo_01 as remote."""
-    return await InfrahubRepository.new(
+    return await clone_repository(
         id=UUIDT.new(),
         name=git_upstream_repo_01["name"],
         location=str(git_upstream_repo_01["path"]),
@@ -1322,7 +1340,12 @@ class BusRPCMock(InfrahubMessageBus):
     def add_mock_reply(self, response: InfrahubResponse) -> None:
         self.response.append(response)
 
-    async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass]) -> ResponseClass:
+    async def rpc(
+        self,
+        message: InfrahubMessage,
+        response_class: type[ResponseClass],
+        timeout: float | None = None,  # noqa: ASYNC109
+    ) -> ResponseClass:
         self.messages.append(message)
         response = self.response.pop()
         data = ujson.loads(response.body)

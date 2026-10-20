@@ -12,6 +12,7 @@ from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRoot, Na
 from infrahub.core.diff.models import RequestDiffUpdate
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.component.registry import ComponentDependencyRegistry
@@ -45,6 +46,7 @@ def context() -> InfrahubContext:
 async def test_merged(
     db: InfrahubDatabase,
     default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
     prefect_test_fixture: None,
     context: InfrahubContext,
     init_service: InfrahubServices,

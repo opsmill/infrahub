@@ -143,8 +143,9 @@ and remove them when touching the code:
   (`peer`, `enum`, `dropdown`, `pool-select`, `relationship-one`/`-many`, `node-kind-select`,
   `kind-multi-select`), plus `shared/components/display/slide-over.tsx`,
   `shared/components/display/meta-details-tooltips.tsx`, `shared/components/table/data-table.tsx`,
-  `shared/components/ui/id.tsx`, and `shared/libs/graphiql/use-graphiql-fetcher.ts` (which even
-  reaches `nodes/object`'s `api/`).
+  `shared/components/ui/id.tsx`, `shared/libs/graphiql/use-graphiql-fetcher.ts` (which even
+  reaches `nodes/object`'s `api/`), and `shared/components/editor/markdown/markdown-with-mermaid.tsx`
+  (reads `useTheme` from `config` to bake the palette into its diagrams).
 <!-- Extracted from specs/001-entities-arch-migration on 2026-07-03 -->
 - Backend-authoritative violation: `path-traversal/domain/rules/visible-namespace.ts`
   (`HIDDEN_NAMESPACES`) is a client-side mirror of the backend `DEFAULT_EXCLUDED_NAMESPACES` —
@@ -274,6 +275,38 @@ The `ui/` layer **never** builds `gql` strings inline or calls `graphqlClient.qu
 
 Inline `gql` in `ui/` bypasses caching, branch context, schema typing, and the layered architecture. It is a pattern bug, not a shortcut.
 
+### A new feature's data need gets its own query
+
+Reusing another entity's query as it is, through its hook or its `queryOptions`, is fine. When a new
+feature or a new screen needs data that an existing query does not return as it is, give it its own
+entity, or its own `api/`, `domain/` and `ui/queries/` files, with its own query. Do not add flags to
+an existing query that change or switch off its behaviour, such as its polling, the kind it selects
+or its paging. Both callers then depend on one query function, key and result shape, so a change
+made for the first caller (a field, the kind it selects, its page size) changes what the second one
+receives. An override such as `refetchInterval: false` applies only to the observer that passes it.
+Where the keys match, both callers share one cache entry, and the polling of one refreshes the data
+the other displays.
+
+The dependency goes one way. The new feature's entity imports the entities it reads (their
+`domain/` types and `ui/` hooks); those entities do not import it back. Pass it plain values, such
+as branch names, rather than another entity's types or hooks it would have to call.
+
+```ts
+// ✅ The branches list reads its own repository list: id, name and kind, nothing else
+useQuery(getBranchGitRepositoriesQueryOptions({ limit: REPOSITORY_LIST_LIMIT, offset: 0 }));
+// …and the table passes the branch names, not its branch objects
+const gitStatuses = useGetBranchGitStatuses(branches.map((branch) => branch.name));
+
+// ❌ The branch details card's query, with a flag that selects the kind, and polling switched off
+// for this caller only
+useQuery({
+  ...getBranchRepositoriesQueryOptions({
+    branchName, syncWithGit: true, isSyncing: false, limit, offset: 0,
+  }),
+  refetchInterval: false,
+});
+```
+
 ### Single-object reads
 
 For "I have a UUID, give me the node", always use `useGetObject` from `entities/nodes/object/ui/queries/get-object.query.ts`. Its `objectSchema` parameter is a full `ModelSchema`, so pass a schema obtained from `useSchema` rather than an inline literal:
@@ -324,6 +357,13 @@ The object views tier a node's attributes and relationships by the schema `displ
 `display` is read off the loaded schema like any other schema fact (see
 [Backend is authoritative](#backend-is-authoritative)); there is no client-side list of which fields
 are advanced.
+
+One exception: the push state attributes of `CoreRepository` (`REPOSITORY_PUSH_STATE_ATTRIBUTE_NAMES`
+in `entities/repository/domain/model/repository.ts`). Only the default branch holds their live
+value, and another branch holds an old copy. So `is-push-state-attribute.ts` keeps them out of the
+repository detail view and its "extra" toggle, `REPOSITORY_COLUMN_SURFACE` keeps them out of the
+repository list's column candidates, and only the push to remote card of the repository page shows
+them, read from the default branch.
 
 The list-view rules above take an optional second argument that opts named `extra` fields back in —
 see [Column Visibility](column-visibility.md).

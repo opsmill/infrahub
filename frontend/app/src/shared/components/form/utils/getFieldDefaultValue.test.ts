@@ -666,6 +666,35 @@ describe("getFieldDefaultValue", () => {
         value: "my-default-value",
       });
     });
+
+    it("returns the pool id and the current number when a number pool tracks the number", () => {
+      // GIVEN
+      store.set(nodeSchemasAtom, [
+        generateNodeSchema({ kind: "CoreNumberPool", inherit_from: ["CoreResourcePool"] }),
+      ]);
+      const fieldSchema = generateAttributeSchema({ name: "vlan_id", kind: "Number" });
+
+      const initialObject = {
+        vlan_id: generateNodeAttributeWithMetadata({
+          value: 42,
+          source: { id: "pool-id", display_label: "VLAN pool", __typename: "CoreNumberPool" },
+        }),
+      };
+
+      // WHEN
+      const defaultValue = getFieldDefaultValue({ fieldSchema, initialObject });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({
+        source: {
+          type: "pool",
+          id: "pool-id",
+          label: "VLAN pool",
+          kind: "CoreNumberPool",
+        },
+        value: { from_pool: { id: "pool-id", number: 42 } },
+      });
+    });
   });
 
   describe("when attribute has _from_resource_pool companion relationship set", () => {

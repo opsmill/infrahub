@@ -79,12 +79,17 @@ def test_created_trigger_shape() -> None:
 
 
 def test_updated_trigger_shape() -> None:
+    """A new commit and a repoint of the query both reconcile the automations.
+
+    The query automations bake the query id, so a repoint that does not reconcile leaves them
+    filtering every reader out against an id the groups no longer report.
+    """
     trigger = TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_TRANSFORM_UPDATED.trigger
     assert trigger.events == {NodeUpdatedEvent.event_name}
     assert trigger.match == _lifecycle_match()
     assert trigger.match_related == {
-        "prefect.resource.role": ["infrahub.node.attribute_update"],
-        "infrahub.field.name": ["fingerprint"],
+        "prefect.resource.role": ["infrahub.node.attribute_update", "infrahub.node.relationship_update"],
+        "infrahub.field.name": ["fingerprint", "query"],
     }
 
 

@@ -2,12 +2,11 @@
 
 > Part of: `dev/guidelines/backend/` | Related: [Python Standards](python.md)
 
-Typing rules for the Python backend. The hard rules — no new suppression, no `cast()`, `isinstance`
-over `getattr` — live in `.agents/rules/python-typing.md`; this page is their fuller reference.
+Typing rules for the Python backend. Two of them are hard rules: no new suppression and no `cast()`.
+When a branch needs narrowing, prefer `isinstance` over `getattr`, as the rest of this page details.
 
 - All function parameters and return types must be type-hinted
-- Use `str | None` for optional strings (Python 3.10+)
-- Use `list[Type]` instead of `List[Type]` (Python 3.9+)
+- Write built-in generics and PEP 604 unions (`list[str]`, `str | None`), including persisted nullable fields on `StandardNode` subclasses: `StandardNode.guess_field_type` supports both `Optional[X]` and `X | None`. Ruff's path-based legacy ignores in `pyproject.toml` leave some older spellings unflagged, including UP045 in graph modules and UP007 in query modules; they do not change the preferred syntax.
 
 ## Type a closed value set as an enum, not `str`
 
