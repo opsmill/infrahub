@@ -330,7 +330,7 @@ class TestImportFailureLogs(TestInfrahubApp):
         name = "invalid-schema-repo"
         branch_name = "invalid-schema"
         remote, node = await self._connect(db=db, tmp_path=tmp_path, name=name)
-        await create_branch(branch_name=branch_name, db=db)
+        await create_branch(branch_name=branch_name, db=db, sync_with_git=True)
         remote.commit(
             branch_name=branch_name, files={".infrahub.yml": INVALID_SCHEMA_CONFIG, "schema.yml": INVALID_SCHEMA}
         )
@@ -363,7 +363,7 @@ class TestImportFailureLogs(TestInfrahubApp):
         name = "broken-transform-repo"
         branch_name = "broken-transform"
         remote, node = await self._connect(db=db, tmp_path=tmp_path, name=name)
-        await create_branch(branch_name=branch_name, db=db)
+        await create_branch(branch_name=branch_name, db=db, sync_with_git=True)
         remote.commit(
             branch_name=branch_name,
             files={".infrahub.yml": BROKEN_TRANSFORM_CONFIG, "transform.py": BROKEN_TRANSFORM_MODULE},
@@ -397,7 +397,7 @@ class TestImportFailureLogs(TestInfrahubApp):
         name = f"transform-reference-{test_case.name.replace('_', '-')}-repo"
         branch_name = f"transform-reference-{test_case.name.replace('_', '-')}"
         remote, node = await self._connect(db=db, tmp_path=tmp_path, name=name)
-        await create_branch(branch_name=branch_name, db=db)
+        await create_branch(branch_name=branch_name, db=db, sync_with_git=True)
         remote.commit(
             branch_name=branch_name,
             files={".infrahub.yml": INTERFACES_TRANSFORM_CONFIG, "transform.py": test_case.module},
@@ -436,7 +436,7 @@ class TestImportFailureLogs(TestInfrahubApp):
         name = "syntax-error-transform-repo"
         branch_name = "syntax-error-transform"
         remote, node = await self._connect(db=db, tmp_path=tmp_path, name=name)
-        await create_branch(branch_name=branch_name, db=db)
+        await create_branch(branch_name=branch_name, db=db, sync_with_git=True)
         remote.commit(
             branch_name=branch_name,
             files={".infrahub.yml": BROKEN_TRANSFORM_CONFIG, "transform.py": "x = = 1\n"},
@@ -465,7 +465,7 @@ class TestImportFailureLogs(TestInfrahubApp):
         name = "missing-object-file-repo"
         branch_name = "missing-object-file"
         remote, node = await self._connect(db=db, tmp_path=tmp_path, name=name)
-        await create_branch(branch_name=branch_name, db=db)
+        await create_branch(branch_name=branch_name, db=db, sync_with_git=True)
         remote.commit(branch_name=branch_name, files={".infrahub.yml": "objects:\n  - devices.yml\n"})
         caplog.clear()
 
@@ -496,7 +496,7 @@ class TestImportFailureLogs(TestInfrahubApp):
         name = f"{test_case.name.replace('_', '-')}-repo"
         branch_name = test_case.name.replace("_", "-")
         remote, node = await self._connect(db=db, tmp_path=tmp_path, name=name)
-        await create_branch(branch_name=branch_name, db=db)
+        await create_branch(branch_name=branch_name, db=db, sync_with_git=True)
         remote.commit(branch_name=branch_name, files=test_case.files)
         caplog.clear()
 
@@ -525,7 +525,7 @@ class TestImportFailureLogs(TestInfrahubApp):
         """Import a valid commit on a new branch, then sync a commit that breaks it; return the branch name."""
         branch_name = f"{name}-branch"
         remote, node = await self._connect(db=db, tmp_path=tmp_path, name=name)
-        await create_branch(branch_name=branch_name, db=db)
+        await create_branch(branch_name=branch_name, db=db, sync_with_git=True)
         remote.commit(branch_name=branch_name, files=valid_files)
         imported = await run_sync_flow(client=client, repository_id=node.id, name=name, location=str(remote.directory))
         assert imported.is_completed()
@@ -629,7 +629,7 @@ class TestImportFailureLogs(TestInfrahubApp):
         branches = ["event-first", "event-second"]
         remote, node = await self._connect(db=db, tmp_path=tmp_path, name=name)
         for branch_name in branches:
-            await create_branch(branch_name=branch_name, db=db)
+            await create_branch(branch_name=branch_name, db=db, sync_with_git=True)
             remote.commit(branch_name=branch_name, files={"data.txt": f"{branch_name}\n"})
         failing = FailingInfrahubEvent(failing_kind=CommitUpdatedEvent)
         caplog.clear()
@@ -668,7 +668,7 @@ class TestImportFailureLogs(TestInfrahubApp):
         other_branch = "feature-valid"
         remote = LocalRemote.create(directory=tmp_path / name, trunk=TRUNK, branches=[other_branch])
         remote.commit(branch_name=TRUNK, files={".infrahub.yml": INVALID_YAML_CONFIG})
-        await create_branch(branch_name=other_branch, db=db)
+        await create_branch(branch_name=other_branch, db=db, sync_with_git=True)
         node = await create_repository_node(
             db=db,
             name=name,
@@ -704,7 +704,7 @@ class TestImportFailureLogs(TestInfrahubApp):
         other_branch = "feature-on-new-clone"
         remote = LocalRemote.create(directory=tmp_path / name, trunk=TRUNK, branches=[other_branch])
         remote.commit(branch_name=TRUNK, files={".infrahub.yml": INVALID_YAML_CONFIG})
-        await create_branch(branch_name=other_branch, db=db)
+        await create_branch(branch_name=other_branch, db=db, sync_with_git=True)
         node = await create_repository_node(
             db=db,
             name=name,

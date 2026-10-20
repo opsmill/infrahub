@@ -1,0 +1,1 @@
+Fixed Infrahub's default branch no longer receiving commits from a repository when branch import rules are configured and the repository's default branch has a different name, such as develop, that no rule matches.

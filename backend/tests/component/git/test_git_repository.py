@@ -1746,23 +1746,33 @@ async def test_compare_python_check(
     assert await repo.compare_python_check_definition(check=check03, existing_check=existing_check) is False
 
 
-async def test_get_filtered_remote_branches__all_branches_exists(
+async def test_get_filtered_remote_branches__skips_unsynced_branches_the_filters_match(
     git_repo_01: InfrahubRepository, mock_create_branch_git_repo_01: None, import_sync_branch_names: None
 ) -> None:
     repo = git_repo_01
     filtered_remote_branches = await repo.get_filtered_remote_branches()
-    assert sorted(filtered_remote_branches.keys()) == ["branch01", "branch02", "main"]
+    assert sorted(filtered_remote_branches.keys()) == ["main"]
 
 
-async def test_get_filtered_remote_branches__some_branches_exists(
+async def test_get_filtered_remote_branches__skips_unsynced_branches_without_filters(
+    git_repo_01: InfrahubRepository, mock_create_branch_git_repo_01: None, no_import_sync_branch_names: None
+) -> None:
+    repo = git_repo_01
+    filtered_remote_branches = await repo.get_filtered_remote_branches()
+    assert sorted(filtered_remote_branches.keys()) == ["main"]
+
+
+async def test_get_filtered_remote_branches__filters_select_the_branches_new_to_infrahub(
     git_repo_01: InfrahubRepository, mock_create_branch_git_repo_03: None, import_sync_branch_names: None
 ) -> None:
     repo = git_repo_01
     filtered_remote_branches = await repo.get_filtered_remote_branches()
-    assert sorted(filtered_remote_branches.keys()) == ["branch01", "branch02", "main"]
+    assert sorted(filtered_remote_branches.keys()) == ["branch02", "main"]
 
 
-async def test_get_filtered_remote_branches__no_import_sync_branch_names(git_repo_01: InfrahubRepository) -> None:
+async def test_get_filtered_remote_branches__no_import_sync_branch_names(
+    git_repo_01: InfrahubRepository, no_import_sync_branch_names: None
+) -> None:
     repo = git_repo_01
     filtered_remote_branches = await repo.get_filtered_remote_branches()
     assert sorted(filtered_remote_branches.keys()) == ["branch01", "branch02", "clean-branch", "main"]

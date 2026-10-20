@@ -1180,6 +1180,14 @@ def import_sync_branch_names() -> Generator[None, None, None]:
 
 
 @pytest.fixture
+def no_import_sync_branch_names() -> Generator[None, None, None]:
+    initial_import_sync_branch_names = config.SETTINGS.git.import_sync_branch_names
+    config.SETTINGS.git.import_sync_branch_names = []
+    yield
+    config.SETTINGS.git.import_sync_branch_names = initial_import_sync_branch_names
+
+
+@pytest.fixture
 async def mock_create_branch_git_repo_01(db: InfrahubDatabase, default_branch: Branch) -> None:
     await create_branch(branch_name="branch01", db=db)
     await create_branch(branch_name="branch02", db=db)

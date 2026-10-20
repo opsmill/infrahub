@@ -34,7 +34,7 @@ from infrahub.exceptions import (
     RepositoryPushRejectedError,
 )
 from infrahub.git.base import stalled_transfer_limit
-from infrahub.git.branch_mapping import get_mapped_remote_branch
+from infrahub.git.branch_mapping import get_mapped_remote_branch, infrahub_branch_receives_imports
 from infrahub.git.branch_status import accepts_commit_write
 from infrahub.git.commit_id import readable_commit
 from infrahub.git.divergence.detector import RemoteDivergenceDetector
@@ -544,9 +544,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         # TODO need to handle properly the situation when a branch is not valid.
         if self.internal_status == RepositoryInternalStatus.ACTIVE:
-            # A branch that has been merged (or is being deleted) is read-only: recording its commit
-            # would be rejected by the graph and abort the whole sync, so drop those branches here.
-            new_branches, updated_branches = self._exclude_read_only_branches(
+            new_branches, updated_branches = self._exclude_unimportable_branches(
                 new_branches=new_branches, updated_branches=updated_branches, graph_branches=graph_branches
             )
             new_branches, updated_branches = await self._exclude_pending_delivery_branches(
@@ -655,6 +653,16 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 if "already exist" not in exc.errors[0]["message"]:
                     raise
                 branch = await self.sdk.branch.get(branch_name=infrahub_branch)
+                # The branch can be created after the listing that drops a branch opting out of imports.
+                if not infrahub_branch_receives_imports(
+                    infrahub_branch_name=infrahub_branch,
+                    branch_is_synced_with_git=branch.sync_with_git,
+                    infrahub_default_branch=registry.default_branch,
+                ):
+                    log.debug(
+                        "Ignoring branch %s of repository %s, which does not sync with Git", branch_name, self.name
+                    )
+                    return
 
             await self.create_branch_in_git(branch_name=branch.name, branch_id=branch.id, push_origin=True)
 
@@ -1082,28 +1090,39 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         advanced = [colliding_branch] if head_after_fetch != head_before_fetch else []
         return [colliding_branch], advanced
 
-    def _exclude_read_only_branches(
+    def _exclude_unimportable_branches(
         self, new_branches: list[str], updated_branches: list[str], graph_branches: dict[str, BranchData]
     ) -> tuple[list[str], list[str]]:
-        """Drop the branches whose commit the graph cannot record.
+        """Drop the branches whose commit the graph cannot or must not record.
 
         A branch whose status rejects a commit, such as one that needs a rebase or is merged, would
-        fail again on every cycle. An updated branch whose Infrahub branch is gone has nowhere to record
-        it, and its worktree would never move. A new branch is kept, because collecting it creates its
-        Infrahub branch. The staging-import path does not go through this filter.
+        fail again on every cycle. An Infrahub branch with `sync_with_git` off opts out of imports,
+        except Infrahub's default branch, which the repository's default branch feeds. An updated branch
+        whose Infrahub branch is gone has nowhere to record it, and its worktree would never move. A new
+        branch with no Infrahub branch is kept, because collecting it creates its Infrahub branch. The
+        staging-import path does not go through this filter.
         """
-        read_only = {name for name, branch in graph_branches.items() if not accepts_commit_write(branch)}
+        excluded = {
+            name
+            for name, branch in graph_branches.items()
+            if not accepts_commit_write(branch)
+            or not infrahub_branch_receives_imports(
+                infrahub_branch_name=name,
+                branch_is_synced_with_git=branch.sync_with_git,
+                infrahub_default_branch=registry.default_branch,
+            )
+        }
         orphaned = [
             name for name in updated_branches if self._get_mapped_target_branch(branch_name=name) not in graph_branches
         ]
         if orphaned:
             log.debug("Ignoring branches %s of repository %s, which have no Infrahub branch", orphaned, self.name)
         return (
-            [name for name in new_branches if self._get_mapped_target_branch(branch_name=name) not in read_only],
+            [name for name in new_branches if self._get_mapped_target_branch(branch_name=name) not in excluded],
             [
                 name
                 for name in updated_branches
-                if name not in orphaned and self._get_mapped_target_branch(branch_name=name) not in read_only
+                if name not in orphaned and self._get_mapped_target_branch(branch_name=name) not in excluded
             ],
         )
 
