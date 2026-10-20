@@ -12,6 +12,8 @@ import ujson
 from neo4j.graph import Node as Neo4jNode
 from neo4j.graph import Path as Neo4jPath
 from neo4j.graph import Relationship as Neo4jRelationship
+from neo4j.spatial import Point
+from neo4j.time import Date, DateTime, Duration, Time
 from opentelemetry import trace
 from rich import print as rprint
 from rich.console import Console
@@ -30,6 +32,26 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
+# Every type the Neo4j driver can return in a result column.
+type CypherValue = (
+    Neo4jNode
+    | Neo4jRelationship
+    | Neo4jPath
+    | Date
+    | Time
+    | DateTime
+    | Duration
+    | Point
+    | str
+    | int
+    | float
+    | bool
+    | bytes
+    | list[CypherValue]
+    | dict[str, CypherValue]
+    | None
+)
+
 RETURN_TYPE = TypeVar("RETURN_TYPE")
 
 
@@ -45,8 +67,9 @@ def sort_results_by_time(results: list[QueryResult], rel_label: str) -> list[Que
     results_dict = {}
 
     for result in results:
-        from_time = result.get(rel_label).get("from")
-        to_time = result.get(rel_label).get("to")
+        rel = result.get_rel(rel_label)
+        from_time = rel.get("from")
+        to_time = rel.get("to")
 
         if not to_time:
             record_id = Timestamp(from_time).to_timestamp() * 1000 + 500
@@ -195,7 +218,7 @@ def cleanup_return_labels(labels: list[str]) -> list[str]:
 
 
 class QueryResult:
-    def __init__(self, data: list[Neo4jNode | Neo4jRelationship | list[Neo4jNode]], labels: list[str]) -> None:
+    def __init__(self, data: tuple[CypherValue, ...] | list[CypherValue], labels: list[str]) -> None:
         self.data = data
         self.labels = labels
         self.branch_score: int = 0
@@ -246,18 +269,21 @@ class QueryResult:
                 self.has_deleted_rels = True
                 return
 
-    def _get(self, label: str) -> Neo4jNode | Neo4jRelationship | list[Neo4jNode]:
+    def get(self, label: str) -> CypherValue:
+        """Return a column's value as the driver returned it, without checking its type.
+
+        Raises:
+            ValueError: when the label is not one of the query's return labels.
+
+        """
         if label not in self.labels:
             raise ValueError(f"{label} is not a valid value for this query, must be one of {self.labels}")
 
         return_id = self.labels.index(label)
         return self.data[return_id]
 
-    def get(self, label: str) -> Neo4jNode | Neo4jRelationship:
-        return self._get(label=label)
-
     def get_as_str(self, label: str) -> str | None:
-        item = self._get(label=label)
+        item = self.get(label=label)
         if item:
             return str(item)
         return None
@@ -268,7 +294,7 @@ class QueryResult:
         For example if an integer is needed the caller would use:
         .get_as_optional_type(label="name_of_label", return_type=int)
         """
-        item = self._get(label=label)
+        item = self.get(label=label)
         if item is not None:
             return return_type(item)
         return None
@@ -279,7 +305,7 @@ class QueryResult:
         For example if an integer is needed the caller would use:
         .get_as_type(label="name_of_label", return_type=int)
         """
-        item = self._get(label=label)
+        item = self.get(label=label)
 
         return return_type(item)
 
@@ -301,26 +327,56 @@ class QueryResult:
             ValueError: when the label's value is not a list.
 
         """
-        entry = self._get(label=label)
-        if not isinstance(entry, list):
-            raise ValueError(f"{label} is not a list")
-        return [return_type(**item) if isinstance(item, Mapping) else return_type(item) for item in entry]
+        return [
+            return_type(**item) if isinstance(item, Mapping) else return_type(item)
+            for item in self.get_list(label=label)
+        ]
+
+    def get_list(self, label: str) -> list[CypherValue]:
+        """Return a list column without checking its elements.
+
+        Raises:
+            ValueError: when the label's value is not a list.
+
+        """
+        entry = self.get(label=label)
+        if isinstance(entry, list):
+            return entry
+        raise ValueError(f"{label} is not a list")
 
     def get_node_collection(self, label: str) -> list[Neo4jNode]:
-        entry = self._get(label=label)
-        if isinstance(entry, list):
-            return entry
-        raise ValueError(f"{label} is not a collection use .get_node() or .get()")
+        entry = self.get_list(label=label)
+        nodes = [item for item in entry if isinstance(item, Neo4jNode)]
+        if len(nodes) != len(entry):
+            raise ValueError(f"{label} holds a value that is not a Node")
+        return nodes
 
-    def get_nested_node_collection(self, label: str) -> list[list[Neo4jNode]]:
-        entry = self._get(label=label)
-        if isinstance(entry, list):
-            return entry
-        raise ValueError(f"{label} is not a collection use .get_node() or .get()")
+    def get_nested_node_collection(self, label: str) -> list[list[Neo4jNode | None]]:
+        """Return a list of node lists, keeping the nulls that optional matches leave in them.
+
+        Raises:
+            ValueError: when the label's value is not a list of lists holding only nodes and nulls.
+
+        """
+        nested: list[list[Neo4jNode | None]] = []
+        for entry in self.get_list(label=label):
+            if not isinstance(entry, list):
+                raise ValueError(f"{label} is not a list of lists")
+            nodes = [item for item in entry if item is None or isinstance(item, Neo4jNode)]
+            if len(nodes) != len(entry):
+                raise ValueError(f"{label} holds a value that is neither a Node nor null")
+            nested.append(nodes)
+        return nested
 
     def get_node(self, label: str) -> Neo4jNode:
         node = self.get(label=label)
         if isinstance(node, Neo4jNode):
+            return node
+        raise ValueError(f"{label} is not a Node")
+
+    def get_optional_node(self, label: str) -> Neo4jNode | None:
+        node = self.get(label=label)
+        if node is None or isinstance(node, Neo4jNode):
             return node
         raise ValueError(f"{label} is not a Node")
 
@@ -329,6 +385,13 @@ class QueryResult:
         if isinstance(rel, Neo4jRelationship):
             return rel
         raise ValueError(f"{label} is not a Relationship")
+
+    def get_rel_collection(self, label: str) -> list[Neo4jRelationship]:
+        entry = self.get_list(label=label)
+        rels = [item for item in entry if isinstance(item, Neo4jRelationship)]
+        if len(rels) != len(entry):
+            raise ValueError(f"{label} holds a value that is not a Relationship")
+        return rels
 
     def get_rels(self) -> Generator[Neo4jRelationship, None, None]:
         """Return all relationships."""
@@ -349,11 +412,11 @@ class QueryResult:
         raise ValueError(f"{label} is not a Path")
 
     def get_paths(self, label: str) -> Generator[Neo4jPath, None, None]:
-        for path in self.get(label=label):
+        for path in self.get_list(label=label):
             if isinstance(path, Neo4jPath):
                 yield path
 
-    def __iter__(self) -> Iterator:
+    def __iter__(self) -> Iterator[CypherValue]:
         yield from self.data
 
 
@@ -772,7 +835,7 @@ class Query:
         for idx, result in enumerate(self.results):
             identifier = []
             for label, attribute in args:
-                node = result.get(label)
+                node = result.get_node(label)
                 if hasattr(node, attribute):
                     identifier.append(getattr(node, attribute))
                 else:
