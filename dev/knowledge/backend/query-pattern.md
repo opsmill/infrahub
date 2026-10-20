@@ -252,6 +252,8 @@ The outer `MATCH` returns one row per matching edge, and the graph keeps one `HA
 
 The same granularity rule holds when one query reads several attribute names for a node: `UNWIND` the names and run the electing subquery once per `(node, name)` pair, so at most one row per name comes back. Matching every name in one pass without a per-name election returns each active edge it finds; with a duplicate-active bug, a reader that keys the rows by name keeps whichever arrived last instead of surfacing the fault.
 
+Read an attribute off a node the caller already loaded at a branch and time instead of querying it again. A second query must apply the same scope: without the branch filter it matches edges on every branch, and without a time filter it matches every point in history. Run a query without these filters only from an entry point that receives no branch, such as a lookup by storage identifier.
+
 ### Cross-branch grouped attribute read
 
 The section above resolves one branch's view. When a read needs the *same* attributes as *many* branches resolve them - a per-branch status table, a cross-branch integrity check - do not loop the single-branch query once per branch. Drive the branch set through the statement as a parameter, so the query count stays flat as branches are added:

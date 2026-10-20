@@ -112,34 +112,26 @@ Three signs that you are reaching for the escape hatch instead of the fix:
   `isinstance` can change the order in which mypy resolves an import cycle; errors that appear
   elsewhere are a second defect to root-cause, usually an ambiguous import, not a reason to fall back.
 - **The real check needs an import that closes a cycle.** The type lives in a layer above the
-  module, and neither a function-local import nor `cast()` fixes that: give each accepted type its
-  own parameter so the branch narrows on `None`, or depend on the narrower interface — see
-  [Imports](python.md#imports).
+  module, and neither a function-local import nor `cast()` fixes that: depend on the narrower
+  interface — see [Imports](python.md#imports).
 - **The suppression needs a paragraph.** A `# type: ignore[code]` carries its reason on the same
   line; when justifying one takes a docstring, remove it instead of documenting it.
 
-Narrowing is the fix only while the union is the real contract. The `redis.Redis | InfrahubServices`
-connection above is not one: it exists because the component picks between two backends for the same
-role, so narrowing it — or splitting it into one optional parameter per backend — satisfies the
-checker while the component stays tied to each backend. That union is a missing interface
-([Interfaces for multiple implementations](component-design.md#interfaces-for-multiple-implementations));
-when adding one is more than the change can take, raise it rather than re-typing the union.
+Narrow only a union that is the real contract. A union of two backends' clients for one role, such as
+the `redis.Redis | InfrahubServices` connection above, is a missing interface: narrowing it, or
+splitting it into one parameter per backend, satisfies the checker and leaves the component tied to
+each backend. See
+[Interfaces for multiple implementations](component-design.md#interfaces-for-multiple-implementations).
 
 ## Don't widen to `Any` to make a wrong annotation type-check
 
-Clearing a suppression often exposes an annotation that was never true — a result wrapper declaring
-`list[Node | Relationship]` for columns that also carry paths, scalars, lists, maps and nulls. The
-tempting repair is the one the checker accepts fastest: `Sequence[Any]` on the field and `-> Any` on
-the accessor that reads it. That is a suppression by another name. `Any` is compatible with
-everything, so every downstream mismatch disappears with it, and nothing brings it back: ruff's
-`ANN401` (no `Any` in annotations) is ignored for `backend/infrahub/**` in the "refactor code and
-remove the ignore rule" block of `pyproject.toml`, an ignore that grandfathers the existing ones
-rather than licensing new ones.
-
-Declare the closed set the value can actually hold instead — a union, or a named alias when it is
-recursive — and narrow to one member where a caller needs it. The library's own annotation is not
-that contract: the neo4j driver types every `Record` column as `Any` because it cannot know the
-query, but the Cypher type system is closed, and the wrapper does know it.
+Clearing a suppression often exposes an annotation that was never true, such as a result wrapper
+declaring `list[Node | Relationship]` for columns that also carry paths, scalars and nulls. Do not
+repair it with `Any`: `Any` matches everything, so it hides every mismatch downstream, and ruff's
+`ANN401` is ignored for `backend/infrahub/**`, so nothing flags it. Declare the closed set the value
+can hold, and narrow to one member where a caller needs it. The neo4j driver annotates every `Record`
+column as `Any` because it cannot know the query; the wrapper can, since Cypher has a closed set of
+value types.
 
 ```python
 # ❌ Bad - the checker is satisfied because nothing is checked any more
@@ -158,23 +150,15 @@ def get_node(self, label: str) -> Node:
     raise ValueError(f"{label} is not a Node")
 ```
 
-The honest type can cascade: an accessor that callers have been reading scalars through under a
-`Node | Relationship` annotation gains hundreds of errors the moment it tells the truth. That cascade
-is the debt the old annotation hid, not a reason to reach for `Any`. Measure it — run the checker with
-each candidate annotation and count the errors per option — and keep the scope explicit: leave the
-caller-facing annotation as it is, file the retyping as its own card, and say so in the PR. Widening
-the layer below to `Any` so the mismatch type-checks is the case
-[When a wrong-type bug slips through](#when-a-wrong-type-bug-slips-through) already rules out: never
-widen a type to silence the checker when the real contract is narrower.
+If the correct type causes many errors in callers, keep the callers' annotation for now, retype it in
+a separate change, and say so in the PR.
 
 ## A change that makes a type real retires its suppressions
 
 CI runs mypy without `--warn-unused-ignores`, so a `# type: ignore` that no longer suppresses
-anything passes silently — and later hides a real violation on the same line. When a change lets the
-checker see a type it could not before, such as a class-level annotation for an attribute that was
-only set dynamically, run `uv run mypy --warn-unused-ignores backend` and delete every
-ignore it reports as unused, in the same change. One new annotation can retire ignores in files the
-change did not otherwise touch.
+anything stays, and later hides a real error on the same line. When a change lets the checker see a
+type it could not before, run `uv run mypy --warn-unused-ignores backend` and delete every ignore it
+reports as unused, including in files the change does not otherwise touch.
 
 ## Don't write "one or many" unions — take the plural form and let callers wrap
 

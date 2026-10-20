@@ -70,7 +70,12 @@ A single implementation does not need an interface yet; introduce one when the s
 can be either a no-op version (such as in the case of an enterprise-only feature) or a testing version of a component (such as in the case of an
 in-memory version of a component typically backed by the database).
 
-A second backend is where this goes wrong most often. The first backend's client is already wired in, so the second gets attached to it rather than both going behind an interface: the component reads the configured driver and branches on it, takes a union of the backends' clients, and the new implementation imitates the first client's API (its method signatures and defaults) while the shared path still catches the first client's exceptions. The backend is never chosen at the wiring layer, and the component knows every backend by type:
+When a second backend arrives, put both behind an interface the component owns and choose the backend at the wiring layer. Do not attach the second backend to the first one's client. The attached shape shows up as:
+
+- the component reads the configured driver and branches on it
+- the constructor takes a union of the backends' clients, or one optional parameter per backend
+- the new backend copies the first client's method signatures and defaults
+- the shared code still catches the first client's exceptions
 
 ```python
 # ❌ Bad - written for Redis with NATS attached: the lock picks its backend itself
@@ -94,7 +99,7 @@ class InfrahubLock:
         self.backend = backend
 ```
 
-The cache and message-bus adapters already have this shape: an ABC in `services/adapters/<kind>/__init__.py`, one module per backend, and the driver setting resolved once where the service is built (`build_cache()` in `workers/dependencies.py`). `backend/infrahub/lock.py` still has the attached shape; do not copy it. When a type checker flags a component like this, the missing interface is the defect: narrowing the union, or splitting it into one optional parameter per backend, satisfies the checker and keeps the coupling. If adding the interface is more than the change at hand can take, raise that before re-typing the union (see [Existing code](#existing-code)).
+The cache and message-bus adapters already have this shape: an ABC in `services/adapters/<kind>/__init__.py`, one module per backend, and the driver setting resolved once where the service is built (`build_cache()` in `workers/dependencies.py`). `backend/infrahub/lock.py` still has the attached shape; do not copy it. If adding the interface is more than the change at hand can take, raise that before changing the union (see [Existing code](#existing-code)).
 
 ## Interfaces to keep an out-of-domain dependency out
 
