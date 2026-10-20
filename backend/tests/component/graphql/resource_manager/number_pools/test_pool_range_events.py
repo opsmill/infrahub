@@ -19,7 +19,15 @@ from tests.helpers.graphql import graphql
 from tests.helpers.number_pool import add_pool_range, create_range_only_pool
 from tests.helpers.schema import TICKET, load_schema
 
-from .helpers import bounds_input, create_pool, range_details, ticket_pool_input
+from .helpers import (
+    CREATE_RANGE,
+    DELETE_RANGE,
+    UPDATE_RANGE,
+    bounds_input,
+    create_pool,
+    range_details,
+    ticket_pool_input,
+)
 
 CREATE_POOL = """
 mutation CreatePool($data: CoreNumberPoolCreateInput!) {
@@ -431,3 +439,95 @@ async def test_pool_deletion_events(
         SummarizedEvent(action="deleted", node="range 1-10", fields=("display_label", "end", "start"), parent=POOL),
         SummarizedEvent(action="deleted", node="range 20-30", fields=("display_label", "end", "start"), parent=POOL),
     ]
+
+
+@dataclass
+class RangeWriteCase:
+    name: str
+    pool_bounds: dict[str, Any]
+    source: str
+    variables: dict[str, Any]
+    """The mutation variables, where `range_id` names the existing range to write by its bounds."""
+    expected: list[SummarizedEvent]
+
+
+RANGE_WRITE_CASES: list[RangeWriteCase] = [
+    RangeWriteCase(
+        name="create_a_second_range",
+        pool_bounds=bounds_input(start=1, end=9),
+        source=CREATE_RANGE,
+        variables={"start": 20, "end": 30},
+        expected=[
+            SummarizedEvent(
+                action="updated", node=POOL, fields=("ranges",), parent="range 20-30", ranges={"range 20-30": "added"}
+            ),
+            SummarizedEvent(
+                action="updated",
+                node=POOL,
+                fields=("end_range", "start_range"),
+                parent="range 20-30",
+                attributes={"start_range": (1, None), "end_range": (9, None)},
+            ),
+            SummarizedEvent(action="created", node="range 20-30", fields=CREATED_RANGE_FIELDS),
+        ],
+    ),
+    RangeWriteCase(
+        name="update_the_single_range",
+        pool_bounds=bounds_input(start=1, end=9),
+        source=UPDATE_RANGE,
+        variables={"range_id": "range 1-9", "start": 1, "end": 20},
+        expected=[
+            SummarizedEvent(
+                action="updated",
+                node=POOL,
+                fields=("end_range",),
+                parent="range 1-20",
+                attributes={"end_range": (9, 20)},
+            ),
+            SummarizedEvent(action="updated", node="range 1-20", fields=("display_label", "end")),
+        ],
+    ),
+    RangeWriteCase(
+        name="delete_the_second_range",
+        pool_bounds={"ranges": [{"start": 1, "end": 9}, {"start": 20, "end": 30}]},
+        source=DELETE_RANGE,
+        variables={"range_id": "range 20-30"},
+        expected=[
+            SummarizedEvent(
+                action="updated", node=POOL, fields=("ranges",), parent="range 20-30", ranges={"range 20-30": "removed"}
+            ),
+            SummarizedEvent(
+                action="updated",
+                node=POOL,
+                fields=("end_range", "start_range"),
+                parent="range 20-30",
+                attributes={"start_range": (None, 1), "end_range": (None, 9)},
+            ),
+            SummarizedEvent(action="deleted", node="range 20-30", fields=DELETED_RANGE_FIELDS),
+        ],
+    ),
+]
+
+
+@pytest.mark.parametrize("case", RANGE_WRITE_CASES, ids=lambda case: case.name)
+async def test_range_write_events(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    ticket_schema: None,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    case: RangeWriteCase,
+) -> None:
+    pool_id = await create_pool(db=db, branch=default_branch, name="events", bounds=case.pool_bounds)
+    labels = {pool_id: POOL} | await _range_labels(db=db, pool_id=pool_id)
+    range_ids = {label: range_id for range_id, label in labels.items()}
+    variables = {"pool_id": pool_id} | case.variables
+    if "range_id" in variables:
+        variables["range_id"] = range_ids[variables["range_id"]]
+
+    _, events = await _execute_with_events(
+        db=db, branch=default_branch, session=session_admin, source=case.source, variables=variables
+    )
+    labels |= await _range_labels(db=db, pool_id=pool_id)
+
+    assert _summarize(events=events, labels=labels) == case.expected

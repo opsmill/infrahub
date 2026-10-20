@@ -4,8 +4,9 @@ from typing import TYPE_CHECKING, Any
 
 from typing_extensions import Self
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, MutationAction
 from infrahub.core.manager import NodeManager
+from infrahub.core.mutation_context import NodeMutationContext
 from infrahub.core.schema.attribute_parameters import NumberPoolRangeParameters
 from infrahub.database import retry_db_transaction, within_transaction
 from infrahub.exceptions import ValidationError
@@ -75,7 +76,7 @@ class InfrahubNumberPoolRangeMutation(InfrahubMutation):
                 db=dbt,
                 pool=pool,
                 branch=branch,
-                range_id=range_node.get_id(),
+                range_node=range_node,
                 user_id=graphql_context.assigned_user_id,
             )
 
@@ -106,7 +107,7 @@ class InfrahubNumberPoolRangeMutation(InfrahubMutation):
                 db=dbt,
                 pool=pool,
                 branch=branch,
-                range_id=range_node.get_id(),
+                range_node=range_node,
                 user_id=graphql_context.assigned_user_id,
                 bounds_changed=(range_node.get_attribute("start").value, range_node.get_attribute("end").value)
                 != stored_bounds,
@@ -125,7 +126,10 @@ class InfrahubNumberPoolRangeMutation(InfrahubMutation):
             )
             ranges = await NumberPoolRepository(db=dbt).get_ranges(pool_id=pool_id)
             await refuse_ranges_leaving_held_numbers(db=dbt, pool=pool, ranges=range_bounds(ranges))
-            await sync_shorthand(db=dbt, pool_id=pool_id, ranges=ranges, user_id=graphql_context.assigned_user_id)
+            mirrored_pool = await sync_shorthand(
+                db=dbt, pool_id=pool_id, ranges=ranges, user_id=graphql_context.assigned_user_id
+            )
+        cls._record_mirrored_pool(range_node=obj, mirrored_pool=mirrored_pool)
 
         return deleted
 
@@ -150,7 +154,7 @@ class InfrahubNumberPoolRangeMutation(InfrahubMutation):
         db: InfrahubDatabase,
         pool: Node,
         branch: Branch,
-        range_id: str,
+        range_node: Node,
         user_id: str,
         bounds_changed: bool = True,
     ) -> None:
@@ -161,7 +165,7 @@ class InfrahubNumberPoolRangeMutation(InfrahubMutation):
         pool_id = pool.get_id()
         ranges = await NumberPoolRepository(db=db).get_ranges(pool_id=pool_id)
         bounds_by_id = {bounds.id: bounds for bounds in range_bounds(ranges)}
-        candidate = bounds_by_id[range_id]
+        candidate = bounds_by_id[range_node.get_id()]
         validate_number_pool_range(candidate=candidate, others=bounds_by_id.values())
         refuse_ranges_outside_attribute(
             attribute=pool_target_attribute(db=db, pool=pool, branch=branch),
@@ -169,4 +173,14 @@ class InfrahubNumberPoolRangeMutation(InfrahubMutation):
         )
         if bounds_changed:
             await refuse_ranges_leaving_held_numbers(db=db, pool=pool, ranges=list(bounds_by_id.values()))
-        await sync_shorthand(db=db, pool_id=pool_id, ranges=ranges, user_id=user_id)
+        mirrored_pool = await sync_shorthand(db=db, pool_id=pool_id, ranges=ranges, user_id=user_id)
+        cls._record_mirrored_pool(range_node=range_node, mirrored_pool=mirrored_pool)
+
+    @classmethod
+    def _record_mirrored_pool(cls, range_node: Node, mirrored_pool: Node) -> None:
+        """Give the pool its own event when the range write changed its start_range and end_range."""
+        if not (mirrored_pool.has_changelog and mirrored_pool.node_changelog.has_changes):
+            return
+        if range_node._mutation_context is None:
+            range_node._mutation_context = NodeMutationContext()
+        range_node._mutation_context.record(node=mirrored_pool, action=MutationAction.UPDATED)
