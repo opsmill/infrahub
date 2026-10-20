@@ -344,12 +344,7 @@ CARD_DEFINITION = "delivery-remote-advanced-card"
 
 
 def _card_files(version: int, extra_query: str | None = None) -> dict[str, str]:
-    """Return a repository configuration whose artifact definition renders a card of each person, at a version.
-
-    Args:
-        extra_query: The name of one more query that the configuration declares.
-
-    """
+    """Return a repository configuration whose artifact definition renders a card of each person, at a version."""
     queries = [{"name": "delivery_remote_advanced_person", "file_path": "person.gql"}]
     extra_files = {}
     if extra_query:
@@ -398,7 +393,6 @@ async def _card_artifacts(db: InfrahubDatabase, client: InfrahubClient) -> list[
 
 
 async def _query_names(db: InfrahubDatabase, repository_id: str) -> set[str]:
-    """Return the name of each query of the repository on the default branch."""
     queries: list[CoreGraphQLQuery] = await NodeManager.query(
         db=db, schema=InfrahubKind.GRAPHQLQUERY, filters={"repository__ids": [repository_id]}
     )
@@ -497,8 +491,6 @@ def _deferral_messages(caplog: pytest.LogCaptureFixture, repository: SyncedBranc
 
 
 class LiveDeliveryFixtures:
-    """The fixtures and the retry step that the live tests of the push queue share."""
-
     @pytest.fixture
     def reject_pushes_to_main(
         self, gogs_server: GogsServer
@@ -2189,10 +2181,7 @@ class TestPushQueueEndToEnd(LiveDeliveryFixtures, TestInfrahubApp):
         synced_branch_repository: Callable[[str], Awaitable[SyncedBranchRepository]],
         reject_pushes_to_main: Callable[[str], Callable[[], None]],
     ) -> None:
-        """After an abandonment, the sync records the moved remote trunk, a refused merge goes through, and the kept branch comes back.
-
-        The remote keeps the source branch of the abandoned merge, and the next sync imports it as a new Infrahub branch.
-        """
+        """After an abandonment, the sync records the moved remote trunk, a refused merge goes through, and the kept branch comes back."""
         config.SETTINGS.main.delete_branch_after_merge = True
         config.SETTINGS.git.delete_git_branch_after_merge = True
         first = await synced_branch_repository("abandon-then-sync")
@@ -2277,7 +2266,6 @@ class TestPushQueueEndToEnd(LiveDeliveryFixtures, TestInfrahubApp):
 
 
 async def _graphql_delivery_state(client: InfrahubClient, repository: SyncedBranchRepository) -> dict[str, Any]:
-    """Return the delivery fields of the repository, as a client reads them on the default branch."""
     result = await client.execute_graphql(
         query=DELIVERY_STATE, variables={"id": repository.node_id}, branch_name=registry.default_branch
     )
