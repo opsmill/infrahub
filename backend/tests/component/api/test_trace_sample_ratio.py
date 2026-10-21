@@ -291,8 +291,14 @@ async def test_endpoints_are_documented_in_the_openapi_schema(started_client: Te
     response = started_client.get("/api/openapi.json")
 
     operations = response.json()["paths"][ENDPOINT_PATH]
-    assert set(operations) == {"get", "put", "delete"}
-    for operation in operations.values():
-        assert operation["tags"] == ["troubleshooting"]
-        assert operation["summary"]
-        assert operation["description"]
+    assert {method: (operation["tags"], operation["summary"]) for method, operation in operations.items()} == {
+        "get": (["troubleshooting"], "Get the trace sampling ratio"),
+        "put": (["troubleshooting"], "Set a temporary trace sampling ratio"),
+        "delete": (["troubleshooting"], "Clear the temporary trace sampling ratio"),
+    }
+    assert operations["put"]["description"] == (
+        "Record a different share of new traces on every API server process and task worker until the duration "
+        "ends, without a restart, because a restart can remove the slow behaviour under investigation. A new "
+        'change replaces the active one. Each process applies the change within seconds and logs "Set the '
+        'temporary trace sampling ratio". Requires the super_admin permission and INFRAHUB_TRACE_ENABLE.'
+    )
