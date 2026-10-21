@@ -540,6 +540,7 @@ async def bootstrap_local_repository(
     repo_name: str,
     repository: CoreRepository,
     infrahub_branch: str,
+    branch_accepts_commit: bool,
     client: InfrahubClient,
     state: DeliveryStatePort,
     activity: ActivityRun,
@@ -550,9 +551,15 @@ async def bootstrap_local_repository(
     Returns None when the repository should be skipped for this cycle: the clone fails, or the
     default-branch import cannot reach the remote or its credentials are invalid. Any other failed
     default-branch import is already logged and recorded on the branch, so the repository is still
-    returned and its other branches still synchronize. While the repository has pending pushes, a
-    fresh clone that seeds the default branch records no commit and skips the seed import, because
-    the import would remove the objects of the pending merges.
+    returned and its other branches still synchronize. A fresh clone records its commit before the
+    seed import. While the repository has pending pushes, a fresh clone that seeds the default branch
+    records no commit and skips the seed import, because the import would remove the objects of the
+    pending merges.
+
+    Args:
+        branch_accepts_commit: Whether `infrahub_branch` accepts a commit write. When it does not, the clone
+            records no commit, so the refused write fails the seed import alone and not the repository.
+
     """
     log = get_run_logger()
     pending_import: PendingObjectImport | None = None
@@ -586,7 +593,7 @@ async def bootstrap_local_repository(
                     client=client,
                     infrahub_branch_name=infrahub_branch,
                     # With the seed import skipped, the graph would record a commit whose objects it lacks.
-                    update_commit_value=not delivery_pending,
+                    update_commit_value=branch_accepts_commit and not delivery_pending,
                 )
             except RepositoryError as exc:
                 log.info(exc.message)
@@ -611,6 +618,9 @@ async def bootstrap_local_repository(
                 git_branch_name=default_import_git_branch,
                 commit=repo.get_commit_value(branch_name=default_import_git_branch, remote=False),
             )
+            # The flows that the import starts read the commit from the graph, and the clone recorded none.
+            if repo.reinitialized and branch_accepts_commit:
+                await repo.update_commit_value(branch_name=infrahub_branch, commit=pending_import.commit)
 
     if pending_import is not None:
         try:
@@ -774,6 +784,7 @@ async def sync_remote_repository(
             repo_name=repo_name,
             repository=repository,
             infrahub_branch=infrahub_branch,
+            branch_accepts_commit=infrahub_branch in branches and accepts_commit_write(branches[infrahub_branch]),
             client=client,
             state=state,
             activity=run,
