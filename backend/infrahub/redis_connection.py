@@ -23,6 +23,9 @@ REDIS_HEALTH_CHECK_INTERVAL: int = 20
 
 TLS_URL_SCHEMES = frozenset({"rediss", "rediss+sentinel"})
 
+# The three forms in which a TLS connection accepts the CA certificates to verify against.
+CA_URL_OPTIONS = frozenset({"ssl_ca_certs", "ssl_ca_path", "ssl_ca_data"})
+
 
 def _is_tls_url(url: str) -> bool:
     """Whether the URL's scheme selects TLS.
@@ -43,13 +46,13 @@ def _has_at_sign_after_host(url: str) -> bool:
 
 
 def add_default_ca_bundle(url: str, ca_file: str | None) -> str:
-    """Return ``url`` verifying against ``ca_file`` when it selects TLS and names no CA bundle itself.
+    """Return ``url`` verifying against ``ca_file`` when it selects TLS and names no CA certificates itself.
 
     On a ``rediss+sentinel://`` URL the ``ssl_*`` options also reach the Sentinel daemon connections,
     so the one CA covers the whole topology.
     """
     base, _, query = url.partition("?")
-    if ca_file is None or not _is_tls_url(url) or "ssl_ca_certs" in parse_qs(query, keep_blank_values=True):
+    if ca_file is None or not _is_tls_url(url) or CA_URL_OPTIONS & parse_qs(query, keep_blank_values=True).keys():
         return url
     option = urlencode({"ssl_ca_certs": ca_file})
     return f"{base}?{query}&{option}" if query else f"{base}?{option}"
@@ -59,7 +62,7 @@ def build_cache_connection_string(cache: CacheSettings) -> str:
     """Return the Redis connection URL that the cache settings describe.
 
     A configured ``cache.url`` is returned as written, verifying against ``cache.tls_ca_file`` unless it
-    names a CA bundle itself; otherwise the scalar settings are assembled into a single-node URL.
+    names CA certificates itself; otherwise the scalar settings are assembled into a single-node URL.
     """
     url = cache.active_url
     if url is not None:

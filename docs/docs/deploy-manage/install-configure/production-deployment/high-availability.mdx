@@ -197,6 +197,8 @@ The cache connection URL enables TLS through its scheme: `rediss://` for a singl
 | `ssl_cert_reqs` | Certificate verification mode: `required` (default), `optional`, or `none` to skip verification. |
 | `ssl_check_hostname` | Whether to verify the certificate hostname (`true`/`false`). |
 | `ssl_ca_certs` | Path to a CA certificate or bundle in PEM format used to verify the server certificate. |
+| `ssl_ca_path` | Path to a directory of CA certificates used to verify the server certificate. |
+| `ssl_ca_data` | CA certificates in PEM format, written in the URL, used to verify the server certificate. |
 | `sentinel_username` | Username to authenticate to the Sentinel daemons, independent of the data-node credentials. |
 | `sentinel_password` | Password to authenticate to the Sentinel daemons, independent of the data-node credentials. |
 
@@ -208,7 +210,7 @@ On a `rediss+sentinel://` URL the `ssl_*` parameters are shared with the Sentine
 INFRAHUB_CACHE_URL: rediss+sentinel://cache-redis:26379/mymaster?ssl_ca_certs=/etc/ssl/redis-ca.pem
 ```
 
-Without `ssl_ca_certs` on the URL, a TLS connection verifies against `INFRAHUB_CACHE_TLS_CA_FILE`, or against the global `INFRAHUB_TLS_CA_BUNDLE` that fills it, so a private certificate authority configured once for the whole deployment covers the cache too. `INFRAHUB_CACHE_TLS_INSECURE` does not apply to a URL connection: only `ssl_cert_reqs=none` on the URL turns verification off.
+Without `ssl_ca_certs`, `ssl_ca_path` or `ssl_ca_data` on the URL, a TLS connection verifies against `INFRAHUB_CACHE_TLS_CA_FILE`, or against the global `INFRAHUB_TLS_CA_BUNDLE` that fills it, so a private certificate authority configured once for the whole deployment covers the cache too. `INFRAHUB_CACHE_TLS_INSECURE` does not apply to a URL connection: only `ssl_cert_reqs=none` on the URL turns verification off.
 
 :::warning
 

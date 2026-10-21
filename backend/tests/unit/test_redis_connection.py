@@ -166,6 +166,16 @@ CONNECTION_STRING_CASES = [
         expected_url="rediss://cache:6379/0?ssl_ca_certs=/etc/ssl/url-ca.pem",
     ),
     ConnectionStringCase(
+        name="url_ssl_ca_path_wins_over_the_configured_ca_bundle",
+        cache_kwargs={"url": "rediss://cache:6379/0?ssl_ca_path=/etc/ssl/certs", "tls_ca_file": CA_BUNDLE},
+        expected_url="rediss://cache:6379/0?ssl_ca_path=/etc/ssl/certs",
+    ),
+    ConnectionStringCase(
+        name="url_ssl_ca_data_wins_over_the_configured_ca_bundle",
+        cache_kwargs={"url": "rediss://cache:6379/0?ssl_ca_data=PEM", "tls_ca_file": CA_BUNDLE},
+        expected_url="rediss://cache:6379/0?ssl_ca_data=PEM",
+    ),
+    ConnectionStringCase(
         name="url_plaintext_ignores_the_configured_ca_bundle",
         cache_kwargs={"url": "redis://cache:6379/0", "tls_ca_file": CA_BUNDLE},
         expected_url="redis://cache:6379/0",
