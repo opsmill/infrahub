@@ -85,9 +85,15 @@ class RecordingLicenseService(LicenseService):
 class FailingLicenseService(LicenseService):
     """Raises on every status read, as a defective license service would."""
 
-    def __init__(self, notice_mode: NoticeMode = NoticeMode.QUIET, enforcing_release: str | None = None) -> None:
+    def __init__(
+        self,
+        notice_mode: NoticeMode = NoticeMode.QUIET,
+        enforcing_release: str | None = None,
+        error_type: type[Exception] = RuntimeError,
+    ) -> None:
         self._notice_mode = notice_mode
         self._enforcing_release = enforcing_release
+        self._error_type = error_type
 
     @property
     def notice_mode(self) -> NoticeMode:
@@ -98,7 +104,7 @@ class FailingLicenseService(LicenseService):
         return self._enforcing_release
 
     def status(self, now: datetime | None = None) -> LicenseStatus:
-        raise RuntimeError(f"license service failure at {now}")
+        raise self._error_type(f"license service failure at {now}")
 
 
 class FailingNoticeModeLicenseService(LicenseService):

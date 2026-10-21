@@ -133,7 +133,7 @@ Operators who run the upgrade command, with or without its check option, see the
 - **Server clock is wrong**: not detected; the state follows the server clock.
 - **License set on the servers but not on the task workers**: not detected; the UI shows the server's state and the telemetry snapshot, built on a task worker, shows the worker's. Each process logs its own state at startup.
 - **Two API servers hold different licenses**: not detected; each request shows the state of the server that answers.
-- **License service raises an unexpected error**: Infrahub keeps running; the state becomes invalid with an internal reason and an error is logged with the traceback.
+- **License service raises an unexpected error**: Infrahub keeps running; the state becomes invalid with an internal reason and an error is logged with the traceback, once per process for each kind of error.
 - **Unknown license type or tier from a newer license format**: shown as received; an unknown type behaves like commercial.
 - **Older Infrahub frontend talking to a server without the license object, or the info request fails**: no banner.
 - **License key set where no license is required** (Community, or Enterprise with no license service registered): ignored and logged once, without the value.
@@ -157,7 +157,7 @@ Operators who run the upgrade command, with or without its check option, see the
 - **FR-007**: The community default license service MUST always report "not required", and MUST report the release mode in which banners are shown to super-admins only.
 - **FR-008**: The license service MUST supply the release mode (first licensing release, or second licensing release) together with the state.
 - **FR-009**: The system MUST read a license key setting from the environment of every API server and task worker. When the state is "not required" (Community, or Enterprise with no license service registered), a supplied value MUST be ignored and logged once at INFO level, without the value.
-- **FR-010**: A failure inside the license service MUST NOT prevent Infrahub from starting or from serving a request; it MUST result in the invalid state with the internal error reason and an error log entry with the traceback.
+- **FR-010**: A failure inside the license service MUST NOT prevent Infrahub from starting or from serving a request; it MUST result in the invalid state with the internal error reason and an error log entry with the traceback, logged once per process for each kind of error so that a failing service does not log on every request.
 - **FR-011**: Each API server and task worker MUST log its license state once at startup: INFO when valid or not required, WARNING when unlicensed, not yet valid, expiring or expired, ERROR when invalid.
 - **FR-012**: The license key itself MUST never appear in logs, API responses, telemetry snapshots or command output.
 
@@ -182,7 +182,7 @@ Operators who run the upgrade command, with or without its check option, see the
 - **FR-018**: A dismissed banner MUST stay hidden for the rest of the browser session for the same license and state, and MUST show again when either changes.
 - **FR-019**: The UI MUST refresh the license state at least hourly and whenever the window regains focus, and MUST show no banner when the license object is missing or the request fails.
 - **FR-020**: The About dialog MUST show every signed-in user the customer name, license type, product tier, support tier, end date and days left; an evaluation license reads "Evaluation license, N days left". It MUST show no license information to an anonymous visitor.
-- **FR-021**: In the second licensing release, every REST and GraphQL response MUST carry the license status header with the state when the state needs attention (FR-013), whether or not the caller is signed in; other paths, such as static assets and documentation, MUST NOT carry it.
+- **FR-021**: In the second licensing release, every REST and GraphQL response MUST carry the license status header with the state when the state needs attention (FR-013), whether or not the caller is signed in; other paths, such as static assets and documentation, MUST NOT carry it. A request shed under load and an error with no registered handler are answered outside the application and carry no header ([contracts/response-header.md](contracts/response-header.md)).
 - **FR-022**: The daily telemetry snapshot MUST include a license block with the state, license ID, license type, product tier, support tier, start, end and issuer, and MUST NOT include the customer name. The block MUST be empty when no license is required. The telemetry data format version MUST change accordingly.
 - **FR-023**: The upgrade command, with and without its check option, MUST end with a license section that states the license state and, when it needs attention, what to set. It MUST print nothing about the license when no license is required, MUST NOT prompt, and MUST NOT change the exit code because of the license.
 

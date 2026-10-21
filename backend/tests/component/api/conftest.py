@@ -1,4 +1,5 @@
-from collections.abc import AsyncGenerator, Generator
+from collections.abc import AsyncGenerator, Callable, Generator
+from contextlib import ExitStack
 from typing import Any
 
 import pytest
@@ -14,8 +15,9 @@ from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.license.service import LicenseService
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from infrahub.workers.dependencies import build_database, build_message_bus
+from infrahub.workers.dependencies import build_database, build_license_service, build_message_bus
 from tests.conftest import TestHelper
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.task_manager import setup_task_manager_once
@@ -34,6 +36,21 @@ def client(
 
     with override_dependency(build_database, _db, dependency_provider=dependency_provider):
         yield TestClient(app)
+
+
+@pytest.fixture
+def use_license_service(dependency_provider: Provider) -> Generator[Callable[[LicenseService], None], None, None]:
+    """Resolve the license service to the one passed in, from the call until the end of the test."""
+    with ExitStack() as stack:
+
+        def use(service: LicenseService) -> None:
+            stack.enter_context(
+                override_dependency(
+                    original=build_license_service, override=lambda: service, dependency_provider=dependency_provider
+                )
+            )
+
+        yield use
 
 
 @pytest.fixture

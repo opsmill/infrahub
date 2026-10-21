@@ -58,7 +58,7 @@ Web application: backend in `backend/infrahub/` with tests in `backend/tests/`, 
 - [X] T007 Implement `evaluate(outcome, now)` and `notice_for(status, mode)` in `backend/infrahub/license/status.py`, both pure, with the 30-day expiring window as a module constant; make T004 and T005 pass
 - [X] T008 [P] Write `backend/tests/unit/license/test_service.py`:
   - `LicenseServiceCommunity.status()` returns `not_required` with no license, `notice_mode` is `QUIET`, `enforcing_release` is `None`;
-  - `read_license_status(service, now=...)` returns the service's status, and converts any exception from `service.status()` into `invalid` / `internal_error` with an ERROR log entry that includes the traceback.
+  - `read_license_status(service, now=...)` returns the service's status, and converts any exception from `service.status()` into `invalid` / `internal_error` with an ERROR log entry that includes the traceback, logged once per exception type.
 - [X] T009 Implement in `backend/infrahub/license/service.py`:
   - the abstract `LicenseService` (`notice_mode`, `enforcing_release`, `status(now: datetime | None = None)`) and `LicenseServiceCommunity`, as in contracts/license-service.md;
   - `read_license_status(service, now=None) -> LicenseStatus`, the single failure-containment boundary every surface uses (`except Exception` with a comment naming the top-level-boundary reason from `dev/guidelines/backend/exceptions.md`; no `# noqa: BLE001`, because ruff does not flag a handler that logs with `log.exception` and rejects the unused suppression).
@@ -162,15 +162,15 @@ Web application: backend in `backend/infrahub/` with tests in `backend/tests/`, 
 
 **Independent Test**: With a test service in each state and mode, call `/api/info`, `/graphql`, `/api-static/...` and a frontend route, then inspect the headers (quickstart.md §2).
 
-- [ ] T033 [P] [US4] Write `backend/tests/unit/license/test_middleware.py` on a minimal Starlette app using the middleware:
+- [X] T033 [P] [US4] Write `backend/tests/unit/license/test_middleware.py` on a minimal Starlette app using the middleware:
   - the header is sent only in `ENFORCE` mode and only for states that need attention;
   - eligible paths: `/api`, `/api/x`, `/graphql`, `/graphql/x`;
   - never sent on `/api-static/x`, `/assets/x`, `/docs/x` or `/`;
   - present on 4xx responses;
-  - a service that raises produces no header, an ERROR log, and an unaffected response.
-- [ ] T034 [US4] Implement the middleware function in `backend/infrahub/license/middleware.py`, reading the service through `get_license_service()` and the notice through `read_license_status` and `notice_for`; make T033 pass
-- [ ] T035 [US4] Register the middleware in `backend/infrahub/server.py` alongside the existing `@app.middleware("http")` functions
-- [ ] T036 [US4] Write `backend/tests/component/api/test_license_header.py` on the real application with a test service:
+  - a service that raises produces no header, one ERROR log however often it fails, and an unaffected response.
+- [X] T034 [US4] Implement the pure-ASGI middleware in `backend/infrahub/license/middleware.py`, reading the service through the provider it is built with (`get_license_service` in the server) and the notice through `read_license_status` and `notice_for`; make T033 pass
+- [X] T035 [US4] Register the middleware in `backend/infrahub/server.py` just inside the admission gate, with `get_license_service` as its provider
+- [X] T036 [US4] Write `backend/tests/component/api/test_license_header.py` on the real application with a test service:
   - in enforce mode, the header is on `/api/info` and `/graphql`;
   - it is absent on `/api-static/...` and on a frontend route;
   - it is absent in quiet mode and with the community default.

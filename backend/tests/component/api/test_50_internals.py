@@ -1,4 +1,4 @@
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from datetime import UTC, datetime
 from typing import Any
 
@@ -12,9 +12,10 @@ from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.license.models import License, LicenseState, LicenseStatus
+from infrahub.license.service import LicenseService
 from infrahub.message_bus.messages import RefreshSettingsResponseDelay
 from infrahub.message_bus.operations.refresh import settings as refresh_settings
-from infrahub.workers.dependencies import build_license_service, build_message_bus
+from infrahub.workers.dependencies import build_message_bus
 from tests.adapters.license import RecordingLicenseService
 from tests.conftest import TestHelper
 from tests.helpers.dependency_override import override_dependency
@@ -96,16 +97,7 @@ EXPIRING_LICENSE = License(
     issuer="opsmill-test",
 )
 
-
-@pytest.fixture
-def expiring_license_service(dependency_provider: Provider) -> Generator[RecordingLicenseService, None, None]:
-    service = RecordingLicenseService(
-        status=LicenseStatus(state=LicenseState.EXPIRING, license=EXPIRING_LICENSE, days_remaining=12)
-    )
-    with override_dependency(
-        original=build_license_service, override=lambda: service, dependency_provider=dependency_provider
-    ):
-        yield service
+EXPIRING_STATUS = LicenseStatus(state=LicenseState.EXPIRING, license=EXPIRING_LICENSE, days_remaining=12)
 
 
 async def test_info_endpoint_reports_the_license_service_state(
@@ -115,8 +107,10 @@ async def test_info_endpoint_reports_the_license_service_state(
     default_branch: Branch,
     register_core_models_schema: None,
     create_test_admin: Node,
-    expiring_license_service: RecordingLicenseService,
+    use_license_service: Callable[[LicenseService], None],
 ) -> None:
+    use_license_service(RecordingLicenseService(status=EXPIRING_STATUS))
+
     with client:
         response = client.get("/api/info", headers=admin_headers)
 
@@ -132,22 +126,17 @@ async def test_info_endpoint_reports_the_license_service_state(
     }
 
 
-@pytest.fixture
-def anonymous_access_allowed() -> Generator[None, None, None]:
-    original = config.SETTINGS.main.allow_anonymous_access
-    config.SETTINGS.main.allow_anonymous_access = True
-    yield
-    config.SETTINGS.main.allow_anonymous_access = original
-
-
 async def test_info_endpoint_carries_no_license_object_for_anonymous_callers(
     db: InfrahubDatabase,
     client: TestClient,
     default_branch: Branch,
     register_core_models_schema: None,
-    expiring_license_service: RecordingLicenseService,
-    anonymous_access_allowed: None,
+    use_license_service: Callable[[LicenseService], None],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    use_license_service(RecordingLicenseService(status=EXPIRING_STATUS))
+    monkeypatch.setattr(config.SETTINGS.main, "allow_anonymous_access", True)
+
     with client:
         response = client.get("/api/info")
 
@@ -161,9 +150,11 @@ async def test_config_endpoint_carries_no_license_information(
     client: TestClient,
     default_branch: Branch,
     register_core_models_schema: None,
-    expiring_license_service: RecordingLicenseService,
+    use_license_service: Callable[[LicenseService], None],
 ) -> None:
     """The configuration endpoint answers without sign-in, so it must not reveal who holds the license."""
+    use_license_service(RecordingLicenseService(status=EXPIRING_STATUS))
+
     with client:
         response = client.get("/api/config")
 
