@@ -18,8 +18,6 @@ Tests are organized by type:
 
 Within the component tier, each test function pays the schema-and-branch setup again — seconds per test in the GraphQL suites. When several cases share one schema, group them in a class on the class-scoped fixtures (`default_branch_scope_class`, `register_core_models_schema_scope_class`, a class-scoped schema load); mechanics in `dev/knowledge/backend/testing.md` § Schema Fixtures.
 
-The database-backed suites can run against Memgraph as well as Neo4j. A test that relies on a Neo4j-only feature — the `PROFILE` prefix, `CALL db.prepareForReplanning()`, APOC procedures — skips on anything else: `if db.db_type != DatabaseType.NEO4J: pytest.skip(...)`.
-
 ### Running integration_docker tests locally
 
 Repo-based `tests/integration_docker/` tests build throwaway git repositories with dulwich (`porcelain.commit`), which honors your global `commit.gpgsign` setting. If you sign commits and the `gpg` Python bindings (gpgme) are not installed — common on macOS — repository setup fails with a misleading `ModuleNotFoundError: No module named 'gpg'`. That takes down every repo-based test plus any test that depends on the repo, showing up as cascading, confusing assertion failures.
