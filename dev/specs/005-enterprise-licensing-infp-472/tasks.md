@@ -97,23 +97,24 @@ Web application: backend in `backend/infrahub/` with tests in `backend/tests/`, 
 
 **Independent Test**: With a test license service swapped in through `override_dependency`, read `/api/info` and the About dialog for each state (quickstart.md §2 and §4).
 
-- [ ] T017 [P] [US2] Write `backend/tests/unit/api/test_internal_license.py`. Use `tests/helpers/dependency_override.py::override_dependency` on `build_license_service` with a test service returning a fixed status:
+- [X] T017 [P] [US2] Write `backend/tests/unit/api/test_internal_license.py`. Use `tests/helpers/dependency_override.py::override_dependency` on `build_license_service` with a test service returning a fixed status:
   - `get_info` returns the license object of contracts/api-info.md for `not_required`, `unlicensed`, `invalid` (reason set, details null), `expiring` and `valid`, including `notice_mode`, `enforcing_release` and `banner`;
   - a service that raises yields `invalid` / `internal_error`;
-  - `get_config`'s response has no `license` key.
-- [ ] T018 [US2] Add `BannerAPI` and `LicenseInfoAPI` (Pydantic) and `InfoAPI.license` to `backend/infrahub/api/internal.py`. Build the object in `get_info` from `read_license_status(get_license_service())` and `notice_for(status, service.notice_mode)`. Leave `ConfigAPI` and `get_config` unchanged. Make T017 pass
-- [ ] T019 [US2] Extend `backend/tests/component/api/test_50_internals.py`:
+  - an anonymous session gets `license: null`.
+- [X] T018 [US2] Add `BannerAPI` and `LicenseInfoAPI` (Pydantic) and `InfoAPI.license` to `backend/infrahub/api/internal.py`. Build the object in `get_info` from `read_license_status(get_license_service())` and `notice_for(status, service.notice_mode)`. Leave `ConfigAPI` and `get_config` unchanged. Make T017 pass
+- [X] T019 [US2] Extend `backend/tests/component/api/test_50_internals.py`:
   - on the real app, `/api/info` returns `license.state == "not_required"` by default and the swapped-in state with a test service;
-  - `/api/config` carries no license information.
-- [ ] T020 [US2] Regenerate `schema/openapi.json` (`uv run invoke schema.generate-jsonschema`) and `frontend/app/src/shared/api/rest/types.generated.ts` (`cd frontend/app && pnpm codegen`)
-- [ ] T021 [P] [US2] Create `frontend/app/src/entities/license/domain/model/license.ts` with the license types taken from the generated REST types (state, failure reason, notice mode, audience, license info)
-- [ ] T022 [P] [US2] Write `frontend/app/src/entities/license/ui/license-about-rows.test.tsx` from the "About dialog rows" table in contracts/frontend-banner.md:
+  - an anonymous caller gets `license: null`;
+  - `/api/config` carries no license information (no `license` key, no customer name or license ID) with a test service swapped in.
+- [X] T020 [US2] Regenerate `schema/openapi.json` (`uv run invoke schema.generate-jsonschema`) and `frontend/app/src/shared/api/rest/types.generated.ts` (`cd frontend/app && pnpm codegen:openapi`)
+- [X] T021 [P] [US2] Create `frontend/app/src/entities/license/domain/model/license.ts` re-exporting `LicenseInfo` from the generated REST types. The other aliases (state, failure reason, notice mode, audience) are added by the banner tasks when first used, because knip rejects unused exports
+- [X] T022 [P] [US2] Write `frontend/app/src/entities/license/ui/license-about-rows.test.tsx` from the "About dialog rows" table in contracts/frontend-banner.md:
   - commercial and evaluation licenses ("Evaluation license, N days left");
   - expired ("expired N days ago");
   - `unlicensed` ("Not installed") and `invalid` ("Could not be verified");
   - `not_required` (renders nothing).
-- [ ] T023 [US2] Implement `frontend/app/src/entities/license/ui/license-about-rows.tsx`; make T022 pass
-- [ ] T024 [US2] Render `LicenseAboutRows` in `frontend/app/src/entities/config/ui/about-modal.tsx` from the app-info data, and extend `about-modal.test.tsx` so the dialog is unchanged when the state is `not_required`
+- [X] T023 [US2] Implement `frontend/app/src/entities/license/ui/license-about-rows.tsx`; make T022 pass
+- [X] T024 [US2] Render `LicenseAboutRows` in `frontend/app/src/entities/config/ui/about-modal.tsx` from the app-info data, and extend `about-modal.test.tsx` so the dialog is unchanged when the state is `not_required`
 
 **Checkpoint**: The state is visible to every signed-in user through the API and the About dialog.
 
@@ -130,7 +131,7 @@ Web application: backend in `backend/infrahub/` with tests in `backend/tests/`, 
 - [ ] T025 [P] [US3] Write `frontend/app/src/entities/license/domain/rules/license-banner.test.ts`:
   - `shouldShowBanner(audience, isSuperAdmin, permissionResolved)` for every audience and role, including `false` while the permission is unresolved for `super_admins`;
   - `bannerText(license)` for every state in both modes, including the quiet-mode suffix with and without `enforcing_release`.
-- [ ] T026 [US3] Implement `frontend/app/src/entities/license/domain/rules/license-banner.ts` (pure, no React, no storage); make T025 pass
+- [ ] T026 [US3] Implement `frontend/app/src/entities/license/domain/rules/license-banner.ts` (pure, no React, no storage), adding to `domain/model/license.ts` the `LicenseState`, `LicenseFailureReason`, `NoticeMode` and `NoticeAudience` aliases of the generated REST types that the rules use; make T025 pass
 - [ ] T027 [P] [US3] Write `frontend/app/src/entities/license/ui/hooks/use-license-banner-dismissal.test.ts`:
   - dismissal is remembered in `sessionStorage` for the same license ID (or `none`) and state;
   - a new license ID or state shows the banner again;

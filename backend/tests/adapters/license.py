@@ -99,3 +99,21 @@ class FailingLicenseService(LicenseService):
 
     def status(self, now: datetime | None = None) -> LicenseStatus:
         raise RuntimeError(f"license service failure at {now}")
+
+
+class FailingNoticeModeLicenseService(LicenseService):
+    """Reports a fixed license status but raises on reading the notice mode, which a service must never do."""
+
+    def __init__(self, status: LicenseStatus) -> None:
+        self._status = status
+
+    @property
+    def notice_mode(self) -> NoticeMode:
+        raise RuntimeError("license notice mode failure")
+
+    @property
+    def enforcing_release(self) -> str | None:
+        return None
+
+    def status(self, now: datetime | None = None) -> LicenseStatus:
+        return self._status

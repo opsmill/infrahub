@@ -9,6 +9,7 @@ import { hasGlobalPermission } from "@/entities/permission/domain/use-cases/has-
 import { getAccountProfile } from "@/entities/user-profile/domain/use-cases/get-account-profile";
 
 import { render } from "../../../../tests/components/render";
+import { generateLicenseInfoWithoutLicense } from "../../../../tests/fake/license";
 import { AccountMenu } from "./account-menu";
 
 vi.mock("@/entities/permission/domain/use-cases/has-global-permission");
@@ -37,6 +38,7 @@ describe("AccountMenu", () => {
     vi.mocked(getAppInfo).mockResolvedValue({
       version: "1.8.4",
       deployment_id: "abc-123-def",
+      license: generateLicenseInfoWithoutLicense(),
     });
   });
 

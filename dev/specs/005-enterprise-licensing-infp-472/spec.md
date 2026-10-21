@@ -55,6 +55,7 @@ When the Enterprise package supplies a license service, every signed-in user can
 3. **Given** a license that ends while Infrahub is running, **When** the end time passes, **Then** the next read of the state reports expired, without a restart.
 4. **Given** any license state, **When** a caller without sign-in reads the configuration endpoint, **Then** the response contains no license information.
 5. **Given** a license that failed verification, **When** a signed-in user reads the info endpoint, **Then** the license object reports the state "invalid" with a short reason code and no license details.
+6. **Given** any license state and anonymous access allowed, **When** a caller without sign-in reads the info endpoint, **Then** the response carries no license object.
 
 ---
 
@@ -174,13 +175,13 @@ Operators who run the upgrade command, with or without its check option, see the
 
 #### Surfaces
 
-- **FR-015**: The signed-in info endpoint MUST return a license object with the state, the reason code, the license details (license ID, type, customer name, product tier, support tier, start, end), the days remaining, the days since expiry, the release mode, the name of the release that shows problem banners to every user (when known), and the banner decision. When no license is required it MUST return the state and no details.
+- **FR-015**: The info endpoint MUST return a license object with the state, the reason code, the license details (license ID, type, customer name, product tier, support tier, start, end), the days remaining, the days since expiry, the release mode, the name of the release that shows problem banners to every user (when known), and the banner decision. When no license is required it MUST return the state and no details. Because the info endpoint also answers anonymous callers when anonymous access is allowed, it MUST return the license object to signed-in users only and no license object to anonymous callers. In the second licensing release, the response header (FR-021) is the one place where a caller who is not signed in sees the state, and it never carries the failure reason or the license details.
 - **FR-016**: The configuration endpoint, which does not require sign-in, MUST NOT return any license information.
 - **FR-017**: The UI MUST show the banner decided by FR-013 on every page for signed-in users, with text per state: running without a license (with the deployment ID, a copy action, and "ask your Infrahub administrator for your organization's license, or contact sales"), license could not be verified (super-admins also see the reason), license starts on a date, license expired on a date, license expires in N days. In the first licensing release, the super-admin banner for a problem state also names the release in which every user will see it.
 - **FR-018**: A dismissed banner MUST stay hidden for the rest of the browser session for the same license and state, and MUST show again when either changes.
 - **FR-019**: The UI MUST refresh the license state at least hourly and whenever the window regains focus, and MUST show no banner when the license object is missing or the request fails.
-- **FR-020**: The About dialog MUST show every signed-in user the customer name, license type, product tier, support tier, end date and days left; an evaluation license reads "Evaluation license, N days left".
-- **FR-021**: In the second licensing release, every REST and GraphQL response MUST carry the license status header with the state when the state needs attention (FR-013); other paths, such as static assets and documentation, MUST NOT carry it.
+- **FR-020**: The About dialog MUST show every signed-in user the customer name, license type, product tier, support tier, end date and days left; an evaluation license reads "Evaluation license, N days left". It MUST show no license information to an anonymous visitor.
+- **FR-021**: In the second licensing release, every REST and GraphQL response MUST carry the license status header with the state when the state needs attention (FR-013), whether or not the caller is signed in; other paths, such as static assets and documentation, MUST NOT carry it.
 - **FR-022**: The daily telemetry snapshot MUST include a license block with the state, license ID, license type, product tier, support tier, start, end and issuer, and MUST NOT include the customer name. The block MUST be empty when no license is required. The telemetry data format version MUST change accordingly.
 - **FR-023**: The upgrade command, with and without its check option, MUST end with a license section that states the license state and, when it needs attention, what to set. It MUST print nothing about the license when no license is required, MUST NOT prompt, and MUST NOT change the exit code because of the license.
 
@@ -215,7 +216,7 @@ Operators who run the upgrade command, with or without its check option, see the
 - The resource-allocation telemetry change ([PR #10003](https://github.com/opsmill/infrahub/pull/10003)) lands before the telemetry data format change in this feature, so the cloud telemetry processor handles one format change at a time.
 - **Release gate**: the telemetry data format change affects every deployment's snapshot, Community included. This feature may merge to the development branch, but the release that contains it ships only once the cloud telemetry processor accepts the new format.
 - Super-admin means a user holding the existing super-admin global permission.
-- Deployment IDs and the info endpoint already exist and are unchanged except for the added license object.
+- Deployment IDs and the info endpoint already exist and are unchanged except for the added license object. The info endpoint answers anonymous `GET` requests when anonymous access is allowed, which is the default.
 
 ## Out of Scope
 

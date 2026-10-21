@@ -1,4 +1,5 @@
 from collections.abc import Generator
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
@@ -10,9 +11,11 @@ from infrahub.api import internal
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.license.models import License, LicenseState, LicenseStatus
 from infrahub.message_bus.messages import RefreshSettingsResponseDelay
 from infrahub.message_bus.operations.refresh import settings as refresh_settings
-from infrahub.workers.dependencies import build_message_bus
+from infrahub.workers.dependencies import build_license_service, build_message_bus
+from tests.adapters.license import RecordingLicenseService
 from tests.conftest import TestHelper
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.fixtures import get_fixtures_dir
@@ -64,19 +67,106 @@ async def test_config_endpoint_anonymous_account(
 async def test_info_endpoint(
     db: InfrahubDatabase,
     client: TestClient,
-    client_headers: dict[str, str],
+    admin_headers: dict[str, str],
     default_branch: Branch,
     register_core_models_schema: None,
+    create_test_admin: Node,
 ) -> None:
     with client:
-        response = client.get("/api/info", headers=client_headers)
+        response = client.get("/api/info", headers=admin_headers)
 
     assert response.status_code == 200
     assert response.json() is not None
 
     result = response.json()
 
-    assert sorted(result.keys()) == ["deployment_id", "version"]
+    assert sorted(result.keys()) == ["deployment_id", "license", "version"]
+    assert result["license"]["state"] == "not_required"
+
+
+EXPIRING_LICENSE = License(
+    license_id="f67dea44-7d3b-4c1e-9a52-1b0f3c2d4e5f",
+    customer_name="ACME Test Ltd",
+    license_type="commercial",
+    product_tier="medium",
+    support_tier="advanced",
+    starts_at=datetime(2026, 9, 30, tzinfo=UTC),
+    ends_at=datetime(2027, 9, 30, tzinfo=UTC),
+    issued_at=datetime(2026, 9, 29, tzinfo=UTC),
+    issuer="opsmill-test",
+)
+
+
+@pytest.fixture
+def expiring_license_service(dependency_provider: Provider) -> Generator[RecordingLicenseService, None, None]:
+    service = RecordingLicenseService(
+        status=LicenseStatus(state=LicenseState.EXPIRING, license=EXPIRING_LICENSE, days_remaining=12)
+    )
+    with override_dependency(
+        original=build_license_service, override=lambda: service, dependency_provider=dependency_provider
+    ):
+        yield service
+
+
+async def test_info_endpoint_reports_the_license_service_state(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    register_core_models_schema: None,
+    create_test_admin: Node,
+    expiring_license_service: RecordingLicenseService,
+) -> None:
+    with client:
+        response = client.get("/api/info", headers=admin_headers)
+
+    assert response.status_code == 200
+    license_object = response.json()["license"]
+    assert license_object["state"] == "expiring"
+    assert license_object["customer_name"] == "ACME Test Ltd"
+    assert license_object["ends_at"] == "2027-09-30T00:00:00Z"
+    assert license_object["banner"] == {"audience": "super_admins", "dismissible": True}
+
+
+@pytest.fixture
+def anonymous_access_allowed() -> Generator[None, None, None]:
+    original = config.SETTINGS.main.allow_anonymous_access
+    config.SETTINGS.main.allow_anonymous_access = True
+    yield
+    config.SETTINGS.main.allow_anonymous_access = original
+
+
+async def test_info_endpoint_carries_no_license_object_for_anonymous_callers(
+    db: InfrahubDatabase,
+    client: TestClient,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    expiring_license_service: RecordingLicenseService,
+    anonymous_access_allowed: None,
+) -> None:
+    with client:
+        response = client.get("/api/info")
+
+    assert response.status_code == 200
+    assert response.json()["license"] is None
+    assert EXPIRING_LICENSE.customer_name not in response.text
+
+
+async def test_config_endpoint_carries_no_license_information(
+    db: InfrahubDatabase,
+    client: TestClient,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    expiring_license_service: RecordingLicenseService,
+) -> None:
+    """The configuration endpoint answers without sign-in, so it must not reveal who holds the license."""
+    with client:
+        response = client.get("/api/config")
+
+    assert response.status_code == 200
+    assert "license" not in response.json()
+    assert EXPIRING_LICENSE.customer_name not in response.text
+    assert EXPIRING_LICENSE.license_id not in response.text
 
 
 @pytest.mark.parametrize("allow_anonymous_access", [False, True])
