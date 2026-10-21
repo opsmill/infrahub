@@ -6,6 +6,7 @@ from typing import Any
 import requests
 from grpc import ssl_channel_credentials
 from opentelemetry import trace
+from opentelemetry.context import Context
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
     OTLPSpanExporter as GRPCSpanExporter,
 )
@@ -16,7 +17,9 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import Event, ReadableSpan, TracerProvider
 from opentelemetry.sdk.trace import Span as SDKSpan
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter, SpanExporter, SpanExportResult
-from opentelemetry.trace import StatusCode
+from opentelemetry.sdk.trace.sampling import ParentBased, Sampler, SamplingResult, TraceIdRatioBased
+from opentelemetry.trace import Link, SpanKind, StatusCode
+from opentelemetry.trace.span import TraceState
 from opentelemetry.util.types import Attributes
 
 from infrahub.masking import MASKING_RULES, MaskingRule, mask_mapping, replace_url_queries_in_text
@@ -35,7 +38,7 @@ def get_traceid() -> str | None:
     trace_id = current_span.get_span_context().trace_id
     if trace_id == 0:
         return None
-    return hex(trace_id)
+    return format(trace_id, "032x")
 
 
 def set_span_status(status_code: StatusCode) -> None:
@@ -135,6 +138,41 @@ class MaskingSpanExporter(SpanExporter):
         return self._exporter.force_flush(timeout_millis=timeout_millis)
 
 
+class RatioSampler(Sampler):
+    """Record a share of new root traces, set by the default ratio."""
+
+    def __init__(self, default_ratio: float) -> None:
+        self._default = TraceIdRatioBased(rate=default_ratio)
+
+    @property
+    def ratio(self) -> float:
+        """The ratio in force for a new root trace."""
+        return self._default.rate
+
+    def should_sample(
+        self,
+        parent_context: Context | None,
+        trace_id: int,
+        name: str,
+        kind: SpanKind | None = None,
+        attributes: Attributes = None,
+        links: Sequence[Link] | None = None,
+        trace_state: TraceState | None = None,
+    ) -> SamplingResult:
+        return self._default.should_sample(
+            parent_context=parent_context,
+            trace_id=trace_id,
+            name=name,
+            kind=kind,
+            attributes=attributes,
+            links=links,
+            trace_state=trace_state,
+        )
+
+    def get_description(self) -> str:
+        return f"RatioSampler{{{self.ratio}}}"
+
+
 class InsecureTLSSession(requests.Session):
     """Session that never verifies TLS certificates, overriding any per-request `verify` value."""
 
@@ -174,6 +212,7 @@ def create_tracer_provider(
     service: str,
     version: str,
     exporter_type: str,
+    sample_ratio: float,
     exporter_endpoint: str | None = None,
     exporter_protocol: str | None = None,
     insecure: bool = True,
@@ -203,7 +242,9 @@ def create_tracer_provider(
         }
     )
     span_processor = BatchSpanProcessor(MaskingSpanExporter(exporter))
-    tracer_provider = TracerProvider(resource=resource)
+    tracer_provider = TracerProvider(
+        resource=resource, sampler=ParentBased(root=RatioSampler(default_ratio=sample_ratio))
+    )
     tracer_provider.add_span_processor(span_processor)
 
     return tracer_provider
@@ -213,6 +254,7 @@ def configure_trace(
     service: str,
     version: str,
     exporter_type: str,
+    sample_ratio: float,
     exporter_endpoint: str | None = None,
     exporter_protocol: str | None = None,
     insecure: bool = True,
@@ -224,6 +266,7 @@ def configure_trace(
         service=service,
         version=version,
         exporter_type=exporter_type,
+        sample_ratio=sample_ratio,
         exporter_endpoint=exporter_endpoint,
         exporter_protocol=exporter_protocol,
         insecure=insecure,

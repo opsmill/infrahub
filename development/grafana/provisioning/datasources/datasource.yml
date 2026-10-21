@@ -18,15 +18,10 @@ datasources:
     editable: true
     jsonData:
       derivedFields:
-        - name: TraceID
-          matcherRegex: 'TraceID=0x(\w+)'
+        - name: trace_id
+          matcherRegex: '(?:trace_id=|TraceID=|"trace_id":\s*")(?:0x)?([0-9a-f]+)'
           url: '$${__value.raw}'
-          urlDisplayLabel: "View Trace via TraceID (in Tempo)"
-          datasourceUid: 'localtempo'
-        - name: RequestID
-          matcherRegex: 'RequestID=(\w+)'
-          url: '{name=~".*$${__value.raw}.*"}'
-          urlDisplayLabel: "View Trace via RequestID (in Tempo)"
+          urlDisplayLabel: "View trace in Tempo"
           datasourceUid: 'localtempo'
 
   - name: Tempo (Local)
@@ -40,19 +35,21 @@ datasources:
         datasourceUid: 'localprometheus'
       tracesToLogsV2:
         datasourceUid: 'localloki'
-        spanStartTimeShift: '1h'
-        spanEndTimeShift: '-1h'
-        filterByTraceID: false
+        spanStartTimeShift: '-1h'
+        spanEndTimeShift: '1h'
+        filterByTraceID: true
         filterBySpanID: false
+        customQuery: true
+        query: '{job=~".+"} |= "$${__trace.traceId}"'
       tracesToMetrics:
         datasourceUid: 'localprometheus'
-        spanStartTimeShift: '1h'
-        spanEndTimeShift: '-1h'
+        spanStartTimeShift: '-1h'
+        spanEndTimeShift: '1h'
       nodeGraph:
         enabled: true
       lokiSearch:
         datasourceUid: 'localloki'
       traceQuery:
         timeShiftEnabled: true
-        spanStartTimeShift: '1h'
-        spanEndTimeShift: '-1h'
+        spanStartTimeShift: '-1h'
+        spanEndTimeShift: '1h'

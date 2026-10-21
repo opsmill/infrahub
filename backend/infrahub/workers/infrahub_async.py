@@ -155,6 +155,7 @@ class InfrahubWorkerAsync(BaseWorker):
                 service="infrahub-task-worker",
                 version=infrahub_version,
                 exporter_type=config.SETTINGS.trace.exporter_type,
+                sample_ratio=config.SETTINGS.trace.sample_ratio,
                 exporter_endpoint=config.SETTINGS.trace.exporter_endpoint,
                 exporter_protocol=config.SETTINGS.trace.exporter_protocol,
                 insecure=config.SETTINGS.trace.insecure,

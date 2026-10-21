@@ -1427,6 +1427,16 @@ class TraceSettings(BaseSettings):
         default=TraceTransportProtocol.GRPC, description="Protocol to be used for exporting traces"
     )
     exporter_endpoint: str | None = Field(default=None, description="OTLP endpoint for exporting traces")
+    sample_ratio: float = Field(
+        default=0.1,
+        ge=0,
+        le=1,
+        allow_inf_nan=False,
+        description=(
+            "Share of new traces to record, from 0 (none) to 1 (all). A request or task that arrives with a trace "
+            "context follows the sampling decision of its caller."
+        ),
+    )
 
     @property
     def uses_tls(self) -> bool:

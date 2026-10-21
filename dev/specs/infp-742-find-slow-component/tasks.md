@@ -128,19 +128,19 @@ its trace and its task worker logs in Grafana (quickstart, manual checks 1 to 3)
 
 ### Tests for User Story 1 (Infrahub)
 
-- [ ] T024 [P] [US1] Port `backend/tests/component/api/test_trace_spans.py` from the draft: each database query span of an API request is a child of the request span (FR-008)
-- [ ] T025 [P] [US1] Port the sampler tests from the draft `backend/tests/unit/test_trace.py` (`RatioSampler` default ratio, parent-based behaviour) and `backend/tests/unit/config/test_trace_settings.py` (`sample_ratio` from 0 to 1, default 0.1, values outside rejected): ratio 0.5 records about half of new root traces; a request with a sampled parent is always recorded (FR-006, FR-007)
-- [ ] T026 [P] [US1] Write unit tests in `backend/tests/unit/test_trace.py` and `backend/tests/unit/test_log.py`: `get_traceid` and the task worker `trace_id` field are 32 lowercase hexadecimal characters with leading zeros and no `0x`, including a trace ID that starts with `0` (FR-004); a task worker log line inside a recording span carries `trace_id`, and a line outside a span has none (FR-003)
-- [ ] T027 [P] [US1] Write a unit test in `backend/tests/unit/test_grafana_datasources.py` that loads `development/grafana/provisioning/datasources/datasource.yml` and checks: the Loki derived field matches `trace_id=<32 hex>`, `trace_id=0x<hex>` and `"trace_id": "<32 hex>"`; no `RequestID` derived field; the Tempo `tracesToLogsV2` has `spanStartTimeShift: -1h`, `spanEndTimeShift: 1h`, `filterByTraceID: true` and a query with `{job=~".+"}`; `tracesToMetrics` and `traceQuery` have start `-1h` and end `1h` (FR-005)
+- [x] T024 [P] [US1] Port `backend/tests/component/api/test_trace_spans.py` from the draft: each database query span of an API request is a child of the request span (FR-008)
+- [x] T025 [P] [US1] Port the sampler tests from the draft `backend/tests/unit/test_trace.py` (`RatioSampler` default ratio, parent-based behaviour) and `backend/tests/unit/config/test_trace_settings.py` (`sample_ratio` from 0 to 1, default 0.1, values outside rejected): ratio 0.5 records about half of new root traces; a request with a sampled parent is always recorded (FR-006, FR-007)
+- [x] T026 [P] [US1] Write unit tests in `backend/tests/unit/test_trace.py` and `backend/tests/unit/test_log.py`: `get_traceid` and the task worker `trace_id` field are 32 lowercase hexadecimal characters with leading zeros and no `0x`, including a trace ID that starts with `0` (FR-004); a task worker log line inside a recording span carries `trace_id`, and a line outside a span has none (FR-003)
+- [x] T027 [P] [US1] Write a unit test in `backend/tests/unit/test_grafana_datasources.py` that loads `development/grafana/provisioning/datasources/datasource.yml` and checks: the Loki derived field matches `trace_id=<32 hex>`, `trace_id=0x<hex>`, `"trace_id": "<32 hex>"` and `TraceID=<hex>`, the form that `development/alloy/config.alloy` writes for JSON lines of the API server (found on 2026-10-21); no `RequestID` derived field; the Tempo `tracesToLogsV2` has `spanStartTimeShift: -1h`, `spanEndTimeShift: 1h`, `filterByTraceID: true` and a query with `{job=~".+"}`; `tracesToMetrics` and `traceQuery` have start `-1h` and end `1h` (FR-005)
 
 ### Implementation for User Story 1 (Infrahub)
 
-- [ ] T028 [US1] In `backend/infrahub/config.py`, port `TraceSettings.sample_ratio` from the draft (default 0.1, from 0 to 1, with its description) (FR-006)
-- [ ] T029 [US1] In `backend/infrahub/trace.py`, port `RatioSampler` and `SampleRatioState` without the temporary ratio methods (those come in T070), use `ParentBased(root=RatioSampler(...))` in `create_tracer_provider`, and add the `sample_ratio` parameter to `create_tracer_provider` and `configure_trace` (FR-006, FR-007)
-- [ ] T030 [US1] Pass `sample_ratio=config.SETTINGS.trace.sample_ratio` to `configure_trace` in `backend/infrahub/server.py` (`app_initialization`) and in `backend/infrahub/workers/infrahub_async.py`, as the draft does
-- [ ] T031 [US1] In `backend/infrahub/trace.py`, change `get_traceid` to return `format(trace_id, "032x")` (research R5); in `backend/infrahub/log.py`, port the structlog processor `add_trace_id` from the draft with the same format and register it as the draft does (FR-003, FR-004)
-- [ ] T032 [US1] In `development/grafana/provisioning/datasources/datasource.yml`, apply the settings of [contracts/trace-log-links.md](contracts/trace-log-links.md) "Grafana data sources" (B10, FR-005)
-- [ ] T033 [US1] Declare `INFRAHUB_TRACE_SAMPLE_RATIO: ${INFRAHUB_TRACE_SAMPLE_RATIO:-0.1}` in the `environment:` block of `development/docker-compose.yml`, and update the root `docker-compose.yml` with `uv run invoke release.validate-dockercomposeenv` (backend `AGENTS.md`: Compose forwards only declared variables)
+- [x] T028 [US1] In `backend/infrahub/config.py`, port `TraceSettings.sample_ratio` from the draft (default 0.1, from 0 to 1, with its description) (FR-006)
+- [x] T029 [US1] In `backend/infrahub/trace.py`, port `RatioSampler` and `SampleRatioState` without the temporary ratio methods (those come in T070), use `ParentBased(root=RatioSampler(...))` in `create_tracer_provider`, and add the `sample_ratio` parameter to `create_tracer_provider` and `configure_trace` (FR-006, FR-007)
+- [x] T030 [US1] Pass `sample_ratio=config.SETTINGS.trace.sample_ratio` to `configure_trace` in `backend/infrahub/server.py` (`app_initialization`) and in `backend/infrahub/workers/infrahub_async.py`, as the draft does
+- [x] T031 [US1] In `backend/infrahub/trace.py`, change `get_traceid` to return `format(trace_id, "032x")` (research R5); in `backend/infrahub/log.py`, port the structlog processor `add_trace_id` from the draft with the same format and register it as the draft does (FR-003, FR-004)
+- [x] T032 [US1] In `development/grafana/provisioning/datasources/datasource.yml`, apply the settings of [contracts/trace-log-links.md](contracts/trace-log-links.md) "Grafana data sources" (B10, FR-005)
+- [x] T033 [US1] Declare `INFRAHUB_TRACE_SAMPLE_RATIO: ${INFRAHUB_TRACE_SAMPLE_RATIO:-0.1}` in the `environment:` block of `development/docker-compose.yml`, and update the root `docker-compose.yml` with `uv run invoke release.validate-dockercomposeenv` (backend `AGENTS.md`: Compose forwards only declared variables)
 - [ ] T034 [US1] In `development/docker-compose-observability.yml`, add an `environment` block for the `infrahub-server` and `task-worker` services with the five variables of [contracts/trace-log-links.md](contracts/trace-log-links.md) "Tracing in Compose" (FR-032, research R2); keep `INFRAHUB_TRACE_ENABLE` at `false` in the root `docker-compose.yml`
 - [ ] T035 [US1] Regenerate `development/docker-compose-observability-standalone.yml` with `development/convert_compose_standalone.py`, and check that the diff contains only the T034 change
 - [ ] T036 [US1] Write the question for the owner of the service behind `https://infrahub.opsmill.io/?observability=true` (owner not known; research R2): does it merge the observability file into the services of `docker-compose.yml`, so the T034 override applies? And can it set `INFRAHUB_NEO4J_METRICS_TARGET` to an empty value in the Community file only, so Community stops collecting from a Neo4j endpoint that does not exist (FR-025)? Give the text to Daniel; do not send it
@@ -498,3 +498,20 @@ Created by T095 in IFC-3470. Each layer adds its entries here, with the file nam
 - `+priority-queues-dashboard-row.added.md`: Added the "Priority Queues" row to the Infrahub
   dashboard, with the flow run start delay p95 and the flow runs in progress of the `high`, `medium`
   and `low` queues.
+
+### IFC-3470 (layer 4)
+
+- `+trace-sample-ratio.added.md`: Added the `INFRAHUB_TRACE_SAMPLE_RATIO` setting, the share of new
+  traces that Infrahub records, from 0 to 1 (default 0.1). Before, Infrahub recorded every trace. A
+  request or a flow run that arrives with a trace context follows the decision of its caller.
+- `+task-worker-log-trace-id.added.md`: Added the `trace_id` field to the log lines that task workers
+  write while a trace is recorded, so their logs can be matched to the trace.
+- `+trace-id-format.changed.md`: **Breaking:** Changed the format of the `trace_id` log field of the
+  API server from a `0x` hexadecimal number without leading zeros, for example
+  `0xaf7651916cd43dd8448eb211c80319c`, to the 32-character form that Tempo and Grafana use, for
+  example `0af7651916cd43dd8448eb211c80319c`. Update the log queries and alerts that read `trace_id`.
+- `+grafana-trace-log-links.fixed.md`: Fixed the links between traces and logs in the Grafana data
+  sources of the observability stack. A log line links to its trace by its `trace_id` field, in text
+  and JSON lines, and in the `TraceID=` form that the Alloy configuration of the stack writes, with or
+  without `0x`. A trace links to its log lines in any Loki, from one hour before to one hour after the
+  span, filtered by trace ID. The `RequestID` link is removed.

@@ -31,10 +31,13 @@ queries and alerts.
 
 | Data source | Setting | Value |
 |-------------|---------|-------|
-| Loki | Derived field `trace_id` | Matches `trace_id=<value>` in text lines and `"trace_id": "<value>"` in JSON lines, with or without `0x`, and links to the Tempo data source |
+| Loki | Derived field `trace_id` | Matches `trace_id=<value>` in text lines, `"trace_id": "<value>"` in JSON lines and `TraceID=<value>`, with or without `0x`, and links to the Tempo data source |
 | Loki | Derived field `RequestID` | Removed |
 | Tempo | `tracesToLogsV2` | `spanStartTimeShift: -1h`, `spanEndTimeShift: 1h`, `filterByTraceID: true`, query `{job=~".+"} \|= "${__trace.traceId}"` |
 | Tempo | `tracesToMetrics`, `traceQuery` | Start shift `-1h`, end shift `1h` |
+
+`TraceID=<value>` is the form that `development/alloy/config.alloy` writes when it rewrites the JSON
+lines of the API server; this was found during the implementation, on 2026-10-21.
 
 The query uses no label specific to Compose or Helm, so it works with any Loki that holds Infrahub's
 logs. The documentation lists these settings for operators who run their own Grafana.

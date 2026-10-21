@@ -16,10 +16,23 @@ from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+from opentelemetry.sdk.trace.sampling import Decision
+from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags, set_span_in_context, use_span
 
-from infrahub.trace import InsecureTLSSession, MaskingSpanExporter, create_span_exporter, create_tracer_provider
+from infrahub.trace import (
+    InsecureTLSSession,
+    MaskingSpanExporter,
+    RatioSampler,
+    create_span_exporter,
+    create_tracer_provider,
+    get_traceid,
+)
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Iterator
+
+    from opentelemetry.context import Context
+    from opentelemetry.sdk.trace.sampling import Sampler
     from opentelemetry.util.types import AttributeValue
 
 
@@ -290,10 +303,115 @@ class TestSpanAttributeMasking:
 
 
 def test_tracer_provider_masks_spans_before_the_exporter() -> None:
-    provider = create_tracer_provider(service="infrahub-test", version="1.0", exporter_type="console")
+    provider = create_tracer_provider(service="infrahub-test", version="1.0", exporter_type="console", sample_ratio=1.0)
     try:
         (span_processor,) = provider._active_span_processor._span_processors
         assert isinstance(span_processor, BatchSpanProcessor)
         assert isinstance(span_processor.span_exporter, MaskingSpanExporter)
     finally:
         provider.shutdown()
+
+
+RATIO = 0.5
+RATIO_LIMIT = int(RATIO * 2**64)
+TRACE_ID_BELOW_LIMIT = (0xABCDEF << 64) | (RATIO_LIMIT - 1)
+TRACE_ID_AT_LIMIT = (0xABCDEF << 64) | RATIO_LIMIT
+
+
+def _decision(sampler: Sampler, trace_id: int, parent_context: Context | None = None) -> Decision:
+    return sampler.should_sample(parent_context=parent_context, trace_id=trace_id, name="request").decision
+
+
+def _parent_context(sampled: bool) -> Context:
+    flags = TraceFlags(TraceFlags.SAMPLED if sampled else TraceFlags.DEFAULT)
+    parent = SpanContext(trace_id=TRACE_ID_AT_LIMIT, span_id=1, is_remote=True, trace_flags=flags)
+    return set_span_in_context(NonRecordingSpan(parent))
+
+
+class TestRatioSampler:
+    def test_records_trace_ids_below_the_ratio_limit_only(self) -> None:
+        sampler = RatioSampler(default_ratio=RATIO)
+
+        assert _decision(sampler=sampler, trace_id=TRACE_ID_BELOW_LIMIT) is Decision.RECORD_AND_SAMPLE
+        assert _decision(sampler=sampler, trace_id=TRACE_ID_AT_LIMIT) is Decision.DROP
+
+    def test_new_sampler_uses_the_default_ratio(self) -> None:
+        assert RatioSampler(default_ratio=RATIO).ratio == RATIO
+
+
+class TestTracerProviderSampler:
+    @pytest.fixture
+    def provider_sampler(self) -> Iterator[Callable[[float], Sampler]]:
+        """Build tracer providers the way the server and the task worker do, and shut them down after."""
+        providers: list[TracerProvider] = []
+
+        def build(sample_ratio: float) -> Sampler:
+            provider = create_tracer_provider(
+                service="infrahub-test", version="1.0", exporter_type="console", sample_ratio=sample_ratio
+            )
+            providers.append(provider)
+            return provider.sampler
+
+        yield build
+        for provider in providers:
+            provider.shutdown()
+
+    def test_sampled_parent_is_always_followed(self, provider_sampler: Callable[[float], Sampler]) -> None:
+        sampler = provider_sampler(0.0)
+
+        decision = _decision(sampler=sampler, trace_id=TRACE_ID_AT_LIMIT, parent_context=_parent_context(sampled=True))
+
+        assert decision is Decision.RECORD_AND_SAMPLE
+
+    def test_unsampled_parent_is_never_recorded(self, provider_sampler: Callable[[float], Sampler]) -> None:
+        sampler = provider_sampler(1.0)
+
+        decision = _decision(
+            sampler=sampler, trace_id=TRACE_ID_BELOW_LIMIT, parent_context=_parent_context(sampled=False)
+        )
+
+        assert decision is Decision.DROP
+
+    def test_root_trace_uses_the_configured_ratio(self, provider_sampler: Callable[[float], Sampler]) -> None:
+        sampler = provider_sampler(RATIO)
+
+        assert _decision(sampler=sampler, trace_id=TRACE_ID_BELOW_LIMIT) is Decision.RECORD_AND_SAMPLE
+        assert _decision(sampler=sampler, trace_id=TRACE_ID_AT_LIMIT) is Decision.DROP
+
+
+@dataclass
+class TraceIdFormatTestCase:
+    name: str
+    trace_id: int
+    expected: str
+
+
+TRACE_ID_FORMAT_TEST_CASES: list[TraceIdFormatTestCase] = [
+    TraceIdFormatTestCase(
+        name="leading_zero_is_kept",
+        trace_id=0x0AF7651916CD43DD8448EB211C80319C,
+        expected="0af7651916cd43dd8448eb211c80319c",
+    ),
+    TraceIdFormatTestCase(
+        name="small_trace_id_is_padded_to_32_characters",
+        trace_id=0x1,
+        expected="00000000000000000000000000000001",
+    ),
+    TraceIdFormatTestCase(
+        name="largest_trace_id",
+        trace_id=2**128 - 1,
+        expected="ffffffffffffffffffffffffffffffff",
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in TRACE_ID_FORMAT_TEST_CASES])
+def test_trace_id_is_32_lowercase_hexadecimal_characters(test_case: TraceIdFormatTestCase) -> None:
+    span = NonRecordingSpan(SpanContext(trace_id=test_case.trace_id, span_id=1, is_remote=False))
+
+    with use_span(span):
+        assert get_traceid() == test_case.expected
+
+
+def test_no_trace_id_outside_a_span() -> None:
+    assert get_traceid() is None
