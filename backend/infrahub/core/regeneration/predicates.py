@@ -7,7 +7,7 @@ from infrahub.core.schema.schema_branch_computed.python_transform import IMPRECI
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.git.closure_builder.canonicalizer import canonicalize_path
 
-from .models import PredicateOutcome, RegenerationReason, RegenerationTrigger
+from .models import ExcludedChange, PredicateOutcome, RegenerationReason, RegenerationTrigger
 
 if TYPE_CHECKING:
     from infrahub_sdk.diff import NodeDiff
@@ -69,7 +69,10 @@ def _is_unchanged(action: str) -> bool:
 
 
 def relevant_node_changes(
-    diff_summary: list[NodeDiff], query_branch: str, readable_fields_by_kind: dict[str, set[str]]
+    diff_summary: list[NodeDiff],
+    query_branch: str,
+    readable_fields_by_kind: dict[str, set[str]],
+    excluded_changes: frozenset[ExcludedChange],
 ) -> list[str]:
     """Return ids of nodes whose modified fields intersect the fields a query reads.
 
@@ -87,6 +90,8 @@ def relevant_node_changes(
     carry a node purely as hierarchical context, and can hang an unchanged parent relationship off
     a node that did change, neither of which makes a reader stale. A removed node is deliberately
     kept -- whatever read it is now stale, so dropping it would under-execute.
+
+    A field listed in ``excluded_changes`` for a node does not count as modified for that node.
     """
     relevant_node_ids: list[str] = []
     for node_diff in diff_summary:
@@ -95,7 +100,12 @@ def relevant_node_changes(
         readable_fields = readable_fields_by_kind.get(node_diff["kind"])
         if not readable_fields:
             continue
-        updated_fields = {element["name"] for element in node_diff["elements"] if not _is_unchanged(element["action"])}
+        updated_fields = {
+            element["name"]
+            for element in node_diff["elements"]
+            if not _is_unchanged(element["action"])
+            and ExcludedChange(node_id=node_diff["id"], field_name=element["name"]) not in excluded_changes
+        }
         imprecise_read = bool(readable_fields & IMPRECISE_READ_FIELDS)
         if updated_fields and (imprecise_read or (updated_fields & readable_fields)):
             relevant_node_ids.append(node_diff["id"])

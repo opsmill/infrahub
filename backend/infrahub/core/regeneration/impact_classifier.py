@@ -9,7 +9,7 @@ from .predicates import relevant_node_changes
 if TYPE_CHECKING:
     from infrahub_sdk.diff import NodeDiff
 
-    from .models import ReachedPath
+    from .models import ExcludedChange, ReachedPath
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,7 +88,8 @@ class QueryImpactClassifier:
     reached_paths_by_kind: dict[str, tuple[ReachedPath, ...]] = field(default_factory=dict)
     depends_on_everything: bool = False
 
-    def assess(self, diff_summary: list[NodeDiff]) -> ImpactAssessment:
+    def assess(self, diff_summary: list[NodeDiff], excluded_changes: frozenset[ExcludedChange]) -> ImpactAssessment:
+        """Classify the diff, leaving out the changed fields listed in ``excluded_changes``."""
         if self.depends_on_everything:
             # The read surface cannot be pinned to specific kinds: the change that moves the derived
             # value can land on a peer the read set never names. Widen unconditionally rather than
@@ -98,14 +99,18 @@ class QueryImpactClassifier:
         if not self.only_has_unique_targets:
             # A changed node cannot be traced back to the targets reading it: the query answers from
             # an unbounded set.
-            if self._changed_node_ids(diff_summary=diff_summary, kinds=self.readable_fields_by_kind):
+            if self._changed_node_ids(
+                diff_summary=diff_summary, excluded_changes=excluded_changes, kinds=self.readable_fields_by_kind
+            ):
                 return EveryTarget(widening=Widening(reason=WideningReason.NON_UNIQUE_TARGETS))
             return ChangedNodes(node_ids=[])
 
         root_fields_by_kind = {
             kind: fields for kind, fields in self.readable_fields_by_kind.items() if kind not in self.traversed_kinds
         }
-        member_node_ids = self._changed_node_ids(diff_summary=diff_summary, kinds=root_fields_by_kind)
+        member_node_ids = self._changed_node_ids(
+            diff_summary=diff_summary, excluded_changes=excluded_changes, kinds=root_fields_by_kind
+        )
 
         reached: list[ReachedChange] = []
         unmapped_kinds: list[str] = []
@@ -113,7 +118,9 @@ class QueryImpactClassifier:
             fields = self.readable_fields_by_kind.get(kind)
             if not fields:
                 continue
-            changed_ids = self._changed_node_ids(diff_summary=diff_summary, kinds={kind: fields})
+            changed_ids = self._changed_node_ids(
+                diff_summary=diff_summary, excluded_changes=excluded_changes, kinds={kind: fields}
+            )
             if not changed_ids:
                 continue
             paths = self.reached_paths_by_kind.get(kind)
@@ -132,7 +139,16 @@ class QueryImpactClassifier:
             return RelationshipReachedChanges(direct_member_node_ids=member_node_ids, reached=reached)
         return ChangedNodes(node_ids=member_node_ids)
 
-    def _changed_node_ids(self, *, diff_summary: list[NodeDiff], kinds: dict[str, set[str]]) -> list[str]:
+    def _changed_node_ids(
+        self,
+        *,
+        diff_summary: list[NodeDiff],
+        excluded_changes: frozenset[ExcludedChange],
+        kinds: dict[str, set[str]],
+    ) -> list[str]:
         return relevant_node_changes(
-            diff_summary=diff_summary, query_branch=self.query_branch, readable_fields_by_kind=kinds
+            diff_summary=diff_summary,
+            query_branch=self.query_branch,
+            readable_fields_by_kind=kinds,
+            excluded_changes=excluded_changes,
         )

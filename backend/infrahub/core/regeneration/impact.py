@@ -9,7 +9,7 @@ from infrahub.message_bus.types import ProposedChangeSubscriber
 from infrahub.workers.dependencies import get_database
 
 from .classifier_builder import QueryClassifierBuilder
-from .filtered_peers import ChangedNodeIndex, FilteredPeerReads
+from .filtered_peers import ChangedNodeIndex, FilteredPeerReads, FilteredRelationshipExclusions
 from .impact_classifier import ChangedNodes, EveryTarget, RelationshipReachedChanges
 from .models import TargetSelection
 from .peer_query import RelationshipPeerQuery
@@ -82,7 +82,18 @@ async def get_field_level_impacted_subscribers(
             dependents=UniquenessDependentResolver(db=session_db, branch=query_branch_obj),
             peers=RelationshipPeerQuery(db=session_db, branch=query_branch_obj, schema_branch=query_schema_branch),
         )
-        assessment = classifier.assess(diff_summary=diff_summary)
+        exclusions = FilteredRelationshipExclusions(
+            reads=query_report.relationship_reads,
+            schema_branch=query_schema_branch,
+            changes=changes,
+            peer_reads=peer_reads,
+        )
+        excluded_changes = (
+            await exclusions.excluded_changes(diff_summary=diff_summary)
+            if exclusions.has_filtered_reads and not classifier.depends_on_everything
+            else frozenset()
+        )
+        assessment = classifier.assess(diff_summary=diff_summary, excluded_changes=excluded_changes)
 
         match assessment:
             case EveryTarget(widening=widening):
