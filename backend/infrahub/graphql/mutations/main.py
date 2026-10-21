@@ -40,6 +40,7 @@ if TYPE_CHECKING:
     from starlette.datastructures import UploadFile
 
     from infrahub.core.branch import Branch
+    from infrahub.core.mutation_context import RecordedNode
     from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
     from infrahub.graphql.types.context import ContextInput
@@ -55,14 +56,12 @@ async def emit_node_mutation_events(
     graphql_context: GraphqlContext,
     action: MutationAction,
     deleted_nodes: list[Node] | None = None,
-    side_effect_nodes: list[Node] | None = None,
+    recorded_nodes: list[RecordedNode] | None = None,
 ) -> None:
-    if (
-        not graphql_context.background
-        or not graphql_context.account_session
-        or not graphql_context.service
-        or not node.has_changelog
-        or not node.node_changelog.has_changes
+    if not graphql_context.background or not graphql_context.account_session or not graphql_context.service:
+        return
+    if not (node.has_changelog and node.node_changelog.has_changes) and not any(
+        recorded.node.has_changelog and recorded.node.node_changelog.has_changes for recorded in recorded_nodes or []
     ):
         return
 
@@ -76,7 +75,7 @@ async def emit_node_mutation_events(
         context=graphql_context.to_event_context(),
         request_id=request_id,
         action=action,
-        side_effect_nodes=side_effect_nodes or [],
+        recorded_nodes=recorded_nodes or [],
     )
     for event in events:
         graphql_context.background.add_task(graphql_context.active_service.event.send, event)
@@ -234,15 +233,15 @@ class InfrahubMutationMixin:
         # Reset the time of the query to guarantee that all resolvers executed after this point will account for the changes
         graphql_context.at = Timestamp()
 
-        creation_context = obj._creation_context if obj else None
-        side_effect_nodes = creation_context.side_effect_nodes if creation_context else None
+        mutation_context = obj._mutation_context if obj else None
+        recorded_nodes = mutation_context.recorded_nodes if mutation_context else None
 
         await emit_node_mutation_events(
             node=obj,
             graphql_context=graphql_context,
             action=action,
             deleted_nodes=deleted_nodes,
-            side_effect_nodes=side_effect_nodes,
+            recorded_nodes=recorded_nodes,
         )
 
         return mutation
