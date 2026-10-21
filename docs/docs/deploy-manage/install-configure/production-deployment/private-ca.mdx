@@ -38,7 +38,7 @@ Infrahub picks the trust store of each outbound connection in this order:
 
 Every CA setting accepts either the path of a PEM file or the PEM text itself. Infrahub writes PEM text to a file named after its content under the system temporary directory (`TMPDIR`, `/tmp` by default) at startup, so components that only read a file, such as git, use it too. Literal `\n` sequences in place of line breaks are accepted, for tooling that cannot pass multi-line values.
 
-A CA bundle replaces the system trust store for the components it applies to, it does not extend it. If a component must keep reaching services with publicly issued certificates, such as `github.com`, append the public root certificates to your bundle as shown in the first step.
+For every component except git, a CA bundle replaces the system trust store, it does not extend it. If one of these components must keep reaching services with publicly issued certificates, such as a public SSO provider or webhook endpoint, append the public root certificates to your bundle as shown in the first step. Git trusts the bundle in addition to the certificates installed in the container, so repositories hosted on `github.com` or another server with a publicly issued certificate keep working with a bundle that contains only your private CA certificates.
 
 | Component | Connections | Component setting |
 |-----------|-------------|-------------------|
@@ -60,7 +60,7 @@ Concatenate your root and intermediate certificates into a single PEM file:
 cat corporate-root-ca.pem corporate-intermediate-ca.pem > ca-bundle.pem
 ```
 
-If Infrahub also connects to services with publicly issued certificates, append the public root certificates. On a Debian or Ubuntu host:
+If Infrahub also connects to services other than Git servers with publicly issued certificates, such as a public SSO provider or webhook endpoint, append the public root certificates. On a Debian or Ubuntu host:
 
 ```shell
 cat /etc/ssl/certs/ca-certificates.crt >> ca-bundle.pem
@@ -273,9 +273,9 @@ kubectl exec deployment/infrahub-infrahub-task-worker -- sh -c 'git config --fil
 </TabItem>
 </Tabs>
 
-With a wrong path, Infrahub refuses to start and logs a message such as `tls.ca_bundle must be the path to an existing file`. A `could not lock config file` message means the task worker could not write its git configuration file, so git does not use the bundle; see [Repository fails certificate verification with a CA bundle configured](../../../git-integration/connect-repository.mdx#repository-fails-certificate-verification-with-a-ca-bundle-configured).
+With a wrong path, Infrahub refuses to start and logs a message such as `tls.ca_bundle: must be the path to an existing file or PEM text, got '/opt/infrahub/tls/ca-bundle.pem'`. A `could not lock config file` message means the task worker could not write its git configuration file, so git does not use the bundle; see [Repository fails certificate verification with a CA bundle configured](../../../git-integration/connect-repository.mdx#repository-fails-certificate-verification-with-a-ca-bundle-configured).
 
-The last command prints the path of the bundle, or the path of the file Infrahub wrote under the temporary directory when the setting holds PEM text. Then add or refresh a repository hosted on your internal Git server, following [How to connect external Git repositories](../../../git-integration/connect-repository.mdx). The repository reaches the `Online` operational status instead of failing with `SSL verification failed`.
+The last command prints the path of the bundle, or the path of the file Infrahub wrote under the temporary directory when the setting holds PEM text. Then add or refresh a repository hosted on your internal Git server, following [How to connect external Git repositories](../../../git-integration/connect-repository.mdx). The repository reaches the `Online` operational status. When git does not trust the certificate of the Git server, the form to add a repository shows `SSL verification failed for <repository name>, please validate the certificate chain.` and Infrahub does not create the repository. For a repository that already exists, select **Check connectivity** in the **Actions** menu of the repository: the **Connection Failed** dialog shows the same message, and the operational status of the repository changes to `Connectivity Error`.
 
 To verify the HTTP client, trigger a webhook targeting an internal endpoint or log in through your SSO provider. A remaining `Unable to validate TLS certificate` error means the bundle is missing an intermediate certificate for that endpoint.
 

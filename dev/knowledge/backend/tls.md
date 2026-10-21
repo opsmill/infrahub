@@ -28,9 +28,13 @@ section, and the value they see is already resolved. Inspecting `config.SETTINGS
 shows the effective CA, not what the operator typed.
 
 A CA bundle *replaces* the system trust store, it never extends it: `ssl.create_default_context(cafile=...)`,
-git's `http.sslCAInfo`, boto3's `verify`, the Neo4j driver's `TrustCustomCAs` and redis-py's `ssl_ca_certs`
-all behave that way. The user docs tell operators to append the public roots when a component must keep
-reaching public services.
+boto3's `verify`, the Neo4j driver's `TrustCustomCAs` and redis-py's `ssl_ca_certs` all behave that way.
+The user docs tell operators to append the public roots when a component must keep reaching public services.
+
+Git is the exception. `http.sslCAInfo` replaces only the CA file: the image's git is built on libcurl with
+GnuTLS, which still loads its default CA directory `/etc/ssl/certs`, so git trusts the bundle *and* the
+system certificates. `GIT_CURL_VERBOSE=1` shows both loads; only an explicit `http.sslCAPath` pointing at
+an empty directory makes git reject a publicly signed server.
 
 ## Where each component applies it
 
