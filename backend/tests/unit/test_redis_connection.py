@@ -522,6 +522,8 @@ def test_sentinel_credentials_do_not_leak_to_the_daemons() -> None:
 VALID_URLS = [
     "redis://cache:6379/0",
     "rediss://user:pass@cache:6380/2",
+    "rediss://user:s3cr%2Fet%3Fpa%23ss@cache:6380/2",
+    "redis+sentinel://s1:26379/mymaster?sentinel_password=p%40ss",
     "redis+sentinel://s1:26379,s2:26379/mymaster",
     "rediss+sentinel://s1/mymaster/1?ssl_ca_certs=/etc/ca.pem&sentinel_password=sp",
 ]
@@ -537,6 +539,11 @@ class InvalidUrlCase:
     name: str
     url: str
     match: str
+    secret_fragments: tuple[str, ...] = ("topsecret",)
+
+
+UNENCODED_CREDENTIALS = r"^Redis URL has an '@' after its host\. Percent-encode the characters"
+SPLIT_PASSWORD = ("s3cr", "etpass")
 
 
 INVALID_URL_CASES = [
@@ -580,6 +587,50 @@ INVALID_URL_CASES = [
         url="rediss://u:topsecret@cache:6379?ssl_cert_reqs=bogus",
         match=r"^Redis URL is not valid: Invalid SSL Certificate Requirements Flag: bogus$",
     ),
+    InvalidUrlCase(
+        name="unencoded_slash_in_the_password",
+        url="redis://user:s3cr/etpass@cache:6379/0",
+        match=UNENCODED_CREDENTIALS,
+        secret_fragments=SPLIT_PASSWORD,
+    ),
+    InvalidUrlCase(
+        name="unencoded_question_mark_in_the_password",
+        url="redis://user:s3cr?etpass@cache:6379/0",
+        match=UNENCODED_CREDENTIALS,
+        secret_fragments=SPLIT_PASSWORD,
+    ),
+    InvalidUrlCase(
+        name="unencoded_hash_in_the_password",
+        url="redis://user:s3cr#etpass@cache:6379/0",
+        match=UNENCODED_CREDENTIALS,
+        secret_fragments=SPLIT_PASSWORD,
+    ),
+    InvalidUrlCase(
+        # The digits read as a port, so the rest of the password would be reported as an unknown option.
+        name="unencoded_question_mark_after_digits_in_the_password",
+        url="redis://user:1234?etpass=x@cache:6379/0",
+        match=UNENCODED_CREDENTIALS,
+        secret_fragments=("1234", "etpass"),
+    ),
+    InvalidUrlCase(
+        # This one parses, as host "user" and port 1234, which a connection error would then report.
+        name="unencoded_slash_after_digits_in_the_password",
+        url="redis://user:1234/etpass@cache:6379/0",
+        match=UNENCODED_CREDENTIALS,
+        secret_fragments=("1234", "etpass"),
+    ),
+    InvalidUrlCase(
+        name="unencoded_slash_in_a_sentinel_password",
+        url="redis+sentinel://user:s3cr/etpass@s1:26379/mymaster",
+        match=UNENCODED_CREDENTIALS,
+        secret_fragments=SPLIT_PASSWORD,
+    ),
+    InvalidUrlCase(
+        name="unencoded_at_sign_in_a_query_value",
+        url="redis+sentinel://s1:26379/mymaster?sentinel_password=top@secret",
+        match=UNENCODED_CREDENTIALS,
+        secret_fragments=("top@secret",),
+    ),
 ]
 
 
@@ -588,4 +639,5 @@ def test_validate_redis_url_rejects_without_echoing_the_url(case: InvalidUrlCase
     with pytest.raises(ValueError, match=case.match) as exc_info:
         validate_redis_url(case.url)
 
-    assert "topsecret" not in str(exc_info.value)
+    for fragment in case.secret_fragments:
+        assert fragment not in str(exc_info.value)

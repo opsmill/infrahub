@@ -482,3 +482,13 @@ def test_invalid_cache_url_fails_the_load_without_echoing_it() -> None:
         CacheSettings(url=SecretStr("redis+sentinel://user:topsecret@sentinel-a:26379"))
 
     assert "topsecret" not in str(exc.value)
+
+
+@pytest.mark.usefixtures("without_cache_environment")
+@pytest.mark.parametrize("reserved", ["/", "?", "#"])
+def test_unencoded_cache_url_password_fails_the_load_without_echoing_it(reserved: str) -> None:
+    with pytest.raises(ValidationError, match=r"Value error, Redis URL has an '@' after its host") as exc:
+        CacheSettings(url=SecretStr(f"redis://user:s3cr{reserved}etpass@cache:6379/0"))
+
+    assert "s3cr" not in str(exc.value)
+    assert "etpass" not in str(exc.value)

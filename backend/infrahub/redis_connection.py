@@ -35,6 +35,13 @@ def _is_tls_url(url: str) -> bool:
     return bool(separator) and scheme.lower() in TLS_URL_SCHEMES
 
 
+def _has_at_sign_after_host(url: str) -> bool:
+    """Whether an ``@`` follows the host, as it does when a ``/``, ``?`` or ``#`` in the credentials is not encoded."""
+    _, _, remainder = url.partition("://")
+    authority_end = min((index for index in map(remainder.find, "/?#") if index != -1), default=len(remainder))
+    return "@" in remainder[authority_end:]
+
+
 def add_default_ca_bundle(url: str, ca_file: str | None) -> str:
     """Return ``url`` verifying against ``ca_file`` when it selects TLS and names no CA bundle itself.
 
@@ -105,9 +112,15 @@ def validate_redis_url(url: str) -> None:
 
     Raises:
         ValueError: When the URL is malformed or names an option the connection does not accept. The
-            message does not echo the URL, so credentials embedded in it are not leaked.
+            message never echoes the credentials embedded in the URL.
 
     """
+    if _has_at_sign_after_host(url):
+        # The parsers would read part of the credentials as a host, port, path or option, and echo it.
+        raise ValueError(
+            "Redis URL has an '@' after its host. Percent-encode the characters /, ?, #, @, : and % in its "
+            "username and password, for example / as %2F, and an @ in a query value as %40."
+        )
     try:
         # Building a connection object, not only the client, is what rejects an unknown query option.
         _redis_from_url(url).connection_pool.make_connection()
