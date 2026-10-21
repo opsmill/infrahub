@@ -14,6 +14,9 @@ Applies to TypeScript in `frontend/app/src/`.
 - Look up a single node with `useGetObject({ objectId, objectSchema })` and a schema from `useSchema`, not a hand-written lookup.
 - Do not import another entity's `api/`; go through its `domain/` or `ui/`. `domain/` does not import `ui/`, React, TanStack, Jotai or browser storage, and does not read global state (branch, date, schema) or a page size: `ui/` passes them in as parameters. Define list limits, visible-item caps and page sizes in `ui/`, not in `domain/model`.
 - Put `queryOptions` and `useQuery` in `ui/queries/`, never in `domain/`.
+- Give a new use case its own `api/`, `domain/` and `ui/queries/` files, in a new entity when the feature spans entities. Do not reuse another feature's query by passing flags or overrides that change its behaviour (kind selection, polling, paging, `refetchInterval: false`).
+- Do not fetch data only to pass it as request context that the client's default already gives: a request without branch context goes to the default branch, so do not look up the default branch to send it.
+- Keep imports between entities one-way. When a feature entity reads another entity's data, that entity does not import the feature entity back; pass plain values (names, ids) across instead of its types or hooks.
 - Do not add entity vocabulary (schema kinds, states, filter names) or entity-aware code under `shared/`.
 - Do not add an entity-root `types.ts`, `constants.ts`, `stores.ts` or `utils/`; use `domain/model`, `domain/rules`, `ui/` or `api/*.mappers.ts`.
 - Import `@urql/core` only in `shared/api/graphql/client.ts`.
@@ -49,6 +52,7 @@ Applies to TypeScript in `frontend/app/src/`.
 ## Not violations
 
 - `// invalidation-at-callsite` and a call-site `onSuccess` in that file; `processErrorMessage: () => {}`.
+- Passing branch context to a request that must run on the user's current branch, which can differ from the default branch.
 - `shared/components/form/` importing entities; `shared/api/` importing `authentication` or `nodes/filters`.
 - `as` in a test double whose type a test cannot build in full, such as a mocked query or mutation result (`as unknown as ReturnType<typeof useX>`). Build domain data with the `tests/fake/` generators instead.
 - TypeScript errors in untouched code (betterer ratchets them), and migration debt the change did not add.

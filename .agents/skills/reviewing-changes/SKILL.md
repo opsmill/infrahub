@@ -1,11 +1,11 @@
 ---
 name: reviewing-changes
 description: >-
-  Reviews the current branch before it is pushed, so the PR opens without the comments cubic and human reviewers would otherwise raise. Shows which `.agents/rules/` files and `AGENTS.md` files apply to the change, runs the built-in `code-review` for bugs, checks the change against the matching rules (the same files cubic reviews PRs with), checks the specs, changelog and PR claims the diff cannot show, runs the cubic CLI when it is installed, verifies every finding against the code, and fixes the approved ones. TRIGGER when: the user wants their branch reviewed before pushing or opening a PR, asks "will cubic complain about this", wants fewer review comments on their PR, or says "review my changes", "pre-push review", or "cubic review". DO NOT TRIGGER when: answering review threads already on a PR → `opsmill-dev-addressing-review`; turning review threads into durable docs → `harvesting-review`; a bug hunt only → the `code-review` skill; only watching CI → `monitoring-pull-requests`.
+  Reviews the current branch before it is pushed, so the PR opens without the comments cubic and human reviewers would otherwise raise. Shows which `.agents/rules/` files and `AGENTS.md` files apply to the change, runs the built-in `code-review` for bugs, checks the change against the matching rules (the same files cubic reviews PRs with), reviews how the new files fit together and whether each new file earns its place, checks the specs, changelog and PR claims the diff cannot show, runs the cubic CLI when it is installed, verifies every finding against the code, and fixes the approved ones. TRIGGER when: the user wants their branch reviewed before pushing or opening a PR, asks "will cubic complain about this", wants fewer review comments on their PR, or says "review my changes", "pre-push review", or "cubic review". DO NOT TRIGGER when: answering review threads already on a PR → `opsmill-dev-addressing-review`; turning review threads into durable docs → `harvesting-review`; a bug hunt only → the `code-review` skill; only watching CI → `monitoring-pull-requests`.
 argument-hint: <empty for the current branch, or a base branch (develop); add `report` to review without fixing; `compare <PR number>` after the PR review>
 compatibility: A Claude Code session started at the repository root, with `origin` fetched. The `gh` CLI finds the PR base and description. The cubic CLI is optional (`curl -fsSL https://cubic.dev/install | bash`, `cubic auth login`, and a seat on OpsMill's subscription).
 metadata:
-  version: 3.2.0
+  version: 3.3.0
   author: OpsMill
 ---
 
@@ -27,8 +27,8 @@ push. It does not repeat other tools:
 - **Repository context** comes from the project hooks in `.claude/settings.json`: they give
   subagents the root `AGENTS.md`, and add the matching rules and area `AGENTS.md` after Bash,
   Grep and Glob calls. Read and Write load them natively.
-- **This skill adds** the rule check, the checks the diff cannot show, a local cubic run, one
-  verified list of findings, and the fixes.
+- **This skill adds** the rule check, the design and per-file checks, the checks the diff cannot
+  show, a local cubic run, one verified list of findings, and the fixes.
 
 With `compare <PR number>` in the arguments, skip to "Compare with the PR review".
 
@@ -93,12 +93,57 @@ Also flag added comments in `git diff -U0 origin/<base>...HEAD` that contain a t
 (`[A-Z]{2,}-[0-9]+`, `\bT[0-9]{3}\b`, `issues/[0-9]+`) or history (`used to`, `no longer`,
 `previously`, `instead of`), cited to `.agents/rules/code-doc-style.md`.
 
+## Phase 3b — Design
+
+The rule reviewers read one area's changed lines and the bug review hunts defects, so neither
+sees how the new files depend on each other or what they cost at run time. Spawn one reviewer
+(read-only) over every file in the manifest, with the rule and `AGENTS.md` paths of all areas.
+It answers each question with `file:line` and grades a finding P2 when a rule or article covers
+it, P3 otherwise:
+
+- **Queries.** Does each new query have its own `api/`, `domain/` and `ui/queries/` files, or
+  reuse another feature's query with flags or overrides?
+- **Request context.** Is every argument and context value of each request needed, or does a
+  client default already give it?
+- **Entity dependencies.** List the imports the change adds between entities or packages; flag
+  any pair that imports each other.
+- **Position.** Does a layout or selector depend on position (widths indexed by column, E2E
+  locators by sibling offset)? Trace a position-based locator to the missing test id in the
+  frontend, and report it there.
+- **Copied files.** For each file copied from another branch or PR, does every field, variable
+  and layer serve this change? Ask whether the copy should exist, not only whether it matches
+  its original.
+- **States.** Is each failure, pending and permission-denied state handled at the narrowest
+  scope (one row, not the whole table)?
+- **Volume.** How many requests per page load and per poll? Flag a count that grows with the
+  data.
+
+## Phase 3c — Per file
+
+Nothing else asks whether a new file should exist or whether its tests can fail. For the files
+the change adds (`git diff --name-only --diff-filter=A origin/<base>...HEAD`, plus untracked files
+in scope), spawn one reviewer per area (read-only). All findings are P3, `file:line`:
+
+- Is the file needed, or does an existing helper, constant, type or component already do it? Is
+  there a simpler way?
+- Do the file and symbol names say what they hold, with one term per concept across the change?
+- Does each comment explain why?
+- For each test, name the code change that would make it fail; flag a test with none. Flag a
+  test that repeats a case another test already covers.
+
 ## Phase 4 — What the diff cannot show
 
 - **Specs.** If `specs/` or `dev/specs/` changed, collect the task IDs the diff touches in
   `tasks.md`. One subagent compares `spec.md`, `plan.md` and `tasks.md` with the code for those
   tasks only: signatures, file names, deferred work, and departures from a requirement. Run
-  `speckit-analyze` only when the change rewrites the spec as a whole.
+  `speckit-analyze` only when the change rewrites the spec as a whole. List every file in the
+  spec folder, changed or not, and flag the pipeline scratch that `.agents/rules/dev-specs.md`
+  says not to commit. When the change moves or renames files or symbols, grep the spec folder for
+  the old names: unchanged spec files are where they survive.
+- **Dev docs.** For each section the change adds under `dev/knowledge/` or `dev/guidelines/`,
+  ask whether it states a convention the next contributor must follow, or explains one
+  implementation or a library's internals. Flag the latter (P3): the code and the library's own
+  docs already say it, and the section goes stale when they change.
 - **Claims.** Check the PR description against the diff: the open PR's
   (`gh pr view <n> --json body`) when one exists, otherwise the draft. Also check the changelog
   fragment and docs. No "all" where the code covers some, no deferred work described as done,
@@ -117,7 +162,8 @@ Also flag added comments in `git diff -U0 origin/<base>...HEAD` that contain a t
    - Exit code 1 with `error` null: cubic found issues; take them.
    - Any other non-zero exit, or an empty result without a clear success: report the exit code
      and stderr. Never present such a run as clean.
-2. **Merge** the bug, rule, diff-cannot-show and cubic findings, and remove duplicates. Move
+2. **Merge** the bug, rule, design, per-file, diff-cannot-show and cubic findings, and remove
+   duplicates. Move
    findings on paths outside the manifest to "Out of scope".
 3. **Verify each finding** by reading the code at the line and its callers. When the finding
    depends on how a library behaves, read the installed source (`frontend/node_modules/...`,
@@ -130,6 +176,12 @@ Also flag added comments in `git diff -U0 origin/<base>...HEAD` that contain a t
    Corrections to an open PR's description are Defer, with the corrected sentence: they change
    GitHub, not the code. A cubic finding that contradicts a rule's "Not violations" list is
    Declined, citing that line as `path:line`.
+4. **Check intent before Fix.** Code that looks wrong can be what the spec asked for or what a
+   later commit chose on purpose. Before classifying a finding as Fix, search the spec's
+   requirements for the behaviour the fix would change, and run
+   `git log -S '<line the fix changes>' -- <file>`. When the fix contradicts a requirement or
+   reverses a commit that made the change deliberately, classify it as **Ask**: a question for
+   the user that quotes the requirement or the commit.
 
 ## Phase 6 — Fix and review the fixes
 
@@ -145,6 +197,8 @@ round never looked at, or fix a finding only partly.
 - **Bugs**: invoke `code-review` with the arguments `high <path> <path> ...` for those paths.
 - **Rules**: one reviewer per area, as in the rule check, given `git diff HEAD -- <paths>` as the
   change and asked to check the fixed lines and the code around them.
+- **Design**: when a fix moves code between files or entities, run the design check on the
+  fixed lines: a move can add an import cycle or a request the old place did not make.
 - **Claims**: when a fix touches docs, a changelog, a guideline or the PR body, run the claims
   check again on the fixed lines.
 - **Removed exceptions**: when a fix removes an exception from a rule or guideline, check that the
@@ -163,7 +217,7 @@ If files were set aside, restore them first: `git stash apply <sha>`, then drop 
 
 Scope: <committed only | committed and uncommitted>; left out: <globs or "nothing">; set aside: <paths or "nothing">
 Context hooks: <active | inactive: paths passed explicitly>
-P1: <n> | P2: <n> | P3: <n> — fixed: <n>, declined: <n>, deferred: <n>, rounds: <n>
+P1: <n> | P2: <n> | P3: <n> — fixed: <n>, declined: <n>, deferred: <n>, asked: <n>, rounds: <n>
 cubic: <exit code, n findings | error: <message> | not installed>
 
 ### Context
@@ -179,6 +233,15 @@ cubic: <exit code, n findings | error: <message> | not installed>
 
 ### Deferred
 - `file:line` — <finding>, or the corrected PR-description sentence
+
+### Questions for you
+- `file:line` — <finding>; the fix would contradict <requirement ID: quote | commit sha: subject>
+
+### Design
+- <Queries | Request context | Entity dependencies | Position | Copied files | States | Volume>: `file:line` — <finding> (P2/P3; fixed | declined | deferred | asked)
+
+### Per file (advisory)
+- `file:line` — <need | simpler way | naming | comment | test cannot fail | duplicate test>: <one line>
 
 ### Advisory (P3)
 - `file:line` — <one line>
@@ -211,13 +274,13 @@ Run after cubic and reviewers have commented on the PR, to find what the local r
      right before counting it. Count a miss on a line the review's own fix changed separately,
      as "introduced by a fix".
 4. For each real miss, say which part of the review should have caught it (a rule, an article,
-   the claims check, the bug review, cubic) and why it did not: the rule is missing, the article
+   the design or per-file check, the claims check, the bug review, cubic) and why it did not: the rule is missing, the article
    was not loaded, the file was out of scope, a reviewer had the rule and missed it, the claims
    check did not read the code that produces the claim (for example a backend resolver), or a
    fix introduced it.
-5. Report the counts (caught, declined, missed, wrong comments), then propose fixes as in the
-   next section. A miss that no rule or document change would prevent becomes a proposed change
-   to this skill, for the user to decide.
+5. Report the counts (caught, declined, missed, introduced by a fix, wrong comments), then
+   propose fixes as in the next section. A miss that no rule or document change would prevent
+   becomes a proposed change to this skill, for the user to decide.
 
 ## Improve the rules and the index after each run
 

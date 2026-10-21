@@ -119,7 +119,7 @@ def test_rule_without_paths_names_the_first_source_file() -> None:
     ("path", "area"),
     [
         ("dev/knowledge/frontend/branches.md", "dev-docs"),
-        ("dev/specs/ifc-1/tasks.md", "dev-docs"),
+        ("dev/specs/ifc-1/tasks.md", "dev-specs"),
         ("changelog/+page.added.md", "changelog"),
         ("frontend/app/src/page.tsx", "frontend"),
         ("backend/tests/unit/test_x.py", "backend-tests"),

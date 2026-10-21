@@ -19,6 +19,11 @@ reviews:
         - .agents/rules/frontend-architecture.md
       include:
         - frontend/app/src/**
+    - name: Infrahub feature specs
+      file_paths:
+        - .agents/rules/dev-specs.md
+      include:
+        - dev/specs/**
     - name: Infrahub backend design and typing
       file_paths:
         - .agents/rules/backend-component-design.md

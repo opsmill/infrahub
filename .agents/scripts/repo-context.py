@@ -28,6 +28,7 @@ RULES_DIR = Path(".agents/rules")
 DOC_DIRS = (Path("dev/knowledge"), Path("dev/guidelines"), Path("dev/guides"))
 SOURCE_SUFFIXES = (".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs")
 AREAS = (
+    ("dev-specs", ("dev/specs/",)),
     ("dev-docs", ("dev/",)),
     ("changelog", ("changelog/",)),
     ("frontend", ("frontend/",)),
