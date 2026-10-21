@@ -21,7 +21,7 @@ catalog:
   babel-plugin-react-compiler: ^1.0.0
   lucide-react: ^1.31.0
   react: ^19.2.8
-  react-aria-components: ~1.21.1
+  react-aria-components: ^1.22.1
   react-dom: ^19.2.8
   tailwind-merge: ^3.6.0
   tailwindcss: ^4.3.3
