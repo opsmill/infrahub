@@ -11099,7 +11099,7 @@ export type CoreNumberPoolRange = CoreNode & CoreWeightedPoolResource & {
   /** Weight determines allocation priority, resources with higher values are selected first. */
   allocation_weight: Maybe<NumberAttribute>;
   display_label: Maybe<Scalars['String']['output']>;
-  /** The last number of the range, included (required) */
+  /** The last number of the range, included */
   end: Maybe<NumberAttribute>;
   /** Human friendly identifier */
   hfid: Maybe<Array<Scalars['String']['output']>>;
@@ -11107,7 +11107,7 @@ export type CoreNumberPoolRange = CoreNode & CoreWeightedPoolResource & {
   id: Scalars['String']['output'];
   member_of_groups: NestedPaginatedCoreGroup;
   pool: NestedEdgedCoreNumberPool;
-  /** The first number of the range, included (required) */
+  /** The first number of the range, included */
   start: Maybe<NumberAttribute>;
   subscriber_of_groups: NestedPaginatedCoreGroup;
 };
@@ -24042,9 +24042,9 @@ export type NumberPoolRangeInput = {
   /** Ranges with a higher weight are allocated from first. Left out, a range declared with the bounds of a stored range keeps the stored range's weight; null removes it. */
   allocation_weight?: InputMaybe<Scalars['BigInt']['input']>;
   /** The last number of the range, included */
-  end: Scalars['BigInt']['input'];
+  end?: InputMaybe<Scalars['BigInt']['input']>;
   /** The first number of the range, included */
-  start: Scalars['BigInt']['input'];
+  start?: InputMaybe<Scalars['BigInt']['input']>;
 };
 
 /** A reference to one range of the pool. */
@@ -24057,15 +24057,15 @@ export type NumberPoolRangeRef = {
 /** One range of a number pool with its own figures. */
 export type NumberPoolRangeUtilization = {
   __typename: 'NumberPoolRangeUtilization';
-  /** The range node's display label. */
+  /** The range's bounds written as "start - end", from start and end. An end at the largest supported number is written as MAX. */
   display_label: Scalars['String']['output'];
-  /** Last value of the range, included. */
+  /** Last value of the range, included. For a range without an end, the smaller of the largest supported number and the target attribute's max_value on the requested branch. */
   end: Scalars['BigInt']['output'];
   /** Figures over the range's values. On a scoped pool, only the values held in the division passed in the division argument. */
   figures: NumberPoolUtilizationFigures;
   /** The range node's id. */
   id: Scalars['String']['output'];
-  /** First value of the range, included. */
+  /** First value of the range, included. For a range without a start, the larger of 1 and the target attribute's min_value on the requested branch. */
   start: Scalars['BigInt']['output'];
   /** The range's allocation weight. 0 when the range declares none. */
   weight: Scalars['BigInt']['output'];

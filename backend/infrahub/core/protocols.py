@@ -514,8 +514,8 @@ class CoreNumberPool(CoreResourcePool, LineageSource):
 
 
 class CoreNumberPoolRange(CoreWeightedPoolResource):
-    start: Integer
-    end: Integer
+    start: IntegerOptional
+    end: IntegerOptional
     pool: RelationshipManager[CoreNumberPool]
 
 

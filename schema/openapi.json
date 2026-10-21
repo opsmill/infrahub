@@ -7128,12 +7128,19 @@
                         "description": "Deprecated, use ranges instead. Start of the single range, defaults to 1 when only end_range is set"
                     },
                     "ranges": {
-                        "items": {
-                            "$ref": "#/components/schemas/NumberPoolRangeRead"
-                        },
-                        "type": "array",
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/NumberPoolRangeRead"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Ranges",
-                        "description": "Ranges of numbers the associated NumberPool allocates from, they must not overlap"
+                        "description": "Ranges the NumberPool allocates from, without overlap. Unset means one range with no start or end; an empty list means no range"
                     },
                     "number_pool_id": {
                         "anyOf": [
@@ -7205,7 +7212,7 @@
                             }
                         ],
                         "title": "Ranges",
-                        "description": "Ranges of numbers the associated NumberPool allocates from, they must not overlap"
+                        "description": "Ranges the NumberPool allocates from, without overlap. Unset means one range with no start or end; an empty list means no range"
                     },
                     "number_pool_id": {
                         "anyOf": [
@@ -7241,14 +7248,28 @@
             "NumberPoolRangeRead": {
                 "properties": {
                     "start": {
-                        "type": "integer",
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Start",
-                        "description": "First number of the range"
+                        "description": "First number of the range, 1 when unset"
                     },
                     "end": {
-                        "type": "integer",
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "End",
-                        "description": "Last number of the range"
+                        "description": "Last number of the range, the largest supported number when unset"
                     },
                     "weight": {
                         "anyOf": [
@@ -7264,23 +7285,33 @@
                     }
                 },
                 "type": "object",
-                "required": [
-                    "start",
-                    "end"
-                ],
                 "title": "NumberPoolRangeRead"
             },
             "NumberPoolRangeWrite": {
                 "properties": {
                     "start": {
-                        "type": "integer",
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Start",
-                        "description": "First number of the range"
+                        "description": "First number of the range, 1 when unset"
                     },
                     "end": {
-                        "type": "integer",
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "End",
-                        "description": "Last number of the range"
+                        "description": "Last number of the range, the largest supported number when unset"
                     },
                     "weight": {
                         "anyOf": [
@@ -7296,10 +7327,6 @@
                     }
                 },
                 "type": "object",
-                "required": [
-                    "start",
-                    "end"
-                ],
                 "title": "NumberPoolRangeWrite"
             },
             "PasswordCredential": {
