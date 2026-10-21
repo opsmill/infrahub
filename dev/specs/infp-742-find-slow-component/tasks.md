@@ -297,7 +297,7 @@ checks.
 - [ ] T091 Measure the cost of tracing as [research.md](research.md) R9 says (two configurations, the named load) and record the host, the commit and the results, including the Tempo disk use per 1,000 traced requests at ratio 0.1 and 1, in `specs/infp-742-find-slow-component/measurements.md`; if tracing at 0.1 adds more than 5 %, lower the default in `backend/infrahub/config.py` and the Compose files and measure again (SC-006)
 - [x] T092 Run `/pre-ci` and fix every failure
 - [ ] T093 Daniel runs the `opsmill-dev-guiding-manual-tests` skill on the Infrahub branch, with `python_sdk` on `origin/infrahub-develop` (needs T086), using the checks of [quickstart.md](quickstart.md)
-- [ ] T094 Before release: quickstart manual check 7 (each dashboard in a Grafana with only Prometheus) and manual check 1 repeated with the file downloaded from `https://infrahub.opsmill.io/?observability=true` (needs the answer to T036)
+- [ ] T094 Before release: quickstart manual check 7 (each dashboard in a Grafana with only Prometheus) and manual check 1 repeated with the file downloaded from `https://infrahub.opsmill.io/?observability=true` (needs the answer to T036); and check that the release notes of the release that ships INFP-742 list the `trace_id` log field change as a breaking change, with the old `0x` form and the new 32-character form (research R5; changelog fragment `+trace-id-format.changed.md`; added on 2026-10-21)
 - [x] T095 Create every fragment listed in "Changelog entries for the top layer" with `towncrier create` in `changelog/`, using the `creating-changelog-entries` skill; correct each text to what landed
 
 ---
