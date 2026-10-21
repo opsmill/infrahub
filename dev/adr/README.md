@@ -27,6 +27,8 @@ We document significant architectural decisions using ADRs.
 | [0019](0019-transform-lifecycle-owns-node-input-reconciliation.md) | Transform Lifecycle Flow Owns Node-Input Automation Reconciliation | Accepted | 2026-07-31 |
 | [0020](0020-python-transform-recompute-targets.md) | Python Transform Targets from Analyzed Queries and Query-Group Subscribers | Accepted | 2026-09-28 |
 | [0021](0021-resource-allocation-telemetry.md) | Resource-allocation Telemetry: Container Limits, Stored by Each Process, in New Blocks | Accepted | 2026-10-08 |
+| [0022](0022-experimental-flag-gates-pre-release-ui.md) | A Pre-Release UI Feature Is Gated by an Experimental Settings Flag, Not by the Running Version | Deprecated | 2026-08-24 |
+| [0023](0023-application-owned-theme-resolution.md) | The Application Resolves the Theme Once and Hands the Answer Down | Accepted | 2026-08-24 |
 
 ## Creating a New ADR
 

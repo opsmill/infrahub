@@ -20,6 +20,8 @@ How Infrahub enforces read-only constraints on branches based on their lifecycle
 
 `MERGED` is terminal — there is no transition back to `OPEN`. `MERGING` is transient: it becomes `MERGED` on success, reverts to `OPEN` if the merge rolls back, or is flipped to `MERGE_FAILED` if the merge worker dies. `MERGE_FAILED` is cleared only by recovery (it returns the branch to `OPEN`).
 
+A branch carries one status, not a history of them: `Branch` is a `StandardNode`, outside branch-aware versioning. A time-travel read (`at=...`) therefore cannot reconstruct which branches existed, or what status they held, at a past time. Select branches by their current state and document the answer as "as the branch list stands now" — a row set filtered partly by the requested time and partly by today's status answers as of neither.
+
 ### Failed merge detection
 
 `backend/infrahub/core/merge/failure_identifier.py`

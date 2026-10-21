@@ -101,6 +101,11 @@ uv run towncrier create -c "Migrated the frontend build to pnpm workspaces" +pnp
 - **Hand-writing the fragment file.** Use `towncrier create` so the name and location are correct.
 - **Placing it in a sub-package directory** (e.g. `backend/changelog/`) instead of the configured fragments directory.
 - **Describing the implementation.** "Refactored the auth-token cache layer" → instead say what the user sees: "Fixed users being unexpectedly logged out".
+- **Overstating the scope of the change.** Claim only the condition under which the code actually
+  applies the new behavior — read the code path, not the PR title. "Fixed a slow update of a Profile with many
+  objects" promises a speedup for every such update; if the fix engages only when the update omits the
+  relationship fields, say so. The same goes for guarantees ("never serves", "also deletes"): qualify
+  or drop any claim the code does not enforce.
 - **Wrong tense or multiple sentences.** One past-tense sentence.
 - **Duplicating an existing fragment.** On a feature branch spanning multiple PRs, list the fragments directory first — numbered (`NNNN.type.md`) and `+`-prefixed fragments all render into the changelog. If a fragment already describes the same user-visible change, extend or reconcile it instead of adding an overlapping one.
 

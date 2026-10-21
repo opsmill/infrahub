@@ -33,6 +33,18 @@ when the model is constructed. Assigning `value`/`value_previous` on an existing
 the mask (`validate_assignment` is not enabled) and leaks the secret into the event payload. Build
 changelog entries with their final values; never patch them after construction.
 
+### Secondary changelogs and the parent marker
+
+A mutation's affected peers each get a secondary changelog. Its parent is held apart from the
+`relationships` dict, and `root_node_id` falls back to the changelog's own node when the parent is
+unset — so a path that builds or merges a secondary without carrying the parent over emits an event
+missing `infrahub.node.parent` and rooted on the wrong node. Every such path must propagate it.
+
+"Parent" here means a relationship of schema kind `Parent` only. The `parent`/`children`
+relationships generated for a `hierarchical` generic carry kind `Hierarchy` and are not treated as
+parents on any path; changing that for one path would make secondary events disagree with primary
+ones.
+
 ### Related resources cap
 
 The Prefect API rejects any event whose `related` list exceeds

@@ -6,7 +6,7 @@ Applies when creating a new backend component or making significant changes to a
 
 ## Use modular components with dependency injection
 
-New logic lives in components that receive their collaborators through constructor injection rather than instantiating them internally, which keeps them composable, swappable, and testable without patching. A dataclass is data — inputs and outputs of functions; the moment it needs a collaborator to do work, it is a component: make it a plain class with the collaborator injected at construction. Every collaborator is a **required** parameter — not `collaborator: Collaborator | None = None` with an internal default, and not a defaulted factory (`cache_factory: CacheFactory = build_heartbeat_cache`) whose default reaches into settings: either shape hides that the dependency exists and lets a caller silently skip wiring it.
+New logic lives in components that receive their collaborators through constructor injection rather than instantiating them internally, which keeps them composable, swappable, and testable without patching. A dataclass is data — inputs and outputs of functions; the moment it needs a collaborator to do work, it is a component: make it a plain class with the collaborator injected at construction. Construction is the same boundary in disguise: a `from_*` classmethod that pairs, groups or filters its inputs to build the object is component logic, and it belongs in the component that retrieves those inputs and returns the data object — the dataclass keeps its fields and trivial derived properties. Every collaborator is a **required** parameter — not `collaborator: Collaborator | None = None` with an internal default, and not a defaulted factory (`cache_factory: CacheFactory = build_heartbeat_cache`) whose default reaches into settings: either shape hides that the dependency exists and lets a caller silently skip wiring it.
 
 The single exception is editing existing code where adding a required parameter would force a large change across many call sites. There, an optional parameter is a transitional compromise to keep the change small - not the target shape for new components.
 
@@ -69,6 +69,37 @@ When more than one implementation of a component is required (e.g. real vs. in-m
 A single implementation does not need an interface yet; introduce one when the second implementation arrives. Note that the second implementation
 can be either a no-op version (such as in the case of an enterprise-only feature) or a testing version of a component (such as in the case of an
 in-memory version of a component typically backed by the database).
+
+When a second backend arrives, put both behind an interface the component owns and choose the backend at the wiring layer. Do not attach the second backend to the first one's client. The attached shape shows up as:
+
+- the component reads the configured driver and branches on it
+- the constructor takes a union of the backends' clients, or one optional parameter per backend
+- the new backend copies the first client's method signatures and defaults
+- the shared code still catches the first client's exceptions
+
+```python
+# ❌ Bad - written for Redis with NATS attached: the lock picks its backend itself
+class InfrahubLock:
+    def __init__(self, name: str, connection: redis.Redis | InfrahubServices | None = None) -> None:
+        if config.SETTINGS.cache.driver == config.CacheDriver.Redis:
+            self.remote = GlobalLock(redis=connection, name=name)
+        else:
+            self.remote = NATSLock(service=connection, name=name)
+
+# ✅ Good - the lock codes against an interface it owns, and the wiring layer picks the backend
+class LockBackend(ABC):
+    @abstractmethod
+    async def acquire(self, name: str, token: str) -> None: ...
+    @abstractmethod
+    async def release(self, name: str, token: str) -> None: ...
+
+class InfrahubLock:
+    def __init__(self, name: str, backend: LockBackend) -> None:
+        self.name = name
+        self.backend = backend
+```
+
+The cache and message-bus adapters already have this shape: an ABC in `services/adapters/<kind>/__init__.py`, one module per backend, and the driver setting resolved once where the service is built (`build_cache()` in `workers/dependencies.py`). `backend/infrahub/lock.py` still has the attached shape; do not copy it. If adding the interface is more than the change at hand can take, raise that before changing the union (see [Existing code](#existing-code)).
 
 ## Interfaces to keep an out-of-domain dependency out
 

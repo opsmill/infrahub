@@ -41,6 +41,7 @@ Plan for query efficiency and data volume by considering:
 - **Database round-trips** - design to use batch queries when operating on multiple nodes
 - **N+1 query patterns** - operate set-based in both directions: load related data in bulk, and update/delete by condition in one query instead of mutating each fetched node individually
 - **Data volume per query** - avoid overquerying by fetching only necessary fields and relationships
+- **Reuse loaded data** - read attributes off a node already loaded for the request instead of querying again
 - **Memory footprint** - consider how much data will be held in memory during processing
 - **Pagination and streaming** - plan to process large result sets incrementally when appropriate
 - **Scalability testing** - consider how the feature behaves with 10, 100, 1000+ nodes
