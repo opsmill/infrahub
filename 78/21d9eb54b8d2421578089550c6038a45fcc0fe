@@ -1,0 +1,21 @@
+changelog/+regen-filtered-relationship-reads.changed.md
+  s_fb819cbbe44071::t_88ebdfef4478e0 1
+dev/knowledge/backend/selective-merge-regeneration.md
+  s_fb819cbbe44071::t_2c50165112c75c 40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7821d9eb54b8d2421578089550c6038a45fcc0fe",
+  "prompts": {},
+  "sessions": {
+    "s_fb819cbbe44071": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65a68a98-fa9c-4142-8730-a06dd94f203b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
