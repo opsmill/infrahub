@@ -96,6 +96,14 @@ not use them.
   `OTEL_PROPAGATORS` once for the whole process. 1.33 is the first release that accepts
   `OTEL_PROPAGATORS=none` (1.16 to 1.32 raise on it, tested); an invalid value makes OpenTelemetry
   raise on import, so the SDK catches it, sends no header and logs one warning.
+- **Changed on 2026-10-21 (older OpenTelemetry already installed)**: `pip` does not upgrade an
+  `opentelemetry-api` older than 1.33 that the caller's process already has, and versions 1.16 to 1.18
+  raise `StopIteration` on import. The SDK reads the installed version with `importlib.metadata` once
+  per process; below 1.33 it never imports OpenTelemetry, sends no header and logs one warning.
+  Reading the version costs about 148 µs once; each later request costs about 10 ns for the cached
+  check (one `timeit` run on a Mac, no active span). Chosen by Daniel and Patrick Ogenstad in the
+  review of [opsmill/infrahub-sdk-python#1434](https://github.com/opsmill/infrahub-sdk-python/pull/1434),
+  which merged on 2026-10-21.
 - **Effect on this plan**: Stories 2 to 6 do not depend on the SDK. Story 1 scenarios 1, 3 and 8, and
   the `infrahubctl` part of story 6, cannot pass until the SDK change merges.
 

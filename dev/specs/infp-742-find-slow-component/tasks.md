@@ -38,10 +38,9 @@ requires the single sign-on fixes to ship before tracing is turned on for more o
   fragments on the top pull request only (decided by Daniel on 2026-10-16). Intermediate layers create
   no file in `changelog/`. Instead, each layer writes the text of its fragments in "Changelog entries
   for the top layer" at the end of this file, and its pull request checklist says that the fragment is
-  skipped on purpose. T095, in the top layer (IFC-3430), creates all of them. SDK fragments are not
+  skipped on purpose. T095, in the top layer (IFC-3470), creates all of them. SDK fragments are not
   affected: each SDK pull request is in another repository and carries its own fragment in
   `python_sdk/changelog/`.
-  `creating-changelog-entries` skill. SDK fragments go in `python_sdk/changelog/`.
 - **Submodule pointer**: while the SDK branches are not merged, `python_sdk` shows as modified in
   `git status`. Never stage it in an Infrahub commit before T086.
 - **Push and pull requests**: push a branch or open a pull request only when Daniel asks.
@@ -123,7 +122,7 @@ its trace and its task worker logs in Grafana (quickstart, manual checks 1 to 3)
 
 - [x] T019 [US1] In `python_sdk/`, check that every request path of the SDK (GraphQL queries, REST calls, file uploads, async and sync) builds its headers with `infrahub_sdk.client::BaseClient._request_headers` or `_merge_request_headers`; list any path that does not, in the commit message of T022 (research R3, not checked yet)
 - [x] T020 [P] [US1] Write unit tests in `python_sdk/tests/unit/sdk/test_trace_context.py`: with OpenTelemetry importable and a recording span, the request headers contain a valid `traceparent` for that span; with no active span, no `traceparent`; with OpenTelemetry not importable (patch the import), no `traceparent` and no error; same for the async and the sync client
-- [x] T021 [US1] In `python_sdk/infrahub_sdk/client.py`, add the `traceparent` header in `BaseClient._merge_request_headers` (every request passes through it; T019 found only `login` and `refresh_login` outside it) through the OpenTelemetry global propagator, importing OpenTelemetry only when it is installed; declare `opentelemetry-api>=1.33` as the optional extra `tracing` and in the `tests` group; on an invalid `OTEL_PROPAGATORS`, send no header and log one warning (FR-001, changed on 2026-10-20)
+- [x] T021 [US1] In `python_sdk/infrahub_sdk/client.py`, add the `traceparent` header in `BaseClient._merge_request_headers` (every request passes through it; T019 found only `login` and `refresh_login` outside it) through the OpenTelemetry global propagator, importing OpenTelemetry only when it is installed; declare `opentelemetry-api>=1.33` as the optional extra `tracing` and in the `tests` group; on an invalid `OTEL_PROPAGATORS`, send no header and log one warning (FR-001, changed on 2026-10-20); read the installed `opentelemetry-api` version once per process and, below 1.33, never import OpenTelemetry, send no header and log one warning, because an older version already installed in the caller's process fails on import (review of [opsmill/infrahub-sdk-python#1434](https://github.com/opsmill/infrahub-sdk-python/pull/1434), 2026-10-21)
 - [x] T022 [US1] In `python_sdk/`, add a changelog fragment in `python_sdk/changelog/` ("The SDK sends the W3C `traceparent` header when OpenTelemetry is installed"), run `uv run invoke format lint-code` and `uv run pytest tests/unit/`, then commit on `dp-20261015-trace-context-ifc-3419` with a conventional message ending in `[IFC-3419]`
 - [x] T023 [US1] Ask Daniel whether to push `dp-20261015-trace-context-ifc-3419` and open its pull request on `infrahub-develop` in `opsmill/infrahub-sdk-python` now, so the review runs while the Infrahub work continues (plan, delivery order step 7)
 
@@ -317,9 +316,11 @@ the branch is created, as `YYYYMMDD`.
 | 1 | A1 | [IFC-3425](https://opsmill.atlassian.net/browse/IFC-3425) | Mask secrets and personal data in spans and logs, and fix single sign-on telemetry | `dp-<date>-mask-telemetry-ifc-3425` | Layer 0 | T001, T005, T007–T018 |
 | 2 | B1 | [IFC-3428](https://opsmill.atlassian.net/browse/IFC-3428) | Record long durations, connection pool load and task worker saturation | `dp-<date>-slow-component-metrics-ifc-3428` | Layer 1 | T006, T039–T047, T049–T053, T055, T056 |
 | 3 | B2 | [IFC-3429](https://opsmill.atlassian.net/browse/IFC-3429) | Fix the shipped dashboards and make them work in any Grafana | `dp-<date>-portable-dashboards-ifc-3429` | Layer 2 | T048, T054, T057–T064 |
-| 4 | A2 | [IFC-3426](https://opsmill.atlassian.net/browse/IFC-3426) | Follow a background task to its queries in one trace | `dp-<date>-one-trace-ifc-3426` | Layer 3 | T024–T038 |
-| 5 | A3 | [IFC-3427](https://opsmill.atlassian.net/browse/IFC-3427) | Change the trace sampling ratio during an incident without a restart | `dp-<date>-runtime-sample-ratio-ifc-3427` | Layer 4 | T065–T078 |
-| 6 | C1 | [IFC-3430](https://opsmill.atlassian.net/browse/IFC-3430) | Measure, document and close out | `dp-<date>-close-out-slow-component-ifc-3430` | Layer 5 | T085–T094 |
+| 4 | A2 | [IFC-3470](https://opsmill.atlassian.net/browse/IFC-3470) | Follow a background task to its queries in one trace, change the trace sampling ratio without a restart, and close out | `dp-20261021-one-trace-sample-ratio-close-out-ifc-3470` | Layer 3 | T024–T038, T065–T078, T085–T095 |
+
+On 2026-10-20 Daniel merged the layers planned for IFC-3426 (one trace), IFC-3427 (ratio without a
+restart) and IFC-3430 (close out) into one layer and one pull request, IFC-3470. The 3 tickets were
+closed as "Won't Do" on 2026-10-21; they keep the detailed scope of each part.
 
 The SDK changes are in another repository, so they form a second stack there, in `python_sdk/`:
 
@@ -329,12 +330,13 @@ The SDK changes are in another repository, so they form a second stack there, in
 | 2 | S2 | [IFC-3420](https://opsmill.atlassian.net/browse/IFC-3420) | Add the `infrahubctl` command for the trace sampling ratio | `dp-20261015-trace-sample-ratio-command-ifc-3420` | S1 | T079–T084 |
 
 ```text
-infrahub:            develop ← spec ← A1 ← B1 ← B2 ← A2 ← A3 ← C1
+infrahub:            develop ← spec ← A1 ← B1 ← B2 ← A2
 infrahub-sdk-python: infrahub-develop ← S1 ← S2
 ```
 
 - Why this order: A1 comes first because the masking must reach `develop` before tracing reaches more
-  operators (FR-011). A2 is fully tested only with S1, and A3 is fully used only with S2. C1 is last.
+  operators (FR-011). The one trace part of A2 is fully tested only with S1, and its ratio part is
+  fully used only with S2. A2 is last.
 - Merging: the whole stack merges at once, after the top pull request is validated, with
   `gh stack merge <top PR> --yes`, which merges that pull request and every unmerged one below it
   (proposed by Fatih Acar on 2026-10-19 in
@@ -349,7 +351,7 @@ infrahub-sdk-python: infrahub-develop ← S1 ← S2
   Before marking a layer ready, run `gh stack sync` and check that its CI passes.
 - A fix in a lower layer is made in that layer, then `gh stack rebase --upstack` replays the layers
   above. Each layer ticks its own tasks in this file and records its own spec updates.
-- A2 is tested with `python_sdk` on the S1 branch; it does not wait for S1 to merge. Only C1 commits
+- A2 is tested with `python_sdk` on the S1 branch; it does not wait for S1 to merge. Only A2 commits
   the `python_sdk` pointer, after S1 and S2 merge. Then Daniel runs `opsmill-dev-guiding-manual-tests`
   (T093).
 - Each pull request opens as a draft (`gh stack submit --auto`), after Daniel's manual test of the
@@ -414,11 +416,12 @@ The work follows the layers of "Pull requests and tickets", bottom to top, one l
 2. Layer 1, A1 (US2, Phase 3, with Phases 1 and 2): masking and single sign-on fixes. This removes the
    secrets that are in the trace store today and unblocks tracing for more operators.
 3. Layers 2 and 3, B1 and B2 (US3, US4 and US5): metrics, then all dashboard changes.
-4. Layer 4, A2 (US1, Phase 4): one trace from a task to its queries. Start S1 (T019 to T023) before
-   it, so A2 can be tested with the S1 branch, and open the S1 pull request early.
-5. Layer 5, A3 (US6, Phase 8): the runtime ratio, then S2 (T079 to T084) on top of S1.
-6. Layer 6, C1 (Phase 9): documentation, the cost measurement, the submodule pointer after both SDK
-   merges, `/pre-ci`, and the manual test.
+4. Layer 4, A2 (IFC-3470), in this order:
+   1. US1, Phase 4: one trace from a task to its queries. S1 (T019 to T023) comes first, so this part
+      can be tested with the S1 branch.
+   2. US6, Phase 8: the runtime ratio, then S2 (T079 to T084) on top of S1.
+   3. Phase 9: documentation, the cost measurement, the submodule pointer after both SDK
+      merges, `/pre-ci`, and the manual test.
 
 The first increment that an operator can use is layers 0 and 1. Check quickstart manual check 4
 after layer 1, and manual checks 1 to 3 after layer 4.
@@ -432,7 +435,7 @@ The plan proposes that INFP-742 merges first and INFP-743 rebases, because both 
 
 ## Changelog entries for the top layer
 
-Created by T095 in IFC-3430. Each layer adds its entries here, with the file name and the type.
+Created by T095 in IFC-3470. Each layer adds its entries here, with the file name and the type.
 
 ### IFC-3425 (layer 1)
 
