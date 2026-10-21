@@ -1,13 +1,11 @@
 from dataclasses import dataclass
-from typing import Any
 
 import pytest
 
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql.initialization import prepare_graphql_params
-from tests.helpers.graphql import graphql
+from tests.helpers.graphql import graphql_query
 
 
 @dataclass
@@ -29,21 +27,6 @@ EDGE_METADATA_SELECTION_CASES: list[EdgeMetadataSelectionCase] = [
         expected_empty_peer={"node": None, "node_metadata": None, "relationship_metadata": None},
     ),
 ]
-
-
-async def _run_query(db: InfrahubDatabase, branch: Branch, query: str) -> dict[str, Any]:
-    branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=branch)
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
-    assert result.errors is None
-    assert result.data
-    return result.data
 
 
 class TestHierarchyNodeMetadata:
@@ -95,10 +78,12 @@ class TestHierarchyNodeMetadata:
             }
         }
         """ % {"relationship_metadata": relationship_metadata}
-        data = await _run_query(db=db, branch=default_branch_scope_class, query=query)
+        result = await graphql_query(query=query, db=db, branch=default_branch_scope_class)
 
-        region_edge = data["LocationRegion"]["edges"][0]
-        site_parent = data["LocationSite"]["edges"][0]["node"]["parent"]
+        assert result.errors is None
+        assert result.data
+        region_edge = result.data["LocationRegion"]["edges"][0]
+        site_parent = result.data["LocationSite"]["edges"][0]["node"]["parent"]
         assert region_edge["node_metadata"]["created_at"] is not None
         assert region_edge["node"]["parent"] == test_case.expected_empty_peer
         assert site_parent["node"] == {"id": hierarchical_location_data_scope_class["europe"].id}
@@ -155,10 +140,12 @@ class TestHierarchyNodeMetadata:
             }
         }
         """
-        data = await _run_query(db=db, branch=default_branch_scope_class, query=query)
+        result = await graphql_query(query=query, db=db, branch=default_branch_scope_class)
 
-        metadata_by_id = {edge["node"]["id"]: edge["node_metadata"] for edge in data["LocationGeneric"]["edges"]}
-        paris = data["LocationSite"]["edges"][0]["node"]
+        assert result.errors is None
+        assert result.data
+        metadata_by_id = {edge["node"]["id"]: edge["node_metadata"] for edge in result.data["LocationGeneric"]["edges"]}
+        paris = result.data["LocationSite"]["edges"][0]["node"]
         ancestors = paris["ancestors"]["edges"]
         descendants = paris["descendants"]["edges"]
 
@@ -231,10 +218,14 @@ class TestOptionalRelationshipToGenericNodeMetadata:
             }
         }
         """ % {"relationship_metadata": relationship_metadata}
-        data = await _run_query(db=db, branch=default_branch_scope_class, query=query)
+        result = await graphql_query(query=query, db=db, branch=default_branch_scope_class)
 
-        car_by_person = {edge["node"]["name"]["value"]: edge["node"]["car"] for edge in data["TestPerson"]["edges"]}
-        car_metadata = data["TestElectricCar"]["edges"][0]["node_metadata"]
+        assert result.errors is None
+        assert result.data
+        car_by_person = {
+            edge["node"]["name"]["value"]: edge["node"]["car"] for edge in result.data["TestPerson"]["edges"]
+        }
+        car_metadata = result.data["TestElectricCar"]["edges"][0]["node_metadata"]
         assert car_by_person["alice"] == test_case.expected_empty_peer
         assert car_by_person["bob"]["node"] == {"id": person_car_data["volt"].id}
         assert car_by_person["bob"]["node_metadata"] == car_metadata

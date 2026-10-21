@@ -2212,6 +2212,7 @@ async def hierarchical_location_schema_scope_class(
     registry.schema.register_schema(
         schema=do_hierarchical_location_schema_simple_unregistered(), branch=default_branch_scope_class.name
     )
+    default_branch_scope_class.update_schema_hash()
 
 
 @pytest.fixture
@@ -3144,6 +3145,7 @@ def do_generic_car_person_schema(branch: Branch) -> None:
 
     schema_root = SchemaRoot(**schema)
     registry.schema.register_schema(schema=schema_root, branch=branch.name)
+    branch.update_schema_hash()
 
 
 @pytest.fixture
