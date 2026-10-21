@@ -31,7 +31,7 @@ The API server runs several worker processes, four by default, and `/metrics` co
 - A gauge for a count or a limit that adds up across processes, such as `infrahub_admission_in_flight` and `infrahub_admission_max_concurrency`, reports the sum over the running processes.
 - When a worker process stops, its values disappear from these two kinds of gauges. Its counters and histograms stay in the totals, and a restart of one worker process doesn't reset the values of the others.
 
-Infrahub combines the values this way only when gunicorn starts with the Infrahub configuration file, `--config backend/infrahub/serve/gunicorn_config.py`, as the Docker Compose files and the Helm charts do. Without it, `/metrics` keeps reporting the gauge values of worker processes that stopped.
+Infrahub combines the values this way only when `gunicorn` starts with the Infrahub configuration file, `--config backend/infrahub/serve/gunicorn_config.py`, as the Docker Compose files and the Helm charts do. Without it, `/metrics` keeps reporting the gauge values of worker processes that stopped.
 
 :::info
 

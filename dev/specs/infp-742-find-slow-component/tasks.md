@@ -444,7 +444,7 @@ Created by T095 in IFC-3470. Each layer adds its entries here, with the file nam
   records the account ID instead of the user name.
 - `+trace-attribute-masking.added.md`: Added masking of exported span attributes and span event
   attributes, including exception events, so that tokens, passwords, secrets, email addresses, user
-  names, client IP addresses and URL query strings are exported as `[MASKED]`, while URL hostnames and
+  names, client IP addresses and URL query strings are exported as `[MASKED]`, while URL host names and
   paths, Cypher text and query names stay readable.
 
 ### IFC-3428 (layer 2)
@@ -455,7 +455,7 @@ Created by T095 in IFC-3470. Each layer adds its entries here, with the file nam
   and 60 seconds for GraphQL queries.
 - `+metric-files-kept-on-worker-start.fixed.md`: Fixed the API server metrics so that starting a worker
   process no longer deletes the values recorded by the other running worker processes, and gauges no
-  longer report worker processes that stopped. gunicorn must start with the Infrahub configuration
+  longer report worker processes that stopped. `gunicorn` must start with the Infrahub configuration
   file (`--config backend/infrahub/serve/gunicorn_config.py`), as in the Docker Compose files and the
   Helm charts.
 - `+connection-pool-metrics.added.md`: Added the `infrahub_db_connection_pool_size` metric, the
