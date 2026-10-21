@@ -20,16 +20,34 @@
       - {start: 100, end: 200, weight: 10}
       - {start: 205, end: 300}
 
+# Neither spelling: one range open at both ends (1 to sys.maxsize)
+- name: vlan_id
+  kind: NumberPool
+
 # Zero ranges (legal; the pool reports itself full)
 - name: vlan_id
   kind: NumberPool
+  parameters:
+    ranges: []
+
+# Open bounds: a missing start or end is stored as null
+- name: vlan_id
+  kind: NumberPool
+  parameters:
+    ranges:
+      - {start: 100}
 ```
+
+*(Amended by IFC-3432: open range bounds and the one-open-range default.)*
 
 | Declaration | Outcome |
 |-------------|---------|
 | shorthand and `ranges` | refused at schema load: conflicting spellings |
-| only `start_range` | end resolves to `sys.maxsize` |
-| only `end_range` | start resolves to `1` |
+| only `start_range` | end stored as null (open), counts as `sys.maxsize` during allocation *(amended by IFC-3432)* |
+| only `end_range` | start stored as null (open), counts as `1` during allocation *(amended by IFC-3432)* |
+| a range in `ranges` without `start` or `end` | that bound stored as null (open), counts as `1` / `sys.maxsize` during allocation *(amended by IFC-3432)* |
+| neither spelling | one range open at both ends, calculated and never stored *(amended by IFC-3432)* |
+| `ranges: []` | zero ranges |
 | `start > end` on any range | refused |
 | overlapping ranges | refused, clashing ranges named |
 | shorthand present | load succeeds with one `DEPRECATION` warning per attribute, pointing at `parameters.ranges` |

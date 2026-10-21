@@ -256,20 +256,20 @@ core_number_pool_range = NodeSchema(
     branch=BranchSupportType.AGNOSTIC,
     generate_profile=False,
     inherit_from=[InfrahubKind.WEIGHTED_POOL_RESOURCE],
-    display_label="{{ start__value }} - {{ end__value }}",
+    display_label='{{ start__value if start__value is not none else "MIN" }} - {{ end__value if end__value is not none else "MAX" }}',
     order_by=["start__value"],
     attributes=[
         Attr(
             name="start",
             kind="Number",
-            optional=False,
+            optional=True,
             description="The first number of the range, included",
             order_weight=1000,
         ),
         Attr(
             name="end",
             kind="Number",
-            optional=False,
+            optional=True,
             description="The last number of the range, included",
             order_weight=2000,
         ),

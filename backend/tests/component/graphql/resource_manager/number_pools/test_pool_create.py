@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Any
 
 import pytest
 
@@ -11,7 +12,6 @@ from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.mutations.resource_manager.number_pools.pool import (
-    BOUNDS_REQUIRED,
     RANGES_NOT_NULLABLE,
     RESOURCE_POOL_TARGET_REFUSED,
     SHORTHAND_WITH_RANGES,
@@ -49,11 +49,23 @@ RESOURCE_POOL_TARGET_CASES = [
     ResourcePoolTargetCase(name="number_pool_range", kind=InfrahubKind.NUMBERPOOLRANGE, attribute_name="start"),
 ]
 
-MISSING_BOUND_CASES = [
-    BoundsCase(name="start_only", bounds={"start_range": {"value": 1}}),
-    BoundsCase(name="end_only", bounds={"end_range": {"value": 9}}),
-    BoundsCase(name="start_null", bounds={"start_range": {"value": None}, "end_range": {"value": 9}}),
-    BoundsCase(name="end_null", bounds={"start_range": {"value": 1}, "end_range": {"value": None}}),
+
+@dataclass(frozen=True, kw_only=True)
+class OneBoundCase:
+    name: str
+    bounds: dict[str, Any]
+    expected_range: tuple[int | None, int | None]
+
+
+ONE_BOUND_CASES = [
+    OneBoundCase(name="start_only", bounds={"start_range": {"value": 1}}, expected_range=(1, None)),
+    OneBoundCase(name="end_only", bounds={"end_range": {"value": 9}}, expected_range=(None, 9)),
+    OneBoundCase(
+        name="start_null", bounds={"start_range": {"value": None}, "end_range": {"value": 9}}, expected_range=(None, 9)
+    ),
+    OneBoundCase(
+        name="end_null", bounds={"start_range": {"value": 1}, "end_range": {"value": None}}, expected_range=(1, None)
+    ),
 ]
 
 
@@ -61,7 +73,6 @@ NO_BOUNDS_CASES = [
     BoundsCase(name="neither_spelling", bounds={}),
     BoundsCase(name="both_null", bounds={"start_range": {"value": None}, "end_range": {"value": None}}),
     BoundsCase(name="empty_inputs", bounds={"start_range": {}, "end_range": {}}),
-    BoundsCase(name="empty_ranges", bounds={"ranges": []}),
 ]
 
 
@@ -86,19 +97,14 @@ class TestNumberPoolCreate:
     The schema is loaded once for the class; every test creates pools under names of its own.
     """
 
-    @pytest.mark.parametrize("case", MISSING_BOUND_CASES, ids=lambda case: case.name)
-    async def test_create_requires_both_bounds(
+    @pytest.mark.parametrize("case", ONE_BOUND_CASES, ids=lambda case: case.name)
+    async def test_create_with_one_bound_leaves_the_other_open(
         self,
         db: InfrahubDatabase,
         default_branch_scope_class: Branch,
         loaded_ticket_schema_scope_class: None,
-        case: BoundsCase,
+        case: OneBoundCase,
     ) -> None:
-        pools_before = await NodeManager.count(db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch_scope_class)
-        ranges_before = await NodeManager.count(
-            db=db, schema=InfrahubKind.NUMBERPOOLRANGE, branch=default_branch_scope_class
-        )
-
         result = await execute(
             db=db,
             branch=default_branch_scope_class,
@@ -106,18 +112,15 @@ class TestNumberPoolCreate:
             variables={"data": ticket_pool_input(name=f"bounds-pool-{case.name}", bounds=case.bounds)},
         )
 
-        assert [error.message for error in result.errors or []] == [BOUNDS_REQUIRED]
-        assert (
-            await NodeManager.count(db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch_scope_class)
-            == pools_before
-        )
-        assert (
-            await NodeManager.count(db=db, schema=InfrahubKind.NUMBERPOOLRANGE, branch=default_branch_scope_class)
-            == ranges_before
-        )
+        assert not result.errors
+        assert result.data
+        created = result.data["CoreNumberPoolCreate"]["object"]
+        assert (created["start_range"]["value"], created["end_range"]["value"]) == case.expected_range
+        assert created["ranges"]["count"] == 1
+        assert await range_bounds(db=db, pool_id=created["id"]) == [case.expected_range]
 
     @pytest.mark.parametrize("case", NO_BOUNDS_CASES, ids=lambda case: case.name)
-    async def test_create_without_bounds_yields_a_pool_without_range(
+    async def test_create_without_bounds_yields_one_open_range(
         self,
         db: InfrahubDatabase,
         default_branch_scope_class: Branch,
@@ -128,7 +131,24 @@ class TestNumberPoolCreate:
             db=db,
             branch=default_branch_scope_class,
             source=CREATE_NUMBER_POOL_WITH_BOUNDS,
-            variables={"data": ticket_pool_input(name=f"empty-pool-{case.name}", bounds=case.bounds)},
+            variables={"data": ticket_pool_input(name=f"open-pool-{case.name}", bounds=case.bounds)},
+        )
+
+        assert not result.errors
+        assert result.data
+        created = result.data["CoreNumberPoolCreate"]["object"]
+        assert (created["start_range"]["value"], created["end_range"]["value"]) == (None, None)
+        assert created["ranges"]["count"] == 1
+        assert await range_bounds(db=db, pool_id=created["id"]) == [(None, None)]
+
+    async def test_create_with_empty_ranges_yields_a_pool_without_range(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, loaded_ticket_schema_scope_class: None
+    ) -> None:
+        result = await execute(
+            db=db,
+            branch=default_branch_scope_class,
+            source=CREATE_NUMBER_POOL_WITH_BOUNDS,
+            variables={"data": ticket_pool_input(name="empty-ranges-pool", bounds={"ranges": []})},
         )
 
         assert not result.errors
@@ -361,14 +381,6 @@ class TestNumberPoolCreate:
             },
         )
 
-        missing_end = await graphql(
-            schema=gql_params.schema,
-            source=CREATE_NUMBER_POOL,
-            context_value=gql_params.context,
-            root_value=None,
-            variable_values={"name": "pool1", "node": "TestingTicket", "node_attribute": "ticket_id", "start_range": 1},
-        )
-
         assert no_model.errors
         assert "The selected model does not exist" in str(no_model.errors[0])
         assert not_a_node.errors
@@ -379,7 +391,6 @@ class TestNumberPoolCreate:
         assert "The selected attribute is not of the kind Number" in str(wrong_attribute.errors[0])
         assert invalid_range.errors
         assert "start_range can't be larger than end_range" in str(invalid_range.errors[0])
-        assert [error.message for error in missing_end.errors or []] == [BOUNDS_REQUIRED]
         assert (
             await NodeManager.count(db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch_scope_class)
             == pools_before

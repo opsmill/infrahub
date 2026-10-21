@@ -12,15 +12,15 @@
 | Branch support | `AGNOSTIC` |
 | Inherits | `CoreWeightedPoolResource` (gives `allocation_weight`, Number, optional; becomes agnostic through branch-support processing) |
 | Menu / profile | `include_in_menu=False`, `generate_profile=False` |
-| Display labels | `start__value`, `end__value` |
+| Display label | `{{ start }} - {{ end }}`, an open start written as `MIN` and an open end as `MAX` *(amended by IFC-3432)* |
 | Human-friendly id | none |
 
 Attributes:
 
 | Name | Kind | Optional | Notes |
 |------|------|----------|-------|
-| `start` | Number | no | inclusive lower bound |
-| `end` | Number | no | inclusive upper bound, `>= start` |
+| `start` | Number | yes | inclusive lower bound; null is an open start *(amended by IFC-3432)* |
+| `end` | Number | yes | inclusive upper bound, `>= start`; null is an open end *(amended by IFC-3432)* |
 | `allocation_weight` | Number | yes | inherited; `None` counts as 0 |
 
 Relationships:
@@ -77,26 +77,27 @@ On a schema pool the existing default-branch refusal fires before any of the abo
 |-------|------|---------|---------------|-------|
 | `start_range` | `int \| None` | `None` | `VALIDATE_CONSTRAINT` | deprecated, use `ranges` |
 | `end_range` | `int \| None` | `None` | `VALIDATE_CONSTRAINT` | deprecated, use `ranges` |
-| `ranges` | `list[NumberPoolRangeParameters]` | `[]` | `VALIDATE_CONSTRAINT` | explicit ranges |
+| `ranges` | `list[NumberPoolRangeParameters] \| None` | `None` | `VALIDATE_CONSTRAINT` | explicit ranges; unset declares one range open at both ends, `[]` declares no range *(amended by IFC-3432)* |
 | `number_pool_id` | `str \| None` | `None` | `NOT_SUPPORTED` | unchanged |
 
 ### NumberPoolRangeParameters (new)
 
 | Field | Type | Default |
 |-------|------|---------|
-| `start` | `int` | required |
-| `end` | `int` | required |
+| `start` | `int \| None` | `None` (open start) *(amended by IFC-3432)* |
+| `end` | `int \| None` | `None` (open end) *(amended by IFC-3432)* |
 | `weight` | `int \| None` | `None` |
 
-`_sort_by = ["start", "end"]` so list diffing and merging work.
+`_sort_by = ["lower", "upper"]`, the bounds with an open start read as `1` and an open end as `sys.maxsize`, so list diffing and merging work with null bounds. *(Amended by IFC-3432.)*
 
 ### Normalisation: `effective_ranges()`
 
 | Declaration | Result |
 |-------------|--------|
 | `ranges` non-empty, shorthand absent | `ranges` |
-| shorthand (one or both bounds), `ranges` empty | one range; a missing bound resolves to `1` (start) or `sys.maxsize` (end); weight `None` |
-| neither | `[]` |
+| shorthand (one or both bounds), `ranges` unset or empty | one range; a missing bound stays `None` (open); weight `None` *(amended by IFC-3432)* |
+| neither (`ranges` unset) | one range open at both ends, `[NumberPoolRangeParameters(start=None, end=None)]`, calculated and never stored *(amended by IFC-3432)* |
+| `ranges: []` declared | `[]` |
 | both | validation error, never reaches normalisation |
 
 Fields are never rewritten by validation. `get_pool_size()` is the sum of effective range sizes.
@@ -167,7 +168,7 @@ PoolExhaustedError
 | Data | for every live `CoreNumberPool` with no `ranges` peer and at least one bound: create one `CoreNumberPoolRange(start=start_range, end=end_range)` on `-global-` linked through `ranges`, no weight; a missing start resolves to `1`, a missing end to `sys.maxsize`; a bound that is not an integer is reported as an error for that pool; a pool with no bound gets no range and is logged |
 | Idempotence | pools that already hold a range are skipped |
 | Failure | a failed pool is reported and the walk goes on; a failed page read ends the walk and is reported with the count of ranges already created |
-| Validation | number of live pools carrying at least one bound and no range must be 0; a pool carrying no bound is legal without a range |
+| Validation | number of live pools holding no range must be 0 *(amended by IFC-3432)* |
 | Version | `GRAPH_VERSION = 80` |
 
 ## Schema-created pool reconciliation

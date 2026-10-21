@@ -8,16 +8,16 @@ from infrahub.pools.number_pool_range_reconciler import NumberPoolRangeReconcile
 from .helpers import InMemoryRangeStore, PoolReference
 
 POOL = PoolReference(id="pool")
-STORED: list[tuple[int, int, int | None]] = [(1, 10, None), (20, 30, 5), (40, 50, None)]
+STORED: list[tuple[int | None, int | None, int | None]] = [(1, 10, None), (20, 30, 5), (40, 50, None)]
 
 
 @dataclass
 class ReconcileCase:
     name: str
-    stored: list[tuple[int, int, int | None]]
+    stored: list[tuple[int | None, int | None, int | None]]
     declared: list[NumberPoolRangeParameters]
     expected_writes: list[tuple[str, str]]
-    expected_ranges: list[tuple[str, int, int, int | None]]
+    expected_ranges: list[tuple[str, int | None, int | None, int | None]]
     expected_created: list[str] = field(default_factory=list)
     expected_updated: list[str] = field(default_factory=list)
     expected_deleted: list[str] = field(default_factory=list)
@@ -34,6 +34,20 @@ RECONCILE_CASES: list[ReconcileCase] = [
         ],
         expected_writes=[],
         expected_ranges=[("stored-0", 1, 10, None), ("stored-1", 20, 30, 5), ("stored-2", 40, 50, None)],
+    ),
+    ReconcileCase(
+        name="range_open_at_both_ends_declared_again_writes_nothing",
+        stored=[(None, None, None)],
+        declared=[NumberPoolRangeParameters(start=None, end=None)],
+        expected_writes=[],
+        expected_ranges=[("stored-0", None, None, None)],
+    ),
+    ReconcileCase(
+        name="half_open_ranges_declared_again_write_nothing",
+        stored=[(20, None, 3), (None, 10, None)],
+        declared=[NumberPoolRangeParameters(start=20, end=None, weight=3), NumberPoolRangeParameters(end=10)],
+        expected_writes=[],
+        expected_ranges=[("stored-1", None, 10, None), ("stored-0", 20, None, 3)],
     ),
     ReconcileCase(
         name="empty_pool_creates_every_range_lowest_start_first",
@@ -118,10 +132,10 @@ async def test_reconcile(case: ReconcileCase) -> None:
 @dataclass
 class SingleRangeCase:
     name: str
-    stored: list[tuple[int, int, int | None]]
+    stored: list[tuple[int | None, int | None, int | None]]
     declared: NumberPoolRangeParameters
     expected_writes: list[tuple[str, str]]
-    expected_ranges: list[tuple[str, int, int, int | None]]
+    expected_ranges: list[tuple[str, int | None, int | None, int | None]]
 
 
 SINGLE_RANGE_CASES: list[SingleRangeCase] = [

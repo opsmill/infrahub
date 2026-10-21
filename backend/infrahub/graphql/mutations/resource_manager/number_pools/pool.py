@@ -12,7 +12,7 @@ from infrahub.core.changelog.models import RelationshipCardinalityManyChangelog,
 from infrahub.core.constants import DiffAction, InfrahubKind, MutationAction, PermissionAction
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.schema.attribute_parameters import NumberAttributeParameters, NumberPoolRangeParameters
+from infrahub.core.schema.attribute_parameters import NumberPoolRangeParameters
 from infrahub.database import retry_db_transaction, within_transaction
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from infrahub.permissions.types import define_object_permission_from_branch
@@ -24,6 +24,7 @@ from infrahub.pools.number_pool_range_validation import (
 )
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.number_pool_shorthand import shorthand_bounds
+from infrahub.pools.number_pool_space import attribute_domain
 from infrahub.pools.pool_kinds import is_resource_pool_schema
 from infrahub.pools.registration import get_branches_with_schema_number_pool
 from infrahub.pools.scope import (
@@ -58,13 +59,12 @@ if TYPE_CHECKING:
     from infrahub.core.protocols import CoreNumberPoolRange
     from infrahub.core.schema import AttributeSchema
     from infrahub.database import InfrahubDatabase
+    from infrahub.pools.number_ranges import NumberDomain
 
     from ....initialization import GraphqlContext
 
 
-BOUNDS_DESCRIBE_ONE_RANGE = "start_range and end_range are the two bounds of a single range"
-BOUNDS_REQUIRED = f"{BOUNDS_DESCRIBE_ONE_RANGE}, both are required"
-BOUNDS_NOT_CLEARABLE = f"{BOUNDS_DESCRIBE_ONE_RANGE}, neither can be cleared"
+SHORTHAND_BACKWARDS = "start_range can't be larger than end_range"
 RESOURCE_POOL_TARGET_REFUSED = "A number pool cannot allocate numbers for a resource pool"
 SHORTHAND_WITH_RANGES = "start_range/end_range cannot be combined with ranges"
 RANGES_NOT_NULLABLE = "ranges cannot be null, send an empty list to remove every range"
@@ -101,13 +101,12 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
         graphql_context: GraphqlContext = info.context
         attribute = cls._resolve_target_attribute(db=graphql_context.db, data=data, branch=branch)
         cls._resolve_scope(data=data, kind=data["node"].value, attribute_name=attribute.name)
-        shorthand = cls._parse_shorthand(data=data, attribute=attribute, ranges_supplied="ranges" in data.keys())
-        declared_ranges = cls._parse_ranges(data=data)
+        shorthand = cls._parse_shorthand(data=data, ranges_supplied="ranges" in data.keys())
+        declared_ranges = cls._parse_ranges(data=data, domain=attribute_domain(attribute))
         if shorthand is not None:
-            declared_ranges = [NumberPoolRangeParameters(start=shorthand.start, end=shorthand.end)]
-
-        if declared_ranges is None:
-            return await super().mutate_create(info=info, data=data, branch=branch)
+            declared_ranges = [shorthand]
+        elif declared_ranges is None:
+            declared_ranges = [NumberPoolRangeParameters(start=None, end=None)]
         refuse_ranges_outside_attribute(attribute=attribute, ranges=declared_ranges)
 
         mirrored_bounds: dict[str, Any] = {}
@@ -143,7 +142,7 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
         return number_pool, result
 
     @classmethod
-    def _parse_ranges(cls, data: InputObjectType) -> list[NumberPoolRangeParameters] | None:
+    def _parse_ranges(cls, data: InputObjectType, domain: NumberDomain) -> list[NumberPoolRangeParameters] | None:
         """Return the ranges the payload declares, or None when it leaves `ranges` out.
 
         Raises:
@@ -157,8 +156,8 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
 
         declared = [
             NumberPoolRangeParameters(
-                start=declared_range["start"],
-                end=declared_range["end"],
+                start=declared_range.get("start"),
+                end=declared_range.get("end"),
                 weight=declared_range.get("allocation_weight"),
             )
             for declared_range in data["ranges"]
@@ -167,7 +166,8 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
             ranges=[
                 NumberRangeBounds(start=declared_range.start, end=declared_range.end, id=f"ranges[{index}]")
                 for index, declared_range in enumerate(declared)
-            ]
+            ],
+            domain=domain,
         )
         return declared
 
@@ -338,14 +338,13 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
         scope_input["value"] = stored_value
 
     @classmethod
-    def _parse_shorthand(
-        cls, data: InputObjectType, attribute: AttributeSchema, ranges_supplied: bool
-    ) -> NumberRangeBounds | None:
+    def _parse_shorthand(cls, data: InputObjectType, ranges_supplied: bool) -> NumberPoolRangeParameters | None:
         """Return the single range the shorthand describes, or None when neither bound is supplied.
 
+        A bound left out or sent as null is open.
+
         Raises:
-            ValidationError: When the shorthand comes with `ranges`, misses a bound, is backwards, or falls outside
-                the attribute's `min_value` / `max_value`.
+            ValidationError: When the shorthand comes with `ranges` or is backwards.
 
         """
         start_range_input = data.get("start_range")
@@ -356,24 +355,11 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
             return None
         if ranges_supplied:
             raise ValidationError(input_value=SHORTHAND_WITH_RANGES)
-        if start_range is None or end_range is None:
-            raise ValidationError(input_value=BOUNDS_REQUIRED)
 
-        if start_range > end_range:
-            raise ValidationError(input_value="start_range can't be larger than end_range")
-
-        if not isinstance(attribute.parameters, NumberAttributeParameters):
-            raise ValidationError(
-                input_value="The selected attribute parameters are not of the kind NumberAttributeParameters"
-            )
-
-        if attribute.parameters.min_value is not None and start_range < attribute.parameters.min_value:
-            raise ValidationError(input_value="start_range can't be less than min_value")
-
-        if attribute.parameters.max_value is not None and end_range > attribute.parameters.max_value:
-            raise ValidationError(input_value="end_range can't be larger than max_value")
-
-        return NumberRangeBounds(start=start_range, end=end_range)
+        shorthand_range = NumberPoolRangeParameters(start=start_range, end=end_range)
+        if shorthand_range.lower > shorthand_range.upper:
+            raise ValidationError(input_value=SHORTHAND_BACKWARDS)
+        return shorthand_range
 
     @classmethod
     @retry_db_transaction(name="resource_manager_update")
@@ -423,7 +409,10 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
             )
 
         cls._refuse_unsupported_writes(pool=obj, shorthand_supplied=shorthand_supplied, ranges_supplied=ranges_supplied)
-        declared_ranges = cls._parse_ranges(data=data)
+        # The pool's node and node_attribute cannot change on update, so the pool read before the lock names its target.
+        attribute = pool_target_attribute(db=db, pool=obj, branch=branch)
+        domain = attribute_domain(attribute)
+        declared_ranges = cls._parse_ranges(data=data, domain=domain)
 
         graphql_context: GraphqlContext = info.context
         pool_id = obj.get_id()
@@ -441,9 +430,10 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
 
             repository = NumberPoolRepository(db=dbt)
             reconciler = NumberPoolRangeReconciler(range_store=repository)
-            attribute = pool_target_attribute(db=dbt, pool=number_pool, branch=branch)
             if declared_ranges is None:
-                shorthand_range = await cls._shorthand_range(repository=repository, number_pool=number_pool)
+                shorthand_range = await cls._shorthand_range(
+                    repository=repository, number_pool=number_pool, domain=domain
+                )
                 refuse_ranges_outside_attribute(attribute=attribute, ranges=[shorthand_range])
                 reconciliation = await reconciler.rewrite_single_range(
                     pool=number_pool, declared=shorthand_range, user_id=graphql_context.assigned_user_id
@@ -459,7 +449,7 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
             cls._raise_for_range_permissions(graphql_context=graphql_context, reconciliation=reconciliation)
             if reconciliation.changed:
                 await refuse_ranges_leaving_held_numbers(
-                    db=dbt, pool=number_pool, ranges=range_bounds(reconciliation.ranges)
+                    db=dbt, pool=number_pool, ranges=range_bounds(reconciliation.ranges), domain=domain
                 )
             stored_pool = await sync_shorthand(
                 db=dbt, pool_id=pool_id, ranges=reconciliation.ranges, user_id=graphql_context.assigned_user_id
@@ -493,12 +483,12 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
     ) -> list[NumberPoolRangeParameters]:
         """Give a range redeclared with its stored bounds and no `allocation_weight` the weight it holds."""
         bounds_without_weight = {
-            (declared_range["start"], declared_range["end"])
+            (declared_range.get("start"), declared_range.get("end"))
             for declared_range in data["ranges"]
             if "allocation_weight" not in declared_range.keys()
         }
-        stored_weights = {
-            (int(pool_range.start.value), int(pool_range.end.value)): pool_range.allocation_weight.value
+        stored_weights: dict[tuple[int | None, int | None], int | None] = {
+            (pool_range.start.value, pool_range.end.value): pool_range.allocation_weight.value
             for pool_range in await repository.get_ranges(pool_id=pool_id)
         }
         return [
@@ -510,28 +500,31 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
         ]
 
     @classmethod
-    async def _shorthand_range(cls, repository: NumberPoolRepository, number_pool: Node) -> NumberPoolRangeParameters:
+    async def _shorthand_range(
+        cls, repository: NumberPoolRepository, number_pool: Node, domain: NumberDomain
+    ) -> NumberPoolRangeParameters:
         """Return the single range the pool's start_range / end_range describe, keeping the weight it holds.
 
+        A bound the pool does not hold is open.
+
         Raises:
-            ValidationError: When the pool holds more than one range, a bound is missing or cleared, or the
-                bounds are backwards.
+            ValidationError: When the pool holds more than one range, or the bounds are backwards.
 
         """
         stored_ranges = await repository.get_ranges(pool_id=number_pool.get_id())
-        validate_shorthand_target(ranges=range_bounds(stored_ranges))
+        validate_shorthand_target(ranges=range_bounds(stored_ranges), domain=domain)
         stored_range = stored_ranges[0] if stored_ranges else None
 
         start = number_pool.get_attribute("start_range").value
         end = number_pool.get_attribute("end_range").value
-        if not isinstance(start, int) or not isinstance(end, int):
-            raise ValidationError(input_value=BOUNDS_NOT_CLEARABLE if stored_range else BOUNDS_REQUIRED)
-
-        if start > end:
-            raise ValidationError(input_value="start_range can't be larger than end_range")
-
-        weight = stored_range.allocation_weight.value if stored_range else None
-        return NumberPoolRangeParameters(start=start, end=end, weight=weight)
+        shorthand_range = NumberPoolRangeParameters(
+            start=start if isinstance(start, int) else None,
+            end=end if isinstance(end, int) else None,
+            weight=stored_range.allocation_weight.value if stored_range else None,
+        )
+        if shorthand_range.lower > shorthand_range.upper:
+            raise ValidationError(input_value=SHORTHAND_BACKWARDS)
+        return shorthand_range
 
     @classmethod
     @retry_db_transaction(name="resource_manager_update")

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from bisect import bisect_right
 from dataclasses import dataclass
 from functools import cached_property
@@ -7,6 +8,19 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+OPEN_START = 1
+OPEN_END = sys.maxsize
+
+
+def allocation_bounds(start: int | None, end: int | None) -> tuple[int, int]:
+    """Return the bounds a range spans before any attribute limit applies, reading an open bound as the widest one."""
+    return (OPEN_START if start is None else start, OPEN_END if end is None else end)
+
+
+def format_range_label(start: int, end: int) -> str:
+    """Return the `start - end` label of a range, writing the widest end as MAX."""
+    return f"{start} - {'MAX' if end == OPEN_END else end}"
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -40,6 +54,18 @@ class NumberDomain:
     lower: int | None = None
     upper: int | None = None
     exclusions: tuple[NumberSpan, ...] = ()
+
+    def resolve(self, start: int | None, end: int | None) -> tuple[int, int]:
+        """Return the bounds a range shows: an open start reads as min_value and an open end as max_value.
+
+        An open bound never reaches past the widest range, and an entered bound is returned unchanged, even when it
+        lies outside the domain or the resolved start ends up above the end.
+        """
+        if start is None:
+            start = OPEN_START if self.lower is None else max(OPEN_START, self.lower)
+        if end is None:
+            end = OPEN_END if self.upper is None else min(OPEN_END, self.upper)
+        return start, end
 
     def carve(self, start: int, end: int) -> list[NumberSpan]:
         """Return the spans of `[start, end]` the domain accepts, in ascending order."""

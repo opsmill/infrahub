@@ -31,7 +31,7 @@ def number_pool_schema(parameters: NumberPoolParameters) -> NodeSchema:
     )
 
 
-async def pool_ranges(db: InfrahubDatabase, pool_id: str) -> list[tuple[int, int, int | None]]:
+async def pool_ranges(db: InfrahubDatabase, pool_id: str) -> list[tuple[int | None, int | None, int | None]]:
     ranges = await NumberPoolRepository(db=db).get_ranges(pool_id=pool_id)
     return [(item.start.value, item.end.value, item.allocation_weight.value) for item in ranges]
 
@@ -161,11 +161,37 @@ async def test_upsert_number_pool_from_shorthand_materialises_one_range(
     assert (stored.get_attribute("start_range").value, stored.get_attribute("end_range").value) == (1, 100)
 
 
-async def test_upsert_number_pool_without_declared_range_creates_an_empty_pool(
+async def test_upsert_number_pool_without_declared_range_creates_one_open_range(
     db: InfrahubDatabase, register_core_models_schema: SchemaBranch
 ) -> None:
-    """A declaration using neither spelling gives a pool holding no range and a null shorthand."""
+    """A declaration using neither spelling gives a pool holding one range open at both ends and a null shorthand."""
     schema = number_pool_schema(parameters=NumberPoolParameters())
+    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository)
+
+    pool = await upserter.upsert_number_pool(
+        schema_node=schema, attribute=schema.get_attribute("number"), branch_name=registry.default_branch
+    )
+
+    assert await pool_ranges(db=db, pool_id=pool.get_id()) == [(None, None, None)]
+    stored = await NodeManager.get_one(db=db, id=pool.get_id(), branch_agnostic=True)
+    assert stored is not None
+    assert (stored.get_attribute("start_range").value, stored.get_attribute("end_range").value) == (None, None)
+    range_ids = [item.get_id() for item in await NumberPoolRepository(db=db).get_ranges(pool_id=pool.get_id())]
+
+    reloaded = await upserter.upsert_number_pool(
+        schema_node=schema, attribute=schema.get_attribute("number"), branch_name=registry.default_branch
+    )
+
+    assert reloaded.get_id() == pool.get_id()
+    assert [item.get_id() for item in await NumberPoolRepository(db=db).get_ranges(pool_id=pool.get_id())] == range_ids
+    assert await pool_ranges(db=db, pool_id=pool.get_id()) == [(None, None, None)]
+
+
+async def test_upsert_number_pool_with_empty_range_list_creates_an_empty_pool(
+    db: InfrahubDatabase, register_core_models_schema: SchemaBranch
+) -> None:
+    """An explicitly empty range list gives a pool holding no range and a null shorthand."""
+    schema = number_pool_schema(parameters=NumberPoolParameters(ranges=[]))
 
     pool = await SchemaNumberPoolUpserter(
         db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository

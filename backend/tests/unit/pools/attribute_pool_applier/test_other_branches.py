@@ -65,7 +65,7 @@ async def test_an_attach_is_refused_when_another_branch_holds_a_number_outside_t
         await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True, user_id=ACTOR_ID)
 
     assert exc_info.value.message == (
-        f"{OTHER_BRANCH_REFUSAL} other branches where this object has a value outside the pool's range (1-100): "
+        f"{OTHER_BRANCH_REFUSAL} other branches where this object has a value outside the pool's range (1 - 100): "
         "'feature' has 950, 'old' has 900. First change the value on those branches or delete them. "
         "at ticket_id.from_pool"
     )
@@ -143,7 +143,7 @@ async def test_a_number_sent_outside_the_ranges_is_refused_before_other_branches
     with pytest.raises(ValidationError) as exc_info:
         await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True, user_id=ACTOR_ID)
 
-    assert exc_info.value.message == untracked_attach_message(ranges="1-100")
+    assert exc_info.value.message == untracked_attach_message(ranges="1 - 100")
     assert branch_values.reads == []
 
 
@@ -189,7 +189,7 @@ async def test_an_allocation_from_a_new_pool_is_refused_when_another_branch_hold
 
     assert exc_info.value.message == (
         f"{OTHER_BRANCH_REFUSAL} branch 'old', where this object has the value 950, outside the pool's range "
-        "(1-100). First change the value on 'old' or delete that branch. at ticket_id.from_pool"
+        "(1 - 100). First change the value on 'old' or delete that branch. at ticket_id.from_pool"
     )
     assert branch_values.reads == [[ATTRIBUTE_ID]]
     assert allocator.calls == []

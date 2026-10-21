@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys
+
 from infrahub.core.query.resource_manager import HeldNumber
 from infrahub.pools.number_pool_usage import HoldingObject
 from infrahub.pools.number_ranges import PoolRange
@@ -24,7 +26,21 @@ def test_an_attach_outside_the_ranges_lists_every_range_sorted_by_start() -> Non
     )
 
     assert message == (
-        "The 'tickets' pool cannot track 900 on 'ticket_id', because 900 is outside its ranges: 1-100, 200-300. "
+        "The 'tickets' pool cannot track 900 on 'ticket_id', because 900 is outside its ranges: 1 - 100, 200 - 300. "
+        "Choose a number inside those ranges."
+    )
+
+
+def test_a_range_reaching_the_widest_number_is_listed_with_a_max_end() -> None:
+    message = untracked_attach_refusal(
+        pool_name="tickets",
+        attribute_name="ticket_id",
+        ranges=[PoolRange(id="open", start=500, end=sys.maxsize), LOW_RANGE],
+        value=300,
+    )
+
+    assert message == (
+        "The 'tickets' pool cannot track 300 on 'ticket_id', because 300 is outside its ranges: 1 - 100, 500 - MAX. "
         "Choose a number inside those ranges."
     )
 
@@ -45,7 +61,7 @@ def test_an_edit_of_a_tracked_number_outside_the_ranges_explains_how_to_stop_tra
 
     assert message == (
         "'ticket_id' is tracked by the 'tickets' pool, so it cannot hold 900, which is outside the pool's ranges: "
-        "1-100, 200-300. Choose a number inside those ranges, or remove the 'tickets' pool from 'ticket_id' in the "
+        "1 - 100, 200 - 300. Choose a number inside those ranges, or remove the 'tickets' pool from 'ticket_id' in the "
         "same change that sets it to 900."
     )
 
@@ -109,7 +125,7 @@ def test_every_branch_holding_a_number_outside_the_ranges_is_listed_sorted_by_na
 
     assert message == (
         "Cannot use the 'tickets' pool for 'ticket_id': the pool would also apply to other branches where this "
-        "object has a value outside the pool's ranges (1-100, 200-300): 'alpha' has 150, 'beta' has 1000, "
+        "object has a value outside the pool's ranges (1 - 100, 200 - 300): 'alpha' has 150, 'beta' has 1000, "
         "'zeta' has 900. First change the value on those branches or delete them."
     )
 
@@ -143,7 +159,7 @@ def test_a_range_change_leaving_held_numbers_outside_lists_each_holder_with_its_
     )
 
     assert message == (
-        "Changing the ranges of the tickets pool to 1-100, 200-300 would leave numbers it tracks outside every "
+        "Changing the ranges of the tickets pool to 1 - 100, 200 - 300 would leave numbers it tracks outside every "
         "range: TestingTicket 'first' holds 150 on branch 'main'; TestingTicket 'second' holds 900 on branches "
         "'alpha', 'zeta'. Keep a range covering each of these numbers, or change those numbers first."
     )

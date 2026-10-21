@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Protocol
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
 from infrahub.exceptions import SchemaNotFoundError
 from infrahub.log import get_logger
-from infrahub.pools.number_ranges import NumberDomain, NumberSpan, PoolRange
+from infrahub.pools.number_ranges import NumberDomain, NumberSpan, PoolRange, allocation_bounds
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -19,16 +19,17 @@ log = get_logger()
 
 
 def to_pool_ranges(ranges: Sequence[CoreNumberPoolRange]) -> list[PoolRange]:
-    """Map a pool's range nodes to the ranges its allocation space is built from."""
-    return [
-        PoolRange(
-            start=int(pool_range.start.value),
-            end=int(pool_range.end.value),
-            weight=pool_range.allocation_weight.value or 0,
-            id=pool_range.get_id(),
+    """Map a pool's range nodes to the ranges its allocation space is built from, reading an open bound as the widest.
+
+    The attribute's min_value and max_value are left to the space's domain, which clips every range to them.
+    """
+    pool_ranges: list[PoolRange] = []
+    for pool_range in ranges:
+        start, end = allocation_bounds(start=pool_range.start.value, end=pool_range.end.value)
+        pool_ranges.append(
+            PoolRange(start=start, end=end, weight=pool_range.allocation_weight.value or 0, id=pool_range.get_id())
         )
-        for pool_range in ranges
-    ]
+    return pool_ranges
 
 
 def attribute_domain(attribute: AttributeSchema | None) -> NumberDomain:

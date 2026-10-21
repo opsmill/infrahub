@@ -57,8 +57,8 @@ class RelatedIPPrefixNodeInput(InputObjectType):
 
 
 class NumberPoolRangeInput(InputObjectType):
-    start = BigInt(required=True, description="The first number of the range, included")
-    end = BigInt(required=True, description="The last number of the range, included")
+    start = BigInt(required=False, description="The first number of the range, included")
+    end = BigInt(required=False, description="The last number of the range, included")
     allocation_weight = BigInt(
         required=False,
         description="Ranges with a higher weight are allocated from first. Left out, a range declared with the bounds"

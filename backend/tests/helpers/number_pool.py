@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from infrahub.auth.session import AccountSession
@@ -97,7 +98,9 @@ def shorthand_mirror(db: InfrahubDatabase) -> NumberPoolShorthandMirror:
     return NumberPoolShorthandMirror(repository=NumberPoolRepository(db=db))
 
 
-async def add_pool_range(db: InfrahubDatabase, pool: Node, start: int, end: int, weight: int | None = None) -> Node:
+async def add_pool_range(
+    db: InfrahubDatabase, pool: Node, start: int | None, end: int | None, weight: int | None = None
+) -> Node:
     pool_range = await Node.init(db=db, schema=InfrahubKind.NUMBERPOOLRANGE)
     await pool_range.new(db=db, start=start, end=end, allocation_weight=weight, pool=pool.get_id())
     await pool_range.save(db=db)
@@ -498,3 +501,12 @@ def pool_lock_events(timeline: LockTimeline, pool: CoreNumberPool, after: int) -
         and event.action in {LockAction.ACQUIRE, LockAction.RELEASE}
         and event.name.startswith(prefix)
     ]
+
+
+@dataclass(frozen=True)
+class StoredRange:
+    """The bounds and weight a `CoreNumberPoolRange` node stores, None when unset."""
+
+    start: int | None
+    end: int | None
+    weight: int | None = None

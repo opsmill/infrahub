@@ -5143,7 +5143,7 @@ type CoreNumberPoolRange implements CoreNode & CoreWeightedPoolResource {
   """
   allocation_weight: NumberAttribute
   display_label: String
-  """The last number of the range, included (required)"""
+  """The last number of the range, included"""
   end: NumberAttribute
   """Human friendly identifier"""
   hfid: [String!]
@@ -5151,7 +5151,7 @@ type CoreNumberPoolRange implements CoreNode & CoreWeightedPoolResource {
   id: String!
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   pool: NestedEdgedCoreNumberPool!
-  """The first number of the range, included (required)"""
+  """The first number of the range, included"""
   start: NumberAttribute
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
 }
@@ -12011,9 +12011,9 @@ input NumberPoolRangeInput {
   """
   allocation_weight: BigInt
   """The last number of the range, included"""
-  end: BigInt!
+  end: BigInt
   """The first number of the range, included"""
-  start: BigInt!
+  start: BigInt
 }
 
 """A reference to one range of the pool."""
@@ -12024,9 +12024,13 @@ type NumberPoolRangeRef {
 
 """One range of a number pool with its own figures."""
 type NumberPoolRangeUtilization {
-  """The range node's display label."""
+  """
+  The range's bounds written as "start - end", from start and end. An end at the largest supported number is written as MAX.
+  """
   display_label: String!
-  """Last value of the range, included."""
+  """
+  Last value of the range, included. For a range without an end, the smaller of the largest supported number and the target attribute's max_value on the requested branch.
+  """
   end: BigInt!
   """
   Figures over the range's values. On a scoped pool, only the values held in the division passed in the division argument.
@@ -12034,7 +12038,9 @@ type NumberPoolRangeUtilization {
   figures: NumberPoolUtilizationFigures!
   """The range node's id."""
   id: String!
-  """First value of the range, included."""
+  """
+  First value of the range, included. For a range without a start, the larger of 1 and the target attribute's min_value on the requested branch.
+  """
   start: BigInt!
   """The range's allocation weight. 0 when the range declares none."""
   weight: BigInt!

@@ -107,7 +107,7 @@ mutation CreateNumberPool($data: CoreNumberPoolCreateInput!) {
 
 
 CREATE_RANGE = """
-mutation CreateRange($pool_id: String!, $start: BigInt!, $end: BigInt!, $weight: BigInt) {
+mutation CreateRange($pool_id: String!, $start: BigInt, $end: BigInt, $weight: BigInt) {
     CoreNumberPoolRangeCreate(data: {
         start: { value: $start }
         end: { value: $end }
@@ -127,7 +127,7 @@ mutation CreateRange($pool_id: String!, $start: BigInt!, $end: BigInt!, $weight:
 
 
 UPDATE_RANGE = """
-mutation UpdateRange($range_id: String!, $start: BigInt!, $end: BigInt!) {
+mutation UpdateRange($range_id: String!, $start: BigInt, $end: BigInt) {
     CoreNumberPoolRangeUpdate(data: { id: $range_id, start: { value: $start }, end: { value: $end } }) {
         ok
     }
@@ -168,7 +168,7 @@ mutation DeleteRange($range_id: String!) {
 
 
 UPDATE_POOL_SHORTHAND = """
-mutation UpdatePoolShorthand($pool_id: String!, $start: BigInt!, $end: BigInt!) {
+mutation UpdatePoolShorthand($pool_id: String!, $start: BigInt, $end: BigInt) {
     CoreNumberPoolUpdate(data: { id: $pool_id, start_range: { value: $start }, end_range: { value: $end } }) {
         ok
     }
@@ -202,7 +202,7 @@ INVALID_RANGES_CASES: list[InvalidRangesCase] = [
     InvalidRangesCase(
         name="overlapping",
         ranges=[{"start": 5, "end": 15}, {"start": 1, "end": 10}],
-        expected_error="Range 1-10 overlaps 5-15 (ranges[0])",
+        expected_error="Range 1 - 10 overlaps 5 - 15 (ranges[0])",
     ),
     InvalidRangesCase(
         name="null_entry",
@@ -232,7 +232,7 @@ RANGES_WITH_BOUNDS_CASES: list[RangesWithBoundsCase] = [
 ]
 
 
-def bounds_input(start: int, end: int) -> dict[str, Any]:
+def bounds_input(start: int | None, end: int | None) -> dict[str, Any]:
     return {"start_range": {"value": start}, "end_range": {"value": end}}
 
 
@@ -273,12 +273,12 @@ async def create_pool(db: InfrahubDatabase, branch: Branch, name: str, bounds: d
     return result.data["CoreNumberPoolCreate"]["object"]["id"]
 
 
-async def range_bounds(db: InfrahubDatabase, pool_id: str) -> list[tuple[int, int]]:
+async def range_bounds(db: InfrahubDatabase, pool_id: str) -> list[tuple[int | None, int | None]]:
     ranges = await NumberPoolRepository(db=db).get_ranges(pool_id=pool_id)
     return [(pool_range.start.value, pool_range.end.value) for pool_range in ranges]
 
 
-async def range_details(db: InfrahubDatabase, pool_id: str) -> list[tuple[str, int, int, int | None]]:
+async def range_details(db: InfrahubDatabase, pool_id: str) -> list[tuple[str, int | None, int | None, int | None]]:
     ranges = await NumberPoolRepository(db=db).get_ranges(pool_id=pool_id)
     return [
         (pool_range.get_id(), pool_range.start.value, pool_range.end.value, pool_range.allocation_weight.value)

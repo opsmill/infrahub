@@ -1,5 +1,6 @@
 import asyncio
 from dataclasses import dataclass
+from typing import Any
 
 import pytest
 
@@ -10,8 +11,6 @@ from infrahub.core.node.lock_utils import RESOURCE_POOL_LOCK_NAMESPACE
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.mutations.resource_manager.number_pools.pool import (
-    BOUNDS_NOT_CLEARABLE,
-    BOUNDS_REQUIRED,
     RANGES_NOT_NULLABLE,
     SHORTHAND_WITH_RANGES,
 )
@@ -22,7 +21,6 @@ from tests.helpers.number_pool import add_pool_range
 from .helpers import (
     INVALID_RANGES_CASES,
     RANGES_WITH_BOUNDS_CASES,
-    BoundsCase,
     InvalidRangesCase,
     RangesWithBoundsCase,
     bounds_input,
@@ -35,9 +33,22 @@ from .helpers import (
     ticket_pool_input,
 )
 
+
+@dataclass
+class ClearedBoundCase:
+    name: str
+    bounds: dict[str, Any]
+    expected_range: tuple[int | None, int | None]
+
+
 CLEARED_BOUND_CASES = [
-    BoundsCase(name="start_null", bounds={"start_range": {"value": None}}),
-    BoundsCase(name="end_null", bounds={"end_range": {"value": None}}),
+    ClearedBoundCase(name="start_null", bounds={"start_range": {"value": None}}, expected_range=(None, 20)),
+    ClearedBoundCase(name="end_null", bounds={"end_range": {"value": None}}, expected_range=(10, None)),
+    ClearedBoundCase(
+        name="both_null",
+        bounds={"start_range": {"value": None}, "end_range": {"value": None}},
+        expected_range=(None, None),
+    ),
 ]
 
 
@@ -141,12 +152,12 @@ class TestNumberPoolUpdate:
         assert await shorthand(db=db, pool_id=pool.get_id()) == (None, None)
 
     @pytest.mark.parametrize("case", CLEARED_BOUND_CASES, ids=lambda case: case.name)
-    async def test_update_rejects_clearing_a_bound(
+    async def test_update_clearing_a_bound_opens_the_range(
         self,
         db: InfrahubDatabase,
         default_branch_scope_class: Branch,
         loaded_ticket_schema_scope_class: None,
-        case: BoundsCase,
+        case: ClearedBoundCase,
     ) -> None:
         pool_id = await create_pool(
             db=db,
@@ -154,6 +165,7 @@ class TestNumberPoolUpdate:
             name=f"clearing-pool-{case.name}",
             bounds=bounds_input(start=10, end=20),
         )
+        (pool_range,) = await NumberPoolRepository(db=db).get_ranges(pool_id=pool_id)
 
         result = await execute(
             db=db,
@@ -162,9 +174,26 @@ class TestNumberPoolUpdate:
             variables={"data": {"id": pool_id} | case.bounds},
         )
 
-        assert [error.message for error in result.errors or []] == [BOUNDS_NOT_CLEARABLE]
-        assert await shorthand(db=db, pool_id=pool_id) == (10, 20)
-        assert await range_bounds(db=db, pool_id=pool_id) == [(10, 20)]
+        assert not result.errors
+        assert await shorthand(db=db, pool_id=pool_id) == case.expected_range
+        assert await range_details(db=db, pool_id=pool_id) == [(pool_range.get_id(), *case.expected_range, None)]
+
+    async def test_one_bound_written_on_a_pool_created_without_bounds_keeps_the_other_open(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, loaded_ticket_schema_scope_class: None
+    ) -> None:
+        pool_id = await create_pool(db=db, branch=default_branch_scope_class, name="open-pool-narrowed", bounds={})
+        (pool_range,) = await NumberPoolRepository(db=db).get_ranges(pool_id=pool_id)
+
+        result = await execute(
+            db=db,
+            branch=default_branch_scope_class,
+            source=UPDATE_NUMBER_POOL_BOUND,
+            variables={"data": {"id": pool_id, "start_range": {"value": 100}}},
+        )
+
+        assert not result.errors
+        assert await shorthand(db=db, pool_id=pool_id) == (100, None)
+        assert await range_details(db=db, pool_id=pool_id) == [(pool_range.get_id(), 100, None, None)]
 
     async def test_bounds_written_on_a_pool_with_one_range_rewrite_it_in_place(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, loaded_ticket_schema_scope_class: None
@@ -219,7 +248,7 @@ class TestNumberPoolUpdate:
     async def test_bounds_written_on_a_pool_without_range_create_it(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, loaded_ticket_schema_scope_class: None
     ) -> None:
-        pool_id = await create_pool(db=db, branch=default_branch_scope_class, name="grown-pool", bounds={})
+        pool_id = await create_pool(db=db, branch=default_branch_scope_class, name="grown-pool", bounds={"ranges": []})
 
         result = await execute(
             db=db,
@@ -232,10 +261,12 @@ class TestNumberPoolUpdate:
         assert await shorthand(db=db, pool_id=pool_id) == (5, 9)
         assert await range_bounds(db=db, pool_id=pool_id) == [(5, 9)]
 
-    async def test_one_bound_written_on_a_pool_without_range_is_refused(
+    async def test_one_bound_written_on_a_pool_without_range_creates_an_open_range(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, loaded_ticket_schema_scope_class: None
     ) -> None:
-        pool_id = await create_pool(db=db, branch=default_branch_scope_class, name="half-bound-pool", bounds={})
+        pool_id = await create_pool(
+            db=db, branch=default_branch_scope_class, name="half-bound-pool", bounds={"ranges": []}
+        )
 
         result = await execute(
             db=db,
@@ -244,14 +275,16 @@ class TestNumberPoolUpdate:
             variables={"data": {"id": pool_id, "start_range": {"value": 5}}},
         )
 
-        assert [error.message for error in result.errors or []] == [BOUNDS_REQUIRED]
-        assert await shorthand(db=db, pool_id=pool_id) == (None, None)
-        assert await range_bounds(db=db, pool_id=pool_id) == []
+        assert not result.errors
+        assert await shorthand(db=db, pool_id=pool_id) == (5, None)
+        assert await range_bounds(db=db, pool_id=pool_id) == [(5, None)]
 
     async def test_bounds_written_on_a_pool_with_several_ranges_are_refused_listing_them(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, loaded_ticket_schema_scope_class: None
     ) -> None:
-        pool_id = await create_pool(db=db, branch=default_branch_scope_class, name="multi-range-pool", bounds={})
+        pool_id = await create_pool(
+            db=db, branch=default_branch_scope_class, name="multi-range-pool", bounds={"ranges": []}
+        )
         pool = await load_pool(db=db, pool_id=pool_id)
         high = await add_pool_range(db=db, pool=pool, start=205, end=300)
         low = await add_pool_range(db=db, pool=pool, start=100, end=200)
@@ -265,7 +298,7 @@ class TestNumberPoolUpdate:
 
         assert [error.message for error in result.errors or []] == [
             "start_range/end_range apply to a pool holding at most one range; this pool holds: "
-            f"100-200 ({low.get_id()}), 205-300 ({high.get_id()}). Edit the ranges instead."
+            f"100 - 200 ({low.get_id()}), 205 - 300 ({high.get_id()}). Edit the ranges instead."
         ]
         assert await shorthand(db=db, pool_id=pool_id) == (None, None)
         assert await range_bounds(db=db, pool_id=pool_id) == [(100, 200), (205, 300)]

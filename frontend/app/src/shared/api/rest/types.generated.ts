@@ -2687,9 +2687,9 @@ export interface components {
             start_range?: number | null;
             /**
              * Ranges
-             * @description Ranges of numbers the associated NumberPool allocates from, they must not overlap
+             * @description Ranges the NumberPool allocates from, without overlap. Unset means one range with no start or end; an empty list means no range
              */
-            ranges?: components["schemas"]["NumberPoolRangeRead"][];
+            ranges?: components["schemas"]["NumberPoolRangeRead"][] | null;
             /**
              * Number Pool Id
              * @description The ID of the numberpool associated with this attribute. Only set after the number pool has been provisioned.
@@ -2715,7 +2715,7 @@ export interface components {
             start_range?: number | null;
             /**
              * Ranges
-             * @description Ranges of numbers the associated NumberPool allocates from, they must not overlap
+             * @description Ranges the NumberPool allocates from, without overlap. Unset means one range with no start or end; an empty list means no range
              */
             ranges?: components["schemas"]["NumberPoolRangeWrite"][] | null;
             /**
@@ -2733,14 +2733,14 @@ export interface components {
         NumberPoolRangeRead: {
             /**
              * Start
-             * @description First number of the range
+             * @description First number of the range, 1 when unset
              */
-            start: number;
+            start?: number | null;
             /**
              * End
-             * @description Last number of the range
+             * @description Last number of the range, the largest supported number when unset
              */
-            end: number;
+            end?: number | null;
             /**
              * Weight
              * @description Ranges with a higher weight are allocated from first
@@ -2751,14 +2751,14 @@ export interface components {
         NumberPoolRangeWrite: {
             /**
              * Start
-             * @description First number of the range
+             * @description First number of the range, 1 when unset
              */
-            start: number;
+            start?: number | null;
             /**
              * End
-             * @description Last number of the range
+             * @description Last number of the range, the largest supported number when unset
              */
-            end: number;
+            end?: number | null;
             /**
              * Weight
              * @description Ranges with a higher weight are allocated from first

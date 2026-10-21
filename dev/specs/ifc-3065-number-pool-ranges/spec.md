@@ -79,7 +79,7 @@ A deployment upgrades. Every pool it had becomes a pool with one range covering 
 4. **Given** a pool holding one range, **When** `start_range` / `end_range` are written, **Then** that same range is rewritten in place (same identity, same weight), and no second range is added.
 5. **Given** a pool holding no range, **When** `start_range` / `end_range` are written, **Then** the pool's single range is created.
 6. **Given** a schema written before this change that declares only `start_range` / `end_range` on a number-pool attribute, **When** it is loaded, **Then** it loads with identical meaning: one range with those bounds.
-7. **Given** a schema that declares exactly one of `start_range` / `end_range`, **When** it is loaded, **Then** the other bound resolves to its former default (the lowest / highest value the attribute kind accepted before this change), so the declaration means what it meant before.
+7. **Given** a schema that declares exactly one of `start_range` / `end_range`, **When** it is loaded, **Then** the other bound is stored as open (null) and counts as its former default during allocation (`1` for the start, `sys.maxsize` for the end), so the declaration means what it meant before. *(Amended by IFC-3432: open range bounds.)*
 
 ---
 
@@ -116,7 +116,7 @@ A schema author declares a number-pool attribute with a list of ranges, each wit
 
 1. **Given** a number-pool attribute declaring `parameters.ranges` with weights, **When** the schema loads, **Then** the pool is created with those ranges materialised, weights preserved, and is never left with only scalar bounds and no range.
 2. **Given** a number-pool attribute declaring both `start_range` / `end_range` and `parameters.ranges`, **When** the schema loads, **Then** the load is refused as conflicting spellings.
-3. **Given** a number-pool attribute declaring neither spelling, **When** the schema loads, **Then** the pool is created with zero ranges, which is legal. An attribute written before this change and relying on the former parameter defaults takes this path, so its pool is empty where it once spanned `1`–`sys.maxsize`.
+3. **Given** a number-pool attribute declaring neither spelling, **When** the schema loads, **Then** the pool is created with one range open at both ends, which allocates from `1` to `sys.maxsize`. An attribute written before this change and relying on the former parameter defaults takes this path, so its pool keeps the span `1`–`sys.maxsize`. An attribute declaring `ranges: []` gets a pool with zero ranges, which is legal. *(Amended by IFC-3432: open range bounds.)*
 4. **Given** a schema-created pool, **When** the default-branch schema adds, removes or reweights a range, **Then** the pool's ranges are reconciled to the new declaration and every number already handed out stays recorded.
 5. **Given** a schema-created pool with objects holding numbers, **When** a schema change would leave a held value outside every declared range, **Then** the load is refused and the offending objects are identified.
 6. **Given** a schema-created pool, **When** its ranges are edited through the pool's own update, **Then** the edit is refused and the error points at the schema in the default branch.
@@ -152,13 +152,13 @@ An API or SDK consumer discovers, through introspection and schema-load warnings
 - A weight changes on a partially drained pool: the newly heaviest range is drawn from next, at its lowest free value.
 - An attribute's excluded values lie entirely outside the pool's ranges: size is unchanged and no division-by-zero error occurs.
 - An attribute's `min_value` / `max_value` clamp a range to nothing: that range counts as exhausted for fullness and contributes 0 to size.
-- A pool ends up with zero ranges: legal; size 0, utilization 0 %, allocation raises the pool-exhausted error.
-- A schema declaration drops to zero ranges while objects hold values: the load is refused and the objects identified, because every held value is then outside every range.
+- A pool ends up with zero ranges (declared with `ranges: []`, or with every range removed): legal; size 0, utilization 0 %, allocation raises the pool-exhausted error.
+- A schema declaration drops to zero ranges (`ranges: []`) while objects hold values: the load is refused and the objects identified, because every held value is then outside every range.
 - Two user-created pools over the same kind and attribute have overlapping ranges: allowed; a collision is refused only by a uniqueness constraint.
 - A unique attribute already holds a value nobody allocated: allocation skips it, across every range, as it does today.
 - `start_range` / `end_range` written on a multi-range user pool: refused with the list of ranges; on a schema pool: the existing schema-pool refusal fires first.
 - Both spellings supplied, on a pool mutation or in a schema declaration: refused.
-- Exactly one of `start_range` / `end_range` declared in a schema: the other resolves to its former bound.
+- Exactly one of `start_range` / `end_range` declared in a schema: the other is stored as open (null) and counts as `1` / `sys.maxsize` during allocation. *(Amended by IFC-3432: open range bounds.)*
 - A schema written before this change is loaded after it: identical meaning, plus one deprecation warning per attribute using the shorthand.
 - The migration runs twice: idempotent, no duplicate range.
 - A schema change moves a declared range so that a held value falls outside every range: refused, objects identified.
@@ -188,13 +188,13 @@ An API or SDK consumer discovers, through introspection and schema-load warnings
 - **FR-013**: `start_range` / `end_range` on a pool MUST remain supported as an optional shorthand for a single range and MUST be marked deprecated in favour of `ranges`. Removal is out of scope for P1. *(PRD FR-005a)*
 - **FR-014**: On read, `start_range` / `end_range` MUST return the bounds of the pool's range when the pool holds exactly one range, and null otherwise.
 - **FR-015**: On write to a user-created pool, the shorthand MUST behave according to the pool's range count: with zero ranges it creates the pool's single range; with one range it rewrites that range's bounds in place, keeping the range's identity and weight; with more than one range it is refused, the error states the permitted usage and lists every range the pool holds by bounds and identifier, and the pool is left untouched.
-- **FR-016**: Supplying the shorthand together with an explicit list of ranges in one write MUST be refused as conflicting spellings. Omitting the shorthand and supplying `ranges` is a legal write; omitting both on create is a legal write producing a zero-range pool.
+- **FR-016**: Supplying the shorthand together with an explicit list of ranges in one write MUST be refused as conflicting spellings. Omitting the shorthand and supplying `ranges` is a legal write. Omitting both on create creates the pool with one range open at both ends, so the create needs the range create permission; `ranges: []` on create produces a zero-range pool. *(Amended by IFC-3432: open range bounds.)*
 - **FR-017**: On a schema-created pool, the existing refusal pointing the user at the default-branch schema MUST fire before any shorthand rule, whatever the range count.
 
 #### Pools the schema creates
 
-- **FR-018**: A number-pool attribute MUST accept either `start_range` / `end_range` or an explicit `parameters.ranges` list of `{start, end, weight}`. Declaring both MUST be refused. Declaring neither MUST produce a legal zero-range pool. An attribute written against the former `1` / `sys.maxsize` parameter defaults declares neither, so on upgrade it produces an empty pool where it produced a pool spanning `1`–`sys.maxsize`. This is a deliberate change, carved out of FR-019 and SC-003 and carried by a changelog entry with an upgrade note telling the author to declare the span they want. *(PRD FR-008, FR-041)*
-- **FR-019**: A declaration carrying exactly one of `start_range` / `end_range` MUST resolve the other to its former default bound at validation time, so that a schema written before this change loads with identical meaning. The shorthand counts as supplied as soon as either field is set.
+- **FR-018**: A number-pool attribute MUST accept either `start_range` / `end_range` or an explicit `parameters.ranges` list of `{start, end, weight}`. Declaring both MUST be refused. Declaring neither MUST produce one range open at both ends, calculated and never stored in the schema, so an attribute written against the former `1` / `sys.maxsize` parameter defaults keeps its span. Declaring `ranges: []` MUST produce a legal zero-range pool. A range's `start` and `end` are each optional; a missing bound is open. *(PRD FR-008, FR-041)* *(Amended by IFC-3432: open range bounds.)*
+- **FR-019**: A declaration carrying exactly one of `start_range` / `end_range` MUST keep the other as an open bound (null), which counts as its former default (`1` / `sys.maxsize`) during allocation, so that a schema written before this change loads with identical meaning. The shorthand counts as supplied as soon as either field is set. *(Amended by IFC-3432: open range bounds.)*
 - **FR-020**: The schema declaration MUST be the source of truth for a schema-created pool's ranges. The pool's ranges are a runtime representation of that declaration, not a second authoring surface. *(PRD FR-037)*
 - **FR-021**: When the schema creates a pool, its ranges MUST be materialised from the normalised declaration at creation. A new schema-created pool is never left with only scalar bounds and no range.
 - **FR-022**: When the default-branch schema changes a number-pool attribute's ranges, the pool's ranges MUST be reconciled to the new declaration (created, updated, removed). Handed-out numbers stay recorded. A declaration with zero ranges is legal. *(PRD FR-037)*
@@ -230,7 +230,7 @@ An API or SDK consumer discovers, through introspection and schema-load warnings
 
 - **SC-001**: An operator sets up one pool over a space with gaps and never receives a number from a gap. *(PRD SC-005)*
 - **SC-002**: A space that needed one pool per piece is expressed as one pool, and the order the pieces are drawn from is the operator's choice, set by weighting them. *(PRD SC-006)*
-- **SC-003**: A deployment that upgrades and changes nothing sees no change: every pre-existing pool reports the same handed-out numbers and the same `start_range` / `end_range` values as before the upgrade. Two deliberate changes are carved out and each carries a changelog entry: utilization, which FR-007 recomputes from the effective space, and a number-pool attribute declaring neither bound, which FR-018 turns into a zero-range pool. *(PRD SC-009 spirit, applied to P1)*
+- **SC-003**: A deployment that upgrades and changes nothing sees no change: every pre-existing pool reports the same handed-out numbers and the same `start_range` / `end_range` values as before the upgrade. One deliberate change is carved out and carries a changelog entry: utilization, which FR-007 recomputes from the effective space. A number-pool attribute declaring neither bound keeps its `1`–`sys.maxsize` span through one open range (FR-018). *(PRD SC-009 spirit, applied to P1)* *(Amended by IFC-3432: open range bounds.)*
 - **SC-004**: The migration is idempotent: a second run against a pool that already holds a covering range creates no second range.
 - **SC-005**: Allocation on a fully allocated multi-range pool of 4094 numbers (a VLAN space split in several ranges) is measured, with its query plan inspected, and does not regress against the single-span walk. The figure is recorded, not gated. *(PRD SC-012, ungated in P1)*
 - **SC-006**: Every refusal introduced by this slice (overlap, backwards range, conflicting spellings, shorthand on a multi-range pool, direct edit of a schema-created pool's ranges, unsafe schema change) names what the user must change and, where relevant, which ranges or objects are involved.
@@ -243,7 +243,7 @@ An API or SDK consumer discovers, through introspection and schema-load warnings
 |-------|----------|
 | Utilization becomes sensitive to `min_value` / `max_value` and to which excluded values intersect the ranges. | Changed behaviour |
 | `start_range` / `end_range` read as null on a pool with zero or more than one range. | Changed behaviour |
-| A number-pool attribute declaring neither `start_range` nor `end_range` now creates a pool with zero ranges, where it created one spanning `1`–`sys.maxsize`. Declare the span the attribute needs. | Changed behaviour |
+| A number-pool attribute declaring neither `start_range` nor `end_range` creates a pool with one range open at both ends, spanning `1`–`sys.maxsize` as before; `ranges: []` creates a pool with zero ranges. *(Amended by IFC-3432.)* | Changed behaviour |
 | `start_range` / `end_range` are deprecated in favour of `ranges` in the pool schema, in the number-pool attribute parameters and in GraphQL. | Deprecation |
 | The shorthand is refused on a pool holding more than one range; the error lists the ranges to edit instead. | New refusal |
 | Schema-created pools accept `parameters.ranges`; direct GraphQL edits of their ranges are refused. | Feature |
@@ -258,7 +258,7 @@ Using the repository's "ask first" list.
 
 - [x] Database schema or migration change — new core kind for ranges, relationship from pool to ranges, migration creating one range per existing pool.
 - [x] GraphQL change — new range kind with its generated mutations and their schema-pool guard, `ranges` relationship on the pool, deprecation markers on `start_range` / `end_range`, the shorthand refusals.
-- [x] Published schema contract (ADR 0010, SDK type regeneration) — number-pool attribute parameters gain `ranges`, both scalars deprecated with no default, single-bound resolution, range-validity rules. Shared with P3's later `allocation_scope` change.
+- [x] Published schema contract (ADR 0010, SDK type regeneration) — number-pool attribute parameters gain `ranges`, both scalars deprecated with no default, open range bounds, range-validity rules. Shared with P3's later `allocation_scope` change.
 - [ ] New dependency
 - [ ] CI/CD change
 - [ ] Authentication or authorization change
@@ -266,7 +266,7 @@ Using the repository's "ask first" list.
 ## Assumptions
 
 - No new frontend work ships in P1. Existing screens must keep working on the new read shape (FR-032); range management in the UI is deferred with the rest of the frontend scope.
-- The former default bounds used for single-bound resolution (FR-019) are the ones the number-pool attribute parameters applied before this change: `1` for the start and the largest supported integer for the end.
+- The former default bounds an open bound counts as (FR-019) are the ones the number-pool attribute parameters applied before this change: `1` for the start and the largest supported integer for the end. On a user-created pool an open start counts as max(`1`, `min_value`) and an open end as min(`sys.maxsize`, `max_value`) of the target attribute on the requesting branch. *(Amended by IFC-3432.)*
 - The schema that validates a number-pool attribute's ranges is the default-branch schema, consistent with the existing schema-pool refusal text.
 - Weight semantics are those of the weighted-resource generic already used by IP pools: higher is drawn from first.
 - Removal of `start_range` / `end_range` happens in a later major version and is not planned here.

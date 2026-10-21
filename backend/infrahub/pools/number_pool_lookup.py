@@ -9,6 +9,7 @@ from infrahub.core.protocols import CoreNumberPool, CoreNumberPoolRange
 from infrahub.core.query.resource_manager import NumberPoolGetTrackingPool
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.pools.number_pool_space import to_pool_ranges
+from infrahub.pools.number_ranges import allocation_bounds
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -84,7 +85,10 @@ class NumberPoolRangeLookup:
         pool_ranges = await self.node_manager.query(
             db=self.db, schema=CoreNumberPoolRange, filters={"pool__ids": [pool_id]}, at=at, branch_agnostic=True
         )
-        return sorted(pool_ranges, key=lambda pool_range: int(pool_range.start.value))
+        return sorted(
+            pool_ranges,
+            key=lambda pool_range: allocation_bounds(start=pool_range.start.value, end=pool_range.end.value),
+        )
 
     async def get_pool_ranges(self, pool_id: str, at: Timestamp | str | None = None) -> list[PoolRange]:
         """Return the pool's ranges as plain start, end, weight and id values, lowest start first."""

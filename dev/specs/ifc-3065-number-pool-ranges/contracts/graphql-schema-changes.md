@@ -50,7 +50,9 @@ Every create or update that carries the shorthand or `ranges` runs under the poo
 |-------|--------|
 | create with `start_range` and `end_range` only | pool created with one range; existing bound checks against `min_value` / `max_value` unchanged |
 | create with `ranges` only | pool created; ranges linked; overlap validated |
-| create with neither | pool created with zero ranges |
+| create with neither | pool created with one range open at both ends; needs the range create permission *(amended by IFC-3432)* |
+| create with `ranges: []` | pool created with zero ranges *(amended by IFC-3432)* |
+| create or update with one shorthand bound, or a range without `start` or `end` | the missing bound is stored as null (open); a bound cleared on update becomes open *(amended by IFC-3432)* |
 | create or update with shorthand and `ranges` | refused: "start_range/end_range cannot be combined with ranges" |
 | update with shorthand, pool has 0 ranges | one range created |
 | update with shorthand, pool has 1 range | that range rewritten in place |
@@ -95,7 +97,7 @@ Any `deprecation` message on an attribute or relationship of any kind now appear
 | Situation | Message |
 |-----------|---------|
 | shorthand and `ranges` together | `start_range/end_range cannot be combined with ranges` |
-| shorthand on a multi-range pool | `start_range/end_range apply to a pool holding at most one range; this pool holds: 100-200 (<id>), 205-300 (<id>). Edit the ranges instead.` |
-| overlapping range | `Range 150-250 overlaps 100-200 (<id>)` |
+| shorthand on a multi-range pool | `start_range/end_range apply to a pool holding at most one range; this pool holds: 100 - 200 (<id>), 205 - 300 (<id>). Edit the ranges instead.` |
+| overlapping range | `Range 150 - 250 overlaps 100 - 200 (<id>)` |
 | backwards range | `Range end (100) cannot be lower than start (200)` |
 | range edit on a schema pool | existing message pointing at the default-branch schema |

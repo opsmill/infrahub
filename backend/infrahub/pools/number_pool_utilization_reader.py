@@ -41,7 +41,10 @@ class NumberPoolUtilizationReader:
         state = await self.loader.load(pool_id=pool_id)
         selected = state.scope.complete_division(entries=division)
         utilization = await self.utilization_getter.measure(pool=state.pool, space=state.space, division=selected)
-        ranges = sorted(state.ranges, key=lambda item: int(item.start.value))
+        bounds = {
+            item.get_id(): state.domain.resolve(start=item.start.value, end=item.end.value) for item in state.ranges
+        }
+        ranges = sorted(state.ranges, key=lambda item: bounds[item.get_id()])
         return PoolUsage(
             id=pool_id,
             display_label=await state.pool.get_display_label(db=self.db),
@@ -51,8 +54,8 @@ class NumberPoolUtilizationReader:
                 RangeUsage(
                     id=item.get_id(),
                     display_label=state.range_labels[item.get_id()],
-                    start=int(item.start.value),
-                    end=int(item.end.value),
+                    start=bounds[item.get_id()][0],
+                    end=bounds[item.get_id()][1],
                     weight=item.allocation_weight.value or 0,
                     figures=utilization.range_figures(range_id=item.get_id()),
                 )

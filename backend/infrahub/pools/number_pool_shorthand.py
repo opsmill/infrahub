@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from infrahub.pools.number_pool_repository import NumberPoolRangeStore
 
 
-def shorthand_bounds(bounds: Sequence[tuple[int, int]]) -> tuple[int | None, int | None]:
+def shorthand_bounds(bounds: Sequence[tuple[int | None, int | None]]) -> tuple[int | None, int | None]:
     """Return the shorthand of a range set: the bounds of its single range, or null for any other count."""
     if len(bounds) == 1:
         return bounds[0]
@@ -50,9 +50,7 @@ class NumberPoolShorthandMirror:
         if ranges is None:
             ranges = await self.repository.get_ranges(pool_id=pool.get_id(), at=at)
 
-        start, end = shorthand_bounds(
-            bounds=[(int(pool_range.start.value), int(pool_range.end.value)) for pool_range in ranges]
-        )
+        start, end = shorthand_bounds(bounds=[(pool_range.start.value, pool_range.end.value) for pool_range in ranges])
 
         if pool.get_attribute("start_range").value == start and pool.get_attribute("end_range").value == end:
             return

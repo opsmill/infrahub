@@ -223,6 +223,27 @@ async def test_min_and_max_values_clip_the_ranges(
     ]
 
 
+async def test_an_open_end_allocates_up_to_the_max_value_and_then_reports_the_pool_exhausted(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    schema = ticket_schema_with_parameters(NumberAttributeParameters(max_value=4094))
+    await load_schema(db=db, schema=SchemaRoot(nodes=[schema]))
+    await initialize_registry(db=db)
+    pool = await create_range_only_pool(db=db, kind=schema.kind)
+    await add_pool_range(db=db, pool=pool, start=4092, end=None)
+
+    allocated = [await create_ticket(db=db, kind=schema.kind, pool=pool) for _ in range(3)]
+
+    assert allocated == [4092, 4093, 4094]
+    with pytest.raises(PoolExhaustedError) as exc_info:
+        await _next_number(db=db, branch=default_branch, pool=pool, kind=schema.kind)
+    assert exc_info.value.message == f"Pool ranged ({pool.get_id()}) has no free number left in its ranges."
+    utilization = await resolve_number_pool_utilization(
+        db=db, domains=schema_domains(db=db, branch=default_branch), pool=pool, at=Timestamp(), branch=default_branch
+    )
+    assert (utilization["count"], utilization["utilization"]) == (1, 100.0)
+
+
 async def test_a_pool_whose_only_range_is_clipped_to_nothing_reports_zero(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:

@@ -206,7 +206,7 @@ class TestPrefixUpdateChecksTheTrackedNumber:
         )
 
         assert message == (
-            "'vlan_id' is tracked by the 'vlans' pool, so it cannot hold 900, which is outside the pool's ranges: 1-20. "
+            "'vlan_id' is tracked by the 'vlans' pool, so it cannot hold 900, which is outside the pool's ranges: 1 - 20. "
             "Choose a number inside those ranges, or remove the 'vlans' pool from 'vlan_id' in the same change that "
             "sets it to 900. at vlan_id.value"
         )

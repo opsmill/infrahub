@@ -46,7 +46,7 @@ async def test_editing_a_tracked_number_to_one_outside_the_ranges_is_refused(
 
     assert exc_info.value.message == (
         "'ticket_id' is tracked by the 'tickets' pool, so it cannot hold 900, which is outside the pool's ranges: "
-        "1-100. Choose a number inside those ranges, or remove the 'tickets' pool from 'ticket_id' in the same "
+        "1 - 100. Choose a number inside those ranges, or remove the 'tickets' pool from 'ticket_id' in the same "
         "change that sets it to 900. at ticket_id.value"
     )
     assert range_reader.reads == [POOL_ID]

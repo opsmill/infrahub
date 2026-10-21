@@ -5,16 +5,12 @@ from typing import TYPE_CHECKING, Protocol
 
 from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.schema.attribute_parameters import NumberPoolRangeParameters
+from infrahub.pools.number_ranges import allocation_bounds
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from infrahub.core.timestamp import Timestamp
-
-
-class _IntegerValue(Protocol):
-    @property
-    def value(self) -> int: ...
 
 
 class _OptionalIntegerValue(Protocol):
@@ -30,10 +26,10 @@ class StoredRange(Identified, Protocol):
     """A range as the reconciler reads it from its store."""
 
     @property
-    def start(self) -> _IntegerValue: ...
+    def start(self) -> _OptionalIntegerValue: ...
 
     @property
-    def end(self) -> _IntegerValue: ...
+    def end(self) -> _OptionalIntegerValue: ...
 
     @property
     def allocation_weight(self) -> _OptionalIntegerValue: ...
@@ -47,8 +43,8 @@ class ReconcilableRangeStore[RangeT: StoredRange, PoolT: Identified](Protocol):
     async def create_range(
         self,
         pool: PoolT,
-        start: int,
-        end: int,
+        start: int | None,
+        end: int | None,
         weight: int | None = None,
         at: Timestamp | None = None,
         user_id: str = SYSTEM_USER_ID,
@@ -57,8 +53,8 @@ class ReconcilableRangeStore[RangeT: StoredRange, PoolT: Identified](Protocol):
     async def save_range(
         self,
         pool_range: RangeT,
-        start: int,
-        end: int,
+        start: int | None,
+        end: int | None,
         weight: int | None,
         at: Timestamp | None = None,
         user_id: str = SYSTEM_USER_ID,
@@ -184,13 +180,18 @@ class NumberPoolRangeReconciler[RangeT: StoredRange, PoolT: Identified]:
         stored = {range_id: self._parameters(stored=item) for range_id, item in stored_by_id.items()}
         stored_by_bounds = {(item.start, item.end): range_id for range_id, item in stored.items()}
         changes = _RangeChanges()
-        for declared_range in sorted(declared, key=lambda item: (item.start, item.end)):
+        for declared_range in sorted(declared, key=lambda item: allocation_bounds(start=item.start, end=item.end)):
             range_id = stored_by_bounds.pop((declared_range.start, declared_range.end), None)
             if range_id is None:
                 changes.to_create.append(declared_range)
             elif stored[range_id].weight != declared_range.weight:
                 changes.to_reweight.append((range_id, declared_range))
-        changes.to_delete.extend(sorted(stored_by_bounds.values(), key=lambda range_id: stored[range_id].start))
+        changes.to_delete.extend(
+            sorted(
+                stored_by_bounds.values(),
+                key=lambda range_id: allocation_bounds(start=stored[range_id].start, end=stored[range_id].end),
+            )
+        )
         return changes
 
     def _parameters(self, stored: RangeT) -> NumberPoolRangeParameters:

@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-import sys
 from typing import Any, Self
 
-from pydantic import ConfigDict, Field, SerializerFunctionWrapHandler, model_serializer, model_validator
+from pydantic import ConfigDict, Field, model_validator
 
 from infrahub import config
 from infrahub.core.constants.schema import UpdateSupport
 from infrahub.core.models import HashableModel
 from infrahub.exceptions import ValidationError
+from infrahub.pools.number_ranges import allocation_bounds, format_range_label
 
 
 def get_attribute_parameters_class_for_kind(kind: str) -> type[AttributeParameters]:
@@ -185,28 +185,39 @@ class NumberAttributeParameters(AttributeParameters):
 class NumberPoolRangeParameters(HashableModel):
     """One inclusive range of numbers declared for the NumberPool of an attribute."""
 
-    start: int = Field(description="First number of the range")
-    end: int = Field(description="Last number of the range")
+    start: int | None = Field(default=None, description="First number of the range, 1 when unset")
+    end: int | None = Field(
+        default=None, description="Last number of the range, the largest supported number when unset"
+    )
     weight: int | None = Field(
         default=None,
         description="Ranges with a higher weight are allocated from first",
     )
 
-    _sort_by: list[str] = ["start", "end"]
+    # Sorting compares the resolved bounds because an unset bound cannot be ordered against a number.
+    _sort_by: list[str] = ["lower", "upper"]
+
+    @property
+    def lower(self) -> int:
+        return allocation_bounds(start=self.start, end=self.end)[0]
+
+    @property
+    def upper(self) -> int:
+        return allocation_bounds(start=self.start, end=self.end)[1]
 
     @property
     def label(self) -> str:
-        return f"{self.start}-{self.end}"
+        return format_range_label(start=self.lower, end=self.upper)
 
     @property
     def size(self) -> int:
-        return self.end - self.start + 1
+        return self.upper - self.lower + 1
 
     def overlaps(self, other: NumberPoolRangeParameters) -> bool:
-        return self.start <= other.end and other.start <= self.end
+        return self.lower <= other.upper and other.lower <= self.upper
 
 
-def _is_unset(value: int | None) -> bool:
+def _is_unset(value: object) -> bool:
     return value is None
 
 
@@ -230,9 +241,13 @@ class NumberPoolParameters(AttributeParameters):
         exclude_if=_is_unset,
         json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
     )
-    ranges: list[NumberPoolRangeParameters] = Field(
-        default_factory=list,
-        description="Ranges of numbers the associated NumberPool allocates from, they must not overlap",
+    ranges: list[NumberPoolRangeParameters] | None = Field(
+        default=None,
+        description=(
+            "Ranges the NumberPool allocates from, without overlap. "
+            "Unset means one range from 1 to the largest supported number; an empty list means no range"
+        ),
+        exclude_if=_is_unset,
         json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
     )
     number_pool_id: str | None = Field(
@@ -256,19 +271,6 @@ class NumberPoolParameters(AttributeParameters):
     def has_shorthand(self) -> bool:
         return self.start_range is not None or self.end_range is not None
 
-    @property
-    def declares_zero_ranges(self) -> bool:
-        """Whether the declaration sets an empty range list, as opposed to leaving the ranges unset."""
-        return "ranges" in self.model_fields_set and not self.ranges and not self.has_shorthand
-
-    @model_serializer(mode="wrap")
-    def _serialize(self, handler: SerializerFunctionWrapHandler) -> Any:
-        data = handler(self)
-        # Kept in the dump only when declared, so a dumped and reloaded declaration still removes every range.
-        if isinstance(data, dict) and not self.ranges and not self.declares_zero_ranges:
-            data.pop("ranges", None)
-        return data
-
     def update(self, other: HashableModel) -> Self:
         # A declaration carrying either spelling, an empty range list included, replaces the previous ranges wholesale:
         # a field-wise merge would combine the two spellings or keep a previous bound or range the new one leaves out.
@@ -276,8 +278,8 @@ class NumberPoolParameters(AttributeParameters):
             if other.has_shorthand:
                 self.start_range = other.start_range
                 self.end_range = other.end_range
-                self.ranges = []
-            elif other.ranges or other.declares_zero_ranges:
+                self.ranges = None
+            elif other.ranges is not None:
                 self.start_range = None
                 self.end_range = None
                 self.ranges = list(other.ranges)
@@ -290,14 +292,16 @@ class NumberPoolParameters(AttributeParameters):
 
         if self.has_shorthand:
             shorthand = self._shorthand_range()
-            if shorthand.start > shorthand.end:
+            if shorthand.lower > shorthand.upper:
                 raise ValueError("`start_range` can't be less than `end_range`")
+            # An empty list sent beside the shorthand declares nothing more, so the declaration keeps one spelling.
+            self.ranges = None
             return self
 
-        ordered = sorted(self.ranges)
+        ordered = sorted(self.ranges or [])
         for candidate in ordered:
-            if candidate.end < candidate.start:
-                raise ValueError(f"Range end ({candidate.end}) cannot be lower than start ({candidate.start})")
+            if candidate.upper < candidate.lower:
+                raise ValueError(f"Range end ({candidate.upper}) cannot be lower than start ({candidate.lower})")
         for candidate in ordered:
             clashes = [other for other in ordered if other is not candidate and candidate.overlaps(other)]
             if clashes:
@@ -305,18 +309,18 @@ class NumberPoolParameters(AttributeParameters):
         return self
 
     def _shorthand_range(self) -> NumberPoolRangeParameters:
-        start = self.start_range if self.start_range is not None else 1
-        end = self.end_range if self.end_range is not None else sys.maxsize
-        return NumberPoolRangeParameters(start=start, end=end)
+        return NumberPoolRangeParameters(start=self.start_range, end=self.end_range)
 
     def effective_ranges(self) -> list[NumberPoolRangeParameters]:
         """Return the declared ranges ordered by start, whichever spelling declared them.
 
-        A shorthand missing a bound resolves its start to 1 and its end to the largest supported number;
-        a declaration using neither spelling has no range.
+        A bound left unset stays None. A declaration using neither spelling has one range open at both ends,
+        and an empty range list has no range.
         """
         if self.has_shorthand:
             return [self._shorthand_range()]
+        if self.ranges is None:
+            return [NumberPoolRangeParameters(start=None, end=None)]
         return sorted(self.ranges)
 
     def get_pool_size(self) -> int:
