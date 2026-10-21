@@ -1,0 +1,21 @@
+.agents/rules/testing-python.md
+  s_c857a3e31ef519::t_8b003dc319edbb 108-109,114-118
+dev/guidelines/backend/testing.md
+  s_c857a3e31ef519::t_dbc70806bf65a2 19-22,123,125-126,128-130,132-134,136,138,140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "78c6de3f2c580263aee7b9de2d9e245df346029f",
+  "prompts": {},
+  "sessions": {
+    "s_c857a3e31ef519": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0286451c-4340-42ec-9031-8e290309833f",
+        "model": "unknown"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}
