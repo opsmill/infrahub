@@ -3,7 +3,6 @@ from enum import StrEnum
 
 class DatabaseType(StrEnum):
     NEO4J = "neo4j"
-    MEMGRAPH = "memgraph"
 
 
 class Neo4jRuntime(StrEnum):

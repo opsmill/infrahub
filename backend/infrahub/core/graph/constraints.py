@@ -124,33 +124,6 @@ class ConstraintRelNeo4j(ConstraintItemNeo4j):
         )
 
 
-# ------------------------------------------------------
-# Memgraph
-# ------------------------------------------------------
-
-
-class ConstraintItemMemgraph(ConstraintItem):
-    def get_query_exist_add(self) -> str:
-        raise NotImplementedError()
-
-    def get_query_exist_drop(self) -> str:
-        raise NotImplementedError()
-
-    def get_add_queries(self) -> list[str]:
-        return [self.get_query_exist_add()]
-
-    def get_drop_queries(self) -> list[str]:
-        return [self.get_query_exist_drop()]
-
-
-class ConstraintNodeMemgraph(ConstraintItemMemgraph):
-    def get_query_exist_add(self) -> str:
-        return f"CREATE CONSTRAINT ON (n:{self.item_label}) ASSERT EXISTS (n.{self.property})"
-
-    def get_query_exist_drop(self) -> str:
-        return f"DROP CONSTRAINT ON (n:{self.item_label}) ASSERT EXISTS (n.{self.property})"
-
-
 TYPE_MAPPING = {
     "RelationshipStatus": GraphPropertyType.STRING,
     "BranchSupportType": GraphPropertyType.STRING,
@@ -267,29 +240,5 @@ class ConstraintManagerNeo4j(ConstraintManagerBase):
                     property=", ".join(record["properties"]),
                 )
             )
-
-        return results
-
-
-class ConstraintManagerMemgraph(ConstraintManagerBase):
-    constraint_node_class = ConstraintNodeMemgraph
-    constraint_rel_class = None
-
-    async def add(self) -> None:
-        for item in self.items:
-            for query in item.get_add_queries():
-                await self.db.execute_query(query=query, params={}, name="constraint_add")
-
-    async def drop(self) -> None:
-        for item in self.items:
-            for query in item.get_drop_queries():
-                await self.db.execute_query(query=query, params={}, name="constraint_drop")
-
-    async def list(self) -> list[ConstraintInfo]:
-        query = "SHOW CONSTRAINT INFO"
-        records = await self.db.execute_query(query=query, params={}, name="constraint_show", type=QueryType.READ)
-        results = []
-        for record in records:
-            results.append(ConstraintInfo(item_name="n_a", item_label=record["label"], property=record["properties"]))
 
         return results
