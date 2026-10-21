@@ -111,6 +111,12 @@ class PoolRange(NumberSpan):
         ]
 
 
+def _count(segments: Sequence[NumberSpan]) -> int | None:
+    if any(segment.end == OPEN_END for segment in segments):
+        return None
+    return sum(segment.size for segment in segments)
+
+
 class EffectiveSpace:
     """The numbers a pool can hand out: its ranges carved by the domain of the attribute it feeds.
 
@@ -128,12 +134,13 @@ class EffectiveSpace:
         return tuple(segment for pool_range in ordered for segment in pool_range.segments_in(self._domain))
 
     @cached_property
-    def size(self) -> int:
-        return sum(segment.size for segment in self.segments)
+    def size(self) -> int | None:
+        """Return how many numbers the space holds, or None when a segment runs up to the largest supported number."""
+        return _count(self.segments)
 
     @property
     def is_empty(self) -> bool:
-        return self.size == 0
+        return not self.segments
 
     def as_query_ranges(self) -> list[list[int]]:
         """Return the segments as `[start, end]` pairs in allocation order."""
@@ -150,9 +157,12 @@ class EffectiveSpace:
     def segments_of(self, range_id: str) -> tuple[EffectiveSegment, ...]:
         return self._by_range.get(range_id, ())
 
-    def size_of(self, range_id: str) -> int:
-        """Return how many numbers the range contributes to the space, 0 for a range it does not hold."""
-        return sum(segment.size for segment in self.segments_of(range_id))
+    def size_of(self, range_id: str) -> int | None:
+        """Return how many numbers the range contributes to the space, 0 for a range it does not hold.
+
+        Returns None when a segment of the range runs up to the largest supported number.
+        """
+        return _count(self.segments_of(range_id))
 
     @cached_property
     def _by_range(self) -> dict[str, tuple[EffectiveSegment, ...]]:
