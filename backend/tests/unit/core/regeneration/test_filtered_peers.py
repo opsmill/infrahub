@@ -1,17 +1,21 @@
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.core.constants import RelationshipDirection
+from infrahub.core.constants import RelationshipCardinality, RelationshipDirection, RelationshipKind
 from infrahub.core.regeneration.filtered_peers import (
     ChangedNodeIndex,
     FilteredPeerReads,
+    FilteredRelationshipExclusions,
 )
-from infrahub.core.regeneration.models import PeerFilters, RelationshipHop, RelationshipRead
-from tests.helpers.diff_summary import node_diff
+from infrahub.core.regeneration.models import ExcludedChange, PeerFilters, RelationshipHop, RelationshipRead
+from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
+from infrahub.core.schema.schema_branch import SchemaBranch
+from tests.helpers.diff_summary import node_diff, node_diff_element
 
 from .helpers import DependentResolverCall, PeerReaderCall, RecordingDependentResolver, RecordingPeerReader
 
@@ -290,3 +294,147 @@ async def test_reads_any(case: ReadsAnyCase) -> None:
     peer_reads = _peer_reads(diff_summary=case.diff_summary, owners_by_peer=case.owners_by_peer, reader=reader)
 
     assert await peer_reads.reads_any(read=case.read, peer_ids=case.peer_ids) is case.expected
+
+
+VRF = NodeSchema(
+    name="Vrf",
+    namespace="Test",
+    attributes=[AttributeSchema(name="name", kind="Text")],
+    relationships=[
+        RelationshipSchema(name="prefixes", peer="TestPrefix", kind=RelationshipKind.GENERIC, identifier="vrf__prefix")
+    ],
+)
+PREFIX = NodeSchema(
+    name="Prefix",
+    namespace="Test",
+    attributes=[AttributeSchema(name="role", kind="Text")],
+    relationships=[
+        RelationshipSchema(
+            name="vrf",
+            peer="TestVrf",
+            kind=RelationshipKind.ATTRIBUTE,
+            identifier="vrf__prefix",
+            cardinality=RelationshipCardinality.ONE,
+        )
+    ],
+)
+
+
+def _schema_branch() -> SchemaBranch:
+    branch = SchemaBranch(cache={}, name="test")
+    branch.set(name="TestVrf", schema=VRF)
+    branch.set(name="TestPrefix", schema=PREFIX)
+    return branch
+
+
+def _vrf_change(*, action: str = "UPDATED") -> NodeDiff:
+    return node_diff(
+        node_id="vrf1",
+        kind="TestVrf",
+        action=action,
+        elements=[
+            node_diff_element(name="prefixes", element_type="RELATIONSHIP_MANY"),
+            node_diff_element(name="name"),
+        ],
+    )
+
+
+def _added_prefix(node_id: str = "p1") -> NodeDiff:
+    return node_diff(
+        node_id=node_id,
+        kind="TestPrefix",
+        action="ADDED",
+        elements=[
+            node_diff_element(name="role", action="ADDED"),
+            node_diff_element(name="vrf", action="ADDED", element_type="RELATIONSHIP_ONE"),
+        ],
+    )
+
+
+@dataclass(frozen=True, kw_only=True)
+class ExclusionCase:
+    name: str
+    reads: list[RelationshipRead]
+    diff_summary: list[NodeDiff]
+    owners_by_peer: dict[str, set[str]] = field(default_factory=lambda: {"p1": {"vrf1"}, "p2": {"vrf1"}})
+    passing: set[str] = field(default_factory=set)
+    expected: frozenset[ExcludedChange]
+
+
+EXCLUSION_CASES = [
+    ExclusionCase(
+        name="a_relationship_change_whose_only_peer_fails_every_filter_is_left_out",
+        reads=[FILTERED_READ],
+        diff_summary=[_vrf_change(), _added_prefix()],
+        expected=frozenset({ExcludedChange(node_id="vrf1", field_name="prefixes")}),
+    ),
+    ExclusionCase(
+        name="a_relationship_change_with_a_peer_passing_a_filter_is_kept",
+        reads=[FILTERED_READ],
+        diff_summary=[_vrf_change(), _added_prefix("p1"), _added_prefix("p2")],
+        passing={"p2"},
+        expected=frozenset(),
+    ),
+    ExclusionCase(
+        name="a_relationship_also_read_without_a_filter_is_kept",
+        reads=[FILTERED_READ, UNFILTERED_READ],
+        diff_summary=[_vrf_change(), _added_prefix()],
+        expected=frozenset(),
+    ),
+    ExclusionCase(
+        name="a_relationship_change_without_its_peer_in_the_diff_is_kept",
+        reads=[FILTERED_READ],
+        diff_summary=[_vrf_change()],
+        expected=frozenset(),
+    ),
+    ExclusionCase(
+        name="a_relationship_the_query_does_not_read_is_kept",
+        reads=[],
+        diff_summary=[_vrf_change(), _added_prefix()],
+        expected=frozenset(),
+    ),
+    ExclusionCase(
+        name="an_added_owner_keeps_every_change",
+        reads=[FILTERED_READ],
+        diff_summary=[_vrf_change(action="ADDED"), _added_prefix()],
+        expected=frozenset(),
+    ),
+    ExclusionCase(
+        name="a_removed_owner_keeps_every_change",
+        reads=[FILTERED_READ],
+        diff_summary=[_vrf_change(action="REMOVED"), _added_prefix()],
+        expected=frozenset(),
+    ),
+    ExclusionCase(
+        name="a_relationship_change_whose_peer_changed_its_filtered_field_is_kept",
+        reads=[FILTERED_READ],
+        diff_summary=[_vrf_change(), node_diff(node_id="p1", kind="TestPrefix", field_names=["role", "vrf"])],
+        expected=frozenset(),
+    ),
+    ExclusionCase(
+        name="a_relationship_change_whose_peer_is_related_to_no_owner_is_kept",
+        reads=[FILTERED_READ],
+        diff_summary=[_vrf_change(), node_diff(node_id="p1", kind="TestPrefix", field_names=["vrf"])],
+        owners_by_peer={},
+        expected=frozenset(),
+    ),
+]
+
+
+@pytest.mark.parametrize("case", EXCLUSION_CASES, ids=lambda case: case.name)
+async def test_excluded_changes(case: ExclusionCase) -> None:
+    changes = ChangedNodeIndex.from_diff(diff_summary=case.diff_summary, query_branch=BRANCH)
+    exclusions = FilteredRelationshipExclusions(
+        reads=case.reads,
+        schema_branch=_schema_branch(),
+        changes=changes,
+        peer_reads=_peer_reads(
+            diff_summary=case.diff_summary,
+            owners_by_peer=case.owners_by_peer,
+            reader=RecordingPeerReader(owners_by_peer=case.owners_by_peer, passing=case.passing),
+        ),
+    )
+    diff_before = copy.deepcopy(case.diff_summary)
+
+    assert await exclusions.excluded_changes(diff_summary=case.diff_summary) == case.expected
+    assert case.diff_summary == diff_before

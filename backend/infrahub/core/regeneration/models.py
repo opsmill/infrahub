@@ -11,6 +11,14 @@ type FilterLiteral = str | int | bool | tuple[str | int | bool, ...]
 
 
 @dataclass(frozen=True, slots=True)
+class ExcludedChange:
+    """A changed field of one node that no read of the query can see, so it selects no target."""
+
+    node_id: str
+    field_name: str
+
+
+@dataclass(frozen=True, slots=True)
 class PeerFilters:
     """The filters a relationship read applies to its peers, keyed as the peer query takes them.
 

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol
 
 from infrahub.core.constants import DiffAction
 
+from .models import ExcludedChange
 from .predicates import parse_diff_action
 
 if TYPE_CHECKING:
@@ -13,6 +15,7 @@ if TYPE_CHECKING:
     from infrahub_sdk.diff import NodeDiff
 
     from infrahub.core.constants import RelationshipDirection
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.core.validators.uniqueness.dependent_resolver import UniquenessDependentResolverInterface
 
     from .models import PeerFilters, RelationshipHop, RelationshipRead
@@ -212,3 +215,86 @@ class FilteredPeerReads:
                 filters=read.filters.as_query_filters() if read.filters else {},
             )
         return self._pairs[read]
+
+
+class FilteredRelationshipExclusions:
+    """Find the owners' relationship changes that no read of that relationship returns a peer for.
+
+    The diff says the relationship changed but not which peer, so the peers are the nodes of the same diff whose
+    side of the relationship changed. A change is excluded only when every read of the relationship is filtered and
+    none can return one of those peers.
+    """
+
+    def __init__(
+        self,
+        *,
+        reads: Sequence[RelationshipRead],
+        schema_branch: SchemaBranch,
+        changes: ChangedNodeIndex,
+        peer_reads: FilteredPeerReads,
+    ) -> None:
+        self._reads_by_field: defaultdict[tuple[str, str], list[RelationshipRead]] = defaultdict(list)
+        for read in reads:
+            self._reads_by_field[read.owner_kind, read.relationship_name].append(read)
+        self._schema_branch = schema_branch
+        self._changes = changes
+        self._peer_reads = peer_reads
+        self._verdicts: dict[tuple[str, str], bool] = {}
+
+    @property
+    def has_filtered_reads(self) -> bool:
+        """Whether a read has filters, the only case where a change can be excluded."""
+        return any(read.peer_filters is not None for reads in self._reads_by_field.values() for read in reads)
+
+    async def excluded_changes(self, *, diff_summary: list[NodeDiff]) -> frozenset[ExcludedChange]:
+        """Return the relationship changes of updated owners whose peers no read returns."""
+        excluded: set[ExcludedChange] = set()
+        for node_diff in diff_summary:
+            if self._changes.actions.get(node_diff["id"]) != DiffAction.UPDATED:
+                continue
+            for element in node_diff["elements"]:
+                if await self._filters_out_every_peer(owner_kind=node_diff["kind"], field_name=element["name"]):
+                    excluded.add(ExcludedChange(node_id=node_diff["id"], field_name=element["name"]))
+        return frozenset(excluded)
+
+    async def _filters_out_every_peer(self, *, owner_kind: str, field_name: str) -> bool:
+        """Whether no read of the owner's relationship returns one of its changed peers, cached per relationship."""
+        key = (owner_kind, field_name)
+        if key not in self._verdicts:
+            self._verdicts[key] = await self._decide(reads=self._reads_by_field.get(key, []))
+        return self._verdicts[key]
+
+    async def _decide(self, *, reads: list[RelationshipRead]) -> bool:
+        """Whether the owner's relationship change can be excluded.
+
+        It can be excluded only when all three hold:
+        1. every read of the relationship has filters;
+        2. the diff holds the peers whose side of the relationship changed;
+        3. no read can return one of those peers, before or after the change.
+        """
+        if not reads or any(read.peer_filters is None for read in reads):
+            return False
+        for read in reads:
+            peers = self._changed_peers(read)
+            if not peers or await self._peer_reads.reads_any(read=read, peer_ids=peers):
+                return False
+        return True
+
+    def _changed_peers(self, read: RelationshipRead) -> list[str]:
+        """The nodes of the read's peer kinds whose side of the relationship changed in the diff."""
+        return [
+            node_id
+            for node_id, kind in self._changes.kinds.items()
+            if kind in read.peer_kinds
+            and self._changes.changed_fields[node_id]
+            & self._peer_side_names(kind=kind, identifier=read.relationship_identifier)
+        ]
+
+    def _peer_side_names(self, *, kind: str, identifier: str) -> frozenset[str]:
+        """The names of the relationship ``identifier`` on ``kind``."""
+        if not self._schema_branch.has(name=kind):
+            return frozenset()
+        schema = self._schema_branch.get(name=kind, duplicate=False)
+        return frozenset(
+            relationship.name for relationship in schema.relationships if relationship.identifier == identifier
+        )
