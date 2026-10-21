@@ -1,0 +1,19 @@
+backend/infrahub/core/schema/definitions/core/resource_pool.py
+  s_cd4a2edbf12382::t_a22e91fc20b046 259,265,272
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6ac107a1af89455578201bad517d2907ded470e8",
+  "prompts": {},
+  "sessions": {
+    "s_cd4a2edbf12382": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ce0cb49-e396-4200-916d-01f7c39a1bb0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
