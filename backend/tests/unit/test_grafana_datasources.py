@@ -66,8 +66,27 @@ def test_tempo_finds_the_log_lines_of_a_trace_in_any_loki() -> None:
     assert traces_to_logs["spanEndTimeShift"] == "1h"
     assert traces_to_logs["filterByTraceID"] is True
     assert traces_to_logs["customQuery"] is True
+    assert traces_to_logs["query"].startswith('{job=~".+"} |~ ')
+
+
+def _trace_to_logs_line_filter() -> re.Pattern[str]:
+    query = _datasource("tempo")["jsonData"]["tracesToLogsV2"]["query"]
+    (line_filter,) = re.findall(r"`([^`]*)`", query)
     # Provisioning reads `$$` as a literal `$`, so Grafana receives `${__trace.traceId}`.
-    assert traces_to_logs["query"] == '{job=~".+"} |= "$${__trace.traceId}"'
+    return re.compile(line_filter.replace("$${__trace.traceId}", TRACE_ID))
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in TRACE_ID_LINE_TEST_CASES])
+def test_tempo_query_finds_each_trace_id_form(test_case: TraceIdLineTestCase) -> None:
+    assert _trace_to_logs_line_filter().search(test_case.log_line) is not None
+
+
+def test_tempo_query_skips_lines_with_the_trace_id_only_in_a_url() -> None:
+    tempo_access_log_line = (
+        f'level=info msg="query stats" method=GET traceID= url="/api/traces/{TRACE_ID}?start=1&end=2" status=200'
+    )
+
+    assert _trace_to_logs_line_filter().search(tempo_access_log_line) is None
 
 
 @pytest.mark.parametrize("setting", ["tracesToMetrics", "traceQuery"])

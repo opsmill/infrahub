@@ -76,13 +76,13 @@ datasources:
         spanEndTimeShift: '1h'
         filterByTraceID: true
         customQuery: true
-        query: '{job=~".+"} |= "$${__trace.traceId}"'
+        query: '{job=~".+"} |~ `(?i)trace_?id[=": ]+(0x)?$${__trace.traceId}`'
 ```
 
 Change the URLs and the `uid` values to match your Grafana. Grafana reads `$$` in a provisioning file as a literal `$`; when you enter the same values in the Grafana web interface, type a single `$`.
 
 - The Loki derived field finds the trace ID in text lines, in JSON lines, and in lines that still use the `0x` form, and adds a **View trace in Tempo** link next to it.
-- The Tempo setting adds **Logs for this span** to each span. Grafana then searches every Loki stream for the trace ID, from one hour before to one hour after the span, so the search works without labels specific to Docker Compose or Kubernetes.
+- The Tempo setting adds **Logs for this span** to each span. Grafana then searches every Loki stream, from one hour before to one hour after the span, for lines whose `trace_id` field contains the trace ID. Because it searches every stream, it works without labels specific to Docker Compose or Kubernetes. A line that contains the ID only inside a URL, such as an access log line of Tempo itself, does not match.
 
 ## Related resources
 

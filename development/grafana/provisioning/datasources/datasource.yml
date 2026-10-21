@@ -40,7 +40,7 @@ datasources:
         filterByTraceID: true
         filterBySpanID: false
         customQuery: true
-        query: '{job=~".+"} |= "$${__trace.traceId}"'
+        query: '{job=~".+"} |~ `(?i)trace_?id[=": ]+(0x)?$${__trace.traceId}`'
       tracesToMetrics:
         datasourceUid: 'localprometheus'
         spanStartTimeShift: '-1h'

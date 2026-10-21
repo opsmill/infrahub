@@ -33,7 +33,7 @@ queries and alerts.
 |-------------|---------|-------|
 | Loki | Derived field `trace_id` | Matches `trace_id=<value>` in text lines, `"trace_id": "<value>"` in JSON lines and `TraceID=<value>`, with or without `0x`, and links to the Tempo data source |
 | Loki | Derived field `RequestID` | Removed |
-| Tempo | `tracesToLogsV2` | `spanStartTimeShift: -1h`, `spanEndTimeShift: 1h`, `filterByTraceID: true`, query `{job=~".+"} \|= "${__trace.traceId}"` |
+| Tempo | `tracesToLogsV2` | `spanStartTimeShift: -1h`, `spanEndTimeShift: 1h`, `filterByTraceID: true`, query `{job=~".+"} \|~ `(?i)trace_?id[=": ]+(0x)?${__trace.traceId}``, which matches the trace ID only as a `trace_id` field (changed on 2026-10-21: the first query, `\|= "${__trace.traceId}"`, also returned Tempo's access log lines, which contain the trace ID in a URL) |
 | Tempo | `tracesToMetrics`, `traceQuery` | Start shift `-1h`, end shift `1h` |
 
 `TraceID=<value>` is the form that `development/alloy/config.alloy` writes when it rewrites the JSON
