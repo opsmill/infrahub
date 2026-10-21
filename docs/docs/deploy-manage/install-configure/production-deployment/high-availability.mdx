@@ -77,15 +77,11 @@ The examples connect Infrahub and Prefect directly to the Redis Sentinel nodes, 
   INFRAHUB_CACHE_URL: redis+sentinel://cache-redis:26379/mymaster
   ```
 
-  The URL lists the Sentinel service (port `26379`) and the master group name (`mymaster`). To list several Sentinel endpoints explicitly, separate them with commas: `redis+sentinel://sentinel-a:26379,sentinel-b:26379,sentinel-c:26379/mymaster`.
+  The URL lists the Sentinel service (port `26379`) and the master group name (`mymaster`). To list several Sentinel endpoints explicitly, separate them with commas: `redis+sentinel://sentinel-a:26379,sentinel-b:26379,sentinel-c:26379/mymaster`. When Redis requires a password, see [Connecting to a Redis Sentinel that requires a password](#connecting-to-a-redis-sentinel-that-requires-a-password).
 
   :::note
 
-  Prefect's messaging Redis also follows master failover when it connects through a `redis+sentinel://` URL. `infrahub-values.yaml` below sets that URL with `prefect-server.backgroundServices.messaging.redis.url`, and the chart passes it to Prefect as `PREFECT_REDIS_MESSAGING_URL`. A URL replaces the chart's separate `host`, `port`, `db`, `username`, `password` and `ssl` settings:
-
-- Put the database number in the URL. `/mymaster/1` selects database 1, which keeps messaging apart from the cache on database 0.
-- If Redis requires a password, put it in the URL, and percent-encode the characters that have a meaning in URLs, such as `/`, `?`, `#`, `@`, `:` and `%`.
-- To keep a URL that contains a password out of the values file, store the URL in a Kubernetes Secret. Then set `existingSecret` to the Secret name and `existingSecretUrlKey` to the key that holds the URL, instead of `url`.
+  Prefect's messaging Redis also follows master failover when it connects through a `redis+sentinel://` URL. `infrahub-values.yaml` below sets that URL with `prefect-server.backgroundServices.messaging.redis.url`, and the chart passes it to Prefect as `PREFECT_REDIS_MESSAGING_URL`. A URL replaces the chart's separate `host`, `port`, `db`, `username`, `password` and `ssl` settings, so put the database number in the URL: `/mymaster/1` selects database 1, which keeps messaging apart from the cache on database 0.
 
   The task manager takes an Infrahub lock in Redis while it starts. The chart passes the messaging URL to the task manager as `INFRAHUB_CACHE_URL` for that lock, unless you set `INFRAHUB_CACHE_URL` on the task manager yourself.
 
@@ -201,6 +197,75 @@ RabbitMQ does not change the type of an existing queue. When the durable queues 
 4. Start the Infrahub server, then the task workers. The server declares the durable queues again as quorum queues.
 
 To switch back to classic queues, follow the same steps with `INFRAHUB_BROKER_QUEUE_TYPE` set to `classic`.
+
+## Connecting to a Redis Sentinel that requires a password
+
+When Redis requires a password, put the credentials in the connection URLs. Once `INFRAHUB_CACHE_URL` is set, Infrahub reads the username and password from the URL and ignores `INFRAHUB_CACHE_USERNAME` and `INFRAHUB_CACHE_PASSWORD`.
+
+The following steps add authentication to the Helm example above. In `redis-values.yaml`, replace `auth.enabled: false` with the following settings, so that the Redis nodes and Sentinel both require the password stored in the `cache-redis-password` Secret:
+
+```yaml
+auth:
+  enabled: true
+  sentinel: true
+  existingSecret: cache-redis-password
+  existingSecretPasswordKey: redis-password
+```
+
+Create that Secret before you install Redis:
+
+```bash
+kubectl create namespace infrahub
+kubectl create secret generic cache-redis-password --namespace infrahub --from-literal=redis-password='<strong-cache-password>'
+```
+
+Each connection URL then contains the password twice:
+
+- Before the host, for the Redis nodes: `redis+sentinel://:<password>@cache-redis:26379/mymaster`. The Bitnami chart sets the password of the `default` user, so the username before the `:` stays empty. For a Redis ACL user, write `<username>:<password>@`.
+- In the `sentinel_password` query parameter, for the Sentinel nodes, which authenticate separately: `?sentinel_password=<password>`. For a Sentinel ACL user, also set `sentinel_username`.
+
+Percent-encode the password in both places. Characters such as `/`, `?`, `#`, `@`, `:` and `%` have a meaning in URLs, and passwords generated in Base64 often contain `/`. When a `/`, `?` or `#` that is not percent-encoded moves part of the credentials after the host, Infrahub stops at startup with an error that does not show the password. A `%` that is not percent-encoded is not detected: it can change the password that Infrahub sends, and Redis then rejects it.
+
+Keep the URLs in Kubernetes Secrets, so that the password is not written in the values file. The following commands read the password from the Secret, percent-encode it, and store the Infrahub cache URL in the `infrahub-cache` Secret, and the Prefect messaging and Docket URLs in the `prefect-redis` Secret:
+
+```bash
+PASSWORD=$(kubectl get secret cache-redis-password --namespace infrahub -o jsonpath='{.data.redis-password}' | base64 -d)
+ENCODED=$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$PASSWORD")
+kubectl create secret generic infrahub-cache --namespace infrahub \
+  --from-literal=INFRAHUB_CACHE_URL="redis+sentinel://:${ENCODED}@cache-redis:26379/mymaster?sentinel_password=${ENCODED}"
+kubectl create secret generic prefect-redis --namespace infrahub \
+  --from-literal=messaging-url="redis+sentinel://:${ENCODED}@cache-redis:26379/mymaster/1?sentinel_password=${ENCODED}" \
+  --from-literal=docket-url="redis+sentinel://:${ENCODED}@cache-redis:26379/mymaster/2?sentinel_password=${ENCODED}"
+```
+
+Then change `infrahub-values.yaml` as follows:
+
+- Remove `INFRAHUB_CACHE_URL` from the `env` settings of `infrahubServer` and `infrahubTaskWorker`, and load it from the `infrahub-cache` Secret instead.
+- Replace the messaging and Docket `url` values with references to the `prefect-redis` Secret. Set the Docket `url` to an empty value, because the sizing preset sets it to an example host, which the chart refuses.
+
+```yaml
+infrahub:
+  infrahubServer:
+    infrahubServer:
+      envFromExistingSecrets:
+        - infrahub-cache
+  infrahubTaskWorker:
+    infrahubTaskWorker:
+      envFromExistingSecrets:
+        - infrahub-cache
+  prefect-server:
+    backgroundServices:
+      messaging:
+        redis:
+          existingSecret: prefect-redis
+          existingSecretUrlKey: messaging-url
+        docket:
+          url: ""
+          existingSecret: prefect-redis
+          existingSecretKey: docket-url
+```
+
+The task manager takes its startup lock through the messaging URL, so it authenticates with the password in that URL.
 
 ## Connecting to Redis over TLS
 
