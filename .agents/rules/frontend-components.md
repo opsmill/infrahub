@@ -34,6 +34,8 @@ Applies to React code in `frontend/app/src/`. Biome, betterer and knip already g
 - Render several states with early returns in the order `isPending`, `error`, `isSuccess`, default, not with nested ternaries.
 - Pass the open state of a react-aria overlay to `isOpen`; do not mount it conditionally (`{open && <Modal isOpen>}`), which skips the exit animation.
 - A tab badge does not use `count ?? 0`, which hides errors, and loads like its sibling tabs.
+- Keep a table column's width or grid track in its column definition (`meta`), not in a list indexed by column position: the list goes out of step when a column is added, hidden or moved.
+- Give each new table cell a `data-testid` that ends with the row key (`branch-actions-cell-${branch.name}`), so E2E tests do not locate it by its position in the row.
 
 ## Styling
 
