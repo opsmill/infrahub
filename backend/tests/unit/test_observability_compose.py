@@ -8,7 +8,8 @@ import yaml
 
 DEVELOPMENT_DIR = Path(__file__).resolve().parents[3] / "development"
 TRACING_ENVIRONMENT = {
-    "INFRAHUB_TRACE_ENABLE": "true",
+    # An operator turns tracing off by setting INFRAHUB_TRACE_ENABLE=false next to the Compose file.
+    "INFRAHUB_TRACE_ENABLE": "${INFRAHUB_TRACE_ENABLE:-true}",
     "INFRAHUB_TRACE_EXPORTER_TYPE": "otlp",
     "INFRAHUB_TRACE_EXPORTER_PROTOCOL": "grpc",
     "INFRAHUB_TRACE_EXPORTER_ENDPOINT": "http://infrahub-tempo:4317",

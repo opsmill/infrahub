@@ -54,7 +54,7 @@ Once running, Grafana is available at [http://localhost:3500](http://localhost:3
 
 ### Request tracing
 
-Infrahub exports OpenTelemetry traces, so you can follow one request or background task across the API server, the task workers and the database. The Compose file of the stack, `docker-compose-observability-standalone.yml`, turns tracing on for the `infrahub-server` and `task-worker` services and sends the traces to the bundled Tempo instance, which Grafana shows under the Tempo data source. Infrahub then records one new trace in ten; see [Trace sampling](#trace-sampling) to change that. Without the stack, tracing stays off in a Compose deployment.
+Infrahub exports OpenTelemetry traces, so you can follow one request or background task across the API server, the task workers and the database. The Compose file of the stack, `docker-compose-observability-standalone.yml`, turns tracing on for the `infrahub-server` and `task-worker` services and sends the traces to the bundled Tempo instance, which Grafana shows under the Tempo data source. Infrahub then records one new trace in ten; see [Trace sampling](#trace-sampling) to change that. Without the stack, tracing stays off in a Compose deployment. To turn it off with the stack, set `INFRAHUB_TRACE_ENABLE=false` in a `.env` file alongside the compose file.
 
 To turn tracing on in a Compose deployment that does not include these settings, add the following to a `.env` file alongside the compose file:
 

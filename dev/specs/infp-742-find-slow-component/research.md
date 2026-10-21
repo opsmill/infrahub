@@ -73,7 +73,9 @@ not use them.
   adds its services to the standalone file. The development stack does not turn tracing on; a developer
   sets the `INFRAHUB_TRACE_*` variables. `docker compose -f docker-compose.yml -f
   development/docker-compose-observability-standalone.yml config` shows tracing on for
-  `infrahub-server` and `task-worker`; the root file alone keeps it off.
+  `infrahub-server` and `task-worker`; the root file alone keeps it off. After manual testing, the file
+  sets `INFRAHUB_TRACE_ENABLE: ${INFRAHUB_TRACE_ENABLE:-true}`: a fixed `true` ignored
+  `INFRAHUB_TRACE_ENABLE=false`, so an operator with the stack could not turn tracing off (FR-034).
 
 ## R3. Work in other repositories
 

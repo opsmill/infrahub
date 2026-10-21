@@ -50,7 +50,7 @@ and `development/convert_compose_standalone.py` adds these blocks to
 
 | Variable | Value |
 |----------|-------|
-| `INFRAHUB_TRACE_ENABLE` | `true` |
+| `INFRAHUB_TRACE_ENABLE` | `${INFRAHUB_TRACE_ENABLE:-true}` (changed on 2026-10-21, so an operator can turn tracing off, FR-034) |
 | `INFRAHUB_TRACE_EXPORTER_TYPE` | `otlp` |
 | `INFRAHUB_TRACE_EXPORTER_PROTOCOL` | `grpc` |
 | `INFRAHUB_TRACE_EXPORTER_ENDPOINT` | `http://infrahub-tempo:4317` |

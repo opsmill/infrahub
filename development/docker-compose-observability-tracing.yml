@@ -4,7 +4,7 @@
 services:
   infrahub-server:
     environment:
-      INFRAHUB_TRACE_ENABLE: "true"
+      INFRAHUB_TRACE_ENABLE: ${INFRAHUB_TRACE_ENABLE:-true}
       INFRAHUB_TRACE_EXPORTER_TYPE: otlp
       INFRAHUB_TRACE_EXPORTER_PROTOCOL: grpc
       INFRAHUB_TRACE_EXPORTER_ENDPOINT: http://infrahub-tempo:4317
@@ -12,7 +12,7 @@ services:
 
   task-worker:
     environment:
-      INFRAHUB_TRACE_ENABLE: "true"
+      INFRAHUB_TRACE_ENABLE: ${INFRAHUB_TRACE_ENABLE:-true}
       INFRAHUB_TRACE_EXPORTER_TYPE: otlp
       INFRAHUB_TRACE_EXPORTER_PROTOCOL: grpc
       INFRAHUB_TRACE_EXPORTER_ENDPOINT: http://infrahub-tempo:4317
