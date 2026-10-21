@@ -165,6 +165,7 @@ export function getStateBadges(
     case RepositoryCommitState.UNRELATED:
       return [UNRELATED_BADGE];
     case RepositoryCommitState.HISTORY:
+    case RepositoryCommitState.NOT_ON_BRANCH:
       return [];
     default:
       warnUnexpectedType(state);

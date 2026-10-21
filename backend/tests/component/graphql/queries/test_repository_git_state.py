@@ -13,6 +13,7 @@ from infrahub.core.constants import (
     RepositoryCommitState,
     RepositoryGitCondition,
     RepositoryGitUnavailableReason,
+    RepositoryInternalStatus,
 )
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -52,6 +53,9 @@ CHECKED_AT = datetime(2026, 9, 8, 11, 45, tzinfo=UTC)
 MAIN_COMMIT = "1111111111111111111111111111111111111111"
 BRANCH_COMMIT = "2222222222222222222222222222222222222222"
 REMOTE_HEAD = "3333333333333333333333333333333333333333"
+PENDING_COMMIT = "4444444444444444444444444444444444444444"
+HISTORY_COMMIT = "5555555555555555555555555555555555555555"
+UNRELATED_COMMIT = "6666666666666666666666666666666666666666"
 FETCHED_AT = datetime(2026, 9, 8, 10, 30, tzinfo=UTC)
 
 COMMITS_QUERY = """
@@ -211,13 +215,51 @@ async def synced_branch(db: InfrahubDatabase, default_branch: Branch, repository
 
 @pytest.fixture
 async def unsynced_branch(db: InfrahubDatabase, default_branch: Branch, repository: Node) -> Branch:
-    branch = await create_branch(branch_name="branch2", db=db)
+    branch = await create_branch(branch_name="branch2", db=db, sync_with_git=False)
 
     repo_on_branch = await NodeManager.get_one(db=db, id=repository.id, branch=branch, raise_on_error=True)
     repo_on_branch.commit.value = BRANCH_COMMIT
     await repo_on_branch.save(db=db)
 
     return branch
+
+
+async def _stage_repository_on(db: InfrahubDatabase, repository: Node, branch: Branch) -> None:
+    repo_on_branch = await NodeManager.get_one(db=db, id=repository.id, branch=branch, raise_on_error=True)
+    repo_on_branch.internal_status.value = RepositoryInternalStatus.STAGING.value
+    await repo_on_branch.save(db=db)
+
+
+def _commit(commit_hash: str, state: RepositoryCommitState) -> CommitEntry:
+    return CommitEntry(
+        hash=commit_hash,
+        message=f"Commit {commit_hash[:7]}",
+        author_name="Ada Lovelace",
+        authored_at=FETCHED_AT,
+        committed_at=FETCHED_AT,
+        state=state,
+    )
+
+
+def _log_with_every_state(imported_commit: str) -> CommitLogResult:
+    return CommitLogResult(
+        condition=RepositoryGitCondition.BEHIND,
+        remote_head=REMOTE_HEAD,
+        imported_commit=imported_commit,
+        pending_count=2,
+        fetched_at=FETCHED_AT,
+        commits=(
+            _commit(commit_hash=REMOTE_HEAD, state=RepositoryCommitState.HEAD),
+            _commit(commit_hash=PENDING_COMMIT, state=RepositoryCommitState.PENDING),
+            _commit(commit_hash=imported_commit, state=RepositoryCommitState.IMPORTED),
+            _commit(commit_hash=HISTORY_COMMIT, state=RepositoryCommitState.HISTORY),
+            _commit(commit_hash=UNRELATED_COMMIT, state=RepositoryCommitState.UNRELATED),
+        ),
+    )
+
+
+def _edge_states(answer: dict[str, Any]) -> list[tuple[str, str]]:
+    return [(edge["node"]["hash"], edge["node"]["state"]) for edge in answer["edges"]]
 
 
 def _expected_request(
@@ -311,6 +353,37 @@ async def test_commit_log_answers_the_infrahub_side_fields_for_the_request_branc
     }
 
 
+async def test_commit_log_keeps_pending_commits_pending_on_the_default_branch(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    service: InfrahubServices,
+    repository: Node,
+    recording_reader: RecordingRepositoryGitStateReader,
+) -> None:
+    recording_reader.commit_results.append(_log_with_every_state(imported_commit=MAIN_COMMIT))
+
+    response = await graphql_query(
+        query=COMMITS_QUERY,
+        db=db,
+        branch=default_branch,
+        service=service,
+        variables={"id": repository.id},
+        account_session=session_admin,
+    )
+
+    assert not response.errors
+    assert response.data
+    assert _edge_states(answer=response.data["InfrahubRepositoryCommits"]) == [
+        (REMOTE_HEAD, "HEAD"),
+        (PENDING_COMMIT, "PENDING"),
+        (MAIN_COMMIT, "IMPORTED"),
+        (HISTORY_COMMIT, "HISTORY"),
+        (UNRELATED_COMMIT, "UNRELATED"),
+    ]
+
+
 async def test_commit_log_follows_the_infrahub_branch(
     db: InfrahubDatabase,
     default_permission_backend: None,
@@ -320,6 +393,8 @@ async def test_commit_log_follows_the_infrahub_branch(
     synced_branch: Branch,
     recording_reader: RecordingRepositoryGitStateReader,
 ) -> None:
+    recording_reader.commit_results.append(_log_with_every_state(imported_commit=BRANCH_COMMIT))
+
     response = await graphql_query(
         query=COMMITS_QUERY,
         db=db,
@@ -335,6 +410,13 @@ async def test_commit_log_follows_the_infrahub_branch(
     assert answer["branch_name"] == synced_branch.name
     assert answer["git_ref"] == synced_branch.name
     assert answer["imported_commit"] == BRANCH_COMMIT
+    assert _edge_states(answer=answer) == [
+        (REMOTE_HEAD, "HEAD"),
+        (PENDING_COMMIT, "PENDING"),
+        (BRANCH_COMMIT, "IMPORTED"),
+        (HISTORY_COMMIT, "HISTORY"),
+        (UNRELATED_COMMIT, "UNRELATED"),
+    ]
     assert recording_reader.commit_requests == [
         _expected_request(
             repository_id=repository.id,
@@ -366,7 +448,7 @@ class ImportFiltersCase:
         ),
     ],
 )
-async def test_commit_log_reports_a_branch_that_does_not_sync_with_git_as_untracked(
+async def test_commit_log_reports_trunk_commits_a_branch_that_does_not_sync_with_git_does_not_run(
     case: ImportFiltersCase,
     db: InfrahubDatabase,
     default_permission_backend: None,
@@ -378,6 +460,7 @@ async def test_commit_log_reports_a_branch_that_does_not_sync_with_git_as_untrac
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(config.SETTINGS.git, "import_sync_branch_names", case.import_sync_branch_names)
+    recording_reader.commit_results.append(_log_with_every_state(imported_commit=BRANCH_COMMIT))
 
     response = await graphql_query(
         query=COMMITS_QUERY,
@@ -391,7 +474,164 @@ async def test_commit_log_reports_a_branch_that_does_not_sync_with_git_as_untrac
     assert not response.errors
     assert response.data
     answer = response.data["InfrahubRepositoryCommits"]
+    assert answer["git_ref"] == REPOSITORY_DEFAULT_BRANCH
+    assert answer["condition"] == RepositoryGitCondition.BEHIND.name
+    assert answer["imported_commit"] == BRANCH_COMMIT
+    assert answer["pending_count"] == 2
+    assert _edge_states(answer=answer) == [
+        (REMOTE_HEAD, "HEAD"),
+        (PENDING_COMMIT, "NOT_ON_BRANCH"),
+        (BRANCH_COMMIT, "IMPORTED"),
+        (HISTORY_COMMIT, "HISTORY"),
+        (UNRELATED_COMMIT, "UNRELATED"),
+    ]
+    assert recording_reader.commit_requests == [
+        _expected_request(
+            repository_id=repository.id,
+            infrahub_branch_name=unsynced_branch.name,
+            git_ref=REPOSITORY_DEFAULT_BRANCH,
+            imported_commit=BRANCH_COMMIT,
+            include_pending_count=True,
+        )
+    ]
+
+
+@dataclass
+class StagingBranchCase:
+    name: str
+    sync_with_git: bool
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        pytest.param(StagingBranchCase(name="not_synced_with_git", sync_with_git=False), id="not_synced_with_git"),
+        pytest.param(StagingBranchCase(name="synced_with_git", sync_with_git=True), id="synced_with_git"),
+    ],
+)
+async def test_commit_log_reports_trunk_commits_pending_import_on_the_branch_a_repository_is_staged_on(
+    case: StagingBranchCase,
+    db: InfrahubDatabase,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    service: InfrahubServices,
+    repository: Node,
+    recording_reader: RecordingRepositoryGitStateReader,
+) -> None:
+    branch = await create_branch(branch_name="staged", db=db, sync_with_git=case.sync_with_git)
+    await _stage_repository_on(db=db, repository=repository, branch=branch)
+    recording_reader.commit_results.append(_log_with_every_state(imported_commit=MAIN_COMMIT))
+
+    response = await graphql_query(
+        query=COMMITS_QUERY,
+        db=db,
+        branch=branch,
+        service=service,
+        variables={"id": repository.id},
+        account_session=session_admin,
+    )
+
+    assert not response.errors
+    assert response.data
+    answer = response.data["InfrahubRepositoryCommits"]
+    assert answer["git_ref"] == REPOSITORY_DEFAULT_BRANCH
+    assert answer["condition"] == RepositoryGitCondition.BEHIND.name
+    assert answer["imported_commit"] == MAIN_COMMIT
+    assert answer["pending_count"] == 2
+    assert _edge_states(answer=answer) == [
+        (REMOTE_HEAD, "HEAD"),
+        (PENDING_COMMIT, "PENDING"),
+        (MAIN_COMMIT, "IMPORTED"),
+        (HISTORY_COMMIT, "HISTORY"),
+        (UNRELATED_COMMIT, "UNRELATED"),
+    ]
+    assert recording_reader.commit_requests == [
+        _expected_request(
+            repository_id=repository.id,
+            infrahub_branch_name=branch.name,
+            git_ref=REPOSITORY_DEFAULT_BRANCH,
+            imported_commit=MAIN_COMMIT,
+            include_pending_count=True,
+        )
+    ]
+
+
+async def test_commit_log_of_a_read_only_repository_follows_its_ref_on_a_branch_that_does_not_sync_with_git(
+    db: InfrahubDatabase,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    service: InfrahubServices,
+    read_only_repository: Node,
+    recording_reader: RecordingRepositoryGitStateReader,
+) -> None:
+    branch = await create_branch(branch_name="branch2", db=db, sync_with_git=False)
+    recording_reader.commit_results.append(_log_with_every_state(imported_commit=MAIN_COMMIT))
+
+    response = await graphql_query(
+        query=COMMITS_QUERY,
+        db=db,
+        branch=branch,
+        service=service,
+        variables={"id": read_only_repository.id},
+        account_session=session_admin,
+    )
+
+    assert not response.errors
+    assert response.data
+    answer = response.data["InfrahubRepositoryCommits"]
+    assert answer["git_ref"] == READ_ONLY_REF
+    assert answer["condition"] == RepositoryGitCondition.BEHIND.name
+    assert answer["imported_commit"] == MAIN_COMMIT
+    assert _edge_states(answer=answer) == [
+        (REMOTE_HEAD, "HEAD"),
+        (PENDING_COMMIT, "PENDING"),
+        (MAIN_COMMIT, "IMPORTED"),
+        (HISTORY_COMMIT, "HISTORY"),
+        (UNRELATED_COMMIT, "UNRELATED"),
+    ]
+    assert recording_reader.commit_requests == [
+        CommitLogRequest(
+            repository_id=read_only_repository.id,
+            repository_name=READ_ONLY_REPOSITORY_NAME,
+            repository_kind=InfrahubKind.READONLYREPOSITORY,
+            location=READ_ONLY_REPOSITORY_LOCATION,
+            infrahub_branch_name=branch.name,
+            git_ref=READ_ONLY_REF,
+            imported_commit=MAIN_COMMIT,
+            limit=10,
+            offset=0,
+            include_pending_count=True,
+        )
+    ]
+
+
+async def test_commit_log_reports_a_branch_that_does_not_sync_with_git_and_holds_no_commit_as_untracked(
+    db: InfrahubDatabase,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    service: InfrahubServices,
+    repository: Node,
+    recording_reader: RecordingRepositoryGitStateReader,
+) -> None:
+    branch = await create_branch(branch_name="branch2", db=db, sync_with_git=False)
+    repo_on_branch = await NodeManager.get_one(db=db, id=repository.id, branch=branch, raise_on_error=True)
+    repo_on_branch.commit.value = None
+    await repo_on_branch.save(db=db)
+
+    response = await graphql_query(
+        query=COMMITS_QUERY,
+        db=db,
+        branch=branch,
+        service=service,
+        variables={"id": repository.id},
+        account_session=session_admin,
+    )
+
+    assert not response.errors
+    assert response.data
+    answer = response.data["InfrahubRepositoryCommits"]
     assert answer["git_ref"] is None
+    assert answer["imported_commit"] is None
     assert answer["condition"] == RepositoryGitCondition.NOT_TRACKED.name
     assert answer["edges"] == []
     assert recording_reader.commit_requests == []

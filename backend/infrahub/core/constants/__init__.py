@@ -296,6 +296,7 @@ class RepositoryCommitState(InfrahubStringEnum):
     PENDING = "pending"
     HISTORY = "history"
     UNRELATED = "unrelated"
+    NOT_ON_BRANCH = "not_on_branch"
 
 
 class RepositoryGitUnavailableReason(InfrahubStringEnum):

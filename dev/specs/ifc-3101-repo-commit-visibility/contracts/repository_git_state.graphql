@@ -29,6 +29,7 @@ enum RepositoryCommitState {
   PENDING
   HISTORY
   UNRELATED
+  NOT_ON_BRANCH
 }
 
 # No timeout value: the commit log has nothing to show without a worker answer,

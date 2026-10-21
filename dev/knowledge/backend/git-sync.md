@@ -117,9 +117,18 @@ The read-write kind implements the mapping described below; the read-only kind r
     listing, the filter decision is the one the first check made from the registry. It also drops
     the branches whose status rejects a commit. A branch created after that listing is caught when
     its creation reports that it exists already.
-- The API's commit view calls `infrahub_branch_receives_imports` too, so a branch the sync imports
-  nothing into is reported as not tracked. The function must not be reused to decide whether
-  a remote branch with no Infrahub counterpart is imported, which the import filters decide.
+- The API's commit view calls `infrahub_branch_receives_imports` too. A branch the sync imports
+  nothing into lists the repository's trunk, with the trunk commits it does not run marked
+  `NOT_ON_BRANCH`, since only a rebase brings them to the branch. A branch that holds no commit
+  reads no ref and reports `NOT_TRACKED`, since there is nothing to place on the trunk. The
+  function must not be reused to decide whether a remote branch with no Infrahub counterpart is
+  imported, which the import filters decide.
+- A repository added on a branch other than Infrahub's default branch is `staging` on that branch,
+  and while it is, each sync imports only the trunk, onto that branch, whatever its `sync_with_git`
+  says. The commit view checks this before `infrahub_branch_receives_imports`, so that branch lists
+  the trunk with newer commits still pending import. The merge sets the repository `active` only on
+  Infrahub's default branch, so the merged branch keeps `staging` and still lists newer trunk
+  commits as pending import, although no sync imports into it again.
 - A branch that imported commits before `sync_with_git` gated imports keeps its last imported commit,
   and the worker's clone keeps its local branch. Neither moves again, and nothing removes them.
 

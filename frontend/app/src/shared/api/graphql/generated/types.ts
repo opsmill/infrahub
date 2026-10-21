@@ -39987,6 +39987,7 @@ export const RepositoryCommitState = {
   HEAD: 'HEAD',
   HISTORY: 'HISTORY',
   IMPORTED: 'IMPORTED',
+  NOT_ON_BRANCH: 'NOT_ON_BRANCH',
   PENDING: 'PENDING',
   UNRELATED: 'UNRELATED'
 } as const;
@@ -40003,9 +40004,9 @@ export type RepositoryCommits = {
   edges: Array<RepositoryCommitNode>;
   /** When the answering worker last fetched from the remote. Null before the first fetch, and after a failed fetch. */
   fetched_at: Maybe<Scalars['DateTime']['output']>;
-  /** Remote branch or tracked ref whose history is listed. Null when the branch tracks nothing. */
+  /** Remote branch or tracked ref whose history is listed. On a branch that does not sync with Git, this is the repository's default branch, which the branch receives commits from only through a rebase. Null when no ref can be listed. */
   git_ref: Maybe<Scalars['String']['output']>;
-  /** Commit Infrahub has imported on this branch, from the repository's commit attribute. */
+  /** Commit Infrahub runs on this branch, from the repository's commit attribute. */
   imported_commit: Maybe<Scalars['String']['output']>;
   /** Number of commits between imported_commit and remote_head. Only set when condition is BEHIND. */
   pending_count: Maybe<Scalars['Int']['output']>;
