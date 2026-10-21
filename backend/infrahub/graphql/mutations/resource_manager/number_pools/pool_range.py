@@ -124,21 +124,16 @@ class InfrahubNumberPoolRangeMutation(InfrahubMutation):
                 db=dbt, branch=branch, nodes=[obj], user_id=graphql_context.assigned_user_id
             )
             ranges = await NumberPoolRepository(db=dbt).get_ranges(pool_id=pool_id)
-<<<<<<< HEAD
             await refuse_ranges_leaving_held_numbers(
                 db=dbt,
                 pool=pool,
                 ranges=range_bounds(ranges),
                 domain=attribute_domain(pool_target_attribute(db=dbt, pool=pool, branch=branch)),
             )
-            await sync_shorthand(db=dbt, pool_id=pool_id, ranges=ranges, user_id=graphql_context.assigned_user_id)
-=======
-            await refuse_ranges_leaving_held_numbers(db=dbt, pool=pool, ranges=range_bounds(ranges))
             mirrored_pool = await sync_shorthand(
                 db=dbt, pool_id=pool_id, ranges=ranges, user_id=graphql_context.assigned_user_id
             )
         cls._record_mirrored_pool(range_node=obj, mirrored_pool=mirrored_pool)
->>>>>>> origin/develop
 
         return deleted
 
@@ -174,8 +169,7 @@ class InfrahubNumberPoolRangeMutation(InfrahubMutation):
         pool_id = pool.get_id()
         ranges = await NumberPoolRepository(db=db).get_ranges(pool_id=pool_id)
         bounds_by_id = {bounds.id: bounds for bounds in range_bounds(ranges)}
-<<<<<<< HEAD
-        candidate = bounds_by_id[range_id]
+        candidate = bounds_by_id[range_node.get_id()]
         attribute = pool_target_attribute(db=db, pool=pool, branch=branch)
         domain = attribute_domain(attribute)
         validate_number_pool_range(candidate=candidate, others=bounds_by_id.values(), domain=domain)
@@ -184,16 +178,6 @@ class InfrahubNumberPoolRangeMutation(InfrahubMutation):
             await refuse_ranges_leaving_held_numbers(
                 db=db, pool=pool, ranges=list(bounds_by_id.values()), domain=domain
             )
-        await sync_shorthand(db=db, pool_id=pool_id, ranges=ranges, user_id=user_id)
-=======
-        candidate = bounds_by_id[range_node.get_id()]
-        validate_number_pool_range(candidate=candidate, others=bounds_by_id.values())
-        refuse_ranges_outside_attribute(
-            attribute=pool_target_attribute(db=db, pool=pool, branch=branch),
-            ranges=[NumberPoolRangeParameters(start=candidate.start, end=candidate.end)],
-        )
-        if bounds_changed:
-            await refuse_ranges_leaving_held_numbers(db=db, pool=pool, ranges=list(bounds_by_id.values()))
         mirrored_pool = await sync_shorthand(db=db, pool_id=pool_id, ranges=ranges, user_id=user_id)
         cls._record_mirrored_pool(range_node=range_node, mirrored_pool=mirrored_pool)
 
@@ -203,4 +187,3 @@ class InfrahubNumberPoolRangeMutation(InfrahubMutation):
         if not (mirrored_pool.has_changelog and mirrored_pool.node_changelog.has_changes):
             return
         range_node.record_mutation_write(node=mirrored_pool, action=MutationAction.UPDATED)
->>>>>>> origin/develop

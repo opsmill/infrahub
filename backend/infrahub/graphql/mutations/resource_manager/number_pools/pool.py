@@ -11,12 +11,8 @@ from infrahub.core.branch import Branch
 from infrahub.core.changelog.models import RelationshipCardinalityManyChangelog, RelationshipPeerChangelog
 from infrahub.core.constants import DiffAction, InfrahubKind, MutationAction, PermissionAction
 from infrahub.core.manager import NodeManager
-<<<<<<< HEAD
-from infrahub.core.schema.attribute_parameters import NumberPoolRangeParameters
-=======
 from infrahub.core.node import Node
-from infrahub.core.schema.attribute_parameters import NumberAttributeParameters, NumberPoolRangeParameters
->>>>>>> origin/develop
+from infrahub.core.schema.attribute_parameters import NumberPoolRangeParameters
 from infrahub.database import retry_db_transaction, within_transaction
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from infrahub.permissions.types import define_object_permission_from_branch
@@ -27,11 +23,8 @@ from infrahub.pools.number_pool_range_validation import (
     validate_shorthand_target,
 )
 from infrahub.pools.number_pool_repository import NumberPoolRepository
-<<<<<<< HEAD
-from infrahub.pools.number_pool_space import attribute_domain
-=======
 from infrahub.pools.number_pool_shorthand import shorthand_bounds
->>>>>>> origin/develop
+from infrahub.pools.number_pool_space import attribute_domain
 from infrahub.pools.pool_kinds import is_resource_pool_schema
 from infrahub.pools.registration import get_branches_with_schema_number_pool
 from infrahub.pools.scope import (
