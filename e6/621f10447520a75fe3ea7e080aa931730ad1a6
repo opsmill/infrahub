@@ -1,0 +1,61 @@
+backend/infrahub/pools/number_pool_usage.py
+  s_646df27ff6de8f::t_f4d4679b458b23 19-20
+schema/schema.graphql
+  s_646df27ff6de8f::t_6f7fe91c913088 12032,12084,12098,12102,12106
+  s_646df27ff6de8f::t_4eff3d171eee08 12034,12086,12097,12099-12101,12103-12105,12107-12108
+frontend/app/src/shared/api/graphql/generated/graphql-cache.d.ts
+  s_646df27ff6de8f::t_a510ee89953f20 29,32,35,38,41,44,47,50,53,56,59,62,65,68,71,74,77,80,83,86,89,92,95,98,101,104,107,110,113,116,119,122,125,128,131,134,137,140,143,146,149,152,155,158,161,164,167,170,173,176,179,182,185,187-191,194,197,200,203,206,209,212,215,218,221,224,227,230,233,236,239,242,245,248,251,254,257,260,263,266,269,272,275,278,281,284,287,290
+backend/infrahub/pools/number_pool_divisions_reader.py
+  s_646df27ff6de8f::t_f4d4679b458b23 71
+  s_646df27ff6de8f::t_93bbf1cd47308e 76-77,95-102
+backend/infrahub/graphql/queries/number_pool.py
+  s_646df27ff6de8f::t_3f14ab5f501bf1 265
+  s_646df27ff6de8f::t_32302a36953b46 43-44,51-55,70-72,74-76,79-81,124,126
+  h_7ec9b28dd2a5ab 42,127
+frontend/app/src/shared/api/graphql/generated/types.ts
+  s_646df27ff6de8f::t_779f56ff4fdb9a 24062,24101,24109,24111,24113
+  s_646df27ff6de8f::t_aa72d55d6d59e0 24063,24102,24110,24112,24114
+backend/infrahub/pools/number_pool_utilization_reader.py
+  s_646df27ff6de8f::t_cd6b99e292a39f 6
+  s_646df27ff6de8f::t_f4d4679b458b23 59
+backend/infrahub/pools/number.py
+  s_646df27ff6de8f::t_3f46d80fab9aff 35,38-39
+  s_646df27ff6de8f::t_f4d4679b458b23 25-27,37,40,49,53,57
+backend/infrahub/pools/number_ranges.py
+  s_646df27ff6de8f::t_f4d4679b458b23 119-124,142-144,148,165-170
+backend/infrahub/graphql/queries/resource_manager.py
+  s_646df27ff6de8f::t_587efb6e061692 389-391,414-416
+backend/tests/unit/pools/test_number_pool_divisions_reader.py
+  s_646df27ff6de8f::t_526cb21f6b0cda 93-105
+  s_646df27ff6de8f::t_3289380f46c543 106-107
+backend/tests/unit/pools/test_number_ranges.py
+  s_646df27ff6de8f::t_e9f3dffd4d1b9d 208,210-211,214-215,218-219,222,224-225,228-231,234-238
+  s_646df27ff6de8f::t_526cb21f6b0cda 209,212-213,216-217,220-221,223,226-227,232-233,239-243
+  s_646df27ff6de8f::t_87f28fe6003144 205
+  s_646df27ff6de8f::t_f0fe8ba9b82c70 206-207
+frontend/app/src/shared/api/graphql/generated/graphql-env.d.ts
+  s_646df27ff6de8f::t_a510ee89953f20 1007,1010
+backend/tests/component/graphql/queries/test_number_pool_surface.py
+  s_646df27ff6de8f::t_800450408eca77 832-834,839-844,850-852,859-860,867-868,943-946,948-950
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e6621f10447520a75fe3ea7e080aa931730ad1a6",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_646df27ff6de8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9ea6cdb3-dd27-4584-ad8f-570390bd5103",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
