@@ -54,13 +54,18 @@ def _find_triggering_entry(diff_summary: list[NodeDiff], node_id: str) -> NodeDi
     )
 
 
-def _is_unchanged(action: str) -> bool:
-    """Return True for the diff action marking an entry as carrying no change.
+def parse_diff_action(action: str) -> DiffAction:
+    """Return the diff action a diff-summary entry or element carries.
 
     A diff summary serialises an action as the GraphQL enum *name* (uppercase), whereas
     ``DiffAction.*.value`` is lowercase, so the comparison has to be case-insensitive.
     """
-    return action.lower() == DiffAction.UNCHANGED.value
+    return DiffAction(action.lower())
+
+
+def _is_unchanged(action: str) -> bool:
+    """Return True for the diff action marking an entry as carrying no change."""
+    return parse_diff_action(action) == DiffAction.UNCHANGED
 
 
 def relevant_node_changes(
