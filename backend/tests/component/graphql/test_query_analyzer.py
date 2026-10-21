@@ -10,7 +10,7 @@ from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql.analyzer import GraphQLArgument, GraphQLVariable, InfrahubGraphQLQueryAnalyzer, MutateAction
+from infrahub.graphql.analyzer import GraphQLVariable, InfrahubGraphQLQueryAnalyzer, MutateAction
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.schema.color import COLOR
 from tests.helpers.schema.tshirt import TSHIRT
@@ -494,17 +494,16 @@ async def test_query_report(
     assert gqa.query_report.requested_read["TestElectricCar"].relationships == set()
     assert len(gqa.query_report.queries) == 1
     assert len(gqa.query_report.queries[0].arguments) == 1
-    assert gqa.query_report.queries[0].arguments[0] == GraphQLArgument(
-        name="data",
-        value={
-            "name": {"value": "Accord"},
-            "nbr_seats": {"value": 5},
-            "is_electric": {"value": True},
-            "owner": {"id": "John"},
-        },
-        kind="object_value",
-    )
-    assert gqa.query_report.queries[0].arguments[0].fields == ["is_electric", "name", "nbr_seats", "owner"]
+    argument = gqa.query_report.queries[0].arguments[0]
+    assert argument.name == "data"
+    assert argument.kind == "object_value"
+    assert argument.value == {
+        "name": {"value": "Accord"},
+        "nbr_seats": {"value": 5},
+        "is_electric": {"value": True},
+        "owner": {"id": "John"},
+    }
+    assert argument.fields == ["is_electric", "name", "nbr_seats", "owner"]
 
     mutation_query_with_return_data = """
     mutation CarCreator($car_name: String!) {
@@ -560,17 +559,16 @@ async def test_query_report(
     ]
     assert len(gqa.query_report.queries) == 1
     assert len(gqa.query_report.queries[0].arguments) == 1
-    assert gqa.query_report.queries[0].arguments[0] == GraphQLArgument(
-        name="data",
-        value={
-            "name": {"value": "$car_name"},
-            "nbr_seats": {"value": 5},
-            "is_electric": {"value": True},
-            "owner": {"id": "John"},
-        },
-        kind="object_value",
-    )
-    assert gqa.query_report.queries[0].arguments[0].fields == ["is_electric", "name", "nbr_seats", "owner"]
+    argument = gqa.query_report.queries[0].arguments[0]
+    assert argument.name == "data"
+    assert argument.kind == "object_value"
+    assert argument.value == {
+        "name": {"value": "$car_name"},
+        "nbr_seats": {"value": 5},
+        "is_electric": {"value": True},
+        "owner": {"id": "John"},
+    }
+    assert argument.fields == ["is_electric", "name", "nbr_seats", "owner"]
 
     mutation_query_with_simple_return_data = """
     mutation {

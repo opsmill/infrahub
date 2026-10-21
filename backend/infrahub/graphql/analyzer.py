@@ -113,9 +113,20 @@ class GraphQLSelectionSet:
 
 @dataclass
 class GraphQLArgument:
+    """An argument of a field in a query, as written: its name and the value node the parser read."""
+
     name: str
-    value: Any
-    kind: str
+    value_node: ValueNode
+
+    @cached_property
+    def value(self) -> Any:
+        """The Python value of the literal; a variable reads as its ``$``-prefixed name."""
+        return _parse_value_node(self.value_node)
+
+    @property
+    def kind(self) -> str:
+        """The graphql-core kind of the value node, such as ``variable`` or ``list_value``."""
+        return self.value_node.kind
 
     @property
     def is_variable(self) -> bool:
@@ -972,7 +983,7 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
                     required=required,
                     is_list=is_list,
                     inner_required=inner_required,
-                    default=self._parse_value(variable.default_value) if variable.default_value else None,
+                    default=_parse_value_node(variable.default_value) if variable.default_value else None,
                 )
             )
 
@@ -980,35 +991,37 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
 
     def _parse_arguments(self, field_node: FieldNode) -> list[GraphQLArgument]:
         return [
-            GraphQLArgument(
-                name=argument.name.value,
-                value=self._parse_value(argument.value),
-                kind=argument.value.kind,
-            )
-            for argument in field_node.arguments
+            GraphQLArgument(name=argument.name.value, value_node=argument.value) for argument in field_node.arguments
         ]
 
-    def _parse_value(self, node: ValueNode) -> Any:
-        match node:
-            case VariableNode():
-                value: Any = f"${node.name.value}"
-            case IntValueNode():
-                value = int(node.value)
-            case FloatValueNode():
-                value = float(node.value)
-            case StringValueNode():
-                value = node.value
-            case BooleanValueNode():
-                value = node.value
-            case NullValueNode():
-                value = None
-            case EnumValueNode():
-                value = node.value
-            case ListValueNode() | ConstListValueNode():
-                value = [self._parse_value(item) for item in node.values]
-            case ObjectValueNode() | ConstObjectValueNode():
-                value = {field.name.value: self._parse_value(field.value) for field in node.fields}
-            case _:
-                raise TypeError(f"Unsupported value node: {node}")
 
-        return value
+def _parse_value_node(node: ValueNode) -> Any:
+    """Return the Python value a query literal stands for, a variable reading as its ``$``-prefixed name.
+
+    Raises:
+        TypeError: When the node is not a value the parser can produce.
+
+    """
+    match node:
+        case VariableNode():
+            value: Any = f"${node.name.value}"
+        case IntValueNode():
+            value = int(node.value)
+        case FloatValueNode():
+            value = float(node.value)
+        case StringValueNode():
+            value = node.value
+        case BooleanValueNode():
+            value = node.value
+        case NullValueNode():
+            value = None
+        case EnumValueNode():
+            value = node.value
+        case ListValueNode() | ConstListValueNode():
+            value = [_parse_value_node(item) for item in node.values]
+        case ObjectValueNode() | ConstObjectValueNode():
+            value = {field.name.value: _parse_value_node(field.value) for field in node.fields}
+        case _:
+            raise TypeError(f"Unsupported value node: {node}")
+
+    return value
