@@ -1,0 +1,14 @@
+backend/tests/unit/core/regeneration/test_reached_resolver.py
+  h_bd00275aefc321 14,18,42,55,71,90,120,138,154,168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6b2d4acdc9e7c0f7d895319c1125153396132226",
+  "prompts": {},
+  "humans": {
+    "h_bd00275aefc321": {
+      "author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

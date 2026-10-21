@@ -1,0 +1,28 @@
+backend/infrahub/core/merge/orchestrator.py
+  s_266a732dcb61bb::t_337293e432a022 218
+  s_266a732dcb61bb::t_08952707d5b4ae 50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "820abef1eb9169e9ee6b717d83bd4552b25240e0",
+  "prompts": {},
+  "sessions": {
+    "s_266a732dcb61bb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e54b656-7844-41cf-a991-f1426a35d94b",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_9fb2844a4c70ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e99ffdbe-347d-498e-b8d1-63f456d31c13",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+backend/infrahub/core/regeneration/filtered_peers.py
+  h_bd00275aefc321 138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "56e100f3912b5e8a620f9b985756f8d9ce6aaa99",
+  "prompts": {},
+  "humans": {
+    "h_bd00275aefc321": {
+      "author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

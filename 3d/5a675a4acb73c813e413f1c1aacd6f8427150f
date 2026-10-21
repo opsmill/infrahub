@@ -1,0 +1,14 @@
+backend/tests/unit/core/regeneration/test_peer_filters.py
+  h_bd00275aefc321 1-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3d5a675a4acb73c813e413f1c1aacd6f8427150f",
+  "prompts": {},
+  "humans": {
+    "h_bd00275aefc321": {
+      "author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
