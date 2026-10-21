@@ -210,3 +210,17 @@ def test_initialize_lock_rebuilds_a_local_registry() -> None:
     initialize_lock(local_only=True)
 
     assert lock.registry is not first
+
+
+@pytest.mark.usefixtures("redis_driver_without_registry")
+def test_initialize_lock_rebuilds_a_redis_registry_when_the_cache_settings_change(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    initialize_lock()
+    first = lock.registry
+
+    monkeypatch.setattr(config.SETTINGS.cache, "address", "other-cache")
+    initialize_lock()
+
+    assert lock.registry is not first
+    assert lock.registry.connection_url != first.connection_url

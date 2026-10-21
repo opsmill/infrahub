@@ -8,7 +8,6 @@ from asyncio import sleep
 from contextvars import ContextVar
 from typing import TYPE_CHECKING
 
-import redis.asyncio as redis
 from prometheus_client import Histogram
 from redis.asyncio.lock import Lock as GlobalLock
 from redis.exceptions import LockNotOwnedError
@@ -16,11 +15,13 @@ from redis.exceptions import LockNotOwnedError
 from infrahub import config
 from infrahub.core.timestamp import current_timestamp
 from infrahub.log import get_logger
-from infrahub.redis_connection import build_redis_connection
+from infrahub.redis_connection import build_cache_connection_string, build_redis_connection
 from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
     from types import TracebackType
+
+    import redis.asyncio as redis
 
     from infrahub.services import InfrahubServices
 
@@ -316,8 +317,10 @@ class InfrahubLockRegistry:
         name_generator: LockNameGenerator | None = None,
     ) -> None:
         self.service = service
+        self.connection_url: str | None = None
         if not local_only:
             if config.SETTINGS.cache.driver == config.CacheDriver.Redis:
+                self.connection_url = build_cache_connection_string(config.SETTINGS.cache)
                 self.connection = build_redis_connection(config.SETTINGS.cache)
             else:
                 self.connection = service
@@ -380,12 +383,14 @@ def _init_lock_ttl_seconds() -> int:
 
 def initialize_lock(local_only: bool = False, service: InfrahubServices | None = None) -> None:
     global registry
-    # Rebuilding a Redis-backed registry from the same arguments would open another client and leave this one open.
+    # Rebuilding from unchanged arguments and cache settings would open a second client and leave this one open.
     if (
         not local_only
         and registry is not None
         and registry.service is service
-        and isinstance(registry.connection, redis.Redis)
+        and registry.connection_url is not None
+        and config.SETTINGS.cache.driver == config.CacheDriver.Redis
+        and registry.connection_url == build_cache_connection_string(config.SETTINGS.cache)
     ):
         return
     registry = InfrahubLockRegistry(local_only=local_only, service=service)
