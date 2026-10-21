@@ -46,7 +46,7 @@ Generators can be executed in several ways, depending on your workflow and where
    Configure a group trigger rule on the target group, or a node trigger rule on a node kind, and tie it to a Generator action. Adding a member to the group then runs the Generator against that member. Each rule has a `branch_scope` that decides which branches it fires on, and it defaults to the default branch. See [event rules](../events/event-rules) and [event actions](../events/event-actions).
 5. Automatically after a merge
 
-   After a merge, Infrahub runs the Generators the merge affected again on the target branch, unless `execute_after_merge` is `false` in the Generator's `.infrahub.yml` entry. Set [`INFRAHUB_SELECTIVE_EXECUTION_AFTER_MERGE`](../reference/configuration) to `false` to run every Generator after every merge instead. For what each flag controls, see [Execution lifecycle](#execution-lifecycle).
+   After a merge, Infrahub runs the Generators the merge affected again on the target branch, unless `execute_after_merge` is `false` in the Generator's `.infrahub.yml` entry. Set [`INFRAHUB_SELECTIVE_EXECUTION_AFTER_MERGE`](../reference/configuration) to `false` to run after every merge every Generator that has not set `execute_after_merge` to `false`, rather than only the ones the merge affected. For what each flag controls, see [Execution lifecycle](#execution-lifecycle).
 
 :::info What does not start a Generator run
 

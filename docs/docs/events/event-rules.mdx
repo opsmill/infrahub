@@ -23,7 +23,7 @@ Every rule has a `branch_scope` that limits which branches its events are matche
 | `other_branches` | **Other Branches** | Every branch except the default branch |
 | `all_branches` | **All Branches** | Every branch |
 
-The default is `default_branch`, so a rule created without setting this field never fires inside a branch or a Proposed Change. That is the opposite of what automation running inside a branch needs: set `other_branches` when the results should be reviewed in a Proposed Change before they reach the default branch, as [chained Generators](../generators/modular-best-practices#use-branches-for-cascade-testing) do.
+The default is `default_branch`, so a rule created without setting this field does not match an event emitted on another branch, which is where the data changes under review in a Proposed Change are made. That is the opposite of what automation running inside a branch needs: set `other_branches` when the results should be reviewed in a Proposed Change before they reach the default branch, as [chained Generators](../generators/modular-best-practices#use-branches-for-cascade-testing) do.
 
 Which scope can match depends on the branch an event is emitted on, and that is not always the branch you changed something on. Webhooks share this field, and [configuring branch types](../webhooks/overview#configuring-branch-types) lists the emission branch for each class of event.
 
@@ -56,7 +56,7 @@ A node trigger rule fires when a node is created, updated, or deleted.
    - Choose the mutation action (example: `created`)
    - Select the action kind (example: `Group Action Core`)
    - Choose the action that the rule will fire (example: `add-to-group-arista_devices`)
-   - Set the [branch scope](#branch-scope). It defaults to **Default Branch**, which does not fire inside a branch
+   - Set the [branch scope](#branch-scope). It defaults to **Default Branch**, which does not match events emitted on another branch
    - Click **Save**.
 
 ![Node Trigger form creation](../media/guides/events/node-trigger-form-creation.png)
@@ -89,7 +89,7 @@ A group trigger rule fires when a group's membership changes (member added or re
    - Choose the standard group (example: `provisioning_circuits`)
    - Select the action kind (example: `Generator Action Core`). A group trigger rule can only fire a Generator action
    - Choose the Generator action that the rule will fire (example: `create_circuit_endpoints`)
-   - Set the [branch scope](#branch-scope). It defaults to **Default Branch**, which does not fire inside a branch
+   - Set the [branch scope](#branch-scope). It defaults to **Default Branch**, which does not match events emitted on another branch
    - Click **Save**.
 
 ![Group Trigger form creation](../media/guides/events/group-trigger-form-creation.png)
