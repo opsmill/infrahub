@@ -349,30 +349,6 @@ async def test_clears_expired_entries() -> None:
 
 Even in these cases, prefer adapter patterns when the dependency is used widely.
 
-### Give a typed accessor the driver values it declares
-
-Never hand-build `QueryResult` rows to test a `Query` subclass: it stays covered against the real
-database (see [Test Organization](#test-organization)). Hand-built rows fit the unit test of the
-`QueryResult` accessors, and a function that only consumes `QueryResult` objects, such as a sort.
-Fill each column with the driver type the accessor under test declares, constructed directly:
-`neo4j.graph.Node` values for `get_node_collection()`, a `neo4j.graph.Path` for `get_path()`.
-
-A cheaper stand-in passes for the wrong reason. The collection accessors check the container's
-shape (`isinstance(entry, list)`), not its elements, so a list of uuid strings satisfies an accessor
-that promises `list[Neo4jNode]`. The test then pins the gap as the contract: it stays green until
-someone adds the element check, and breaks that fix instead of the caller that was wrong.
-
-```python
-# ❌ Bad - strings satisfy the shape check, so the assertion pins the accessor's gap, not its contract
-result = QueryResult(data=[PEER_UUIDS], labels=["peers"])
-assert result.get_node_collection(label="peers") == PEER_UUIDS
-
-# ✅ Good - real driver values of the declared type
-peers = [Node(Graph(), element_id=f"4:db:{uuid}", id_=0, n_labels=["Node"], properties={"uuid": uuid}) for uuid in PEER_UUIDS]
-result = QueryResult(data=[peers], labels=["peers"])
-assert result.get_node_collection(label="peers") == peers
-```
-
 ### Time: inject a clock, don't freeze one
 
 <!-- Extracted from specs/ifc-2886-priority-api-backpressure on 2026-07-26 -->
