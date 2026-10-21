@@ -1,7 +1,6 @@
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import type React from "react";
 
-import { Icon } from "@/shared/components/display/icon";
 import {
   Accordion,
   AccordionContent,
@@ -53,53 +52,6 @@ export const DropdownMenuItem = ({ className, ref, ...props }: DropdownMenuItemP
     )}
     {...props}
   />
-);
-
-export const DropdownMenuSub = DropdownMenuPrimitive.Sub;
-
-interface DropdownMenuSubTriggerProps
-  extends React.ComponentProps<typeof DropdownMenuPrimitive.SubTrigger> {}
-
-export const DropdownMenuSubTrigger = ({
-  className,
-  children,
-  ref,
-  ...props
-}: DropdownMenuSubTriggerProps) => (
-  <DropdownMenuPrimitive.SubTrigger
-    ref={ref}
-    className={classNames(
-      "flex cursor-default select-none items-center gap-1.5 rounded-lg p-2 text-sm outline-hidden focus:bg-highlight data-[state=open]:bg-highlight",
-      className
-    )}
-    {...props}
-  >
-    {children}
-    <Icon icon="mdi:chevron-right" className="ml-auto text-lg" />
-  </DropdownMenuPrimitive.SubTrigger>
-);
-
-interface DropdownMenuSubContentProps
-  extends React.ComponentProps<typeof DropdownMenuPrimitive.SubContent> {}
-
-export const DropdownMenuSubContent = ({
-  className,
-  ref,
-  ...props
-}: DropdownMenuSubContentProps) => (
-  <DropdownMenuPrimitive.Portal>
-    <DropdownMenuPrimitive.SubContent
-      ref={ref}
-      className={classNames(
-        "z-50 min-w-32 space-y-1 overflow-hidden rounded-xl bg-popover p-2 shadow-lg backdrop-blur-lg",
-        "data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:animate-in",
-        "data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:animate-out",
-        "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-        className
-      )}
-      {...props}
-    />
-  </DropdownMenuPrimitive.Portal>
 );
 
 interface DropdownMenuAccordionProps extends React.ComponentProps<typeof AccordionItem> {
