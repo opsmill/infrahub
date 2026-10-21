@@ -100,7 +100,7 @@ class TestNumberPoolRangeAttributeBounds:
         default_branch_scope_class.update_schema_hash()
 
     @pytest.mark.parametrize("case", OUT_OF_BOUNDS_CASES, ids=lambda case: case.name)
-    async def test_pool_creation_with_ranges_is_refused(
+    async def test_pool_creation_with_out_of_bounds_ranges_is_refused(
         self,
         db: InfrahubDatabase,
         default_branch_scope_class: Branch,
@@ -128,7 +128,7 @@ class TestNumberPoolRangeAttributeBounds:
         )
 
     @pytest.mark.parametrize("case", OUT_OF_BOUNDS_CASES, ids=lambda case: case.name)
-    async def test_pool_creation_with_the_shorthand_is_refused(
+    async def test_pool_creation_with_an_out_of_bounds_shorthand_is_refused(
         self,
         db: InfrahubDatabase,
         default_branch_scope_class: Branch,
@@ -156,7 +156,7 @@ class TestNumberPoolRangeAttributeBounds:
         )
 
     @pytest.mark.parametrize("case", OUT_OF_BOUNDS_CASES, ids=lambda case: case.name)
-    async def test_pool_update_with_ranges_is_refused(
+    async def test_pool_update_with_out_of_bounds_ranges_is_refused(
         self,
         db: InfrahubDatabase,
         default_branch_scope_class: Branch,
@@ -177,7 +177,7 @@ class TestNumberPoolRangeAttributeBounds:
         assert await range_details(db=db, pool_id=pool_id) == ranges_before
 
     @pytest.mark.parametrize("case", OUT_OF_BOUNDS_CASES, ids=lambda case: case.name)
-    async def test_pool_update_of_the_shorthand_is_refused(
+    async def test_pool_update_to_an_out_of_bounds_shorthand_is_refused(
         self,
         db: InfrahubDatabase,
         default_branch_scope_class: Branch,
@@ -198,7 +198,7 @@ class TestNumberPoolRangeAttributeBounds:
         assert await range_details(db=db, pool_id=pool_id) == ranges_before
 
     @pytest.mark.parametrize("case", OUT_OF_BOUNDS_CASES, ids=lambda case: case.name)
-    async def test_range_creation_is_refused(
+    async def test_out_of_bounds_range_creation_is_refused(
         self,
         db: InfrahubDatabase,
         default_branch_scope_class: Branch,
@@ -224,7 +224,7 @@ class TestNumberPoolRangeAttributeBounds:
         assert await range_details(db=db, pool_id=pool_id) == []
 
     @pytest.mark.parametrize("case", OUT_OF_BOUNDS_CASES, ids=lambda case: case.name)
-    async def test_range_update_is_refused(
+    async def test_range_update_to_out_of_bounds_values_is_refused(
         self,
         db: InfrahubDatabase,
         default_branch_scope_class: Branch,
