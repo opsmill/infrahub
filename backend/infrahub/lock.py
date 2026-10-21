@@ -8,6 +8,7 @@ from asyncio import sleep
 from contextvars import ContextVar
 from typing import TYPE_CHECKING
 
+import redis.asyncio as redis
 from prometheus_client import Histogram
 from redis.asyncio.lock import Lock as GlobalLock
 from redis.exceptions import LockNotOwnedError
@@ -15,12 +16,11 @@ from redis.exceptions import LockNotOwnedError
 from infrahub import config
 from infrahub.core.timestamp import current_timestamp
 from infrahub.log import get_logger
+from infrahub.redis_connection import build_redis_connection
 from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
     from types import TracebackType
-
-    import redis.asyncio as redis
 
     from infrahub.services import InfrahubServices
 
@@ -315,16 +315,10 @@ class InfrahubLockRegistry:
         service: InfrahubServices | None = None,
         name_generator: LockNameGenerator | None = None,
     ) -> None:
-        # Only a Redis-backed registry owns its connection; the NATS path borrows the service's and a
-        # local-only registry has none. close() releases what is owned here, nothing else.
-        self._redis_connection: redis.Redis | None = None
+        self.service = service
         if not local_only:
             if config.SETTINGS.cache.driver == config.CacheDriver.Redis:
-                # Imported lazily to avoid a startup import cycle through the services package.
-                from infrahub.services.adapters.cache.connection import build_redis_connection  # noqa: PLC0415
-
-                self._redis_connection = build_redis_connection(config.SETTINGS.cache)
-                self.connection = self._redis_connection
+                self.connection = build_redis_connection(config.SETTINGS.cache)
             else:
                 self.connection = service
         else:
@@ -333,26 +327,6 @@ class InfrahubLockRegistry:
         self.token = token or str(uuid.uuid4())
         self.locks: dict[str, InfrahubLock] = {}
         self.name_generator = name_generator or LockNameGenerator()
-
-    async def close(self) -> None:
-        """Release the Redis connection this registry owns, if it owns one.
-
-        Dropping the reference is not enough for a Sentinel connection: redis-py keeps a client per
-        Sentinel daemon on the pool, and those are what ``aclose_redis_connection`` releases.
-
-        The caller has to own the registry it closes. The module-level ``registry`` is not closed on
-        server shutdown: it is process-wide, outlives any one application instance, and the server
-        process exits right after, which releases the pool anyway.
-        """
-        if self._redis_connection is None:
-            return
-
-        # Imported lazily for the same reason as the builder above.
-        from infrahub.services.adapters.cache.connection import aclose_redis_connection  # noqa: PLC0415
-
-        await aclose_redis_connection(self._redis_connection)
-        self._redis_connection = None
-        self.connection = None
 
     def get_existing(
         self,
@@ -406,4 +380,12 @@ def _init_lock_ttl_seconds() -> int:
 
 def initialize_lock(local_only: bool = False, service: InfrahubServices | None = None) -> None:
     global registry
+    # Rebuilding a Redis-backed registry from the same arguments would open another client and leave this one open.
+    if (
+        not local_only
+        and registry is not None
+        and registry.service is service
+        and isinstance(registry.connection, redis.Redis)
+    ):
+        return
     registry = InfrahubLockRegistry(local_only=local_only, service=service)

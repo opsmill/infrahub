@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 import pytest
 from pydantic import SecretStr, ValidationError
+from structlog.testing import capture_logs
 
 from infrahub.config import (
     SETTINGS,
@@ -387,6 +388,9 @@ def without_cache_environment(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv(name)
 
 
+SUPERSEDED_WARNING = "INFRAHUB_CACHE_URL is set and supersedes the scalar cache connection settings"
+
+
 @pytest.mark.usefixtures("without_cache_environment")
 def test_cache_url_supersedes_scalar_connection_fields() -> None:
     """A URL alongside scalar settings is accepted; the URL wins and the override is reported.
@@ -394,24 +398,26 @@ def test_cache_url_supersedes_scalar_connection_fields() -> None:
     Rejecting the combination is not an option: the shipped Compose files set every scalar cache
     variable unconditionally, so an exclusivity error would make INFRAHUB_CACHE_URL unusable there.
     """
-    with patch("infrahub.config.log") as mock_log:
+    with capture_logs() as records:
         settings = CacheSettings(url=SecretStr("redis://cache:6379/0"), address="other")
 
     assert settings.url is not None
     assert settings.url.get_secret_value() == "redis://cache:6379/0"
-    mock_log.warning.assert_called_once()
-    assert mock_log.warning.call_args.kwargs["superseded_settings"] == ["INFRAHUB_CACHE_ADDRESS"]
+    assert records == [
+        {"event": SUPERSEDED_WARNING, "log_level": "warning", "superseded_settings": ["INFRAHUB_CACHE_ADDRESS"]}
+    ]
 
 
 @pytest.mark.usefixtures("without_cache_environment")
-def test_cache_url_loads_under_the_compose_environment() -> None:
+def test_cache_url_loads_under_the_compose_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     """The shipped docker-compose.yml sets every scalar cache variable, most at their default.
 
     A default-valued scalar carries no operator intent, so it must neither fail the load nor be
     reported as superseded. Only INFRAHUB_CACHE_ADDRESS differs from its default here.
     """
+    url = "redis+sentinel://sentinel-a:26379,sentinel-b:26379/mymaster"
     compose_env = {
-        "INFRAHUB_CACHE_URL": "redis+sentinel://sentinel-a:26379,sentinel-b:26379/mymaster",
+        "INFRAHUB_CACHE_URL": url,
         "INFRAHUB_CACHE_ADDRESS": "cache",
         "INFRAHUB_CACHE_DATABASE": "0",
         "INFRAHUB_CACHE_DRIVER": "redis",
@@ -420,25 +426,39 @@ def test_cache_url_loads_under_the_compose_environment() -> None:
         "INFRAHUB_CACHE_TLS_ENABLED": "false",
         "INFRAHUB_CACHE_TLS_INSECURE": "false",
     }
-    with patch.dict(os.environ, compose_env), patch("infrahub.config.log") as mock_log:
+    for name, value in compose_env.items():
+        monkeypatch.setenv(name, value)
+
+    with capture_logs() as records:
         settings = CacheSettings()
 
     assert settings.url is not None
-    assert settings.url.get_secret_value() == compose_env["INFRAHUB_CACHE_URL"]
-    assert mock_log.warning.call_args.kwargs["superseded_settings"] == ["INFRAHUB_CACHE_ADDRESS"]
+    assert settings.url.get_secret_value() == url
+    assert records == [
+        {"event": SUPERSEDED_WARNING, "log_level": "warning", "superseded_settings": ["INFRAHUB_CACHE_ADDRESS"]}
+    ]
 
 
 @pytest.mark.usefixtures("without_cache_environment")
-def test_cache_url_does_not_report_defaulted_scalars() -> None:
+def test_cache_url_does_not_report_defaulted_scalars(monkeypatch: pytest.MonkeyPatch) -> None:
     """Scalars explicitly set to their own default value are not reported as superseded."""
-    with (
-        patch.dict(os.environ, {"INFRAHUB_CACHE_ADDRESS": "localhost", "INFRAHUB_CACHE_PASSWORD": ""}),
-        patch("infrahub.config.log") as mock_log,
-    ):
+    monkeypatch.setenv("INFRAHUB_CACHE_ADDRESS", "localhost")
+    monkeypatch.setenv("INFRAHUB_CACHE_PASSWORD", "")
+
+    with capture_logs() as records:
         settings = CacheSettings(url=SecretStr("redis://cache:6379/0"))
 
     assert settings.url is not None
-    mock_log.warning.assert_not_called()
+    assert records == []
+
+
+@pytest.mark.usefixtures("without_cache_environment")
+@pytest.mark.parametrize("blank", ["", "   "], ids=["empty", "spaces"])
+def test_blank_cache_url_is_unset(monkeypatch: pytest.MonkeyPatch, blank: str) -> None:
+    """A blanked INFRAHUB_CACHE_URL falls back to the scalar settings instead of failing the load."""
+    monkeypatch.setenv("INFRAHUB_CACHE_URL", blank)
+
+    assert CacheSettings().url is None
 
 
 @pytest.mark.usefixtures("without_cache_environment")
@@ -450,31 +470,15 @@ def test_cache_url_coexists_with_redis_driver() -> None:
 
 @pytest.mark.usefixtures("without_cache_environment")
 def test_cache_url_ignored_for_non_redis_driver() -> None:
-    # The URL is only consulted by the Redis driver, so a non-Redis driver neither enforces
-    # exclusivity with the scalar fields nor parses the URL as a Redis URL: this combines a scalar
-    # field with a URL whose scheme is not a valid Redis scheme, and neither should raise.
+    # A URL whose scheme is not a Redis scheme must not fail the load, since only the Redis driver reads it.
     settings = CacheSettings(url=SecretStr("nats://nats:4222"), address="nats", driver=CacheDriver.NATS)
     assert settings.driver is CacheDriver.NATS
     assert settings.url is not None
 
 
 @pytest.mark.usefixtures("without_cache_environment")
-def test_cache_url_rejects_invalid_url() -> None:
-    with pytest.raises(ValidationError, match="requires a service name"):
-        CacheSettings(url=SecretStr("redis+sentinel://sentinel-a:26379"))
-
-
-@pytest.mark.usefixtures("without_cache_environment")
-def test_cache_url_validation_error_redacts_secret() -> None:
-    with pytest.raises(ValidationError) as exc_info:
+def test_invalid_cache_url_fails_the_load_without_echoing_it() -> None:
+    with pytest.raises(ValidationError, match=r"Value error, A Sentinel connection URL requires a service name") as exc:
         CacheSettings(url=SecretStr("redis+sentinel://user:topsecret@sentinel-a:26379"))
-    assert "topsecret" not in str(exc_info.value)
 
-
-@pytest.mark.usefixtures("without_cache_environment")
-def test_cache_url_environment_variable() -> None:
-    url = "redis+sentinel://sentinel-a:26379,sentinel-b:26379/mymaster"
-    with patch.dict(os.environ, {"INFRAHUB_CACHE_URL": url}):
-        settings = CacheSettings()
-    assert settings.url is not None
-    assert settings.url.get_secret_value() == url
+    assert "topsecret" not in str(exc.value)

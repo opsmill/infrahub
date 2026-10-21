@@ -12,6 +12,7 @@ from infrahub.lock import (
     GLOBAL_WORKER_TASKMGR_INIT_LOCK,
     InfrahubLockRegistry,
     get_worker_id_from_lock_token,
+    initialize_lock,
 )
 
 
@@ -173,29 +174,39 @@ async def test_reentrant_lock_allows_nested_acquisitions() -> None:
     ]
 
 
-async def test_registry_closes_the_connection_it_owns(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A Redis-backed registry releases its client; a Sentinel pool's daemon clients go with it."""
-    closed: list[object] = []
-
-    async def _record(connection: object) -> None:
-        closed.append(connection)
-
+@pytest.fixture
+def redis_driver_without_registry(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(config.SETTINGS.cache, "driver", config.CacheDriver.Redis)
-    monkeypatch.setattr("infrahub.services.adapters.cache.connection.aclose_redis_connection", _record)
-    registry = InfrahubLockRegistry()
-    connection = registry.connection
-
-    await registry.close()
-    await registry.close()
-
-    assert closed == [connection]
-    assert registry.connection is None
+    monkeypatch.setattr(lock, "registry", None)
 
 
-async def test_registry_that_owns_no_connection_closes_cleanly() -> None:
-    """A local-only registry has nothing to release, so closing it is a no-op."""
-    registry = InfrahubLockRegistry(local_only=True)
+@pytest.mark.usefixtures("redis_driver_without_registry")
+def test_initialize_lock_keeps_a_redis_registry_built_from_the_same_arguments() -> None:
+    initialize_lock()
+    first = lock.registry
 
-    await registry.close()
+    initialize_lock()
 
-    assert registry.connection is None
+    assert lock.registry is first
+
+
+@pytest.mark.usefixtures("redis_driver_without_registry")
+def test_initialize_lock_replaces_a_redis_registry_with_a_local_one() -> None:
+    initialize_lock()
+    redis_registry = lock.registry
+
+    initialize_lock(local_only=True)
+
+    assert lock.registry is not redis_registry
+    assert lock.registry.connection is None
+
+
+@pytest.mark.usefixtures("redis_driver_without_registry")
+def test_initialize_lock_rebuilds_a_local_registry() -> None:
+    """Fixtures call it to start from fresh locks, which a kept registry would not give them."""
+    initialize_lock(local_only=True)
+    first = lock.registry
+
+    initialize_lock(local_only=True)
+
+    assert lock.registry is not first
