@@ -200,7 +200,7 @@ The cache connection URL enables TLS through its scheme: `rediss://` for a singl
 | `sentinel_username` | Username to authenticate to the Sentinel daemons, independent of the data-node credentials. |
 | `sentinel_password` | Password to authenticate to the Sentinel daemons, independent of the data-node credentials. |
 
-Any other query parameter is passed through to the Redis client as a standard connection option (for example `max_connections`, `socket_timeout`, `health_check_interval`). Infrahub checks a connection that has been idle for more than 20 seconds before a command uses it, so one whose server has become unreachable is re-established instead of failing the command; set `health_check_interval` on the URL to change that interval. A master that Sentinel demoted while it stayed reachable still answers that check, so the next write is what discovers the change: Redis replies `READONLY`, the client drops the connection, and the retry lands on the promoted master.
+Any other query parameter is passed through to the Redis client as a standard connection option (for example `max_connections`, `socket_timeout`, `health_check_interval`). Infrahub checks the URL when it loads its configuration, so a misspelled parameter stops startup with an error instead of failing the first cache command. Infrahub checks a connection that has been idle for more than 20 seconds before a command uses it, so one whose server has become unreachable is re-established instead of failing the command; set `health_check_interval` on the URL to change that interval. A master that Sentinel demoted while it stayed reachable still answers that check, so the next write is what discovers the change: Redis replies `READONLY`, the client drops the connection, and the retry lands on the promoted master.
 
 On a `rediss+sentinel://` URL the `ssl_*` parameters are shared with the Sentinel daemon connections, so a single setting covers both the data nodes and the daemons. Verify against a private certificate authority by supplying a CA bundle:
 
@@ -208,7 +208,7 @@ On a `rediss+sentinel://` URL the `ssl_*` parameters are shared with the Sentine
 INFRAHUB_CACHE_URL: rediss+sentinel://cache-redis:26379/mymaster?ssl_ca_certs=/etc/ssl/redis-ca.pem
 ```
 
-Without `ssl_ca_certs` on the URL, a TLS connection verifies against `INFRAHUB_CACHE_TLS_CA_FILE`, or against the global `INFRAHUB_TLS_CA_BUNDLE` that fills it, so a private certificate authority configured once for the whole deployment covers the cache too.
+Without `ssl_ca_certs` on the URL, a TLS connection verifies against `INFRAHUB_CACHE_TLS_CA_FILE`, or against the global `INFRAHUB_TLS_CA_BUNDLE` that fills it, so a private certificate authority configured once for the whole deployment covers the cache too. `INFRAHUB_CACHE_TLS_INSECURE` does not apply to a URL connection: only `ssl_cert_reqs=none` on the URL turns verification off.
 
 :::warning
 
