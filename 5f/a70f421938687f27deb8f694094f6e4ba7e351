@@ -1,0 +1,22 @@
+backend/tests/unit/core/schema/test_schema_branch_number_pool_scope.py
+  s_25caa80b324d76::t_daa835037e43d5 344-361
+backend/infrahub/core/validators/schema_branch/number_pool_scope_validator.py
+  s_25caa80b324d76::t_18e9d008ff5c1a 120-127
+  s_25caa80b324d76::t_50c5d92e09d821 106-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5fa70f421938687f27deb8f694094f6e4ba7e351",
+  "prompts": {},
+  "sessions": {
+    "s_25caa80b324d76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "49548646-b0b9-4e49-bf30-dfa48956b959",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
