@@ -424,6 +424,7 @@ const sidebars: SidebarsConfig = {
             // Telemetry (PRs 5/6/7)
             { type: 'doc', id: 'deploy-manage/run-observe/telemetry', label: 'Telemetry' },
             { type: 'doc', id: 'deploy-manage/run-observe/metrics', label: 'Metrics' },
+            { type: 'doc', id: 'deploy-manage/run-observe/own-monitoring', label: 'Your own monitoring' },
             // Log Forwarding hub + spoke (PR 8)
             {
               type: 'category',
