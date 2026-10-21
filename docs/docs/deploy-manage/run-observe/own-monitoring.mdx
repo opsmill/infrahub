@@ -47,7 +47,7 @@ The API server and the task workers write their log lines to standard output. Co
 
 The text lines also contain terminal color codes around each field name and value, so a search for `trace_id=` does not find them as written. The observability stack removes the codes before it stores the lines. With your own log agent, set `INFRAHUB_PRODUCTION=true` on the API server and the task workers to get JSON lines without color codes, or remove the codes in your agent.
 
-The `trace_id` value is 32 lowercase hexadecimal characters, the form Tempo and most trace stores use. A line written outside a recorded trace has no `trace_id`.
+The `trace_id` value is 32 lowercase hexadecimal characters, the trace ID format of the W3C Trace Context standard, which Tempo also uses. A line written outside a recorded trace has no `trace_id`.
 
 ## Link traces and logs in your own Grafana
 
