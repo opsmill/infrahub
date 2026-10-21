@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
+import pytest
+from graphql import parse_value
+
 from infrahub.core.constants import RelationshipCardinality, RelationshipDirection
-from infrahub.core.regeneration.models import ReachedPath, RelationshipHop
+from infrahub.core.regeneration.models import FilterLiteral, PeerFilters, ReachedPath, RelationshipHop, RelationshipRead
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema
 from infrahub.core.schema.relationship_schema import RelationshipSchema
-from infrahub.graphql.analyzer import GraphQLQueryNode, ReachedPathResolver
+from infrahub.graphql.analyzer import GraphQLArgument, GraphQLQueryNode, ReachedPathResolver
 
 OUT = RelationshipDirection.OUTBOUND
 
@@ -316,3 +321,287 @@ def test_an_implementation_also_reached_un_pinnably_widens_while_its_siblings_na
         node_kind="TestingDevice", relationship_identifier="device__endpoint", relationship_direction=OUT
     )
     assert result == {"TestingVirtual": (ReachedPath(hops=(endpoint_hop,)),)}
+
+
+INTERFACE_WITH_FILTERABLE_ATTRIBUTES = NodeSchema(
+    name="Interface",
+    namespace="Testing",
+    generate_profile=False,
+    attributes=[
+        AttributeSchema(name="name", kind="Text"),
+        AttributeSchema(name="status", kind="Text"),
+        AttributeSchema(name="role", kind="Text", enum=["uplink", "access"]),
+        AttributeSchema(name="enabled", kind="Boolean"),
+        AttributeSchema(name="mtu", kind="Number"),
+    ],
+    relationships=[_rel("device", "TestingDevice", "device__interface")],
+)
+
+
+def _interface_filters(*filters: tuple[str, FilterLiteral]) -> PeerFilters:
+    return PeerFilters(relationship_name="interfaces", filters=tuple(filters))
+
+
+ACTIVE = ("interfaces__status__value", "active")
+
+
+def _filtered_interfaces(*arguments: GraphQLArgument, children: tuple[GraphQLQueryNode, ...] = ()) -> GraphQLQueryNode:
+    interfaces = _tree("interfaces", INTERFACE_WITH_FILTERABLE_ATTRIBUTES, *children)
+    interfaces.arguments = list(arguments)
+    return interfaces
+
+
+def _argument(name: str, graphql_value: str) -> GraphQLArgument:
+    """An argument as the parser reads it from a query, given the value as written in GraphQL."""
+    return GraphQLArgument(name=name, value_node=parse_value(graphql_value))
+
+
+def _interface_hop_filters(*roots: GraphQLQueryNode) -> PeerFilters | None:
+    paths = ReachedPathResolver(queries=list(roots)).resolve()["TestingInterface"]
+    return paths[0].hops[0].peer_filters
+
+
+@dataclass(frozen=True, kw_only=True)
+class HopFilterCase:
+    name: str
+    arguments: tuple[GraphQLArgument, ...]
+    expected: PeerFilters | None
+
+
+HOP_FILTER_CASES = [
+    HopFilterCase(
+        name="a_constant_filter_is_recorded",
+        arguments=(_argument("status__value", '"active"'),),
+        expected=_interface_filters(ACTIVE),
+    ),
+    HopFilterCase(
+        name="an_enum_name_is_left_out_as_the_resolver_receives_the_value",
+        arguments=(
+            _argument("role__value", "UPLINK"),
+            _argument("status__value", '"active"'),
+        ),
+        expected=_interface_filters(ACTIVE),
+    ),
+    HopFilterCase(
+        name="a_text_value_on_an_enum_attribute_is_recorded",
+        arguments=(_argument("role__value", '"uplink"'),),
+        expected=_interface_filters(("interfaces__role__value", "uplink")),
+    ),
+    HopFilterCase(
+        name="a_false_filter_value_is_left_out_as_the_relationship_resolver_ignores_it",
+        arguments=(_argument("enabled__value", "false"), _argument("status__value", '"active"')),
+        expected=_interface_filters(ACTIVE),
+    ),
+    HopFilterCase(
+        name="a_zero_filter_value_is_left_out_as_the_relationship_resolver_ignores_it",
+        arguments=(_argument("mtu__value", "0"), _argument("status__value", '"active"')),
+        expected=_interface_filters(ACTIVE),
+    ),
+    HopFilterCase(
+        name="an_empty_text_filter_value_is_left_out_as_the_relationship_resolver_ignores_it",
+        arguments=(_argument("name__value", '""'), _argument("status__value", '"active"')),
+        expected=_interface_filters(ACTIVE),
+    ),
+    HopFilterCase(
+        name="only_false_values_record_no_filter",
+        arguments=(_argument("enabled__value", "false"),),
+        expected=None,
+    ),
+    HopFilterCase(
+        name="a_list_of_values_holding_a_false_value_is_recorded_as_given",
+        arguments=(_argument("mtu__values", "[0, 1500]"),),
+        expected=_interface_filters(("interfaces__mtu__values", (0, 1500))),
+    ),
+    HopFilterCase(
+        name="a_true_value_is_recorded",
+        arguments=(_argument("enabled__value", "true"),),
+        expected=_interface_filters(("interfaces__enabled__value", True)),
+    ),
+    HopFilterCase(
+        name="an_attribute_property_filter_is_recorded",
+        arguments=(_argument("status__is_protected", "true"),),
+        expected=_interface_filters(("interfaces__status__is_protected", True)),
+    ),
+    HopFilterCase(
+        name="an_ids_filter_is_recorded_even_when_empty",
+        arguments=(_argument("ids", "[]"),),
+        expected=_interface_filters(("interfaces__ids", ())),
+    ),
+    HopFilterCase(
+        name="an_argument_the_resolver_does_not_filter_on_is_left_out",
+        arguments=(_argument("limit", "5"), _argument("isnull", "true")),
+        expected=None,
+    ),
+    HopFilterCase(
+        name="a_display_label_filter_is_left_out_as_its_value_can_change_with_other_nodes",
+        arguments=(_argument("display_label__value", '"eth0"'), _argument("status__value", '"active"')),
+        expected=_interface_filters(ACTIVE),
+    ),
+    HopFilterCase(
+        name="a_filter_from_a_variable_is_left_out",
+        arguments=(_argument("status__value", "$status"),),
+        expected=None,
+    ),
+    HopFilterCase(
+        name="a_value_the_peer_query_rejects_is_left_out",
+        arguments=(_argument("mtu__value", "1.5"), _argument("status__value", '"active"')),
+        expected=_interface_filters(ACTIVE),
+    ),
+]
+
+
+@pytest.mark.parametrize("case", HOP_FILTER_CASES, ids=lambda case: case.name)
+def test_the_filters_a_hop_carries(case: HopFilterCase) -> None:
+    tree = _tree("TestingDevice", DEVICE, _filtered_interfaces(*case.arguments))
+
+    assert _interface_hop_filters(tree) == case.expected
+
+
+@dataclass(frozen=True, kw_only=True)
+class OtherReadCase:
+    name: str
+    root_arguments: tuple[GraphQLArgument, ...] = ()
+    interface_arguments: tuple[GraphQLArgument, ...] = ()
+    other_fields: tuple[str, ...] = ()
+
+
+OTHER_READ_CASES = [
+    OtherReadCase(
+        name="a_filter_through_a_relationship_of_the_root",
+        root_arguments=(_argument("interfaces__name__value", '"eth0"'),),
+    ),
+    OtherReadCase(
+        name="a_filter_through_a_relationship_of_the_filtered_peers",
+        interface_arguments=(_argument("device__name__value", '"spine-1"'),),
+    ),
+    OtherReadCase(
+        name="a_read_that_includes_the_descendants",
+        interface_arguments=(_argument("include_descendants", "true"),),
+    ),
+    OtherReadCase(name="a_read_of_the_descendants", other_fields=("descendants",)),
+    OtherReadCase(name="a_read_of_the_ancestors", other_fields=("ancestors",)),
+]
+
+
+@pytest.mark.parametrize("case", OTHER_READ_CASES, ids=lambda case: case.name)
+def test_a_query_reading_peers_another_way_records_no_filter(case: OtherReadCase) -> None:
+    interfaces = _filtered_interfaces(_argument("status__value", '"active"'), *case.interface_arguments)
+    tree = _tree("TestingDevice", DEVICE, interfaces, *(_tree(field_name, None) for field_name in case.other_fields))
+    tree.arguments = list(case.root_arguments)
+    resolver = ReachedPathResolver(queries=[tree])
+
+    assert all(hop.peer_filters is None for paths in resolver.resolve().values() for path in paths for hop in path.hops)
+    assert all(read.peer_filters is None for read in resolver.relationship_reads())
+
+
+def _read(
+    owner_kind: str,
+    relationship_name: str,
+    identifier: str,
+    peer_kinds: set[str],
+    peer_filters: PeerFilters | None = None,
+) -> RelationshipRead:
+    return RelationshipRead(
+        owner_kind=owner_kind,
+        relationship_name=relationship_name,
+        relationship_identifier=identifier,
+        relationship_direction=OUT,
+        peer_kinds=frozenset(peer_kinds),
+        peer_filters=peer_filters,
+    )
+
+
+DEVICE_INTERFACES_READ = _read("TestingDevice", "interfaces", "device__interface", {"TestingInterface"})
+DEVICE_WITHOUT_IDENTIFIER = _node(
+    "Device",
+    RelationshipSchema(
+        name="interfaces",
+        peer="TestingInterface",
+        cardinality=RelationshipCardinality.MANY,
+        direction=OUT,
+        optional=True,
+    ),
+)
+
+
+def _generic_endpoints(*children: GraphQLQueryNode) -> GraphQLQueryNode:
+    endpoints = _tree("endpoints", ENDPOINT_WITH_IMPLEMENTATIONS, *children)
+    endpoints.infrahub_node_models = [PHYSICAL_WITH_ADDRESSES, VIRTUAL]
+    return endpoints
+
+
+@dataclass(frozen=True, kw_only=True)
+class RelationshipReadCase:
+    name: str
+    tree: GraphQLQueryNode
+    expected: tuple[RelationshipRead, ...]
+
+
+RELATIONSHIP_READ_CASES = [
+    RelationshipReadCase(
+        name="a_read_under_structural_levels_counts_for_the_nearest_object",
+        tree=_tree("TestingDevice", DEVICE, _edge_node(_tree("interfaces", INTERFACE))),
+        expected=(DEVICE_INTERFACES_READ,),
+    ),
+    RelationshipReadCase(
+        name="a_read_on_a_generic_owner_counts_for_each_implementation",
+        tree=_tree("TestingDevice", DEVICE_WITH_GENERIC, _generic_endpoints(_tree("things", THING))),
+        expected=(
+            _read("TestingDevice", "endpoints", "device__endpoint", {"TestingPhysical", "TestingVirtual"}),
+            _read("TestingPhysical", "things", "endpoint__thing", {"TestingThing"}),
+            _read("TestingVirtual", "things", "endpoint__thing", {"TestingThing"}),
+        ),
+    ),
+    RelationshipReadCase(
+        name="a_read_inside_a_fragment_counts_for_the_fragment_kind_only",
+        tree=_tree(
+            "TestingDevice",
+            DEVICE_WITH_GENERIC,
+            _generic_endpoints(_fragment(PHYSICAL_WITH_ADDRESSES, _tree("addresses", ADDRESS))),
+        ),
+        expected=(
+            _read("TestingDevice", "endpoints", "device__endpoint", {"TestingPhysical", "TestingVirtual"}),
+            _read("TestingPhysical", "addresses", "physical__address", {"TestingAddress"}),
+        ),
+    ),
+    RelationshipReadCase(
+        name="a_relationship_read_twice_with_the_same_filters_counts_once",
+        tree=_tree(
+            "TestingDevice",
+            DEVICE,
+            _filtered_interfaces(_argument("status__value", '"active"')),
+            _filtered_interfaces(_argument("status__value", '"active"')),
+        ),
+        expected=(
+            _read("TestingDevice", "interfaces", "device__interface", {"TestingInterface"}, _interface_filters(ACTIVE)),
+        ),
+    ),
+    RelationshipReadCase(
+        name="a_relationship_read_with_and_without_filters_counts_twice",
+        tree=_tree(
+            "TestingDevice",
+            DEVICE,
+            _filtered_interfaces(_argument("status__value", '"active"')),
+            _filtered_interfaces(),
+        ),
+        expected=(
+            DEVICE_INTERFACES_READ,
+            _read("TestingDevice", "interfaces", "device__interface", {"TestingInterface"}, _interface_filters(ACTIVE)),
+        ),
+    ),
+    RelationshipReadCase(
+        name="a_field_that_is_not_a_relationship_of_its_owner_is_not_a_read",
+        tree=_tree("TestingDevice", DEVICE, _tree("uplinks", INTERFACE)),
+        expected=(),
+    ),
+    RelationshipReadCase(
+        name="a_relationship_without_an_identifier_is_not_a_read",
+        tree=_tree("TestingDevice", DEVICE_WITHOUT_IDENTIFIER, _tree("interfaces", INTERFACE)),
+        expected=(),
+    ),
+]
+
+
+@pytest.mark.parametrize("case", RELATIONSHIP_READ_CASES, ids=lambda case: case.name)
+def test_relationship_reads(case: RelationshipReadCase) -> None:
+    assert ReachedPathResolver(queries=[case.tree]).relationship_reads() == case.expected

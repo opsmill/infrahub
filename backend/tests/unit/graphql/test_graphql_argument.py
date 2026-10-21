@@ -65,3 +65,45 @@ def test_the_fields_of_an_object_are_sorted() -> None:
 
 def test_a_value_other_than_an_object_has_no_fields() -> None:
     assert _argument("[1, 2]").fields == []
+
+
+@dataclass(frozen=True, kw_only=True)
+class ContainsCase:
+    name: str
+    graphql_value: str
+    contains_variable: bool = False
+    contains_enum_value: bool = False
+
+
+CONTAINS_CASES = [
+    ContainsCase(name="a_constant_scalar_holds_neither", graphql_value='"aggregate"'),
+    ContainsCase(name="a_variable", graphql_value="$role", contains_variable=True),
+    ContainsCase(name="an_enum", graphql_value="UPLINK", contains_enum_value=True),
+    ContainsCase(name="a_list_of_constants_holds_neither", graphql_value='["a", 1]'),
+    ContainsCase(name="a_list_holding_a_variable", graphql_value='["a", $b]', contains_variable=True),
+    ContainsCase(name="a_list_holding_an_enum", graphql_value="[UPLINK]", contains_enum_value=True),
+    ContainsCase(
+        name="an_object_holding_a_variable_deep_down",
+        graphql_value="{ name: { value: $name }, seats: 5 }",
+        contains_variable=True,
+    ),
+    ContainsCase(
+        name="an_object_holding_an_enum_deep_down",
+        graphql_value="{ role: { value: UPLINK } }",
+        contains_enum_value=True,
+    ),
+    ContainsCase(
+        name="a_value_holding_both",
+        graphql_value="[UPLINK, $role]",
+        contains_variable=True,
+        contains_enum_value=True,
+    ),
+]
+
+
+@pytest.mark.parametrize("case", CONTAINS_CASES, ids=lambda case: case.name)
+def test_what_a_value_holds_is_read_from_the_value_node(case: ContainsCase) -> None:
+    argument = _argument(case.graphql_value)
+
+    assert argument.contains_variable is case.contains_variable
+    assert argument.contains_enum_value is case.contains_enum_value

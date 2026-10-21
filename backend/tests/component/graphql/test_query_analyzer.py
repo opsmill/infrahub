@@ -562,6 +562,7 @@ async def test_query_report(
     argument = gqa.query_report.queries[0].arguments[0]
     assert argument.name == "data"
     assert argument.kind == "object_value"
+    assert argument.contains_variable is True
     assert argument.value == {
         "name": {"value": "$car_name"},
         "nbr_seats": {"value": 5},
