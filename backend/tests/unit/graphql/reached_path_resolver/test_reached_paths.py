@@ -1,0 +1,262 @@
+from __future__ import annotations
+
+from infrahub.core.regeneration.models import ReachedPath, RelationshipHop
+from infrahub.graphql.analyzer import ReachedPathResolver
+
+from .helpers import (
+    ADDRESS,
+    DEVICE,
+    DEVICE_GENERIC_AND_CONCRETE,
+    DEVICE_HOP,
+    DEVICE_TWO_GENERIC_RELS,
+    DEVICE_TWO_OWNERS,
+    DEVICE_WITH_GENERIC,
+    DEVICE_WITH_OWNER,
+    ENDPOINT,
+    ENDPOINT_HOP,
+    ENDPOINT_WITH_IMPLEMENTATIONS,
+    INTERFACE,
+    INTERFACE_HOP,
+    OUT,
+    PERSON,
+    PHYSICAL,
+    PHYSICAL_ADDRESS_HOP,
+    PHYSICAL_WITH_ADDRESSES,
+    THING,
+    VIRTUAL,
+    _edge_node,
+    _fragment,
+    _tree,
+)
+
+
+def test_single_hop_narrows_to_the_owning_root() -> None:
+    # TestingDevice { interfaces }
+    tree = _tree("TestingDevice", DEVICE, _tree("interfaces", INTERFACE))
+
+    result = ReachedPathResolver(queries=[tree]).resolve()
+
+    assert result == {"TestingInterface": (ReachedPath(hops=(DEVICE_HOP,)),)}
+
+
+def test_multi_hop_records_the_full_chain_deepest_first() -> None:
+    # TestingDevice { interfaces { addresses } }
+    tree = _tree("TestingDevice", DEVICE, _tree("interfaces", INTERFACE, _tree("addresses", ADDRESS)))
+
+    result = ReachedPathResolver(queries=[tree]).resolve()
+
+    assert result == {
+        "TestingInterface": (ReachedPath(hops=(DEVICE_HOP,)),),
+        "TestingAddress": (ReachedPath(hops=(INTERFACE_HOP, DEVICE_HOP)),),
+    }
+
+
+def test_generic_peer_resolves_to_its_concrete_implementations() -> None:
+    # TestingDevice { endpoints }, endpoints on the generic TestingEndpoint
+    endpoints = _tree("endpoints", ENDPOINT)
+    endpoints.infrahub_node_models = [PHYSICAL, VIRTUAL]
+    tree = _tree("TestingDevice", DEVICE_WITH_GENERIC, endpoints)
+
+    result = ReachedPathResolver(queries=[tree]).resolve()
+
+    endpoint_hop = RelationshipHop(
+        node_kind="TestingDevice", relationship_identifier="device__endpoint", relationship_direction=OUT
+    )
+    assert result == {
+        "TestingPhysical": (ReachedPath(hops=(endpoint_hop,)),),
+        "TestingVirtual": (ReachedPath(hops=(endpoint_hop,)),),
+    }
+
+
+def test_field_that_is_not_a_relationship_on_its_owner_widens() -> None:
+    # TestingDevice { TestingConcrete }
+    # A node carrying a model whose path is neither a relationship on its owner nor a fragment cannot
+    # be pinned to a reverse relationship.
+    tree = _tree("TestingDevice", DEVICE, _tree("TestingConcrete", PERSON))
+
+    result = ReachedPathResolver(queries=[tree]).resolve()
+
+    assert result == {}
+
+
+def test_a_relationship_inside_a_fragment_on_a_peer_keeps_the_chain_through_the_fragment() -> None:
+    # TestingDevice { endpoints { edges { node { ... on TestingPhysical { addresses } } } } }
+    addresses = _tree("addresses", ADDRESS)
+    endpoints = _tree("endpoints", ENDPOINT, _edge_node(_fragment(PHYSICAL_WITH_ADDRESSES, addresses)))
+    endpoints.infrahub_node_models = [PHYSICAL_WITH_ADDRESSES, VIRTUAL]
+    tree = _tree("TestingDevice", DEVICE_WITH_GENERIC, endpoints)
+
+    result = ReachedPathResolver(queries=[tree]).resolve()
+
+    assert result == {
+        "TestingPhysical": (ReachedPath(hops=(ENDPOINT_HOP,)),),
+        "TestingVirtual": (ReachedPath(hops=(ENDPOINT_HOP,)),),
+        "TestingAddress": (ReachedPath(hops=(PHYSICAL_ADDRESS_HOP, ENDPOINT_HOP)),),
+    }
+
+
+def test_a_fragment_on_a_generic_resolves_to_its_implementations() -> None:
+    # TestingDevice { endpoints { edges { node { ... on TestingEndpoint { things } } } } }
+    things = _tree("things", THING)
+    fragment = _fragment(ENDPOINT_WITH_IMPLEMENTATIONS, things)
+    tree = _tree("TestingDevice", DEVICE_WITH_GENERIC, _tree("endpoints", ENDPOINT, _edge_node(fragment)))
+
+    result = ReachedPathResolver(queries=[tree]).resolve()
+
+    thing_hop = RelationshipHop(
+        node_kind="TestingEndpoint", relationship_identifier="endpoint__thing", relationship_direction=OUT
+    )
+    assert result == {
+        "TestingPhysical": (ReachedPath(hops=(ENDPOINT_HOP,)),),
+        "TestingVirtual": (ReachedPath(hops=(ENDPOINT_HOP,)),),
+        "TestingThing": (ReachedPath(hops=(thing_hop, ENDPOINT_HOP)),),
+    }
+
+
+def test_a_relationship_inside_a_fragment_on_the_root_narrows_like_one_outside_it() -> None:
+    # TestingDevice { edges { node { ... on TestingDevice { interfaces } } } }
+    # The fragment stands for the root device itself, so the device maps to itself through an empty chain.
+    tree = _tree("TestingDevice", DEVICE, _edge_node(_fragment(DEVICE, _tree("interfaces", INTERFACE))))
+
+    result = ReachedPathResolver(queries=[tree]).resolve()
+
+    assert result == {
+        "TestingDevice": (ReachedPath(hops=()),),
+        "TestingInterface": (ReachedPath(hops=(DEVICE_HOP,)),),
+    }
+
+
+def test_kind_reached_by_more_than_one_chain_keeps_every_chain() -> None:
+    # TestingDevice { primary_owner backup_owner }
+    tree = _tree(
+        "TestingDevice",
+        DEVICE_TWO_OWNERS,
+        _tree("primary_owner", PERSON),
+        _tree("backup_owner", PERSON),
+    )
+
+    result = ReachedPathResolver(queries=[tree]).resolve()
+
+    backup_hop = RelationshipHop(
+        node_kind="TestingDevice", relationship_identifier="device__backup", relationship_direction=OUT
+    )
+    primary_hop = RelationshipHop(
+        node_kind="TestingDevice", relationship_identifier="device__primary", relationship_direction=OUT
+    )
+    assert result == {"TestingPerson": (ReachedPath(hops=(backup_hop,)), ReachedPath(hops=(primary_hop,)))}
+
+
+def test_kind_read_at_a_root_and_through_a_relationship_keeps_an_empty_chain_besides_its_chains() -> None:
+    # TestingDevice { owner } and TestingPerson
+    device_tree = _tree("TestingDevice", DEVICE_WITH_OWNER, _tree("owner", PERSON))
+    person_root = _tree("TestingPerson", PERSON)
+
+    result = ReachedPathResolver(queries=[device_tree, person_root]).resolve()
+
+    owner_hop = RelationshipHop(
+        node_kind="TestingDevice", relationship_identifier="device__owner", relationship_direction=OUT
+    )
+    assert result == {"TestingPerson": (ReachedPath(hops=()), ReachedPath(hops=(owner_hop,)))}
+
+
+def test_kind_read_at_a_root_and_reached_un_pinnably_widens() -> None:
+    # TestingDevice { owner TestingConcrete } and TestingPerson
+    device_tree = _tree("TestingDevice", DEVICE_WITH_OWNER, _tree("owner", PERSON), _tree("TestingConcrete", PERSON))
+    person_root = _tree("TestingPerson", PERSON)
+
+    result = ReachedPathResolver(queries=[device_tree, person_root]).resolve()
+
+    assert result == {}
+
+
+def test_a_query_without_traversal_resolves_nothing() -> None:
+    # TestingDevice
+    tree = _tree("TestingDevice", DEVICE)
+
+    result = ReachedPathResolver(queries=[tree]).resolve()
+
+    assert result == {}
+
+
+def test_generic_peer_reached_by_two_relationships_keeps_both_chains_per_implementation() -> None:
+    # TestingDevice { interfaces mgmt_interfaces }, both on the generic TestingEndpoint
+    interfaces = _tree("interfaces", ENDPOINT)
+    interfaces.infrahub_node_models = [PHYSICAL, VIRTUAL]
+    mgmt_interfaces = _tree("mgmt_interfaces", ENDPOINT)
+    mgmt_interfaces.infrahub_node_models = [PHYSICAL, VIRTUAL]
+    tree = _tree("TestingDevice", DEVICE_TWO_GENERIC_RELS, interfaces, mgmt_interfaces)
+
+    result = ReachedPathResolver(queries=[tree]).resolve()
+
+    interface_hop = RelationshipHop(
+        node_kind="TestingDevice", relationship_identifier="device__interface", relationship_direction=OUT
+    )
+    mgmt_hop = RelationshipHop(
+        node_kind="TestingDevice", relationship_identifier="device__mgmt", relationship_direction=OUT
+    )
+    both = (ReachedPath(hops=(interface_hop,)), ReachedPath(hops=(mgmt_hop,)))
+    assert result == {"TestingPhysical": both, "TestingVirtual": both}
+
+
+def test_a_kind_reached_via_a_generic_peer_and_a_concrete_relationship_unions_the_chains() -> None:
+    # TestingDevice { endpoints physical_ports }
+    endpoints = _tree("endpoints", ENDPOINT)
+    endpoints.infrahub_node_models = [PHYSICAL, VIRTUAL]
+    physical_ports = _tree("physical_ports", PHYSICAL)
+    tree = _tree("TestingDevice", DEVICE_GENERIC_AND_CONCRETE, endpoints, physical_ports)
+
+    result = ReachedPathResolver(queries=[tree]).resolve()
+
+    endpoint_hop = RelationshipHop(
+        node_kind="TestingDevice", relationship_identifier="device__endpoint", relationship_direction=OUT
+    )
+    port_hop = RelationshipHop(
+        node_kind="TestingDevice", relationship_identifier="device__physical_port", relationship_direction=OUT
+    )
+    assert result == {
+        "TestingPhysical": (ReachedPath(hops=(endpoint_hop,)), ReachedPath(hops=(port_hop,))),
+        "TestingVirtual": (ReachedPath(hops=(endpoint_hop,)),),
+    }
+
+
+def test_a_kind_reached_through_a_relationship_on_a_generic_owner_narrows() -> None:
+    # TestingDevice { endpoints { things } }
+    # A kind reached through a relationship defined on a generic owner pins to the generic kind: the
+    # relationship carries one identifier and every instance is labelled with the generic, so the
+    # reverse traversal keyed on the generic label reaches every owner. The generic peer's own
+    # implementations narrow alongside, matched by uuid.
+    things = _tree("things", THING)
+    endpoints = _tree("endpoints", ENDPOINT, things)
+    endpoints.infrahub_node_models = [PHYSICAL, VIRTUAL]
+    tree = _tree("TestingDevice", DEVICE_WITH_GENERIC, endpoints)
+
+    result = ReachedPathResolver(queries=[tree]).resolve()
+
+    device_hop = RelationshipHop(
+        node_kind="TestingDevice", relationship_identifier="device__endpoint", relationship_direction=OUT
+    )
+    endpoint_hop = RelationshipHop(
+        node_kind="TestingEndpoint", relationship_identifier="endpoint__thing", relationship_direction=OUT
+    )
+    assert result == {
+        "TestingPhysical": (ReachedPath(hops=(device_hop,)),),
+        "TestingVirtual": (ReachedPath(hops=(device_hop,)),),
+        "TestingThing": (ReachedPath(hops=(endpoint_hop, device_hop)),),
+    }
+
+
+def test_an_implementation_also_reached_un_pinnably_widens_while_its_siblings_narrow() -> None:
+    # TestingDevice { endpoints TestingPhysical }
+    endpoints = _tree("endpoints", ENDPOINT)
+    endpoints.infrahub_node_models = [PHYSICAL, VIRTUAL]
+    # PHYSICAL is also reached by a node whose path is neither a relationship on the device nor a
+    # fragment, which cannot be pinned -- so PHYSICAL widens even though the generic peer resolves it.
+    unpinnable = _tree("TestingPhysical", PHYSICAL)
+    tree = _tree("TestingDevice", DEVICE_WITH_GENERIC, endpoints, unpinnable)
+
+    result = ReachedPathResolver(queries=[tree]).resolve()
+
+    endpoint_hop = RelationshipHop(
+        node_kind="TestingDevice", relationship_identifier="device__endpoint", relationship_direction=OUT
+    )
+    assert result == {"TestingVirtual": (ReachedPath(hops=(endpoint_hop,)),)}
