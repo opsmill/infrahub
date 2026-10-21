@@ -7,10 +7,12 @@ import { TableCell } from "@/shared/components/table/table-cell";
 import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
 import { BRANCH_FIELD_SCHEMAS } from "@/entities/branches/ui/branches-table/branch-field-schemas";
 import { TableColumnHeader } from "@/entities/nodes/object/ui/object-table/cells/table-column-header";
+import { REPOSITORY_SYNC_STATUS_ATTRIBUTE_NAME } from "@/entities/repository/domain/model/repository";
 import type { RepositoryBranchStatusRow } from "@/entities/repository/domain/model/repository-branch-status";
 import {
   BRANCH_ROW_FILTER_CONDITIONS,
   BRANCH_STATUS_FIELD_SCHEMA,
+  findAttribute,
 } from "@/entities/repository/ui/repository-branches-card/branch-row-fields";
 import { BranchNameCell } from "@/entities/repository/ui/repository-branches-card/cells/branch-name-cell";
 import { SyncStatusCell } from "@/entities/repository/ui/repository-branches-card/cells/sync-status-cell";
@@ -22,18 +24,18 @@ const columnHelper = createColumnHelper<RepositoryBranchStatusRow>();
 export const branchesGridTemplateColumns = (columnCount: number) =>
   columnCount > 1 ? `repeat(${columnCount - 1}, fit-content(${COLUMN_MAX_WIDTH})) 1fr` : "1fr";
 
-function findAttribute(schema: ModelSchema, name: string): AttributeSchema | undefined {
-  return schema.attributes?.find((attribute) => attribute.name === name);
-}
-
 function getSyncStatusColumn(
   columnSchema: AttributeSchema
 ): ColumnDef<RepositoryBranchStatusRow, unknown> {
-  // Disabled because nothing in this column's menu could be honoured: the query orders by branch
-  // node metadata alone, and this card offers no sync-status filter.
   return columnHelper.display({
     id: "sync_status",
-    header: () => <TableColumnHeader columnSchema={columnSchema} isDisabled role="columnheader" />,
+    header: () => (
+      <TableColumnHeader
+        columnSchema={columnSchema}
+        filterConditions={BRANCH_ROW_FILTER_CONDITIONS}
+        role="columnheader"
+      />
+    ),
     cell: ({ row }) => (
       <TableCell role="cell">
         {row.original.syncStatus && <SyncStatusCell syncStatus={row.original.syncStatus} />}
@@ -75,7 +77,7 @@ function getRefColumn(
 export function getRepositoryBranchesColumns(
   schema: ModelSchema
 ): Array<ColumnDef<RepositoryBranchStatusRow, unknown>> {
-  const syncStatus = findAttribute(schema, "sync_status");
+  const syncStatus = findAttribute(schema, REPOSITORY_SYNC_STATUS_ATTRIBUTE_NAME);
   const commit = findAttribute(schema, "commit");
   const ref = findAttribute(schema, "ref");
 

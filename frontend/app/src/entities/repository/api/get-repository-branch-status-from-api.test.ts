@@ -22,9 +22,9 @@ const sentRequest = () => {
 
 const sentQuery = () => print(sentRequest().query as never);
 
-// These three narrow on the repository's attributes rather than the branch's, so declaring one
-// would quietly change which rows come back.
-const UNDECLARED_ARGUMENTS = ["sync_status__value", "internal_status__value", "own_values_only"];
+// The card offers no filter for these, so declaring one would let a caller narrow the rows in a way
+// the card never shows.
+const UNDECLARED_ARGUMENTS = ["internal_status__value", "own_values_only"];
 
 describe("getRepositoryBranchStatusFromApi", () => {
   beforeEach(() => {
@@ -41,6 +41,20 @@ describe("getRepositoryBranchStatusFromApi", () => {
     // THEN not declaring it is the whole of the guarantee: a variable the document never names
     // cannot be sent whatever a caller passes
     expect(sentQuery()).not.toContain(argument);
+  });
+
+  it("declares the sync status variable and sends its value", async () => {
+    // WHEN
+    await getRepositoryBranchStatusFromApi({
+      branchName: "main",
+      id: "repository-1",
+      sync_status__value: "error-import",
+    });
+
+    // THEN
+    expect(sentQuery()).toContain("$sync_status__value: String");
+    expect(sentQuery()).toContain("sync_status__value: $sync_status__value");
+    expect(sentRequest().variables).toMatchObject({ sync_status__value: "error-import" });
   });
 
   it("asks for no node metadata, so no timestamp can be rendered", async () => {

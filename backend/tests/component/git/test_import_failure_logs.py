@@ -721,6 +721,7 @@ class TestImportFailureLogs(TestInfrahubApp):
                     repo_name=name,
                     repository=repository,
                     infrahub_branch=registry.default_branch,
+                    branch_accepts_commit=True,
                     client=client,
                     state=state,
                     activity=run,

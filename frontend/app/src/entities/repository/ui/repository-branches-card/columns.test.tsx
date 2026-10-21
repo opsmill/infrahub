@@ -180,6 +180,18 @@ describe("getRepositoryBranchesColumns", () => {
     expect(chip.element().style.backgroundColor).toBe(asRenderedColour(invented.color ?? ""));
   });
 
+  it("offers a filter and no sort from the sync status header", async () => {
+    // WHEN
+    const component = await renderTable(repositorySchema, [generateRepositoryBranchStatus()]);
+    await component.getByRole("button", { name: "Sync status", exact: true }).click();
+
+    // THEN the query orders by branch node metadata alone, so no sort item may be offered
+    await expect.element(component.getByRole("menuitem", { name: "Filter" })).toBeVisible();
+    for (const item of ["Sort ascending", "Sort descending", "Sort by"]) {
+      expect(component.getByRole("menuitem", { name: item }).elements()).toHaveLength(0);
+    }
+  });
+
   it("leaves the ref column out of a schema that does not declare one", async () => {
     // WHEN
     const component = await renderTable(repositorySchema, [generateRepositoryBranchStatus()]);

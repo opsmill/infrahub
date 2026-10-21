@@ -27,13 +27,14 @@ from infrahub.core.constants import (
     BranchSupportType,
     InfrahubKind,
     MetadataOptions,
+    MutationAction,
     RelationshipCardinality,
     RelationshipKind,
 )
 from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX
-from infrahub.core.creation_context import NodeCreationContext
 from infrahub.core.metadata.interface import MetadataInterface
 from infrahub.core.metadata.model import MetadataInfo, MetadataQueryOptions
+from infrahub.core.mutation_context import NodeMutationContext
 from infrahub.core.property import (
     FlagPropertyMixin,
     NodePropertyData,
@@ -641,7 +642,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
             )
             self.set_peer(value=assigned_peer)
             self.set_source(value=pool.id)
-            NodeCreationContext.record_if_active(node=assigned_peer)
+            NodeMutationContext.record_if_active(node=assigned_peer, action=MutationAction.CREATED)
 
     async def save(self, db: InfrahubDatabase, at: Timestamp | None = None, user_id: str = SYSTEM_USER_ID) -> Self:
         """Create or Update the Relationship in the database."""

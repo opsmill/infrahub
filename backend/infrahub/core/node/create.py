@@ -10,12 +10,13 @@ from infrahub.core.constants import (
     PROFILES_RELATIONSHIP_NAME,
     SYSTEM_USER_ID,
     MetadataOptions,
+    MutationAction,
     PoolRecordProvenance,
     RelationshipKind,
 )
 from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
-from infrahub.core.creation_context import NodeCreationContext
+from infrahub.core.mutation_context import NodeMutationContext
 from infrahub.core.node import Node
 from infrahub.core.node.lock_utils import get_lock_names_on_object_mutation
 from infrahub.core.protocols_base import CoreNode
@@ -296,7 +297,7 @@ async def allocate_from_resource_pools(
             allocated_resource = await pool.get_resource(  # type: ignore[attr-defined]
                 db=db, branch=branch, identifier=obj.get_id(), at=at, user_id=user_id
             )  # type: ignore
-            NodeCreationContext.record_if_active(node=allocated_resource)
+            NodeMutationContext.record_if_active(node=allocated_resource, action=MutationAction.CREATED)
 
             obj_rel_manager = obj.get_relationship(name=original_name)
             await obj_rel_manager.update(
@@ -346,7 +347,7 @@ async def create_component(
         await node_profiles_applier.apply_profiles(node=obj_peer)
 
     await obj_peer.save(db=db, user_id=user_id)
-    NodeCreationContext.record_if_active(node=obj_peer)
+    NodeMutationContext.record_if_active(node=obj_peer, action=MutationAction.CREATED)
     return obj_peer
 
 
@@ -482,7 +483,7 @@ async def _do_create_node(
     node_constraint_runner: NodeConstraintRunner,
     pool_applier: AttributePoolApplierInterface,
     profiles_mandatory_field_getter: ProfilesMandatoryFieldGetter,
-    creation_context: NodeCreationContext,
+    mutation_context: NodeMutationContext,
     db: InfrahubDatabase,
     schema: NonGenericSchemaTypes,
     branch: Branch,
@@ -492,7 +493,7 @@ async def _do_create_node(
     user_id: str = SYSTEM_USER_ID,
     object_template: CoreObjectTemplate | None = None,
 ) -> Node:
-    with creation_context:
+    with mutation_context:
         obj = await node_class.init(db=db, schema=schema, branch=branch)
         obj._object_template = object_template
         await obj.new_from_fields(
@@ -517,7 +518,7 @@ async def _do_create_node(
                 user_id=user_id,
             )
 
-    obj._creation_context = creation_context
+    obj._mutation_context = mutation_context
     return obj
 
 
@@ -593,7 +594,7 @@ async def create_node(
     object_template = preview_obj._object_template
 
     obj: Node
-    creation_context = NodeCreationContext()
+    mutation_context = NodeMutationContext()
     async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names, metrics=False):
         if db.is_transaction:
             node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
@@ -603,7 +604,7 @@ async def create_node(
                 node_constraint_runner=node_constraint_runner,
                 pool_applier=components.pool_applier,
                 profiles_mandatory_field_getter=components.profiles_mandatory_field_getter,
-                creation_context=creation_context,
+                mutation_context=mutation_context,
                 db=db,
                 schema=schema,
                 branch=branch,
@@ -627,7 +628,7 @@ async def create_node(
                     node_constraint_runner=node_constraint_runner,
                     pool_applier=transaction_components.pool_applier,
                     profiles_mandatory_field_getter=transaction_components.profiles_mandatory_field_getter,
-                    creation_context=creation_context,
+                    mutation_context=mutation_context,
                     db=dbt,
                     schema=schema,
                     branch=branch,

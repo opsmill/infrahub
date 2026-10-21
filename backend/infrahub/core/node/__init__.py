@@ -17,6 +17,7 @@ from infrahub.core.constants import (
     BranchSupportType,
     ComputedAttributeKind,
     MetadataOptions,
+    MutationAction,
     PoolRecordProvenance,
     RelationshipCardinality,
     RelationshipKind,
@@ -24,6 +25,7 @@ from infrahub.core.constants import (
 from infrahub.core.constants.schema import SchemaElementPathType
 from infrahub.core.metadata.interface import MetadataInterface
 from infrahub.core.metadata.model import MetadataInfo
+from infrahub.core.mutation_context import NodeMutationContext
 from infrahub.core.protocols_base import CoreNode
 from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery, NodeUpdateMetadataQuery
 from infrahub.core.query.node_agnostic_retirement import RetireNodeAgnosticFieldsQuery
@@ -61,7 +63,6 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
     from infrahub.core.branch import Branch
-    from infrahub.core.creation_context import NodeCreationContext
     from infrahub.core.protocols import CoreObjectTemplate
     from infrahub.core.relationship import Relationship
     from infrahub.core.schema.schema_branch import SchemaBranch
@@ -170,7 +171,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         self._attributes: list[str] = []
         self._relationships: list[str] = []
         self._node_changelog: NodeChangelog | None = None
-        self._creation_context: NodeCreationContext | None = None
+        self._mutation_context: NodeMutationContext | None = None
         self._object_template: CoreObjectTemplate | None = None
 
     def _set_created_at(self, value: Timestamp | None) -> None:
@@ -387,6 +388,12 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             return self._node_changelog
 
         raise InitializationError("The node has not been saved so no changelog exists")
+
+    def record_mutation_write(self, node: Node, action: MutationAction) -> None:
+        """Record a node the mutation writes besides this one, with the action applied, so it gets its own event."""
+        if self._mutation_context is None:
+            self._mutation_context = NodeMutationContext()
+        self._mutation_context.record(node=node, action=action)
 
     @overload
     @classmethod

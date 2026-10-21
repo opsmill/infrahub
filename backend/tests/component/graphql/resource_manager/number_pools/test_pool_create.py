@@ -493,3 +493,25 @@ class TestNumberPoolCreate:
             await NodeManager.count(db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch_scope_class)
             == pools_before
         )
+
+    async def test_create_with_a_single_range_keeps_the_properties_sent_on_the_mirrored_bounds(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, loaded_ticket_schema_scope_class: None
+    ) -> None:
+        pool_id = await create_pool(
+            db=db,
+            branch=default_branch_scope_class,
+            name="protected-bounds-pool",
+            bounds={
+                "ranges": [{"start": 1, "end": 9}],
+                "start_range": {"is_protected": True},
+                "end_range": {"is_protected": True},
+            },
+        )
+
+        pool = await NodeManager.get_one(
+            db=db, id=pool_id, kind=InfrahubKind.NUMBERPOOL, branch=default_branch_scope_class, raise_on_error=True
+        )
+        assert [
+            (attribute.value, attribute.is_protected)
+            for attribute in (pool.get_attribute("start_range"), pool.get_attribute("end_range"))
+        ] == [(1, True), (9, True)]

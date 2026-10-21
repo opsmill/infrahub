@@ -25,7 +25,7 @@ mutate_create()
        -> preview node (process_pools=False) for lock calculation
        -> acquire InfrahubMultiLock
        -> _do_create_node()
-            -> NodeCreationContext     # tracks side-effect nodes for events
+            -> NodeMutationContext     # records the other nodes the mutation writes, for events
             -> Node.new()
                  -> _process_fields()  # validates, hydrates attrs & rels
                  -> _process_macros()  # evaluates mandatory computed attrs
@@ -81,6 +81,18 @@ mutate_upsert()
             -> _call_mutate_update(skip_uniqueness_check=True)
             -> handle file idempotency (checksum comparison)
 ```
+
+## Nodes a mutation writes besides its main node
+
+Record each node the mutation writes outside the main node's save on the node the mutation returns,
+with the action applied, so it gets its own event (see [Events](events.md#events-a-mutation-sends)):
+
+- `create_node()` records template components and resource pool allocations itself.
+- Any other write calls `Node.record_mutation_write(node, action)`, as the number pool and range
+  mutations do for the ranges and the pool they write.
+
+The records live on the returned node, so a retried attempt discards the records of a failed one
+along with its node.
 
 ## Transaction Retry
 

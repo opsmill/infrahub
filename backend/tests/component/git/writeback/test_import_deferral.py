@@ -96,6 +96,18 @@ FRESH_CLONE_CASES: list[FreshCloneCase] = [
 
 
 @dataclass(frozen=True)
+class CommitWriteCase:
+    name: str
+    branch_accepts_commit: bool
+
+
+COMMIT_WRITE_CASES: list[CommitWriteCase] = [
+    CommitWriteCase(name="branch-accepts-the-commit", branch_accepts_commit=True),
+    CommitWriteCase(name="branch-rejects-the-commit", branch_accepts_commit=False),
+]
+
+
+@dataclass(frozen=True)
 class ReimportCase:
     name: str
     branch_name: str
@@ -347,12 +359,16 @@ class TestImportDeferral(TestInfrahubApp):
                     repo_name=name,
                     repository=repository,
                     infrahub_branch=registry.default_branch,
+                    branch_accepts_commit=True,
                     client=client,
                     state=delivery_state,
                     activity=run,
                 )
             )
             assert repo is not None
+            assert await self._graph_commit(client=client, node=node, branch_name=TRUNK) == (
+                imported if case.pending else advanced
+            )
             await call_in_flow(
                 lambda: sync_repository_from_origin(
                     repository=repository,
@@ -386,6 +402,50 @@ class TestImportDeferral(TestInfrahubApp):
             else []
         )
 
+    @pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in COMMIT_WRITE_CASES])
+    async def test_the_seed_import_of_a_new_repository_records_its_commit_when_the_branch_accepts_it(
+        self,
+        case: CommitWriteCase,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """The periodic sync can clone a repository before its add flow runs, so the graph holds no commit yet."""
+        name = f"clone-new-{case.name}"
+        query_name = f"clone_new_{case.name.replace('-', '_')}"
+        remote = LocalRemote.create(directory=tmp_path / name, trunk=TRUNK, branches=[])
+        head = remote.commit(branch_name=TRUNK, files=query_files(query_name))
+        node = await create_repository_node(
+            db=db,
+            name=name,
+            location=str(remote.directory),
+            default_branch=TRUNK,
+            operational_status=RepositoryOperationalStatus.ONLINE.value,
+        )
+        repository = await client.get(kind=CoreRepository, id=node.id)
+        delivery_state = await build_intent_store(db=db, lock_registry=lock.registry)
+
+        async with activity_run() as run:
+            repo = await call_in_flow(
+                lambda: bootstrap_local_repository(
+                    repo_name=name,
+                    repository=repository,
+                    infrahub_branch=registry.default_branch,
+                    branch_accepts_commit=case.branch_accepts_commit,
+                    client=client,
+                    state=delivery_state,
+                    activity=run,
+                )
+            )
+
+        assert repo is not None
+        assert await self._graph_commit(client=client, node=node, branch_name=TRUNK) == (
+            head if case.branch_accepts_commit else None
+        )
+        assert await self._query_names(client=client, node=node) == {query_name}
+
     async def test_a_fresh_clone_seeds_a_staging_branch_while_a_push_is_pending(
         self,
         db: InfrahubDatabase,
@@ -417,6 +477,7 @@ class TestImportDeferral(TestInfrahubApp):
                     repo_name=name,
                     repository=repository,
                     infrahub_branch=staging_branch,
+                    branch_accepts_commit=True,
                     client=client,
                     state=delivery_state,
                     activity=run,

@@ -88,6 +88,57 @@ describe("toRepositoryBranchArguments", () => {
     });
   });
 
+  it("sends a sync status that matches no choice, so the list and its tag agree", () => {
+    // GIVEN a value written to the url by hand
+    const filters: Filter[] = [{ name: "sync_status__value", value: "bogus" }];
+
+    // WHEN
+    const result = toRepositoryBranchArguments(filters, []);
+
+    // THEN
+    expect(result).toEqual({ sync_status__value: "bogus" });
+  });
+
+  it.each([
+    ["an empty string", ""],
+    ["a number", 42],
+  ])("drops a sync status that is %s", (_label, value) => {
+    // GIVEN a value written to the url by hand
+    const filters: Filter[] = [{ name: "sync_status__value", value }];
+
+    // THEN
+    expect(toRepositoryBranchArguments(filters, [])).toEqual({});
+    expect(hasRepositoryBranchFilters(filters)).toBe(false);
+  });
+
+  it("combines a name fragment, a status and a sync status in one request", () => {
+    // GIVEN
+    const filters: Filter[] = [
+      { name: "name__value", value: "release" },
+      { name: "status__value", value: "OPEN" },
+      { name: "sync_status__value", value: "error-import" },
+    ];
+
+    // WHEN
+    const result = toRepositoryBranchArguments(filters, []);
+
+    // THEN
+    expect(result).toEqual({
+      name__value: "release",
+      partial_match: true,
+      status__value: "OPEN",
+      sync_status__value: "error-import",
+    });
+  });
+
+  it("counts a sync status filter alone as active", () => {
+    // GIVEN
+    const filters: Filter[] = [{ name: "sync_status__value", value: "error-import" }];
+
+    // THEN
+    expect(hasRepositoryBranchFilters(filters)).toBe(true);
+  });
+
   it.each([
     ["an emptiness filter", { name: "name__isnull", value: true }],
     ["a multi-value filter", { name: "name__values", value: ["main", "staging"] }],
