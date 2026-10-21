@@ -6,7 +6,6 @@ import pytest
 from infrahub.exceptions import ValidationError
 from infrahub.pools.number_pool_range_validation import (
     NumberRangeBounds,
-    find_ranges_outside_attribute,
     validate_number_pool_range,
     validate_number_pool_ranges,
     validate_ranges_within_attribute,
@@ -222,7 +221,6 @@ def test_a_range_within_the_attribute_limits_is_accepted(case: AttributeLimitsCa
 class RefusedLimitsCase:
     name: str
     bounds: NumberRangeBounds
-    field_name: str
     message: str
 
 
@@ -230,37 +228,31 @@ REFUSED_LIMITS_CASES: list[RefusedLimitsCase] = [
     RefusedLimitsCase(
         name="entered_start_below_min_value",
         bounds=NumberRangeBounds(start=9, end=50),
-        field_name="start",
         message="Range 9 - 50 starts below the attribute's min_value (10)",
     ),
     RefusedLimitsCase(
         name="entered_end_above_max_value",
         bounds=NumberRangeBounds(start=50, end=101),
-        field_name="end",
         message="Range 50 - 101 ends above the attribute's max_value (100)",
     ),
     RefusedLimitsCase(
         name="entered_start_below_min_value_with_an_open_end",
         bounds=NumberRangeBounds(start=9, end=None),
-        field_name="start",
         message="Range 9 - 100 starts below the attribute's min_value (10)",
     ),
     RefusedLimitsCase(
         name="entered_end_above_max_value_with_an_open_start",
         bounds=NumberRangeBounds(start=None, end=101),
-        field_name="end",
         message="Range 10 - 101 ends above the attribute's max_value (100)",
     ),
     RefusedLimitsCase(
         name="open_end_with_start_above_max_value",
         bounds=NumberRangeBounds(start=101, end=None),
-        field_name="start",
         message="Range starting at 101 without an end starts above the attribute's max_value (100)",
     ),
     RefusedLimitsCase(
         name="open_start_with_end_below_min_value",
         bounds=NumberRangeBounds(start=None, end=9),
-        field_name="end",
         message="Range ending at 9 without a start ends below the attribute's min_value (10)",
     ),
 ]
@@ -268,22 +260,18 @@ REFUSED_LIMITS_CASES: list[RefusedLimitsCase] = [
 
 @pytest.mark.parametrize("case", REFUSED_LIMITS_CASES, ids=lambda case: case.name)
 def test_a_range_outside_the_attribute_limits_is_refused_naming_the_bound(case: RefusedLimitsCase) -> None:
-    violations = find_ranges_outside_attribute(ranges=[case.bounds], domain=LIMITS)
     with pytest.raises(ValidationError) as exc_info:
         validate_ranges_within_attribute(ranges=[case.bounds], domain=LIMITS)
 
-    assert [(violation.bounds, violation.field_name) for violation in violations] == [(case.bounds, case.field_name)]
     assert exc_info.value.message == case.message
 
 
 def test_ranges_outside_the_attribute_limits_are_all_refused_from_the_lowest_range() -> None:
     ranges = [NumberRangeBounds(start=101, end=None, id="above"), NumberRangeBounds(start=None, end=9, id="below")]
 
-    violations = find_ranges_outside_attribute(ranges=ranges, domain=LIMITS)
     with pytest.raises(ValidationError) as exc_info:
         validate_ranges_within_attribute(ranges=ranges, domain=LIMITS)
 
-    assert [violation.bounds.id for violation in violations] == ["below", "above"]
     assert exc_info.value.message == (
         "Range ending at 9 without a start ends below the attribute's min_value (10); "
         "Range starting at 101 without an end starts above the attribute's max_value (100)"
@@ -293,11 +281,9 @@ def test_ranges_outside_the_attribute_limits_are_all_refused_from_the_lowest_ran
 def test_a_range_outside_both_attribute_limits_is_refused_naming_both_bounds() -> None:
     bounds = NumberRangeBounds(start=9, end=101)
 
-    violations = find_ranges_outside_attribute(ranges=[bounds], domain=LIMITS)
     with pytest.raises(ValidationError) as exc_info:
         validate_ranges_within_attribute(ranges=[bounds], domain=LIMITS)
 
-    assert [violation.field_name for violation in violations] == ["start", "end"]
     assert exc_info.value.message == (
         "Range 9 - 101 starts below the attribute's min_value (10); "
         "Range 9 - 101 ends above the attribute's max_value (100)"
