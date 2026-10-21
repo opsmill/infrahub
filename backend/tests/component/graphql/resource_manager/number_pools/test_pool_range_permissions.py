@@ -338,3 +338,49 @@ async def test_pool_creation_with_shorthand_needs_the_range_create_permission(
 
     assert errors == [_range_denied_message(action=PermissionAction.CREATE)]
     assert await NodeManager.count(db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch) == 0
+
+
+async def test_pool_creation_without_bounds_needs_the_range_create_permission(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    ticket_schema: None,
+    default_permission_backend: None,
+    first_account: Node,
+    session_first_account: AccountSession,
+) -> None:
+    await _grant(account=first_account, db=db, range_actions=(PermissionAction.UPDATE, PermissionAction.DELETE))
+
+    errors = await _execute_as(
+        db=db,
+        branch=default_branch,
+        session=session_first_account,
+        source=CREATE_NUMBER_POOL_WITH_BOUNDS,
+        variables={"data": ticket_pool_input(name="denied-open-pool", bounds={})},
+    )
+
+    assert errors == [_range_denied_message(action=PermissionAction.CREATE)]
+    assert await NodeManager.count(db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch) == 0
+
+
+async def test_pool_creation_with_empty_ranges_needs_no_range_permission(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    ticket_schema: None,
+    default_permission_backend: None,
+    first_account: Node,
+    session_first_account: AccountSession,
+) -> None:
+    await _grant(account=first_account, db=db, range_actions=())
+
+    result = await execute(
+        db=db,
+        branch=default_branch,
+        source=CREATE_NUMBER_POOL_WITH_BOUNDS,
+        variables={"data": ticket_pool_input(name="range-less-pool", bounds={"ranges": []})},
+        account_session=session_first_account,
+    )
+
+    assert not result.errors
+    assert result.data
+    pool_id = result.data["CoreNumberPoolCreate"]["object"]["id"]
+    assert await range_details(db=db, pool_id=pool_id) == []

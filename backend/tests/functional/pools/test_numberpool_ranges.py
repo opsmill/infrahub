@@ -23,6 +23,7 @@ mutation CreatePool($name: String!) {
         name: { value: $name }
         node: { value: "TestingTicket" }
         node_attribute: { value: "ticket_id" }
+        ranges: []
     }) {
         object { id }
     }
