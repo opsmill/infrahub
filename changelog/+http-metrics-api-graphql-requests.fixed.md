@@ -1,0 +1,1 @@
+Fixed the HTTP request metrics `infrahub_request_duration_seconds` and `infrahub_requests_total`, which recorded no request to `/api/…` or `/graphql/…` since the upgrade to FastAPI 0.141; these requests are now recorded with their route as `path`. The fix upgrades `starlette-exporter` to 0.24.

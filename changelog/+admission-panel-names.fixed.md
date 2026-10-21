@@ -1,0 +1,1 @@
+Renamed the admission limit panels of the Infrahub dashboard, "In-Flight vs Pool Capacity" to "Running API Requests vs Admission Limit" and "Slot Pool Saturation" to "Admission Limit Usage", and their descriptions now say that they do not show the Neo4j connection pool.

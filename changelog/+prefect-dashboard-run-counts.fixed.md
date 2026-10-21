@@ -1,0 +1,1 @@
+Fixed the Prefect dashboards so that the flow run counts add up the runs instead of counting flow and state combinations, and so that the `namespace` variable of the log panels is read from Loki. Removed the `flow_run_name` variable and the run time panels, which read labels and metrics that the Prefect exporter does not publish.

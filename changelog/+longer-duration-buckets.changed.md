@@ -1,0 +1,1 @@
+Changed the database query and lock duration metrics to record values up to 300 seconds, and the HTTP request and GraphQL query duration metrics up to 1200 seconds, instead of stopping at 1 second for queries, 5 or 10 seconds for locks, 0.5 seconds for HTTP requests and 60 seconds for GraphQL queries.

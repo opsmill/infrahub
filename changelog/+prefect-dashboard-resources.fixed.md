@@ -1,0 +1,1 @@
+Fixed the CPU, memory and replica panels of both Prefect dashboards, which were always empty. They now read the cAdvisor container metrics of the observability stack, selected by Docker Compose service name. On Docker Desktop for macOS, cAdvisor sends no Compose labels, so these panels stay empty there.

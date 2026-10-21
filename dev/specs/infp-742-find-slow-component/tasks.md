@@ -298,7 +298,7 @@ checks.
 - [ ] T092 Run `/pre-ci` and fix every failure
 - [ ] T093 Daniel runs the `opsmill-dev-guiding-manual-tests` skill on the Infrahub branch, with `python_sdk` on `origin/infrahub-develop` (needs T086), using the checks of [quickstart.md](quickstart.md)
 - [ ] T094 Before release: quickstart manual check 7 (each dashboard in a Grafana with only Prometheus) and manual check 1 repeated with the file downloaded from `https://infrahub.opsmill.io/?observability=true` (needs the answer to T036)
-- [ ] T095 Create every fragment listed in "Changelog entries for the top layer" with `towncrier create` in `changelog/`, using the `creating-changelog-entries` skill; correct each text to what landed
+- [x] T095 Create every fragment listed in "Changelog entries for the top layer" with `towncrier create` in `changelog/`, using the `creating-changelog-entries` skill; correct each text to what landed
 
 ---
 
@@ -514,12 +514,12 @@ Created by T095 in IFC-3470. Each layer adds its entries here, with the file nam
   sources of the observability stack. A log line links to its trace by its `trace_id` field, in text
   and JSON lines, and in the `TraceID=` form that the Alloy configuration of the stack writes, with or
   without `0x`. A trace links to its log lines in any Loki, from one hour before to one hour after the
-  span, filtered by trace ID. The `RequestID` link is removed.
+  span: the lines whose `trace_id` field contains the trace ID. The `RequestID` link is removed.
 - `+compose-observability-tracing.changed.md`: Changed the Docker Compose file of the observability
   stack, `docker-compose-observability-standalone.yml`, to turn tracing on for the API server and the
   task workers, with traces sent to the Tempo service of the stack and a sampling ratio of 0.1 that
-  `INFRAHUB_TRACE_SAMPLE_RATIO` changes. A Compose deployment without the observability stack keeps
-  tracing off.
+  `INFRAHUB_TRACE_SAMPLE_RATIO` changes; set `INFRAHUB_TRACE_ENABLE=false` to turn it off. A Compose
+  deployment without the observability stack keeps tracing off.
 - `+trace-sample-ratio-without-restart.added.md`: Added the `/api/troubleshooting/trace-sample-ratio`
   REST endpoints, documented in the OpenAPI schema. With the `super_admin` permission, `PUT` sets a
   temporary trace sampling ratio for 1 second to 24 hours on every API server process and task worker

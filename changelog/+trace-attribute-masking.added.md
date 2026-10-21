@@ -1,0 +1,1 @@
+Added masking of exported span attributes and span event attributes, including exception events, so that tokens, passwords, secrets, email addresses, user names, client IP addresses and URL query strings are exported as `[MASKED]`, while URL hostnames and paths, Cypher text and query names stay readable.
