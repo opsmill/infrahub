@@ -699,6 +699,13 @@ class CacheSettings(BaseSettings):
         validate_redis_url(url.get_secret_value())
         return self
 
+    @model_validator(mode="after")
+    def validate_credentials(self) -> Self:
+        # A URL carries its own credentials, so only the scalar settings are checked.
+        if self.active_url is None and self.username and not self.password:
+            raise ValueError("INFRAHUB_CACHE_USERNAME is set but INFRAHUB_CACHE_PASSWORD is not. Both are required.")
+        return self
+
 
 class WorkflowSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_WORKFLOW_")

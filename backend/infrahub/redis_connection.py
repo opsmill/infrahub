@@ -60,17 +60,10 @@ def build_cache_connection_string(cache: CacheSettings) -> str:
 
     A configured ``cache.url`` is returned as written, verifying against ``cache.tls_ca_file`` unless it
     names a CA bundle itself; otherwise the scalar settings are assembled into a single-node URL.
-
-    Raises:
-        ValueError: When ``INFRAHUB_CACHE_USERNAME`` is set without ``INFRAHUB_CACHE_PASSWORD``.
-
     """
     url = cache.active_url
     if url is not None:
         return add_default_ca_bundle(url.get_secret_value(), cache.tls_ca_file)
-
-    if cache.username and not cache.password:
-        raise ValueError("INFRAHUB_CACHE_USERNAME is set but INFRAHUB_CACHE_PASSWORD is not. Both are required.")
 
     scheme = "rediss" if cache.tls_enabled else "redis"
 

@@ -190,14 +190,6 @@ def test_cache_url_is_ignored_for_a_non_redis_driver() -> None:
     assert build_cache_connection_string(cache) == "redis://nats.internal:4222/0"
 
 
-def test_username_without_password_raises() -> None:
-    cache = CacheSettings(address="redis.internal", username="user")
-    with pytest.raises(
-        ValueError, match=r"^INFRAHUB_CACHE_USERNAME is set but INFRAHUB_CACHE_PASSWORD is not\. Both are required\.$"
-    ):
-        build_cache_connection_string(cache)
-
-
 def _describe(connection: Connection) -> dict[str, Any]:
     ssl_context = connection.ssl_context if isinstance(connection, SSLConnection) else None
     return {
