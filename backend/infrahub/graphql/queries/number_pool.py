@@ -39,14 +39,20 @@ def _context(info: GraphQLResolveInfo) -> tuple[InfrahubDatabase, Branch, Schema
     return graphql_context.db, branch, registry.schema.get_schema_branch(name=branch.name)
 
 
+_UNBOUNDED_NULL = "Null when the pool's range is unbounded."
+
+
 class NumberPoolUtilizationFigures(ObjectType):
     class Meta:
         description = "Absolute and relative utilization of a pool, a range or a division."
 
     size = Field(
         BigInt,
-        required=True,
-        description="Number of values the pool, range or division can allocate. 0 when the pool has no range.",
+        required=False,
+        description=(
+            "Number of values the pool, range or division can allocate. 0 when the pool has no range. "
+            f"{_UNBOUNDED_NULL}"
+        ),
     )
     used = Field(
         BigInt,
@@ -61,12 +67,18 @@ class NumberPoolUtilizationFigures(ObjectType):
         required=True,
         description="Number of these values in use only on other branches, not on the default branch.",
     )
-    utilization = Field(Float, required=True, description="used as a percentage of size. 0 when size is 0.")
+    utilization = Field(
+        Float, required=False, description=f"used as a percentage of size. 0 when size is 0. {_UNBOUNDED_NULL}"
+    )
     utilization_default_branch = Field(
-        Float, required=True, description="used_default_branch as a percentage of size. 0 when size is 0."
+        Float,
+        required=False,
+        description=f"used_default_branch as a percentage of size. 0 when size is 0. {_UNBOUNDED_NULL}",
     )
     utilization_branches = Field(
-        Float, required=True, description="used_branches as a percentage of size. 0 when size is 0."
+        Float,
+        required=False,
+        description=f"used_branches as a percentage of size. 0 when size is 0. {_UNBOUNDED_NULL}",
     )
 
 
@@ -109,10 +121,10 @@ class NumberPoolRangeUtilization(ObjectType):
     )
     end = Field(
         BigInt,
-        required=True,
+        required=False,
         description=(
-            "Last value of the range, included. For a range without an end, the smaller of the largest supported "
-            "number and the target attribute's max_value on the requested branch."
+            "Last value of the range, included. For a range without an end, the target attribute's max_value on "
+            "the requested branch. Null when the range has an unbounded end."
         ),
     )
     weight = Field(BigInt, required=True, description="The range's allocation weight. 0 when the range declares none.")
@@ -250,8 +262,7 @@ class NumberPoolDivisions(ObjectType):
         description=(
             "Every division that holds at least one value the pool tracks on any live branch. Each holding object "
             "counts under every division it occupies on any live branch. Ordered by utilization descending, then by "
-            "display_label. "
-            "Empty for an unscoped pool."
+            "display_label. Empty for an unscoped pool."
         ),
     )
 
