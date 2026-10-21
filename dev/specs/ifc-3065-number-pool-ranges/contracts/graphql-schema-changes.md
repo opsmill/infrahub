@@ -50,7 +50,9 @@ Every create or update that carries the shorthand or `ranges` runs under the poo
 |-------|--------|
 | create with `start_range` and `end_range` only | pool created with one range; existing bound checks against `min_value` / `max_value` unchanged |
 | create with `ranges` only | pool created; ranges linked; overlap validated |
-| create with neither | pool created with zero ranges |
+| create with neither | pool created with one range open at both ends; needs the range create permission *(amended by IFC-3432)* |
+| create with `ranges: []` | pool created with zero ranges *(amended by IFC-3432)* |
+| create or update with one shorthand bound, or a range without `start` or `end` | the missing bound is stored as null (open); a bound cleared on update becomes open *(amended by IFC-3432)* |
 | create or update with shorthand and `ranges` | refused: "start_range/end_range cannot be combined with ranges" |
 | update with shorthand, pool has 0 ranges | one range created |
 | update with shorthand, pool has 1 range | that range rewritten in place |
