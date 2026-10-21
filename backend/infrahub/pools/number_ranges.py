@@ -23,11 +23,6 @@ def format_range_label(start: int, end: int) -> str:
     return f"{start} - {'MAX' if end == OPEN_END else end}"
 
 
-def format_bounds(start: int, end: int) -> str:
-    """Return the `start-end` form of a range used in messages, writing the widest end as MAX."""
-    return f"{start}-{'MAX' if end == OPEN_END else end}"
-
-
 @dataclass(frozen=True, kw_only=True)
 class NumberSpan:
     """An inclusive span of numbers."""

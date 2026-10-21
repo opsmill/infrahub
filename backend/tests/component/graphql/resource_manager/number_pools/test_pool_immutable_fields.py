@@ -198,7 +198,7 @@ class TestNumberPoolUpsertImmutableFields:
 
         assert [error.message for error in result.errors or []] == [
             "start_range/end_range apply to a pool holding at most one range; this pool holds: "
-            f"1-5 ({low.get_id()}), 10-15 ({high.get_id()}). Edit the ranges instead."
+            f"1 - 5 ({low.get_id()}), 10 - 15 ({high.get_id()}). Edit the ranges instead."
         ]
         assert await shorthand(db=db, pool_id=pool.get_id()) == (None, None)
         assert await range_bounds(db=db, pool_id=pool.get_id()) == [(1, 5), (10, 15)]

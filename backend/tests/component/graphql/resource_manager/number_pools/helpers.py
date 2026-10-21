@@ -202,7 +202,7 @@ INVALID_RANGES_CASES: list[InvalidRangesCase] = [
     InvalidRangesCase(
         name="overlapping",
         ranges=[{"start": 5, "end": 15}, {"start": 1, "end": 10}],
-        expected_error="Range 1-10 overlaps 5-15 (ranges[0])",
+        expected_error="Range 1 - 10 overlaps 5 - 15 (ranges[0])",
     ),
     InvalidRangesCase(
         name="null_entry",

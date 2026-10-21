@@ -217,14 +217,14 @@ OPEN_OVERLAP_CASES = [
         name="open_end_runs_over_every_higher_range",
         start=150,
         end=None,
-        label="150-MAX",
+        label="150 - MAX",
         overlaps_the_high_range=True,
     ),
     OpenOverlapCase(
         name="open_start_runs_into_the_lowest_range",
         start=None,
         end=100,
-        label="1-100",
+        label="1 - 100",
         overlaps_the_high_range=False,
     ),
 ]
@@ -453,7 +453,7 @@ class TestNumberPoolRangeMutations:
 
         assert result.errors
         assert str(result.errors[0].message) == (
-            f"Range 150-350 overlaps 100-200 ({two_range_pool.low.get_id()}), 300-400 ({two_range_pool.high.get_id()})"
+            f"Range 150 - 350 overlaps 100 - 200 ({two_range_pool.low.get_id()}), 300 - 400 ({two_range_pool.high.get_id()})"
         )
         assert await _range_bounds(db=db, pool=two_range_pool.pool) == [(100, 200), (300, 400)]
 
@@ -468,7 +468,7 @@ class TestNumberPoolRangeMutations:
         )
 
         assert result.errors
-        assert str(result.errors[0].message) == f"Range 100-200 overlaps 100-200 ({two_range_pool.low.get_id()})"
+        assert str(result.errors[0].message) == f"Range 100 - 200 overlaps 100 - 200 ({two_range_pool.low.get_id()})"
         assert await _range_bounds(db=db, pool=two_range_pool.pool) == [(100, 200), (300, 400)]
 
     async def test_range_resized_within_free_space_of_its_pool_is_accepted(
@@ -507,7 +507,7 @@ class TestNumberPoolRangeMutations:
             variables={"pool_id": pool_id, "start": 150, "end": 250},
         )
 
-        expected = f"Range 150-250 overlaps 100-200 ({two_range_pool.low.get_id()})"
+        expected = f"Range 150 - 250 overlaps 100 - 200 ({two_range_pool.low.get_id()})"
         assert updated.errors
         assert str(updated.errors[0].message) == expected
         assert created.errors
@@ -599,9 +599,9 @@ class TestNumberPoolRangeMutations:
         two_range_pool: TwoRangePool,
         case: OpenOverlapCase,
     ) -> None:
-        overlapped = f"100-200 ({two_range_pool.low.get_id()})"
+        overlapped = f"100 - 200 ({two_range_pool.low.get_id()})"
         if case.overlaps_the_high_range:
-            overlapped += f", 300-400 ({two_range_pool.high.get_id()})"
+            overlapped += f", 300 - 400 ({two_range_pool.high.get_id()})"
 
         created = await _execute(
             db=db,

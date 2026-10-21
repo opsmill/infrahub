@@ -35,7 +35,7 @@ async def test_a_number_outside_the_ranges_is_refused_on_create(
     with pytest.raises(ValidationError) as exc_info:
         await apply_on_create(applier=applier, attribute=ticket_id)
 
-    assert exc_info.value.message == untracked_attach_message(ranges="1-100")
+    assert exc_info.value.message == untracked_attach_message(ranges="1 - 100")
     assert ticket_id.tracking_pool is None
     assert allocator.calls == []
 
@@ -53,7 +53,7 @@ async def test_moving_a_number_to_a_pool_whose_ranges_exclude_it_is_refused(
     with pytest.raises(ValidationError) as exc_info:
         await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True, user_id=ACTOR_ID)
 
-    assert exc_info.value.message == untracked_attach_message(ranges="1-40", value=50)
+    assert exc_info.value.message == untracked_attach_message(ranges="1 - 40", value=50)
     assert allocator.calls == []
 
 
@@ -68,7 +68,7 @@ async def test_restating_the_tracking_pool_with_a_number_outside_its_ranges_is_r
 
     assert exc_info.value.message == (
         "'ticket_id' is tracked by the 'tickets' pool, so it cannot hold 900, which is outside the pool's ranges: "
-        "1-100. Choose a number inside those ranges, or remove the 'tickets' pool from 'ticket_id' in the same "
+        "1 - 100. Choose a number inside those ranges, or remove the 'tickets' pool from 'ticket_id' in the same "
         "change that sets it to 900. at ticket_id.from_pool"
     )
     assert allocator.calls == []
@@ -86,7 +86,7 @@ async def test_a_number_between_two_ranges_is_refused_and_every_range_is_listed(
     with pytest.raises(ValidationError) as exc_info:
         await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True, user_id=ACTOR_ID)
 
-    assert exc_info.value.message == untracked_attach_message(ranges="1-10, 20-30", value=15)
+    assert exc_info.value.message == untracked_attach_message(ranges="1 - 10, 20 - 30", value=15)
     assert allocator.calls == []
 
 

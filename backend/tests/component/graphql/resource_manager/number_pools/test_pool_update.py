@@ -298,7 +298,7 @@ class TestNumberPoolUpdate:
 
         assert [error.message for error in result.errors or []] == [
             "start_range/end_range apply to a pool holding at most one range; this pool holds: "
-            f"100-200 ({low.get_id()}), 205-300 ({high.get_id()}). Edit the ranges instead."
+            f"100 - 200 ({low.get_id()}), 205 - 300 ({high.get_id()}). Edit the ranges instead."
         ]
         assert await shorthand(db=db, pool_id=pool_id) == (None, None)
         assert await range_bounds(db=db, pool_id=pool_id) == [(100, 200), (205, 300)]

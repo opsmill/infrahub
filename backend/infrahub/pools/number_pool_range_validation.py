@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
 from infrahub.exceptions import ValidationError
-from infrahub.pools.number_ranges import OPEN_END, OPEN_START, NumberDomain, format_bounds
+from infrahub.pools.number_ranges import OPEN_END, OPEN_START, NumberDomain, format_range_label
 
 if TYPE_CHECKING:
     from collections.abc import Collection, Iterable
@@ -27,9 +27,9 @@ class NumberRangeBounds:
         return OPEN_END if self.end is None else self.end
 
     def label(self, domain: NumberDomain) -> str:
-        """Return the bounds as "start-end", reading an open bound through the domain's min_value and max_value."""
+        """Return the bounds as "start - end", reading an open bound through the domain's min_value and max_value."""
         start, end = domain.resolve(start=self.start, end=self.end)
-        return format_bounds(start=start, end=end)
+        return format_range_label(start=start, end=end)
 
     def overlaps(self, other: NumberRangeBounds) -> bool:
         return self.lower <= other.upper and other.lower <= self.upper

@@ -110,7 +110,7 @@ REFUSED_DECLARATION_TEST_CASES: list[RefusedDeclarationTestCase] = [
     RefusedDeclarationTestCase(
         name="open_ranges_overlapping_named_with_min_and_max",
         parameters={"ranges": [{"start": 100}, {"end": 150}]},
-        message="Range 1-150 overlaps 100-MAX",
+        message="Range 1 - 150 overlaps 100 - MAX",
     ),
     RefusedDeclarationTestCase(
         name="range_start_above_end",
@@ -120,17 +120,17 @@ REFUSED_DECLARATION_TEST_CASES: list[RefusedDeclarationTestCase] = [
     RefusedDeclarationTestCase(
         name="overlapping_ranges_named",
         parameters={"ranges": [{"start": 150, "end": 250}, {"start": 100, "end": 200}]},
-        message="Range 100-200 overlaps 150-250",
+        message="Range 100 - 200 overlaps 150 - 250",
     ),
     RefusedDeclarationTestCase(
         name="ranges_sharing_an_edge_overlap",
         parameters={"ranges": [{"start": 100, "end": 200}, {"start": 200, "end": 300}]},
-        message="Range 100-200 overlaps 200-300",
+        message="Range 100 - 200 overlaps 200 - 300",
     ),
     RefusedDeclarationTestCase(
         name="range_overlapping_two_others_names_both",
         parameters={"ranges": [{"start": 300, "end": 350}, {"start": 100, "end": 400}, {"start": 150, "end": 200}]},
-        message="Range 100-400 overlaps 150-200, 300-350",
+        message="Range 100 - 400 overlaps 150 - 200, 300 - 350",
     ),
 ]
 
@@ -265,7 +265,7 @@ def test_update_with_a_single_bound_shorthand_leaves_the_other_bound_open() -> N
 
     current.update(NumberPoolParameters(start_range=50))
 
-    assert [pool_range.label for pool_range in current.effective_ranges()] == ["50-MAX"]
+    assert [pool_range.label for pool_range in current.effective_ranges()] == ["50 - MAX"]
 
 
 def test_update_with_ranges_replaces_the_previous_ranges() -> None:

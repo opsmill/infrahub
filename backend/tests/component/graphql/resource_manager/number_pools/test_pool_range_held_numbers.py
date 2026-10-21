@@ -125,22 +125,22 @@ def _refused_writes(pool_in_use: PoolInUse) -> list[RangeWriteCase]:
             name="range_narrowed",
             source=UPDATE_RANGE,
             variables={"range_id": high_range_id, "start": 201, "end": 210},
-            ranges="100-110, 201-210",
+            ranges="100 - 110, 201 - 210",
         ),
         RangeWriteCase(
             name="range_upserted_narrower",
             source=UPSERT_RANGE,
             variables={"range_id": high_range_id, "pool_id": pool_id, "start": 201, "end": 210},
-            ranges="100-110, 201-210",
+            ranges="100 - 110, 201 - 210",
         ),
         RangeWriteCase(
-            name="range_deleted", source=DELETE_RANGE, variables={"range_id": high_range_id}, ranges="100-110"
+            name="range_deleted", source=DELETE_RANGE, variables={"range_id": high_range_id}, ranges="100 - 110"
         ),
         RangeWriteCase(
             name="pool_ranges_replaced",
             source=UPDATE_POOL_RANGES,
             variables={"pool_id": pool_id, "ranges": [{"start": 100, "end": 110}, {"start": 201, "end": 210}]},
-            ranges="100-110, 201-210",
+            ranges="100 - 110, 201 - 210",
         ),
         RangeWriteCase(
             name="pool_ranges_emptied",
@@ -206,7 +206,7 @@ async def test_shorthand_update_leaving_a_held_number_outside_the_range_is_refus
 
     assert result.errors
     assert result.errors[0].message == _held_message(
-        ranges="2-10",
+        ranges="2 - 10",
         held=[Held(label=await _label(db=db, node=tickets[0]), value=1, branches=["main"])],
         pool_name="shorthand-pool",
     )
@@ -233,7 +233,7 @@ async def test_refusal_lists_each_number_once_with_every_branch_holding_it(
 
     assert result.errors
     assert result.errors[0].message == _held_message(
-        ranges="100-110, 204-210",
+        ranges="100 - 110, 204 - 210",
         held=[
             Held(label=await _label(db=db, node=pool_in_use.ticket), value=200, branches=["branch-c", "main"]),
             Held(label=await _label(db=db, node=branch_ticket), value=201, branches=["branch-a"]),
@@ -255,7 +255,7 @@ async def test_refusal_lists_the_lowest_numbers_and_counts_the_others(
 
     assert result.errors
     assert result.errors[0].message == _held_message(
-        ranges="100-110",
+        ranges="100 - 110",
         held=[Held(label=await _label(db=db, node=pool_in_use.ticket), value=200, branches=["main"])],
         more=2,
     )
@@ -343,7 +343,7 @@ async def test_a_number_already_outside_the_ranges_refuses_range_changes_until_o
 
     assert unrelated.errors
     assert unrelated.errors[0].message == _held_message(
-        ranges="100-110, 300-310",
+        ranges="100 - 110, 300 - 310",
         held=[Held(label=await _label(db=db, node=pool_in_use.ticket), value=200, branches=["main"])],
     )
     assert not covering.errors
@@ -377,7 +377,7 @@ async def test_scoped_pool_refuses_a_range_write_leaving_a_number_of_any_divisio
     assert result.errors
     held = sorted(devices, key=lambda device: device.get_attribute(SCOPED_ATTRIBUTE_NAME).id or "")
     assert result.errors[0].message == _held_message(
-        ranges="2-10",
+        ranges="2 - 10",
         held=[
             Held(label=await _label(db=db, node=device), value=1, branches=["main"], kind=SCOPED_DEVICE.kind)
             for device in held

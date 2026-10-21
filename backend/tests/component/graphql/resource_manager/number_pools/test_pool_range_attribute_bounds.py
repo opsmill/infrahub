@@ -28,8 +28,8 @@ from .helpers import (
 
 MIN_VALUE = 10
 MAX_VALUE = 100
-BELOW_MIN_ERROR = "Range 5-20 starts below the attribute's min_value (10)"
-ABOVE_MAX_ERROR = "Range 50-150 ends above the attribute's max_value (100)"
+BELOW_MIN_ERROR = "Range 5 - 20 starts below the attribute's min_value (10)"
+ABOVE_MAX_ERROR = "Range 50 - 150 ends above the attribute's max_value (100)"
 
 
 @dataclass
@@ -47,13 +47,13 @@ OUT_OF_BOUNDS_CASES: list[OutOfBoundsCase] = [
         name="start_below_min_value_with_an_open_end",
         start=5,
         end=None,
-        expected_error="Range 5-100 starts below the attribute's min_value (10)",
+        expected_error="Range 5 - 100 starts below the attribute's min_value (10)",
     ),
     OutOfBoundsCase(
         name="end_above_max_value_with_an_open_start",
         start=None,
         end=150,
-        expected_error="Range 10-150 ends above the attribute's max_value (100)",
+        expected_error="Range 10 - 150 ends above the attribute's max_value (100)",
     ),
     OutOfBoundsCase(
         name="open_end_starting_above_max_value",

@@ -50,7 +50,7 @@ class TestAttachAcrossBranches:
         )
 
         assert message == _other_branch_message(
-            pool_name="other-branch-outside", branch="holds-8900", value=8900, ranges="8000-8009"
+            pool_name="other-branch-outside", branch="holds-8900", value=8900, ranges="8000 - 8009"
         )
         assert await tracking_pool_id(db=db, node_id=ticket["id"]) is None
         assert await used_numbers(db=db, branch=main_branch, pool=pool) == []
@@ -71,7 +71,7 @@ class TestAttachAcrossBranches:
         )
 
         assert message == _other_branch_message(
-            pool_name="older-branch-outside", branch=older.name, value=8910, ranges="8010-8019"
+            pool_name="older-branch-outside", branch=older.name, value=8910, ranges="8010 - 8019"
         )
         assert await tracking_pool_id(db=db, node_id=ticket["id"]) is None
         assert await used_numbers(db=db, branch=main_branch, pool=pool) == []
@@ -92,7 +92,7 @@ class TestAttachAcrossBranches:
         )
 
         assert message == _other_branch_message(
-            pool_name="newer-branch-outside", branch=newer.name, value=8950, ranges="8050-8059"
+            pool_name="newer-branch-outside", branch=newer.name, value=8950, ranges="8050 - 8059"
         )
         reloaded = await NodeManager.get_one(db=db, id=ticket["id"], branch=main_branch)
         assert reloaded is not None
@@ -150,7 +150,7 @@ class TestAttachAcrossBranches:
         )
 
         assert message == _other_branch_message(
-            pool_name="default-branch-outside", branch=main_branch.name, value=8940, ranges="8040-8049"
+            pool_name="default-branch-outside", branch=main_branch.name, value=8940, ranges="8040 - 8049"
         )
         assert await tracking_pool_id(db=db, node_id=ticket["id"]) is None
         assert await used_numbers(db=db, branch=main_branch, pool=pool) == []
@@ -177,7 +177,7 @@ class TestAttachAcrossBranches:
         )
 
         assert message == _other_branch_message(
-            pool_name="allocation-target", branch="holds-8065", value=8065, ranges="8070-8079"
+            pool_name="allocation-target", branch="holds-8065", value=8065, ranges="8070 - 8079"
         )
         assert await tracking_pool_id(db=db, node_id=ticket["id"]) == tracking.id
         assert await used_numbers(db=db, branch=main_branch, pool=target) == []

@@ -8,7 +8,7 @@ from infrahub import config
 from infrahub.core.constants.schema import UpdateSupport
 from infrahub.core.models import HashableModel
 from infrahub.exceptions import ValidationError
-from infrahub.pools.number_ranges import allocation_bounds, format_bounds
+from infrahub.pools.number_ranges import allocation_bounds, format_range_label
 
 
 def get_attribute_parameters_class_for_kind(kind: str) -> type[AttributeParameters]:
@@ -207,7 +207,7 @@ class NumberPoolRangeParameters(HashableModel):
 
     @property
     def label(self) -> str:
-        return format_bounds(start=self.lower, end=self.upper)
+        return format_range_label(start=self.lower, end=self.upper)
 
     @property
     def size(self) -> int:

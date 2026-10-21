@@ -97,7 +97,7 @@ Any `deprecation` message on an attribute or relationship of any kind now appear
 | Situation | Message |
 |-----------|---------|
 | shorthand and `ranges` together | `start_range/end_range cannot be combined with ranges` |
-| shorthand on a multi-range pool | `start_range/end_range apply to a pool holding at most one range; this pool holds: 100-200 (<id>), 205-300 (<id>). Edit the ranges instead.` |
-| overlapping range | `Range 150-250 overlaps 100-200 (<id>)` |
+| shorthand on a multi-range pool | `start_range/end_range apply to a pool holding at most one range; this pool holds: 100 - 200 (<id>), 205 - 300 (<id>). Edit the ranges instead.` |
+| overlapping range | `Range 150 - 250 overlaps 100 - 200 (<id>)` |
 | backwards range | `Range end (100) cannot be lower than start (200)` |
 | range edit on a schema pool | existing message pointing at the default-branch schema |

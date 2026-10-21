@@ -155,7 +155,7 @@ class TestNumberPoolValueEdit:
             variables={"id": ticket["id"], "ticket_id": {"value": 7900}},
         )
 
-        assert message == _tracked_edit_message(pool_name="value-edit", value=7900, ranges="7000-7699")
+        assert message == _tracked_edit_message(pool_name="value-edit", value=7900, ranges="7000 - 7699")
         assert await _held_value(db=db, branch=main_branch, node_id=ticket["id"]) == 7005
         assert await is_reserved_edges(db=db, node_id=ticket["id"]) == before
 
@@ -210,7 +210,7 @@ class TestNumberPoolValueEdit:
         )
 
         assert message == _tracked_edit_message(
-            pool_name="value-edit", value=7930, ranges="7000-7699", key="ticket_id.from_pool"
+            pool_name="value-edit", value=7930, ranges="7000 - 7699", key="ticket_id.from_pool"
         )
         assert await _held_value(db=db, branch=main_branch, node_id=ticket["id"]) == 7035
         assert await is_reserved_edges(db=db, node_id=ticket["id"]) == before
@@ -250,7 +250,7 @@ class TestNumberPoolValueEdit:
             variables={"id": ticket["id"], "ticket_id": {"value": 7950}},
         )
 
-        assert message == _tracked_edit_message(pool_name="value-edit", value=7950, ranges="7000-7699")
+        assert message == _tracked_edit_message(pool_name="value-edit", value=7950, ranges="7000 - 7699")
         assert await _held_value(db=db, branch=branch, node_id=ticket["id"]) == 7055
         assert await is_reserved_edges(db=db, node_id=ticket["id"]) == before
 
@@ -444,6 +444,6 @@ class TestNumberPoolValueEdit:
         message = await refused_write(db=db, branch=main_branch, source=test_case.source, variables={"data": data})
 
         assert message == _tracked_edit_message(
-            pool_name="value-edit-sequence", value=7999, ranges="7000-7699", key="sequence.value"
+            pool_name="value-edit-sequence", value=7999, ranges="7000 - 7699", key="sequence.value"
         )
         assert await _held_value(db=db, branch=main_branch, node_id=ticket["id"], attribute_name="sequence") == 7600

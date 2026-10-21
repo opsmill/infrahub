@@ -52,17 +52,17 @@ REFUSED_CANDIDATE_CASES: list[RefusedCandidateCase] = [
     RefusedCandidateCase(
         name="shares_an_end",
         candidate=NumberRangeBounds(start=200, end=250),
-        message="Range 200-250 overlaps 100-200 (low)",
+        message="Range 200 - 250 overlaps 100 - 200 (low)",
     ),
     RefusedCandidateCase(
         name="shares_a_start",
         candidate=NumberRangeBounds(start=250, end=300),
-        message="Range 250-300 overlaps 300-400 (high)",
+        message="Range 250 - 300 overlaps 300 - 400 (high)",
     ),
     RefusedCandidateCase(
         name="covers_both",
         candidate=NumberRangeBounds(start=50, end=500),
-        message="Range 50-500 overlaps 100-200 (low), 300-400 (high)",
+        message="Range 50 - 500 overlaps 100 - 200 (low), 300 - 400 (high)",
     ),
     RefusedCandidateCase(
         name="backwards",
@@ -72,29 +72,29 @@ REFUSED_CANDIDATE_CASES: list[RefusedCandidateCase] = [
     RefusedCandidateCase(
         name="open_start_reaches_a_range",
         candidate=NumberRangeBounds(start=None, end=150),
-        message="Range 1-150 overlaps 100-200 (low)",
+        message="Range 1 - 150 overlaps 100 - 200 (low)",
     ),
     RefusedCandidateCase(
         name="open_end_reaches_a_range",
         candidate=NumberRangeBounds(start=350, end=None),
-        message="Range 350-MAX overlaps 300-400 (high)",
+        message="Range 350 - MAX overlaps 300 - 400 (high)",
     ),
     RefusedCandidateCase(
         name="fully_open_covers_both",
         candidate=NumberRangeBounds(start=None, end=None),
-        message="Range 1-MAX overlaps 100-200 (low), 300-400 (high)",
+        message="Range 1 - MAX overlaps 100 - 200 (low), 300 - 400 (high)",
     ),
     RefusedCandidateCase(
         name="open_start_reads_as_min_value",
         candidate=NumberRangeBounds(start=None, end=150),
         domain=NumberDomain(lower=50, upper=4094),
-        message="Range 50-150 overlaps 100-200 (low)",
+        message="Range 50 - 150 overlaps 100 - 200 (low)",
     ),
     RefusedCandidateCase(
         name="open_end_reads_as_max_value",
         candidate=NumberRangeBounds(start=350, end=None),
         domain=NumberDomain(lower=50, upper=4094),
-        message="Range 350-4094 overlaps 300-400 (high)",
+        message="Range 350 - 4094 overlaps 300 - 400 (high)",
     ),
     RefusedCandidateCase(
         name="open_start_reads_above_its_end",
@@ -148,7 +148,7 @@ def test_range_set_with_an_overlap_is_refused_from_its_lowest_range() -> None:
     with pytest.raises(ValidationError) as exc_info:
         validate_number_pool_ranges(ranges=ranges, domain=UNBOUNDED)
 
-    assert exc_info.value.message == "Range 100-200 overlaps 150-320 (middle)"
+    assert exc_info.value.message == "Range 100 - 200 overlaps 150 - 320 (middle)"
 
 
 SHORTHAND_TARGET_CASES: list[RangeSetCase] = [
@@ -169,7 +169,7 @@ def test_shorthand_on_a_pool_holding_several_ranges_is_refused_listing_them() ->
 
     assert exc_info.value.message == (
         "start_range/end_range apply to a pool holding at most one range; "
-        "this pool holds: 100-200 (low), 300-400 (high). Edit the ranges instead."
+        "this pool holds: 100 - 200 (low), 300 - 400 (high). Edit the ranges instead."
     )
 
 
@@ -181,7 +181,7 @@ def test_shorthand_refusal_lists_open_bounds_through_the_attribute_limits() -> N
 
     assert exc_info.value.message == (
         "start_range/end_range apply to a pool holding at most one range; "
-        "this pool holds: 10-200 (low), 300-4094 (high). Edit the ranges instead."
+        "this pool holds: 10 - 200 (low), 300 - 4094 (high). Edit the ranges instead."
     )
 
 
@@ -193,7 +193,7 @@ def test_a_range_overlaps_a_stored_range_with_both_bounds_open() -> None:
             domain=UNBOUNDED,
         )
 
-    assert exc_info.value.message == "Range 5-5 overlaps 1-MAX (open)"
+    assert exc_info.value.message == "Range 5 - 5 overlaps 1 - MAX (open)"
 
 
 @dataclass
@@ -231,25 +231,25 @@ REFUSED_LIMITS_CASES: list[RefusedLimitsCase] = [
         name="entered_start_below_min_value",
         bounds=NumberRangeBounds(start=9, end=50),
         field_name="start",
-        message="Range 9-50 starts below the attribute's min_value (10)",
+        message="Range 9 - 50 starts below the attribute's min_value (10)",
     ),
     RefusedLimitsCase(
         name="entered_end_above_max_value",
         bounds=NumberRangeBounds(start=50, end=101),
         field_name="end",
-        message="Range 50-101 ends above the attribute's max_value (100)",
+        message="Range 50 - 101 ends above the attribute's max_value (100)",
     ),
     RefusedLimitsCase(
         name="entered_start_below_min_value_with_an_open_end",
         bounds=NumberRangeBounds(start=9, end=None),
         field_name="start",
-        message="Range 9-100 starts below the attribute's min_value (10)",
+        message="Range 9 - 100 starts below the attribute's min_value (10)",
     ),
     RefusedLimitsCase(
         name="entered_end_above_max_value_with_an_open_start",
         bounds=NumberRangeBounds(start=None, end=101),
         field_name="end",
-        message="Range 10-101 ends above the attribute's max_value (100)",
+        message="Range 10 - 101 ends above the attribute's max_value (100)",
     ),
     RefusedLimitsCase(
         name="open_end_with_start_above_max_value",
