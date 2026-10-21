@@ -91,9 +91,30 @@ class NumberPoolRangeUtilization(ObjectType):
         description = "One range of a number pool with its own figures."
 
     id = Field(String, required=True, description="The range node's id.")
-    display_label = Field(String, required=True, description="The range node's display label.")
-    start = Field(BigInt, required=True, description="First value of the range, included.")
-    end = Field(BigInt, required=True, description="Last value of the range, included.")
+    display_label = Field(
+        String,
+        required=True,
+        description=(
+            'The range\'s bounds written as "start - end", from start and end. An end at the largest supported '
+            "number is written as MAX."
+        ),
+    )
+    start = Field(
+        BigInt,
+        required=True,
+        description=(
+            "First value of the range, included. For a range without a start, the larger of 1 and the target "
+            "attribute's min_value on the requested branch."
+        ),
+    )
+    end = Field(
+        BigInt,
+        required=True,
+        description=(
+            "Last value of the range, included. For a range without an end, the smaller of the largest supported "
+            "number and the target attribute's max_value on the requested branch."
+        ),
+    )
     weight = Field(BigInt, required=True, description="The range's allocation weight. 0 when the range declares none.")
     figures = Field(
         NumberPoolUtilizationFigures,

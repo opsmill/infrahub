@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
@@ -813,3 +814,132 @@ async def test_the_bounds_and_exclusions_of_the_attribute_narrow_the_space_of_ev
 
     allocations = (await execute(ALLOCATIONS_QUERY, {"division": division}))["InfrahubNumberPoolAllocations"]
     assert (allocations["count"], [row["value"] for row in allocations["allocations"]]) == (2, [3, 30])
+
+
+GENERIC_RANGE_QUERY = """
+query PoolRanges($pool_id: ID!) {
+  CoreNumberPoolRange(pool__ids: [$pool_id]) {
+    edges { node { display_label start { value } end { value } } }
+  }
+}
+"""
+
+
+@dataclass(frozen=True)
+class OpenRangeLabelCase:
+    name: str
+    pool_name: str
+    on_other_branch: bool
+    expected: tuple[str, int, int]
+
+
+OPEN_RANGE_LABEL_CASES = [
+    OpenRangeLabelCase(
+        name="open-bounds-without-limits", pool_name="open", on_other_branch=False, expected=("1 - MAX", 1, sys.maxsize)
+    ),
+    OpenRangeLabelCase(
+        name="open-end-without-limits",
+        pool_name="from-100",
+        on_other_branch=False,
+        expected=("100 - MAX", 100, sys.maxsize),
+    ),
+    OpenRangeLabelCase(
+        name="open-bounds-follow-the-branch-limits",
+        pool_name="open",
+        on_other_branch=True,
+        expected=("10 - 4094", 10, 4094),
+    ),
+    OpenRangeLabelCase(
+        name="open-end-follows-the-branch-max-value",
+        pool_name="from-100",
+        on_other_branch=True,
+        expected=("100 - 4094", 100, 4094),
+    ),
+]
+
+
+class TestOpenRangeLabels:
+    """Two pools over the device's `vlan_id`, which has no limits on the default branch and 10 - 4094 on the other.
+
+    The open pool holds one range with both bounds open; the from-100 pool holds one range from 100 with an open end.
+    """
+
+    @pytest.fixture(scope="class")
+    async def pools(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        register_core_models_schema_scope_class: SchemaBranch,
+    ) -> dict[str, str]:
+        await save_schema_kinds(db=db, schema=SCOPED_POOL_SCHEMA)
+        registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+        pool_ids: dict[str, str] = {}
+        for name, start in (("open", None), ("from-100", 100)):
+            pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
+            await pool.new(db=db, name=name, node=SCOPED_DEVICE.kind, node_attribute="vlan_id")
+            await pool.save(db=db)
+            await add_pool_range(db=db, pool=pool, start=start, end=None)
+            pool_ids[name] = pool.id
+
+        await create_branch(db=db, branch_name=OTHER_BRANCH)
+        bounded_device = deepcopy(SCOPED_DEVICE)
+        bounded_device.attributes = [
+            NumberAttributeSchema(
+                name="vlan_id",
+                kind="Number",
+                optional=True,
+                parameters=NumberAttributeParameters(min_value=10, max_value=4094),
+            )
+            if attribute.name == "vlan_id"
+            else attribute
+            for attribute in bounded_device.attributes
+        ]
+        await save_schema_kinds(
+            db=db,
+            schema=SchemaRoot(
+                generics=SCOPED_POOL_SCHEMA.generics,
+                nodes=[
+                    bounded_device if node.kind == SCOPED_DEVICE.kind else node for node in SCOPED_POOL_SCHEMA.nodes
+                ],
+            ),
+            branch_name=OTHER_BRANCH,
+        )
+        return pool_ids
+
+    @staticmethod
+    async def _data(db: InfrahubDatabase, branch_name: str, query: str, pool_id: str) -> dict[str, Any]:
+        params = await prepare_graphql_params(db=db, branch=branch_name)
+        result = await graphql(
+            schema=params.schema,
+            source=query,
+            context_value=params.context,
+            root_value=None,
+            variable_values={"pool_id": pool_id},
+        )
+        assert result.errors is None
+        assert result.data is not None
+        return result.data
+
+    @pytest.mark.parametrize("case", OPEN_RANGE_LABEL_CASES, ids=[case.name for case in OPEN_RANGE_LABEL_CASES])
+    async def test_utilization_reads_open_bounds_through_the_limits_of_the_request_branch(
+        self, db: InfrahubDatabase, pools: dict[str, str], case: OpenRangeLabelCase
+    ) -> None:
+        branch_name = OTHER_BRANCH if case.on_other_branch else registry.default_branch
+
+        data = await self._data(db=db, branch_name=branch_name, query=UTILIZATION_QUERY, pool_id=pools[case.pool_name])
+
+        assert [
+            (item["display_label"], item["start"], item["end"])
+            for item in data["InfrahubNumberPoolUtilization"]["ranges"]
+        ] == [case.expected]
+
+    async def test_the_generic_range_query_returns_null_for_an_open_bound(
+        self, db: InfrahubDatabase, pools: dict[str, str]
+    ) -> None:
+        data = await self._data(
+            db=db, branch_name=registry.default_branch, query=GENERIC_RANGE_QUERY, pool_id=pools["from-100"]
+        )
+
+        assert data["CoreNumberPoolRange"]["edges"] == [
+            {"node": {"display_label": "100 - MAX", "start": {"value": 100}, "end": {"value": None}}}
+        ]

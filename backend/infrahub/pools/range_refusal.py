@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
-from infrahub.pools.number_ranges import EffectiveSpace, NumberDomain
+from infrahub.pools.number_ranges import EffectiveSpace, NumberDomain, format_bounds
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -138,4 +138,4 @@ def _describe_ranges(ranges: Sequence[Bounded]) -> str:
     if not ranges:
         return "no ranges"
     ordered = sorted(ranges, key=lambda pool_range: (pool_range.start, pool_range.end))
-    return ", ".join(f"{pool_range.start}-{pool_range.end}" for pool_range in ordered)
+    return ", ".join(format_bounds(start=pool_range.start, end=pool_range.end) for pool_range in ordered)

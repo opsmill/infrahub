@@ -10,7 +10,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.pools.number_pool_space import to_pool_ranges
-from infrahub.pools.number_ranges import EffectiveSpace
+from infrahub.pools.number_ranges import EffectiveSpace, format_range_label
 from infrahub.pools.scope import AllocationScope, Division, division_element_path
 
 if TYPE_CHECKING:
@@ -87,7 +87,7 @@ class NumberPoolState:
     scope: PoolScopeFields
     ranges: tuple[CoreNumberPoolRange, ...]
     range_labels: dict[str, str]
-    """The display label of each range, by range id."""
+    """The label of each range by range id, its open bounds read through `domain`."""
     domain: NumberDomain
     space: EffectiveSpace
 
@@ -143,7 +143,10 @@ class NumberPoolStateLoader:
             pool=pool,
             scope=PoolScopeFields(pool_id=pool_id, element_fields=tuple(element_fields)),
             ranges=tuple(ranges),
-            range_labels={item.get_id(): await item.get_display_label(db=self.db) for item in ranges},
+            range_labels={
+                item.get_id(): format_range_label(*domain.resolve(start=item.start.value, end=item.end.value))
+                for item in ranges
+            },
             domain=domain,
             space=EffectiveSpace(ranges=to_pool_ranges(ranges=ranges), domain=domain),
         )
