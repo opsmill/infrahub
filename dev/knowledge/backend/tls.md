@@ -42,7 +42,7 @@ reaching public services.
 | Git credential commands | `http.tls_*` | `git_credential/client.py::build_client_config`, shared by the credential helper and askpass (git spawns each as its own process) |
 | Git | `git.tls_ca_file`, `git.tls_insecure` | `git/global_config.py::apply_git_tls_config` writes `http.sslCAInfo` / `http.sslVerify` into the global gitconfig at task-worker startup |
 | Neo4j | `database.tls_ca_file` | `database/__init__.py` (`TrustCustomCAs`) |
-| Cache (Redis, NATS) | `cache.tls_ca_file` | `services/adapters/cache/`, and `workflows/initialization.py::build_cache_connection_string` for the Redis URL handed to Prefect |
+| Cache (Redis, NATS) | `cache.tls_ca_file` | Redis: `redis_connection.py::build_cache_connection_string`, the one URL the cache adapter, the lock registry and Prefect's result storage connect with. NATS: `services/adapters/cache/` |
 | Broker (RabbitMQ, NATS) | `broker.tls_ca_file` | `services/adapters/message_bus/` |
 | S3 object storage | `storage.s3.tls_ca_file` (alias `AWS_CA_BUNDLE`), `storage.s3.tls_insecure` (dumped as `AWS_S3_TLS_INSECURE`) | `storage.py::InfrahubS3ObjectStorage` passes `verify=` to boto3, `False` when insecure; inherits the global bundle only when `use_ssl` is on |
 | OTLP trace exporter | `trace.tls_ca_bundle` | `trace.py`; inherits the global bundle only when `TraceSettings.uses_tls` |
@@ -73,6 +73,9 @@ reaching public services.
 - **S3 settings reach the driver by alias.** `InfrahubObjectStorage` dumps `S3StorageSettings` with
   `by_alias=True` and `InfrahubS3ObjectStorage` only keeps keys it has a class attribute for, so a new S3
   field needs an `alias` matching an attribute there or it silently never reaches boto3.
+- **A cache URL supersedes `cache.tls_insecure`.** With `INFRAHUB_CACHE_URL` set, only the URL's own
+  `ssl_cert_reqs` turns verification off, so the global bundle still fills `cache.tls_ca_file`, and a TLS
+  URL that names no `ssl_ca_certs` gets that file appended.
 - **`force_verify=bool(ca_bundle)`.** Some HTTP paths build the context with `force_verify` derived from
   the bundle, which re-enables verification despite `tls_insecure`. The fill-in skips insecure
   components so a global bundle never changes what an insecure component does.

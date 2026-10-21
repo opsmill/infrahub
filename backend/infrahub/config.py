@@ -29,6 +29,7 @@ from typing_extensions import Self
 from infrahub.constants.database import DatabaseType
 from infrahub.exceptions import InitializationError, ProcessingError
 from infrahub.log import get_logger
+from infrahub.redis_connection import validate_redis_url
 from infrahub.tls.bundle import resolve_ca_bundle
 
 if TYPE_CHECKING:
@@ -74,14 +75,14 @@ def _resolve_ca_bundle_setting(setting_name: str, value: str) -> str:
         raise ValueError(f"{setting_name}: {exc}") from exc
 
 
-def _blank_ca_bundle_setting_as_unset(value: Any) -> Any:
-    """Read an empty or whitespace-only CA setting as unset, since a blanked environment variable is one."""
+def _blank_setting_as_unset(value: Any) -> Any:
+    """Read an empty or whitespace-only setting as unset, since a blanked environment variable is one."""
     if isinstance(value, str) and not value.strip():
         return None
     return value
 
 
-CaBundleSetting = Annotated[str | None, BeforeValidator(_blank_ca_bundle_setting_as_unset)]
+CaBundleSetting = Annotated[str | None, BeforeValidator(_blank_setting_as_unset)]
 
 
 class EnterpriseFeatures(StrEnum):
@@ -595,9 +596,7 @@ class BrokerSettings(BaseSettings):
         return self.port or default_ports[self.tls_enabled]
 
 
-# Scalar connection settings that a configured INFRAHUB_CACHE_URL supersedes.
-# tls_ca_file is deliberately absent: the URL's scheme decides whether TLS is used, but the CA to
-# verify against is still read from the setting (and from the global tls.ca_bundle that fills it).
+# tls_ca_file is absent because a TLS URL that names no CA bundle still verifies against it.
 CACHE_URL_SUPERSEDED_FIELDS = frozenset(
     {"address", "port", "database", "username", "password", "tls_enabled", "tls_insecure"}
 )
@@ -622,7 +621,7 @@ class CacheSettings(BaseSettings):
     )
     username: str = ""
     password: str = ""
-    url: SecretStr | None = Field(
+    url: Annotated[SecretStr | None, BeforeValidator(_blank_setting_as_unset)] = Field(
         default=None,
         description=(
             "Full Redis connection URL, authoritative over the scalar connection settings when set. "
@@ -673,19 +672,18 @@ class CacheSettings(BaseSettings):
             return self.port or 4222
         return self.port or default_ports
 
+    @property
+    def active_url(self) -> SecretStr | None:
+        """The connection URL, which only the Redis driver reads."""
+        return self.url if self.driver == CacheDriver.Redis else None
+
     @model_validator(mode="after")
     def validate_url(self) -> Self:
-        # The URL is only consulted by the Redis driver, so it is neither applied to nor parsed as a
-        # Redis URL for any other driver.
-        if self.url is None or self.driver != CacheDriver.Redis:
+        url = self.active_url
+        if url is None:
             return self
 
-        # The URL supersedes the scalar settings rather than being mutually exclusive with them:
-        # the shipped Compose files set every scalar connection variable unconditionally
-        # (INFRAHUB_CACHE_ADDRESS: ${INFRAHUB_CACHE_ADDRESS:-cache} and so on), so rejecting the
-        # combination would make INFRAHUB_CACHE_URL unusable in a Docker deployment. A scalar left
-        # at its default carries no intent and is passed over silently; one set to something else is
-        # reported so an operator can see which of their settings the URL is overriding.
+        # The URL supersedes rather than excludes the scalars because the shipped Compose files set every one of them.
         fields = type(self).model_fields
         superseded = sorted(
             name
@@ -698,12 +696,7 @@ class CacheSettings(BaseSettings):
                 superseded_settings=[f"INFRAHUB_CACHE_{name.upper()}" for name in superseded],
             )
 
-        # Imported lazily to keep this low-level settings module free of the services package.
-        from infrahub.services.adapters.cache.connection import validate_redis_url  # noqa: PLC0415
-
-        # Raises a ValueError, which pydantic surfaces as a validation error; the message never
-        # echoes the URL, so credentials embedded in it are not leaked.
-        validate_redis_url(self.url.get_secret_value())
+        validate_redis_url(url.get_secret_value())
         return self
 
 
@@ -2161,9 +2154,7 @@ class Settings(BaseSettings):
     http: HTTPSettings = HTTPSettings()
     database: DatabaseSettings = DatabaseSettings()
     broker: BrokerSettings = BrokerSettings()
-    # Built via a factory so the default is constructed when Settings is instantiated (at load
-    # time) rather than at class-definition time; its URL validator imports the redis connection
-    # builder, which must not be pulled in while this settings module is still importing.
+    # A factory so the URL is validated, and a superseded scalar reported, when the settings load rather than on import.
     cache: CacheSettings = Field(default_factory=CacheSettings)
     workflow: WorkflowSettings = WorkflowSettings()
     miscellaneous: MiscellaneousSettings = MiscellaneousSettings()
@@ -2212,7 +2203,11 @@ class Settings(BaseSettings):
             components.append((self.trace, "tls_ca_bundle"))
 
         for component, field_name in components:
-            if getattr(component, "tls_insecure", False) or getattr(component, field_name) is not None:
+            if getattr(component, field_name) is not None:
+                continue
+            # A cache URL supersedes cache.tls_insecure, so only the URL's own ssl_cert_reqs turns verification off.
+            superseded = component is self.cache and self.cache.active_url is not None
+            if getattr(component, "tls_insecure", False) and not superseded:
                 continue
             setattr(component, field_name, ca_bundle)
         return self

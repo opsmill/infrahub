@@ -1,5 +1,3 @@
-from urllib.parse import quote, urlencode
-
 from prefect import flow, task
 from prefect.cache_policies import NONE
 from prefect.client.orchestration import PrefectClient, get_client
@@ -10,10 +8,9 @@ from prefect_redis import RedisDatabase
 from pydantic import SecretStr
 
 from infrahub import config
-from infrahub.config import CacheSettings
 from infrahub.display_labels.gather import gather_trigger_display_labels_jinja2
 from infrahub.hfid.gather import gather_trigger_hfid
-from infrahub.services.adapters.cache.connection import add_default_ca_bundle
+from infrahub.redis_connection import build_cache_connection_string
 from infrahub.trigger.catalogue import builtin_triggers
 from infrahub.trigger.models import TriggerType
 from infrahub.trigger.setup import setup_triggers
@@ -21,64 +18,6 @@ from infrahub.trigger.setup import setup_triggers
 from .catalogue import WORKER_POOLS, get_workflows
 from .constants import WorkflowPriority
 from .models import TASK_RESULT_STORAGE_NAME
-
-
-def _redis_url(*, scheme: str, host: str, port: int, db: int, conn: dict[str, object]) -> str:
-    """Assemble a redis://|rediss:// URL with redis-py-native ssl_* query params."""
-    userinfo = ""
-    username = conn.get("username")
-    password = conn.get("password")
-    if username and password:
-        userinfo = f"{quote(str(username), safe='')}:{quote(str(password), safe='')}@"
-    elif password:
-        userinfo = f":{quote(str(password), safe='')}@"
-
-    query: dict[str, str] = {}
-    if conn.get("ssl"):
-        if conn.get("ssl_cert_reqs") == "none":
-            query["ssl_cert_reqs"] = "none"
-        if conn.get("ssl_check_hostname") is False:
-            query["ssl_check_hostname"] = "False"
-        if conn.get("ssl_ca_certs"):
-            query["ssl_ca_certs"] = str(conn["ssl_ca_certs"])
-
-    qs = f"?{urlencode(query)}" if query else ""
-    # A bare IPv6 address is valid as a redis.Redis(host=...) argument but must be bracketed in a URL.
-    host_part = f"[{host}]" if ":" in host and not host.startswith("[") else host
-    return f"{scheme}://{userinfo}{host_part}:{port}/{db}{qs}"
-
-
-def build_cache_connection_string(cache: CacheSettings) -> str:
-    """Build the Redis connection URL for Prefect's result-storage block from cache settings.
-
-    The result-storage block understands the full redis://, rediss://, redis+sentinel:// and
-    rediss+sentinel:// grammar, so a configured ``cache.url`` (single-node or Sentinel, with any TLS
-    query parameters) is kept as written and follows master failover just like the cache and lock
-    connections. Like them, a TLS URL that names no CA bundle verifies against ``cache.tls_ca_file``.
-    The URL belongs to the Redis driver alone, as ``CacheSettings`` documents, so under any other
-    driver it is ignored here too. When no URL applies the scalar connection settings are assembled
-    into a single-node redis://|rediss:// URL.
-
-    Raises:
-        ValueError: When ``INFRAHUB_CACHE_USERNAME`` is set without ``INFRAHUB_CACHE_PASSWORD``.
-
-    """
-    if cache.url is not None and cache.driver == config.CacheDriver.Redis:
-        return add_default_ca_bundle(cache.url.get_secret_value(), cache.tls_ca_file)
-
-    if cache.username and not cache.password:
-        raise ValueError("INFRAHUB_CACHE_USERNAME is set but INFRAHUB_CACHE_PASSWORD is not. Both are required.")
-
-    scheme = "rediss" if cache.tls_enabled else "redis"
-    conn: dict[str, object] = {
-        "username": cache.username,
-        "password": cache.password,
-        "ssl": cache.tls_enabled,
-        "ssl_cert_reqs": "none" if cache.tls_insecure else "optional",
-        "ssl_check_hostname": not cache.tls_insecure,
-        "ssl_ca_certs": cache.tls_ca_file,
-    }
-    return _redis_url(scheme=scheme, host=cache.address, port=cache.service_port, db=cache.database, conn=conn)
 
 
 @task(name="task-manager-setup-worker-pools", task_run_name="Setup Worker pools", cache_policy=NONE)
