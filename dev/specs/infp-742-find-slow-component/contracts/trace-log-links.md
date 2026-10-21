@@ -44,7 +44,9 @@ logs. The documentation lists these settings for operators who run their own Gra
 
 ## Tracing in Compose with the observability stack (FR-032)
 
-`development/docker-compose-observability.yml` sets, for `infrahub-server` and `task-worker`:
+`development/docker-compose-observability-tracing.yml` sets, for `infrahub-server` and `task-worker`,
+and `development/convert_compose_standalone.py` adds these blocks to
+`development/docker-compose-observability-standalone.yml` (changed on 2026-10-21, [research.md](../research.md) R2):
 
 | Variable | Value |
 |----------|-------|

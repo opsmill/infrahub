@@ -42,9 +42,13 @@ Expected: all pass. The tests must cover, at least:
 Start the stack with the observability services (see `development/docker-compose-observability.yml`),
 then:
 
-1. **Tracing is on with the stack (FR-032).** Without setting any `INFRAHUB_TRACE_*` variable, open
-   Grafana, Explore, Tempo: traces of the API server and task workers appear. Without the
-   observability file, `INFRAHUB_TRACE_ENABLE` is `false`. Required before release: repeat with the
+1. **Tracing is on with the stack (FR-032).** Start the root `docker-compose.yml` together with
+   `development/docker-compose-observability-standalone.yml`. Without setting any `INFRAHUB_TRACE_*`
+   variable, open Grafana, Explore, Tempo: traces of the API server and task workers appear. Without the
+   observability file, `INFRAHUB_TRACE_ENABLE` is `false`. The development stack does not turn tracing
+   on; for checks 2 and 3 on it, set `INFRAHUB_TRACE_ENABLE=true`, `INFRAHUB_TRACE_EXPORTER_TYPE=otlp`
+   and `INFRAHUB_TRACE_EXPORTER_ENDPOINT=http://infrahub-tempo:4317` (changed on 2026-10-21,
+   [research.md](research.md) R2). Required before release: repeat with the
    file downloaded from `https://infrahub.opsmill.io/?observability=true` once it is built from this
    branch ([research.md](research.md) R2).
 2. **One trace (story 1).** Run a generator that sends named queries through the SDK. In Tempo, open

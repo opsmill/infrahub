@@ -64,6 +64,16 @@ not use them.
   `development/`.
 - **Alternatives considered**: Turn tracing on in the root `docker-compose.yml`. Rejected: it would
   trace on every Compose instance, which FR-032 forbids.
+- **Changed on 2026-10-21 (decided by Daniel)**: the `environment` blocks cannot be in
+  `development/docker-compose-observability.yml`. The development stack always loads that file
+  (`tasks/shared.py`) and names its API service `server`, so a block for `infrahub-server` creates a
+  service without an image, and Compose rejects the project ("service infrahub-server has neither an
+  image nor a build context specified", tested). The blocks are in
+  `development/docker-compose-observability-tracing.yml`, and `development/convert_compose_standalone.py`
+  adds its services to the standalone file. The development stack does not turn tracing on; a developer
+  sets the `INFRAHUB_TRACE_*` variables. `docker compose -f docker-compose.yml -f
+  development/docker-compose-observability-standalone.yml config` shows tracing on for
+  `infrahub-server` and `task-worker`; the root file alone keeps it off.
 
 ## R3. Work in other repositories
 

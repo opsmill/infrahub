@@ -131,7 +131,8 @@ backend/tests/
 └── component/api/  (test_trace_sample_ratio.py, test_trace_spans.py, test_sso_token_telemetry.py)
 
 development/
-├── docker-compose-observability.yml            # Tracing on for infrahub-server and task-worker (FR-032)
+├── docker-compose-observability-tracing.yml    # New: tracing on for infrahub-server and task-worker (FR-032)
+├── convert_compose_standalone.py               # Adds the tracing file to the standalone file
 ├── docker-compose-observability-standalone.yml # Regenerated
 ├── docker-compose.yml                          # INFRAHUB_TRACE_SAMPLE_RATIO
 ├── alloy/config.alloy                          # Neo4j target only when set (FR-025)

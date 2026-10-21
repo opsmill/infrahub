@@ -1,0 +1,19 @@
+---
+# Tracing settings for the Infrahub services, merged into docker-compose-observability-standalone.yml only:
+# the development stack names its API service "server", so these blocks cannot live in the observability file.
+services:
+  infrahub-server:
+    environment:
+      INFRAHUB_TRACE_ENABLE: "true"
+      INFRAHUB_TRACE_EXPORTER_TYPE: otlp
+      INFRAHUB_TRACE_EXPORTER_PROTOCOL: grpc
+      INFRAHUB_TRACE_EXPORTER_ENDPOINT: http://infrahub-tempo:4317
+      INFRAHUB_TRACE_SAMPLE_RATIO: ${INFRAHUB_TRACE_SAMPLE_RATIO:-0.1}
+
+  task-worker:
+    environment:
+      INFRAHUB_TRACE_ENABLE: "true"
+      INFRAHUB_TRACE_EXPORTER_TYPE: otlp
+      INFRAHUB_TRACE_EXPORTER_PROTOCOL: grpc
+      INFRAHUB_TRACE_EXPORTER_ENDPOINT: http://infrahub-tempo:4317
+      INFRAHUB_TRACE_SAMPLE_RATIO: ${INFRAHUB_TRACE_SAMPLE_RATIO:-0.1}
