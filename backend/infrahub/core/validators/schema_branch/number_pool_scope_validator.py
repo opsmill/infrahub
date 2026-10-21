@@ -102,7 +102,8 @@ class DeclaredScopeValidator:
             default_entries: The allocation scope the attribute declares on the default branch.
 
         Raises:
-            ValidationError: When no field of the kind on the candidate holds the id of a scope field.
+            ValidationError: When no field of the kind on the candidate holds the id of a scope field, whether the
+                kind has no field of that name or holds one with another id.
 
         """
         default_resolver = AllocationScopeResolver(schema_branch=default_branch_schema)
@@ -112,6 +113,14 @@ class DeclaredScopeValidator:
             element = default_resolver.resolve(kind=kind, entries=[entry]).elements[0]
             if candidate_resolver.find_element_field(node_schema=candidate_kind, element=element) is not None:
                 continue
+            if candidate_kind.get_field(name=element.name, raise_on_error=False) is None:
+                raise ValidationError(
+                    {
+                        SCOPE_FIELD: f'"{element.name}" is not a field of {kind} on branch {candidate.name}, while the'
+                        f" pool of the attribute is scoped by it on the default branch {default_branch_schema.name};"
+                        " declare the attribute once the field is the same on both branches"
+                    }
+                )
             raise ValidationError(
                 {
                     SCOPE_FIELD: f'"{element.name}" is a different field on branch {candidate.name} than on the'

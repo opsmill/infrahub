@@ -337,6 +337,24 @@ def test_branch_kind_holding_another_field_than_the_default_branch_pool_is_scope
         )
 
 
+def test_branch_kind_missing_the_field_the_default_branch_pool_is_scoped_by_is_refused() -> None:
+    device = _with_pooled_vlan_id(SCOPED_DEVICE, scope=None)
+    device.relationships = [relationship for relationship in device.relationships if relationship.name != "site"]
+    schema_branch = _unvalidated_schema_branch(name="branch1", schema=_schema(device=device))
+
+    with pytest.raises(
+        ValidationError,
+        match=exact_message(
+            'ScopeDevice.vlan_id: allocation_scope: "site" is not a field of ScopeDevice on branch branch1, while the'
+            " pool of the attribute is scoped by it on the default branch main; declare the attribute once the field"
+            " is the same on both branches"
+        ),
+    ):
+        schema_branch.validate_attribute_parameters(
+            default_branch_schema=_default_branch_schema_with_pool_scoped_by_site()
+        )
+
+
 KIND_WITH_THE_SAME_FIELDS_CASES = [
     BranchKindCase(name="scope-left-out", site_id="main-site", scope=None),
     BranchKindCase(name="same-scope", site_id="main-site", scope=["site"]),
