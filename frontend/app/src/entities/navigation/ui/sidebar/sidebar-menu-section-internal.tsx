@@ -1,5 +1,4 @@
 import { Menu, MenuItem, MenuTrigger, Popover, SubmenuTrigger } from "@infrahub/ui";
-import type React from "react";
 import { Button as AriaButton } from "react-aria-components";
 import { Link } from "react-router";
 
@@ -13,10 +12,10 @@ import type { MenuItem as NavigationMenuItem } from "@/entities/navigation/domai
 import { CollapsedSidebarMenuItem } from "@/entities/navigation/ui/sidebar/collapsed-sidebar-menu-item";
 import { menuNavigationItemStyle } from "@/entities/navigation/ui/sidebar/styles";
 
-const RecursiveInternalMenuItem: React.FC<{ item: NavigationMenuItem }> = ({ item }) => {
+function RecursiveInternalMenuItem({ item }: { item: NavigationMenuItem }) {
   if (!item.children?.length) {
     return (
-      <MenuItem href={constructPath(item.path)} textValue={item.label}>
+      <MenuItem href={constructPath(item.path)} textValue={item.label || item.name}>
         <Icon icon={item.icon} className="size-4" />
         {item.label}
       </MenuItem>
@@ -25,7 +24,7 @@ const RecursiveInternalMenuItem: React.FC<{ item: NavigationMenuItem }> = ({ ite
 
   return (
     <SubmenuTrigger>
-      <MenuItem textValue={item.label}>
+      <MenuItem textValue={item.label || item.name}>
         <Icon icon={item.icon} className="size-4" />
         {item.label}
       </MenuItem>
@@ -38,26 +37,32 @@ const RecursiveInternalMenuItem: React.FC<{ item: NavigationMenuItem }> = ({ ite
       </Popover>
     </SubmenuTrigger>
   );
-};
+}
 
-const CollapsedMenuItemLink: React.FC<{ item: NavigationMenuItem }> = ({ item }) => (
-  <Link to={constructPath(item.path)} tabIndex={-1}>
-    <CollapsedSidebarMenuItem icon={item.icon} tooltipContent={item.label} />
-  </Link>
-);
+function CollapsedMenuItemLink({ item }: { item: NavigationMenuItem }) {
+  return (
+    <Link to={constructPath(item.path)} tabIndex={-1}>
+      <CollapsedSidebarMenuItem icon={item.icon} tooltipContent={item.label} />
+    </Link>
+  );
+}
 
-const ExpandedMenuItemLink: React.FC<{ item: NavigationMenuItem }> = ({ item }) => (
-  <Link to={constructPath(item.path)} className={menuNavigationItemStyle}>
-    <Icon icon={item.icon} className="size-4" />
-    <span className="truncate text-sm">{item.label}</span>
-    <Icon
-      icon="mdi:arrow-top-right"
-      className="m-1 ml-auto opacity-0 group-hover/menu-item:opacity-100 group-focus/menu-item:opacity-100 group-data-[state=open]/menu-item:opacity-100"
-    />
-  </Link>
-);
+function ExpandedMenuItemLink({ item }: { item: NavigationMenuItem }) {
+  return (
+    <Link to={constructPath(item.path)} className={menuNavigationItemStyle}>
+      <Icon icon={item.icon} className="size-4 shrink-0" />
+      <span className="truncate text-sm" title={item.label}>
+        {item.label}
+      </span>
+      <Icon
+        icon="mdi:arrow-top-right"
+        className="m-1 ml-auto shrink-0 opacity-0 group-hover/menu-item:opacity-100 group-focus/menu-item:opacity-100"
+      />
+    </Link>
+  );
+}
 
-const MenuTriggerButton: React.FC<{ item: NavigationMenuItem }> = ({ item }) => {
+function MenuTriggerButton({ item }: { item: NavigationMenuItem }) {
   const { isCollapsed } = useSidebar();
 
   if (isCollapsed) {
@@ -66,15 +71,17 @@ const MenuTriggerButton: React.FC<{ item: NavigationMenuItem }> = ({ item }) => 
 
   return (
     <AriaButton className={menuNavigationItemStyle}>
-      <Icon icon={item.icon} className="size-4" />
-      <span className="truncate text-sm">{item.label}</span>
+      <Icon icon={item.icon} className="size-4 shrink-0" />
+      <span className="truncate text-sm" title={item.label}>
+        {item.label}
+      </span>
       <Icon
         icon="mdi:dots-vertical"
-        className="m-1 ml-auto opacity-0 group-hover/menu-item:opacity-100 group-focus/menu-item:opacity-100 group-aria-expanded/menu-item:opacity-100"
+        className="m-1 ml-auto shrink-0 opacity-0 group-hover/menu-item:opacity-100 group-focus/menu-item:opacity-100 group-aria-expanded/menu-item:opacity-100"
       />
     </AriaButton>
   );
-};
+}
 
 export interface SidebarMenuSectionInternalProps {
   items: NavigationMenuItem[];
