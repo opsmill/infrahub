@@ -371,7 +371,7 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         kind = request.schema_path.schema_kind
         if not request.schema_branch.has(name=kind):
             return []
-        candidates: list[tuple[str, AttributeSchema, DeclaringAttribute]] = []
+        candidates: list[tuple[MainSchemaTypes, AttributeSchema, DeclaringAttribute]] = []
         for sharing_kind in sorted(
             self._kinds_sharing_fields(kind_schema=request.schema_branch.get(name=kind, duplicate=False))
         ):
@@ -383,7 +383,7 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
             for attribute in kind_schema.attributes:
                 declaration = None if attribute.inherited else self._declaring(kind=sharing_kind, attribute=attribute)
                 if declaration is not None and declaration.entries:
-                    candidates.append((sharing_kind, attribute, declaration))
+                    candidates.append((kind_schema, attribute, declaration))
         if not candidates:
             return []
 
@@ -391,9 +391,9 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         previous_schemas = self._previous_schemas(request=request)
         return [
             declaration
-            for sharing_kind, attribute, declaration in candidates
+            for kind_schema, attribute, declaration in candidates
             if not any(
-                self._declaration_changed(previous_schema=previous_schema, kind=sharing_kind, attribute=attribute)
+                self._declaration_changed(previous_schema=previous_schema, kind_schema=kind_schema, attribute=attribute)
                 for previous_schema in previous_schemas
             )
         ]
@@ -426,11 +426,22 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         )
 
     @staticmethod
-    def _declaration_changed(previous_schema: SchemaBranch, kind: str, attribute: AttributeSchema) -> bool:
+    def _declaration_changed(
+        previous_schema: SchemaBranch, kind_schema: MainSchemaTypes, attribute: AttributeSchema
+    ) -> bool:
         """Tell whether the attribute's declaration differs from the one on the schema before the change."""
-        if not isinstance(attribute.parameters, NumberPoolParameters) or not previous_schema.has(name=kind):
+        if not isinstance(attribute.parameters, NumberPoolParameters):
             return False
-        previous_kind = previous_schema.get(name=kind, duplicate=False)
+        # A kind renamed by the same load keeps its id, so the previous kind is found by it.
+        if kind_schema.id is not None:
+            try:
+                previous_kind = previous_schema.get_by_id(id=kind_schema.id, duplicate=False)
+            except SchemaNotFoundError:
+                return False
+        elif previous_schema.has(name=kind_schema.kind):
+            previous_kind = previous_schema.get(name=kind_schema.kind, duplicate=False)
+        else:
+            return False
         previous = next(
             (
                 candidate
