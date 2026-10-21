@@ -60,6 +60,16 @@ class RelationshipRead:
     peer_kinds: frozenset[str]
     peer_filters: PeerFilters | None
 
+    @property
+    def hop(self) -> RelationshipHop:
+        """The read as a hop from its owner."""
+        return RelationshipHop(
+            node_kind=self.owner_kind,
+            relationship_identifier=self.relationship_identifier,
+            relationship_direction=self.relationship_direction,
+            peer_filters=self.peer_filters,
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class ReachedPath:

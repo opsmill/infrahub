@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from infrahub.core.constants import RelationshipDirection
     from infrahub.core.validators.uniqueness.dependent_resolver import UniquenessDependentResolverInterface
 
-    from .models import PeerFilters, RelationshipHop
+    from .models import PeerFilters, RelationshipHop, RelationshipRead
 
 
 class RelationshipPeerReader(Protocol):
@@ -120,6 +120,29 @@ class FilteredPeerReads:
             filters=hop.peer_filters,
         )
         return owners | {owner_id for owner_id, _ in pairs}
+
+    async def reads_any(self, *, read: RelationshipRead, peer_ids: Collection[str]) -> bool:
+        """Whether ``read`` can return one of ``peer_ids``, before or after the change.
+
+        A peer that no owner is currently related to cannot be passed to the peer query, so the read is assumed to
+        return it.
+        """
+        if read.peer_filters is None:
+            return bool(peer_ids)
+        crossed, unchanged = self._split(peer_ids=peer_ids, peer_filters=read.peer_filters)
+        if crossed:
+            return True
+        held = await self._read_from_current_owners(
+            hop=read.hop, relationship_name=read.relationship_name, peer_ids=unchanged, filters=None
+        )
+        # A peer related to no owner, such as one just removed from the relationship, cannot be tested against the
+        # filters, so the read is assumed to return it.
+        if set(unchanged) - {peer_id for _, peer_id in held}:
+            return True
+        passing = await self._read_from_current_owners(
+            hop=read.hop, relationship_name=read.relationship_name, peer_ids=unchanged, filters=read.peer_filters
+        )
+        return bool(passing)
 
     def _split(
         self, *, peer_ids: Collection[str], peer_filters: PeerFilters

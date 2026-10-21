@@ -6,8 +6,11 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.core.constants import RelationshipDirection
-from infrahub.core.regeneration.filtered_peers import ChangedNodeIndex, FilteredPeerReads
-from infrahub.core.regeneration.models import PeerFilters, RelationshipHop
+from infrahub.core.regeneration.filtered_peers import (
+    ChangedNodeIndex,
+    FilteredPeerReads,
+)
+from infrahub.core.regeneration.models import PeerFilters, RelationshipHop, RelationshipRead
 from tests.helpers.diff_summary import node_diff
 
 from .helpers import DependentResolverCall, PeerReaderCall, RecordingDependentResolver, RecordingPeerReader
@@ -183,3 +186,107 @@ async def test_a_read_already_queried_is_not_queried_again() -> None:
     await peer_reads.owners(hop=VRF_HOP, peer_ids={"p1"})
 
     assert len(reader.calls) == 1
+
+
+FILTERED_READ = RelationshipRead(
+    owner_kind="TestVrf",
+    relationship_name="prefixes",
+    relationship_identifier="vrf__prefix",
+    relationship_direction=RelationshipDirection.OUTBOUND,
+    peer_kinds=frozenset({"TestPrefix"}),
+    peer_filters=ROLE_AGGREGATE,
+)
+UNFILTERED_READ = RelationshipRead(
+    owner_kind="TestVrf",
+    relationship_name="prefixes",
+    relationship_identifier="vrf__prefix",
+    relationship_direction=RelationshipDirection.OUTBOUND,
+    peer_kinds=frozenset({"TestPrefix"}),
+    peer_filters=None,
+)
+
+
+@dataclass(frozen=True, kw_only=True)
+class ReadsAnyCase:
+    name: str
+    read: RelationshipRead
+    diff_summary: list[NodeDiff]
+    peer_ids: set[str]
+    owners_by_peer: dict[str, set[str]]
+    passing: set[str]
+    expected: bool
+
+
+READS_ANY_CASES = [
+    ReadsAnyCase(
+        name="an_unfiltered_read_returns_any_peer",
+        read=UNFILTERED_READ,
+        diff_summary=[],
+        peer_ids={"p1"},
+        owners_by_peer={"p1": {"vrf1"}},
+        passing=set(),
+        expected=True,
+    ),
+    ReadsAnyCase(
+        name="an_unfiltered_read_of_no_peer_returns_none",
+        read=UNFILTERED_READ,
+        diff_summary=[],
+        peer_ids=set(),
+        owners_by_peer={},
+        passing=set(),
+        expected=False,
+    ),
+    ReadsAnyCase(
+        name="a_peer_whose_filtered_field_changed_is_assumed_to_be_returned_without_a_peer_query",
+        read=FILTERED_READ,
+        diff_summary=[node_diff(node_id="p1", kind="TestPrefix", field_names=["role"])],
+        peer_ids={"p1"},
+        owners_by_peer={"p1": {"vrf1"}},
+        passing=set(),
+        expected=True,
+    ),
+    ReadsAnyCase(
+        name="a_peer_related_to_no_owner_is_assumed_to_be_returned",
+        read=FILTERED_READ,
+        diff_summary=[],
+        peer_ids={"p1"},
+        owners_by_peer={},
+        passing=set(),
+        expected=True,
+    ),
+    ReadsAnyCase(
+        name="a_related_peer_passing_the_filters_is_returned",
+        read=FILTERED_READ,
+        diff_summary=[],
+        peer_ids={"p1", "p2"},
+        owners_by_peer={"p1": {"vrf1"}, "p2": {"vrf1"}},
+        passing={"p2"},
+        expected=True,
+    ),
+    ReadsAnyCase(
+        name="related_peers_failing_the_filters_are_not_returned",
+        read=FILTERED_READ,
+        diff_summary=[],
+        peer_ids={"p1", "p2"},
+        owners_by_peer={"p1": {"vrf1"}, "p2": {"vrf1"}},
+        passing=set(),
+        expected=False,
+    ),
+    ReadsAnyCase(
+        name="a_filtered_read_of_no_peer_returns_none",
+        read=FILTERED_READ,
+        diff_summary=[],
+        peer_ids=set(),
+        owners_by_peer={},
+        passing=set(),
+        expected=False,
+    ),
+]
+
+
+@pytest.mark.parametrize("case", READS_ANY_CASES, ids=lambda case: case.name)
+async def test_reads_any(case: ReadsAnyCase) -> None:
+    reader = RecordingPeerReader(owners_by_peer=case.owners_by_peer, passing=case.passing)
+    peer_reads = _peer_reads(diff_summary=case.diff_summary, owners_by_peer=case.owners_by_peer, reader=reader)
+
+    assert await peer_reads.reads_any(read=case.read, peer_ids=case.peer_ids) is case.expected
