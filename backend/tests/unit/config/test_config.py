@@ -381,13 +381,6 @@ def test_fixture_loaded_providers_have_expected_groups_claim(helper: TestHelper)
     assert config.security.get_oidc_provider("provider2").groups_claim == "groups"
 
 
-@pytest.fixture
-def without_cache_environment(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Unset every INFRAHUB_CACHE_* variable, so the shell running the tests cannot change what is loaded."""
-    for name in [name for name in os.environ if name.startswith("INFRAHUB_CACHE_")]:
-        monkeypatch.delenv(name)
-
-
 SUPERSEDED_WARNING = "INFRAHUB_CACHE_URL is set and supersedes the scalar cache connection settings"
 
 
