@@ -24,6 +24,7 @@ import {
   generateRepositoryBranchStatusPage,
   generateRepositoryBranchStatusPayloadAfter,
   generateRepositoryBranchStatusPayloadBefore,
+  generateRepositorySyncStatusChoices,
 } from "../../../../../tests/fake/repository";
 import { generateAttributeSchema, generateNodeSchema } from "../../../../../tests/fake/schema";
 import { expectServerDrivenChange } from "../../../../../tests/helpers/expect-server-driven-change";
@@ -40,6 +41,7 @@ const syncStatusAttribute = generateAttributeSchema({
   name: "sync_status",
   kind: "Dropdown",
   label: "Sync status",
+  choices: generateRepositorySyncStatusChoices(),
 });
 
 const commitAttribute = generateAttributeSchema({ name: "commit", label: "Commit" });
@@ -95,6 +97,12 @@ async function openFilterField(component: RenderedCard, field: string) {
 async function applyBranchStatusFilter(component: RenderedCard, status: string) {
   await openFilterField(component, "Status");
   await component.getByRole("option", { name: status, exact: true }).click();
+  await component.getByRole("button", { name: "Apply", exact: true }).click();
+}
+
+async function applySyncStatusFilter(component: RenderedCard, label: string) {
+  await openFilterField(component, "Sync status");
+  await component.getByRole("option", { name: new RegExp(`^${label}`) }).click();
   await component.getByRole("button", { name: "Apply", exact: true }).click();
 }
 
@@ -684,6 +692,106 @@ describe("RepositoryBranchesCard", () => {
     ).toHaveLength(0);
   });
 
+  it("offers the sync status values by their labels, in schema order", async () => {
+    // GIVEN
+    apiMock.mockResolvedValue(
+      toApiResult(generateRepositoryBranchStatusPayloadBefore({ count: 45 }))
+    );
+
+    // WHEN
+    const component = await renderCard();
+    await openFilterField(component, "Sync status");
+
+    // THEN
+    await expect.element(component.getByRole("option", { name: /^Import Error/ })).toBeVisible();
+    const labels = generateRepositorySyncStatusChoices().map(({ label }) => label);
+    expect(
+      component
+        .getByRole("listbox", { name: "Suggestions" })
+        .getByRole("option")
+        .elements()
+        .map((option) => option.textContent)
+    ).toEqual(labels.map((label) => expect.stringMatching(new RegExp(`^${label}`))));
+  });
+
+  it("sends the stored sync status value and states the total the server matched", async () => {
+    // GIVEN
+    const unfiltered = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
+    const matched = generateRepositoryBranchStatusPage({
+      rows: [generateRepositoryBranchStatus({ name: { value: "release-2-0" } })],
+    });
+    apiMock.mockResolvedValueOnce(toApiResult(unfiltered)).mockResolvedValue(toApiResult(matched));
+
+    // WHEN
+    const component = await renderCard();
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 0,
+      variables: FIRST_PAGE_VARIABLES,
+      payload: toApiResult(unfiltered),
+      rowVisibleAfter: "feature-auth",
+    });
+    await applySyncStatusFilter(component, "Import Error");
+
+    // THEN the choice name goes out, not the label the user picked
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 1,
+      variables: { ...FIRST_PAGE_VARIABLES, sync_status__value: "error-import" },
+      payload: toApiResult(matched),
+      rowVisibleAfter: "release-2-0",
+    });
+    await expect.element(component.getByText("1 branch", { exact: true })).toBeVisible();
+  });
+
+  it("labels the sync status tag by its choice and leaves the status tag as stored", async () => {
+    // GIVEN
+    const unfiltered = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
+    const matched = generateRepositoryBranchStatusPayloadAfter({ count: 3 });
+    apiMock.mockResolvedValueOnce(toApiResult(unfiltered)).mockResolvedValue(toApiResult(matched));
+
+    // WHEN
+    const component = await renderCard();
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 0,
+      variables: FIRST_PAGE_VARIABLES,
+      payload: toApiResult(unfiltered),
+      rowVisibleAfter: "feature-auth",
+    });
+    await applySyncStatusFilter(component, "Import Error");
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 1,
+      variables: { ...FIRST_PAGE_VARIABLES, sync_status__value: "error-import" },
+      payload: toApiResult(matched),
+      rowVisibleAfter: "release-2-0",
+    });
+    await applyBranchStatusFilter(component, "OPEN");
+
+    // THEN
+    await expect
+      .element(component.getByRole("row", { name: "Sync status contains Import Error" }))
+      .toBeVisible();
+    await expect
+      .element(component.getByRole("row", { name: "Status contains OPEN" }))
+      .toBeVisible();
+  });
+
+  it("offers the sync status filter on a read-only repository", async () => {
+    // GIVEN
+    apiMock.mockResolvedValue(
+      toApiResult(generateRepositoryBranchStatusPayloadBefore({ count: 45 }))
+    );
+
+    // WHEN
+    const component = await renderCard(readOnlyRepositorySchema);
+    await openFilterField(component, "Sync status");
+
+    // THEN
+    await expect.element(component.getByRole("option", { name: /^Import Error/ })).toBeVisible();
+  });
+
   it("offers no filter condition the query is unable to narrow on", async () => {
     // GIVEN
     apiMock.mockResolvedValue(
@@ -810,6 +918,43 @@ describe("RepositoryBranchesCard", () => {
     const params = new URLSearchParams(window.location.search);
     expect(params.get(`${BRANCHES_URL_PREFIX}_${QSP.FILTER}`)).toContain("status__value");
     expect(params.get(QSP.FILTER)).toBeNull();
+  });
+
+  it.each([
+    ["a repository", repositorySchema],
+    ["a read-only repository", readOnlyRepositorySchema],
+  ])("applies a sync status from its column header on %s", async (_label, schema) => {
+    // GIVEN
+    const unfiltered = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
+    const matched = generateRepositoryBranchStatusPayloadAfter({ count: 3 });
+    apiMock.mockResolvedValueOnce(toApiResult(unfiltered)).mockResolvedValue(toApiResult(matched));
+
+    // WHEN
+    const component = await renderCard(schema);
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 0,
+      variables: FIRST_PAGE_VARIABLES,
+      payload: toApiResult(unfiltered),
+      rowVisibleAfter: "feature-auth",
+    });
+    await component.getByRole("button", { name: "Sync status", exact: true }).click();
+    await component.getByRole("menuitem", { name: "Filter", exact: true }).click();
+    await component.getByRole("option", { name: /^Import Error/ }).click();
+    await component.getByRole("button", { name: "Apply", exact: true }).click();
+
+    // THEN the request and the url hold what the filter picker would have written
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 1,
+      variables: { ...FIRST_PAGE_VARIABLES, sync_status__value: "error-import" },
+      payload: toApiResult(matched),
+      rowVisibleAfter: "release-2-0",
+    });
+    const params = new URLSearchParams(window.location.search);
+    expect(JSON.parse(params.get(`${BRANCHES_URL_PREFIX}_${QSP.FILTER}`) ?? "[]")).toContainEqual(
+      expect.objectContaining({ name: "sync_status__value", value: "error-import" })
+    );
   });
 
   it("narrows the column header's filter conditions the same way the toolbar does", async () => {
@@ -947,6 +1092,32 @@ describe("RepositoryBranchesCard", () => {
       payload: toApiResult(matched),
       rowVisibleAfter: "release-2-0",
     });
+  });
+
+  it("restores a sync status filter and its tag from the url", async () => {
+    // GIVEN
+    const payload = generateRepositoryBranchStatusPayloadAfter({ count: 3 });
+    apiMock.mockResolvedValue(toApiResult(payload));
+    window.history.replaceState(
+      null,
+      "",
+      `?${BRANCHES_URL_PREFIX}_${QSP.FILTER}=${encodeURIComponent(JSON.stringify([{ name: "sync_status__value", value: "error-import" }]))}`
+    );
+
+    // WHEN
+    const component = await renderCard();
+
+    // THEN
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 0,
+      variables: { ...FIRST_PAGE_VARIABLES, sync_status__value: "error-import" },
+      payload: toApiResult(payload),
+      rowVisibleAfter: "release-2-0",
+    });
+    await expect
+      .element(component.getByRole("row", { name: "Sync status contains Import Error" }))
+      .toBeVisible();
   });
 
   it("offers no second sort key, which the request could not carry", async () => {

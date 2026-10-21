@@ -4,8 +4,9 @@ the commit shown for that branch, and, for a read-only repository, the ref it tr
 default branch marked and the total shown beside the title.
 
 The card is paginated, and searching or filtering narrows the set on the server rather than in the
-browser, so the count and the pages always describe the same set. Filter by branch name or branch
-status, and sort by when a branch was created or last updated. The page, the filters and the sort
+browser, so the count and the pages always describe the same set. Filter by branch name, branch
+status or sync status, for example to list only the branches whose import failed, and sort by when
+a branch was created or last updated. The page, the filters and the sort
 all live in the URL, so a reload keeps the view and the link can be shared with a colleague.
 
 A repository's details are also split in two, so it is clear which values describe the whole

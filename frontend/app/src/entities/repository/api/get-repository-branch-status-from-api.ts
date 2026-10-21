@@ -9,6 +9,7 @@ const REPOSITORY_BRANCH_STATUS = graphql(`
     $name__value: String
     $partial_match: Boolean
     $status__value: BranchStatus
+    $sync_status__value: String
     $order: MetadataOrderInput
   ) {
     InfrahubRepositoryBranchStatus(
@@ -18,6 +19,7 @@ const REPOSITORY_BRANCH_STATUS = graphql(`
       name__value: $name__value
       partial_match: $partial_match
       status__value: $status__value
+      sync_status__value: $sync_status__value
       order: $order
     ) {
       count

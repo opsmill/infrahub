@@ -7,6 +7,7 @@ import {
   FILTER_CONDITION,
   type FilterCondition,
 } from "@/entities/nodes/object/ui/filters/filter-condition-select";
+import { REPOSITORY_SYNC_STATUS_ATTRIBUTE_NAME } from "@/entities/repository/domain/model/repository";
 import type { AttributeSchema, ModelSchema } from "@/entities/schema/domain/model/schema";
 
 // A repository's branches never come back as `MERGED` or `DELETING`, so offering either would only
@@ -37,22 +38,34 @@ export const BRANCH_STATUS_FIELD_SCHEMA: AttributeSchema = {
   enum: [...FILTERABLE_BRANCH_STATUSES],
 };
 
-// Only the two fields the query narrows on and this card chooses to offer.
-export const BRANCH_ROW_FILTER_DEFINITIONS: FilterDefinition[] = [
-  { type: "attribute", schema: BRANCH_FIELD_SCHEMAS.name },
-  { type: "attribute", schema: BRANCH_STATUS_FIELD_SCHEMA },
-];
+export function findAttribute(schema: ModelSchema, name: string): AttributeSchema | undefined {
+  return schema.attributes?.find((attribute) => attribute.name === name);
+}
 
-export const BRANCH_ROW_FILTER_DEFINITIONS_BY_NAME: Record<string, FilterDefinition> =
-  Object.fromEntries(
-    BRANCH_ROW_FILTER_DEFINITIONS.map((definition) => [
-      getFilterDefinitionName(definition),
-      definition,
-    ])
-  );
+/** The fields the query narrows on and this card chooses to offer. */
+export function getBranchRowFilterDefinitions(schema: ModelSchema): {
+  list: FilterDefinition[];
+  byName: Record<string, FilterDefinition>;
+} {
+  const syncStatusAttribute = findAttribute(schema, REPOSITORY_SYNC_STATUS_ATTRIBUTE_NAME);
+  const list: FilterDefinition[] = [
+    { type: "attribute", schema: BRANCH_FIELD_SCHEMAS.name },
+    { type: "attribute", schema: BRANCH_STATUS_FIELD_SCHEMA },
+    ...(syncStatusAttribute
+      ? [{ type: "attribute", schema: syncStatusAttribute } satisfies FilterDefinition]
+      : []),
+  ];
 
-// Branch name and branch status are the only two fields this card filters on, so an emptiness
-// condition would leave the request unnarrowed while the tag claimed otherwise.
+  return {
+    list,
+    byName: Object.fromEntries(
+      list.map((definition) => [getFilterDefinitionName(definition), definition])
+    ),
+  };
+}
+
+// The query takes an exact value for every field this card filters on, so an emptiness condition
+// would leave the request unnarrowed while the tag claimed otherwise.
 export const BRANCH_ROW_FILTER_CONDITIONS: readonly FilterCondition[] = [FILTER_CONDITION.CONTAINS];
 
 // The query orders by branch node metadata only, so the schema the sort UI reads declares no

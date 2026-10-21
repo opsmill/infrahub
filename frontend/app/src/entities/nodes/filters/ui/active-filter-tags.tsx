@@ -25,22 +25,26 @@ import {
   SHOW_INTERNAL_GROUPS_ID,
 } from "@/entities/nodes/object/ui/filters/internal-groups-filter-tag";
 import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
-import type { AttributeKind } from "@/entities/schema/domain/model/schema";
+import type { AttributeSchema } from "@/entities/schema/domain/model/schema";
 
 export function formatAttributeFilterValue({
-  kind,
+  schema,
   value,
   formatDate,
 }: {
-  kind: AttributeKind;
+  schema: AttributeSchema;
   value: unknown;
   formatDate: UseFormatDateResult["formatDate"];
 }) {
-  switch (kind) {
+  switch (schema.kind) {
     case ATTRIBUTE_KIND.BOOLEAN:
       return String(value);
     case ATTRIBUTE_KIND.DATETIME:
       return formatDate(value as string | number | Date, "datetime");
+    case ATTRIBUTE_KIND.DROPDOWN: {
+      const choice = schema.choices?.find(({ name }) => name === value);
+      return choice?.label || (value as React.ReactNode);
+    }
     default:
       return value as React.ReactNode;
   }
@@ -266,7 +270,7 @@ export function getFilterTagDisplay({
       label: name,
       condition: "contains",
       value: formatAttributeFilterValue({
-        kind: filterDefinition.schema.kind as AttributeKind,
+        schema: filterDefinition.schema,
         value: filter.value,
         formatDate,
       }),
