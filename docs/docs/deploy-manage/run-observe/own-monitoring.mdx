@@ -45,6 +45,8 @@ The API server and the task workers write their log lines to standard output. Co
 - With `INFRAHUB_PRODUCTION=true`, the default of Infrahub, each line is a JSON object, for example `{"event": "...", "trace_id": "0af7651916cd43dd8448eb211c80319c", ...}`.
 - With `INFRAHUB_PRODUCTION=false`, which the Docker Compose files set, each line is text with `key=value` fields, for example `trace_id=0af7651916cd43dd8448eb211c80319c`.
 
+The text lines also contain terminal color codes around each field name and value, so a search for `trace_id=` does not find them as written. The observability stack removes the codes before it stores the lines. With your own log agent, set `INFRAHUB_PRODUCTION=true` on the API server and the task workers to get JSON lines without color codes, or remove the codes in your agent.
+
 The `trace_id` value is 32 lowercase hexadecimal characters, the form Tempo and most trace stores use. A line written outside a recorded trace has no `trace_id`.
 
 ## Link traces and logs in your own Grafana
