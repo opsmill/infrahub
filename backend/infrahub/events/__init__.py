@@ -22,6 +22,7 @@ from .proposed_change_action import (
     ProposedChangeThreadUpdatedEvent,
 )
 from .repository_action import CommitUpdatedEvent
+from .trace_action import TraceSampleRatioUpdatedEvent
 from .validator_action import ValidatorFailedEvent, ValidatorPassedEvent, ValidatorStartedEvent
 
 __all__ = [
@@ -53,6 +54,7 @@ __all__ = [
     "ProposedChangeReviewRequestedEvent",
     "ProposedChangeThreadCreatedEvent",
     "ProposedChangeThreadUpdatedEvent",
+    "TraceSampleRatioUpdatedEvent",
     "ValidatorFailedEvent",
     "ValidatorPassedEvent",
     "ValidatorStartedEvent",

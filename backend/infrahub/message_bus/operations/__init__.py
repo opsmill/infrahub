@@ -24,6 +24,7 @@ COMMAND_MAP: dict[str, MessageHandler] = {
     "refresh.registry.branches": refresh.registry.branches,
     "refresh.registry.rebased_branch": refresh.registry.rebased_branch,
     "refresh.settings.response_delay": refresh.settings.response_delay,
+    "refresh.settings.trace_sample_ratio": refresh.settings.trace_sample_ratio,
     "send.echo.request": send.echo.request,
 }
 

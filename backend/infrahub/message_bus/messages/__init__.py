@@ -9,6 +9,7 @@ from .refresh_git_repository_branch_deleted import RefreshGitRepositoryBranchDel
 from .refresh_registry_branches import RefreshRegistryBranches
 from .refresh_registry_rebasedbranch import RefreshRegistryRebasedBranch
 from .refresh_settings_response_delay import RefreshSettingsResponseDelay
+from .refresh_settings_trace_sample_ratio import RefreshSettingsTraceSampleRatio
 from .send_echo_request import SendEchoRequest, SendEchoRequestResponse
 
 MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
@@ -21,6 +22,7 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "refresh.registry.branches": RefreshRegistryBranches,
     "refresh.registry.rebased_branch": RefreshRegistryRebasedBranch,
     "refresh.settings.response_delay": RefreshSettingsResponseDelay,
+    "refresh.settings.trace_sample_ratio": RefreshSettingsTraceSampleRatio,
     "send.echo.request": SendEchoRequest,
 }
 

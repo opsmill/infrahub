@@ -617,6 +617,7 @@ const sidebars: SidebarsConfig = {
             { type: 'doc', id: 'reference/infrahub-events/node', label: 'Node events' },
             { type: 'doc', id: 'reference/infrahub-events/proposed', label: 'Proposed change events' },
             { type: 'doc', id: 'reference/infrahub-events/schema', label: 'Schema events' },
+            { type: 'doc', id: 'reference/infrahub-events/trace', label: 'Trace events' },
             { type: 'doc', id: 'reference/infrahub-events/validator', label: 'Validator events' },
           ],
         },

@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from copy import deepcopy
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from functools import partial
 from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
@@ -13,6 +14,7 @@ import ujson
 from aio_pika import Message
 
 from infrahub import config
+from infrahub import trace as infrahub_trace
 from infrahub.components import ComponentType
 from infrahub.message_bus import messages
 from infrahub.message_bus.messages.send_echo_request import SendEchoRequestResponse
@@ -20,6 +22,7 @@ from infrahub.message_bus.operations import execute_message
 from infrahub.message_bus.types import MessageTTL
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
+from infrahub.trace import SampleRatioState, create_tracer_provider, get_sample_ratio_state
 from infrahub.worker import WORKER_IDENTITY
 from infrahub.workers.dependencies import build_message_bus
 from tests.helpers.dependency_override import override_dependency
@@ -489,3 +492,35 @@ async def test_rabbitmq_on_message_invalid_routing_key(rabbitmq_api: RabbitMQMan
 
 async def on_callback(message: AbstractIncomingMessage, message_bus: InfrahubMessageBus) -> None:
     await execute_message(routing_key=message.routing_key or "", message_body=message.body, message_bus=message_bus)
+
+
+async def _wait_for_ratio_in_force(expected: float) -> None:
+    for _ in range(_LOG_WAIT_ATTEMPTS):
+        state = get_sample_ratio_state()
+        if state is not None and state.ratio_in_force == expected:
+            return
+        await asyncio.sleep(_LOG_WAIT_INTERVAL)
+
+
+async def test_task_worker_applies_a_trace_sample_ratio_change(
+    rabbitmq_api: RabbitMQManager, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A task worker receives the broadcast through its own events queue and applies the ratio."""
+    monkeypatch.setattr(infrahub_trace, "_process_sampler", None)
+    provider = create_tracer_provider(service="infrahub-test", version="1.0", exporter_type="console", sample_ratio=0.1)
+    # The API server declares the shared queues; shutting it down removes its own events queue.
+    bus = await RabbitMQMessageBus.new(settings=rabbitmq_api.settings, component_type=ComponentType.API_SERVER)
+    await bus.shutdown()
+    expires_at = datetime(2099, 1, 1, tzinfo=UTC)
+
+    bus = await RabbitMQMessageBus.new(settings=rabbitmq_api.settings, component_type=ComponentType.GIT_AGENT)
+    try:
+        await bus.send(message=messages.RefreshSettingsTraceSampleRatio(ratio=1.0, expires_at=expires_at))
+        await _wait_for_ratio_in_force(expected=1.0)
+    finally:
+        await bus.shutdown()
+        provider.shutdown()
+
+    assert get_sample_ratio_state() == SampleRatioState(
+        default_ratio=0.1, ratio_in_force=1.0, temporary_ratio=1.0, expires_at=expires_at
+    )

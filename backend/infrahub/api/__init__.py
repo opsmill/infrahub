@@ -23,6 +23,7 @@ from infrahub.api import (
     schema,
     telemetry,
     transformation,
+    troubleshooting,
 )
 from infrahub.api.dependencies import get_current_user
 from infrahub.api.storage import storage
@@ -47,6 +48,7 @@ router.include_router(schema.router)
 router.include_router(storage.router)
 router.include_router(telemetry.router)
 router.include_router(transformation.router)
+router.include_router(troubleshooting.router)
 
 
 @router.get("/docs", include_in_schema=False)

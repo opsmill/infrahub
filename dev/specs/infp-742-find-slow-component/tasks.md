@@ -252,22 +252,22 @@ traced; the default applies after 2 minutes (quickstart, manual check 8).
 
 ### Tests for User Story 6 (Infrahub)
 
-- [ ] T065 [P] [US6] Port the temporary ratio tests from the draft `backend/tests/unit/test_trace.py` (set, replace, clear, expiry by the clock, `state()`) into `backend/tests/unit/test_trace.py`
-- [ ] T066 [P] [US6] Port the message tests from the draft `backend/tests/unit/message_bus/test_operations.py` and `backend/tests/unit/message_bus/test_mappings.py`: the handler sets and clears the ratio and writes one log line each time (FR-035); `ratio` and `expires_at` are set together or both empty
-- [ ] T067 [P] [US6] Port `backend/tests/component/api/test_trace_sample_ratio.py` and the fixtures in `backend/tests/component/api/conftest.py` from the draft, with the path `/api/troubleshooting/trace-sample-ratio`, and add: a new change replaces the active one; the three endpoints are in the OpenAPI schema with a description (FR-036)
-- [ ] T068 [P] [US6] Write a component test in `backend/tests/component/` that starts a task worker process with the message bus and checks that it applies a ratio change (research R7, critique E8); if a task worker cannot be started in a component test, record why in [research.md](research.md) R7 and cover it with quickstart manual check 8
-- [ ] T069 [P] [US6] Port the change in `backend/tests/component/api/test_50_internals.py` from the draft, if it still applies after the endpoints move out of `internal.py`
+- [x] T065 [P] [US6] Port the temporary ratio tests from the draft `backend/tests/unit/test_trace.py` (set, replace, clear, expiry by the clock, `state()`) into `backend/tests/unit/test_trace.py`
+- [x] T066 [P] [US6] Port the message tests from the draft `backend/tests/unit/message_bus/test_operations.py` and `backend/tests/unit/message_bus/test_mappings.py`: the handler sets and clears the ratio and writes one log line each time (FR-035); `ratio` and `expires_at` are set together or both empty
+- [x] T067 [P] [US6] Port `backend/tests/component/api/test_trace_sample_ratio.py` and the fixtures in `backend/tests/component/api/conftest.py` from the draft, with the path `/api/troubleshooting/trace-sample-ratio`, and add: a new change replaces the active one; the three endpoints are in the OpenAPI schema with a description (FR-036)
+- [x] T068 [P] [US6] Write a component test in `backend/tests/component/` that starts a task worker process with the message bus and checks that it applies a ratio change (research R7, critique E8); if a task worker cannot be started in a component test, record why in [research.md](research.md) R7 and cover it with quickstart manual check 8 (Done as an integration test in `backend/tests/integration/services/adapters/message_bus/test_rabbitmq.py`, because it needs RabbitMQ; see R7.)
+- [x] T069 [P] [US6] Port the change in `backend/tests/component/api/test_50_internals.py` from the draft, if it still applies after the endpoints move out of `internal.py` (The `recorder_bus` fixture moved to `backend/tests/component/api/conftest.py`.)
 
 ### Implementation for User Story 6 (Infrahub)
 
-- [ ] T070 [US6] In `backend/infrahub/trace.py`, port from the draft the temporary ratio of `RatioSampler` (`set_temporary_ratio`, `clear_temporary_ratio`, `state`, `_temporary_in_force`) and the module functions `set_temporary_sample_ratio`, `clear_temporary_sample_ratio`, `get_sample_ratio_state` ([data-model.md](data-model.md) "Sampler state")
-- [ ] T071 [P] [US6] Create `backend/infrahub/message_bus/messages/refresh_settings_trace_sample_ratio.py` from the draft, and register `refresh.settings.trace_sample_ratio` in `backend/infrahub/message_bus/messages/__init__.py`
-- [ ] T072 [US6] In `backend/infrahub/message_bus/operations/refresh/settings.py`, port the handler `trace_sample_ratio` with its two log lines, and register it in `backend/infrahub/message_bus/operations/__init__.py` (FR-027, FR-035)
-- [ ] T073 [P] [US6] Create `backend/infrahub/events/trace_action.py` with `TraceSampleRatioUpdatedEvent` from the draft, export it in `backend/infrahub/events/__init__.py`, and add `TRACE_SAMPLE_RATIO_UPDATED` in `backend/infrahub/core/constants/__init__.py` (FR-030)
-- [ ] T074 [US6] Create `backend/infrahub/api/troubleshooting.py` with `router = APIRouter(prefix="/troubleshooting", tags=["troubleshooting"])` and the three endpoints `GET`, `PUT` and `DELETE /trace-sample-ratio`, ported from the draft `backend/infrahub/api/internal.py` (`TraceSampleRatioAPI`, `TraceSampleRatioUpdateAPI`, the super admin check, the error when tracing is off, the event that never fails the request); remove `include_in_schema=False`; give each endpoint a summary and a description that says why it exists (FR-026 to FR-031, FR-036)
-- [ ] T075 [US6] Include the troubleshooting router in `backend/infrahub/api/__init__.py`; move the shared super admin permission constant so `internal.py` and `troubleshooting.py` both use it without duplication; leave `POST /api/response-delay` unchanged
-- [ ] T076 [US6] Regenerate `schema/openapi.json` with `uv run invoke schema.generate-jsonschema` and the frontend REST types with `cd frontend/app && pnpm codegen`; regenerate the reference docs with `uv run invoke docs.generate` (event and message bus pages, configuration)
-- [ ] T077 [P] [US6] (Write the text in "Changelog entries for the top layer", not in `changelog/`; created by T095.) Port `changelog/+trace-sample-ratio-without-restart.added.md` from the draft and correct it to the public path `/api/troubleshooting/trace-sample-ratio`
+- [x] T070 [US6] In `backend/infrahub/trace.py`, port from the draft the temporary ratio of `RatioSampler` (`set_temporary_ratio`, `clear_temporary_ratio`, `state`, `_temporary_in_force`) and the module functions `set_temporary_sample_ratio`, `clear_temporary_sample_ratio`, `get_sample_ratio_state` ([data-model.md](data-model.md) "Sampler state")
+- [x] T071 [P] [US6] Create `backend/infrahub/message_bus/messages/refresh_settings_trace_sample_ratio.py` from the draft, and register `refresh.settings.trace_sample_ratio` in `backend/infrahub/message_bus/messages/__init__.py`
+- [x] T072 [US6] In `backend/infrahub/message_bus/operations/refresh/settings.py`, port the handler `trace_sample_ratio` with its two log lines, and register it in `backend/infrahub/message_bus/operations/__init__.py` (FR-027, FR-035)
+- [x] T073 [P] [US6] Create `backend/infrahub/events/trace_action.py` with `TraceSampleRatioUpdatedEvent` from the draft, export it in `backend/infrahub/events/__init__.py`, and add `TRACE_SAMPLE_RATIO_UPDATED` in `backend/infrahub/core/constants/__init__.py` (FR-030)
+- [x] T074 [US6] Create `backend/infrahub/api/troubleshooting.py` with `router = APIRouter(prefix="/troubleshooting", tags=["troubleshooting"])` and the three endpoints `GET`, `PUT` and `DELETE /trace-sample-ratio`, ported from the draft `backend/infrahub/api/internal.py` (`TraceSampleRatioAPI`, `TraceSampleRatioUpdateAPI`, the super admin check, the error when tracing is off, the event that never fails the request); remove `include_in_schema=False`; give each endpoint a summary and a description that says why it exists (FR-026 to FR-031, FR-036)
+- [x] T075 [US6] Include the troubleshooting router in `backend/infrahub/api/__init__.py`; move the shared super admin permission constant so `internal.py` and `troubleshooting.py` both use it without duplication; (`SUPER_ADMIN_PERMISSION` is in `backend/infrahub/permissions/globals.py`.) leave `POST /api/response-delay` unchanged
+- [x] T076 [US6] Regenerate `schema/openapi.json` with `uv run invoke schema.generate-jsonschema` and the frontend REST types with `cd frontend/app && pnpm codegen`; regenerate the reference docs with `uv run invoke docs.generate` (event and message bus pages, configuration)
+- [x] T077 [P] [US6] (Write the text in "Changelog entries for the top layer", not in `changelog/`; created by T095.) Port `changelog/+trace-sample-ratio-without-restart.added.md` from the draft and correct it to the public path `/api/troubleshooting/trace-sample-ratio`
 - [ ] T078 [US6] Run T065 to T069 and `uv run invoke format lint`
 
 ### SDK change (IFC-3420), in `python_sdk/` on branch `dp-20261015-trace-sample-ratio-command-ifc-3420`
@@ -520,3 +520,9 @@ Created by T095 in IFC-3470. Each layer adds its entries here, with the file nam
   task workers, with traces sent to the Tempo service of the stack and a sampling ratio of 0.1 that
   `INFRAHUB_TRACE_SAMPLE_RATIO` changes. A Compose deployment without the observability stack keeps
   tracing off.
+- `+trace-sample-ratio-without-restart.added.md`: Added the `/api/troubleshooting/trace-sample-ratio`
+  REST endpoints, documented in the OpenAPI schema. With the `super_admin` permission, `PUT` sets a
+  temporary trace sampling ratio for 1 second to 24 hours on every API server process and task worker
+  without a restart, `DELETE` goes back to the default ratio, and `GET` returns the ratio in force.
+  Each process logs the change when it applies it, and each change is recorded as an
+  `infrahub.trace.sample_ratio_updated` event.

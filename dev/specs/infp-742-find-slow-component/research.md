@@ -181,6 +181,14 @@ not use them.
 - **Not checked**: That a task worker process opens the events queue. The draft test
   `tests/unit/message_bus/test_operations.py` checks the handler, not the delivery. A component test
   must check delivery to a task worker before SC-004 is claimed.
+- **Checked on 2026-10-21**: a task worker uses the message bus of the `GIT_AGENT` component type
+  (`infrahub.workers.infrahub_async::InfrahubWorkerAsync.component_type`), which binds
+  `refresh.settings.*` to its own `worker-events-<identity>` queue and passes each message to the same
+  handlers. The integration test
+  `backend/tests/integration/services/adapters/message_bus/test_rabbitmq.py::test_task_worker_applies_a_trace_sample_ratio_change`
+  starts that bus against RabbitMQ, sends the message and checks that the ratio of the process changes;
+  it fails when the handler is not registered. It is an integration test, not a component test,
+  because it needs RabbitMQ. NATS is not covered by a test.
 
 ## R8. Masked value (FR-013a)
 

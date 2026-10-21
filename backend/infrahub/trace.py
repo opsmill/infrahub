@@ -1,5 +1,7 @@
 import os
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -138,16 +140,62 @@ class MaskingSpanExporter(SpanExporter):
         return self._exporter.force_flush(timeout_millis=timeout_millis)
 
 
-class RatioSampler(Sampler):
-    """Record a share of new root traces, set by the default ratio."""
+def _utc_now() -> datetime:
+    return datetime.now(tz=UTC)
 
-    def __init__(self, default_ratio: float) -> None:
+
+@dataclass(frozen=True)
+class SampleRatioState:
+    """Sampling state of one process; `temporary_ratio` and `expires_at` are None when no temporary ratio is in force."""
+
+    default_ratio: float
+    ratio_in_force: float
+    temporary_ratio: float | None = None
+    expires_at: datetime | None = None
+
+
+@dataclass(frozen=True)
+class _TemporaryRatio:
+    sampler: TraceIdRatioBased
+    expires_at: datetime
+
+
+class RatioSampler(Sampler):
+    """Record a share of new root traces: a temporary ratio until it expires, the default ratio otherwise."""
+
+    def __init__(self, default_ratio: float, clock: Callable[[], datetime] = _utc_now) -> None:
         self._default = TraceIdRatioBased(rate=default_ratio)
+        self._temporary: _TemporaryRatio | None = None
+        self._clock = clock
 
     @property
     def ratio(self) -> float:
         """The ratio in force for a new root trace."""
-        return self._default.rate
+        return self._sampler_in_force().rate
+
+    def set_temporary_ratio(self, ratio: float, expires_at: datetime) -> None:
+        """Use `ratio` instead of the default ratio until `expires_at`, replacing any previous temporary ratio.
+
+        Raises:
+            ValueError: If `ratio` is not between 0 and 1.
+
+        """
+        self._temporary = _TemporaryRatio(sampler=TraceIdRatioBased(rate=ratio), expires_at=expires_at)
+
+    def clear_temporary_ratio(self) -> None:
+        self._temporary = None
+
+    def state(self) -> SampleRatioState:
+        default_ratio = self._default.rate
+        temporary = self._temporary_in_force()
+        if temporary is None:
+            return SampleRatioState(default_ratio=default_ratio, ratio_in_force=default_ratio)
+        return SampleRatioState(
+            default_ratio=default_ratio,
+            ratio_in_force=temporary.sampler.rate,
+            temporary_ratio=temporary.sampler.rate,
+            expires_at=temporary.expires_at,
+        )
 
     def should_sample(
         self,
@@ -159,7 +207,7 @@ class RatioSampler(Sampler):
         links: Sequence[Link] | None = None,
         trace_state: TraceState | None = None,
     ) -> SamplingResult:
-        return self._default.should_sample(
+        return self._sampler_in_force().should_sample(
             parent_context=parent_context,
             trace_id=trace_id,
             name=name,
@@ -171,6 +219,44 @@ class RatioSampler(Sampler):
 
     def get_description(self) -> str:
         return f"RatioSampler{{{self.ratio}}}"
+
+    def _sampler_in_force(self) -> TraceIdRatioBased:
+        temporary = self._temporary_in_force()
+        return temporary.sampler if temporary is not None else self._default
+
+    def _temporary_in_force(self) -> _TemporaryRatio | None:
+        # Read once, because a message handler can replace or clear the temporary ratio at any time.
+        temporary = self._temporary
+        if temporary is not None and self._clock() < temporary.expires_at:
+            return temporary
+        return None
+
+
+_process_sampler: RatioSampler | None = None
+
+
+def set_temporary_sample_ratio(ratio: float, expires_at: datetime) -> None:
+    """Use `ratio` for new root traces of this process until `expires_at`; does nothing when tracing is off.
+
+    Raises:
+        ValueError: If `ratio` is not between 0 and 1.
+
+    """
+    if _process_sampler is not None:
+        _process_sampler.set_temporary_ratio(ratio=ratio, expires_at=expires_at)
+
+
+def clear_temporary_sample_ratio() -> None:
+    """Go back to the default ratio for new root traces of this process; does nothing when tracing is off."""
+    if _process_sampler is not None:
+        _process_sampler.clear_temporary_ratio()
+
+
+def get_sample_ratio_state() -> SampleRatioState | None:
+    """Return the sampling state of this process, or None when tracing is off."""
+    if _process_sampler is None:
+        return None
+    return _process_sampler.state()
 
 
 class InsecureTLSSession(requests.Session):
@@ -241,10 +327,11 @@ def create_tracer_provider(
             **extra_attributes,
         }
     )
+    global _process_sampler
+    _process_sampler = RatioSampler(default_ratio=sample_ratio)
+
     span_processor = BatchSpanProcessor(MaskingSpanExporter(exporter))
-    tracer_provider = TracerProvider(
-        resource=resource, sampler=ParentBased(root=RatioSampler(default_ratio=sample_ratio))
-    )
+    tracer_provider = TracerProvider(resource=resource, sampler=ParentBased(root=_process_sampler))
     tracer_provider.add_span_processor(span_processor)
 
     return tracer_provider
