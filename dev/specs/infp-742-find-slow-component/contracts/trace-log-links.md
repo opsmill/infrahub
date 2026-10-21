@@ -4,12 +4,14 @@
 
 ## Trace context from the SDK (dependency)
 
-The Python SDK sends the W3C `traceparent` header on every request when OpenTelemetry is installed in
-the caller's process, through the global OpenTelemetry propagator. The SDK declares no dependency on
-OpenTelemetry: it imports it only when it is present. Without OpenTelemetry, it sends nothing new. The
-FastAPI instrumentation of the API server already reads the header. This change is in
+The Python SDK sends the W3C `traceparent` header on every request when `opentelemetry-api` 1.33 or
+later is installed in the caller's process and a span is active, through the global OpenTelemetry
+propagator. The SDK declares `opentelemetry-api>=1.33` as an optional extra, `tracing`, and imports it
+only when it is present. Without it, or with an older version, it sends nothing new. The FastAPI
+instrumentation of the API server already reads the header. This change is in
 [infrahub-sdk-python](https://github.com/opsmill/infrahub-sdk-python), tracked in
-[IFC-3419](https://opsmill.atlassian.net/browse/IFC-3419).
+[IFC-3419](https://opsmill.atlassian.net/browse/IFC-3419), and merged on 2026-10-21
+([opsmill/infrahub-sdk-python#1434](https://github.com/opsmill/infrahub-sdk-python/pull/1434)).
 
 ## Trace ID in log lines
 
