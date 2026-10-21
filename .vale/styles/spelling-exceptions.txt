@@ -79,6 +79,7 @@ Docusaurus
 dropdown
 DSSE
 edit_default_branch
+emSign
 enablement
 end_user
 Entra
