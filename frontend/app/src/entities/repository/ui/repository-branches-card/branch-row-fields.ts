@@ -38,8 +38,8 @@ export const BRANCH_STATUS_FIELD_SCHEMA: AttributeSchema = {
   enum: [...FILTERABLE_BRANCH_STATUSES],
 };
 
-export function getSyncStatusAttribute(schema: ModelSchema): AttributeSchema | undefined {
-  return schema.attributes?.find(({ name }) => name === REPOSITORY_SYNC_STATUS_ATTRIBUTE_NAME);
+export function findAttribute(schema: ModelSchema, name: string): AttributeSchema | undefined {
+  return schema.attributes?.find((attribute) => attribute.name === name);
 }
 
 /** The fields the query narrows on and this card chooses to offer. */
@@ -47,7 +47,7 @@ export function getBranchRowFilterDefinitions(schema: ModelSchema): {
   list: FilterDefinition[];
   byName: Record<string, FilterDefinition>;
 } {
-  const syncStatusAttribute = getSyncStatusAttribute(schema);
+  const syncStatusAttribute = findAttribute(schema, REPOSITORY_SYNC_STATUS_ATTRIBUTE_NAME);
   const list: FilterDefinition[] = [
     { type: "attribute", schema: BRANCH_FIELD_SCHEMAS.name },
     { type: "attribute", schema: BRANCH_STATUS_FIELD_SCHEMA },

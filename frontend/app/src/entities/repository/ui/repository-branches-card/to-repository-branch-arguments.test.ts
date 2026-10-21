@@ -16,7 +16,6 @@ import {
 } from "@/entities/repository/ui/repository-branches-card/to-repository-branch-arguments";
 
 const [CREATED_AT, UPDATED_AT] = NODE_METADATA_SORT_FIELDS;
-const SYNC_STATUS_CHOICES = ["unknown", "error-import", "in-sync"];
 
 describe("toRepositoryBranchArguments", () => {
   it("narrows on the name the search box and the filter form share", () => {
@@ -24,7 +23,7 @@ describe("toRepositoryBranchArguments", () => {
     const filters: Filter[] = [{ name: BRANCH_NAME_FILTER, value: "release" }];
 
     // WHEN
-    const result = toRepositoryBranchArguments(filters, [], SYNC_STATUS_CHOICES);
+    const result = toRepositoryBranchArguments(filters, []);
 
     // THEN
     expect(result).toEqual({ name__value: "release", partial_match: true });
@@ -35,11 +34,11 @@ describe("toRepositoryBranchArguments", () => {
     const filters: Filter[] = [{ name: SEARCH_ANY_FILTER, value: "release" }];
 
     // WHEN
-    const result = toRepositoryBranchArguments(filters, [], SYNC_STATUS_CHOICES);
+    const result = toRepositoryBranchArguments(filters, []);
 
     // THEN nothing is sent for it, so no tag can claim a narrowing that did not happen
     expect(result).toEqual({});
-    expect(hasRepositoryBranchFilters(filters, SYNC_STATUS_CHOICES)).toBe(false);
+    expect(hasRepositoryBranchFilters(filters)).toBe(false);
   });
 
   it("orders by the first timestamp alone when both are sorted on", () => {
@@ -50,7 +49,7 @@ describe("toRepositoryBranchArguments", () => {
     ];
 
     // WHEN
-    const result = toRepositoryBranchArguments([], sorts, SYNC_STATUS_CHOICES);
+    const result = toRepositoryBranchArguments([], sorts);
 
     // THEN
     expect(result.order).toEqual({ node_metadata: { updated_at: "ASC" } });
@@ -58,11 +57,9 @@ describe("toRepositoryBranchArguments", () => {
 
   it("orders by the one timestamp that is sorted on", () => {
     // WHEN
-    const result = toRepositoryBranchArguments(
-      [],
-      [{ field: CREATED_AT, direction: SORT_DIRECTION.DESC }] satisfies Sort[],
-      SYNC_STATUS_CHOICES
-    );
+    const result = toRepositoryBranchArguments([], [
+      { field: CREATED_AT, direction: SORT_DIRECTION.DESC },
+    ] satisfies Sort[]);
 
     // THEN
     expect(result.order).toEqual({ node_metadata: { created_at: "DESC" } });
@@ -70,7 +67,7 @@ describe("toRepositoryBranchArguments", () => {
 
   it("sends no order argument when nothing is sorted", () => {
     // THEN
-    expect(toRepositoryBranchArguments([], [], SYNC_STATUS_CHOICES)).toEqual({});
+    expect(toRepositoryBranchArguments([], [])).toEqual({});
   });
 
   it("maps a name fragment and a status onto the arguments the query takes", () => {
@@ -81,7 +78,7 @@ describe("toRepositoryBranchArguments", () => {
     ];
 
     // WHEN
-    const result = toRepositoryBranchArguments(filters, [], SYNC_STATUS_CHOICES);
+    const result = toRepositoryBranchArguments(filters, []);
 
     // THEN
     expect(result).toEqual({
@@ -91,31 +88,18 @@ describe("toRepositoryBranchArguments", () => {
     });
   });
 
-  it("sends a sync status the schema declares as a choice", () => {
-    // GIVEN
-    const filters: Filter[] = [{ name: "sync_status__value", value: "in-sync" }];
+  it("sends a sync status that matches no choice, so the list and its tag agree", () => {
+    // GIVEN a value written to the url by hand
+    const filters: Filter[] = [{ name: "sync_status__value", value: "bogus" }];
 
     // WHEN
-    const result = toRepositoryBranchArguments(filters, [], ["unknown", "in-sync"]);
+    const result = toRepositoryBranchArguments(filters, []);
 
     // THEN
-    expect(result).toEqual({ sync_status__value: "in-sync" });
+    expect(result).toEqual({ sync_status__value: "bogus" });
   });
 
   it.each([
-    ["a choice the schema does not declare", "syncing", ["unknown", "in-sync"]],
-    ["any value when the schema declares no choices", "in-sync", []],
-  ])("drops %s", (_label, value, choices) => {
-    // GIVEN
-    const filters: Filter[] = [{ name: "sync_status__value", value }];
-
-    // THEN
-    expect(toRepositoryBranchArguments(filters, [], choices)).toEqual({});
-    expect(hasRepositoryBranchFilters(filters, choices)).toBe(false);
-  });
-
-  it.each([
-    ["an unknown word", "bogus"],
     ["an empty string", ""],
     ["a number", 42],
   ])("drops a sync status that is %s", (_label, value) => {
@@ -123,8 +107,8 @@ describe("toRepositoryBranchArguments", () => {
     const filters: Filter[] = [{ name: "sync_status__value", value }];
 
     // THEN
-    expect(toRepositoryBranchArguments(filters, [], SYNC_STATUS_CHOICES)).toEqual({});
-    expect(hasRepositoryBranchFilters(filters, SYNC_STATUS_CHOICES)).toBe(false);
+    expect(toRepositoryBranchArguments(filters, [])).toEqual({});
+    expect(hasRepositoryBranchFilters(filters)).toBe(false);
   });
 
   it("combines a name fragment, a status and a sync status in one request", () => {
@@ -136,7 +120,7 @@ describe("toRepositoryBranchArguments", () => {
     ];
 
     // WHEN
-    const result = toRepositoryBranchArguments(filters, [], SYNC_STATUS_CHOICES);
+    const result = toRepositoryBranchArguments(filters, []);
 
     // THEN
     expect(result).toEqual({
@@ -152,7 +136,7 @@ describe("toRepositoryBranchArguments", () => {
     const filters: Filter[] = [{ name: "sync_status__value", value: "error-import" }];
 
     // THEN
-    expect(hasRepositoryBranchFilters(filters, SYNC_STATUS_CHOICES)).toBe(true);
+    expect(hasRepositoryBranchFilters(filters)).toBe(true);
   });
 
   it.each([
@@ -164,8 +148,8 @@ describe("toRepositoryBranchArguments", () => {
     const filters: Filter[] = [filter];
 
     // THEN an empty result must not claim it was narrowed by something never sent
-    expect(toRepositoryBranchArguments(filters, [], SYNC_STATUS_CHOICES)).toEqual({});
-    expect(hasRepositoryBranchFilters(filters, SYNC_STATUS_CHOICES)).toBe(false);
+    expect(toRepositoryBranchArguments(filters, [])).toEqual({});
+    expect(hasRepositoryBranchFilters(filters)).toBe(false);
   });
 
   it("counts a filter the request does apply as active", () => {
@@ -173,7 +157,7 @@ describe("toRepositoryBranchArguments", () => {
     const filters: Filter[] = [{ name: "status__value", value: "OPEN" }];
 
     // THEN
-    expect(hasRepositoryBranchFilters(filters, SYNC_STATUS_CHOICES)).toBe(true);
+    expect(hasRepositoryBranchFilters(filters)).toBe(true);
     expect(BRANCH_ROW_FILTER_CONDITIONS).toEqual(["contains"]);
   });
 });

@@ -42,7 +42,6 @@ export function RepositoryBranchesToolbar({ schema }: { schema: ModelSchema }) {
         setFilters={setFilters}
         filterConditions={BRANCH_ROW_FILTER_CONDITIONS}
         filterDefinitions={filterDefinitions.byName}
-        showChoiceLabels
       />
     </Col>
   );

@@ -20,10 +20,7 @@ import {
   type RepositoryBranchStatusPage,
 } from "@/entities/repository/domain/model/repository-branch-status";
 import { useGetRepositoryBranchStatus } from "@/entities/repository/ui/queries/get-repository-branch-status.query";
-import {
-  BRANCH_ROW_SORT_SCHEMA,
-  getSyncStatusAttribute,
-} from "@/entities/repository/ui/repository-branches-card/branch-row-fields";
+import { BRANCH_ROW_SORT_SCHEMA } from "@/entities/repository/ui/repository-branches-card/branch-row-fields";
 import {
   branchesGridTemplateColumns,
   getRepositoryBranchesColumns,
@@ -136,8 +133,7 @@ function RepositoryBranchesCardInScope({ repositoryId, schema }: RepositoryBranc
   const [filters] = useFilters();
   const { appliedSort } = useSort(BRANCH_ROW_SORT_SCHEMA);
 
-  const syncStatusChoices = getSyncStatusAttribute(schema)?.choices?.map(({ name }) => name) ?? [];
-  const queryArguments = toRepositoryBranchArguments(filters, appliedSort, syncStatusChoices);
+  const queryArguments = toRepositoryBranchArguments(filters, appliedSort);
 
   const { data, error, isPending, isPlaceholderData } = useGetRepositoryBranchStatus({
     id: repositoryId,
@@ -176,7 +172,7 @@ function RepositoryBranchesCardInScope({ repositoryId, schema }: RepositoryBranc
         <RepositoryBranchesBody
           data={data}
           error={error}
-          hasFilters={hasRepositoryBranchFilters(filters, syncStatusChoices)}
+          hasFilters={hasRepositoryBranchFilters(filters)}
           isPending={isPending}
           onPageChange={setPage}
           page={currentPage}

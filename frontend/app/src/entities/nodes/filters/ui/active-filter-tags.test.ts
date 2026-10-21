@@ -51,61 +51,24 @@ describe("formatAttributeFilterValue", () => {
     expect(result).toBe("hello");
   });
 
-  it("formats the value as a date for datetime kind, even with choice labels requested", () => {
+  it("formats the value as a date for datetime kind", () => {
     // GIVEN
     const schema = generateAttributeSchema({ kind: "DateTime" });
     const value = "2024-01-15T10:30:00Z";
 
     // WHEN
-    const result = formatAttributeFilterValue({
-      schema,
-      value,
-      formatDate,
-      showChoiceLabels: true,
-    });
+    const result = formatAttributeFilterValue({ schema, value, formatDate });
 
     // THEN
     expect(result).toBe("2024-01-15T10:30:00.000Z");
   });
 
-  it("returns string representation for boolean kind with choice labels requested", () => {
-    // GIVEN
-    const schema = generateAttributeSchema({ kind: "Boolean" });
-
-    // WHEN
-    const result = formatAttributeFilterValue({
-      schema,
-      value: false,
-      formatDate,
-      showChoiceLabels: true,
-    });
-
-    // THEN
-    expect(result).toBe("false");
-  });
-
-  it("keeps the stored dropdown value when choice labels are not requested", () => {
+  it("returns the choice label of a dropdown value", () => {
     // GIVEN
     const value = "error-import";
 
     // WHEN
     const result = formatAttributeFilterValue({ schema: syncStatusSchema, value, formatDate });
-
-    // THEN
-    expect(result).toBe("error-import");
-  });
-
-  it("returns the choice label of a dropdown value when choice labels are requested", () => {
-    // GIVEN
-    const value = "error-import";
-
-    // WHEN
-    const result = formatAttributeFilterValue({
-      schema: syncStatusSchema,
-      value,
-      formatDate,
-      showChoiceLabels: true,
-    });
 
     // THEN
     expect(result).toBe("Import Error");
@@ -116,28 +79,18 @@ describe("formatAttributeFilterValue", () => {
     const value = "error-ref-missing";
 
     // WHEN
-    const result = formatAttributeFilterValue({
-      schema: syncStatusSchema,
-      value,
-      formatDate,
-      showChoiceLabels: true,
-    });
+    const result = formatAttributeFilterValue({ schema: syncStatusSchema, value, formatDate });
 
     // THEN
     expect(result).toBe("error-ref-missing");
   });
 
-  it("keeps the stored value of a text attribute with an enum when choice labels are requested", () => {
+  it("keeps the stored value of a text attribute with an enum", () => {
     // GIVEN
     const schema = generateAttributeSchema({ kind: "Text", enum: ["OPEN", "MERGED"] });
 
     // WHEN
-    const result = formatAttributeFilterValue({
-      schema,
-      value: "OPEN",
-      formatDate,
-      showChoiceLabels: true,
-    });
+    const result = formatAttributeFilterValue({ schema, value: "OPEN", formatDate });
 
     // THEN
     expect(result).toBe("OPEN");
@@ -168,7 +121,7 @@ describe("getFilterTagDisplay", () => {
     });
   });
 
-  it("keeps the stored dropdown value in the tag when choice labels are not requested", () => {
+  it("shows the dropdown choice label in the tag", () => {
     // GIVEN
     const filter = { name: "sync_status__value", value: "error-import" };
 
@@ -178,27 +131,6 @@ describe("getFilterTagDisplay", () => {
       filter,
       fieldKey: "value",
       filterDefinition: { type: "attribute", schema: syncStatusSchema },
-    });
-
-    // THEN
-    expect(result).toEqual({
-      label: "Sync status",
-      condition: "contains",
-      value: "error-import",
-    });
-  });
-
-  it("shows the dropdown choice label in the tag when choice labels are requested", () => {
-    // GIVEN
-    const filter = { name: "sync_status__value", value: "error-import" };
-
-    // WHEN
-    const result = getFilterTagDisplay({
-      formatDate,
-      filter,
-      fieldKey: "value",
-      filterDefinition: { type: "attribute", schema: syncStatusSchema },
-      showChoiceLabels: true,
     });
 
     // THEN
