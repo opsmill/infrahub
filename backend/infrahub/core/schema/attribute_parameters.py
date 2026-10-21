@@ -245,7 +245,7 @@ class NumberPoolParameters(AttributeParameters):
         default=None,
         description=(
             "Ranges the NumberPool allocates from, without overlap. "
-            "Unset means one range with no start or end; an empty list means no range"
+            "Unset means one range from 1 to the largest supported number; an empty list means no range"
         ),
         exclude_if=_is_unset,
         json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
