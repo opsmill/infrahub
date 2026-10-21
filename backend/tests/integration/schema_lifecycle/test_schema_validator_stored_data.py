@@ -286,3 +286,24 @@ class TestSchemaChangeRefusedByStoredData(TestInfrahubApp):
         assert _number_parameters(_registry_attribute(GADGET_KIND, "count", default_branch.name)).max_value == 10
         stored_gadget = await registry.manager.get_one(db=db, id=gadget.id, branch=default_branch)
         assert stored_gadget.get_attribute("count").value == 8
+
+    async def test_schema_load_renaming_a_hierarchical_kind_with_stored_nodes_is_accepted(
+        self,
+        client: InfrahubClient,
+        default_branch: Branch,
+        initial_dataset: dict[str, str],
+        schema_initial: SchemaRoot,
+    ) -> None:
+        """Stored nodes keep the old kind label until the migration runs, so the rename must not be refused."""
+        country_id = registry.schema.get_node_schema(name=COUNTRY_KIND, branch=default_branch.name).id
+        schema = _with_pool_id(schema_initial, default_branch.name)
+        nodes = _nodes_by_name(schema)
+        nodes["Country"].id = country_id
+        nodes["Country"].name = "Nation"
+        nodes["Site"].parent = "LocationNation"
+
+        response = await client.schema.load(schemas=[schema.model_dump(mode="json")], branch=default_branch.name)
+
+        assert not response.errors
+        site_schema = registry.schema.get_node_schema(name=SITE_KIND, branch=default_branch.name)
+        assert site_schema.parent == "LocationNation"

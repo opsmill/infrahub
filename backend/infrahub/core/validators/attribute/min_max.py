@@ -78,6 +78,8 @@ class AttributeNumberUpdateValidatorQuery(AttributeSchemaValidatorQuery):
 
 class AttributeNumberChecker(ConstraintCheckerInterface):
     query_classes = [AttributeNumberUpdateValidatorQuery]
+    # Writing a node already checks its value against the limits, so only a change to the limits can be refused.
+    triggered_by_data_change = False
 
     def __init__(self, db: InfrahubDatabase, branch: Branch | None = None) -> None:
         self.db = db
