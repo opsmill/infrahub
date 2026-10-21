@@ -391,7 +391,7 @@ shape and let it do the typing, rather than indexing the raw record and casting:
 |---|---|
 | A scalar | `get_as_type("uuid", str)` |
 | A scalar that may be absent | `get_as_optional_type("description", str)` |
-| A string (shorthand, returns `str | None`) | `get_as_str("node_uuid")` |
+| A string (shorthand, returns `str \| None`) | `get_as_str("node_uuid")` |
 | A `collect(...)` list | `get_as_list_of_type("related_uuids", str)` |
 | A whole node or relationship | `get("n")` |
 
@@ -410,7 +410,6 @@ def get_data(self) -> Generator[NodeWithPeers, None, None]:
             peer_uuids=tuple(result.get_as_list_of_type("peer_uuids", str)),
         )
 ```
-
 
 For a query expected to yield at most one row, return `MyQueryResult | None` from a
 `self.get_result()` check instead of a generator.
