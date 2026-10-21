@@ -25,6 +25,7 @@ Before beginning your production deployment, ensure you have:
 - Decided between Community or Enterprise edition based on your support and feature needs
 - Access to your organization's identity provider (for SSO configuration)
 - A backup strategy and storage location
+- Redis 6.0 or later, or a Redis-compatible service that supports the `HELLO` command. Infrahub opens each Redis connection with `HELLO`, which Redis 5.0 and earlier reject.
 
 ## Step 1: Create a hardened configuration file
 
