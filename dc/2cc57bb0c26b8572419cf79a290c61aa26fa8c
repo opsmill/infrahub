@@ -1,0 +1,28 @@
+backend/infrahub/core/validators/attribute/min_max.py
+  s_3f87105f1bb54d::t_44a1f3fc6af22c 25
+backend/tests/component/core/constraint_validators/test_attribute_numberpool_constraints.py
+  s_3f87105f1bb54d::t_a9406f815f8b16 6,213-242
+backend/tests/component/core/constraint_validators/test_attribute_number_constraints.py
+  s_3f87105f1bb54d::t_a9406f815f8b16 6,353-383
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dc2cc57bb0c26b8572419cf79a290c61aa26fa8c",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_3f87105f1bb54d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "630f8558-8e40-4fb7-9f40-2f7571d1fcc8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

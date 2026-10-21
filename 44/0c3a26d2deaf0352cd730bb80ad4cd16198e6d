@@ -1,0 +1,27 @@
+backend/tests/component/graphql/test_mutation_create_attributes.py
+  s_760cbcf248de37::t_70b223df5ddb1e 1-553
+backend/tests/component/graphql/test_mutation_create_object_template.py
+  s_760cbcf248de37::t_f29c2279b0c769 1-396
+backend/tests/component/graphql/test_mutation_create_relationships.py
+  s_760cbcf248de37::t_02e6589919b612 3,18-24,27-34,54-55,58-59,63-66,68,87-88,91,100-105,123-130,133-138,144-145,147-154,162-165,174-177,179-183,186-197,201-206,214-215,224-230,233-238,240-249,252,254-259,261,268-273,285-287,289-290,292-311,314-315,317-326,329,331-336,338,358-359,361-366,369,372,374,376-377,380-390,393-397,399-415,418,421,425,427-429,432,435,439,441-453,457-458,461,463-464,467-468,470,475,478,481-482,484-497,499,501-514,516,518-531,533,535-548,550,553-556,558-560,564-569,576,588-589,592-593,595-613,616,623,633,635-638,642-647,654,662,664-667
+backend/tests/component/graphql/test_mutation_create_simple.py
+  s_760cbcf248de37::t_b968eb6653dfc1 1-118
+backend/tests/component/graphql/test_mutation_create_uniqueness.py
+  s_760cbcf248de37::t_48280189f11575 1-197
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "440c3a26d2deaf0352cd730bb80ad4cd16198e6d",
+  "prompts": {},
+  "sessions": {
+    "s_760cbcf248de37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9796f03b-7c77-4706-bad0-f6d8a85686f0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
