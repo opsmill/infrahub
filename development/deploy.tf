@@ -54,8 +54,7 @@ infrahub:
         INFRAHUB_DB_ADDRESS: infrahub-headless.${local.target_namespace}.svc.cluster.local # use FQDN to match neo4j's Helm cluster domain so that client-side routing is used
         INFRAHUB_DB_PROTOCOL: neo4j # required for client-side routing
         INFRAHUB_BROKER_ADDRESS: messagequeue-rabbitmq
-        INFRAHUB_CACHE_ADDRESS: redis-sentinel-proxy
-        INFRAHUB_CACHE_PORT: 6379
+        INFRAHUB_CACHE_URL: redis+sentinel://cache-redis:26379/mymaster # connect directly to the Sentinel nodes; Infrahub follows master failover
         INFRAHUB_WORKFLOW_ADDRESS: prefect-server
         INFRAHUB_WORKFLOW_PORT: 4200
         PREFECT_API_URL: "http://prefect-server:4200/api"
@@ -90,8 +89,7 @@ infrahub:
         INFRAHUB_DB_ADDRESS: infrahub-headless.${local.target_namespace}.svc.cluster.local # use FQDN to match neo4j's Helm cluster domain so that client-side routing is used
         INFRAHUB_DB_PROTOCOL: neo4j # required for client-side routing
         INFRAHUB_BROKER_ADDRESS: messagequeue-rabbitmq
-        INFRAHUB_CACHE_ADDRESS: redis-sentinel-proxy
-        INFRAHUB_CACHE_PORT: 6379
+        INFRAHUB_CACHE_URL: redis+sentinel://cache-redis:26379/mymaster # connect directly to the Sentinel nodes; Infrahub follows master failover
         INFRAHUB_WORKFLOW_ADDRESS: prefect-server
         INFRAHUB_WORKFLOW_PORT: 4200
         PREFECT_API_URL: "http://prefect-server:4200/api"
@@ -137,7 +135,10 @@ infrahub:
     backgroundServices:
       messaging:
         redis:
-          host: "redis-sentinel-proxy"
+          # Passed to Prefect as PREFECT_REDIS_MESSAGING_URL: messaging discovers the master through the
+          # Sentinel nodes and follows failover, the same as the cache above. A URL replaces the db
+          # setting, so /1 keeps messaging on database 1, apart from the cache on database 0.
+          url: "redis+sentinel://cache-redis:26379/mymaster/1"
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -290,88 +291,6 @@ EOT
 }
 
 #### Task manager database
-
-resource "kubernetes_service_v1" "redis_sentinel_proxy_svc" {
-  depends_on = [helm_release.cache_ha]
-
-  metadata {
-    name      = "redis-sentinel-proxy"
-    namespace = local.target_namespace
-    labels = {
-      "app.kubernetes.io/name" = "redis-sentinel-proxy"
-    }
-  }
-
-  spec {
-    type = "ClusterIP"
-    port {
-      port        = 6379
-      target_port = "redis"
-      name        = "cache-ha"
-    }
-    selector = {
-      "app.kubernetes.io/name" = "redis-sentinel-proxy"
-    }
-  }
-}
-
-resource "kubernetes_deployment_v1" "redis_sentinel_proxy_deployment" {
-  depends_on = [helm_release.cache_ha]
-
-  metadata {
-    name      = "redis-sentinel-proxy"
-    namespace = local.target_namespace
-    labels = {
-      "app.kubernetes.io/name" = "redis-sentinel-proxy"
-    }
-  }
-
-  spec {
-    replicas = 2
-    selector {
-      match_labels = {
-        "app.kubernetes.io/name" = "redis-sentinel-proxy"
-      }
-    }
-    template {
-      metadata {
-        labels = {
-          "app.kubernetes.io/name" = "redis-sentinel-proxy"
-        }
-      }
-      spec {
-        affinity {
-          pod_anti_affinity {
-            required_during_scheduling_ignored_during_execution {
-              label_selector {
-                match_labels = {
-                  "app.kubernetes.io/name" = "redis-sentinel-proxy"
-                }
-              }
-              topology_key = "kubernetes.io/hostname"
-            }
-          }
-        }
-        container {
-          name  = "redis-sentinel-proxy"
-          image = "patrickdk/redis-sentinel-proxy:v1.2"
-          args = [
-            "-master",
-            "mymaster",
-            "-listen",
-            ":6379",
-            "-sentinel",
-            "cache-redis:26379",
-          ]
-          port {
-            container_port = 6379
-            name           = "redis"
-          }
-        }
-      }
-    }
-  }
-}
 
 resource "helm_release" "cache_ha" {
   name       = "cache"
