@@ -12,7 +12,7 @@ from infrahub.core.protocols import CoreNumberPool
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.pools.number_pool_repository import NumberPoolRepository
-from tests.helpers.number_pool import run_schema_updated_workflow
+from tests.helpers.number_pool import StoredRange, run_schema_updated_workflow
 from tests.helpers.schema import load_schema as load_schema_root
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -84,7 +84,7 @@ class TestUpdateNumberPoolParameters(TestInfrahubApp):
         return thing
 
     @staticmethod
-    async def _pool_ranges(db: InfrahubDatabase) -> tuple[str, list[tuple[int, int, int | None]]]:
+    async def _stored_ranges(db: InfrahubDatabase) -> list[StoredRange]:
         pools = await NodeManager.query(
             db=db,
             schema=CoreNumberPool,
@@ -94,14 +94,17 @@ class TestUpdateNumberPoolParameters(TestInfrahubApp):
         assert len(pools) == 1
         pool = pools[0]
         ranges = await NumberPoolRepository(db=db).get_ranges(pool_id=pool.get_id())
-        return pool.get_id(), [(item.start.value, item.end.value, item.allocation_weight.value) for item in ranges]
+        return [
+            StoredRange(start=item.start.value, end=item.end.value, weight=item.allocation_weight.value)
+            for item in ranges
+        ]
 
     def _validate_schema_numberpool_parameters(self, schema: NodeSchema, start_range: int, end_range: int) -> None:
         number_attr = schema.get_attribute("assigned_number")
         assert isinstance(number_attr.parameters, NumberPoolParameters)
         assert number_attr.parameters.start_range == start_range
         assert number_attr.parameters.end_range == end_range
-        assert number_attr.parameters.ranges == []
+        assert number_attr.parameters.ranges is None
 
     async def test_step01_range_excluding_a_held_value_is_refused(
         self,
@@ -125,7 +128,7 @@ class TestUpdateNumberPoolParameters(TestInfrahubApp):
         self._validate_schema_numberpool_parameters(
             schema=schema_branch.get_node(name=KIND, duplicate=False), start_range=50, end_range=1200
         )
-        assert (await self._pool_ranges(db=db))[1] == [(50, 1200, None)]
+        assert await self._stored_ranges(db=db) == [StoredRange(start=50, end=1200)]
 
     async def test_step02_ranges_excluding_a_held_value_are_refused(
         self,
@@ -147,4 +150,4 @@ class TestUpdateNumberPoolParameters(TestInfrahubApp):
         self._validate_schema_numberpool_parameters(
             schema=schema_branch.get_node(name=KIND, duplicate=False), start_range=50, end_range=1200
         )
-        assert (await self._pool_ranges(db=db))[1] == [(50, 1200, None)]
+        assert await self._stored_ranges(db=db) == [StoredRange(start=50, end=1200)]

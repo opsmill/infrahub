@@ -16,7 +16,10 @@ from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from infrahub.pools.scoped_number_pool_reader import ScopedNumberPoolReader
-from tests.component.pools.helpers import NumberPoolRepositoryFailingOnDelete
+from tests.component.pools.helpers import (
+    NumberPoolRepositoryFailingOnDelete,
+    NumberPoolRepositoryRecordingWritesFactory,
+)
 from tests.component.pools.schema_number_pool_synchronizer.helpers import COUNTER_KIND, counter_schema, provision_pool
 
 if TYPE_CHECKING:
@@ -45,9 +48,13 @@ async def redeclare(
     ).run()
 
 
-async def ranges_of(db: InfrahubDatabase, pool_id: str) -> list[tuple[int, int, int | None]]:
+async def ranges_of(db: InfrahubDatabase, pool_id: str) -> list[tuple[int | None, int | None, int | None]]:
     ranges = await NumberPoolRepository(db=db).get_ranges(pool_id=pool_id)
     return [(item.start.value, item.end.value, item.allocation_weight.value) for item in ranges]
+
+
+async def range_ids_of(db: InfrahubDatabase, pool_id: str) -> list[str]:
+    return [item.get_id() for item in await NumberPoolRepository(db=db).get_ranges(pool_id=pool_id)]
 
 
 async def shorthand_of(db: InfrahubDatabase, pool_id: str) -> tuple[int | None, int | None]:
@@ -116,19 +123,51 @@ async def test_reconciliation_keeps_the_numbers_already_handed_out(
         assert reserved == counter.get_attribute("counter").value
 
 
-@pytest.mark.xfail(strict=True, reason="A declaration using neither spelling keeps the stored ranges on schema load")
-async def test_declaration_without_range_empties_the_pool(
+async def test_declaration_without_range_gives_one_open_range_a_reload_leaves_alone(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
-    """A declaration using neither spelling is legal and leaves the pool with no range and a null shorthand."""
-    pool_id = await provision_pool(
-        db=db, branch=default_branch, parameters=NumberPoolParameters(start_range=1, end_range=100)
+    """An attribute declaring neither spelling gets one range open at both ends, and loading it again writes nothing."""
+    pool_id = await provision_pool(db=db, branch=default_branch, parameters=NumberPoolParameters())
+    assert await ranges_of(db=db, pool_id=pool_id) == [(None, None, None)]
+    assert await shorthand_of(db=db, pool_id=pool_id) == (None, None)
+    range_ids = await range_ids_of(db=db, pool_id=pool_id)
+
+    recording_factory = NumberPoolRepositoryRecordingWritesFactory()
+    await redeclare(
+        db=db, branch=default_branch, parameters=NumberPoolParameters(), range_store_factory=recording_factory
     )
 
-    await redeclare(db=db, branch=default_branch, parameters=NumberPoolParameters())
+    assert recording_factory.get_writes() == []
+    assert await range_ids_of(db=db, pool_id=pool_id) == range_ids
+    assert await ranges_of(db=db, pool_id=pool_id) == [(None, None, None)]
+
+
+async def test_empty_range_list_removes_the_open_range(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """Declaring an empty range list after declaring nothing removes the open range the pool held."""
+    pool_id = await provision_pool(db=db, branch=default_branch, parameters=NumberPoolParameters())
+
+    await redeclare(db=db, branch=default_branch, parameters=NumberPoolParameters(ranges=[]))
 
     assert await ranges_of(db=db, pool_id=pool_id) == []
     assert await shorthand_of(db=db, pool_id=pool_id) == (None, None)
+
+
+async def test_declaration_without_range_keeps_the_previously_declared_ranges(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """A later declaration using neither spelling keeps the ranges an earlier declaration set."""
+    pool_id = await provision_pool(
+        db=db, branch=default_branch, parameters=NumberPoolParameters(start_range=1, end_range=100)
+    )
+    range_ids = await range_ids_of(db=db, pool_id=pool_id)
+
+    await redeclare(db=db, branch=default_branch, parameters=NumberPoolParameters())
+
+    assert await range_ids_of(db=db, pool_id=pool_id) == range_ids
+    assert await ranges_of(db=db, pool_id=pool_id) == [(1, 100, None)]
+    assert await shorthand_of(db=db, pool_id=pool_id) == (1, 100)
 
 
 async def test_failed_reconciliation_leaves_the_ranges_untouched(

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from infrahub.auth.session import AccountSession
@@ -498,3 +499,12 @@ def pool_lock_events(timeline: LockTimeline, pool: CoreNumberPool, after: int) -
         and event.action in {LockAction.ACQUIRE, LockAction.RELEASE}
         and event.name.startswith(prefix)
     ]
+
+
+@dataclass(frozen=True)
+class StoredRange:
+    """The bounds and weight a `CoreNumberPoolRange` node stores, None when unset."""
+
+    start: int | None
+    end: int | None
+    weight: int | None = None
