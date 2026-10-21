@@ -18,7 +18,7 @@
 | 1 | Tracing is on with the stack | The stack's Compose file turns tracing on for the API server and the task workers; the root file alone keeps it off | `e7fb4fb82`; FR-032; quickstart check 1 | pass |
 | 2 | Default sampling ratio | 0.1 traces about 1 request in 10; 1 traces every request | `24880806d`; FR-006, FR-007 | pass |
 | 3 | One trace from a task to its queries | A flow run, its SDK calls and their database queries are in one trace | `24880806d`, SDK `traceparent`; story 1; quickstart check 2 | pass |
-| 4 | Links between traces and logs | 32-character `trace_id` in server and task worker logs; "Logs for this span" and "View trace in Tempo" | `24880806d`; FR-003 to FR-005; quickstart check 3 | bug |
+| 4 | Links between traces and logs | 32-character `trace_id` in server and task worker logs; "Logs for this span" and "View trace in Tempo" | `24880806d`; FR-003 to FR-005; quickstart check 3 | bug, fixed in `3e70bd0c1`, then pass |
 | 5 | Ratio change without a restart | `PUT`, `GET`, `DELETE` on `/api/troubleshooting/trace-sample-ratio`; one log line per process; the event | `7bc1f5a87`; story 6; FR-026 to FR-030, FR-035; quickstart check 8 | pass |
 | 6 | Refused requests | 403 without `super_admin`; 400 with the documented error when tracing is off | `7bc1f5a87`; FR-029, FR-031 | pass |
 | 7 | Endpoints in the API docs | The 3 endpoints in `/api/docs` with a summary and a description | `7bc1f5a87`; FR-036 | pass |
@@ -118,3 +118,20 @@ checks 4 and 6 are fixed after the loop.
 | Check 4: "Logs for this span" also returns Tempo access log lines | Fix now: match only a `trace_id` field |
 | Tracing cannot be turned off with the stack's Compose file | Fix now: `${INFRAHUB_TRACE_ENABLE:-true}` |
 | `own-monitoring.mdx` does not mention the color codes of text log lines | Fix the docs now |
+
+## Fixes and re-run
+
+| Issue | Commit | Re-check |
+|---|---|---|
+| Check 4: Tempo access log lines in "Logs for this span" | `3e70bd0c1` | Check 4 re-run by Daniel after recreating Grafana: only the Infrahub lines of the trace (Loki, same filter: 6 lines from `task-worker-2`, none from Tempo); "View trace in Tempo" opens the same trace. pass |
+| Tracing cannot be turned off with the stack's Compose file | `fdf39abc1` | `docker compose config` of the root file with the standalone file: `INFRAHUB_TRACE_ENABLE` is `true` by default and `false` with `INFRAHUB_TRACE_ENABLE=false`, for both services; `test_observability_compose.py` passes. Checked by the agent |
+| `own-monitoring.mdx` does not mention the color codes | `f81039e15` | Docs change only; markdownlint 0 issues |
+
+## Final report
+
+- **Base:** `dp-20261016-portable-dashboards-ifc-3429`; **head:** `f81039e15`
+- Checks 1 to 3 and 5 to 9: pass. Check 4: bug, fixed in `3e70bd0c1`, then pass.
+- Open items: none from this test. Release check T094 (the downloaded Compose file) still needs the
+  answer to T036.
+- Next step: the final docs review, the changelog fragments (T095) and `/pre-ci` (T092), then the
+  draft pull request.
