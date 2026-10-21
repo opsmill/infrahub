@@ -23,7 +23,7 @@ provider "kubectl" {
 
 locals {
   target_namespace = "infrahub"
-  infrahub_version = "1.7.6"
+  infrahub_version = "1.11.9"
 }
 
 ### Infrahub
@@ -33,7 +33,7 @@ resource "helm_release" "infrahub_ha" {
 
   name    = "infrahub"
   chart   = "oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise"
-  version = "4.2.4-small"
+  version = "4.22.0-small"
 
   create_namespace = true
   namespace        = local.target_namespace
@@ -123,6 +123,10 @@ infrahub:
   rabbitmq:
     enabled: false
   prefect-server:
+    global:
+      prefect:
+        image:
+          prefectTag: ${local.infrahub_version} # the task manager runs the Infrahub image, so it follows infrahubTag
     server:
       replicaCount: 3
       affinity:
@@ -137,8 +141,13 @@ infrahub:
         redis:
           # Passed to Prefect as PREFECT_REDIS_MESSAGING_URL: messaging discovers the master through the
           # Sentinel nodes and follows failover, the same as the cache above. A URL replaces the db
-          # setting, so /1 keeps messaging on database 1, apart from the cache on database 0.
+          # setting, so /1 keeps messaging on database 1, apart from the cache on database 0. The chart
+          # also passes this URL to the task manager as INFRAHUB_CACHE_URL, for its startup lock.
           url: "redis+sentinel://cache-redis:26379/mymaster/1"
+        docket:
+          # Passed to Prefect as PREFECT_SERVER_DOCKET_URL, so that Docket also follows failover; /2
+          # keeps it on database 2.
+          url: "redis+sentinel://cache-redis:26379/mymaster/2"
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:

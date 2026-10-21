@@ -41,6 +41,15 @@ These examples are for reference purposes and may require customization for your
 
 :::
 
+:::info Version requirements
+
+The examples connect Infrahub and Prefect directly to the Redis Sentinel nodes, which requires the following versions:
+
+- Infrahub 1.11.9 or later. Earlier versions do not have the `INFRAHUB_CACHE_URL` setting, so they ignore it and connect to `INFRAHUB_CACHE_ADDRESS`, which defaults to `localhost`. Their task manager image also includes a version of Docket, the component that coordinates Prefect's background services, that does not accept `redis+sentinel://` URLs. The task manager runs the Infrahub image, so the examples set the task manager image tag, `prefectTag`, to the same version as `infrahubTag`.
+- Infrahub Enterprise chart 4.22.0 or later. Earlier charts include a `prefect-server` chart that rejects the `backgroundServices.messaging.redis.url` value, so the installation fails. Chart 4.22.0 is also the first release in which the task manager takes its startup lock in Redis through that messaging URL.
+
+:::
+
 ### Using Terraform
 
 <details>
@@ -61,7 +70,7 @@ These examples are for reference purposes and may require customization for your
   helm install cache bitnami/redis --version 19.5.2 --namespace infrahub --create-namespace --values redis-values.yaml
   ```
 
-  Infrahub connects to the Sentinel nodes directly through its cache connection URL, so it discovers the current master and follows failover automatically with no proxy in between. This is configured in `infrahub-values.yaml` below:
+  Infrahub connects to the Sentinel nodes directly through its cache connection URL, so it discovers the current master and follows failover with no proxy in between. `infrahub-values.yaml` below sets this URL for the Infrahub server and the task workers, which use it for the cache and the distributed locks:
 
   ```yaml
   INFRAHUB_CACHE_URL: redis+sentinel://cache-redis:26379/mymaster
@@ -76,6 +85,10 @@ These examples are for reference purposes and may require customization for your
 - Put the database number in the URL. `/mymaster/1` selects database 1, which keeps messaging apart from the cache on database 0.
 - If Redis requires a password, put it in the URL, and percent-encode the characters that have a meaning in URLs, such as `/`, `?`, `#`, `@`, `:` and `%`.
 - To keep a URL that contains a password out of the values file, store the URL in a Kubernetes Secret. Then set `existingSecret` to the Secret name and `existingSecretUrlKey` to the key that holds the URL, instead of `url`.
+
+  The task manager takes an Infrahub lock in Redis while it starts. The chart passes the messaging URL to the task manager as `INFRAHUB_CACHE_URL` for that lock, unless you set `INFRAHUB_CACHE_URL` on the task manager yourself.
+
+  Docket coordinates Prefect's background services, such as the scheduler, through Redis. `infrahub-values.yaml` sets its URL with `prefect-server.backgroundServices.messaging.docket.url`, which the chart passes to Prefect as `PREFECT_SERVER_DOCKET_URL`. The URL uses the same format, and `/mymaster/2` keeps Docket on database 2. The sizing presets set this value to an example host, and the chart refuses to install until you replace it.
 
   See [Prefect messaging over TLS](#prefect-messaging-over-tls) below for the TLS options.
 
@@ -128,7 +141,7 @@ These examples are for reference purposes and may require customization for your
   <CodeBlock language="yaml" title="infrahub-values.yaml">{import_infrahubValuesYaml}</CodeBlock>
 
   ```bash
-  helm install infrahub oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise --version 4.2.4-small --namespace infrahub --create-namespace --values infrahub-values.yaml
+  helm install infrahub oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise --version 4.22.0-small --namespace infrahub --create-namespace --values infrahub-values.yaml
   ```
 
 </details>
