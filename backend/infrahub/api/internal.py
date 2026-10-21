@@ -29,7 +29,7 @@ from infrahub.license.models import (
     NoticeMode,
 )
 from infrahub.license.service import LicenseServiceUnavailable, read_license_status
-from infrahub.license.status import notice_for
+from infrahub.license.status import notice_for, shown_to_all_users_when_enforced
 from infrahub.log import get_logger
 from infrahub.message_bus.messages import RefreshSettingsResponseDelay
 from infrahub.workers.dependencies import get_installation_type, get_license_service
@@ -59,6 +59,9 @@ class ConfigAPI(BaseModel):
 class BannerAPI(BaseModel):
     audience: NoticeAudience
     dismissible: bool
+    shown_to_all_users_when_enforced: bool = Field(
+        description="True when only super-admins see the banner now and every user sees it in the enforcing release"
+    )
 
 
 class LicenseInfoAPI(BaseModel):
@@ -99,7 +102,11 @@ class LicenseInfoAPI(BaseModel):
             days_since_expiry=status.days_since_expiry,
             notice_mode=notice_mode,
             enforcing_release=enforcing_release,
-            banner=BannerAPI(audience=notice.audience, dismissible=notice.dismissible),
+            banner=BannerAPI(
+                audience=notice.audience,
+                dismissible=notice.dismissible,
+                shown_to_all_users_when_enforced=shown_to_all_users_when_enforced(status=status, mode=notice_mode),
+            ),
         )
 
 

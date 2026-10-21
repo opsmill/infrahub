@@ -10,7 +10,7 @@ Each entry records a decision this plan needed, the reason, and what was rejecte
 
 ## R2. Where the state is decided
 
-- **Decision**: Two pure functions in `backend/infrahub/license/status.py`: `evaluate(check, now) -> LicenseStatus` decides the state, `notice_for(status, mode) -> Notice` decides the banner audience, dismissibility and header. The service holds the verification outcome (a `License`, a `LicenseFailure` with a reason, or nothing) and calls `evaluate` with the current time on every `status()` call.
+- **Decision**: Two pure functions in `backend/infrahub/license/status.py`: `evaluate(check, now) -> LicenseStatus` decides the state, `notice_for(status, mode) -> Notice` decides the banner audience, dismissibility and header. `invalid` with `internal_error` stays with super-admins, dismissible and without the header in both modes, because it is a defect in Infrahub rather than in the customer's license. The service holds the verification outcome (a `License`, a `LicenseFailure` with a reason, or nothing) and calls `evaluate` with the current time on every `status()` call.
 - **Rationale**: Pure functions are unit-testable at every time boundary without a JWT or a server (spec SC-002, SC-003). Enterprise reuses them, so the state rules exist once.
 - **Alternatives considered**: each service computing its own state (the rules would be duplicated in the private repo); computing the state once at startup (a license that ends while running would not expire, spec FR-003).
 
@@ -61,12 +61,12 @@ Each entry records a decision this plan needed, the reason, and what was rejecte
 
 - **Decision**: A new `frontend/app/src/entities/license/` entity:
   - `domain/model/license.ts`: the license types, re-exported from the generated REST types;
-  - `domain/rules/license-banner.ts`: pure functions for "should this user see the banner", the banner text per state and mode, and the About rows;
+  - `domain/rules/license-banner.ts`: pure functions for "should this user see the banner" and the banner text per state, with the release note when the server's `banner.shown_to_all_users_when_enforced` is true;
   - `ui/license-banner.tsx`: the banner, placed in `pages/app-layout.tsx` above `AppHeader`;
-  - `ui/hooks/use-license-banner-dismissal.ts`: dismissal in `sessionStorage`, keyed by license ID and state;
+  - `ui/hooks/use-license-banner-dismissal.ts`: dismissal in `sessionStorage`, keyed by license ID, state and failure reason;
   - `ui/license-about-rows.tsx`: rows rendered by `entities/config/ui/about-modal.tsx`.
 
-  The app-info query in `entities/config/ui/queries/get-app-info.query.ts` gains `refetchInterval` of one hour and `refetchOnWindowFocus`. Super-admin comes from `entities/permission/ui/queries/has-global-permission.query.ts::useHasGlobalPermission(SUPER_ADMIN)`.
+  The app-info query in `entities/config/ui/queries/get-app-info.query.ts` gains `refetchInterval` of one hour and `refetchOnWindowFocus: "always"`. Super-admin comes from `entities/permission/ui/queries/has-global-permission.query.ts::useHasGlobalPermission(SUPER_ADMIN)`.
 - **Rationale**: Follows the three-layer entity structure and its import rules: `domain/` never touches browser storage, `ui/` may import other entities' `ui/` and `domain/`, never their `api/`. The license object arrives with app info, which the config entity already fetches, so no new request.
 - **Alternatives considered**: putting the banner in `shared/` (shared must not import entities); a new fetch for license data (extra request, duplicated cache).
 

@@ -14,6 +14,7 @@ X-Infrahub-License-Status: expired
 | --- | --- |
 | Mode `quiet` (first licensing release) | Never sent |
 | Mode `enforce`, state `not_required` or `valid` | Not sent |
+| Mode `enforce`, state `invalid` with reason `internal_error` | Not sent: a defect in Infrahub, not in the customer's license |
 | Mode `enforce`, state `expiring`, `unlicensed`, `invalid`, `not_yet_valid`, `expired` | Sent, value = state |
 | Path is `/api`, starts with `/api/`, is `/graphql` or starts with `/graphql/` | Eligible |
 | Any other path (`/api-static/...`, `/assets/...`, `/favicons/...`, `/docs/...`, the frontend's HTML routes) | Never sent |

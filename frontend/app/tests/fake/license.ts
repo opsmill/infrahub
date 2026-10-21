@@ -15,7 +15,7 @@ export const generateLicenseInfo = (overrides?: Partial<LicenseInfo>): LicenseIn
     days_since_expiry: null,
     notice_mode: "quiet",
     enforcing_release: null,
-    banner: { audience: "none", dismissible: false },
+    banner: { audience: "none", dismissible: false, shown_to_all_users_when_enforced: false },
     ...overrides,
   };
 };

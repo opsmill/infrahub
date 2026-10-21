@@ -125,7 +125,11 @@ async def test_info_endpoint_reports_the_license_service_state(
     assert license_object["state"] == "expiring"
     assert license_object["customer_name"] == "ACME Test Ltd"
     assert license_object["ends_at"] == "2027-09-30T00:00:00Z"
-    assert license_object["banner"] == {"audience": "super_admins", "dismissible": True}
+    assert license_object["banner"] == {
+        "audience": "super_admins",
+        "dismissible": True,
+        "shown_to_all_users_when_enforced": False,
+    }
 
 
 @pytest.fixture

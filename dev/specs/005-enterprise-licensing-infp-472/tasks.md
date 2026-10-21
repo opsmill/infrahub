@@ -128,29 +128,29 @@ Web application: backend in `backend/infrahub/` with tests in `backend/tests/`, 
 
 **Depends on**: T018–T021 (license object and generated types).
 
-- [ ] T025 [P] [US3] Write `frontend/app/src/entities/license/domain/rules/license-banner.test.ts`:
+- [X] T025 [P] [US3] Write `frontend/app/src/entities/license/domain/rules/license-banner.test.ts`:
   - `shouldShowBanner(audience, isSuperAdmin, permissionResolved)` for every audience and role, including `false` while the permission is unresolved for `super_admins`;
-  - `bannerText(license)` for every state in both modes, including the quiet-mode suffix with and without `enforcing_release`.
-- [ ] T026 [US3] Implement `frontend/app/src/entities/license/domain/rules/license-banner.ts` (pure, no React, no storage), adding to `domain/model/license.ts` the `LicenseState`, `LicenseFailureReason`, `NoticeMode` and `NoticeAudience` aliases of the generated REST types that the rules use; make T025 pass
-- [ ] T027 [P] [US3] Write `frontend/app/src/entities/license/ui/hooks/use-license-banner-dismissal.test.ts`:
+  - `bannerText(license, formatDay)` for every state, including the release note when `banner.shown_to_all_users_when_enforced` is true, with and without `enforcing_release`.
+- [X] T026 [US3] Implement `frontend/app/src/entities/license/domain/rules/license-banner.ts` (pure, no React, no storage), adding to `domain/model/license.ts` the `LicenseState`, `LicenseFailureReason` and `NoticeAudience` aliases of the generated REST types; make T025 pass
+- [X] T027 [P] [US3] Write `frontend/app/src/entities/license/ui/hooks/use-license-banner-dismissal.test.ts`:
   - dismissal is remembered in `sessionStorage` for the same license ID (or `none`) and state;
   - a new license ID or state shows the banner again;
   - storage access that throws falls back to not dismissed.
-- [ ] T028 [US3] Implement `frontend/app/src/entities/license/ui/hooks/use-license-banner-dismissal.ts`; make T027 pass
-- [ ] T029 [P] [US3] Write `frontend/app/src/entities/license/ui/license-banner.test.tsx`:
+- [X] T028 [US3] Implement `frontend/app/src/entities/license/ui/hooks/use-license-banner-dismissal.ts`; make T027 pass
+- [X] T029 [P] [US3] Write `frontend/app/src/entities/license/ui/license-banner.test.tsx`:
   - renders for `all_users`;
   - renders for `super_admins` only when the permission query says super-admin;
   - renders nothing while that query is pending, when the license object is missing, or when the app-info query errors;
   - shows the deployment ID with a copy action for `unlicensed`;
   - offers dismissal only when dismissible;
   - shows the reason explanation to super-admins only for `invalid`.
-- [ ] T030 [US3] Implement `frontend/app/src/entities/license/ui/license-banner.tsx`:
+- [X] T030 [US3] Implement `frontend/app/src/entities/license/ui/license-banner.tsx`:
   - use `useGetAppInfo` from `entities/config/ui/queries/get-app-info.query.ts` and `useHasGlobalPermission(SUPER_ADMIN)` from `entities/permission/ui/queries/has-global-permission.query.ts`;
   - use `CopyToClipboardButton` from `shared/components/buttons/copy-to-clipboard-button`.
 
   Make T029 pass.
-- [ ] T031 [US3] Render `LicenseBanner` above `AppHeader` in `frontend/app/src/pages/app-layout.tsx`
-- [ ] T032 [US3] In `frontend/app/src/entities/config/ui/queries/get-app-info.query.ts::getAppInfoQueryOptions`, add `refetchInterval` of one hour and `refetchOnWindowFocus: true`; update any test that asserts the query options
+- [X] T031 [US3] Render `LicenseBanner` above `AppHeader` in `frontend/app/src/pages/app-layout.tsx`
+- [X] T032 [US3] In `frontend/app/src/entities/config/ui/queries/get-app-info.query.ts::getAppInfoQueryOptions`, add `refetchInterval` of one hour and `refetchOnWindowFocus: "always"`; update any test that asserts the query options
 
 **Checkpoint**: All three P1 stories are done. With a test service, the UI behaves as the design's Behaviour table says.
 
