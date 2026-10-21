@@ -1,0 +1,19 @@
+backend/infrahub/core/schema/attribute_parameters.py
+  s_0844b75bc6245a::t_198f6a77ef4950 248
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f17472ad4dba0ad48587a4ca5890cc5350cb8ab0",
+  "prompts": {},
+  "sessions": {
+    "s_0844b75bc6245a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "778a1d1b-6a16-4e97-b8c2-c8d79ffe2e78",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,25 @@
+backend/infrahub/graphql/mutations/resource_manager/number_pools/pool_range.py
+  s_d4b119a8ce2b52::t_693c9aee705dd8 172
+backend/infrahub/pools/number_pool_shorthand.py
+  s_d4b119a8ce2b52::t_79a00f2f4ec220 53
+  s_d4b119a8ce2b52::t_cf7bee0c6da68c 16
+backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py
+  s_d4b119a8ce2b52::t_2b8e65df24f965 15
+  s_d4b119a8ce2b52::t_cc21e74b94f930 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3893811c39f660402984f1c0668a9f909f1e31c8",
+  "prompts": {},
+  "sessions": {
+    "s_d4b119a8ce2b52": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "24c277eb-45ea-420c-960a-16bb0ad66d33",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

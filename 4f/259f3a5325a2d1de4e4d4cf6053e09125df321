@@ -1,0 +1,57 @@
+dev/specs/ifc-3065-number-pool-ranges/contracts/graphql-schema-changes.md
+  s_d4b119a8ce2b52::t_1da62df8f7775c 100-101
+backend/tests/component/graphql/resource_manager/number_pool_attach/test_source_through_other_reads.py
+  s_d4b119a8ce2b52::t_6cf3aff41fd348 209
+backend/tests/component/graphql/resource_manager/number_pool_attach/test_attach.py
+  s_d4b119a8ce2b52::t_6cf3aff41fd348 665,687,716,738
+backend/tests/component/graphql/resource_manager/number_pool_attach/test_value_edit.py
+  s_d4b119a8ce2b52::t_6cf3aff41fd348 158,213,253,447
+backend/tests/unit/pools/attribute_pool_applier/test_other_branches.py
+  s_d4b119a8ce2b52::t_6cf3aff41fd348 68,146,192
+backend/tests/unit/pools/test_range_refusal.py
+  s_d4b119a8ce2b52::t_6cf3aff41fd348 29,43,64,128,162
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_range_held_numbers.py
+  s_d4b119a8ce2b52::t_6cf3aff41fd348 128,134,137,143,209,236,258,346,380
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_ranges.py
+  s_d4b119a8ce2b52::t_6cf3aff41fd348 220,227,456,471,510,602,604
+backend/tests/unit/pools/attribute_pool_applier/test_ranges.py
+  s_d4b119a8ce2b52::t_6cf3aff41fd348 38,56,71,89
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_range_attribute_bounds.py
+  s_d4b119a8ce2b52::t_6cf3aff41fd348 31-32,50,56
+backend/infrahub/core/schema/attribute_parameters.py
+  s_d4b119a8ce2b52::t_268b07abb39958 11,210
+backend/tests/unit/core/schema/test_number_pool_parameters.py
+  s_d4b119a8ce2b52::t_6cf3aff41fd348 113,123,128,133,268
+backend/tests/component/graphql/resource_manager/number_pools/helpers.py
+  s_d4b119a8ce2b52::t_6cf3aff41fd348 205
+backend/tests/unit/pools/attribute_pool_applier/test_value_edit.py
+  s_d4b119a8ce2b52::t_6cf3aff41fd348 49
+backend/infrahub/pools/range_refusal.py
+  s_d4b119a8ce2b52::t_268b07abb39958 6,141
+backend/tests/unit/pools/test_number_pool_range_validation.py
+  s_d4b119a8ce2b52::t_6cf3aff41fd348 55,60,65,75,80,85,91,97,151,172,184,196,234,240,246,252
+backend/tests/component/graphql/resource_manager/number_pool_attach/test_attach_branches.py
+  s_d4b119a8ce2b52::t_6cf3aff41fd348 53,74,95,153,180
+backend/infrahub/pools/number_pool_range_validation.py
+  s_d4b119a8ce2b52::t_268b07abb39958 7,30,32
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_immutable_fields.py
+  s_d4b119a8ce2b52::t_6cf3aff41fd348 201
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_update.py
+  s_d4b119a8ce2b52::t_6cf3aff41fd348 301
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4f259f3a5325a2d1de4e4d4cf6053e09125df321",
+  "prompts": {},
+  "sessions": {
+    "s_d4b119a8ce2b52": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "24c277eb-45ea-420c-960a-16bb0ad66d33",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
