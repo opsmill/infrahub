@@ -1,0 +1,35 @@
+backend/tests/component/core/constraint_validators/test_aggregated_checker_registration.py
+  s_3f87105f1bb54d::t_a9406f815f8b16 1-15
+backend/tests/integration/schema_lifecycle/test_schema_validator_stored_data.py
+  s_3f87105f1bb54d::t_a5bdfd7ece0df2 88,90,92,199,269
+  s_3f87105f1bb54d::t_68060bd5ba8147 281,283-284
+  s_3f87105f1bb54d::t_34a6f9fccc1382 16,115-117
+  s_3f87105f1bb54d::t_e6d86a4512a796 242-247
+  s_3f87105f1bb54d::t_8cc99eb251b416 10,19,51-54,57-70,73-75,78-80,83-87,89,91,97-106,108,114,118,123-129,133-146,148,152,194,202-216,219,251-252,264,270-271,286
+  s_3f87105f1bb54d::t_962afa03fae320 258,266-267,282
+  s_3f87105f1bb54d::t_c2f7e88d3914cf 1-9,11-15,17-18,20-50,55-56,71-72,76-77,81-82,93-96,107,109-113,119-122,130-132,147,149-151,153-193,195-198,200-201,217-218,220-221,224-241,248-250,253-257,259-263,265,268,272-280,285,287-288
+  s_3f87105f1bb54d::t_4b3cd291e351ad 222-223
+backend/tests/integration/shared.py
+  s_3f87105f1bb54d::t_6d865bed68227e 8-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "25b52cd1637e13c7df6f935fdb91c226026bc27b",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_3f87105f1bb54d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "630f8558-8e40-4fb7-9f40-2f7571d1fcc8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
