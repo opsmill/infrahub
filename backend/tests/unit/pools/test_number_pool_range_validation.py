@@ -276,7 +276,7 @@ def test_a_range_outside_the_attribute_limits_is_refused_naming_the_bound(case: 
     assert exc_info.value.message == case.message
 
 
-def test_ranges_outside_the_attribute_limits_are_refused_from_the_lowest_range() -> None:
+def test_ranges_outside_the_attribute_limits_are_all_refused_from_the_lowest_range() -> None:
     ranges = [NumberRangeBounds(start=101, end=None, id="above"), NumberRangeBounds(start=None, end=9, id="below")]
 
     violations = find_ranges_outside_attribute(ranges=ranges, domain=LIMITS)
@@ -284,4 +284,21 @@ def test_ranges_outside_the_attribute_limits_are_refused_from_the_lowest_range()
         validate_ranges_within_attribute(ranges=ranges, domain=LIMITS)
 
     assert [violation.bounds.id for violation in violations] == ["below", "above"]
-    assert exc_info.value.message == "Range ending at 9 without a start ends below the attribute's min_value (10)"
+    assert exc_info.value.message == (
+        "Range ending at 9 without a start ends below the attribute's min_value (10); "
+        "Range starting at 101 without an end starts above the attribute's max_value (100)"
+    )
+
+
+def test_a_range_outside_both_attribute_limits_is_refused_naming_both_bounds() -> None:
+    bounds = NumberRangeBounds(start=9, end=101)
+
+    violations = find_ranges_outside_attribute(ranges=[bounds], domain=LIMITS)
+    with pytest.raises(ValidationError) as exc_info:
+        validate_ranges_within_attribute(ranges=[bounds], domain=LIMITS)
+
+    assert [violation.field_name for violation in violations] == ["start", "end"]
+    assert exc_info.value.message == (
+        "Range 9 - 101 starts below the attribute's min_value (10); "
+        "Range 9 - 101 ends above the attribute's max_value (100)"
+    )

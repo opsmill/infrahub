@@ -66,7 +66,7 @@ def refuse_ranges_outside_attribute(
     """Refuse ranges reaching outside the attribute's min_value / max_value.
 
     Raises:
-        ValidationError: For the lowest range reaching outside the attribute's bounds.
+        ValidationError: Listing every range reaching outside the attribute's bounds, lowest range first.
 
     """
     validate_ranges_within_attribute(

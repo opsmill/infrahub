@@ -67,6 +67,15 @@ OUT_OF_BOUNDS_CASES: list[OutOfBoundsCase] = [
         end=5,
         expected_error="Range ending at 5 without a start ends below the attribute's min_value (10)",
     ),
+    OutOfBoundsCase(
+        name="below_min_value_and_above_max_value",
+        start=5,
+        end=150,
+        expected_error=(
+            "Range 5 - 150 starts below the attribute's min_value (10); "
+            "Range 5 - 150 ends above the attribute's max_value (100)"
+        ),
+    ),
 ]
 
 

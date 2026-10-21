@@ -136,12 +136,12 @@ def validate_ranges_within_attribute(ranges: Collection[NumberRangeBounds], doma
     """Refuse ranges reaching outside the min_value or max_value of the attribute the pool allocates for.
 
     Raises:
-        ValidationError: For the lowest offending range.
+        ValidationError: Listing every violation, lowest range first, so all of them can be fixed in one change.
 
     """
     violations = find_ranges_outside_attribute(ranges=ranges, domain=domain)
     if violations:
-        raise ValidationError(input_value=violations[0].message)
+        raise ValidationError(input_value="; ".join(violation.message for violation in violations))
 
 
 def validate_shorthand_target(ranges: Collection[NumberRangeBounds], domain: NumberDomain) -> None:
