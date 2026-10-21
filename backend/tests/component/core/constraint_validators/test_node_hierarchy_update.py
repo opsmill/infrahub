@@ -536,7 +536,7 @@ class TestHierarchyValidatorRenamedParent:
 
     @pytest.fixture(scope="class")
     async def region_schema_with_id(
-        self, default_branch_scope_class: Branch, hierarchical_location_data_simple_scope_class: dict[str, Node]
+        self, default_branch_scope_class: Branch, hierarchical_location_data_scope_class: dict[str, Node]
     ) -> None:
         current_schema = registry.schema.get_schema_branch(name=default_branch_scope_class.name)
         _set_schema_id(schema_branch=current_schema, kind="LocationRegion", schema_id=REGION_SCHEMA_ID)
@@ -587,14 +587,14 @@ class TestHierarchyValidatorRenamedParent:
         self,
         db: InfrahubDatabase,
         default_branch_scope_class: Branch,
-        hierarchical_location_data_simple_scope_class: dict[str, Node],
+        hierarchical_location_data_scope_class: dict[str, Node],
         region_schema_with_id: None,
     ) -> None:
         """The change points LocationSite.parent at the renamed rack kind while the stored sites keep regions as parents.
 
         Only LocationRack, the rack kind's earlier name, is added to the allowed kinds, so every site is refused.
         """
-        nodes = hierarchical_location_data_simple_scope_class
+        nodes = hierarchical_location_data_scope_class
         candidate_schema = registry.schema.get_schema_branch(name=default_branch_scope_class.name).duplicate()
         renamed_kind = _rename_kind(schema_branch=candidate_schema, kind="LocationRack", name="Shelf")
         site_schema = candidate_schema.get_node(name="LocationSite")
