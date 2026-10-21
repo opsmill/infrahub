@@ -275,11 +275,26 @@ async def test_pull_infrahub_default_branch_pulls_repository_default_branch(
     assert commit_after == new_commit
 
 
+@dataclass
+class StalledFetchCase:
+    name: str
+    fetch: Callable[[InfrahubRepository], Awaitable[object]]
+
+
+STALLED_FETCH_CASES = [
+    StalledFetchCase(
+        name="pull", fetch=lambda repository: repository.pull(branch_name="main", update_commit_value=False)
+    ),
+    StalledFetchCase(name="fetch_with_no_limit_given", fetch=lambda repository: repository.fetch()),
+]
+
+
 @pytest.mark.timeout(60, method="thread")
-async def test_pull_from_a_remote_that_never_answers_ends_at_the_time_limit(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in STALLED_FETCH_CASES])
+async def test_a_fetch_from_a_remote_that_never_answers_ends_at_the_time_limit(
+    case: StalledFetchCase, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The caller holds the repository lock during the pull, so a hung remote must not keep it forever."""
+    """The caller holds the repository lock during the fetch, so a hung remote must not keep it forever."""
     source_dir = _init_source_repository(tmp_path, monkeypatch)
     repository = await clone_repository(
         id=UUIDT.new(),
@@ -300,7 +315,7 @@ async def test_pull_from_a_remote_that_never_answers_ends_at_the_time_limit(
                 r"please check that the remote is reachable\.$"
             ),
         ):
-            await repository.pull(branch_name="main", update_commit_value=False)
+            await case.fetch(repository)
 
 
 def _init_source_repository(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:

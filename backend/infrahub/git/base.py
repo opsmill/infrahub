@@ -962,8 +962,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         """Fetch the latest update from the remote repository and bring a copy locally.
 
         Args:
-            timeout_seconds: Passed to GitPython as ``kill_after_timeout``, and ends an HTTP(S) transfer that
-                sends no data for that long; ``None`` sets no limit.
+            timeout_seconds: The deadline of the fetch; ``None`` uses ``FETCH_TIMEOUT_SECONDS``.
 
         """
         if not self.has_origin:
@@ -986,26 +985,20 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         """Fetch every branch and tag from origin into the main clone.
 
         Args:
-            timeout_seconds: Passed to GitPython as ``kill_after_timeout``, and ends an HTTP(S) transfer that
-                sends no data for that long; ``None`` sets no limit. A read-only fetch is always bounded, by this
-                limit when given and by its own default otherwise.
+            timeout_seconds: The deadline of the fetch; ``None`` uses ``FETCH_TIMEOUT_SECONDS``.
 
         Raises:
-            GitCommandError: When git cannot complete the fetch, or a read-only fetch runs out of time.
+            GitCommandError: When git cannot complete the fetch, or the fetch runs out of time.
 
         """
-        if not self.is_read_only:
-            with stalled_transfer_limit(repo=git_repo, timeout_seconds=timeout_seconds):
-                git_repo.remotes.origin.fetch(
-                    prune=True, tags=True, prune_tags=True, kill_after_timeout=timeout_seconds
-                )
-            return
-
         # A stalled remote must not hold the repository lock, which has no expiry, and GitPython <=3.2.0
         # never stops `Remote.fetch(kill_after_timeout=...)` on a remote that sends nothing.
-        # git refuses to move an existing tag unless forced; the tag's old commit stays readable through its own worktree.
+        arguments = ["fetch", "--prune", "--tags", "--prune-tags", "origin"]
+        if self.is_read_only:
+            # git refuses to move an existing tag unless forced; the tag's old commit stays readable through its own worktree.
+            arguments.insert(-1, "--force")
         run_git_with_deadline(
-            ["fetch", "--prune", "--tags", "--prune-tags", "--force", "origin"],
+            arguments,
             working_directory=git_repo.working_dir,
             environment=REMOTE_TRANSPORT_ENVIRONMENT,
             timeout_seconds=FETCH_TIMEOUT_SECONDS if timeout_seconds is None else timeout_seconds,

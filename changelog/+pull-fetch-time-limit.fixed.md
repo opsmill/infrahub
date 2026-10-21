@@ -1,1 +1,1 @@
-Fixed a Git repository update that waited forever when the remote stopped answering and held up every other operation on that repository. The fetch now stops after 15 minutes and the repository reports a connection error.
+Fixed a Git fetch that waited forever when the remote stopped answering, and held up every other operation on that repository, for example its synchronization. Every fetch from the remote now stops at its time limit, 15 minutes at most, over HTTP and SSH, and the repository reports a connection error.
