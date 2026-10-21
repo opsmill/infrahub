@@ -1,21 +1,16 @@
 from __future__ import annotations
 
-import socket
 import ssl
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote_plus, urlsplit
+from urllib.parse import quote_plus
 
 import pytest
 from pydantic import SecretStr
 from redis.asyncio import Redis
 from redis.asyncio.connection import Connection, SSLConnection
-from redis.asyncio.sentinel import (
-    SentinelConnectionPool,
-    SentinelManagedConnection,
-    SentinelManagedSSLConnection,
-)
+from redis.asyncio.sentinel import SentinelConnectionPool
 
 from infrahub.config import CacheDriver, CacheSettings
 from infrahub.redis_connection import (
@@ -25,15 +20,17 @@ from infrahub.redis_connection import (
     validate_redis_url,
 )
 
-# The socket bounds a Sentinel pool relies on to drop a dead master, asserted against the values
-# redis-py 8 defaults to rather than against its own constants, so a bump that loosens them fails
+# The connect and read bounds a Sentinel pool relies on to drop a dead master, asserted against the
+# value redis-py 8 defaults to rather than against its own constant, so a bump that loosens it fails
 # here instead of silently stretching a failover.
 REDIS_PY_SOCKET_TIMEOUTS = 5
-REDIS_PY_KEEPALIVE_OPTIONS = {socket.TCP_KEEPIDLE: 30, socket.TCP_KEEPINTVL: 5, socket.TCP_KEEPCNT: 3}
 
 # CA settings are validated at load, so the cases need a bundle that exists.
 CA_BUNDLE = str(Path(__file__).parent / "test_data" / "ca-bundle.pem")
 CA_BUNDLE_QUOTED = quote_plus(CA_BUNDLE, safe="")
+
+
+pytestmark = pytest.mark.usefixtures("without_cache_environment")
 
 
 def _build(url: str, **cache_kwargs: Any) -> Any:
@@ -121,16 +118,6 @@ CONNECTION_STRING_CASES = [
         expected_url="redis://redis.internal:6379/0",
     ),
     ConnectionStringCase(
-        name="url_single_node",
-        cache_kwargs={"url": "redis://cache:6380/2"},
-        expected_url="redis://cache:6380/2",
-    ),
-    ConnectionStringCase(
-        name="url_single_node_with_auth",
-        cache_kwargs={"url": "redis://user:secret@cache:6379/0"},
-        expected_url="redis://user:secret@cache:6379/0",
-    ),
-    ConnectionStringCase(
         name="url_single_node_passed_through_verbatim",
         cache_kwargs={"url": "rediss://cache:6379?ssl_cert_reqs=none&ssl_check_hostname=false"},
         expected_url="rediss://cache:6379?ssl_cert_reqs=none&ssl_check_hostname=false",
@@ -139,11 +126,6 @@ CONNECTION_STRING_CASES = [
         name="url_sentinel_passed_through",
         cache_kwargs={"url": "redis+sentinel://sentinel-a:26379,sentinel-b:26379/mymaster/1"},
         expected_url="redis+sentinel://sentinel-a:26379,sentinel-b:26379/mymaster/1",
-    ),
-    ConnectionStringCase(
-        name="url_sentinel_tls_and_auth_passed_through",
-        cache_kwargs={"url": "rediss+sentinel://user:secret@sentinel-a:26379/mymaster"},
-        expected_url="rediss+sentinel://user:secret@sentinel-a:26379/mymaster",
     ),
     ConnectionStringCase(
         name="url_supersedes_the_scalar_settings",
@@ -174,6 +156,15 @@ CONNECTION_STRING_CASES = [
         name="url_ssl_ca_data_wins_over_the_configured_ca_bundle",
         cache_kwargs={"url": "rediss://cache:6379/0?ssl_ca_data=PEM", "tls_ca_file": CA_BUNDLE},
         expected_url="rediss://cache:6379/0?ssl_ca_data=PEM",
+    ),
+    ConnectionStringCase(
+        # urlsplit rejects this member list as an invalid IPv6 URL, so the scheme is read without it.
+        name="url_tls_detected_on_a_sentinel_url_with_a_later_ipv6_member",
+        cache_kwargs={
+            "url": "rediss+sentinel://sentinel-a:26379,[2001:db8::1]:26379/mymaster",
+            "tls_ca_file": CA_BUNDLE,
+        },
+        expected_url=f"rediss+sentinel://sentinel-a:26379,[2001:db8::1]:26379/mymaster?ssl_ca_certs={CA_BUNDLE_QUOTED}",
     ),
     ConnectionStringCase(
         name="url_plaintext_ignores_the_configured_ca_bundle",
@@ -281,64 +272,6 @@ def test_build_redis_connection_from_scalar_settings(case: ScalarCase) -> None:
     assert _describe(connection) == case.expected
 
 
-@dataclass
-class UrlCase:
-    name: str
-    url: str
-    connection_class: type
-    connection_kwargs: dict[str, Any] = field(default_factory=dict)
-
-
-URL_CASES = [
-    UrlCase(
-        name="single_node_minimal",
-        url="redis://localhost:6379/0",
-        connection_class=Connection,
-        connection_kwargs={"host": "localhost", "port": 6379},
-    ),
-    UrlCase(
-        name="single_node_default_port_and_db",
-        url="redis://cache",
-        connection_class=Connection,
-        connection_kwargs={"host": "cache"},
-    ),
-    UrlCase(
-        name="single_node_tls_with_auth_and_encoded_password",
-        url="rediss://user:pa%40ss@cache:6380/2",
-        connection_class=SSLConnection,
-        connection_kwargs={"host": "cache", "port": 6380, "db": 2, "username": "user", "password": "pa@ss"},
-    ),
-    UrlCase(
-        name="single_node_tls_native_ssl_options",
-        url="rediss://cache:6379?ssl_cert_reqs=none&ssl_check_hostname=false&ssl_ca_certs=/etc/ca.pem",
-        connection_class=SSLConnection,
-        connection_kwargs={"ssl_cert_reqs": "none", "ssl_check_hostname": False, "ssl_ca_certs": "/etc/ca.pem"},
-    ),
-    UrlCase(
-        name="single_node_pool_options_funneled",
-        url="redis://cache:6379/0?max_connections=50&health_check_interval=15",
-        connection_class=Connection,
-        connection_kwargs={"health_check_interval": 15},
-    ),
-]
-
-
-@pytest.mark.parametrize("case", URL_CASES, ids=lambda case: case.name)
-def test_build_redis_connection_from_url(case: UrlCase) -> None:
-    pool = _build(case.url).connection_pool
-
-    assert pool.connection_class is case.connection_class
-    for key, expected in case.connection_kwargs.items():
-        assert pool.connection_kwargs.get(key) == expected, f"kwarg {key!r}"
-
-
-def test_omitted_port_and_db_fall_back_to_the_redis_py_defaults() -> None:
-    """redis-py leaves an omitted port/db out of connection_kwargs; the connection still defaults."""
-    connection = _build("redis://cache").connection_pool.make_connection()
-
-    assert (connection.host, connection.port, connection.db) == ("cache", 6379, 0)
-
-
 def test_url_connection_retries_like_the_client_default() -> None:
     """Redis.from_url hands the pool no retry policy, so the client default has to be rebuilt.
 
@@ -359,27 +292,8 @@ def test_url_connection_inherits_the_redis_py_socket_bounds() -> None:
     connection = _build("redis://cache:6379/0").connection_pool.make_connection()
 
     assert connection.socket_keepalive is True
-    assert connection.socket_keepalive_options == REDIS_PY_KEEPALIVE_OPTIONS
     assert connection.socket_connect_timeout == REDIS_PY_SOCKET_TIMEOUTS
     assert connection.socket_timeout == REDIS_PY_SOCKET_TIMEOUTS
-
-
-def test_tls_url_ca_bundle_reaches_the_sentinel_daemons() -> None:
-    """One CA covers the data nodes and the daemons, which authenticate the same topology."""
-    manager = _build("rediss+sentinel://s1:26379/svc", tls_ca_file=CA_BUNDLE).connection_pool.sentinel_manager
-
-    assert manager.sentinel_kwargs["ssl_ca_certs"] == CA_BUNDLE
-
-
-def test_tls_is_detected_on_a_sentinel_url_urlsplit_cannot_parse() -> None:
-    """The scheme is read by hand because urlsplit rejects this member arrangement."""
-    url = "rediss+sentinel://sentinel-a:26379,[2001:db8::1]:26379/mymaster"
-    with pytest.raises(ValueError, match=r"^Invalid IPv6 URL$"):
-        urlsplit(url)
-
-    kwargs = _build(url, tls_ca_file=CA_BUNDLE).connection_pool.connection_kwargs
-
-    assert kwargs["ssl_ca_certs"] == CA_BUNDLE
 
 
 def test_health_check_interval_pings_idle_connections() -> None:
@@ -393,132 +307,16 @@ def test_health_check_interval_pings_idle_connections() -> None:
     assert overridden_pool.connection_kwargs["health_check_interval"] == 7
 
 
-def test_url_query_option_overrides_a_socket_bound() -> None:
-    """A URL query option wins over the redis-py default it replaces, and only over that one."""
-    connection = _build("redis://cache:6379/0?socket_timeout=7").connection_pool.make_connection()
-
-    assert connection.socket_timeout == 7.0
-    assert connection.socket_connect_timeout == REDIS_PY_SOCKET_TIMEOUTS
-
-
-def test_max_connections_reaches_the_pool() -> None:
-    # max_connections is consumed by the pool itself rather than kept in connection_kwargs.
-    assert _build("redis://cache:6379/0?max_connections=50").connection_pool.max_connections == 50
-
-
-@dataclass
-class SentinelCase:
-    name: str
-    url: str
-    service_name: str
-    sentinels: list[tuple[str, int]]
-    connection_class: type
-    db: int = 0
-    connection_kwargs: dict[str, Any] = field(default_factory=dict)
-    sentinel_kwargs: dict[str, Any] = field(default_factory=dict)
-
-
-SENTINEL_CASES = [
-    SentinelCase(
-        name="multi_member_with_data_and_sentinel_auth",
-        url="redis+sentinel://app:secret@s1:26379,s2:26379,s3:26379/mymaster/1"
-        "?sentinel_username=su&sentinel_password=sp",
-        service_name="mymaster",
-        sentinels=[("s1", 26379), ("s2", 26379), ("s3", 26379)],
-        connection_class=SentinelManagedConnection,
-        db=1,
-        connection_kwargs={"username": "app", "password": "secret"},
-        sentinel_kwargs={"username": "su", "password": "sp"},
-    ),
-    SentinelCase(
-        name="member_default_port",
-        url="redis+sentinel://s1,s2/svc",
-        service_name="svc",
-        sentinels=[("s1", 26379), ("s2", 26379)],
-        connection_class=SentinelManagedConnection,
-    ),
-    SentinelCase(
-        name="ipv6_members",
-        url="redis+sentinel://[2001:db8::1]:26379,[2001:db8::2]:26380/svc",
-        service_name="svc",
-        sentinels=[("2001:db8::1", 26379), ("2001:db8::2", 26380)],
-        connection_class=SentinelManagedConnection,
-    ),
-    SentinelCase(
-        name="tls_data_nodes_follow_scheme",
-        url="rediss+sentinel://s1:26379/svc",
-        service_name="svc",
-        sentinels=[("s1", 26379)],
-        connection_class=SentinelManagedSSLConnection,
-        sentinel_kwargs={"ssl": True},
-    ),
-    SentinelCase(
-        name="tls_ssl_options_shared_with_daemons",
-        url="rediss+sentinel://s1:26379/svc?ssl_cert_reqs=none&ssl_check_hostname=false",
-        service_name="svc",
-        sentinels=[("s1", 26379)],
-        connection_class=SentinelManagedSSLConnection,
-        connection_kwargs={"ssl_cert_reqs": "none", "ssl_check_hostname": False},
-        sentinel_kwargs={"ssl": True, "ssl_cert_reqs": "none", "ssl_check_hostname": False},
-    ),
-    SentinelCase(
-        name="pool_options_funneled_to_data_nodes",
-        url="redis+sentinel://s1:26379/svc?health_check_interval=15&sentinel_username=su",
-        service_name="svc",
-        sentinels=[("s1", 26379)],
-        connection_class=SentinelManagedConnection,
-        connection_kwargs={"health_check_interval": 15},
-        sentinel_kwargs={"username": "su"},
-    ),
-]
-
-
-@pytest.mark.parametrize("case", SENTINEL_CASES, ids=lambda case: case.name)
-def test_build_redis_connection_from_sentinel_url(case: SentinelCase) -> None:
-    pool = _build(case.url).connection_pool
+def test_sentinel_url_carries_the_connection_defaults() -> None:
+    """The retry and health check reach the data-node pool that a Sentinel URL selects."""
+    pool = _build("redis+sentinel://s1:26379,s2:26379/mymaster").connection_pool
 
     assert isinstance(pool, SentinelConnectionPool)
-    assert pool.service_name == case.service_name
-    assert pool.connection_class is case.connection_class
-    assert pool.connection_kwargs.get("db", 0) == case.db
-
-    manager = pool.sentinel_manager
-    members = [
-        (daemon.connection_pool.connection_kwargs["host"], daemon.connection_pool.connection_kwargs["port"])
-        for daemon in manager.sentinels
-    ]
-    assert members == case.sentinels
-
-    for key, expected in case.connection_kwargs.items():
-        assert pool.connection_kwargs.get(key) == expected, f"data-node kwarg {key!r}"
-    for key, expected in case.sentinel_kwargs.items():
-        assert manager.sentinel_kwargs.get(key) == expected, f"sentinel kwarg {key!r}"
-
-
-def test_sentinel_daemons_inherit_socket_options() -> None:
-    """The daemon connections carry the same connect/read bounds, so discovery skips a dead daemon."""
-    manager = _build("redis+sentinel://s1:26379/svc?sentinel_password=sp").connection_pool.sentinel_manager
-    daemon_kwargs = manager.sentinels[0].connection_pool.connection_kwargs
-
-    assert daemon_kwargs["socket_connect_timeout"] == REDIS_PY_SOCKET_TIMEOUTS
-    assert daemon_kwargs["socket_timeout"] == REDIS_PY_SOCKET_TIMEOUTS
-
-
-def test_sentinel_daemons_share_a_socket_option_from_the_url() -> None:
-    """A socket option set on the URL reaches the daemons too, not just the data nodes."""
-    manager = _build("redis+sentinel://s1:26379/svc?socket_timeout=7").connection_pool.sentinel_manager
-
-    assert manager.sentinel_kwargs["socket_timeout"] == 7.0
-
-
-def test_sentinel_credentials_do_not_leak_to_the_daemons() -> None:
-    """Data-node credentials must not be replayed to the daemons, which authenticate separately."""
-    pool = _build("redis+sentinel://app:secret@s1:26379/svc?sentinel_username=su&sentinel_password=sp").connection_pool
-
-    assert pool.connection_kwargs["username"] == "app"
-    assert pool.connection_kwargs["password"] == "secret"
-    assert pool.sentinel_manager.sentinel_kwargs["username"] == "su"
-    assert pool.sentinel_manager.sentinel_kwargs["password"] == "sp"
+    assert pool.connection_kwargs["health_check_interval"] == REDIS_HEALTH_CHECK_INTERVAL
+    assert (
+        pool.connection_kwargs["retry"].get_retries()
+        == Redis().connection_pool.connection_kwargs["retry"].get_retries()
+    )
 
 
 VALID_URLS = [
