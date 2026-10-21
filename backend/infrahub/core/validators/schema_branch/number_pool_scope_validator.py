@@ -87,6 +87,39 @@ class DeclaredScopeValidator:
             kind=kind, tracked_attribute=tracked_attribute, scope=scope
         )
 
+    def validate_default_branch_pool(
+        self, candidate: SchemaBranch, default_branch_schema: SchemaBranch, kind: str, default_entries: list[str]
+    ) -> None:
+        """Refuse a branch kind that does not hold every field the pool of the default branch is scoped by.
+
+        The pool stores the ids of the default branch's fields, so a kind created on the branch on its own, whose
+        fields hold other ids, cannot allocate from it whatever scope the declaration names.
+
+        Args:
+            candidate: The schema loaded on the branch.
+            default_branch_schema: The schema of the default branch, where the pool of the attribute exists.
+            kind: The kind that declares the attribute.
+            default_entries: The allocation scope the attribute declares on the default branch.
+
+        Raises:
+            ValidationError: When no field of the kind on the candidate holds the id of a scope field.
+
+        """
+        default_resolver = AllocationScopeResolver(schema_branch=default_branch_schema)
+        candidate_resolver = _DeclaredScopeResolver(schema_branch=candidate)
+        candidate_kind = candidate.get(name=kind, duplicate=False)
+        for entry in default_entries:
+            element = default_resolver.resolve(kind=kind, entries=[entry]).elements[0]
+            if candidate_resolver.find_element_field(node_schema=candidate_kind, element=element) is not None:
+                continue
+            raise ValidationError(
+                {
+                    SCOPE_FIELD: f'"{element.name}" is a different field on branch {candidate.name} than on the'
+                    f" default branch {default_branch_schema.name}, where the pool of the attribute is scoped by"
+                    " it; declare the attribute once the field is the same on both branches"
+                }
+            )
+
     @staticmethod
     def _resolve_known_entries(candidate: SchemaBranch, kind: str, entries: list[str] | None) -> AllocationScope:
         resolver = _DeclaredScopeResolver(schema_branch=candidate)
