@@ -91,11 +91,20 @@ An artifact is the cached output of a Transformation. Infrahub regenerates it du
 
 ### What a run regenerates or deletes
 
-How much of the definition a run covers depends on how it started. Creating or updating the definition, **Generate**, and the REST call without `nodes` cover every current member of the target group, whatever changed. **Re-generate** and the REST call with `nodes` cover only the artifacts they name. The post-merge path covers the members the merge affected, and a Proposed Change pipeline covers the targets the change affects on the source branch. The rules below describe what a run does with the members it covers.
+How much of the definition a run covers depends on how it started:
+
+| How the run started | What it covers |
+|---|---|
+| Creating or updating the definition, **Generate**, the REST call without `nodes` | Every current member of the target group, whatever changed |
+| **Re-generate**, the REST call with `nodes` | Only the artifacts the request names |
+| The post-merge path | The members the merge affected |
+| A Proposed Change pipeline | The targets the change affects, on the source branch |
+
+The rules below describe what a run does with the members it covers.
 
 - **The target's data changed**: an object read by the artifact's GraphQL query is modified, so that target's artifact is regenerated.
 - **A new target joined the group**: Infrahub generates an artifact for the new member. A run that names artifacts (**Re-generate**, or the REST call with `nodes`) skips the new member, because it has no artifact to name; a run that covers members by object ID, as the post-merge path does, includes it.
-- **A target left the group**: Infrahub deletes the former member's artifact only during a run that covers every current member, which is creating or updating the definition, **Generate**, or the REST call without `nodes`. A Proposed Change pipeline does not delete it, and the post-merge path deletes it only when it regenerates the whole definition. Until one of those runs, the artifact of a departed member stays.
+- **A target left the group**: Infrahub deletes the former member's artifact only during a run that covers every current member: creating or updating the definition, **Generate**, or the REST call without `nodes`. A Proposed Change pipeline does not delete it, and the post-merge path deletes it only when it regenerates the whole definition. Until one of those runs, the artifact of a departed member stays.
 - **The definition's code or configuration changed**: when a Proposed Change commits to a linked repository, Infrahub regenerates an artifact only if the change touches that definition's GraphQL query, its Transformation's [dependency closure](../transformations/overview#dependency-tracking-and-regeneration), or the artifact definition itself. An unrelated commit (a README edit, or a helper no Transformation uses) regenerates nothing. For a Python Transformation the closure is the single file its `file_path` names, so a change to a helper module it imports regenerates nothing either, until that helper is declared in [`watch`](../git-integration/infrahub-yml#declaring-extra-dependencies-with-watch).
 
 :::info What does not start a run
@@ -104,13 +113,13 @@ Changing data, or adding and removing group members, does not regenerate an arti
 
 :::
 
-Data a Generator creates during a proposed change is not a reliable trigger for an artifact in that same pipeline: the two run concurrently, so the artifact can render before the data exists. To review artifacts built from Generator output, run the Generator on the branch before the pipeline starts. See [Ordering between Generators and artifacts](../proposed-changes/overview#ordering-between-generators-and-artifacts).
+Data a Generator creates during a Proposed Change is not a reliable trigger for an artifact in that same pipeline: the two run concurrently, so the artifact can render before the data exists. To review artifacts built from Generator output, run the Generator on the branch before the pipeline starts. See [Ordering between Generators and artifacts](../proposed-changes/overview#ordering-between-generators-and-artifacts).
 
-Infrahub does not record whether an artifact is out of date. An artifact's status is not a freshness signal: it reports generation outcomes, not whether the data behind the artifact has changed since, so an artifact whose source object was renamed an hour ago still reads `Ready`. A status value can also outlive the run that set it, for the reasons in [when the regeneration fails](#when-the-regeneration-fails). To find out whether the content would change, regenerate it: inside a Proposed Change, the artifact check reports which artifacts changed.
+Infrahub does not record whether an artifact is out of date. An artifact's status reports generation outcomes, not whether the data behind the artifact has changed since, so an artifact whose source object was renamed an hour ago still reads `Ready`. A status value can also outlive the run that set it, for the reasons in [when the regeneration fails](#when-the-regeneration-fails). To find out whether the content would change, regenerate it: inside a Proposed Change, the artifact check reports which artifacts changed.
 
 Artifacts generated on a branch belong to that branch. Closing a Proposed Change leaves them in place, and deleting the branch deletes the artifacts that were created on it. The rendered files stay in object storage either way, because nothing removes them.
 
-Every regeneration decision during a proposed change is recorded in the pipeline's task log, naming the file, query, or field that triggered it. See [Understanding artifact regeneration](../proposed-changes/overview#understanding-artifact-regeneration).
+Every regeneration decision during a Proposed Change is recorded in the pipeline's task log, naming the file, query, or field that triggered it. See [Understanding artifact regeneration](../proposed-changes/overview#understanding-artifact-regeneration).
 
 ## How artifacts reach the default branch
 

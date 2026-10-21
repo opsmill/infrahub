@@ -139,7 +139,7 @@ Query artifacts through the GraphQL API for automation workflows.
 
 ## Regenerate an artifact
 
-Infrahub does not regenerate an artifact when the data behind it changes. To pick up a change without opening a Proposed Change, request a run:
+Infrahub does not regenerate an artifact when the data behind it changes. To regenerate one after a data change, without opening a Proposed Change, request a run:
 
 1. To regenerate every member of the group, open the artifact definition and click **Generate**.
 2. To regenerate one artifact, open that artifact and click **Re-generate**.
@@ -153,7 +153,7 @@ Confirm your artifact generation is working:
 - ✓ artifact definitions appear in the web interface
 - ✓ artifacts are generated for all group members
 - ✓ Generated content matches your template expectations
-- ✓ after you change an object the artifact's query reads, clicking **Generate** produces content that reflects the change (with nothing changed, a run produces identical content and the artifact is left as it is)
+- ✓ after you change an object the artifact's query reads, **Generate** produces content that reflects the change. With nothing changed, a run produces identical content and leaves the artifact as it is
 
 ## Troubleshooting
 
