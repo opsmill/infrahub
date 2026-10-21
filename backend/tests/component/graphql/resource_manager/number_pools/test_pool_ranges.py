@@ -86,7 +86,7 @@ query PoolUtilization($pool_id: String!) {
 }
 """
 
-CREATE_POOL_WITHOUT_RANGE = """
+CREATE_POOL_WITHOUT_BOUNDS = """
 mutation CreatePool {
     CoreNumberPoolCreate(data: {
         name: { value: "mirrored-pool" }
@@ -137,9 +137,9 @@ async def _ticket_ids(db: InfrahubDatabase, branch: Branch, titles: list[str]) -
     return {ticket.get_attribute("title").value: ticket.get_attribute("ticket_id").value for ticket in tickets}
 
 
-async def _range_bounds(db: InfrahubDatabase, pool: CoreNumberPool) -> list[tuple[int, int]]:
+async def _range_bounds(db: InfrahubDatabase, pool: CoreNumberPool) -> list[tuple[int | None, int | None]]:
     ranges = await NumberPoolRepository(db=db).get_ranges(pool_id=pool.get_id())
-    return [(int(pool_range.start.value), int(pool_range.end.value)) for pool_range in ranges]
+    return [(pool_range.start.value, pool_range.end.value) for pool_range in ranges]
 
 
 async def _create_range(
@@ -169,7 +169,7 @@ def _percent(used: int, size: int) -> float:
 
 async def _shorthand_and_ranges(
     db: InfrahubDatabase, pool_id: str
-) -> tuple[tuple[int | None, int | None], list[tuple[int, int]]]:
+) -> tuple[tuple[int | None, int | None], list[tuple[int | None, int | None]]]:
     pool = await load_pool(db=db, pool_id=pool_id)
     ranges = await NumberPoolRepository(db=db).get_ranges(pool_id=pool_id)
     return (
@@ -183,6 +183,51 @@ class TwoRangePool:
     pool: CoreNumberPool
     low: Node
     high: Node
+
+
+@dataclass(frozen=True, kw_only=True)
+class OpenBoundCase:
+    name: str
+    start: int | None
+    end: int | None
+
+
+ONE_BOUND_CASES = [
+    OpenBoundCase(name="start_only", start=50, end=None),
+    OpenBoundCase(name="end_only", start=None, end=50),
+]
+
+REMOVED_BOUND_CASES = [
+    OpenBoundCase(name="start_removed", start=None, end=200),
+    OpenBoundCase(name="end_removed", start=100, end=None),
+]
+
+
+@dataclass(frozen=True, kw_only=True)
+class OpenOverlapCase:
+    name: str
+    start: int | None
+    end: int | None
+    label: str
+    overlaps_the_high_range: bool
+
+
+OPEN_OVERLAP_CASES = [
+    OpenOverlapCase(
+        name="open_end_runs_over_every_higher_range",
+        start=150,
+        end=None,
+        label="150-MAX",
+        overlaps_the_high_range=True,
+    ),
+    OpenOverlapCase(
+        name="open_start_runs_into_the_lowest_range",
+        start=None,
+        end=100,
+        label="1-100",
+        overlaps_the_high_range=False,
+    ),
+]
 
 
 class TestNumberPoolRangeMutations:
@@ -491,6 +536,83 @@ class TestNumberPoolRangeMutations:
         assert str(updated.errors[0].message) == "Range end (100) cannot be lower than start (200)"
         assert await _range_bounds(db=db, pool=two_range_pool.pool) == [(100, 200), (300, 400)]
 
+    @pytest.mark.parametrize("case", ONE_BOUND_CASES, ids=lambda case: case.name)
+    async def test_range_created_with_one_bound_leaves_the_other_open(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None, case: OpenBoundCase
+    ) -> None:
+        pool = await _create_pool(db=db, name=f"one-bound-pool-{case.name}")
+
+        result = await _execute(
+            db=db,
+            branch=default_branch_scope_class,
+            source=CREATE_RANGE,
+            variables={"pool_id": pool.get_id(), "start": case.start, "end": case.end, "weight": None},
+        )
+
+        assert not result.errors
+        assert result.data
+        created = result.data["CoreNumberPoolRangeCreate"]["object"]
+        assert (created["start"]["value"], created["end"]["value"]) == (case.start, case.end)
+        assert await _shorthand_and_ranges(db=db, pool_id=pool.get_id()) == (
+            (case.start, case.end),
+            [(case.start, case.end)],
+        )
+
+    async def test_range_created_without_bounds_spans_every_number(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
+    ) -> None:
+        pool = await _create_pool(db=db, name="unbounded-range-pool")
+
+        result = await _execute(
+            db=db, branch=default_branch_scope_class, source=CREATE_RANGE, variables={"pool_id": pool.get_id()}
+        )
+
+        assert not result.errors
+        assert await _shorthand_and_ranges(db=db, pool_id=pool.get_id()) == ((None, None), [(None, None)])
+
+    @pytest.mark.parametrize("case", REMOVED_BOUND_CASES, ids=lambda case: case.name)
+    async def test_range_update_removing_a_bound_opens_it(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None, case: OpenBoundCase
+    ) -> None:
+        pool, held_range = await _create_pool_with_range(
+            db=db, name=f"removed-bound-pool-{case.name}", start=100, end=200
+        )
+
+        result = await _execute(
+            db=db,
+            branch=default_branch_scope_class,
+            source=UPDATE_RANGE,
+            variables={"range_id": held_range.get_id(), "start": case.start, "end": case.end},
+        )
+
+        assert not result.errors
+        assert await _shorthand_and_ranges(db=db, pool_id=pool.get_id()) == (
+            (case.start, case.end),
+            [(case.start, case.end)],
+        )
+
+    @pytest.mark.parametrize("case", OPEN_OVERLAP_CASES, ids=lambda case: case.name)
+    async def test_open_range_overlapping_another_range_of_its_pool_is_refused(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        two_range_pool: TwoRangePool,
+        case: OpenOverlapCase,
+    ) -> None:
+        overlapped = f"100-200 ({two_range_pool.low.get_id()})"
+        if case.overlaps_the_high_range:
+            overlapped += f", 300-400 ({two_range_pool.high.get_id()})"
+
+        created = await _execute(
+            db=db,
+            branch=default_branch_scope_class,
+            source=CREATE_RANGE,
+            variables={"pool_id": two_range_pool.pool.get_id(), "start": case.start, "end": case.end, "weight": None},
+        )
+
+        assert [error.message for error in created.errors or []] == [f"Range {case.label} overlaps {overlapped}"]
+        assert await _range_bounds(db=db, pool=two_range_pool.pool) == [(100, 200), (300, 400)]
+
     async def test_two_pools_on_one_attribute_may_hold_overlapping_ranges(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
     ) -> None:
@@ -555,9 +677,9 @@ class TestNumberPoolRangeMutations:
             assert result.data
             return result.data
 
-        created = await run(CREATE_POOL_WITHOUT_RANGE, {})
+        created = await run(CREATE_POOL_WITHOUT_BOUNDS, {})
         pool_id = created["CoreNumberPoolCreate"]["object"]["id"]
-        assert await _shorthand_and_ranges(db=db, pool_id=pool_id) == ((None, None), [])
+        assert await _shorthand_and_ranges(db=db, pool_id=pool_id) == ((None, None), [(None, None)])
 
         await run(UPDATE_POOL_SHORTHAND, {"pool_id": pool_id, "start": 10, "end": 20})
         assert await _shorthand_and_ranges(db=db, pool_id=pool_id) == ((10, 20), [(10, 20)])

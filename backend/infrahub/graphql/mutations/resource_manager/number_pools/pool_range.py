@@ -6,11 +6,11 @@ from typing_extensions import Self
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
-from infrahub.core.schema.attribute_parameters import NumberPoolRangeParameters
 from infrahub.database import retry_db_transaction, within_transaction
 from infrahub.exceptions import ValidationError
 from infrahub.pools.number_pool_range_validation import validate_number_pool_range
 from infrahub.pools.number_pool_repository import NumberPoolRepository
+from infrahub.pools.number_pool_space import attribute_domain
 
 from ...main import InfrahubMutation
 from .common import (
@@ -124,7 +124,12 @@ class InfrahubNumberPoolRangeMutation(InfrahubMutation):
                 db=dbt, branch=branch, nodes=[obj], user_id=graphql_context.assigned_user_id
             )
             ranges = await NumberPoolRepository(db=dbt).get_ranges(pool_id=pool_id)
-            await refuse_ranges_leaving_held_numbers(db=dbt, pool=pool, ranges=range_bounds(ranges))
+            await refuse_ranges_leaving_held_numbers(
+                db=dbt,
+                pool=pool,
+                ranges=range_bounds(ranges),
+                domain=attribute_domain(pool_target_attribute(db=dbt, pool=pool, branch=branch)),
+            )
             await sync_shorthand(db=dbt, pool_id=pool_id, ranges=ranges, user_id=graphql_context.assigned_user_id)
 
         return deleted
@@ -162,11 +167,12 @@ class InfrahubNumberPoolRangeMutation(InfrahubMutation):
         ranges = await NumberPoolRepository(db=db).get_ranges(pool_id=pool_id)
         bounds_by_id = {bounds.id: bounds for bounds in range_bounds(ranges)}
         candidate = bounds_by_id[range_id]
-        validate_number_pool_range(candidate=candidate, others=bounds_by_id.values())
-        refuse_ranges_outside_attribute(
-            attribute=pool_target_attribute(db=db, pool=pool, branch=branch),
-            ranges=[NumberPoolRangeParameters(start=candidate.start, end=candidate.end)],
-        )
+        attribute = pool_target_attribute(db=db, pool=pool, branch=branch)
+        domain = attribute_domain(attribute)
+        validate_number_pool_range(candidate=candidate, others=bounds_by_id.values(), domain=domain)
+        refuse_ranges_outside_attribute(attribute=attribute, ranges=[candidate])
         if bounds_changed:
-            await refuse_ranges_leaving_held_numbers(db=db, pool=pool, ranges=list(bounds_by_id.values()))
+            await refuse_ranges_leaving_held_numbers(
+                db=db, pool=pool, ranges=list(bounds_by_id.values()), domain=domain
+            )
         await sync_shorthand(db=db, pool_id=pool_id, ranges=ranges, user_id=user_id)
