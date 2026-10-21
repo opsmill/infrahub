@@ -492,3 +492,19 @@ def test_unencoded_cache_url_password_fails_the_load_without_echoing_it(reserved
 
     assert "s3cr" not in str(exc.value)
     assert "etpass" not in str(exc.value)
+
+
+@pytest.mark.usefixtures("without_cache_environment")
+def test_cache_username_without_password_fails_the_load() -> None:
+    with pytest.raises(
+        ValidationError,
+        match=r"Value error, INFRAHUB_CACHE_USERNAME is set but INFRAHUB_CACHE_PASSWORD is not\. Both are required\.",
+    ):
+        CacheSettings(address="redis.internal", username="user")
+
+
+@pytest.mark.usefixtures("without_cache_environment")
+def test_cache_url_supersedes_a_username_without_password() -> None:
+    settings = CacheSettings(url=SecretStr("redis://user:secret@cache:6379/0"), username="user")
+
+    assert settings.url is not None
