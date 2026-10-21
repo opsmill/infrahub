@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import TYPE_CHECKING, ForwardRef, Optional, Union, get_origin
+from typing import TYPE_CHECKING, ForwardRef, Union, get_origin
 
 from pydantic import BaseModel
 from typing_extensions import Self
@@ -135,8 +135,8 @@ TYPE_MAPPING = {
 
 
 class ConstraintManagerBase:
-    constraint_node_class: Optional[type[ConstraintItem]] = ConstraintItem
-    constraint_rel_class: Optional[type[ConstraintItem]] = ConstraintItem
+    constraint_node_class: type[ConstraintItem] = ConstraintItem
+    constraint_rel_class: type[ConstraintItem] = ConstraintItem
 
     def __init__(self, db: InfrahubDatabase) -> None:
         self.db = db
@@ -167,7 +167,7 @@ class ConstraintManagerBase:
                 elif get_origin(field.annotation) == Union and field.annotation.__args__[0] in TYPE_MAPPING:  # type: ignore[union-attr]
                     item_type = TYPE_MAPPING[field.annotation.__args__[0]]  # type: ignore[union-attr]
                     mandatory = False
-                if not item_type or not manager.constraint_node_class:
+                if not item_type:
                     continue
 
                 manager.nodes.append(
@@ -193,7 +193,7 @@ class ConstraintManagerBase:
                 elif get_origin(field.annotation) == Union and field.annotation.__args__[0] in TYPE_MAPPING:  # type: ignore[union-attr]
                     item_type = TYPE_MAPPING[field.annotation.__args__[0]]  # type: ignore[union-attr]
                     mandatory = False
-                if not item_type or not manager.constraint_rel_class:
+                if not item_type:
                     continue
 
                 manager.rels.append(

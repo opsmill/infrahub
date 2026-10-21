@@ -18,7 +18,6 @@ class IndexType(StrEnum):
     TEXT = "text"
     RANGE = "range"
     LOOKUP = "lookup"
-    NOT_APPLICABLE = "not_applicable"
 
 
 class EntityType(StrEnum):

@@ -143,8 +143,8 @@ having to hold every deleted vertex and edge in the heap.
 async def delete_all_nodes(db: InfrahubDatabase, batch_size: int = DELETE_ALL_NODES_BATCH_SIZE) -> list[Record]:
     """Delete every vertex and edge of the graph database.
 
-    On Neo4j the vertices are deleted in batches of ``batch_size``, each committed on its own, as
-    long as the connection is in auto-commit mode: Neo4j only accepts ``CALL ... IN TRANSACTIONS``
+    The vertices are deleted in batches of ``batch_size``, each committed on its own, as long as
+    the connection is in auto-commit mode: Neo4j only accepts ``CALL ... IN TRANSACTIONS``
     in an implicit transaction, so a caller that is already inside an explicit transaction gets a
     single-statement delete instead.
 
