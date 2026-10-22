@@ -22,17 +22,18 @@ export interface NumberPoolData extends NodeCore {
 }
 
 export interface NumberPoolUsage {
-  size: number;
+  // null when the numbers run up to the largest one the server supports
+  size: number | null;
   used: number;
   usedDefaultBranch: number;
   usedBranches: number;
-  utilization: number;
+  utilization: number | null;
 }
 
 export interface NumberPoolRange extends NodeCore {
   __typename: typeof NUMBER_POOL_RANGE_KIND;
   start: NodeAttribute<number>;
-  end: NodeAttribute<number>;
+  end: NodeAttribute<number | null>;
   allocation_weight: NodeAttribute<number>;
   usage: NumberPoolUsage;
 }

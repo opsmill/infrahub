@@ -30,10 +30,24 @@ describe("NumberPoolUsageBar", () => {
     // THEN
     await expect.element(page.getByRole("tooltip")).toHaveTextContent("Used30 of 1,250");
   });
+
+  it("shows only the count used on hover when the range has no size", async () => {
+    // GIVEN
+    const usage = generateNumberPoolUsage({ size: null, used: 2, utilization: null });
+    const component = await render(<NumberPoolUsageBar usage={usage} />);
+    await initPointerTracking(component.locator);
+
+    // WHEN
+    await component.getByText("–").hover();
+
+    // THEN
+    await expect.element(page.getByRole("tooltip")).toHaveTextContent("Used2");
+  });
 });
 
 describe("formatUsagePercent", () => {
   it.each([
+    [null, "–"],
     [0, "0%"],
     [0.05, "<0.1%"],
     [3, "3%"],
