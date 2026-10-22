@@ -4,9 +4,14 @@
   "git_ai_version": "1.7.5",
   "base_commit_sha": "165317a9e5036f3bb4a69df6ceba4b90a56f9a39",
   "prompts": {},
-  "humans": {
-    "h_bd00275aefc321": {
-      "author": "Pol Michel <polmichel29@gmail.com>"
+  "sessions": {
+    "s_fb819cbbe44071": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65a68a98-fa9c-4142-8730-a06dd94f203b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
     }
   }
 }
