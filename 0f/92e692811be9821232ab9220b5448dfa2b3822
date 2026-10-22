@@ -1,0 +1,30 @@
+frontend/app/src/entities/resource-manager/domain/model/number-pool.ts
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 21
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-edit-form.test.tsx
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 110-148
+frontend/app/src/entities/resource-manager/api/number-pool.mappers.test.ts
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 122-144
+frontend/app/src/entities/resource-manager/api/number-pool.mappers.ts
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 35-36,38-39,43
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-ranges-input.test.tsx
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 14,46-72,182-189,241-249,251-259,290-305,307,309
+  s_f4804ce89d1616::t_54b6880696f5f1 306,308
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-ranges-input.tsx
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 17-18,25,28-36,42-44,52-55,58-60,69-70,89-91,124-125,128,134-135,138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0f92e692811be9821232ab9220b5448dfa2b3822",
+  "prompts": {},
+  "sessions": {
+    "s_f4804ce89d1616": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3055b56a-6f63-4403-9864-1ac7a9372a6a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
