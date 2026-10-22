@@ -1,0 +1,1 @@
+Added an **Exact match** option to search anywhere, next to **Case sensitive**, that only returns the nodes with a value equal to the whole search text. When more nodes match than the dialog shows, a **Show more results** row lists 10 more each time it is selected, so every result of a search can be reached.

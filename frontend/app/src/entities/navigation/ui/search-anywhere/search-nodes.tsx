@@ -1,10 +1,13 @@
+import { keepPreviousData } from "@tanstack/react-query";
 import { Command, useCommandState } from "cmdk";
 import { useAtomValue } from "jotai";
-import type { ReactElement } from "react";
+import { ChevronsDownIcon } from "lucide-react";
+import React from "react";
 
 import { Icon } from "@/shared/components/display/icon";
 import { Skeleton } from "@/shared/components/loading/skeleton";
 import { Badge } from "@/shared/components/ui/badge";
+import { CommandItem } from "@/shared/components/ui/command";
 import { useFormatDate } from "@/shared/context/date-preferences-context";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 
@@ -12,6 +15,7 @@ import { IP_ADDRESS_GENERIC } from "@/entities/ipam/ip-addresses/domain/model/ip
 import { IP_PREFIX_GENERIC } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
 import type { ObjectResult } from "@/entities/navigation/domain/use-cases/search-anywhere";
 import { searchCaseSensitiveAtom } from "@/entities/navigation/stores/search-case-sensitive.atom";
+import { searchExactMatchAtom } from "@/entities/navigation/stores/search-exact-match.atom";
 import { useGetSearchAnywhere } from "@/entities/navigation/ui/queries/search-anywhere.query";
 import { SearchAnywhereGroup } from "@/entities/navigation/ui/search-anywhere/search-anywhere-group";
 import { SearchAnywhereItem } from "@/entities/navigation/ui/search-anywhere/search-anywhere-item";
@@ -24,15 +28,34 @@ import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
+export const SEARCH_FIRST_PAGE_SIZE = 4;
+const SEARCH_MORE_PAGE_SIZE = 10;
+
+function useShownResultCount({ searchKey }: { searchKey: string }) {
+  const [extraRows, setExtraRows] = React.useState({ searchKey: "", count: 0 });
+  const extraRowCount = extraRows.searchKey === searchKey ? extraRows.count : 0;
+
+  return {
+    limit: SEARCH_FIRST_PAGE_SIZE + extraRowCount,
+    showMore: () => setExtraRows({ searchKey, count: extraRowCount + SEARCH_MORE_PAGE_SIZE }),
+  };
+}
+
 export const SearchNodes = () => {
   const query = useCommandState((state) => state.search);
   const queryDebounced = useDebounce(query.trim(), 300);
   const caseSensitive = useAtomValue(searchCaseSensitiveAtom);
+  const exactMatch = useAtomValue(searchExactMatchAtom);
+  const { limit, showMore } = useShownResultCount({
+    searchKey: `${queryDebounced}|${caseSensitive}|${exactMatch}`,
+  });
 
-  const { data, isPending, error } = useGetSearchAnywhere(
-    { search: queryDebounced, caseSensitive },
+  const { data, isPending, isPlaceholderData, error } = useGetSearchAnywhere(
+    { search: queryDebounced, limit, caseSensitive, exactMatch },
     {
       enabled: !!queryDebounced,
+      // Keeps the rows already shown while the next ones load, but not across a new search.
+      placeholderData: limit > SEARCH_FIRST_PAGE_SIZE ? keepPreviousData : undefined,
     }
   );
 
@@ -52,13 +75,25 @@ export const SearchNodes = () => {
 
   if (error) return null;
 
-  if (data.count === 0) return null;
+  if (data.matchingObjects.length === 0) return null;
 
   return (
     <SearchAnywhereGroup heading="Objects">
       {data.matchingObjects.map((node) => (
         <NodesOptions key={node.id} node={node} />
       ))}
+
+      {data.hasMore && (
+        <CommandItem
+          value="show-more-results"
+          disabled={isPlaceholderData}
+          onSelect={showMore}
+          className="text-foreground"
+        >
+          <ChevronsDownIcon aria-hidden="true" className="mx-2 size-4 text-subtle" />
+          {isPlaceholderData ? "Loading more results…" : "Show more results"}
+        </CommandItem>
+      )}
     </SearchAnywhereGroup>
   );
 };
@@ -156,7 +191,7 @@ type NodeAttributeProps = {
 const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
   const { formatDate } = useFormatDate();
 
-  const formatValue = (): string | number | boolean | ReactElement | null => {
+  const formatValue = (): string | number | boolean | React.ReactElement | null => {
     if ("node" in value && value.node) {
       return value.node ? getNodeLabel(value.node) : null;
     }

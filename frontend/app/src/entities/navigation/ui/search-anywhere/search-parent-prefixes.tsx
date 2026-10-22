@@ -4,18 +4,24 @@ import { useAtomValue } from "jotai";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 
 import { searchCaseSensitiveAtom } from "@/entities/navigation/stores/search-case-sensitive.atom";
+import { searchExactMatchAtom } from "@/entities/navigation/stores/search-exact-match.atom";
 import { useGetSearchAnywhere } from "@/entities/navigation/ui/queries/search-anywhere.query";
 import { SearchAnywhereGroup } from "@/entities/navigation/ui/search-anywhere/search-anywhere-group";
 import { SearchAnywhereItem } from "@/entities/navigation/ui/search-anywhere/search-anywhere-item";
-import { NodesOptions } from "@/entities/navigation/ui/search-anywhere/search-nodes";
+import {
+  NodesOptions,
+  SEARCH_FIRST_PAGE_SIZE,
+} from "@/entities/navigation/ui/search-anywhere/search-nodes";
 
 export const SearchParentPrefixes = () => {
   const query = useCommandState((state) => state.search);
   const queryDebounced = useDebounce(query.trim(), 300);
   const caseSensitive = useAtomValue(searchCaseSensitiveAtom);
+  const exactMatch = useAtomValue(searchExactMatchAtom);
 
   const { data, isPending, error } = useGetSearchAnywhere(
-    { search: queryDebounced, caseSensitive },
+    // The first page's request also carries the parent prefixes, so this reuses it.
+    { search: queryDebounced, limit: SEARCH_FIRST_PAGE_SIZE, caseSensitive, exactMatch },
     {
       enabled: !!queryDebounced,
     }

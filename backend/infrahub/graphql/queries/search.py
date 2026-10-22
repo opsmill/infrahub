@@ -155,34 +155,20 @@ async def search_resolver(
             ]
             response["parent_prefixes"] = parent_prefix_results
 
-        if case_sensitive:
-            # Case-sensitive search using the dedicated query
-            query = await NodeGetListByAttributeValueQuery.init(
-                db=graphql_context.db,
-                branch=graphql_context.branch,
-                at=graphql_context.at,
-                search_value=q,
-                kinds=[InfrahubKind.NODE, InfrahubKind.GENERICGROUP],
-                limit=limit,
-                partial_match=partial_match,
-            )
-            await query.execute(db=graphql_context.db)
+        query = await NodeGetListByAttributeValueQuery.init(
+            db=graphql_context.db,
+            branch=graphql_context.branch,
+            at=graphql_context.at,
+            search_value=q,
+            kinds=[InfrahubKind.NODE, InfrahubKind.GENERICGROUP],
+            limit=limit,
+            partial_match=partial_match,
+            case_sensitive=case_sensitive,
+        )
+        await query.execute(db=graphql_context.db)
 
-            for result in query.get_data():
-                results.append({"id": result.uuid, "kind": result.kind})
-        else:
-            # Default: case-insensitive search using NodeManager.query
-            for kind in [InfrahubKind.NODE, InfrahubKind.GENERICGROUP]:
-                objs = await NodeManager.query(
-                    db=graphql_context.db,
-                    branch=graphql_context.branch,
-                    schema=kind,
-                    filters={"any__value": q},
-                    limit=limit,
-                    partial_match=partial_match,
-                )
-                for obj in objs:
-                    results.append({"id": obj.id, "kind": obj.get_kind()})
+        for result in query.get_data():
+            results.append({"id": result.uuid, "kind": result.kind})
 
     if "edges" in fields:
         response["edges"] = [{"node": result} for result in results]
