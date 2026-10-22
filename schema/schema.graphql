@@ -28001,6 +28001,10 @@ type RepositoryCommits {
   """
   checked_at: DateTime
   condition: RepositoryGitCondition!
+  """
+  Number of commits in the listed history, whatever the limit and offset. Null when no history is listed.
+  """
+  count: Int
   edges: [RepositoryCommitNode!]!
   """
   When the answering worker last fetched from the remote. Null before the first fetch, and after a failed fetch.

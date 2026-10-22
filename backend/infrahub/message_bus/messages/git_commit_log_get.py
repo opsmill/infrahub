@@ -21,6 +21,7 @@ class GitCommitLogGet(InfrahubMessage):
     limit: int = Field(..., ge=1, le=100, description="Number of commits to return")
     offset: int = Field(..., ge=0, description="Number of commits to skip from the head")
     include_pending_count: bool = Field(..., description="Whether to count the commits not yet imported")
+    include_total_count: bool = Field(..., description="Whether to count every commit of the listed history")
 
 
 class GitCommitLogEntry(BaseModel):
@@ -38,6 +39,7 @@ class GitCommitLogGetResponseData(InfrahubResponseData):
     remote_head: str | None = None
     imported_commit: str | None = None
     pending_count: int | None = None
+    total_count: int | None = None
     fetched_at: datetime | None = None
     unavailable_reason: RepositoryGitUnavailableReason | None = None
     warm_up_task_id: str | None = None

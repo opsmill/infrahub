@@ -346,17 +346,21 @@ def _read_commit_log(repo: Repo, request: CommitLogRequest) -> CommitLogResult:
     # With the tracked ref gone, the history Infrahub still runs is listed from the imported commit.
     start = imported if condition is RepositoryGitCondition.REF_MISSING else head
     commits: tuple[CommitEntry, ...] = ()
+    total_count: int | None = None
     if start is not None:
         commits = tuple(
             _to_entry(commit=commit, facts=facts, condition=condition, pending=pending)
             for commit in repo.iter_commits(start, max_count=request.limit, skip=request.offset)
         )
+        if request.include_total_count:
+            total_count = int(repo.git.rev_list("--count", start.hexsha))
 
     return CommitLogResult(
         condition=condition,
         remote_head=facts.head,
         imported_commit=facts.imported if facts.imported_resolvable else None,
         pending_count=pending_count,
+        total_count=total_count,
         commits=commits,
         fetched_at=read_fetched_at(repo=repo),
     )

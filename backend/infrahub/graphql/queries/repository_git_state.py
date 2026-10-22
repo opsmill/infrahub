@@ -48,7 +48,9 @@ DEFAULT_OFFSET = 0
 MIN_LIMIT = 1
 MAX_LIMIT = 100
 
-COMMIT_GIT_FIELDS = frozenset({"condition", "remote_head", "pending_count", "fetched_at", "unavailable", "edges"})
+COMMIT_GIT_FIELDS = frozenset(
+    {"condition", "remote_head", "pending_count", "count", "fetched_at", "unavailable", "edges"}
+)
 """Selecting none of these means no worker request is made at all."""
 
 NOT_CLONED_MESSAGE = "The answering worker holds no local copy of this repository yet."
@@ -338,12 +340,14 @@ class RepositoryCommitsResolver:
                 limit=resolved_limit,
                 offset=resolved_offset,
                 include_pending_count="pending_count" in fields,
+                include_total_count="count" in fields,
             )
         )
 
         payload["condition"] = result.condition
         payload["remote_head"] = result.remote_head
         payload["pending_count"] = result.pending_count
+        payload["count"] = result.total_count
         payload["fetched_at"] = result.fetched_at
         if result.imported_commit:
             payload["imported_commit"] = result.imported_commit

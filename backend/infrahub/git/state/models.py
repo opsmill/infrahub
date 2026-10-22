@@ -95,6 +95,7 @@ class CommitLogRequest:
     limit: int
     offset: int
     include_pending_count: bool
+    include_total_count: bool
 
 
 def _raise_unless_unavailable_fields_agree(
@@ -125,6 +126,7 @@ class CommitLogResult:
     """The imported hash as the answering worker resolved it, when it resolved one."""
 
     pending_count: int | None = None
+    total_count: int | None = None
     commits: tuple[CommitEntry, ...] = ()
     fetched_at: datetime | None = None
     unavailable_reason: RepositoryGitUnavailableReason | None = None

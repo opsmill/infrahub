@@ -68,6 +68,7 @@ query RepositoryCommits($id: String!, $limit: Int, $offset: Int) {
     imported_commit
     remote_head
     pending_count
+    count
     fetched_at
     checked_at
     unavailable { reason message }
@@ -76,7 +77,7 @@ query RepositoryCommits($id: String!, $limit: Int, $offset: Int) {
 }
 """
 
-COMMITS_QUERY_WITHOUT_PENDING_COUNT = """
+COMMITS_QUERY_WITHOUT_COUNTS = """
 query RepositoryCommits($id: String!) {
   InfrahubRepositoryCommits(repository_id: $id) {
     condition
@@ -268,6 +269,7 @@ def _expected_request(
     git_ref: str,
     imported_commit: str,
     include_pending_count: bool,
+    include_total_count: bool,
     limit: int = 10,
     offset: int = 0,
 ) -> CommitLogRequest:
@@ -282,6 +284,7 @@ def _expected_request(
         limit=limit,
         offset=offset,
         include_pending_count=include_pending_count,
+        include_total_count=include_total_count,
     )
 
 
@@ -300,6 +303,7 @@ async def test_commit_log_answers_the_infrahub_side_fields_for_the_request_branc
             remote_head=REMOTE_HEAD,
             imported_commit=MAIN_COMMIT,
             pending_count=2,
+            total_count=12,
             fetched_at=FETCHED_AT,
             commits=(
                 CommitEntry(
@@ -333,6 +337,7 @@ async def test_commit_log_answers_the_infrahub_side_fields_for_the_request_branc
         "imported_commit": MAIN_COMMIT,
         "remote_head": REMOTE_HEAD,
         "pending_count": 2,
+        "count": 12,
         "fetched_at": FETCHED_AT.isoformat(),
         "checked_at": None,
         "unavailable": None,
@@ -424,6 +429,7 @@ async def test_commit_log_follows_the_infrahub_branch(
             git_ref=synced_branch.name,
             imported_commit=BRANCH_COMMIT,
             include_pending_count=True,
+            include_total_count=True,
         )
     ]
 
@@ -492,6 +498,7 @@ async def test_commit_log_reports_trunk_commits_a_branch_that_does_not_sync_with
             git_ref=REPOSITORY_DEFAULT_BRANCH,
             imported_commit=BRANCH_COMMIT,
             include_pending_count=True,
+            include_total_count=True,
         )
     ]
 
@@ -552,6 +559,7 @@ async def test_commit_log_reports_trunk_commits_pending_import_on_the_branch_a_r
             git_ref=REPOSITORY_DEFAULT_BRANCH,
             imported_commit=MAIN_COMMIT,
             include_pending_count=True,
+            include_total_count=True,
         )
     ]
 
@@ -601,6 +609,7 @@ async def test_commit_log_of_a_read_only_repository_follows_its_ref_on_a_branch_
             limit=10,
             offset=0,
             include_pending_count=True,
+            include_total_count=True,
         )
     ]
 
@@ -794,13 +803,14 @@ async def test_explicit_null_paging_falls_back_to_the_documented_defaults(
             git_ref=REPOSITORY_DEFAULT_BRANCH,
             imported_commit=MAIN_COMMIT,
             include_pending_count=True,
+            include_total_count=True,
             limit=10,
             offset=0,
         )
     ]
 
 
-async def test_selecting_pending_count_asks_the_reader_to_count(
+async def test_selecting_the_counts_asks_the_reader_to_count(
     db: InfrahubDatabase,
     default_branch: Branch,
     default_permission_backend: None,
@@ -826,11 +836,12 @@ async def test_selecting_pending_count_asks_the_reader_to_count(
             git_ref=REPOSITORY_DEFAULT_BRANCH,
             imported_commit=MAIN_COMMIT,
             include_pending_count=True,
+            include_total_count=True,
         )
     ]
 
 
-async def test_omitting_pending_count_leaves_the_count_unrequested(
+async def test_omitting_the_counts_leaves_them_unrequested(
     db: InfrahubDatabase,
     default_branch: Branch,
     default_permission_backend: None,
@@ -840,7 +851,7 @@ async def test_omitting_pending_count_leaves_the_count_unrequested(
     recording_reader: RecordingRepositoryGitStateReader,
 ) -> None:
     response = await graphql_query(
-        query=COMMITS_QUERY_WITHOUT_PENDING_COUNT,
+        query=COMMITS_QUERY_WITHOUT_COUNTS,
         db=db,
         branch=default_branch,
         service=service,
@@ -856,6 +867,7 @@ async def test_omitting_pending_count_leaves_the_count_unrequested(
             git_ref=REPOSITORY_DEFAULT_BRANCH,
             imported_commit=MAIN_COMMIT,
             include_pending_count=False,
+            include_total_count=False,
         )
     ]
 
@@ -921,6 +933,7 @@ async def test_a_root_field_selected_twice_still_answers_every_selection(
             git_ref=REPOSITORY_DEFAULT_BRANCH,
             imported_commit=MAIN_COMMIT,
             include_pending_count=False,
+            include_total_count=False,
         )
     ]
 
@@ -958,6 +971,7 @@ async def test_git_fields_reached_through_a_fragment_still_ask_the_reader(
             git_ref=REPOSITORY_DEFAULT_BRANCH,
             imported_commit=MAIN_COMMIT,
             include_pending_count=False,
+            include_total_count=False,
         )
     ]
 
@@ -991,6 +1005,7 @@ async def test_commit_log_reports_the_unavailable_placeholder(
     assert answer["edges"] == []
     assert answer["remote_head"] is None
     assert answer["pending_count"] is None
+    assert answer["count"] is None
 
 
 async def test_commit_log_surfaces_a_worker_timeout_with_its_retry_hint(

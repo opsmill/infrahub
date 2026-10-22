@@ -24,6 +24,7 @@ def request_to_message(request: CommitLogRequest) -> GitCommitLogGet:
         limit=request.limit,
         offset=request.offset,
         include_pending_count=request.include_pending_count,
+        include_total_count=request.include_total_count,
     )
 
 
@@ -39,6 +40,7 @@ def message_to_request(message: GitCommitLogGet) -> CommitLogRequest:
         limit=message.limit,
         offset=message.offset,
         include_pending_count=message.include_pending_count,
+        include_total_count=message.include_total_count,
     )
 
 
@@ -48,6 +50,7 @@ def result_to_response_data(result: CommitLogResult) -> GitCommitLogGetResponseD
         remote_head=result.remote_head,
         imported_commit=result.imported_commit,
         pending_count=result.pending_count,
+        total_count=result.total_count,
         fetched_at=result.fetched_at,
         unavailable_reason=result.unavailable_reason,
         warm_up_task_id=result.warm_up_task_id,
@@ -82,6 +85,7 @@ def response_data_to_result(data: GitCommitLogGetResponseData) -> CommitLogResul
             remote_head=data.remote_head,
             imported_commit=data.imported_commit,
             pending_count=data.pending_count,
+            total_count=data.total_count,
             commits=tuple(
                 CommitEntry(
                     hash=entry.hash,

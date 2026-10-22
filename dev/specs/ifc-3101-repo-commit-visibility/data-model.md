@@ -182,12 +182,14 @@ GitCommitLogGet(InfrahubMessage)              routing key git.commit_log.get, pr
   limit: int                                  1..100
   offset: int                                 >= 0
   include_pending_count: bool
+  include_total_count: bool
 
 GitCommitLogGetResponseData
   condition: RepositoryGitCondition
   remote_head: str | None
   imported_commit: str | None
   pending_count: int | None
+  total_count: int | None                     commits reachable from the listing start; null when no history is listed or not requested
   fetched_at: datetime | None
   unavailable_reason: RepositoryGitUnavailableReason | None
   warm_up_task_id: str | None

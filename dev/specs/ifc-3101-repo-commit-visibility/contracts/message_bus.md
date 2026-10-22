@@ -13,7 +13,7 @@ worker binding, so it lands in the shared `{namespace}.rpcs` queue and one worke
 
 | Direction | Class | Fields |
 | --- | --- | --- |
-| request | `GitCommitLogGet` | `repository_id`, `repository_name`, `repository_kind`, `location`, `infrahub_branch_name`, `git_ref`, `imported_commit`, `limit`, `offset`, `include_pending_count` |
+| request | `GitCommitLogGet` | `repository_id`, `repository_name`, `repository_kind`, `location`, `infrahub_branch_name`, `git_ref`, `imported_commit`, `limit`, `offset`, `include_pending_count`, `include_total_count` |
 | reply | `GitCommitLogGetResponse` with `GitCommitLogGetResponseData` | see `data-model.md` |
 
 Handler `infrahub.message_bus.operations.git.commit_log::get` unpacks the message, delegates to
@@ -41,7 +41,8 @@ own. The reader performs, in order:
    its length is the pending count when requested. Page with `iter_commits(start, max_count=limit,
    skip=offset)`, where `start` is the head, or the imported commit under `REF_MISSING`. Read the
    `FETCH_HEAD` mtime, or no fetch time when the file is missing or empty (a failed fetch leaves it
-   empty). No total-count pass exists. A `GitCommandError` is logged on the worker and
+   empty). When the total count is requested and a start exists, count the commits reachable from
+   `start` with one `git rev-list --count <start>`, independent of `limit` and `offset`. A `GitCommandError` is logged on the worker and
    raised as a `RepositoryError` whose message carries no path or git output. The `Repo` is closed
    when the read ends.
 4. Never take the repository lock: the read is against git's own consistent object store and must not

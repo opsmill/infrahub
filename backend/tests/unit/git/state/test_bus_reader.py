@@ -49,6 +49,7 @@ REQUEST = CommitLogRequest(
     limit=25,
     offset=50,
     include_pending_count=True,
+    include_total_count=True,
 )
 
 
@@ -93,6 +94,7 @@ async def test_sends_the_request_with_the_configured_timeout_and_maps_the_reply(
                     remote_head=HEAD,
                     imported_commit=IMPORTED,
                     pending_count=4,
+                    total_count=12,
                     fetched_at=FETCHED_AT,
                     commits=[
                         GitCommitLogEntry(
@@ -134,6 +136,7 @@ async def test_sends_the_request_with_the_configured_timeout_and_maps_the_reply(
                 limit=25,
                 offset=50,
                 include_pending_count=True,
+                include_total_count=True,
             ),
             timeout=12.5,
         )
@@ -143,6 +146,7 @@ async def test_sends_the_request_with_the_configured_timeout_and_maps_the_reply(
         remote_head=HEAD,
         imported_commit=IMPORTED,
         pending_count=4,
+        total_count=12,
         fetched_at=FETCHED_AT,
         commits=(
             CommitEntry(

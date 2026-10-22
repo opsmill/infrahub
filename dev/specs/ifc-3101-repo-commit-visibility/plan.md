@@ -242,8 +242,8 @@ Ordered for the fastest frontend hand-off. Each phase is independently reviewabl
 - Resolvers do the real Infrahub-side work: load the repository on the request branch, enforce view
   (queries) or update (mutation) permission with `define_object_permission_from_branch`, read the
   imported commit and the branch or ref, validate `limit` and `offset`, gate `pending_count` on
-  selection with `extract_graphql_fields`. There is no `count` field to gate: FR-024 removes the
-  total from the contract entirely.
+  selection with `extract_graphql_fields`, and gate `count` the same way (FR-024, revised
+  2026-10-22).
 - *(Removed.)* `RepositoryBranchValuesQuery` in `core/query/repository.py`: one statement returning the
   branch-resolved `commit`, and `ref` for the read-only kind, for one repository across an explicit
   branch list, with an explicit attribute-name set and a frozen-dataclass `get_data()`. It unwinds a
@@ -408,8 +408,8 @@ determinism logic, no test and no documentation entry.
 - Commits tab on the repository detail page with markers, per-row state, `DateDisplay fullTimestamp`
   for the freshness line, `NoDataFound` for `UNAVAILABLE` and a notice for `REWRITTEN`. The list is a
   `DataTable` inside `InfiniteScroll`, which loads the next page when the end of the list comes into
-  view and shows no total; `Pagination` was dropped because it always shows a total, which FR-024
-  forbids. The full hash is copied from the row menu item "Copy commit hash", built on the shared
+  view; `Pagination` was dropped because it always shows a total under the list. The total is shown
+  as the tab badge instead, from `count` (FR-024, revised 2026-10-22). The full hash is copied from the row menu item "Copy commit hash", built on the shared
   `CopyToClipboardMenuItem`, and a toast confirms the copy or says it failed. The same menu offers
   "View on GitHub" for a repository hosted on GitHub.
 - The tab link shows the pending-import count, read from the first page of the same query through

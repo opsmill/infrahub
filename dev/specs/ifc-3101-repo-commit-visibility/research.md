@@ -169,8 +169,8 @@ clone (`get_git_repo_main()`), read-only and with no fetch:
 - relationship: `Repo.is_ancestor(imported, head)`; `False` means `REWRITTEN`.
 - pending range: under `BEHIND` only, one `git rev-list <imported>..<head>`. Its membership places
   every listed commit and its length is the pending count when selected.
-- page: `Repo.iter_commits(head, max_count=limit, skip=offset)`. No total: FR-024 drops it from the
-  contract, so no counting pass over the whole history exists in the read path at all.
+- page: `Repo.iter_commits(head, max_count=limit, skip=offset)`. Total (FR-024, revised): only when
+  `count` is selected, one `git rev-list --count <start>` over the listed history.
 - per-commit state: `IMPORTED` if hash equals imported, else `HEAD` if hash equals head, else
   `PENDING` when the commit is in the pending range and the condition is `BEHIND`, else `HISTORY`;
   under `REWRITTEN` and `ORPHANED` every
@@ -445,7 +445,7 @@ mutation `InfrahubReadOnlyRepositoryCheckRefs`, all registered on
 `infrahub.graphql.types.repository` (new), enums wrapped with `graphene.Enum.from_enum` from
 `InfrahubStringEnum` classes in `infrahub.core.constants`
 (`RepositoryGitCondition`, `RepositoryCommitState`, `RepositoryGitUnavailableReason`). Pagination
-is flat `limit` / `offset` with `edges { node }` and no total of any kind (FR-024), otherwise matching
+is flat `limit` / `offset` with `edges { node }` and a nullable `count` gated on selection (FR-024), otherwise matching
 `infrahub.graphql.queries.task::Tasks`. Expensive fields are gated on selection with
 `infrahub.graphql.field_extractor::extract_graphql_fields`, the way `queries.task::_build_fetch_options`
 does. Descriptions are single-line (the SDL printer warning in `infrahub.graphql.types.preferences`).

@@ -193,6 +193,7 @@ def _message(
     limit: int = 10,
     offset: int = 0,
     include_pending_count: bool = True,
+    include_total_count: bool = True,
 ) -> GitCommitLogGet:
     return GitCommitLogGet(
         repository_id=str(repository.id),
@@ -205,6 +206,7 @@ def _message(
         limit=limit,
         offset=offset,
         include_pending_count=include_pending_count,
+        include_total_count=include_total_count,
     )
 
 
@@ -220,6 +222,7 @@ def _never_cloned_message(repository_id: str, imported_commit: str | None) -> Gi
         limit=10,
         offset=0,
         include_pending_count=True,
+        include_total_count=True,
     )
 
 
@@ -316,6 +319,7 @@ async def test_a_mapped_branch_with_no_commits_on_the_remote_reads_as_no_remote(
     assert data.remote_head is None
     assert data.imported_commit == head
     assert data.pending_count is None
+    assert data.total_count is None
     assert data.unavailable_reason is None
     assert data.commits == []
 
@@ -355,6 +359,7 @@ async def test_paging_walks_a_known_history(
         [],
     ]
     assert [page.pending_count for page in pages] == [5, 5, 5, 5]
+    assert [page.total_count for page in pages] == [6, 6, 6, 6]
 
 
 async def test_fetched_at_follows_the_last_fetch(
@@ -409,6 +414,17 @@ async def test_an_unselected_pending_count_is_not_reported(
 
     assert data.condition is RepositoryGitCondition.BEHIND
     assert data.pending_count is None
+
+
+async def test_an_unselected_total_count_is_not_reported(
+    git_fixture_repo: InfrahubRepository, clone: Repo, read_log: ReadLog
+) -> None:
+    head = clone.commit("origin/main").hexsha
+
+    data = await read_log(_message(repository=git_fixture_repo, imported_commit=head, include_total_count=False))
+
+    assert data.condition is RepositoryGitCondition.IN_SYNC
+    assert data.total_count is None
 
 
 async def test_a_read_only_branch_ref_reads_its_remote_branch(
@@ -531,6 +547,7 @@ async def test_a_read_only_ref_deleted_upstream_reads_as_missing_with_the_histor
     assert data.unavailable_reason is None
     assert _states(data) == [(imported, RepositoryCommitState.IMPORTED), (first, RepositoryCommitState.HISTORY)]
     assert _states(second_page) == [(first, RepositoryCommitState.HISTORY)]
+    assert [data.total_count, second_page.total_count] == [2, 2]
 
 
 async def test_a_merged_side_branch_is_pending_below_the_imported_commit(

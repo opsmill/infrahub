@@ -71,7 +71,8 @@ uv run invoke dev.build && uv run invoke dev.start   # full stack with at least 
 
 5. Laziness: selecting only Infrahub-side fields makes no worker request at all (component test
    asserts the recorded reader saw no call). Selecting `pending_count` sets
-   `include_pending_count`; omitting it leaves the counting call unmade.
+   `include_pending_count`, and selecting `count` sets `include_total_count`; omitting either
+   leaves its counting call unmade.
 
    Both halves are only observable against the recording reader, so the component test is the real
    assertion here and this step is a smoke check: on a live stack the placeholder reader issues no

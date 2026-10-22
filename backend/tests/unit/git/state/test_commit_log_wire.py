@@ -33,6 +33,7 @@ def test_a_request_survives_the_round_trip() -> None:
         limit=25,
         offset=50,
         include_pending_count=True,
+        include_total_count=True,
     )
 
     assert message_to_request(message=request_to_message(request=request)) == request
@@ -44,6 +45,7 @@ def test_a_result_survives_the_round_trip() -> None:
         remote_head="3333333333333333333333333333333333333333",
         imported_commit="1111111111111111111111111111111111111111",
         pending_count=4,
+        total_count=12,
         commits=(
             CommitEntry(
                 hash="3333333333333333333333333333333333333333",

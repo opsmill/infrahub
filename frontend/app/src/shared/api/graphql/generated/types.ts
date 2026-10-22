@@ -40001,6 +40001,8 @@ export type RepositoryCommits = {
   /** When the remote was last checked for movement. Read-only repositories only; null for read-write, where fetched_at already carries it. */
   checked_at: Maybe<Scalars['DateTime']['output']>;
   condition: RepositoryGitCondition;
+  /** Number of commits in the listed history, whatever the limit and offset. Null when no history is listed. */
+  count: Maybe<Scalars['Int']['output']>;
   edges: Array<RepositoryCommitNode>;
   /** When the answering worker last fetched from the remote. Null before the first fetch, and after a failed fetch. */
   fetched_at: Maybe<Scalars['DateTime']['output']>;

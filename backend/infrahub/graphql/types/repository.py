@@ -67,6 +67,10 @@ class RepositoryCommits(ObjectType):
     pending_count = Int(
         description="Number of commits between imported_commit and remote_head. Only set when condition is BEHIND."
     )
+    count = Int(
+        description="Number of commits in the listed history, whatever the limit and offset. Null when no history "
+        "is listed."
+    )
     fetched_at = DateTime(
         description="When the answering worker last fetched from the remote. Null before the first fetch, and after a failed fetch."
     )

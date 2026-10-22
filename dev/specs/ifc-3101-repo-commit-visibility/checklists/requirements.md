@@ -31,7 +31,7 @@
 
 ## Notes
 
-- FR-024 (total commit count) was the one open marker. Resolved 2026-09-03 with the PRD author: no total is shown, paging alone. A count since the repository's origin is seldom useful; a count relative to the default branch is a possible later refinement and is listed under Out of Scope. The design canvas badge needs removing.
+- FR-024 (total commit count) was the one open marker. Resolved 2026-09-03 with the PRD author: no total is shown, paging alone. Revised 2026-10-22: the total is offered as `count`, counted only when selected, and shown as the tab badge (see FR-024 in spec.md). A count since the repository's origin is seldom useful; a count relative to the default branch is a possible later refinement and is listed under Out of Scope. The design canvas badge needs removing.
 - The PRD's three other open questions were resolved or deferred without a marker: read-write worker convergence was verified in the current code (see Assumptions); the worktree-protects-commit assumption is stated as an assumption that planning MUST validate (FR-020 stands regardless); the second-request-versus-fan-out choice for the drift column is a planning decision, with the behavioural requirement captured in FR-022.
 - The Governance Gates table names GraphQL because the project's "Ask First" gate is defined in those terms; it describes a sign-off obligation, not a design choice.
 - Every item passes except the three unticked above, which are the same underlying exception seen from three angles: one under Content Quality, one under Requirement Completeness, one under Feature Readiness. Spec was taken to `/speckit-plan` on that basis.
