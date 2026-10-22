@@ -115,6 +115,7 @@ export const generateTrunkHistoryCommitsResponse = () =>
     condition: "BEHIND",
     imported_commit: fullHash(TRUNK_IMPORTED),
     remote_head: fullHash(TRUNK_HEAD),
+    pending_count: 2,
     edges: [
       { node: node(TRUNK_HEAD, "HEAD", "Add site Berlin", "Grace Hopper") },
       { node: node("6e7f8a9", "NOT_ON_BRANCH", "Rename core switches", "Ada Lovelace") },

@@ -16,6 +16,7 @@ import {
   generateCommitsApiResult,
   generateInSyncCommitsResponse,
   generateNotClonedCommitsResponse,
+  generateTrunkHistoryCommitsResponse,
 } from "../../../../tests/fake/repository-commit";
 import { RepositoryCommitsManager } from "./repository-commits-manager";
 import { RepositoryCommitsTab } from "./repository-commits-tab";
@@ -40,11 +41,21 @@ const useBranch = ({ syncWithGit }: { syncWithGit: boolean }) =>
     setCurrentBranch: () => {},
   });
 
-const renderTab = (objectKind: string = REPOSITORY_KIND) =>
+const renderTab = ({
+  objectKind = REPOSITORY_KIND,
+  internalStatus = "active",
+}: {
+  objectKind?: string;
+  internalStatus?: string;
+} = {}) =>
   render(
     <>
       <CaptureQueryClient />
-      <RepositoryCommitsTab objectKind={objectKind} objectId="repo-1" />
+      <RepositoryCommitsTab
+        objectKind={objectKind}
+        objectId="repo-1"
+        internalStatus={internalStatus}
+      />
     </>
   );
 
@@ -91,37 +102,45 @@ describe("RepositoryCommitsTab", () => {
       .toBeVisible();
   });
 
-  test.each([
-    { condition: "in sync", response: generateInSyncCommitsResponse },
-    { condition: "behind", response: generateBehindCommitsResponse },
-  ])(
-    "shows no count when a branch that does not sync with Git is $condition",
-    async ({ response }) => {
-      // GIVEN
+  describe("on a branch that does not sync with Git", () => {
+    beforeEach(() => {
       useBranch({ syncWithGit: false });
-      apiMock.mockResolvedValue(generateCommitsApiResult(response()));
+    });
+
+    test.each([
+      { condition: "behind", response: generateTrunkHistoryCommitsResponse, count: 2 },
+      { condition: "in sync", response: generateInSyncCommitsResponse, count: 0 },
+    ])(
+      "counts the trunk commits not on the branch when it is $condition",
+      async ({ response, count }) => {
+        // GIVEN
+        apiMock.mockResolvedValue(generateCommitsApiResult(response()));
+
+        // WHEN
+        const component = await renderTab();
+
+        // THEN
+        await expect
+          .element(component.getByRole("link", { name: `Commits ${count} not on this branch` }))
+          .toBeVisible();
+      }
+    );
+
+    test.each([
+      { case: "a read-only repository", objectKind: READONLY_REPOSITORY_KIND },
+      { case: "a repository added on the branch", internalStatus: "staging" },
+    ])("counts the commits pending import for $case", async ({ objectKind, internalStatus }) => {
+      // GIVEN
+      apiMock.mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));
 
       // WHEN
-      const component = await renderTab();
+      const component = await renderTab({ objectKind, internalStatus });
 
       // THEN
-      await expect.poll(() => apiMock.mock.calls.length).toBe(1);
-      await expectNoCount(component);
-    }
-  );
-
-  test("shows the count of a read-only repository on a branch that does not sync with Git", async () => {
-    // GIVEN
-    useBranch({ syncWithGit: false });
-    apiMock.mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));
-
-    // WHEN
-    const component = await renderTab(READONLY_REPOSITORY_KIND);
-
-    // THEN
-    await expect
-      .element(component.getByRole("link", { name: "Commits 3 pending import" }))
-      .toBeVisible();
+      await expect
+        .element(component.getByRole("link", { name: "Commits 3 pending import" }))
+        .toBeVisible();
+    });
   });
 
   test("shows no count when no worker holds a copy", async () => {
@@ -194,10 +213,15 @@ describe("RepositoryCommitsTab", () => {
     // WHEN
     const component = await render(
       <>
-        <RepositoryCommitsTab objectKind={REPOSITORY_KIND} objectId="repo-1" />
+        <RepositoryCommitsTab
+          objectKind={REPOSITORY_KIND}
+          objectId="repo-1"
+          internalStatus="active"
+        />
         <RepositoryCommitsManager
           repositoryId="repo-1"
           repositoryKind={REPOSITORY_KIND}
+          repositoryInternalStatus="active"
           repositoryLocation="/remote/repo"
           remoteCheck={null}
         />

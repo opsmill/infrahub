@@ -63,6 +63,7 @@ const commitLog = (remoteCheck: RepositoryRemoteCheck | null) => (
       <RepositoryCommitsManager
         repositoryId={REPOSITORY_ID}
         repositoryKind={remoteCheck ? READONLY_REPOSITORY_KIND : REPOSITORY_KIND}
+        repositoryInternalStatus="active"
         repositoryLocation={null}
         remoteCheck={remoteCheck}
       />

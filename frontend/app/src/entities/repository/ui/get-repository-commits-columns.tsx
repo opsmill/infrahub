@@ -20,7 +20,7 @@ function ColumnHeader({ children }: { children: string }) {
 
 export function getRepositoryCommitsColumns({
   importedCommit,
-  showsTrunkHistory,
+  updatedOnlyByRebase,
   repositoryLocation,
 }: CommitStateContext & {
   repositoryLocation: string | null;
@@ -74,7 +74,7 @@ export function getRepositoryCommitsColumns({
           <RepositoryCommitStateBadges
             commit={row.original}
             importedCommit={importedCommit}
-            showsTrunkHistory={showsTrunkHistory}
+            updatedOnlyByRebase={updatedOnlyByRebase}
           />
         </TableCell>
       ),

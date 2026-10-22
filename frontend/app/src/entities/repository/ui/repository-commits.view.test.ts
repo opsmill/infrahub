@@ -16,6 +16,7 @@ import {
   getLoadedCommits,
   getNextPageState,
   getNoCommitLogState,
+  getRebaseNote,
   getStateBadges,
   isLoadingFirstPage,
   isShowingStaleCommits,
@@ -179,7 +180,7 @@ describe("getStateBadges", () => {
     // WHEN
     const badges = getStateBadges(commit, {
       importedCommit: IMPORTED_HASH,
-      showsTrunkHistory: false,
+      updatedOnlyByRebase: false,
     });
 
     // THEN
@@ -193,7 +194,7 @@ describe("getStateBadges", () => {
     // WHEN
     const badges = getStateBadges(commit, {
       importedCommit: IMPORTED_HASH,
-      showsTrunkHistory: false,
+      updatedOnlyByRebase: false,
     });
 
     // THEN
@@ -205,12 +206,11 @@ describe("getStateBadges", () => {
     { state: RepositoryCommitState.PENDING, labels: ["Pending import"] },
     { state: RepositoryCommitState.UNRELATED, labels: ["Not on current history"] },
     { state: RepositoryCommitState.HISTORY, labels: [] },
-    { state: RepositoryCommitState.NOT_ON_BRANCH, labels: [] },
   ])("labels a $state commit from its state", ({ state, labels }) => {
     // WHEN
     const badges = getStateBadges(
       { hash: OTHER_HASH, state },
-      { importedCommit: IMPORTED_HASH, showsTrunkHistory: false }
+      { importedCommit: IMPORTED_HASH, updatedOnlyByRebase: false }
     );
 
     // THEN
@@ -224,7 +224,7 @@ describe("getStateBadges", () => {
     // WHEN
     const badges = getStateBadges(commit, {
       importedCommit: IMPORTED_HASH,
-      showsTrunkHistory: true,
+      updatedOnlyByRebase: true,
     });
 
     // THEN
@@ -238,7 +238,7 @@ describe("getStateBadges", () => {
     // WHEN
     const badges = getStateBadges(commit, {
       importedCommit: IMPORTED_HASH,
-      showsTrunkHistory: true,
+      updatedOnlyByRebase: true,
     });
 
     // THEN
@@ -252,7 +252,7 @@ describe("getStateBadges", () => {
     // WHEN
     const badges = getStateBadges(commit, {
       importedCommit: IMPORTED_HASH,
-      showsTrunkHistory: true,
+      updatedOnlyByRebase: true,
     });
 
     // THEN
@@ -265,7 +265,7 @@ describe("getStateBadges", () => {
 
     // WHEN
     // @ts-expect-error A newer server can send a state this client's generated enum does not list.
-    const badges = getStateBadges(commit, { importedCommit: null, showsTrunkHistory: false });
+    const badges = getStateBadges(commit, { importedCommit: null, updatedOnlyByRebase: false });
 
     // THEN
     expect(badges).toEqual([]);
@@ -335,10 +335,10 @@ describe("getFreshness", () => {
 describe("getConditionNotice", () => {
   test("warns that a rewritten ref reports nothing as pending", () => {
     // WHEN
-    const notice = getConditionNotice({
-      condition: RepositoryGitCondition.REWRITTEN,
-      pending_count: null,
-    });
+    const notice = getConditionNotice(
+      { condition: RepositoryGitCondition.REWRITTEN, pending_count: null },
+      { updatedOnlyByRebase: false }
+    );
 
     // THEN
     expect(notice?.tone).toBe("warning");
@@ -347,10 +347,10 @@ describe("getConditionNotice", () => {
 
   test("warns that the imported commit is missing from the remote", () => {
     // WHEN
-    const notice = getConditionNotice({
-      condition: RepositoryGitCondition.ORPHANED,
-      pending_count: null,
-    });
+    const notice = getConditionNotice(
+      { condition: RepositoryGitCondition.ORPHANED, pending_count: null },
+      { updatedOnlyByRebase: false }
+    );
 
     // THEN
     expect(notice).toEqual({
@@ -361,10 +361,10 @@ describe("getConditionNotice", () => {
 
   test("warns when the tracked ref no longer exists on the remote", () => {
     // WHEN
-    const notice = getConditionNotice({
-      condition: RepositoryGitCondition.REF_MISSING,
-      pending_count: null,
-    });
+    const notice = getConditionNotice(
+      { condition: RepositoryGitCondition.REF_MISSING, pending_count: null },
+      { updatedOnlyByRebase: false }
+    );
 
     // THEN
     expect(notice).toEqual({
@@ -376,21 +376,32 @@ describe("getConditionNotice", () => {
 
   test("counts the commits pending import when behind", () => {
     // WHEN
-    const notice = getConditionNotice({
-      condition: RepositoryGitCondition.BEHIND,
-      pending_count: 2,
-    });
+    const notice = getConditionNotice(
+      { condition: RepositoryGitCondition.BEHIND, pending_count: 2 },
+      { updatedOnlyByRebase: false }
+    );
 
     // THEN
     expect(notice).toEqual({ tone: "neutral", message: "2 commits pending import" });
   });
 
+  test("counts the commits not on a branch that only a rebase updates", () => {
+    // WHEN
+    const notice = getConditionNotice(
+      { condition: RepositoryGitCondition.BEHIND, pending_count: 2 },
+      { updatedOnlyByRebase: true }
+    );
+
+    // THEN
+    expect(notice).toEqual({ tone: "neutral", message: "2 commits not on this branch" });
+  });
+
   test("says nothing when behind without a count", () => {
     // WHEN
-    const notice = getConditionNotice({
-      condition: RepositoryGitCondition.BEHIND,
-      pending_count: null,
-    });
+    const notice = getConditionNotice(
+      { condition: RepositoryGitCondition.BEHIND, pending_count: null },
+      { updatedOnlyByRebase: false }
+    );
 
     // THEN
     expect(notice).toBeNull();
@@ -403,7 +414,10 @@ describe("getConditionNotice", () => {
     RepositoryGitCondition.UNAVAILABLE,
   ])("says nothing for %s", (condition) => {
     // WHEN
-    const notice = getConditionNotice({ condition, pending_count: null });
+    const notice = getConditionNotice(
+      { condition, pending_count: null },
+      { updatedOnlyByRebase: false }
+    );
 
     // THEN
     expect(notice).toBeNull();
@@ -627,4 +641,37 @@ describe("getNextPageState", () => {
     // THEN
     expect(nextPageState).toBe(expected);
   });
+});
+
+describe("getRebaseNote", () => {
+  test("suggests a rebase when the default branch has newer commits", () => {
+    // WHEN
+    const note = getRebaseNote({ condition: RepositoryGitCondition.BEHIND });
+
+    // THEN
+    expect(note).toBe(
+      "This branch does not sync with Git. The default branch has newer commits. Rebase the branch to use them."
+    );
+  });
+
+  test("says the branch is up to date when it runs the newest commit", () => {
+    // WHEN
+    const note = getRebaseNote({ condition: RepositoryGitCondition.IN_SYNC });
+
+    // THEN
+    expect(note).toBe(
+      "This branch does not sync with Git. It uses the latest commit of the default branch."
+    );
+  });
+
+  test.each([RepositoryGitCondition.REWRITTEN, RepositoryGitCondition.NOT_TRACKED])(
+    "says nothing for %s",
+    (condition) => {
+      // WHEN
+      const note = getRebaseNote({ condition });
+
+      // THEN
+      expect(note).toBeNull();
+    }
+  );
 });
