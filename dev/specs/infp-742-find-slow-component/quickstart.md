@@ -31,7 +31,7 @@ Expected: all pass. The tests must cover, at least:
 | Story | Test proves |
 |-------|-------------|
 | 1 | Query spans are children of the request span; the sampler follows a sampled parent; ratio 0.5 records about half of new root traces; `trace_id` has 32 characters with leading zeros; task worker lines carry it |
-| 2 | Span attributes and log fields for each rule read `[MASKED]`; a URL keeps its path; Cypher text and query names are unchanged; single sign-on spans have no token or user info; the login line has `account_id`; an exception event whose message has a URL with `code` and `state` shows `?[MASKED]`; a flow run log line with a token reaches the Prefect API handler masked; a log line whose message or exception text has a URL with `code` and `state` shows `?[MASKED]`; the attribute and field keys Infrahub sets on its own spans and log lines are compared with an expected list, so a harmless key that a rule would mask fails the test |
+| 2 | Span attributes for each rule read `[MASKED]`; a URL keeps its scheme, hostname and path; the request span hook masks the URL query string and the client IP address; Cypher text and query names are unchanged; single sign-on spans have no token or user info; the login line has `account_id`; an exception event whose message has a URL with `code` and `state` shows `?[MASKED]`; the attribute and field keys Infrahub sets on its own spans and log lines are compared with an expected list, so a harmless key that a rule would mask fails the test |
 | 3 | Each new bucket limit appears as an `le` label; a 30 s query is counted in `le="30"`; a second gunicorn worker keeps the first worker's values; a stopped worker is not shown on pool gauges; a GraphQL and an `/api/…` request appear in `infrahub_request_duration_seconds` (B13) |
 | 4 | Start delay equals start time minus expected start time; runs in progress rise and fall; a `high` run is counted with `queue="high"` |
 | 5 | Panel identifiers are unique in each dashboard; no dashboard query has a fixed `job`, `instance` or `container`; no misleading admission title; no panel reads `le="1"` or `le="0.5"` as the highest limit |
@@ -53,8 +53,8 @@ then:
    trace's lines appear. From one of those lines in Loki, open the trace link. Repeat with a trace ID
    that starts with `0`.
 4. **Masking (story 2).** Log in through single sign-on, then search Tempo and Loki for the access
-   token, the `code` and `state` values, the user name and the email address: none is found;
-   `[MASKED]` appears where they were.
+   token, the `code` and `state` values, the user name and the email address: none is found in Tempo,
+   where `[MASKED]` appears instead, and the user name is not in Loki.
 5. **Durations and pool (story 3).** Run a query that lasts more than 30 s. On "Infrahub Monitoring",
    the query duration panel shows about 30 s, and the pool row shows usage against size and the wait
    time.
@@ -76,8 +76,7 @@ then:
 
 ## Cost of tracing (SC-006)
 
-Before tracing is turned on for more operators, run the load and the three configurations of
+Before tracing is turned on for more operators, run the load and the two configurations of
 [research.md](research.md) R9, and compare the API p95 response time and CPU use. Record the host, the
 commit and the results in `measurements.md` in this feature directory. If tracing at ratio 0.1 adds
-more than 5 %, lower the default of `INFRAHUB_TRACE_SAMPLE_RATIO` and measure again. Report the cost of
-log masking alone (tracing off) next to it.
+more than 5 %, lower the default of `INFRAHUB_TRACE_SAMPLE_RATIO` and measure again.

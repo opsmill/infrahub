@@ -15,7 +15,8 @@ system, and fixes the dashboards OpsMill ships:
   logs and links between traces and logs in Grafana.
 - A default sampling ratio, and a temporary ratio that an administrator sets through the API without a
   restart.
-- Masking of secrets and personal data in spans and logs, with the fixed marker `[MASKED]`.
+- Masking of secrets and personal data in spans, with the fixed marker `[MASKED]`. Log lines are not
+  masked; the known leaks are fixed where they are written (clarification of 2026-10-19).
 - Longer duration buckets, connection pool size and connection wait, task worker start delay and runs
   in progress per priority queue, and metric values kept across API worker restarts.
 - Dashboards that work in any Grafana.
@@ -52,8 +53,8 @@ not measured yet: [research.md](research.md) R9). A ratio change applies in ever
 10 seconds (SC-004).
 
 **Constraints**: The connection wait is measured by wrapping a private method of the Neo4j driver
-pool; a failure to record never fails a query. A metric label is never a run ID. A span or log line
-leaves the process already masked.
+pool; a failure to record never fails a query. A metric label is never a run ID. A span leaves the
+process already masked.
 
 **Scale/Scope**: About 30 backend files, 4 dashboards, 1 Grafana data source file, 2 Compose files,
 1 Alloy file, 4 documentation pages (see the draft file list in [research.md](research.md) R1).
@@ -97,9 +98,9 @@ specs/infp-742-find-slow-component/
 backend/infrahub/
 ├── config.py                         # TraceSettings.sample_ratio (FR-006)
 ├── trace.py                          # RatioSampler, MaskingSpanExporter, get_traceid format (FR-004, FR-006, FR-007, FR-012)
-├── masking.py                        # New: shared masking rules, MASKED_VALUE = "[MASKED]" (FR-012, FR-013, FR-013a)
-├── log.py                            # add_trace_id, mask_personal_data, LogMaskingFilter (FR-003, FR-004, FR-013)
-├── server.py                         # HTTP buckets, sample_ratio, B13 fix (FR-014, FR-016)
+├── masking.py                        # New: span masking rules, MASKED_VALUE = "[MASKED]" (FR-012, FR-013a)
+├── log.py                            # add_trace_id (FR-003, FR-004)
+├── server.py                         # HTTP buckets, sample_ratio, B13 fix, request span masking (FR-012, FR-014, FR-016)
 ├── worker.py                         # multiprocess_mode on infrahub_info (FR-018)
 ├── lock.py                           # Lock buckets (FR-014)
 ├── api/
@@ -121,7 +122,7 @@ backend/infrahub/
 │   └── worker.py                     # Remove per-worker metric file deletion (FR-018)
 └── workers/
     ├── metrics.py                    # New: start delay, runs in progress (FR-020)
-    └── infrahub_async.py             # Records the two metrics; masking filter on the Prefect API handler
+    └── infrahub_async.py             # Records the two metrics
 
 backend/tests/
 ├── unit/  (test_trace.py, test_log.py, test_lock.py, test_server_metrics.py, test_metrics_multiprocess.py,
@@ -157,8 +158,8 @@ changelog/                                      # One fragment per user-visible 
 
 **Structure Decision**: Backend changes stay in the modules that already own tracing (`trace.py`),
 logging (`log.py`), metrics (`database/metrics.py`, `server.py`) and settings messages
-(`message_bus/`). `masking.py` is new because both `trace.py` and `log.py` use the rules, and `log.py`
-must not import the trace exporters. Out of scope from the draft and not ported: the Redis exporter,
+(`message_bus/`). `masking.py` is new because both `trace.py` and the request hook in `server.py` use
+the rules. Out of scope from the draft and not ported: the Redis exporter,
 its Alloy scrape and dashboard row (D7), the Grafana MCP container and `development/grafana-mcp/`
 (D10), and their changelog fragments. The Redis exporter, the Redis dashboards and the Prefect event
 stream panels belong to [INFP-743](https://opsmill.atlassian.net/browse/INFP-743), and their alert
