@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Protocol, Sequence, TypeVar, cast, overlo
 from infrahub_sdk.template.exceptions import JinjaTemplateError
 from infrahub_sdk.utils import is_valid_uuid
 from infrahub_sdk.uuidt import UUIDT
+from opentelemetry import trace
 
 from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core import registry
@@ -314,6 +315,38 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
     def has_display_label(self) -> bool:
         return self._display_label is not None
+
+    def has_label_depending_on_relationship(self, name: str) -> bool:
+        """Whether the display label or HFID of this node's schema reads the named relationship."""
+        label_definitions = (
+            DisplayLabel(node_schema=self._schema, template=self._schema.display_label),
+            HumanFriendlyIdentifier(node_schema=self._schema, template=self._schema.human_friendly_id),
+        )
+        return any(name in definition.node_relationships for definition in label_definitions)
+
+    async def compute_labels(self, db: InfrahubDatabase) -> None:
+        """Recompute the display label and HFID from the node's current fields, without saving them."""
+        if self._display_label:
+            await self._display_label.compute(db=db, node=self)
+        if self._human_friendly_id:
+            await self._human_friendly_id.compute(db=db, node=self)
+
+    def display_label_needs_read(self) -> bool:
+        """Whether returning the display label computes it from the node's fields instead of the stored value."""
+        return bool(self._schema.display_label) and self._display_label is None
+
+    def hfid_needs_read(self) -> bool:
+        """Whether returning the HFID resolves its schema paths instead of returning the stored value."""
+        return bool(self._schema.human_friendly_id) and self.get_materialized_hfid() is None
+
+    def get_materialized_hfid(self) -> list[str] | None:
+        """Return the HFID this node holds, as loaded from storage or computed by a save, without reading or computing it.
+
+        None when the node was loaded without its HFID, holds an empty one, or its kind defines none.
+        """
+        if not self._schema.human_friendly_id or not self._human_friendly_id:
+            return None
+        return self._human_friendly_id.get_value(node=self, at=self._at) or None
 
     async def add_display_label(self, db: InfrahubDatabase) -> None:
         if self._display_label:
@@ -1224,8 +1257,22 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 rel.id, rel.db_id = new_ids[identifier]
                 node_changelog.create_relationship(relationship=rel)
 
-        node_changelog.display_label = await self.get_display_label(db=db)
+        await self._set_changelog_labels(db=db, node_changelog=node_changelog)
         return node_changelog
+
+    async def _set_changelog_labels(self, db: InfrahubDatabase, node_changelog: NodeChangelog) -> None:
+        """Fill the changelog with this node's display label and the HFID it holds.
+
+        The HFID is never computed here, since a node loaded with only some of its fields would compute
+        it from values it does not hold; an HFID the node does not hold is left unset for the event
+        enrichment to read from storage.
+        """
+        with trace.get_tracer(__name__).start_as_current_span("changelog.primary_labels") as span:
+            span.set_attribute("changelog.node_kind", self.get_kind())
+            span.set_attribute("changelog.display_label_materialized", self._display_label is not None)
+            node_changelog.hfid = self.get_materialized_hfid()
+            span.set_attribute("changelog.hfid_materialized", node_changelog.hfid is not None)
+            node_changelog.display_label = await self.get_display_label(db=db)
 
     async def _update(
         self, db: InfrahubDatabase, user_id: str, at: Timestamp | None = None, fields: list[str] | None = None
@@ -1267,7 +1314,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             db=db, fields=updated_fields, node_changelog=node_changelog, update_at=update_at, user_id=user_id
         )
 
-        node_changelog.display_label = await self.get_display_label(db=db)
+        await self._set_changelog_labels(db=db, node_changelog=node_changelog)
 
         if node_changelog.has_changes:
             await self._add_parent_to_changelog(
@@ -1320,9 +1367,8 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         """Delete the Node in the database."""
         delete_at = Timestamp(at)
 
-        node_changelog = NodeChangelog(
-            node_id=self.get_id(), node_kind=self.get_kind(), display_label=await self.get_display_label(db=db)
-        )
+        node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind(), display_label="")
+        await self._set_changelog_labels(db=db, node_changelog=node_changelog)
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
             attr: BaseAttribute = getattr(self, name)
