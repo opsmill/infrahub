@@ -12,11 +12,20 @@ const figures = (used: number, size: number) => ({
 });
 
 describe("mapToNumberPoolUtilization", () => {
-  it("maps the pool and range figures", () => {
+  it("maps the pool and range figures, keeping the label the server wrote for each range", () => {
     // GIVEN
     const node = {
       figures: { size: 100, used: 30, used_default_branch: 28, used_branches: 2, utilization: 30 },
-      ranges: [{ id: "range-1", start: 1, end: 50, weight: 10, figures: figures(30, 50) }],
+      ranges: [
+        {
+          id: "range-1",
+          display_label: "1 - MAX",
+          start: 1,
+          end: 2 ** 63 - 1,
+          weight: 10,
+          figures: figures(30, 50),
+        },
+      ],
     } as NumberPoolUtilizationNode;
 
     // WHEN
@@ -29,8 +38,9 @@ describe("mapToNumberPoolUtilization", () => {
         {
           id: "range-1",
           __typename: "CoreNumberPoolRange",
+          display_label: "1 - MAX",
           start: { value: 1 },
-          end: { value: 50 },
+          end: { value: 2 ** 63 - 1 },
           allocation_weight: { value: 10 },
           usage: { size: 50, used: 30, usedDefaultBranch: 30, usedBranches: 0, utilization: 0 },
         },

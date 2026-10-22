@@ -25,6 +25,7 @@ export const mapToNumberPoolUtilization = (
   ranges: node.ranges.map((range) => ({
     id: range.id,
     __typename: NUMBER_POOL_RANGE_KIND,
+    display_label: range.display_label,
     start: { value: range.start },
     end: { value: range.end },
     allocation_weight: { value: range.weight },
