@@ -23,6 +23,7 @@ flow name, never a run ID.
 |--------|-----------------------|-------------------|
 | `infrahub_db_query_execution_seconds` | 1 | 2.5, 5, 10, 30, 60, 120, 300 |
 | `infrahub_request_duration_seconds` | 0.5 | 1, 2.5, 5, 10, 30, 60, 120, 300, 600, 1200 |
+| `infrahub_graphql_duration_seconds` | 60 | 120, 300, 600, 1200 (review of 2026-10-20) |
 | `infrahub_lock_acquire_seconds` | 5 | 30, 60, 120, 300 |
 | `infrahub_lock_reserved_duration_seconds` | 10 | 30, 60, 120, 300 |
 
@@ -47,5 +48,6 @@ dead. A worker no longer deletes the files of the others when it starts (B9).
 ## HTTP request metrics (B13)
 
 After the fix, `infrahub_request_duration_seconds` and `infrahub_requests_total` count `/graphql/…`
-and `/api/…` requests with their route as `path` (`group_paths=True`). The cause of the current gap is
-not known ([research.md](../research.md) R4).
+and `/api/…` requests with their route as `path` (`group_paths=True`). Before this feature they were
+dropped, because `starlette-exporter` 0.23 cannot find the route of a router included with FastAPI
+0.137 or later. Upgrading `starlette-exporter` to 0.24 fixes it ([research.md](../research.md) R4).

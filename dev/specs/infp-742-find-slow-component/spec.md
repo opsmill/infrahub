@@ -39,7 +39,6 @@ into spans and logs. Every slowness report then becomes an OpsMill investigation
 
 - The cost of tracing at the default sampling ratio of 0.1. It is not measured. The limit is in
   SC-006.
-- Why the HTTP metrics record no API or GraphQL request (B13). The cause is not known.
 - Which personal data Infrahub writes into logs today. The audit is
   [INFP-745](https://opsmill.atlassian.net/browse/INFP-745); each field it finds is fixed where the
   log line is written (FR-013).
@@ -86,6 +85,10 @@ of the API changes. Answers decided by Daniel.
 
 Decided by Daniel, after the approval:
 
+- Q: How is B13 fixed, the HTTP metrics that record no API or GraphQL request? → A: Upgrade
+  `starlette-exporter` from 0.23 to 0.24, in layer IFC-3428 (approved by Daniel on 2026-10-16). The
+  cause is a change in FastAPI 0.137 that version 0.23 does not support (research R4).
+
 - Q: Is the SDK work part of this feature's tasks, and how is it split? → A: Yes. Both SDK tickets are
   done in this feature, in the `python_sdk` submodule, with one pull request per ticket.
 - Q: Does the SDK add a dependency on OpenTelemetry? → A: No. It uses OpenTelemetry only when the
@@ -124,6 +127,21 @@ masking, a setting at least, keep the URL hostname), [the proposal](https://opsm
   readable.
 - Q: Is there a setting to turn masking off? → A: No. What remains is small and runs off the request
   path.
+
+### Session 2026-10-20
+
+Source: [review by Fatih Acar on GitHub](https://github.com/opsmill/infrahub/pull/11104) of the metrics layer. Answers decided by Daniel.
+
+- Q: Which request duration histogram must record long durations? → A: Both. The GraphQL query
+  duration (`infrahub_graphql_duration_seconds`) stopped at 60 seconds; it now goes up to 1200
+  seconds, as the HTTP request duration does, because it names the slow query (FR-014).
+- Q: Is the connection pool size metric needed, since the size is set at startup? → A: Yes. The
+  dashboard compares pool usage with pool size in any Grafana, which cannot read the Infrahub
+  configuration (FR-017).
+- Q: Is the admission slot cap combined with `max` over the API workers? → A: No, `livesum`. The
+  dashboard divides the sum of running requests by the sum of slots; with `max` the ratio could pass
+  100 %. The metric help text and the reference documentation now say the value is summed over the
+  live API workers.
 
 ## Personas
 
@@ -470,8 +488,8 @@ is traced, then check that the default applies after 2 minutes.
 
 **Durations and connection pool (story 3)**
 
-- **FR-014**: Database query durations MUST be recorded up to 300 seconds, HTTP request durations up to
-  1200 seconds, connection wait up to 60 seconds and lock durations up to 300 seconds. The bucket limits
+- **FR-014**: Database query durations MUST be recorded up to 300 seconds, HTTP request and GraphQL query
+  durations up to 1200 seconds, connection wait up to 60 seconds and lock durations up to 300 seconds. The bucket limits
   are listed in decision D6 of the design document.
 - **FR-015**: Panels that read the old highest bucket limits MUST be checked and corrected.
 - **FR-016**: The HTTP request metrics MUST record API and GraphQL requests with their route (B13).
