@@ -146,6 +146,21 @@ OTHER_READ_CASES = [
         name="a_read_that_includes_the_descendants",
         interface_arguments=(_argument("include_descendants", "true"),),
     ),
+    # TestingDevice(interfaces__isnull: false) { interfaces(status__value: "active") }
+    OtherReadCase(
+        name="an_isnull_filter_on_a_relationship_of_the_root",
+        root_arguments=(_argument("interfaces__isnull", "false"),),
+    ),
+    # TestingDevice(interfaces__ids: ["intf1"]) { interfaces(status__value: "active") }
+    OtherReadCase(
+        name="an_ids_filter_on_a_relationship_of_the_root",
+        root_arguments=(_argument("interfaces__ids", '["intf1"]'),),
+    ),
+    # TestingDevice { interfaces(status__value: "active", device__ids: ["dev1"]) }
+    OtherReadCase(
+        name="an_ids_filter_on_a_relationship_of_the_filtered_peers",
+        interface_arguments=(_argument("device__ids", '["dev1"]'),),
+    ),
     # TestingDevice { interfaces(status__value: "active") descendants }
     OtherReadCase(name="a_read_of_the_descendants", other_fields=("descendants",)),
     # TestingDevice { interfaces(status__value: "active") ancestors }

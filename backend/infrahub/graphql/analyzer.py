@@ -339,8 +339,8 @@ def _filter_literal(value: Any) -> FilterLiteral | None:
 def _reads_peers_another_way(node: GraphQLQueryNode) -> bool:
     """Whether a node selects peers by something other than the peers' own fields.
 
-    This covers a filter on a field of a related node, such as ``owner__name__value``, and a hierarchy read
-    (``descendants``, ``ancestors``, ``include_descendants``).
+    This covers any filter on a relationship of the node, such as ``owner__name__value``, ``owner__ids`` or
+    ``owner__isnull``, and a hierarchy read (``descendants``, ``ancestors``, ``include_descendants``).
     """
     if node.path in RESERVED_ATTR_REL_HIERARCHICAL_NAMES:
         return True
@@ -348,8 +348,8 @@ def _reads_peers_another_way(node: GraphQLQueryNode) -> bool:
     for argument in node.arguments:
         if argument.name == "include_descendants" and (argument.contains_variable or argument.value):
             return True
-        field_name, separator, rest = argument.name.partition("__")
-        if model is not None and separator and "__" in rest and model.get_relationship_or_none(name=field_name):
+        field_name, separator, _ = argument.name.partition("__")
+        if model is not None and separator and model.get_relationship_or_none(name=field_name):
             return True
     return False
 
