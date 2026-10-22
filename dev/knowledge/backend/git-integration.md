@@ -205,10 +205,14 @@ and keeps the branch open:
   refuses the credentials blocks the merge, with `RepositoryCredentialsRefusedError`, when the
   repository needs a Git merge: that Git merge would fail the same way after the graph merge. Any
   other failure to read a remote, and a remote not read before the total deadline of the check
-  (`REMOTE_HEADS_DEADLINE_SECONDS`), logs a warning and does not block the merge. For a repository
-  whose source branch records the commit its trunk records, or where neither branch records a
-  commit, as after a failed first clone, the check reads the source branch only, and the dispatcher
-  runs no Git merge for it: there is nothing to push. A value that is set but is not a full commit
+  (`REMOTE_HEADS_DEADLINE_SECONDS`), logs a warning and does not block the merge. Both refusal
+  errors are registered with `@suppress_traceback_in_logs`, so the task log of the merge shows the
+  refusal message with no traceback. The reader keeps the error output of `git ls-remote` on the
+  credentials error (`git_output`), without the command line, and before a credentials refusal the
+  check logs it as a warning for each remote Git could not authenticate to. For a repository whose
+  source branch records the commit its trunk records, or where neither branch records a commit, as
+  after a failed first clone, the check reads the source branch only, and the dispatcher runs no Git
+  merge for it: there is nothing to push. A value that is set but is not a full commit
   id is unknown, so the full check runs. While a repository has pending pushes, the sync does not
   import the trunk. A push to the trunk then holds the merge of each branch with something to merge
   in that repository until a delivery records the pushed commit, or until a user abandons the queue
@@ -268,7 +272,9 @@ apply the rule:
   `MergeRepositoryImportError`. This covers `BranchMerge`, the SDK and proposed change merges. It checks
   twice: before the merge write blocker is set, so a refused merge never blocks the import writes it waits
   for, and again under the blocker, before the merge start is recorded, to catch an import that started
-  or failed in between. A refusal leaves the branch OPEN with nothing to roll back.
+  or failed in between. A refusal leaves the branch OPEN with nothing to roll back. The error is
+  registered with `@suppress_traceback_in_logs`, so the task log of the merge shows the refusal
+  message in the `Finished in state Failed(...)` line, with no traceback.
 
 Reading a LOCAL value on a branch does not tell you whether the branch wrote it. Branches are
 isolated, so a branch that never imported a repository reads the value its base branch held at

@@ -122,6 +122,12 @@ class RemoteHeadsMergeCheck:
         )
         refused = [read for read in read_heads if isinstance(read, RepositoryCredentialsError)]
         if refused:
+            for error in refused:
+                # The refusal reaches the task log without its traceback, so the Git output is logged here.
+                if error.git_output:
+                    self.log.warning(
+                        f"Git could not authenticate to the remote of repository {error.identifier}: {error.git_output}"
+                    )
             raise RepositoryCredentialsRefusedError(
                 f"Unable to merge branch {source_branch}, because Infrahub cannot read the remote of a repository "
                 f"with its credentials. {' '.join(error.message for error in refused)} The Git merge would fail "
