@@ -1,0 +1,34 @@
+frontend/app/src/entities/resource-manager/domain/model/number-pool.ts
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 25
+  s_f4804ce89d1616::t_e636de23ab0af1 26,30,36
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-divisions-list.test.tsx
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 133-158
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-usage-bar.test.tsx
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 33-45,50
+frontend/app/src/entities/resource-manager/domain/rules/sort-ranges-by-fill-order.ts
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 3-10,17
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-usage-bar.tsx
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 9-10,12-13,20-23
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-ranges-card.tsx
+  s_f4804ce89d1616::t_8250ef424fc6ad 23
+frontend/app/src/entities/resource-manager/domain/rules/sort-ranges-by-fill-order.test.ts
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 73-94
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-divisions-list.tsx
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 36-39,48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fd69f5b4591ca8cdfb2a8bd21e4f1455cffddcb9",
+  "prompts": {},
+  "sessions": {
+    "s_f4804ce89d1616": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3055b56a-6f63-4403-9864-1ac7a9372a6a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
