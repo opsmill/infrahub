@@ -85,6 +85,25 @@ OWNERS_CASES = [
         expected={"vrf1"},
         expected_queried_peers=[],
     ),
+    # A peer whose kind changed is listed once under its old kind and once under its new kind, in either order.
+    OwnersCase(
+        name="a_peer_whose_kind_changed_listed_new_kind_last_reaches_its_owner_without_a_peer_query",
+        diff_summary=[
+            node_diff(node_id="p1", kind="TestPrefix", action="REMOVED", field_names=["description"]),
+            node_diff(node_id="p1", kind="TestAggregatePrefix", action="ADDED", field_names=["description"]),
+        ],
+        expected={"vrf1"},
+        expected_queried_peers=[],
+    ),
+    OwnersCase(
+        name="a_peer_whose_kind_changed_listed_old_kind_last_reaches_its_owner_without_a_peer_query",
+        diff_summary=[
+            node_diff(node_id="p1", kind="TestAggregatePrefix", action="ADDED", field_names=["description"]),
+            node_diff(node_id="p1", kind="TestPrefix", action="REMOVED", field_names=["description"]),
+        ],
+        expected={"vrf1"},
+        expected_queried_peers=[],
+    ),
     # From the second hop on, the peers are the owners the previous hop returned, which the diff may not change.
     OwnersCase(
         name="peers_outside_the_diff_are_checked_with_the_peer_query",

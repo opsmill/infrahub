@@ -35,33 +35,40 @@ class RelationshipPeerReader(Protocol):
         ...
 
 
+_ACTION_PRECEDENCE = (DiffAction.ADDED, DiffAction.UPDATED, DiffAction.REMOVED)
+
+
 @dataclass(frozen=True)
 class ChangedNodeIndex:
-    """The nodes a diff changes on one branch, with their kind, action and changed fields."""
+    """The nodes a diff changes on one branch, with their kinds, action and changed fields.
 
-    kinds: Mapping[str, str]
+    A node whose kind changed is listed once per kind, in any order. It keeps every kind, and the action of a node
+    that existed before the change: removed when one of its entries is removed, added only when all of them are.
+    """
+
+    kinds: Mapping[str, frozenset[str]]
     actions: Mapping[str, DiffAction]
     changed_fields: Mapping[str, frozenset[str]]
 
     @classmethod
     def from_diff(cls, *, diff_summary: Sequence[NodeDiff], query_branch: str) -> ChangedNodeIndex:
         """Index the nodes changed on ``query_branch``."""
-        kinds: dict[str, str] = {}
+        kinds: dict[str, set[str]] = {}
         actions: dict[str, DiffAction] = {}
         changed_fields: dict[str, set[str]] = {}
         for node_diff in diff_summary:
             action = parse_diff_action(node_diff["action"])
             if node_diff["branch"] != query_branch or action == DiffAction.UNCHANGED:
                 continue
-            kinds[node_diff["id"]] = node_diff["kind"]
-            actions[node_diff["id"]] = action
+            kinds.setdefault(node_diff["id"], set()).add(node_diff["kind"])
+            actions[node_diff["id"]] = max(action, actions.get(node_diff["id"], action), key=_ACTION_PRECEDENCE.index)
             changed_fields.setdefault(node_diff["id"], set()).update(
                 element["name"]
                 for element in node_diff["elements"]
                 if parse_diff_action(element["action"]) != DiffAction.UNCHANGED
             )
         return cls(
-            kinds=kinds,
+            kinds={node_id: frozenset(node_kinds) for node_id, node_kinds in kinds.items()},
             actions=actions,
             changed_fields={node_id: frozenset(fields) for node_id, fields in changed_fields.items()},
         )
@@ -287,10 +294,13 @@ class FilteredRelationshipExclusions:
         """The nodes of the read's peer kinds whose side of the relationship changed in the diff."""
         return [
             node_id
-            for node_id, kind in self._changes.kinds.items()
-            if kind in read.peer_kinds
-            and self._changes.changed_fields[node_id]
-            & self._peer_side_names(kind=kind, identifier=read.relationship_identifier)
+            for node_id, node_kinds in self._changes.kinds.items()
+            if any(
+                kind in read.peer_kinds
+                and self._changes.changed_fields[node_id]
+                & self._peer_side_names(kind=kind, identifier=read.relationship_identifier)
+                for kind in node_kinds
+            )
         ]
 
     def _peer_side_names(self, *, kind: str, identifier: str) -> frozenset[str]:
