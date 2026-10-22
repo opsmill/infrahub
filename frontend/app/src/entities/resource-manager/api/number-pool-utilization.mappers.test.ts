@@ -19,9 +19,9 @@ describe("mapToNumberPoolUtilization", () => {
       ranges: [
         {
           id: "range-1",
-          display_label: "1 - MAX",
+          display_label: "1 - 50",
           start: 1,
-          end: 2 ** 63 - 1,
+          end: 50,
           weight: 10,
           figures: figures(30, 50),
         },
@@ -38,11 +38,55 @@ describe("mapToNumberPoolUtilization", () => {
         {
           id: "range-1",
           __typename: "CoreNumberPoolRange",
-          display_label: "1 - MAX",
+          display_label: "1 - 50",
           start: { value: 1 },
-          end: { value: 2 ** 63 - 1 },
+          end: { value: 50 },
           allocation_weight: { value: 10 },
           usage: { size: 50, used: 30, usedDefaultBranch: 30, usedBranches: 0, utilization: 0 },
+        },
+      ],
+    });
+  });
+
+  it("keeps a null end, size and utilization for a range without an end", () => {
+    // GIVEN
+    const unbounded = {
+      size: null,
+      used: 2,
+      used_default_branch: 2,
+      used_branches: 0,
+      utilization: null,
+    };
+    const node = {
+      figures: unbounded,
+      ranges: [
+        {
+          id: "range-1",
+          display_label: "1 - MAX",
+          start: 1,
+          end: null,
+          weight: 0,
+          figures: unbounded,
+        },
+      ],
+    } as NumberPoolUtilizationNode;
+
+    // WHEN
+    const utilization = mapToNumberPoolUtilization(node);
+
+    // THEN
+    const usage = { size: null, used: 2, usedDefaultBranch: 2, usedBranches: 0, utilization: null };
+    expect(utilization).toEqual({
+      usage,
+      ranges: [
+        {
+          id: "range-1",
+          __typename: "CoreNumberPoolRange",
+          display_label: "1 - MAX",
+          start: { value: 1 },
+          end: { value: null },
+          allocation_weight: { value: 0 },
+          usage,
         },
       ],
     });

@@ -11,6 +11,7 @@ import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { render } from "../../../../../../tests/components/render";
 import {
   generateNumberPoolRange,
+  generateNumberPoolUsage,
   generateNumberPoolUtilization,
 } from "../../../../../../tests/fake/number-pool";
 import { generateNodeSchema } from "../../../../../../tests/fake/schema";
@@ -70,7 +71,8 @@ describe("NumberPoolRangesCard", () => {
     const openRange = generateNumberPoolRange({
       display_label: "100 - MAX",
       start: { value: 100 },
-      end: { value: 2 ** 63 - 1 },
+      end: { value: null },
+      usage: generateNumberPoolUsage({ size: null, used: 2, utilization: null }),
     });
 
     // WHEN
