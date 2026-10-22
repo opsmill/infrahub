@@ -169,7 +169,7 @@ When the branch scope of the webhook includes other branches, Infrahub still rea
 
 :::warning Events on data-only branches
 
-With a **Repository** (read-write), a delivery for an event on a [data-only branch](../branches/overview.mdx#branch-isolation-modes) (`sync_with_git: false`) fails, because the repository has no Git branch with that name.
+With a **Repository** (read-write), Infrahub sends nothing for an event on a [data-only branch](../branches/overview.mdx#branch-isolation-modes) (`sync_with_git: false`), because the repository has no Git branch with that name. The failure does not appear in the webhook's related tasks. It is recorded only in the logs of the [task worker](../overview/architecture.mdx#task-workers).
 
 :::
 
@@ -181,3 +181,5 @@ With a **Repository** (read-write), a delivery for an event on a [data-only bran
 If the receiver gets the standard event payload instead of your transformed payload, the webhook has no Transformation linked on the default branch. Switch to the default branch, open the webhook, and set its **Transformation** field.
 
 If a delivery does not arrive, open the webhook and select the delivery from its related tasks. Its logs show the request that was sent and the delivery outcome, and on failure the [classified reason](./overview#when-a-delivery-fails). See [Header and payload logging](./overview#header-and-payload-logging) for what each delivery records.
+
+If the event matches the branch scope and node kind of the webhook but the webhook has no delivery for it, Infrahub failed before it created the delivery, for example while it ran the Transformation. The error is recorded only in the task worker logs.
