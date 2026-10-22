@@ -11,6 +11,22 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.11.9](https://github.com/opsmill/infrahub/tree/infrahub-v1.11.9) - 2026-10-22
+
+### Security
+
+- Updated `certifi` to 2026.10.19, which removes the emSign root certificates after intermediates were revoked due to key compromise (GHSA-6q48-6c7w-9gw2).
+
+### Changed
+
+- In the GraphQL schema, the `node_metadata` field of the `NestedEdged` type of every generic can now be null: its type changes from `InfrahubNodeMetadata!` to `InfrahubNodeMetadata`, as it already was on the `NestedEdged` types of node kinds. Teams that generate client types from the GraphQL schema will see `node_metadata` on these types as optional and must handle a null value. ([#11100](https://github.com/opsmill/infrahub/issues/11100))
+- Artifacts and Generators that read a relationship with a filter are no longer regenerated when a change only affects related objects that the filter excludes.
+
+### Fixed
+
+- Fixed GraphQL queries failing with a "Cannot return null for non-nullable field" error when they requested `node_metadata` on a relationship whose peer kind is a generic. An empty cardinality-one relationship, such as the `parent` of a node at the top of a hierarchy, now returns `node` and `node_metadata` as null. The `ancestors` and `descendants` of a hierarchical node now return the `node_metadata` of each node. ([#11100](https://github.com/opsmill/infrahub/issues/11100))
+- Fixed proposed changes that showed data conflicts on the fingerprint of Generator and Transformation definitions after another branch with Git changes was merged.
+
 ## [Infrahub - v1.11.8](https://github.com/opsmill/infrahub/tree/infrahub-v1.11.8) - 2026-10-19
 
 ### Added

@@ -30,6 +30,7 @@ booleans
 Buildkite
 cAdvisor
 Ceph
+certifi
 changelog
 chatbot
 conftest
@@ -79,6 +80,7 @@ Docusaurus
 dropdown
 DSSE
 edit_default_branch
+emSign
 enablement
 end_user
 Entra

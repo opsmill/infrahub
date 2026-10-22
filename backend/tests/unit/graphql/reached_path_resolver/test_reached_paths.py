@@ -1,107 +1,37 @@
 from __future__ import annotations
 
-from infrahub.core.constants import RelationshipCardinality, RelationshipDirection
 from infrahub.core.regeneration.models import ReachedPath, RelationshipHop
-from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema
-from infrahub.core.schema.relationship_schema import RelationshipSchema
-from infrahub.graphql.analyzer import GraphQLQueryNode, ReachedPathResolver
+from infrahub.graphql.analyzer import ReachedPathResolver
 
-OUT = RelationshipDirection.OUTBOUND
-
-
-def _rel(name: str, peer: str, identifier: str) -> RelationshipSchema:
-    return RelationshipSchema(
-        name=name,
-        peer=peer,
-        identifier=identifier,
-        cardinality=RelationshipCardinality.MANY,
-        direction=OUT,
-        optional=True,
-    )
-
-
-def _node(name: str, *relationships: RelationshipSchema) -> NodeSchema:
-    return NodeSchema(
-        name=name,
-        namespace="Testing",
-        generate_profile=False,
-        attributes=[AttributeSchema(name="name", kind="Text")],
-        relationships=list(relationships),
-    )
-
-
-DEVICE = _node("Device", _rel("interfaces", "TestingInterface", "device__interface"))
-INTERFACE = _node("Interface", _rel("addresses", "TestingAddress", "interface__address"))
-ADDRESS = _node("Address")
-PERSON = _node("Person")
-PHYSICAL = _node("Physical")
-VIRTUAL = _node("Virtual")
-THING = _node("Thing")
-ENDPOINT = GenericSchema(
-    name="Endpoint",
-    namespace="Testing",
-    relationships=[_rel("things", "TestingThing", "endpoint__thing")],
+from .helpers import (
+    ADDRESS,
+    DEVICE,
+    DEVICE_GENERIC_AND_CONCRETE,
+    DEVICE_HOP,
+    DEVICE_TWO_GENERIC_RELS,
+    DEVICE_TWO_OWNERS,
+    DEVICE_WITH_GENERIC,
+    DEVICE_WITH_OWNER,
+    ENDPOINT,
+    ENDPOINT_HOP,
+    ENDPOINT_WITH_IMPLEMENTATIONS,
+    INTERFACE,
+    INTERFACE_HOP,
+    OUT,
+    PERSON,
+    PHYSICAL,
+    PHYSICAL_ADDRESS_HOP,
+    PHYSICAL_WITH_ADDRESSES,
+    THING,
+    VIRTUAL,
+    _edge_node,
+    _fragment,
+    _tree,
 )
-DEVICE_WITH_GENERIC = _node("Device", _rel("endpoints", "TestingEndpoint", "device__endpoint"))
-DEVICE_TWO_OWNERS = _node(
-    "Device",
-    _rel("primary_owner", "TestingPerson", "device__primary"),
-    _rel("backup_owner", "TestingPerson", "device__backup"),
-)
-DEVICE_WITH_OWNER = _node("Device", _rel("owner", "TestingPerson", "device__owner"))
-DEVICE_TWO_GENERIC_RELS = _node(
-    "Device",
-    _rel("interfaces", "TestingEndpoint", "device__interface"),
-    _rel("mgmt_interfaces", "TestingEndpoint", "device__mgmt"),
-)
-DEVICE_GENERIC_AND_CONCRETE = _node(
-    "Device",
-    _rel("endpoints", "TestingEndpoint", "device__endpoint"),
-    _rel("physical_ports", "TestingPhysical", "device__physical_port"),
-)
-
-PHYSICAL_WITH_ADDRESSES = _node("Physical", _rel("addresses", "TestingAddress", "physical__address"))
-ENDPOINT_WITH_IMPLEMENTATIONS = GenericSchema(
-    name="Endpoint",
-    namespace="Testing",
-    relationships=[_rel("things", "TestingThing", "endpoint__thing")],
-    used_by=["TestingPhysical", "TestingVirtual"],
-)
-
-DEVICE_HOP = RelationshipHop(
-    node_kind="TestingDevice", relationship_identifier="device__interface", relationship_direction=OUT
-)
-INTERFACE_HOP = RelationshipHop(
-    node_kind="TestingInterface", relationship_identifier="interface__address", relationship_direction=OUT
-)
-ENDPOINT_HOP = RelationshipHop(
-    node_kind="TestingDevice", relationship_identifier="device__endpoint", relationship_direction=OUT
-)
-PHYSICAL_ADDRESS_HOP = RelationshipHop(
-    node_kind="TestingPhysical", relationship_identifier="physical__address", relationship_direction=OUT
-)
-
-
-def _tree(path: str, model: NodeSchema | GenericSchema | None, *children: GraphQLQueryNode) -> GraphQLQueryNode:
-    node = GraphQLQueryNode(path=path, infrahub_model=model)
-    for child in children:
-        child.parent = node
-        node.children.append(child)
-    return node
-
-
-def _fragment(model: NodeSchema | GenericSchema, *children: GraphQLQueryNode) -> GraphQLQueryNode:
-    node = _tree(model.kind, model, *children)
-    node.is_fragment = True
-    return node
-
-
-def _edge_node(*children: GraphQLQueryNode) -> GraphQLQueryNode:
-    """The ``edges { node { ... } }`` levels a query places between an object and the fields it selects."""
-    return _tree("edges", None, _tree("node", None, *children))
 
 
 def test_single_hop_narrows_to_the_owning_root() -> None:
+    # TestingDevice { interfaces }
     tree = _tree("TestingDevice", DEVICE, _tree("interfaces", INTERFACE))
 
     result = ReachedPathResolver(queries=[tree]).resolve()
@@ -110,6 +40,7 @@ def test_single_hop_narrows_to_the_owning_root() -> None:
 
 
 def test_multi_hop_records_the_full_chain_deepest_first() -> None:
+    # TestingDevice { interfaces { addresses } }
     tree = _tree("TestingDevice", DEVICE, _tree("interfaces", INTERFACE, _tree("addresses", ADDRESS)))
 
     result = ReachedPathResolver(queries=[tree]).resolve()
@@ -121,6 +52,7 @@ def test_multi_hop_records_the_full_chain_deepest_first() -> None:
 
 
 def test_generic_peer_resolves_to_its_concrete_implementations() -> None:
+    # TestingDevice { endpoints }, endpoints on the generic TestingEndpoint
     endpoints = _tree("endpoints", ENDPOINT)
     endpoints.infrahub_node_models = [PHYSICAL, VIRTUAL]
     tree = _tree("TestingDevice", DEVICE_WITH_GENERIC, endpoints)
@@ -137,6 +69,7 @@ def test_generic_peer_resolves_to_its_concrete_implementations() -> None:
 
 
 def test_field_that_is_not_a_relationship_on_its_owner_widens() -> None:
+    # TestingDevice { TestingConcrete }
     # A node carrying a model whose path is neither a relationship on its owner nor a fragment cannot
     # be pinned to a reverse relationship.
     tree = _tree("TestingDevice", DEVICE, _tree("TestingConcrete", PERSON))
@@ -147,6 +80,7 @@ def test_field_that_is_not_a_relationship_on_its_owner_widens() -> None:
 
 
 def test_a_relationship_inside_a_fragment_on_a_peer_keeps_the_chain_through_the_fragment() -> None:
+    # TestingDevice { endpoints { edges { node { ... on TestingPhysical { addresses } } } } }
     addresses = _tree("addresses", ADDRESS)
     endpoints = _tree("endpoints", ENDPOINT, _edge_node(_fragment(PHYSICAL_WITH_ADDRESSES, addresses)))
     endpoints.infrahub_node_models = [PHYSICAL_WITH_ADDRESSES, VIRTUAL]
@@ -162,6 +96,7 @@ def test_a_relationship_inside_a_fragment_on_a_peer_keeps_the_chain_through_the_
 
 
 def test_a_fragment_on_a_generic_resolves_to_its_implementations() -> None:
+    # TestingDevice { endpoints { edges { node { ... on TestingEndpoint { things } } } } }
     things = _tree("things", THING)
     fragment = _fragment(ENDPOINT_WITH_IMPLEMENTATIONS, things)
     tree = _tree("TestingDevice", DEVICE_WITH_GENERIC, _tree("endpoints", ENDPOINT, _edge_node(fragment)))
@@ -179,6 +114,7 @@ def test_a_fragment_on_a_generic_resolves_to_its_implementations() -> None:
 
 
 def test_a_relationship_inside_a_fragment_on_the_root_narrows_like_one_outside_it() -> None:
+    # TestingDevice { edges { node { ... on TestingDevice { interfaces } } } }
     # The fragment stands for the root device itself, so the device maps to itself through an empty chain.
     tree = _tree("TestingDevice", DEVICE, _edge_node(_fragment(DEVICE, _tree("interfaces", INTERFACE))))
 
@@ -191,6 +127,7 @@ def test_a_relationship_inside_a_fragment_on_the_root_narrows_like_one_outside_i
 
 
 def test_kind_reached_by_more_than_one_chain_keeps_every_chain() -> None:
+    # TestingDevice { primary_owner backup_owner }
     tree = _tree(
         "TestingDevice",
         DEVICE_TWO_OWNERS,
@@ -210,6 +147,7 @@ def test_kind_reached_by_more_than_one_chain_keeps_every_chain() -> None:
 
 
 def test_kind_read_at_a_root_and_through_a_relationship_keeps_an_empty_chain_besides_its_chains() -> None:
+    # TestingDevice { owner } and TestingPerson
     device_tree = _tree("TestingDevice", DEVICE_WITH_OWNER, _tree("owner", PERSON))
     person_root = _tree("TestingPerson", PERSON)
 
@@ -222,6 +160,7 @@ def test_kind_read_at_a_root_and_through_a_relationship_keeps_an_empty_chain_bes
 
 
 def test_kind_read_at_a_root_and_reached_un_pinnably_widens() -> None:
+    # TestingDevice { owner TestingConcrete } and TestingPerson
     device_tree = _tree("TestingDevice", DEVICE_WITH_OWNER, _tree("owner", PERSON), _tree("TestingConcrete", PERSON))
     person_root = _tree("TestingPerson", PERSON)
 
@@ -231,6 +170,7 @@ def test_kind_read_at_a_root_and_reached_un_pinnably_widens() -> None:
 
 
 def test_a_query_without_traversal_resolves_nothing() -> None:
+    # TestingDevice
     tree = _tree("TestingDevice", DEVICE)
 
     result = ReachedPathResolver(queries=[tree]).resolve()
@@ -239,6 +179,7 @@ def test_a_query_without_traversal_resolves_nothing() -> None:
 
 
 def test_generic_peer_reached_by_two_relationships_keeps_both_chains_per_implementation() -> None:
+    # TestingDevice { interfaces mgmt_interfaces }, both on the generic TestingEndpoint
     interfaces = _tree("interfaces", ENDPOINT)
     interfaces.infrahub_node_models = [PHYSICAL, VIRTUAL]
     mgmt_interfaces = _tree("mgmt_interfaces", ENDPOINT)
@@ -258,6 +199,7 @@ def test_generic_peer_reached_by_two_relationships_keeps_both_chains_per_impleme
 
 
 def test_a_kind_reached_via_a_generic_peer_and_a_concrete_relationship_unions_the_chains() -> None:
+    # TestingDevice { endpoints physical_ports }
     endpoints = _tree("endpoints", ENDPOINT)
     endpoints.infrahub_node_models = [PHYSICAL, VIRTUAL]
     physical_ports = _tree("physical_ports", PHYSICAL)
@@ -278,6 +220,7 @@ def test_a_kind_reached_via_a_generic_peer_and_a_concrete_relationship_unions_th
 
 
 def test_a_kind_reached_through_a_relationship_on_a_generic_owner_narrows() -> None:
+    # TestingDevice { endpoints { things } }
     # A kind reached through a relationship defined on a generic owner pins to the generic kind: the
     # relationship carries one identifier and every instance is labelled with the generic, so the
     # reverse traversal keyed on the generic label reaches every owner. The generic peer's own
@@ -303,6 +246,7 @@ def test_a_kind_reached_through_a_relationship_on_a_generic_owner_narrows() -> N
 
 
 def test_an_implementation_also_reached_un_pinnably_widens_while_its_siblings_narrow() -> None:
+    # TestingDevice { endpoints TestingPhysical }
     endpoints = _tree("endpoints", ENDPOINT)
     endpoints.infrahub_node_models = [PHYSICAL, VIRTUAL]
     # PHYSICAL is also reached by a node whose path is neither a relationship on the device nor a
