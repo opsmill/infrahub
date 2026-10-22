@@ -11,9 +11,17 @@ reviews:
     - name: Infrahub frontend components, styling and forms
       file_paths:
         - .agents/rules/frontend-components.md
+      include:
+        - frontend/app/src/**
+    - name: Infrahub naming, comments, reuse and simplicity
+      file_paths:
+        - .agents/rules/code-design.md
         - .agents/rules/code-doc-style.md
       include:
         - frontend/app/src/**
+        - backend/infrahub/**
+        - python_testcontainers/**
+        - tasks/**
     - name: Infrahub frontend data, routing, types and naming
       file_paths:
         - .agents/rules/frontend-architecture.md
@@ -29,7 +37,6 @@ reviews:
         - .agents/rules/backend-component-design.md
         - .agents/rules/python-module-layout.md
         - .agents/rules/python-typing.md
-        - .agents/rules/code-doc-style.md
       include:
         - backend/infrahub/**
         - python_testcontainers/**
