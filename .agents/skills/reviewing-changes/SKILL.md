@@ -1,7 +1,7 @@
 ---
 name: reviewing-changes
 description: >-
-  Reviews the current branch before it is pushed, so the PR opens without the comments cubic and human reviewers would otherwise raise. Shows which `.agents/rules/` files and `AGENTS.md` files apply to the change, runs the built-in `code-review` for bugs, checks the change against the matching rules (the same files cubic reviews PRs with), reviews how the new files fit together and whether each new file earns its place, checks the specs, changelog and PR claims the diff cannot show, runs the cubic CLI when it is installed, verifies every finding against the code, and fixes the approved ones. TRIGGER when: the user wants their branch reviewed before pushing or opening a PR, asks "will cubic complain about this", wants fewer review comments on their PR, or says "review my changes", "pre-push review", or "cubic review". DO NOT TRIGGER when: answering review threads already on a PR → `opsmill-dev-addressing-review`; turning review threads into durable docs → `harvesting-review`; a bug hunt only → the `code-review` skill; only watching CI → `monitoring-pull-requests`.
+  Reviews the current branch before it is pushed, so the PR opens without the comments cubic and human reviewers would raise. Shows which `.agents/rules/` and `AGENTS.md` files apply to the change, runs the built-in `code-review` for bugs, checks the change against the matching rules (the same files cubic reviews PRs with), checks the design and each new file, checks the specs, changelog and PR claims the diff cannot show, runs the cubic CLI when it is installed, verifies every finding against the code, and fixes the approved ones. TRIGGER when: the user wants their branch reviewed before pushing or opening a PR, asks "will cubic complain about this", wants fewer review comments on their PR, or says "review my changes", "pre-push review", or "cubic review". DO NOT TRIGGER when: answering review threads already on a PR → `opsmill-dev-addressing-review`; turning review threads into durable docs → `harvesting-review`; a bug hunt only → the `code-review` skill; only watching CI → `monitoring-pull-requests`.
 argument-hint: <empty for the current branch, or a base branch (develop); add `report` to review without fixing; `compare <PR number>` after the PR review>
 compatibility: A Claude Code session started at the repository root, with `origin` fetched. The `gh` CLI finds the PR base and description. The cubic CLI is optional (`curl -fsSL https://cubic.dev/install | bash`, `cubic auth login`, and a seat on OpsMill's subscription).
 metadata:
@@ -40,15 +40,19 @@ With `compare <PR number>` in the arguments, skip to "Compare with the PR review
    python3 .agents/scripts/repo-context.py [--base <branch>] [--committed] [--exclude '<glob>' ...]
    ```
 
-   It prints the base, the changed files by area, each rule that applies and why, the `AGENTS.md`
-   files, and the uncommitted files outside the committed range. Exit code 1: nothing to review.
+   It prints the base, the changed files by area, the deleted files (listed, not read), each rule
+   that applies and why, the `AGENTS.md` files, and the uncommitted files outside the committed
+   range. Exit code 1: nothing to review.
+   Exit code 2: a git command failed; report its message and stop.
 2. **Decide on uncommitted files** outside the committed range. Show them and ask, per group:
    - **Review them** as part of the change.
    - **Leave them out**: rerun with `--committed`, or `--exclude` for copied tooling such as
      `.agents/**`, `AGENTS.md`, `CLAUDE.md`, `cubic.yaml`, `.claude/settings.json`.
    - **Set them aside**, for local changes that must never be committed:
      `git stash push --include-untracked -m "reviewing-changes <timestamp>" -- <paths>`, then
-     record `git rev-parse stash@{0}`. The report restores them.
+     record the SHA of the entry with that message in `git stash list --format='%H %gs'`.
+     Do not read `stash@{0}`: worktrees share the stash list, so another session's entry can be
+     on top. The report restores them.
 
    Every later step reviews only the files the final manifest lists.
 3. **Check that the context hooks ran**: `python3 .agents/scripts/repo-context.py --hooks-status`.
@@ -117,12 +121,17 @@ it, P3 otherwise:
   scope (one row, not the whole table)?
 - **Volume.** How many requests per page load and per poll? Flag a count that grows with the
   data.
+- **Reuse.** Does new code repeat an existing function, component, query or type that serves
+  the same need? Does shared code switch behaviour with flags where the domain rules differ?
+- **Simplicity.** Is there a layer, abstraction, option or helper the requirement does not need?
 
 ## Phase 3c — Per file
 
 Nothing else asks whether a new file should exist or whether its tests can fail. For the files
 the change adds (`git diff --name-only --diff-filter=A origin/<base>...HEAD`, plus untracked files
-in scope), spawn one reviewer per area (read-only). All findings are P3, `file:line`:
+in scope), spawn one reviewer per area (read-only), with `.agents/rules/code-design.md` and
+`.agents/rules/code-doc-style.md`. Grade a finding P2 when one of them covers it, P3 otherwise,
+`file:line`:
 
 - Is the file needed, or does an existing helper, constant, type or component already do it? Is
   there a simpler way?
@@ -163,8 +172,7 @@ in scope), spawn one reviewer per area (read-only). All findings are P3, `file:l
    - Any other non-zero exit, or an empty result without a clear success: report the exit code
      and stderr. Never present such a run as clean.
 2. **Merge** the bug, rule, design, per-file, diff-cannot-show and cubic findings, and remove
-   duplicates. Move
-   findings on paths outside the manifest to "Out of scope".
+   duplicates. Move findings on paths outside the manifest to "Out of scope".
 3. **Verify each finding** by reading the code at the line and its callers. When the finding
    depends on how a library behaves, read the installed source (`frontend/node_modules/...`,
    `.venv/lib/.../site-packages/...`) before deciding. When it depends on framework behaviour the
@@ -238,9 +246,9 @@ cubic: <exit code, n findings | error: <message> | not installed>
 - `file:line` — <finding>; the fix would contradict <requirement ID: quote | commit sha: subject>
 
 ### Design
-- <Queries | Request context | Entity dependencies | Position | Copied files | States | Volume>: `file:line` — <finding> (P2/P3; fixed | declined | deferred | asked)
+- <Queries | Request context | Entity dependencies | Position | Copied files | States | Volume | Reuse | Simplicity>: `file:line` — <finding> (P2/P3; fixed | declined | deferred | asked)
 
-### Per file (advisory)
+### Per file
 - `file:line` — <need | simpler way | naming | comment | test cannot fail | duplicate test>: <one line>
 
 ### Advisory (P3)
@@ -274,10 +282,10 @@ Run after cubic and reviewers have commented on the PR, to find what the local r
      right before counting it. Count a miss on a line the review's own fix changed separately,
      as "introduced by a fix".
 4. For each real miss, say which part of the review should have caught it (a rule, an article,
-   the design or per-file check, the claims check, the bug review, cubic) and why it did not: the rule is missing, the article
-   was not loaded, the file was out of scope, a reviewer had the rule and missed it, the claims
-   check did not read the code that produces the claim (for example a backend resolver), or a
-   fix introduced it.
+   the design or per-file check, the claims check, the bug review, cubic) and why it did not:
+   the rule is missing, the article was not loaded, the file was out of scope, a reviewer had the
+   rule and missed it, the claims check did not read the code that produces the claim (for
+   example a backend resolver), or a fix introduced it.
 5. Report the counts (caught, declined, missed, introduced by a fix, wrong comments), then
    propose fixes as in the next section. A miss that no rule or document change would prevent
    becomes a proposed change to this skill, for the user to decide.

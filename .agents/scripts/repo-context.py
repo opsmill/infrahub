@@ -19,15 +19,21 @@ import sys
 import tempfile
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+from typing import Literal
+
+Area = Literal["dev-specs", "dev-docs", "changelog", "frontend", "backend-tests", "backend", "other"]
 
 BASE_CANDIDATES = ("stable", "develop")
+# Exit code 1 already means "nothing to review".
+EXIT_GIT_FAILED = 2
 # Claude Code replaces hook context longer than about 10,000 characters with a short preview and a file path.
 HOOK_BUDGET = 9_500
 ROOT_MAP_PRIORITY = ("# Infrahub", "## Coding Standards", "## Boundaries", "## Navigation", "## Component Maps")
 RULES_DIR = Path(".agents/rules")
 DOC_DIRS = (Path("dev/knowledge"), Path("dev/guidelines"), Path("dev/guides"))
 SOURCE_SUFFIXES = (".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs")
-AREAS = (
+# The first matching prefix wins, so a subfolder's area comes before its parent's.
+AREAS: tuple[tuple[Area, tuple[str, ...]], ...] = (
     ("dev-specs", ("dev/specs/",)),
     ("dev-docs", ("dev/",)),
     ("changelog", ("changelog/",)),
@@ -48,6 +54,7 @@ class Rule:
 @dataclass
 class ChangeSet:
     files: list[str]
+    deleted: list[str]
     uncommitted_only: list[str]
     excluded: list[str]
     skipped_submodules: list[str]
@@ -64,7 +71,8 @@ class Article:
 def git(*args: str) -> str:
     executable = shutil.which("git")
     if executable is None:
-        raise SystemExit("git is not installed")
+        print("git is not installed", file=sys.stderr)
+        raise SystemExit(EXIT_GIT_FAILED)
     return subprocess.run([executable, *args], capture_output=True, text=True, check=True).stdout  # noqa: S603
 
 
@@ -100,20 +108,23 @@ def submodule_paths() -> set[str]:
 
 
 def uncommitted_files() -> list[str]:
-    return [line[3:].split(" -> ")[-1] for line in git("status", "--porcelain", "--untracked-files=all").splitlines()]
+    entries = git("status", "--porcelain", "-z", "--no-renames", "--untracked-files=all").split("\0")
+    return [entry[3:] for entry in entries if entry]
 
 
 def changed_files(base: str, *, include_uncommitted: bool, excludes: list[str]) -> ChangeSet:
     git("fetch", "--quiet", "origin", base)
-    committed = set(git("diff", "--name-only", f"origin/{base}...HEAD").splitlines())
+    committed = set(git("diff", "--name-only", "-z", "--no-renames", f"origin/{base}...HEAD").split("\0")) - {""}
     uncommitted = set(uncommitted_files())
     submodules = submodule_paths()
     candidates = committed | uncommitted if include_uncommitted else committed
     patterns = [glob_to_regex(pattern) for pattern in excludes]
     excluded = {path for path in candidates if any(pattern.match(path) for pattern in patterns)}
+    deleted = {path for path in candidates - excluded - submodules if not os.path.lexists(path)}
     return ChangeSet(
-        files=sorted(path for path in candidates - excluded - submodules if path),
-        uncommitted_only=sorted(uncommitted - committed - submodules),
+        files=sorted(candidates - excluded - submodules - deleted),
+        deleted=sorted(deleted),
+        uncommitted_only=sorted(uncommitted - committed - submodules - deleted),
         excluded=sorted(excluded),
         skipped_submodules=sorted(submodules & (committed | uncommitted)),
     )
@@ -123,7 +134,7 @@ def is_source(path: str) -> bool:
     return path.endswith(SOURCE_SUFFIXES)
 
 
-def area_of(path: str) -> str:
+def area_of(path: str) -> Area:
     for name, prefixes in AREAS:
         if path.startswith(prefixes):
             return name
@@ -164,13 +175,14 @@ def load_rules(files: list[str]) -> list[Rule]:
     for rule_path in sorted(RULES_DIR.glob("*.md")):
         text = rule_path.read_text(encoding="utf-8")
         rule = Rule(path=str(rule_path), chars=len(text), globs=frontmatter_globs(text))
+        patterns = [(pattern, glob_to_regex(pattern)) for pattern in rule.globs]
         for path in files:
             if not rule.globs:
                 if is_source(path):
                     rule.matched.setdefault("(no paths: applies to every source file)", path)
                 continue
-            for pattern in rule.globs:
-                if glob_to_regex(pattern).match(path):
+            for pattern, regex in patterns:
+                if regex.match(path):
                     rule.matched.setdefault(pattern, path)
         if rule.matched:
             rules.append(rule)
@@ -213,6 +225,10 @@ def print_markdown(context: dict) -> None:
         print(f"\n## Uncommitted files outside the committed range ({len(context['uncommitted_only'])})\n")
         for path in context["uncommitted_only"]:
             print(f"- {path}")
+    if context["deleted"]:
+        print(f"\n## Deleted files ({len(context['deleted'])})\n")
+        for path in context["deleted"]:
+            print(f"- {path}")
     if context["excluded"]:
         print(f"\nExcluded from the review: {', '.join(context['excluded'])}")
     if context["skipped_submodules"]:
@@ -251,8 +267,8 @@ def nearest_area_map(path: str, maps: list[str]) -> str | None:
     return max(owners, key=str.__len__) if owners else None
 
 
-def tracked_files_under(path: str, limit: int = 200) -> list[str]:
-    return git("ls-files", "--", path).splitlines()[:limit]
+def tracked_files_under(path: str) -> list[str]:
+    return git("ls-files", "--", path).splitlines()
 
 
 def paths_from_tool(tool_name: str, tool_input: dict, cwd: Path, root: Path) -> list[str]:
@@ -271,13 +287,14 @@ def paths_from_tool(tool_name: str, tool_input: dict, cwd: Path, root: Path) -> 
         if not static or static.startswith("-"):
             continue
         resolved = (cwd / static).resolve()
-        if not resolved.exists():
+        # A token longer than a file name can be returns False here instead of raising.
+        if not os.path.exists(resolved):  # noqa: PTH110
             resolved = resolved.parent
         try:
             relative = resolved.relative_to(root)
         except ValueError:
             continue
-        if str(relative) != "." and resolved.exists():
+        if str(relative) != "." and os.path.exists(resolved):  # noqa: PTH110
             found.append(str(relative))
     return found
 
@@ -337,6 +354,9 @@ def hooks_status() -> int:
 
 
 def run_hook() -> int:
+    # Exit code 2 would block every tool call, so a machine without git gets no context instead.
+    if shutil.which("git") is None:
+        return 0
     data = json.load(sys.stdin)
     root = Path(os.environ.get("CLAUDE_PROJECT_DIR") or data["cwd"]).resolve()
     os.chdir(root)
@@ -359,21 +379,26 @@ def run_hook() -> int:
     if not new:
         return 0
 
-    sections, pointers, size = [], [], 0
+    header = f"Repository instructions for the files this {data['tool_name']} call touched:"
+    sections, too_long, crowded_out, size = [], [], [], len(header)
     for doc, path in sorted(new.items(), key=lambda item: not item[0].startswith(str(RULES_DIR))):
-        section = f"## {doc} (applies to {path})\n\n{Path(doc).read_text(encoding='utf-8')}"
+        section = f"\n\n## {doc} (applies to {path})\n\n{Path(doc).read_text(encoding='utf-8')}"
         if size + len(section) <= HOOK_BUDGET:
             sections.append(section)
             size += len(section)
+        elif len(header) + len(section) > HOOK_BUDGET:
+            too_long.append(doc)
         else:
-            pointers.append(doc)
-    included = {section.split(" ", 2)[1] for section in sections}
-    state.write_text(json.dumps(sorted(loaded | included)))
-    text = f"Repository instructions for the files this {data['tool_name']} call touched:\n\n" + "\n\n".join(sections)
-    if pointers:
+            crowded_out.append(doc)
+    # A document crowded out by others stays unloaded, so a later call includes it.
+    state.write_text(json.dumps(sorted(loaded | (set(new) - set(crowded_out)))))
+    text = header + "".join(sections)
+    if too_long:
         text += "\n\nAlso applies, too long to include here. Read it before changing these files: " + ", ".join(
-            pointers
+            too_long
         )
+    if crowded_out:
+        text += "\n\nAlso applies, included on a later call: " + ", ".join(crowded_out)
     emit(event, text)
     return 0
 
@@ -403,10 +428,21 @@ def main() -> int:
     if args.check_index:
         return check_index()
 
+    try:
+        return review_manifest(args)
+    except subprocess.CalledProcessError as error:
+        print(f"git {' '.join(error.cmd[1:])} failed: {error.stderr.strip()}", file=sys.stderr)
+        return EXIT_GIT_FAILED
+
+
+def review_manifest(args: argparse.Namespace) -> int:
+    os.chdir(git("rev-parse", "--show-toplevel").strip())
     base, base_source = resolve_base(args.base)
     change = changed_files(base, include_uncommitted=not args.committed, excludes=args.exclude)
     files = change.files
-    areas: dict[str, list[str]] = {}
+    # A deletion still brings in the rules and AGENTS.md of its area, for references left behind.
+    touched = files + change.deleted
+    areas: dict[Area, list[str]] = {}
     for path in files:
         areas.setdefault(area_of(path), []).append(path)
     context = {
@@ -415,19 +451,20 @@ def main() -> int:
         "include_uncommitted": not args.committed,
         "exclude": args.exclude,
         "files": files,
+        "deleted": change.deleted,
         "uncommitted_only": change.uncommitted_only,
         "excluded": change.excluded,
         "skipped_submodules": change.skipped_submodules,
         "areas": areas,
-        "rules": [asdict(rule) for rule in load_rules(files)],
+        "rules": [asdict(rule) for rule in load_rules(touched)],
         "area_rules": {area: [rule.path for rule in load_rules(paths)] for area, paths in areas.items()},
-        "maps": nearest_maps(files),
+        "maps": nearest_maps(touched),
     }
     if args.json:
         json.dump(context, sys.stdout, indent=2)
     else:
         print_markdown(context)
-    return 0 if files else 1
+    return 0 if files or change.deleted else 1
 
 
 if __name__ == "__main__":

@@ -71,7 +71,7 @@ Exact-match is not only for error messages. Assert the exact collection (full se
 - A test that writes to the graph (migration, merge, delete, rebase) checks integrity with `verify_graph(db=db)`, or `collect_graph_violations` for an expected-damage state, not individual checks.
 - Share `Recording*`/`Failing*` doubles in `tests/adapters/` or a `helpers.py`; do not redefine them in each file.
 
-Not violations: mock usage on unchanged lines (about 88 legacy files use it); a plain tuple `parametrize` for two or three simple scenarios; `match=` on a substring when the message contains an id, path or count; tests of Pydantic bounds that encode a named domain invariant or the shipped defaults.
+Not violations: mock usage on unchanged lines (legacy tests use it); a plain tuple `parametrize` for two or three simple scenarios; `match=` on a substring when the message contains an id, path or count; tests of Pydantic bounds that encode a named domain invariant or the shipped defaults.
 
 ## Don't test the framework
 

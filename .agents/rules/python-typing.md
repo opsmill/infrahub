@@ -27,7 +27,7 @@ When the checker warns, find the approach that is actually correct — a Pydanti
 - **No `cast()`.** It asserts a type without verifying it, turning type checking off exactly where a bug would hide. Narrow with a positive `isinstance` that returns the value instead — a `cast()` that only "records" what a check above established is still a `cast()`, and when the real check trips the checker in files you did not touch, root-cause that (usually an import) rather than falling back.
 - **No widening to `Any`.** Replacing a wrong annotation with `Any` (or `Sequence[Any]`) clears the checker the way `cast()` does — by giving up on the value — and nothing flags it afterwards. Declare the closed set the value can actually hold, as a union or alias of the domain/driver types, and narrow at the typed accessors; a library typing a value as `Any` describes its contract, not yours. When the honest type cascades into callers beyond your change, keep the cascade visible — measure it, leave the caller-facing annotation as it is, file the follow-up — rather than hiding it under `Any`.
 - **Prefer `isinstance` over `getattr()`.** `getattr(obj, "x", default)` hides the read from the checker and from grep. Narrow with `isinstance` (cover the whole family carrying the attribute) or use the typed, named accessor.
-- An `isinstance(schema, NodeSchema)` guard also covers `ProfileSchema` and `TemplateSchema` where they carry the attribute.
+- Guard a schema object with `isinstance(schema, (NodeSchema, ProfileSchema, TemplateSchema))`: profiles and templates inherit node behaviour, and a `NodeSchema`-only check drops them.
 - Do not call `str()` on an optional value (`str(rel_schema.identifier)` yields `"None"`); use the accessor that raises.
 
 ## Model the values
