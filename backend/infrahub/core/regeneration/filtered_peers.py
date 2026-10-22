@@ -182,7 +182,7 @@ class FilteredPeerReads:
                 relationship_direction=lookup.relationship_direction,
                 peer_uuids=list(lookup.peer_ids),
             )
-        return self._owners[lookup]
+        return set(self._owners[lookup])
 
     async def _read_from_current_owners(
         self, *, hop: RelationshipHop, relationship_name: str, peer_ids: tuple[str, ...], filters: PeerFilters | None

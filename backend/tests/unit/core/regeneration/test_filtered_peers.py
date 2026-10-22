@@ -182,6 +182,17 @@ async def test_the_peer_query_receives_the_read_filters_with_list_values_as_list
     ]
 
 
+async def test_changing_the_returned_owners_leaves_the_cached_owners_unchanged() -> None:
+    peer_reads = _peer_reads(
+        diff_summary=[], owners_by_peer={"p1": {"vrf1"}}, reader=RecordingPeerReader(owners_by_peer={"p1": {"vrf1"}})
+    )
+
+    first = await peer_reads.owners(hop=UNFILTERED_VRF_HOP, peer_ids={"p1"})
+    first.add("vrf2")
+
+    assert await peer_reads.owners(hop=UNFILTERED_VRF_HOP, peer_ids={"p1"}) == {"vrf1"}
+
+
 async def test_a_read_already_queried_is_not_queried_again() -> None:
     reader = RecordingPeerReader(owners_by_peer={"p1": {"vrf1"}})
     peer_reads = _peer_reads(diff_summary=[], owners_by_peer={"p1": {"vrf1"}}, reader=reader)
