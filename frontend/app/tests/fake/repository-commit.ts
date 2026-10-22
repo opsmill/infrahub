@@ -107,19 +107,19 @@ export const generateRewrittenCommitsResponse = () =>
     ],
   });
 
-export const TRUNK_HEAD = "7f8e9d0";
-export const TRUNK_IMPORTED = "4c5d6e7";
+export const DEFAULT_BRANCH_HEAD = "7f8e9d0";
+export const BRANCH_COMMIT = "4c5d6e7";
 
-export const generateTrunkHistoryCommitsResponse = () =>
+export const generateRebaseNeededCommitsResponse = () =>
   generateRepositoryCommitsResponse({
     condition: "BEHIND",
-    imported_commit: fullHash(TRUNK_IMPORTED),
-    remote_head: fullHash(TRUNK_HEAD),
+    imported_commit: fullHash(BRANCH_COMMIT),
+    remote_head: fullHash(DEFAULT_BRANCH_HEAD),
     pending_count: 2,
     edges: [
-      { node: node(TRUNK_HEAD, "HEAD", "Add site Berlin", "Grace Hopper") },
+      { node: node(DEFAULT_BRANCH_HEAD, "HEAD", "Add site Berlin", "Grace Hopper") },
       { node: node("6e7f8a9", "NOT_ON_BRANCH", "Rename core switches", "Ada Lovelace") },
-      { node: node(TRUNK_IMPORTED, "IMPORTED", "Add device inventory", "Ada Lovelace") },
+      { node: node(BRANCH_COMMIT, "IMPORTED", "Add device inventory", "Ada Lovelace") },
       { node: node("e5f6a7b", "HISTORY", "Initial import", "Linus Torvalds") },
     ],
   });

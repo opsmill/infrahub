@@ -4,7 +4,7 @@ import {
   REPOSITORY_KIND,
 } from "@/entities/repository/domain/model/repository";
 
-// Mirrors the backend, which lists the trunk with its newer commits marked as not on the branch in exactly this case.
+// Mirrors the backend, which marks the default branch's newer commits as not on the branch when a rebase is the only way to bring them in.
 export function isUpdatedOnlyByRebase({
   repositoryKind,
   internalStatus,
