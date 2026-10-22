@@ -19,6 +19,7 @@ from infrahub.graphql.metadata import build_metadata_query_options
 from ..order import deserialize_order_input
 from ..parser import extract_selection
 from ..permissions import get_permissions
+from .peer_filters import build_peer_filters
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -127,11 +128,7 @@ async def default_resolver(*args: Any, **kwargs) -> dict | list[dict] | None:
     node_rel = node_schema.get_relationship(info.field_name)
 
     # Extract only the filters from the kwargs and prepend the name of the field to the filters
-    filters = {
-        f"{info.field_name}__{key}": value
-        for key, value in kwargs.items()
-        if ("__" in key and value) or key in ["id", "ids"]
-    }
+    filters = build_peer_filters(field_name=info.field_name, arguments=kwargs)
 
     async with graphql_context.db.start_session(read_only=True) as db:
         objs = await NodeManager.query_peers(
@@ -382,11 +379,7 @@ async def hierarchy_resolver(
     limit = kwargs.pop("limit", None)
     order = kwargs.pop("order", None)
 
-    filters = {
-        f"{info.field_name}__{key}": value
-        for key, value in kwargs.items()
-        if ("__" in key and value) or key in ["id", "ids"]
-    }
+    filters = build_peer_filters(field_name=info.field_name, arguments=kwargs)
 
     order_model = deserialize_order_input(input_data=order)
 
