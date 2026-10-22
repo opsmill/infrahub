@@ -267,12 +267,17 @@ class FilteredRelationshipExclusions:
 
         It can be excluded only when all three hold:
         1. every read of the relationship has filters;
-        2. the diff holds the peers whose side of the relationship changed;
+        2. the diff holds the peers whose side of the relationship changed, which needs every peer kind to declare
+           a side of the relationship, since the diff records a change only on the kinds that declare one;
         3. no read can return one of those peers, before or after the change.
         """
         if not reads or any(read.peer_filters is None for read in reads):
             return False
         for read in reads:
+            if not all(
+                self._peer_side_names(kind=kind, identifier=read.relationship_identifier) for kind in read.peer_kinds
+            ):
+                return False
             peers = self._changed_peers(read)
             if not peers or await self._peer_reads.reads_any(read=read, peer_ids=peers):
                 return False

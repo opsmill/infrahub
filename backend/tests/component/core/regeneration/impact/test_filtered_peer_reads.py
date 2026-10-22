@@ -7,9 +7,10 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 from infrahub.core import registry
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RelationshipCardinality
 from infrahub.core.node import Node
 from infrahub.core.regeneration.impact import get_field_level_impacted_subscribers
+from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from tests.constants import TestKind
 from tests.helpers.diff_summary import node_diff, node_diff_element
 from tests.helpers.schema import CAR_SCHEMA, load_schema
@@ -472,3 +473,150 @@ class TestFilteredPeerReadImpactOnAComputedDiff(TestInfrahubApp):
         selected = await self._selected(dataset=dataset, client=client, query=_cars_of_the_manufacturer("limit: 50"))
 
         assert selected == set(dataset["subscribers"].values())
+
+
+# A maker's vehicles are of two kinds: a sedan declares its side of the relationship, a lorry does not, so the
+# diff records a lorry joining a maker only on the maker.
+VEHICLE_KIND = "TestingMotorVehicle"
+SEDAN_KIND = "TestingSedan"
+LORRY_KIND = "TestingLorry"
+MAKER_KIND = "TestingVehicleMaker"
+MAKER_VEHICLES = "maker__vehicles"
+MIXED_VEHICLE_SCHEMA = SchemaRoot(
+    generics=[
+        GenericSchema(
+            name="MotorVehicle",
+            namespace="Testing",
+            attributes=[
+                AttributeSchema(name="name", kind="Text", unique=True),
+                AttributeSchema(name="color", kind="Text"),
+            ],
+        )
+    ],
+    nodes=[
+        NodeSchema(
+            name="VehicleMaker",
+            namespace="Testing",
+            attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+            relationships=[
+                RelationshipSchema(
+                    name="vehicles",
+                    peer=VEHICLE_KIND,
+                    cardinality=RelationshipCardinality.MANY,
+                    identifier=MAKER_VEHICLES,
+                    optional=True,
+                )
+            ],
+        ),
+        NodeSchema(
+            name="Sedan",
+            namespace="Testing",
+            inherit_from=[VEHICLE_KIND],
+            relationships=[
+                RelationshipSchema(
+                    name="maker",
+                    peer=MAKER_KIND,
+                    cardinality=RelationshipCardinality.ONE,
+                    identifier=MAKER_VEHICLES,
+                    optional=True,
+                )
+            ],
+        ),
+        NodeSchema(name="Lorry", namespace="Testing", inherit_from=[VEHICLE_KIND]),
+    ],
+)
+
+QUERY_RED_VEHICLES_OF_THE_MAKER = (
+    "query GetRedVehiclesOfTheMaker($ids: [ID!]!) {"
+    f" {MAKER_KIND}(ids: $ids) {{ edges {{ node {{"
+    ' name { value } vehicles(color__value: "red") { edges { node { name { value } } } }'
+    " } } } }"
+)
+
+
+class TestFilteredPeerReadImpactOnPeersMissingFromTheDiff(TestInfrahubApp):
+    """Select the targets of each maker whose vehicles changed, when some vehicles do not record the change.
+
+    Two makers are targets. A branch adds a red lorry to the first maker, which the diff records only on the maker,
+    and adds a blue sedan to the second maker.
+    """
+
+    @pytest.fixture(scope="class")
+    async def dataset(self, db: InfrahubDatabase, default_branch: Branch, client: InfrahubClient) -> dict[str, Any]:
+        await load_schema(db=db, schema=CAR_SCHEMA, update_db=True)
+        await load_schema(db=db, schema=MIXED_VEHICLE_SCHEMA, update_db=True)
+
+        makers: dict[str, str] = {}
+        for name in ("maker-1", "maker-2"):
+            maker = await Node.init(db=db, schema=MAKER_KIND)
+            await maker.new(db=db, name=name)
+            await maker.save(db=db)
+            makers[name] = maker.id
+        lorry = await Node.init(db=db, schema=LORRY_KIND)
+        await lorry.new(db=db, name="red-lorry", color="red")
+        await lorry.save(db=db)
+        sedan = await Node.init(db=db, schema=SEDAN_KIND)
+        await sedan.new(db=db, name="blue-sedan", color="blue")
+        await sedan.save(db=db)
+
+        stored_query = await client.create(
+            kind=InfrahubKind.GRAPHQLQUERY, name="GetRedVehiclesOfTheMaker", query=QUERY_RED_VEHICLES_OF_THE_MAKER
+        )
+        await stored_query.save()
+        subscribers: dict[str, str] = {}
+        for name, maker_id in makers.items():
+            subscriber = await client.create(kind=SUBSCRIBER_KIND, name=f"{name}-artifact")
+            await subscriber.save()
+            await client.query_gql_query(
+                name="GetRedVehiclesOfTheMaker",
+                variables={"ids": [maker_id]},
+                update_group=True,
+                subscribers=[subscriber.id],
+            )
+            subscribers[name] = subscriber.id
+
+        branch = await client.branch.create(branch_name="add-vehicles-to-makers", sync_with_git=False)
+        first_maker = await client.get(kind=MAKER_KIND, id=makers["maker-1"], branch=branch.name)
+        await first_maker.vehicles.fetch()
+        first_maker.vehicles.add(lorry.id)
+        await first_maker.save()
+        branch_sedan = await client.get(kind=SEDAN_KIND, id=sedan.id, branch=branch.name)
+        branch_sedan.maker = makers["maker-2"]
+        await branch_sedan.save()
+        await client.create_diff(
+            branch=branch.name,
+            name="add-vehicles-to-makers",
+            from_time=datetime.fromisoformat(branch.branched_from),
+            to_time=datetime.now(tz=UTC),
+        )
+        diff_summary = await client.get_diff_summary(branch=branch.name, name="add-vehicles-to-makers")
+
+        return {
+            "makers": makers,
+            "lorry_id": lorry.id,
+            "subscribers": subscribers,
+            "branch": await registry.get_branch(db=db, branch=branch.name),
+            "diff_summary": diff_summary,
+        }
+
+    async def test_the_diff_records_the_lorry_joining_its_maker_only_on_the_maker(
+        self, dataset: dict[str, Any]
+    ) -> None:
+        entries = {entry["id"]: entry for entry in dataset["diff_summary"]}
+
+        assert dataset["lorry_id"] not in entries
+        assert {element["name"] for element in entries[dataset["makers"]["maker-1"]]["elements"]} == {"vehicles"}
+
+    async def test_adding_a_vehicle_the_filter_includes_selects_its_maker_target(
+        self, dataset: dict[str, Any], client: InfrahubClient
+    ) -> None:
+        selection = await get_field_level_impacted_subscribers(
+            query_report=query_report(QUERY_RED_VEHICLES_OF_THE_MAKER, dataset["branch"]),
+            diff_summary=dataset["diff_summary"],
+            query_branch=dataset["branch"].name,
+            subscriber_kind=SUBSCRIBER_KIND,
+            every_target=list(dataset["subscribers"].values()),
+            client=client,
+        )
+
+        assert dataset["subscribers"]["maker-1"] in set(selection.ids)
