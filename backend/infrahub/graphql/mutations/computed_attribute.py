@@ -106,7 +106,7 @@ class UpdateComputedAttribute(Mutation):
             async with graphql_context.db.start_transaction() as dbt:
                 await target_node.save(db=dbt, fields=[str(data.attribute)], user_id=graphql_context.assigned_user_id)
 
-            # The node is loaded without the fields its HFID reads, so the save leaves the HFID for storage to give.
+            # The node is loaded without the fields its HFID reads, so the HFID is read from storage before the event is sent.
             await build_relationship_changelog_getter(db=graphql_context.db, branch=graphql_context.branch).enrich(
                 primary_changelog=target_node.node_changelog
             )
