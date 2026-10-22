@@ -34,8 +34,8 @@ sources); Alloy configuration
 **Primary Dependencies**: FastAPI 0.131, OpenTelemetry SDK (already a dependency), `prometheus_client`
 (multiprocess mode), `starlette_exporter`, `structlog`, Neo4j Python driver 6.2, Prefect (task
 workers), `httpx` and Typer (SDK). One dependency upgrade: `starlette-exporter` 0.23 to 0.24, for B13 (research R4, approved by Daniel on
-2026-10-16). No new dependency: the SDK imports OpenTelemetry only when the
-caller's process has it (FR-001).
+2026-10-16). The SDK declares `opentelemetry-api>=1.33` as an optional extra, `tracing`, and imports it
+only when the caller's process has it (FR-001, accepted by Patrick Ogenstad on 2026-10-20).
 
 **Storage**: None. The temporary ratio is kept in the memory of each process (FR-028). No database
 migration (FR-033).
@@ -140,7 +140,7 @@ development/
     └── dashboards/*.json                       # Infrahub, Neo4j, Prefect x2 (FR-015, FR-017, FR-019, FR-021 to FR-025)
 
 python_sdk/  (submodule, infrahub-sdk-python; one branch and pull request per ticket, from origin/infrahub-develop)
-├── infrahub_sdk/client.py            # BaseClient._request_headers adds traceparent when OpenTelemetry is present (IFC-3419, FR-001)
+├── infrahub_sdk/client.py            # BaseClient._merge_request_headers adds traceparent when OpenTelemetry is present (IFC-3419, FR-001)
 ├── infrahub_sdk/ctl/<new module>.py  # infrahubctl command for /api/troubleshooting/trace-sample-ratio (IFC-3420, FR-026, FR-031)
 ├── infrahub_sdk/ctl/cli_commands.py  # Registers the command's Typer app (IFC-3420)
 ├── tests/unit/                       # Header present and absent; command calls and error output

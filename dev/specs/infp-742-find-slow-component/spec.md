@@ -92,7 +92,14 @@ Decided by Daniel, after the approval:
 - Q: Is the SDK work part of this feature's tasks, and how is it split? → A: Yes. Both SDK tickets are
   done in this feature, in the `python_sdk` submodule, with one pull request per ticket.
 - Q: Does the SDK add a dependency on OpenTelemetry? → A: No. It uses OpenTelemetry only when the
-  caller's process already has it (FR-001).
+  caller's process already has it (FR-001). Changed on 2026-10-20: the SDK declares it as an optional
+  extra (see that session).
+- Q: Should the stack stop collecting Neo4j metrics by default, because Neo4j Community has no metrics
+  endpoint? → A: No. The published Compose file cannot tell Community from Enterprise, and stopping by
+  default would remove the Neo4j metrics of every Enterprise operator. The stack keeps collecting from
+  `database:2004` by default, and a Community operator stops it with an empty
+  `INFRAHUB_NEO4J_METRICS_TARGET` (FR-025). The service behind `infrahub.opsmill.io` could set the value
+  per edition; that question is added to T036.
 
 ### Session 2026-10-19
 
@@ -130,7 +137,7 @@ masking, a setting at least, keep the URL hostname), [the proposal](https://opsm
 
 ### Session 2026-10-20
 
-Source: [review by Fatih Acar on GitHub](https://github.com/opsmill/infrahub/pull/11104) of the metrics layer. Answers decided by Daniel.
+Metrics. Source: [review by Fatih Acar on GitHub](https://github.com/opsmill/infrahub/pull/11104) of the metrics layer. Answers decided by Daniel.
 
 - Q: Which request duration histogram must record long durations? → A: Both. The GraphQL query
   duration (`infrahub_graphql_duration_seconds`) stopped at 60 seconds; it now goes up to 1200
@@ -142,6 +149,24 @@ Source: [review by Fatih Acar on GitHub](https://github.com/opsmill/infrahub/pul
   dashboard divides the sum of running requests by the sum of slots; with `max` the ratio could pass
   100 %. The metric help text and the reference documentation now say the value is summed over the
   live API workers.
+
+SDK. Source: [Patrick Ogenstad's first answer](https://opsmillworkspace.slack.com/archives/C051C8WQ4C9/p1792407853888449?thread_ts=1792407198.200859&cid=C051C8WQ4C9), [his second answer](https://opsmillworkspace.slack.com/archives/C051C8WQ4C9/p1792477727216489?thread_ts=1792407198.200859&cid=C051C8WQ4C9) and
+[Daniel's reply](https://opsmillworkspace.slack.com/archives/C051C8WQ4C9/p1792480332477079?thread_ts=1792407198.200859&cid=C051C8WQ4C9) in Slack, on [opsmill/infrahub-sdk-python#1434](https://github.com/opsmill/infrahub-sdk-python/pull/1434).
+This replaces the SDK answer of 2026-10-14.
+
+- Q: How does the SDK declare OpenTelemetry? → A: As an optional extra, `tracing`, with
+  `opentelemetry-api>=1.33`. The SDK packaging test requires every import to be declared; Patrick, who
+  wrote that test, accepted the extra. A plain install does not change, and Infrahub installs
+  OpenTelemetry itself (FR-001).
+- Q: Is there a setting to turn the header on or off? → A: No. The header is on when OpenTelemetry is
+  installed and a span is active. An `INFRAHUB_OTEL_PROPAGATORS` setting was rejected: OpenTelemetry
+  reads `OTEL_PROPAGATORS` once for the whole process, so the SDK would have to rebuild the propagators
+  and could send a different format than the application. An on/off `INFRAHUB_` setting can be added
+  later without breaking callers.
+- Q: Why 1.33 as the minimum? → A: It is the first release that accepts `OTEL_PROPAGATORS=none`; 1.16
+  to 1.32 raise on it (tested).
+- Q: What happens when `OTEL_PROPAGATORS` is invalid? → A: OpenTelemetry raises on import; the SDK
+  sends no header and logs one warning instead of failing the request (FR-001).
 
 ## Personas
 
@@ -447,8 +472,9 @@ is traced, then check that the default applies after 2 minutes.
 **One trace from task to query (story 1)**
 
 - **FR-001**: The Python SDK MUST send the W3C trace context with every API request when OpenTelemetry
-  is installed in the caller's process. The SDK MUST NOT declare a dependency on OpenTelemetry, not even
-  an optional one: it uses OpenTelemetry only when the caller's process already has it.
+  is installed in the caller's process and a span is active. The SDK MUST declare OpenTelemetry only as
+  an optional extra, never as a required dependency, and MUST NOT fail a request when OpenTelemetry
+  cannot load its propagators. There is no setting to turn the header off (decided on 2026-10-20).
 - **FR-002**: A flow run, its SDK calls and their database queries MUST form one trace.
 - **FR-003**: Task worker log lines of a traced flow run MUST carry the trace ID.
 - **FR-004**: The API server and the task workers MUST write the trace ID in log lines as 32 lowercase
@@ -520,7 +546,10 @@ is traced, then check that the default applies after 2 minutes.
 - **FR-024**: The Prefect CPU and memory panels MUST show data with the stack's own metrics, or MUST be
   removed (B2).
 - **FR-025**: On Neo4j Community, the Neo4j dashboard MUST NOT show panels that cannot have data and
-  MUST explain why. The stack MUST NOT collect from a Neo4j metrics endpoint that does not exist (B3).
+  MUST explain why. The stack MUST let the operator stop collecting from a Neo4j metrics endpoint that
+  does not exist (B3), with `INFRAHUB_NEO4J_METRICS_TARGET` set to an empty value. By default the stack
+  still collects from `database:2004`, so Neo4j Enterprise operators keep their Neo4j metrics after the
+  upgrade (decided by Daniel on 2026-10-16).
 
 **Ratio without restart (story 6)**
 

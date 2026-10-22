@@ -70,7 +70,8 @@ not use them.
 - **Decision**: Two changes are in [infrahub-sdk-python](https://github.com/opsmill/infrahub-sdk-python)
   and are dependencies, each with its own pull request on the branch `infrahub-develop`:
   - The W3C `traceparent` header on every request when OpenTelemetry is installed (FR-001, D1):
-    [IFC-3419](https://opsmill.atlassian.net/browse/IFC-3419). Not started.
+    [IFC-3419](https://opsmill.atlassian.net/browse/IFC-3419),
+    [opsmill/infrahub-sdk-python#1434](https://github.com/opsmill/infrahub-sdk-python/pull/1434).
   - An `infrahubctl` command to read, set and clear the temporary ratio (FR-026):
     [IFC-3420](https://opsmill.atlassian.net/browse/IFC-3420). Not started; not in the draft.
   - Both tickets were created on 2026-10-15 and implement INFP-742.
@@ -81,12 +82,20 @@ not use them.
   `origin/infrahub-develop` contains). The branches are stacked: the IFC-3420 branch starts from the
   IFC-3419 branch, so one checkout of the submodule has both changes. Two independent branches would
   need a local branch that merges both for tests; IFC-3420 comes after IFC-3419 in the delivery order
-  anyway. Both pull requests merge before the manual test. The SDK declares no OpenTelemetry dependency:
-  it imports OpenTelemetry only when the caller's process has it, because its `AGENTS.md` asks before
-  any new dependency and the ticket asks for the header only "when OpenTelemetry is installed". The
-  header is added in `infrahub_sdk.client::BaseClient._request_headers`, which both the async and the
-  sync client inherit. Not checked: that every request path of the SDK (GraphQL, REST, file upload)
-  builds its headers there; a task checks it before the change.
+  anyway. Both pull requests merge before the manual test.
+- **Changed on 2026-10-20 (OpenTelemetry in the SDK)**: the first decision was that the SDK declares no
+  OpenTelemetry dependency, "not even an optional one". The SDK packaging test
+  (`tests/unit/test_packaging_metadata.py`) requires every import to be declared, at least in an
+  extra, and fails otherwise; this was not checked during planning. The SDK now declares
+  `opentelemetry-api>=1.33` in an optional extra, `tracing`, and in its `tests` group; Patrick
+  Ogenstad, who wrote the test, accepted it ([Slack](https://opsmillworkspace.slack.com/archives/C051C8WQ4C9/p1792477727216489?thread_ts=1792407198.200859&cid=C051C8WQ4C9)). The SDK imports OpenTelemetry inside a
+  function; without it, or without an active span, it sends no header. The header is added in
+  `infrahub_sdk.client::BaseClient._merge_request_headers`, which every request of the async and the
+  sync client passes through; only `login` and `refresh_login` build their own headers. No setting turns
+  the header off: an `INFRAHUB_OTEL_PROPAGATORS` setting was rejected because OpenTelemetry reads
+  `OTEL_PROPAGATORS` once for the whole process. 1.33 is the first release that accepts
+  `OTEL_PROPAGATORS=none` (1.16 to 1.32 raise on it, tested); an invalid value makes OpenTelemetry
+  raise on import, so the SDK catches it, sends no header and logs one warning.
 - **Effect on this plan**: Stories 2 to 6 do not depend on the SDK. Story 1 scenarios 1, 3 and 8, and
   the `infrahubctl` part of story 6, cannot pass until the SDK change merges.
 
