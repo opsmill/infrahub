@@ -30,6 +30,7 @@ booleans
 Buildkite
 cAdvisor
 Ceph
+certifi
 changelog
 chatbot
 conftest
