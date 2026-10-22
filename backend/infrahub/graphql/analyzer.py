@@ -39,10 +39,11 @@ from graphql.language.ast import (
 from infrahub_sdk.analyzer import GraphQLQueryAnalyzer
 from infrahub_sdk.utils import extract_fields
 
-from infrahub.core.constants import RelationshipCardinality
-from infrahub.core.regeneration.models import ReachedPath, RelationshipHop
+from infrahub.core.constants import RESERVED_ATTR_REL_HIERARCHICAL_NAMES, RelationshipCardinality
+from infrahub.core.regeneration.models import FilterLiteral, PeerFilters, ReachedPath, RelationshipHop, RelationshipRead
 from infrahub.core.schema import AttributePathParsingError, GenericSchema
 from infrahub.exceptions import SchemaNotFoundError
+from infrahub.graphql.resolvers.peer_filters import build_peer_filters
 from infrahub.graphql.utils import extract_schema_models
 
 if TYPE_CHECKING:
@@ -113,9 +114,30 @@ class GraphQLSelectionSet:
 
 @dataclass
 class GraphQLArgument:
+    """An argument of a field in a query, as written: its name and the value node the parser read."""
+
     name: str
-    value: Any
-    kind: str
+    value_node: ValueNode
+
+    @cached_property
+    def value(self) -> Any:
+        """The Python value of the literal; a variable reads as its ``$``-prefixed name."""
+        return _parse_value_node(self.value_node)
+
+    @property
+    def kind(self) -> str:
+        """The graphql-core kind of the value node, such as ``variable`` or ``list_value``."""
+        return self.value_node.kind
+
+    @property
+    def contains_variable(self) -> bool:
+        """Whether the value holds a variable, also inside a list or an object."""
+        return _contains_value_node(self.value_node, VariableNode)
+
+    @property
+    def contains_enum_value(self) -> bool:
+        """Whether the value holds an enum name, also inside a list or an object."""
+        return _contains_value_node(self.value_node, EnumValueNode)
 
     @property
     def is_variable(self) -> bool:
@@ -178,6 +200,7 @@ class GraphQLQueryNode:
     infrahub_relationships: set[str] = field(default_factory=set)
     field_node: FieldNode | None = field(default=None)
     mutate_actions: list[MutateAction] = field(default_factory=list)
+    is_fragment: bool = field(default=False)
 
     def context_model(self) -> MainSchemaTypes | None:
         """Return the closest Infrahub object by going up in the tree."""
@@ -275,21 +298,115 @@ class GraphQLQueryNode:
         return models
 
 
-def _reached_path_sort_key(path: ReachedPath) -> tuple[tuple[str, str, str], ...]:
-    return tuple((hop.node_kind, hop.relationship_identifier, hop.relationship_direction.value) for hop in path.hops)
+def _reached_path_sort_key(path: ReachedPath) -> tuple[tuple[str, str, str, str], ...]:
+    """Order paths by their hops, filters included, so paths that differ only by their filters sort in a fixed order."""
+    return tuple(
+        (hop.node_kind, hop.relationship_identifier, hop.relationship_direction.value, repr(hop.peer_filters))
+        for hop in path.hops
+    )
+
+
+def _peer_filters(node: GraphQLQueryNode) -> PeerFilters | None:
+    """Return the filters a relationship read passes to the peer query, from its constant arguments.
+
+    Variables and enum names are left out because the query text does not hold their value, and ``display_label``
+    and ``hfid`` filters because their value depends on other nodes. Leaving a filter out can only select more
+    targets, never fewer.
+    """
+    arguments = {
+        argument.name: _as_list_when_list_typed(name=argument.name, literal=literal)
+        for argument in node.arguments
+        if not argument.contains_variable
+        and not argument.contains_enum_value
+        and argument.name.partition("__")[0] not in NODE_PROPERTY_BY_QUERY_FIELD
+        and (literal := _filter_literal(argument.value)) is not None
+    }
+    filters = build_peer_filters(field_name=node.path, arguments=arguments)
+    if not filters:
+        return None
+    return PeerFilters(relationship_name=node.path, filters=tuple(sorted(filters.items())))
+
+
+def _as_list_when_list_typed(*, name: str, literal: FilterLiteral) -> FilterLiteral:
+    """Return a single value of a list-typed argument as a one-item list, as GraphQL coerces it for the resolver."""
+    if (name == "ids" or name.endswith("__values")) and not isinstance(literal, tuple):
+        return (literal,)
+    return literal
+
+
+def _filter_literal(value: Any) -> FilterLiteral | None:
+    """Return a constant argument value as a filter value, or None for a value the peer query rejects."""
+    if isinstance(value, str | int):
+        return value
+    if isinstance(value, list) and all(isinstance(item, str | int) for item in value):
+        return tuple(value)
+    return None
+
+
+def _reads_peers_another_way(node: GraphQLQueryNode) -> bool:
+    """Whether a node selects peers by something other than the peers' own fields.
+
+    This covers any filter on a relationship of the node, such as ``owner__name__value``, ``owner__ids`` or
+    ``owner__isnull``, and a hierarchy read (``descendants``, ``ancestors``, ``include_descendants``).
+    """
+    if node.path in RESERVED_ATTR_REL_HIERARCHICAL_NAMES:
+        return True
+    model = node.infrahub_model
+    for argument in node.arguments:
+        if argument.name == "include_descendants" and (argument.contains_variable or argument.value):
+            return True
+        field_name, separator, _ = argument.name.partition("__")
+        if model is not None and separator and model.get_relationship_or_none(name=field_name):
+            return True
+    return False
+
+
+def _iter_nodes(node: GraphQLQueryNode) -> Iterator[GraphQLQueryNode]:
+    """Yield every node of the subtree, including nodes without a model such as hierarchy fields."""
+    yield node
+    for child in node.children:
+        yield from _iter_nodes(child)
+
+
+def _contains_value_node(node: ValueNode, node_type: type[ValueNode]) -> bool:
+    """Whether a value node is of ``node_type`` or contains one in a list or an object."""
+    match node:
+        case _ if isinstance(node, node_type):
+            return True
+        case ListValueNode() | ConstListValueNode():
+            return any(_contains_value_node(item, node_type) for item in node.values)
+        case ObjectValueNode() | ConstObjectValueNode():
+            return any(_contains_value_node(item.value, node_type) for item in node.fields)
+        case _:
+            return False
 
 
 @dataclass(frozen=True)
 class ReachedPathResolver:
     """Reconstruct, from a query's node tree, the relationship chains reaching each related kind.
 
-    A kind maps to every relationship chain that reaches it; a kind reached as a generic peer is
-    resolved to the generic's concrete implementations, since a data change reports the concrete kind.
-    A kind is absent -- so a change there widens -- when a way it is reached cannot be pinned: a hop
-    along it is an inline/named fragment refinement, or the kind is also read at a root.
+    A kind maps to every relationship chain that reaches it; a kind reached as a generic peer, or
+    through a fragment on a generic, is resolved to the generic's concrete implementations, since a
+    data change reports the concrete kind. An inline or named fragment restricts the type of the node it
+    sits on rather than reaching another node, so it adds no hop. A kind also read at a root keeps an
+    empty chain besides its relationship chains, which maps a changed node to itself. A kind is absent
+    -- so a change there widens -- when a way it is reached cannot be pinned: a hop whose field is not a
+    relationship with an identifier on an owner that stands for an Infrahub object.
+
+    Each hop carries the filters of the relationship read it stands for, unless a query selects peers through a
+    field of a related node or a hierarchy read; then no hop carries any filter.
     """
 
     queries: list[GraphQLQueryNode]
+
+    @cached_property
+    def _records_peer_filters(self) -> bool:
+        """Whether no node of the queries selects peers through a field of a related node or a hierarchy read."""
+        return not any(_reads_peers_another_way(node) for query in self.queries for node in _iter_nodes(query))
+
+    def _peer_filters(self, node: GraphQLQueryNode) -> PeerFilters | None:
+        """The peer filters of a relationship read, or None when the queries record no filter."""
+        return _peer_filters(node) if self._records_peer_filters else None
 
     def resolve(self) -> dict[str, tuple[ReachedPath, ...]]:
         root_kinds = {
@@ -308,10 +425,12 @@ class ReachedPathResolver:
                     else:
                         chains_by_kind[kind].add(chain)
 
+        for kind in root_kinds & chains_by_kind.keys():
+            chains_by_kind[kind].add(ReachedPath(hops=()))
         return {
             kind: tuple(sorted(chains, key=_reached_path_sort_key))
             for kind, chains in chains_by_kind.items()
-            if kind not in ambiguous_kinds and kind not in root_kinds
+            if kind not in ambiguous_kinds
         }
 
     def _reached_kinds(self, node: GraphQLQueryNode) -> list[str]:
@@ -320,6 +439,8 @@ class ReachedPathResolver:
         if model is None:
             return []
         if isinstance(model, GenericSchema):
+            if node.is_fragment:
+                return list(model.concrete_kinds)
             return [implementation.kind for implementation in node.infrahub_node_models]
         return [model.kind]
 
@@ -333,8 +454,10 @@ class ReachedPathResolver:
     def _hop_chain_to_root(self, node: GraphQLQueryNode) -> ReachedPath | None:
         """The chain of reverse relationship hops from a related node back to the query root, or None when a hop cannot be pinned.
 
-        Returns None when a hop's field is not a relationship on its owner (an inline or named
-        fragment refinement), which cannot resolve a changed node to a reverse relationship.
+        A fragment stands for the node it sits on, so the walk steps over it without a hop. Returns
+        None when a hop's field is not a relationship on its owner, or when a fragment sits under the
+        metadata of a field rather than on a node, as neither resolves a changed node to a reverse
+        relationship.
         """
         hops: list[RelationshipHop] = []
         current = node
@@ -342,6 +465,11 @@ class ReachedPathResolver:
             owner = self._nearest_object_ancestor(current)
             if owner is None or owner.infrahub_model is None:
                 return None
+            if current.is_fragment:
+                if current.parent is None or not current.parent.in_property_level:
+                    return None
+                current = owner
+                continue
             relationship = owner.infrahub_model.get_relationship_or_none(name=current.path)
             if relationship is None or not relationship.identifier:
                 return None
@@ -350,11 +478,41 @@ class ReachedPathResolver:
                     node_kind=owner.infrahub_model.kind,
                     relationship_identifier=relationship.identifier,
                     relationship_direction=relationship.direction,
+                    peer_filters=self._peer_filters(current),
                 )
             )
             current = owner
 
         return ReachedPath(hops=tuple(hops))
+
+    def relationship_reads(self) -> tuple[RelationshipRead, ...]:
+        """Every relationship the queries read, with its peer filters, once per owner kind.
+
+        A read on a generic owner is recorded once per implementation, as a diff reports the concrete kind.
+        """
+        reads: set[RelationshipRead] = set()
+        for query in self.queries:
+            for node in self._iter_object_nodes(query):
+                if node.at_root or node.is_fragment or node.infrahub_model is None:
+                    continue
+                owner = self._nearest_object_ancestor(node)
+                if owner is None or owner.infrahub_model is None:
+                    continue
+                relationship = owner.infrahub_model.get_relationship_or_none(name=node.path)
+                if relationship is None or not relationship.identifier:
+                    continue
+                reads.update(
+                    RelationshipRead(
+                        owner_kind=owner_kind,
+                        relationship_name=relationship.name,
+                        relationship_identifier=relationship.identifier,
+                        relationship_direction=relationship.direction,
+                        peer_kinds=frozenset(self._reached_kinds(node)),
+                        peer_filters=self._peer_filters(node),
+                    )
+                    for owner_kind in owner.infrahub_model.concrete_kinds
+                )
+        return tuple(sorted(reads, key=lambda read: (read.owner_kind, read.relationship_name, repr(read.peer_filters))))
 
     def _nearest_object_ancestor(self, node: GraphQLQueryNode) -> GraphQLQueryNode | None:
         """The closest ancestor that stands for an Infrahub object, skipping structural nodes."""
@@ -431,8 +589,8 @@ class GraphQLQueryReport:
 
         A kind is reported here even when a root query also resolves to it. Both read paths share
         one entry in the requested-read map, so a caller given a changed node of that kind cannot
-        tell which path saw it; reporting the kind as traversed keeps that ambiguity visible rather
-        than resolving it optimistically.
+        tell which path saw it, so the kind is reported as traversed and its reached chains cover both
+        reads.
 
         The concrete kinds standing behind a generic or interface peer are included, because a data
         change is reported against the concrete kind.
@@ -446,9 +604,19 @@ class GraphQLQueryReport:
         return kinds
 
     @cached_property
+    def _reached_path_resolver(self) -> ReachedPathResolver:
+        """One resolver for the chains and the relationship reads, so the query tree is walked once."""
+        return ReachedPathResolver(queries=self.queries)
+
+    @cached_property
     def relationship_reached_paths_by_kind(self) -> dict[str, tuple[ReachedPath, ...]]:
         """The relationship chains reaching each related kind that can be narrowed to its owning roots."""
-        return ReachedPathResolver(queries=self.queries).resolve()
+        return self._reached_path_resolver.resolve()
+
+    @cached_property
+    def relationship_reads(self) -> tuple[RelationshipRead, ...]:
+        """Every relationship the query reads, with the filters it applies to the peers."""
+        return self._reached_path_resolver.relationship_reads()
 
     def fields_by_kind(self, kind: str) -> list[str]:
         fields: list[str] = []
@@ -823,13 +991,9 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
                 path=fragment_definition.type_condition.name.value,
                 context_type=ContextType.DIRECT,
                 infrahub_model=infrahub_model,
+                is_fragment=True,
             )
-            for field_node in selections.field_nodes:
-                named_fragment.children.append(self._populate_field_node(node=field_node, query_node=named_fragment))
-            for inline_fragment_node in selections.inline_fragment_nodes:
-                named_fragment.children.append(
-                    self._populate_inline_fragment_node(node=inline_fragment_node, query_node=named_fragment)
-                )
+            self._populate_children(selections=selections, query_node=named_fragment)
 
             self._named_fragments[fragment_name] = named_fragment
 
@@ -866,19 +1030,26 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
         )
 
         if node.selection_set:
-            selections = self._get_selections(selection_set=node.selection_set)
-            for field_node in selections.field_nodes:
-                current_node.children.append(self._populate_field_node(node=field_node, query_node=current_node))
-            for inline_fragment_node in selections.inline_fragment_nodes:
-                current_node.children.append(
-                    self._populate_inline_fragment_node(node=inline_fragment_node, query_node=current_node)
-                )
-            for fragment_spread_node in selections.fragment_spread_nodes:
-                current_node.children.append(
-                    self._populate_fragment_spread_node(node=fragment_spread_node, query_node=current_node)
-                )
+            self._populate_children(
+                selections=self._get_selections(selection_set=node.selection_set), query_node=current_node
+            )
 
         return current_node
+
+    def _populate_children(self, selections: GraphQLSelectionSet, query_node: GraphQLQueryNode) -> None:
+        """Add a child node for every field, inline fragment and fragment spread of a selection set."""
+        for field_node in selections.field_nodes:
+            query_node.children.append(self._populate_field_node(node=field_node, query_node=query_node))
+        for inline_fragment_node in selections.inline_fragment_nodes:
+            query_node.children.append(
+                self._populate_inline_fragment_node(node=inline_fragment_node, query_node=query_node)
+            )
+        for fragment_spread_node in selections.fragment_spread_nodes:
+            if fragment_spread_node.name.value not in self._named_fragments:
+                continue
+            query_node.children.append(
+                self._populate_fragment_spread_node(node=fragment_spread_node, query_node=query_node)
+            )
 
     def _populate_inline_fragment_node(
         self, node: InlineFragmentNode, query_node: GraphQLQueryNode
@@ -891,15 +1062,12 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
             path=node.type_condition.name.value,
             context_type=context_type,
             infrahub_model=infrahub_model,
+            is_fragment=True,
         )
         if node.selection_set:
-            selections = self._get_selections(selection_set=node.selection_set)
-            for field_node in selections.field_nodes:
-                current_node.children.append(self._populate_field_node(node=field_node, query_node=current_node))
-            for inline_fragment_node in selections.inline_fragment_nodes:
-                current_node.children.append(
-                    self._populate_inline_fragment_node(node=inline_fragment_node, query_node=current_node)
-                )
+            self._populate_children(
+                selections=self._get_selections(selection_set=node.selection_set), query_node=current_node
+            )
 
         return current_node
 
@@ -957,7 +1125,7 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
                     required=required,
                     is_list=is_list,
                     inner_required=inner_required,
-                    default=self._parse_value(variable.default_value) if variable.default_value else None,
+                    default=_parse_value_node(variable.default_value) if variable.default_value else None,
                 )
             )
 
@@ -965,35 +1133,37 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
 
     def _parse_arguments(self, field_node: FieldNode) -> list[GraphQLArgument]:
         return [
-            GraphQLArgument(
-                name=argument.name.value,
-                value=self._parse_value(argument.value),
-                kind=argument.value.kind,
-            )
-            for argument in field_node.arguments
+            GraphQLArgument(name=argument.name.value, value_node=argument.value) for argument in field_node.arguments
         ]
 
-    def _parse_value(self, node: ValueNode) -> Any:
-        match node:
-            case VariableNode():
-                value: Any = f"${node.name.value}"
-            case IntValueNode():
-                value = int(node.value)
-            case FloatValueNode():
-                value = float(node.value)
-            case StringValueNode():
-                value = node.value
-            case BooleanValueNode():
-                value = node.value
-            case NullValueNode():
-                value = None
-            case EnumValueNode():
-                value = node.value
-            case ListValueNode() | ConstListValueNode():
-                value = [self._parse_value(item) for item in node.values]
-            case ObjectValueNode() | ConstObjectValueNode():
-                value = {field.name.value: self._parse_value(field.value) for field in node.fields}
-            case _:
-                raise TypeError(f"Unsupported value node: {node}")
 
-        return value
+def _parse_value_node(node: ValueNode) -> Any:
+    """Return the Python value a query literal stands for, a variable reading as its ``$``-prefixed name.
+
+    Raises:
+        TypeError: When the node is not a value the parser can produce.
+
+    """
+    match node:
+        case VariableNode():
+            value: Any = f"${node.name.value}"
+        case IntValueNode():
+            value = int(node.value)
+        case FloatValueNode():
+            value = float(node.value)
+        case StringValueNode():
+            value = node.value
+        case BooleanValueNode():
+            value = node.value
+        case NullValueNode():
+            value = None
+        case EnumValueNode():
+            value = node.value
+        case ListValueNode() | ConstListValueNode():
+            value = [_parse_value_node(item) for item in node.values]
+        case ObjectValueNode() | ConstObjectValueNode():
+            value = {field.name.value: _parse_value_node(field.value) for field in node.fields}
+        case _:
+            raise TypeError(f"Unsupported value node: {node}")
+
+    return value

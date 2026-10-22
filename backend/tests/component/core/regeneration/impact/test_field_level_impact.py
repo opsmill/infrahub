@@ -10,8 +10,10 @@ from infrahub.core.regeneration.impact import get_field_level_impacted_subscribe
 from infrahub.core.regeneration.models import TargetSelection, Widening, WideningReason
 from tests.constants import TestKind
 from tests.helpers.diff_summary import node_diff
-from tests.helpers.schema import CAR_SCHEMA, RACK_SCHEMA, load_schema
+from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
+
+from .helpers import SUBSCRIBER_KIND, query_report
 
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
@@ -78,11 +80,6 @@ query GetImpactCarsByAnyValue($value: String!) {
     }
 }
 """
-
-# The car is the group member; the tag stands in for an artifact or generator definition. The impact
-# mapping reads only the subscriber's id and typename, so a plain kind keeps the fixture free of the
-# transformation and repository wiring a real definition would demand.
-SUBSCRIBER_KIND = TestKind.TAG
 
 
 class TestFieldLevelImpact(TestInfrahubApp):
@@ -160,7 +157,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
         diff_summary: list[NodeDiff],
     ) -> TargetSelection:
         return await get_field_level_impacted_subscribers(
-            query_payload=QUERY_CAR_WITH_OWNER,
+            query_report=query_report(QUERY_CAR_WITH_OWNER, default_branch),
             diff_summary=diff_summary,
             query_branch=default_branch.name,
             subscriber_kind=SUBSCRIBER_KIND,
@@ -207,7 +204,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
         car's own attributes, so the routing narrows to the car's subscriber rather than widening.
         """
         resolved = await get_field_level_impacted_subscribers(
-            query_payload=QUERY_CAR_DISPLAY_LABEL,
+            query_report=query_report(QUERY_CAR_DISPLAY_LABEL, default_branch),
             diff_summary=[
                 node_diff(
                     node_id=dataset["car_id"],
@@ -289,7 +286,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
         even though no field the query reads back changed.
         """
         resolved = await get_field_level_impacted_subscribers(
-            query_payload=QUERY_CARS_BY_OWNER_NAME,
+            query_report=query_report(QUERY_CARS_BY_OWNER_NAME, default_branch),
             diff_summary=[
                 node_diff(
                     node_id=dataset["car_id"],
@@ -321,7 +318,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
         change to ``color`` can move which cars answer the query.
         """
         resolved = await get_field_level_impacted_subscribers(
-            query_payload=QUERY_CARS_BY_ANY_VALUE,
+            query_report=query_report(QUERY_CARS_BY_ANY_VALUE, default_branch),
             diff_summary=[
                 node_diff(
                     node_id=dataset["car_id"],
@@ -339,134 +336,3 @@ class TestFieldLevelImpact(TestInfrahubApp):
             ids=[dataset["subscriber_id"]],
             widening=Widening(reason=WideningReason.NON_UNIQUE_TARGETS),
         )
-
-
-QUERY_RACK_WITH_CARD = """
-query GetImpactRack($ids: [ID!]!) {
-    TestingRack(ids: $ids) {
-        edges {
-            node {
-                name { value }
-                slots { edges { node {
-                    card { node { name { value } } }
-                } } }
-            }
-        }
-    }
-}
-"""
-
-
-class TestGenericOwnerFieldLevelImpact(TestInfrahubApp):
-    """Narrow a change reached through a relationship whose owner is a generic.
-
-    The query pins its root rack by id and reads ``name`` off a card reached through the rack's slots.
-    The slot is a concrete ``TestingPowerSlot`` labelled with the ``TestingSlot`` generic, so the
-    reverse traversal keyed on the generic label walks the card change back through the slot to the
-    rack.
-    """
-
-    @pytest.fixture(scope="class")
-    async def dataset(
-        self,
-        db: InfrahubDatabase,
-        default_branch: Branch,
-        client: InfrahubClient,
-    ) -> dict[str, Any]:
-        await load_schema(db=db, schema=RACK_SCHEMA, update_db=True)
-
-        card = await Node.init(db=db, schema="TestingCard")
-        await card.new(db=db, name="card-1")
-        await card.save(db=db)
-
-        slot = await Node.init(db=db, schema="TestingPowerSlot")
-        await slot.new(db=db, name="slot-1", card=card)
-        await slot.save(db=db)
-
-        rack = await Node.init(db=db, schema="TestingRack")
-        await rack.new(db=db, name="rack-1", slots=[slot])
-        await rack.save(db=db)
-
-        # A second rack with its own slot and card: the reverse traversal must reach only the rack that
-        # owns the changed card, never every member of the group.
-        other_card = await Node.init(db=db, schema="TestingCard")
-        await other_card.new(db=db, name="card-2")
-        await other_card.save(db=db)
-
-        other_slot = await Node.init(db=db, schema="TestingPowerSlot")
-        await other_slot.new(db=db, name="slot-2", card=other_card)
-        await other_slot.save(db=db)
-
-        other_rack = await Node.init(db=db, schema="TestingRack")
-        await other_rack.new(db=db, name="rack-2", slots=[other_slot])
-        await other_rack.save(db=db)
-
-        subscriber = await Node.init(db=db, schema=TestKind.TAG)
-        await subscriber.new(db=db, name="rack-artifact")
-        await subscriber.save(db=db)
-
-        other_subscriber = await Node.init(db=db, schema=TestKind.TAG)
-        await other_subscriber.new(db=db, name="other-rack-artifact")
-        await other_subscriber.save(db=db)
-
-        stored_query = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY)
-        await stored_query.new(
-            db=db, name="GetImpactRack", query=QUERY_RACK_WITH_CARD, models=["TestingRack", "TestingCard"]
-        )
-        await stored_query.save(db=db)
-
-        # Each rack stands for a separate definition, so it gets its own group with its own subscriber.
-        # Subscribers resolve per group, so narrowing to one rack must return only that rack's group's
-        # subscriber -- the other rack's subscriber proves the traversal did not widen.
-        query_group = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERYGROUP)
-        await query_group.new(
-            db=db, name="rack-impact-targets", query=stored_query, members=[rack], subscribers=[subscriber]
-        )
-        await query_group.save(db=db)
-
-        other_group = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERYGROUP)
-        await other_group.new(
-            db=db,
-            name="other-rack-impact-targets",
-            query=stored_query,
-            members=[other_rack],
-            subscribers=[other_subscriber],
-        )
-        await other_group.save(db=db)
-
-        return {
-            "rack_id": rack.id,
-            "other_rack_id": other_rack.id,
-            "card_id": card.id,
-            "subscriber_id": subscriber.id,
-            "other_subscriber_id": other_subscriber.id,
-        }
-
-    async def test_generic_owner_reached_change_narrows_to_the_owning_member(
-        self,
-        dataset: dict[str, Any],
-        default_branch: Branch,
-        client: InfrahubClient,
-    ) -> None:
-        """A change on a card reached through a generic-owned relationship narrows to its rack alone.
-
-        Both racks are members of the group, so a widen would return both subscribers. The reverse
-        traversal keyed on the generic slot label reaches only the slot holding the changed card, and
-        through it only the owning rack, so a single subscriber comes back.
-        """
-        resolved = await get_field_level_impacted_subscribers(
-            query_payload=QUERY_RACK_WITH_CARD,
-            diff_summary=[
-                node_diff(
-                    node_id=dataset["card_id"],
-                    kind="TestingCard",
-                    branch=default_branch.name,
-                    field_names=["name"],
-                )
-            ],
-            query_branch=default_branch.name,
-            subscriber_kind=TestKind.TAG,
-            every_target=[dataset["subscriber_id"], dataset["other_subscriber_id"]],
-            client=client,
-        )
-        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]])

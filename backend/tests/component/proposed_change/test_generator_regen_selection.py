@@ -265,21 +265,16 @@ class TestGeneratorRegenSelection(GeneratorRegenTestBase):
         await repo.new(db=db, name="generator-regen-repo", location="https://github.com/test/generator-regen-repo.git")
         await repo.save(db=db)
 
-        # ``models`` is populated by the GraphQL mutation analyzer in production; nodes created
-        # directly against the database must set it explicitly so the data-change (MODIFIED_KINDS)
-        # path has the queried kinds to match against.
         query_a = await Node.init(db=db, schema="CoreGraphQLQuery")
-        await query_a.new(db=db, name="GetADevice", query=QUERY_A, models=["TestNetworkDevice"])
+        await query_a.new(db=db, name="GetADevice", query=QUERY_A)
         await query_a.save(db=db)
 
         query_b = await Node.init(db=db, schema="CoreGraphQLQuery")
-        await query_b.new(db=db, name="GetBDevice", query=QUERY_B, models=["TestNetworkDevice"])
+        await query_b.new(db=db, name="GetBDevice", query=QUERY_B)
         await query_b.save(db=db)
 
         query_source_only = await Node.init(db=db, schema="CoreGraphQLQuery")
-        await query_source_only.new(
-            db=db, name="GetSourceOnlyDevice", query=QUERY_SOURCE_ONLY, models=["TestNetworkDevice"]
-        )
+        await query_source_only.new(db=db, name="GetSourceOnlyDevice", query=QUERY_SOURCE_ONLY)
         await query_source_only.save(db=db)
 
         group = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
@@ -634,7 +629,7 @@ class TestGeneratorRegenLegacyFallback(GeneratorRegenTestBase):
         await repo.save(db=db)
 
         query = await Node.init(db=db, schema="CoreGraphQLQuery")
-        await query.new(db=db, name="GetLegacyDevice", query=QUERY_A, models=["TestNetworkDevice"])
+        await query.new(db=db, name="GetLegacyDevice", query=QUERY_A)
         await query.save(db=db)
 
         group = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
