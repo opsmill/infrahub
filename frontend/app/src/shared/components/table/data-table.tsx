@@ -220,25 +220,37 @@ function DataTableGrid<T>({
 
       {count !== undefined &&
         wrapAsRow(
-          Array.from({ length: allHeaders.length }).map((_, index) => (
-            <div
-              key={index}
-              // The whole footer bar has to outrank the sticky body cells, not just its
-              // first cell, or the last row's sticky action menu punches through it.
-              className={classNames(cellsStyle, cellFooterStyle, "z-10", index === 0 && "left-0")}
-              role={semanticTable ? "cell" : undefined}
-            >
-              {index === 0 && (
-                <>
-                  <Row className="gap-1">
-                    <span className="font-medium">{formatNumberDisplay(count)}</span>
-                    <span className="text-foreground-muted">count{count > 1 && "s"}</span>
-                  </Row>
-                  <StickyCellShadow side="left" />
-                </>
-              )}
-            </div>
-          ))
+          Array.from({ length: allHeaders.length }).map((_, index) => {
+            const isFirst = index === 0;
+            const isLast = index > 0 && index === allHeaders.length - 1;
+
+            return (
+              <div
+                key={index}
+                // Like the header row, only the corners outrank the pinned body columns; a
+                // z-index on every footer cell would let the cells scrolling under the count
+                // paint over it.
+                className={classNames(
+                  cellsStyle,
+                  cellFooterStyle,
+                  isFirst && "left-0 z-10",
+                  isLast && "right-0 z-10 -ml-px w-10 border-l"
+                )}
+                role={semanticTable ? "cell" : undefined}
+              >
+                {isFirst && (
+                  <>
+                    <Row className="gap-1">
+                      <span className="font-medium">{formatNumberDisplay(count)}</span>
+                      <span className="text-foreground-muted">count{count > 1 && "s"}</span>
+                    </Row>
+                    <StickyCellShadow side="left" />
+                  </>
+                )}
+                {isLast && <StickyCellShadow side="right" />}
+              </div>
+            );
+          })
         )}
 
       {selectedRows.length > 0 && renderSelectionToolbar?.(selectedRows, table.resetRowSelection)}
