@@ -6,17 +6,21 @@ import { formatNumberDisplay } from "@/shared/utils/number";
 
 import type { NumberPoolUsage } from "@/entities/resource-manager/domain/model/number-pool";
 
-const percentOf = (part: number, total: number) => (total === 0 ? 0 : (part / total) * 100);
+const percentOf = (part: number, total: number | null) =>
+  total === null || total === 0 ? 0 : (part / total) * 100;
 
-export const formatUsagePercent = (value: number) => {
+export const formatUsagePercent = (value: number | null) => {
+  if (value === null) return "–";
   if (value === 0) return "0%";
   if (value < 0.1) return "<0.1%";
   if (value < 10) return `${value.toFixed(1).replace(/\.0$/, "")}%`;
   return `${Math.floor(value)}%`;
 };
 
-const formatUsedOfSize = (used: number, size: number) =>
-  `${formatNumberDisplay(used)} of ${formatNumberDisplay(size)}`;
+const formatUsedOfSize = (used: number, size: number | null) =>
+  size === null
+    ? formatNumberDisplay(used)
+    : `${formatNumberDisplay(used)} of ${formatNumberDisplay(size)}`;
 
 interface UtilizationTooltipMessageProps {
   title: string;

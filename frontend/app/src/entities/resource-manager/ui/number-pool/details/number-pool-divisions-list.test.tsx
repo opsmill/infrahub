@@ -130,6 +130,32 @@ describe("NumberPoolDivisionsList", () => {
     expect(rowLabels(component)).toEqual(["Leaf2", "leaf10", "spine1"]);
   });
 
+  it("sorts allocation scopes without a size by the count used", async () => {
+    // GIVEN
+    const unboundedDivision = (label: string, used: number) =>
+      generateNumberPoolDivision({
+        label,
+        entries: [generateNumberPoolDivisionEntry({ value: `${label}-id`, label })],
+        usage: generateNumberPoolUsage({ size: null, used, utilization: null }),
+      });
+    mockDivisions({
+      fields: ["device"],
+      divisions: [
+        unboundedDivision("leaf10", 5),
+        unboundedDivision("Leaf2", 3),
+        unboundedDivision("spine1", 1),
+      ],
+    });
+    const component = await renderCard();
+
+    // WHEN
+    await userEvent.click(component.getByRole("button", { name: "Usage" }));
+
+    // THEN
+    await expect.element(component.getByRole("link").first()).toHaveTextContent("spine1");
+    expect(rowLabels(component)).toEqual(["spine1", "Leaf2", "leaf10"]);
+  });
+
   it("explains that a pool with no allocated numbers has no allocation scope yet", async () => {
     // GIVEN
     mockDivisions({ fields: ["device"], divisions: [] });

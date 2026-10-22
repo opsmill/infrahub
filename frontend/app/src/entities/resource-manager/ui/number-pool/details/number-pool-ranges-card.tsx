@@ -20,7 +20,7 @@ import { getNumberPoolRangeUrl } from "@/entities/resource-manager/ui/routing/nu
 const ALL_RANGES_KEY = "all";
 
 export const formatRangeLabel = ({ start, end }: Pick<NumberPoolRange, "start" | "end">) =>
-  `${formatNumberDisplay(start.value)} – ${formatNumberDisplay(end.value)}`;
+  `${formatNumberDisplay(start.value)} – ${end.value === null ? "MAX" : formatNumberDisplay(end.value)}`;
 
 const getSelectedKeys = (utilization: NumberPoolUtilization, selectedRangeId: string | null) => {
   if (selectedRangeId === null) return [ALL_RANGES_KEY];

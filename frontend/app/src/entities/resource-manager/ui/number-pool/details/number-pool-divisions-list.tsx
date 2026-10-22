@@ -33,6 +33,10 @@ const filterDivisions = (divisions: NumberPoolDivision[], search: string) => {
 const compareLabels = (a: string, b: string) =>
   a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
 
+// A division without a size reports no utilization, so its share counts as 0 and the count used decides.
+const compareUsage = (a: NumberPoolDivision, b: NumberPoolDivision) =>
+  (a.usage.utilization ?? 0) - (b.usage.utilization ?? 0) || a.usage.used - b.usage.used;
+
 const sortDivisions = (divisions: NumberPoolDivision[], sort: NumberPoolDivisionSort) => {
   const sign = sort.direction === "ascending" ? 1 : -1;
   const labelOf = (division: NumberPoolDivision) =>
@@ -41,7 +45,7 @@ const sortDivisions = (divisions: NumberPoolDivision[], sort: NumberPoolDivision
   // the backend order is the default sort, so ties keep it
   return [...divisions].sort((a, b) => {
     if (sort.by === NUMBER_POOL_DIVISION_SORT_BY_USAGE) {
-      return sign * (a.usage.utilization - b.usage.utilization);
+      return sign * compareUsage(a, b);
     }
     return sign * compareLabels(labelOf(a), labelOf(b));
   });
