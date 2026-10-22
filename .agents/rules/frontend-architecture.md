@@ -28,7 +28,7 @@ Applies to TypeScript in `frontend/app/src/`.
 ## Branches and backend authority
 
 - Detect the default branch with `is_default`, never by name: the default branch name is configurable per deployment.
-- Do not mirror server behaviour in client constants: hidden namespaces, hard-coded `["Core", "Internal", ...]`, hidden schema kinds, default sorts, pagination or access checks. Read them from `useGetSchema` or the API.
+- Do not mirror server behaviour in client constants: hidden namespaces, hard-coded `["Core", "Internal", ...]`, hidden schema kinds, default sorts, pagination or access checks. Read them from the loaded schema (`useSchema` for one kind, the atoms in `entities/schema/stores/schema.atom.ts` for every kind) or the API.
 
 ## Type safety
 

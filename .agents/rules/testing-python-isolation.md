@@ -6,7 +6,6 @@ paths:
   - "backend/tests/integration/**/*.py"
   - "backend/tests/integration_docker/**/*.py"
   - "python_testcontainers/tests/**/*.py"
-
 ---
 
 # Python test isolation and concurrency
@@ -24,7 +23,6 @@ A Neo4j session carries a single connection and cannot serve two coroutines at o
 ## Prefect task manager setup
 
 Never call `setup_task_manager()` from a test or fixture; call `tests.helpers.task_manager.setup_task_manager_once()`. The raw setup re-registers every block, pool, deployment and trigger against the worker's Prefect server with no timeout, and under CI load that hangs until pytest-timeout kills the whole class. The helper runs it once per server URL, bounded, and fails fast for that server afterwards. The only test allowed to call the raw function is the one that tests the setup itself. Mechanism in `dev/knowledge/backend/testing.md` §"Prefect Testing Patterns".
-
 
 ## Async tests
 

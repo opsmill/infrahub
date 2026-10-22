@@ -92,7 +92,7 @@ Rule: if a second caller is in the spec at all, the prop API must support it on 
 If the backend already filters, transforms, or defaults something, do not duplicate it on the client. Examples:
 
 - Default namespace exclusions for traversal (Core/Internal/Builtin/Lineage/Profile/Template) are server-side. The client must not maintain a parallel `HIDDEN_NAMESPACES` list.
-- Schema kinds and their hidden flags come from `useGetSchema`. Do not hardcode them.
+- Schema kinds and their flags come from the loaded schema: `useSchema` for one kind, the atoms in `entities/schema/stores/schema.atom.ts` for every kind. Do not hardcode them.
 - Sort order, pagination defaults, and access checks belong to the server.
 
 If the client needs to *display* a server-side default, surface it via the API (extend a query or response field) rather than mirroring the constant.
