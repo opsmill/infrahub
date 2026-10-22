@@ -391,7 +391,7 @@ shape and let it do the typing, rather than indexing the raw record and casting:
 |---|---|
 | A scalar | `get_as_type("uuid", str)` |
 | A scalar that may be absent | `get_as_optional_type("description", str)` |
-| A string (shorthand, returns `str \| None`) | `get_as_str("node_uuid")` |
+| A string (shorthand, returns `str` or `None`) | `get_as_str("node_uuid")` |
 | A `collect(...)` list | `get_as_list_of_type("related_uuids", str)` |
 | A whole node or relationship | `get("n")` |
 
