@@ -9,7 +9,10 @@ import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/domain/model/
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 import { render } from "../../../../../../tests/components/render";
-import { generateNumberPoolUtilization } from "../../../../../../tests/fake/number-pool";
+import {
+  generateNumberPoolRange,
+  generateNumberPoolUtilization,
+} from "../../../../../../tests/fake/number-pool";
 import { generateNodeSchema } from "../../../../../../tests/fake/schema";
 import { NumberPoolRangesCard, type NumberPoolRangesCardProps } from "./number-pool-ranges-card";
 
@@ -57,9 +60,26 @@ describe("NumberPoolRangesCard", () => {
     const options = component.getByRole("option").elements();
     expect(options.map((option) => option.textContent)).toEqual([
       expect.stringContaining("All ranges"),
-      expect.stringContaining("1 – 50Weight 10"),
-      expect.stringContaining("51 – 100Weight 0"),
+      expect.stringContaining("1 - 50Weight 10"),
+      expect.stringContaining("51 - 100Weight 0"),
     ]);
+  });
+
+  it("names a range with an open end by the label the server wrote", async () => {
+    // GIVEN
+    const openRange = generateNumberPoolRange({
+      display_label: "100 - MAX",
+      start: { value: 100 },
+      end: { value: 2 ** 63 - 1 },
+    });
+
+    // WHEN
+    const component = await renderCard({
+      utilization: generateNumberPoolUtilization({ ranges: [openRange] }),
+    });
+
+    // THEN
+    await expect.element(component.getByRole("option", { name: /^100 - MAX/ })).toBeVisible();
   });
 
   it("selects All ranges when no range is selected", async () => {
@@ -78,7 +98,7 @@ describe("NumberPoolRangesCard", () => {
 
     // THEN
     await expect
-      .element(component.getByRole("option", { name: /^51 – 100/ }))
+      .element(component.getByRole("option", { name: /^51 - 100/ }))
       .toHaveAttribute("aria-selected", "true");
   });
 

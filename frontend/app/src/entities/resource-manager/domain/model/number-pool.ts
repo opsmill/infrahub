@@ -32,6 +32,7 @@ export interface NumberPoolUsage {
 
 export interface NumberPoolRange extends NodeCore {
   __typename: typeof NUMBER_POOL_RANGE_KIND;
+  display_label: string;
   start: NodeAttribute<number>;
   end: NodeAttribute<number | null>;
   allocation_weight: NodeAttribute<number>;
