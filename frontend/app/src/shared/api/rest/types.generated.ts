@@ -583,6 +583,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/troubleshooting/trace-sample-ratio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the trace sampling ratio
+         * @description Return the share of new traces that the API server process handling the request records: the default ratio set by INFRAHUB_TRACE_SAMPLE_RATIO, and the temporary ratio with its end time when one is in force. Use it during an incident to check the ratio before and after a change. Requires the super_admin permission.
+         */
+        get: operations["get_trace_sample_ratio_api_troubleshooting_trace_sample_ratio_get"];
+        /**
+         * Set a temporary trace sampling ratio
+         * @description Record a different share of new traces on every API server process and task worker until the duration ends, without a restart, because a restart can remove the slow behaviour under investigation. A new change replaces the active one. Each process applies the change within seconds and logs "Set the temporary trace sampling ratio". Requires the super_admin permission and INFRAHUB_TRACE_ENABLE.
+         */
+        put: operations["set_trace_sample_ratio_api_troubleshooting_trace_sample_ratio_put"];
+        post?: never;
+        /**
+         * Clear the temporary trace sampling ratio
+         * @description Go back to the default trace sampling ratio on every API server process and task worker. Each process applies the change within seconds and logs "Cleared the temporary trace sampling ratio". Requires the super_admin permission and INFRAHUB_TRACE_ENABLE.
+         */
+        delete: operations["clear_trace_sample_ratio_api_troubleshooting_trace_sample_ratio_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/schema.graphql": {
         parameters: {
             query?: never;
@@ -3765,6 +3793,47 @@ export interface components {
             /** @description Extra parameters specific to this kind of attribute */
             parameters?: components["schemas"]["TextAttributeParametersWrite"] | null;
         };
+        /** TraceSampleRatioAPI */
+        TraceSampleRatioAPI: {
+            /**
+             * Enabled
+             * @description Indicates if tracing is enabled on this instance
+             */
+            enabled: boolean;
+            /**
+             * Default Ratio
+             * @description Ratio set by INFRAHUB_TRACE_SAMPLE_RATIO
+             */
+            default_ratio?: number | null;
+            /**
+             * Temporary Ratio
+             * @description Ratio that replaces the default until expires_at
+             */
+            temporary_ratio?: number | null;
+            /**
+             * Expires At
+             * @description UTC time when the temporary ratio stops applying
+             */
+            expires_at?: string | null;
+            /**
+             * Ratio In Force
+             * @description Share of new root traces recorded now
+             */
+            ratio_in_force?: number | null;
+        };
+        /** TraceSampleRatioUpdateAPI */
+        TraceSampleRatioUpdateAPI: {
+            /**
+             * Ratio
+             * @description Share of new root traces to record
+             */
+            ratio: number;
+            /**
+             * Duration Seconds
+             * @description Number of seconds the ratio applies
+             */
+            duration_seconds: number;
+        };
         /** UploadContentPayload */
         UploadContentPayload: {
             /** Content */
@@ -4979,6 +5048,112 @@ export interface operations {
                 };
                 content: {
                     "text/plain": string;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_trace_sample_ratio_api_troubleshooting_trace_sample_ratio_get: {
+        parameters: {
+            query?: {
+                /** @description Name of the branch to use for the query */
+                branch?: string | null;
+                /** @description Time to use for the query, in absolute or relative format */
+                at?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TraceSampleRatioAPI"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_trace_sample_ratio_api_troubleshooting_trace_sample_ratio_put: {
+        parameters: {
+            query?: {
+                /** @description Name of the branch to use for the query */
+                branch?: string | null;
+                /** @description Time to use for the query, in absolute or relative format */
+                at?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TraceSampleRatioUpdateAPI"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TraceSampleRatioAPI"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    clear_trace_sample_ratio_api_troubleshooting_trace_sample_ratio_delete: {
+        parameters: {
+            query?: {
+                /** @description Name of the branch to use for the query */
+                branch?: string | null;
+                /** @description Time to use for the query, in absolute or relative format */
+                at?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TraceSampleRatioAPI"];
                 };
             };
             /** @description Validation Error */

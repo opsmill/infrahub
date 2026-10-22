@@ -77,3 +77,6 @@ the extra installs, when the header is sent, and that an application with OpenTe
 - After the checks, `1e63596d` raised the minimum to `opentelemetry-api>=1.33` and made an invalid
   `OTEL_PROPAGATORS` send no header with one warning, after Patrick Ogenstad's review in Slack. It
   changes no behavior that checks 1 to 4 tested; its unit tests pass (42 passed, 2 skipped).
+- After Patrick Ogenstad's review on the pull request, `79997aa6` added the version check: below
+  `opentelemetry-api` 1.33 the SDK never imports OpenTelemetry. The pull request merged on
+  2026-10-21 (merge commit `a7931235`).

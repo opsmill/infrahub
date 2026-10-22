@@ -3,9 +3,10 @@
 
 Replaces all bind-mounted config files and directories with Docker Compose
 top-level `configs` entries that embed file content inline. Also strips
-profile assignments so all services start unconditionally. The resulting
-compose file has zero external file dependencies and can be distributed
-as a single file (e.g. via curl).
+profile assignments so all services start unconditionally, and adds the
+services of the tracing file that sits next to INPUT, when it exists. The
+resulting compose file has zero external file dependencies and can be
+distributed as a single file (e.g. via curl).
 
 Usage:
     python convert_compose_standalone.py [INPUT] [OUTPUT]
@@ -58,6 +59,23 @@ def _collect_bind_mounts(service: CommentedMap) -> list[dict]:
             if source.startswith(("./", "../")):
                 mounts.append({"host": source, "container": target, "index": volumes.index(vol), "style": "long"})
     return mounts
+
+
+TRACING_FILE_NAME = "docker-compose-observability-tracing.yml"
+
+
+def _add_tracing_services(compose: CommentedMap, tracing_path: Path, yaml: YAML) -> None:
+    """Add the services of the tracing file, which configure services defined in the main Infrahub compose file.
+
+    Raises:
+        ValueError: If the observability file already defines one of these services.
+
+    """
+    services = compose["services"]
+    for name, service in yaml.load(tracing_path)["services"].items():
+        if name in services:
+            raise ValueError(f"Service {name!r} is defined in both {tracing_path.name} and the observability file")
+        services[name] = service
 
 
 def convert(input_path: Path, output_path: Path) -> None:  # noqa: PLR0912, PLR0914, PLR0915
@@ -144,6 +162,10 @@ def convert(input_path: Path, output_path: Path) -> None:  # noqa: PLR0912, PLR0
 
         # Add configs to service
         svc["configs"] = svc_configs
+
+    tracing_path = input_path.with_name(TRACING_FILE_NAME)
+    if tracing_path.exists():
+        _add_tracing_services(compose=compose, tracing_path=tracing_path, yaml=yaml)
 
     # Add top-level configs
     compose["configs"] = top_configs

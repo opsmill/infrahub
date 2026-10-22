@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import pytest
@@ -16,10 +17,28 @@ from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+from opentelemetry.sdk.trace.sampling import Decision
+from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags, set_span_in_context, use_span
 
-from infrahub.trace import InsecureTLSSession, MaskingSpanExporter, create_span_exporter, create_tracer_provider
+from infrahub import trace as infrahub_trace
+from infrahub.trace import (
+    InsecureTLSSession,
+    MaskingSpanExporter,
+    RatioSampler,
+    SampleRatioState,
+    clear_temporary_sample_ratio,
+    create_span_exporter,
+    create_tracer_provider,
+    get_sample_ratio_state,
+    get_traceid,
+    set_temporary_sample_ratio,
+)
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Iterator
+
+    from opentelemetry.context import Context
+    from opentelemetry.sdk.trace.sampling import Sampler
     from opentelemetry.util.types import AttributeValue
 
 
@@ -289,11 +308,218 @@ class TestSpanAttributeMasking:
         assert not any("code=abc" in value or "state=xyz" in value for value in exported_values)
 
 
-def test_tracer_provider_masks_spans_before_the_exporter() -> None:
-    provider = create_tracer_provider(service="infrahub-test", version="1.0", exporter_type="console")
+def test_tracer_provider_masks_spans_before_the_exporter(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(infrahub_trace, "_process_sampler", None)
+    provider = create_tracer_provider(service="infrahub-test", version="1.0", exporter_type="console", sample_ratio=1.0)
     try:
         (span_processor,) = provider._active_span_processor._span_processors
         assert isinstance(span_processor, BatchSpanProcessor)
         assert isinstance(span_processor.span_exporter, MaskingSpanExporter)
     finally:
         provider.shutdown()
+
+
+RATIO = 0.5
+RATIO_LIMIT = int(RATIO * 2**64)
+TRACE_ID_BELOW_LIMIT = (0xABCDEF << 64) | (RATIO_LIMIT - 1)
+TRACE_ID_AT_LIMIT = (0xABCDEF << 64) | RATIO_LIMIT
+NOW = datetime(2026, 10, 13, 12, 0, tzinfo=UTC)
+
+
+@dataclass
+class FixedClock:
+    now: datetime = NOW
+
+    def __call__(self) -> datetime:
+        return self.now
+
+
+def _decision(sampler: Sampler, trace_id: int, parent_context: Context | None = None) -> Decision:
+    return sampler.should_sample(parent_context=parent_context, trace_id=trace_id, name="request").decision
+
+
+def _parent_context(sampled: bool) -> Context:
+    flags = TraceFlags(TraceFlags.SAMPLED if sampled else TraceFlags.DEFAULT)
+    parent = SpanContext(trace_id=TRACE_ID_AT_LIMIT, span_id=1, is_remote=True, trace_flags=flags)
+    return set_span_in_context(NonRecordingSpan(parent))
+
+
+class TestRatioSampler:
+    def test_records_trace_ids_below_the_ratio_limit_only(self) -> None:
+        sampler = RatioSampler(default_ratio=RATIO)
+
+        assert _decision(sampler=sampler, trace_id=TRACE_ID_BELOW_LIMIT) is Decision.RECORD_AND_SAMPLE
+        assert _decision(sampler=sampler, trace_id=TRACE_ID_AT_LIMIT) is Decision.DROP
+
+    def test_new_sampler_uses_the_default_ratio(self) -> None:
+        assert RatioSampler(default_ratio=RATIO).ratio == RATIO
+
+    def test_temporary_ratio_applies_until_it_expires(self) -> None:
+        clock = FixedClock()
+        sampler = RatioSampler(default_ratio=0.0, clock=clock)
+
+        sampler.set_temporary_ratio(ratio=1.0, expires_at=NOW + timedelta(minutes=10))
+        assert sampler.ratio == 1.0
+        assert _decision(sampler=sampler, trace_id=TRACE_ID_AT_LIMIT) is Decision.RECORD_AND_SAMPLE
+
+        clock.now = NOW + timedelta(minutes=10)
+        assert sampler.ratio == 0.0
+        assert _decision(sampler=sampler, trace_id=TRACE_ID_BELOW_LIMIT) is Decision.DROP
+
+    def test_new_temporary_ratio_replaces_the_previous_one(self) -> None:
+        sampler = RatioSampler(default_ratio=0.0, clock=FixedClock())
+
+        sampler.set_temporary_ratio(ratio=1.0, expires_at=NOW + timedelta(minutes=10))
+        sampler.set_temporary_ratio(ratio=RATIO, expires_at=NOW + timedelta(minutes=5))
+
+        assert sampler.state() == SampleRatioState(
+            default_ratio=0.0, ratio_in_force=RATIO, temporary_ratio=RATIO, expires_at=NOW + timedelta(minutes=5)
+        )
+
+    def test_clearing_restores_the_default_ratio(self) -> None:
+        sampler = RatioSampler(default_ratio=0.0, clock=FixedClock())
+        sampler.set_temporary_ratio(ratio=1.0, expires_at=NOW + timedelta(minutes=10))
+
+        sampler.clear_temporary_ratio()
+
+        assert sampler.ratio == 0.0
+        assert _decision(sampler=sampler, trace_id=TRACE_ID_BELOW_LIMIT) is Decision.DROP
+
+    def test_ratio_out_of_range_is_rejected(self) -> None:
+        sampler = RatioSampler(default_ratio=RATIO, clock=FixedClock())
+
+        with pytest.raises(ValueError, match=r"^Probability must be in range \[0.0, 1.0\]\.$"):
+            sampler.set_temporary_ratio(ratio=1.1, expires_at=NOW + timedelta(minutes=10))
+        assert sampler.ratio == RATIO
+
+    def test_state_reports_the_temporary_ratio_until_it_expires(self) -> None:
+        clock = FixedClock()
+        sampler = RatioSampler(default_ratio=0.1, clock=clock)
+        expires_at = NOW + timedelta(minutes=10)
+        sampler.set_temporary_ratio(ratio=1.0, expires_at=expires_at)
+
+        assert sampler.state() == SampleRatioState(
+            default_ratio=0.1, ratio_in_force=1.0, temporary_ratio=1.0, expires_at=expires_at
+        )
+
+        clock.now = expires_at
+        assert sampler.state() == SampleRatioState(default_ratio=0.1, ratio_in_force=0.1)
+
+
+class TestTracerProviderSampler:
+    @pytest.fixture
+    def provider_sampler(self, monkeypatch: pytest.MonkeyPatch) -> Iterator[Callable[[float], Sampler]]:
+        """Build tracer providers the way the server and the task worker do, and restore the process sampler after."""
+        monkeypatch.setattr(infrahub_trace, "_process_sampler", None)
+        providers: list[TracerProvider] = []
+
+        def build(sample_ratio: float) -> Sampler:
+            provider = create_tracer_provider(
+                service="infrahub-test", version="1.0", exporter_type="console", sample_ratio=sample_ratio
+            )
+            providers.append(provider)
+            return provider.sampler
+
+        yield build
+        for provider in providers:
+            provider.shutdown()
+
+    def test_sampled_parent_is_always_followed(self, provider_sampler: Callable[[float], Sampler]) -> None:
+        sampler = provider_sampler(0.0)
+
+        decision = _decision(sampler=sampler, trace_id=TRACE_ID_AT_LIMIT, parent_context=_parent_context(sampled=True))
+
+        assert decision is Decision.RECORD_AND_SAMPLE
+
+    def test_unsampled_parent_is_never_recorded(self, provider_sampler: Callable[[float], Sampler]) -> None:
+        sampler = provider_sampler(1.0)
+
+        decision = _decision(
+            sampler=sampler, trace_id=TRACE_ID_BELOW_LIMIT, parent_context=_parent_context(sampled=False)
+        )
+
+        assert decision is Decision.DROP
+
+    def test_root_trace_uses_the_configured_ratio(self, provider_sampler: Callable[[float], Sampler]) -> None:
+        sampler = provider_sampler(RATIO)
+
+        assert _decision(sampler=sampler, trace_id=TRACE_ID_BELOW_LIMIT) is Decision.RECORD_AND_SAMPLE
+        assert _decision(sampler=sampler, trace_id=TRACE_ID_AT_LIMIT) is Decision.DROP
+
+    def test_temporary_ratio_applies_to_the_process_sampler_until_cleared(
+        self, provider_sampler: Callable[[float], Sampler]
+    ) -> None:
+        sampler = provider_sampler(0.0)
+
+        set_temporary_sample_ratio(ratio=1.0, expires_at=datetime.now(tz=UTC) + timedelta(hours=1))
+        assert _decision(sampler=sampler, trace_id=TRACE_ID_AT_LIMIT) is Decision.RECORD_AND_SAMPLE
+
+        clear_temporary_sample_ratio()
+        assert _decision(sampler=sampler, trace_id=TRACE_ID_BELOW_LIMIT) is Decision.DROP
+
+    def test_new_process_sampler_starts_with_the_default_ratio(
+        self, provider_sampler: Callable[[float], Sampler]
+    ) -> None:
+        provider_sampler(0.0)
+        set_temporary_sample_ratio(ratio=1.0, expires_at=datetime.now(tz=UTC) + timedelta(hours=1))
+
+        sampler = provider_sampler(0.0)
+
+        assert _decision(sampler=sampler, trace_id=TRACE_ID_BELOW_LIMIT) is Decision.DROP
+
+    def test_state_follows_the_process_sampler(self, provider_sampler: Callable[[float], Sampler]) -> None:
+        assert get_sample_ratio_state() is None
+
+        provider_sampler(0.1)
+        expires_at = datetime.now(tz=UTC) + timedelta(hours=1)
+        set_temporary_sample_ratio(ratio=1.0, expires_at=expires_at)
+
+        assert get_sample_ratio_state() == SampleRatioState(
+            default_ratio=0.1, ratio_in_force=1.0, temporary_ratio=1.0, expires_at=expires_at
+        )
+
+    def test_changing_the_ratio_without_a_process_sampler_does_nothing(
+        self, provider_sampler: Callable[[float], Sampler]
+    ) -> None:
+        set_temporary_sample_ratio(ratio=1.0, expires_at=datetime.now(tz=UTC) + timedelta(hours=1))
+        clear_temporary_sample_ratio()
+
+        assert get_sample_ratio_state() is None
+
+
+@dataclass
+class TraceIdFormatTestCase:
+    name: str
+    trace_id: int
+    expected: str
+
+
+TRACE_ID_FORMAT_TEST_CASES: list[TraceIdFormatTestCase] = [
+    TraceIdFormatTestCase(
+        name="leading_zero_is_kept",
+        trace_id=0x0AF7651916CD43DD8448EB211C80319C,
+        expected="0af7651916cd43dd8448eb211c80319c",
+    ),
+    TraceIdFormatTestCase(
+        name="small_trace_id_is_padded_to_32_characters",
+        trace_id=0x1,
+        expected="00000000000000000000000000000001",
+    ),
+    TraceIdFormatTestCase(
+        name="largest_trace_id",
+        trace_id=2**128 - 1,
+        expected="ffffffffffffffffffffffffffffffff",
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in TRACE_ID_FORMAT_TEST_CASES])
+def test_trace_id_is_32_lowercase_hexadecimal_characters(test_case: TraceIdFormatTestCase) -> None:
+    span = NonRecordingSpan(SpanContext(trace_id=test_case.trace_id, span_id=1, is_remote=False))
+
+    with use_span(span):
+        assert get_traceid() == test_case.expected
+
+
+def test_no_trace_id_outside_a_span() -> None:
+    assert get_traceid() is None

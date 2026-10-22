@@ -67,6 +67,7 @@ Backend architecture documentation in [knowledge/backend/](knowledge/backend/):
 - [task-workers.md](knowledge/backend/task-workers.md) - How task workers claim and start flow runs
 - [message-bus.md](knowledge/backend/message-bus.md) - Message bus system
 - [api-backpressure.md](knowledge/backend/api-backpressure.md) - Priority-aware load shedding and the database-stress signal
+- [observability.md](knowledge/backend/observability.md) - Traces, logs and metrics: trace propagation, sampling, span masking and the multiprocess metric rules
 - [telemetry.md](knowledge/backend/telemetry.md) - Anonymous usage telemetry (categories, windowing, retention, degradation)
 - [graphql-execution.md](knowledge/backend/graphql-execution.md) - Sync vs async field completion and why middleware must stay synchronous
 - [tls.md](knowledge/backend/tls.md) - How the CA bundle of every outbound TLS connection is resolved and where each component applies it

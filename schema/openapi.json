@@ -2358,6 +2358,246 @@
                 }
             }
         },
+        "/api/troubleshooting/trace-sample-ratio": {
+            "get": {
+                "tags": [
+                    "troubleshooting"
+                ],
+                "summary": "Get the trace sampling ratio",
+                "description": "Return the share of new traces that the API server process handling the request records: the default ratio set by INFRAHUB_TRACE_SAMPLE_RATIO, and the temporary ratio with its end time when one is in force. Use it during an incident to check the ratio before and after a change. Requires the super_admin permission.",
+                "operationId": "get_trace_sample_ratio_api_troubleshooting_trace_sample_ratio_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    },
+                    {
+                        "APIKeyHeader": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "branch",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Name of the branch to use for the query",
+                            "title": "Branch"
+                        },
+                        "description": "Name of the branch to use for the query"
+                    },
+                    {
+                        "name": "at",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Time to use for the query, in absolute or relative format",
+                            "title": "At"
+                        },
+                        "description": "Time to use for the query, in absolute or relative format"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TraceSampleRatioAPI"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "troubleshooting"
+                ],
+                "summary": "Set a temporary trace sampling ratio",
+                "description": "Record a different share of new traces on every API server process and task worker until the duration ends, without a restart, because a restart can remove the slow behaviour under investigation. A new change replaces the active one. Each process applies the change within seconds and logs \"Set the temporary trace sampling ratio\". Requires the super_admin permission and INFRAHUB_TRACE_ENABLE.",
+                "operationId": "set_trace_sample_ratio_api_troubleshooting_trace_sample_ratio_put",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    },
+                    {
+                        "APIKeyHeader": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "branch",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Name of the branch to use for the query",
+                            "title": "Branch"
+                        },
+                        "description": "Name of the branch to use for the query"
+                    },
+                    {
+                        "name": "at",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Time to use for the query, in absolute or relative format",
+                            "title": "At"
+                        },
+                        "description": "Time to use for the query, in absolute or relative format"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TraceSampleRatioUpdateAPI"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TraceSampleRatioAPI"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "troubleshooting"
+                ],
+                "summary": "Clear the temporary trace sampling ratio",
+                "description": "Go back to the default trace sampling ratio on every API server process and task worker. Each process applies the change within seconds and logs \"Cleared the temporary trace sampling ratio\". Requires the super_admin permission and INFRAHUB_TRACE_ENABLE.",
+                "operationId": "clear_trace_sample_ratio_api_troubleshooting_trace_sample_ratio_delete",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    },
+                    {
+                        "APIKeyHeader": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "branch",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Name of the branch to use for the query",
+                            "title": "Branch"
+                        },
+                        "description": "Name of the branch to use for the query"
+                    },
+                    {
+                        "name": "at",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Time to use for the query, in absolute or relative format",
+                            "title": "At"
+                        },
+                        "description": "Time to use for the query, in absolute or relative format"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TraceSampleRatioAPI"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/schema.graphql": {
             "get": {
                 "summary": "Get Graphql Schema",
@@ -9538,6 +9778,93 @@
                     "kind"
                 ],
                 "title": "TextAttributeWrite"
+            },
+            "TraceSampleRatioAPI": {
+                "properties": {
+                    "enabled": {
+                        "type": "boolean",
+                        "title": "Enabled",
+                        "description": "Indicates if tracing is enabled on this instance"
+                    },
+                    "default_ratio": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Default Ratio",
+                        "description": "Ratio set by INFRAHUB_TRACE_SAMPLE_RATIO"
+                    },
+                    "temporary_ratio": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Temporary Ratio",
+                        "description": "Ratio that replaces the default until expires_at"
+                    },
+                    "expires_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Expires At",
+                        "description": "UTC time when the temporary ratio stops applying"
+                    },
+                    "ratio_in_force": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Ratio In Force",
+                        "description": "Share of new root traces recorded now"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "enabled"
+                ],
+                "title": "TraceSampleRatioAPI"
+            },
+            "TraceSampleRatioUpdateAPI": {
+                "properties": {
+                    "ratio": {
+                        "type": "number",
+                        "maximum": 1.0,
+                        "minimum": 0.0,
+                        "title": "Ratio",
+                        "description": "Share of new root traces to record"
+                    },
+                    "duration_seconds": {
+                        "type": "integer",
+                        "maximum": 86400.0,
+                        "minimum": 1.0,
+                        "title": "Duration Seconds",
+                        "description": "Number of seconds the ratio applies"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "ratio",
+                    "duration_seconds"
+                ],
+                "title": "TraceSampleRatioUpdateAPI"
             },
             "UploadContentPayload": {
                 "properties": {

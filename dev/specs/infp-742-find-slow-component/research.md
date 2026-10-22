@@ -64,6 +64,18 @@ not use them.
   `development/`.
 - **Alternatives considered**: Turn tracing on in the root `docker-compose.yml`. Rejected: it would
   trace on every Compose instance, which FR-032 forbids.
+- **Changed on 2026-10-21 (decided by Daniel)**: the `environment` blocks cannot be in
+  `development/docker-compose-observability.yml`. The development stack always loads that file
+  (`tasks/shared.py`) and names its API service `server`, so a block for `infrahub-server` creates a
+  service without an image, and Compose rejects the project ("service infrahub-server has neither an
+  image nor a build context specified", tested). The blocks are in
+  `development/docker-compose-observability-tracing.yml`, and `development/convert_compose_standalone.py`
+  adds its services to the standalone file. The development stack does not turn tracing on; a developer
+  sets the `INFRAHUB_TRACE_*` variables. `docker compose -f docker-compose.yml -f
+  development/docker-compose-observability-standalone.yml config` shows tracing on for
+  `infrahub-server` and `task-worker`; the root file alone keeps it off. After manual testing, the file
+  sets `INFRAHUB_TRACE_ENABLE: ${INFRAHUB_TRACE_ENABLE:-true}`: a fixed `true` ignored
+  `INFRAHUB_TRACE_ENABLE=false`, so an operator with the stack could not turn tracing off (FR-034).
 
 ## R3. Work in other repositories
 
@@ -96,6 +108,14 @@ not use them.
   `OTEL_PROPAGATORS` once for the whole process. 1.33 is the first release that accepts
   `OTEL_PROPAGATORS=none` (1.16 to 1.32 raise on it, tested); an invalid value makes OpenTelemetry
   raise on import, so the SDK catches it, sends no header and logs one warning.
+- **Changed on 2026-10-21 (older OpenTelemetry already installed)**: `pip` does not upgrade an
+  `opentelemetry-api` older than 1.33 that the caller's process already has, and versions 1.16 to 1.18
+  raise `StopIteration` on import. The SDK reads the installed version with `importlib.metadata` once
+  per process; below 1.33 it never imports OpenTelemetry, sends no header and logs one warning.
+  Reading the version costs about 148 µs once; each later request costs about 10 ns for the cached
+  check (one `timeit` run on a Mac, no active span). Chosen by Daniel and Patrick Ogenstad in the
+  review of [opsmill/infrahub-sdk-python#1434](https://github.com/opsmill/infrahub-sdk-python/pull/1434),
+  which merged on 2026-10-21.
 - **Effect on this plan**: Stories 2 to 6 do not depend on the SDK. Story 1 scenarios 1, 3 and 8, and
   the `infrahubctl` part of story 6, cannot pass until the SDK change merges.
 
@@ -163,6 +183,14 @@ not use them.
 - **Not checked**: That a task worker process opens the events queue. The draft test
   `tests/unit/message_bus/test_operations.py` checks the handler, not the delivery. A component test
   must check delivery to a task worker before SC-004 is claimed.
+- **Checked on 2026-10-21**: a task worker uses the message bus of the `GIT_AGENT` component type
+  (`infrahub.workers.infrahub_async::InfrahubWorkerAsync.component_type`), which binds
+  `refresh.settings.*` to its own `worker-events-<identity>` queue and passes each message to the same
+  handlers. The integration test
+  `backend/tests/integration/services/adapters/message_bus/test_rabbitmq.py::test_task_worker_applies_a_trace_sample_ratio_change`
+  starts that bus against RabbitMQ, sends the message and checks that the ratio of the process changes;
+  it fails when the handler is not registered. It is an integration test, not a component test,
+  because it needs RabbitMQ. NATS is not covered by a test.
 
 ## R8. Masked value (FR-013a)
 

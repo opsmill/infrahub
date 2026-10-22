@@ -167,6 +167,11 @@ This replaces the SDK answer of 2026-10-14.
   to 1.32 raise on it (tested).
 - Q: What happens when `OTEL_PROPAGATORS` is invalid? → A: OpenTelemetry raises on import; the SDK
   sends no header and logs one warning instead of failing the request (FR-001).
+- Q: What happens when the caller's process already has a version older than 1.33? → A: The SDK reads
+  the installed version once per process and, below 1.33, never imports OpenTelemetry, sends no header
+  and logs one warning, because 1.16 to 1.18 fail on import (review of
+  [opsmill/infrahub-sdk-python#1434](https://github.com/opsmill/infrahub-sdk-python/pull/1434),
+  2026-10-21).
 
 ## Personas
 

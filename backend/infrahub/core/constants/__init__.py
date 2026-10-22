@@ -106,6 +106,8 @@ class EventType(InfrahubStringEnum):
     ACCOUNT_LOGGED_IN = f"{EVENT_NAMESPACE}.account.logged_in"
     ACCOUNT_LOGGED_OUT = f"{EVENT_NAMESPACE}.account.logged_out"
 
+    TRACE_SAMPLE_RATIO_UPDATED = f"{EVENT_NAMESPACE}.trace.sample_ratio_updated"
+
 
 class PermissionLevel(Flag):
     READ = 1

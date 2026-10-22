@@ -52,9 +52,11 @@ curl "https://infrahub.opsmill.io/enterprise?size=small&observability=true" > do
 
 Once running, Grafana is available at [http://localhost:3500](http://localhost:3500) with the default credentials `admin` / `admin`.
 
-:::tip Enable request tracing
+### Request tracing
 
-Infrahub can export OpenTelemetry traces so you can follow a single request as it moves across the API server, task workers, and the database. Traces are sent to the bundled Tempo instance and surfaced in Grafana under the Tempo data source. To enable it, add the following to a `.env` file alongside the compose file:
+Infrahub exports OpenTelemetry traces, so you can follow one request or background task across the API server, the task workers and the database. The Compose file of the stack, `docker-compose-observability-standalone.yml`, turns tracing on for the `infrahub-server` and `task-worker` services and sends the traces to the bundled Tempo instance, which Grafana shows under the Tempo data source. Infrahub then records one new trace in ten; see [Trace sampling](#trace-sampling) to change that. Without the stack, tracing stays off in a Compose deployment. To turn it off with the stack, set `INFRAHUB_TRACE_ENABLE=false` in a `.env` file alongside the compose file.
+
+To turn tracing on in a Compose deployment that does not include these settings, add the following to a `.env` file alongside the compose file:
 
 ```bash
 INFRAHUB_TRACE_ENABLE=true
@@ -62,11 +64,10 @@ INFRAHUB_TRACE_EXPORTER_TYPE=otlp
 INFRAHUB_TRACE_EXPORTER_PROTOCOL=grpc
 INFRAHUB_TRACE_EXPORTER_ENDPOINT=http://infrahub-tempo:4317
 INFRAHUB_TRACE_INSECURE=true
+INFRAHUB_TRACE_SAMPLE_RATIO=0.1
 ```
 
 `INFRAHUB_TRACE_INSECURE=true` sends spans over a plaintext connection, which is what the bundled Tempo instance expects. Set it to `false` when your collector terminates TLS.
-
-:::
 
 ### Exporting to a collector that uses TLS
 
@@ -120,7 +121,7 @@ infrahub:
     enabled: true
 ```
 
-Apply the change with `helm upgrade` on your Infrahub release. Enabling the bundled stack also turns tracing on automatically: Infrahub emits traces to the bundled Tempo at `<release>-tempo:4317` (where `<release>` is your Infrahub release name) with no further configuration.
+Apply the change with `helm upgrade` on your Infrahub release. Enabling the bundled stack also turns tracing on automatically: Infrahub emits traces to the bundled Tempo at `<release>-tempo:4317` (where `<release>` is your Infrahub release name) with no further configuration. The chart does not set the sampling ratio, so Infrahub records one new trace in ten, its default; see [Trace sampling](#trace-sampling).
 
 #### Standalone release
 
@@ -241,6 +242,8 @@ infrahub-observability:
 
 For the complete list of values, see the chart's `values.yaml`.
 
+The Docker Compose stack keeps traces and logs for the same time as the chart: 96 hours of traces, set by `block_retention` in the Tempo configuration, and 24 hours of logs, set by `retention_period` in the Loki configuration. Both files are embedded in the Compose file of the stack.
+
 <ReferenceLink title="infrahub-observability values.yaml" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-observability/values.yaml" openInNewTab />
 
 ### Verify the deployment
@@ -254,3 +257,76 @@ kubectl get pods -n infrahub
 You should see an Alloy pod on each node (deployed as a DaemonSet), single-instance Loki, Tempo, Prometheus, and Grafana pods, a node exporter on each node, and the Prefect exporter. The Prefect exporter only becomes healthy once it can reach the Infrahub task manager, so deploy it alongside an Infrahub release. Once Grafana is reachable, open it and confirm that the Infrahub dashboards render and that the Prometheus and Loki data sources connect successfully.
 
 To upgrade the stack later, see [Upgrade the observability stack](../../maintain-upgrade/upgrade/observability-stack).
+
+## Trace sampling
+
+When tracing is on, Infrahub records a share of the new traces, set by `INFRAHUB_TRACE_SAMPLE_RATIO` on the API server and on every task worker:
+
+| Value | Effect |
+|---|---|
+| `0.1` (default) | Records one new trace in ten |
+| `1` | Records every new trace |
+| `0` | Records no new trace |
+
+Infrahub recorded every trace before this setting existed. Each recorded trace adds work to the API server and the task workers and uses storage in Tempo, so a higher ratio costs more. Infrahub reads the value when a process starts. To record more traces for a limited time without a restart, see [Record more traces during an incident](#record-more-traces-during-an-incident).
+
+For a request or a flow run that arrives with a trace context, Infrahub keeps the decision of its caller: it records the request when the caller recorded its own span, and does not record it otherwise. A flow run started by an API request therefore belongs to the same trace as that request, and a trace is either complete or absent.
+
+### Record more traces during an incident
+
+A slow component is easier to find when every request is traced, and a restart can remove the slow behavior you want to observe. An account with the `super_admin` permission can therefore replace the ratio on every API server process and task worker for 1 second to 24 hours, without a restart. Send a `PUT` request to `/api/troubleshooting/trace-sample-ratio` with the ratio and the number of seconds it applies:
+
+```bash
+curl -X PUT "https://infrahub.example.com/api/troubleshooting/trace-sample-ratio" \
+  -H "X-INFRAHUB-KEY: <api-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"ratio": 1, "duration_seconds": 1800}'
+```
+
+The response shows the sampling state of the API server process that handled the request:
+
+```json
+{
+  "enabled": true,
+  "default_ratio": 0.1,
+  "temporary_ratio": 1.0,
+  "expires_at": "2026-10-21T14:30:00Z",
+  "ratio_in_force": 1.0
+}
+```
+
+- A `GET` request to the same path returns this state without changing it.
+- A `DELETE` request to the same path clears the temporary ratio before the end time, so every process uses `INFRAHUB_TRACE_SAMPLE_RATIO` again.
+- A new `PUT` request replaces the ratio and the end time of the previous one.
+- At the end time, every process uses `INFRAHUB_TRACE_SAMPLE_RATIO` again, with no request needed.
+- A process that starts or restarts while the temporary ratio applies uses `INFRAHUB_TRACE_SAMPLE_RATIO`. Send the `PUT` request again to apply the temporary ratio to it.
+- When tracing is off, the `PUT` and `DELETE` requests fail with `Tracing is not enabled on this instance; set INFRAHUB_TRACE_ENABLE`, and the `GET` request returns `"enabled": false`.
+
+For each change, Infrahub records an `infrahub.trace.sample_ratio_updated` event with the account that made the change, the ratio before and after it, and the end time. See the [trace events reference](../../../reference/infrahub-events/trace.mdx).
+
+### Check that every process applied the change
+
+Each API server process and task worker writes one log line when it applies the change: `Set the temporary trace sampling ratio`, with the `ratio` and `expires_at` fields, or `Cleared the temporary trace sampling ratio`. In Grafana, search Loki for that text and check that you find one line per API server process and per task worker. A process without the line did not receive the change; send the request again.
+
+### Reduce the cost of tracing
+
+To stop recording new traces at once, send a `PUT` request with `"ratio": 0` and a duration of up to 86400 seconds. At the next restart, lower `INFRAHUB_TRACE_SAMPLE_RATIO`, or set `INFRAHUB_TRACE_ENABLE=false` to turn tracing off.
+
+### Find the log lines of a trace
+
+Each log line that the API server or a task worker writes while a trace is recorded has a `trace_id` field: the trace ID as 32 lowercase hexadecimal characters, the form Tempo uses. The API server wrote it before as a `0x` hexadecimal number without leading zeros; update the log queries and alert rules that read `trace_id`.
+
+In Grafana, open a span in Tempo and select **Logs for this span** to view the log lines of its trace, from one hour before to one hour after the span. From a log line in Loki, open the line and select **View trace in Tempo** next to its `trace_id` field. The task logs that the Infrahub web interface shows for each task don't have a `trace_id`.
+
+To set up the same links in your own Grafana, see [Send Infrahub telemetry to your own monitoring](../../run-observe/own-monitoring.mdx).
+
+### Values that spans never contain
+
+Before a span leaves the API server or a task worker, Infrahub replaces these attribute values with `[MASKED]` and keeps the attribute name:
+
+- Client IP addresses
+- URL query strings, for example the `code` and `state` parameters of a single sign-on login. The scheme, the host name and the path of the URL stay readable.
+- Attributes whose name contains `token`, `password`, `secret`, `email`, `user_name` or `username`
+- The `account_name` attribute
+
+Database queries and query names stay readable. Log lines are not masked.

@@ -81,6 +81,7 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
             service="infrahub-server",
             version=__version__,
             exporter_type=config.SETTINGS.trace.exporter_type,
+            sample_ratio=config.SETTINGS.trace.sample_ratio,
             exporter_endpoint=config.SETTINGS.trace.exporter_endpoint,
             exporter_protocol=config.SETTINGS.trace.exporter_protocol,
             insecure=config.SETTINGS.trace.insecure,

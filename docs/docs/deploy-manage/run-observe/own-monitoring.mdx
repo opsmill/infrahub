@@ -1,0 +1,94 @@
+---
+title: Send Infrahub telemetry to your own monitoring
+---
+
+# Send Infrahub telemetry to your own monitoring
+
+Infrahub produces Prometheus metrics, OpenTelemetry traces and structured log lines that any monitoring system can collect, not only the [observability stack](../install-configure/install/observability-stack.mdx) that OpsMill provides. If your platform or SRE team already reads dashboards, traces and logs in its own monitoring system, send Infrahub's signals there too, next to the rest of your infrastructure. An incident in Infrahub can then be investigated with the same tools and alerts as your other services.
+
+## What each signal answers
+
+Use each signal for a different question about a slow or failing instance:
+
+- **Metrics** show the load on the whole instance, and which pool, lock or queue is the limit.
+- **Traces** show where the time of one API request or one background task went, down to each database query.
+- **Logs** show what one process did.
+
+Logs and traces share one value: each log line written while a trace is recorded contains the ID of that trace in its `trace_id` field, so you can move from a slow trace to the log lines it produced, and back.
+
+## Collect the metrics
+
+The API server serves its metrics on `/metrics` on its HTTP port, and each task worker serves them on the port set by `INFRAHUB_METRICS_PORT` (default `8000`). Scrape each task worker directly rather than through a shared address, so that every worker is collected. [Metrics](./metrics.mdx#scrape-the-metrics) has a Prometheus scrape configuration and the metrics to watch, and the [Prometheus metrics reference](../../reference/metrics.mdx) lists every metric.
+
+## Send traces to an OTLP collector
+
+Infrahub exports traces with the OpenTelemetry protocol (OTLP), so any collector that receives OTLP can store them: an OpenTelemetry Collector, Grafana Tempo, Jaeger, or a vendor agent. Set these variables on the API server and on every task worker:
+
+| Variable | Value |
+|---|---|
+| `INFRAHUB_TRACE_ENABLE` | `true` |
+| `INFRAHUB_TRACE_EXPORTER_TYPE` | `otlp` |
+| `INFRAHUB_TRACE_EXPORTER_PROTOCOL` | `grpc` (default) or `http/protobuf` |
+| `INFRAHUB_TRACE_EXPORTER_ENDPOINT` | The address of your collector, for example `otel-collector.example.com:4317` for gRPC |
+| `INFRAHUB_TRACE_SAMPLE_RATIO` | The share of new traces to record, from `0` to `1` (default `0.1`) |
+
+The API server reports its spans with the service name `infrahub-server`, and the task workers with `infrahub-task-worker`. To add your own resource attributes, such as the environment name, set `OTEL_RESOURCE_ATTRIBUTES` to a comma-separated list of `key=value` pairs. When your collector uses TLS with a private certificate authority, see [Exporting to a collector that uses TLS](../install-configure/install/observability-stack.mdx#exporting-to-a-collector-that-uses-tls).
+
+A background task is in the same trace as the API request that started it. Requests that the task sends back to the API server through the Python SDK, such as the queries of a Generator, are part of that trace too. To change the share of recorded traces during an incident without a restart, see [Record more traces during an incident](../install-configure/install/observability-stack.mdx#record-more-traces-during-an-incident).
+
+Before a span leaves the process, Infrahub replaces secrets and personal data in its attributes with `[MASKED]`: [Values that spans never contain](../install-configure/install/observability-stack.mdx#values-that-spans-never-contain) lists them. Masking is always on, also when you send the traces to your own collector.
+
+## Collect the logs with the trace ID
+
+The API server and the task workers write their log lines to standard output. Collect the container output with your log agent, as for any other service. The format depends on `INFRAHUB_PRODUCTION`:
+
+- With `INFRAHUB_PRODUCTION=true`, the default of Infrahub, each line is a JSON object, for example `{"event": "...", "trace_id": "0af7651916cd43dd8448eb211c80319c", ...}`.
+- With `INFRAHUB_PRODUCTION=false`, which the Docker Compose files set, each line is text with `key=value` fields, for example `trace_id=0af7651916cd43dd8448eb211c80319c`.
+
+The text lines also contain terminal color codes around each field name and value, so a search for `trace_id=` does not find them as written. The observability stack removes the codes before it stores the lines. With your own log agent, set `INFRAHUB_PRODUCTION=true` on the API server and the task workers to get JSON lines without color codes, or remove the codes in your agent.
+
+The `trace_id` value is 32 lowercase hexadecimal characters, the trace ID format of the W3C Trace Context standard, which Tempo also uses. A line written outside a recorded trace has no `trace_id`.
+
+## Link traces and logs in your own Grafana
+
+To move between a trace and its log lines in your own Grafana, configure the Loki and Tempo data sources like the ones the observability stack provides. In a provisioning file:
+
+```yaml title="datasources.yml"
+datasources:
+  - name: Loki
+    type: loki
+    uid: loki
+    url: http://loki:3100
+    jsonData:
+      derivedFields:
+        - name: trace_id
+          matcherRegex: '(?:trace_id=|TraceID=|"trace_id":\s*")(?:0x)?([0-9a-f]+)'
+          url: '$${__value.raw}'
+          urlDisplayLabel: "View trace in Tempo"
+          datasourceUid: tempo
+
+  - name: Tempo
+    type: tempo
+    uid: tempo
+    url: http://tempo:3200
+    jsonData:
+      tracesToLogsV2:
+        datasourceUid: loki
+        spanStartTimeShift: '-1h'
+        spanEndTimeShift: '1h'
+        filterByTraceID: true
+        customQuery: true
+        query: '{job=~".+"} |~ `(?i)trace_?id[=": ]+(0x)?$${__trace.traceId}`'
+```
+
+Change the URLs and the `uid` values to match your Grafana. Grafana reads `$$` in a provisioning file as a literal `$`; when you enter the same values in the Grafana web interface, type a single `$`.
+
+- The Loki derived field finds the trace ID in text lines, in JSON lines, and in lines that still use the `0x` form, and adds a **View trace in Tempo** link next to it.
+- The Tempo setting adds **Logs for this span** to each span. Grafana then searches every Loki stream, from one hour before to one hour after the span, for lines whose `trace_id` field contains the trace ID. Because it searches every stream, it works without labels specific to Docker Compose or Kubernetes. A line that contains the ID only inside a URL, such as an access log line of Tempo itself, does not match.
+
+## Related resources
+
+- [Metrics](./metrics.mdx): where Infrahub exposes metrics, how to scrape them, and which ones to watch
+- [Prometheus metrics reference](../../reference/metrics.mdx): every metric, with its type and labels
+- [Observability stack](../install-configure/install/observability-stack.mdx): the stack OpsMill provides, trace sampling, and the incident steps
+- [Log forwarding](./log-forwarding/overview.mdx): sends audit events to a syslog receiver, for compliance and security monitoring rather than troubleshooting

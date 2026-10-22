@@ -131,7 +131,8 @@ backend/tests/
 └── component/api/  (test_trace_sample_ratio.py, test_trace_spans.py, test_sso_token_telemetry.py)
 
 development/
-├── docker-compose-observability.yml            # Tracing on for infrahub-server and task-worker (FR-032)
+├── docker-compose-observability-tracing.yml    # New: tracing on for infrahub-server and task-worker (FR-032)
+├── convert_compose_standalone.py               # Adds the tracing file to the standalone file
 ├── docker-compose-observability-standalone.yml # Regenerated
 ├── docker-compose.yml                          # INFRAHUB_TRACE_SAMPLE_RATIO
 ├── alloy/config.alloy                          # Neo4j target only when set (FR-025)
@@ -238,9 +239,11 @@ the branch is created, as `YYYYMMDD`.
 | 1 | A1 | [IFC-3425](https://opsmill.atlassian.net/browse/IFC-3425) | Mask secrets and personal data in spans and logs, and fix single sign-on telemetry | `dp-<date>-mask-telemetry-ifc-3425` | Layer 0 | T001, T005, T007–T018 |
 | 2 | B1 | [IFC-3428](https://opsmill.atlassian.net/browse/IFC-3428) | Record long durations, connection pool load and task worker saturation | `dp-<date>-slow-component-metrics-ifc-3428` | Layer 1 | T006, T039–T047, T049–T053, T055, T056 |
 | 3 | B2 | [IFC-3429](https://opsmill.atlassian.net/browse/IFC-3429) | Fix the shipped dashboards and make them work in any Grafana | `dp-<date>-portable-dashboards-ifc-3429` | Layer 2 | T048, T054, T057–T064 |
-| 4 | A2 | [IFC-3426](https://opsmill.atlassian.net/browse/IFC-3426) | Follow a background task to its queries in one trace | `dp-<date>-one-trace-ifc-3426` | Layer 3 | T024–T038 |
-| 5 | A3 | [IFC-3427](https://opsmill.atlassian.net/browse/IFC-3427) | Change the trace sampling ratio during an incident without a restart | `dp-<date>-runtime-sample-ratio-ifc-3427` | Layer 4 | T065–T078 |
-| 6 | C1 | [IFC-3430](https://opsmill.atlassian.net/browse/IFC-3430) | Measure, document and close out | `dp-<date>-close-out-slow-component-ifc-3430` | Layer 5 | T085–T094 |
+| 4 | A2 | [IFC-3470](https://opsmill.atlassian.net/browse/IFC-3470) | Follow a background task to its queries in one trace, change the trace sampling ratio without a restart, and close out | `dp-20261021-one-trace-sample-ratio-close-out-ifc-3470` | Layer 3 | T024–T038, T065–T078, T085–T095 |
+
+On 2026-10-20 Daniel merged the layers planned for IFC-3426 (one trace), IFC-3427 (ratio without a
+restart) and IFC-3430 (close out) into one layer and one pull request, IFC-3470. The 3 tickets were
+closed as "Won't Do" on 2026-10-21; they keep the detailed scope of each part.
 
 The SDK changes are in another repository, so they form a second stack there, in `python_sdk/`:
 
@@ -250,12 +253,13 @@ The SDK changes are in another repository, so they form a second stack there, in
 | 2 | S2 | [IFC-3420](https://opsmill.atlassian.net/browse/IFC-3420) | Add the `infrahubctl` command for the trace sampling ratio | `dp-20261015-trace-sample-ratio-command-ifc-3420` | S1 | T079–T084 |
 
 ```text
-infrahub:            develop ← spec ← A1 ← B1 ← B2 ← A2 ← A3 ← C1
+infrahub:            develop ← spec ← A1 ← B1 ← B2 ← A2
 infrahub-sdk-python: infrahub-develop ← S1 ← S2
 ```
 
 - Why this order: A1 comes first because the masking must reach `develop` before tracing reaches more
-  operators (FR-011). A2 is fully tested only with S1, and A3 is fully used only with S2. C1 is last.
+  operators (FR-011). The one trace part of A2 is fully tested only with S1, and its ratio part is
+  fully used only with S2. A2 is last.
 - Merging: the whole stack merges at once, after the top pull request is validated, with
   `gh stack merge <top PR> --yes`, which merges that pull request and every unmerged one below it
   (proposed by Fatih Acar on 2026-10-19 in
@@ -270,7 +274,7 @@ infrahub-sdk-python: infrahub-develop ← S1 ← S2
   Before marking a layer ready, run `gh stack sync` and check that its CI passes.
 - A fix in a lower layer is made in that layer, then `gh stack rebase --upstack` replays the layers
   above. Each layer ticks its own tasks in this file and records its own spec updates.
-- A2 is tested with `python_sdk` on the S1 branch; it does not wait for S1 to merge. Only C1 commits
+- A2 is tested with `python_sdk` on the S1 branch; it does not wait for S1 to merge. Only A2 commits
   the `python_sdk` pointer, after S1 and S2 merge. Then Daniel runs `opsmill-dev-guiding-manual-tests`
   (T093).
 - Each pull request opens as a draft (`gh stack submit --auto`), after Daniel's manual test of the

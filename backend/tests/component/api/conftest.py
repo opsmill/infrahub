@@ -16,6 +16,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workers.dependencies import build_database, build_message_bus
+from tests.adapters.message_bus import BusRecorder
 from tests.conftest import TestHelper
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.task_manager import setup_task_manager_once
@@ -44,6 +45,16 @@ def client_headers() -> dict[str, str]:
 @pytest.fixture
 def admin_headers() -> dict[str, str]:
     return {"X-INFRAHUB-KEY": "admin-security"}
+
+
+@pytest.fixture
+def recorder_bus(helper: TestHelper, dependency_provider: Provider) -> Generator[BusRecorder, None, None]:
+    original = config.OVERRIDE.message_bus
+    bus = helper.get_message_bus_recorder()
+    config.OVERRIDE.message_bus = bus
+    with override_dependency(build_message_bus, lambda: bus, dependency_provider=dependency_provider):
+        yield bus
+    config.OVERRIDE.message_bus = original
 
 
 @pytest.fixture

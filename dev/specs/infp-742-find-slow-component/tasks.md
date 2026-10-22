@@ -38,10 +38,9 @@ requires the single sign-on fixes to ship before tracing is turned on for more o
   fragments on the top pull request only (decided by Daniel on 2026-10-16). Intermediate layers create
   no file in `changelog/`. Instead, each layer writes the text of its fragments in "Changelog entries
   for the top layer" at the end of this file, and its pull request checklist says that the fragment is
-  skipped on purpose. T095, in the top layer (IFC-3430), creates all of them. SDK fragments are not
+  skipped on purpose. T095, in the top layer (IFC-3470), creates all of them. SDK fragments are not
   affected: each SDK pull request is in another repository and carries its own fragment in
   `python_sdk/changelog/`.
-  `creating-changelog-entries` skill. SDK fragments go in `python_sdk/changelog/`.
 - **Submodule pointer**: while the SDK branches are not merged, `python_sdk` shows as modified in
   `git status`. Never stage it in an Infrahub commit before T086.
 - **Push and pull requests**: push a branch or open a pull request only when Daniel asks.
@@ -123,30 +122,30 @@ its trace and its task worker logs in Grafana (quickstart, manual checks 1 to 3)
 
 - [x] T019 [US1] In `python_sdk/`, check that every request path of the SDK (GraphQL queries, REST calls, file uploads, async and sync) builds its headers with `infrahub_sdk.client::BaseClient._request_headers` or `_merge_request_headers`; list any path that does not, in the commit message of T022 (research R3, not checked yet)
 - [x] T020 [P] [US1] Write unit tests in `python_sdk/tests/unit/sdk/test_trace_context.py`: with OpenTelemetry importable and a recording span, the request headers contain a valid `traceparent` for that span; with no active span, no `traceparent`; with OpenTelemetry not importable (patch the import), no `traceparent` and no error; same for the async and the sync client
-- [x] T021 [US1] In `python_sdk/infrahub_sdk/client.py`, add the `traceparent` header in `BaseClient._merge_request_headers` (every request passes through it; T019 found only `login` and `refresh_login` outside it) through the OpenTelemetry global propagator, importing OpenTelemetry only when it is installed; declare `opentelemetry-api>=1.33` as the optional extra `tracing` and in the `tests` group; on an invalid `OTEL_PROPAGATORS`, send no header and log one warning (FR-001, changed on 2026-10-20)
+- [x] T021 [US1] In `python_sdk/infrahub_sdk/client.py`, add the `traceparent` header in `BaseClient._merge_request_headers` (every request passes through it; T019 found only `login` and `refresh_login` outside it) through the OpenTelemetry global propagator, importing OpenTelemetry only when it is installed; declare `opentelemetry-api>=1.33` as the optional extra `tracing` and in the `tests` group; on an invalid `OTEL_PROPAGATORS`, send no header and log one warning (FR-001, changed on 2026-10-20); read the installed `opentelemetry-api` version once per process and, below 1.33, never import OpenTelemetry, send no header and log one warning, because an older version already installed in the caller's process fails on import (review of [opsmill/infrahub-sdk-python#1434](https://github.com/opsmill/infrahub-sdk-python/pull/1434), 2026-10-21)
 - [x] T022 [US1] In `python_sdk/`, add a changelog fragment in `python_sdk/changelog/` ("The SDK sends the W3C `traceparent` header when OpenTelemetry is installed"), run `uv run invoke format lint-code` and `uv run pytest tests/unit/`, then commit on `dp-20261015-trace-context-ifc-3419` with a conventional message ending in `[IFC-3419]`
 - [x] T023 [US1] Ask Daniel whether to push `dp-20261015-trace-context-ifc-3419` and open its pull request on `infrahub-develop` in `opsmill/infrahub-sdk-python` now, so the review runs while the Infrahub work continues (plan, delivery order step 7)
 
 ### Tests for User Story 1 (Infrahub)
 
-- [ ] T024 [P] [US1] Port `backend/tests/component/api/test_trace_spans.py` from the draft: each database query span of an API request is a child of the request span (FR-008)
-- [ ] T025 [P] [US1] Port the sampler tests from the draft `backend/tests/unit/test_trace.py` (`RatioSampler` default ratio, parent-based behaviour) and `backend/tests/unit/config/test_trace_settings.py` (`sample_ratio` from 0 to 1, default 0.1, values outside rejected): ratio 0.5 records about half of new root traces; a request with a sampled parent is always recorded (FR-006, FR-007)
-- [ ] T026 [P] [US1] Write unit tests in `backend/tests/unit/test_trace.py` and `backend/tests/unit/test_log.py`: `get_traceid` and the task worker `trace_id` field are 32 lowercase hexadecimal characters with leading zeros and no `0x`, including a trace ID that starts with `0` (FR-004); a task worker log line inside a recording span carries `trace_id`, and a line outside a span has none (FR-003)
-- [ ] T027 [P] [US1] Write a unit test in `backend/tests/unit/test_grafana_datasources.py` that loads `development/grafana/provisioning/datasources/datasource.yml` and checks: the Loki derived field matches `trace_id=<32 hex>`, `trace_id=0x<hex>` and `"trace_id": "<32 hex>"`; no `RequestID` derived field; the Tempo `tracesToLogsV2` has `spanStartTimeShift: -1h`, `spanEndTimeShift: 1h`, `filterByTraceID: true` and a query with `{job=~".+"}`; `tracesToMetrics` and `traceQuery` have start `-1h` and end `1h` (FR-005)
+- [x] T024 [P] [US1] Port `backend/tests/component/api/test_trace_spans.py` from the draft: each database query span of an API request is a child of the request span (FR-008)
+- [x] T025 [P] [US1] Port the sampler tests from the draft `backend/tests/unit/test_trace.py` (`RatioSampler` default ratio, parent-based behaviour) and `backend/tests/unit/config/test_trace_settings.py` (`sample_ratio` from 0 to 1, default 0.1, values outside rejected): ratio 0.5 records about half of new root traces; a request with a sampled parent is always recorded (FR-006, FR-007)
+- [x] T026 [P] [US1] Write unit tests in `backend/tests/unit/test_trace.py` and `backend/tests/unit/test_log.py`: `get_traceid` and the task worker `trace_id` field are 32 lowercase hexadecimal characters with leading zeros and no `0x`, including a trace ID that starts with `0` (FR-004); a task worker log line inside a recording span carries `trace_id`, and a line outside a span has none (FR-003)
+- [x] T027 [P] [US1] Write a unit test in `backend/tests/unit/test_grafana_datasources.py` that loads `development/grafana/provisioning/datasources/datasource.yml` and checks: the Loki derived field matches `trace_id=<32 hex>`, `trace_id=0x<hex>`, `"trace_id": "<32 hex>"` and `TraceID=<hex>`, the form that `development/alloy/config.alloy` writes for JSON lines of the API server (found on 2026-10-21); no `RequestID` derived field; the Tempo `tracesToLogsV2` has `spanStartTimeShift: -1h`, `spanEndTimeShift: 1h`, `filterByTraceID: true` and a query with `{job=~".+"}` that matches the trace ID only as a `trace_id` field, not inside a URL such as Tempo's `/api/traces/<id>` access log line (added after manual check 4 of IFC-3470); `tracesToMetrics` and `traceQuery` have start `-1h` and end `1h` (FR-005)
 
 ### Implementation for User Story 1 (Infrahub)
 
-- [ ] T028 [US1] In `backend/infrahub/config.py`, port `TraceSettings.sample_ratio` from the draft (default 0.1, from 0 to 1, with its description) (FR-006)
-- [ ] T029 [US1] In `backend/infrahub/trace.py`, port `RatioSampler` and `SampleRatioState` without the temporary ratio methods (those come in T070), use `ParentBased(root=RatioSampler(...))` in `create_tracer_provider`, and add the `sample_ratio` parameter to `create_tracer_provider` and `configure_trace` (FR-006, FR-007)
-- [ ] T030 [US1] Pass `sample_ratio=config.SETTINGS.trace.sample_ratio` to `configure_trace` in `backend/infrahub/server.py` (`app_initialization`) and in `backend/infrahub/workers/infrahub_async.py`, as the draft does
-- [ ] T031 [US1] In `backend/infrahub/trace.py`, change `get_traceid` to return `format(trace_id, "032x")` (research R5); in `backend/infrahub/log.py`, port the structlog processor `add_trace_id` from the draft with the same format and register it as the draft does (FR-003, FR-004)
-- [ ] T032 [US1] In `development/grafana/provisioning/datasources/datasource.yml`, apply the settings of [contracts/trace-log-links.md](contracts/trace-log-links.md) "Grafana data sources" (B10, FR-005)
-- [ ] T033 [US1] Declare `INFRAHUB_TRACE_SAMPLE_RATIO: ${INFRAHUB_TRACE_SAMPLE_RATIO:-0.1}` in the `environment:` block of `development/docker-compose.yml`, and update the root `docker-compose.yml` with `uv run invoke release.validate-dockercomposeenv` (backend `AGENTS.md`: Compose forwards only declared variables)
-- [ ] T034 [US1] In `development/docker-compose-observability.yml`, add an `environment` block for the `infrahub-server` and `task-worker` services with the five variables of [contracts/trace-log-links.md](contracts/trace-log-links.md) "Tracing in Compose" (FR-032, research R2); keep `INFRAHUB_TRACE_ENABLE` at `false` in the root `docker-compose.yml`
-- [ ] T035 [US1] Regenerate `development/docker-compose-observability-standalone.yml` with `development/convert_compose_standalone.py`, and check that the diff contains only the T034 change
+- [x] T028 [US1] In `backend/infrahub/config.py`, port `TraceSettings.sample_ratio` from the draft (default 0.1, from 0 to 1, with its description) (FR-006)
+- [x] T029 [US1] In `backend/infrahub/trace.py`, port `RatioSampler` and `SampleRatioState` without the temporary ratio methods (those come in T070), use `ParentBased(root=RatioSampler(...))` in `create_tracer_provider`, and add the `sample_ratio` parameter to `create_tracer_provider` and `configure_trace` (FR-006, FR-007)
+- [x] T030 [US1] Pass `sample_ratio=config.SETTINGS.trace.sample_ratio` to `configure_trace` in `backend/infrahub/server.py` (`app_initialization`) and in `backend/infrahub/workers/infrahub_async.py`, as the draft does
+- [x] T031 [US1] In `backend/infrahub/trace.py`, change `get_traceid` to return `format(trace_id, "032x")` (research R5); in `backend/infrahub/log.py`, port the structlog processor `add_trace_id` from the draft with the same format and register it as the draft does (FR-003, FR-004)
+- [x] T032 [US1] In `development/grafana/provisioning/datasources/datasource.yml`, apply the settings of [contracts/trace-log-links.md](contracts/trace-log-links.md) "Grafana data sources" (B10, FR-005)
+- [x] T033 [US1] Declare `INFRAHUB_TRACE_SAMPLE_RATIO: ${INFRAHUB_TRACE_SAMPLE_RATIO:-0.1}` in the `environment:` block of `development/docker-compose.yml`, and update the root `docker-compose.yml` with `uv run invoke release.validate-dockercomposeenv` (backend `AGENTS.md`: Compose forwards only declared variables)
+- [x] T034 [US1] In `development/docker-compose-observability.yml`, add an `environment` block for the `infrahub-server` and `task-worker` services with the five variables of [contracts/trace-log-links.md](contracts/trace-log-links.md) "Tracing in Compose" (FR-032, research R2); keep `INFRAHUB_TRACE_ENABLE` at `false` in the root `docker-compose.yml` (Done differently, decided by Daniel on 2026-10-21: the blocks are in the new file `development/docker-compose-observability-tracing.yml`, which `development/convert_compose_standalone.py` merges into the standalone file only, because the development stack always loads the observability file and names its API service `server`; see research R2.)
+- [x] T035 [US1] Regenerate `development/docker-compose-observability-standalone.yml` with `development/convert_compose_standalone.py`, and check that the diff contains only the T034 change (it also contains the T032 data source change, which the T032 commit did not regenerate)
 - [ ] T036 [US1] Write the question for the owner of the service behind `https://infrahub.opsmill.io/?observability=true` (owner not known; research R2): does it merge the observability file into the services of `docker-compose.yml`, so the T034 override applies? And can it set `INFRAHUB_NEO4J_METRICS_TARGET` to an empty value in the Community file only, so Community stops collecting from a Neo4j endpoint that does not exist (FR-025)? Give the text to Daniel; do not send it
 - [ ] T037 [P] [US1] (Write the text in "Changelog entries for the top layer", not in `changelog/`; created by T095.) Add changelog fragments in `changelog/`: port `+trace-sample-ratio.added.md` and `+task-worker-log-trace-id.added.md` from the draft; add a `changed` fragment that starts with `**Breaking:**` for the `trace_id` format (old `0x…` form, new 32-character form, update queries and alerts; research R5); add a `fixed` fragment for the trace and log links in Grafana (B10); add a `changed` fragment for tracing turned on in Compose with the observability stack (FR-032)
-- [ ] T038 [US1] Run T024 to T027 and `uv run invoke format lint`; with the submodule on `dp-20261015-trace-context-ifc-3419`, run a generator locally and check quickstart manual checks 1 to 3
+- [x] T038 [US1] Run T024 to T027 and `uv run invoke format lint`; with the submodule on `dp-20261015-trace-context-ifc-3419`, run a generator locally and check quickstart manual checks 1 to 3
 
 **Checkpoint**: Story 1 works with the local SDK branch. Scenarios 1, 3 and 8 depend on IFC-3419 being
 merged before release.
@@ -253,23 +252,23 @@ traced; the default applies after 2 minutes (quickstart, manual check 8).
 
 ### Tests for User Story 6 (Infrahub)
 
-- [ ] T065 [P] [US6] Port the temporary ratio tests from the draft `backend/tests/unit/test_trace.py` (set, replace, clear, expiry by the clock, `state()`) into `backend/tests/unit/test_trace.py`
-- [ ] T066 [P] [US6] Port the message tests from the draft `backend/tests/unit/message_bus/test_operations.py` and `backend/tests/unit/message_bus/test_mappings.py`: the handler sets and clears the ratio and writes one log line each time (FR-035); `ratio` and `expires_at` are set together or both empty
-- [ ] T067 [P] [US6] Port `backend/tests/component/api/test_trace_sample_ratio.py` and the fixtures in `backend/tests/component/api/conftest.py` from the draft, with the path `/api/troubleshooting/trace-sample-ratio`, and add: a new change replaces the active one; the three endpoints are in the OpenAPI schema with a description (FR-036)
-- [ ] T068 [P] [US6] Write a component test in `backend/tests/component/` that starts a task worker process with the message bus and checks that it applies a ratio change (research R7, critique E8); if a task worker cannot be started in a component test, record why in [research.md](research.md) R7 and cover it with quickstart manual check 8
-- [ ] T069 [P] [US6] Port the change in `backend/tests/component/api/test_50_internals.py` from the draft, if it still applies after the endpoints move out of `internal.py`
+- [x] T065 [P] [US6] Port the temporary ratio tests from the draft `backend/tests/unit/test_trace.py` (set, replace, clear, expiry by the clock, `state()`) into `backend/tests/unit/test_trace.py`
+- [x] T066 [P] [US6] Port the message tests from the draft `backend/tests/unit/message_bus/test_operations.py` and `backend/tests/unit/message_bus/test_mappings.py`: the handler sets and clears the ratio and writes one log line each time (FR-035); `ratio` and `expires_at` are set together or both empty
+- [x] T067 [P] [US6] Port `backend/tests/component/api/test_trace_sample_ratio.py` and the fixtures in `backend/tests/component/api/conftest.py` from the draft, with the path `/api/troubleshooting/trace-sample-ratio`, and add: a new change replaces the active one; the three endpoints are in the OpenAPI schema with a description (FR-036)
+- [x] T068 [P] [US6] Write a component test in `backend/tests/component/` that starts a task worker process with the message bus and checks that it applies a ratio change (research R7, critique E8); if a task worker cannot be started in a component test, record why in [research.md](research.md) R7 and cover it with quickstart manual check 8 (Done as an integration test in `backend/tests/integration/services/adapters/message_bus/test_rabbitmq.py`, because it needs RabbitMQ; see R7.)
+- [x] T069 [P] [US6] Port the change in `backend/tests/component/api/test_50_internals.py` from the draft, if it still applies after the endpoints move out of `internal.py` (The `recorder_bus` fixture moved to `backend/tests/component/api/conftest.py`.)
 
 ### Implementation for User Story 6 (Infrahub)
 
-- [ ] T070 [US6] In `backend/infrahub/trace.py`, port from the draft the temporary ratio of `RatioSampler` (`set_temporary_ratio`, `clear_temporary_ratio`, `state`, `_temporary_in_force`) and the module functions `set_temporary_sample_ratio`, `clear_temporary_sample_ratio`, `get_sample_ratio_state` ([data-model.md](data-model.md) "Sampler state")
-- [ ] T071 [P] [US6] Create `backend/infrahub/message_bus/messages/refresh_settings_trace_sample_ratio.py` from the draft, and register `refresh.settings.trace_sample_ratio` in `backend/infrahub/message_bus/messages/__init__.py`
-- [ ] T072 [US6] In `backend/infrahub/message_bus/operations/refresh/settings.py`, port the handler `trace_sample_ratio` with its two log lines, and register it in `backend/infrahub/message_bus/operations/__init__.py` (FR-027, FR-035)
-- [ ] T073 [P] [US6] Create `backend/infrahub/events/trace_action.py` with `TraceSampleRatioUpdatedEvent` from the draft, export it in `backend/infrahub/events/__init__.py`, and add `TRACE_SAMPLE_RATIO_UPDATED` in `backend/infrahub/core/constants/__init__.py` (FR-030)
-- [ ] T074 [US6] Create `backend/infrahub/api/troubleshooting.py` with `router = APIRouter(prefix="/troubleshooting", tags=["troubleshooting"])` and the three endpoints `GET`, `PUT` and `DELETE /trace-sample-ratio`, ported from the draft `backend/infrahub/api/internal.py` (`TraceSampleRatioAPI`, `TraceSampleRatioUpdateAPI`, the super admin check, the error when tracing is off, the event that never fails the request); remove `include_in_schema=False`; give each endpoint a summary and a description that says why it exists (FR-026 to FR-031, FR-036)
-- [ ] T075 [US6] Include the troubleshooting router in `backend/infrahub/api/__init__.py`; move the shared super admin permission constant so `internal.py` and `troubleshooting.py` both use it without duplication; leave `POST /api/response-delay` unchanged
-- [ ] T076 [US6] Regenerate `schema/openapi.json` with `uv run invoke schema.generate-jsonschema` and the frontend REST types with `cd frontend/app && pnpm codegen`; regenerate the reference docs with `uv run invoke docs.generate` (event and message bus pages, configuration)
-- [ ] T077 [P] [US6] (Write the text in "Changelog entries for the top layer", not in `changelog/`; created by T095.) Port `changelog/+trace-sample-ratio-without-restart.added.md` from the draft and correct it to the public path `/api/troubleshooting/trace-sample-ratio`
-- [ ] T078 [US6] Run T065 to T069 and `uv run invoke format lint`
+- [x] T070 [US6] In `backend/infrahub/trace.py`, port from the draft the temporary ratio of `RatioSampler` (`set_temporary_ratio`, `clear_temporary_ratio`, `state`, `_temporary_in_force`) and the module functions `set_temporary_sample_ratio`, `clear_temporary_sample_ratio`, `get_sample_ratio_state` ([data-model.md](data-model.md) "Sampler state")
+- [x] T071 [P] [US6] Create `backend/infrahub/message_bus/messages/refresh_settings_trace_sample_ratio.py` from the draft, and register `refresh.settings.trace_sample_ratio` in `backend/infrahub/message_bus/messages/__init__.py`
+- [x] T072 [US6] In `backend/infrahub/message_bus/operations/refresh/settings.py`, port the handler `trace_sample_ratio` with its two log lines, and register it in `backend/infrahub/message_bus/operations/__init__.py` (FR-027, FR-035)
+- [x] T073 [P] [US6] Create `backend/infrahub/events/trace_action.py` with `TraceSampleRatioUpdatedEvent` from the draft, export it in `backend/infrahub/events/__init__.py`, and add `TRACE_SAMPLE_RATIO_UPDATED` in `backend/infrahub/core/constants/__init__.py` (FR-030)
+- [x] T074 [US6] Create `backend/infrahub/api/troubleshooting.py` with `router = APIRouter(prefix="/troubleshooting", tags=["troubleshooting"])` and the three endpoints `GET`, `PUT` and `DELETE /trace-sample-ratio`, ported from the draft `backend/infrahub/api/internal.py` (`TraceSampleRatioAPI`, `TraceSampleRatioUpdateAPI`, the super admin check, the error when tracing is off, the event that never fails the request); remove `include_in_schema=False`; give each endpoint a summary and a description that says why it exists (FR-026 to FR-031, FR-036)
+- [x] T075 [US6] Include the troubleshooting router in `backend/infrahub/api/__init__.py`; move the shared super admin permission constant so `internal.py` and `troubleshooting.py` both use it without duplication; (`SUPER_ADMIN_PERMISSION` is in `backend/infrahub/permissions/globals.py`.) leave `POST /api/response-delay` unchanged
+- [x] T076 [US6] Regenerate `schema/openapi.json` with `uv run invoke schema.generate-jsonschema` and the frontend REST types with `cd frontend/app && pnpm codegen`; regenerate the reference docs with `uv run invoke docs.generate` (event and message bus pages, configuration)
+- [x] T077 [P] [US6] (Write the text in "Changelog entries for the top layer", not in `changelog/`; created by T095.) Port `changelog/+trace-sample-ratio-without-restart.added.md` from the draft and correct it to the public path `/api/troubleshooting/trace-sample-ratio`
+- [x] T078 [US6] Run T065 to T069 and `uv run invoke format lint`
 
 ### SDK change (IFC-3420), in `python_sdk/` on branch `dp-20261015-trace-sample-ratio-command-ifc-3420`
 
@@ -289,17 +288,18 @@ traced; the default applies after 2 minutes (quickstart, manual check 8).
 **Purpose**: Documentation for every story, the submodule pointer, the manual test and the release
 checks.
 
-- [ ] T085 [P] Create `dev/knowledge/backend/observability.md` from the draft without the Redis exporter and the Grafana MCP server, and with: `[MASKED]`, span event masking, the request span hook, why log lines are not masked (clarification of 2026-10-19), the `trace_id` format, the public `/api/troubleshooting` endpoints, and the `--config` requirement of gunicorn for B9 (research R10); link it in `dev/README.md` and `dev/knowledge/backend/architecture.md`, and port the draft changes to `dev/knowledge/backend/api-backpressure.md`, `backend/AGENTS.md` and `development/grafana/AGENTS.md` without the Grafana MCP content
+- [x] T085 [P] Create `dev/knowledge/backend/observability.md` from the draft without the Redis exporter and the Grafana MCP server, and with: `[MASKED]`, span event masking, the request span hook, why log lines are not masked (clarification of 2026-10-19), the `trace_id` format, the public `/api/troubleshooting` endpoints, and the `--config` requirement of gunicorn for B9 (research R10); link it in `dev/README.md` and `dev/knowledge/backend/architecture.md`, and port the draft changes to `dev/knowledge/backend/api-backpressure.md`, `backend/AGENTS.md` and `development/grafana/AGENTS.md` without the Grafana MCP content (The draft change to `development/grafana/AGENTS.md` is about the Grafana MCP server only, so it is not ported.)
 - [ ] T086 After both SDK pull requests merge on `infrahub-develop`: in `python_sdk/`, check out `origin/infrahub-develop`, check that it contains both SDK commits, and commit the new `python_sdk` pointer on the Infrahub branch (root `AGENTS.md`, "Submodules")
 - [ ] T087 [P] Update `docs/docs/deploy-manage/run-observe/metrics.mdx` with the new and changed metrics of [contracts/metrics.md](contracts/metrics.md) and a short "which panel answers which question" section, using the `opsmill-docs-writing-infrahub-docs` skill
 - [ ] T088 [P] Update `docs/docs/deploy-manage/install-configure/install/observability-stack.mdx`: tracing on with the stack and `INFRAHUB_TRACE_SAMPLE_RATIO`; the Grafana data source settings of B10; how to raise the ratio during an incident (`infrahubctl` and the REST call); how to check every process applied it from the log line (FR-035); how to reduce the cost of tracing (FR-034); the trace retention (96 hours) and the log retention (24 hours) with the setting that changes each, and the Tempo disk use measured by T091 (FR-037); no Grafana MCP or Redis content
 - [ ] T089 [P] Create `docs/docs/deploy-manage/run-observe/own-monitoring.mdx`, "Send Infrahub telemetry to your own monitoring" (metrics scraping, traces to any OTLP collector, logs with `trace_id`, the data source settings), and add it to `docs/sidebars.ts` next to "Metrics" (FR-034)
 - [ ] T090 Update `docs/docs/reference/metrics.mdx` from the draft (it is not generated) and run `uv run invoke docs.lint` and `uv run invoke docs.validate`
 - [ ] T091 Measure the cost of tracing as [research.md](research.md) R9 says (two configurations, the named load) and record the host, the commit and the results, including the Tempo disk use per 1,000 traced requests at ratio 0.1 and 1, in `specs/infp-742-find-slow-component/measurements.md`; if tracing at 0.1 adds more than 5 %, lower the default in `backend/infrahub/config.py` and the Compose files and measure again (SC-006)
-- [ ] T092 Run `/pre-ci` and fix every failure
+- [x] T092 Run `/pre-ci` and fix every failure
 - [ ] T093 Daniel runs the `opsmill-dev-guiding-manual-tests` skill on the Infrahub branch, with `python_sdk` on `origin/infrahub-develop` (needs T086), using the checks of [quickstart.md](quickstart.md)
-- [ ] T094 Before release: quickstart manual check 7 (each dashboard in a Grafana with only Prometheus) and manual check 1 repeated with the file downloaded from `https://infrahub.opsmill.io/?observability=true` (needs the answer to T036)
-- [ ] T095 Create every fragment listed in "Changelog entries for the top layer" with `towncrier create` in `changelog/`, using the `creating-changelog-entries` skill; correct each text to what landed
+- [ ] T094 Before release: quickstart manual check 7 (each dashboard in a Grafana with only Prometheus) and manual check 1 repeated with the file downloaded from `https://infrahub.opsmill.io/?observability=true` (needs the answer to T036); and check that the release notes of the release that ships INFP-742 list the `trace_id` log field change as a breaking change, with the old `0x` form and the new 32-character form (research R5; changelog fragment `+trace-id-format.changed.md`; added on 2026-10-21)
+- [x] T095 Create every fragment listed in "Changelog entries for the top layer" with `towncrier create` in `changelog/`, using the `creating-changelog-entries` skill; correct each text to what landed
+- [x] T096 Merge the fragments of T095 into one short `added` fragment, `+slow-instance-observability.added.md`, and keep the breaking `+trace-id-format.changed.md` (review of 2026-10-22)
 
 ---
 
@@ -317,9 +317,11 @@ the branch is created, as `YYYYMMDD`.
 | 1 | A1 | [IFC-3425](https://opsmill.atlassian.net/browse/IFC-3425) | Mask secrets and personal data in spans and logs, and fix single sign-on telemetry | `dp-<date>-mask-telemetry-ifc-3425` | Layer 0 | T001, T005, T007–T018 |
 | 2 | B1 | [IFC-3428](https://opsmill.atlassian.net/browse/IFC-3428) | Record long durations, connection pool load and task worker saturation | `dp-<date>-slow-component-metrics-ifc-3428` | Layer 1 | T006, T039–T047, T049–T053, T055, T056 |
 | 3 | B2 | [IFC-3429](https://opsmill.atlassian.net/browse/IFC-3429) | Fix the shipped dashboards and make them work in any Grafana | `dp-<date>-portable-dashboards-ifc-3429` | Layer 2 | T048, T054, T057–T064 |
-| 4 | A2 | [IFC-3426](https://opsmill.atlassian.net/browse/IFC-3426) | Follow a background task to its queries in one trace | `dp-<date>-one-trace-ifc-3426` | Layer 3 | T024–T038 |
-| 5 | A3 | [IFC-3427](https://opsmill.atlassian.net/browse/IFC-3427) | Change the trace sampling ratio during an incident without a restart | `dp-<date>-runtime-sample-ratio-ifc-3427` | Layer 4 | T065–T078 |
-| 6 | C1 | [IFC-3430](https://opsmill.atlassian.net/browse/IFC-3430) | Measure, document and close out | `dp-<date>-close-out-slow-component-ifc-3430` | Layer 5 | T085–T094 |
+| 4 | A2 | [IFC-3470](https://opsmill.atlassian.net/browse/IFC-3470) | Follow a background task to its queries in one trace, change the trace sampling ratio without a restart, and close out | `dp-20261021-one-trace-sample-ratio-close-out-ifc-3470` | Layer 3 | T024–T038, T065–T078, T085–T095 |
+
+On 2026-10-20 Daniel merged the layers planned for IFC-3426 (one trace), IFC-3427 (ratio without a
+restart) and IFC-3430 (close out) into one layer and one pull request, IFC-3470. The 3 tickets were
+closed as "Won't Do" on 2026-10-21; they keep the detailed scope of each part.
 
 The SDK changes are in another repository, so they form a second stack there, in `python_sdk/`:
 
@@ -329,12 +331,13 @@ The SDK changes are in another repository, so they form a second stack there, in
 | 2 | S2 | [IFC-3420](https://opsmill.atlassian.net/browse/IFC-3420) | Add the `infrahubctl` command for the trace sampling ratio | `dp-20261015-trace-sample-ratio-command-ifc-3420` | S1 | T079–T084 |
 
 ```text
-infrahub:            develop ← spec ← A1 ← B1 ← B2 ← A2 ← A3 ← C1
+infrahub:            develop ← spec ← A1 ← B1 ← B2 ← A2
 infrahub-sdk-python: infrahub-develop ← S1 ← S2
 ```
 
 - Why this order: A1 comes first because the masking must reach `develop` before tracing reaches more
-  operators (FR-011). A2 is fully tested only with S1, and A3 is fully used only with S2. C1 is last.
+  operators (FR-011). The one trace part of A2 is fully tested only with S1, and its ratio part is
+  fully used only with S2. A2 is last.
 - Merging: the whole stack merges at once, after the top pull request is validated, with
   `gh stack merge <top PR> --yes`, which merges that pull request and every unmerged one below it
   (proposed by Fatih Acar on 2026-10-19 in
@@ -349,7 +352,7 @@ infrahub-sdk-python: infrahub-develop ← S1 ← S2
   Before marking a layer ready, run `gh stack sync` and check that its CI passes.
 - A fix in a lower layer is made in that layer, then `gh stack rebase --upstack` replays the layers
   above. Each layer ticks its own tasks in this file and records its own spec updates.
-- A2 is tested with `python_sdk` on the S1 branch; it does not wait for S1 to merge. Only C1 commits
+- A2 is tested with `python_sdk` on the S1 branch; it does not wait for S1 to merge. Only A2 commits
   the `python_sdk` pointer, after S1 and S2 merge. Then Daniel runs `opsmill-dev-guiding-manual-tests`
   (T093).
 - Each pull request opens as a draft (`gh stack submit --auto`), after Daniel's manual test of the
@@ -414,11 +417,12 @@ The work follows the layers of "Pull requests and tickets", bottom to top, one l
 2. Layer 1, A1 (US2, Phase 3, with Phases 1 and 2): masking and single sign-on fixes. This removes the
    secrets that are in the trace store today and unblocks tracing for more operators.
 3. Layers 2 and 3, B1 and B2 (US3, US4 and US5): metrics, then all dashboard changes.
-4. Layer 4, A2 (US1, Phase 4): one trace from a task to its queries. Start S1 (T019 to T023) before
-   it, so A2 can be tested with the S1 branch, and open the S1 pull request early.
-5. Layer 5, A3 (US6, Phase 8): the runtime ratio, then S2 (T079 to T084) on top of S1.
-6. Layer 6, C1 (Phase 9): documentation, the cost measurement, the submodule pointer after both SDK
-   merges, `/pre-ci`, and the manual test.
+4. Layer 4, A2 (IFC-3470), in this order:
+   1. US1, Phase 4: one trace from a task to its queries. S1 (T019 to T023) comes first, so this part
+      can be tested with the S1 branch.
+   2. US6, Phase 8: the runtime ratio, then S2 (T079 to T084) on top of S1.
+   3. Phase 9: documentation, the cost measurement, the submodule pointer after both SDK
+      merges, `/pre-ci`, and the manual test.
 
 The first increment that an operator can use is layers 0 and 1. Check quickstart manual check 4
 after layer 1, and manual checks 1 to 3 after layer 4.
@@ -432,7 +436,12 @@ The plan proposes that INFP-742 merges first and INFP-743 rebases, because both 
 
 ## Changelog entries for the top layer
 
-Created by T095 in IFC-3430. Each layer adds its entries here, with the file name and the type.
+Created by T095 in IFC-3470. Each layer adds its entries here, with the file name and the type.
+
+Merged by T096 on 2026-10-22, after [Fatih Acar's review](https://github.com/opsmill/infrahub/pull/11164)
+asked for a single short entry: `changelog/` now holds `+slow-instance-observability.added.md` and,
+kept apart so that operators who must update their queries view it, the breaking
+`+trace-id-format.changed.md`. The entries below are the record of what each layer contributed.
 
 ### IFC-3425 (layer 1)
 
@@ -441,7 +450,7 @@ Created by T095 in IFC-3430. Each layer adds its entries here, with the file nam
   records the account ID instead of the user name.
 - `+trace-attribute-masking.added.md`: Added masking of exported span attributes and span event
   attributes, including exception events, so that tokens, passwords, secrets, email addresses, user
-  names, client IP addresses and URL query strings are exported as `[MASKED]`, while URL hostnames and
+  names, client IP addresses and URL query strings are exported as `[MASKED]`, while URL host names and
   paths, Cypher text and query names stay readable.
 
 ### IFC-3428 (layer 2)
@@ -452,7 +461,7 @@ Created by T095 in IFC-3430. Each layer adds its entries here, with the file nam
   and 60 seconds for GraphQL queries.
 - `+metric-files-kept-on-worker-start.fixed.md`: Fixed the API server metrics so that starting a worker
   process no longer deletes the values recorded by the other running worker processes, and gauges no
-  longer report worker processes that stopped. gunicorn must start with the Infrahub configuration
+  longer report worker processes that stopped. `gunicorn` must start with the Infrahub configuration
   file (`--config backend/infrahub/serve/gunicorn_config.py`), as in the Docker Compose files and the
   Helm charts.
 - `+connection-pool-metrics.added.md`: Added the `infrahub_db_connection_pool_size` metric, the
@@ -495,3 +504,31 @@ Created by T095 in IFC-3430. Each layer adds its entries here, with the file nam
 - `+priority-queues-dashboard-row.added.md`: Added the "Priority Queues" row to the Infrahub
   dashboard, with the flow run start delay p95 and the flow runs in progress of the `high`, `medium`
   and `low` queues.
+
+### IFC-3470 (layer 4)
+
+- `+trace-sample-ratio.added.md`: Added the `INFRAHUB_TRACE_SAMPLE_RATIO` setting, the share of new
+  traces that Infrahub records, from 0 to 1 (default 0.1). Before, Infrahub recorded every trace. A
+  request or a flow run that arrives with a trace context follows the decision of its caller.
+- `+task-worker-log-trace-id.added.md`: Added the `trace_id` field to the log lines that task workers
+  write while a trace is recorded, so their logs can be matched to the trace.
+- `+trace-id-format.changed.md`: **Breaking:** Changed the format of the `trace_id` log field of the
+  API server from a `0x` hexadecimal number without leading zeros, for example
+  `0xaf7651916cd43dd8448eb211c80319c`, to the 32-character form that Tempo and Grafana use, for
+  example `0af7651916cd43dd8448eb211c80319c`. Update the log queries and alerts that read `trace_id`.
+- `+grafana-trace-log-links.fixed.md`: Fixed the links between traces and logs in the Grafana data
+  sources of the observability stack. A log line links to its trace by its `trace_id` field, in text
+  and JSON lines, and in the `TraceID=` form that the Alloy configuration of the stack writes, with or
+  without `0x`. A trace links to its log lines in any Loki, from one hour before to one hour after the
+  span: the lines whose `trace_id` field contains the trace ID. The `RequestID` link is removed.
+- `+compose-observability-tracing.changed.md`: Changed the Docker Compose file of the observability
+  stack, `docker-compose-observability-standalone.yml`, to turn tracing on for the API server and the
+  task workers, with traces sent to the Tempo service of the stack and a sampling ratio of 0.1 that
+  `INFRAHUB_TRACE_SAMPLE_RATIO` changes; set `INFRAHUB_TRACE_ENABLE=false` to turn it off. A Compose
+  deployment without the observability stack keeps tracing off.
+- `+trace-sample-ratio-without-restart.added.md`: Added the `/api/troubleshooting/trace-sample-ratio`
+  REST endpoints, documented in the OpenAPI schema. With the `super_admin` permission, `PUT` sets a
+  temporary trace sampling ratio for 1 second to 24 hours on every API server process and task worker
+  without a restart, `DELETE` goes back to the default ratio, and `GET` returns the ratio in force.
+  Each process logs the change when it applies it, and each change is recorded as an
+  `infrahub.trace.sample_ratio_updated` event.

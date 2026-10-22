@@ -4,12 +4,14 @@
 
 ## Trace context from the SDK (dependency)
 
-The Python SDK sends the W3C `traceparent` header on every request when OpenTelemetry is installed in
-the caller's process, through the global OpenTelemetry propagator. The SDK declares no dependency on
-OpenTelemetry: it imports it only when it is present. Without OpenTelemetry, it sends nothing new. The
-FastAPI instrumentation of the API server already reads the header. This change is in
+The Python SDK sends the W3C `traceparent` header on every request when `opentelemetry-api` 1.33 or
+later is installed in the caller's process and a span is active, through the global OpenTelemetry
+propagator. The SDK declares `opentelemetry-api>=1.33` as an optional extra, `tracing`, and imports it
+only when it is present. Without it, or with an older version, it sends nothing new. The FastAPI
+instrumentation of the API server already reads the header. This change is in
 [infrahub-sdk-python](https://github.com/opsmill/infrahub-sdk-python), tracked in
-[IFC-3419](https://opsmill.atlassian.net/browse/IFC-3419).
+[IFC-3419](https://opsmill.atlassian.net/browse/IFC-3419), and merged on 2026-10-21
+([opsmill/infrahub-sdk-python#1434](https://github.com/opsmill/infrahub-sdk-python/pull/1434)).
 
 ## Trace ID in log lines
 
@@ -29,21 +31,26 @@ queries and alerts.
 
 | Data source | Setting | Value |
 |-------------|---------|-------|
-| Loki | Derived field `trace_id` | Matches `trace_id=<value>` in text lines and `"trace_id": "<value>"` in JSON lines, with or without `0x`, and links to the Tempo data source |
+| Loki | Derived field `trace_id` | Matches `trace_id=<value>` in text lines, `"trace_id": "<value>"` in JSON lines and `TraceID=<value>`, with or without `0x`, and links to the Tempo data source |
 | Loki | Derived field `RequestID` | Removed |
-| Tempo | `tracesToLogsV2` | `spanStartTimeShift: -1h`, `spanEndTimeShift: 1h`, `filterByTraceID: true`, query `{job=~".+"} \|= "${__trace.traceId}"` |
+| Tempo | `tracesToLogsV2` | `spanStartTimeShift: -1h`, `spanEndTimeShift: 1h`, `filterByTraceID: true`, query `{job=~".+"} \|~ `(?i)trace_?id[=": ]+(0x)?${__trace.traceId}``, which matches the trace ID only as a `trace_id` field (changed on 2026-10-21: the first query, `\|= "${__trace.traceId}"`, also returned Tempo's access log lines, which contain the trace ID in a URL) |
 | Tempo | `tracesToMetrics`, `traceQuery` | Start shift `-1h`, end shift `1h` |
+
+`TraceID=<value>` is the form that `development/alloy/config.alloy` writes when it rewrites the JSON
+lines of the API server; this was found during the implementation, on 2026-10-21.
 
 The query uses no label specific to Compose or Helm, so it works with any Loki that holds Infrahub's
 logs. The documentation lists these settings for operators who run their own Grafana.
 
 ## Tracing in Compose with the observability stack (FR-032)
 
-`development/docker-compose-observability.yml` sets, for `infrahub-server` and `task-worker`:
+`development/docker-compose-observability-tracing.yml` sets, for `infrahub-server` and `task-worker`,
+and `development/convert_compose_standalone.py` adds these blocks to
+`development/docker-compose-observability-standalone.yml` (changed on 2026-10-21, [research.md](../research.md) R2):
 
 | Variable | Value |
 |----------|-------|
-| `INFRAHUB_TRACE_ENABLE` | `true` |
+| `INFRAHUB_TRACE_ENABLE` | `${INFRAHUB_TRACE_ENABLE:-true}` (changed on 2026-10-21, so an operator can turn tracing off, FR-034) |
 | `INFRAHUB_TRACE_EXPORTER_TYPE` | `otlp` |
 | `INFRAHUB_TRACE_EXPORTER_PROTOCOL` | `grpc` |
 | `INFRAHUB_TRACE_EXPORTER_ENDPOINT` | `http://infrahub-tempo:4317` |
