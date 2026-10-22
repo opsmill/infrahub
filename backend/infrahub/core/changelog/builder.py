@@ -56,8 +56,7 @@ def build_relationship_changelog_getter(db: InfrahubDatabase, branch: Branch) ->
     """Build a relationship changelog getter whose peer labels are read from the same database and branch."""
     label_loader = build_node_label_loader(db=db, branch=branch)
     return RelationshipChangelogGetter(
-        db=db,
-        branch=branch,
+        schema_branch=db.schema.get_schema_branch(name=branch.name),
         peer_label_resolver=PeerLabelResolver(label_loader=label_loader),
         reciprocal_builder=ReciprocalRelationshipBuilder(),
         merger=SecondaryChangelogMerger(),

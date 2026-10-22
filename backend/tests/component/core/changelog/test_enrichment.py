@@ -289,8 +289,7 @@ async def test_mutation_changelog_survives_label_reader_failure(
     person, dog = await _create_person_and_dog(db, default_branch, animal_person_schema)
 
     secondaries = await RelationshipChangelogGetter(
-        db=db,
-        branch=default_branch,
+        schema_branch=db.schema.get_schema_branch(name=default_branch.name),
         peer_label_resolver=PeerLabelResolver(label_loader=NodeLabelLoader(reader=_RaisingLabelReader())),
         reciprocal_builder=ReciprocalRelationshipBuilder(),
         merger=SecondaryChangelogMerger(),

@@ -13,11 +13,9 @@ from .models import (
 )
 
 if TYPE_CHECKING:
-    from infrahub.core.branch import Branch
     from infrahub.core.manager import RelationshipSchema
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema.schema_branch import SchemaBranch
-    from infrahub.database import InfrahubDatabase
 
     from .peer_labels import PeerLabelResolver, ResolvedPeerLabels
     from .reciprocal import ReciprocalRelationshipBuilder
@@ -36,14 +34,12 @@ class RelationshipChangelogGetter:
 
     def __init__(
         self,
-        db: InfrahubDatabase,
-        branch: Branch,
+        schema_branch: SchemaBranch,
         peer_label_resolver: PeerLabelResolver,
         reciprocal_builder: ReciprocalRelationshipBuilder,
         merger: SecondaryChangelogMerger,
     ) -> None:
-        self._db = db
-        self._branch = branch
+        self._schema_branch = schema_branch
         self._peer_label_resolver = peer_label_resolver
         self._reciprocal_builder = reciprocal_builder
         self._merger = merger
@@ -75,8 +71,7 @@ class RelationshipChangelogGetter:
             The labels resolved for the peers, to build the secondaries from.
 
         """
-        schema_branch = self._db.schema.get_schema_branch(name=self._branch.name)
-        node_schema = schema_branch.get(name=primary_changelog.node_kind, duplicate=False)
+        node_schema = self._schema_branch.get(name=primary_changelog.node_kind, duplicate=False)
         peer_labels = await self._peer_label_resolver.resolve(
             changelog=primary_changelog,
             include_node=primary_changelog.hfid is None and bool(node_schema.human_friendly_id),
@@ -88,8 +83,7 @@ class RelationshipChangelogGetter:
         self, primary_changelog: NodeChangelog, peer_labels: ResolvedPeerLabels
     ) -> list[NodeChangelog]:
         """Build one secondary changelog per peer whose reciprocal relationship changed."""
-        schema_branch = self._db.schema.get_schema_branch(name=self._branch.name)
-        node_schema = schema_branch.get(name=primary_changelog.node_kind, duplicate=False)
+        node_schema = self._schema_branch.get(name=primary_changelog.node_kind, duplicate=False)
 
         secondaries: list[NodeChangelog] = []
         for relationship in primary_changelog.relationships.values():
@@ -99,7 +93,7 @@ class RelationshipChangelogGetter:
                         relationship=relationship,
                         node_schema=node_schema,
                         primary_changelog=primary_changelog,
-                        schema_branch=schema_branch,
+                        schema_branch=self._schema_branch,
                         peer_labels=peer_labels,
                     )
                 )
@@ -109,7 +103,7 @@ class RelationshipChangelogGetter:
                         relationship=relationship,
                         node_schema=node_schema,
                         primary_changelog=primary_changelog,
-                        schema_branch=schema_branch,
+                        schema_branch=self._schema_branch,
                         peer_labels=peer_labels,
                     )
                 )
