@@ -93,6 +93,9 @@ def relevant_node_changes(
 
     A field listed in ``excluded_changes`` for a node does not count as modified for that node.
     """
+    excluded_fields_by_node: dict[str, set[str]] = {}
+    for excluded in excluded_changes:
+        excluded_fields_by_node.setdefault(excluded.node_id, set()).add(excluded.field_name)
     relevant_node_ids: list[str] = []
     for node_diff in diff_summary:
         if node_diff["branch"] != query_branch or _is_unchanged(node_diff["action"]):
@@ -101,11 +104,8 @@ def relevant_node_changes(
         if not readable_fields:
             continue
         updated_fields = {
-            element["name"]
-            for element in node_diff["elements"]
-            if not _is_unchanged(element["action"])
-            and ExcludedChange(node_id=node_diff["id"], field_name=element["name"]) not in excluded_changes
-        }
+            element["name"] for element in node_diff["elements"] if not _is_unchanged(element["action"])
+        } - excluded_fields_by_node.get(node_diff["id"], set())
         imprecise_read = bool(readable_fields & IMPRECISE_READ_FIELDS)
         if updated_fields and (imprecise_read or (updated_fields & readable_fields)):
             relevant_node_ids.append(node_diff["id"])

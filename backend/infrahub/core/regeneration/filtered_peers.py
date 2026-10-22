@@ -135,27 +135,24 @@ class FilteredPeerReads:
         crossed, unchanged = self._split(peer_ids=peer_ids, peer_filters=read.peer_filters)
         if crossed:
             return True
+        passing = await self._read_from_current_owners(
+            hop=read.hop, relationship_name=read.relationship_name, peer_ids=unchanged, filters=read.peer_filters
+        )
+        if passing:
+            return True
         held = await self._read_from_current_owners(
             hop=read.hop, relationship_name=read.relationship_name, peer_ids=unchanged, filters=None
         )
         # A peer related to no owner, such as one just removed from the relationship, cannot be tested against the
         # filters, so the read is assumed to return it.
-        if set(unchanged) - {peer_id for _, peer_id in held}:
-            return True
-        passing = await self._read_from_current_owners(
-            hop=read.hop, relationship_name=read.relationship_name, peer_ids=unchanged, filters=read.peer_filters
-        )
-        return bool(passing)
+        return bool(set(unchanged) - {peer_id for _, peer_id in held})
 
     def _split(
         self, *, peer_ids: Collection[str], peer_filters: PeerFilters
     ) -> tuple[tuple[str, ...], tuple[str, ...]]:
         """Split the peers into those that may have entered or left the filters with the change, and the others."""
-        crossed = {
-            peer_id
-            for peer_id in peer_ids
-            if self._may_have_crossed(node_id=peer_id, fields=peer_filters.filtered_fields)
-        }
+        fields = peer_filters.filtered_fields
+        crossed = {peer_id for peer_id in peer_ids if self._may_have_crossed(node_id=peer_id, fields=fields)}
         return tuple(sorted(crossed)), tuple(sorted(set(peer_ids) - crossed))
 
     def _may_have_crossed(self, *, node_id: str, fields: frozenset[str]) -> bool:
@@ -240,6 +237,7 @@ class FilteredRelationshipExclusions:
         self._changes = changes
         self._peer_reads = peer_reads
         self._verdicts: dict[tuple[str, str], bool] = {}
+        self._side_names: dict[tuple[str, str], frozenset[str]] = {}
 
     @property
     def has_filtered_reads(self) -> bool:
@@ -291,10 +289,17 @@ class FilteredRelationshipExclusions:
         ]
 
     def _peer_side_names(self, *, kind: str, identifier: str) -> frozenset[str]:
-        """The names of the relationship ``identifier`` on ``kind``."""
-        if not self._schema_branch.has(name=kind):
-            return frozenset()
-        schema = self._schema_branch.get(name=kind, duplicate=False)
-        return frozenset(
-            relationship.name for relationship in schema.relationships if relationship.identifier == identifier
-        )
+        """The names of the relationship ``identifier`` on ``kind``, cached."""
+        key = (kind, identifier)
+        if key not in self._side_names:
+            self._side_names[key] = (
+                frozenset(
+                    relationship.name
+                    for relationship in self._schema_branch.get(
+                        name=kind, duplicate=False
+                    ).get_relationships_by_identifier(id=identifier)
+                )
+                if self._schema_branch.has(name=kind)
+                else frozenset()
+            )
+        return self._side_names[key]

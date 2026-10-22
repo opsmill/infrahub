@@ -604,14 +604,19 @@ class GraphQLQueryReport:
         return kinds
 
     @cached_property
+    def _reached_path_resolver(self) -> ReachedPathResolver:
+        """One resolver for the chains and the relationship reads, so the query tree is walked once."""
+        return ReachedPathResolver(queries=self.queries)
+
+    @cached_property
     def relationship_reached_paths_by_kind(self) -> dict[str, tuple[ReachedPath, ...]]:
         """The relationship chains reaching each related kind that can be narrowed to its owning roots."""
-        return ReachedPathResolver(queries=self.queries).resolve()
+        return self._reached_path_resolver.resolve()
 
     @cached_property
     def relationship_reads(self) -> tuple[RelationshipRead, ...]:
         """Every relationship the query reads, with the filters it applies to the peers."""
-        return ReachedPathResolver(queries=self.queries).relationship_reads()
+        return self._reached_path_resolver.relationship_reads()
 
     def fields_by_kind(self, kind: str) -> list[str]:
         fields: list[str] = []
