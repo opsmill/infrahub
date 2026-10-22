@@ -96,6 +96,44 @@ def test_exclude_glob_removes_matching_paths() -> None:
     assert change.excluded == [".agents/skills/copied/SKILL.md", "backend/infrahub/local_only.py"]
 
 
+def test_change_lists_deleted_files_apart_from_the_files_to_read(repo: Path) -> None:
+    run("rm", "-q", "README.md", cwd=repo)
+    run("commit", "-m", "delete readme", cwd=repo)
+    (repo / "frontend/app/src/page.tsx").unlink()
+
+    change = rc.changed_files("stable", include_uncommitted=True, excludes=[])
+
+    assert change.files == [
+        ".agents/skills/copied/SKILL.md",
+        "backend/infrahub/local_only.py",
+        "changelog/+page.added.md",
+    ]
+    assert change.deleted == ["README.md", "frontend/app/src/page.tsx"]
+
+
+def test_change_lists_both_sides_of_an_uncommitted_rename(repo: Path) -> None:
+    run("mv", "README.md", "README2.md", cwd=repo)
+
+    change = rc.changed_files("stable", include_uncommitted=True, excludes=[])
+
+    assert "README2.md" in change.files
+    assert change.deleted == ["README.md"]
+    assert "README.md" not in change.uncommitted_only
+
+
+def test_change_keeps_a_path_with_a_space_unquoted(repo: Path) -> None:
+    write(repo, "frontend/app/src/a b.tsx")
+
+    assert "frontend/app/src/a b.tsx" in rc.changed_files("stable", include_uncommitted=True, excludes=[]).files
+
+
+def test_manifest_exits_2_when_git_fails(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    run("remote", "remove", "origin", cwd=repo)
+    monkeypatch.setattr("sys.argv", ["repo-context.py", "--base", "stable"])
+
+    assert rc.main() == rc.EXIT_GIT_FAILED
+
+
 @pytest.mark.usefixtures("repo")
 def test_rule_without_paths_matches_source_files_only() -> None:
     rules = {rule.path: rule.matched for rule in rc.load_rules([".agents/skills/copied/SKILL.md", "README.md"])}
@@ -168,3 +206,59 @@ def test_hook_records_the_project_it_ran_for(repo: Path, monkeypatch: pytest.Mon
 
     assert rc.run_hook() == 0
     assert rc.hook_marker("test-session-hook").read_text(encoding="utf-8") == str(repo.resolve())
+
+
+def test_paths_from_bash_skip_a_token_longer_than_a_file_name(repo: Path) -> None:
+    command = f"git commit -m {'a' * 300} frontend/app/src/page.tsx"
+
+    assert rc.paths_from_tool("Bash", {"command": command}, repo, repo.resolve()) == ["frontend/app/src/page.tsx"]
+
+
+def test_instructions_for_a_directory_match_every_tracked_file(repo: Path) -> None:
+    for index in range(250):
+        write(repo, f"frontend/app/assets/{index:03}.txt")
+    run("add", "frontend", cwd=repo)
+
+    assert ".agents/rules/frontend.md" in rc.instructions_for(["frontend"])
+
+
+def run_bash_hook(repo: Path, monkeypatch: pytest.MonkeyPatch, command: str, capsys: pytest.CaptureFixture[str]) -> str:
+    payload = {
+        "session_id": "test-session-budget",
+        "cwd": str(repo),
+        "hook_event_name": "PostToolUse",
+        "tool_name": "Bash",
+        "tool_input": {"command": command},
+    }
+    monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(payload)))
+    assert rc.run_hook() == 0
+    return capsys.readouterr().out
+
+
+def test_hook_names_a_document_over_the_budget_once(
+    repo: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write(repo, "frontend/app/AGENTS.md", "x" * rc.HOOK_BUDGET)
+    run("add", "frontend/app/AGENTS.md", cwd=repo)
+    monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(repo))
+
+    first = run_bash_hook(repo, monkeypatch, "cat frontend/app/src/page.tsx", capsys)
+    second = run_bash_hook(repo, monkeypatch, "cat frontend/app/src/page.tsx", capsys)
+
+    assert "too long to include here" in json.loads(first)["hookSpecificOutput"]["additionalContext"]
+    assert not second
+
+
+def test_hook_retries_a_document_crowded_out_by_others(
+    repo: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write(repo, "frontend/app/AGENTS.md", "x" * (rc.HOOK_BUDGET // 2))
+    write(repo, "frontend/app/src/AGENTS.md", "y" * (rc.HOOK_BUDGET // 2))
+    run("add", "frontend", cwd=repo)
+    monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(repo))
+
+    first = run_bash_hook(repo, monkeypatch, "ls frontend/app", capsys)
+    second = run_bash_hook(repo, monkeypatch, "cat frontend/app/src/page.tsx", capsys)
+
+    assert "included on a later call: frontend/app/src/AGENTS.md" in first
+    assert "## frontend/app/src/AGENTS.md" in json.loads(second)["hookSpecificOutput"]["additionalContext"]
