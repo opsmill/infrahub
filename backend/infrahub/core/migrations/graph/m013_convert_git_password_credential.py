@@ -149,11 +149,11 @@ class Migration013ConvertCoreRepositoryWithCred(Query):
         CREATE (git_repo)-[:IS_RELATED $rel_props_new]->(rel)<-[:IS_RELATED $rel_props_new]-(cred)
         """ % {
             "filters": filters,
-            "cred_guid": db.render_uuid_generation(node_label="cred", node_attr="uuid", index=1),
-            "attr_name_guid": db.render_uuid_generation(node_label="attr_name", node_attr="uuid", index=2),
-            "attr_label_guid": db.render_uuid_generation(node_label="attr_lbl", node_attr="uuid", index=3),
-            "attr_desc_guid": db.render_uuid_generation(node_label="attr_desc", node_attr="uuid", index=4),
-            "rel_guid": db.render_uuid_generation(node_label="rel", node_attr="uuid", index=5),
+            "cred_guid": db.render_uuid_generation(node_label="cred", node_attr="uuid"),
+            "attr_name_guid": db.render_uuid_generation(node_label="attr_name", node_attr="uuid"),
+            "attr_label_guid": db.render_uuid_generation(node_label="attr_lbl", node_attr="uuid"),
+            "attr_desc_guid": db.render_uuid_generation(node_label="attr_desc", node_attr="uuid"),
+            "rel_guid": db.render_uuid_generation(node_label="rel", node_attr="uuid"),
             "git_repository": InfrahubKind.GENERICREPOSITORY,
             "credential": InfrahubKind.CREDENTIAL,
             "password_credential": InfrahubKind.PASSWORDCREDENTIAL,

@@ -1,8 +1,8 @@
 ````markdown
 ---
-description: Upgrade backend infrastructure dependencies (Neo4j, Redis, RabbitMQ, PostgreSQL, NATS, Memgraph) and create a GitHub PR
+description: Upgrade backend infrastructure dependencies (Neo4j, Redis, RabbitMQ, PostgreSQL, NATS) and create a GitHub PR
 allowed-tools: mcp__github__*, Bash(curl:*), Bash(gh:*), Read, Edit, Grep, Glob, WebFetch
-argument-hint: [component] (e.g., "neo4j", "redis", "rabbitmq", "postgres", "nats", "memgraph", or "all")
+argument-hint: [component] (e.g., "neo4j", "redis", "rabbitmq", "postgres", "nats", or "all")
 ---
 
 # Upgrade Backend Dependencies
@@ -19,7 +19,6 @@ The `$ARGUMENTS` can be:
 - `rabbitmq` - Upgrade RabbitMQ only
 - `postgres` - Upgrade PostgreSQL only
 - `nats` - Upgrade NATS only (alternative message broker/cache)
-- `memgraph` - Upgrade Memgraph only (alternative graph database)
 - `all` - Upgrade all primary components (neo4j, redis, rabbitmq, postgres)
 
 Multiple components can be specified separated by spaces (e.g., `neo4j redis`).
@@ -88,11 +87,6 @@ Current versions defined in:
 - `tasks/shared.py` - NATS image versions (used when `INFRAHUB_USE_NATS=true`)
 - `development/docker-compose-deps-nats.yml`
 
-### Memgraph (Alternative to Neo4j)
-Current versions defined in:
-- `tasks/shared.py` - `MEMGRAPH_DOCKER_IMAGE`
-- `development/docker-compose-database-memgraph.yml`
-
 ## Step 2: Fetch Latest Versions
 
 For each component being upgraded, fetch the latest stable version:
@@ -127,11 +121,6 @@ curl -s "https://hub.docker.com/v2/repositories/library/postgres/tags?page_size=
 curl -s "https://hub.docker.com/v2/repositories/library/nats/tags?page_size=100&ordering=last_updated" | jq -r '.results[].name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+-alpine$' | head -5
 ```
 
-### Memgraph (if upgrading)
-```bash
-curl -s "https://hub.docker.com/v2/repositories/memgraph/memgraph-mage/tags?page_size=100&ordering=last_updated" | jq -r '.results[].name' | grep -E 'memgraph-[0-9]+\.[0-9]+-no-ml$' | head -5
-```
-
 ## Step 3: Fetch and Analyze Release Notes
 
 For each component being upgraded, fetch the release notes and migration guides to identify potential breaking changes and required code modifications.
@@ -143,7 +132,6 @@ For each component being upgraded, fetch the release notes and migration guides 
 - **RabbitMQ**: https://github.com/rabbitmq/rabbitmq-server/releases and https://www.rabbitmq.com/docs/upgrade
 - **PostgreSQL**: https://www.postgresql.org/docs/release/ and https://www.postgresql.org/docs/{version}/release.html
 - **NATS**: https://github.com/nats-io/nats-server/releases
-- **Memgraph**: https://github.com/memgraph/memgraph/releases and https://memgraph.com/docs/release-notes
 
 ### Analysis Process
 
@@ -194,12 +182,6 @@ Search for:
 - NATS client usage: `grep -r "nats\." backend/`
 - JetStream operations: Search for JetStream-related code
 - Configuration: Check NATS configuration files
-
-#### Memgraph Analysis
-Search for:
-- Cypher queries (may differ from Neo4j): Check compatibility
-- MAGE procedures: Search for `CALL` statements with Memgraph-specific procedures
-- Configuration: Check Memgraph-specific settings
 
 ### Generate Upgrade Recommendations
 
@@ -389,13 +371,6 @@ For each component being upgraded, update ALL relevant files:
 2. `development/docker-compose-deps-nats.yml`:
    - Update NATS image versions
 
-### Memgraph Updates (if upgrading)
-1. `tasks/shared.py`:
-   - Update `MEMGRAPH_DOCKER_IMAGE`
-
-2. `development/docker-compose-database-memgraph.yml`:
-   - Update Memgraph image version
-
 ## Step 7: Apply Required Code Changes
 
 Based on the analysis from Step 3, apply any required code changes identified in the upgrade recommendations:
@@ -567,11 +542,6 @@ If CI fails:
 - **JetStream changes**: NATS JetStream API may change between versions
 - **Configuration format**: Check for changes in nats-server.conf format
 - **Client library compatibility**: Ensure nats.py package supports the new version
-
-### Memgraph
-- **Cypher compatibility**: Memgraph may have different Cypher support than Neo4j
-- **MAGE module compatibility**: Ensure MAGE modules are compatible with new Memgraph version
-- **Query performance**: Some query optimizations may change between versions
 
 ## Rollback Instructions
 

@@ -1,12 +1,10 @@
 import importlib
 from collections.abc import Sequence
-from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub import config, lock
-from infrahub.constants.database import DatabaseType
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
@@ -35,7 +33,6 @@ from infrahub.core.schema.definitions.deprecated import deprecated_models
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.timestamp import Timestamp, current_timestamp
 from infrahub.database import InfrahubDatabase
-from infrahub.database.memgraph import IndexManagerMemgraph
 from infrahub.database.neo4j import IndexManagerNeo4j
 from infrahub.exceptions import DatabaseError
 from infrahub.graphql.manager import registry as graphql_registry
@@ -43,9 +40,6 @@ from infrahub.log import get_logger
 from infrahub.menu.utils import create_default_menu
 from infrahub.permissions import PermissionBackend, get_or_create_global_permission
 from infrahub.storage import InfrahubObjectStorage
-
-if TYPE_CHECKING:
-    from infrahub.database.index import IndexManagerBase
 
 log = get_logger()
 
@@ -132,8 +126,6 @@ async def initialize_registry(db: InfrahubDatabase, initialize: bool = False) ->
 
 
 async def add_indexes(db: InfrahubDatabase) -> None:
-    if db.db_type is DatabaseType.MEMGRAPH:
-        index_manager: IndexManagerBase = IndexManagerMemgraph(db=db)
     index_manager = IndexManagerNeo4j(db=db)
 
     index_manager.init(nodes=node_indexes, rels=rel_indexes)
@@ -143,12 +135,6 @@ async def add_indexes(db: InfrahubDatabase) -> None:
 
 async def initialization(db: InfrahubDatabase, add_database_indexes: bool = False) -> bool:
     """Run initialization and setup, returns a boolean to indicate if it's the initial setup."""
-    if config.SETTINGS.database.db_type == config.DatabaseType.MEMGRAPH:
-        session = await db.session()
-        await session.run(query="SET DATABASE SETTING 'log.level' TO 'INFO'")
-        await session.run(query="SET DATABASE SETTING 'log.to_stderr' TO 'true'")
-        await session.run(query="STORAGE MODE IN_MEMORY_ANALYTICAL")
-
     # ---------------------------------------------------
     # Initialize the database and Load the Root node
     # ---------------------------------------------------
