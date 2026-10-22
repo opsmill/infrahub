@@ -1,0 +1,19 @@
+backend/infrahub/core/schema/schema_branch.py
+  s_25caa80b324d76::t_872bb04725fc8f 1475
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fe1c70da4595f8cc7fd1f4b74a02857a81a95b71",
+  "prompts": {},
+  "sessions": {
+    "s_25caa80b324d76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "49548646-b0b9-4e49-bf30-dfa48956b959",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
