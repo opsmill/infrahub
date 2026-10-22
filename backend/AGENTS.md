@@ -120,6 +120,7 @@ Each entry says *when* to load it — open the doc before working in that area.
 - `dev/knowledge/backend/query-pattern.md` - Read/write Query classes, return-shape, pagination, read-vs-write routing; read before writing or changing any DB access
 - `dev/knowledge/backend/database-schema.md` - Neo4j temporal graph (vertices, edges, branch/time metadata); read before writing Cypher
 - `dev/knowledge/backend/schema-definitions.md` - Defining nodes/relationships (cardinality, `on_delete`, constraints); read before changing the core schema
+- `dev/knowledge/backend/graphql-execution.md` - How graphql-core resolves fields and why each query resolver opens its own database session; read before adding a GraphQL query resolver or middleware
 - `dev/knowledge/backend/mutations.md` - GraphQL mutation flow, upsert and HFID derivation; read before adding or overriding a mutation
 - `dev/knowledge/backend/permissions.md` - Global/object permission model and checker pipeline; read before touching authorization
 - `dev/knowledge/backend/api-backpressure.md` - Priority-aware load shedding (admission middleware, CoDel, slot pool) and the database-stress signal; read before touching the admission layer or request prioritization
