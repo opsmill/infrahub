@@ -1,0 +1,21 @@
+backend/infrahub/core/validators/pool/scope.py
+  s_f4cdafdd905485::t_3907e7ead981cf 374,386,394,396,429-431,433-437
+backend/tests/unit/core/validators/number_pool_scope/declared_scope/test_reported_once.py
+  s_f4cdafdd905485::t_235f1d8d4d5179 16,25-33,57-62,122-142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5480e0671134304da8130b927dc744f57a7d1c3a",
+  "prompts": {},
+  "sessions": {
+    "s_f4cdafdd905485": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d80b27f2-528a-4331-bd46-39778bf01130",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
