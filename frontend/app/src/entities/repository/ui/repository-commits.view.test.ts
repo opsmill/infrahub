@@ -206,6 +206,7 @@ describe("getStateBadges", () => {
     { state: RepositoryCommitState.PENDING, labels: ["Pending import"] },
     { state: RepositoryCommitState.UNRELATED, labels: ["Not on current history"] },
     { state: RepositoryCommitState.HISTORY, labels: [] },
+    { state: RepositoryCommitState.NOT_ON_BRANCH, labels: ["Not on this branch"] },
   ])("labels a $state commit from its state", ({ state, labels }) => {
     // WHEN
     const badges = getStateBadges(
@@ -217,21 +218,7 @@ describe("getStateBadges", () => {
     expect(badges.map(({ label }) => label)).toEqual(labels);
   });
 
-  test("marks a commit the branch does not run as not on this branch", () => {
-    // GIVEN
-    const commit = { hash: OTHER_HASH, state: RepositoryCommitState.NOT_ON_BRANCH };
-
-    // WHEN
-    const badges = getStateBadges(commit, {
-      importedCommit: IMPORTED_HASH,
-      updatedOnlyByRebase: true,
-    });
-
-    // THEN
-    expect(badges.map(({ label }) => label)).toEqual(["Not on this branch"]);
-  });
-
-  test("marks a trunk head ahead of the branch's commit as not on this branch", () => {
+  test("marks a remote head ahead of the branch's commit as not on this branch", () => {
     // GIVEN
     const commit = { hash: OTHER_HASH, state: RepositoryCommitState.HEAD };
 
@@ -245,7 +232,7 @@ describe("getStateBadges", () => {
     expect(badges.map(({ label }) => label)).toEqual(["Remote head", "Not on this branch"]);
   });
 
-  test("marks a trunk head that the branch runs as imported", () => {
+  test("marks a remote head that the branch runs as imported", () => {
     // GIVEN
     const commit = { hash: IMPORTED_HASH, state: RepositoryCommitState.HEAD };
 

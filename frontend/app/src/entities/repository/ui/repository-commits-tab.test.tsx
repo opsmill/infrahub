@@ -5,6 +5,7 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getRepositoryCommitsFromApi } from "@/entities/repository/api/get-repository-commits-from-api";
 import {
   READONLY_REPOSITORY_KIND,
+  REPOSITORY_INTERNAL_STATUS_STAGING,
   REPOSITORY_KIND,
 } from "@/entities/repository/domain/model/repository";
 import { REPOSITORY_COMMITS_RETRY_DELAY_MS } from "@/entities/repository/ui/queries/repository-commits.constants";
@@ -16,7 +17,7 @@ import {
   generateCommitsApiResult,
   generateInSyncCommitsResponse,
   generateNotClonedCommitsResponse,
-  generateTrunkHistoryCommitsResponse,
+  generateRebaseNeededCommitsResponse,
 } from "../../../../tests/fake/repository-commit";
 import { RepositoryCommitsManager } from "./repository-commits-manager";
 import { RepositoryCommitsTab } from "./repository-commits-tab";
@@ -108,10 +109,10 @@ describe("RepositoryCommitsTab", () => {
     });
 
     test.each([
-      { condition: "behind", response: generateTrunkHistoryCommitsResponse, count: 2 },
+      { condition: "behind", response: generateRebaseNeededCommitsResponse, count: 2 },
       { condition: "in sync", response: generateInSyncCommitsResponse, count: 0 },
     ])(
-      "counts the trunk commits not on the branch when it is $condition",
+      "counts the default branch commits not on the branch when it is $condition",
       async ({ response, count }) => {
         // GIVEN
         apiMock.mockResolvedValue(generateCommitsApiResult(response()));
@@ -128,7 +129,10 @@ describe("RepositoryCommitsTab", () => {
 
     test.each([
       { case: "a read-only repository", objectKind: READONLY_REPOSITORY_KIND },
-      { case: "a repository added on the branch", internalStatus: "staging" },
+      {
+        case: "a repository added on the branch",
+        internalStatus: REPOSITORY_INTERNAL_STATUS_STAGING,
+      },
     ])("counts the commits pending import for $case", async ({ objectKind, internalStatus }) => {
       // GIVEN
       apiMock.mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));

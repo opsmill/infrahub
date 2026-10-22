@@ -164,7 +164,7 @@ export function getStateBadges(
   switch (state) {
     case RepositoryCommitState.HEAD:
       if (hash === importedCommit) return [REMOTE_HEAD_BADGE, IMPORTED_BADGE];
-      // The backend keeps HEAD ahead of every other state, so a trunk head the branch does not run still arrives as HEAD.
+      // The backend reports the remote head as HEAD even when the branch does not run it.
       return updatedOnlyByRebase ? [REMOTE_HEAD_BADGE, NOT_ON_BRANCH_BADGE] : [REMOTE_HEAD_BADGE];
     case RepositoryCommitState.NOT_ON_BRANCH:
       return [NOT_ON_BRANCH_BADGE];

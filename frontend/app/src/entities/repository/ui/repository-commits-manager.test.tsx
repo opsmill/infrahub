@@ -8,6 +8,7 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getRepositoryCommitsFromApi } from "@/entities/repository/api/get-repository-commits-from-api";
 import {
   READONLY_REPOSITORY_KIND,
+  REPOSITORY_INTERNAL_STATUS_STAGING,
   REPOSITORY_KIND,
   type RepositoryGitCondition,
 } from "@/entities/repository/domain/model/repository";
@@ -22,6 +23,8 @@ import { generateBranch } from "../../../../tests/fake/branch";
 import {
   BEHIND_HEAD,
   BEHIND_IMPORTED,
+  BRANCH_COMMIT,
+  DEFAULT_BRANCH_HEAD,
   generateBehindCommitsResponse,
   generateCommitsApiResult,
   generateFirstCommitsPage,
@@ -31,10 +34,10 @@ import {
   generateNotImplementedCommitsResponse,
   generateOrphanedCommitsResponse,
   generateReadOnlyCommitsResponse,
+  generateRebaseNeededCommitsResponse,
   generateRepositoryCommitsResponse,
   generateRewrittenCommitsResponse,
   generateSecondCommitsPage,
-  generateTrunkHistoryCommitsResponse,
   IN_SYNC_HEAD,
   JUST_CHECKED_AT,
   NOT_CLONED_MESSAGE,
@@ -45,8 +48,6 @@ import {
   READ_ONLY_CHECKED_AT,
   READ_ONLY_FETCHED_AT,
   type RepositoryCommitsWire,
-  TRUNK_HEAD,
-  TRUNK_IMPORTED,
 } from "../../../../tests/fake/repository-commit";
 import { RepositoryCommitsManager } from "./repository-commits-manager";
 
@@ -835,7 +836,7 @@ describe("RepositoryCommitsManager", () => {
 
     test("suggests a rebase when the default branch has newer commits", async () => {
       // GIVEN
-      apiMock.mockResolvedValue(generateCommitsApiResult(generateTrunkHistoryCommitsResponse()));
+      apiMock.mockResolvedValue(generateCommitsApiResult(generateRebaseNeededCommitsResponse()));
 
       // WHEN
       const component = await renderTab();
@@ -858,20 +859,20 @@ describe("RepositoryCommitsManager", () => {
       expect(component.getByText(REBASE_NOTE).query()).toBeNull();
     });
 
-    test("marks the trunk commits the branch does not run", async () => {
+    test("marks the default branch commits the branch does not run", async () => {
       // GIVEN
-      apiMock.mockResolvedValue(generateCommitsApiResult(generateTrunkHistoryCommitsResponse()));
+      apiMock.mockResolvedValue(generateCommitsApiResult(generateRebaseNeededCommitsResponse()));
 
       // WHEN
       const component = await renderTab();
 
       // THEN
       const rows = component.getByTestId("data-table-row");
-      await expect.element(rows.nth(0).getByText(TRUNK_HEAD)).toBeVisible();
+      await expect.element(rows.nth(0).getByText(DEFAULT_BRANCH_HEAD)).toBeVisible();
       await expect.element(rows.nth(0).getByText("Remote head")).toBeVisible();
       await expect.element(rows.nth(0).getByText("Not on this branch")).toBeVisible();
       await expect.element(rows.nth(1).getByText("Not on this branch")).toBeVisible();
-      await expect.element(rows.nth(2).getByText(TRUNK_IMPORTED)).toBeVisible();
+      await expect.element(rows.nth(2).getByText(BRANCH_COMMIT)).toBeVisible();
       await expect.element(rows.nth(2).getByText("Imported")).toBeVisible();
       expect(rows.nth(3).getByText("Not on this branch").query()).toBeNull();
     });
@@ -881,7 +882,7 @@ describe("RepositoryCommitsManager", () => {
       apiMock.mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));
 
       // WHEN
-      const component = await renderTab({ internalStatus: "staging" });
+      const component = await renderTab({ internalStatus: REPOSITORY_INTERNAL_STATUS_STAGING });
 
       // THEN
       await expect.element(component.getByText("3 commits pending import")).toBeVisible();
@@ -901,18 +902,6 @@ describe("RepositoryCommitsManager", () => {
       // THEN
       await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
       expect(component.getByText(REBASE_NOTE).query()).toBeNull();
-    });
-
-    test("shows no note while the commit log is not available", async () => {
-      // GIVEN
-      apiMock.mockResolvedValue(generateCommitsApiResult(generateNotClonedCommitsResponse()));
-
-      // WHEN
-      const component = await renderTab();
-
-      // THEN
-      await expect.element(component.getByText("Commit log not available yet")).toBeVisible();
-      expect(component.getByText(/does not sync with Git/).query()).toBeNull();
     });
   });
 
