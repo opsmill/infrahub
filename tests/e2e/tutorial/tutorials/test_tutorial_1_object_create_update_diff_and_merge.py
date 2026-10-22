@@ -47,7 +47,7 @@ class TestTutorial1ObjectAndBranch:
     ) -> None:
         await admin_page.goto("/")
         await admin_page.get_by_test_id("sidebar").get_by_role("button", name="Organization").click()
-        await admin_page.get_by_role("menuitem", name="Tenant").click()
+        await admin_page.get_by_role("dialog", name="Organization").get_by_role("link", name="Tenant").click()
         await expect(admin_page.get_by_role("heading", name="Tenant")).to_be_visible()
         await expect(admin_page.get_by_role("link", name="Duff")).to_be_visible()
 
@@ -85,7 +85,7 @@ class TestTutorial1ObjectAndBranch:
         # go to the newly created organization on branch cr1234
         await admin_page.goto("/?branch=cr1234")
         await admin_page.get_by_test_id("sidebar").get_by_role("button", name="Organization").click()
-        await admin_page.get_by_role("menuitem", name="Tenant").click()
+        await admin_page.get_by_role("dialog", name="Organization").get_by_role("link", name="Tenant").click()
         my_first_org_link = admin_page.get_by_test_id("object-items").get_by_role("link", name="my-first-tenant")
         await expect(my_first_org_link).to_be_visible()
         await save_screenshot_for_docs(admin_page, "tutorial_1_organizations")
@@ -149,7 +149,7 @@ class TestTutorial1ObjectAndBranch:
         await admin_page.get_by_role("option", name="main default").click()
         await expect(admin_page.get_by_test_id("branch-selector-trigger")).to_contain_text("main")
         await admin_page.get_by_test_id("sidebar").get_by_role("button", name="Organization").click()
-        await admin_page.get_by_role("menuitem", name="Tenant").click()
+        await admin_page.get_by_role("dialog", name="Organization").get_by_role("link", name="Tenant").click()
         await expect(admin_page.get_by_test_id("object-items")).to_contain_text("Changes from branch cr1234")
 
     async def test_5_browse_historical_data(
