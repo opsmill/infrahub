@@ -70,6 +70,28 @@ describe("sortRangesByFillOrder", () => {
     expect(sorted.map(({ id }) => id)).toEqual(["narrow", "wide"]);
   });
 
+  it("lists a range without an end after one with an end when weight and start are equal", () => {
+    // GIVEN
+    const open = generateNumberPoolRange({
+      id: "open",
+      start: { value: 1 },
+      end: { value: null },
+      allocation_weight: { value: 5 },
+    });
+    const closed = generateNumberPoolRange({
+      id: "closed",
+      start: { value: 1 },
+      end: { value: 50 },
+      allocation_weight: { value: 5 },
+    });
+
+    // WHEN
+    const sorted = sortRangesByFillOrder([open, closed]);
+
+    // THEN
+    expect(sorted.map(({ id }) => id)).toEqual(["closed", "open"]);
+  });
+
   it("leaves the given list in its order", () => {
     // GIVEN
     const ranges = [

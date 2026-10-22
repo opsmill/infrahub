@@ -34,7 +34,6 @@ import {
 } from "@/entities/resource-manager/domain/model/number-pool";
 import { useNumberPoolAllocationFilters } from "@/entities/resource-manager/ui/hooks/use-number-pool-allocation-filters";
 import { NumberPoolAllocationFiltersBar } from "@/entities/resource-manager/ui/number-pool/details/number-pool-allocation-filters-bar";
-import { formatRangeLabel } from "@/entities/resource-manager/ui/number-pool/details/number-pool-ranges-card";
 import { useGetNumberPoolAllocationCount } from "@/entities/resource-manager/ui/queries/get-number-pool-allocation-count.query";
 import { useGetNumberPoolAllocations } from "@/entities/resource-manager/ui/queries/get-number-pool-allocations.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -148,7 +147,7 @@ export function NumberPoolAllocationsTable({
   const objectHeader = nodeSchema?.label ?? "Object";
   const isFiltered = filters.branch !== undefined || filters.provenance !== undefined;
   const rangeEmptyMessage = selectedRange
-    ? `No allocations in ${formatRangeLabel(selectedRange)}`
+    ? `No allocations in ${selectedRange.display_label}`
     : "No allocations yet";
   const emptyMessage = isFiltered ? "No allocations match these filters" : rangeEmptyMessage;
 
@@ -268,7 +267,7 @@ export function NumberPoolAllocationsTable({
                     </Cell>
                     {showRangeColumn && (
                       <Cell className={classNames(cellStyle, "text-foreground-muted tabular-nums")}>
-                        {range ? formatRangeLabel(range) : ""}
+                        {range?.display_label ?? ""}
                       </Cell>
                     )}
                     <Cell className={cellStyle}>

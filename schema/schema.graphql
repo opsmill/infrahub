@@ -12029,9 +12029,9 @@ type NumberPoolRangeUtilization {
   """
   display_label: String!
   """
-  Last value of the range, included. For a range without an end, the smaller of the largest supported number and the target attribute's max_value on the requested branch.
+  Last value of the range, included. For a range without an end, the target attribute's max_value on the requested branch. Null when the range has an unbounded end.
   """
-  end: BigInt!
+  end: BigInt
   """
   Figures over the range's values. On a scoped pool, only the values held in the division passed in the division argument.
   """
@@ -12081,9 +12081,9 @@ type NumberPoolUtilization {
 """Absolute and relative utilization of a pool, a range or a division."""
 type NumberPoolUtilizationFigures {
   """
-  Number of values the pool, range or division can allocate. 0 when the pool has no range.
+  Number of values the pool, range or division can allocate. 0 when the pool has no range. Null when the pool's range is unbounded.
   """
-  size: BigInt!
+  size: BigInt
   """
   Number of these values in use on any branch. A value used on several branches counts once.
   """
@@ -12094,12 +12094,18 @@ type NumberPoolUtilizationFigures {
   used_branches: BigInt!
   """Number of these values in use on the default branch."""
   used_default_branch: BigInt!
-  """used as a percentage of size. 0 when size is 0."""
-  utilization: Float!
-  """used_branches as a percentage of size. 0 when size is 0."""
-  utilization_branches: Float!
-  """used_default_branch as a percentage of size. 0 when size is 0."""
-  utilization_default_branch: Float!
+  """
+  used as a percentage of size. 0 when size is 0. Null when the pool's range is unbounded.
+  """
+  utilization: Float
+  """
+  used_branches as a percentage of size. 0 when size is 0. Null when the pool's range is unbounded.
+  """
+  utilization_branches: Float
+  """
+  used_default_branch as a percentage of size. 0 when size is 0. Null when the pool's range is unbounded.
+  """
+  utilization_default_branch: Float
 }
 
 type ObjectPermission {
