@@ -1,0 +1,19 @@
+docs/docs/resource-manager/overview.mdx
+  s_c4214f8889410e::t_0db4acb5a6034d 79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cae6ca6628925acf675196f8592eb7afdaa3ac19",
+  "prompts": {},
+  "sessions": {
+    "s_c4214f8889410e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b33f404e-94cc-4ec4-ac80-07a57a7f9d18",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
