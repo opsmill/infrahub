@@ -112,6 +112,16 @@ HOP_FILTER_CASES = [
         arguments=(_argument("mtu__value", "1.5"), _argument("status__value", '"active"')),
         expected=_interface_filters(ACTIVE),
     ),
+    HopFilterCase(
+        name="a_single_id_is_recorded_as_a_list_as_graphql_coerces_it",
+        arguments=(_argument("ids", '"intf1"'),),
+        expected=_interface_filters(("interfaces__ids", ("intf1",))),
+    ),
+    HopFilterCase(
+        name="a_single_value_of_a_values_filter_is_recorded_as_a_list_as_graphql_coerces_it",
+        arguments=(_argument("status__values", '"active"'),),
+        expected=_interface_filters(("interfaces__status__values", ("active",))),
+    ),
 ]
 
 

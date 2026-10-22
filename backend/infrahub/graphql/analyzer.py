@@ -314,7 +314,7 @@ def _peer_filters(node: GraphQLQueryNode) -> PeerFilters | None:
     targets, never fewer.
     """
     arguments = {
-        argument.name: literal
+        argument.name: _as_list_when_list_typed(name=argument.name, literal=literal)
         for argument in node.arguments
         if not argument.contains_variable
         and not argument.contains_enum_value
@@ -325,6 +325,13 @@ def _peer_filters(node: GraphQLQueryNode) -> PeerFilters | None:
     if not filters:
         return None
     return PeerFilters(relationship_name=node.path, filters=tuple(sorted(filters.items())))
+
+
+def _as_list_when_list_typed(*, name: str, literal: FilterLiteral) -> FilterLiteral:
+    """Return a single value of a list-typed argument as a one-item list, as GraphQL coerces it for the resolver."""
+    if (name == "ids" or name.endswith("__values")) and not isinstance(literal, tuple):
+        return (literal,)
+    return literal
 
 
 def _filter_literal(value: Any) -> FilterLiteral | None:
