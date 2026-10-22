@@ -177,14 +177,12 @@ class _RecordingCollectorFactory:
         self._collector = collector
         self.diff: EnrichedDiffRoot | None = None
         self.branch: Branch | None = None
-        self.label_branch: Branch | None = None
 
     def __call__(
-        self, *, diff: EnrichedDiffRoot, db: InfrahubDatabase, branch: Branch, label_branch: Branch
+        self, *, diff: EnrichedDiffRoot, db: InfrahubDatabase, branch: Branch
     ) -> _ProbingChangelogCollector | _RaisingChangelogCollector:
         self.diff = diff
         self.branch = branch
-        self.label_branch = label_branch
         return self._collector
 
 
@@ -292,8 +290,7 @@ class TestMergeChangelogCollection:
 
         await harness.orchestrator.merge(context=_context(default_branch))
 
-        # The graph merge ran under protection, and the collection ran after it was lifted but before
-        # the follow-ups, which may schedule the deletion of the branch it reads.
+        # The graph merge ran under protection, and the collection ran after it was lifted.
         assert harness.graph_merger.protection_during_merge == MergeProtection(
             branch=source_branch.name, state=MergeProtectionState.MERGING
         )
@@ -301,8 +298,7 @@ class TestMergeChangelogCollection:
         assert harness.steps == ["collect_changelogs", "follow_ups", "dispatch_events"]
 
         assert harness.collector_factory.diff is harness.diff
-        assert harness.collector_factory.branch is source_branch
-        assert harness.collector_factory.label_branch is default_branch
+        assert harness.collector_factory.branch is default_branch
         assert harness.post_merge_dispatcher.dispatched_node_events == [collector.events]
         assert harness.rollback_handler.calls == 0
         assert source_branch.status == BranchStatus.MERGED

@@ -49,14 +49,9 @@ class ChangelogCollector(Protocol):
 
 
 class ChangelogCollectorFactory(Protocol):
-    """Builds a changelog collector for a diff, reading the graph through the given database and branch.
+    """Builds a changelog collector for a diff, reading the graph through the given database and branch."""
 
-    The HFIDs are read on ``label_branch``.
-    """
-
-    def __call__(
-        self, *, diff: EnrichedDiffRoot, db: InfrahubDatabase, branch: Branch, label_branch: Branch
-    ) -> ChangelogCollector: ...
+    def __call__(self, *, diff: EnrichedDiffRoot, db: InfrahubDatabase, branch: Branch) -> ChangelogCollector: ...
 
 
 class BranchMergeOrchestrator:
@@ -226,8 +221,7 @@ class BranchMergeOrchestrator:
         # Persisted only past the point of no return, so a rolled-back merge leaves no entry behind.
         merge_diff_cache_key = await self._cache_diff_summary(branch_diff=branch_diff)
 
-        # Collect changelogs only after write protection is lifted, but before follow-ups, which may
-        # schedule deletion of the source branch the collector reads.
+        # Collect changelogs only after write protection is lifted.
         node_events = await self._collect_node_events(branch_diff=branch_diff)
 
         await self.post_merge_dispatcher.run_follow_ups(
@@ -249,9 +243,9 @@ class BranchMergeOrchestrator:
 
     async def _collect_node_events(self, branch_diff: EnrichedDiffRoot) -> Sequence[tuple[DiffAction, NodeChangelog]]:
         """Collect the node changelogs from the merged branch's enriched diff."""
-        # The merged branch sees the destination only as of its branch point, so labels are read on the destination.
+        # The merged branch sees the destination only as of its branch point, so changelogs are read on the destination.
         changelog_collector = self.changelog_collector_factory(
-            diff=branch_diff, db=self.db, branch=self.source_branch, label_branch=self.destination_branch
+            diff=branch_diff, db=self.db, branch=self.destination_branch
         )
         with trace.get_tracer(__name__).start_as_current_span("merge.collect_changelogs") as span:
             node_events = await changelog_collector.collect_changelogs()

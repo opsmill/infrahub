@@ -385,9 +385,7 @@ async def test_merge_reads_the_hfids_the_default_branch_holds_after_the_merge(
 
     diff = await _merge_and_get_diff(db=db, default_branch=default_branch, branch=branch)
 
-    changelogs = await build_diff_changelog_collector(
-        diff=diff, db=db, branch=branch, label_branch=default_branch
-    ).collect_changelogs()
+    changelogs = await build_diff_changelog_collector(diff=diff, db=db, branch=default_branch).collect_changelogs()
 
     # The branch still sees the owner as it was when the branch was created; the merged event names
     # it as the default branch holds it.
