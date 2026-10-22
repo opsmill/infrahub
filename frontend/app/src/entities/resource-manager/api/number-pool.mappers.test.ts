@@ -119,4 +119,27 @@ describe("mapToNumberPoolData", () => {
       { start: 500, end: 599, allocation_weight: 0 },
     ]);
   });
+
+  it("keeps a range whose start or end is open as null", () => {
+    // GIVEN
+    const node = buildNode({
+      ranges: {
+        edges: [
+          { node: { start: { value: 100 }, end: { value: null }, allocation_weight: null } },
+          { node: { start: { value: null }, end: { value: 50 }, allocation_weight: null } },
+          { node: { start: null, end: null, allocation_weight: null } },
+        ],
+      },
+    });
+
+    // WHEN
+    const pool = mapToNumberPoolData(node);
+
+    // THEN
+    expect(pool.ranges).toEqual([
+      { start: 100, end: null, allocation_weight: null },
+      { start: null, end: 50, allocation_weight: null },
+      { start: null, end: null, allocation_weight: null },
+    ]);
+  });
 });
