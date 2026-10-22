@@ -154,18 +154,18 @@ const NOT_ON_BRANCH_BADGE: CommitStateBadge = { label: "Not on this branch", var
 
 export interface CommitStateContext {
   importedCommit: string | null;
-  showsTrunkHistory: boolean;
+  updatedOnlyByRebase: boolean;
 }
 
 export function getStateBadges(
   { hash, state }: Pick<RepositoryCommit, "hash" | "state">,
-  { importedCommit, showsTrunkHistory }: CommitStateContext
+  { importedCommit, updatedOnlyByRebase }: CommitStateContext
 ): CommitStateBadge[] {
   switch (state) {
     case RepositoryCommitState.HEAD:
       if (hash === importedCommit) return [REMOTE_HEAD_BADGE, IMPORTED_BADGE];
       // The backend keeps HEAD ahead of every other state, so a trunk head the branch does not run still arrives as HEAD.
-      return showsTrunkHistory ? [REMOTE_HEAD_BADGE, NOT_ON_BRANCH_BADGE] : [REMOTE_HEAD_BADGE];
+      return updatedOnlyByRebase ? [REMOTE_HEAD_BADGE, NOT_ON_BRANCH_BADGE] : [REMOTE_HEAD_BADGE];
     case RepositoryCommitState.NOT_ON_BRANCH:
       return [NOT_ON_BRANCH_BADGE];
     case RepositoryCommitState.IMPORTED:
@@ -175,7 +175,6 @@ export function getStateBadges(
     case RepositoryCommitState.UNRELATED:
       return [UNRELATED_BADGE];
     case RepositoryCommitState.HISTORY:
-    case RepositoryCommitState.NOT_ON_BRANCH:
       return [];
     default:
       warnUnexpectedType(state);
@@ -207,10 +206,23 @@ export interface CommitLogNotice {
   message: string;
 }
 
-export function getConditionNotice({
+export function getRebaseNote({
   condition,
-  pending_count,
-}: Pick<RepositoryCommitLog, "condition" | "pending_count">): CommitLogNotice | null {
+}: Pick<RepositoryCommitLog, "condition">): string | null {
+  switch (condition) {
+    case RepositoryGitCondition.BEHIND:
+      return "This branch does not sync with Git. The default branch has newer commits. Rebase the branch to use them.";
+    case RepositoryGitCondition.IN_SYNC:
+      return "This branch does not sync with Git. It uses the latest commit of the default branch.";
+    default:
+      return null;
+  }
+}
+
+export function getConditionNotice(
+  { condition, pending_count }: Pick<RepositoryCommitLog, "condition" | "pending_count">,
+  { updatedOnlyByRebase }: Pick<CommitStateContext, "updatedOnlyByRebase">
+): CommitLogNotice | null {
   switch (condition) {
     case RepositoryGitCondition.REWRITTEN:
       return {
@@ -229,8 +241,17 @@ export function getConditionNotice({
     case RepositoryGitCondition.BEHIND:
       return pending_count === null
         ? null
-        : { tone: "neutral", message: `${pluralize(pending_count, "commit")} pending import` };
+        : {
+            tone: "neutral",
+            message: `${pluralize(pending_count, "commit")} ${getPendingCountLabel({ updatedOnlyByRebase })}`,
+          };
     default:
       return null;
   }
+}
+
+export function getPendingCountLabel({
+  updatedOnlyByRebase,
+}: Pick<CommitStateContext, "updatedOnlyByRebase">): string {
+  return updatedOnlyByRebase ? "not on this branch" : "pending import";
 }

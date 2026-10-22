@@ -82,6 +82,7 @@ describe("RepositoryCommitsManager loading more", () => {
         <RepositoryCommitsManager
           repositoryId="repo-1"
           repositoryKind={REPOSITORY_KIND}
+          repositoryInternalStatus="active"
           repositoryLocation={null}
           remoteCheck={null}
         />
@@ -113,6 +114,7 @@ describe("RepositoryCommitsManager loading more", () => {
         <RepositoryCommitsManager
           repositoryId="repo-1"
           repositoryKind={REPOSITORY_KIND}
+          repositoryInternalStatus="active"
           repositoryLocation={null}
           remoteCheck={null}
         />

@@ -9,7 +9,7 @@ import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import type { RepositoryCommitLog } from "@/entities/repository/domain/model/repository";
-import { isShowingTrunkHistory } from "@/entities/repository/domain/rules/is-showing-trunk-history";
+import { isUpdatedOnlyByRebase } from "@/entities/repository/domain/rules/is-updated-only-by-rebase";
 import { getRepositoryCommitsColumns } from "@/entities/repository/ui/get-repository-commits-columns";
 import { useGetRepositoryCommits } from "@/entities/repository/ui/queries/get-repository-commits.query";
 import {
@@ -34,6 +34,7 @@ type RepositoryCheckRemoteProps = Pick<RepositoryCommitsToolbarProps, "remoteChe
 export interface RepositoryCommitsManagerProps extends RepositoryCheckRemoteProps {
   repositoryId: string;
   repositoryKind: string;
+  repositoryInternalStatus: string | null;
   repositoryLocation: string | null;
 }
 
@@ -43,6 +44,7 @@ const gridTemplateColumns = () =>
 export function RepositoryCommitsManager({
   repositoryId,
   repositoryKind,
+  repositoryInternalStatus,
   repositoryLocation,
   remoteCheck,
 }: RepositoryCommitsManagerProps) {
@@ -99,7 +101,11 @@ export function RepositoryCommitsManager({
     failureReason,
   });
 
-  const showsTrunkHistory = isShowingTrunkHistory({ repositoryKind, branch: currentBranch });
+  const updatedOnlyByRebase = isUpdatedOnlyByRebase({
+    repositoryKind,
+    internalStatus: repositoryInternalStatus,
+    branch: currentBranch,
+  });
 
   if (noCommitLogState) {
     return (
@@ -118,7 +124,7 @@ export function RepositoryCommitsManager({
         log={log}
         repositoryId={repositoryId}
         remoteCheck={remoteCheck}
-        showsTrunkHistory={showsTrunkHistory}
+        updatedOnlyByRebase={updatedOnlyByRebase}
       />
       {isShowingStaleCommits({ isRefetchError, isRefetching, failureReason }) && (
         <RepositoryCommitsNotice>
@@ -138,7 +144,7 @@ export function RepositoryCommitsManager({
         <DataTable
           columns={getRepositoryCommitsColumns({
             importedCommit: log.imported_commit,
-            showsTrunkHistory,
+            updatedOnlyByRebase,
             repositoryLocation,
           })}
           data={commits}
@@ -183,7 +189,7 @@ function RepositoryCommitsEmptyState({
         log={log}
         repositoryId={repositoryId}
         remoteCheck={remoteCheck}
-        showsTrunkHistory={false}
+        updatedOnlyByRebase={false}
       />
       <NoDataFound title={emptyState.title} message={emptyState.message} />
     </Col>

@@ -63,8 +63,10 @@ const formatDate = (date: string) =>
 const formatDateTime = (date: string) =>
   formatWithPreferences(date, { pattern: null, timezone: null }, "datetime");
 
-const TRUNK_HISTORY_NOTE =
-  "This branch does not sync with Git, so it shows the history of the repository's default branch.";
+const REBASE_NOTE =
+  "This branch does not sync with Git. The default branch has newer commits. Rebase the branch to use them.";
+const UP_TO_DATE_NOTE =
+  "This branch does not sync with Git. It uses the latest commit of the default branch.";
 
 const STALE_NOTICE =
   "Couldn't refresh the commit log right now. Showing the last loaded commits; older commits load after a successful refresh.";
@@ -76,7 +78,13 @@ function CaptureQueryClient() {
   return null;
 }
 
-const tab = (repositoryKind: string = REPOSITORY_KIND) => (
+const tab = ({
+  repositoryKind = REPOSITORY_KIND,
+  internalStatus = "active",
+}: {
+  repositoryKind?: string;
+  internalStatus?: string;
+} = {}) => (
   <>
     <CaptureQueryClient />
     {/* Bounded like the tab panel, or the scroll sentinel can start in view and load page two on its own. */}
@@ -84,6 +92,7 @@ const tab = (repositoryKind: string = REPOSITORY_KIND) => (
       <RepositoryCommitsManager
         repositoryId="repo-1"
         repositoryKind={repositoryKind}
+        repositoryInternalStatus={internalStatus}
         repositoryLocation="https://github.com/opsmill/infrahub-demo.git"
         remoteCheck={null}
       />
@@ -91,7 +100,7 @@ const tab = (repositoryKind: string = REPOSITORY_KIND) => (
   </>
 );
 
-const renderTab = (repositoryKind?: string) => render(tab(repositoryKind));
+const renderTab = (options?: Parameters<typeof tab>[0]) => render(tab(options));
 
 const useBranch = (name: string, { syncWithGit = true }: { syncWithGit?: boolean } = {}) =>
   useCurrentBranchMock.mockReturnValue({
@@ -824,7 +833,7 @@ describe("RepositoryCommitsManager", () => {
       useBranch("test-branch", { syncWithGit: false });
     });
 
-    test("explains that the log shows the trunk's history", async () => {
+    test("suggests a rebase when the default branch has newer commits", async () => {
       // GIVEN
       apiMock.mockResolvedValue(generateCommitsApiResult(generateTrunkHistoryCommitsResponse()));
 
@@ -832,8 +841,21 @@ describe("RepositoryCommitsManager", () => {
       const component = await renderTab();
 
       // THEN
-      await expect.element(component.getByText(TRUNK_HISTORY_NOTE)).toBeVisible();
-      await expect.element(component.getByText("main", { exact: true })).toBeVisible();
+      await expect.element(component.getByText(REBASE_NOTE)).toBeVisible();
+      await expect.element(component.getByText("2 commits not on this branch")).toBeVisible();
+      expect(component.getByText(/pending import/i).query()).toBeNull();
+    });
+
+    test("says the branch is up to date when it runs the newest commit", async () => {
+      // GIVEN
+      apiMock.mockResolvedValue(generateCommitsApiResult(generateInSyncCommitsResponse()));
+
+      // WHEN
+      const component = await renderTab();
+
+      // THEN
+      await expect.element(component.getByText(UP_TO_DATE_NOTE)).toBeVisible();
+      expect(component.getByText(REBASE_NOTE).query()).toBeNull();
     });
 
     test("marks the trunk commits the branch does not run", async () => {
@@ -852,7 +874,21 @@ describe("RepositoryCommitsManager", () => {
       await expect.element(rows.nth(2).getByText(TRUNK_IMPORTED)).toBeVisible();
       await expect.element(rows.nth(2).getByText("Imported")).toBeVisible();
       expect(rows.nth(3).getByText("Not on this branch").query()).toBeNull();
-      expect(component.getByText(/pending import/i).query()).toBeNull();
+    });
+
+    test("keeps the pending-import wording for a repository added on the branch", async () => {
+      // GIVEN
+      apiMock.mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));
+
+      // WHEN
+      const component = await renderTab({ internalStatus: "staging" });
+
+      // THEN
+      await expect.element(component.getByText("3 commits pending import")).toBeVisible();
+      expect(component.getByText(REBASE_NOTE).query()).toBeNull();
+      expect(
+        component.getByTestId("data-table-row").nth(0).getByText("Not on this branch").query()
+      ).toBeNull();
     });
 
     test("shows no note for a read-only repository", async () => {
@@ -860,11 +896,11 @@ describe("RepositoryCommitsManager", () => {
       apiMock.mockResolvedValue(generateCommitsApiResult(generateReadOnlyCommitsResponse()));
 
       // WHEN
-      const component = await renderTab(READONLY_REPOSITORY_KIND);
+      const component = await renderTab({ repositoryKind: READONLY_REPOSITORY_KIND });
 
       // THEN
       await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
-      expect(component.getByText(TRUNK_HISTORY_NOTE).query()).toBeNull();
+      expect(component.getByText(REBASE_NOTE).query()).toBeNull();
     });
 
     test("shows no note while the commit log is not available", async () => {
@@ -876,11 +912,11 @@ describe("RepositoryCommitsManager", () => {
 
       // THEN
       await expect.element(component.getByText("Commit log not available yet")).toBeVisible();
-      expect(component.getByText(TRUNK_HISTORY_NOTE).query()).toBeNull();
+      expect(component.getByText(/does not sync with Git/).query()).toBeNull();
     });
   });
 
-  test("shows no trunk note on a branch that syncs with Git", async () => {
+  test("shows no rebase note on a branch that syncs with Git", async () => {
     // GIVEN
     apiMock.mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));
 
@@ -888,7 +924,7 @@ describe("RepositoryCommitsManager", () => {
     const component = await renderTab();
 
     // THEN
-    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
-    expect(component.getByText(TRUNK_HISTORY_NOTE).query()).toBeNull();
+    await expect.element(component.getByText("3 commits pending import")).toBeVisible();
+    expect(component.getByText(REBASE_NOTE).query()).toBeNull();
   });
 });

@@ -12,7 +12,11 @@ import {
   RepositoryCheckRemoteButton,
   type RepositoryRemoteCheck,
 } from "@/entities/repository/ui/repository-check-remote-button";
-import { getConditionNotice, getFreshness } from "@/entities/repository/ui/repository-commits.view";
+import {
+  getConditionNotice,
+  getFreshness,
+  getRebaseNote,
+} from "@/entities/repository/ui/repository-commits.view";
 
 interface RepositoryCommitsLogProps {
   log: RepositoryCommitLog;
@@ -32,27 +36,24 @@ export interface RepositoryCommitsToolbarProps {
 export interface RepositoryCommitsHeaderProps
   extends RepositoryCommitsLogProps,
     Omit<RepositoryCommitsToolbarProps, "children"> {
-  showsTrunkHistory: boolean;
+  updatedOnlyByRebase: boolean;
 }
 
 export function RepositoryCommitsHeader({
   log,
   repositoryId,
   remoteCheck,
-  showsTrunkHistory,
+  updatedOnlyByRebase,
 }: RepositoryCommitsHeaderProps) {
+  const rebaseNote = updatedOnlyByRebase ? getRebaseNote(log) : null;
+
   return (
     <Col className="gap-1.5 p-2">
       <RepositoryCommitsToolbar repositoryId={repositoryId} remoteCheck={remoteCheck}>
         <FreshnessLine log={log} />
       </RepositoryCommitsToolbar>
-      {showsTrunkHistory && (
-        <p className="text-foreground-muted text-sm">
-          This branch does not sync with Git, so it shows the history of the repository's default
-          branch.
-        </p>
-      )}
-      <ConditionNotice log={log} />
+      {rebaseNote && <p className="text-foreground-muted text-sm">{rebaseNote}</p>}
+      <ConditionNotice log={log} updatedOnlyByRebase={updatedOnlyByRebase} />
     </Col>
   );
 }
@@ -115,8 +116,11 @@ function FreshnessLine({ log }: RepositoryCommitsLogProps) {
   );
 }
 
-function ConditionNotice({ log }: RepositoryCommitsLogProps) {
-  const notice = getConditionNotice(log);
+function ConditionNotice({
+  log,
+  updatedOnlyByRebase,
+}: RepositoryCommitsLogProps & Pick<RepositoryCommitsHeaderProps, "updatedOnlyByRebase">) {
+  const notice = getConditionNotice(log, { updatedOnlyByRebase });
 
   if (!notice) return null;
 
