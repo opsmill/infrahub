@@ -99,11 +99,9 @@ queries:
 
 Add your repository containing the Transformation to Infrahub. See [Connect a repository](../git-integration/connect-repository) for instructions.
 
-Infrahub reads the Transformation of a custom webhook from the default branch, so the Transformation has to exist there before you link it. Check this before you continue, for example by running the `GetTransform` query from the next section without selecting a branch, so that it queries the default branch. See [Where webhooks are stored and read](./overview#where-webhooks-are-stored-and-read) for the reason.
-
 ## Create the custom webhook
 
-Create the webhook while working on the default branch, so that the link to the Transformation is created on the default branch.
+Create the webhook while working on the default branch. A custom webhook uses only the Transformation linked on the default branch, so the Transformation has to exist there before you link it. See [Where webhooks are stored and read](./overview#where-webhooks-are-stored-and-read) for the reason.
 
 <Tabs groupId="method" queryString>
   <TabItem value="web" label="Via the Web Interface" default>
@@ -116,14 +114,14 @@ Create the webhook while working on the default branch, so that the link to the 
    - **URL**: The destination endpoint
    - **Event Type**: The event to trigger on, such as `infrahub.node.updated`
    - **Branch Scope**: Which branches should trigger this webhook
-5. Select your Transformation from the **Transformation** dropdown.
+5. Select your Transformation from the **Transformation** dropdown. If it is not in the list, it does not exist on the default branch yet.
 6. Click **Save**.
 
   </TabItem>
 
   <TabItem value="graphql" label="Via the GraphQL Interface">
 
-First, get the Transformation ID:
+First, get the Transformation ID. Run the query without selecting a branch, so that it queries the default branch. If it returns no result, the Transformation does not exist on the default branch yet.
 
 ```graphql
 query GetTransform {
