@@ -1,1 +1,0 @@
-Added the `INFRAHUB_TRACE_SAMPLE_RATIO` setting, the share of new traces that Infrahub records, from 0 to 1 (default 0.1). Before, Infrahub recorded every trace. A request or a flow run that arrives with a trace context follows the decision of its caller.

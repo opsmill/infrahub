@@ -1,1 +1,0 @@
-Fixed the failing Neo4j scrape target of the observability stack on Neo4j Community: set `INFRAHUB_NEO4J_METRICS_TARGET` to an empty value to stop the scrape. By default Alloy still scrapes `database:2004`, so Neo4j Enterprise keeps its metrics. The Neo4j dashboard now states which panels need Neo4j Enterprise.

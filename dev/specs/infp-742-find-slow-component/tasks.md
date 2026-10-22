@@ -299,6 +299,7 @@ checks.
 - [ ] T093 Daniel runs the `opsmill-dev-guiding-manual-tests` skill on the Infrahub branch, with `python_sdk` on `origin/infrahub-develop` (needs T086), using the checks of [quickstart.md](quickstart.md)
 - [ ] T094 Before release: quickstart manual check 7 (each dashboard in a Grafana with only Prometheus) and manual check 1 repeated with the file downloaded from `https://infrahub.opsmill.io/?observability=true` (needs the answer to T036); and check that the release notes of the release that ships INFP-742 list the `trace_id` log field change as a breaking change, with the old `0x` form and the new 32-character form (research R5; changelog fragment `+trace-id-format.changed.md`; added on 2026-10-21)
 - [x] T095 Create every fragment listed in "Changelog entries for the top layer" with `towncrier create` in `changelog/`, using the `creating-changelog-entries` skill; correct each text to what landed
+- [x] T096 Merge the fragments of T095 into one short `added` fragment, `+slow-instance-observability.added.md`, and keep the breaking `+trace-id-format.changed.md` (review of 2026-10-22)
 
 ---
 
@@ -436,6 +437,11 @@ The plan proposes that INFP-742 merges first and INFP-743 rebases, because both 
 ## Changelog entries for the top layer
 
 Created by T095 in IFC-3470. Each layer adds its entries here, with the file name and the type.
+
+Merged by T096 on 2026-10-22, after [Fatih Acar's review](https://github.com/opsmill/infrahub/pull/11164)
+asked for a single short entry: `changelog/` now holds `+slow-instance-observability.added.md` and,
+kept apart so that operators who must update their queries view it, the breaking
+`+trace-id-format.changed.md`. The entries below are the record of what each layer contributed.
 
 ### IFC-3425 (layer 1)
 

@@ -1,1 +1,0 @@
-Added the `infrahub_db_connection_pool_size` metric, the maximum number of database connections of each process, and the `infrahub_db_connection_wait_seconds` metric, the time each query waits to get a connection from the pool.

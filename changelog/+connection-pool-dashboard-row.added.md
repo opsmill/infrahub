@@ -1,1 +1,0 @@
-Added the "Connection Pool" row to the Infrahub dashboard, with the highest connection pool usage, the pool usage against the pool size of each process, and the connection wait time at the selected percentile.

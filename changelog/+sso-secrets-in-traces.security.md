@@ -1,1 +1,0 @@
-Removed single sign-on access tokens, user information, authorization codes and state values from exported traces, and the single sign-on login log line now records the account ID instead of the user name.
