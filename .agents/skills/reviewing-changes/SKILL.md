@@ -159,6 +159,10 @@ in scope), spawn one reviewer per area (read-only), with `.agents/rules/code-des
 - Does each comment explain why?
 - For each test, name the code change that would make it fail; flag a test with none. Flag a
   test that repeats a case another test already covers.
+- For each negative assertion (`expect(page.getByText(X).query()).toBeNull()`,
+  `not.toBeInTheDocument()`, `assert X not in ...`), check that the test's fixture can produce X.
+  When no input in the test ever produces X, the assertion passes whether or not the code works;
+  flag it and name the fixture change that would let it fail.
 
 ## Phase 4 — What the diff cannot show
 
