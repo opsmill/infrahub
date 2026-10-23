@@ -167,7 +167,7 @@ describe("GenericRelationshipField", () => {
 
     await expect
       .element(component.getByRole("combobox", { name: "Kind" }))
-      .toHaveTextContent("Device A");
+      .toMatchTextContent("Device A");
     await expect.poll(() => component.getByText("Select a kind first").query()).toBeNull();
   });
 

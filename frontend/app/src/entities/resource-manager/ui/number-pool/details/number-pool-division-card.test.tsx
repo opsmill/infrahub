@@ -73,7 +73,7 @@ describe("NumberPoolDivisionCard", () => {
     // THEN
     await expect
       .element(component.getByRole("button", { name: /Allocation scope/ }))
-      .toHaveTextContent(/atl1-core1 · leaf/);
+      .toMatchTextContent(/atl1-core1 · leaf/);
   });
 
   it("shows that the open allocation scope holds no numbers", async () => {

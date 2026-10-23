@@ -339,8 +339,8 @@ describe("RepositoryMenuSection", () => {
     await expect
       .element(component.getByRole("menuitem", { name: /Check connectivity/i }))
       .toBeVisible();
-    await expect.element(component.baseElement).not.toHaveTextContent("Retry push");
-    await expect.element(component.baseElement).not.toHaveTextContent("Abandon pending push");
+    await expect.element(component.baseElement).not.toMatchTextContent("Retry push");
+    await expect.element(component.baseElement).not.toMatchTextContent("Abandon pending push");
   });
 
   test.each(

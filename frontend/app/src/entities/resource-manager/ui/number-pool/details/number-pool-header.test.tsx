@@ -128,7 +128,7 @@ describe("NumberPoolHeader", () => {
     await expect.element(component.getByText("scoped by")).toBeVisible();
     await expect
       .element(component.getByRole("banner"))
-      .toHaveTextContent(/scoped by\s*Site\s*\+\s*Role/);
+      .toMatchTextContent(/scoped by\s*Site\s*\+\s*Role/);
     await expect
       .element(component.getByRole("button", { name: "Site", exact: true }))
       .toBeVisible();

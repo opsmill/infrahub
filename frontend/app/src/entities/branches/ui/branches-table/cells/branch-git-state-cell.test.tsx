@@ -77,7 +77,7 @@ describe("BranchGitStateCell", () => {
     // THEN
     await expect
       .element(component.getByTestId("branch-git-state-cell-feature"))
-      .toHaveTextContent(/^In Sync$/);
+      .toMatchTextContent(/^In Sync$/);
   });
 
   test.each([
