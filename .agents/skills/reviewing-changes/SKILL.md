@@ -231,6 +231,10 @@ Skip for a report-only run. Show the classified list and wait for approval. Fix 
 items with the smallest change each, run the checks in the touched area's `AGENTS.md`, and do
 not commit: the user reviews the fixes.
 
+A browser-mode Vitest or Playwright timeout in a file the fixes did not touch can come from load
+on the machine, for example other agents driving browsers at the same time. Rerun the failing
+files once before treating the timeout as a failure, and report both runs.
+
 Then review the fixes as a new change. This is not optional: a fix can break something the first
 round never looked at, or fix a finding only partly.
 
