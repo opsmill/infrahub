@@ -246,6 +246,20 @@ describe("getStateBadges", () => {
     expect(badges.map(({ label }) => label)).toEqual(["Remote head", "Imported"]);
   });
 
+  test("marks a commit off the branch's history as not on a branch updated only by rebase", () => {
+    // GIVEN
+    const commit = { hash: OTHER_HASH, state: RepositoryCommitState.UNRELATED };
+
+    // WHEN
+    const badges = getStateBadges(commit, {
+      importedCommit: IMPORTED_HASH,
+      updatedOnlyByRebase: true,
+    });
+
+    // THEN
+    expect(badges.map(({ label }) => label)).toEqual(["Not on this branch"]);
+  });
+
   test("shows no badge for a state this client does not know", () => {
     // GIVEN
     const commit = { hash: "a".repeat(40), state: "FUTURE_STATE" };
@@ -323,7 +337,7 @@ describe("getConditionNotice", () => {
   test("warns that a rewritten ref reports nothing as pending", () => {
     // WHEN
     const notice = getConditionNotice(
-      { condition: RepositoryGitCondition.REWRITTEN, pending_count: null },
+      { condition: RepositoryGitCondition.REWRITTEN, pending_count: null, imported_commit: null },
       { updatedOnlyByRebase: false }
     );
 
@@ -332,10 +346,28 @@ describe("getConditionNotice", () => {
     expect(notice?.message).toMatch(/^The tracked ref was rewritten\./);
   });
 
+  test("names the commit a branch updated only by rebase lost to a rewritten default branch", () => {
+    // WHEN
+    const notice = getConditionNotice(
+      {
+        condition: RepositoryGitCondition.REWRITTEN,
+        pending_count: null,
+        imported_commit: IMPORTED_HASH,
+      },
+      { updatedOnlyByRebase: true }
+    );
+
+    // THEN
+    expect(notice).toEqual({
+      tone: "warning",
+      message: `This branch does not sync with Git, and the commit it uses (${IMPORTED_HASH.slice(0, 7)}) is no longer in the history of the default branch, for example after a force push. Rebase the branch to use the latest commit of the default branch.`,
+    });
+  });
+
   test("warns that the imported commit is missing from the remote", () => {
     // WHEN
     const notice = getConditionNotice(
-      { condition: RepositoryGitCondition.ORPHANED, pending_count: null },
+      { condition: RepositoryGitCondition.ORPHANED, pending_count: null, imported_commit: null },
       { updatedOnlyByRebase: false }
     );
 
@@ -349,7 +381,7 @@ describe("getConditionNotice", () => {
   test("warns when the tracked ref no longer exists on the remote", () => {
     // WHEN
     const notice = getConditionNotice(
-      { condition: RepositoryGitCondition.REF_MISSING, pending_count: null },
+      { condition: RepositoryGitCondition.REF_MISSING, pending_count: null, imported_commit: null },
       { updatedOnlyByRebase: false }
     );
 
@@ -364,7 +396,7 @@ describe("getConditionNotice", () => {
   test("counts the commits pending import when behind", () => {
     // WHEN
     const notice = getConditionNotice(
-      { condition: RepositoryGitCondition.BEHIND, pending_count: 2 },
+      { condition: RepositoryGitCondition.BEHIND, pending_count: 2, imported_commit: null },
       { updatedOnlyByRebase: false }
     );
 
@@ -375,7 +407,7 @@ describe("getConditionNotice", () => {
   test("counts the commits not on a branch that only a rebase updates", () => {
     // WHEN
     const notice = getConditionNotice(
-      { condition: RepositoryGitCondition.BEHIND, pending_count: 2 },
+      { condition: RepositoryGitCondition.BEHIND, pending_count: 2, imported_commit: null },
       { updatedOnlyByRebase: true }
     );
 
@@ -386,7 +418,7 @@ describe("getConditionNotice", () => {
   test("says nothing when behind without a count", () => {
     // WHEN
     const notice = getConditionNotice(
-      { condition: RepositoryGitCondition.BEHIND, pending_count: null },
+      { condition: RepositoryGitCondition.BEHIND, pending_count: null, imported_commit: null },
       { updatedOnlyByRebase: false }
     );
 
@@ -402,7 +434,7 @@ describe("getConditionNotice", () => {
   ])("says nothing for %s", (condition) => {
     // WHEN
     const notice = getConditionNotice(
-      { condition, pending_count: null },
+      { condition, pending_count: null, imported_commit: null },
       { updatedOnlyByRebase: false }
     );
 
