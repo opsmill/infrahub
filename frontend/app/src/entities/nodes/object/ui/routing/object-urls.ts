@@ -56,6 +56,13 @@ export function getObjectDetailsUrl(
   return constructPath(path, overrideParams);
 }
 
+export function getObjectDetailsTabSegment(pathname: string, objectId: string) {
+  const segments = pathname.split("/");
+  const segment = segments[segments.indexOf(objectId) + 1];
+  // The convert form is a sibling route of the object, not one of its tabs.
+  return segment && segment !== "convert" ? segment : undefined;
+}
+
 export function getObjectTasksUrl(objectId: string) {
   return constructPath(`/tasks?${QSP.FILTER}=[{"name":"node__value","value":"${objectId}"}]`);
 }
