@@ -190,7 +190,7 @@ Every `jq` command below reads the last matching event. Filter on a value the st
 - [ ] Open **Branches**, open `qa-rebase-ui` and select **Rebase**.
 - [ ] Run the GraphQL path's `jq` command with the branch `qa-rebase-ui`.
 
-**Expected result**: the rebase emits an event on the rebased branch for the device changed on it, with its `hfid` and display label. It emits no event on that branch for the device changed on `main`: a rebase emits events for the changes made on `main` only for the kinds whose schema the branch changed (`backend/infrahub/core/branch/tasks.py`, `rebase_branch`), and these branches change no schema.
+**Expected result**: the rebase emits an event on the rebased branch for the device changed on it, with its `hfid` and display label. It emits no event on that branch for the device changed on `main`: a rebase emits events for the changes made on `main` only for the kinds whose schema the branch changed, and these branches change no schema.
 
 ### 6. The display label mutation publishes the full HFID
 
@@ -213,7 +213,7 @@ Every `jq` command below reads the last matching event. Filter on a value the st
 - [ ] Run: `mutation { InfrahubUpdateComputedAttribute(data: {id: "<atl1-edge1-id>", kind: "InfraDevice", attribute: "computed_description", value: "qa-computed"}) { ok } }`
 - [ ] Run: `jq -c 'select(.event=="infrahub.node.updated" and .data.kind=="InfraDevice" and .data.changelog.attributes.computed_description.value=="qa-computed") | .data.changelog | {hfid, computed_description: .attributes.computed_description.value}' /tmp/qa-webhooks.jsonl | tail -1`
 
-**Expected result**: `computed_description` is `qa-computed`, and `hfid` is `["atl1-edge1"]`, not an empty list. `computed_description` is a Jinja2 computed attribute (`models/base/dcim.yml`), so its automation can recompute it and emit another event right after; the `jq` filter selects the event of this step.
+**Expected result**: `computed_description` is `qa-computed`, and `hfid` is `["atl1-edge1"]`, not an empty list. Infrahub recomputes `computed_description` from the device's other attributes, so it can emit another event right after; the `jq` filter selects the event of this step.
 
 ### 8. A relationship that feeds the display label
 
