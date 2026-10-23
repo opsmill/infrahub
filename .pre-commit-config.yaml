@@ -7,7 +7,13 @@ repos:
       # trailing spaces in their banner and the missing final newline. Normalising
       # them here only makes the next `gh aw compile` undo it.
       - id: trailing-whitespace
-        exclude: ^\.github/workflows/.*\.lock\.yml$
+        # The GraphQL schema export keeps the indentation on blank lines inside multi-line
+        # descriptions, and CI compares the committed file byte for byte with a fresh export.
+        exclude: |
+          (?x)^(
+            schema/schema\.graphql|
+            \.github/workflows/.*\.lock\.yml
+          )$
       - id: check-ast
       - id: check-case-conflict
       - id: check-merge-conflict
@@ -21,6 +27,11 @@ repos:
             schema/schema\.graphql|
             schema/openapi\.json|
             docs/docs/reference/configuration\.mdx|
+<<<<<<< HEAD
+=======
+            docs/docs/reference/error-catalogue\.mdx|
+            frontend/app/src/shared/api/graphql/generated/graphql-env\.d\.ts|
+>>>>>>> origin/stable
             \.gitattributes|
             \.github/workflows/.*\.lock\.yml
           )$

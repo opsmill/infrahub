@@ -7,7 +7,7 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
-from infrahub.core.regeneration.models import ReachedPath, RelationshipHop
+from infrahub.core.regeneration.models import PeerFilters, ReachedPath, RelationshipHop, RelationshipRead
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.constants import TestKind
@@ -79,6 +79,11 @@ query { TestingCar { edges { node {
 """,
     ),
 ]
+
+# The interface generic is the query root and reads its device, a relationship every implementation carries.
+DEVICE_OF_A_GENERIC_ROOT = """
+query { TestingInterface { edges { node { device { node { name { value } } } } } } }
+"""
 
 # The device reaches its interfaces through a relationship whose peer is a generic, so the change is
 # resolved to each concrete interface kind.
@@ -327,6 +332,26 @@ class TestReachedPathsFromQueryDeviceSchema(TestInfrahubApp):
             TestKind.VIRTUAL_INTERFACE: (interface_chain,),
         }
 
+    async def test_a_read_on_a_generic_root_is_recorded_once_per_implementation(
+        self, db: InfrahubDatabase, default_branch: Branch, device_schema: None
+    ) -> None:
+        device = registry.schema.get(name=TestKind.PHYSICAL_INTERFACE, branch=default_branch).get_relationship("device")
+        assert device.identifier is not None
+
+        report = await _query_report(db, default_branch, DEVICE_OF_A_GENERIC_ROOT)
+
+        assert report.relationship_reads == tuple(
+            RelationshipRead(
+                owner_kind=owner_kind,
+                relationship_name="device",
+                relationship_identifier=device.identifier,
+                relationship_direction=device.direction,
+                peer_kinds=frozenset({TestKind.DEVICE}),
+                peer_filters=None,
+            )
+            for owner_kind in (TestKind.PHYSICAL_INTERFACE, TestKind.VIRTUAL_INTERFACE)
+        )
+
     @pytest.mark.parametrize("case", SFP_FRAGMENT_QUERIES, ids=lambda case: case.name)
     async def test_a_field_read_inside_a_fragment_is_in_the_read_set(
         self, db: InfrahubDatabase, default_branch: Branch, device_schema: None, case: QueryCase
@@ -419,3 +444,111 @@ class TestReachedPathsFromQueryDeviceSchema(TestInfrahubApp):
             ReachedPath(hops=(sfp_hop,)),
             ReachedPath(hops=(sfp_hop, interfaces_hop)),
         }
+
+
+def _red_cars_of_the_manufacturer(arguments: str) -> str:
+    return (
+        "query ($ids: [ID!]!, $color: String) {"
+        " TestingCar(ids: $ids) { edges { node {"
+        f" manufacturer {{ node {{ cars({arguments}) {{ edges {{ node {{ name {{ value }} }} }} }} }} }}"
+        " } } } }"
+    )
+
+
+def _cars(*filters: tuple[str, str | tuple[str, ...]]) -> PeerFilters:
+    return PeerFilters(relationship_name="cars", filters=tuple(filters))
+
+
+@dataclass(frozen=True, kw_only=True)
+class PeerFilterCase:
+    name: str
+    arguments: str
+    expected: PeerFilters | None
+
+
+PEER_FILTER_CASES = [
+    PeerFilterCase(
+        name="a_constant_value_filter_is_recorded",
+        arguments='color__value: "red"',
+        expected=_cars(("cars__color__value", "red")),
+    ),
+    PeerFilterCase(
+        name="a_constant_values_filter_keeps_every_accepted_value",
+        arguments='color__values: ["red", "blue"]',
+        expected=_cars(("cars__color__values", ("red", "blue"))),
+    ),
+    PeerFilterCase(
+        name="several_filters_are_recorded_together",
+        arguments='color__value: "red", name__values: ["car-1"]',
+        expected=_cars(("cars__color__value", "red"), ("cars__name__values", ("car-1",))),
+    ),
+    PeerFilterCase(
+        name="an_ids_filter_is_recorded",
+        arguments='ids: ["car-1-id"]',
+        expected=_cars(("cars__ids", ("car-1-id",))),
+    ),
+    PeerFilterCase(name="a_filter_from_a_variable_is_left_out", arguments="color__value: $color", expected=None),
+    PeerFilterCase(
+        name="a_list_holding_a_variable_is_left_out", arguments='color__values: ["red", $color]', expected=None
+    ),
+    PeerFilterCase(name="an_empty_filter_value_is_left_out", arguments='color__value: ""', expected=None),
+    PeerFilterCase(
+        name="a_filter_on_a_related_node_is_left_out", arguments='owner__name__value: "alice"', expected=None
+    ),
+    PeerFilterCase(name="a_read_without_a_filter_records_none", arguments="limit: 5", expected=None),
+]
+
+
+class TestPeerFiltersFromQueryCarSchema(TestInfrahubApp):
+    @pytest.fixture(scope="class")
+    async def car_schema(self, db: InfrahubDatabase, default_branch: Branch) -> None:
+        await load_schema(db=db, schema=CAR_SCHEMA, update_db=True)
+
+    @pytest.mark.parametrize("case", PEER_FILTER_CASES, ids=lambda case: case.name)
+    async def test_the_filters_of_a_relationship_read(
+        self, db: InfrahubDatabase, default_branch: Branch, car_schema: None, case: PeerFilterCase
+    ) -> None:
+        report = await _query_report(db, default_branch, _red_cars_of_the_manufacturer(case.arguments))
+
+        manufacturer = registry.schema.get(name=TestKind.MANUFACTURER, branch=default_branch).get_relationship("cars")
+        car_manufacturer = registry.schema.get(name=TestKind.CAR, branch=default_branch).get_relationship(
+            "manufacturer"
+        )
+        assert manufacturer.identifier is not None
+        assert car_manufacturer.identifier is not None
+        assert report.relationship_reads == (
+            RelationshipRead(
+                owner_kind=TestKind.CAR,
+                relationship_name="manufacturer",
+                relationship_identifier=car_manufacturer.identifier,
+                relationship_direction=car_manufacturer.direction,
+                peer_kinds=frozenset({TestKind.MANUFACTURER}),
+                peer_filters=None,
+            ),
+            RelationshipRead(
+                owner_kind=TestKind.MANUFACTURER,
+                relationship_name="cars",
+                relationship_identifier=manufacturer.identifier,
+                relationship_direction=manufacturer.direction,
+                peer_kinds=frozenset({TestKind.CAR}),
+                peer_filters=case.expected,
+            ),
+        )
+        assert report.relationship_reached_paths_by_kind[TestKind.CAR] == (
+            ReachedPath(hops=()),
+            ReachedPath(
+                hops=(
+                    RelationshipHop(
+                        node_kind=TestKind.MANUFACTURER,
+                        relationship_identifier=manufacturer.identifier,
+                        relationship_direction=manufacturer.direction,
+                        peer_filters=case.expected,
+                    ),
+                    RelationshipHop(
+                        node_kind=TestKind.CAR,
+                        relationship_identifier=car_manufacturer.identifier,
+                        relationship_direction=car_manufacturer.direction,
+                    ),
+                )
+            ),
+        )
