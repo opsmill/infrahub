@@ -395,7 +395,6 @@ class NodeManager:
         at: Timestamp | str | None = None,
         branch: Branch | str | None = None,
         order: OrderModel | None = None,
-        include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.LINKED_NODES,
     ) -> dict[str, Node]:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
