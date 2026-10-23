@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, assert_never, cast
 
@@ -10,8 +11,10 @@ from pydantic import ValidationError as PydanticValidationError
 from infrahub.core.constants import (
     InfrahubKind,
     PermissionAction,
+    RepositoryCommitState,
     RepositoryGitCondition,
     RepositoryGitUnavailableReason,
+    RepositoryInternalStatus,
 )
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreGenericRepository
@@ -186,33 +189,58 @@ def _resolve_paging(limit: int | None, offset: int | None) -> tuple[int, int]:
     return resolved_limit, resolved_offset
 
 
+@dataclass(frozen=True)
+class ResolvedGitRef:
+    """The remote branch or tracked ref an Infrahub branch reads, or None when untracked."""
+
+    git_ref: str | None
+    reads_trunk_without_imports: bool = False
+    """The branch reads the trunk although no sync imports into it, so only a rebase brings it newer commits."""
+
+    def state_on_branch(self, state: RepositoryCommitState) -> RepositoryCommitState:
+        if self.reads_trunk_without_imports and state == RepositoryCommitState.PENDING:
+            return RepositoryCommitState.NOT_ON_BRANCH
+        return state
+
+
 def _resolve_remote_branch(
-    repository_default_branch: str | None, infrahub_branch_name: str, branch_is_synced_with_git: bool
-) -> str | None:
+    repository_default_branch: str | None,
+    infrahub_branch_name: str,
+    branch_is_synced_with_git: bool,
+    repository_is_staging: bool,
+    has_imported_commit: bool,
+) -> ResolvedGitRef:
     """Return the remote branch this Infrahub branch reads.
 
-    Returns None when the repository names no default branch, and when a sync imports no commit into
-    this branch.
+    Reads no branch when the repository names no default branch, and when a sync imports nothing into
+    a branch that holds no commit of its own to place on the trunk.
     """
     if not repository_default_branch:
-        return None
+        return ResolvedGitRef(git_ref=None)
+    # A sync imports the trunk of a staging repository onto the branch it was added on, whatever its settings.
+    if repository_is_staging:
+        return ResolvedGitRef(git_ref=repository_default_branch)
     if not infrahub_branch_receives_imports(
         infrahub_branch_name=infrahub_branch_name,
         branch_is_synced_with_git=branch_is_synced_with_git,
         infrahub_default_branch=registry.default_branch,
     ):
-        return None
-    return get_mapped_remote_branch(
-        branch_name=infrahub_branch_name,
-        repository_default_branch=repository_default_branch,
-        infrahub_default_branch=registry.default_branch,
+        if not has_imported_commit:
+            return ResolvedGitRef(git_ref=None)
+        return ResolvedGitRef(git_ref=repository_default_branch, reads_trunk_without_imports=True)
+    return ResolvedGitRef(
+        git_ref=get_mapped_remote_branch(
+            branch_name=infrahub_branch_name,
+            repository_default_branch=repository_default_branch,
+            infrahub_default_branch=registry.default_branch,
+        )
     )
 
 
 def _resolve_git_ref(
     repository: CoreGenericRepository, infrahub_branch_name: str, branch_is_synced_with_git: bool
-) -> str | None:
-    """Return the remote branch or tracked ref this Infrahub branch reads, or None when untracked.
+) -> ResolvedGitRef:
+    """Return the remote branch or tracked ref this Infrahub branch reads.
 
     Raises:
         ValidationError: When the repository kind has no git state to read.
@@ -224,9 +252,11 @@ def _resolve_git_ref(
                 repository_default_branch=cast("CoreRepository", repository).default_branch.value,
                 infrahub_branch_name=infrahub_branch_name,
                 branch_is_synced_with_git=branch_is_synced_with_git,
+                repository_is_staging=repository.internal_status.value == RepositoryInternalStatus.STAGING.value,
+                has_imported_commit=bool(repository.commit.value),
             )
         case InfrahubKind.READONLYREPOSITORY:
-            return cast("CoreReadOnlyRepository", repository).ref.value or None
+            return ResolvedGitRef(git_ref=cast("CoreReadOnlyRepository", repository).ref.value or None)
         case unsupported_kind:
             raise ValidationError(f"Reading git state is not supported for a {unsupported_kind}")
 
@@ -266,11 +296,12 @@ class RepositoryCommitsResolver:
         resolved_limit, resolved_offset = _resolve_paging(limit=limit, offset=offset)
 
         repository = await load_repository_for_view(graphql_context=graphql_context, repository_id=repository_id)
-        git_ref = _resolve_git_ref(
+        resolved_ref = _resolve_git_ref(
             repository=repository,
             infrahub_branch_name=branch.name,
             branch_is_synced_with_git=branch.sync_with_git,
         )
+        git_ref = resolved_ref.git_ref
         imported_commit = repository.commit.value or None
 
         payload: dict[str, Any] = {
@@ -326,7 +357,7 @@ class RepositoryCommitsResolver:
                     "author_name": commit.author_name,
                     "authored_at": commit.authored_at,
                     "committed_at": commit.committed_at,
-                    "state": commit.state,
+                    "state": resolved_ref.state_on_branch(state=commit.state),
                 }
             }
             for commit in result.commits

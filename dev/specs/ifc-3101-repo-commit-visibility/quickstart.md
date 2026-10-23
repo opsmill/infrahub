@@ -41,7 +41,11 @@ uv run invoke dev.build && uv run invoke dev.start   # full stack with at least 
    The branch-switch half does hold from the contract pull request onward, and is worth running
    because it exercises the branch mapping in both directions: on the default branch `git_ref` is
    the repository's own configured `default_branch`, and on any other branch synchronised with Git
-   it is that branch's own name. `imported_commit` on a branch that has never imported reports the
+   it is that branch's own name. A branch not synchronised with Git, and the branch a staging
+   repository was added on, read the repository's `default_branch` instead; on the first, trunk
+   commits newer than the branch's commit read `NOT_ON_BRANCH`, on the second `PENDING`. A branch not
+   synchronised with Git that holds no commit reads `git_ref: null` and `NOT_TRACKED`.
+   `imported_commit` on a branch that has never imported reports the
    value inherited from its origin branch's fork point, not null.
 
 4. Permission: run both queries as a user without `Core/Repository/view` (see
