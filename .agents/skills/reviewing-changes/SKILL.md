@@ -62,10 +62,12 @@ With `compare <PR number>` in the arguments, skip to "Compare with the PR review
      on top. The report restores them.
 
    Every later step reviews only the files the final manifest lists.
-3. **Check that the context hooks ran**: `python3 .agents/scripts/repo-context.py --hooks-status`.
-   It fails when the session started in another checkout or a subfolder, or the hooks are not set
-   up. When it fails, say that the hooks are inactive, and put the matching rule and `AGENTS.md`
-   paths from the manifest into every subagent prompt, the `code-review` arguments included.
+3. **Check that the context hooks ran**: `python3 .agents/scripts/repo-context.py --hooks-status`,
+   with the same `--repo` and `--base` as the manifest. It fails when the session started in
+   another checkout or a subfolder, when `--repo` names another checkout, or when the hooks are
+   not set up. When it fails, it prints a context block: the checkout, the base, the rule paths per
+   area and the `AGENTS.md` paths. Say that the hooks are inactive, and paste that block into
+   every subagent prompt, the `code-review` arguments included.
 4. Fixing is allowed unless the arguments say `report`, or the branch is `stable`, `develop` or
    `release-*`.
 
