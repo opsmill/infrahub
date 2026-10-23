@@ -41,16 +41,16 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
-    "@vitest/browser": "^4.1.10",
-    "@vitest/browser-playwright": "^4.1.10",
+    "@vitest/browser": "^5.0.5",
+    "@vitest/browser-playwright": "^5.0.5",
     "@xyflow/react": "^12.11.0",
     "babel-plugin-react-compiler": "^1.0.0",
     "globals": "^17.10.0",
     "storybook": "^10.5.7",
     "typescript": "catalog:",
     "vite": "^8.0.10",
-    "vitest": "^4.1.10",
-    "vitest-browser-react": "^2.2.0"
+    "vitest": "^5.0.5",
+    "vitest-browser-react": "^2.3.0"
   },
   "peerDependencies": {
     "@xyflow/react": "^12.10.2"

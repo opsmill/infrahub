@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { addRelationshipsToApi } from "@/entities/nodes/relationships/api/add-relationships-from-api";
 
@@ -7,10 +7,6 @@ import { addRelationships } from "./add-relationships";
 vi.mock("@/entities/nodes/relationships/api/add-relationships-from-api");
 
 describe("addRelationships", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("should call addRelationshipsToApi with correctly transformed relationshipIds", async () => {
     // GIVEN
     const params = {

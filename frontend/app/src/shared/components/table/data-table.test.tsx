@@ -1,6 +1,15 @@
+<<<<<<< HEAD
 import { type ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import type { JSX } from "react";
 import { describe, expect, expectTypeOf, test } from "vitest";
+||||||| 27ecdf0051
+import type { ColumnDef } from "@tanstack/react-table";
+import { describe, expect, test } from "vitest";
+=======
+import { ScrollArea } from "@infrahub/ui";
+import type { ColumnDef } from "@tanstack/react-table";
+import { describe, expect, test } from "vitest";
+>>>>>>> origin/stable
 
 import { DataTable } from "@/shared/components/table/data-table";
 import { COLUMN_MAX_WIDTH } from "@/shared/components/table/style";
@@ -182,6 +191,31 @@ describe("DataTable first column overflow", () => {
       scroller.getBoundingClientRect().left + scroller.clientLeft + scroller.clientWidth;
     const topmostOverActions = document.elementFromPoint(visibleRight - 10, footerY);
     expect(topmostOverActions?.closest('[data-testid="actions-cell"]')).toBeNull();
+  });
+
+  test("keeps both scrollbars above the sticky footer and row actions", async () => {
+    // GIVEN
+    const manyRows = Array.from({ length: 20 }, (_, index) => ({
+      id: String(index),
+      __typename: "TestingOverflowDemo",
+      label: SHORT_LABEL,
+    }));
+    const component = await render(
+      <ScrollArea scrollX type="always" className="h-60 w-40">
+        <DataTable columns={columns} data={manyRows} count={manyRows.length} />
+      </ScrollArea>
+    );
+
+    // THEN
+    for (const orientation of ["horizontal", "vertical"]) {
+      const scrollbar = component.container.querySelector(`[data-orientation="${orientation}"]`)!;
+      const rect = scrollbar.getBoundingClientRect();
+      const topmost = document.elementFromPoint(
+        rect.left + rect.width / 2,
+        rect.top + rect.height / 2
+      );
+      expect(scrollbar.contains(topmost), orientation).toBe(true);
+    }
   });
 
   test("does not let the first column cover the row action menu", async () => {
