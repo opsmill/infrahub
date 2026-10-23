@@ -21,7 +21,6 @@ describe("GlobalPreferencesEditor", () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(FIXED_INSTANT);
-    vi.clearAllMocks();
     vi.mocked(getGlobalPreferences).mockResolvedValue(baseGlobal);
     vi.mocked(updateGlobalPreference).mockResolvedValue();
   });

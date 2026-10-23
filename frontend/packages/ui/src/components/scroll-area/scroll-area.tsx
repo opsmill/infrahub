@@ -45,7 +45,8 @@ export function ScrollArea({
     >
       <ScrollAreaPrimitive.Viewport
         className={cn(
-          "size-full rounded-[inherit]",
+          // `isolate` keeps z-indexed content, such as sticky table cells, from painting over the overlay scrollbars.
+          "isolate size-full rounded-[inherit]",
           // Radix lays the content out as a table that grows to its widest child; without horizontal scrolling it must stay at the area's width.
           !scrollX && "[&>div]:block!"
         )}

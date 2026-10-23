@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import { getArtifactFile } from "@/entities/artifacts/domain/use-cases/get-artifact-file";
 
@@ -7,10 +7,6 @@ const getArtifactFileFromApi = vi.hoisted(() => vi.fn());
 vi.mock("@/entities/artifacts/api/get-artifact-file-from-api", () => ({ getArtifactFileFromApi }));
 
 describe("getArtifactFile", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   test("rejects with the message the API returned", async () => {
     getArtifactFileFromApi.mockResolvedValue({
       error: {

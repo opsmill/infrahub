@@ -29,7 +29,6 @@ const getGeneratedQuery = () =>
 
 describe("getObjectForEditingFromApi", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     vi.mocked(graphqlClient.query).mockResolvedValue({ data: {} } as any);
   });
 

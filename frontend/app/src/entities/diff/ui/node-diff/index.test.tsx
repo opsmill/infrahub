@@ -33,7 +33,6 @@ describe("NodeDiff", () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
     window.history.replaceState(null, "", window.location.pathname);
   });
 
