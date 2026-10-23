@@ -370,11 +370,6 @@ async def hierarchy_resolver(
     edges = fields.get("edges", {})
     node_fields = edges.get("node", {})
     node_metadata_fields = edges.get("node_metadata", {})
-    include_metadata = MetadataQueryOptions(
-        node_level=MetadataOptions.LINKED_NODES,
-        attribute_level=MetadataOptions.LINKED_NODES,
-        relationship_level=MetadataOptions.LINKED_NODES,
-    ) | build_metadata_query_options(node_metadata_fields=node_metadata_fields, node_fields=node_fields)
 
     # Extract only the filters from the kwargs and prepend the name of the field to the filters
     offset = kwargs.pop("offset", None)
@@ -408,7 +403,10 @@ async def hierarchy_resolver(
             schema_branch.get(name=node_schema.hierarchy, duplicate=False) if node_schema.hierarchy else node_schema
         )
         include_metadata = build_metadata_query_options(
-            node_fields=node_fields, schema=hierarchy_schema, schema_branch=schema_branch
+            node_metadata_fields=node_metadata_fields,
+            node_fields=node_fields,
+            schema=hierarchy_schema,
+            schema_branch=schema_branch,
         ) | MetadataQueryOptions.at_every_level(MetadataOptions.LINKED_NODES)
         objs = await NodeManager.query_hierarchy(
             db=db,
@@ -423,7 +421,6 @@ async def hierarchy_resolver(
             at=graphql_context.at,
             branch=graphql_context.branch,
             order=order_model,
-            include_metadata=include_metadata,
         )
 
         if not objs:
