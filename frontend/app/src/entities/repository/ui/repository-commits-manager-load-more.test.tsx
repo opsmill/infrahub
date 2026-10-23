@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getRepositoryCommitsFromApi } from "@/entities/repository/api/get-repository-commits-from-api";
+import { REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
 
 import { render } from "../../../../tests/components/render";
 import { generateBranch } from "../../../../tests/fake/branch";
@@ -55,7 +56,7 @@ function CaptureQueryClient() {
 describe("RepositoryCommitsManager loading more", () => {
   beforeEach(() => {
     vi.mocked(useCurrentBranch).mockReturnValue({
-      currentBranch: generateBranch({ name: "main" }),
+      currentBranch: generateBranch({ name: "main", sync_with_git: true }),
       setCurrentBranch: () => {},
     });
   });
@@ -80,6 +81,8 @@ describe("RepositoryCommitsManager loading more", () => {
         <CaptureQueryClient />
         <RepositoryCommitsManager
           repositoryId="repo-1"
+          repositoryKind={REPOSITORY_KIND}
+          repositoryInternalStatus="active"
           repositoryLocation={null}
           remoteCheck={null}
         />
@@ -110,6 +113,8 @@ describe("RepositoryCommitsManager loading more", () => {
         <CaptureQueryClient />
         <RepositoryCommitsManager
           repositoryId="repo-1"
+          repositoryKind={REPOSITORY_KIND}
+          repositoryInternalStatus="active"
           repositoryLocation={null}
           remoteCheck={null}
         />

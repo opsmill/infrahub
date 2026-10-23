@@ -12,7 +12,11 @@ import {
   RepositoryCheckRemoteButton,
   type RepositoryRemoteCheck,
 } from "@/entities/repository/ui/repository-check-remote-button";
-import { getConditionNotice, getFreshness } from "@/entities/repository/ui/repository-commits.view";
+import {
+  getConditionNotice,
+  getFreshness,
+  getRebaseOnlyNote,
+} from "@/entities/repository/ui/repository-commits.view";
 
 interface RepositoryCommitsLogProps {
   log: RepositoryCommitLog;
@@ -31,19 +35,25 @@ export interface RepositoryCommitsToolbarProps {
 
 export interface RepositoryCommitsHeaderProps
   extends RepositoryCommitsLogProps,
-    Omit<RepositoryCommitsToolbarProps, "children"> {}
+    Omit<RepositoryCommitsToolbarProps, "children"> {
+  rebaseOnly: boolean;
+}
 
 export function RepositoryCommitsHeader({
   log,
   repositoryId,
   remoteCheck,
+  rebaseOnly,
 }: RepositoryCommitsHeaderProps) {
+  const rebaseOnlyNote = rebaseOnly ? getRebaseOnlyNote(log) : null;
+
   return (
     <Col className="gap-1.5 p-2">
       <RepositoryCommitsToolbar repositoryId={repositoryId} remoteCheck={remoteCheck}>
         <FreshnessLine log={log} />
       </RepositoryCommitsToolbar>
-      <ConditionNotice log={log} />
+      {rebaseOnlyNote && <p className="text-foreground-muted text-sm">{rebaseOnlyNote}</p>}
+      <ConditionNotice log={log} rebaseOnly={rebaseOnly} />
     </Col>
   );
 }
@@ -106,8 +116,11 @@ function FreshnessLine({ log }: RepositoryCommitsLogProps) {
   );
 }
 
-function ConditionNotice({ log }: RepositoryCommitsLogProps) {
-  const notice = getConditionNotice(log);
+function ConditionNotice({
+  log,
+  rebaseOnly,
+}: RepositoryCommitsLogProps & Pick<RepositoryCommitsHeaderProps, "rebaseOnly">) {
+  const notice = getConditionNotice(log, { rebaseOnly });
 
   if (!notice) return null;
 

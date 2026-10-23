@@ -9,13 +9,16 @@ import {
 import { RepositoryGitUnavailableError } from "@/entities/repository/domain/model/repository-git-unavailable-error";
 import {
   canLoadOlderCommits,
+  formatCommitsTabCount,
   getCommitLogWithoutPages,
+  getCommitsTabBadge,
   getConditionNotice,
   getEmptyState,
   getFreshness,
   getLoadedCommits,
   getNextPageState,
   getNoCommitLogState,
+  getRebaseOnlyNote,
   getStateBadges,
   isLoadingFirstPage,
   isShowingStaleCommits,
@@ -177,7 +180,11 @@ describe("getStateBadges", () => {
     const commit = { hash: IMPORTED_HASH, state: RepositoryCommitState.HEAD };
 
     // WHEN
-    const badges = getStateBadges(commit, IMPORTED_HASH);
+    const badges = getStateBadges(commit, {
+      importedCommit: IMPORTED_HASH,
+      condition: RepositoryGitCondition.BEHIND,
+      rebaseOnly: false,
+    });
 
     // THEN
     expect(badges.map(({ label }) => label)).toEqual(["Remote head", "Imported"]);
@@ -188,7 +195,11 @@ describe("getStateBadges", () => {
     const commit = { hash: OTHER_HASH, state: RepositoryCommitState.HEAD };
 
     // WHEN
-    const badges = getStateBadges(commit, IMPORTED_HASH);
+    const badges = getStateBadges(commit, {
+      importedCommit: IMPORTED_HASH,
+      condition: RepositoryGitCondition.BEHIND,
+      rebaseOnly: false,
+    });
 
     // THEN
     expect(badges.map(({ label }) => label)).toEqual(["Remote head"]);
@@ -199,14 +210,54 @@ describe("getStateBadges", () => {
     { state: RepositoryCommitState.PENDING, labels: ["Pending import"] },
     { state: RepositoryCommitState.UNRELATED, labels: ["Not on current history"] },
     { state: RepositoryCommitState.HISTORY, labels: [] },
-    { state: RepositoryCommitState.NOT_ON_BRANCH, labels: [] },
+    { state: RepositoryCommitState.NOT_ON_BRANCH, labels: ["Behind"] },
   ])("labels a $state commit from its state", ({ state, labels }) => {
     // WHEN
-    const badges = getStateBadges({ hash: OTHER_HASH, state }, IMPORTED_HASH);
+    const badges = getStateBadges(
+      { hash: OTHER_HASH, state },
+      {
+        importedCommit: IMPORTED_HASH,
+        condition: RepositoryGitCondition.BEHIND,
+        rebaseOnly: false,
+      }
+    );
 
     // THEN
     expect(badges.map(({ label }) => label)).toEqual(labels);
   });
+
+  test("marks a remote head ahead of the branch's commit as behind", () => {
+    // GIVEN
+    const commit = { hash: OTHER_HASH, state: RepositoryCommitState.HEAD };
+
+    // WHEN
+    const badges = getStateBadges(commit, {
+      importedCommit: IMPORTED_HASH,
+      condition: RepositoryGitCondition.BEHIND,
+      rebaseOnly: true,
+    });
+
+    // THEN
+    expect(badges.map(({ label }) => label)).toEqual(["Remote head", "Behind"]);
+  });
+
+  test.each([RepositoryGitCondition.REWRITTEN, RepositoryGitCondition.ORPHANED])(
+    "marks the remote head as the head only when a rebase-only branch is %s",
+    (condition) => {
+      // GIVEN
+      const commit = { hash: OTHER_HASH, state: RepositoryCommitState.HEAD };
+
+      // WHEN
+      const badges = getStateBadges(commit, {
+        importedCommit: IMPORTED_HASH,
+        condition,
+        rebaseOnly: true,
+      });
+
+      // THEN
+      expect(badges.map(({ label }) => label)).toEqual(["Remote head"]);
+    }
+  );
 
   test("shows no badge for a state this client does not know", () => {
     // GIVEN
@@ -214,7 +265,11 @@ describe("getStateBadges", () => {
 
     // WHEN
     // @ts-expect-error A newer server can send a state this client's generated enum does not list.
-    const badges = getStateBadges(commit, null);
+    const badges = getStateBadges(commit, {
+      importedCommit: null,
+      condition: RepositoryGitCondition.IN_SYNC,
+      rebaseOnly: false,
+    });
 
     // THEN
     expect(badges).toEqual([]);
@@ -284,22 +339,51 @@ describe("getFreshness", () => {
 describe("getConditionNotice", () => {
   test("warns that a rewritten ref reports nothing as pending", () => {
     // WHEN
-    const notice = getConditionNotice({
-      condition: RepositoryGitCondition.REWRITTEN,
-      pending_count: null,
-    });
+    const notice = getConditionNotice(
+      {
+        git_ref: "main",
+        condition: RepositoryGitCondition.REWRITTEN,
+        pending_count: null,
+        imported_commit: null,
+      },
+      { rebaseOnly: false }
+    );
 
     // THEN
     expect(notice?.tone).toBe("warning");
     expect(notice?.message).toMatch(/^The tracked ref was rewritten\./);
   });
 
+  test("names the commit a rebase-only branch lost to a rewritten default branch", () => {
+    // WHEN
+    const notice = getConditionNotice(
+      {
+        git_ref: "main",
+        condition: RepositoryGitCondition.REWRITTEN,
+        pending_count: null,
+        imported_commit: IMPORTED_HASH,
+      },
+      { rebaseOnly: true }
+    );
+
+    // THEN
+    expect(notice).toEqual({
+      tone: "warning",
+      message: `This branch does not sync with Git and has diverged from main: the commit it uses (${IMPORTED_HASH.slice(0, 7)}) is no longer in the history of main, for example after a force push. Rebase the branch to use the latest commit of main.`,
+    });
+  });
+
   test("warns that the imported commit is missing from the remote", () => {
     // WHEN
-    const notice = getConditionNotice({
-      condition: RepositoryGitCondition.ORPHANED,
-      pending_count: null,
-    });
+    const notice = getConditionNotice(
+      {
+        git_ref: "main",
+        condition: RepositoryGitCondition.ORPHANED,
+        pending_count: null,
+        imported_commit: null,
+      },
+      { rebaseOnly: false }
+    );
 
     // THEN
     expect(notice).toEqual({
@@ -310,10 +394,15 @@ describe("getConditionNotice", () => {
 
   test("warns when the tracked ref no longer exists on the remote", () => {
     // WHEN
-    const notice = getConditionNotice({
-      condition: RepositoryGitCondition.REF_MISSING,
-      pending_count: null,
-    });
+    const notice = getConditionNotice(
+      {
+        git_ref: "main",
+        condition: RepositoryGitCondition.REF_MISSING,
+        pending_count: null,
+        imported_commit: null,
+      },
+      { rebaseOnly: false }
+    );
 
     // THEN
     expect(notice).toEqual({
@@ -325,21 +414,47 @@ describe("getConditionNotice", () => {
 
   test("counts the commits pending import when behind", () => {
     // WHEN
-    const notice = getConditionNotice({
-      condition: RepositoryGitCondition.BEHIND,
-      pending_count: 2,
-    });
+    const notice = getConditionNotice(
+      {
+        git_ref: "main",
+        condition: RepositoryGitCondition.BEHIND,
+        pending_count: 2,
+        imported_commit: null,
+      },
+      { rebaseOnly: false }
+    );
 
     // THEN
     expect(notice).toEqual({ tone: "neutral", message: "2 commits pending import" });
   });
 
+  test("leaves the distance to the header line on a rebase-only branch", () => {
+    // WHEN
+    const notice = getConditionNotice(
+      {
+        git_ref: "main",
+        condition: RepositoryGitCondition.BEHIND,
+        pending_count: 2,
+        imported_commit: null,
+      },
+      { rebaseOnly: true }
+    );
+
+    // THEN
+    expect(notice).toBeNull();
+  });
+
   test("says nothing when behind without a count", () => {
     // WHEN
-    const notice = getConditionNotice({
-      condition: RepositoryGitCondition.BEHIND,
-      pending_count: null,
-    });
+    const notice = getConditionNotice(
+      {
+        git_ref: "main",
+        condition: RepositoryGitCondition.BEHIND,
+        pending_count: null,
+        imported_commit: null,
+      },
+      { rebaseOnly: false }
+    );
 
     // THEN
     expect(notice).toBeNull();
@@ -352,7 +467,10 @@ describe("getConditionNotice", () => {
     RepositoryGitCondition.UNAVAILABLE,
   ])("says nothing for %s", (condition) => {
     // WHEN
-    const notice = getConditionNotice({ condition, pending_count: null });
+    const notice = getConditionNotice(
+      { git_ref: "main", condition, pending_count: null, imported_commit: null },
+      { rebaseOnly: false }
+    );
 
     // THEN
     expect(notice).toBeNull();
@@ -575,5 +693,220 @@ describe("getNextPageState", () => {
 
     // THEN
     expect(nextPageState).toBe(expected);
+  });
+});
+
+describe("getRebaseOnlyNote", () => {
+  test("says how far behind the compared branch it is and suggests a rebase", () => {
+    // WHEN
+    const note = getRebaseOnlyNote({
+      condition: RepositoryGitCondition.BEHIND,
+      git_ref: "main",
+      pending_count: 2,
+    });
+
+    // THEN
+    expect(note).toBe(
+      "This branch does not sync with Git and is behind main by 2 commits. Rebase the branch to use them."
+    );
+  });
+
+  test("refers to a single commit as it", () => {
+    // WHEN
+    const note = getRebaseOnlyNote({
+      condition: RepositoryGitCondition.BEHIND,
+      git_ref: "main",
+      pending_count: 1,
+    });
+
+    // THEN
+    expect(note).toBe(
+      "This branch does not sync with Git and is behind main by 1 commit. Rebase the branch to use it."
+    );
+  });
+
+  test("formats a large count with thousands separators", () => {
+    // WHEN
+    const note = getRebaseOnlyNote({
+      condition: RepositoryGitCondition.BEHIND,
+      git_ref: "main",
+      pending_count: 1284,
+    });
+
+    // THEN
+    expect(note).toContain("behind main by 1,284 commits.");
+  });
+
+  test("names the newer commits when the distance is unknown", () => {
+    // WHEN
+    const note = getRebaseOnlyNote({
+      condition: RepositoryGitCondition.BEHIND,
+      git_ref: "main",
+      pending_count: null,
+    });
+
+    // THEN
+    expect(note).toBe(
+      "This branch does not sync with Git and is behind main. Rebase the branch to use the newer commits."
+    );
+  });
+
+  test("says the branch is up to date when it runs the newest commit", () => {
+    // WHEN
+    const note = getRebaseOnlyNote({
+      condition: RepositoryGitCondition.IN_SYNC,
+      git_ref: "main",
+      pending_count: null,
+    });
+
+    // THEN
+    expect(note).toBe("This branch does not sync with Git and is up to date with main.");
+  });
+
+  test.each([RepositoryGitCondition.REWRITTEN, RepositoryGitCondition.NOT_TRACKED])(
+    "says nothing for %s",
+    (condition) => {
+      // WHEN
+      const note = getRebaseOnlyNote({ condition, git_ref: "main", pending_count: null });
+
+      // THEN
+      expect(note).toBeNull();
+    }
+  );
+});
+
+describe("formatCommitsTabCount", () => {
+  test.each([
+    { count: 3, expected: "3" },
+    { count: 999, expected: "999" },
+    { count: 1000, expected: "999+" },
+    { count: 1284, expected: "999+" },
+  ])("shows $count as $expected", ({ count, expected }) => {
+    // WHEN
+    const text = formatCommitsTabCount(count);
+
+    // THEN
+    expect(text).toBe(expected);
+  });
+});
+
+describe("getCommitsTabBadge", () => {
+  const SYNCED = { rebaseOnly: false, isReadOnly: false };
+  const behind = (pending_count: number | null) => ({
+    condition: RepositoryGitCondition.BEHIND,
+    git_ref: "main",
+    pending_count,
+  });
+
+  test("says the next sync imports the pending commits of a read-write repository", () => {
+    // WHEN
+    const badge = getCommitsTabBadge(behind(3), SYNCED);
+
+    // THEN
+    expect(badge).toEqual({
+      kind: "pending-import",
+      count: 3,
+      summary: "3 commits pending import",
+      tooltip: "3 commits pending import — the next sync imports them",
+    });
+  });
+
+  test("asks for Import latest commit on a read-only repository", () => {
+    // WHEN
+    const badge = getCommitsTabBadge(behind(2), { ...SYNCED, isReadOnly: true });
+
+    // THEN
+    expect(badge).toMatchObject({
+      kind: "pending-import",
+      tooltip: "2 commits pending import — run Import latest commit to use them",
+    });
+  });
+
+  test("counts the commits behind the tracked ref and asks for a rebase", () => {
+    // WHEN
+    const badge = getCommitsTabBadge(
+      { ...behind(1), git_ref: "release-1.4" },
+      { ...SYNCED, rebaseOnly: true }
+    );
+
+    // THEN
+    expect(badge).toEqual({
+      kind: "behind",
+      count: 1,
+      summary: "1 commit behind release-1.4",
+      tooltip: "1 commit behind release-1.4 — rebase the branch to use it",
+    });
+  });
+
+  test("keeps the exact number of a large count", () => {
+    // WHEN
+    const badge = getCommitsTabBadge(behind(1284), SYNCED);
+
+    // THEN
+    expect(badge).toMatchObject({ count: 1284, summary: "1,284 commits pending import" });
+  });
+
+  test("says the branch has diverged when the tracked ref was rewritten under a rebase-only branch", () => {
+    // WHEN
+    const badge = getCommitsTabBadge(
+      { condition: RepositoryGitCondition.REWRITTEN, git_ref: "main", pending_count: null },
+      { ...SYNCED, rebaseOnly: true }
+    );
+
+    // THEN
+    expect(badge).toEqual({
+      kind: "warning",
+      summary: "diverged from main",
+      tooltip:
+        "This branch has diverged from main. Rebase the branch to use the latest commit of main.",
+    });
+  });
+
+  test.each([
+    {
+      condition: RepositoryGitCondition.REWRITTEN,
+      summary: "history rewritten",
+      tooltip: "The tracked ref was rewritten, so nothing is reported as pending import.",
+    },
+    {
+      condition: RepositoryGitCondition.ORPHANED,
+      summary: "imported commit missing",
+      tooltip: "The imported commit could not be found on the remote.",
+    },
+    {
+      condition: RepositoryGitCondition.REF_MISSING,
+      summary: "tracked ref missing",
+      tooltip:
+        "The tracked branch or tag no longer exists on the remote. The imported commit is still in use.",
+    },
+  ])("warns without a count for $condition", ({ condition, summary, tooltip }) => {
+    // WHEN
+    const badge = getCommitsTabBadge({ condition, git_ref: "main", pending_count: null }, SYNCED);
+
+    // THEN
+    expect(badge).toEqual({ kind: "warning", summary, tooltip });
+  });
+
+  test.each([
+    { case: "nothing pending", log: { ...behind(0) } },
+    { case: "a BEHIND log without a count", log: behind(null) },
+    {
+      case: "IN_SYNC",
+      log: { condition: RepositoryGitCondition.IN_SYNC, git_ref: "main", pending_count: null },
+    },
+    {
+      case: "NOT_TRACKED",
+      log: { condition: RepositoryGitCondition.NOT_TRACKED, git_ref: null, pending_count: null },
+    },
+    {
+      case: "NO_REMOTE",
+      log: { condition: RepositoryGitCondition.NO_REMOTE, git_ref: "main", pending_count: null },
+    },
+  ])("shows nothing for $case", ({ log }) => {
+    // WHEN
+    const badge = getCommitsTabBadge(log, SYNCED);
+
+    // THEN
+    expect(badge).toBeNull();
   });
 });

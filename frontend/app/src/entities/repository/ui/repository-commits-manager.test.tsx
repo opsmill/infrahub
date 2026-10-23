@@ -6,7 +6,12 @@ import { formatWithPreferences } from "@/shared/context/date-preferences-context
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getRepositoryCommitsFromApi } from "@/entities/repository/api/get-repository-commits-from-api";
-import type { RepositoryGitCondition } from "@/entities/repository/domain/model/repository";
+import {
+  READONLY_REPOSITORY_KIND,
+  REPOSITORY_INTERNAL_STATUS_STAGING,
+  REPOSITORY_KIND,
+  type RepositoryGitCondition,
+} from "@/entities/repository/domain/model/repository";
 import { getRepositoryCommitsQueryOptions } from "@/entities/repository/ui/queries/get-repository-commits.query";
 import {
   REPOSITORY_COMMITS_MAX_RETRIES,
@@ -18,6 +23,8 @@ import { generateBranch } from "../../../../tests/fake/branch";
 import {
   BEHIND_HEAD,
   BEHIND_IMPORTED,
+  BRANCH_COMMIT,
+  DEFAULT_BRANCH_HEAD,
   generateBehindCommitsResponse,
   generateCommitsApiResult,
   generateFirstCommitsPage,
@@ -27,6 +34,7 @@ import {
   generateNotImplementedCommitsResponse,
   generateOrphanedCommitsResponse,
   generateReadOnlyCommitsResponse,
+  generateRebaseOnlyBehindCommitsResponse,
   generateRepositoryCommitsResponse,
   generateRewrittenCommitsResponse,
   generateSecondCommitsPage,
@@ -56,6 +64,10 @@ const formatDate = (date: string) =>
 const formatDateTime = (date: string) =>
   formatWithPreferences(date, { pattern: null, timezone: null }, "datetime");
 
+const REBASE_NOTE =
+  "This branch does not sync with Git and is behind main by 2 commits. Rebase the branch to use them.";
+const UP_TO_DATE_NOTE = "This branch does not sync with Git and is up to date with main.";
+
 const STALE_NOTICE =
   "Couldn't refresh the commit log right now. Showing the last loaded commits; older commits load after a successful refresh.";
 
@@ -66,13 +78,21 @@ function CaptureQueryClient() {
   return null;
 }
 
-const tab = () => (
+const tab = ({
+  repositoryKind = REPOSITORY_KIND,
+  internalStatus = "active",
+}: {
+  repositoryKind?: string;
+  internalStatus?: string;
+} = {}) => (
   <>
     <CaptureQueryClient />
     {/* Bounded like the tab panel, or the scroll sentinel can start in view and load page two on its own. */}
     <div className="h-96">
       <RepositoryCommitsManager
         repositoryId="repo-1"
+        repositoryKind={repositoryKind}
+        repositoryInternalStatus={internalStatus}
         repositoryLocation="https://github.com/opsmill/infrahub-demo.git"
         remoteCheck={null}
       />
@@ -80,11 +100,11 @@ const tab = () => (
   </>
 );
 
-const renderTab = () => render(tab());
+const renderTab = (options?: Parameters<typeof tab>[0]) => render(tab(options));
 
-const useBranch = (name: string) =>
+const useBranch = (name: string, { syncWithGit = true }: { syncWithGit?: boolean } = {}) =>
   useCurrentBranchMock.mockReturnValue({
-    currentBranch: generateBranch({ name }),
+    currentBranch: generateBranch({ name, sync_with_git: syncWithGit }),
     setCurrentBranch: () => {},
   });
 
@@ -806,5 +826,117 @@ describe("RepositoryCommitsManager", () => {
     // Footer cells carry no accessible role; only they carry the sticky-bottom class.
     expect(grid?.querySelectorAll(":scope > .bottom-0")).toHaveLength(0);
     expect(component.getByRole("navigation").query()).toBeNull();
+  });
+
+  describe("on a branch that does not sync with Git", () => {
+    beforeEach(() => {
+      useBranch("test-branch", { syncWithGit: false });
+    });
+
+    test("says how far behind main the branch is and suggests a rebase", async () => {
+      // GIVEN
+      apiMock.mockResolvedValue(
+        generateCommitsApiResult(generateRebaseOnlyBehindCommitsResponse())
+      );
+
+      // WHEN
+      const component = await renderTab();
+
+      // THEN
+      await expect.element(component.getByText(REBASE_NOTE)).toBeVisible();
+      expect(component.getByText(/pending import/i).query()).toBeNull();
+    });
+
+    test("says the branch is up to date when it runs the newest commit", async () => {
+      // GIVEN
+      apiMock.mockResolvedValue(generateCommitsApiResult(generateInSyncCommitsResponse()));
+
+      // WHEN
+      const component = await renderTab();
+
+      // THEN
+      await expect.element(component.getByText(UP_TO_DATE_NOTE)).toBeVisible();
+    });
+
+    test("marks the commits of main the branch does not run as behind", async () => {
+      // GIVEN
+      apiMock.mockResolvedValue(
+        generateCommitsApiResult(generateRebaseOnlyBehindCommitsResponse())
+      );
+
+      // WHEN
+      const component = await renderTab();
+
+      // THEN
+      const rows = component.getByTestId("data-table-row");
+      await expect.element(rows.nth(0).getByText(DEFAULT_BRANCH_HEAD)).toBeVisible();
+      await expect.element(rows.nth(0).getByText("Remote head")).toBeVisible();
+      await expect.element(rows.nth(0).getByText("Behind", { exact: true })).toBeVisible();
+      await expect.element(rows.nth(1).getByText("Behind", { exact: true })).toBeVisible();
+      await expect.element(rows.nth(2).getByText(BRANCH_COMMIT)).toBeVisible();
+      await expect.element(rows.nth(2).getByText("Imported")).toBeVisible();
+    });
+
+    test("asks for a rebase and keeps the backend's commit labels when the branch has diverged from main", async () => {
+      // GIVEN
+      apiMock.mockResolvedValue(generateCommitsApiResult(generateRewrittenCommitsResponse()));
+
+      // WHEN
+      const component = await renderTab();
+
+      // THEN
+      await expect
+        .element(
+          component.getByText(
+            `This branch does not sync with Git and has diverged from main: the commit it uses (${BEHIND_IMPORTED}) is no longer in the history of main, for example after a force push. Rebase the branch to use the latest commit of main.`
+          )
+        )
+        .toBeVisible();
+      expect(component.getByText(/tracked ref was rewritten/).query()).toBeNull();
+      const rows = component.getByTestId("data-table-row");
+      await expect.element(rows.nth(0).getByText("Remote head")).toBeVisible();
+      await expect.element(rows.nth(1).getByText("Not on current history")).toBeVisible();
+      await expect.element(rows.nth(2).getByText("Not on current history")).toBeVisible();
+      expect(component.getByText("Behind", { exact: true }).query()).toBeNull();
+    });
+
+    test("keeps the pending-import wording for a repository added on the branch", async () => {
+      // GIVEN
+      apiMock.mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));
+
+      // WHEN
+      const component = await renderTab({ internalStatus: REPOSITORY_INTERNAL_STATUS_STAGING });
+
+      // THEN
+      await expect.element(component.getByText("3 commits pending import")).toBeVisible();
+      expect(component.getByText(/does not sync with Git/).query()).toBeNull();
+      expect(
+        component.getByTestId("data-table-row").nth(0).getByText("Behind", { exact: true }).query()
+      ).toBeNull();
+    });
+
+    test("shows no note for a read-only repository", async () => {
+      // GIVEN
+      apiMock.mockResolvedValue(generateCommitsApiResult(generateReadOnlyCommitsResponse()));
+
+      // WHEN
+      const component = await renderTab({ repositoryKind: READONLY_REPOSITORY_KIND });
+
+      // THEN
+      await expect.element(component.getByText("1 commit pending import")).toBeVisible();
+      expect(component.getByText(/does not sync with Git/).query()).toBeNull();
+    });
+  });
+
+  test("shows no rebase note on a branch that syncs with Git", async () => {
+    // GIVEN
+    apiMock.mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));
+
+    // WHEN
+    const component = await renderTab();
+
+    // THEN
+    await expect.element(component.getByText("3 commits pending import")).toBeVisible();
+    expect(component.getByText(/does not sync with Git/).query()).toBeNull();
   });
 });

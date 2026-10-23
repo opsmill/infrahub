@@ -9,6 +9,7 @@ import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 
 import type { RepositoryCommitLog } from "@/entities/repository/domain/model/repository";
 import { getRepositoryCommitsColumns } from "@/entities/repository/ui/get-repository-commits-columns";
+import { useIsRebaseOnly } from "@/entities/repository/ui/hooks/use-is-rebase-only";
 import { useGetRepositoryCommits } from "@/entities/repository/ui/queries/get-repository-commits.query";
 import {
   type CommitLogEmptyState,
@@ -31,6 +32,8 @@ type RepositoryCheckRemoteProps = Pick<RepositoryCommitsToolbarProps, "remoteChe
 
 export interface RepositoryCommitsManagerProps extends RepositoryCheckRemoteProps {
   repositoryId: string;
+  repositoryKind: string;
+  repositoryInternalStatus: string | null;
   repositoryLocation: string | null;
 }
 
@@ -39,9 +42,15 @@ const gridTemplateColumns = () =>
 
 export function RepositoryCommitsManager({
   repositoryId,
+  repositoryKind,
+  repositoryInternalStatus,
   repositoryLocation,
   remoteCheck,
 }: RepositoryCommitsManagerProps) {
+  const rebaseOnly = useIsRebaseOnly({
+    repositoryKind,
+    internalStatus: repositoryInternalStatus,
+  });
   const {
     data,
     error,
@@ -107,7 +116,12 @@ export function RepositoryCommitsManager({
 
   return (
     <Col className="h-full gap-0">
-      <RepositoryCommitsHeader log={log} repositoryId={repositoryId} remoteCheck={remoteCheck} />
+      <RepositoryCommitsHeader
+        log={log}
+        repositoryId={repositoryId}
+        remoteCheck={remoteCheck}
+        rebaseOnly={rebaseOnly}
+      />
       {isShowingStaleCommits({ isRefetchError, isRefetching, failureReason }) && (
         <RepositoryCommitsNotice>
           <p>
@@ -126,6 +140,8 @@ export function RepositoryCommitsManager({
         <DataTable
           columns={getRepositoryCommitsColumns({
             importedCommit: log.imported_commit,
+            condition: log.condition,
+            rebaseOnly,
             repositoryLocation,
           })}
           data={commits}
@@ -166,7 +182,12 @@ function RepositoryCommitsEmptyState({
 }: RepositoryCommitsEmptyStateProps) {
   return (
     <Col className="h-full gap-0">
-      <RepositoryCommitsHeader log={log} repositoryId={repositoryId} remoteCheck={remoteCheck} />
+      <RepositoryCommitsHeader
+        log={log}
+        repositoryId={repositoryId}
+        remoteCheck={remoteCheck}
+        rebaseOnly={false}
+      />
       <NoDataFound title={emptyState.title} message={emptyState.message} />
     </Col>
   );
