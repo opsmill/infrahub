@@ -1,0 +1,279 @@
+# How to migrate number pools to `ranges`
+
+With Infrahub version 1.12, a number pool can hold several weighted ranges. `start_range` and
+`end_range` are deprecated in favor of `ranges`. They still work as a way to declare a single
+range, and will be removed in a later version.
+
+This guide covers how to update your schemas and GraphQL scripts to use `ranges`.
+
+:::info
+
+- Existing pools keep their ranges and the numbers they allocated.
+- Schemas using `start_range` / `end_range` still load, with a deprecation warning.
+- A schema load is refused when a number an object holds falls outside every declared range, for
+  example when a range ends below a number already allocated. The error lists each object, for
+  example `Attribute-level 'number' constraint violation on schema 'IpamVLAN'. Node (VLAN B) is not compliant. The error relates to field vlan_id=101.`
+
+:::
+
+## Migrate from `start_range` and `end_range`
+
+`start_range` and `end_range` are deprecated but still supported.
+
+### Step 1: Update schema files
+
+In the attribute's `parameters`, replace `start_range` and `end_range` with `ranges`. Each range has a `start`
+and an `end`, both included and both optional, and an optional `weight`.
+
+#### Both bounds
+
+**Before:**
+
+```yaml
+parameters:
+  start_range: 100
+  end_range: 4094
+```
+
+**After:**
+
+```yaml
+parameters:
+  ranges:
+    - start: 100
+      end: 4094
+```
+
+#### One bound
+
+Leave out the bound that `start_range` or `end_range` left out:
+
+**Before:**
+
+```yaml
+parameters:
+  start_range: 100
+```
+
+**After:**
+
+```yaml
+parameters:
+  ranges:
+    - start: 100
+```
+
+Infrahub stores no value for the missing bound and calculates it from the attribute each time it
+allocates a number:
+
+- A range without a `start` begins at the attribute's `min_value`, or at `1` when the attribute has
+  no `min_value` or a `min_value` below `1`.
+- A range without an `end` stops at the attribute's `max_value`, or at the largest number Infrahub
+  supports when the attribute has no `max_value`. The pool page shows that number as `MAX`.
+
+#### Several ranges
+
+The range with the highest `weight` is allocated first. A missing weight counts as `0`; on a tie,
+the lowest `start` comes first. Nothing between two ranges is allocated.
+
+```yaml
+parameters:
+  ranges:
+    - start: 100
+      end: 199
+      weight: 100
+    - start: 300
+      end: 399
+```
+
+#### No range
+
+An attribute that declares neither `ranges` nor `start_range` / `end_range` gets a pool with one range
+without a start or an end. For an attribute without `min_value` and `max_value`, this range runs from
+`1` to the largest number Infrahub supports, like the default range before 1.12. When a later load
+declares neither, the pool keeps the ranges it holds.
+
+With `ranges: []`, Infrahub creates a pool that allocates nothing, or removes every range from an
+existing pool. The load is refused while an object holds a number from the pool.
+
+#### Refused declarations
+
+| Declaration | Error |
+|---|---|
+| `start_range` or `end_range` with `ranges` | `start_range/end_range cannot be combined with ranges` |
+| Overlapping ranges | `Range 100 - 200 overlaps 150 - 300` |
+| `end` lower than `start` | `Range end (200) cannot be lower than start (300)` |
+| A range shortened below a number already allocated, for example `100`–`200` changed to `100`–`100` while `101` is allocated | `Attribute-level 'number' constraint violation on schema 'IpamVLAN'. Node (VLAN B) is not compliant. The error relates to field vlan_id=101.` |
+
+### Step 2: Apply schema changes
+
+If you're using Git integration, commit the changes and let Infrahub import them.
+
+If you're using `infrahubctl`:
+
+1. Check the schema:
+
+   ```shell
+   infrahubctl schema check path/to/your/schema/files
+   ```
+
+2. Load it on the default branch:
+
+   ```shell
+   infrahubctl schema load path/to/your/schema/files
+   ```
+
+The load returns this warning for each attribute still using `start_range` or `end_range`:
+`Use of 'start_range' and 'end_range' on NumberPool attributes is deprecated, use 'ranges' instead`.
+
+The pool of a `NumberPool` attribute follows the declaration on the default branch. A range change
+loaded on another branch is accepted, but the pool keeps its ranges until the branch is merged.
+
+:::success
+If the load returns no deprecation warning and every `NumberPool` attribute declares `ranges`,
+your schema files are migrated.
+:::
+
+### Step 3: Update GraphQL scripts
+
+In GraphQL, the weight is `allocation_weight`.
+
+#### Create a pool
+
+**Before:**
+
+```graphql
+mutation {
+  CoreNumberPoolCreate(
+    data: {
+      name: {value: "VLAN ID pool"}
+      node: {value: "IpamVLAN"}
+      node_attribute: {value: "vlan_id"}
+      start_range: {value: 100}
+      end_range: {value: 1000}
+    }
+  ) {
+    ok
+  }
+}
+```
+
+**After:**
+
+```graphql
+mutation {
+  CoreNumberPoolCreate(
+    data: {
+      name: {value: "VLAN ID pool"}
+      node: {value: "IpamVLAN"}
+      node_attribute: {value: "vlan_id"}
+      ranges: [{start: 100, end: 1000}]
+    }
+  ) {
+    ok
+  }
+}
+```
+
+A range can leave out `start` or `end`, for example `ranges: [{start: 100}]`. A
+`CoreNumberPoolCreate` that sends none of `ranges`, `start_range` and `end_range` creates the pool
+with one range without a start or an end, and needs the permission to create `CoreNumberPoolRange`
+objects. To create a pool that holds no range, send `ranges: []`.
+
+#### Update a pool
+
+`ranges` replaces all the pool's ranges. A range with the same bounds as a stored one keeps its
+weight unless `allocation_weight` is set. `ranges: []` removes every range.
+
+```graphql
+mutation {
+  CoreNumberPoolUpdate(
+    data: {
+      id: "<POOL-ID>"
+      ranges: [
+        {start: 100, end: 199, allocation_weight: 100}
+        {start: 300, end: 399}
+      ]
+    }
+  ) {
+    ok
+  }
+}
+```
+
+Each range must stay within the `min_value` and `max_value` of the attribute the pool allocates
+for. With `min_value: 1` and `max_value: 4094` on `vlan_id`, a range from `100` to `5000` is refused:
+`Range 100 - 5000 ends above the attribute's max_value (4094)`. A range that starts below `min_value`
+is refused the same way.
+
+#### Read a pool
+
+**Before:**
+
+```graphql
+query {
+  CoreNumberPool(ids: ["<POOL-ID>"]) {
+    edges {
+      node {
+        start_range { value }
+        end_range { value }
+      }
+    }
+  }
+}
+```
+
+**After:**
+
+```graphql
+query {
+  CoreNumberPool(ids: ["<POOL-ID>"]) {
+    edges {
+      node {
+        ranges {
+          edges {
+            node {
+              start { value }
+              end { value }
+              allocation_weight { value }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+`start` and `end` return null for a range without that bound.
+
+:::success
+If the schema loads without a deprecation warning and your scripts use `ranges`, the migration is
+complete!
+:::
+
+## How `start_range`, `end_range` and `ranges` behave in GraphQL
+
+Existing scripts keep working while each pool holds one range, which is the case for every pool
+after the upgrade. On a pool with zero or several ranges, the deprecated fields behave differently:
+
+- `start_range` and `end_range` return null. On a pool with one range, they also return null for a
+  bound the range leaves out.
+- Setting `start_range` or `end_range` on a pool with several ranges is refused. The error lists the
+  ranges to edit instead.
+
+Writing the deprecated fields also follows these rules:
+
+- On a pool with one range, setting `start_range` or `end_range` changes the bounds of that range,
+  for example `end_range: 299` turns `100`–`199` into `100`–`299`. The bound you leave out keeps its
+  value. Setting a bound to null removes that bound from the range.
+- A mutation that creates a pool can set only one of `start_range` and `end_range`. The range then
+  has no value for the other bound.
+- The ranges of a pool created from the schema can only be changed in the schema, on the default
+  branch.
+
+## Related resources
+
+- [Number pools in the schema](../../schema/number-pool)
+- [Allocate numbers](../../resource-manager/allocate-number)
+- [Weighted allocation](../../resource-manager/weighted-allocation)
