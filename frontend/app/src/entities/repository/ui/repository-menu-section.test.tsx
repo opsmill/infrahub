@@ -18,8 +18,6 @@ describe("RepositoryMenuSection", () => {
   const mockOnCheckConnectivity = vi.fn();
 
   beforeEach(() => {
-    vi.clearAllMocks();
-
     vi.mocked(useReimportLastCommitMutation).mockReturnValue({
       mutate: mockReimportLastCommit,
       isPending: false,
