@@ -15,10 +15,13 @@ if TYPE_CHECKING:
 
 
 class NodeIDQuery(BaseModel):
-    """Base query that fetches only the `id` field for all nodes of a given kind."""
+    """Base query that fetches only the `id` field for the nodes of a given kind."""
 
     query_name: ClassVar[str] = "FetchNodeIDs"
     kind: str
+
+    def extra_filters(self) -> dict[str, Any]:
+        return {}
 
     def render_query(self) -> str:
         query = Query(
@@ -28,7 +31,12 @@ class NodeIDQuery(BaseModel):
                 self.kind: {
                     # Pages follow the node uuid alone: a schema order_by field can be rewritten mid-paging by
                     # the recomputes these ids feed, which would shift nodes across page boundaries.
-                    "@filters": {"offset": "$offset", "limit": "$limit", "order": Order(disable=True)},
+                    "@filters": {
+                        "offset": "$offset",
+                        "limit": "$limit",
+                        "order": Order(disable=True),
+                        **self.extra_filters(),
+                    },
                     "edges": {"node": {"id": None}},
                 }
             },
@@ -64,7 +72,7 @@ class NodeIDQuery(BaseModel):
     async def fetch_all_chunked(
         self, client: InfrahubClient, branch_name: str, chunk_size: int
     ) -> AsyncGenerator[list[str], None]:
-        """Yield every node id of the kind in chunks of at most ``chunk_size``.
+        """Yield every node id the query matches, in chunks of at most ``chunk_size``.
 
         Pages are fetched at the client's pagination size, or at ``chunk_size`` when that is larger.
 
