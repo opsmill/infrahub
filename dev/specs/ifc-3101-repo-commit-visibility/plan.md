@@ -201,7 +201,7 @@ frontend/app/src/
 ├── entities/repository/ui/queries/get-repository-commits.query.ts                 # NEW  infinite query, capped retry while unavailable
 ├── entities/repository/ui/queries/repository-commits.constants.ts                 # NEW  page size, stale time, retry delay and cap
 ├── entities/repository/ui/queries/repository.query-keys.ts                        # NEW or EDIT
-├── entities/repository/ui/repository-commits-tab.tsx                              # NEW  tab link with the pending-import count
+├── entities/repository/ui/repository-commits-tab.tsx                              # NEW  tab link with the pending-import or behind signal
 ├── entities/repository/ui/repository-commits-manager.tsx                          # NEW  commit list: DataTable inside InfiniteScroll, empty and error states
 ├── entities/repository/ui/repository-commits-header.tsx                           # NEW  refresh button, freshness line, condition notice
 ├── entities/repository/ui/repository-commits.view.ts                              # NEW  pure display decisions (empty state, stale rows, next-page state, badges)
@@ -412,8 +412,8 @@ determinism logic, no test and no documentation entry.
   forbids. The full hash is copied from the row menu item "Copy commit hash", built on the shared
   `CopyToClipboardMenuItem`, and a toast confirms the copy or says it failed. The same menu offers
   "View on GitHub" for a repository hosted on GitHub.
-- The tab link shows the pending-import count, read from the first page of the same query through
-  `select`, so the label and the list share one read. That query runs on every repository tab, so
+- The tab link shows an amber count (pending import or behind) or a warning marker, read from the first
+  page of the same query through `select`, so the label and the list share one read. That query runs on every repository tab, so
   the request passes `processErrorMessage: () => {}`: the label never raises a toast, and the commit
   view shows the error itself.
 - Freshness line shows `checked_at` when present and `fetched_at` otherwise, so a quiet read-only
@@ -460,7 +460,7 @@ determinism logic, no test and no documentation entry.
     (`repository-commits-manager.test.tsx`, `repository-commits-manager-load-more.test.tsx`)
   - the display decisions (`repository-commits.view.test.ts`)
   - the row menu's copy toasts and GitHub link (`repository-commit-row-actions.test.tsx`)
-  - the tab link's pending-import count (`repository-commits-tab.test.tsx`)
+  - the tab link's count, warning marker and tooltip (`repository-commits-tab.test.tsx`)
   - the retry cap and which reasons are retried (`get-repository-commits.query.test.ts`,
     `should-retry-git-unavailable.test.ts`)
   - the typed error, the mapper, the API document and the other domain rules

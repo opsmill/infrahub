@@ -1,5 +1,6 @@
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { userEvent } from "vitest/browser";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getRepositoryCommitsFromApi } from "@/entities/repository/api/get-repository-commits-from-api";
@@ -17,7 +18,10 @@ import {
   generateCommitsApiResult,
   generateInSyncCommitsResponse,
   generateNotClonedCommitsResponse,
+  generateOrphanedCommitsResponse,
+  generateReadOnlyCommitsResponse,
   generateRebaseNeededCommitsResponse,
+  generateRewrittenCommitsResponse,
 } from "../../../../tests/fake/repository-commit";
 import { RepositoryCommitsManager } from "./repository-commits-manager";
 import { RepositoryCommitsTab } from "./repository-commits-tab";
@@ -62,8 +66,16 @@ const renderTab = ({
 
 const expectNoCount = async (component: Awaited<ReturnType<typeof renderTab>>) => {
   await expect.element(component.getByRole("link", { name: "Commits", exact: true })).toBeVisible();
-  expect(component.getByText(/pending import/).query()).toBeNull();
   expect(component.getByText(/^\d+$/).query()).toBeNull();
+};
+
+// Parks the pointer beside the tab, since the shared helper clicks the top-left corner, which is on the tab.
+const parkPointer = (component: Awaited<ReturnType<typeof renderTab>>) =>
+  component.locator.click({ position: { x: 600, y: 1 } });
+
+const hoverTab = async (component: Awaited<ReturnType<typeof renderTab>>, name: string) => {
+  await parkPointer(component);
+  await component.getByRole("link", { name }).hover();
 };
 
 describe("RepositoryCommitsTab", () => {
@@ -85,12 +97,67 @@ describe("RepositoryCommitsTab", () => {
 
     // THEN
     expect(apiMock).toHaveBeenCalledWith(expect.objectContaining({ repositoryId: "repo-1" }));
-    const tab = component.getByRole("link", { name: "Commits 3 pending import" });
+    const tab = component.getByRole("link", { name: "Commits, 3 commits pending import" });
     await expect.element(tab).toBeVisible();
-    await expect.element(tab.getByText("3")).toBeVisible();
+    await expect.element(tab.getByText("3", { exact: true })).toBeVisible();
   });
 
-  test("shows 0 when the branch is in sync", async () => {
+  test("says the next sync imports the pending commits", async () => {
+    // GIVEN
+    apiMock.mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));
+    const component = await renderTab();
+
+    // WHEN
+    await hoverTab(component, "Commits, 3 commits pending import");
+
+    // THEN
+    await expect
+      .element(
+        component.getByRole("tooltip", {
+          name: "3 commits pending import — the next sync imports them",
+        })
+      )
+      .toBeVisible();
+    await parkPointer(component);
+  });
+
+  test("opens the tooltip when the tab receives keyboard focus", async () => {
+    // GIVEN
+    apiMock.mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));
+    const component = await renderTab();
+    await expect
+      .element(component.getByRole("link", { name: "Commits, 3 commits pending import" }))
+      .toBeVisible();
+
+    // WHEN
+    await userEvent.tab();
+
+    // THEN
+    await expect
+      .element(
+        component.getByRole("tooltip", {
+          name: "3 commits pending import — the next sync imports them",
+        })
+      )
+      .toBeVisible();
+  });
+
+  test("caps a large count and keeps the exact number in the accessible name", async () => {
+    // GIVEN
+    apiMock.mockResolvedValue(
+      generateCommitsApiResult({ ...generateBehindCommitsResponse(), pending_count: 1284 })
+    );
+
+    // WHEN
+    const component = await renderTab();
+
+    // THEN
+    const tab = component.getByRole("link", { name: "Commits, 1,284 commits pending import" });
+    await expect.element(tab).toBeVisible();
+    await expect.element(tab.getByText("999+")).toBeVisible();
+  });
+
+  test("shows no count when the branch is in sync", async () => {
     // GIVEN
     apiMock.mockResolvedValue(generateCommitsApiResult(generateInSyncCommitsResponse()));
 
@@ -98,9 +165,31 @@ describe("RepositoryCommitsTab", () => {
     const component = await renderTab();
 
     // THEN
-    await expect
-      .element(component.getByRole("link", { name: "Commits 0 pending import" }))
-      .toBeVisible();
+    await expect.poll(() => apiMock.mock.calls.length).toBe(1);
+    await expectNoCount(component);
+  });
+
+  test.each([
+    {
+      condition: "the tracked ref was rewritten",
+      response: generateRewrittenCommitsResponse,
+      name: "Commits, history rewritten",
+    },
+    {
+      condition: "the imported commit is missing from the remote",
+      response: generateOrphanedCommitsResponse,
+      name: "Commits, imported commit missing",
+    },
+  ])("warns without a count when $condition", async ({ response, name }) => {
+    // GIVEN
+    apiMock.mockResolvedValue(generateCommitsApiResult(response()));
+
+    // WHEN
+    const component = await renderTab();
+
+    // THEN
+    await expect.element(component.getByRole("link", { name })).toBeVisible();
+    expect(component.getByText(/^\d+$/).query()).toBeNull();
   });
 
   describe("on a branch that does not sync with Git", () => {
@@ -108,42 +197,86 @@ describe("RepositoryCommitsTab", () => {
       useBranch({ syncWithGit: false });
     });
 
-    test.each([
-      { condition: "behind", response: generateRebaseNeededCommitsResponse, count: 2 },
-      { condition: "in sync", response: generateInSyncCommitsResponse, count: 0 },
-    ])(
-      "counts the commits behind main when the branch is $condition",
-      async ({ response, count }) => {
-        // GIVEN
-        apiMock.mockResolvedValue(generateCommitsApiResult(response()));
-
-        // WHEN
-        const component = await renderTab();
-
-        // THEN
-        await expect
-          .element(component.getByRole("link", { name: `Commits ${count} behind` }))
-          .toBeVisible();
-      }
-    );
-
-    test.each([
-      { case: "a read-only repository", objectKind: READONLY_REPOSITORY_KIND },
-      {
-        case: "a repository added on the branch",
-        internalStatus: REPOSITORY_INTERNAL_STATUS_STAGING,
-      },
-    ])("counts the commits pending import for $case", async ({ objectKind, internalStatus }) => {
+    test("counts the commits behind main and asks for a rebase", async () => {
       // GIVEN
-      apiMock.mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));
+      apiMock.mockResolvedValue(generateCommitsApiResult(generateRebaseNeededCommitsResponse()));
+      const component = await renderTab();
 
       // WHEN
-      const component = await renderTab({ objectKind, internalStatus });
+      await hoverTab(component, "Commits, 2 commits behind main");
 
       // THEN
       await expect
-        .element(component.getByRole("link", { name: "Commits 3 pending import" }))
+        .element(
+          component.getByRole("tooltip", {
+            name: "2 commits behind main — rebase the branch to use them",
+          })
+        )
         .toBeVisible();
+      await parkPointer(component);
+    });
+
+    test("shows no count when the branch is up to date", async () => {
+      // GIVEN
+      apiMock.mockResolvedValue(generateCommitsApiResult(generateInSyncCommitsResponse()));
+
+      // WHEN
+      const component = await renderTab();
+
+      // THEN
+      await expect.poll(() => apiMock.mock.calls.length).toBe(1);
+      await expectNoCount(component);
+    });
+
+    test("says the branch has diverged when the tracked ref was rewritten", async () => {
+      // GIVEN
+      apiMock.mockResolvedValue(generateCommitsApiResult(generateRewrittenCommitsResponse()));
+
+      // WHEN
+      const component = await renderTab();
+
+      // THEN
+      await expect
+        .element(component.getByRole("link", { name: "Commits, diverged from main" }))
+        .toBeVisible();
+    });
+
+    test("asks for Import latest commit on a read-only repository", async () => {
+      // GIVEN
+      apiMock.mockResolvedValue(generateCommitsApiResult(generateReadOnlyCommitsResponse()));
+      const component = await renderTab({ objectKind: READONLY_REPOSITORY_KIND });
+
+      // WHEN
+      await hoverTab(component, "Commits, 1 commit pending import");
+
+      // THEN
+      await expect
+        .element(
+          component.getByRole("tooltip", {
+            name: "1 commit pending import — run Import latest commit to use it",
+          })
+        )
+        .toBeVisible();
+      await parkPointer(component);
+    });
+
+    test("says the next sync imports the commits of a repository added on the branch", async () => {
+      // GIVEN
+      apiMock.mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));
+      const component = await renderTab({ internalStatus: REPOSITORY_INTERNAL_STATUS_STAGING });
+
+      // WHEN
+      await hoverTab(component, "Commits, 3 commits pending import");
+
+      // THEN
+      await expect
+        .element(
+          component.getByRole("tooltip", {
+            name: "3 commits pending import — the next sync imports them",
+          })
+        )
+        .toBeVisible();
+      await parkPointer(component);
     });
   });
 
@@ -197,16 +330,14 @@ describe("RepositoryCommitsTab", () => {
       .mockResolvedValueOnce(generateCommitsApiResult(generateInSyncCommitsResponse()))
       .mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));
     const component = await renderTab();
-    await expect
-      .element(component.getByRole("link", { name: "Commits 0 pending import" }))
-      .toBeVisible();
+    await expectNoCount(component);
 
     // WHEN
     await queryClient.refetchQueries();
 
     // THEN
     await expect
-      .element(component.getByRole("link", { name: "Commits 3 pending import" }))
+      .element(component.getByRole("link", { name: "Commits, 3 commits pending import" }))
       .toBeVisible();
   });
 
@@ -234,7 +365,7 @@ describe("RepositoryCommitsTab", () => {
 
     // THEN
     await expect
-      .element(component.getByRole("link", { name: "Commits 3 pending import" }))
+      .element(component.getByRole("link", { name: "Commits, 3 commits pending import" }))
       .toBeVisible();
     await expect.element(component.getByText("3 commits pending import")).toBeVisible();
     expect(apiMock).toHaveBeenCalledTimes(1);

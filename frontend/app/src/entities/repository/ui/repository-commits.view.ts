@@ -1,5 +1,6 @@
 import type { BadgeProps } from "@/shared/components/ui/badge";
 import { warnUnexpectedType } from "@/shared/utils/common";
+import { formatNumberDisplay } from "@/shared/utils/number";
 import { pluralize } from "@/shared/utils/string";
 
 import {
@@ -266,8 +267,83 @@ export function getConditionNotice(
   }
 }
 
-export function getPendingCountLabel({
-  updatedOnlyByRebase,
-}: Pick<CommitStateContext, "updatedOnlyByRebase">): string {
-  return updatedOnlyByRebase ? "behind" : "pending import";
+export const COMMITS_TAB_COUNT_CAP = 999;
+
+export type CommitsTabSignal =
+  | { kind: "pending-import" | "behind"; count: number; description: string; hint: string }
+  | { kind: "warning"; description: string; hint: string };
+
+const formatCommitCount = (count: number) =>
+  `${formatNumberDisplay(count)} ${count === 1 ? "commit" : "commits"}`;
+
+export function formatCommitsTabCount(count: number): string {
+  return count > COMMITS_TAB_COUNT_CAP
+    ? `${formatNumberDisplay(COMMITS_TAB_COUNT_CAP)}+`
+    : formatNumberDisplay(count);
+}
+
+export function getCommitsTabSignal(
+  {
+    condition,
+    git_ref,
+    pending_count,
+  }: Pick<RepositoryCommitLog, "condition" | "git_ref" | "pending_count">,
+  {
+    updatedOnlyByRebase,
+    isReadOnly,
+  }: Pick<CommitStateContext, "updatedOnlyByRebase"> & { isReadOnly: boolean }
+): CommitsTabSignal | null {
+  const ref = git_ref ?? "the default branch";
+  switch (condition) {
+    case RepositoryGitCondition.BEHIND: {
+      if (!pending_count) return null;
+      const them = pending_count === 1 ? "it" : "them";
+      if (updatedOnlyByRebase) {
+        const description = `${formatCommitCount(pending_count)} behind ${ref}`;
+        return {
+          kind: "behind",
+          count: pending_count,
+          description,
+          hint: `${description} — rebase the branch to use ${them}`,
+        };
+      }
+      const description = `${formatCommitCount(pending_count)} pending import`;
+      // Nothing imports a read-only repository on its own; its periodic check only notices that the ref moved.
+      const action = isReadOnly
+        ? `run Import latest commit to use ${them}`
+        : `the next sync imports ${them}`;
+      return {
+        kind: "pending-import",
+        count: pending_count,
+        description,
+        hint: `${description} — ${action}`,
+      };
+    }
+    case RepositoryGitCondition.REWRITTEN:
+      return updatedOnlyByRebase
+        ? {
+            kind: "warning",
+            description: `diverged from ${ref}`,
+            hint: `This branch has diverged from ${ref}. Rebase the branch to use the latest commit of ${ref}.`,
+          }
+        : {
+            kind: "warning",
+            description: "history rewritten",
+            hint: "The remote branch history was rewritten, so nothing is reported as pending import.",
+          };
+    case RepositoryGitCondition.ORPHANED:
+      return {
+        kind: "warning",
+        description: "imported commit missing",
+        hint: "The imported commit could not be found on the remote.",
+      };
+    case RepositoryGitCondition.REF_MISSING:
+      return {
+        kind: "warning",
+        description: "tracked ref missing",
+        hint: "The tracked branch or tag no longer exists on the remote. The imported commit is still in use.",
+      };
+    default:
+      return null;
+  }
 }

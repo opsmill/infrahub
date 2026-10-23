@@ -14,6 +14,8 @@ const badgeVariants = cva(
         green:
           "border-transparent bg-green-700/10 text-green-900 dark:bg-green-400/20 dark:text-green-300",
         red: "border-transparent bg-danger-surface text-danger",
+        // The surface is thinned because text-xs on the full warning surface falls under 4.5:1 in light mode.
+        warning: "border-warning-border bg-warning-surface/60 text-warning",
         blue: "border-transparent bg-custom-blue-700/10 text-custom-blue-700 dark:bg-custom-blue-500/30 dark:text-custom-blue-300",
         yellow:
           "border-transparent bg-yellow-100 text-yellow-900 dark:bg-yellow-400/20 dark:text-yellow-300",
