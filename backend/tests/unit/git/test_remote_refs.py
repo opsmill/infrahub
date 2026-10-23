@@ -9,7 +9,12 @@ from typing import TYPE_CHECKING
 import pytest
 from git import Repo
 
-from infrahub.exceptions import RepositoryConnectionError, RepositoryError, RepositoryInvalidBranchError
+from infrahub.exceptions import (
+    RepositoryConnectionError,
+    RepositoryCredentialsError,
+    RepositoryError,
+    RepositoryInvalidBranchError,
+)
 from infrahub.git.remote_refs import RemoteRefs, ensure_branch_exists, list_remote_heads, list_remote_refs
 from tests.helpers.git import install_remote_helper
 
@@ -197,6 +202,31 @@ async def test_list_remote_heads_reads_git_in_english(tmp_path: Path, monkeypatc
 
     with pytest.raises(RepositoryError, match=r"locale C C"):
         await list_remote_heads(name="demo", url=url, branch_names=["main"], timeout_seconds=30)
+
+
+async def test_list_remote_heads_keeps_the_git_output_of_refused_credentials(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Only the error output of git is kept, not the command line, which names the location and the refs."""
+    url = install_remote_helper(
+        tmp_path,
+        monkeypatch,
+        script=(
+            "echo 'remote: HTTP Basic: Access denied' >&2\n"
+            "echo \"fatal: Authentication failed for 'https://git.example.com/demo.git/'\" >&2\nexit 128"
+        ),
+    )
+
+    with pytest.raises(
+        RepositoryCredentialsError, match=r"^Authentication failed for demo, please validate the credentials\.$"
+    ) as refusal:
+        await list_remote_heads(name="demo", url=url, branch_names=["main"], timeout_seconds=30)
+
+    assert refusal.value.git_output == (
+        "remote: HTTP Basic: Access denied\n"
+        "fatal: Authentication failed for 'https://git.example.com/demo.git/'\n"
+        "fatal: remote helper 'fake' aborted session"
+    )
 
 
 async def test_list_remote_heads_reports_text_that_is_not_utf8_as_a_repository_error(

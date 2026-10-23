@@ -2,7 +2,7 @@ import asyncio
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from infrahub.exceptions import RepositoryConnectionError, RepositoryError
+from infrahub.exceptions import RepositoryConnectionError, RepositoryCredentialsError, RepositoryError
 
 
 @dataclass(frozen=True)
@@ -35,6 +35,16 @@ class FailingRemoteHeadReader:
 
     async def read_heads(self, repository_name: str, location: str, branch_names: Sequence[str]) -> dict[str, str]:
         raise self.error_class(identifier=repository_name)
+
+
+class RefusingRemoteHeadReader:
+    """RemoteHeadReader whose every remote refuses the credentials, with the given Git output."""
+
+    def __init__(self, git_output: str) -> None:
+        self.git_output = git_output
+
+    async def read_heads(self, repository_name: str, location: str, branch_names: Sequence[str]) -> dict[str, str]:
+        raise RepositoryCredentialsError(identifier=repository_name, git_output=self.git_output)
 
 
 class CountingRemoteHeadReader(InMemoryRemoteHeadReader):
