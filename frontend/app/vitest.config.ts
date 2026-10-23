@@ -55,7 +55,6 @@ export default mergeConfig(
         enabled: true,
         headless: true,
         provider: playwright(),
-        // The tests match locator text as a substring, which vitest >= 5 no longer does by default.
         locators: {
           exact: false,
         },
