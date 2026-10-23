@@ -133,6 +133,7 @@ function CommitsTabPendingBadgePrototype() {
             },
           ]}
           frame={frame}
+          prUrl="https://github.com/opsmill/infrahub/pull/11196"
         />
       )}
     </div>
