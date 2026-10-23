@@ -112,7 +112,7 @@ describe("RepositoryCommitsTab", () => {
       { condition: "behind", response: generateRebaseNeededCommitsResponse, count: 2 },
       { condition: "in sync", response: generateInSyncCommitsResponse, count: 0 },
     ])(
-      "counts the default branch commits not on the branch when it is $condition",
+      "counts the commits behind main when the branch is $condition",
       async ({ response, count }) => {
         // GIVEN
         apiMock.mockResolvedValue(generateCommitsApiResult(response()));
@@ -122,7 +122,7 @@ describe("RepositoryCommitsTab", () => {
 
         // THEN
         await expect
-          .element(component.getByRole("link", { name: `Commits ${count} not on this branch` }))
+          .element(component.getByRole("link", { name: `Commits ${count} behind` }))
           .toBeVisible();
       }
     );
