@@ -141,10 +141,8 @@ async def generate_node_mutation_events(
             events.append(update_event)
 
     group_parser = GroupNodeMutationParser(db=db, branch=branch)
-    with trace.get_tracer(__name__).start_as_current_span("changelog.group_events") as span:
-        span.set_attribute("changelog.input_event_count", len(events) + len(recorded_events))
-        group_events = await group_parser.group_events_from_node_actions(events=events + recorded_events)
-        span.set_attribute("changelog.group_event_count", len(group_events))
+    group_events = await group_parser.group_events_from_node_actions(events=events + recorded_events)
+    trace.get_current_span().set_attribute("changelog.group_event_count", len(group_events))
 
     specific_events: list[InfrahubEvent] = []
     if (kind := node.get_kind()) in [

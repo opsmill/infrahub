@@ -207,6 +207,9 @@ class DbNodeLabelReader:
         unmaterialized = [node_id for node_id, node in nodes.items() if lacks_stored_value(node)]
         for page in chunked(unmaterialized, self._page_size):
             nodes.update(await self._node_loader(db=self._db, ids=page, branch=self._branch, fields=None))
+        span = trace.get_current_span()
+        span.set_attribute("changelog.label_field_load_count", len(node_ids))
+        span.set_attribute("changelog.full_node_load_count", len(unmaterialized))
         return nodes
 
     async def load_labels(self, node_ids: list[str]) -> dict[str, NodeLabels]:
@@ -216,6 +219,7 @@ class DbNodeLabelReader:
         for node_id, from_storage in stored.items():
             if from_storage.knows_labels():
                 labels[node_id] = NodeLabels(display_label=from_storage.display_label, hfid=from_storage.hfid)
+        trace.get_current_span().set_attribute("changelog.stored_label_count", len(labels))
 
         to_load = [node_id for node_id in node_ids if node_id not in labels]
         nodes = await self._load_nodes(to_load, fields=LABEL_FIELDS, lacks_stored_value=_lacks_stored_labels)
@@ -232,6 +236,7 @@ class DbNodeLabelReader:
         for node_id, from_storage in stored.items():
             if from_storage.knows_hfid():
                 hfids[node_id] = from_storage.hfid
+        trace.get_current_span().set_attribute("changelog.stored_label_count", len(hfids))
 
         to_load = [node_id for node_id in node_ids if node_id not in hfids]
         nodes = await self._load_nodes(to_load, fields=HFID_FIELDS, lacks_stored_value=_lacks_stored_hfid)

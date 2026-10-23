@@ -57,12 +57,10 @@ class RelationshipChangelogGetter:
         """
         peer_labels = await self.enrich(primary_changelog=primary_changelog)
 
-        with trace.get_tracer(__name__).start_as_current_span("changelog.build_secondaries") as span:
-            span.set_attribute("changelog.referenced_peer_count", peer_labels.referenced_count)
-            span.set_attribute("changelog.resolved_peer_count", peer_labels.resolved_count)
-            secondaries = self._build_secondaries(primary_changelog=primary_changelog, peer_labels=peer_labels)
-            span.set_attribute("changelog.secondary_count", len(secondaries))
-        return secondaries
+        span = trace.get_current_span()
+        span.set_attribute("changelog.referenced_peer_count", peer_labels.referenced_count)
+        span.set_attribute("changelog.resolved_peer_count", peer_labels.resolved_count)
+        return self._build_secondaries(primary_changelog=primary_changelog, peer_labels=peer_labels)
 
     async def enrich(self, primary_changelog: NodeChangelog) -> ResolvedPeerLabels:
         """Fill the mutated node's relationship peers with their labels, and its HFID when the save left it unset.
