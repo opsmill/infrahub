@@ -169,7 +169,7 @@ When the branch scope of the webhook includes other branches, Infrahub still rea
 
 :::warning Events on data-only branches
 
-With a **Repository** (read-write), Infrahub sends nothing for an event on a [data-only branch](../branches/overview.mdx#branch-isolation-modes) (`sync_with_git: false`), because the repository has no Git branch with that name. The failure does not appear in the webhook's related tasks. It is recorded only in the logs of the [task worker](../overview/architecture.mdx#task-workers).
+With a **Repository** (read-write), Infrahub sends nothing for an event on a [data-only branch](../branches/overview.mdx#branch-isolation-modes) (`sync_with_git: false`), because the repository has no Git branch with that name. The failure does not appear in the related tasks of the webhook. It is recorded only in the logs of the [task worker](../overview/architecture.mdx#task-workers).
 
 :::
 
