@@ -1,0 +1,76 @@
+# Research: Task History and Activity Log Retention
+
+The [Notion design doc](https://app.notion.com/p/opsmill/Task-history-and-Activity-log-retention-3dc228b830258012ba28dc3a23eece65) already decides the approach (D1-D10, with benchmarks). This file records what the codebase and the pinned Prefect release confirm about each decision, and the implementation choices the doc leaves open.
+
+## R1. Prefect's cleanup of old runs (D1)
+
+- **Decision**: Turn on Prefect's built-in flow-run vacuum by adding `flow_runs` to `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED`, with `PREFECT_SERVER_SERVICES_DB_VACUUM_RETENTION_PERIOD` set from the task history retention.
+- **Confirmed in Prefect 3.8.6** (`prefect/server/services/db_vacuum.py::vacuum_old_flow_runs`): it selects top-level runs (`parent_task_run_id IS NULL`) in a terminal state with a non-null `end_time` older than the cutoff, in batches of `batch_size`, then deletes their logs and artifacts by `flow_run_id` and the runs themselves (task runs and states follow by cascade). Enabling `flow_runs` also schedules the daily orphaned logs and artifacts cleanup (`schedule_orphan_vacuum_tasks`). The default enabled set is `{"events"}`.
+- **Rationale**: Prefect maintains it and it deletes in database batches. The existing API loop deletes one run per call at about 17 h per million runs.
+- **Alternatives considered**: Scheduling `infrahub.task_manager.flow_run.retention::FlowRunRetention` as a workflow (rejected in D1).
+
+## R2. How Infrahub sets Prefect settings in the task manager (D5)
+
+- **Decision**: In `infrahub.prefect_server.app::create_infrahub_prefect`, load the Infrahub configuration, validate the retention settings, and write the derived `PREFECT_*` variables into `os.environ` before `prefect.server.api.server.create_app` is called. A new `infrahub tasks background-services` command does the same translation and then runs Prefect's services (`prefect server services start` equivalent) in the same process.
+- **Confirmed**: `prefect.settings.context::get_current_settings` returns the settings of `prefect.context.GLOBAL_SETTINGS_CONTEXT` whenever no settings context is active, and that context is built from the environment once, when `prefect.context` is imported. Values written to `os.environ` afterwards are picked up only after `prefect.context.refresh_global_settings_context()`; once refreshed, the vacuum services see them, since they read `get_current_settings()` on every run. The background-services command needs the same refresh.
+- **Gap found**: `create_infrahub_prefect` loads the Infrahub configuration only in distributed mode (when block registration and migrations on start are off). The translation must load the configuration in both modes.
+- **Explicit `PREFECT_*` values win**: if an operator already sets one of the four Prefect variables, Infrahub leaves it as is and logs one warning per variable, naming the Prefect variable and the Infrahub setting it hides, so existing deployments that tuned Prefect directly keep their behaviour. The three Infrahub settings are the documented interface, and the configuration reference states the precedence.
+- **Alternatives considered**: Prefect's `temporary_settings` context (scoped to a context manager, not the server lifetime); waiting for INFP-703 (rejected in D5).
+
+## R3. Where the background services run (D5, Helm row)
+
+- **Confirmed**: Compose and default Helm run Prefect's background services inside the task-manager process. The test compose file `python_testcontainers/infrahub_testcontainers/docker-compose.test.yml` and `docker-compose-cluster.test.yml` define `task-manager-background-svc` with `command: prefect server services start`, and the Helm chart offers the same split as an option.
+- **Decision**: Replace that command with `infrahub tasks background-services` in both test compose files, and change the Helm chart in the infrahub-helm repository (separate PR).
+
+## R4. Event retention per type (D3)
+
+- **Decision**: Set `PREFECT_SERVER_EVENTS_RETENTION_PERIOD` to the activity log retention and `PREFECT_SERVER_SERVICES_DB_VACUUM_EVENT_RETENTION_OVERRIDES` to `{event_type: own_events_retention}` for every type in Infrahub's list of Prefect event types.
+- **Confirmed** (`db_vacuum.py::vacuum_events_with_retention_overrides`): overrides match `Event.event == event_type` exactly and the effective retention is `min(type_retention, global_retention)`, which is why an own-event retention longer than the activity log is capped to it with a warning (D5). Related resources are deleted before the events, so none are left behind.
+- **List source**: a module-level constant in the backend, built from the pinned Prefect release (run and task-run state events, heartbeat, worker, automation, deployment, work pool, work queue, block events). The benchmark found 26, 14 and 33 types across three datasets.
+- **Guard**: an integration-docker test runs a workload of Infrahub tasks on the full stack (real workers, Postgres), including the failure paths it can reach (failed and cancelled flows, a worker restart), and fails when a stored event type that does not start with `infrahub.` is missing from the list. The functional tier is not enough: it runs Prefect's test harness on SQLite with non-essential services off and no real worker, so worker and work-pool events never appear. A unit test also checks that `prefect.flow-run.<State>` and `prefect.task-run.<State>` are listed for every built-in state of the pinned Prefect, so a Prefect upgrade that adds a state fails CI whatever the workload reaches.
+
+## R5. The command for old runs and its endpoint (D9)
+
+- **Confirmed**: `infrahub.cli.tasks::flow_runs` (`infrahub tasks flush flow-runs`) calls `FlowRunRetention.purge` through the Prefect API with its own `--days-to-keep` (default 30). `stale_runs` uses the same class with `delete=False`, so `FlowRunRetention` keeps a caller.
+- **Decision**: `flow_runs` posts to a new task-manager route `POST /infrahub/task-history/cleanup` on `infrahub.prefect_server.app::router` and polls `GET /infrahub/task-history/cleanup/{job_id}` until it finishes. The route starts the cleanup as a background job inside the task manager, so a dropped session or an HTTP timeout does not stop it. The job deletes one day of end times per transaction and logs progress, so a re-run continues where it stopped. The command reads the task history retention setting; its `--days-to-keep` and `--batch-size` options are removed (design doc D9), which the changelog flags as breaking. `--rewrite` turns on the table rewrite.
+- **One job across replicas**: the job holds a Postgres session-level advisory lock for its whole run (no table added). A replica that cannot take the lock answers `409` "a cleanup is running elsewhere". The job's status lives in the process that runs it, so the CLI treats `404` on the status route or `409` on start by waiting and posting again; because each day is committed, a new job continues from the oldest remaining day. On SQLite (test harness) the lock is a process-level lock.
+- **Deletes**: written with SQLAlchemy Core against Prefect's ORM models (`PrefectDBInterface.FlowRun`, `Log`, `Artifact`), following the same selection as `vacuum_old_flow_runs`, so the logic runs on Postgres in production and on the SQLite database of the test harness. For each day: delete the day's eligible runs (task runs and states follow by cascade), then the logs and artifacts of the runs this job deleted, as in the design doc's D9. This is the order Prefect's own vacuum uses (`db_vacuum.py::vacuum_old_flow_runs` deletes a batch of runs in one transaction, then their children in separate batches; deleting the runs first prevents a concurrent state transition from preserving a run after some of its children were deleted). Running next to Prefect's vacuum, which is now on during the upgrade, cannot deadlock: Prefect selects its runs with `FOR UPDATE SKIP LOCKED`, and each side deletes children only for runs it deleted itself. A second pass catches subflows left without a parent.
+- **Rewrite**: `VACUUM FULL` on `flow_run`, `flow_run_state`, `task_run`, `task_run_state`, `log`, `artifact`, only on Postgres and only when the deletes freed most of the tables (more than half of the runs the tables held; in practice the first upgrade or after lowering a retention). Each runs outside a transaction (autocommit) with a lock timeout (60 s), so other queries never queue behind a rewrite waiting for its lock; a timed-out table is retried up to 3 times, then reported as not rewritten, and the job continues with the next one, so an upgrade never hangs.
+- **Old task manager**: when the route returns 404, the command prints that the task manager does not provide the cleanup yet and exits successfully, so the Helm pre-upgrade hook never fails on it.
+- **Alternatives considered**: Prefect's own cleanup in the upgrade step (2 h 26 min against 8 min on 25 GB), background deletion with operator rewrite (no disk back without a second window).
+
+## R6. The upgrade step (D9, Helm split)
+
+- **Confirmed**: `infrahub.cli.upgrade::_upgrade_execute` runs six numbered steps; step 5 configures the task manager through `get_client`.
+- **Decision**: add a step after the task manager step, "Task history cleanup", which runs the same code path as `flush flow-runs --rewrite`. The Helm chart leaves the step out with a `--no-task-history-cleanup` flag in its upgrade hook arguments, because from the second release on the pre-upgrade hook reaches a task manager that does provide the cleanup, and the instance is still serving. The flag is documented for Helm only; the Compose guide has no skip. The 404 path (R5) still covers the first Helm upgrade and any chart that has not added the flag yet.
+- **Alternatives considered**: relying on the 404 path alone (fails from the second release on, when the hook would rewrite tables on a live instance); detecting Helm at runtime (no reliable signal).
+
+## R7. Activities queries (D6)
+
+- **Confirmed path**: `infrahub.graphql.queries.event::Events.resolve` → `infrahub.task_manager.event.models::InfrahubEventFilter.from_filters` → `infrahub.task_manager.event.query::PrefectEvent.query_events` posts to `/infrahub/events/filter` → `infrahub.prefect_server.events::read_events` → `infrahub.prefect_server.database::query_events`, which always calls `raw_count_events` and then `read_events` with `offset`.
+- **Confirmed ID formats** (`infrahub.events.models::InfrahubEvent.get_related`): account `infrahub.account.<id>` (role `infrahub.account`), branch `infrahub.branch.<branch_id>` (role `infrahub.branch`), child events carry `prefect.resource.id = <parent event id>` with role `infrahub.ancestor_event`.
+- **Filters today** match labels: `infrahub.resource.id` (account), `infrahub.resource.label` (branch), `infrahub.node.id` (primary node), `infrahub.event_parent.id` (parent), `infrahub.branch.name` (merged, rebased, migrated).
+- **Decision**: rewrite the five filter methods to match `prefect.resource.id` (which Prefect maps to the indexed `resource_id` column), as in D6; resolve branch names to IDs in the GraphQL resolver through the branch registry, falling back to the newest `infrahub.branch.deleted` event with resource ID `infrahub.branch.<name>`.
+- **Time windows**: implemented in `infrahub.prefect_server.database::query_events`, which receives the widest window (the activity log retention) and the anchor (`until` or now) from the request.
+- **Count**: `InfrahubEventfilterInput` gains `include_count: bool = False`; the GraphQL resolver sets it from the requested fields, the same way `infrahub.graphql.queries.task` already passes `include_count="count" in fields`.
+- **Plan per query**: PR #10379 (open, not merged) sets `plan_cache_mode = force_custom_plan` for the Activities queries. It is a dependency of part 2, merged first or carried into it.
+- **Frontend**: `frontend/app/src/entities/events/ui/queries/get-events.query.ts` pages by offset (`lastPageParam + DEFAULT_PAGE_SIZE`). It changes to `until` = `occurred_at` of the last event, with de-duplication by ID. The GraphQL document in `frontend/app/src/entities/events/api/get-events-from-api.ts` already passes `until` and **does not select `count`** (checked on `stable` and `develop`), so the design doc's premise that the page asks for the total count does not hold: the cost comes only from `infrahub.prefect_server.database::query_events` counting on every request. No frontend count change is needed; the design doc was corrected (D7 and Q2 removed).
+
+## R8. Tests
+
+- **Confirmed**: `backend/tests/component/conftest.py::prefect_test_fixture` starts `create_infrahub_prefect` through `prefect_test_harness` (SQLite). `backend/tests/helpers/constants.py` turns Prefect's vacuum off for tests (`PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED: "[]"`). Existing unit tests live under `backend/tests/unit/task_manager/event/` and `backend/tests/unit/task_manager/flow_run/` (including `test_retention.py`).
+- **Decision**: the cleanup and filter guards are component tests on the existing harness: the cleanup equivalence test seeds runs, copies the database state, runs `vacuum_old_flow_runs` and the new cleanup, and compares remaining run, log and artifact IDs; the filter equivalence test seeds events and compares each new filter with the label filter. The event-type list guard is an integration-docker test plus a unit test over Prefect's built-in states (see R4). A concurrency test runs Prefect's vacuum and the new cleanup at the same time on the same old runs and checks both finish with the same end state. The cleanup equivalence and the rewrite also run against Postgres in the integration-docker tier, which already boots the task manager on Postgres. Query speed stays with the private performance tests listed in the design doc.
+
+## R9. Documentation surfaces
+
+- `docs/docs/deploy-manage/maintain-upgrade/upgrade/{overview,community,enterprise}.mdx`: the upgrade step, setting the retention before upgrading, the Helm maintenance step, free disk for the rewrite.
+- `docs/docs/reference/configuration.mdx`: generated from the settings classes by `invoke docs.generate`.
+- `docs/docs/reference/infrahub-cli/`: `tasks/docs.py::CLI_COMMANDS` does not list `infrahub tasks`; add it so the flush commands and the background-services command are documented.
+- `dev/knowledge/backend/events.md` and `dev/knowledge/backend/async-tasks.md`: retention, the list of Prefect event types, Activities queries, stuck runs; add a behaviour table to each.
+- A changelog fragment per user-visible part.
+
+## Open items carried from the design doc
+
+- Q1: upgrade-step duration on 100 GB: about 2 h 20 min (deletes 2 h 13 min, rewrite 85 s, at most 2.2 GB extra disk, task history tables 101 to 8 GiB). Blocks the release notes only.
+- Q2: dropped from the design doc, which now states that the Activities page never asks for the total count (see R7).
+- Deep scrolling by time on Postgres 14 and 18: measurement in progress.
