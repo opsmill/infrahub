@@ -12,16 +12,17 @@ Each scenario that the web interface can drive has two paths: one through the Gr
 
 ## Areas whose performance the enrichment can affect
 
-This checklist does not measure performance. The enrichment reads node labels from the database in these places, so a change to it can affect their duration:
+This checklist does not measure performance. These actions now look up the names of the objects they change, so they can take longer than before, more so when an object has many related objects:
 
-- Node create, update, upsert and delete mutations: one label read for the peers of the changed relationships (`graphql/mutations/main.py`, `events/generator.py`).
-- Deletion of a node with many peers, such as a group with many members: one label read covers every peer.
-- `RelationshipAdd` / `RelationshipRemove`: the source node is reloaded when the relationship feeds its HFID or display label, and its labels are read from storage for the profiles relationship (`graphql/mutations/relationship.py`).
-- `InfrahubUpdateDisplayLabel` and `InfrahubUpdateComputedAttribute`: the HFID is read from storage (`graphql/mutations/display_label.py`, `graphql/mutations/computed_attribute.py`).
-- IP pool allocation mutations (`graphql/mutations/resource_manager/ip_pools.py`).
-- Branch merge, directly or through a proposed change: the HFIDs of every changed node are read in pages of `query_size_limit` (`core/merge/orchestrator.py`).
-- Branch rebase: the same read for the branch's changes, and for the default branch's changes when the branch changed the schema (`core/branch/tasks.py`).
-- Webhook delivery: payloads carry the peer labels, so they grow with the number of peers.
+- Creating, editing, upserting or deleting an object, in the web interface or through GraphQL.
+- Deleting an object with many related objects, such as a group with many members.
+- Adding or removing related objects in a relationship tab, or with `RelationshipAdd` / `RelationshipRemove`.
+- Adding or removing a profile on an object.
+- Setting a display label or a computed attribute value with `InfrahubUpdateDisplayLabel` / `InfrahubUpdateComputedAttribute`.
+- Allocating an IP prefix or address from an IP pool.
+- Merging a branch, directly or through a proposed change, more so with thousands of changed objects.
+- Rebasing a branch.
+- Receiving webhooks: each payload is larger, by the names of the related objects it lists.
 
 Live measurements: [IFC-3100](https://opsmill.atlassian.net/browse/IFC-3100?focusedCommentId=43928).
 
