@@ -158,33 +158,9 @@ class TraceTransportProtocol(StrEnum):
 class BrokerDriver(StrEnum):
     RabbitMQ = "rabbitmq"
 
-    @property
-    def driver_module_path(self) -> str:
-        match self:
-            case BrokerDriver.RabbitMQ:
-                return "infrahub.services.adapters.message_bus.rabbitmq"
-
-    @property
-    def driver_class_name(self) -> str:
-        match self:
-            case BrokerDriver.RabbitMQ:
-                return "RabbitMQMessageBus"
-
 
 class CacheDriver(StrEnum):
     Redis = "redis"
-
-    @property
-    def driver_module_path(self) -> str:
-        match self:
-            case CacheDriver.Redis:
-                return "infrahub.services.adapters.cache.redis"
-
-    @property
-    def driver_class_name(self) -> str:
-        match self:
-            case CacheDriver.Redis:
-                return "RedisCache"
 
 
 class WorkflowDriver(StrEnum):
@@ -565,7 +541,7 @@ class BrokerSettings(BaseSettings):
     virtualhost: str = Field(default="/", description="The virtual host to connect to")
     driver: BrokerDriver = Field(
         default=BrokerDriver.RabbitMQ,
-        description="Message bus implementation.",
+        description="Message bus implementation. RabbitMQ is the only supported value.",
     )
 
     @model_validator(mode="after")
@@ -597,7 +573,7 @@ class CacheSettings(BaseSettings):
     database: int = Field(default=0, ge=0, le=15, description="Id of the database to use")
     driver: CacheDriver = Field(
         default=CacheDriver.Redis,
-        description="Cache implementation.",
+        description="Cache implementation. Redis is the only supported value.",
     )
     username: str = ""
     password: str = ""
@@ -615,7 +591,7 @@ class CacheSettings(BaseSettings):
             "?ssl_ca_certs= verifies against cache.tls_ca_file, which the global tls.ca_bundle fills. "
             "The Sentinel daemons "
             "can be authenticated separately with the sentinel_username and sentinel_password query "
-            "parameters. See the high availability guide for details. Ignored when driver is not redis."
+            "parameters. See the high availability guide for details."
         ),
     )
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
@@ -634,8 +610,7 @@ class CacheSettings(BaseSettings):
         ge=1,
         description=(
             "Time-to-live in minutes for the global initialization locks. If a worker dies while holding one, "
-            "the lock auto-expires after this period so Infrahub can recover on its own. "
-            "Only enforced with the Redis cache driver."
+            "the lock auto-expires after this period so Infrahub can recover on its own."
         ),
     )
 
@@ -650,14 +625,9 @@ class CacheSettings(BaseSettings):
         default_ports: int = 6379
         return self.port or default_ports
 
-    @property
-    def active_url(self) -> SecretStr | None:
-        """The connection URL, which only the Redis driver reads."""
-        return self.url if self.driver == CacheDriver.Redis else None
-
     @model_validator(mode="after")
     def validate_url(self) -> Self:
-        url = self.active_url
+        url = self.url
         if url is None:
             return self
 
@@ -680,7 +650,7 @@ class CacheSettings(BaseSettings):
     @model_validator(mode="after")
     def validate_credentials(self) -> Self:
         # A URL carries its own credentials, so only the scalar settings are checked.
-        if self.active_url is None and self.username and not self.password:
+        if self.url is None and self.username and not self.password:
             raise ValueError("INFRAHUB_CACHE_USERNAME is set but INFRAHUB_CACHE_PASSWORD is not. Both are required.")
         return self
 
@@ -2191,7 +2161,7 @@ class Settings(BaseSettings):
             if getattr(component, field_name) is not None:
                 continue
             # A cache URL supersedes cache.tls_insecure, so only the URL's own ssl_cert_reqs turns verification off.
-            superseded = component is self.cache and self.cache.active_url is not None
+            superseded = component is self.cache and self.cache.url is not None
             if getattr(component, "tls_insecure", False) and not superseded:
                 continue
             setattr(component, field_name, ca_bundle)

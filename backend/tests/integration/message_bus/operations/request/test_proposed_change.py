@@ -7,7 +7,6 @@ from unittest.mock import ANY, call, patch
 import pytest
 from prefect import flow
 
-from infrahub import config
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
@@ -25,7 +24,6 @@ from infrahub.proposed_change.models import (
 )
 from infrahub.proposed_change.tasks import run_generators, run_proposed_change_pipeline
 from infrahub.services import InfrahubServices
-from infrahub.services.adapters.cache import InfrahubCache
 from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workflows.catalogue import (
@@ -269,7 +267,7 @@ class TestProposedChange(TestInfrahubApp):
         bus = BusRecorder()
         service = await InfrahubServices.new(
             client=client,
-            cache=await InfrahubCache.new_from_driver(driver=config.SETTINGS.cache.driver),
+            cache=await RedisCache.new(),
             message_bus=bus,
             log=FakeLogger(),
             workflow=WorkflowLocalExecution(),

@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Awaitable, Callable
 from infrahub import config
 from infrahub.log import get_logger
 from infrahub.services.adapters.cache import InfrahubCache
+from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.services.component import refresh_worker_heartbeat
 
 if TYPE_CHECKING:
@@ -38,7 +39,7 @@ async def build_heartbeat_cache() -> InfrahubCache:
     Must be awaited on the heartbeat thread's own event loop: the asyncio cache clients bind to the
     loop that creates them, so the main-loop connection cannot be reused from the thread.
     """
-    return config.OVERRIDE.cache or await InfrahubCache.new_from_driver(driver=config.SETTINGS.cache.driver)
+    return config.OVERRIDE.cache or await RedisCache.new()
 
 
 class WorkerHeartbeat:

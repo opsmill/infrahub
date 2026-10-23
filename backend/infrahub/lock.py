@@ -444,7 +444,6 @@ def initialize_lock(local_only: bool = False, service: InfrahubServices | None =
         and registry is not None
         and registry.service is service
         and registry.connection_url is not None
-        and config.SETTINGS.cache.driver == config.CacheDriver.Redis
         and registry.connection_url == build_cache_connection_string(config.SETTINGS.cache)
     ):
         return
