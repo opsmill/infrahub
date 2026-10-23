@@ -250,6 +250,17 @@ round never looked at, or fix a finding only partly.
 
 Stop when no P1 or P2 remains other than declined or deferred ones, or after three rounds.
 
+**Records outside the code.** When an approved fix reverses a behaviour or decision that is also
+written down elsewhere, find each record that still states the old one:
+
+- the Jira ticket named in the branch name or the PR title (read it with the Atlassian tools)
+- the open PR's description (`gh pr view <n> --json body`)
+- the `changelog/` fragments of this change
+- the spec folder: grep `dev/specs/<feature>/` for the old behaviour
+
+List each record with the sentence to change under "Records to update" in the report. Do not
+edit Jira or GitHub yourself: the user updates them.
+
 ## Phase 7 — Report
 
 If files were set aside, restore them first: `git stash apply <sha>`, then drop that entry
@@ -280,6 +291,9 @@ cubic: <exit code, n findings | error: <message> | not installed>
 
 ### Questions for you
 - `file:line` — <finding>; the fix would contradict <requirement ID: quote | commit sha: subject>
+
+### Records to update
+- <Jira ticket | PR description | changelog fragment | spec file>: <link or path> — "<old sentence>" → "<new sentence>" (fix: `file:line`)
 
 ### Design
 - <Queries | Request context | Entity dependencies | Position | Copied files | States | Volume | Reuse | Simplicity>: `file:line` — <finding> (P2/P3; fixed | declined | deferred | asked)
