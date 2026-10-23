@@ -344,9 +344,9 @@ def hook_marker(session_id: str) -> Path:
     return Path(tempfile.gettempdir()) / f"claude-hooks-{session_id}.txt"
 
 
-def hooks_status() -> int:
+def hooks_status(repo: str) -> int:
     session_id = os.environ.get("CLAUDE_CODE_SESSION_ID", "")
-    toplevel = Path(git("rev-parse", "--show-toplevel").strip()).resolve()
+    toplevel = Path(git("-C", repo, "rev-parse", "--show-toplevel").strip()).resolve()
     marker = hook_marker(session_id)
     if not session_id or not marker.exists():
         print("inactive: no context hook has run in this session")
@@ -434,12 +434,15 @@ def main() -> int:
         parser.error(f"--repo {args.repo} is not a directory")
     if args.hook:
         return run_hook()
-    if args.hooks_status:
-        return hooks_status()
     if args.check_index:
         return check_index()
 
     try:
+        if args.hooks_status:
+            status = hooks_status(args.repo)
+            if status != 0:
+                print(f"\n{context_block(build_context(args))}")
+            return status
         return review_manifest(args)
     except subprocess.CalledProcessError as error:
         print(f"git {' '.join(error.cmd[1:])} failed: {error.stderr.strip()}", file=sys.stderr)
@@ -455,6 +458,36 @@ def on_base(base: str, path: str) -> bool:
 
 
 def review_manifest(args: argparse.Namespace) -> int:
+    context = build_context(args)
+    if args.json:
+        json.dump(context, sys.stdout, indent=2)
+    else:
+        print_markdown(context)
+    return 0 if context["files"] or context["deleted"] else 1
+
+
+def context_block(context: dict) -> str:
+    repo, rules_root = Path(context["repo"]), Path(context["rules_root"])
+    absent = {rule["path"] for rule in context["rules"] if not rule["on_base"]}
+    lines = [
+        "Paste this block into every subagent prompt: the context hooks do not run for this checkout.",
+        "",
+        f"Reviewed checkout: {repo} (run git with -C {repo})",
+        f"Base: origin/{context['base']}",
+        "Read each file below with the Read tool before reading the code.",
+        "Rules by area:",
+    ]
+    for area, rule_paths in context["area_rules"].items():
+        listed = [
+            f"{rules_root / path}{' (advisory: not on the base)' if path in absent else ''}" for path in rule_paths
+        ]
+        lines.append(f"- {area}: {', '.join(listed) or 'no rule matches'}")
+    lines.append("AGENTS.md files:")
+    lines.extend(f"- {repo / agents_map}" for agents_map in context["maps"])
+    return "\n".join(lines)
+
+
+def build_context(args: argparse.Namespace) -> dict:
     os.chdir(args.repo)
     os.chdir(git("rev-parse", "--show-toplevel").strip())
     base, base_source = resolve_base(args.base)
@@ -465,7 +498,7 @@ def review_manifest(args: argparse.Namespace) -> int:
     areas: dict[Area, list[str]] = {}
     for path in files:
         areas.setdefault(area_of(path), []).append(path)
-    context = {
+    return {
         "base": base,
         "base_source": base_source,
         "repo": str(Path.cwd()),
@@ -482,11 +515,6 @@ def review_manifest(args: argparse.Namespace) -> int:
         "area_rules": {area: [rule.path for rule in load_rules(paths)] for area, paths in areas.items()},
         "maps": nearest_maps(touched),
     }
-    if args.json:
-        json.dump(context, sys.stdout, indent=2)
-    else:
-        print_markdown(context)
-    return 0 if files or change.deleted else 1
 
 
 if __name__ == "__main__":

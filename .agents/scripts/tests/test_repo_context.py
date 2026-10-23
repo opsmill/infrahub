@@ -221,7 +221,7 @@ def test_hooks_status_is_active_after_this_checkouts_hook_ran(repo: Path, monkey
     monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "test-session-active")
     rc.hook_marker("test-session-active").write_text(str(repo), encoding="utf-8")
 
-    assert rc.hooks_status() == 0
+    assert rc.hooks_status(".") == 0
 
 
 @pytest.mark.usefixtures("repo")
@@ -231,7 +231,7 @@ def test_hooks_status_is_inactive_when_the_hooks_belong_to_another_checkout(
     monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "test-session-other")
     rc.hook_marker("test-session-other").write_text(str(tmp_path / "other-checkout"), encoding="utf-8")
 
-    assert rc.hooks_status() == 1
+    assert rc.hooks_status(".") == 1
 
 
 @pytest.mark.usefixtures("repo")
@@ -239,7 +239,20 @@ def test_hooks_status_is_inactive_when_no_hook_ran(monkeypatch: pytest.MonkeyPat
     monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "test-session-none")
     rc.hook_marker("test-session-none").unlink(missing_ok=True)
 
-    assert rc.hooks_status() == 1
+    assert rc.hooks_status(".") == 1
+
+
+def test_inactive_hooks_print_a_context_block_for_subagent_prompts(
+    repo: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "test-session-block")
+    monkeypatch.setattr("sys.argv", ["repo-context.py", "--hooks-status", "--base", "stable"])
+
+    assert rc.main() == 1
+    block = capsys.readouterr().out
+    assert f"Reviewed checkout: {repo.resolve()}" in block
+    assert f"- frontend: {repo.resolve() / '.agents/rules/code-doc-style.md'}" in block
+    assert f"- {repo.resolve() / 'AGENTS.md'}" in block
 
 
 def test_hook_records_the_project_it_ran_for(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
