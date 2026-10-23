@@ -157,42 +157,32 @@ class TraceTransportProtocol(StrEnum):
 
 class BrokerDriver(StrEnum):
     RabbitMQ = "rabbitmq"
-    NATS = "nats"
 
     @property
     def driver_module_path(self) -> str:
         match self:
-            case BrokerDriver.NATS:
-                return "infrahub.services.adapters.message_bus.nats"
             case BrokerDriver.RabbitMQ:
                 return "infrahub.services.adapters.message_bus.rabbitmq"
 
     @property
     def driver_class_name(self) -> str:
         match self:
-            case BrokerDriver.NATS:
-                return "NATSMessageBus"
             case BrokerDriver.RabbitMQ:
                 return "RabbitMQMessageBus"
 
 
 class CacheDriver(StrEnum):
     Redis = "redis"
-    NATS = "nats"
 
     @property
     def driver_module_path(self) -> str:
         match self:
-            case CacheDriver.NATS:
-                return "infrahub.services.adapters.cache.nats"
             case CacheDriver.Redis:
                 return "infrahub.services.adapters.cache.redis"
 
     @property
     def driver_class_name(self) -> str:
         match self:
-            case CacheDriver.NATS:
-                return "NATSCache"
             case CacheDriver.Redis:
                 return "RedisCache"
 
@@ -575,11 +565,7 @@ class BrokerSettings(BaseSettings):
     virtualhost: str = Field(default="/", description="The virtual host to connect to")
     driver: BrokerDriver = Field(
         default=BrokerDriver.RabbitMQ,
-        description=(
-            "Message bus implementation. RabbitMQ is the recommended and fully supported driver. "
-            "NATS JetStream is experimental and not feature-complete: some functionality does not currently "
-            "work, so it is not recommended for production."
-        ),
+        description="Message bus implementation.",
     )
 
     @model_validator(mode="after")
@@ -591,8 +577,6 @@ class BrokerSettings(BaseSettings):
     @property
     def service_port(self) -> int:
         default_ports: dict[bool, int] = {True: 5671, False: 5672}
-        if self.driver == BrokerDriver.NATS:
-            return self.port or 4222
         return self.port or default_ports[self.tls_enabled]
 
 
@@ -613,11 +597,7 @@ class CacheSettings(BaseSettings):
     database: int = Field(default=0, ge=0, le=15, description="Id of the database to use")
     driver: CacheDriver = Field(
         default=CacheDriver.Redis,
-        description=(
-            "Cache implementation. Redis is the recommended and fully supported driver. "
-            "NATS JetStream is experimental and not feature-complete: some functionality does not currently "
-            "work, so it is not recommended for production."
-        ),
+        description="Cache implementation.",
     )
     username: str = ""
     password: str = ""
@@ -668,8 +648,6 @@ class CacheSettings(BaseSettings):
     @property
     def service_port(self) -> int:
         default_ports: int = 6379
-        if self.driver == CacheDriver.NATS:
-            return self.port or 4222
         return self.port or default_ports
 
     @property

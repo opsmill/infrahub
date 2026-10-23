@@ -45,8 +45,8 @@ A CA bundle replaces the system trust store for the components it applies to, it
 | Git | Clone, fetch and push over HTTPS | `INFRAHUB_GIT_TLS_CA_FILE` |
 | HTTP client | Webhooks, SSO providers, telemetry, task manager, the Infrahub API reached by the task workers and the git credential helper | `INFRAHUB_HTTP_TLS_CA_BUNDLE` |
 | Database | Neo4j | `INFRAHUB_DB_TLS_CA_FILE` |
-| Message broker | RabbitMQ or NATS | `INFRAHUB_BROKER_TLS_CA_FILE` |
-| Cache | Redis or NATS | `INFRAHUB_CACHE_TLS_CA_FILE` |
+| Message broker | RabbitMQ | `INFRAHUB_BROKER_TLS_CA_FILE` |
+| Cache | Redis | `INFRAHUB_CACHE_TLS_CA_FILE` |
 | Object storage | S3-compatible endpoint | `INFRAHUB_STORAGE_TLS_CA_FILE` |
 | Trace exporter | OTLP collector, when the exporter connection is encrypted | `INFRAHUB_TRACE_TLS_CA_BUNDLE` |
 | Log forwarding | Syslog destinations over TLS | `tls_ca_bundle` of the destination |

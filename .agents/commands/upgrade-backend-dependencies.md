@@ -1,8 +1,8 @@
 ````markdown
 ---
-description: Upgrade backend infrastructure dependencies (Neo4j, Redis, RabbitMQ, PostgreSQL, NATS, Memgraph) and create a GitHub PR
+description: Upgrade backend infrastructure dependencies (Neo4j, Redis, RabbitMQ, PostgreSQL, Memgraph) and create a GitHub PR
 allowed-tools: mcp__github__*, Bash(curl:*), Bash(gh:*), Read, Edit, Grep, Glob, WebFetch
-argument-hint: [component] (e.g., "neo4j", "redis", "rabbitmq", "postgres", "nats", "memgraph", or "all")
+argument-hint: [component] (e.g., "neo4j", "redis", "rabbitmq", "postgres", "memgraph", or "all")
 ---
 
 # Upgrade Backend Dependencies
@@ -18,7 +18,6 @@ The `$ARGUMENTS` can be:
 - `redis` - Upgrade Redis only
 - `rabbitmq` - Upgrade RabbitMQ only
 - `postgres` - Upgrade PostgreSQL only
-- `nats` - Upgrade NATS only (alternative message broker/cache)
 - `memgraph` - Upgrade Memgraph only (alternative graph database)
 - `all` - Upgrade all primary components (neo4j, redis, rabbitmq, postgres)
 
@@ -78,15 +77,9 @@ Current versions defined in:
 Current versions defined in:
 - `docker-compose.yml` - `POSTGRES_DOCKER_IMAGE` default
 - `development/docker-compose-deps.yml`
-- `development/docker-compose-deps-nats.yml`
 - `python_testcontainers/infrahub_testcontainers/docker-compose.test.yml`
 - `python_testcontainers/infrahub_testcontainers/docker-compose-cluster.test.yml`
 - `docs/docs/topics/local-demo-environment.mdx`
-
-### NATS (Alternative to RabbitMQ/Redis)
-Current versions defined in:
-- `tasks/shared.py` - NATS image versions (used when `INFRAHUB_USE_NATS=true`)
-- `development/docker-compose-deps-nats.yml`
 
 ### Memgraph (Alternative to Neo4j)
 Current versions defined in:
@@ -122,11 +115,6 @@ curl -s "https://hub.docker.com/v2/repositories/library/rabbitmq/tags?page_size=
 curl -s "https://hub.docker.com/v2/repositories/library/postgres/tags?page_size=100&ordering=last_updated" | jq -r '.results[].name' | grep -E '^[0-9]+-alpine$' | head -5
 ```
 
-### NATS (if upgrading)
-```bash
-curl -s "https://hub.docker.com/v2/repositories/library/nats/tags?page_size=100&ordering=last_updated" | jq -r '.results[].name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+-alpine$' | head -5
-```
-
 ### Memgraph (if upgrading)
 ```bash
 curl -s "https://hub.docker.com/v2/repositories/memgraph/memgraph-mage/tags?page_size=100&ordering=last_updated" | jq -r '.results[].name' | grep -E 'memgraph-[0-9]+\.[0-9]+-no-ml$' | head -5
@@ -142,7 +130,6 @@ For each component being upgraded, fetch the release notes and migration guides 
 - **Redis**: https://github.com/redis/redis/releases and https://raw.githubusercontent.com/redis/redis/refs/heads/{version}/00-RELEASENOTES
 - **RabbitMQ**: https://github.com/rabbitmq/rabbitmq-server/releases and https://www.rabbitmq.com/docs/upgrade
 - **PostgreSQL**: https://www.postgresql.org/docs/release/ and https://www.postgresql.org/docs/{version}/release.html
-- **NATS**: https://github.com/nats-io/nats-server/releases
 - **Memgraph**: https://github.com/memgraph/memgraph/releases and https://memgraph.com/docs/release-notes
 
 ### Analysis Process
@@ -188,12 +175,6 @@ Search for:
 - SQL queries: `grep -r "SELECT\|INSERT\|UPDATE\|DELETE" backend/`
 - SQLAlchemy usage: `grep -r "sqlalchemy" backend/`
 - Configuration: Check `POSTGRES_` environment variables
-
-#### NATS Analysis
-Search for:
-- NATS client usage: `grep -r "nats\." backend/`
-- JetStream operations: Search for JetStream-related code
-- Configuration: Check NATS configuration files
 
 #### Memgraph Analysis
 Search for:
@@ -369,25 +350,14 @@ For each component being upgraded, update ALL relevant files:
 2. `development/docker-compose-deps.yml`:
    - Update postgres image
 
-3. `development/docker-compose-deps-nats.yml`:
-   - Update postgres image
-
-4. `python_testcontainers/infrahub_testcontainers/docker-compose.test.yml`:
+3. `python_testcontainers/infrahub_testcontainers/docker-compose.test.yml`:
    - Update `POSTGRES_DOCKER_IMAGE` default
 
-5. `python_testcontainers/infrahub_testcontainers/docker-compose-cluster.test.yml`:
+4. `python_testcontainers/infrahub_testcontainers/docker-compose-cluster.test.yml`:
    - Update `POSTGRES_DOCKER_IMAGE` default
 
-6. `docs/docs/topics/local-demo-environment.mdx`:
+5. `docs/docs/topics/local-demo-environment.mdx`:
    - Update PostgreSQL version in components table
-
-### NATS Updates (if upgrading)
-1. `tasks/shared.py`:
-   - Update NATS image version in `MESSAGE_QUEUE_DOCKER_IMAGE` conditional
-   - Update NATS image version in `CACHE_DOCKER_IMAGE` conditional
-
-2. `development/docker-compose-deps-nats.yml`:
-   - Update NATS image versions
 
 ### Memgraph Updates (if upgrading)
 1. `tasks/shared.py`:
@@ -562,11 +532,6 @@ If CI fails:
 ### PostgreSQL
 - **Schema compatibility**: Major version upgrades may require migrations
 - **Extension compatibility**: Check if extensions are available in new version
-
-### NATS
-- **JetStream changes**: NATS JetStream API may change between versions
-- **Configuration format**: Check for changes in nats-server.conf format
-- **Client library compatibility**: Ensure nats.py package supports the new version
 
 ### Memgraph
 - **Cypher compatibility**: Memgraph may have different Cypher support than Neo4j

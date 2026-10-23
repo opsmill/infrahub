@@ -259,17 +259,13 @@ Task workers can be scaled horizontally by adding more instances, allowing for i
 
 ### Message bus
 
-The message bus is the communication backbone between components in Infrahub. It enables asynchronous messaging and event-driven architecture patterns, decoupling services to allow them to evolve independently and scale individually. Infrahub primarily supports **RabbitMQ** as the message bus implementation.
+The message bus is the communication backbone between components in Infrahub. It enables asynchronous messaging and event-driven architecture patterns, decoupling services to allow them to evolve independently and scale individually. Infrahub uses **RabbitMQ** as the message bus.
 
 **Key Design Decisions:**
 
 - **Event-driven architecture**: Enables loose coupling and real-time reactivity to system events
 - **Message persistence**: Ensures reliable delivery even during component failures
 - **Multiple messaging patterns**: Supports publish-subscribe, work queues, and request-reply patterns
-
-:::warning Experimental
-Infrahub offers experimental support for NATS JetStream as an alternative message bus implementation. This integration is not feature-complete and some functionality does not currently work, so RabbitMQ remains the recommended option for production deployments.
-:::
 
 <ReferenceLink title="RabbitMQ Project" url="https://www.rabbitmq.com/" />
 
@@ -285,10 +281,6 @@ The cache system is built on **Redis** and serves multiple critical functions:
 - **In-memory data store**: Provides ultra-fast access with optional persistence
 - **Versatile data structures**: Supports complex operations beyond basic key-value storage
 - **Pub/sub capabilities**: Enables lightweight messaging for specific use cases
-
-:::warning Experimental
-Infrahub offers experimental support for NATS JetStream as an alternative cache implementation. This integration is not feature-complete and some functionality does not currently work, so Redis remains the recommended option for production deployments.
-:::
 
 <ReferenceLink title="Redis Project" url="https://github.com/redis/redis" />
 

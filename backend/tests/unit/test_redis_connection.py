@@ -15,7 +15,7 @@ from redis.exceptions import ConnectionError as RedisConnectionError
 from redis.exceptions import RedisError
 from redis.exceptions import TimeoutError as RedisTimeoutError
 
-from infrahub.config import CacheDriver, CacheSettings
+from infrahub.config import CacheSettings
 from infrahub.redis_connection import (
     REDIS_HEALTH_CHECK_INTERVAL,
     build_cache_connection_string,
@@ -181,17 +181,6 @@ CONNECTION_STRING_CASES = [
 def test_build_cache_connection_string(case: ConnectionStringCase) -> None:
     cache = CacheSettings(**case.cache_kwargs)
     assert build_cache_connection_string(cache) == case.expected_url
-
-
-def test_cache_url_is_ignored_for_a_non_redis_driver() -> None:
-    """CacheSettings documents the URL as Redis-only, so NATS keeps the scalar result-storage URL."""
-    cache = CacheSettings(
-        driver=CacheDriver.NATS,
-        address="nats.internal",
-        url=SecretStr("redis+sentinel://s1:26379,s2:26379/mymaster"),
-    )
-
-    assert build_cache_connection_string(cache) == "redis://nats.internal:4222/0"
 
 
 def _describe(connection: Connection) -> dict[str, Any]:
