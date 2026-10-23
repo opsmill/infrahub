@@ -129,7 +129,7 @@ async def test_init_locks_carry_configured_ttl() -> None:
 
     for init_lock in init_locks:
         assert init_lock.ttl == expected_ttl
-        assert init_lock.remote.timeout == expected_ttl
+        assert init_lock.remote.ttl == expected_ttl
 
 
 async def test_regular_locks_have_no_ttl() -> None:
@@ -140,7 +140,7 @@ async def test_regular_locks_have_no_ttl() -> None:
     regular_lock = registry.get(name="repo-a", namespace="repository")
 
     assert regular_lock.ttl is None
-    assert regular_lock.remote.timeout is None
+    assert regular_lock.remote.ttl is None
 
 
 async def test_reentrant_lock_allows_nested_acquisitions() -> None:
