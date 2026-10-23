@@ -46,18 +46,28 @@ A Prefect variable already set in the environment is left as is, with a warning.
 |---|---|
 | `id` | Job identifier returned to the caller |
 | `state` | `running`, `completed`, `failed` |
-| `rewrite` | Whether the tables are rewritten after the deletes |
+| `rewrite` | Whether to rewrite tables after the deletes: `never` or `if_freed`; a request for `if_freed` raises a running job's `never` |
 | `cutoff` | End-time cutoff derived from `task_history` at start |
 | `deleted_runs` | Runs deleted so far |
 | `current_day` | Day of end times being deleted (progress) |
-| `size_before`, `size_after` | Total size of the six task-history tables, when the database reports it |
+| `size_before`, `size_after` | Total size of the tables the job may rewrite (the six task-history tables and the two activity log tables), when the database reports it |
+| `rewritten` | Tables rewritten |
+| `mostly_live` | Tables left as they are, because their live rows hold at least half of their disk space |
 | `not_rewritten` | Tables whose rewrite still hit the lock timeout after its retries |
 | `error` | Message when `failed` |
 
-- At most one job runs at a time across all task-manager replicas, enforced by a Postgres advisory lock held for the job's run. A new request on the same replica returns the running job; on another replica it is refused with "running elsewhere".
+- At most one job runs at a time across all task-manager replicas, enforced by a Postgres advisory lock held for the job's run. A new request on the same replica returns the running job, raising its `rewrite` to the request's when that is stronger (`never` < `if_freed`); on another replica it is refused with "running elsewhere".
 - Each day of end times is committed separately, deleting the runs and then the logs and artifacts of those runs (Prefect's order), so a job stopped midway leaves a consistent state and a new job continues from the oldest remaining day.
 - The job lives in the task-manager process that runs it; a restart loses its status but not its committed progress.
-- The rewrite runs only when the deletes freed most of the tables (more than half of the runs the tables held). Each table rewrite has a 60 s lock timeout and up to 3 retries; tables that still time out are listed in the job result as `not_rewritten`.
+- The rewrite runs only on Postgres, and only with `if_freed` (the command's rewrite option). It covers `flow_run`, `flow_run_state`, `task_run`, `task_run_state`, `log`, `artifact`, `events` and `event_resources`, and rewrites each table whose live rows hold less than half of its disk space, whoever deleted its rows: deletes made before the job started, such as those of Prefect's own cleanup, count too. A table's disk space is its main data and TOAST, without indexes; its live size is the sum of `pg_column_size` per column plus 28 bytes a row, read whole for a table of up to 10,000 pages and from a random sample of about 10,000 of its pages above that. The job decides once its deletes end, and again before it completes when a request raises its mode to `if_freed` after that; it never rewrites twice. Each table rewrite has a 60 s lock timeout and up to 3 retries; tables that still time out are listed in the job result as `not_rewritten`.
+
+## Task history size (new, read by the upgrade)
+
+| Field | Meaning |
+|---|---|
+| `size` | Disk space in bytes of the six task-history tables with their indexes; `null` on SQLite |
+
+- Read with `pg_total_relation_size`, which reads no table data, so the answer is immediate.
 
 ## Activities filters (changed expression, same results)
 

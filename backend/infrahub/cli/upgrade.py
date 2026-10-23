@@ -44,6 +44,7 @@ from .db import (
     trigger_rebase_branches,
     update_core_schema,
 )
+from .tasks import task_history_size_hint
 
 if TYPE_CHECKING:
     from infrahub.cli.context import CliContext
@@ -194,7 +195,10 @@ async def _upgrade_execute(
         await setup_worker_pools(client=client)
         await setup_deployments(client=client)
         await trigger_configure_all()
+        task_history_hint = await task_history_size_hint(client=client)
     console.log("Task manager configured")
+    if task_history_hint is not None:
+        console.log(task_history_hint)
 
     console.log("[bold]Step 6/6: Branch rebase[/bold]")
     branches = await mark_branches_needing_rebase(db=db)
