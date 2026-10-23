@@ -112,7 +112,7 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
     )
     await log_forwarding.start()
     initialize_lock(service=service)
-    # We must initialize DB after initialize lock and initialize lock depends on cache initialization
+    # We must initialize DB after initialize lock
     async with application.state.db.start_session() as db:
         is_initial_setup = await initialization(db=db, add_database_indexes=True)
         # Detect a failed merge, best effort to not block startup
