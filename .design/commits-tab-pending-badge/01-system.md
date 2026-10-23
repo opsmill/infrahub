@@ -165,3 +165,33 @@ they start with `frontend/packages/`.
   tab bar shifts when the query resolves.
 - Every tab's `LinkTab` sits at `h-11`. A badge, dot or icon taller than about 20px changes the
   row height; anything added has to fit in that height.
+
+## Built for the phase 2 prototype
+
+Everything below lives in `frontend/app/src/pages/_proto/commits-tab-pending-badge/` and is
+imported by nothing outside it. Each item is prototype-only until a direction is picked.
+
+- The route `/_proto/commits-tab-pending-badge/*` in `app/router.tsx`, inside the app layout. The
+  splat lets the fake tabs link to child paths so `LinkTab`'s `useMatch` marks one active; the
+  route had no prototype home before (see Missing).
+- `stage.tsx`: a copy of the `ObjectDetailsTabs` tab bar (same `ScrollArea` props, `nav`, `Row`,
+  real `LinkTab` and grey `Badge`) and a simplified Commits tab with the wording of PR #11189.
+  Justification: the real `ObjectDetailsTabs` needs a schema, an object and live count queries
+  (see the mount decision above).
+- A warning-toned count pill (`pill/rev-01.tsx`), built from `bg-warning-surface
+  border-warning-border text-warning` plus a lucide icon. Justification: `Badge` has no
+  token-based warning variant (see Close); building it in the prototype folder avoids adding a
+  shared variant before a direction is picked.
+- A static warning dot (`dot/rev-01.tsx`), `bg-warning`, no animation. Justification: `Pulse` is
+  absolutely positioned, always animated and has no warning tone (see Close).
+- A tooltip on a whole tab, opened by the tab's own hover, focus and Escape handlers and
+  positioned with the `Tooltip`'s `triggerRef` (`pill`, `dot`, `words`). Justification: the
+  `nonInteractiveTrigger` form puts a non-focusable trigger inside the link, so the tooltip never
+  opens on keyboard focus and react-aria logs "Focusable child must have an interactive ARIA
+  role".
+- A status strip at the top of the Commits tab (`inside/rev-01.tsx`), on the warning tokens.
+  Justification: the existing warning notice is a rounded box inside the header; a full-width band
+  is a new placement that only the `inside` direction needs.
+- The design-jam history panel (`design-history-panel.tsx`, `design-annotations.tsx`,
+  `notes-store.ts`), copied from the design-jam skill's `reference/` folder. The frame it fills
+  is measured from the app layout's content box, because the panel shell is fixed-positioned.

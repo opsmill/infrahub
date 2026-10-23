@@ -48,6 +48,11 @@ export const router = createBrowserRouter([
                 index: true,
                 lazy: () => import("@/pages/homepage"),
               },
+              // PROTOTYPE design-jam commits-tab-pending-badge
+              {
+                path: "/_proto/commits-tab-pending-badge/*",
+                lazy: () => import("@/pages/_proto/commits-tab-pending-badge"),
+              },
               {
                 path: "/branches",
                 children: [
