@@ -323,11 +323,10 @@ every `except RepositoryConnectionError` catches them.
 
 Two rules cover a Git command past the time limit that its caller passes as `kill_after_timeout`:
 
-- A fetch or a push that ran past its limit gets "process killed because it timed out" in its error
-  lines, and raises `RepositoryConnectionError` with a message of its own. GitPython adds that line
-  only after Git ends: the limit does not stop a fetch or a push that hangs. So a fetch of a
-  read-write repository, a push or a remote branch deletion that gets a limit also sets Git's
-  low-speed limit for that command
+- A push that ran past its limit gets "process killed because it timed out" in its error lines,
+  and raises `RepositoryConnectionError` with a message of its own. GitPython adds that line only
+  after Git ends: the limit does not stop a push that hangs. So a push or a remote branch deletion
+  that gets a limit also sets Git's low-speed limit for that command
   (`git/base.py::stalled_transfer_limit`). Git then ends an HTTP(S) transfer that sends no data for
   that long, with "Operation too slow", which raises the same error. An SSH transfer has no such
   limit.
@@ -336,6 +335,13 @@ Two rules cover a Git command past the time limit that its caller passes as `kil
   can name worker paths. A write operation, such as the deletion of a remote branch, is a push to the
   remote, so it raises `RepositoryConnectionError` instead. The watchdog finds the child processes of
   Git with `ps --ppid`, so the backend image installs `procps`.
+
+Every fetch from the remote runs through `git/bounded_command.py::run_git_with_deadline`: the fetch
+of a read-only or a read-write repository, the fetch of `pull`, and the fetch before a conflict
+check. It does not rely on GitPython for its limit. Git runs in a process group of its own, and the
+group is stopped at the deadline that the caller gives, `FETCH_TIMEOUT_SECONDS` by default. This
+also stops a fetch over SSH. The error says "git did not finish within", and it raises the same
+`RepositoryConnectionError` as a push past its `kill_after_timeout`.
 
 `git/base.py::operational_status_for_error` turns the typed error into the operational status, most
 specific class first: every `RepositoryConnectionError` gives `ERROR_CONNECTION`, a credential or
@@ -383,6 +389,6 @@ to reconcile divergent branches", because only `git pull` writes that text and n
   cannot read or queue the merge, no queued merge names the branch yet, so the deletion can remove
   the only copy of the source commit, and the delivery is then refused with `source-discarded` ([Git
   Push Queue](git-push-queue.md#the-kept-source-branch)).
-- **The push queue has limitations of its own**, such as an SSH remote with no stall limit and a
+- **The push queue has limitations of its own**, such as a push to an SSH remote with no stall limit and a
   branch forked from the default branch while pushes are pending. They are listed in
   [Git Push Queue](git-push-queue.md#known-limitations).
