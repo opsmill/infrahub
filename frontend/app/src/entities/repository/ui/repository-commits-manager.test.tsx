@@ -65,9 +65,8 @@ const formatDateTime = (date: string) =>
   formatWithPreferences(date, { pattern: null, timezone: null }, "datetime");
 
 const REBASE_NOTE =
-  "This branch does not sync with Git. The default branch has newer commits. Rebase the branch to use them.";
-const UP_TO_DATE_NOTE =
-  "This branch does not sync with Git. It uses the latest commit of the default branch.";
+  "This branch does not sync with Git and is behind main by 2 commits. Rebase the branch to use them.";
+const UP_TO_DATE_NOTE = "This branch does not sync with Git and is up to date with main.";
 
 const STALE_NOTICE =
   "Couldn't refresh the commit log right now. Showing the last loaded commits; older commits load after a successful refresh.";
@@ -834,7 +833,7 @@ describe("RepositoryCommitsManager", () => {
       useBranch("test-branch", { syncWithGit: false });
     });
 
-    test("suggests a rebase when the default branch has newer commits", async () => {
+    test("says how far behind main the branch is and suggests a rebase", async () => {
       // GIVEN
       apiMock.mockResolvedValue(generateCommitsApiResult(generateRebaseNeededCommitsResponse()));
 
@@ -843,7 +842,6 @@ describe("RepositoryCommitsManager", () => {
 
       // THEN
       await expect.element(component.getByText(REBASE_NOTE)).toBeVisible();
-      await expect.element(component.getByText("2 commits not on this branch")).toBeVisible();
       expect(component.getByText(/pending import/i).query()).toBeNull();
     });
 
@@ -859,7 +857,7 @@ describe("RepositoryCommitsManager", () => {
       expect(component.getByText(REBASE_NOTE).query()).toBeNull();
     });
 
-    test("marks the default branch commits the branch does not run", async () => {
+    test("marks the commits of main the branch does not run as behind", async () => {
       // GIVEN
       apiMock.mockResolvedValue(generateCommitsApiResult(generateRebaseNeededCommitsResponse()));
 
@@ -870,14 +868,14 @@ describe("RepositoryCommitsManager", () => {
       const rows = component.getByTestId("data-table-row");
       await expect.element(rows.nth(0).getByText(DEFAULT_BRANCH_HEAD)).toBeVisible();
       await expect.element(rows.nth(0).getByText("Remote head")).toBeVisible();
-      await expect.element(rows.nth(0).getByText("Not on this branch")).toBeVisible();
-      await expect.element(rows.nth(1).getByText("Not on this branch")).toBeVisible();
+      await expect.element(rows.nth(0).getByText("Behind", { exact: true })).toBeVisible();
+      await expect.element(rows.nth(1).getByText("Behind", { exact: true })).toBeVisible();
       await expect.element(rows.nth(2).getByText(BRANCH_COMMIT)).toBeVisible();
       await expect.element(rows.nth(2).getByText("Imported")).toBeVisible();
-      expect(rows.nth(3).getByText("Not on this branch").query()).toBeNull();
+      expect(rows.nth(3).getByText("Behind", { exact: true }).query()).toBeNull();
     });
 
-    test("asks for a rebase when the default branch no longer holds the branch's commit", async () => {
+    test("asks for a rebase when the branch has diverged from main", async () => {
       // GIVEN
       apiMock.mockResolvedValue(generateCommitsApiResult(generateRewrittenCommitsResponse()));
 
@@ -888,15 +886,15 @@ describe("RepositoryCommitsManager", () => {
       await expect
         .element(
           component.getByText(
-            `This branch does not sync with Git, and the commit it uses (${BEHIND_IMPORTED}) is no longer in the history of the default branch, for example after a force push. Rebase the branch to use the latest commit of the default branch.`
+            `This branch does not sync with Git and has diverged from main: the commit it uses (${BEHIND_IMPORTED}) is no longer in the history of main, for example after a force push. Rebase the branch to use the latest commit of main.`
           )
         )
         .toBeVisible();
       expect(component.getByText(/tracked ref was rewritten/).query()).toBeNull();
       const rows = component.getByTestId("data-table-row");
       await expect.element(rows.nth(0).getByText("Remote head")).toBeVisible();
-      await expect.element(rows.nth(0).getByText("Not on this branch")).toBeVisible();
-      await expect.element(rows.nth(1).getByText("Not on this branch")).toBeVisible();
+      await expect.element(rows.nth(0).getByText("Behind", { exact: true })).toBeVisible();
+      await expect.element(rows.nth(1).getByText("Behind", { exact: true })).toBeVisible();
       expect(component.getByText("Not on current history").query()).toBeNull();
     });
 
@@ -911,7 +909,7 @@ describe("RepositoryCommitsManager", () => {
       await expect.element(component.getByText("3 commits pending import")).toBeVisible();
       expect(component.getByText(REBASE_NOTE).query()).toBeNull();
       expect(
-        component.getByTestId("data-table-row").nth(0).getByText("Not on this branch").query()
+        component.getByTestId("data-table-row").nth(0).getByText("Behind", { exact: true }).query()
       ).toBeNull();
     });
 

@@ -150,7 +150,7 @@ const UNRELATED_BADGE: CommitStateBadge = {
   label: "Not on current history",
   variant: "gray-outline",
 };
-const NOT_ON_BRANCH_BADGE: CommitStateBadge = { label: "Not on this branch", variant: "gray" };
+const NOT_ON_BRANCH_BADGE: CommitStateBadge = { label: "Behind", variant: "gray" };
 
 export interface CommitStateContext {
   importedCommit: string | null;
@@ -208,12 +208,17 @@ export interface CommitLogNotice {
 
 export function getRebaseNote({
   condition,
-}: Pick<RepositoryCommitLog, "condition">): string | null {
+  git_ref,
+  pending_count,
+}: Pick<RepositoryCommitLog, "condition" | "git_ref" | "pending_count">): string | null {
+  const ref = git_ref ?? "the default branch";
   switch (condition) {
-    case RepositoryGitCondition.BEHIND:
-      return "This branch does not sync with Git. The default branch has newer commits. Rebase the branch to use them.";
+    case RepositoryGitCondition.BEHIND: {
+      const distance = pending_count === null ? "" : ` by ${pluralize(pending_count, "commit")}`;
+      return `This branch does not sync with Git and is behind ${ref}${distance}. Rebase the branch to use them.`;
+    }
     case RepositoryGitCondition.IN_SYNC:
-      return "This branch does not sync with Git. It uses the latest commit of the default branch.";
+      return `This branch does not sync with Git and is up to date with ${ref}.`;
     default:
       return null;
   }
@@ -222,18 +227,20 @@ export function getRebaseNote({
 export function getConditionNotice(
   {
     condition,
+    git_ref,
     pending_count,
     imported_commit,
-  }: Pick<RepositoryCommitLog, "condition" | "pending_count" | "imported_commit">,
+  }: Pick<RepositoryCommitLog, "condition" | "git_ref" | "pending_count" | "imported_commit">,
   { updatedOnlyByRebase }: Pick<CommitStateContext, "updatedOnlyByRebase">
 ): CommitLogNotice | null {
   switch (condition) {
     case RepositoryGitCondition.REWRITTEN:
       if (updatedOnlyByRebase) {
+        const ref = git_ref ?? "the default branch";
         const usedCommit = imported_commit ? ` (${imported_commit.slice(0, 7)})` : "";
         return {
           tone: "warning",
-          message: `This branch does not sync with Git, and the commit it uses${usedCommit} is no longer in the history of the default branch, for example after a force push. Rebase the branch to use the latest commit of the default branch.`,
+          message: `This branch does not sync with Git and has diverged from ${ref}: the commit it uses${usedCommit} is no longer in the history of ${ref}, for example after a force push. Rebase the branch to use the latest commit of ${ref}.`,
         };
       }
       return {
@@ -250,12 +257,10 @@ export function getConditionNotice(
           "The tracked ref no longer exists on the remote. The imported commit is still the one in use.",
       };
     case RepositoryGitCondition.BEHIND:
-      return pending_count === null
+      // On a branch updated only by rebase, the header line already gives the distance.
+      return pending_count === null || updatedOnlyByRebase
         ? null
-        : {
-            tone: "neutral",
-            message: `${pluralize(pending_count, "commit")} ${getPendingCountLabel({ updatedOnlyByRebase })}`,
-          };
+        : { tone: "neutral", message: `${pluralize(pending_count, "commit")} pending import` };
     default:
       return null;
   }
@@ -264,5 +269,5 @@ export function getConditionNotice(
 export function getPendingCountLabel({
   updatedOnlyByRebase,
 }: Pick<CommitStateContext, "updatedOnlyByRebase">): string {
-  return updatedOnlyByRebase ? "not on this branch" : "pending import";
+  return updatedOnlyByRebase ? "behind" : "pending import";
 }
