@@ -27,14 +27,20 @@ insecure and connects over TLS. Adapters never read `tls.ca_bundle`; they keep r
 section, and the value they see is already resolved. Inspecting `config.SETTINGS.<section>` therefore
 shows the effective CA, not what the operator typed.
 
-A CA bundle *replaces* the system trust store, it never extends it: `ssl.create_default_context(cafile=...)`,
-boto3's `verify`, the Neo4j driver's `TrustCustomCAs` and redis-py's `ssl_ca_certs` all behave that way.
-The user docs tell operators to append the public roots when a component must keep reaching public services.
+For most components a CA bundle *replaces* the system trust store: `ssl.create_default_context(cafile=...)`
+(the HTTP client, the Prefect and SDK clients, RabbitMQ through aiormq), boto3's `verify`, the Neo4j
+driver's `TrustCustomCAs` and the gRPC trace exporter's `root_certificates` all behave that way. The user
+docs tell operators to append the public roots when one of these must keep reaching public services.
 
-Git is the exception. `http.sslCAInfo` replaces only the CA file: the image's git is built on libcurl with
-GnuTLS, which still loads its default CA directory `/etc/ssl/certs`, so git trusts the bundle *and* the
-system certificates. `GIT_CURL_VERBOSE=1` shows both loads; only an explicit `http.sslCAPath` pointing at
-an empty directory makes git reject a publicly signed server.
+Three components *extend* it instead:
+
+- The NATS adapters (`services/adapters/message_bus/nats.py`, `services/adapters/cache/nats.py`) build a
+  default context and then call `load_verify_locations(cafile=...)`.
+- redis-py does the same with `ssl_ca_certs`.
+- Git: `http.sslCAInfo` replaces only the CA file. The image's git is built on libcurl with GnuTLS, which
+  still loads its default CA directory `/etc/ssl/certs`, so git trusts the bundle *and* the system
+  certificates. `GIT_CURL_VERBOSE=1` shows both loads. Pointing git at an empty CA directory, for example
+  with `http.sslCAPath`, makes it reject a publicly signed server.
 
 ## Where each component applies it
 

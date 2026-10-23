@@ -482,7 +482,7 @@ The task worker writes the path as `http.sslCAInfo` into its git configuration f
 
 :::info Bundle contents
 
-Git trusts the bundle in addition to the certificates installed in the Infrahub container. Repositories hosted on GitHub, GitLab or another Git server with a publicly issued certificate keep working with a bundle that contains only your private CA certificates.
+In the Infrahub Docker image, git trusts the bundle in addition to the system trust store of the container. Repositories hosted on GitHub, GitLab or another Git server with a publicly issued certificate keep working with a bundle that contains only your private CA certificates.
 
 :::
 
