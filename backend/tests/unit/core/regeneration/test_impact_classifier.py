@@ -14,7 +14,13 @@ from infrahub.core.regeneration.impact_classifier import (
     ReachedChange,
     RelationshipReachedChanges,
 )
-from infrahub.core.regeneration.models import ReachedPath, RelationshipHop, Widening, WideningReason
+from infrahub.core.regeneration.models import (
+    ExcludedChange,
+    ReachedPath,
+    RelationshipHop,
+    Widening,
+    WideningReason,
+)
 from tests.helpers.diff_summary import node_diff
 
 if TYPE_CHECKING:
@@ -318,7 +324,7 @@ def test_assess(case: AssessCase) -> None:
         depends_on_everything=case.depends_on_everything,
     )
 
-    assessment = classifier.assess(diff_summary=case.diff_summary)
+    assessment = classifier.assess(diff_summary=case.diff_summary, excluded_changes=frozenset())
 
     assert assessment == case.expected
 
@@ -337,7 +343,8 @@ def test_a_read_kind_that_is_also_traversed_loses_its_direct_membership() -> Non
     )
 
     assessment = classifier.assess(
-        diff_summary=[node_diff(node_id="intf1", kind="TestInterface", branch=BRANCH, field_names=["description"])]
+        diff_summary=[node_diff(node_id="intf1", kind="TestInterface", branch=BRANCH, field_names=["description"])],
+        excluded_changes=frozenset(),
     )
 
     assert assessment == RelationshipReachedChanges(
@@ -345,3 +352,20 @@ def test_a_read_kind_that_is_also_traversed_loses_its_direct_membership() -> Non
         reached=[ReachedChange(node_ids=["intf1"], paths=(INTERFACE_PATH,))],
     )
     assert "intf1" not in assessment.direct_member_node_ids
+
+
+def test_an_excluded_change_selects_no_member() -> None:
+    classifier = QueryImpactClassifier(
+        query_branch=BRANCH,
+        only_has_unique_targets=True,
+        traversed_kinds={"TestInterface"},
+        readable_fields_by_kind={"TestDevice": {"name", "interfaces"}, "TestInterface": {"description"}},
+        reached_paths_by_kind={"TestInterface": (INTERFACE_PATH,)},
+    )
+
+    assessment = classifier.assess(
+        diff_summary=[node_diff(node_id="dev1", kind="TestDevice", branch=BRANCH, field_names=["interfaces"])],
+        excluded_changes=frozenset({ExcludedChange(node_id="dev1", field_name="interfaces")}),
+    )
+
+    assert assessment == ChangedNodes(node_ids=[])

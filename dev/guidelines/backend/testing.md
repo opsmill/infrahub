@@ -16,7 +16,9 @@ Tests are organized by type:
 
 **Pick the cheapest tier the logic actually needs.** If the unit under test operates purely on in-memory inputs (a `SchemaBranch`, a dataclass, a pure function), write a unit test in `tests/unit/` without database fixtures — do not default to a component test just because nearby tests use one. Reach for the database (component) or a container (integration/integration_docker) only when the behavior genuinely depends on it. A `Query` subclass is the standing example: its Cypher and the rows it reads back are database behavior, so it is covered at the component layer against the real database — directly or through the resolver or manager that calls it — never by a unit test that hand-builds `QueryResult` rows.
 
-Within the component tier, each test function pays the schema-and-branch setup again — seconds per test in the GraphQL suites. When several cases share one schema, group them in a class on the class-scoped fixtures (`default_branch_scope_class`, `register_core_models_schema_scope_class`, a class-scoped schema load); mechanics in `dev/knowledge/backend/testing.md` § Schema Fixtures.
+### Where a test goes
+
+A unit test mirrors the source path: `backend/infrahub/core/node/standard.py` → `backend/tests/unit/core/node/test_standard.py`. A component test goes in the topic directory of its area — a node metadata query in `backend/tests/component/graphql/metadata/`, not appended to `test_graphql_query.py` — and starts a new module there when no module fits, so the next coverage check finds it beside the tests of the same feature.
 
 ### Running integration_docker tests locally
 
@@ -29,8 +31,6 @@ GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null uv run pytest backend/te
 ```
 
 With an empty config `commit.gpgsign` defaults to off, and dulwich falls back to your OS username/host for the commit author, so no `[user]` block is needed. CI does not sign commits, so this only affects local runs.
-
-Test files mirror source structure: `backend/infrahub/core/node/standard.py` → `backend/tests/unit/core/node/test_standard.py`
 
 ## Test Documentation
 
@@ -120,29 +120,26 @@ Code that opens a session of its own is safe to race: flows do, pinned by [`test
 
 ## Test Schemas
 
-Shared helper schemas live in [`tests/helpers/schema/`](../../../backend/tests/helpers/schema/): individual node/generic schemas (`CAR`, `DEVICE`, `TAG`, `PERSON`, …), pre-composed `SchemaRoot` bundles (`CAR_SCHEMA`, `DEVICE_SCHEMA`, …), and a `load_schema` helper that registers a schema in the branch registry.
+Search for an existing schema before defining one in a test, and search by the shape the test needs (an optional cardinality-one relationship to a generic, a hierarchy), not by name. Shared schemas live in two places:
 
-### Guidelines
+- [`tests/helpers/schema/`](../../../backend/tests/helpers/schema/): node and generic constants (`CAR`, `DEVICE`, `TAG`, `PERSON`) and `SchemaRoot` bundles (`CAR_SCHEMA`, `DEVICE_SCHEMA`, `LOCATION_SCHEMA`), registered with the `load_schema` helper
+- the schema fixtures in `backend/tests/conftest.py` and `backend/tests/component/conftest.py`, such as `car_person_schema`, `generic_car_person_schema` and `hierarchical_location_schema`
 
-1. **Check existing helpers first.** Before defining a new schema in a test file, look at the schemas already available in `tests/helpers/schema/`. An existing schema may already cover your needs.
+```python
+# ❌ Bad - a new inline schema for an optional cardinality-one relationship to a generic
+raw_schema = {"generics": [{"name": "Vehicle", ...}], "nodes": [{"name": "Rider", ...}]}
 
-2. **Derive from helpers with `deepcopy`.** When you need a schema that is close to an existing helper but requires small additions or modifications, deep-copy the helper and apply your changes — never modify the shared helper itself, which every test using it would feel:
+# ✅ Good - generic_car_person_schema already has one: TestPerson.car -> TestCar
+async def test_person_without_car(db: InfrahubDatabase, default_branch: Branch, generic_car_person_schema: None) -> None: ...
+```
 
-   ```python
-   from copy import deepcopy
+When a shared schema almost fits, `deepcopy` it and change the copy (`car_with_mileage = deepcopy(CAR)`, then append the attribute). Never modify a shared schema for one test, because every test that uses it changes too. Keep a schema that only one module needs in that module, and promote it to `tests/helpers/schema/` or a `conftest.py` only when several modules use it.
 
-   from infrahub.core.schema import AttributeSchema
-   from tests.helpers.schema import CAR
+Give a branch a divergent schema in production order. Register an edited schema the way the API path does: `schema_branch.process()`, then `registry.schema.set_schema_branch(...)`, `branch.update_schema_hash()` and `await branch.save(db=db)`. Hashing before processing persists a hash of a schema nothing serves, and skipping the save leaves the divergence in the registry only, invisible to anything that reads the stored hash.
 
-   car_with_mileage = deepcopy(CAR)
-   car_with_mileage.attributes.append(
-       AttributeSchema(name="mileage", kind="Number")
-   )
-   ```
+## Share one schema and data load across a class
 
-3. **Only create new helpers for broadly useful schemas.** If a schema is only needed by a single test file, keep it local to that file. Promote a local schema to `tests/helpers/schema/` only when multiple test modules would benefit from sharing it.
-
-4. **Give a branch a divergent schema in production order.** Register an edited schema the way the API path does: `schema_branch.process()`, then `registry.schema.set_schema_branch(...)`, `branch.update_schema_hash()` and `await branch.save(db=db)`. Hashing before processing persists a hash of a schema nothing serves, and skipping the save leaves the divergence in the registry only, invisible to anything that reads the stored hash.
+When several tests or parametrized cases read the same schema and data, put them in a class and build that data once in `@pytest.fixture(scope="class")` fixtures on the `_scope_class` fixture variants, then vary the query per method or case. A function-scoped schema or data fixture runs again for every test and every parametrized case. A class-scoped fixture cannot request a function-scoped one, so a schema fixture without a `_scope_class` variant needs one added beside it. `backend/tests/component/graphql/metadata/test_graphql_query_metadata.py::TestMetadataFilters` follows this pattern; the fixture chain is in [Backend Testing — Schema Fixtures](../../knowledge/backend/testing.md#schema-fixtures).
 
 ## Pin settings the test depends on
 

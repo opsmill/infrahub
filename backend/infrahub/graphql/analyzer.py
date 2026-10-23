@@ -39,10 +39,11 @@ from graphql.language.ast import (
 from infrahub_sdk.analyzer import GraphQLQueryAnalyzer
 from infrahub_sdk.utils import extract_fields
 
-from infrahub.core.constants import RelationshipCardinality
-from infrahub.core.regeneration.models import ReachedPath, RelationshipHop
+from infrahub.core.constants import RESERVED_ATTR_REL_HIERARCHICAL_NAMES, RelationshipCardinality
+from infrahub.core.regeneration.models import FilterLiteral, PeerFilters, ReachedPath, RelationshipHop, RelationshipRead
 from infrahub.core.schema import AttributePathParsingError, GenericSchema
 from infrahub.exceptions import SchemaNotFoundError
+from infrahub.graphql.resolvers.peer_filters import build_peer_filters
 from infrahub.graphql.utils import extract_schema_models
 
 if TYPE_CHECKING:
@@ -113,9 +114,30 @@ class GraphQLSelectionSet:
 
 @dataclass
 class GraphQLArgument:
+    """An argument of a field in a query, as written: its name and the value node the parser read."""
+
     name: str
-    value: Any
-    kind: str
+    value_node: ValueNode
+
+    @cached_property
+    def value(self) -> Any:
+        """The Python value of the literal; a variable reads as its ``$``-prefixed name."""
+        return _parse_value_node(self.value_node)
+
+    @property
+    def kind(self) -> str:
+        """The graphql-core kind of the value node, such as ``variable`` or ``list_value``."""
+        return self.value_node.kind
+
+    @property
+    def contains_variable(self) -> bool:
+        """Whether the value holds a variable, also inside a list or an object."""
+        return _contains_value_node(self.value_node, VariableNode)
+
+    @property
+    def contains_enum_value(self) -> bool:
+        """Whether the value holds an enum name, also inside a list or an object."""
+        return _contains_value_node(self.value_node, EnumValueNode)
 
     @property
     def is_variable(self) -> bool:
@@ -276,8 +298,87 @@ class GraphQLQueryNode:
         return models
 
 
-def _reached_path_sort_key(path: ReachedPath) -> tuple[tuple[str, str, str], ...]:
-    return tuple((hop.node_kind, hop.relationship_identifier, hop.relationship_direction.value) for hop in path.hops)
+def _reached_path_sort_key(path: ReachedPath) -> tuple[tuple[str, str, str, str], ...]:
+    """Order paths by their hops, filters included, so paths that differ only by their filters sort in a fixed order."""
+    return tuple(
+        (hop.node_kind, hop.relationship_identifier, hop.relationship_direction.value, repr(hop.peer_filters))
+        for hop in path.hops
+    )
+
+
+def _peer_filters(node: GraphQLQueryNode) -> PeerFilters | None:
+    """Return the filters a relationship read passes to the peer query, from its constant arguments.
+
+    Variables and enum names are left out because the query text does not hold their value, and ``display_label``
+    and ``hfid`` filters because their value depends on other nodes. Leaving a filter out can only select more
+    targets, never fewer.
+    """
+    arguments = {
+        argument.name: _as_list_when_list_typed(name=argument.name, literal=literal)
+        for argument in node.arguments
+        if not argument.contains_variable
+        and not argument.contains_enum_value
+        and argument.name.partition("__")[0] not in NODE_PROPERTY_BY_QUERY_FIELD
+        and (literal := _filter_literal(argument.value)) is not None
+    }
+    filters = build_peer_filters(field_name=node.path, arguments=arguments)
+    if not filters:
+        return None
+    return PeerFilters(relationship_name=node.path, filters=tuple(sorted(filters.items())))
+
+
+def _as_list_when_list_typed(*, name: str, literal: FilterLiteral) -> FilterLiteral:
+    """Return a single value of a list-typed argument as a one-item list, as GraphQL coerces it for the resolver."""
+    if (name == "ids" or name.endswith("__values")) and not isinstance(literal, tuple):
+        return (literal,)
+    return literal
+
+
+def _filter_literal(value: Any) -> FilterLiteral | None:
+    """Return a constant argument value as a filter value, or None for a value the peer query rejects."""
+    if isinstance(value, str | int):
+        return value
+    if isinstance(value, list) and all(isinstance(item, str | int) for item in value):
+        return tuple(value)
+    return None
+
+
+def _reads_peers_another_way(node: GraphQLQueryNode) -> bool:
+    """Whether a node selects peers by something other than the peers' own fields.
+
+    This covers any filter on a relationship of the node, such as ``owner__name__value``, ``owner__ids`` or
+    ``owner__isnull``, and a hierarchy read (``descendants``, ``ancestors``, ``include_descendants``).
+    """
+    if node.path in RESERVED_ATTR_REL_HIERARCHICAL_NAMES:
+        return True
+    model = node.infrahub_model
+    for argument in node.arguments:
+        if argument.name == "include_descendants" and (argument.contains_variable or argument.value):
+            return True
+        field_name, separator, _ = argument.name.partition("__")
+        if model is not None and separator and model.get_relationship_or_none(name=field_name):
+            return True
+    return False
+
+
+def _iter_nodes(node: GraphQLQueryNode) -> Iterator[GraphQLQueryNode]:
+    """Yield every node of the subtree, including nodes without a model such as hierarchy fields."""
+    yield node
+    for child in node.children:
+        yield from _iter_nodes(child)
+
+
+def _contains_value_node(node: ValueNode, node_type: type[ValueNode]) -> bool:
+    """Whether a value node is of ``node_type`` or contains one in a list or an object."""
+    match node:
+        case _ if isinstance(node, node_type):
+            return True
+        case ListValueNode() | ConstListValueNode():
+            return any(_contains_value_node(item, node_type) for item in node.values)
+        case ObjectValueNode() | ConstObjectValueNode():
+            return any(_contains_value_node(item.value, node_type) for item in node.fields)
+        case _:
+            return False
 
 
 @dataclass(frozen=True)
@@ -291,9 +392,21 @@ class ReachedPathResolver:
     empty chain besides its relationship chains, which maps a changed node to itself. A kind is absent
     -- so a change there widens -- when a way it is reached cannot be pinned: a hop whose field is not a
     relationship with an identifier on an owner that stands for an Infrahub object.
+
+    Each hop carries the filters of the relationship read it stands for, unless a query selects peers through a
+    field of a related node or a hierarchy read; then no hop carries any filter.
     """
 
     queries: list[GraphQLQueryNode]
+
+    @cached_property
+    def _records_peer_filters(self) -> bool:
+        """Whether no node of the queries selects peers through a field of a related node or a hierarchy read."""
+        return not any(_reads_peers_another_way(node) for query in self.queries for node in _iter_nodes(query))
+
+    def _peer_filters(self, node: GraphQLQueryNode) -> PeerFilters | None:
+        """The peer filters of a relationship read, or None when the queries record no filter."""
+        return _peer_filters(node) if self._records_peer_filters else None
 
     def resolve(self) -> dict[str, tuple[ReachedPath, ...]]:
         root_kinds = {
@@ -365,11 +478,41 @@ class ReachedPathResolver:
                     node_kind=owner.infrahub_model.kind,
                     relationship_identifier=relationship.identifier,
                     relationship_direction=relationship.direction,
+                    peer_filters=self._peer_filters(current),
                 )
             )
             current = owner
 
         return ReachedPath(hops=tuple(hops))
+
+    def relationship_reads(self) -> tuple[RelationshipRead, ...]:
+        """Every relationship the queries read, with its peer filters, once per owner kind.
+
+        A read on a generic owner is recorded once per implementation, as a diff reports the concrete kind.
+        """
+        reads: set[RelationshipRead] = set()
+        for query in self.queries:
+            for node in self._iter_object_nodes(query):
+                if node.at_root or node.is_fragment or node.infrahub_model is None:
+                    continue
+                owner = self._nearest_object_ancestor(node)
+                if owner is None or owner.infrahub_model is None:
+                    continue
+                relationship = owner.infrahub_model.get_relationship_or_none(name=node.path)
+                if relationship is None or not relationship.identifier:
+                    continue
+                reads.update(
+                    RelationshipRead(
+                        owner_kind=owner_kind,
+                        relationship_name=relationship.name,
+                        relationship_identifier=relationship.identifier,
+                        relationship_direction=relationship.direction,
+                        peer_kinds=frozenset(self._reached_kinds(node)),
+                        peer_filters=self._peer_filters(node),
+                    )
+                    for owner_kind in owner.infrahub_model.concrete_kinds
+                )
+        return tuple(sorted(reads, key=lambda read: (read.owner_kind, read.relationship_name, repr(read.peer_filters))))
 
     def _nearest_object_ancestor(self, node: GraphQLQueryNode) -> GraphQLQueryNode | None:
         """The closest ancestor that stands for an Infrahub object, skipping structural nodes."""
@@ -461,9 +604,19 @@ class GraphQLQueryReport:
         return kinds
 
     @cached_property
+    def _reached_path_resolver(self) -> ReachedPathResolver:
+        """One resolver for the chains and the relationship reads, so the query tree is walked once."""
+        return ReachedPathResolver(queries=self.queries)
+
+    @cached_property
     def relationship_reached_paths_by_kind(self) -> dict[str, tuple[ReachedPath, ...]]:
         """The relationship chains reaching each related kind that can be narrowed to its owning roots."""
-        return ReachedPathResolver(queries=self.queries).resolve()
+        return self._reached_path_resolver.resolve()
+
+    @cached_property
+    def relationship_reads(self) -> tuple[RelationshipRead, ...]:
+        """Every relationship the query reads, with the filters it applies to the peers."""
+        return self._reached_path_resolver.relationship_reads()
 
     def fields_by_kind(self, kind: str) -> list[str]:
         fields: list[str] = []
@@ -970,7 +1123,7 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
                     required=required,
                     is_list=is_list,
                     inner_required=inner_required,
-                    default=self._parse_value(variable.default_value) if variable.default_value else None,
+                    default=_parse_value_node(variable.default_value) if variable.default_value else None,
                 )
             )
 
@@ -978,35 +1131,37 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
 
     def _parse_arguments(self, field_node: FieldNode) -> list[GraphQLArgument]:
         return [
-            GraphQLArgument(
-                name=argument.name.value,
-                value=self._parse_value(argument.value),
-                kind=argument.value.kind,
-            )
-            for argument in field_node.arguments
+            GraphQLArgument(name=argument.name.value, value_node=argument.value) for argument in field_node.arguments
         ]
 
-    def _parse_value(self, node: ValueNode) -> Any:
-        match node:
-            case VariableNode():
-                value: Any = f"${node.name.value}"
-            case IntValueNode():
-                value = int(node.value)
-            case FloatValueNode():
-                value = float(node.value)
-            case StringValueNode():
-                value = node.value
-            case BooleanValueNode():
-                value = node.value
-            case NullValueNode():
-                value = None
-            case EnumValueNode():
-                value = node.value
-            case ListValueNode() | ConstListValueNode():
-                value = [self._parse_value(item) for item in node.values]
-            case ObjectValueNode() | ConstObjectValueNode():
-                value = {field.name.value: self._parse_value(field.value) for field in node.fields}
-            case _:
-                raise TypeError(f"Unsupported value node: {node}")
 
-        return value
+def _parse_value_node(node: ValueNode) -> Any:
+    """Return the Python value a query literal stands for, a variable reading as its ``$``-prefixed name.
+
+    Raises:
+        TypeError: When the node is not a value the parser can produce.
+
+    """
+    match node:
+        case VariableNode():
+            value: Any = f"${node.name.value}"
+        case IntValueNode():
+            value = int(node.value)
+        case FloatValueNode():
+            value = float(node.value)
+        case StringValueNode():
+            value = node.value
+        case BooleanValueNode():
+            value = node.value
+        case NullValueNode():
+            value = None
+        case EnumValueNode():
+            value = node.value
+        case ListValueNode() | ConstListValueNode():
+            value = [_parse_value_node(item) for item in node.values]
+        case ObjectValueNode() | ConstObjectValueNode():
+            value = {field.name.value: _parse_value_node(field.value) for field in node.fields}
+        case _:
+            raise TypeError(f"Unsupported value node: {node}")
+
+    return value
