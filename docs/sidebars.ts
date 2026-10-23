@@ -168,6 +168,7 @@ const sidebars: SidebarsConfig = {
             'ipam/build-your-ipam-schema',
             'ipam/use-namespaces',
             'ipam/allocate-ips-and-prefixes',
+            'ipam/visualize-prefix-utilization',
             'ipam/query-ipam-data',
             'ipam/plan-changes-on-a-branch',
           ],
