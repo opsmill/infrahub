@@ -13,8 +13,8 @@ import pytest
 from fast_depends import Provider
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
-from neo4j._codec.hydration.v1 import HydrationHandler
-from neo4j._codec.hydration.v1.hydration_handler import _GraphHydrator
+from neo4j._codec.hydration.bolt.v1 import HydrationHandler
+from neo4j._codec.hydration.bolt.v1.hydration_handler import _GraphHydrator
 from prefect.client.orchestration import PrefectClient, get_client
 from prefect.server.api.server import SubprocessASGIServer
 from prefect.settings import get_current_settings
@@ -2139,6 +2139,10 @@ async def fruit_tag_schema_global(db: InfrahubDatabase, group_schema: None, data
 
 @pytest.fixture
 async def hierarchical_location_schema_simple_unregistered() -> SchemaRoot:
+    return do_hierarchical_location_schema_simple_unregistered()
+
+
+def do_hierarchical_location_schema_simple_unregistered() -> SchemaRoot:
     SCHEMA: dict[str, Any] = {
         "generics": [
             {
@@ -2218,6 +2222,16 @@ async def hierarchical_location_schema(
 ) -> None: ...
 
 
+@pytest.fixture(scope="class")
+async def hierarchical_location_schema_scope_class(
+    db: InfrahubDatabase, default_branch_scope_class: Branch, register_core_models_schema_scope_class: SchemaBranch
+) -> None:
+    registry.schema.register_schema(
+        schema=do_hierarchical_location_schema_simple_unregistered(), branch=default_branch_scope_class.name
+    )
+    default_branch_scope_class.update_schema_hash()
+
+
 @pytest.fixture
 async def hierarchical_location_data_simple(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema_simple: SchemaRoot
@@ -2230,6 +2244,13 @@ async def hierarchical_location_data(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema: None
 ) -> dict[str, Node]:
     return await _build_hierarchical_location_data(db=db, branch=default_branch)
+
+
+@pytest.fixture(scope="class")
+async def hierarchical_location_data_scope_class(
+    db: InfrahubDatabase, default_branch_scope_class: Branch, hierarchical_location_schema_scope_class: None
+) -> dict[str, Node]:
+    return await _build_hierarchical_location_data(db=db, branch=default_branch_scope_class)
 
 
 async def _build_hierarchical_location_data(db: InfrahubDatabase, branch: Branch) -> dict[str, Node]:
@@ -3196,6 +3217,17 @@ def memory_cache(dependency_provider: Provider) -> Generator[MemoryCache, None, 
 
 @pytest.fixture
 async def generic_car_person_schema(default_branch: Branch, data_schema: None) -> None:
+    do_generic_car_person_schema(branch=default_branch)
+
+
+@pytest.fixture(scope="class")
+async def generic_car_person_schema_scope_class(
+    default_branch_scope_class: Branch, data_schema_scope_class: None
+) -> None:
+    do_generic_car_person_schema(branch=default_branch_scope_class)
+
+
+def do_generic_car_person_schema(branch: Branch) -> None:
     schema: dict[str, Any] = {
         "generics": [
             {
@@ -3252,7 +3284,8 @@ async def generic_car_person_schema(default_branch: Branch, data_schema: None) -
     }
 
     schema_root = SchemaRoot(**schema)
-    registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
+    registry.schema.register_schema(schema=schema_root, branch=branch.name)
+    branch.update_schema_hash()
 
 
 @pytest.fixture

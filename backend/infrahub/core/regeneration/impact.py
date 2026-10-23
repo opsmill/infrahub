@@ -10,14 +10,15 @@ from infrahub.graphql.execution import cached_parse
 
 from .classifier_builder import QueryClassifierBuilder
 from .derived_dependencies import SchemaDerivedFieldDependencyResolver
+from .filtered_peers import ChangedNodeIndex, FilteredPeerReads, FilteredRelationshipExclusions
 from .impact_classifier import ChangedNodes, EveryTarget, RelationshipReachedChanges
 from .models import TargetSelection
+from .peer_query import RelationshipPeerQuery
 
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
     from infrahub_sdk.diff import NodeDiff
 
-    from infrahub.core.relationship.dependent_resolver import DependentNodeResolver
     from infrahub.database import InfrahubDatabase
     from infrahub.graphql.analyzer import GraphQLQueryReport
 
@@ -29,6 +30,9 @@ class FieldLevelImpactResolver:
     against the branch passed to `resolve`, and the diff-summary tag and the subscriber lookup run on it
     too, so the caller passes the branch the changed data lives on (a proposed change's source branch, a
     merge's target branch).
+
+    A filtered relationship read, such as `prefixes(role__value: "aggregate")`, only sees the peers
+    that pass its filters, so a change to a peer that fails them before and after is left out.
     """
 
     def __init__(self, db: InfrahubDatabase, client: InfrahubClient) -> None:
@@ -66,18 +70,37 @@ class FieldLevelImpactResolver:
         classifier = QueryClassifierBuilder(
             query_branch=query_branch, schema_branch=query_schema_branch, dependency_resolver=dependency_resolver
         ).build(query_report)
-        assessment = classifier.assess(diff_summary=diff_summary)
 
-        match assessment:
-            case EveryTarget(widening=widening):
-                return TargetSelection(ids=every_target, widening=widening)
-            case ChangedNodes(node_ids=node_ids):
-                member_ids = node_ids
-            case RelationshipReachedChanges():
-                dependent_resolver = QueryDependentNodeResolver(db=self.db, branch=query_branch_obj)
-                member_ids = sorted(await ReachedMemberResolver(resolver=dependent_resolver).resolve(assessment))
-            case _ as unreachable:
-                assert_never(unreachable)
+        # These reads never write, so they run on a read-only session of their own rather than the caller's.
+        async with self.db.start_session(read_only=True) as session_db:
+            changes = ChangedNodeIndex.from_diff(diff_summary=diff_summary, query_branch=query_branch)
+            peer_reads = FilteredPeerReads(
+                changes=changes,
+                dependents=QueryDependentNodeResolver(db=session_db, branch=query_branch_obj),
+                peers=RelationshipPeerQuery(db=session_db, branch=query_branch_obj, schema_branch=query_schema_branch),
+            )
+            exclusions = FilteredRelationshipExclusions(
+                reads=query_report.relationship_reads,
+                schema_branch=query_schema_branch,
+                changes=changes,
+                peer_reads=peer_reads,
+            )
+            excluded_changes = (
+                await exclusions.excluded_changes(diff_summary=diff_summary)
+                if exclusions.has_filtered_reads and not classifier.depends_on_everything
+                else frozenset()
+            )
+            assessment = classifier.assess(diff_summary=diff_summary, excluded_changes=excluded_changes)
+
+            match assessment:
+                case EveryTarget(widening=widening):
+                    return TargetSelection(ids=every_target, widening=widening)
+                case ChangedNodes(node_ids=node_ids):
+                    member_ids = node_ids
+                case RelationshipReachedChanges():
+                    member_ids = sorted(await ReachedMemberResolver(peer_reads=peer_reads).resolve(assessment))
+                case _ as unreachable:
+                    assert_never(unreachable)
 
         subscribers = await fetch_subscriber_refs(client=self.client, node_ids=member_ids, branch=query_branch)
         ids = [subscriber.id for subscriber in subscribers if subscriber.kind == subscriber_kind]
@@ -87,13 +110,13 @@ class FieldLevelImpactResolver:
 class ReachedMemberResolver:
     """Walk each relationship-reached change back to the group members that read it.
 
-    Each hop resolves the current node ids to the owners referencing them, feeding the next hop, so
-    a chain ends at the root members. Every hop returns a superset of the truly-related nodes, so the
-    resolved member set is a superset too.
+    Each hop resolves the current node ids to the owners whose read of the hop's relationship can return
+    them, feeding the next hop, so a chain ends at the root members. Every hop returns a superset of the
+    truly-related nodes, so the resolved member set is a superset too.
     """
 
-    def __init__(self, *, resolver: DependentNodeResolver) -> None:
-        self.resolver = resolver
+    def __init__(self, *, peer_reads: FilteredPeerReads) -> None:
+        self.peer_reads = peer_reads
 
     async def resolve(self, changes: RelationshipReachedChanges) -> set[str]:
         members: set[str] = set(changes.direct_member_node_ids)
@@ -103,11 +126,6 @@ class ReachedMemberResolver:
                 for hop in path.hops:
                     if not peer_uuids:
                         break
-                    peer_uuids = await self.resolver.resolve(
-                        node_kind=hop.node_kind,
-                        relationship_identifier=hop.relationship_identifier,
-                        relationship_direction=hop.relationship_direction,
-                        peer_uuids=sorted(peer_uuids),
-                    )
+                    peer_uuids = await self.peer_reads.owners(hop=hop, peer_ids=peer_uuids)
                 members |= peer_uuids
         return members
