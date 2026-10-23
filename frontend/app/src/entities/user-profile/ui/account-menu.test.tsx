@@ -26,15 +26,9 @@ const config = { installation_type: "community" } as any;
 
 describe("AccountMenu", () => {
   beforeEach(() => {
-<<<<<<< HEAD
-    vi.clearAllMocks();
     // The theme persists to storage and to the document element, both of which outlive a render.
     localStorage.clear();
     document.documentElement.classList.remove("dark");
-||||||| 27ecdf0051
-    vi.clearAllMocks();
-=======
->>>>>>> origin/stable
     vi.mocked(getAccountProfile).mockResolvedValue({
       name: { value: "admin" },
       label: { value: "Admin" },

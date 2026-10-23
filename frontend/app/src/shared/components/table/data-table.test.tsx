@@ -1,15 +1,7 @@
-<<<<<<< HEAD
+import { ScrollArea } from "@infrahub/ui";
 import { type ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import type { JSX } from "react";
 import { describe, expect, expectTypeOf, test } from "vitest";
-||||||| 27ecdf0051
-import type { ColumnDef } from "@tanstack/react-table";
-import { describe, expect, test } from "vitest";
-=======
-import { ScrollArea } from "@infrahub/ui";
-import type { ColumnDef } from "@tanstack/react-table";
-import { describe, expect, test } from "vitest";
->>>>>>> origin/stable
 
 import { DataTable } from "@/shared/components/table/data-table";
 import { COLUMN_MAX_WIDTH } from "@/shared/components/table/style";
