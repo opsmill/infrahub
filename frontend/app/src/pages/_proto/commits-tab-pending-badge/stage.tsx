@@ -7,6 +7,7 @@ import { Navigate, useLocation } from "react-router";
 import { RefreshButton } from "@/shared/components/buttons/refresh-button";
 import { Col, Row } from "@/shared/components/container";
 import { DateDisplay } from "@/shared/components/display/date-display";
+import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Badge, type BadgeProps } from "@/shared/components/ui/badge";
@@ -16,7 +17,10 @@ import { classNames } from "@/shared/utils/common";
 import {
   BASE_PATH,
   type CommitStateLabel,
+  GROUPS,
   getMeaningLabel,
+  getRebaseNote,
+  getSplitSentences,
   type MockCommit,
   pickScenarios,
   pluralizeCommits,
@@ -35,6 +39,7 @@ interface StageProps {
   insideTop?: (scenario: Scenario) => ReactNode;
   overviewPreview?: (scenario: Scenario) => ReactNode;
   hideCountNotice?: boolean;
+  showSplit?: boolean;
 }
 
 const TABS = [
@@ -57,7 +62,8 @@ const STATE_VARIANT: Record<CommitStateLabel, BadgeProps["variant"]> = {
   "Remote head": "blue",
   Imported: "green",
   "Pending import": "yellow",
-  "Not on this branch": "gray",
+  "Pending import on main": "yellow",
+  Behind: "gray",
   "Not on current history": "gray-outline",
 };
 
@@ -67,6 +73,7 @@ export function ProtoStage({
   insideTop,
   overviewPreview,
   hideCountNotice,
+  showSplit,
 }: StageProps) {
   const location = useLocation();
   const scenarios = pickScenarios(scenarioOption);
@@ -83,6 +90,7 @@ export function ProtoStage({
         renderCommitsTab={renderCommitsTab}
         insideTop={insideTop}
         hideCountNotice={hideCountNotice}
+        showSplit={showSplit}
       />
     );
   }
@@ -91,26 +99,40 @@ export function ProtoStage({
     <Content.Card className="min-h-full">
       <Content.CardTitle
         title="demo-edge"
-        description="Every scenario's tab bar at real size. Pick one scenario in the panel to view the inside of the Commits tab."
+        description="Every scenario's tab bar at real size, grouped by repository and branch. Pick one scenario in the panel to view the top of the Commits tab."
       />
-      <ol className="flex flex-col">
-        {scenarios.map((scenario) => (
-          <li key={scenario.id} className="flex flex-col gap-1 border-b px-1 pt-3 pb-1">
-            <p className="px-4 text-foreground-muted text-xs">
-              <span className="font-semibold tabular-nums">{scenario.id}</span> ·{" "}
-              {scenario.situation}
-            </p>
-            <div className={classNames(scenario.overflow && "max-w-225 border-r border-dashed")}>
-              <TabBar
-                scenario={scenario}
-                renderCommitsTab={renderCommitsTab}
-                label={`Tabs, scenario ${scenario.id}`}
-              />
-            </div>
-            {overviewPreview && <div className="px-4 pb-2">{overviewPreview(scenario)}</div>}
-          </li>
-        ))}
-      </ol>
+      {GROUPS.map((group) => (
+        <section key={group.id} aria-labelledby={`group-${group.id}`}>
+          <h2
+            id={`group-${group.id}`}
+            className="border-b bg-content-muted px-5 pt-4 pb-1.5 font-semibold text-foreground-muted text-xs"
+          >
+            {group.id} · {group.title}
+          </h2>
+          <ol className="flex flex-col">
+            {scenarios
+              .filter((scenario) => scenario.group === group.id)
+              .map((scenario) => (
+                <li key={scenario.id} className="flex flex-col gap-1 border-b px-1 pt-3 pb-1">
+                  <p className="px-4 text-foreground-muted text-xs">
+                    <span className="font-semibold tabular-nums">{scenario.id}</span> ·{" "}
+                    {scenario.situation}
+                  </p>
+                  <div
+                    className={classNames(scenario.overflow && "max-w-225 border-r border-dashed")}
+                  >
+                    <TabBar
+                      scenario={scenario}
+                      renderCommitsTab={renderCommitsTab}
+                      label={`Tabs, scenario ${scenario.id}`}
+                    />
+                  </div>
+                  {overviewPreview && <div className="px-4 pb-2">{overviewPreview(scenario)}</div>}
+                </li>
+              ))}
+          </ol>
+        </section>
+      ))}
     </Content.Card>
   );
 }
@@ -156,6 +178,7 @@ function SingleScenario({
   renderCommitsTab,
   insideTop,
   hideCountNotice,
+  showSplit,
 }: { scenario: Scenario } & Omit<StageProps, "scenarioOption" | "overviewPreview">) {
   const location = useLocation();
   const onCommits = location.pathname.endsWith("/commits");
@@ -179,6 +202,7 @@ function SingleScenario({
               scenario={scenario}
               insideTop={insideTop}
               hideCountNotice={hideCountNotice}
+              showSplit={showSplit}
             />
           ) : (
             <p className="p-4 text-foreground-muted text-sm">
@@ -195,7 +219,8 @@ function CommitsInside({
   scenario,
   insideTop,
   hideCountNotice,
-}: { scenario: Scenario } & Pick<StageProps, "insideTop" | "hideCountNotice">) {
+  showSplit,
+}: { scenario: Scenario } & Pick<StageProps, "insideTop" | "hideCountNotice" | "showSplit">) {
   if (scenario.condition === "LOADING") {
     return <LoadingIndicator className="h-40 p-4" />;
   }
@@ -207,7 +232,7 @@ function CommitsInside({
         <span className="flex items-center gap-1">
           Tracking <code className="font-mono text-foreground text-xs">main</code>
         </span>
-        {scenario.emptyState === null && (
+        {scenario.commits.length > 0 && (
           <span className="flex items-center gap-1">
             Updated <DateDisplay date={Date.now() - 4 * 60_000} fullTimestamp className="text-sm" />
           </span>
@@ -215,6 +240,15 @@ function CommitsInside({
       </p>
     </Row>
   );
+
+  if (scenario.error) {
+    return (
+      <Col className="gap-0">
+        <Col className="p-2">{toolbar}</Col>
+        <ErrorScreen message={scenario.error} />
+      </Col>
+    );
+  }
 
   if (scenario.emptyState) {
     return (
@@ -228,6 +262,11 @@ function CommitsInside({
     );
   }
 
+  const split = showSplit ? scenario.split : undefined;
+  const splitSentences = split ? getSplitSentences(split) : null;
+  const behindCount = split ? split.behind : (scenario.count ?? 0);
+  const rebaseNote =
+    scenario.rebaseNote === "behind" ? getRebaseNote(behindCount) : scenario.rebaseNote;
   const showCountNotice = !hideCountNotice && scenario.condition === "BEHIND" && scenario.count;
 
   return (
@@ -235,25 +274,28 @@ function CommitsInside({
       {insideTop?.(scenario)}
       <Col className="gap-1.5 p-2">
         {toolbar}
-        {scenario.rebaseNote && (
-          <p className="text-foreground-muted text-sm">{scenario.rebaseNote}</p>
-        )}
+        {rebaseNote && <p className="text-foreground-muted text-sm">{rebaseNote}</p>}
         {scenario.warning && (
           <Row
             role="note"
             className="rounded-md border border-warning-border bg-warning-surface px-3 py-2 text-sm text-warning"
           >
             <TriangleAlertIcon className="size-4 shrink-0" aria-hidden="true" />
-            <p>{scenario.warning}</p>
+            <p>{scenario.warning.message}</p>
           </Row>
         )}
-        {showCountNotice && (
-          <p className="font-medium text-sm">
-            {pluralizeCommits(scenario.count ?? 0)} {getMeaningLabel(scenario.meaning)}
-          </p>
-        )}
+        {showCountNotice &&
+          (splitSentences ? (
+            <p className="font-medium text-sm">
+              {splitSentences.behind} · {splitSentences.pendingOnMain}
+            </p>
+          ) : (
+            <p className="font-medium text-sm">
+              {pluralizeCommits(scenario.count ?? 0)} {getMeaningLabel(scenario.meaning)}
+            </p>
+          ))}
       </Col>
-      <CommitTable commits={scenario.commits} />
+      <CommitTable commits={split ? split.commits : scenario.commits} />
     </Col>
   );
 }

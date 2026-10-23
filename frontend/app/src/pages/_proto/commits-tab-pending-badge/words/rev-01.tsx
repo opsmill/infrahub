@@ -5,7 +5,7 @@ import { type ReactNode, useRef, useState } from "react";
 import { LinkTab } from "@/shared/components/ui/link";
 import { formatNumberDisplay } from "@/shared/utils/number";
 
-import { getPendingSentence } from "../scenarios";
+import { getPendingSentence, getSplitSentences, type Scenario } from "../scenarios";
 import { type CommitsTabProps, ProtoStage } from "../stage";
 
 function HintedTab({
@@ -58,33 +58,69 @@ function HintedTab({
   );
 }
 
-function CommitsTab({ scenario, to, scrollIntoViewOnActive }: CommitsTabProps) {
+function getSignal(scenario: Scenario) {
+  if (scenario.split) {
+    const sentences = getSplitSentences(scenario.split);
+    return {
+      words: [
+        `${formatNumberDisplay(scenario.split.behind)} behind`,
+        `${formatNumberDisplay(scenario.split.pendingOnMain)} pending import`,
+      ],
+      hint: `${sentences.behind}. ${sentences.pendingOnMain}. ${sentences.action}`,
+      name: `Commits, ${sentences.behind}, ${sentences.pendingOnMain}`,
+    };
+  }
   const sentence = getPendingSentence(scenario);
-  const words = scenario.count
-    ? `${formatNumberDisplay(scenario.count)} ${scenario.meaning === "rebase" ? "behind" : "to import"}`
-    : null;
+  if (sentence && scenario.count) {
+    const term = scenario.meaning === "rebase" ? "behind" : "pending import";
+    return {
+      words: [`${formatNumberDisplay(scenario.count)} ${term}`],
+      hint: `${sentence}. ${scenario.action}`,
+      name: `Commits, ${sentence}`,
+    };
+  }
+  if (scenario.warning) {
+    return {
+      words: [scenario.warning.label],
+      hint: scenario.warning.hint,
+      name: `Commits, ${scenario.warning.label}`,
+    };
+  }
+  return null;
+}
+
+function CommitsTab({ scenario, to, scrollIntoViewOnActive }: CommitsTabProps) {
+  const signal = getSignal(scenario);
 
   return (
     <HintedTab
       to={to}
       scrollIntoViewOnActive={scrollIntoViewOnActive}
-      hint={sentence && `${sentence}. ${scenario.action}`}
-      accessibleName={sentence ? `Commits, ${sentence}` : undefined}
+      hint={signal?.hint ?? null}
+      accessibleName={signal?.name}
     >
       Commits
       {scenario.condition === "LOADING" && <Spinner />}
-      {words && (
-        <span aria-hidden="true" className="inline-flex items-center gap-1.5 font-normal">
+      {signal?.words.map((words) => (
+        <span
+          key={words}
+          aria-hidden="true"
+          className="inline-flex items-center gap-1.5 font-normal"
+        >
           <span className="text-subtle-muted">·</span>
           <span className="text-warning tabular-nums">{words}</span>
         </span>
-      )}
+      ))}
     </HintedTab>
   );
 }
 
 export function WordsRev01({ scenario }: { scenario: string }) {
   return (
-    <ProtoStage scenarioOption={scenario} renderCommitsTab={(props) => <CommitsTab {...props} />} />
+    <ProtoStage
+      scenarioOption={scenario}
+      renderCommitsTab={(props) => <CommitsTab {...props} />}
+      showSplit
+    />
   );
 }

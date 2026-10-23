@@ -33,7 +33,7 @@ const VARIANTS: Variant[] = [
     revisions: [
       {
         rev: 1,
-        note: "Amber pill with an import or branch icon, hidden at 0",
+        note: "Amber pill with an import or branch icon, warning icon for no-count warnings",
         date: DATE,
         render: (k) => <PillRev01 scenario={String(k.scenario)} />,
       },
@@ -56,11 +56,11 @@ const VARIANTS: Variant[] = [
   {
     id: "words",
     label: "Words",
-    bet: "Words over a number: the label itself says '3 to import' or '2 behind'.",
+    bet: "Words over a number: the label itself says '3 pending import' or '2 behind'.",
     revisions: [
       {
         rev: 1,
-        note: "Amber words after the label, nothing at 0",
+        note: "Amber words after the label, warning words for no-count warnings",
         date: DATE,
         render: (k) => <WordsRev01 scenario={String(k.scenario)} />,
       },

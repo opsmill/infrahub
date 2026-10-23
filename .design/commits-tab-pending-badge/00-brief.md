@@ -49,21 +49,42 @@ The count comes from `pending_count` (worker count under `BEHIND`) and is 0 unde
 other conditions have no count. Read-write repositories import on every sync; read-only ones
 only when someone starts the import.
 
+There are two kinds of count, never both on one tab (see `03-decisions.md`): **pending import**
+(an import brings the commits) and **behind main** (only a rebase in Infrahub brings them; the
+wording follows Git's "Your branch is behind 'main' by 2 commits" and names the tracked ref).
+
 | # | Situation | Count today |
 |---|---|---|
-| 1 | Read-write, branch syncs with Git, Git has 3 commits not imported yet | 3 pending import |
-| 2 | Same, nothing pending (`IN_SYNC`) | 0 |
-| 3 | Branch does not sync with Git, default branch has 2 newer commits (`BEHIND`) | 2 not on this branch |
-| 4 | Branch does not sync with Git, up to date (`IN_SYNC`) | 0 |
-| 5 | Branch does not sync with Git, 1,284 commits behind | 1284 not on this branch |
-| 6 | Default branch history rewritten (`REWRITTEN`) | no count |
-| 7 | Read-only repository, 2 new commits seen on the remote, waiting for a manual import | 2 pending import |
-| 8 | Repository added on this branch (`staging`), 1 commit waiting for the next sync | 1 pending import |
-| 9 | No commit of its own on this branch (`NOT_TRACKED`), commit log unavailable, request failed | no count |
-| 10 | First load in progress | spinner |
+| **A** | **Read-write repository, branch syncs with Git** | |
+| A1 | 3 commits not imported yet (`BEHIND`) | 3 pending import |
+| A2 | Nothing pending (`IN_SYNC`) | 0 |
+| A3 | 1,284 commits not imported yet (`BEHIND`) | 1284 pending import |
+| A4 | Remote branch history rewritten (`REWRITTEN`) | no count |
+| A5 | Imported commit missing from the remote (`ORPHANED`) | no count |
+| A6 | No remote branch with this name (`NO_REMOTE`) | no count |
+| **B** | **Read-write repository, branch does not sync with Git** | |
+| B1 | 2 commits behind main (`BEHIND`) | 2 behind main |
+| B2 | Up to date with main (`IN_SYNC`) | 0 |
+| B3 | 1,284 commits behind main (`BEHIND`) | 1284 behind main |
+| B4 | Diverged from main: main's history was rewritten (`REWRITTEN`) | no count |
+| B5 | 3 commits newer on the remote main: 2 already imported on main, 1 not imported on main yet (`BEHIND`) | 3 behind main (the API cannot split them) |
+| B6 | No commit of its own on this branch (`NOT_TRACKED`) | no count |
+| **C** | **Repository added on this branch (`staging`)** | |
+| C1 | 1 commit waiting for the next sync | 1 pending import |
+| C2 | Nothing pending | 0 |
+| **D** | **Read-only repository** | |
+| D1 | 2 new commits waiting for a manual import (`BEHIND`) | 2 pending import |
+| D2 | Nothing pending | 0 |
+| D3 | Tracked branch or tag deleted on the remote (`REF_MISSING`) | no count |
+| **E** | **No answer from the commit log** | |
+| E1 | First load in progress | spinner |
+| E2 | No worker holds a copy yet (`NOT_CLONED`), retrying | no count |
+| E3 | Request failed | no count |
+| **F** | **Layout** | |
+| F1 | Tab bar limited to 900px, Commits partly scrolled away, data of B1 | 2 behind main |
+| F2 | Same, data of A3 | 1284 pending import |
 
-Plus the layout worst case: the tab bar overflowing so the Commits tab is the last one and
-partly scrolled away (the demo repository page already does this at 1200px).
+The demo repository page already pushes Commits partly out of view at 1200px.
 
 ## Out of scope
 

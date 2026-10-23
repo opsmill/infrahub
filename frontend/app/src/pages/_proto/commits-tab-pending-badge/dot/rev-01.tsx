@@ -4,7 +4,7 @@ import { type ReactNode, useRef, useState } from "react";
 
 import { LinkTab } from "@/shared/components/ui/link";
 
-import { getPendingSentence } from "../scenarios";
+import { getPendingSentence, getSplitSentences, type Scenario } from "../scenarios";
 import { type CommitsTabProps, ProtoStage } from "../stage";
 
 function HintedTab({
@@ -57,24 +57,38 @@ function HintedTab({
   );
 }
 
+function getSignal(scenario: Scenario) {
+  if (scenario.split) {
+    const sentences = getSplitSentences(scenario.split);
+    return {
+      hint: `${sentences.behind}. ${sentences.pendingOnMain}. ${sentences.action}`,
+      name: `Commits, ${sentences.behind}, ${sentences.pendingOnMain}`,
+    };
+  }
+  const sentence = getPendingSentence(scenario);
+  return sentence
+    ? { hint: `${sentence}. ${scenario.action}`, name: `Commits, ${sentence}` }
+    : null;
+}
+
 function CommitsTab({
   scenario,
   to,
   scrollIntoViewOnActive,
   dotSize,
 }: CommitsTabProps & { dotSize: number }) {
-  const sentence = getPendingSentence(scenario);
+  const signal = getSignal(scenario);
 
   return (
     <HintedTab
       to={to}
       scrollIntoViewOnActive={scrollIntoViewOnActive}
-      hint={sentence && `${sentence}. ${scenario.action}`}
-      accessibleName={sentence ? `Commits, ${sentence}` : undefined}
+      hint={signal?.hint ?? null}
+      accessibleName={signal?.name}
     >
       Commits
       {scenario.condition === "LOADING" && <Spinner />}
-      {sentence && (
+      {signal && (
         <span
           aria-hidden="true"
           className="shrink-0 rounded-full bg-warning"
@@ -90,6 +104,7 @@ export function DotRev01({ scenario, dotSize }: { scenario: string; dotSize: num
     <ProtoStage
       scenarioOption={scenario}
       renderCommitsTab={(props) => <CommitsTab {...props} dotSize={dotSize} />}
+      showSplit
     />
   );
 }

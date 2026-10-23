@@ -142,7 +142,7 @@ they start with `frontend/packages/`.
   react-query cache is fragile. Render a faithful copy instead: the same `ScrollArea` props, the
   same `nav` + `Row className="items-end gap-4 px-4"`, real `LinkTab`s and the real grey
   `Badge` for the other tabs, and a variant-specific Commits tab fed by a scenario picker
-  (scenarios 1 to 10 from the brief). `BranchesProvider`, react-query and the router are
+  (the scenario matrix A1 to F2 in the brief). `BranchesProvider`, react-query and the router are
   already present under the app layout, so the copy needs no extra providers.
 
 ## Worst-case data notes
@@ -195,3 +195,8 @@ imported by nothing outside it. Each item is prototype-only until a direction is
 - The design-jam history panel (`design-history-panel.tsx`, `design-annotations.tsx`,
   `notes-store.ts`), copied from the design-jam skill's `reference/` folder. The frame it fills
   is measured from the app layout's content box, because the panel shell is fixed-positioned.
+- Round 2 additions, same folder: a warning-icon pill with no number (`pill`, for warnings without
+  a count), warning words in the tab label (`words`), a two-line status strip and a two-pill or
+  two-word display for scenario B5, and a "Pending import on main" row badge (yellow `Badge`).
+  Justification: the scenario matrix now covers every condition, and B5 shows a split the API
+  does not return yet (see `03-decisions.md`); none of these exists in the app.
