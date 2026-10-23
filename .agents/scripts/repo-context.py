@@ -30,6 +30,8 @@ EXIT_GIT_FAILED = 2
 HOOK_BUDGET = 9_500
 ROOT_MAP_PRIORITY = ("# Infrahub", "## Coding Standards", "## Boundaries", "## Navigation", "## Component Maps")
 RULES_DIR = Path(".agents/rules")
+# Rules come from the checkout this script lives in, so a checkout without the tooling can be reviewed in place.
+TOOLING_ROOT = Path(__file__).resolve().parents[2]
 DOC_DIRS = (Path("dev/knowledge"), Path("dev/guidelines"), Path("dev/guides"))
 SOURCE_SUFFIXES = (".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs")
 # The first matching prefix wins, so a subfolder's area comes before its parent's.
@@ -172,9 +174,9 @@ def frontmatter_globs(text: str) -> list[str]:
 
 def load_rules(files: list[str]) -> list[Rule]:
     rules = []
-    for rule_path in sorted(RULES_DIR.glob("*.md")):
+    for rule_path in sorted((TOOLING_ROOT / RULES_DIR).glob("*.md")):
         text = rule_path.read_text(encoding="utf-8")
-        rule = Rule(path=str(rule_path), chars=len(text), globs=frontmatter_globs(text))
+        rule = Rule(path=str(rule_path.relative_to(TOOLING_ROOT)), chars=len(text), globs=frontmatter_globs(text))
         patterns = [(pattern, glob_to_regex(pattern)) for pattern in rule.globs]
         for path in files:
             if not rule.globs:
@@ -213,7 +215,10 @@ def table_of_contents() -> list[Article]:
 
 
 def print_markdown(context: dict) -> None:
-    print(f"# Review context\n\nBase: origin/{context['base']} ({context['base_source']})")
+    print(f"# Review context\n\nReviewed checkout: {context['repo']}")
+    if context["rules_root"] != context["repo"]:
+        print(f"Rules from: {context['rules_root']}")
+    print(f"Base: origin/{context['base']} ({context['base_source']})")
     scope = "committed and uncommitted" if context["include_uncommitted"] else "committed only"
     print(f"Scope: {scope}; excluded: {', '.join(context['exclude']) or 'nothing'}\n")
     print(f"## Changed files ({len(context['files'])})\n")
@@ -416,11 +421,16 @@ def main() -> int:
     parser.add_argument(
         "--hooks-status", action="store_true", help="Fail unless this checkout's context hooks ran in this session"
     )
+    parser.add_argument(
+        "--repo", default=".", help="Checkout to review; rules still come from the checkout this script is in"
+    )
     parser.add_argument("--committed", action="store_true", help="Leave uncommitted files out of the change")
     parser.add_argument(
         "--exclude", action="append", default=[], metavar="GLOB", help="Leave matching paths out (repeatable)"
     )
     args = parser.parse_args()
+    if not Path(args.repo).is_dir():
+        parser.error(f"--repo {args.repo} is not a directory")
     if args.hook:
         return run_hook()
     if args.hooks_status:
@@ -436,6 +446,7 @@ def main() -> int:
 
 
 def review_manifest(args: argparse.Namespace) -> int:
+    os.chdir(args.repo)
     os.chdir(git("rev-parse", "--show-toplevel").strip())
     base, base_source = resolve_base(args.base)
     change = changed_files(base, include_uncommitted=not args.committed, excludes=args.exclude)
@@ -448,6 +459,8 @@ def review_manifest(args: argparse.Namespace) -> int:
     context = {
         "base": base,
         "base_source": base_source,
+        "repo": str(Path.cwd()),
+        "rules_root": str(TOOLING_ROOT),
         "include_uncommitted": not args.committed,
         "exclude": args.exclude,
         "files": files,
