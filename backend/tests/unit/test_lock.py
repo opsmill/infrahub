@@ -115,9 +115,6 @@ def test_init_lock_ttl_defaults_to_twenty_minutes() -> None:
 
 
 async def test_init_locks_carry_configured_ttl() -> None:
-    if config.SETTINGS.cache.driver != config.CacheDriver.Redis:
-        pytest.skip("TTL is only enforced with the Redis cache driver")
-
     registry = InfrahubLockRegistry(local_only=False)
     expected_ttl = config.SETTINGS.cache.init_lock_ttl_mins * 60
 
@@ -133,9 +130,6 @@ async def test_init_locks_carry_configured_ttl() -> None:
 
 
 async def test_regular_locks_have_no_ttl() -> None:
-    if config.SETTINGS.cache.driver != config.CacheDriver.Redis:
-        pytest.skip("TTL is only enforced with the Redis cache driver")
-
     registry = InfrahubLockRegistry(local_only=False)
     regular_lock = registry.get(name="repo-a", namespace="repository")
 
@@ -175,12 +169,11 @@ async def test_reentrant_lock_allows_nested_acquisitions() -> None:
 
 
 @pytest.fixture
-def redis_driver_without_registry(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(config.SETTINGS.cache, "driver", config.CacheDriver.Redis)
+def without_registry(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(lock, "registry", None)
 
 
-@pytest.mark.usefixtures("redis_driver_without_registry")
+@pytest.mark.usefixtures("without_registry")
 def test_initialize_lock_keeps_a_redis_registry_built_from_the_same_arguments() -> None:
     initialize_lock()
     first = lock.registry
@@ -190,7 +183,7 @@ def test_initialize_lock_keeps_a_redis_registry_built_from_the_same_arguments() 
     assert lock.registry is first
 
 
-@pytest.mark.usefixtures("redis_driver_without_registry")
+@pytest.mark.usefixtures("without_registry")
 def test_initialize_lock_replaces_a_redis_registry_with_a_local_one() -> None:
     initialize_lock()
     redis_registry = lock.registry
@@ -201,7 +194,7 @@ def test_initialize_lock_replaces_a_redis_registry_with_a_local_one() -> None:
     assert lock.registry.connection is None
 
 
-@pytest.mark.usefixtures("redis_driver_without_registry")
+@pytest.mark.usefixtures("without_registry")
 def test_initialize_lock_rebuilds_a_local_registry() -> None:
     """Fixtures call it to start from fresh locks, which a kept registry would not give them."""
     initialize_lock(local_only=True)
@@ -212,7 +205,7 @@ def test_initialize_lock_rebuilds_a_local_registry() -> None:
     assert lock.registry is not first
 
 
-@pytest.mark.usefixtures("redis_driver_without_registry")
+@pytest.mark.usefixtures("without_registry")
 def test_initialize_lock_rebuilds_a_redis_registry_when_the_cache_settings_change(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

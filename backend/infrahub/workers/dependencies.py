@@ -12,6 +12,7 @@ from infrahub.database import InfrahubDatabase, get_db
 from infrahub.ldap_auth.service import LDAPAuthService, LDAPAuthServiceCommunity
 from infrahub.log_forwarding.service import LogForwardingService, LogForwardingServiceCommunity
 from infrahub.services.adapters.cache import InfrahubCache
+from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.services.adapters.event import InfrahubEventService
 from infrahub.services.adapters.http import InfrahubHTTP
 from infrahub.services.adapters.http.httpx import HttpxAdapter
@@ -93,9 +94,7 @@ async def get_database(database: InfrahubDatabase = Depends(build_database)) -> 
 
 async def build_cache() -> InfrahubCache:
     if "cache" not in _singletons:
-        _singletons["cache"] = config.OVERRIDE.cache or await InfrahubCache.new_from_driver(
-            driver=config.SETTINGS.cache.driver
-        )
+        _singletons["cache"] = config.OVERRIDE.cache or await RedisCache.new()
     return _singletons["cache"]
 
 
@@ -106,10 +105,11 @@ async def get_cache(cache: InfrahubCache = Depends(build_cache)) -> InfrahubCach
 
 async def build_message_bus() -> InfrahubMessageBus:
     if "message_bus" not in _singletons:
-        _singletons["message_bus"] = config.OVERRIDE.message_bus or (
-            await InfrahubMessageBus.new_from_driver(
-                component_type=get_component_type(), driver=config.SETTINGS.broker.driver
-            )
+        # The adapter imports the message handlers, which import this module.
+        from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus  # noqa: PLC0415
+
+        _singletons["message_bus"] = config.OVERRIDE.message_bus or await RabbitMQMessageBus.new(
+            component_type=get_component_type()
         )
     return _singletons["message_bus"]
 

@@ -18,12 +18,8 @@ async def _init_prefect() -> None:
     # Import there in case we are running Prefect within a testsuite using the original Prefect container
     from infrahub import lock  # noqa: PLC0415
     from infrahub.lock import initialize_lock  # noqa: PLC0415
-    from infrahub.services import InfrahubServices  # noqa: PLC0415
-    from infrahub.workers.dependencies import get_cache  # noqa: PLC0415
 
-    cache = await get_cache()
-    service = await InfrahubServices.new(cache=cache)
-    initialize_lock(service=service)
+    initialize_lock()
 
     async with lock.registry.get(name=lock.GLOBAL_TASKMGR_INIT_LOCK):
         await init_prefect()

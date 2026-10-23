@@ -402,7 +402,7 @@ def neo4j(request: pytest.FixtureRequest, load_settings_before_session: None) ->
 
 @pytest.fixture(scope="session")
 def rabbitmq_container(request: pytest.FixtureRequest, load_settings_before_session: None) -> dict[int, int] | None:
-    if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.broker.driver != config.BrokerDriver.RabbitMQ:
+    if not INFRAHUB_USE_TEST_CONTAINERS:
         return None
 
     container = (
@@ -426,11 +426,7 @@ def rabbitmq_container(request: pytest.FixtureRequest, load_settings_before_sess
 def rabbitmq(
     rabbitmq_container: dict[int, int] | None, reload_settings_before_each_module: None
 ) -> dict[int, int] | None:
-    if (
-        rabbitmq_container
-        and INFRAHUB_USE_TEST_CONTAINERS
-        and config.SETTINGS.broker.driver == config.BrokerDriver.RabbitMQ
-    ):
+    if rabbitmq_container and INFRAHUB_USE_TEST_CONTAINERS:
         config.SETTINGS.broker.address = "localhost"
         config.SETTINGS.broker.port = rabbitmq_container[PORT_CLIENT_RABBITMQ]
         config.SETTINGS.broker.rabbitmq_http_port = rabbitmq_container[PORT_HTTP_RABBITMQ]
@@ -442,7 +438,7 @@ def rabbitmq(
 # NOTE: This fixture needs to run before initialize_lock_fixture which is guaranteed to run after as it has a module scope.
 @pytest.fixture(scope="session")
 def redis_container(request: pytest.FixtureRequest, load_settings_before_session: None) -> dict[int, int] | None:
-    if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.cache.driver != config.CacheDriver.Redis:
+    if not INFRAHUB_USE_TEST_CONTAINERS:
         return None
 
     container = DockerContainer(image="redis:8.4.0").with_exposed_ports(PORT_REDIS)
@@ -456,7 +452,7 @@ def redis_container(request: pytest.FixtureRequest, load_settings_before_session
 
 @pytest.fixture(scope="module")
 def redis(redis_container: dict[int, int] | None, reload_settings_before_each_module: None) -> dict[int, int] | None:
-    if redis_container and INFRAHUB_USE_TEST_CONTAINERS and config.SETTINGS.cache.driver == config.CacheDriver.Redis:
+    if redis_container and INFRAHUB_USE_TEST_CONTAINERS:
         config.SETTINGS.cache.address = "localhost"
         config.SETTINGS.cache.port = redis_container[PORT_REDIS]
         config.SETTINGS.cache.username = ""
