@@ -98,10 +98,10 @@ Every `jq` command below reads the last matching event. Filter on a value the st
 
 **Steps, GraphQL path**:
 
-- [ ] Run in the sandbox: `mutation { InfraDeviceUpdate(data: {hfid: ["atl1-edge1"], description: {value: "qa"}, platform: {hfid: ["Cisco NXOS SSH"]}}) { ok } }`
+- [ ] Run in the sandbox: `mutation { InfraDeviceUpdate(data: {hfid: ["atl1-edge1"], description: {value: "qa"}, platform: {hfid: ["Cisco IOS"]}}) { ok } }`
 - [ ] Run: `jq -c 'select(.event=="infrahub.node.updated" and .data.kind=="InfraDevice" and .data.changelog.attributes.description.value=="qa") | .data.changelog | {display_label, hfid, platform: .relationships.platform}' /tmp/qa-webhooks.jsonl | tail -1`
 - [ ] Confirm: `hfid` is `["atl1-edge1"]` and `display_label` is `atl1-edge1`.
-- [ ] Confirm: `platform.peer_display_label` is `Cisco NXOS SSH`, `platform.peer_hfid` is `["Cisco NXOS SSH"]`, and the previous platform appears only as `peer_id_previous` / `peer_kind_previous`.
+- [ ] Confirm: `platform.peer_display_label` is `Cisco IOS`, `platform.peer_hfid` is `["Cisco IOS"]`, and the previous platform appears only as `peer_id_previous` / `peer_kind_previous`.
 
 **Steps, web interface path**:
 
@@ -118,7 +118,7 @@ Every `jq` command below reads the last matching event. Filter on a value the st
 **Steps**:
 
 - [ ] After the GraphQL path of scenario 1, run: `jq -c 'select(.event=="infrahub.node.updated" and .data.kind=="InfraPlatform") | .data.changelog | {display_label, devices: [.relationships.devices.peers[] | {peer_display_label, peer_hfid, peer_status}]}' /tmp/qa-webhooks.jsonl | tail -4`
-- [ ] Confirm: `Cisco NXOS SSH` has one event with `atl1-edge1` as peer: `peer_display_label` `atl1-edge1`, `peer_hfid` `["atl1-edge1"]`, `peer_status` `added`.
+- [ ] Confirm: `Cisco IOS` has one event with `atl1-edge1` as peer: `peer_display_label` `atl1-edge1`, `peer_hfid` `["atl1-edge1"]`, `peer_status` `added`.
 - [ ] Confirm: the previous platform of `atl1-edge1` has one event with the same device and `peer_status` `removed`.
 - [ ] Confirm: the two platforms changed through the web interface path have the same pair of events for `atl1-edge2`.
 
