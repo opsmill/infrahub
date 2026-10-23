@@ -130,10 +130,10 @@ Every `jq` command below reads the last matching event. Filter on a value the st
 
 **Steps, GraphQL path**:
 
-- [ ] Get two tag IDs: `query { BuiltinTag(limit: 2) { edges { node { id display_label } } } }`, and the ID of `atl1-edge1`.
-- [ ] Run: `mutation { RelationshipAdd(data: {id: "<device-id>", name: "tags", nodes: [{id: "<tag1-id>"}, {id: "<tag2-id>"}]}) { ok } }`
+- [ ] List the tags and the tags of `atl1-edge1`: `query { BuiltinTag { edges { node { id display_label } } } InfraDevice(name__value: "atl1-edge1") { edges { node { id tags { edges { node { display_label } } } } } } }`. Pick the tags the device does not have yet; the demo data has three tags, so create one with `mutation { BuiltinTagCreate(data: {name: {value: "qa-tag"}}) { ok } }` if fewer than two are left.
+- [ ] Run, with the IDs of the tags the device does not have: `mutation { RelationshipAdd(data: {id: "<device-id>", name: "tags", nodes: [{id: "<tag1-id>"}, {id: "<tag2-id>"}]}) { ok } }`
 - [ ] Run: `jq -c 'select(.event=="infrahub.node.updated" and .data.kind=="InfraDevice") | .data.changelog | {hfid, tags: [.relationships.tags.peers[] | {peer_display_label, peer_hfid, peer_status}]}' /tmp/qa-webhooks.jsonl | tail -1`
-- [ ] Confirm: both tags are listed with `peer_display_label` set, `peer_hfid` `null` and `peer_status` `added`.
+- [ ] Confirm: each added tag is listed with `peer_display_label` and `peer_hfid` set to its name, and `peer_status` `added`.
 - [ ] Run: `jq -c 'select(.data.kind=="BuiltinTag")' /tmp/qa-webhooks.jsonl | tail -1` and confirm no event was delivered for the tags by this step.
 
 **Steps, web interface path**:
