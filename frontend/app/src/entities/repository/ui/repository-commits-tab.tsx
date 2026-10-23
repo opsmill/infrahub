@@ -5,13 +5,12 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Badge } from "@/shared/components/ui/badge";
 import { LinkTab } from "@/shared/components/ui/link";
 
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import {
   READONLY_REPOSITORY_KIND,
   REPOSITORY_COMMITS_TAB,
 } from "@/entities/repository/domain/model/repository";
-import { isRebaseOnly } from "@/entities/repository/domain/rules/is-rebase-only";
+import { useIsRebaseOnly } from "@/entities/repository/ui/hooks/use-is-rebase-only";
 import { useGetRepositoryCommits } from "@/entities/repository/ui/queries/get-repository-commits.query";
 import {
   type CommitsTabBadge,
@@ -39,13 +38,7 @@ export function RepositoryCommitsTab({
   objectId,
   internalStatus,
 }: RepositoryCommitsTabProps) {
-  const { currentBranch } = useCurrentBranch();
-  const rebaseOnly = isRebaseOnly({
-    repositoryKind: objectKind,
-    internalStatus,
-    isDefaultBranch: currentBranch.is_default,
-    syncWithGit: currentBranch.sync_with_git,
-  });
+  const rebaseOnly = useIsRebaseOnly({ repositoryKind: objectKind, internalStatus });
   const isReadOnly = objectKind === READONLY_REPOSITORY_KIND;
   const {
     isPending,
@@ -62,25 +55,21 @@ export function RepositoryCommitsTab({
 
   if (isLoadingFirstPage({ isPending, failureReason })) {
     return (
-      <LinkTab to={to} scrollIntoViewOnActive>
+      <LinkTabWithTooltip to={to}>
         Commits
         <Spinner />
-      </LinkTab>
-    );
-  }
-
-  if (!badge) {
-    return (
-      <LinkTab to={to} scrollIntoViewOnActive>
-        Commits
-      </LinkTab>
+      </LinkTabWithTooltip>
     );
   }
 
   return (
-    <LinkTabWithTooltip to={to} tooltip={badge.tooltip} ariaLabel={`Commits, ${badge.summary}`}>
+    <LinkTabWithTooltip
+      to={to}
+      tooltip={badge?.tooltip}
+      ariaLabel={badge ? `Commits, ${badge.summary}` : undefined}
+    >
       Commits
-      <CommitsTabBadgeContent badge={badge} />
+      {badge && <CommitsTabBadgeContent badge={badge} />}
     </LinkTabWithTooltip>
   );
 }
@@ -102,8 +91,8 @@ function CommitsTabBadgeContent({ badge }: { badge: CommitsTabBadge }) {
 
 interface LinkTabWithTooltipProps {
   to: string;
-  tooltip: string;
-  ariaLabel: string;
+  tooltip?: string;
+  ariaLabel?: string;
   children: ReactNode;
 }
 

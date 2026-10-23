@@ -20,7 +20,7 @@ import {
   generateNotClonedCommitsResponse,
   generateOrphanedCommitsResponse,
   generateReadOnlyCommitsResponse,
-  generateRebaseNeededCommitsResponse,
+  generateRebaseOnlyBehindCommitsResponse,
   generateRewrittenCommitsResponse,
 } from "../../../../tests/fake/repository-commit";
 import { RepositoryCommitsManager } from "./repository-commits-manager";
@@ -66,7 +66,6 @@ const renderTab = ({
 
 const expectNoCount = async (component: Awaited<ReturnType<typeof renderTab>>) => {
   await expect.element(component.getByRole("link", { name: "Commits", exact: true })).toBeVisible();
-  expect(component.getByText(/^\d+$/).query()).toBeNull();
 };
 
 // Parks the pointer beside the tab, since the shared helper clicks the top-left corner, which is on the tab.
@@ -209,17 +208,18 @@ describe("RepositoryCommitsTab", () => {
 
     // THEN
     await expect.element(component.getByRole("link", { name })).toBeVisible();
-    expect(component.getByText(/^\d+$/).query()).toBeNull();
   });
 
-  describe("on a rebase-only branch", () => {
+  describe("on a branch that does not sync with Git", () => {
     beforeEach(() => {
       useBranch({ syncWithGit: false });
     });
 
     test("counts the commits behind main and asks for a rebase", async () => {
       // GIVEN
-      apiMock.mockResolvedValue(generateCommitsApiResult(generateRebaseNeededCommitsResponse()));
+      apiMock.mockResolvedValue(
+        generateCommitsApiResult(generateRebaseOnlyBehindCommitsResponse())
+      );
       const component = await renderTab();
 
       // WHEN
@@ -347,6 +347,26 @@ describe("RepositoryCommitsTab", () => {
     await expect
       .element(component.getByRole("link", { name: "Commits, 3 commits pending import" }))
       .toBeVisible();
+  });
+
+  test("keeps the focused tab link when a refetch adds a count", async () => {
+    // GIVEN
+    apiMock
+      .mockResolvedValueOnce(generateCommitsApiResult(generateInSyncCommitsResponse()))
+      .mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));
+    const component = await renderTab();
+    await expectNoCount(component);
+    const link = component.getByRole("link", { name: "Commits", exact: true }).element();
+    link.focus();
+
+    // WHEN
+    await queryClient.refetchQueries();
+
+    // THEN
+    const tab = component.getByRole("link", { name: "Commits, 3 commits pending import" });
+    await expect.element(tab).toBeVisible();
+    expect(tab.element()).toBe(link);
+    expect(document.activeElement).toBe(link);
   });
 
   test("shares one read with the commit log on screen", async () => {

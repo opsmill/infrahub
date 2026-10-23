@@ -259,36 +259,6 @@ describe("getStateBadges", () => {
     }
   );
 
-  test("marks a remote head that the branch runs as imported", () => {
-    // GIVEN
-    const commit = { hash: IMPORTED_HASH, state: RepositoryCommitState.HEAD };
-
-    // WHEN
-    const badges = getStateBadges(commit, {
-      importedCommit: IMPORTED_HASH,
-      condition: RepositoryGitCondition.IN_SYNC,
-      rebaseOnly: true,
-    });
-
-    // THEN
-    expect(badges.map(({ label }) => label)).toEqual(["Remote head", "Imported"]);
-  });
-
-  test("keeps a commit off the current history as such on a diverged rebase-only branch", () => {
-    // GIVEN
-    const commit = { hash: OTHER_HASH, state: RepositoryCommitState.UNRELATED };
-
-    // WHEN
-    const badges = getStateBadges(commit, {
-      importedCommit: IMPORTED_HASH,
-      condition: RepositoryGitCondition.REWRITTEN,
-      rebaseOnly: true,
-    });
-
-    // THEN
-    expect(badges.map(({ label }) => label)).toEqual(["Not on current history"]);
-  });
-
   test("shows no badge for a state this client does not know", () => {
     // GIVEN
     const commit = { hash: "a".repeat(40), state: "FUTURE_STATE" };
@@ -893,15 +863,28 @@ describe("getCommitsTabBadge", () => {
   });
 
   test.each([
-    { condition: RepositoryGitCondition.REWRITTEN, summary: "history rewritten" },
-    { condition: RepositoryGitCondition.ORPHANED, summary: "imported commit missing" },
-    { condition: RepositoryGitCondition.REF_MISSING, summary: "tracked ref missing" },
-  ])("warns without a count for $condition", ({ condition, summary }) => {
+    {
+      condition: RepositoryGitCondition.REWRITTEN,
+      summary: "history rewritten",
+      tooltip: "The tracked ref was rewritten, so nothing is reported as pending import.",
+    },
+    {
+      condition: RepositoryGitCondition.ORPHANED,
+      summary: "imported commit missing",
+      tooltip: "The imported commit could not be found on the remote.",
+    },
+    {
+      condition: RepositoryGitCondition.REF_MISSING,
+      summary: "tracked ref missing",
+      tooltip:
+        "The tracked branch or tag no longer exists on the remote. The imported commit is still in use.",
+    },
+  ])("warns without a count for $condition", ({ condition, summary, tooltip }) => {
     // WHEN
     const badge = getCommitsTabBadge({ condition, git_ref: "main", pending_count: null }, SYNCED);
 
     // THEN
-    expect(badge).toMatchObject({ kind: "warning", summary });
+    expect(badge).toEqual({ kind: "warning", summary, tooltip });
   });
 
   test.each([

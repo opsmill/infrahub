@@ -110,7 +110,7 @@ export const generateRewrittenCommitsResponse = () =>
 export const DEFAULT_BRANCH_HEAD = "7f8e9d0";
 export const BRANCH_COMMIT = "4c5d6e7";
 
-export const generateRebaseNeededCommitsResponse = () =>
+export const generateRebaseOnlyBehindCommitsResponse = () =>
   generateRepositoryCommitsResponse({
     condition: "BEHIND",
     imported_commit: fullHash(BRANCH_COMMIT),
