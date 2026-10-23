@@ -152,20 +152,20 @@ const UNRELATED_BADGE: CommitStateBadge = {
 };
 const BEHIND_BADGE: CommitStateBadge = { label: "Behind", variant: "gray" };
 
-export interface CommitStateContext extends Pick<RepositoryCommitLog, "condition"> {
+export interface CommitBadgeContext extends Pick<RepositoryCommitLog, "condition"> {
   importedCommit: string | null;
-  updatedOnlyByRebase: boolean;
+  rebaseOnly: boolean;
 }
 
 export function getStateBadges(
   { hash, state }: Pick<RepositoryCommit, "hash" | "state">,
-  { importedCommit, condition, updatedOnlyByRebase }: CommitStateContext
+  { importedCommit, condition, rebaseOnly }: CommitBadgeContext
 ): CommitStateBadge[] {
   switch (state) {
     case RepositoryCommitState.HEAD:
       if (hash === importedCommit) return [REMOTE_HEAD_BADGE, IMPORTED_BADGE];
       // Only BEHIND guarantees the head is newer than the branch's commit; after a reset it can be an ancestor.
-      return updatedOnlyByRebase && condition === RepositoryGitCondition.BEHIND
+      return rebaseOnly && condition === RepositoryGitCondition.BEHIND
         ? [REMOTE_HEAD_BADGE, BEHIND_BADGE]
         : [REMOTE_HEAD_BADGE];
     case RepositoryCommitState.NOT_ON_BRANCH:
@@ -210,7 +210,7 @@ export interface CommitLogNotice {
 
 const getRefName = (gitRef: string | null) => gitRef ?? "the default branch";
 
-export function getNonSyncedBranchNote({
+export function getRebaseOnlyNote({
   condition,
   git_ref,
   pending_count,
@@ -236,11 +236,11 @@ export function getConditionNotice(
     pending_count,
     imported_commit,
   }: Pick<RepositoryCommitLog, "condition" | "git_ref" | "pending_count" | "imported_commit">,
-  { updatedOnlyByRebase }: Pick<CommitStateContext, "updatedOnlyByRebase">
+  { rebaseOnly }: Pick<CommitBadgeContext, "rebaseOnly">
 ): CommitLogNotice | null {
   switch (condition) {
     case RepositoryGitCondition.REWRITTEN:
-      if (updatedOnlyByRebase) {
+      if (rebaseOnly) {
         const ref = getRefName(git_ref);
         const usedCommit = imported_commit ? ` (${imported_commit.slice(0, 7)})` : "";
         return {
@@ -262,8 +262,8 @@ export function getConditionNotice(
           "The tracked ref no longer exists on the remote. The imported commit is still the one in use.",
       };
     case RepositoryGitCondition.BEHIND:
-      // On a branch updated only by rebase, the header line already gives the distance.
-      return pending_count === null || updatedOnlyByRebase
+      // On a rebase-only branch, the header line already gives the distance.
+      return pending_count === null || rebaseOnly
         ? null
         : { tone: "neutral", message: `${formatCommitCount(pending_count)} pending import` };
     default:
@@ -273,74 +273,73 @@ export function getConditionNotice(
 
 const COMMITS_TAB_COUNT_CAP = 999;
 
-export type CommitsTabSignal =
-  | { kind: "pending-import" | "behind"; count: number; description: string; hint: string }
-  | { kind: "warning"; description: string; hint: string };
+export type CommitsTabBadge =
+  | { kind: "pending-import" | "behind"; count: number; summary: string; tooltip: string }
+  | { kind: "warning"; summary: string; tooltip: string };
 
 export function formatCommitsTabCount(count: number): string {
   return count > COMMITS_TAB_COUNT_CAP ? `${COMMITS_TAB_COUNT_CAP}+` : `${count}`;
 }
 
-export function getCommitsTabSignal(
+export function getCommitsTabBadge(
   {
     condition,
     git_ref,
     pending_count,
   }: Pick<RepositoryCommitLog, "condition" | "git_ref" | "pending_count">,
-  {
-    updatedOnlyByRebase,
-    isReadOnly,
-  }: Pick<CommitStateContext, "updatedOnlyByRebase"> & { isReadOnly: boolean }
-): CommitsTabSignal | null {
+  { rebaseOnly, isReadOnly }: Pick<CommitBadgeContext, "rebaseOnly"> & { isReadOnly: boolean }
+): CommitsTabBadge | null {
   const ref = getRefName(git_ref);
   switch (condition) {
     case RepositoryGitCondition.BEHIND: {
       if (!pending_count) return null;
-      const them = pending_count === 1 ? "it" : "them";
-      if (updatedOnlyByRebase) {
-        const description = `${formatCommitCount(pending_count)} behind ${ref}`;
+      const pronoun = pending_count === 1 ? "it" : "them";
+      if (rebaseOnly) {
+        const summary = `${formatCommitCount(pending_count)} behind ${ref}`;
         return {
           kind: "behind",
           count: pending_count,
-          description,
-          hint: `${description} — rebase the branch to use ${them}`,
+          summary,
+          tooltip: `${summary} — rebase the branch to use ${pronoun}`,
         };
       }
-      const description = `${formatCommitCount(pending_count)} pending import`;
+      const summary = `${formatCommitCount(pending_count)} pending import`;
       // Nothing imports a read-only repository on its own; its periodic check only notices that the ref moved.
       const action = isReadOnly
-        ? `run Import latest commit to use ${them}`
-        : `the next sync imports ${them}`;
+        ? `run Import latest commit to use ${pronoun}`
+        : `the next sync imports ${pronoun}`;
       return {
         kind: "pending-import",
         count: pending_count,
-        description,
-        hint: `${description} — ${action}`,
+        summary,
+        tooltip: `${summary} — ${action}`,
       };
     }
     case RepositoryGitCondition.REWRITTEN:
-      return updatedOnlyByRebase
+      return rebaseOnly
         ? {
             kind: "warning",
-            description: `diverged from ${ref}`,
-            hint: `This branch has diverged from ${ref}. Rebase the branch to use the latest commit of ${ref}.`,
+            summary: `diverged from ${ref}`,
+            tooltip: `This branch has diverged from ${ref}. Rebase the branch to use the latest commit of ${ref}.`,
           }
         : {
             kind: "warning",
-            description: "history rewritten",
-            hint: "The remote branch history was rewritten, so nothing is reported as pending import.",
+            summary: "history rewritten",
+            tooltip:
+              "The remote branch history was rewritten, so nothing is reported as pending import.",
           };
     case RepositoryGitCondition.ORPHANED:
       return {
         kind: "warning",
-        description: "imported commit missing",
-        hint: "The imported commit could not be found on the remote.",
+        summary: "imported commit missing",
+        tooltip: "The imported commit could not be found on the remote.",
       };
     case RepositoryGitCondition.REF_MISSING:
       return {
         kind: "warning",
-        description: "tracked ref missing",
-        hint: "The tracked branch or tag no longer exists on the remote. The imported commit is still in use.",
+        summary: "tracked ref missing",
+        tooltip:
+          "The tracked branch or tag no longer exists on the remote. The imported commit is still in use.",
       };
     default:
       return null;

@@ -828,7 +828,7 @@ describe("RepositoryCommitsManager", () => {
     expect(component.getByRole("navigation").query()).toBeNull();
   });
 
-  describe("on a branch that does not sync with Git", () => {
+  describe("on a rebase-only branch", () => {
     beforeEach(() => {
       useBranch("test-branch", { syncWithGit: false });
     });

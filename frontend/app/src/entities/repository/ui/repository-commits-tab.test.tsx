@@ -212,7 +212,7 @@ describe("RepositoryCommitsTab", () => {
     expect(component.getByText(/^\d+$/).query()).toBeNull();
   });
 
-  describe("on a branch that does not sync with Git", () => {
+  describe("on a rebase-only branch", () => {
     beforeEach(() => {
       useBranch({ syncWithGit: false });
     });

@@ -200,7 +200,7 @@ frontend/app/src/
 ├── entities/repository/ui/queries/get-repository-commits.query.ts                 # NEW  infinite query, capped retry while unavailable
 ├── entities/repository/ui/queries/repository-commits.constants.ts                 # NEW  page size, stale time, retry delay and cap
 ├── entities/repository/ui/queries/repository.query-keys.ts                        # NEW or EDIT
-├── entities/repository/ui/repository-commits-tab.tsx                              # NEW  tab link with the pending-import or behind signal
+├── entities/repository/ui/repository-commits-tab.tsx                              # NEW  tab link with the pending-import or behind badge
 ├── entities/repository/ui/repository-commits-manager.tsx                          # NEW  commit list: DataTable inside InfiniteScroll, empty and error states
 ├── entities/repository/ui/repository-commits-header.tsx                           # NEW  refresh button, freshness line, condition notice
 ├── entities/repository/ui/repository-commits.view.ts                              # NEW  pure display decisions (empty state, stale rows, next-page state, badges)
