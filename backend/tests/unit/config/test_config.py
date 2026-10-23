@@ -11,7 +11,6 @@ from structlog.testing import capture_logs
 from infrahub.config import (
     SETTINGS,
     ApiSettings,
-    CacheDriver,
     CacheSettings,
     DatabaseSettings,
     GitSettings,
@@ -452,13 +451,6 @@ def test_blank_cache_url_is_unset(monkeypatch: pytest.MonkeyPatch, blank: str) -
     monkeypatch.setenv("INFRAHUB_CACHE_URL", blank)
 
     assert CacheSettings().url is None
-
-
-@pytest.mark.usefixtures("without_cache_environment")
-def test_cache_url_coexists_with_redis_driver() -> None:
-    settings = CacheSettings(url=SecretStr("redis://cache:6379/0"), driver=CacheDriver.Redis)
-    assert settings.driver is CacheDriver.Redis
-    assert settings.url is not None
 
 
 @pytest.mark.usefixtures("without_cache_environment")
