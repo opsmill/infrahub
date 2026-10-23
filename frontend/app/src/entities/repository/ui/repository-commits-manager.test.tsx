@@ -34,7 +34,7 @@ import {
   generateNotImplementedCommitsResponse,
   generateOrphanedCommitsResponse,
   generateReadOnlyCommitsResponse,
-  generateRebaseNeededCommitsResponse,
+  generateRebaseOnlyBehindCommitsResponse,
   generateRepositoryCommitsResponse,
   generateRewrittenCommitsResponse,
   generateSecondCommitsPage,
@@ -828,14 +828,16 @@ describe("RepositoryCommitsManager", () => {
     expect(component.getByRole("navigation").query()).toBeNull();
   });
 
-  describe("on a rebase-only branch", () => {
+  describe("on a branch that does not sync with Git", () => {
     beforeEach(() => {
       useBranch("test-branch", { syncWithGit: false });
     });
 
     test("says how far behind main the branch is and suggests a rebase", async () => {
       // GIVEN
-      apiMock.mockResolvedValue(generateCommitsApiResult(generateRebaseNeededCommitsResponse()));
+      apiMock.mockResolvedValue(
+        generateCommitsApiResult(generateRebaseOnlyBehindCommitsResponse())
+      );
 
       // WHEN
       const component = await renderTab();
@@ -854,12 +856,13 @@ describe("RepositoryCommitsManager", () => {
 
       // THEN
       await expect.element(component.getByText(UP_TO_DATE_NOTE)).toBeVisible();
-      expect(component.getByText(/is behind/).query()).toBeNull();
     });
 
     test("marks the commits of main the branch does not run as behind", async () => {
       // GIVEN
-      apiMock.mockResolvedValue(generateCommitsApiResult(generateRebaseNeededCommitsResponse()));
+      apiMock.mockResolvedValue(
+        generateCommitsApiResult(generateRebaseOnlyBehindCommitsResponse())
+      );
 
       // WHEN
       const component = await renderTab();
@@ -872,7 +875,6 @@ describe("RepositoryCommitsManager", () => {
       await expect.element(rows.nth(1).getByText("Behind", { exact: true })).toBeVisible();
       await expect.element(rows.nth(2).getByText(BRANCH_COMMIT)).toBeVisible();
       await expect.element(rows.nth(2).getByText("Imported")).toBeVisible();
-      expect(rows.nth(3).getByText("Behind", { exact: true }).query()).toBeNull();
     });
 
     test("asks for a rebase and keeps the backend's commit labels when the branch has diverged from main", async () => {

@@ -7,10 +7,9 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { DataTable } from "@/shared/components/table/data-table";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import type { RepositoryCommitLog } from "@/entities/repository/domain/model/repository";
-import { isRebaseOnly } from "@/entities/repository/domain/rules/is-rebase-only";
 import { getRepositoryCommitsColumns } from "@/entities/repository/ui/get-repository-commits-columns";
+import { useIsRebaseOnly } from "@/entities/repository/ui/hooks/use-is-rebase-only";
 import { useGetRepositoryCommits } from "@/entities/repository/ui/queries/get-repository-commits.query";
 import {
   type CommitLogEmptyState,
@@ -48,7 +47,10 @@ export function RepositoryCommitsManager({
   repositoryLocation,
   remoteCheck,
 }: RepositoryCommitsManagerProps) {
-  const { currentBranch } = useCurrentBranch();
+  const rebaseOnly = useIsRebaseOnly({
+    repositoryKind,
+    internalStatus: repositoryInternalStatus,
+  });
   const {
     data,
     error,
@@ -99,13 +101,6 @@ export function RepositoryCommitsManager({
     isFetchNextPageError,
     isFetchingNextPage,
     failureReason,
-  });
-
-  const rebaseOnly = isRebaseOnly({
-    repositoryKind,
-    internalStatus: repositoryInternalStatus,
-    isDefaultBranch: currentBranch.is_default,
-    syncWithGit: currentBranch.sync_with_git,
   });
 
   if (noCommitLogState) {

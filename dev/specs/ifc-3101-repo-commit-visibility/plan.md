@@ -197,10 +197,13 @@ frontend/app/src/
 ├── entities/repository/domain/rules/should-retry-git-unavailable.ts               # NEW  every unavailable reason but NOT_IMPLEMENTED is retried
 ├── entities/repository/domain/rules/get-commit-web-url.ts                         # NEW  "View on GitHub" link, credentials dropped
 ├── entities/repository/domain/rules/get-repository-location.ts                    # NEW
+├── entities/repository/domain/rules/get-repository-internal-status.ts             # NEW  internal status read from the repository object
+├── entities/repository/domain/rules/is-rebase-only.ts                             # NEW  branch that does not sync with Git lists the default branch's history
 ├── entities/repository/ui/queries/get-repository-commits.query.ts                 # NEW  infinite query, capped retry while unavailable
 ├── entities/repository/ui/queries/repository-commits.constants.ts                 # NEW  page size, stale time, retry delay and cap
 ├── entities/repository/ui/queries/repository.query-keys.ts                        # NEW or EDIT
-├── entities/repository/ui/repository-commits-tab.tsx                              # NEW  tab link with the pending-import or behind badge
+├── entities/repository/ui/hooks/use-is-rebase-only.ts                             # NEW  current branch read for the rebase-only rule
+├── entities/repository/ui/repository-commits-tab.tsx                              # NEW  tab link with the pending-import or behind badge, or a warning marker
 ├── entities/repository/ui/repository-commits-manager.tsx                          # NEW  commit list: DataTable inside InfiniteScroll, empty and error states
 ├── entities/repository/ui/repository-commits-header.tsx                           # NEW  refresh button, freshness line, condition notice
 ├── entities/repository/ui/repository-commits.view.ts                              # NEW  pure display decisions (empty state, stale rows, next-page state, badges)
@@ -465,7 +468,8 @@ determinism logic, no test and no documentation entry.
   - the typed error, the mapper, the API document and the other domain rules
     (`get-repository-commits.test.ts`, `repository-commits.mappers.test.ts`,
     `get-repository-commits-from-api.test.ts`, `get-commit-web-url.test.ts`,
-    `get-repository-location.test.ts`)
+    `get-repository-location.test.ts`, `is-rebase-only.test.ts`,
+    `get-repository-internal-status.test.ts`)
 - e2e test on `demo_edge_repo`, not landed yet.
 - The e2e suite asserts against a repository seeded already behind, with the sync tick awaited once
   in a fixture, rather than pushing mid-test and waiting out the one-minute cron. A fixed

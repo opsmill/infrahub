@@ -325,8 +325,7 @@ export function getCommitsTabBadge(
         : {
             kind: "warning",
             summary: "history rewritten",
-            tooltip:
-              "The remote branch history was rewritten, so nothing is reported as pending import.",
+            tooltip: "The tracked ref was rewritten, so nothing is reported as pending import.",
           };
     case RepositoryGitCondition.ORPHANED:
       return {

@@ -3,7 +3,7 @@ import {
   REPOSITORY_KIND,
 } from "@/entities/repository/domain/model/repository";
 
-// Mirrors the backend, which marks the default branch's newer commits as not on the branch when a rebase is the only way to bring them in.
+// Follows the backend's choice of the default branch's history for a branch that receives no imports; its further checks only ever lead to an untracked log.
 export function isRebaseOnly({
   repositoryKind,
   internalStatus,
