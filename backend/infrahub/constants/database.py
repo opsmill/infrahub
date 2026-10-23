@@ -3,7 +3,6 @@ from enum import StrEnum
 
 class DatabaseType(StrEnum):
     NEO4J = "neo4j"
-    MEMGRAPH = "memgraph"
 
 
 class Neo4jRuntime(StrEnum):
@@ -19,7 +18,6 @@ class IndexType(StrEnum):
     TEXT = "text"
     RANGE = "range"
     LOOKUP = "lookup"
-    NOT_APPLICABLE = "not_applicable"
 
 
 class EntityType(StrEnum):

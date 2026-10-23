@@ -1,15 +1,45 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
+
 import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
     OTLPSpanExporter as GRPCSpanExporter,
 )
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
     OTLPSpanExporter as HTTPSpanExporter,
 )
-from opentelemetry.sdk.trace.export import ConsoleSpanExporter
+from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+from opentelemetry.sdk.trace.sampling import Decision
+from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags, set_span_in_context, use_span
 
-from infrahub.trace import InsecureTLSSession, create_span_exporter
+from infrahub import trace as infrahub_trace
+from infrahub.trace import (
+    InsecureTLSSession,
+    MaskingSpanExporter,
+    RatioSampler,
+    SampleRatioState,
+    clear_temporary_sample_ratio,
+    create_span_exporter,
+    create_tracer_provider,
+    get_sample_ratio_state,
+    get_traceid,
+    set_temporary_sample_ratio,
+)
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterator
+
+    from opentelemetry.context import Context
+    from opentelemetry.sdk.trace.sampling import Sampler
+    from opentelemetry.util.types import AttributeValue
 
 
 class TestInsecureTLSSession:
@@ -99,3 +129,397 @@ class TestCreateSpanExporter:
         assert isinstance(exporter, GRPCSpanExporter)
         assert exporter._insecure is False
         exporter.shutdown()
+
+
+@dataclass
+class SpanAttributeMaskingTestCase:
+    name: str
+    key: str
+    value: AttributeValue
+    expected: AttributeValue
+
+
+SPAN_ATTRIBUTE_MASKING_TEST_CASES: list[SpanAttributeMaskingTestCase] = [
+    SpanAttributeMaskingTestCase(
+        name="client_ip_old_convention", key="net.peer.ip", value="203.0.113.7", expected="[MASKED]"
+    ),
+    SpanAttributeMaskingTestCase(
+        name="client_ip_new_convention", key="client.address", value="203.0.113.7", expected="[MASKED]"
+    ),
+    SpanAttributeMaskingTestCase(
+        name="full_url_keeps_scheme_host_and_path",
+        key="http.url",
+        value="https://infrahub.example.com/api/oidc/google/token?code=abc&state=xyz",
+        expected="https://infrahub.example.com/api/oidc/google/token?[MASKED]",
+    ),
+    SpanAttributeMaskingTestCase(
+        name="target_keeps_path",
+        key="http.target",
+        value="/api/oidc/google/token?code=abc&state=xyz",
+        expected="/api/oidc/google/token?[MASKED]",
+    ),
+    SpanAttributeMaskingTestCase(
+        name="new_convention_full_url_keeps_path",
+        key="url.full",
+        value="https://infrahub.example.com/api/oauth2/google/token?code=abc&state=xyz",
+        expected="https://infrahub.example.com/api/oauth2/google/token?[MASKED]",
+    ),
+    SpanAttributeMaskingTestCase(
+        name="new_convention_query_is_masked", key="url.query", value="code=abc&state=xyz", expected="[MASKED]"
+    ),
+    SpanAttributeMaskingTestCase(
+        name="url_without_query_string_is_unchanged",
+        key="http.url",
+        value="https://infrahub.example.com/api/schema",
+        expected="https://infrahub.example.com/api/schema",
+    ),
+    SpanAttributeMaskingTestCase(
+        name="cypher_text_is_kept",
+        key="query",
+        value="MATCH (n:Node {uuid: $node_id}) RETURN n",
+        expected="MATCH (n:Node {uuid: $node_id}) RETURN n",
+    ),
+    SpanAttributeMaskingTestCase(
+        name="query_name_is_kept", key="query_name", value="NodeGetListQuery", expected="NodeGetListQuery"
+    ),
+    SpanAttributeMaskingTestCase(name="access_token", key="sso.access_token", value="eyJhbGciOi", expected="[MASKED]"),
+    SpanAttributeMaskingTestCase(name="token_key_in_upper_case", key="API_TOKEN", value="abc123", expected="[MASKED]"),
+    SpanAttributeMaskingTestCase(name="password", key="ldap.password", value="hunter2", expected="[MASKED]"),
+    SpanAttributeMaskingTestCase(name="secret", key="client_secret", value="s3cr3t", expected="[MASKED]"),
+    SpanAttributeMaskingTestCase(
+        name="email_address", key="user.email", value="grace@example.com", expected="[MASKED]"
+    ),
+    SpanAttributeMaskingTestCase(name="user_name_with_underscore", key="user_name", value="Grace", expected="[MASKED]"),
+    SpanAttributeMaskingTestCase(
+        name="user_name_in_one_word", key="enduser.username", value="grace", expected="[MASKED]"
+    ),
+    SpanAttributeMaskingTestCase(name="non_string_value_is_masked", key="token_count", value=3, expected="[MASKED]"),
+    SpanAttributeMaskingTestCase(
+        name="graphql_query_is_kept", key="query", value="query { Tag }", expected="query { Tag }"
+    ),
+    SpanAttributeMaskingTestCase(name="operation_is_kept", key="operation", value="TagList", expected="TagList"),
+    SpanAttributeMaskingTestCase(name="branch_is_kept", key="branch", value="main", expected="main"),
+    SpanAttributeMaskingTestCase(name="sso_group_count_is_kept", key="sso_group_count", value=2, expected=2),
+    SpanAttributeMaskingTestCase(
+        name="url_path_naming_a_token_is_kept",
+        key="http.url",
+        value="https://infrahub.example.com/api/oidc/google/token",
+        expected="https://infrahub.example.com/api/oidc/google/token",
+    ),
+]
+
+
+class TestSpanAttributeMasking:
+    @pytest.fixture
+    def exported(self) -> InMemorySpanExporter:
+        return InMemorySpanExporter()
+
+    @pytest.fixture
+    def tracer_provider(self, exported: InMemorySpanExporter) -> TracerProvider:
+        provider = TracerProvider()
+        provider.add_span_processor(SimpleSpanProcessor(MaskingSpanExporter(exported)))
+        return provider
+
+    @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in SPAN_ATTRIBUTE_MASKING_TEST_CASES])
+    def test_exported_attribute(
+        self,
+        test_case: SpanAttributeMaskingTestCase,
+        tracer_provider: TracerProvider,
+        exported: InMemorySpanExporter,
+    ) -> None:
+        with tracer_provider.get_tracer(__name__).start_as_current_span("request") as span:
+            span.set_attribute(test_case.key, test_case.value)
+
+        (finished,) = exported.get_finished_spans()
+        assert finished.attributes is not None
+        assert finished.attributes[test_case.key] == test_case.expected
+
+    @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in SPAN_ATTRIBUTE_MASKING_TEST_CASES])
+    def test_exported_event_attribute(
+        self,
+        test_case: SpanAttributeMaskingTestCase,
+        tracer_provider: TracerProvider,
+        exported: InMemorySpanExporter,
+    ) -> None:
+        with tracer_provider.get_tracer(__name__).start_as_current_span("request") as span:
+            span.add_event("step", {test_case.key: test_case.value})
+
+        (finished,) = exported.get_finished_spans()
+        (event,) = finished.events
+        assert event.name == "step"
+        assert event.attributes is not None
+        assert event.attributes[test_case.key] == test_case.expected
+
+    def test_span_identity_is_kept(self, tracer_provider: TracerProvider, exported: InMemorySpanExporter) -> None:
+        with tracer_provider.get_tracer(__name__).start_as_current_span("request") as span:
+            span.set_attribute("net.peer.ip", "203.0.113.7")
+            context = span.get_span_context()
+
+        (finished,) = exported.get_finished_spans()
+        assert finished.name == "request"
+        assert finished.context == context
+
+    def test_exception_message_keeps_the_url_path_and_masks_its_query_string(
+        self, tracer_provider: TracerProvider, exported: InMemorySpanExporter
+    ) -> None:
+        error = RuntimeError(
+            "Client error '400 Bad Request' for url 'https://idp.example.com/token?code=abc&state=xyz'"
+        )
+        with tracer_provider.get_tracer(__name__).start_as_current_span("request") as span:
+            span.record_exception(error)
+
+        (finished,) = exported.get_finished_spans()
+        (event,) = finished.events
+        assert event.name == "exception"
+        assert event.attributes is not None
+        assert event.attributes["exception.type"] == "RuntimeError"
+        assert (
+            event.attributes["exception.message"]
+            == "Client error '400 Bad Request' for url 'https://idp.example.com/token?[MASKED]'"
+        )
+        exported_values = [str(value) for value in event.attributes.values()]
+        assert not any("code=abc" in value or "state=xyz" in value for value in exported_values)
+
+    def test_request_attributes_from_the_asgi_instrumentation_are_masked(
+        self, tracer_provider: TracerProvider, exported: InMemorySpanExporter
+    ) -> None:
+        app = FastAPI()
+
+        @app.get("/api/oidc/{provider_name}/token")
+        async def sso_token(provider_name: str) -> dict[str, str]:
+            return {"provider": provider_name}
+
+        instrumented = OpenTelemetryMiddleware(app, tracer_provider=tracer_provider)
+        with TestClient(instrumented) as client:
+            response = client.get("/api/oidc/google/token?code=abc&state=xyz")
+        assert response.status_code == 200
+
+        server_spans = [
+            span for span in exported.get_finished_spans() if span.attributes and "http.url" in span.attributes
+        ]
+        assert len(server_spans) == 1
+        attributes = server_spans[0].attributes
+        assert attributes is not None
+        assert attributes["http.url"] == "http://testserver/api/oidc/google/token?[MASKED]"
+        assert attributes["net.peer.ip"] == "[MASKED]"
+        exported_values = [
+            str(value) for span in exported.get_finished_spans() for value in (span.attributes or {}).values()
+        ]
+        assert not any("code=abc" in value or "state=xyz" in value for value in exported_values)
+
+
+def test_tracer_provider_masks_spans_before_the_exporter(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(infrahub_trace, "_process_sampler", None)
+    provider = create_tracer_provider(service="infrahub-test", version="1.0", exporter_type="console", sample_ratio=1.0)
+    try:
+        (span_processor,) = provider._active_span_processor._span_processors
+        assert isinstance(span_processor, BatchSpanProcessor)
+        assert isinstance(span_processor.span_exporter, MaskingSpanExporter)
+    finally:
+        provider.shutdown()
+
+
+RATIO = 0.5
+RATIO_LIMIT = int(RATIO * 2**64)
+TRACE_ID_BELOW_LIMIT = (0xABCDEF << 64) | (RATIO_LIMIT - 1)
+TRACE_ID_AT_LIMIT = (0xABCDEF << 64) | RATIO_LIMIT
+NOW = datetime(2026, 10, 13, 12, 0, tzinfo=UTC)
+
+
+@dataclass
+class FixedClock:
+    now: datetime = NOW
+
+    def __call__(self) -> datetime:
+        return self.now
+
+
+def _decision(sampler: Sampler, trace_id: int, parent_context: Context | None = None) -> Decision:
+    return sampler.should_sample(parent_context=parent_context, trace_id=trace_id, name="request").decision
+
+
+def _parent_context(sampled: bool) -> Context:
+    flags = TraceFlags(TraceFlags.SAMPLED if sampled else TraceFlags.DEFAULT)
+    parent = SpanContext(trace_id=TRACE_ID_AT_LIMIT, span_id=1, is_remote=True, trace_flags=flags)
+    return set_span_in_context(NonRecordingSpan(parent))
+
+
+class TestRatioSampler:
+    def test_records_trace_ids_below_the_ratio_limit_only(self) -> None:
+        sampler = RatioSampler(default_ratio=RATIO)
+
+        assert _decision(sampler=sampler, trace_id=TRACE_ID_BELOW_LIMIT) is Decision.RECORD_AND_SAMPLE
+        assert _decision(sampler=sampler, trace_id=TRACE_ID_AT_LIMIT) is Decision.DROP
+
+    def test_new_sampler_uses_the_default_ratio(self) -> None:
+        assert RatioSampler(default_ratio=RATIO).ratio == RATIO
+
+    def test_temporary_ratio_applies_until_it_expires(self) -> None:
+        clock = FixedClock()
+        sampler = RatioSampler(default_ratio=0.0, clock=clock)
+
+        sampler.set_temporary_ratio(ratio=1.0, expires_at=NOW + timedelta(minutes=10))
+        assert sampler.ratio == 1.0
+        assert _decision(sampler=sampler, trace_id=TRACE_ID_AT_LIMIT) is Decision.RECORD_AND_SAMPLE
+
+        clock.now = NOW + timedelta(minutes=10)
+        assert sampler.ratio == 0.0
+        assert _decision(sampler=sampler, trace_id=TRACE_ID_BELOW_LIMIT) is Decision.DROP
+
+    def test_new_temporary_ratio_replaces_the_previous_one(self) -> None:
+        sampler = RatioSampler(default_ratio=0.0, clock=FixedClock())
+
+        sampler.set_temporary_ratio(ratio=1.0, expires_at=NOW + timedelta(minutes=10))
+        sampler.set_temporary_ratio(ratio=RATIO, expires_at=NOW + timedelta(minutes=5))
+
+        assert sampler.state() == SampleRatioState(
+            default_ratio=0.0, ratio_in_force=RATIO, temporary_ratio=RATIO, expires_at=NOW + timedelta(minutes=5)
+        )
+
+    def test_clearing_restores_the_default_ratio(self) -> None:
+        sampler = RatioSampler(default_ratio=0.0, clock=FixedClock())
+        sampler.set_temporary_ratio(ratio=1.0, expires_at=NOW + timedelta(minutes=10))
+
+        sampler.clear_temporary_ratio()
+
+        assert sampler.ratio == 0.0
+        assert _decision(sampler=sampler, trace_id=TRACE_ID_BELOW_LIMIT) is Decision.DROP
+
+    def test_ratio_out_of_range_is_rejected(self) -> None:
+        sampler = RatioSampler(default_ratio=RATIO, clock=FixedClock())
+
+        with pytest.raises(ValueError, match=r"^Probability must be in range \[0.0, 1.0\]\.$"):
+            sampler.set_temporary_ratio(ratio=1.1, expires_at=NOW + timedelta(minutes=10))
+        assert sampler.ratio == RATIO
+
+    def test_state_reports_the_temporary_ratio_until_it_expires(self) -> None:
+        clock = FixedClock()
+        sampler = RatioSampler(default_ratio=0.1, clock=clock)
+        expires_at = NOW + timedelta(minutes=10)
+        sampler.set_temporary_ratio(ratio=1.0, expires_at=expires_at)
+
+        assert sampler.state() == SampleRatioState(
+            default_ratio=0.1, ratio_in_force=1.0, temporary_ratio=1.0, expires_at=expires_at
+        )
+
+        clock.now = expires_at
+        assert sampler.state() == SampleRatioState(default_ratio=0.1, ratio_in_force=0.1)
+
+
+class TestTracerProviderSampler:
+    @pytest.fixture
+    def provider_sampler(self, monkeypatch: pytest.MonkeyPatch) -> Iterator[Callable[[float], Sampler]]:
+        """Build tracer providers the way the server and the task worker do, and restore the process sampler after."""
+        monkeypatch.setattr(infrahub_trace, "_process_sampler", None)
+        providers: list[TracerProvider] = []
+
+        def build(sample_ratio: float) -> Sampler:
+            provider = create_tracer_provider(
+                service="infrahub-test", version="1.0", exporter_type="console", sample_ratio=sample_ratio
+            )
+            providers.append(provider)
+            return provider.sampler
+
+        yield build
+        for provider in providers:
+            provider.shutdown()
+
+    def test_sampled_parent_is_always_followed(self, provider_sampler: Callable[[float], Sampler]) -> None:
+        sampler = provider_sampler(0.0)
+
+        decision = _decision(sampler=sampler, trace_id=TRACE_ID_AT_LIMIT, parent_context=_parent_context(sampled=True))
+
+        assert decision is Decision.RECORD_AND_SAMPLE
+
+    def test_unsampled_parent_is_never_recorded(self, provider_sampler: Callable[[float], Sampler]) -> None:
+        sampler = provider_sampler(1.0)
+
+        decision = _decision(
+            sampler=sampler, trace_id=TRACE_ID_BELOW_LIMIT, parent_context=_parent_context(sampled=False)
+        )
+
+        assert decision is Decision.DROP
+
+    def test_root_trace_uses_the_configured_ratio(self, provider_sampler: Callable[[float], Sampler]) -> None:
+        sampler = provider_sampler(RATIO)
+
+        assert _decision(sampler=sampler, trace_id=TRACE_ID_BELOW_LIMIT) is Decision.RECORD_AND_SAMPLE
+        assert _decision(sampler=sampler, trace_id=TRACE_ID_AT_LIMIT) is Decision.DROP
+
+    def test_temporary_ratio_applies_to_the_process_sampler_until_cleared(
+        self, provider_sampler: Callable[[float], Sampler]
+    ) -> None:
+        sampler = provider_sampler(0.0)
+
+        set_temporary_sample_ratio(ratio=1.0, expires_at=datetime.now(tz=UTC) + timedelta(hours=1))
+        assert _decision(sampler=sampler, trace_id=TRACE_ID_AT_LIMIT) is Decision.RECORD_AND_SAMPLE
+
+        clear_temporary_sample_ratio()
+        assert _decision(sampler=sampler, trace_id=TRACE_ID_BELOW_LIMIT) is Decision.DROP
+
+    def test_new_process_sampler_starts_with_the_default_ratio(
+        self, provider_sampler: Callable[[float], Sampler]
+    ) -> None:
+        provider_sampler(0.0)
+        set_temporary_sample_ratio(ratio=1.0, expires_at=datetime.now(tz=UTC) + timedelta(hours=1))
+
+        sampler = provider_sampler(0.0)
+
+        assert _decision(sampler=sampler, trace_id=TRACE_ID_BELOW_LIMIT) is Decision.DROP
+
+    def test_state_follows_the_process_sampler(self, provider_sampler: Callable[[float], Sampler]) -> None:
+        assert get_sample_ratio_state() is None
+
+        provider_sampler(0.1)
+        expires_at = datetime.now(tz=UTC) + timedelta(hours=1)
+        set_temporary_sample_ratio(ratio=1.0, expires_at=expires_at)
+
+        assert get_sample_ratio_state() == SampleRatioState(
+            default_ratio=0.1, ratio_in_force=1.0, temporary_ratio=1.0, expires_at=expires_at
+        )
+
+    def test_changing_the_ratio_without_a_process_sampler_does_nothing(
+        self, provider_sampler: Callable[[float], Sampler]
+    ) -> None:
+        set_temporary_sample_ratio(ratio=1.0, expires_at=datetime.now(tz=UTC) + timedelta(hours=1))
+        clear_temporary_sample_ratio()
+
+        assert get_sample_ratio_state() is None
+
+
+@dataclass
+class TraceIdFormatTestCase:
+    name: str
+    trace_id: int
+    expected: str
+
+
+TRACE_ID_FORMAT_TEST_CASES: list[TraceIdFormatTestCase] = [
+    TraceIdFormatTestCase(
+        name="leading_zero_is_kept",
+        trace_id=0x0AF7651916CD43DD8448EB211C80319C,
+        expected="0af7651916cd43dd8448eb211c80319c",
+    ),
+    TraceIdFormatTestCase(
+        name="small_trace_id_is_padded_to_32_characters",
+        trace_id=0x1,
+        expected="00000000000000000000000000000001",
+    ),
+    TraceIdFormatTestCase(
+        name="largest_trace_id",
+        trace_id=2**128 - 1,
+        expected="ffffffffffffffffffffffffffffffff",
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in TRACE_ID_FORMAT_TEST_CASES])
+def test_trace_id_is_32_lowercase_hexadecimal_characters(test_case: TraceIdFormatTestCase) -> None:
+    span = NonRecordingSpan(SpanContext(trace_id=test_case.trace_id, span_id=1, is_remote=False))
+
+    with use_span(span):
+        assert get_traceid() == test_case.expected
+
+
+def test_no_trace_id_outside_a_span() -> None:
+    assert get_traceid() is None

@@ -14,6 +14,10 @@ from .constants import GLOBAL_PERMISSION_DESCRIPTION
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
+SUPER_ADMIN_PERMISSION = GlobalPermission(
+    action=GlobalPermissions.SUPER_ADMIN.value, decision=PermissionDecision.ALLOW_ALL.value
+)
+
 
 def define_global_permission_from_branch(permission: GlobalPermissions, branch_name: str) -> GlobalPermission:
     if branch_name in (GLOBAL_BRANCH_NAME, registry.default_branch):

@@ -18,7 +18,6 @@ def parse() -> argparse.Namespace:
         description="Command line tool for backing up an Infrahub database and restoring it",
     )
     subparsers = parser.add_subparsers(dest="database_type", required=True)
-    # memgraph_parser = subparsers.add_parser("memgraph", help="memgraph backup/restore tool")
     neo4j_parser = subparsers.add_parser("neo4j", help="Neo4J backup/restore tool")
     neo4j_subparsers = neo4j_parser.add_subparsers(dest="database_action", required=True)
     neo4j_backup_subparser = neo4j_subparsers.add_parser("backup", help="Backup Neo4J database")
@@ -63,10 +62,6 @@ def parse() -> argparse.Namespace:
 
 
 def run_utility(parsed_args: argparse.Namespace) -> None:
-    if parsed_args.database_type == "memgraph":
-        print("Database backup and restore is not yet supported for memgraph")
-        return
-
     backup_path = Path(parsed_args.backup_directory)
     if parsed_args.database_action == "backup":
         backup_runner = Neo4jBackupRunner(

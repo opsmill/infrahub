@@ -119,7 +119,7 @@ The HTTP settings control how Infrahub interacts with external HTTP servers. Thi
 
 | Name | Description | Type | Default |
 |------|-------------|------|---------|
-| `INFRAHUB_DB_INFRAHUB_DB_TYPE` | None | string (neo4j, memgraph) | neo4j |
+| `INFRAHUB_DB_INFRAHUB_DB_TYPE` | None | string (neo4j) | neo4j |
 | `INFRAHUB_DB_PROTOCOL` | None | string | bolt |
 | `INFRAHUB_DB_USERNAME` | None | string | neo4j |
 | `INFRAHUB_DB_PASSWORD` | None | string | admin |
@@ -397,6 +397,7 @@ LDAP authentication configuration.
 | `INFRAHUB_TRACE_EXPORTER_TYPE` | Type of exporter to be used for tracing | string (console, otlp) | console |
 | `INFRAHUB_TRACE_EXPORTER_PROTOCOL` | Protocol to be used for exporting traces | string (grpc, http/protobuf) | grpc |
 | `INFRAHUB_TRACE_EXPORTER_ENDPOINT` | OTLP endpoint for exporting traces | string | None |
+| `INFRAHUB_TRACE_SAMPLE_RATIO` | Share of new traces to record, from 0 (none) to 1 (all). A request or task that arrives with a trace context follows the sampling decision of its caller. | number | 0.1 |
 
 ## Experimental features
 

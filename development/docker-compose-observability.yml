@@ -18,6 +18,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       COMPOSE_PROJECT_NAME: ${COMPOSE_PROJECT_NAME}
+      # Neo4j Community has no metrics endpoint: set INFRAHUB_NEO4J_METRICS_TARGET to an empty value to stop the scrape.
+      NEO4J_METRICS_TARGET: "${INFRAHUB_NEO4J_METRICS_TARGET-database:2004}"
     command:
       - run
       - --server.http.listen-addr=0.0.0.0:12345

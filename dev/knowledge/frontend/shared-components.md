@@ -36,7 +36,7 @@ The dependency rule still applies: `app → pages → entities → shared`. Cros
 |------|-----|----------|
 | Combobox (single value) | `Combobox` | `shared/components/ui/combobox.tsx` |
 | Command palette pattern | `Command` | `shared/components/ui/command.tsx` |
-| Dropdown menu | `DropdownMenu` | `shared/components/ui/dropdown-menu.tsx` |
+| Dropdown menu | `Menu`, `MenuTrigger` | `@infrahub/ui` |
 | Date picker | `DatePicker` | `shared/components/inputs/date-picker.tsx` |
 | Color picker | `ColorPicker` | `shared/components/inputs/color-picker.tsx` |
 | Search input | `SearchInput` | `shared/components/inputs/search-input.tsx` |

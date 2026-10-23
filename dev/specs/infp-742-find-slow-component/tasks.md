@@ -1,0 +1,534 @@
+---
+description: "Task list for INFP-742: find the slow component of an Infrahub instance"
+---
+
+# Tasks: Find the Slow Component of an Infrahub Instance
+
+**Input**: Design documents from `specs/infp-742-find-slow-component/`
+
+**Prerequisites**: [plan.md](plan.md), [spec.md](spec.md), [research.md](research.md),
+[data-model.md](data-model.md), [contracts/](contracts/), [quickstart.md](quickstart.md)
+
+**Tests**: Required. The constitution (Principle IV) requires tests for every feature, and the spec
+names tests (FR-008, SC-005, SC-007). Write each test task before the implementation task it covers,
+and check that it fails first.
+
+**Organization**: Tasks are grouped by user story. Story phases follow the priorities of the spec, with
+one change of order inside P1: story 2 (masking) comes before story 1 (one trace), because FR-011
+requires the single sign-on fixes to ship before tracing is turned on for more operators.
+
+## Format: `[ID] [P?] [Story] Description`
+
+- **[P]**: Can run in parallel (different files, no dependency on an unfinished task)
+- **[Story]**: The user story of the spec (US1 to US6)
+
+## Conventions for every task
+
+- **The draft**: branch `dp-20261008-diagnose-slow-instance-infp-611-for-testing`. "Port from the
+  draft" means: read the file with `git show <draft>:<path>`, copy only what the task names, and change
+  it where the task says. Never merge or cherry-pick the draft: it contains out-of-scope work (Redis
+  exporter, Grafana MCP server) and differs from the spec (`***` instead of `[MASKED]`).
+- **Out of scope, never port**: `development/grafana-mcp/`, the `infrahub-grafana-mcp` and
+  `infrahub-redis-exporter` services, the Redis scrape in `development/alloy/config.alloy`, the "Redis"
+  row of `infrahub_monitoring.json`, and the changelog fragments `+grafana-mcp-server.added.md` and
+  `+observability-chart-version.fixed.md`.
+- **Code style**: load `dev/guidelines/backend/python.md`, `dev/guidelines/backend/testing.md` and
+  `dev/guidelines/code-doc-style.md` before writing backend code or tests.
+- **Changelog**: the `creating-changelog-entries` skill says that a stacked series carries its
+  fragments on the top pull request only (decided by Daniel on 2026-10-16). Intermediate layers create
+  no file in `changelog/`. Instead, each layer writes the text of its fragments in "Changelog entries
+  for the top layer" at the end of this file, and its pull request checklist says that the fragment is
+  skipped on purpose. T095, in the top layer (IFC-3470), creates all of them. SDK fragments are not
+  affected: each SDK pull request is in another repository and carries its own fragment in
+  `python_sdk/changelog/`.
+- **Submodule pointer**: while the SDK branches are not merged, `python_sdk` shows as modified in
+  `git status`. Never stage it in an Infrahub commit before T086.
+- **Push and pull requests**: push a branch or open a pull request only when Daniel asks.
+
+---
+
+## Phase 1: Setup
+
+**Purpose**: Prepare the branches and confirm the starting point.
+
+- [x] T001 Check that the Infrahub branch is `dp-20261014-find-slow-component-infp-742` and that the draft branch `dp-20261008-diagnose-slow-instance-infp-611-for-testing` exists locally (`git rev-parse --verify`)
+- [ ] T002 In `python_sdk/`, run `git fetch origin infrahub-develop` and create the branch `dp-20261015-trace-context-ifc-3419` from `origin/infrahub-develop` (IFC-3419; research R3)
+- [ ] T003 [P] In `python_sdk/`, run `uv sync --all-groups --all-extras`, then `uv run pytest tests/unit/` to record that the SDK unit tests pass before any change
+- [ ] T004 [P] Run `uv run pytest backend/tests/unit/test_trace.py backend/tests/unit/test_log.py backend/tests/unit/test_lock.py` to record that these backend tests pass before any change
+
+---
+
+## Phase 2: Foundational
+
+**Purpose**: Test helpers that several stories use.
+
+- [x] T005 [P] Port `backend/tests/helpers/trace.py` from the draft (in-memory span exporter and tracer provider fixtures for tests)
+- [x] T006 [P] Port `backend/tests/helpers/metrics.py` from the draft (helpers that read metric samples from the Prometheus registry)
+
+**Checkpoint**: Test helpers exist; story phases can start.
+
+---
+
+## Phase 3: User Story 2 - Spans and logs hold no secrets or personal data (Priority: P1)
+
+**Goal**: Before a span leaves the API server or a task worker, tokens, user names, email addresses,
+client IP addresses and URL query strings read `[MASKED]`; single sign-on records no token, code,
+state or user name; log lines are not masked (FR-009 to FR-013a, clarification of 2026-10-19;
+[contracts/masking.md](contracts/masking.md)).
+
+**Independent Test**: With tracing on, log in through single sign-on and send requests with query
+strings; search the trace store for the secrets and the log store for the user name (quickstart,
+manual check 4).
+
+### Tests for User Story 2
+
+- [x] T007 [P] [US2] Write unit tests for the masking rules in `backend/tests/unit/test_masking.py`: each rule of [data-model.md](data-model.md) "Masking rule" gives `[MASKED]` and keeps the key; a URL keeps its path and gets `?[MASKED]`; a URL without a query string is unchanged; nested mappings and lists are masked; the input mapping is not changed; Cypher text (`query`) and `query_name` are unchanged; a free-text message that contains a URL with a query string gets the query string replaced
+- [x] T008 [P] [US2] Write a unit test in `backend/tests/unit/test_masking.py` that lists the attribute and field keys Infrahub sets on its own spans and log lines (start from the draft keys: `query`, `query_name`, `rows`, `provider_name`, `sso_group_count`, `account_id`, `request_id`, `trace_id`, `branch`, `groups`) and fails when a masking rule would mask one of them (critique E1)
+- [x] T009 [P] [US2] Port the masking exporter tests from the draft `backend/tests/unit/test_trace.py` (tests of `mask_span` and `MaskingSpanExporter`) into `backend/tests/unit/test_trace.py`, with `[MASKED]` as the expected value, and add a test: an exception event whose `exception.message` contains `https://idp.example.com/token?code=abc&state=xyz` is exported with `https://idp.example.com/token?[MASKED]` (FR-012, spec story 2 scenario 7)
+- [x] T010 (Reverted by T018b on 2026-10-19: log lines are not masked.) [P] [US2] Port the log masking tests from the draft `backend/tests/unit/test_log.py` (structlog processor `mask_personal_data`, `LogMaskingFilter` on a standard logging record with `msg`, `args` and `extra`) into `backend/tests/unit/test_log.py`, with `[MASKED]`, and add tests: a log line whose message or exception text contains a URL with `code` and `state` shows `?[MASKED]` (FR-013, story 2 scenario 9); a record that reaches a handler registered like the Prefect API handler is masked (story 2 scenario 8, critique E5)
+- [x] T011 [P] [US2] Port `backend/tests/component/api/test_sso_token_telemetry.py` from the draft: after an OIDC and an OAuth2 login, no span contains the token response or the user information, the token endpoint span has the path and no `code` or `state`, and the login log line has `account_id` and no user name (FR-009, FR-010)
+
+### Implementation for User Story 2
+
+- [x] T012 [US2] Create `backend/infrahub/masking.py` from the draft, with `MASKED_VALUE = "[MASKED]"` (research R8); keep `MaskingRule`, `MASKING_RULES`, `mask_value`, `mask_nested`, `mask_mapping`, `replace_url_query`; add a function that replaces the query string of every URL found in a free-text string, for use on exception messages and log messages
+- [x] T013 [US2] In `backend/infrahub/trace.py`, port `mask_span` and `MaskingSpanExporter` from the draft and wrap the exporter in `create_tracer_provider`; extend `mask_span` so the attributes of every span event are masked with the same rules and URL query strings inside `exception.message` are replaced (FR-012; critique E4)
+- [x] T014 (Reverted by T018b on 2026-10-19: log lines are not masked.) [US2] In `backend/infrahub/log.py`, port `LogMaskingFilter`, `add_log_masking_filter`, `install_log_masking_filter` and the structlog processor `mask_personal_data` from the draft, and register them as the draft does; extend both so the message and the exception text of every line have URL query strings replaced (FR-013)
+- [x] T015 (Reverted by T018b on 2026-10-19: log lines are not masked.) [US2] In `backend/infrahub/workers/infrahub_async.py`, port the call `add_log_masking_filter(api_handler)` from the draft, so flow run logs sent to the Prefect server are masked (FR-013)
+- [x] T016 [P] [US2] In `backend/infrahub/api/oidc.py` and `backend/infrahub/api/oauth2.py`, port the draft changes: no `token_request_data` or `account_name` span attribute with the provider responses; record `provider_name` and `sso_group_count`; the "SSO user authenticated" log line has `account_id` and `groups`, not `user_name` (FR-009, FR-010)
+- [x] T017 [P] [US2] (Write the text in "Changelog entries for the top layer", not in `changelog/`; created by T095.) Add changelog fragments: port `changelog/+sso-secrets-in-traces.security.md`, `changelog/+log-field-masking.security.md` and `changelog/+trace-attribute-masking.added.md` from the draft and correct them to say `[MASKED]`, span events, and URL query strings in log messages
+- [x] T018 [US2] Run T007 to T011 and `uv run invoke format lint`; all pass
+
+### Changes after the review of 2026-10-19
+
+- [x] T018a [US2] In `backend/infrahub/server.py`, mask the request span attributes in the request hook passed to the FastAPI instrumentation, with the rules of `backend/infrahub/masking.py`: the URL query string in `http.url`, `url.full` and `url.query`, and the client IP address; add a unit test that sends `?code=…&state=…` through the instrumented app without the masking exporter and finds neither value in any attribute (FR-012)
+- [x] T018b [US2] Remove log masking: in `backend/infrahub/log.py`, `LogMaskingFilter`, `add_log_masking_filter`, `install_log_masking_filter`, `mask_personal_data` and the traceback wrapper; in `backend/infrahub/workers/infrahub_async.py`, `add_log_masking_filter`; their tests in `backend/tests/unit/test_log.py`; and the functions of `backend/infrahub/masking.py` that nothing uses any more (FR-013)
+- [x] T018c [US2] Run the masking, trace, log and worker unit tests, the single sign-on component test and `uv run invoke format lint`; all pass. Daniel runs the manual checks of this layer again
+
+**Checkpoint**: Story 2 is complete and testable on its own. FR-011 is met: masking can ship before
+tracing is turned on for more operators.
+
+---
+
+## Phase 4: User Story 1 - Follow a slow background task to its queries in one trace (Priority: P1) 🎯 MVP
+
+**Goal**: A flow run, its SDK calls and their database queries form one trace; task worker logs carry
+the trace ID; Grafana links traces and logs; Compose with the observability stack turns tracing on at
+the default ratio (FR-001 to FR-008, FR-032; [contracts/trace-log-links.md](contracts/trace-log-links.md)).
+
+**Independent Test**: With tracing on, run a generator that sends named queries through the SDK; open
+its trace and its task worker logs in Grafana (quickstart, manual checks 1 to 3).
+
+### SDK change (IFC-3419), in `python_sdk/` on branch `dp-20261015-trace-context-ifc-3419`
+
+- [x] T019 [US1] In `python_sdk/`, check that every request path of the SDK (GraphQL queries, REST calls, file uploads, async and sync) builds its headers with `infrahub_sdk.client::BaseClient._request_headers` or `_merge_request_headers`; list any path that does not, in the commit message of T022 (research R3, not checked yet)
+- [x] T020 [P] [US1] Write unit tests in `python_sdk/tests/unit/sdk/test_trace_context.py`: with OpenTelemetry importable and a recording span, the request headers contain a valid `traceparent` for that span; with no active span, no `traceparent`; with OpenTelemetry not importable (patch the import), no `traceparent` and no error; same for the async and the sync client
+- [x] T021 [US1] In `python_sdk/infrahub_sdk/client.py`, add the `traceparent` header in `BaseClient._merge_request_headers` (every request passes through it; T019 found only `login` and `refresh_login` outside it) through the OpenTelemetry global propagator, importing OpenTelemetry only when it is installed; declare `opentelemetry-api>=1.33` as the optional extra `tracing` and in the `tests` group; on an invalid `OTEL_PROPAGATORS`, send no header and log one warning (FR-001, changed on 2026-10-20); read the installed `opentelemetry-api` version once per process and, below 1.33, never import OpenTelemetry, send no header and log one warning, because an older version already installed in the caller's process fails on import (review of [opsmill/infrahub-sdk-python#1434](https://github.com/opsmill/infrahub-sdk-python/pull/1434), 2026-10-21)
+- [x] T022 [US1] In `python_sdk/`, add a changelog fragment in `python_sdk/changelog/` ("The SDK sends the W3C `traceparent` header when OpenTelemetry is installed"), run `uv run invoke format lint-code` and `uv run pytest tests/unit/`, then commit on `dp-20261015-trace-context-ifc-3419` with a conventional message ending in `[IFC-3419]`
+- [x] T023 [US1] Ask Daniel whether to push `dp-20261015-trace-context-ifc-3419` and open its pull request on `infrahub-develop` in `opsmill/infrahub-sdk-python` now, so the review runs while the Infrahub work continues (plan, delivery order step 7)
+
+### Tests for User Story 1 (Infrahub)
+
+- [x] T024 [P] [US1] Port `backend/tests/component/api/test_trace_spans.py` from the draft: each database query span of an API request is a child of the request span (FR-008)
+- [x] T025 [P] [US1] Port the sampler tests from the draft `backend/tests/unit/test_trace.py` (`RatioSampler` default ratio, parent-based behaviour) and `backend/tests/unit/config/test_trace_settings.py` (`sample_ratio` from 0 to 1, default 0.1, values outside rejected): ratio 0.5 records about half of new root traces; a request with a sampled parent is always recorded (FR-006, FR-007)
+- [x] T026 [P] [US1] Write unit tests in `backend/tests/unit/test_trace.py` and `backend/tests/unit/test_log.py`: `get_traceid` and the task worker `trace_id` field are 32 lowercase hexadecimal characters with leading zeros and no `0x`, including a trace ID that starts with `0` (FR-004); a task worker log line inside a recording span carries `trace_id`, and a line outside a span has none (FR-003)
+- [x] T027 [P] [US1] Write a unit test in `backend/tests/unit/test_grafana_datasources.py` that loads `development/grafana/provisioning/datasources/datasource.yml` and checks: the Loki derived field matches `trace_id=<32 hex>`, `trace_id=0x<hex>`, `"trace_id": "<32 hex>"` and `TraceID=<hex>`, the form that `development/alloy/config.alloy` writes for JSON lines of the API server (found on 2026-10-21); no `RequestID` derived field; the Tempo `tracesToLogsV2` has `spanStartTimeShift: -1h`, `spanEndTimeShift: 1h`, `filterByTraceID: true` and a query with `{job=~".+"}` that matches the trace ID only as a `trace_id` field, not inside a URL such as Tempo's `/api/traces/<id>` access log line (added after manual check 4 of IFC-3470); `tracesToMetrics` and `traceQuery` have start `-1h` and end `1h` (FR-005)
+
+### Implementation for User Story 1 (Infrahub)
+
+- [x] T028 [US1] In `backend/infrahub/config.py`, port `TraceSettings.sample_ratio` from the draft (default 0.1, from 0 to 1, with its description) (FR-006)
+- [x] T029 [US1] In `backend/infrahub/trace.py`, port `RatioSampler` and `SampleRatioState` without the temporary ratio methods (those come in T070), use `ParentBased(root=RatioSampler(...))` in `create_tracer_provider`, and add the `sample_ratio` parameter to `create_tracer_provider` and `configure_trace` (FR-006, FR-007)
+- [x] T030 [US1] Pass `sample_ratio=config.SETTINGS.trace.sample_ratio` to `configure_trace` in `backend/infrahub/server.py` (`app_initialization`) and in `backend/infrahub/workers/infrahub_async.py`, as the draft does
+- [x] T031 [US1] In `backend/infrahub/trace.py`, change `get_traceid` to return `format(trace_id, "032x")` (research R5); in `backend/infrahub/log.py`, port the structlog processor `add_trace_id` from the draft with the same format and register it as the draft does (FR-003, FR-004)
+- [x] T032 [US1] In `development/grafana/provisioning/datasources/datasource.yml`, apply the settings of [contracts/trace-log-links.md](contracts/trace-log-links.md) "Grafana data sources" (B10, FR-005)
+- [x] T033 [US1] Declare `INFRAHUB_TRACE_SAMPLE_RATIO: ${INFRAHUB_TRACE_SAMPLE_RATIO:-0.1}` in the `environment:` block of `development/docker-compose.yml`, and update the root `docker-compose.yml` with `uv run invoke release.validate-dockercomposeenv` (backend `AGENTS.md`: Compose forwards only declared variables)
+- [x] T034 [US1] In `development/docker-compose-observability.yml`, add an `environment` block for the `infrahub-server` and `task-worker` services with the five variables of [contracts/trace-log-links.md](contracts/trace-log-links.md) "Tracing in Compose" (FR-032, research R2); keep `INFRAHUB_TRACE_ENABLE` at `false` in the root `docker-compose.yml` (Done differently, decided by Daniel on 2026-10-21: the blocks are in the new file `development/docker-compose-observability-tracing.yml`, which `development/convert_compose_standalone.py` merges into the standalone file only, because the development stack always loads the observability file and names its API service `server`; see research R2.)
+- [x] T035 [US1] Regenerate `development/docker-compose-observability-standalone.yml` with `development/convert_compose_standalone.py`, and check that the diff contains only the T034 change (it also contains the T032 data source change, which the T032 commit did not regenerate)
+- [ ] T036 [US1] Write the question for the owner of the service behind `https://infrahub.opsmill.io/?observability=true` (owner not known; research R2): does it merge the observability file into the services of `docker-compose.yml`, so the T034 override applies? And can it set `INFRAHUB_NEO4J_METRICS_TARGET` to an empty value in the Community file only, so Community stops collecting from a Neo4j endpoint that does not exist (FR-025)? Give the text to Daniel; do not send it
+- [ ] T037 [P] [US1] (Write the text in "Changelog entries for the top layer", not in `changelog/`; created by T095.) Add changelog fragments in `changelog/`: port `+trace-sample-ratio.added.md` and `+task-worker-log-trace-id.added.md` from the draft; add a `changed` fragment that starts with `**Breaking:**` for the `trace_id` format (old `0x…` form, new 32-character form, update queries and alerts; research R5); add a `fixed` fragment for the trace and log links in Grafana (B10); add a `changed` fragment for tracing turned on in Compose with the observability stack (FR-032)
+- [x] T038 [US1] Run T024 to T027 and `uv run invoke format lint`; with the submodule on `dp-20261015-trace-context-ifc-3419`, run a generator locally and check quickstart manual checks 1 to 3
+
+**Checkpoint**: Story 1 works with the local SDK branch. Scenarios 1, 3 and 8 depend on IFC-3419 being
+merged before release.
+
+---
+
+## Phase 5: User Story 3 - Real durations of slow requests and the connection pool load (Priority: P2)
+
+**Goal**: Duration metrics reach 300 s (queries) and 1200 s (HTTP); API and GraphQL requests are
+counted; pool size, pool usage and connection wait are exported and shown; metric values survive an
+API worker restart (FR-014 to FR-019; [contracts/metrics.md](contracts/metrics.md)).
+
+**Independent Test**: Run a load that holds connections, a query of more than 30 s, a GraphQL request
+and an `/api/…` request; open the Infrahub dashboard (quickstart, manual check 5).
+
+### Tests for User Story 3
+
+- [x] T039 [P] [US3] Port `backend/tests/unit/serve/__init__.py`, `backend/tests/unit/serve/test_gunicorn_config.py` and `backend/tests/unit/test_metrics_multiprocess.py` from the draft: `on_starting` empties the metric folder once; `child_exit` marks the worker dead; a second worker keeps the values of the first; a dead worker no longer shows on `liveall` gauges (B9, FR-018)
+- [x] T040 [P] [US3] Write a test in `backend/tests/unit/test_server_metrics.py` that sends a GraphQL request and an `/api/…` request through the application and finds both in `infrahub_request_duration_seconds` with their route as `path`; it must fail on `develop` (B13, FR-016, research R4)
+- [x] T041 [P] [US3] Port the bucket tests from the draft `backend/tests/unit/test_server_metrics.py`, `backend/tests/unit/database/test_metrics.py` and `backend/tests/unit/test_lock.py`: every new limit of [contracts/metrics.md](contracts/metrics.md) appears as an `le` label, and a 30-second value is counted in `le="30"` (FR-014)
+- [x] T042 [P] [US3] Port `backend/tests/unit/database/test_connection_metrics.py` from the draft: the pool size gauge is set; each acquisition records its wait; a failure while recording is logged and the acquisition still returns; the test fails if the driver pool has no `acquire` method (FR-017)
+
+### Implementation for User Story 3
+
+- [x] T043 [US3] Create `backend/infrahub/serve/gunicorn_config.py` hooks `on_starting` and `child_exit` from the draft, keeping the existing settings of that file, and remove the deletion of metric files from `backend/infrahub/serve/worker.py` (B9, FR-018; research R10)
+- [x] T044 [US3] Add `multiprocess_mode` to the gauges listed in [contracts/metrics.md](contracts/metrics.md) "Changed multiprocess modes", in `backend/infrahub/database/metrics.py`, `backend/infrahub/worker.py` and `backend/infrahub/api/admission/metrics.py`, as the draft does, and replace the old multiprocess comment in the admission metrics with the draft's one-sentence comment (FR-018)
+- [x] T045 [US3] Find the cause of B13 in `backend/infrahub/server.py` (the `PrometheusMiddleware` setup and the middlewares around it), record it in [research.md](research.md) R4, and fix it so T040 passes (FR-016) (Done differently: the cause is in a dependency, so the fix is the `starlette-exporter` upgrade to 0.24 in `pyproject.toml` and `uv.lock`, approved by Daniel on 2026-10-16; see R4.)
+- [x] T046 [US3] Change the buckets: `REQUEST_DURATION_BUCKETS` in `backend/infrahub/server.py`, `infrahub_db_query_execution_seconds` in `backend/infrahub/database/metrics.py`, and both lock histograms in `backend/infrahub/lock.py`, with the values of [contracts/metrics.md](contracts/metrics.md) (FR-014)
+- [x] T047 [US3] Port `CONNECTION_POOL_SIZE` and `CONNECTION_WAIT_METRICS` to `backend/infrahub/database/metrics.py`, create `backend/infrahub/database/connection_metrics.py` with `instrument_connection_pool` from the draft, and call it where the draft does in `backend/infrahub/database/__init__.py` (FR-017)
+- [x] T048 [US3] In `development/grafana/provisioning/dashboards/infrahub_monitoring.json`, port the "Connection Pool" row from the draft (pool usage against pool size per process, connection wait p95), the renamed admission panels "Running API Requests vs Admission Limit" and "Admission Limit Usage" with "This is not the Neo4j connection pool" in their descriptions (B5, FR-019), and the duration panels corrected for the new highest buckets (FR-015); do not port the "Redis" row
+- [x] T049 [P] [US3] (Write the text in "Changelog entries for the top layer", not in `changelog/`; created by T095.) Add changelog fragments: port `+longer-duration-buckets.changed.md`, `+metric-files-kept-on-worker-start.fixed.md` and `+admission-panel-names.fixed.md` from the draft; port `+connection-pool-and-redis-metrics.added.md` as `+connection-pool-metrics.added.md` without the Redis part; add a `fixed` fragment for API and GraphQL requests in the HTTP metrics (B13)
+- [x] T050 [US3] Run T039 to T042 and `uv run invoke format lint`
+
+### Changes after the review of 2026-10-20
+
+- [x] T050a [US3] Write `backend/tests/unit/graphql/test_duration_metrics.py`: a 300-second GraphQL query is counted in `le="300.0"` and the highest bucket is 1200 (FR-014)
+- [x] T050b [US3] Add 120, 300, 600 and 1200 to the buckets of `GRAPHQL_DURATION_METRICS` in `backend/infrahub/graphql/metrics.py` (FR-014)
+- [x] T050c [US3] Change the help text of `infrahub_admission_max_concurrency` in `backend/infrahub/api/admission/metrics.py` and its row in `docs/docs/reference/metrics.mdx` to say the value is summed over the live API workers (`livesum`)
+
+**Checkpoint**: Story 3 is complete and testable on its own.
+
+---
+
+## Phase 6: User Story 4 - Task worker saturation per priority queue (Priority: P2)
+
+**Goal**: Each task worker records the start delay and the runs in progress, by flow and priority
+queue; the dashboard shows a "Priority queues" row (FR-020, FR-021).
+
+**Independent Test**: Start more flow runs than the workers can run at once on each queue; open the
+"Priority queues" row (quickstart, manual check 6).
+
+### Tests for User Story 4
+
+- [x] T051 [P] [US4] Port `backend/tests/unit/workers/test_metrics.py` from the draft: the delay equals start time minus expected start time and is never negative; no value without an expected start time; the gauge rises and falls, also when the run raises; a run on `high` is counted with `queue="high"`; an empty queue gives `unknown`
+
+### Implementation for User Story 4
+
+- [x] T052 [US4] Create `backend/infrahub/workers/metrics.py` from the draft (`FLOW_RUN_START_DELAY`, `FLOW_RUNS_IN_PROGRESS`, `observe_start_delay`, `track_flow_run`) (FR-020)
+- [x] T053 [US4] In `backend/infrahub/workers/infrahub_async.py`, port the calls to `observe_start_delay` and `track_flow_run` around the flow run, as the draft does (FR-020)
+- [x] T054 [US4] In `development/grafana/provisioning/dashboards/infrahub_monitoring.json`, port the "Priority Queues" row from the draft (start delay p95 and runs in progress per queue) (FR-021); this file is also changed by T048 and T062, so do not run these tasks in parallel
+- [x] T055 [P] [US4] (Write the text in "Changelog entries for the top layer", not in `changelog/`; created by T095.) Port `changelog/+task-worker-queue-metrics.added.md` from the draft
+- [x] T056 [US4] Run T051 and `uv run invoke format lint`
+
+**Checkpoint**: Story 4 is complete and testable on its own.
+
+---
+
+## Phase 7: User Story 5 - Shipped dashboards work in any Grafana (Priority: P2)
+
+**Goal**: Every shipped dashboard uses Infrahub's metric names and template variables; Prefect panels
+count runs; Neo4j Community panels are explained (FR-022 to FR-025).
+
+**Independent Test**: Import each dashboard into a Grafana with only a Prometheus data source and
+Infrahub's metrics (quickstart, manual check 7, required before release).
+
+### Tests for User Story 5
+
+- [x] T057 [P] [US5] Port `backend/tests/unit/test_grafana_dashboards.py` from the draft (no fixed `job`, `instance` or `container` in panel queries; no misleading admission title) and add: panel identifiers are unique in each dashboard (critique X3); no panel reads `le="1"` for database queries or `le="0.5"` for HTTP as the highest limit (FR-015, research R6)
+
+### Implementation for User Story 5
+
+- [x] T058 [P] [US5] In `development/grafana/provisioning/dashboards/prefect_flow_run_overview.json`, port the draft changes: run counts with `sum(...)` instead of `count(...)`, no `flow_run_name` variable, no run time panels that read `prefect_flow_runs_total_run_time_total`, `namespace` read from Loki (B12, FR-023), and CPU and memory panels on the stack's own metrics or removed (B2, FR-024) (The draft has only the CPU and memory part; the run counts, the run time panels, `flow_run_name` and `namespace` were written from design document B12.)
+- [x] T059 [P] [US5] In `development/grafana/provisioning/dashboards/prefect_platform_overview.json`, port the same draft changes (B2, B12) (The draft has only the CPU and memory part; the run counts, the run time panels, `flow_run_name` and `namespace` were written from design document B12.)
+- [x] T060 [P] [US5] In `development/grafana/provisioning/dashboards/neo4j_monitoring.json`, port the draft changes: template variables for job and instance, and a text panel that says the server panels need Neo4j Enterprise (B3, FR-025)
+- [x] T061 [P] [US5] In `development/alloy/config.alloy`, port the draft `discovery.relabel "database"` that drops the Neo4j target when `NEO4J_METRICS_TARGET` is empty, and in `development/docker-compose-observability.yml` give the `infrahub-alloy` service `NEO4J_METRICS_TARGET: "${INFRAHUB_NEO4J_METRICS_TARGET-database:2004}"`, so the published standalone file keeps collecting by default (done differently from the draft, which set it only in the development Neo4j Compose file; Daniel, 2026-10-16); do not port the Redis scrape (B3, FR-025)
+- [x] T062 [US5] In `development/grafana/provisioning/dashboards/infrahub_monitoring.json`, port the draft template variables for job, instance and container, each defaulting to today's value (FR-022); run after T048 and T054
+- [x] T063 [P] [US5] (Write the text in "Changelog entries for the top layer", not in `changelog/`; created by T095.) Port `changelog/+dashboard-template-variables.fixed.md`, `changelog/+prefect-dashboard-resources.fixed.md` and `changelog/+neo4j-community-metrics.fixed.md` from the draft
+- [x] T064 [US5] Run T057 and `uv run invoke format lint`; on a Linux host, check the Prefect CPU and memory panels (research R6)
+
+**Checkpoint**: Story 5 is complete and testable on its own.
+
+---
+
+## Phase 8: User Story 6 - Record more traces during an incident, without a restart (Priority: P3)
+
+**Goal**: A super admin sets a temporary ratio for at most 24 hours through public endpoints under
+`/api/troubleshooting` or `infrahubctl`; every process applies it within seconds and logs it; an event
+records the change (FR-026 to FR-031, FR-035, FR-036;
+[contracts/rest-trace-sample-ratio.md](contracts/rest-trace-sample-ratio.md)). Approved by Damien
+Garros on 2026-10-15. Needs Phase 4 (the default ratio).
+
+**Independent Test**: With tracing on, set the ratio to 1.0 for 2 minutes; every new request is
+traced; the default applies after 2 minutes (quickstart, manual check 8).
+
+### Tests for User Story 6 (Infrahub)
+
+- [x] T065 [P] [US6] Port the temporary ratio tests from the draft `backend/tests/unit/test_trace.py` (set, replace, clear, expiry by the clock, `state()`) into `backend/tests/unit/test_trace.py`
+- [x] T066 [P] [US6] Port the message tests from the draft `backend/tests/unit/message_bus/test_operations.py` and `backend/tests/unit/message_bus/test_mappings.py`: the handler sets and clears the ratio and writes one log line each time (FR-035); `ratio` and `expires_at` are set together or both empty
+- [x] T067 [P] [US6] Port `backend/tests/component/api/test_trace_sample_ratio.py` and the fixtures in `backend/tests/component/api/conftest.py` from the draft, with the path `/api/troubleshooting/trace-sample-ratio`, and add: a new change replaces the active one; the three endpoints are in the OpenAPI schema with a description (FR-036)
+- [x] T068 [P] [US6] Write a component test in `backend/tests/component/` that starts a task worker process with the message bus and checks that it applies a ratio change (research R7, critique E8); if a task worker cannot be started in a component test, record why in [research.md](research.md) R7 and cover it with quickstart manual check 8 (Done as an integration test in `backend/tests/integration/services/adapters/message_bus/test_rabbitmq.py`, because it needs RabbitMQ; see R7.)
+- [x] T069 [P] [US6] Port the change in `backend/tests/component/api/test_50_internals.py` from the draft, if it still applies after the endpoints move out of `internal.py` (The `recorder_bus` fixture moved to `backend/tests/component/api/conftest.py`.)
+
+### Implementation for User Story 6 (Infrahub)
+
+- [x] T070 [US6] In `backend/infrahub/trace.py`, port from the draft the temporary ratio of `RatioSampler` (`set_temporary_ratio`, `clear_temporary_ratio`, `state`, `_temporary_in_force`) and the module functions `set_temporary_sample_ratio`, `clear_temporary_sample_ratio`, `get_sample_ratio_state` ([data-model.md](data-model.md) "Sampler state")
+- [x] T071 [P] [US6] Create `backend/infrahub/message_bus/messages/refresh_settings_trace_sample_ratio.py` from the draft, and register `refresh.settings.trace_sample_ratio` in `backend/infrahub/message_bus/messages/__init__.py`
+- [x] T072 [US6] In `backend/infrahub/message_bus/operations/refresh/settings.py`, port the handler `trace_sample_ratio` with its two log lines, and register it in `backend/infrahub/message_bus/operations/__init__.py` (FR-027, FR-035)
+- [x] T073 [P] [US6] Create `backend/infrahub/events/trace_action.py` with `TraceSampleRatioUpdatedEvent` from the draft, export it in `backend/infrahub/events/__init__.py`, and add `TRACE_SAMPLE_RATIO_UPDATED` in `backend/infrahub/core/constants/__init__.py` (FR-030)
+- [x] T074 [US6] Create `backend/infrahub/api/troubleshooting.py` with `router = APIRouter(prefix="/troubleshooting", tags=["troubleshooting"])` and the three endpoints `GET`, `PUT` and `DELETE /trace-sample-ratio`, ported from the draft `backend/infrahub/api/internal.py` (`TraceSampleRatioAPI`, `TraceSampleRatioUpdateAPI`, the super admin check, the error when tracing is off, the event that never fails the request); remove `include_in_schema=False`; give each endpoint a summary and a description that says why it exists (FR-026 to FR-031, FR-036)
+- [x] T075 [US6] Include the troubleshooting router in `backend/infrahub/api/__init__.py`; move the shared super admin permission constant so `internal.py` and `troubleshooting.py` both use it without duplication; (`SUPER_ADMIN_PERMISSION` is in `backend/infrahub/permissions/globals.py`.) leave `POST /api/response-delay` unchanged
+- [x] T076 [US6] Regenerate `schema/openapi.json` with `uv run invoke schema.generate-jsonschema` and the frontend REST types with `cd frontend/app && pnpm codegen`; regenerate the reference docs with `uv run invoke docs.generate` (event and message bus pages, configuration)
+- [x] T077 [P] [US6] (Write the text in "Changelog entries for the top layer", not in `changelog/`; created by T095.) Port `changelog/+trace-sample-ratio-without-restart.added.md` from the draft and correct it to the public path `/api/troubleshooting/trace-sample-ratio`
+- [x] T078 [US6] Run T065 to T069 and `uv run invoke format lint`
+
+### SDK change (IFC-3420), in `python_sdk/` on branch `dp-20261015-trace-sample-ratio-command-ifc-3420`
+
+- [ ] T079 [US6] In `python_sdk/`, create the branch `dp-20261015-trace-sample-ratio-command-ifc-3420` from `dp-20261015-trace-context-ifc-3419` (stacked; plan, delivery order step 7)
+- [ ] T080 [P] [US6] Write unit tests in `python_sdk/tests/unit/ctl/test_troubleshooting_app.py`: the get, set and clear commands call `GET`, `PUT` (with `ratio` and `duration_seconds`) and `DELETE` on `/api/troubleshooting/trace-sample-ratio`; the error "Tracing is not enabled on this instance; set `INFRAHUB_TRACE_ENABLE`" is printed unchanged (FR-031); a ratio outside 0 to 1 or a duration outside 1 to 86400 is rejected
+- [ ] T081 [US6] Create `python_sdk/infrahub_sdk/ctl/troubleshooting.py` with an `AsyncTyper` app and the commands of T080, following `python_sdk/infrahub_sdk/ctl/AGENTS.md` (`catch_exception`, `CONFIG_PARAM`, `initialize_client`, Rich output), and register it in `python_sdk/infrahub_sdk/ctl/cli_commands.py` as `troubleshooting`; propose the final command names to Daniel before T083
+- [ ] T082 [US6] In `python_sdk/`, run `uv run invoke docs-generate` and add a changelog fragment in `python_sdk/changelog/`
+- [ ] T083 [US6] In `python_sdk/`, run `uv run invoke format lint-code` and `uv run pytest tests/unit/`, then commit on `dp-20261015-trace-sample-ratio-command-ifc-3420` with a conventional message ending in `[IFC-3420]`
+- [ ] T084 [US6] Ask Daniel whether to push `dp-20261015-trace-sample-ratio-command-ifc-3420` and open its pull request with base `dp-20261015-trace-context-ifc-3419`; if IFC-3419 changed during its review, rebase this branch on it first
+
+**Checkpoint**: Story 6 works with the local SDK branch, which has both SDK changes.
+
+---
+
+## Phase 9: Polish, documentation, SDK merge and release checks
+
+**Purpose**: Documentation for every story, the submodule pointer, the manual test and the release
+checks.
+
+- [x] T085 [P] Create `dev/knowledge/backend/observability.md` from the draft without the Redis exporter and the Grafana MCP server, and with: `[MASKED]`, span event masking, the request span hook, why log lines are not masked (clarification of 2026-10-19), the `trace_id` format, the public `/api/troubleshooting` endpoints, and the `--config` requirement of gunicorn for B9 (research R10); link it in `dev/README.md` and `dev/knowledge/backend/architecture.md`, and port the draft changes to `dev/knowledge/backend/api-backpressure.md`, `backend/AGENTS.md` and `development/grafana/AGENTS.md` without the Grafana MCP content (The draft change to `development/grafana/AGENTS.md` is about the Grafana MCP server only, so it is not ported.)
+- [ ] T086 After both SDK pull requests merge on `infrahub-develop`: in `python_sdk/`, check out `origin/infrahub-develop`, check that it contains both SDK commits, and commit the new `python_sdk` pointer on the Infrahub branch (root `AGENTS.md`, "Submodules")
+- [ ] T087 [P] Update `docs/docs/deploy-manage/run-observe/metrics.mdx` with the new and changed metrics of [contracts/metrics.md](contracts/metrics.md) and a short "which panel answers which question" section, using the `opsmill-docs-writing-infrahub-docs` skill
+- [ ] T088 [P] Update `docs/docs/deploy-manage/install-configure/install/observability-stack.mdx`: tracing on with the stack and `INFRAHUB_TRACE_SAMPLE_RATIO`; the Grafana data source settings of B10; how to raise the ratio during an incident (`infrahubctl` and the REST call); how to check every process applied it from the log line (FR-035); how to reduce the cost of tracing (FR-034); the trace retention (96 hours) and the log retention (24 hours) with the setting that changes each, and the Tempo disk use measured by T091 (FR-037); no Grafana MCP or Redis content
+- [ ] T089 [P] Create `docs/docs/deploy-manage/run-observe/own-monitoring.mdx`, "Send Infrahub telemetry to your own monitoring" (metrics scraping, traces to any OTLP collector, logs with `trace_id`, the data source settings), and add it to `docs/sidebars.ts` next to "Metrics" (FR-034)
+- [ ] T090 Update `docs/docs/reference/metrics.mdx` from the draft (it is not generated) and run `uv run invoke docs.lint` and `uv run invoke docs.validate`
+- [ ] T091 Measure the cost of tracing as [research.md](research.md) R9 says (two configurations, the named load) and record the host, the commit and the results, including the Tempo disk use per 1,000 traced requests at ratio 0.1 and 1, in `specs/infp-742-find-slow-component/measurements.md`; if tracing at 0.1 adds more than 5 %, lower the default in `backend/infrahub/config.py` and the Compose files and measure again (SC-006)
+- [x] T092 Run `/pre-ci` and fix every failure
+- [ ] T093 Daniel runs the `opsmill-dev-guiding-manual-tests` skill on the Infrahub branch, with `python_sdk` on `origin/infrahub-develop` (needs T086), using the checks of [quickstart.md](quickstart.md)
+- [ ] T094 Before release: quickstart manual check 7 (each dashboard in a Grafana with only Prometheus) and manual check 1 repeated with the file downloaded from `https://infrahub.opsmill.io/?observability=true` (needs the answer to T036); and check that the release notes of the release that ships INFP-742 list the `trace_id` log field change as a breaking change, with the old `0x` form and the new 32-character form (research R5; changelog fragment `+trace-id-format.changed.md`; added on 2026-10-21)
+- [x] T095 Create every fragment listed in "Changelog entries for the top layer" with `towncrier create` in `changelog/`, using the `creating-changelog-entries` skill; correct each text to what landed
+- [x] T096 Merge the fragments of T095 into one short `added` fragment, `+slow-instance-observability.added.md`, and keep the breaking `+trace-id-format.changed.md` (review of 2026-10-22)
+
+---
+
+## Pull requests and tickets
+
+Epic [IFC-3424](https://opsmill.atlassian.net/browse/IFC-3424) implements INFP-742. Each row is one
+task and one pull request. The `infrahub` pull requests form **one linear stack**, managed with
+`gh stack` (decided by Daniel on 2026-10-16): each layer is created from the layer below it and its
+pull request targets it; GitHub moves it to `develop` when the layers below merge. `<date>` is the day
+the branch is created, as `YYYYMMDD`.
+
+| Layer | Row | Ticket | Pull request | Branch | Created from | Tasks |
+|-------|-----|--------|--------------|--------|--------------|-------|
+| 0 | Spec | — (INFP-742) | Add the spec set for finding the slow component | `dp-20261014-find-slow-component-infp-742` | `develop` | — |
+| 1 | A1 | [IFC-3425](https://opsmill.atlassian.net/browse/IFC-3425) | Mask secrets and personal data in spans and logs, and fix single sign-on telemetry | `dp-<date>-mask-telemetry-ifc-3425` | Layer 0 | T001, T005, T007–T018 |
+| 2 | B1 | [IFC-3428](https://opsmill.atlassian.net/browse/IFC-3428) | Record long durations, connection pool load and task worker saturation | `dp-<date>-slow-component-metrics-ifc-3428` | Layer 1 | T006, T039–T047, T049–T053, T055, T056 |
+| 3 | B2 | [IFC-3429](https://opsmill.atlassian.net/browse/IFC-3429) | Fix the shipped dashboards and make them work in any Grafana | `dp-<date>-portable-dashboards-ifc-3429` | Layer 2 | T048, T054, T057–T064 |
+| 4 | A2 | [IFC-3470](https://opsmill.atlassian.net/browse/IFC-3470) | Follow a background task to its queries in one trace, change the trace sampling ratio without a restart, and close out | `dp-20261021-one-trace-sample-ratio-close-out-ifc-3470` | Layer 3 | T024–T038, T065–T078, T085–T095 |
+
+On 2026-10-20 Daniel merged the layers planned for IFC-3426 (one trace), IFC-3427 (ratio without a
+restart) and IFC-3430 (close out) into one layer and one pull request, IFC-3470. The 3 tickets were
+closed as "Won't Do" on 2026-10-21; they keep the detailed scope of each part.
+
+The SDK changes are in another repository, so they form a second stack there, in `python_sdk/`:
+
+| Layer | Row | Ticket | Pull request | Branch | Created from | Tasks |
+|-------|-----|--------|--------------|--------|--------------|-------|
+| 1 | S1 | [IFC-3419](https://opsmill.atlassian.net/browse/IFC-3419) | Send the `traceparent` header when OpenTelemetry is installed | `dp-20261015-trace-context-ifc-3419` | `origin/infrahub-develop` | T002, T019–T023 |
+| 2 | S2 | [IFC-3420](https://opsmill.atlassian.net/browse/IFC-3420) | Add the `infrahubctl` command for the trace sampling ratio | `dp-20261015-trace-sample-ratio-command-ifc-3420` | S1 | T079–T084 |
+
+```text
+infrahub:            develop ← spec ← A1 ← B1 ← B2 ← A2
+infrahub-sdk-python: infrahub-develop ← S1 ← S2
+```
+
+- Why this order: A1 comes first because the masking must reach `develop` before tracing reaches more
+  operators (FR-011). The one trace part of A2 is fully tested only with S1, and its ratio part is
+  fully used only with S2. A2 is last.
+- Merging: the whole stack merges at once, after the top pull request is validated, with
+  `gh stack merge <top PR> --yes`, which merges that pull request and every unmerged one below it
+  (proposed by Fatih Acar on 2026-10-19 in
+  [Slack](https://opsmillworkspace.slack.com/archives/C08075KCU3A/p1792395618543469?thread_ts=1792142065.171369&cid=C08075KCU3A),
+  accepted by Daniel). CI runs the large test jobs only on the top pull request of a stack
+  (`dev/guidelines/git-workflow.md`, "Stacked Pull Requests"), and the changelog fragments are created
+  in the top layer. Reviews of all layers can run at the same time, so each layer can be approved
+  before the merge.
+- Review: a layer is marked ready for review when the layer below it is approved (decided by Daniel on
+  2026-10-16). The spec layer and IFC-3425 were marked ready at once. Each
+  pull request shows only its own diff, so several layers can be under review at the same time.
+  Before marking a layer ready, run `gh stack sync` and check that its CI passes.
+- A fix in a lower layer is made in that layer, then `gh stack rebase --upstack` replays the layers
+  above. Each layer ticks its own tasks in this file and records its own spec updates.
+- A2 is tested with `python_sdk` on the S1 branch; it does not wait for S1 to merge. Only A2 commits
+  the `python_sdk` pointer, after S1 and S2 merge. Then Daniel runs `opsmill-dev-guiding-manual-tests`
+  (T093).
+- Each pull request opens as a draft (`gh stack submit --auto`), after Daniel's manual test of the
+  layer. Force-pushing commands
+  (`gh stack sync`, `gh stack rebase`) run only while it is a draft, or after its review has landed.
+  Push and open pull requests only when Daniel asks.
+- IFC-3425 also fixes [IFC-3330](https://opsmill.atlassian.net/browse/IFC-3330).
+
+---
+
+## Dependencies & Execution Order
+
+### Phase dependencies
+
+- **Setup (Phase 1)**: none.
+- **Foundational (Phase 2)**: after Setup.
+- **US2 (Phase 3)**: after Foundational. Must be done before tracing is turned on for more operators
+  (FR-011), so before T034 ships.
+- **US1 (Phase 4)**: after Foundational. Its SDK part (T019 to T023) can start right after Setup.
+- **US3 (Phase 5), US4 (Phase 6), US5 (Phase 7)**: after Foundational; independent of US1 and US2,
+  except that T048, T054 and T062 change the same dashboard file and run in that order.
+- **US6 (Phase 8)**: after US1 (needs `RatioSampler` and `sample_ratio`, T028 and T029). T079 needs
+  the IFC-3419 branch (T022).
+- **Polish (Phase 9)**: after the stories it documents. T086 needs both SDK pull requests merged. T093
+  needs T086. T094 needs T036 answered.
+
+### Inside each story
+
+- Tests before implementation; check that they fail first.
+- Shared modules before their callers (for example T012 before T013 and T014).
+- Changelog fragments with the change they describe.
+
+### Parallel opportunities
+
+- T003 and T004; T005 and T006.
+- In US2: T007 to T011 together; then T016 and T017 next to T012 to T015.
+- In US1: the SDK part (T019 to T023) next to the Infrahub tests T024 to T027.
+- US3, US4 and US5 can be worked on in parallel by different people, except the three edits of
+  `infrahub_monitoring.json` (T048, T054, T062).
+- In US5: T058, T059, T060 and T061 change different files.
+- In US6: T065 to T069 together; T071 and T073 next to T070.
+- In Phase 9: T085, T087, T088 and T089.
+
+### Parallel example: User Story 2
+
+```text
+Task: "T007 Unit tests for the masking rules in backend/tests/unit/test_masking.py"
+Task: "T009 Masking exporter tests in backend/tests/unit/test_trace.py"
+Task: "T010 Log masking tests in backend/tests/unit/test_log.py"
+Task: "T011 Single sign-on telemetry test in backend/tests/component/api/test_sso_token_telemetry.py"
+```
+
+---
+
+## Implementation Strategy
+
+### Order of work
+
+The work follows the layers of "Pull requests and tickets", bottom to top, one layer at a time:
+
+1. Layer 0, the spec: commit this folder.
+2. Layer 1, A1 (US2, Phase 3, with Phases 1 and 2): masking and single sign-on fixes. This removes the
+   secrets that are in the trace store today and unblocks tracing for more operators.
+3. Layers 2 and 3, B1 and B2 (US3, US4 and US5): metrics, then all dashboard changes.
+4. Layer 4, A2 (IFC-3470), in this order:
+   1. US1, Phase 4: one trace from a task to its queries. S1 (T019 to T023) comes first, so this part
+      can be tested with the S1 branch.
+   2. US6, Phase 8: the runtime ratio, then S2 (T079 to T084) on top of S1.
+   3. Phase 9: documentation, the cost measurement, the submodule pointer after both SDK
+      merges, `/pre-ci`, and the manual test.
+
+The first increment that an operator can use is layers 0 and 1. Check quickstart manual check 4
+after layer 1, and manual checks 1 to 3 after layer 4.
+
+### Merge order with INFP-743
+
+The plan proposes that INFP-742 merges first and INFP-743 rebases, because both add rows to
+`infrahub_monitoring.json`. To agree with Wim Van Deun (plan, "Structure Decision").
+
+---
+
+## Changelog entries for the top layer
+
+Created by T095 in IFC-3470. Each layer adds its entries here, with the file name and the type.
+
+Merged by T096 on 2026-10-22, after [Fatih Acar's review](https://github.com/opsmill/infrahub/pull/11164)
+asked for a single short entry: `changelog/` now holds `+slow-instance-observability.added.md` and,
+kept apart so that operators who must update their queries view it, the breaking
+`+trace-id-format.changed.md`. The entries below are the record of what each layer contributed.
+
+### IFC-3425 (layer 1)
+
+- `+sso-secrets-in-traces.security.md`: Removed single sign-on access tokens, user information,
+  authorization codes and state values from exported traces, and the single sign-on login log line now
+  records the account ID instead of the user name.
+- `+trace-attribute-masking.added.md`: Added masking of exported span attributes and span event
+  attributes, including exception events, so that tokens, passwords, secrets, email addresses, user
+  names, client IP addresses and URL query strings are exported as `[MASKED]`, while URL host names and
+  paths, Cypher text and query names stay readable.
+
+### IFC-3428 (layer 2)
+
+- `+longer-duration-buckets.changed.md`: Changed the database query and lock duration metrics to record
+  values up to 300 seconds, and the HTTP request and GraphQL query duration metrics up to 1200 seconds,
+  instead of stopping at 1 second for queries, 5 or 10 seconds for locks, 0.5 seconds for HTTP requests
+  and 60 seconds for GraphQL queries.
+- `+metric-files-kept-on-worker-start.fixed.md`: Fixed the API server metrics so that starting a worker
+  process no longer deletes the values recorded by the other running worker processes, and gauges no
+  longer report worker processes that stopped. `gunicorn` must start with the Infrahub configuration
+  file (`--config backend/infrahub/serve/gunicorn_config.py`), as in the Docker Compose files and the
+  Helm charts.
+- `+connection-pool-metrics.added.md`: Added the `infrahub_db_connection_pool_size` metric, the
+  maximum number of database connections of each process, and the `infrahub_db_connection_wait_seconds`
+  metric, the time each query waits to get a connection from the pool.
+- `+task-worker-queue-metrics.added.md`: Added the `infrahub_task_flow_run_start_delay_seconds` and
+  `infrahub_task_flow_runs_in_progress` task worker metrics, per flow and priority queue.
+- `+http-metrics-api-graphql-requests.fixed.md`: Fixed the HTTP request metrics
+  `infrahub_request_duration_seconds` and `infrahub_requests_total`, which recorded no request to
+  `/api/…` or `/graphql/…` since the upgrade to FastAPI 0.141; these requests are now recorded with
+  their route as `path`. The fix upgrades `starlette-exporter` to 0.24.
+
+### IFC-3429 (layer 3)
+
+- `+dashboard-template-variables.fixed.md`: Fixed the bundled Grafana dashboards so that their panel
+  queries select job, instance and container values through dashboard variables instead of fixed
+  values. Each variable defaults to the value the panels used before: `job` and `instance` on the Neo4j
+  dashboard, `log_containers` and `log_containers_excluded` on the log panels of the Infrahub
+  dashboard, and `task_manager_job`, `task_manager_service` and `task_worker_service` on the Prefect
+  dashboards.
+- `+prefect-dashboard-resources.fixed.md`: Fixed the CPU, memory and replica panels of both Prefect
+  dashboards, which were always empty. They now read the cAdvisor container metrics of the
+  observability stack, selected by Docker Compose service name. On Docker Desktop for macOS, cAdvisor
+  sends no Compose labels, so these panels stay empty there.
+- `+prefect-dashboard-run-counts.fixed.md`: Fixed the Prefect dashboards so that the flow run counts
+  add up the runs instead of counting flow and state combinations, and so that the `namespace`
+  variable of the log panels is read from Loki. Removed the `flow_run_name` variable and the run time
+  panels, which read labels and metrics that the Prefect exporter does not publish.
+- `+neo4j-community-metrics.fixed.md`: Fixed the failing Neo4j scrape target of the observability
+  stack on Neo4j Community: set `INFRAHUB_NEO4J_METRICS_TARGET` to an empty value to stop the scrape.
+  By default Alloy still scrapes `database:2004`, so Neo4j Enterprise keeps its metrics. The Neo4j
+  dashboard now states which panels need Neo4j Enterprise.
+- `+admission-panel-names.fixed.md`: Renamed the admission limit panels of the Infrahub dashboard,
+  "In-Flight vs Pool Capacity" to "Running API Requests vs Admission Limit" and "Slot Pool Saturation"
+  to "Admission Limit Usage", and their descriptions now say that they do not show the Neo4j
+  connection pool.
+- `+connection-pool-dashboard-row.added.md`: Added the "Connection Pool" row to the Infrahub
+  dashboard, with the highest connection pool usage, the pool usage against the pool size of each
+  process, and the connection wait time at the selected percentile.
+- `+priority-queues-dashboard-row.added.md`: Added the "Priority Queues" row to the Infrahub
+  dashboard, with the flow run start delay p95 and the flow runs in progress of the `high`, `medium`
+  and `low` queues.
+
+### IFC-3470 (layer 4)
+
+- `+trace-sample-ratio.added.md`: Added the `INFRAHUB_TRACE_SAMPLE_RATIO` setting, the share of new
+  traces that Infrahub records, from 0 to 1 (default 0.1). Before, Infrahub recorded every trace. A
+  request or a flow run that arrives with a trace context follows the decision of its caller.
+- `+task-worker-log-trace-id.added.md`: Added the `trace_id` field to the log lines that task workers
+  write while a trace is recorded, so their logs can be matched to the trace.
+- `+trace-id-format.changed.md`: **Breaking:** Changed the format of the `trace_id` log field of the
+  API server from a `0x` hexadecimal number without leading zeros, for example
+  `0xaf7651916cd43dd8448eb211c80319c`, to the 32-character form that Tempo and Grafana use, for
+  example `0af7651916cd43dd8448eb211c80319c`. Update the log queries and alerts that read `trace_id`.
+- `+grafana-trace-log-links.fixed.md`: Fixed the links between traces and logs in the Grafana data
+  sources of the observability stack. A log line links to its trace by its `trace_id` field, in text
+  and JSON lines, and in the `TraceID=` form that the Alloy configuration of the stack writes, with or
+  without `0x`. A trace links to its log lines in any Loki, from one hour before to one hour after the
+  span: the lines whose `trace_id` field contains the trace ID. The `RequestID` link is removed.
+- `+compose-observability-tracing.changed.md`: Changed the Docker Compose file of the observability
+  stack, `docker-compose-observability-standalone.yml`, to turn tracing on for the API server and the
+  task workers, with traces sent to the Tempo service of the stack and a sampling ratio of 0.1 that
+  `INFRAHUB_TRACE_SAMPLE_RATIO` changes; set `INFRAHUB_TRACE_ENABLE=false` to turn it off. A Compose
+  deployment without the observability stack keeps tracing off.
+- `+trace-sample-ratio-without-restart.added.md`: Added the `/api/troubleshooting/trace-sample-ratio`
+  REST endpoints, documented in the OpenAPI schema. With the `super_admin` permission, `PUT` sets a
+  temporary trace sampling ratio for 1 second to 24 hours on every API server process and task worker
+  without a restart, `DELETE` goes back to the default ratio, and `GET` returns the ratio in force.
+  Each process logs the change when it applies it, and each change is recorded as an
+  `infrahub.trace.sample_ratio_updated` event.

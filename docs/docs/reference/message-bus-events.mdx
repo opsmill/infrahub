@@ -198,6 +198,21 @@ For more detailed explanations on how these events are used within Infrahub, see
 | **meta** | Meta properties for the message | N/A | None |
 | **response_delay** | Delay in seconds to add to each API request | integer | None |
 <!-- vale on -->
+<!-- vale off -->
+#### Event refresh.settings.trace_sample_ratio
+<!-- vale on -->
+
+**Description**: Broadcast to set or clear the temporary trace sampling ratio on every API server process and task worker.
+
+**Priority**: 3
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **ratio** | Share of new root traces to record until expires_at; None clears the temporary ratio | N/A | None |
+| **expires_at** | UTC time when the temporary ratio stops applying | N/A | None |
+<!-- vale on -->
 
 <!-- vale off -->
 ### Send Echo

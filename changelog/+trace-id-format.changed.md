@@ -1,0 +1,1 @@
+**Breaking:** Changed the format of the `trace_id` log field of the API server from a `0x` hexadecimal number without leading zeros, for example `0xaf7651916cd43dd8448eb211c80319c`, to the 32-character form that Tempo and Grafana use, for example `0af7651916cd43dd8448eb211c80319c`. Update the log queries and alerts that read `trace_id`.

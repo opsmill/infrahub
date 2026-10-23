@@ -7,6 +7,8 @@ from infrahub.exceptions import ValidationError
 from infrahub.utils import InfrahubNumberEnum, InfrahubStringEnum
 
 from .schema import (
+    DISPLAY_LABEL_ATTRIBUTE_NAME,
+    HFID_ATTRIBUTE_NAME,
     FlagProperty,
     NodeProperty,
     SchemaElementPathType,
@@ -16,6 +18,8 @@ from .schema import (
 )
 
 __all__ = [
+    "DISPLAY_LABEL_ATTRIBUTE_NAME",
+    "HFID_ATTRIBUTE_NAME",
     "FlagProperty",
     "InfrahubKind",
     "NodeProperty",
@@ -105,6 +109,8 @@ class EventType(InfrahubStringEnum):
 
     ACCOUNT_LOGGED_IN = f"{EVENT_NAMESPACE}.account.logged_in"
     ACCOUNT_LOGGED_OUT = f"{EVENT_NAMESPACE}.account.logged_out"
+
+    TRACE_SAMPLE_RATIO_UPDATED = f"{EVENT_NAMESPACE}.trace.sample_ratio_updated"
 
 
 class PermissionLevel(Flag):

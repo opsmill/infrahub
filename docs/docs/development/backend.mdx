@@ -29,7 +29,7 @@ export INFRAHUB_USERNAME=admin
 export INFRAHUB_PASSWORD=infrahub
 export INFRAHUB_TIMEOUT=20
 export INFRAHUB_METRICS_PORT=8001
-export INFRAHUB_DB_TYPE=neo4j # Accepts Neo4j or Memgraph
+export INFRAHUB_DB_TYPE=neo4j
 export INFRAHUB_INITIAL_ADMIN_TOKEN="${ADMIN_TOKEN}" # Random string which can be generated using: openssl rand -hex 16
 export INFRAHUB_STORAGE_LOCAL_PATH="${HOME}/Development/infrahub-storage"
 export INFRAHUB_API_CORS_ALLOW_ORIGINS='["http://localhost:8080"]' # Allow frontend/backend communications without CORS issues
@@ -87,10 +87,10 @@ This should yield a Docker output like the following:
 docs
 
 ```shell
-NAME                       IMAGE                      COMMAND                  SERVICE         CREATED       STATUS                 PORTS
-infrahub-cache-1           redis:7.2                  "docker-entrypoint.s…"   cache           2 hours ago   Up 2 hours (healthy)   0.0.0.0:6379->6379/tcp
-infrahub-database-1        memgraph/memgraph:2.13.0   "/usr/lib/memgraph/m…"   database        2 hours ago   Up 2 hours (healthy)   0.0.0.0:7444->7444/tcp, 0.0.0.0:7474->7474/tcp, 0.0.0.0:7687->7687/tcp
-infrahub-message-queue-1   rabbitmq:3.12-management   "docker-entrypoint.s…"   message-queue   2 hours ago   Up 2 hours (healthy)   4369/tcp, 5671/tcp, 0.0.0.0:5672->5672/tcp, 15671/tcp, 15691-15692/tcp, 25672/tcp, 0.0.0.0:15672->15672/tcp
+NAME                       IMAGE                        COMMAND                  SERVICE         CREATED       STATUS                 PORTS
+infrahub-cache-1           redis:7.2                    "docker-entrypoint.s…"   cache           2 hours ago   Up 2 hours (healthy)   0.0.0.0:6379->6379/tcp
+infrahub-database-1        neo4j:2026.05.0-enterprise   "tini -g -- /startup…"   database        2 hours ago   Up 2 hours (healthy)   0.0.0.0:6362->6362/tcp, 7473/tcp, 0.0.0.0:7474->7474/tcp, 0.0.0.0:7687->7687/tcp
+infrahub-message-queue-1   rabbitmq:3.12-management     "docker-entrypoint.s…"   message-queue   2 hours ago   Up 2 hours (healthy)   4369/tcp, 5671/tcp, 0.0.0.0:5672->5672/tcp, 15671/tcp, 15691-15692/tcp, 25672/tcp, 0.0.0.0:15672->15672/tcp
 ```
 
 When following a guide, like the [installation guide](../deploy-manage/install-configure/install/overview), the command `demo.start` is mentioned. It is slightly different from the `dev.deps` that is mentioned here. The `demo.start` will bring up a demo environment as a whole including services and Infrahub while the `dev.deps` will only start the services as seen in the code block above.

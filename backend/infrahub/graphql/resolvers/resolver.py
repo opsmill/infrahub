@@ -19,6 +19,7 @@ from infrahub.graphql.metadata import build_metadata_query_options
 from ..order import deserialize_order_input
 from ..parser import extract_selection
 from ..permissions import get_permissions
+from .peer_filters import build_peer_filters
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -127,11 +128,7 @@ async def default_resolver(*args: Any, **kwargs: Any) -> dict | list[dict] | Non
     node_rel = node_schema.get_relationship(info.field_name)
 
     # Extract only the filters from the kwargs and prepend the name of the field to the filters
-    filters = {
-        f"{info.field_name}__{key}": value
-        for key, value in kwargs.items()
-        if ("__" in key and value) or key in ["id", "ids"]
-    }
+    filters = build_peer_filters(field_name=info.field_name, arguments=kwargs)
 
     async with graphql_context.db.start_session(read_only=True) as db:
         objs = await NodeManager.query_peers(
@@ -372,17 +369,14 @@ async def hierarchy_resolver(
     fields = extract_graphql_fields(info=info)
     edges = fields.get("edges", {})
     node_fields = edges.get("node", {})
+    node_metadata_fields = edges.get("node_metadata", {})
 
     # Extract only the filters from the kwargs and prepend the name of the field to the filters
     offset = kwargs.pop("offset", None)
     limit = kwargs.pop("limit", None)
     order = kwargs.pop("order", None)
 
-    filters = {
-        f"{info.field_name}__{key}": value
-        for key, value in kwargs.items()
-        if ("__" in key and value) or key in ["id", "ids"]
-    }
+    filters = build_peer_filters(field_name=info.field_name, arguments=kwargs)
 
     order_model = deserialize_order_input(input_data=order)
 
@@ -409,7 +403,10 @@ async def hierarchy_resolver(
             schema_branch.get(name=node_schema.hierarchy, duplicate=False) if node_schema.hierarchy else node_schema
         )
         include_metadata = build_metadata_query_options(
-            node_fields=node_fields, schema=hierarchy_schema, schema_branch=schema_branch
+            node_metadata_fields=node_metadata_fields,
+            node_fields=node_fields,
+            schema=hierarchy_schema,
+            schema_branch=schema_branch,
         ) | MetadataQueryOptions.at_every_level(MetadataOptions.LINKED_NODES)
         objs = await NodeManager.query_hierarchy(
             db=db,
@@ -428,12 +425,12 @@ async def hierarchy_resolver(
 
         if not objs:
             return response
-        node_graph = [await obj.to_graphql(db=db, fields=node_fields) for obj in objs.values()]
 
         entries = []
-        for node in node_graph:
-            entry = {"node": {}, "properties": {}}
-            entry["node"] = node
+        for obj in objs.values():
+            entry: dict[str, Any] = {"node": await obj.to_graphql(db=db, fields=node_fields), "properties": {}}
+            if node_metadata_fields:
+                entry["node_metadata"] = await obj._build_meta_response("node_metadata", edges)
             entries.append(entry)
         response["edges"] = entries
 

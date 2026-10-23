@@ -149,27 +149,39 @@ describe("DataTable first column overflow", () => {
     expect(marker.getBoundingClientRect().width).toBeGreaterThan(0);
   });
 
-  test("keeps the sticky footer above the sticky row actions", async () => {
-    // GIVEN a table that renders its count footer
-    await render(
-      <div className="w-150 overflow-x-auto">
-        <DataTable columns={columns} data={rows} count={rows.length} />
+  test("shows the count footer over the rows and columns scrolled behind it", async () => {
+    // GIVEN
+    const manyRows = Array.from({ length: 20 }, (_, index) => ({
+      id: String(index),
+      __typename: "TestingOverflowDemo",
+      label: SHORT_LABEL,
+    }));
+    const component = await render(
+      <div className="h-60 w-40 overflow-auto" data-testid="scroller">
+        <DataTable columns={columns} data={manyRows} count={manyRows.length} />
       </div>
     );
+    const scroller = component.getByTestId("scroller").element();
 
-    // THEN every footer cell outranks the sticky action cells, so the last row's
-    // action menu cannot punch through the count bar.
-    const grid = document.querySelector('[style*="grid-template-columns"]')!;
-    const footerCells = [...grid.children].filter(
-      (el) => getComputedStyle(el).position === "sticky" && getComputedStyle(el).bottom === "0px"
+    // WHEN
+    scroller.scrollLeft = scroller.scrollWidth;
+
+    // THEN
+    expect(scroller.scrollLeft).toBeGreaterThan(0);
+
+    const countLabel = component.getByText(/^counts?$/).element();
+    const countRect = countLabel.getBoundingClientRect();
+    const footerY = countRect.top + countRect.height / 2;
+    const topmostOverCount = document.elementFromPoint(
+      countRect.left + countRect.width / 2,
+      footerY
     );
-    expect(footerCells.length).toBeGreaterThan(0);
+    expect(countLabel.contains(topmostOverCount)).toBe(true);
 
-    const actionsZ =
-      Number(getComputedStyle(document.querySelector('[data-testid="actions-cell"]')!).zIndex) || 0;
-    for (const cell of footerCells) {
-      expect(Number(getComputedStyle(cell).zIndex) || 0).toBeGreaterThan(actionsZ);
-    }
+    const visibleRight =
+      scroller.getBoundingClientRect().left + scroller.clientLeft + scroller.clientWidth;
+    const topmostOverActions = document.elementFromPoint(visibleRight - 10, footerY);
+    expect(topmostOverActions?.closest('[data-testid="actions-cell"]')).toBeNull();
   });
 
   test("does not let the first column cover the row action menu", async () => {

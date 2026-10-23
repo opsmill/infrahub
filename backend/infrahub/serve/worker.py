@@ -1,7 +1,6 @@
 """Create a Uvicorn worker without the predefined loggers."""
 
 import os
-from pathlib import Path
 from typing import Any
 
 from uvicorn.workers import UvicornWorker
@@ -37,9 +36,6 @@ class InfrahubUvicorn(UvicornWorker):
         super().__init__(*args, **kwargs)
         self.config.log_config = log_config
         self.config.configure_logging()
-        if os.getenv("PROMETHEUS_MULTIPROC_DIR", None):
-            for file_path in Path(os.environ["PROMETHEUS_MULTIPROC_DIR"]).iterdir():
-                file_path.unlink()
 
     def init_process(self) -> None:
         os.environ[PROCESSES_PER_CONTAINER_ENV] = str(self.cfg.workers)

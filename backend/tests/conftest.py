@@ -4,7 +4,6 @@ import logging
 import os
 import sys
 import tempfile
-import time
 from contextlib import contextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -18,8 +17,6 @@ from fast_depends import dependency_provider as provider
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.branch import BranchData
 from infrahub_sdk.uuidt import UUIDT
-from neo4j import GraphDatabase
-from neo4j.exceptions import ServiceUnavailable
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.waiting_utils import wait_for_logs
 
@@ -75,7 +72,6 @@ from tests.helpers.constants import (
     PORT_CLIENT_RABBITMQ,
     PORT_HTTP_NEO4J,
     PORT_HTTP_RABBITMQ,
-    PORT_MEMGRAPH,
     PORT_NATS,
     PORT_PREFECT,
     PORT_REDIS,
@@ -174,15 +170,12 @@ def _dependency_overrides_are_restored() -> Generator[None, None, None]:
 
 @pytest.fixture(scope="module")
 async def db(
-    neo4j: dict[int, int] | None, memgraph: dict[int, int] | None, reload_settings_before_each_module: None
+    neo4j: dict[int, int] | None, reload_settings_before_each_module: None
 ) -> AsyncGenerator[InfrahubDatabase, None]:
     if INFRAHUB_USE_TEST_CONTAINERS:
+        assert neo4j is not None
         config.SETTINGS.database.address = "localhost"
-        if neo4j is not None:
-            config.SETTINGS.database.port = neo4j[PORT_BOLT_NEO4J]
-        else:
-            assert memgraph is not None
-            config.SETTINGS.database.port = memgraph[PORT_MEMGRAPH]
+        config.SETTINGS.database.port = neo4j[PORT_BOLT_NEO4J]
 
     async def _db(singleton: bool = True) -> InfrahubDatabase:
         return await build_database(singleton=False)
@@ -398,7 +391,7 @@ def neo4j(
     neo4j_heap_size: str,
     neo4j_pagecache_size: str,
 ) -> dict[int, int] | None:
-    if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.database.db_type == "memgraph":
+    if not INFRAHUB_USE_TEST_CONTAINERS:
         return None
 
     # Bound neo4j memory: the image auto-sizes heap/pagecache from HOST memory, so with
@@ -484,49 +477,6 @@ def redis(redis_container: dict[int, int] | None, reload_settings_before_each_mo
         return redis_container
 
     return None
-
-
-def wait_for_memgraph_ready(host: str, port: int, timeout: int = 15) -> bool:
-    # Not retrieving host/port from config.SETTINGS here as they are set later in `db`fixture.
-    URI = f"{config.SETTINGS.database.protocol}://{host}:{port}"
-
-    start_time = time.time()
-
-    with GraphDatabase.driver(URI) as client:
-        while time.time() - start_time < timeout:
-            try:
-                client.verify_connectivity()
-                return True
-            except ServiceUnavailable:
-                time.sleep(1)
-
-    raise TimeoutError(f"memgraph took more than {timeout} seconds to start.")
-
-
-@pytest.fixture(scope="session")
-def memgraph(request: pytest.FixtureRequest, load_settings_before_session: None) -> dict[int, int] | None:
-    if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.database.db_type != "memgraph":
-        return None
-
-    memgraph_image = os.getenv("MEMGRAPH_DOCKER_IMAGE", "memgraph/memgraph-mage:1.19-memgraph-2.19-no-ml")
-
-    container = (
-        DockerContainer(image=memgraph_image, init=True)
-        .with_env("APP_CYPHER_QUERY_MAX_LEN", "10000")
-        .with_exposed_ports(PORT_MEMGRAPH)
-    )
-
-    container.start()
-
-    # Waiting for logs is not enough to make sure memgraph is available.
-    # Here we need to use DockerContainer.get_exposed_port instead of our own get_exposed_port
-    # in order to wait for the port to be exposed. This call is responsible for "Waiting for memgraph to be ready" logs.
-    # Note we still need to call wait_for_memgraph_ready to be sure the container is fully started.
-    wait_for_memgraph_ready(host="localhost", port=container.get_exposed_port(PORT_MEMGRAPH))
-
-    request.addfinalizer(container.stop)
-
-    return {PORT_MEMGRAPH: get_exposed_port(container, PORT_MEMGRAPH)}
 
 
 @pytest.fixture(scope="session")

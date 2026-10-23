@@ -129,9 +129,11 @@ Each entry says *when* to load it — open the doc before working in that area.
 - `dev/knowledge/backend/merge-failure-recovery.md` - Failed-merge detection and range rollback, and the invariants that make a blind range revert correct; read before changing merge locking, write scoping, timestamping, or vertex metadata handling
 - `dev/knowledge/backend/diff-conflicts.md` - What `resolvable` means on a diff conflict and which resolutions a rebase honors; read before gating a merge or rebase on conflict state
 - `dev/knowledge/backend/events.md` - Events system; read when adding or changing an event
+- `dev/knowledge/backend/changelog-enrichment.md` - Node changelogs and their display label and HFID enrichment for mutations, merge and rebase; read when touching `core/changelog/` or the node event payload
 - `dev/knowledge/backend/async-tasks.md` - Prefect workflows, priority lanes, failure/best-effort handling; read before creating or changing a workflow
 - `dev/knowledge/backend/task-workers.md` - How task workers poll, reserve, claim and start flow runs; read before changing the worker or diagnosing a run that waits before it starts
 - `dev/knowledge/backend/message-bus.md` - Message bus system; read when adding or changing a message
+- `dev/knowledge/backend/observability.md` - Traces, logs and Prometheus metrics (trace propagation, sampling and the temporary ratio, span masking, multiprocess gauge modes); read before adding a span, a log field or a metric, or changing how processes start
 - `dev/knowledge/backend/telemetry.md` - Anonymous usage telemetry (categories, windowing, retention, degradation); read when adding or changing telemetry metrics or the collection window
 - `dev/knowledge/backend/webhooks.md` - Webhook delivery and failure classification; read when touching webhook delivery
 - `dev/knowledge/backend/computed-attributes.md` - Jinja2 and Python-transform computed attributes, their automations and recompute paths; read when touching either

@@ -43,7 +43,14 @@ export function ScrollArea({
       className={cn("relative overflow-hidden", className)}
       {...props}
     >
-      <ScrollAreaPrimitive.Viewport className="size-full rounded-[inherit]" ref={ref}>
+      <ScrollAreaPrimitive.Viewport
+        className={cn(
+          "size-full rounded-[inherit]",
+          // Radix lays the content out as a table that grows to its widest child; without horizontal scrolling it must stay at the area's width.
+          !scrollX && "[&>div]:block!"
+        )}
+        ref={ref}
+      >
         {children}
       </ScrollAreaPrimitive.Viewport>
       {scrollX && <ScrollBar orientation="horizontal" className={scrollBarClassName} />}
