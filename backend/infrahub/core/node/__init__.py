@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Any, Protocol, Sequence, TypeVar, cast, overlo
 from infrahub_sdk.template.exceptions import JinjaTemplateError
 from infrahub_sdk.utils import is_valid_uuid
 from infrahub_sdk.uuidt import UUIDT
-from opentelemetry import trace
 
 from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core import registry
@@ -1267,12 +1266,8 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         it from values it does not hold; an HFID the node does not hold is left unset for the event
         enrichment to read from storage.
         """
-        with trace.get_tracer(__name__).start_as_current_span("changelog.primary_labels") as span:
-            span.set_attribute("changelog.node_kind", self.get_kind())
-            span.set_attribute("changelog.display_label_materialized", self._display_label is not None)
-            node_changelog.hfid = self.get_materialized_hfid()
-            span.set_attribute("changelog.hfid_materialized", node_changelog.hfid is not None)
-            node_changelog.display_label = await self.get_display_label(db=db)
+        node_changelog.hfid = self.get_materialized_hfid()
+        node_changelog.display_label = await self.get_display_label(db=db)
 
     async def _update(
         self, db: InfrahubDatabase, user_id: str, at: Timestamp | None = None, fields: list[str] | None = None
