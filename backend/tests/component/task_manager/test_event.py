@@ -96,16 +96,35 @@ async def test_query_no_filters(event_ids_inscope: list[str]) -> None:
     assert clean_events["count"] == 4
 
 
-async def test_query_branch_filter(events_data: dict[str, InfrahubEvent], event_ids_inscope: list[str]) -> None:
+async def test_query_branch_filter(
+    events_data: dict[str, InfrahubEvent], event_ids_inscope: list[str], branch1_id: str
+) -> None:
     expected_ids = extract_expected_ids(expected_events=["branch1_created", "branch1_rebased"], data=events_data)
     fields = {"count": None, "edges": {"node": {"event": None, "branch": None}}}
     event_filter = InfrahubEventFilter()
-    event_filter.add_branch_filter(branches=["branch1"])
+    event_filter.add_branch_filter(branch_ids=[branch1_id])
     events = await PrefectEvent.query(fields=fields, event_filter=event_filter)
     clean_events = filter_outofscope_events(events, event_ids_inscope)
 
     received_ids = sorted([event["node"]["id"] for event in clean_events["edges"]])
     assert received_ids == expected_ids
+
+
+async def test_query_counts_the_events_only_when_the_count_is_selected(
+    events_data: dict[str, InfrahubEvent], branch1_id: str
+) -> None:
+    """The task manager reports a total only for a query that selects the count."""
+    expected_ids = extract_expected_ids(expected_events=["branch1_created", "branch1_rebased"], data=events_data)
+    node_fields = {"node": {"event": None, "branch": None}}
+    event_filter = InfrahubEventFilter()
+    event_filter.add_branch_filter(branch_ids=[branch1_id])
+
+    counted = await PrefectEvent.query(fields={"count": None, "edges": node_fields}, event_filter=event_filter)
+    not_counted = await PrefectEvent.query(fields={"edges": node_fields}, event_filter=event_filter)
+
+    assert counted["count"] == 2
+    assert not_counted["count"] is None
+    assert sorted(edge["node"]["id"] for edge in not_counted["edges"]) == expected_ids
 
 
 async def test_query_ids_filter(events_data: dict[str, InfrahubEvent], event_ids_inscope: list[str]) -> None:
