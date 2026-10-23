@@ -109,51 +109,6 @@ class InfrahubMultiLock:
             await self.registry.get(name=lock, metrics=self.metrics).release()
 
 
-class NATSLock:
-    """Context manager to lock using NATS."""
-
-    def __init__(self, service: InfrahubServices, name: str, ttl: int | None = None) -> None:
-        self.name = name
-        self.token: str | None = None
-        self.service = service
-        # Maximum lifetime in seconds for the lock.
-        self.ttl = ttl
-
-    async def __aenter__(self) -> None:
-        await self.acquire()
-
-    async def __aexit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_value: BaseException | None,
-        traceback: TracebackType | None,
-    ) -> None:
-        await self.release()
-
-    async def acquire(self, token: str | None = None) -> None:
-        token = token or f"{current_timestamp()}::{WORKER_IDENTITY}"
-        while True:
-            if await self.do_acquire(token):
-                self.token = token
-                return
-            await sleep(0.1)  # default Redis GlobalLock value
-
-    async def do_acquire(self, token: str) -> bool | None:
-        return await self.service.cache.set(key=self.name, value=token, not_exists=True, expires=self.ttl)
-
-    async def release(self) -> None:
-        if self.ttl is not None and await self.service.cache.get(key=self.name) != self.token:
-            # The TTL elapsed and the lock may have been re-acquired by another worker; nothing of ours
-            # to release.
-            self.token = None
-            return
-        await self.service.cache.delete(key=self.name)
-        self.token = None
-
-    async def locked(self) -> bool:
-        return await self.service.cache.get(key=self.name) is not None
-
-
 class RedisLock:
     """Lock held in Redis by one acquisition, whose commands are safe to repeat because each compares its token."""
 
@@ -247,7 +202,7 @@ class InfrahubLock:
     def __init__(
         self,
         name: str,
-        connection: redis.Redis | InfrahubServices | None = None,
+        connection: redis.Redis | None = None,
         local: bool | None = None,
         in_multi: bool = False,
         metrics: bool = True,
@@ -255,7 +210,7 @@ class InfrahubLock:
     ) -> None:
         self.use_local: bool | None = local
         self.local: LocalLock = None
-        self.remote: RedisLock | NATSLock = None
+        self.remote: RedisLock = None
         self.name: str = name
         self.connection: redis.Redis | None = connection
         self.in_multi: bool = in_multi
@@ -264,9 +219,7 @@ class InfrahubLock:
         self._recursion_var: ContextVar[int | None] = ContextVar(f"infrahub_lock_recursion_{self.name}", default=None)
         # Concurrent holders in one process share this object, so each acquisition keeps its own remote lock, token and
         # acquire time.
-        self._held_remote: ContextVar[RedisLock | NATSLock | None] = ContextVar(
-            f"infrahub_lock_remote_{self.name}", default=None
-        )
+        self._held_remote: ContextVar[RedisLock | None] = ContextVar(f"infrahub_lock_remote_{self.name}", default=None)
         self._acquire_time: ContextVar[int | None] = ContextVar(f"infrahub_lock_acquire_time_{self.name}", default=None)
         self.metrics = metrics
         self.ttl: int | None = ttl
@@ -279,12 +232,8 @@ class InfrahubLock:
         else:
             self.remote = self._build_remote()
 
-    def _build_remote(self) -> RedisLock | NATSLock:
-        if config.SETTINGS.cache.driver == config.CacheDriver.Redis:
-            return RedisLock(
-                lock=GlobalLock(redis=self.connection, name=f"{LOCK_PREFIX}.{self.name}", timeout=self.ttl)
-            )
-        return NATSLock(service=self.connection, name=f"{LOCK_PREFIX}.{self.name}", ttl=self.ttl)
+    def _build_remote(self) -> RedisLock:
+        return RedisLock(lock=GlobalLock(redis=self.connection, name=f"{LOCK_PREFIX}.{self.name}", timeout=self.ttl))
 
     async def _acquire_remote(self) -> None:
         remote = self._build_remote()
@@ -428,11 +377,8 @@ class InfrahubLockRegistry:
         self.service = service
         self.connection_url: str | None = None
         if not local_only:
-            if config.SETTINGS.cache.driver == config.CacheDriver.Redis:
-                self.connection_url = build_cache_connection_string(config.SETTINGS.cache)
-                self.connection = build_redis_connection(config.SETTINGS.cache)
-            else:
-                self.connection = service
+            self.connection_url = build_cache_connection_string(config.SETTINGS.cache)
+            self.connection = build_redis_connection(config.SETTINGS.cache)
         else:
             self.connection = None
 

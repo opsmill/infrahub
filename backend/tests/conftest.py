@@ -76,7 +76,6 @@ from tests.helpers.constants import (
     PORT_HTTP_NEO4J,
     PORT_HTTP_RABBITMQ,
     PORT_MEMGRAPH,
-    PORT_NATS,
     PORT_PREFECT,
     PORT_REDIS,
 )
@@ -509,36 +508,6 @@ def memgraph(request: pytest.FixtureRequest, load_settings_before_session: None)
     request.addfinalizer(container.stop)
 
     return {PORT_MEMGRAPH: get_exposed_port(container, PORT_MEMGRAPH)}
-
-
-@pytest.fixture(scope="session")
-def nats_container(request: pytest.FixtureRequest, load_settings_before_session: None) -> dict[int, int] | None:
-    if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.cache.driver != config.CacheDriver.NATS:
-        return None
-
-    # Per-message (per-key) TTL in KV buckets requires NATS 2.11 or later; pinned to a recent release.
-    container = DockerContainer(image="nats:2.14.3-alpine").with_command("--jetstream").with_exposed_ports(PORT_NATS)
-
-    container.start()
-    wait_for_logs(container, "Server is ready")  # wait_container_is_ready does not seem to be enough
-    request.addfinalizer(container.stop)
-
-    return {PORT_NATS: get_exposed_port(container, PORT_NATS)}
-
-
-@pytest.fixture(scope="module")
-def nats(nats_container: dict[int, int] | None, reload_settings_before_each_module: None) -> dict[int, int] | None:
-    if nats_container and INFRAHUB_USE_TEST_CONTAINERS and config.SETTINGS.cache.driver == config.CacheDriver.NATS:
-        config.SETTINGS.cache.address = "localhost"
-        config.SETTINGS.cache.port = nats_container[PORT_NATS]
-
-    if nats_container and INFRAHUB_USE_TEST_CONTAINERS and config.SETTINGS.broker.driver == config.BrokerDriver.NATS:
-        config.SETTINGS.broker.address = "localhost"
-        config.SETTINGS.broker.port = nats_container[PORT_NATS]
-
-        return nats_container
-
-    return None
 
 
 @pytest.fixture(scope="session")
