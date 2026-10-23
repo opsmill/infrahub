@@ -33,7 +33,11 @@ See [key concepts](./concepts.mdx) for an introduction to these features.
 | Releases | Community releases | Hardened releases |
 | Support | Community assistance, without guaranteed response times | Support backed by a service-level agreement (SLA); optional 24/7 coverage |
 
-Enterprise controls require configuration. See [change approvals](../change-approval/change-approval-workflow.mdx), [LDAP authentication](../deploy-manage/user-management/ldap/overview.mdx), and [log forwarding](../deploy-manage/run-observe/log-forwarding/overview.mdx).
+:::info Enterprise controls
+
+Change approvals, LDAP authentication, and log forwarding require configuration. See [change approvals](../change-approval/change-approval-workflow.mdx), [LDAP authentication](../deploy-manage/user-management/ldap/overview.mdx), and [log forwarding](../deploy-manage/run-observe/log-forwarding/overview.mdx).
+
+:::
 
 ## Scale and availability
 
@@ -54,21 +58,45 @@ Community uses a single Neo4j database instance. Enterprise supports a clustered
 
 These diagrams show the application and graph database. A [full high availability deployment](../deploy-manage/install-configure/production-deployment/high-availability.mdx) also requires redundancy for the cache, message bus, task manager database, and load balancers. Installing Enterprise alone does not configure high availability.
 
-**Device count is a sizing guide, not an edition limit.** Capacity also depends on schema complexity, relationships, data history, and automation activity. Test representative imports, queries, and merges with your own data. See [hardware requirements](../deploy-manage/install-configure/hardware-requirements.mdx) for resource allocations and [OpsMill pricing](https://opsmill.com/pricing/) for current Enterprise packages.
+:::info Sizing Infrahub
+
+Device count is a sizing guide, not an edition limit. Capacity also depends on schema complexity, relationships, data history, and automation activity. Test representative imports, queries, and merges with your own data. See [hardware requirements](../deploy-manage/install-configure/hardware-requirements.mdx) for resource allocations and [OpsMill pricing](https://opsmill.com/pricing/) for current Enterprise packages.
+
+:::
 
 ## Choose an edition
 
-### Community
-
-Choose Community when your team can operate and troubleshoot the platform, community support meets your needs, and a single database instance is acceptable. It supports production use as well as learning, development, and testing.
-
-Start with the [quickstart](./quickstart.mdx) to explore the core features.
-
-### Enterprise
-
-Choose Enterprise when you need required change approvals, LDAP, syslog forwarding, high availability, performance optimizations, or guaranteed support response times.
-
-If Enterprise is your intended production edition, evaluate it directly with representative data and automation. A Community trial does not demonstrate Enterprise performance. See [Enterprise installation](../deploy-manage/install-configure/install/enterprise.mdx) or [contact OpsMill](https://cal.com/team/opsmill/meet) to plan an evaluation, deployment, or professional services engagement.
+<div className="row">
+  <div className="col col--6 margin-bottom--md">
+    <div className="card card--full-height">
+      <div className="card__header">
+        <h3>Community</h3>
+      </div>
+      <div className="card__body">
+        <p>Choose Community when your team can operate and troubleshoot the platform, community support meets your needs, and a single database instance is acceptable. It supports production use as well as learning, development, and testing.</p>
+      </div>
+      <div className="card__footer">
+        <a className="button button--secondary button--block" href="https://discord.gg/opsmill">Join the community</a>
+        <a className="button button--primary button--block margin-top--sm" href="./quickstart">Start the quickstart</a>
+      </div>
+    </div>
+  </div>
+  <div className="col col--6 margin-bottom--md">
+    <div className="card card--full-height">
+      <div className="card__header">
+        <h3>Enterprise</h3>
+      </div>
+      <div className="card__body">
+        <p>Choose Enterprise when you need required change approvals, LDAP, syslog forwarding, high availability, performance optimizations, or guaranteed support response times.</p>
+        <p>If Enterprise is your intended production edition, evaluate it directly with representative data and automation. A Community trial does not demonstrate Enterprise performance.</p>
+        <p>See <a href="../deploy-manage/install-configure/install/enterprise">Enterprise installation</a> to get started.</p>
+      </div>
+      <div className="card__footer">
+        <a className="button button--primary button--block" href="https://cal.com/team/opsmill/meet">Talk to OpsMill</a>
+      </div>
+    </div>
+  </div>
+</div>
 
 ## Moving to enterprise
 
