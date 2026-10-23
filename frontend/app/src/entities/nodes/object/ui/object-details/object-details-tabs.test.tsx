@@ -45,6 +45,38 @@ describe("ObjectDetailsTabs", () => {
     await expect.element(component.getByRole("link", { name: /^Commits/ })).toBeVisible();
   });
 
+  test("keeps the Commits tab outside the scrolling tabs of a repository", async () => {
+    // WHEN
+    const component = await renderTabs(REPOSITORY_KIND, [GENERIC_REPOSITORY_KIND]);
+
+    // THEN
+    const pinned = component.getByTestId("object-details-pinned-tab");
+    await expect.element(pinned.getByRole("link", { name: /^Commits/ })).toBeVisible();
+    const scrolledTabs = component.getByTestId("object-details-tabs").getByRole("link");
+    await expect.element(scrolledTabs.first()).toHaveAccessibleName("Details");
+    expect(
+      component.container.querySelector(
+        "[data-radix-scroll-area-viewport] a[href$='repository_commits']"
+      )
+    ).toBeNull();
+  });
+
+  test("keeps every tab of another object in the scrolling tab bar", async () => {
+    // WHEN
+    const component = await renderTabs("BuiltinTag", []);
+
+    // THEN
+    await expect
+      .element(component.getByTestId("object-details-tabs").getByRole("link", { name: "Details" }))
+      .toBeVisible();
+    expect(component.getByTestId("object-details-pinned-tab").query()).toBeNull();
+    expect(
+      component.container.querySelector(
+        "[data-radix-scroll-area-viewport] [data-testid='object-details-tabs']"
+      )
+    ).not.toBeNull();
+  });
+
   test("shows no Commits tab for an object that is not a repository", async () => {
     // WHEN
     const component = await renderTabs("BuiltinTag", []);

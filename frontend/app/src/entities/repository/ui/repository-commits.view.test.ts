@@ -9,7 +9,9 @@ import {
 import { RepositoryGitUnavailableError } from "@/entities/repository/domain/model/repository-git-unavailable-error";
 import {
   canLoadOlderCommits,
+  formatCommitsTabCount,
   getCommitLogWithoutPages,
+  getCommitsTabSignal,
   getConditionNotice,
   getEmptyState,
   getFreshness,
@@ -730,4 +732,126 @@ describe("getRebaseNote", () => {
       expect(note).toBeNull();
     }
   );
+});
+
+describe("formatCommitsTabCount", () => {
+  test.each([
+    { count: 3, expected: "3" },
+    { count: 999, expected: "999" },
+    { count: 1000, expected: "999+" },
+    { count: 1284, expected: "999+" },
+  ])("shows $count as $expected", ({ count, expected }) => {
+    // WHEN
+    const text = formatCommitsTabCount(count);
+
+    // THEN
+    expect(text).toBe(expected);
+  });
+});
+
+describe("getCommitsTabSignal", () => {
+  const SYNCED = { updatedOnlyByRebase: false, isReadOnly: false };
+  const behind = (pending_count: number | null) => ({
+    condition: RepositoryGitCondition.BEHIND,
+    git_ref: "main",
+    pending_count,
+  });
+
+  test("says the next sync imports the pending commits of a read-write repository", () => {
+    // WHEN
+    const signal = getCommitsTabSignal(behind(3), SYNCED);
+
+    // THEN
+    expect(signal).toEqual({
+      kind: "pending-import",
+      count: 3,
+      description: "3 commits pending import",
+      hint: "3 commits pending import — the next sync imports them",
+    });
+  });
+
+  test("asks for Import latest commit on a read-only repository", () => {
+    // WHEN
+    const signal = getCommitsTabSignal(behind(2), { ...SYNCED, isReadOnly: true });
+
+    // THEN
+    expect(signal).toMatchObject({
+      kind: "pending-import",
+      hint: "2 commits pending import — run Import latest commit to use them",
+    });
+  });
+
+  test("counts the commits behind the tracked ref and asks for a rebase", () => {
+    // WHEN
+    const signal = getCommitsTabSignal(
+      { ...behind(1), git_ref: "release-1.4" },
+      { ...SYNCED, updatedOnlyByRebase: true }
+    );
+
+    // THEN
+    expect(signal).toEqual({
+      kind: "behind",
+      count: 1,
+      description: "1 commit behind release-1.4",
+      hint: "1 commit behind release-1.4 — rebase the branch to use it",
+    });
+  });
+
+  test("keeps the exact number of a large count", () => {
+    // WHEN
+    const signal = getCommitsTabSignal(behind(1284), SYNCED);
+
+    // THEN
+    expect(signal).toMatchObject({ count: 1284, description: "1,284 commits pending import" });
+  });
+
+  test("says the branch has diverged when the tracked ref was rewritten under a rebase-only branch", () => {
+    // WHEN
+    const signal = getCommitsTabSignal(
+      { condition: RepositoryGitCondition.REWRITTEN, git_ref: "main", pending_count: null },
+      { ...SYNCED, updatedOnlyByRebase: true }
+    );
+
+    // THEN
+    expect(signal).toEqual({
+      kind: "warning",
+      description: "diverged from main",
+      hint: "This branch has diverged from main. Rebase the branch to use the latest commit of main.",
+    });
+  });
+
+  test.each([
+    { condition: RepositoryGitCondition.REWRITTEN, description: "history rewritten" },
+    { condition: RepositoryGitCondition.ORPHANED, description: "imported commit missing" },
+    { condition: RepositoryGitCondition.REF_MISSING, description: "tracked ref missing" },
+  ])("warns without a count for $condition", ({ condition, description }) => {
+    // WHEN
+    const signal = getCommitsTabSignal({ condition, git_ref: "main", pending_count: null }, SYNCED);
+
+    // THEN
+    expect(signal).toMatchObject({ kind: "warning", description });
+  });
+
+  test.each([
+    { case: "nothing pending", log: { ...behind(0) } },
+    { case: "a BEHIND log without a count", log: behind(null) },
+    {
+      case: "IN_SYNC",
+      log: { condition: RepositoryGitCondition.IN_SYNC, git_ref: "main", pending_count: null },
+    },
+    {
+      case: "NOT_TRACKED",
+      log: { condition: RepositoryGitCondition.NOT_TRACKED, git_ref: null, pending_count: null },
+    },
+    {
+      case: "NO_REMOTE",
+      log: { condition: RepositoryGitCondition.NO_REMOTE, git_ref: "main", pending_count: null },
+    },
+  ])("shows nothing for $case", ({ log }) => {
+    // WHEN
+    const signal = getCommitsTabSignal(log, SYNCED);
+
+    // THEN
+    expect(signal).toBeNull();
+  });
 });
