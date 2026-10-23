@@ -1,7 +1,6 @@
 import type { BadgeProps } from "@/shared/components/ui/badge";
 import { warnUnexpectedType } from "@/shared/utils/common";
 import { formatNumberDisplay } from "@/shared/utils/number";
-import { pluralize } from "@/shared/utils/string";
 
 import {
   type RepositoryCommit,
@@ -151,30 +150,32 @@ const UNRELATED_BADGE: CommitStateBadge = {
   label: "Not on current history",
   variant: "gray-outline",
 };
-const NOT_ON_BRANCH_BADGE: CommitStateBadge = { label: "Behind", variant: "gray" };
+const BEHIND_BADGE: CommitStateBadge = { label: "Behind", variant: "gray" };
 
-export interface CommitStateContext {
+export interface CommitStateContext extends Pick<RepositoryCommitLog, "condition"> {
   importedCommit: string | null;
   updatedOnlyByRebase: boolean;
 }
 
 export function getStateBadges(
   { hash, state }: Pick<RepositoryCommit, "hash" | "state">,
-  { importedCommit, updatedOnlyByRebase }: CommitStateContext
+  { importedCommit, condition, updatedOnlyByRebase }: CommitStateContext
 ): CommitStateBadge[] {
   switch (state) {
     case RepositoryCommitState.HEAD:
       if (hash === importedCommit) return [REMOTE_HEAD_BADGE, IMPORTED_BADGE];
-      // The backend reports the remote head as HEAD even when the branch does not run it.
-      return updatedOnlyByRebase ? [REMOTE_HEAD_BADGE, NOT_ON_BRANCH_BADGE] : [REMOTE_HEAD_BADGE];
+      // Only BEHIND guarantees the head is newer than the branch's commit; after a reset it can be an ancestor.
+      return updatedOnlyByRebase && condition === RepositoryGitCondition.BEHIND
+        ? [REMOTE_HEAD_BADGE, BEHIND_BADGE]
+        : [REMOTE_HEAD_BADGE];
     case RepositoryCommitState.NOT_ON_BRANCH:
-      return [NOT_ON_BRANCH_BADGE];
+      return [BEHIND_BADGE];
     case RepositoryCommitState.IMPORTED:
       return [IMPORTED_BADGE];
     case RepositoryCommitState.PENDING:
       return [PENDING_BADGE];
     case RepositoryCommitState.UNRELATED:
-      return updatedOnlyByRebase ? [NOT_ON_BRANCH_BADGE] : [UNRELATED_BADGE];
+      return [UNRELATED_BADGE];
     case RepositoryCommitState.HISTORY:
       return [];
     default:
@@ -207,17 +208,20 @@ export interface CommitLogNotice {
   message: string;
 }
 
-export function getRebaseNote({
+const getRefName = (gitRef: string | null) => gitRef ?? "the default branch";
+
+export function getNonSyncedBranchNote({
   condition,
   git_ref,
   pending_count,
 }: Pick<RepositoryCommitLog, "condition" | "git_ref" | "pending_count">): string | null {
-  const ref = git_ref ?? "the default branch";
+  const ref = getRefName(git_ref);
   switch (condition) {
-    case RepositoryGitCondition.BEHIND: {
-      const distance = pending_count === null ? "" : ` by ${pluralize(pending_count, "commit")}`;
-      return `This branch does not sync with Git and is behind ${ref}${distance}. Rebase the branch to use them.`;
-    }
+    case RepositoryGitCondition.BEHIND:
+      if (pending_count === null) {
+        return `This branch does not sync with Git and is behind ${ref}. Rebase the branch to use the newer commits.`;
+      }
+      return `This branch does not sync with Git and is behind ${ref} by ${formatCommitCount(pending_count)}. Rebase the branch to use ${pending_count === 1 ? "it" : "them"}.`;
     case RepositoryGitCondition.IN_SYNC:
       return `This branch does not sync with Git and is up to date with ${ref}.`;
     default:
@@ -237,7 +241,7 @@ export function getConditionNotice(
   switch (condition) {
     case RepositoryGitCondition.REWRITTEN:
       if (updatedOnlyByRebase) {
-        const ref = git_ref ?? "the default branch";
+        const ref = getRefName(git_ref);
         const usedCommit = imported_commit ? ` (${imported_commit.slice(0, 7)})` : "";
         return {
           tone: "warning",
@@ -261,25 +265,20 @@ export function getConditionNotice(
       // On a branch updated only by rebase, the header line already gives the distance.
       return pending_count === null || updatedOnlyByRebase
         ? null
-        : { tone: "neutral", message: `${pluralize(pending_count, "commit")} pending import` };
+        : { tone: "neutral", message: `${formatCommitCount(pending_count)} pending import` };
     default:
       return null;
   }
 }
 
-export const COMMITS_TAB_COUNT_CAP = 999;
+const COMMITS_TAB_COUNT_CAP = 999;
 
 export type CommitsTabSignal =
   | { kind: "pending-import" | "behind"; count: number; description: string; hint: string }
   | { kind: "warning"; description: string; hint: string };
 
-const formatCommitCount = (count: number) =>
-  `${formatNumberDisplay(count)} ${count === 1 ? "commit" : "commits"}`;
-
 export function formatCommitsTabCount(count: number): string {
-  return count > COMMITS_TAB_COUNT_CAP
-    ? `${formatNumberDisplay(COMMITS_TAB_COUNT_CAP)}+`
-    : formatNumberDisplay(count);
+  return count > COMMITS_TAB_COUNT_CAP ? `${COMMITS_TAB_COUNT_CAP}+` : `${count}`;
 }
 
 export function getCommitsTabSignal(
@@ -293,7 +292,7 @@ export function getCommitsTabSignal(
     isReadOnly,
   }: Pick<CommitStateContext, "updatedOnlyByRebase"> & { isReadOnly: boolean }
 ): CommitsTabSignal | null {
-  const ref = git_ref ?? "the default branch";
+  const ref = getRefName(git_ref);
   switch (condition) {
     case RepositoryGitCondition.BEHIND: {
       if (!pending_count) return null;
@@ -346,4 +345,8 @@ export function getCommitsTabSignal(
     default:
       return null;
   }
+}
+
+function formatCommitCount(count: number): string {
+  return `${formatNumberDisplay(count)} ${count === 1 ? "commit" : "commits"}`;
 }

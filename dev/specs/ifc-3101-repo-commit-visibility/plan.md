@@ -195,7 +195,6 @@ frontend/app/src/
 ├── entities/repository/domain/model/repository-git-unavailable-error.ts           # NEW  UNAVAILABLE answer thrown as a typed error
 ├── entities/repository/domain/use-cases/get-repository-commits.ts                 # NEW
 ├── entities/repository/domain/rules/should-retry-git-unavailable.ts               # NEW  every unavailable reason but NOT_IMPLEMENTED is retried
-├── entities/repository/domain/rules/get-pending-import-count.ts                   # NEW  count shown on the tab link
 ├── entities/repository/domain/rules/get-commit-web-url.ts                         # NEW  "View on GitHub" link, credentials dropped
 ├── entities/repository/domain/rules/get-repository-location.ts                    # NEW
 ├── entities/repository/ui/queries/get-repository-commits.query.ts                 # NEW  infinite query, capped retry while unavailable
@@ -466,7 +465,7 @@ determinism logic, no test and no documentation entry.
   - the typed error, the mapper, the API document and the other domain rules
     (`get-repository-commits.test.ts`, `repository-commits.mappers.test.ts`,
     `get-repository-commits-from-api.test.ts`, `get-commit-web-url.test.ts`,
-    `get-pending-import-count.test.ts`, `get-repository-location.test.ts`)
+    `get-repository-location.test.ts`)
 - e2e test on `demo_edge_repo`, not landed yet.
 - The e2e suite asserts against a repository seeded already behind, with the sync tick awaited once
   in a fixture, rather than pushing mid-test and waiting out the one-minute cron. A fixed

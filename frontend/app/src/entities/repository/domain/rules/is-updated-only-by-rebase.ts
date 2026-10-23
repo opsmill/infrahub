@@ -1,4 +1,3 @@
-import type { BranchListItem } from "@/entities/branches/domain/model/branch";
 import {
   REPOSITORY_INTERNAL_STATUS_STAGING,
   REPOSITORY_KIND,
@@ -8,16 +7,18 @@ import {
 export function isUpdatedOnlyByRebase({
   repositoryKind,
   internalStatus,
-  branch,
+  isDefaultBranch,
+  syncWithGit,
 }: {
   repositoryKind: string;
   internalStatus: string | null;
-  branch: Pick<BranchListItem, "is_default" | "sync_with_git">;
+  isDefaultBranch: boolean | null | undefined;
+  syncWithGit: boolean | null | undefined;
 }): boolean {
   return (
     repositoryKind === REPOSITORY_KIND &&
     internalStatus !== REPOSITORY_INTERNAL_STATUS_STAGING &&
-    !branch.is_default &&
-    branch.sync_with_git === false
+    !isDefaultBranch &&
+    syncWithGit === false
   );
 }
