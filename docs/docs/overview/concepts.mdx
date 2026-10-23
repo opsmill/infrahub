@@ -1,118 +1,106 @@
 ---
-title: Key Concepts
-description: Core principles behind Infrahub — flexible schemas, version control, Transformations, Generators, and design-driven automation.
+title: Key concepts
+description: Understand how Infrahub models connected infrastructure data, validates changes, and prepares inputs for automation.
 ---
-import ReferenceLink from "../../src/components/Card";
 
-## Flexible schema
+Infrahub stores infrastructure data and its relationships, versions changes, and generates outputs for your automation. You can describe a new site, review its devices and addressing before deployment, and produce configurations from the same data.
 
-![Infrahub schema](./../media/overview-schema.excalidraw.svg)
+## Connected data and a flexible schema
 
-A core feature of Infrahub is the ability to define a relational model to describe the infrastructure, design and business logic in a way that's specific to each organization's needs, while allowing for the model to be changed via version control over time.
+An **object** represents something you manage: a site, device, circuit, or service. **Attributes** describe it, such as a device's name or status. **Relationships** connect objects, such as a device to its site or a service to its circuit. Together, these objects and relationships form a **graph**.
 
-The schema provides an abstraction layer to the graph database, and as such no knowledge of database administration is needed for daily Infrahub usage.
+![A site contains a device that uses a circuit. A service depends on that circuit. The device has name and status attributes.](../media/concepts-connected-data.svg)
 
-The schema is described in YAML format, and consists of nodes, attributes, relationships, and other descriptors. A new deployment of Infrahub will have no schema by default — it is up to the administrator to define and load the initial schema.
-
-Example schemas can be found in the [Infrahub Marketplace](https://marketplace.infrahub.app), the catalog of schemas maintained by the community and OpsMill.
-
-The schema can be loaded using the [`infrahubctl schema load`]($(base_url)infrahubctl/infrahubctl-load) command for development, or via Infrahub Git integration for production deployments. Once loaded, it's stored and version controlled in the graph database. Changes to the schema can be made at any time, and it's best practice to make schema changes in a branch to allow for testing before implementation.
-
-<ReferenceLink title="Learn more about schema" url="../learn/tutorials/build-your-first-schema" />
-
-## Transformations
-
-![Transformations](./../media/overview-transformations.excalidraw.svg)
-
-Transformations allow users to extract and export infrastructure data in a structured and repeatable way. They convert data retrieved via GraphQL queries into a desired format, using either Jinja2 templates or Python code.
-
-These Transformations allow for flexible and powerful data manipulation, making it easier to integrate and utilize data in various applications and workflows — from generating device configurations to producing documentation or compliance reports.
-
-<ReferenceLink title="Learn more about Transformations" url="../transformations/overview" />
-
-## Generators
-
-Generators automatically create infrastructure objects based on predefined templates and user inputs. They streamline the setup of complex infrastructure stacks while allowing for customization.
-
-Generators use templates as a starting point and prompt users for specific information to customize the output. This automates repetitive tasks, reduces manual effort, and ensures consistent infrastructure setups across projects and environments. Generator outputs are versioned, enabling users to track changes over time.
-
-Advanced users can create custom Generators to suit their organization's specific needs and integrate them into workflows and CI/CD pipelines for automated infrastructure provisioning.
-
-<ReferenceLink title="Learn more about Generators" url="../generators/overview" />
-
-## Version control
-
-![Infrahub Version Control](../media/overview-versioning.excalidraw.svg)
-
-Infrahub integrates version control directly into its graph database, providing robust capabilities for managing changes to infrastructure data.
-
-### Branching and merging
-
-Infrahub allows you to create branches from the main data state. Each branch can contain modifications and is isolated from the main branch until changes are reviewed and merged. Branches can be created through the UI, CLI (`infrahubctl`), or GraphQL mutations.
-
-Changes from branches can be merged back into the main branch after review. Infrahub provides tools for viewing differences (diffs) between branches, running tests, and resolving conflicts before merging.
-
-### Proposed changes
-
-A proposed change is similar to a pull request in Git. It allows users to review and discuss changes between branches. Reviewers can leave comments, request changes, and approve the proposed change before merging. This process ensures that changes are thoroughly vetted before integration into the main branch.
-
-### Immutable graph and historical data
-
-Infrahub's storage engine is immutable, meaning past states of the data graph are preserved. Users can query historical data to view the state of the infrastructure at any point in time. This feature is crucial for auditing and understanding the evolution of infrastructure over time.
-
-### Integration with Git
-
-Infrahub combines its graph database with Git for version control. This integration allows for synchronization between Infrahub branches and Git repositories. Users can perform typical Git operations such as commit, push, and pull within Infrahub, ensuring that data and code are versioned together.
-
-### Continuous integration (CI)
-
-Infrahub supports CI processes by running checks on proposed changes during the review process. These checks ensure data integrity and help identify potential issues before merging. Custom checks can be implemented to enforce specific business logic or operational requirements.
-
-<ReferenceLink title="Learn more about version control" url="../immutable-history/overview" />
-
-## Putting it together
-
-These concepts are tightly integrated and work together to address a wide range of use cases in infrastructure management.
-
-### Design-driven automation and service catalog
-
-Having a flexible schema opens up new possibilities not previously available. Infrahub allows a business workflow or service to be implemented in the [schema](../schema/overview) and instantiated by a Generator.
-
-Downstream objects are linked to the Generator. If a business service needs updating or expansion, all needed changes can be generated to keep the infrastructure consistent and validated.
-
-For example, when deploying a new service:
-
-- A branch is created to stage the changes
-- A Generator runs and creates the needed objects according to the business logic
-- A Transformation runs to create the needed configuration files
-- The changes are reviewed and eventually merged in a proposed change
-
-:::success
-
-- This sets up a robust data structure that will allow lifecycle management of the service, including updates, decommissioning, and more.
-- Capturing business logic in the Generator enables consistent and repeatable deployments, reducing the risk of human error.
-
+:::info
+These connections make the data useful beyond an inventory. You can find the services that depend on a circuit before planning its replacement.
 :::
 
-<ReferenceLink title="How Infrahub can be used to create a service catalog" url="https://www.opsmill.com/how-to-turn-your-source-of-truth-into-a-service-factory/" />
+The **schema** defines the kinds of objects you can create, their attributes, relationships, and validation rules. You define it in YAML to match your infrastructure and business, including concepts such as customers or service tiers. Infrahub builds the forms and API from that schema.
 
-### Agility in infrastructure management
+Start with your existing model or [define a schema](../schema/overview.mdx), then evolve it as your requirements change.
 
-Some changes in the infrastructure can be complex and require careful planning and testing. Infrahub's version control capabilities allow for these changes to be staged and tested in isolation before being applied to the production environment.
+## Branches and Proposed Changes
 
-For example, during a large network software upgrade:
-    - A branch is created to stage the changes
-    - Any changes to the schema can be made in the branch, such as adding a new attribute
-    - Transformations and templates are updated to use the new attribute
-    - Data is populated in the branch
-    - Artifacts are generated to reflect the new state of the infrastructure
-    - Tests are run to ensure the changes work as expected
-    - The changes are collaboratively reviewed in a proposed change
-    - During the maintenance window, the branch is merged and the changes are applied to the production environment
+A **branch** is a separate version of your infrastructure data and schema.
 
-:::success
-
-- Branching allows for complex changes to be prepared in advance without holding back your production, reducing the risk of downtime or errors.
-- The proposed change process enables collaboration and review, while the integrated CI pipeline ensures that changes are tested and artifacts are generated.
-
+:::info
+For a new site, you can prepare devices, addressing, and schema changes on a branch while others continue working on the default branch.
 :::
+
+A **Proposed Change** is the review of a branch before merging, similar to a pull request. Reviewers can inspect differences, discuss changes, and examine validation results. Merging applies the changes to the default branch.
+
+![Create a new-site branch from the default branch, prepare changes, run checks and review a Proposed Change, then merge into the default branch.](../media/concepts-change-review.svg)
+
+[Branches](../branches/overview.mdx) isolate branch-aware data. You can also define [shared data](../schema/branch-awareness.mdx) that stays the same across branches, such as a common reference list.
+
+## Validation before merge
+
+Schema rules describe valid data: required attributes, allowed values, and relationships. [Checks](../checks/overview.mdx) add your operational rules in Python, such as requiring two WAN circuits for every site. This can flag a design that leaves a site dependent on a single connection.
+
+:::info
+Checks run as part of a [Proposed Change](../proposed-changes/overview.mdx), so reviewers can catch a missing backup connection before approving a site design. Finding that gap before deployment helps reduce the risk of an outage that interrupts business operations.
+:::
+
+You choose the rules to enforce; a passing check confirms those rules, not that a deployment will succeed.
+
+![A check requiring two WAN circuits fails for a site with one circuit. After adding the second circuit and rerunning the check, it passes for review.](../media/concepts-checks.svg)
+
+## History and data ownership
+
+[Immutable history](../immutable-history/overview.mdx) records earlier versions of objects, attributes, and relationships. The [Activity log](../deploy-manage/run-observe/activity-log.mdx) records operations, including who changed an object and when.
+
+[Data lineage](../objects/metadata.mdx) describes where a value came from and who owns it. You can record source and owner metadata on individual attributes and relationships, which is useful when people and external systems maintain different parts of the same device record.
+
+![A service changes from circuit-a to circuit-b. History shows the earlier relationship, the Activity log records who changed it and when, and field metadata records its source and owner.](../media/concepts-history-ownership.svg)
+
+:::info
+You can query a past state to investigate which circuit a service used before a change, then use the Activity log to identify who changed it and when.
+:::
+
+## Reusable definitions and resource allocation
+
+When adding another site, some details repeat and others must be unique. These concepts address different parts of that work:
+
+| Concept | Example use |
+| --- | --- |
+| [Object Templates](../object-templates/overview.mdx) | Create a switch with its standard set of interfaces. Later template edits do not change existing objects. |
+| [Profiles](../profiles/overview.mdx) | Share interface settings across switches. Updating a Profile updates inherited values, while explicit overrides remain. |
+| [Groups](../groups/overview.mdx) | Select the devices that a check, Generator, or artifact definition targets. |
+| [IPAM](../ipam/overview.mdx) | Model IP prefixes and addresses and their relationships to your infrastructure. |
+| [Resource Manager](../resource-manager/overview.mdx) | Allocate addresses, prefixes, or numbers such as VLAN IDs from defined pools. |
+
+## Generators, Transformations and Artifacts
+
+A [Generator](../generators/overview.mdx) runs your **Python logic to create or update objects** and relationships in Infrahub. For example, a Generator can turn a site design into firewall and switch devices, their networks, and monitoring services according to your rules.
+
+A [Transformation](../transformations/overview.mdx) **converts queried data into an output format** using Jinja2 or Python. It can produce a device configuration, an automation inventory or a report. An [artifact](../artifacts/overview.mdx) is a **stored output for a particular target**, available for review and retrieval.
+
+![A Generator turns a site design into firewall, switch, and monitoring objects in Infrahub. Transformations produce separate firewall, switch, and monitoring configuration artifacts for external deployment automation.](../media/concepts-automation.svg)
+
+The distinction is the output: Generators change the data model's objects; Transformations produce content from that data. You can use Transformations with manually entered or imported data too.
+
+## Git integration
+
+An external Git repository stores the files that define your automation: schemas, GraphQL queries, Generators, Transformations, and checks (your custom validation logic). In the repository, [`.infrahub.yml`](../git-integration/infrahub-yml.mdx) declares which resources Infrahub imports and how they connect: which query a Transformation reads, which objects a Generator targets, or which checks validate a change.
+
+![An example Git repository contains .infrahub.yml alongside schema, queries, generators, transformations, and checks subdirectories. Infrahub imports the declared definitions into the corresponding branch, where they operate on infrastructure data.](../media/concepts-git-integration.svg)
+
+With a standard **Repository** connection, Infrahub automatically imports updates from Git into corresponding Infrahub branches. For a new site, you can change a configuration template in Git and add devices on the matching Infrahub branch, then review the resulting data and artifacts in a Proposed Change. When the branch is configured to **sync with Git, merging in Infrahub also merges the linked Git branch.**
+
+A **Read-only Repository** connection imports a selected branch, tag, or commit. You **request updates explicitly**; Infrahub does not poll it or write back to Git.
+
+:::info
+Choose this when you want to control when new automation code is imported.
+:::
+
+Git versions the files; Infrahub versions the infrastructure data. Editing a device in Infrahub does not write that device back to Git. See [Git integration](../git-integration/overview.mdx) to choose a connection and configure synchronization.
+
+## External automation
+
+External tools can query data through the [GraphQL API](../development-resources/graphql/overview.mdx) and retrieve artifacts for deployment. [Events](../events/overview.mdx) and [webhooks](../webhooks/overview.mdx) connect changes in Infrahub to other workflows, such as notifying an automation pipeline after a merge.
+
+Merging updates the data in Infrahub. Your deployment automation controls when and how configurations are applied to infrastructure.
+
+## Try it
+
+[Explore Infrahub](./explore.mdx) to see objects, relationships, and branches in the interface, or [build your first schema](../learn/tutorials/build-your-first-schema.mdx) to model your own infrastructure.
