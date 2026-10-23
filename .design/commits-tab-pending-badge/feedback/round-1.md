@@ -16,6 +16,8 @@ http://localhost:8081/_proto/commits-tab-pending-badge/commits?dj.variant=pill&d
 
 ## Triage
 
-1. Open — answered in the session, waiting for the user's call:
+1. Declined (no change), decided by Paul Leménager on 2026-10-23; reason in `03-decisions.md`:
    - The backend gives one answer per repository and branch (`_resolve_remote_branch` in #11169): staging → pending import; branch that does not sync with Git → not on this branch; otherwise the branch's own remote branch → pending import. So a badge never has to show both kinds at once.
    - One overlap exists inside "not on this branch": when the default branch in Infrahub has not imported the newest Git commits yet, a rebase brings only the default branch's commit, not the newest ones. The API cannot tell these apart today.
+
+Follow-up question from the user: "pending" and "need to be imported" are the same thing ("pending import"). There are two kinds only: pending import (an import brings them) and not on this branch (only a rebase brings them).
