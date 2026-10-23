@@ -204,6 +204,9 @@ in scope), spawn one reviewer per area (read-only), with `.agents/rules/code-des
    Corrections to an open PR's description are Defer, with the corrected sentence: they change
    GitHub, not the code. A cubic finding that contradicts a rule's "Not violations" list is
    Declined, citing that line as `path:line`.
+   A finding that cites a rule the manifest marks "not on origin/<base>" is advisory (P3), whatever
+   its grade: the author could not have read that rule, which exists only in this checkout. Say so
+   in the finding, for example "frontend-components.md is not on develop".
 4. **Check intent before Fix.** Code that looks wrong can be what the spec asked for or what a
    later commit chose on purpose. Before classifying a finding as Fix, search the spec's
    requirements for the behaviour the fix would change, and run

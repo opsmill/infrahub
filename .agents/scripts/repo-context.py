@@ -241,7 +241,8 @@ def print_markdown(context: dict) -> None:
     print(f"\n## Rules that apply ({len(context['rules'])})\n")
     for rule in context["rules"]:
         reasons = "; ".join(f"`{glob}` matches {path}" for glob, path in rule["matched"].items())
-        print(f"- {rule['path']} ({rule['chars']} chars) — {reasons}")
+        absent = "" if rule["on_base"] else f" — not on origin/{context['base']}: findings citing it are advisory"
+        print(f"- {rule['path']} ({rule['chars']} chars) — {reasons}{absent}")
     print("\n## Rules by area\n")
     for area, rule_paths in context["area_rules"].items():
         print(f"- {area}: {', '.join(rule_paths) or 'no rule matches'}")
@@ -445,6 +446,14 @@ def main() -> int:
         return EXIT_GIT_FAILED
 
 
+def on_base(base: str, path: str) -> bool:
+    try:
+        git("cat-file", "-e", f"origin/{base}:{path}")
+    except subprocess.CalledProcessError:
+        return False
+    return True
+
+
 def review_manifest(args: argparse.Namespace) -> int:
     os.chdir(args.repo)
     os.chdir(git("rev-parse", "--show-toplevel").strip())
@@ -469,7 +478,7 @@ def review_manifest(args: argparse.Namespace) -> int:
         "excluded": change.excluded,
         "skipped_submodules": change.skipped_submodules,
         "areas": areas,
-        "rules": [asdict(rule) for rule in load_rules(touched)],
+        "rules": [asdict(rule) | {"on_base": on_base(base, rule.path)} for rule in load_rules(touched)],
         "area_rules": {area: [rule.path for rule in load_rules(paths)] for area, paths in areas.items()},
         "maps": nearest_maps(touched),
     }
