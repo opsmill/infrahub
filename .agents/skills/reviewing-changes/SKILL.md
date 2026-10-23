@@ -213,6 +213,11 @@ in scope), spawn one reviewer per area (read-only), with `.agents/rules/code-des
    `git log -S '<line the fix changes>' -- <file>`. When the fix contradicts a requirement or
    reverses a commit that made the change deliberately, classify it as **Ask**: a question for
    the user that quotes the requirement or the commit.
+5. **Check reach before Fix.** When the fix changes a function, component, hook, constant or type
+   that code outside the manifest uses, search for its callers. If any caller is outside the
+   manifest, classify the finding as **Ask**, list those call sites, and propose a fix local to
+   the change instead (a new function, or a parameter only the changed code passes). Example: a
+   fix that adds thousands separators to the app-wide `pluralize` changes every count it formats.
 
 ## Phase 6 — Fix and review the fixes
 
@@ -224,7 +229,8 @@ Then review the fixes as a new change. This is not optional: a fix can break som
 round never looked at, or fix a finding only partly.
 
 - **Scope**: `git diff HEAD --name-only`, minus the paths left out or set aside in the scope
-  step.
+  step. List each path in it that the manifest does not list. Every such path must come from an
+  Ask the user approved; revert any other change to it before the review continues.
 - **Bugs**: invoke `code-review` with the arguments `high <path> <path> ...` for those paths.
 - **Rules**: one reviewer per area, as in the rule check, given `git diff HEAD -- <paths>` as the
   change and asked to check the fixed lines and the code around them.
@@ -249,6 +255,7 @@ If files were set aside, restore them first: `git stash apply <sha>`, then drop 
 Scope: <committed only | committed and uncommitted>; left out: <globs or "nothing">; set aside: <paths or "nothing">
 Context hooks: <active | inactive: paths passed explicitly>
 P1: <n> | P2: <n> | P3: <n> — fixed: <n>, declined: <n>, deferred: <n>, asked: <n>, rounds: <n>
+Fixes outside the manifest: <paths, each with the approved Ask | "none">
 cubic: <exit code, n findings | error: <message> | not installed>
 
 ### Context
