@@ -270,7 +270,7 @@ uv run infrahubctl schema load /tmp/qa_shirt_schema.yml
 
 ## Edge Cases
 
-- [ ] Kind without an HFID: in the web interface, create an IP address in **IPAM > IP Addresses** → run `jq -c 'select(.event=="infrahub.node.created" and .data.kind=="IpamIPAddress") | .data.changelog | {hfid, display_label}' /tmp/qa-webhooks.jsonl | tail -1` and confirm `hfid` is `null` and `display_label` is the address.
+- [ ] Kind without an HFID: in the web interface, create the IP prefix `10.99.0.0/24` in **IPAM > IP Prefixes** → run `jq -c 'select(.event=="infrahub.node.created" and .data.kind=="IpamIPPrefix") | .data.changelog | {hfid, display_label}' /tmp/qa-webhooks.jsonl | tail -1` and confirm `hfid` is `null` and `display_label` is `10.99.0.0/24`.
 - [ ] HFID change: in the web interface, rename device `atl1-edge2` to `atl1-edge2-qa` → run `jq -c 'select(.event=="infrahub.node.updated" and .data.kind=="InfraDevice") | .data.changelog | {hfid, display_label}' /tmp/qa-webhooks.jsonl | tail -1` and confirm `hfid` is `["atl1-edge2-qa"]`.
 - [ ] Cascade delete: in the web interface, delete device `atl1-core2` → its interfaces are deleted with it. Count the deliveries with `jq -c 'select(.event=="infrahub.node.deleted")' /tmp/qa-webhooks.jsonl | wc -l` until the count stops growing (deliveries go out at a few per second, so a device with many interfaces takes minutes), then open **Tasks** and confirm that no webhook delivery failed.
 
