@@ -12,8 +12,8 @@ import pytest
 from fast_depends import Provider
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
-from neo4j._codec.hydration.v1 import HydrationHandler
-from neo4j._codec.hydration.v1.hydration_handler import _GraphHydrator
+from neo4j._codec.hydration.bolt.v1 import HydrationHandler
+from neo4j._codec.hydration.bolt.v1.hydration_handler import _GraphHydrator
 from prefect.client.orchestration import PrefectClient, get_client
 from prefect.server.api.server import SubprocessASGIServer
 from prefect.settings import get_current_settings
