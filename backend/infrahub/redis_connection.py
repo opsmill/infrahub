@@ -6,6 +6,7 @@ from urllib.parse import parse_qs, quote, urlencode
 from prefect_redis.connection import redis_from_url
 from redis.asyncio.retry import Retry
 from redis.backoff import ExponentialWithJitterBackoff
+from redis.exceptions import ConnectionError as RedisConnectionError
 from redis.exceptions import RedisError
 
 if TYPE_CHECKING:
@@ -94,7 +95,9 @@ def _connection_defaults() -> dict[str, Any]:
     """Connection options that the URL's own query options override."""
     backoff = ExponentialWithJitterBackoff(base=REDIS_RETRY_BACKOFF_BASE, cap=REDIS_RETRY_BACKOFF_CAP)
     return {
-        "retry": Retry(backoff, retries=REDIS_COMMAND_RETRIES),
+        # Redis may already have run a command whose reply timed out, so only connection errors, which a failover raises,
+        # are retried.
+        "retry": Retry(backoff, retries=REDIS_COMMAND_RETRIES, supported_errors=(RedisConnectionError,)),
         "health_check_interval": REDIS_HEALTH_CHECK_INTERVAL,
     }
 

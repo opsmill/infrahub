@@ -11,6 +11,9 @@ from pydantic import SecretStr
 from redis.asyncio import Redis
 from redis.asyncio.connection import Connection, SSLConnection
 from redis.asyncio.sentinel import SentinelConnectionPool
+from redis.exceptions import ConnectionError as RedisConnectionError
+from redis.exceptions import RedisError
+from redis.exceptions import TimeoutError as RedisTimeoutError
 
 from infrahub.config import CacheDriver, CacheSettings
 from infrahub.redis_connection import (
@@ -272,8 +275,8 @@ def test_build_redis_connection_from_scalar_settings(case: ScalarCase) -> None:
     assert _describe(connection) == case.expected
 
 
-def test_url_connection_retries_like_the_client_default() -> None:
-    """Redis.from_url hands the pool no retry policy, so the client default has to be rebuilt.
+def test_url_connection_retries_as_often_as_the_client_default() -> None:
+    """Redis.from_url hands the pool no retry policy, so the client default's count and backoff have to be rebuilt.
 
     Compared against the policy redis-py installs when it builds the pool itself, so a redis-py change
     to the policy's class, count or backoff fails here.
@@ -285,6 +288,40 @@ def test_url_connection_retries_like_the_client_default() -> None:
     assert connection.retry.get_retries() == client_default.get_retries()
     assert type(connection.retry._backoff) is type(client_default._backoff)
     assert vars(connection.retry._backoff) == vars(client_default._backoff)
+
+
+async def _attempts_for_a_command_failing_once(error: RedisError) -> list[str]:
+    retry = _build("redis://cache:6379/0").connection_pool.make_connection().retry
+    attempts: list[str] = []
+
+    async def command() -> str:
+        attempts.append(type(error).__name__)
+        if len(attempts) == 1:
+            raise error
+        return "OK"
+
+    async def on_failure(failure: Exception) -> None:
+        return None
+
+    try:
+        await retry.call_with_retry(command, on_failure)
+    except RedisError as exc:
+        attempts.append(f"raised {type(exc).__name__}")
+    return attempts
+
+
+async def test_url_connection_retries_a_connection_error() -> None:
+    """A failover surfaces as a connection error, which a second attempt on the promoted master resolves."""
+    attempts = await _attempts_for_a_command_failing_once(RedisConnectionError("Connection closed by server."))
+
+    assert attempts == ["ConnectionError", "ConnectionError"]
+
+
+async def test_url_connection_does_not_retry_a_timeout() -> None:
+    """Redis may already have run a command whose reply timed out, so running it again could run it twice."""
+    attempts = await _attempts_for_a_command_failing_once(RedisTimeoutError("Timeout reading from cache:6379"))
+
+    assert attempts == ["TimeoutError", "raised TimeoutError"]
 
 
 def test_url_connection_inherits_the_redis_py_socket_bounds() -> None:
