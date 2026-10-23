@@ -77,6 +77,21 @@ def repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return root
 
 
+@pytest.mark.usefixtures("repo")
+def test_manifest_marks_rules_missing_from_the_reviewed_base(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    target = init_repo(tmp_path, "target", [".agents/rules/code-doc-style.md"])
+    write(target, "frontend/app/src/other.tsx")
+
+    context = run_manifest(monkeypatch, capsys, "--repo", str(target))
+
+    assert {rule["path"]: rule["on_base"] for rule in context["rules"]} == {
+        ".agents/rules/code-doc-style.md": True,
+        ".agents/rules/frontend.md": False,
+    }
+
+
 def run_manifest(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], *args: str) -> dict:
     monkeypatch.setattr("sys.argv", ["repo-context.py", "--json", "--base", "stable", *args])
     assert rc.main() == 0
