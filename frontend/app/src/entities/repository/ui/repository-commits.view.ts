@@ -173,7 +173,7 @@ export function getStateBadges(
     case RepositoryCommitState.PENDING:
       return [PENDING_BADGE];
     case RepositoryCommitState.UNRELATED:
-      return [UNRELATED_BADGE];
+      return updatedOnlyByRebase ? [NOT_ON_BRANCH_BADGE] : [UNRELATED_BADGE];
     case RepositoryCommitState.HISTORY:
       return [];
     default:
@@ -220,11 +220,22 @@ export function getRebaseNote({
 }
 
 export function getConditionNotice(
-  { condition, pending_count }: Pick<RepositoryCommitLog, "condition" | "pending_count">,
+  {
+    condition,
+    pending_count,
+    imported_commit,
+  }: Pick<RepositoryCommitLog, "condition" | "pending_count" | "imported_commit">,
   { updatedOnlyByRebase }: Pick<CommitStateContext, "updatedOnlyByRebase">
 ): CommitLogNotice | null {
   switch (condition) {
     case RepositoryGitCondition.REWRITTEN:
+      if (updatedOnlyByRebase) {
+        const usedCommit = imported_commit ? ` (${imported_commit.slice(0, 7)})` : "";
+        return {
+          tone: "warning",
+          message: `This branch does not sync with Git, and the commit it uses${usedCommit} is no longer in the history of the default branch, for example after a force push. Rebase the branch to use the latest commit of the default branch.`,
+        };
+      }
       return {
         tone: "warning",
         message:

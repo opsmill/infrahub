@@ -877,6 +877,29 @@ describe("RepositoryCommitsManager", () => {
       expect(rows.nth(3).getByText("Not on this branch").query()).toBeNull();
     });
 
+    test("asks for a rebase when the default branch no longer holds the branch's commit", async () => {
+      // GIVEN
+      apiMock.mockResolvedValue(generateCommitsApiResult(generateRewrittenCommitsResponse()));
+
+      // WHEN
+      const component = await renderTab();
+
+      // THEN
+      await expect
+        .element(
+          component.getByText(
+            `This branch does not sync with Git, and the commit it uses (${BEHIND_IMPORTED}) is no longer in the history of the default branch, for example after a force push. Rebase the branch to use the latest commit of the default branch.`
+          )
+        )
+        .toBeVisible();
+      expect(component.getByText(/tracked ref was rewritten/).query()).toBeNull();
+      const rows = component.getByTestId("data-table-row");
+      await expect.element(rows.nth(0).getByText("Remote head")).toBeVisible();
+      await expect.element(rows.nth(0).getByText("Not on this branch")).toBeVisible();
+      await expect.element(rows.nth(1).getByText("Not on this branch")).toBeVisible();
+      expect(component.getByText("Not on current history").query()).toBeNull();
+    });
+
     test("keeps the pending-import wording for a repository added on the branch", async () => {
       // GIVEN
       apiMock.mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));
