@@ -1052,7 +1052,7 @@ RETURN updated_at, updated_by
 
     def get_peers(self) -> Generator[RelationshipPeerData, None, None]:
         for result in self.get_results_group_by(("peer", "uuid"), ("source_node", "uuid")):
-            rels = result.get("rels")
+            rels = result.get_rel_collection("rels")
             source_node = result.get_node("source_node")
             peer_node = result.get_node("peer")
 
@@ -1073,38 +1073,42 @@ RETURN updated_at, updated_by
                 peer_id=peer_node.get("uuid"),
                 peer_db_id=peer_node.element_id,
                 peer_kind=peer_node.get("kind"),
-                rel_node_db_id=result.get("rl").element_id,
-                rel_node_id=result.get("rl").get("uuid"),
+                rel_node_db_id=result.get_node("rl").element_id,
+                rel_node_id=result.get_node("rl").get("uuid"),
                 rels=[RelData.from_db(rel) for rel in rels],
                 branch=self.branch.name,
                 created_at=created_at,
-                created_by=result.get("created_by") if self.include_metadata & MetadataOptions.CREATED_BY else None,
+                created_by=result.get_as_optional_type("created_by", return_type=str)
+                if self.include_metadata & MetadataOptions.CREATED_BY
+                else None,
                 updated_at=updated_at,
-                updated_by=result.get("updated_by") if self.include_metadata & MetadataOptions.UPDATED_BY else None,
+                updated_by=result.get_as_optional_type("updated_by", return_type=str)
+                if self.include_metadata & MetadataOptions.UPDATED_BY
+                else None,
                 properties={},
             )
 
             prop, metadata_option = ("is_protected", MetadataOptions.IS_PROTECTED)
             if self.include_metadata & metadata_option:
-                prop_node = result.get(prop)
+                prop_node = result.get_optional_node(prop)
                 if prop_node:
                     data.properties[prop] = FlagPropertyData(
                         name=prop,
                         prop_db_id=prop_node.element_id,
-                        rel=RelData.from_db(result.get(f"rel_{prop}")),
+                        rel=RelData.from_db(result.get_rel(f"rel_{prop}")),
                         value=prop_node.get("value"),
                     )
 
             for prop, metadata_option in [("owner", MetadataOptions.OWNER), ("source", MetadataOptions.SOURCE)]:
                 if not self.include_metadata & metadata_option:
                     continue
-                prop_node = result.get(prop)
+                prop_node = result.get_optional_node(prop)
                 if not prop_node:
                     continue
                 data.properties[prop] = NodePropertyData(
                     name=prop,
                     prop_db_id=prop_node.element_id,
-                    rel=RelData.from_db(result.get(f"rel_{prop}")),
+                    rel=RelData.from_db(result.get_rel(f"rel_{prop}")),
                     value=prop_node.get("uuid"),
                 )
 
@@ -1176,12 +1180,12 @@ class RelationshipGetByIdentifierQuery(Query):
     def get_peers(self) -> Generator[RelationshipPeersData, None, None]:
         for result in self.get_results():
             data = RelationshipPeersData(
-                id=result.get("rl").get("uuid"),
-                identifier=result.get("rl").get("name"),
-                source_id=result.get("src").get("uuid"),
-                source_kind=result.get("src").get("kind"),
-                destination_id=result.get("dst").get("uuid"),
-                destination_kind=result.get("dst").get("kind"),
+                id=result.get_node("rl").get("uuid"),
+                identifier=result.get_node("rl").get("name"),
+                source_id=result.get_node("src").get("uuid"),
+                source_kind=result.get_node("src").get("kind"),
+                destination_id=result.get_node("dst").get("uuid"),
+                destination_kind=result.get_node("dst").get("kind"),
             )
             yield data
 
@@ -1524,6 +1528,7 @@ class GetAllPeersIds(Query):
         """ % {"active_rel_filter": active_rel_filter}
 
         self.add_to_query(query)
+        self.return_labels = ["uuid"]
 
     def get_peers_uuids(self) -> list[str]:
-        return [row.data["uuid"] for row in self.results]  # type: ignore
+        return [row.get_as_type("uuid", return_type=str) for row in self.results]

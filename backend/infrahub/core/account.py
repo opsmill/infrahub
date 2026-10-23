@@ -154,9 +154,9 @@ class AccountGlobalPermissionQuery(Query):
         for result in self.get_results():
             permissions.append(
                 GlobalPermission(
-                    id=result.get("global_permission").get("uuid"),
-                    action=result.get("global_permission_action").get("value"),
-                    decision=result.get("global_permission_decision").get("value"),
+                    id=result.get_node("global_permission").get("uuid"),
+                    action=result.get_node("global_permission_action").get("value"),
+                    decision=result.get_node("global_permission_decision").get("value"),
                 )
             )
 
@@ -284,11 +284,11 @@ class AccountObjectPermissionQuery(Query):
         for result in self.get_results():
             permissions.append(
                 ObjectPermission(
-                    id=result.get("object_permission").get("uuid"),
-                    namespace=result.get("object_permission_namespace").get("value"),
-                    name=result.get("object_permission_name").get("value"),
-                    action=result.get("object_permission_action").get("value"),
-                    decision=result.get("object_permission_decision").get("value"),
+                    id=result.get_node("object_permission").get("uuid"),
+                    namespace=result.get_node("object_permission_namespace").get("value"),
+                    name=result.get_node("object_permission_name").get("value"),
+                    action=result.get_node("object_permission_action").get("value"),
+                    decision=result.get_node("object_permission_decision").get("value"),
                 )
             )
 
@@ -384,9 +384,9 @@ class AccountRoleGlobalPermissionQuery(Query):
         for result in self.get_results():
             permissions.append(
                 GlobalPermission(
-                    id=result.get("global_permission").get("uuid"),
-                    action=result.get("global_permission_action").get("value"),
-                    decision=result.get("global_permission_decision").get("value"),
+                    id=result.get_node("global_permission").get("uuid"),
+                    action=result.get_node("global_permission_action").get("value"),
+                    decision=result.get_node("global_permission_decision").get("value"),
                 )
             )
 
@@ -491,11 +491,11 @@ class AccountRoleObjectPermissionQuery(Query):
         for result in self.get_results():
             permissions.append(
                 ObjectPermission(
-                    id=result.get("object_permission").get("uuid"),
-                    namespace=result.get("object_permission_namespace").get("value"),
-                    name=result.get("object_permission_name").get("value"),
-                    action=result.get("object_permission_action").get("value"),
-                    decision=result.get("object_permission_decision").get("value"),
+                    id=result.get_node("object_permission").get("uuid"),
+                    namespace=result.get_node("object_permission_namespace").get("value"),
+                    name=result.get_node("object_permission_name").get("value"),
+                    action=result.get_node("object_permission_action").get("value"),
+                    decision=result.get_node("object_permission_decision").get("value"),
                 )
             )
 

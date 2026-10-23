@@ -394,7 +394,15 @@ shape and let it do the typing, rather than indexing the raw record and casting:
 | A scalar that may be absent | `get_as_optional_type("description", str)` |
 | A string (shorthand, returns `str` or `None`) | `get_as_str("node_uuid")` |
 | A `collect(...)` list | `get_as_list_of_type("related_uuids", str)` |
-| A whole node or relationship | `get("n")` |
+| A list whose elements the caller checks one by one | `get_list("attributes")` |
+| A whole node | `get_node("n")` |
+| A node that may be null, such as one from an `OPTIONAL MATCH` | `get_optional_node("owner")` |
+| A relationship | `get_rel("r")` |
+| A `collect(...)` of nodes or of relationships | `get_node_collection("peers")`, `get_rel_collection("rels")` |
+
+The node, relationship and list accessors raise `ValueError` when the column holds another shape.
+`get("n")` returns the column unchecked, typed as `CypherValue` (every type the driver can return), so
+the type checker rejects any use that assumes one shape: use it only to pass a value on unchanged.
 
 ```python
 @dataclass(frozen=True)
