@@ -40,22 +40,31 @@ def write(root: Path, path: str, text: str = "x\n") -> None:
     target.write_text(text, encoding="utf-8")
 
 
-@pytest.fixture
-def repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    remote = tmp_path / "remote.git"
-    root = tmp_path / "work"
+def init_repo(tmp_path: Path, name: str, base_files: list[str]) -> Path:
+    """Create a checkout whose `stable` holds `base_files`, pushed to its own origin, on branch `feature`."""
+    remote = tmp_path / f"{name}.git"
+    root = tmp_path / name
     run("init", "--bare", "-b", "stable", str(remote), cwd=tmp_path)
     run("init", "-b", "stable", str(root), cwd=tmp_path)
     run("config", "user.email", "test@example.com", cwd=root)
     run("config", "user.name", "Test", cwd=root)
-    write(root, "README.md")
-    write(root, ".agents/rules/code-doc-style.md", "# Code documentation style\n")
-    write(root, ".agents/rules/frontend.md", '---\npaths:\n  - "frontend/app/src/**/*.tsx"\n---\n\n# Frontend\n')
+    for path in base_files:
+        write(root, path)
     run("add", ".", cwd=root)
     run("commit", "-m", "base", cwd=root)
     run("remote", "add", "origin", str(remote), cwd=root)
     run("push", "origin", "stable", cwd=root)
     run("checkout", "-b", "feature", cwd=root)
+    return root
+
+
+@pytest.fixture
+def repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    write(tmp_path, "work/.agents/rules/code-doc-style.md", "# Code documentation style\n")
+    write(
+        tmp_path, "work/.agents/rules/frontend.md", '---\npaths:\n  - "frontend/app/src/**/*.tsx"\n---\n\n# Frontend\n'
+    )
+    root = init_repo(tmp_path, "work", ["README.md"])
     write(root, "frontend/app/src/page.tsx")
     write(root, "changelog/+page.added.md")
     run("add", ".", cwd=root)
@@ -63,8 +72,32 @@ def repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     write(root, "backend/infrahub/local_only.py")
     write(root, ".agents/skills/copied/SKILL.md")
     monkeypatch.chdir(root)
+    monkeypatch.setattr(rc, "TOOLING_ROOT", root.resolve())
     monkeypatch.setattr(rc.tempfile, "gettempdir", lambda: str(tmp_path))
     return root
+
+
+def run_manifest(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], *args: str) -> dict:
+    monkeypatch.setattr("sys.argv", ["repo-context.py", "--json", "--base", "stable", *args])
+    assert rc.main() == 0
+    return json.loads(capsys.readouterr().out)
+
+
+@pytest.mark.usefixtures("repo")
+def test_manifest_reviews_another_checkout_with_this_checkouts_rules(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    target = init_repo(tmp_path, "target", ["README.md"])
+    write(target, "frontend/app/src/other.tsx")
+
+    context = run_manifest(monkeypatch, capsys, "--repo", str(target))
+
+    assert context["repo"] == str(target.resolve())
+    assert context["files"] == ["frontend/app/src/other.tsx"]
+    assert [rule["path"] for rule in context["rules"]] == [
+        ".agents/rules/code-doc-style.md",
+        ".agents/rules/frontend.md",
+    ]
 
 
 @pytest.mark.usefixtures("repo")

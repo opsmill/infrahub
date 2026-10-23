@@ -37,8 +37,15 @@ With `compare <PR number>` in the arguments, skip to "Compare with the PR review
 1. **Run the manifest** and show it:
 
    ```bash
-   python3 .agents/scripts/repo-context.py [--base <branch>] [--committed] [--exclude '<glob>' ...]
+   python3 .agents/scripts/repo-context.py [--repo <checkout>] [--base <branch>] [--committed] [--exclude '<glob>' ...]
    ```
+
+   To review a checkout that does not have this tooling, or has an older copy, run the script
+   from this checkout with `--repo <checkout>`. The rules then come from this checkout, and the
+   changed files and `AGENTS.md` files from the reviewed one. Never copy `.agents/`, `AGENTS.md`
+   or `cubic.yaml` into the reviewed checkout: the copies overwrite its newer files, and cubic
+   reviews them as part of the change. With `--repo`, run every later git command with
+   `-C <checkout>` and give reviewers absolute paths.
 
    It prints the base, the changed files by area, the deleted files (listed, not read), each rule
    that applies and why, the `AGENTS.md` files, and the uncommitted files outside the committed
@@ -65,10 +72,23 @@ With `compare <PR number>` in the arguments, skip to "Compare with the PR review
 ## Phase 1 — Start cubic in the background
 
 If `command -v cubic` or `~/.cubic/bin/cubic` finds the CLI, start
-`<cubic> review --base <base> --json` with `run_in_background`; it takes several minutes.
-cubic reviews the working tree as well as the commits, so it also sees uncommitted files left
-out of the review. Its findings on those paths go to "Out of scope" in the report. If the CLI
-is missing, note "cubic not installed" and go on.
+`<cubic> review --base <base> --json` with `run_in_background`; it takes several minutes. If the
+CLI is missing, note "cubic not installed" and go on.
+
+cubic reviews the working tree as well as the commits, so run it where the tree holds only the
+change:
+
+- When the scope step reviews uncommitted files, run it in the reviewed checkout.
+- Otherwise, run it in a temporary worktree of the reviewed checkout at `HEAD`, so uncommitted
+  and untracked files stay out of its review:
+
+  ```bash
+  git -C <checkout> worktree add --detach <scratchpad>/cubic-<branch> HEAD
+  # run cubic from <scratchpad>/cubic-<branch>, then:
+  git -C <checkout> worktree remove --force <scratchpad>/cubic-<branch>
+  ```
+
+Findings on paths outside the manifest still go to "Out of scope" in the report.
 
 ## Phase 2 — Bugs
 
