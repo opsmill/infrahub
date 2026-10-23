@@ -2,7 +2,6 @@ import { ScrollArea } from "@infrahub/ui";
 
 import { Row } from "@/shared/components/container";
 import { LinkTab } from "@/shared/components/ui/link";
-import { classNames } from "@/shared/utils/common";
 
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/domain/rules/get-relationships-visible-in-tab";
@@ -29,36 +28,31 @@ export function ObjectDetailsTabs({ objectSchema, objectData }: ObjectDetailsTab
   const isRepository = isOfKind(GENERIC_REPOSITORY_KIND, objectSchema);
 
   return (
-    <nav aria-label="Tabs" className="shrink-0">
-      <Row className="items-end gap-0" data-testid="object-details-tabs">
-        <ScrollArea scrollX scrollY={false} scrollBarClassName="hidden" className="min-w-0">
-          <Row className={classNames("items-end gap-4 pl-4", !isRepository && "pr-4")}>
-            <LinkTab to={getObjectDetailsUrl(objectKind, objectId)} scrollIntoViewOnActive>
-              Details
-            </LinkTab>
-            {relationshipsTabs.map((tab) => (
-              <RelationshipTab
-                key={tab.name}
-                objectKind={objectKind}
-                objectId={objectId}
-                relationshipSchema={tab}
-              />
-            ))}
-            {isTaskTarget && <ObjectTaskTab objectKind={objectKind} objectId={objectId} />}
-            {isRepository && <RepositoryObjectsTab objectKind={objectKind} objectId={objectId} />}
-          </Row>
-        </ScrollArea>
-        {isRepository && (
-          // The Commits tab stays outside the scroll area so its badge is never scrolled out of view.
-          <div className="shrink-0 px-4" data-testid="object-details-pinned-tab">
+    <ScrollArea scrollX scrollY={false} scrollBarClassName="hidden" className="shrink-0">
+      <nav aria-label="Tabs">
+        <Row className="items-end gap-4 px-4" data-testid="object-details-tabs">
+          <LinkTab to={getObjectDetailsUrl(objectKind, objectId)} scrollIntoViewOnActive>
+            Details
+          </LinkTab>
+          {relationshipsTabs.map((tab) => (
+            <RelationshipTab
+              key={tab.name}
+              objectKind={objectKind}
+              objectId={objectId}
+              relationshipSchema={tab}
+            />
+          ))}
+          {isTaskTarget && <ObjectTaskTab objectKind={objectKind} objectId={objectId} />}
+          {isRepository && <RepositoryObjectsTab objectKind={objectKind} objectId={objectId} />}
+          {isRepository && (
             <RepositoryCommitsTab
               objectKind={objectKind}
               objectId={objectId}
               internalStatus={getRepositoryInternalStatus(objectData)}
             />
-          </div>
-        )}
-      </Row>
-    </nav>
+          )}
+        </Row>
+      </nav>
+    </ScrollArea>
   );
 }

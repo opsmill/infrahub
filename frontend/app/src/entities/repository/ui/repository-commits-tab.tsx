@@ -62,7 +62,7 @@ export function RepositoryCommitsTab({
 
   if (isLoadingFirstPage({ isPending, failureReason })) {
     return (
-      <LinkTab to={to}>
+      <LinkTab to={to} scrollIntoViewOnActive>
         Commits
         <Spinner />
       </LinkTab>
@@ -70,7 +70,11 @@ export function RepositoryCommitsTab({
   }
 
   if (!badge) {
-    return <LinkTab to={to}>Commits</LinkTab>;
+    return (
+      <LinkTab to={to} scrollIntoViewOnActive>
+        Commits
+      </LinkTab>
+    );
   }
 
   return (
@@ -123,6 +127,7 @@ function LinkTabWithTooltip({ to, tooltip, ariaLabel, children }: LinkTabWithToo
   return (
     <LinkTab
       to={to}
+      scrollIntoViewOnActive
       aria-label={ariaLabel}
       onMouseEnter={() => open(TOOLTIP_DELAY_MS)}
       onMouseLeave={close}
