@@ -199,6 +199,7 @@ describe("getStateBadges", () => {
     { state: RepositoryCommitState.PENDING, labels: ["Pending import"] },
     { state: RepositoryCommitState.UNRELATED, labels: ["Not on current history"] },
     { state: RepositoryCommitState.HISTORY, labels: [] },
+    { state: RepositoryCommitState.NOT_ON_BRANCH, labels: [] },
   ])("labels a $state commit from its state", ({ state, labels }) => {
     // WHEN
     const badges = getStateBadges({ hash: OTHER_HASH, state }, IMPORTED_HASH);

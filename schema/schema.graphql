@@ -27985,6 +27985,7 @@ enum RepositoryCommitState {
   HEAD
   HISTORY
   IMPORTED
+  NOT_ON_BRANCH
   PENDING
   UNRELATED
 }
@@ -28006,11 +28007,11 @@ type RepositoryCommits {
   """
   fetched_at: DateTime
   """
-  Remote branch or tracked ref whose history is listed. Null when the branch tracks nothing.
+  Remote branch or tracked ref whose history is listed. On a branch that does not sync with Git, this is the repository's default branch, which the branch receives commits from only through a rebase. Null when no ref can be listed.
   """
   git_ref: String
   """
-  Commit Infrahub has imported on this branch, from the repository's commit attribute.
+  Commit Infrahub runs on this branch, from the repository's commit attribute.
   """
   imported_commit: String
   """

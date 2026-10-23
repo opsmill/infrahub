@@ -55,12 +55,12 @@ class RepositoryCommits(ObjectType):
     repository_id = String(required=True)
     branch_name = String(required=True, description="The Infrahub branch the answer was computed for.")
     git_ref = String(
-        description="Remote branch or tracked ref whose history is listed. Null when the branch tracks nothing."
+        description="Remote branch or tracked ref whose history is listed. On a branch that does not sync with Git, "
+        "this is the repository's default branch, which the branch receives commits from only through a rebase. "
+        "Null when no ref can be listed."
     )
     condition = RepositoryGitCondition(required=True)
-    imported_commit = String(
-        description="Commit Infrahub has imported on this branch, from the repository's commit attribute."
-    )
+    imported_commit = String(description="Commit Infrahub runs on this branch, from the repository's commit attribute.")
     remote_head = String(
         description="Head of the remote branch or tracked ref as last fetched by the answering worker."
     )

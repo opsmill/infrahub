@@ -62,7 +62,7 @@ card's row set so the drift column lines up with its rows.
 | `ORPHANED` | `orphaned` | the imported commit's object is not present at all, so it cannot be placed in any history. A stronger form of `REWRITTEN`: there, the commit exists and has been left behind; here, the clone cannot resolve the hash. Decided before any ancestry call, because `Repo.is_ancestor` on an unresolvable hash raises rather than returning `False`. No pending count, and the imported marker has nowhere to sit |
 | `REF_MISSING` | `ref_missing` | a read-only repository's tracked ref resolves as neither `origin/<ref>` nor `refs/tags/<ref>` on the answering worker: it was named explicitly and is gone, so it is an error, not a neutral state (FR-029). Decided after `ORPHANED` and before `NOT_TRACKED`. No pending count; when a commit is imported, the log lists it and its ancestors, since that is what Infrahub still runs, and when none is the page is empty. Seen once the answering worker's copy has fetched the deletion |
 | `NO_REMOTE` | `no_remote` | a branch Infrahub maps onto a remote branch has no counterpart there, which is legitimate for a branch created before the repository was added |
-| `NOT_TRACKED` | `not_tracked` | nothing imported on this Infrahub branch, and nothing inherited from its origin. Read-write branches not synchronised with Git are excluded from the row set instead of carrying this condition |
+| `NOT_TRACKED` | `not_tracked` | nothing imported on this Infrahub branch, and nothing inherited from its origin, or a read-write repository that names no default branch. A read-write branch not synchronised with Git reads the repository's trunk instead, unless it holds no commit, which leaves nothing to place on the trunk and keeps this condition |
 | `UNAVAILABLE` | `unavailable` | no git-derived answer; see `RepositoryGitUnavailable` |
 
 ### `RepositoryCommitState`
@@ -74,6 +74,7 @@ card's row set so the drift column lines up with its rows.
 | `PENDING` | `pending` | ancestor of the head, not an ancestor of the imported commit; only under `BEHIND` |
 | `HISTORY` | `history` | ancestor of the imported commit; already imported content |
 | `UNRELATED` | `unrelated` | cannot be related to the imported commit (`REWRITTEN`, `ORPHANED`, `NOT_TRACKED`) |
+| `NOT_ON_BRANCH` | `not_on_branch` | a `PENDING` commit on a read-write branch not synchronised with Git, which no sync imports and only a rebase brings to the branch. Set by the API, never by the worker, and not on the branch a staging repository was added on |
 
 No `RepositoryCommitState` member is needed for the orphaned case: an unresolvable commit cannot
 appear in the log at all, so there is no row to label. The condition carries the answer, and
@@ -90,6 +91,10 @@ Precedence when one commit qualifies for several states, applied in this order:
    `remote_head` and `imported_commit` carry the same hash, so both markers can still be drawn from
    the header rather than from the row.
 3. Then `HEAD`, then `PENDING` / `HISTORY`.
+
+The worker applies this order. The API then replaces `PENDING` with `NOT_ON_BRANCH` on a read-write
+branch not synchronised with Git, so `HEAD` takes precedence over `NOT_ON_BRANCH` and the newest
+trunk commit keeps `HEAD`.
 
 ### `RepositoryGitUnavailableReason`
 
