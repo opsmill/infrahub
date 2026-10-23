@@ -38,15 +38,15 @@ Infrahub picks the trust store of each outbound connection in this order:
 
 Every CA setting accepts either the path of a PEM file or the PEM text itself. Infrahub writes PEM text to a file named after its content under the system temporary directory (`TMPDIR`, `/tmp` by default) at startup, so components that only read a file, such as git, use it too. Literal `\n` sequences in place of line breaks are accepted, for tooling that cannot pass multi-line values.
 
-Git, Redis and NATS trust the bundle in addition to the system trust store of the container. Every other component trusts only the bundle: if one of them must reach a service with a publicly issued certificate, such as a public SSO provider or webhook endpoint, append the public root certificates to the bundle as shown in the first step.
+Git and Redis trust the bundle in addition to the system trust store of the container. Every other component trusts only the bundle: if one of them must reach a service with a publicly issued certificate, such as a public SSO provider or webhook endpoint, append the public root certificates to the bundle as shown in the first step.
 
 | Component | Connections | Component setting |
 |-----------|-------------|-------------------|
 | Git | Clone, fetch and push over HTTPS | `INFRAHUB_GIT_TLS_CA_FILE` |
 | HTTP client | Webhooks, SSO providers, telemetry, task manager, the Infrahub API reached by the task workers and the git credential helper | `INFRAHUB_HTTP_TLS_CA_BUNDLE` |
 | Database | Neo4j | `INFRAHUB_DB_TLS_CA_FILE` |
-| Message broker | RabbitMQ or NATS | `INFRAHUB_BROKER_TLS_CA_FILE` |
-| Cache | Redis or NATS | `INFRAHUB_CACHE_TLS_CA_FILE` |
+| Message broker | RabbitMQ | `INFRAHUB_BROKER_TLS_CA_FILE` |
+| Cache | Redis | `INFRAHUB_CACHE_TLS_CA_FILE` |
 | Object storage | S3-compatible endpoint | `INFRAHUB_STORAGE_TLS_CA_FILE` |
 | Trace exporter | OTLP collector, when the exporter connection is encrypted | `INFRAHUB_TRACE_TLS_CA_BUNDLE` |
 | Log forwarding | Syslog destinations over TLS | `tls_ca_bundle` of the destination |

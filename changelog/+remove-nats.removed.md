@@ -1,0 +1,1 @@
+Removed the experimental NATS JetStream driver for the message bus and the cache, so a deployment that sets `INFRAHUB_BROKER_DRIVER` or `INFRAHUB_CACHE_DRIVER` to `nats` now fails to load its configuration and must use RabbitMQ and Redis.

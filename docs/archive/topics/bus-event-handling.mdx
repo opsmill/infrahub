@@ -20,7 +20,7 @@ Infrahub requires the following features from the message bus:
 3. Asynchronous RPC
 4. Set priorities to messages
 
-Depending on the message bus system, we implement them using the following:
+We implement them in RabbitMQ using the following:
 
 ### RabbitMQ
 
@@ -31,11 +31,3 @@ Depending on the message bus system, we implement them using the following:
 3. Requests are sent to the exchange and processed by an unique queue where each worker consume messages.
    We also create one `callback` queue per worker and use the `reply-to` header to send reply messages to this queue.
 4. Priorities are handled using the `priority` field of message properties.
-
-### NATS JetStream
-
-1. We NAK the message with a delay.
-2. We create an `events` stream with retention policy set to `INTEREST` and create an ephemeral consumer for each worker.
-3. Requests are sent to the `rpcs` stream with retention policy set to `WORK_QUEUE` and create a consumer group on which each worker will subscribe.
-   We also create one `callback` stream per worker and publish to this stream for the replies.
-4. **We do not handle priorities.**

@@ -57,8 +57,6 @@ exceptions:
   - E2E
   - URI
   - HFID
-  - NATS
-  - JetStream
   - CSS
   - VLAN
   - WebUI
