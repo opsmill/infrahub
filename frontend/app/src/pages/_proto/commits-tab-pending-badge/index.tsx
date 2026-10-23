@@ -6,6 +6,7 @@ import { DesignHistory, type Variant } from "./design-history-panel";
 import { DotRev01 } from "./dot/rev-01";
 import { InsideRev01 } from "./inside/rev-01";
 import { PillRev01 } from "./pill/rev-01";
+import { PillRev02 } from "./pill/rev-02";
 import { SCENARIO_OPTIONS } from "./scenarios";
 import { TodayRev01 } from "./today/rev-01";
 import { WordsRev01 } from "./words/rev-01";
@@ -36,6 +37,12 @@ const VARIANTS: Variant[] = [
         note: "Amber pill with an import or branch icon, warning icon for no-count warnings",
         date: DATE,
         render: (k) => <PillRev01 scenario={String(k.scenario)} />,
+      },
+      {
+        rev: 2,
+        note: "One count per tab, B5 dropped, counts capped at 999+, Commits tab pinned to the edge when the bar overflows",
+        date: DATE,
+        render: (k) => <PillRev02 scenario={String(k.scenario)} />,
       },
     ],
   },

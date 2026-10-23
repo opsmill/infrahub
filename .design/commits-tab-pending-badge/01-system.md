@@ -119,6 +119,13 @@ they start with `frontend/packages/`.
 - A prototype route. `app/router.tsx` has no `/_proto` or design route on `develop`. The run
   has to add one (see below).
 
+- A tab bar that keeps its last tab visible when the tabs overflow (found in phase 3, pill rev 2).
+  The prototype renders the Commits tab outside the horizontal `ScrollArea` and fades the cut
+  edge with a CSS mask. In the product this belongs in `ObjectDetailsTabs` (or a shared tab bar
+  component): a slot for a pinned trailing tab, and an edge fade on `ScrollArea` when it
+  scrolls horizontally. `LinkTab` also carries `transition-all`, which the polish rules ask to
+  replace with the exact properties.
+
 ## Prototype route and mount decision
 
 - Routes are declared in `app/router.tsx` with `createBrowserRouter`. The tree is

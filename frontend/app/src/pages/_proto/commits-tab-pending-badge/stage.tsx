@@ -1,7 +1,7 @@
 // PROTOTYPE design-jam commits-tab-pending-badge
 import { Card, ScrollArea } from "@infrahub/ui";
 import { TriangleAlertIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Navigate, useLocation } from "react-router";
 
 import { RefreshButton } from "@/shared/components/buttons/refresh-button";
@@ -40,6 +40,7 @@ interface StageProps {
   overviewPreview?: (scenario: Scenario) => ReactNode;
   hideCountNotice?: boolean;
   showSplit?: boolean;
+  stickyCommitsTab?: boolean;
 }
 
 const TABS = [
@@ -58,6 +59,9 @@ const OVERFLOW_TABS = [
   { path: "tasks", label: "Tasks", count: 1024 },
 ];
 
+const getEdgeMask = ({ start, end }: { start: boolean; end: boolean }) =>
+  `linear-gradient(to right, ${start ? "transparent, black 48px" : "black"}, ${end ? "black calc(100% - 48px), transparent" : "black"})`;
+
 const STATE_VARIANT: Record<CommitStateLabel, BadgeProps["variant"]> = {
   "Remote head": "blue",
   Imported: "green",
@@ -74,6 +78,7 @@ export function ProtoStage({
   overviewPreview,
   hideCountNotice,
   showSplit,
+  stickyCommitsTab,
 }: StageProps) {
   const location = useLocation();
   const scenarios = pickScenarios(scenarioOption);
@@ -91,6 +96,7 @@ export function ProtoStage({
         insideTop={insideTop}
         hideCountNotice={hideCountNotice}
         showSplit={showSplit}
+        stickyCommitsTab={stickyCommitsTab}
       />
     );
   }
@@ -125,6 +131,7 @@ export function ProtoStage({
                       scenario={scenario}
                       renderCommitsTab={renderCommitsTab}
                       label={`Tabs, scenario ${scenario.id}`}
+                      stickyCommitsTab={stickyCommitsTab}
                     />
                   </div>
                   {overviewPreview && <div className="px-4 pb-2">{overviewPreview(scenario)}</div>}
@@ -142,31 +149,89 @@ function TabBar({
   renderCommitsTab,
   label,
   scrollIntoViewOnActive = false,
+  stickyCommitsTab = false,
 }: {
   scenario: Scenario;
   renderCommitsTab: StageProps["renderCommitsTab"];
   label: string;
   scrollIntoViewOnActive?: boolean;
+  stickyCommitsTab?: boolean;
 }) {
   const tabs = scenario.overflow ? OVERFLOW_TABS : TABS;
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const [cut, setCut] = useState({ start: false, end: false });
+  const isCut = cut.start || cut.end;
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!stickyCommitsTab || !viewport) return;
+
+    const update = () =>
+      setCut({
+        start: viewport.scrollLeft > 1,
+        end: viewport.scrollWidth - viewport.clientWidth - viewport.scrollLeft > 1,
+      });
+    update();
+    viewport.addEventListener("scroll", update, { passive: true });
+    const observer = new ResizeObserver(update);
+    observer.observe(viewport);
+    if (viewport.firstElementChild) observer.observe(viewport.firstElementChild);
+    return () => {
+      viewport.removeEventListener("scroll", update);
+      observer.disconnect();
+    };
+  }, [stickyCommitsTab]);
+
+  const commitsTab = renderCommitsTab({
+    scenario,
+    to: `${BASE_PATH}/commits`,
+    scrollIntoViewOnActive,
+  });
+
+  const otherTabs = (
+    <>
+      <LinkTab to={`${BASE_PATH}/details`}>Details</LinkTab>
+      {tabs.map((tab) => (
+        <LinkTab key={tab.path} to={`${BASE_PATH}/${tab.path}`}>
+          {tab.label}
+          <Badge className="rounded-full font-medium text-subtle">{tab.count}</Badge>
+        </LinkTab>
+      ))}
+      <LinkTab to={`${BASE_PATH}/objects`}>Objects</LinkTab>
+    </>
+  );
+
+  // The last tab sits outside the scroll area so its signal stays visible; a mask, not a colour, fades the cut edge because the card background is a gradient.
+  if (stickyCommitsTab) {
+    return (
+      <nav aria-label={label} className="shrink-0">
+        <Row className="items-end gap-0">
+          <ScrollArea
+            ref={viewportRef}
+            scrollX
+            scrollY={false}
+            scrollBarClassName="hidden"
+            className="min-w-0 shrink"
+            style={
+              isCut ? { maskImage: getEdgeMask(cut), WebkitMaskImage: getEdgeMask(cut) } : undefined
+            }
+          >
+            <Row className="items-end gap-4 pl-4">{otherTabs}</Row>
+          </ScrollArea>
+          <div data-cut={isCut || undefined} className="flex shrink-0 px-4">
+            {commitsTab}
+          </div>
+        </Row>
+      </nav>
+    );
+  }
 
   return (
     <ScrollArea scrollX scrollY={false} scrollBarClassName="hidden" className="shrink-0">
       <nav aria-label={label}>
         <Row className="items-end gap-4 px-4">
-          <LinkTab to={`${BASE_PATH}/details`}>Details</LinkTab>
-          {tabs.map((tab) => (
-            <LinkTab key={tab.path} to={`${BASE_PATH}/${tab.path}`}>
-              {tab.label}
-              <Badge className="rounded-full font-medium text-subtle">{tab.count}</Badge>
-            </LinkTab>
-          ))}
-          <LinkTab to={`${BASE_PATH}/objects`}>Objects</LinkTab>
-          {renderCommitsTab({
-            scenario,
-            to: `${BASE_PATH}/commits`,
-            scrollIntoViewOnActive,
-          })}
+          {otherTabs}
+          {commitsTab}
         </Row>
       </nav>
     </ScrollArea>
@@ -179,6 +244,7 @@ function SingleScenario({
   insideTop,
   hideCountNotice,
   showSplit,
+  stickyCommitsTab,
 }: { scenario: Scenario } & Omit<StageProps, "scenarioOption" | "overviewPreview">) {
   const location = useLocation();
   const onCommits = location.pathname.endsWith("/commits");
@@ -195,6 +261,7 @@ function SingleScenario({
           renderCommitsTab={renderCommitsTab}
           label="Tabs"
           scrollIntoViewOnActive
+          stickyCommitsTab={stickyCommitsTab}
         />
         <Card variant="panel" className="overflow-auto">
           {onCommits ? (

@@ -250,24 +250,6 @@ export const SCENARIOS: Scenario[] = [
     ],
   },
   {
-    ...B1,
-    id: "B5",
-    situation:
-      "3 commits newer on the remote main: 2 already imported on main (a rebase brings them), 1 not imported on main yet (main's next sync, then a rebase). Today's API counts all 3 as behind; the split needs a backend change",
-    count: 3,
-    commits: behindRows(3, "Behind"),
-    split: {
-      behind: 2,
-      pendingOnMain: 1,
-      commits: [
-        newCommit(0, ["Remote head", "Pending import on main"]),
-        newCommit(1, ["Behind"]),
-        newCommit(2, ["Behind"]),
-        { ...IMPORTED_COMMIT, states: ["Imported"] },
-      ],
-    },
-  },
-  {
     ...base,
     id: "B6",
     group: "B",
