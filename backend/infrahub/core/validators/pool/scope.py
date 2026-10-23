@@ -13,7 +13,7 @@ from infrahub.core.validators.schema_branch.number_pool_scope_validator import (
     DeclaredScopeValidator,
     scope_refusal_reason,
 )
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from infrahub.pools.scope import NON_SCALAR_ATTRIBUTE_KINDS, SCOPE_FIELD, AllocationScopeResolver, ScopeElement
 
 from ..interface import ConstraintCheckerInterface
@@ -190,29 +190,25 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
     ) -> list[GroupedDataPaths]:
         """Return one violation per pool that depends on the changed field, for a change known to break a scope.
 
-        The pools of the kind and of the kinds sharing its fields through inheritance are read, and each one is
-        matched against the scope elements the field was before the change. No violation is returned when no
-        schema before the change defines the kind.
+        The pools of the kind and of the kinds sharing its fields through inheritance are read, under the names they
+        had before the change, and each one is matched against the scope elements the field was before the change.
+        No violation is returned when no schema before the change defines the kind.
         """
-        previous_schemas = self._previous_schemas(request=request)
-        kind = request.schema_path.schema_kind
-        kind_schemas = [
-            schema_branch.get(name=kind, duplicate=False)
-            for schema_branch in previous_schemas
-            if schema_branch.has(name=kind)
-        ]
-        if not kind_schemas:
+        previous_kinds = self._previous_kinds(request=request, previous_schemas=self._previous_schemas(request=request))
+        if not previous_kinds:
             return []
 
         pools = await self.pool_source.get_for_kinds(
-            kinds={kind for kind_schema in kind_schemas for kind in self._kinds_sharing_fields(kind_schema=kind_schema)}
+            kinds={
+                kind
+                for _, kind_schema in previous_kinds
+                for kind in self._kinds_sharing_fields(kind_schema=kind_schema)
+            }
         )
         field = ChangedField(
-            kind=kind,
+            kind=request.schema_path.schema_kind,
             name=field_name,
-            elements=tuple(
-                self._scope_elements(request=request, schema_branches=previous_schemas, field_name=field_name)
-            ),
+            elements=tuple(self._scope_elements(request=request, previous_kinds=previous_kinds, field_name=field_name)),
         )
         return [
             self.violation_builder.build(
@@ -243,12 +239,8 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         A field renamed by the same load keeps its id and is matched by it, while a field without an id, not saved
         yet, is matched by its name.
         """
-        kind = request.schema_path.schema_kind
         previous_fields: list[AttributeSchema | RelationshipSchema] = []
-        for schema_branch in previous_schemas:
-            if not schema_branch.has(name=kind):
-                continue
-            kind_schema = schema_branch.get(name=kind, duplicate=False)
+        for _, kind_schema in self._previous_kinds(request=request, previous_schemas=previous_schemas):
             fields: list[AttributeSchema | RelationshipSchema] = [*kind_schema.attributes, *kind_schema.relationships]
             previous_fields.extend(previous for previous in fields if self._same_field(previous=previous, field=field))
         return previous_fields
@@ -379,7 +371,7 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         kind = request.schema_path.schema_kind
         if not request.schema_branch.has(name=kind):
             return []
-        candidates: list[tuple[str, AttributeSchema, DeclaringAttribute]] = []
+        candidates: list[tuple[MainSchemaTypes, AttributeSchema, DeclaringAttribute]] = []
         for sharing_kind in sorted(
             self._kinds_sharing_fields(kind_schema=request.schema_branch.get(name=kind, duplicate=False))
         ):
@@ -391,7 +383,7 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
             for attribute in kind_schema.attributes:
                 declaration = None if attribute.inherited else self._declaring(kind=sharing_kind, attribute=attribute)
                 if declaration is not None and declaration.entries:
-                    candidates.append((sharing_kind, attribute, declaration))
+                    candidates.append((kind_schema, attribute, declaration))
         if not candidates:
             return []
 
@@ -399,9 +391,9 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         previous_schemas = self._previous_schemas(request=request)
         return [
             declaration
-            for sharing_kind, attribute, declaration in candidates
+            for kind_schema, attribute, declaration in candidates
             if not any(
-                self._declaration_changed(previous_schema=previous_schema, kind=sharing_kind, attribute=attribute)
+                self._declaration_changed(previous_schema=previous_schema, kind_schema=kind_schema, attribute=attribute)
                 for previous_schema in previous_schemas
             )
         ]
@@ -434,11 +426,22 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         )
 
     @staticmethod
-    def _declaration_changed(previous_schema: SchemaBranch, kind: str, attribute: AttributeSchema) -> bool:
+    def _declaration_changed(
+        previous_schema: SchemaBranch, kind_schema: MainSchemaTypes, attribute: AttributeSchema
+    ) -> bool:
         """Tell whether the attribute's declaration differs from the one on the schema before the change."""
-        if not isinstance(attribute.parameters, NumberPoolParameters) or not previous_schema.has(name=kind):
+        if not isinstance(attribute.parameters, NumberPoolParameters):
             return False
-        previous_kind = previous_schema.get(name=kind, duplicate=False)
+        # A kind renamed by the same load keeps its id, so the previous kind is found by it.
+        if kind_schema.id is not None:
+            try:
+                previous_kind = previous_schema.get_by_id(id=kind_schema.id, duplicate=False)
+            except SchemaNotFoundError:
+                return False
+        elif previous_schema.has(name=kind_schema.kind):
+            previous_kind = previous_schema.get(name=kind_schema.kind, duplicate=False)
+        else:
+            return False
         previous = next(
             (
                 candidate
@@ -455,6 +458,30 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
             return previous_entries != entries
         # A reorder keeps the same divisions, so it does not change the declaration.
         return Counter(previous_entries) != Counter(entries)
+
+    @staticmethod
+    def _previous_kinds(
+        request: SchemaConstraintValidatorRequest, previous_schemas: list[SchemaBranch]
+    ) -> list[tuple[SchemaBranch, MainSchemaTypes]]:
+        """Return each schema before the change that defines the changed kind, paired with that kind's definition.
+
+        A kind renamed by the same load keeps its id and is matched by it, while a kind without an id, not saved yet,
+        is matched by its name.
+        """
+        kind = request.schema_path.schema_kind
+        kind_id = (
+            request.schema_branch.get(name=kind, duplicate=False).id if request.schema_branch.has(name=kind) else None
+        )
+        previous_kinds: list[tuple[SchemaBranch, MainSchemaTypes]] = []
+        for schema_branch in previous_schemas:
+            if kind_id is not None:
+                try:
+                    previous_kinds.append((schema_branch, schema_branch.get_by_id(id=kind_id, duplicate=False)))
+                except SchemaNotFoundError:
+                    continue
+            elif schema_branch.has(name=kind):
+                previous_kinds.append((schema_branch, schema_branch.get(name=kind, duplicate=False)))
+        return previous_kinds
 
     def _kinds_sharing_fields(self, kind_schema: MainSchemaTypes) -> set[str]:
         """Return the kind and the kinds it shares fields with through inheritance.
@@ -482,7 +509,10 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         return [self.schema_source.get_schema_branch(name=name) for name in names]
 
     def _scope_elements(
-        self, request: SchemaConstraintValidatorRequest, schema_branches: list[SchemaBranch], field_name: str
+        self,
+        request: SchemaConstraintValidatorRequest,
+        previous_kinds: list[tuple[SchemaBranch, MainSchemaTypes]],
+        field_name: str,
     ) -> list[ScopeElement]:
         """Return the scope elements that the changed field was on the schemas before the change.
 
@@ -492,10 +522,10 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         field = self._candidate_field(request=request, field_name=field_name)
         entry: str | dict[str, str] = {"id": field.id} if field is not None and field.id else field_name
         elements: dict[str, ScopeElement] = {}
-        for schema_branch in schema_branches:
+        for schema_branch, kind_schema in previous_kinds:
             try:
                 scope = AllocationScopeResolver(schema_branch=schema_branch).resolve(
-                    kind=request.schema_path.schema_kind, entries=[entry]
+                    kind=kind_schema.kind, entries=[entry]
                 )
             except ValidationError:
                 # A field the resolver cannot identify cannot be stored in any scope.

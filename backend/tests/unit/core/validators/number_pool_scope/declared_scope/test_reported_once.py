@@ -13,6 +13,7 @@ from tests.unit.core.validators.number_pool_scope.declared_scope.helpers import 
     HOLDER_SCHEMA_POOL_ID,
     SCHEMA_POOLS,
     SCOPE_CONSTRAINT,
+    declare_on_device,
     declared_checker,
     declared_request,
     declared_schema,
@@ -21,7 +22,15 @@ from tests.unit.core.validators.number_pool_scope.declared_scope.helpers import 
     holder_declaration_cleared,
     unvalidated_schema_branch,
 )
-from tests.unit.core.validators.number_pool_scope.helpers import DEVICE, HOLDER, POD_HOLDER, RecordingPoolSource
+from tests.unit.core.validators.number_pool_scope.helpers import (
+    DEVICE,
+    HOLDER,
+    POD_HOLDER,
+    RENAMED_DEVICE,
+    RecordingPoolSource,
+    device_of,
+    device_site_renamed,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -43,6 +52,12 @@ class LoadCase:
     change: Callable[[SchemaRoot], None]
     constraints: list[RaisedConstraint]
     expected: list[tuple[str, str]]
+
+
+def device_renamed_with_site_renamed_and_declaration_changed(schema: SchemaRoot) -> None:
+    device_site_renamed(schema)
+    declare_on_device(["location"])(schema)
+    device_of(schema).name = "Router"
 
 
 LOAD_CASES = [
@@ -102,6 +117,27 @@ LOAD_CASES = [
                 DEVICE_SCHEMA_POOL_ID,
                 "ScopeDevice.vlan_number: allocation_scope can't be changed after the pool is created",
             )
+        ],
+    ),
+    LoadCase(
+        name="kind-renamed-with-a-field-renamed-and-the-declaration-changed",
+        change=device_renamed_with_site_renamed_and_declaration_changed,
+        constraints=[
+            RaisedConstraint(
+                constraint_name="relationship.name.update",
+                kind=RENAMED_DEVICE,
+                field_name="location",
+                path_type=SchemaPathType.RELATIONSHIP,
+            ),
+            RaisedConstraint(
+                constraint_name=SCOPE_CONSTRAINT,
+                kind=RENAMED_DEVICE,
+                field_name="vlan_id",
+                path_type=SchemaPathType.ATTRIBUTE,
+            ),
+        ],
+        expected=[
+            (DEVICE_SCHEMA_POOL_ID, "ScopeRouter.vlan_id: allocation_scope can't be changed after the pool is created")
         ],
     ),
 ]
