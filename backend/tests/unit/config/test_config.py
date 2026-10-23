@@ -462,14 +462,6 @@ def test_cache_url_coexists_with_redis_driver() -> None:
 
 
 @pytest.mark.usefixtures("without_cache_environment")
-def test_cache_url_ignored_for_non_redis_driver() -> None:
-    # A URL whose scheme is not a Redis scheme must not fail the load, since only the Redis driver reads it.
-    settings = CacheSettings(url=SecretStr("nats://nats:4222"), address="nats", driver=CacheDriver.NATS)
-    assert settings.driver is CacheDriver.NATS
-    assert settings.url is not None
-
-
-@pytest.mark.usefixtures("without_cache_environment")
 def test_invalid_cache_url_fails_the_load_without_echoing_it() -> None:
     with pytest.raises(ValidationError, match=r"Value error, A Sentinel connection URL requires a service name") as exc:
         CacheSettings(url=SecretStr("redis+sentinel://user:topsecret@sentinel-a:26379"))

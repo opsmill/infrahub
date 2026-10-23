@@ -10,8 +10,6 @@ from .timeline import LockAction, LockTimeline
 if TYPE_CHECKING:
     import redis.asyncio as redis
 
-    from infrahub.services import InfrahubServices
-
 
 class RecordingLock(InfrahubLock):
     """A local lock that logs its real (non-re-entrant) acquire/release boundaries to a timeline."""
@@ -19,7 +17,7 @@ class RecordingLock(InfrahubLock):
     def __init__(
         self,
         name: str,
-        connection: redis.Redis | InfrahubServices | None = None,
+        connection: redis.Redis | None = None,
         in_multi: bool = False,
         metrics: bool = True,
         ttl: int | None = None,
