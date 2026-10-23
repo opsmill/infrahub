@@ -1,0 +1,19 @@
+backend/tests/component/core/regeneration/impact/test_filtered_peer_reads.py
+  s_332201fa331861::t_434ea3cb0dceb5 139-143,195,200,252,260,270,278,285,290,304,309,327,336,347,355,367,374,447,450,470,473-475,480,483,622,624
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "905a582caa89c5d313be6c08f96dd76cf77efe39",
+  "prompts": {},
+  "sessions": {
+    "s_332201fa331861": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75bb2dd3-334f-43d2-b4e2-8692ee03124b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
