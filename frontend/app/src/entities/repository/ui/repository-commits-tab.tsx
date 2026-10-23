@@ -1,6 +1,6 @@
 import { Spinner, Tooltip } from "@infrahub/ui";
 import { ArrowDownToLineIcon, GitBranchIcon, TriangleAlertIcon } from "lucide-react";
-import { type ReactNode, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { Badge } from "@/shared/components/ui/badge";
 import { LinkTab } from "@/shared/components/ui/link";
@@ -43,7 +43,8 @@ export function RepositoryCommitsTab({
   const updatedOnlyByRebase = isUpdatedOnlyByRebase({
     repositoryKind: objectKind,
     internalStatus,
-    branch: currentBranch,
+    isDefaultBranch: currentBranch.is_default,
+    syncWithGit: currentBranch.sync_with_git,
   });
   const isReadOnly = objectKind === READONLY_REPOSITORY_KIND;
   const {
@@ -61,7 +62,7 @@ export function RepositoryCommitsTab({
 
   if (isLoadingFirstPage({ isPending, failureReason })) {
     return (
-      <LinkTab to={to} scrollIntoViewOnActive>
+      <LinkTab to={to}>
         Commits
         <Spinner />
       </LinkTab>
@@ -69,11 +70,7 @@ export function RepositoryCommitsTab({
   }
 
   if (!signal) {
-    return (
-      <LinkTab to={to} scrollIntoViewOnActive>
-        Commits
-      </LinkTab>
-    );
+    return <LinkTab to={to}>Commits</LinkTab>;
   }
 
   return (
@@ -112,6 +109,8 @@ function LinkTabWithTooltip({ to, tooltip, label, children }: LinkTabWithTooltip
   const triggerRef = useRef<HTMLSpanElement>(null);
   const openTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
+  useEffect(() => () => clearTimeout(openTimer.current), []);
+
   const open = (delay: number) => {
     clearTimeout(openTimer.current);
     openTimer.current = setTimeout(() => setIsOpen(true), delay);
@@ -124,7 +123,6 @@ function LinkTabWithTooltip({ to, tooltip, label, children }: LinkTabWithTooltip
   return (
     <LinkTab
       to={to}
-      scrollIntoViewOnActive
       aria-label={label}
       onMouseEnter={() => open(TOOLTIP_DELAY_MS)}
       onMouseLeave={close}

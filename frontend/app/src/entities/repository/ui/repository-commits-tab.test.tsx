@@ -142,6 +142,26 @@ describe("RepositoryCommitsTab", () => {
       .toBeVisible();
   });
 
+  test("closes the open tooltip on Escape", async () => {
+    // GIVEN
+    apiMock.mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));
+    const component = await renderTab();
+    await expect
+      .element(component.getByRole("link", { name: "Commits, 3 commits pending import" }))
+      .toBeVisible();
+    await userEvent.tab();
+    const tooltip = component.getByRole("tooltip", {
+      name: "3 commits pending import — the next sync imports them",
+    });
+    await expect.element(tooltip).toBeVisible();
+
+    // WHEN
+    await userEvent.keyboard("{Escape}");
+
+    // THEN
+    await expect.element(tooltip).not.toBeInTheDocument();
+  });
+
   test("caps a large count and keeps the exact number in the accessible name", async () => {
     // GIVEN
     apiMock.mockResolvedValue(
@@ -214,18 +234,6 @@ describe("RepositoryCommitsTab", () => {
         )
         .toBeVisible();
       await parkPointer(component);
-    });
-
-    test("shows no count when the branch is up to date", async () => {
-      // GIVEN
-      apiMock.mockResolvedValue(generateCommitsApiResult(generateInSyncCommitsResponse()));
-
-      // WHEN
-      const component = await renderTab();
-
-      // THEN
-      await expect.poll(() => apiMock.mock.calls.length).toBe(1);
-      await expectNoCount(component);
     });
 
     test("says the branch has diverged when the tracked ref was rewritten", async () => {

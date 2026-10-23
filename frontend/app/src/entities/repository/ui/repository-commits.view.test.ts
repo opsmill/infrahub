@@ -18,7 +18,7 @@ import {
   getLoadedCommits,
   getNextPageState,
   getNoCommitLogState,
-  getRebaseNote,
+  getNonSyncedBranchNote,
   getStateBadges,
   isLoadingFirstPage,
   isShowingStaleCommits,
@@ -182,6 +182,7 @@ describe("getStateBadges", () => {
     // WHEN
     const badges = getStateBadges(commit, {
       importedCommit: IMPORTED_HASH,
+      condition: RepositoryGitCondition.BEHIND,
       updatedOnlyByRebase: false,
     });
 
@@ -196,6 +197,7 @@ describe("getStateBadges", () => {
     // WHEN
     const badges = getStateBadges(commit, {
       importedCommit: IMPORTED_HASH,
+      condition: RepositoryGitCondition.BEHIND,
       updatedOnlyByRebase: false,
     });
 
@@ -213,7 +215,11 @@ describe("getStateBadges", () => {
     // WHEN
     const badges = getStateBadges(
       { hash: OTHER_HASH, state },
-      { importedCommit: IMPORTED_HASH, updatedOnlyByRebase: false }
+      {
+        importedCommit: IMPORTED_HASH,
+        condition: RepositoryGitCondition.BEHIND,
+        updatedOnlyByRebase: false,
+      }
     );
 
     // THEN
@@ -227,12 +233,31 @@ describe("getStateBadges", () => {
     // WHEN
     const badges = getStateBadges(commit, {
       importedCommit: IMPORTED_HASH,
+      condition: RepositoryGitCondition.BEHIND,
       updatedOnlyByRebase: true,
     });
 
     // THEN
     expect(badges.map(({ label }) => label)).toEqual(["Remote head", "Behind"]);
   });
+
+  test.each([RepositoryGitCondition.REWRITTEN, RepositoryGitCondition.ORPHANED])(
+    "marks the remote head as the head only when a branch updated only by rebase is %s",
+    (condition) => {
+      // GIVEN
+      const commit = { hash: OTHER_HASH, state: RepositoryCommitState.HEAD };
+
+      // WHEN
+      const badges = getStateBadges(commit, {
+        importedCommit: IMPORTED_HASH,
+        condition,
+        updatedOnlyByRebase: true,
+      });
+
+      // THEN
+      expect(badges.map(({ label }) => label)).toEqual(["Remote head"]);
+    }
+  );
 
   test("marks a remote head that the branch runs as imported", () => {
     // GIVEN
@@ -241,6 +266,7 @@ describe("getStateBadges", () => {
     // WHEN
     const badges = getStateBadges(commit, {
       importedCommit: IMPORTED_HASH,
+      condition: RepositoryGitCondition.IN_SYNC,
       updatedOnlyByRebase: true,
     });
 
@@ -248,18 +274,19 @@ describe("getStateBadges", () => {
     expect(badges.map(({ label }) => label)).toEqual(["Remote head", "Imported"]);
   });
 
-  test("marks a commit off the branch's history as behind on a branch updated only by rebase", () => {
+  test("keeps a commit off the current history as such on a diverged branch updated only by rebase", () => {
     // GIVEN
     const commit = { hash: OTHER_HASH, state: RepositoryCommitState.UNRELATED };
 
     // WHEN
     const badges = getStateBadges(commit, {
       importedCommit: IMPORTED_HASH,
+      condition: RepositoryGitCondition.REWRITTEN,
       updatedOnlyByRebase: true,
     });
 
     // THEN
-    expect(badges.map(({ label }) => label)).toEqual(["Behind"]);
+    expect(badges.map(({ label }) => label)).toEqual(["Not on current history"]);
   });
 
   test("shows no badge for a state this client does not know", () => {
@@ -268,7 +295,11 @@ describe("getStateBadges", () => {
 
     // WHEN
     // @ts-expect-error A newer server can send a state this client's generated enum does not list.
-    const badges = getStateBadges(commit, { importedCommit: null, updatedOnlyByRebase: false });
+    const badges = getStateBadges(commit, {
+      importedCommit: null,
+      condition: RepositoryGitCondition.IN_SYNC,
+      updatedOnlyByRebase: false,
+    });
 
     // THEN
     expect(badges).toEqual([]);
@@ -695,10 +726,10 @@ describe("getNextPageState", () => {
   });
 });
 
-describe("getRebaseNote", () => {
+describe("getNonSyncedBranchNote", () => {
   test("says how far behind the compared branch it is and suggests a rebase", () => {
     // WHEN
-    const note = getRebaseNote({
+    const note = getNonSyncedBranchNote({
       condition: RepositoryGitCondition.BEHIND,
       git_ref: "main",
       pending_count: 2,
@@ -710,9 +741,49 @@ describe("getRebaseNote", () => {
     );
   });
 
+  test("refers to a single commit as it", () => {
+    // WHEN
+    const note = getNonSyncedBranchNote({
+      condition: RepositoryGitCondition.BEHIND,
+      git_ref: "main",
+      pending_count: 1,
+    });
+
+    // THEN
+    expect(note).toBe(
+      "This branch does not sync with Git and is behind main by 1 commit. Rebase the branch to use it."
+    );
+  });
+
+  test("formats a large count with thousands separators", () => {
+    // WHEN
+    const note = getNonSyncedBranchNote({
+      condition: RepositoryGitCondition.BEHIND,
+      git_ref: "main",
+      pending_count: 1284,
+    });
+
+    // THEN
+    expect(note).toContain("behind main by 1,284 commits.");
+  });
+
+  test("names the newer commits when the distance is unknown", () => {
+    // WHEN
+    const note = getNonSyncedBranchNote({
+      condition: RepositoryGitCondition.BEHIND,
+      git_ref: "main",
+      pending_count: null,
+    });
+
+    // THEN
+    expect(note).toBe(
+      "This branch does not sync with Git and is behind main. Rebase the branch to use the newer commits."
+    );
+  });
+
   test("says the branch is up to date when it runs the newest commit", () => {
     // WHEN
-    const note = getRebaseNote({
+    const note = getNonSyncedBranchNote({
       condition: RepositoryGitCondition.IN_SYNC,
       git_ref: "main",
       pending_count: null,
@@ -726,7 +797,7 @@ describe("getRebaseNote", () => {
     "says nothing for %s",
     (condition) => {
       // WHEN
-      const note = getRebaseNote({ condition, git_ref: "main", pending_count: null });
+      const note = getNonSyncedBranchNote({ condition, git_ref: "main", pending_count: null });
 
       // THEN
       expect(note).toBeNull();

@@ -854,7 +854,7 @@ describe("RepositoryCommitsManager", () => {
 
       // THEN
       await expect.element(component.getByText(UP_TO_DATE_NOTE)).toBeVisible();
-      expect(component.getByText(REBASE_NOTE).query()).toBeNull();
+      expect(component.getByText(/is behind/).query()).toBeNull();
     });
 
     test("marks the commits of main the branch does not run as behind", async () => {
@@ -875,7 +875,7 @@ describe("RepositoryCommitsManager", () => {
       expect(rows.nth(3).getByText("Behind", { exact: true }).query()).toBeNull();
     });
 
-    test("asks for a rebase when the branch has diverged from main", async () => {
+    test("asks for a rebase and keeps the backend's commit labels when the branch has diverged from main", async () => {
       // GIVEN
       apiMock.mockResolvedValue(generateCommitsApiResult(generateRewrittenCommitsResponse()));
 
@@ -893,9 +893,9 @@ describe("RepositoryCommitsManager", () => {
       expect(component.getByText(/tracked ref was rewritten/).query()).toBeNull();
       const rows = component.getByTestId("data-table-row");
       await expect.element(rows.nth(0).getByText("Remote head")).toBeVisible();
-      await expect.element(rows.nth(0).getByText("Behind", { exact: true })).toBeVisible();
-      await expect.element(rows.nth(1).getByText("Behind", { exact: true })).toBeVisible();
-      expect(component.getByText("Not on current history").query()).toBeNull();
+      await expect.element(rows.nth(1).getByText("Not on current history")).toBeVisible();
+      await expect.element(rows.nth(2).getByText("Not on current history")).toBeVisible();
+      expect(component.getByText("Behind", { exact: true }).query()).toBeNull();
     });
 
     test("keeps the pending-import wording for a repository added on the branch", async () => {
@@ -907,7 +907,7 @@ describe("RepositoryCommitsManager", () => {
 
       // THEN
       await expect.element(component.getByText("3 commits pending import")).toBeVisible();
-      expect(component.getByText(REBASE_NOTE).query()).toBeNull();
+      expect(component.getByText(/does not sync with Git/).query()).toBeNull();
       expect(
         component.getByTestId("data-table-row").nth(0).getByText("Behind", { exact: true }).query()
       ).toBeNull();
@@ -921,8 +921,8 @@ describe("RepositoryCommitsManager", () => {
       const component = await renderTab({ repositoryKind: READONLY_REPOSITORY_KIND });
 
       // THEN
-      await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
-      expect(component.getByText(REBASE_NOTE).query()).toBeNull();
+      await expect.element(component.getByText("1 commit pending import")).toBeVisible();
+      expect(component.getByText(/does not sync with Git/).query()).toBeNull();
     });
   });
 
@@ -935,6 +935,6 @@ describe("RepositoryCommitsManager", () => {
 
     // THEN
     await expect.element(component.getByText("3 commits pending import")).toBeVisible();
-    expect(component.getByText(REBASE_NOTE).query()).toBeNull();
+    expect(component.getByText(/does not sync with Git/).query()).toBeNull();
   });
 });

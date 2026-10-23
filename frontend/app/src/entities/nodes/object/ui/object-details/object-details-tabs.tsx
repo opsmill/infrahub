@@ -1,15 +1,9 @@
 import { ScrollArea } from "@infrahub/ui";
-import {
-  type CSSProperties,
-  type ReactNode,
-  type RefObject,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 
 import { Row } from "@/shared/components/container";
 import { LinkTab } from "@/shared/components/ui/link";
+import { classNames } from "@/shared/utils/common";
 
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/domain/rules/get-relationships-visible-in-tab";
@@ -22,8 +16,6 @@ import { RepositoryObjectsTab } from "@/entities/repository/ui/repository-object
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 import { TASK_TARGET } from "@/entities/tasks/domain/model/task";
-
-const EDGE_FADE = "48px";
 
 interface ObjectDetailsTabsProps {
   objectSchema: ModelSchema;
@@ -82,10 +74,10 @@ export function ObjectDetailsTabs({ objectSchema, objectData }: ObjectDetailsTab
   );
 }
 
-// The last tab sits outside the scroll area so its signal is never scrolled away; a mask, not a colour, fades the cut edge because the card background is a gradient.
+// The last tab sits outside the scroll area so its signal is never scrolled away.
 function TabsWithPinnedLastTab({ children, lastTab }: { children: ReactNode; lastTab: ReactNode }) {
   const viewportRef = useRef<HTMLDivElement>(null);
-  const cutEdges = useCutEdges(viewportRef);
+  const clippedEdges = useClippedEdges(viewportRef);
 
   return (
     <nav aria-label="Tabs" className="shrink-0">
@@ -95,26 +87,30 @@ function TabsWithPinnedLastTab({ children, lastTab }: { children: ReactNode; las
           scrollX
           scrollY={false}
           scrollBarClassName="hidden"
-          className="min-w-0 shrink"
-          style={getEdgeMask(cutEdges)}
+          // A mask, not a colour overlay, fades a clipped edge because the card background is a gradient.
+          className={classNames(
+            "min-w-0 shrink",
+            clippedEdges.start && "mask-l-from-95%",
+            clippedEdges.end && "mask-r-from-95%"
+          )}
         >
           <Row className="items-end gap-4 pl-4">{children}</Row>
         </ScrollArea>
-        <div className="flex shrink-0 px-4" data-testid="object-details-pinned-tab">
+        <Row className="shrink-0 px-4" data-testid="object-details-pinned-tab">
           {lastTab}
-        </div>
+        </Row>
       </Row>
     </nav>
   );
 }
 
-interface CutEdges {
+interface ClippedEdges {
   start: boolean;
   end: boolean;
 }
 
-function useCutEdges(viewportRef: RefObject<HTMLDivElement | null>): CutEdges {
-  const [cutEdges, setCutEdges] = useState<CutEdges>({ start: false, end: false });
+function useClippedEdges(viewportRef: RefObject<HTMLDivElement | null>): ClippedEdges {
+  const [clippedEdges, setClippedEdges] = useState<ClippedEdges>({ start: false, end: false });
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -123,7 +119,7 @@ function useCutEdges(viewportRef: RefObject<HTMLDivElement | null>): CutEdges {
     const update = () => {
       const start = viewport.scrollLeft > 1;
       const end = viewport.scrollWidth - viewport.clientWidth - viewport.scrollLeft > 1;
-      setCutEdges((previous) =>
+      setClippedEdges((previous) =>
         previous.start === start && previous.end === end ? previous : { start, end }
       );
     };
@@ -138,13 +134,5 @@ function useCutEdges(viewportRef: RefObject<HTMLDivElement | null>): CutEdges {
     };
   }, [viewportRef]);
 
-  return cutEdges;
-}
-
-function getEdgeMask({ start, end }: CutEdges): CSSProperties | undefined {
-  if (!start && !end) return undefined;
-  const from = start ? `transparent, black ${EDGE_FADE}` : "black";
-  const to = end ? `black calc(100% - ${EDGE_FADE}), transparent` : "black";
-  const mask = `linear-gradient(to right, ${from}, ${to})`;
-  return { maskImage: mask, WebkitMaskImage: mask };
+  return clippedEdges;
 }

@@ -15,7 +15,7 @@ import {
 import {
   getConditionNotice,
   getFreshness,
-  getRebaseNote,
+  getNonSyncedBranchNote,
 } from "@/entities/repository/ui/repository-commits.view";
 
 interface RepositoryCommitsLogProps {
@@ -45,14 +45,16 @@ export function RepositoryCommitsHeader({
   remoteCheck,
   updatedOnlyByRebase,
 }: RepositoryCommitsHeaderProps) {
-  const rebaseNote = updatedOnlyByRebase ? getRebaseNote(log) : null;
+  const nonSyncedBranchNote = updatedOnlyByRebase ? getNonSyncedBranchNote(log) : null;
 
   return (
     <Col className="gap-1.5 p-2">
       <RepositoryCommitsToolbar repositoryId={repositoryId} remoteCheck={remoteCheck}>
         <FreshnessLine log={log} />
       </RepositoryCommitsToolbar>
-      {rebaseNote && <p className="text-foreground-muted text-sm">{rebaseNote}</p>}
+      {nonSyncedBranchNote && (
+        <p className="text-foreground-muted text-sm">{nonSyncedBranchNote}</p>
+      )}
       <ConditionNotice log={log} updatedOnlyByRebase={updatedOnlyByRebase} />
     </Col>
   );

@@ -104,7 +104,8 @@ export function RepositoryCommitsManager({
   const updatedOnlyByRebase = isUpdatedOnlyByRebase({
     repositoryKind,
     internalStatus: repositoryInternalStatus,
-    branch: currentBranch,
+    isDefaultBranch: currentBranch.is_default,
+    syncWithGit: currentBranch.sync_with_git,
   });
 
   if (noCommitLogState) {
@@ -144,6 +145,7 @@ export function RepositoryCommitsManager({
         <DataTable
           columns={getRepositoryCommitsColumns({
             importedCommit: log.imported_commit,
+            condition: log.condition,
             updatedOnlyByRebase,
             repositoryLocation,
           })}
