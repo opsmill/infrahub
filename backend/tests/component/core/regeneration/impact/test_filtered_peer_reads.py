@@ -136,6 +136,11 @@ query ($ids: [ID!]!) {
 ]
 
 
+@pytest.fixture(scope="class")
+def impact_resolver(db: InfrahubDatabase, client: InfrahubClient) -> FieldLevelImpactResolver:
+    return FieldLevelImpactResolver(db=db, client=client)
+
+
 class TestFilteredPeerReadImpact(TestInfrahubApp):
     """Select only the targets a filtered relationship read can see.
 
@@ -185,15 +190,14 @@ class TestFilteredPeerReadImpact(TestInfrahubApp):
     async def _selected(
         self,
         *,
-        db: InfrahubDatabase,
         dataset: dict[str, Any],
         default_branch: Branch,
-        client: InfrahubClient,
+        impact_resolver: FieldLevelImpactResolver,
         diff_summary: list[NodeDiff],
         query: str = QUERY_RED_CARS_OF_THE_MANUFACTURER,
     ) -> set[str]:
         every_target = list(dataset["subscribers"].values())
-        selection = await FieldLevelImpactResolver(db=db, client=client).resolve(
+        selection = await impact_resolver.resolve(
             query_report=query_report(query, default_branch),
             diff_summary=diff_summary,
             query_branch=default_branch.name,
@@ -243,19 +247,17 @@ class TestFilteredPeerReadImpact(TestInfrahubApp):
 
     async def test_adding_a_car_the_filter_excludes_selects_no_target(
         self,
-        db: InfrahubDatabase,
         dataset: dict[str, Any],
         default_branch: Branch,
-        client: InfrahubClient,
+        impact_resolver: FieldLevelImpactResolver,
         add_car: Callable[[str, str], Awaitable[str]],
     ) -> None:
         car_id = await add_car("blue-3", "blue")
 
         selected = await self._selected(
-            db=db,
             dataset=dataset,
             default_branch=default_branch,
-            client=client,
+            impact_resolver=impact_resolver,
             diff_summary=self._car_added(dataset=dataset, car_id=car_id, branch=default_branch.name),
         )
 
@@ -263,32 +265,29 @@ class TestFilteredPeerReadImpact(TestInfrahubApp):
 
     async def test_adding_a_car_the_filter_includes_selects_every_target(
         self,
-        db: InfrahubDatabase,
         dataset: dict[str, Any],
         default_branch: Branch,
-        client: InfrahubClient,
+        impact_resolver: FieldLevelImpactResolver,
         add_car: Callable[[str, str], Awaitable[str]],
     ) -> None:
         car_id = await add_car("red-3", "red")
 
         selected = await self._selected(
-            db=db,
             dataset=dataset,
             default_branch=default_branch,
-            client=client,
+            impact_resolver=impact_resolver,
             diff_summary=self._car_added(dataset=dataset, car_id=car_id, branch=default_branch.name),
         )
 
         assert selected == set(dataset["subscribers"].values())
 
     async def test_a_car_whose_color_changed_selects_every_target(
-        self, db: InfrahubDatabase, dataset: dict[str, Any], default_branch: Branch, client: InfrahubClient
+        self, dataset: dict[str, Any], default_branch: Branch, impact_resolver: FieldLevelImpactResolver
     ) -> None:
         selected = await self._selected(
-            db=db,
             dataset=dataset,
             default_branch=default_branch,
-            client=client,
+            impact_resolver=impact_resolver,
             diff_summary=[
                 node_diff(
                     node_id=dataset["cars"]["blue-2"],
@@ -302,13 +301,12 @@ class TestFilteredPeerReadImpact(TestInfrahubApp):
         assert selected == set(dataset["subscribers"].values())
 
     async def test_renaming_a_car_the_filter_excludes_selects_only_its_own_target(
-        self, db: InfrahubDatabase, dataset: dict[str, Any], default_branch: Branch, client: InfrahubClient
+        self, dataset: dict[str, Any], default_branch: Branch, impact_resolver: FieldLevelImpactResolver
     ) -> None:
         selected = await self._selected(
-            db=db,
             dataset=dataset,
             default_branch=default_branch,
-            client=client,
+            impact_resolver=impact_resolver,
             diff_summary=[
                 node_diff(
                     node_id=dataset["cars"]["blue-1"],
@@ -324,20 +322,18 @@ class TestFilteredPeerReadImpact(TestInfrahubApp):
     @pytest.mark.parametrize("case", ADDED_CAR_CASES, ids=lambda case: case.name)
     async def test_adding_a_car_selects_every_target_only_when_the_filters_return_it(
         self,
-        db: InfrahubDatabase,
         dataset: dict[str, Any],
         default_branch: Branch,
-        client: InfrahubClient,
+        impact_resolver: FieldLevelImpactResolver,
         add_car: Callable[[str, str], Awaitable[str]],
         case: AddedCarCase,
     ) -> None:
         car_id = await add_car(f"{case.added_color}-new", case.added_color)
 
         selected = await self._selected(
-            db=db,
             dataset=dataset,
             default_branch=default_branch,
-            client=client,
+            impact_resolver=impact_resolver,
             diff_summary=self._car_added(dataset=dataset, car_id=car_id, branch=default_branch.name),
             query=_cars_of_the_manufacturer(case.arguments),
         )
@@ -346,19 +342,17 @@ class TestFilteredPeerReadImpact(TestInfrahubApp):
 
     async def test_adding_a_car_outside_the_ids_a_read_selects_selects_no_target(
         self,
-        db: InfrahubDatabase,
         dataset: dict[str, Any],
         default_branch: Branch,
-        client: InfrahubClient,
+        impact_resolver: FieldLevelImpactResolver,
         add_car: Callable[[str, str], Awaitable[str]],
     ) -> None:
         car_id = await add_car("red-3", "red")
 
         selected = await self._selected(
-            db=db,
             dataset=dataset,
             default_branch=default_branch,
-            client=client,
+            impact_resolver=impact_resolver,
             diff_summary=self._car_added(dataset=dataset, car_id=car_id, branch=default_branch.name),
             query=_cars_of_the_manufacturer(f'ids: ["{dataset["cars"]["red-1"]}"]'),
         )
@@ -368,17 +362,16 @@ class TestFilteredPeerReadImpact(TestInfrahubApp):
     @pytest.mark.parametrize("case", SECOND_READ_CASES, ids=lambda case: case.name)
     async def test_a_relationship_also_read_without_a_filter_selects_every_target(
         self,
-        db: InfrahubDatabase,
         dataset: dict[str, Any],
         default_branch: Branch,
-        client: InfrahubClient,
+        impact_resolver: FieldLevelImpactResolver,
         add_car: Callable[[str, str], Awaitable[str]],
         case: SecondReadCase,
     ) -> None:
         car_id = await add_car("blue-3", "blue")
         every_target = list(dataset["subscribers"].values())
 
-        selection = await FieldLevelImpactResolver(db=db, client=client).resolve(
+        selection = await impact_resolver.resolve(
             query_report=query_report(case.query, default_branch),
             diff_summary=self._car_added(dataset=dataset, car_id=car_id, branch=default_branch.name),
             query_branch=default_branch.name,
@@ -451,10 +444,10 @@ class TestFilteredPeerReadImpactOnAComputedDiff(TestInfrahubApp):
         }
 
     async def _selected(
-        self, *, db: InfrahubDatabase, dataset: dict[str, Any], client: InfrahubClient, query: str
+        self, *, dataset: dict[str, Any], impact_resolver: FieldLevelImpactResolver, query: str
     ) -> set[str]:
         every_target = list(dataset["subscribers"].values())
-        selection = await FieldLevelImpactResolver(db=db, client=client).resolve(
+        selection = await impact_resolver.resolve(
             query_report=query_report(query, dataset["branch"]),
             diff_summary=dataset["diff_summary"],
             query_branch=dataset["branch"].name,
@@ -474,18 +467,20 @@ class TestFilteredPeerReadImpactOnAComputedDiff(TestInfrahubApp):
         assert {element["name"] for element in entries[dataset["maker_id"]]["elements"]} == {"cars"}
 
     async def test_adding_a_car_the_filter_excludes_selects_no_target(
-        self, db: InfrahubDatabase, dataset: dict[str, Any], client: InfrahubClient
+        self, dataset: dict[str, Any], impact_resolver: FieldLevelImpactResolver
     ) -> None:
         assert (
-            await self._selected(db=db, dataset=dataset, client=client, query=QUERY_RED_CARS_OF_THE_MANUFACTURER)
+            await self._selected(
+                dataset=dataset, impact_resolver=impact_resolver, query=QUERY_RED_CARS_OF_THE_MANUFACTURER
+            )
             == set()
         )
 
     async def test_adding_a_car_selects_every_target_of_a_read_without_filter(
-        self, db: InfrahubDatabase, dataset: dict[str, Any], client: InfrahubClient
+        self, dataset: dict[str, Any], impact_resolver: FieldLevelImpactResolver
     ) -> None:
         selected = await self._selected(
-            db=db, dataset=dataset, client=client, query=_cars_of_the_manufacturer("limit: 50")
+            dataset=dataset, impact_resolver=impact_resolver, query=_cars_of_the_manufacturer("limit: 50")
         )
 
         assert selected == set(dataset["subscribers"].values())
@@ -624,9 +619,9 @@ class TestFilteredPeerReadImpactOnPeersMissingFromTheDiff(TestInfrahubApp):
         assert {element["name"] for element in entries[dataset["makers"]["maker-1"]]["elements"]} == {"vehicles"}
 
     async def test_adding_a_vehicle_the_filter_includes_selects_its_maker_target(
-        self, db: InfrahubDatabase, dataset: dict[str, Any], client: InfrahubClient
+        self, dataset: dict[str, Any], impact_resolver: FieldLevelImpactResolver
     ) -> None:
-        selection = await FieldLevelImpactResolver(db=db, client=client).resolve(
+        selection = await impact_resolver.resolve(
             query_report=query_report(QUERY_RED_VEHICLES_OF_THE_MAKER, dataset["branch"]),
             diff_summary=dataset["diff_summary"],
             query_branch=dataset["branch"].name,
