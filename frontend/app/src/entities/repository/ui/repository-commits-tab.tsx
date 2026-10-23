@@ -11,18 +11,18 @@ import {
   READONLY_REPOSITORY_KIND,
   REPOSITORY_COMMITS_TAB,
 } from "@/entities/repository/domain/model/repository";
-import { isUpdatedOnlyByRebase } from "@/entities/repository/domain/rules/is-updated-only-by-rebase";
+import { isRebaseOnly } from "@/entities/repository/domain/rules/is-rebase-only";
 import { useGetRepositoryCommits } from "@/entities/repository/ui/queries/get-repository-commits.query";
 import {
-  type CommitsTabSignal,
+  type CommitsTabBadge,
   formatCommitsTabCount,
-  getCommitsTabSignal,
+  getCommitsTabBadge,
   isLoadingFirstPage,
 } from "@/entities/repository/ui/repository-commits.view";
 
 const TOOLTIP_DELAY_MS = 200;
 
-const SIGNAL_ICONS = {
+const BADGE_ICONS = {
   "pending-import": ArrowDownToLineIcon,
   behind: GitBranchIcon,
   warning: TriangleAlertIcon,
@@ -40,7 +40,7 @@ export function RepositoryCommitsTab({
   internalStatus,
 }: RepositoryCommitsTabProps) {
   const { currentBranch } = useCurrentBranch();
-  const updatedOnlyByRebase = isUpdatedOnlyByRebase({
+  const rebaseOnly = isRebaseOnly({
     repositoryKind: objectKind,
     internalStatus,
     isDefaultBranch: currentBranch.is_default,
@@ -50,12 +50,12 @@ export function RepositoryCommitsTab({
   const {
     isPending,
     failureReason,
-    data: signal,
+    data: badge,
   } = useGetRepositoryCommits(
     { repositoryId: objectId },
     {
       select: ({ pages: [firstPage] }) =>
-        firstPage ? getCommitsTabSignal(firstPage, { updatedOnlyByRebase, isReadOnly }) : null,
+        firstPage ? getCommitsTabBadge(firstPage, { rebaseOnly, isReadOnly }) : null,
     }
   );
   const to = getObjectDetailsUrl(objectKind, objectId, undefined, REPOSITORY_COMMITS_TAB);
@@ -69,20 +69,20 @@ export function RepositoryCommitsTab({
     );
   }
 
-  if (!signal) {
+  if (!badge) {
     return <LinkTab to={to}>Commits</LinkTab>;
   }
 
   return (
-    <LinkTabWithTooltip to={to} tooltip={signal.hint} label={`Commits, ${signal.description}`}>
+    <LinkTabWithTooltip to={to} tooltip={badge.tooltip} ariaLabel={`Commits, ${badge.summary}`}>
       Commits
-      <CommitsTabPill signal={signal} />
+      <CommitsTabBadgeContent badge={badge} />
     </LinkTabWithTooltip>
   );
 }
 
-function CommitsTabPill({ signal }: { signal: CommitsTabSignal }) {
-  const Icon = SIGNAL_ICONS[signal.kind];
+function CommitsTabBadgeContent({ badge }: { badge: CommitsTabBadge }) {
+  const Icon = BADGE_ICONS[badge.kind];
 
   return (
     <Badge
@@ -91,7 +91,7 @@ function CommitsTabPill({ signal }: { signal: CommitsTabSignal }) {
       className="h-5 gap-1 rounded-full py-0 font-medium tabular-nums"
     >
       <Icon className="size-3 shrink-0" strokeWidth={2.25} />
-      {signal.kind !== "warning" && formatCommitsTabCount(signal.count)}
+      {badge.kind !== "warning" && formatCommitsTabCount(badge.count)}
     </Badge>
   );
 }
@@ -99,12 +99,12 @@ function CommitsTabPill({ signal }: { signal: CommitsTabSignal }) {
 interface LinkTabWithTooltipProps {
   to: string;
   tooltip: string;
-  label: string;
+  ariaLabel: string;
   children: ReactNode;
 }
 
 // Opened by the link's own handlers: a non-interactive tooltip trigger inside a link never receives keyboard focus.
-function LinkTabWithTooltip({ to, tooltip, label, children }: LinkTabWithTooltipProps) {
+function LinkTabWithTooltip({ to, tooltip, ariaLabel, children }: LinkTabWithTooltipProps) {
   const [isOpen, setIsOpen] = useState(false);
   const triggerRef = useRef<HTMLSpanElement>(null);
   const openTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -123,7 +123,7 @@ function LinkTabWithTooltip({ to, tooltip, label, children }: LinkTabWithTooltip
   return (
     <LinkTab
       to={to}
-      aria-label={label}
+      aria-label={ariaLabel}
       onMouseEnter={() => open(TOOLTIP_DELAY_MS)}
       onMouseLeave={close}
       onClick={close}

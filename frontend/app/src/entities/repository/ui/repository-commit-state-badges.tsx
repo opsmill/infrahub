@@ -2,11 +2,11 @@ import { Badge } from "@/shared/components/ui/badge";
 
 import type { RepositoryCommit } from "@/entities/repository/domain/model/repository";
 import {
-  type CommitStateContext,
+  type CommitBadgeContext,
   getStateBadges,
 } from "@/entities/repository/ui/repository-commits.view";
 
-export interface RepositoryCommitStateBadgesProps extends CommitStateContext {
+export interface RepositoryCommitStateBadgesProps extends CommitBadgeContext {
   commit: RepositoryCommit;
 }
 

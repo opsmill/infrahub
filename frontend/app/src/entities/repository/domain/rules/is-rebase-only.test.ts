@@ -5,17 +5,17 @@ import {
   REPOSITORY_INTERNAL_STATUS_STAGING,
   REPOSITORY_KIND,
 } from "@/entities/repository/domain/model/repository";
-import { isUpdatedOnlyByRebase } from "@/entities/repository/domain/rules/is-updated-only-by-rebase";
+import { isRebaseOnly } from "@/entities/repository/domain/rules/is-rebase-only";
 
-const NON_SYNCED_BRANCH = { isDefaultBranch: false, syncWithGit: false };
+const REBASE_ONLY_BRANCH = { isDefaultBranch: false, syncWithGit: false };
 
-describe("isUpdatedOnlyByRebase", () => {
+describe("isRebaseOnly", () => {
   test("is true for an active read-write repository on a branch that does not sync with Git", () => {
     // WHEN
-    const result = isUpdatedOnlyByRebase({
+    const result = isRebaseOnly({
       repositoryKind: REPOSITORY_KIND,
       internalStatus: "active",
-      ...NON_SYNCED_BRANCH,
+      ...REBASE_ONLY_BRANCH,
     });
 
     // THEN
@@ -27,13 +27,13 @@ describe("isUpdatedOnlyByRebase", () => {
       case: "a read-only repository",
       repositoryKind: READONLY_REPOSITORY_KIND,
       internalStatus: "active",
-      ...NON_SYNCED_BRANCH,
+      ...REBASE_ONLY_BRANCH,
     },
     {
       case: "a repository added on the branch",
       repositoryKind: REPOSITORY_KIND,
       internalStatus: REPOSITORY_INTERNAL_STATUS_STAGING,
-      ...NON_SYNCED_BRANCH,
+      ...REBASE_ONLY_BRANCH,
     },
     {
       case: "a branch that syncs with Git",
@@ -58,7 +58,7 @@ describe("isUpdatedOnlyByRebase", () => {
     },
   ])("is false for $case", ({ repositoryKind, internalStatus, isDefaultBranch, syncWithGit }) => {
     // WHEN
-    const result = isUpdatedOnlyByRebase({
+    const result = isRebaseOnly({
       repositoryKind,
       internalStatus,
       isDefaultBranch,

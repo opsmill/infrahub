@@ -9,7 +9,7 @@ import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import type { RepositoryCommitLog } from "@/entities/repository/domain/model/repository";
-import { isUpdatedOnlyByRebase } from "@/entities/repository/domain/rules/is-updated-only-by-rebase";
+import { isRebaseOnly } from "@/entities/repository/domain/rules/is-rebase-only";
 import { getRepositoryCommitsColumns } from "@/entities/repository/ui/get-repository-commits-columns";
 import { useGetRepositoryCommits } from "@/entities/repository/ui/queries/get-repository-commits.query";
 import {
@@ -101,7 +101,7 @@ export function RepositoryCommitsManager({
     failureReason,
   });
 
-  const updatedOnlyByRebase = isUpdatedOnlyByRebase({
+  const rebaseOnly = isRebaseOnly({
     repositoryKind,
     internalStatus: repositoryInternalStatus,
     isDefaultBranch: currentBranch.is_default,
@@ -125,7 +125,7 @@ export function RepositoryCommitsManager({
         log={log}
         repositoryId={repositoryId}
         remoteCheck={remoteCheck}
-        updatedOnlyByRebase={updatedOnlyByRebase}
+        rebaseOnly={rebaseOnly}
       />
       {isShowingStaleCommits({ isRefetchError, isRefetching, failureReason }) && (
         <RepositoryCommitsNotice>
@@ -146,7 +146,7 @@ export function RepositoryCommitsManager({
           columns={getRepositoryCommitsColumns({
             importedCommit: log.imported_commit,
             condition: log.condition,
-            updatedOnlyByRebase,
+            rebaseOnly,
             repositoryLocation,
           })}
           data={commits}
@@ -191,7 +191,7 @@ function RepositoryCommitsEmptyState({
         log={log}
         repositoryId={repositoryId}
         remoteCheck={remoteCheck}
-        updatedOnlyByRebase={false}
+        rebaseOnly={false}
       />
       <NoDataFound title={emptyState.title} message={emptyState.message} />
     </Col>

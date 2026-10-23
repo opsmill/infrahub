@@ -15,7 +15,7 @@ import {
 import {
   getConditionNotice,
   getFreshness,
-  getNonSyncedBranchNote,
+  getRebaseOnlyNote,
 } from "@/entities/repository/ui/repository-commits.view";
 
 interface RepositoryCommitsLogProps {
@@ -36,26 +36,24 @@ export interface RepositoryCommitsToolbarProps {
 export interface RepositoryCommitsHeaderProps
   extends RepositoryCommitsLogProps,
     Omit<RepositoryCommitsToolbarProps, "children"> {
-  updatedOnlyByRebase: boolean;
+  rebaseOnly: boolean;
 }
 
 export function RepositoryCommitsHeader({
   log,
   repositoryId,
   remoteCheck,
-  updatedOnlyByRebase,
+  rebaseOnly,
 }: RepositoryCommitsHeaderProps) {
-  const nonSyncedBranchNote = updatedOnlyByRebase ? getNonSyncedBranchNote(log) : null;
+  const rebaseOnlyNote = rebaseOnly ? getRebaseOnlyNote(log) : null;
 
   return (
     <Col className="gap-1.5 p-2">
       <RepositoryCommitsToolbar repositoryId={repositoryId} remoteCheck={remoteCheck}>
         <FreshnessLine log={log} />
       </RepositoryCommitsToolbar>
-      {nonSyncedBranchNote && (
-        <p className="text-foreground-muted text-sm">{nonSyncedBranchNote}</p>
-      )}
-      <ConditionNotice log={log} updatedOnlyByRebase={updatedOnlyByRebase} />
+      {rebaseOnlyNote && <p className="text-foreground-muted text-sm">{rebaseOnlyNote}</p>}
+      <ConditionNotice log={log} rebaseOnly={rebaseOnly} />
     </Col>
   );
 }
@@ -120,9 +118,9 @@ function FreshnessLine({ log }: RepositoryCommitsLogProps) {
 
 function ConditionNotice({
   log,
-  updatedOnlyByRebase,
-}: RepositoryCommitsLogProps & Pick<RepositoryCommitsHeaderProps, "updatedOnlyByRebase">) {
-  const notice = getConditionNotice(log, { updatedOnlyByRebase });
+  rebaseOnly,
+}: RepositoryCommitsLogProps & Pick<RepositoryCommitsHeaderProps, "rebaseOnly">) {
+  const notice = getConditionNotice(log, { rebaseOnly });
 
   if (!notice) return null;
 

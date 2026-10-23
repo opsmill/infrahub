@@ -4,7 +4,7 @@ import {
 } from "@/entities/repository/domain/model/repository";
 
 // Mirrors the backend, which marks the default branch's newer commits as not on the branch when a rebase is the only way to bring them in.
-export function isUpdatedOnlyByRebase({
+export function isRebaseOnly({
   repositoryKind,
   internalStatus,
   isDefaultBranch,
