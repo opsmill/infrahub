@@ -49,7 +49,7 @@ describe("RepositoryMenuSection", () => {
     await expect
       .element(component.getByRole("menuitem", { name: /Check connectivity/i }))
       .toBeVisible();
-    await expect.element(component.baseElement).not.toHaveTextContent("Import latest commit");
+    await expect.element(component.baseElement).not.toMatchTextContent("Import latest commit");
   });
 
   test("renders Import latest commit only for read-only repositories", async () => {
@@ -144,7 +144,7 @@ describe("RepositoryMenuSection", () => {
     );
 
     // THEN
-    await expect.element(component.baseElement).not.toHaveTextContent("Import latest commit");
+    await expect.element(component.baseElement).not.toMatchTextContent("Import latest commit");
   });
 
   test("shows Reimport current commit only for read-only repositories", async () => {
