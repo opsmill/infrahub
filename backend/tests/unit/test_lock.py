@@ -1,6 +1,6 @@
 import operator
 import time
-from asyncio import gather, sleep
+from asyncio import Event, create_task, gather, sleep, wait, wait_for
 from dataclasses import dataclass
 
 import pytest
@@ -8,6 +8,7 @@ import pytest
 from infrahub import config, lock
 from infrahub.config import CacheSettings
 from infrahub.lock import (
+    GLOBAL_SCHEMA_LOCK,
     GLOBAL_TASKMGR_INIT_LOCK,
     GLOBAL_WORKER_TASKMGR_INIT_LOCK,
     InfrahubLockRegistry,
@@ -79,11 +80,64 @@ async def test_multi_global_graph_lock() -> None:
     results = await gather(
         do_nothing_global_graph(id="one", wait_sec=0.5),
         do_nothing_global_graph(id="two", wait_sec=1),
-        do_nothing(id="tree", wait_sec=1, lock_name="local.schema"),
     )
 
     assert results[0][2] <= results[1][1]
-    assert results[0][2] <= results[2][1]
+
+
+async def test_global_lock_holder_takes_local_schema_lock_while_a_schema_update_waits() -> None:
+    lock.initialize_lock(local_only=True)
+    events: list[str] = []
+    graph_lock_held = Event()
+
+    async def update_registry_under_graph_lock() -> None:
+        async with lock.registry.global_graph_lock():
+            graph_lock_held.set()
+            # Yields once so the schema update queues on the global schema lock first.
+            await sleep(0)
+            async with lock.registry.local_schema_lock():
+                events.append("registry updated")
+
+    async def update_schema() -> None:
+        await graph_lock_held.wait()
+        async with lock.registry.global_schema_lock():
+            events.append("schema updated")
+
+    await wait_for(gather(update_registry_under_graph_lock(), update_schema()), timeout=10)
+
+    assert events == ["registry updated", "schema updated"]
+
+
+async def test_multi_lock_releases_what_it_acquired_when_cancelled_while_acquiring() -> None:
+    lock.initialize_lock(local_only=True)
+    local_lock_held = Event()
+    release_local_lock = Event()
+
+    async def hold_local_schema_lock() -> None:
+        async with lock.registry.local_schema_lock():
+            local_lock_held.set()
+            await release_local_lock.wait()
+
+    async def update_schema() -> None:
+        async with lock.registry.global_schema_lock():
+            pass
+
+    holder = create_task(hold_local_schema_lock())
+    try:
+        await wait_for(local_lock_held.wait(), timeout=10)
+        waiter = create_task(update_schema())
+        # Yields once so the schema update takes the global schema lock and queues on the local one.
+        await sleep(0)
+        assert await lock.registry.get(name=GLOBAL_SCHEMA_LOCK).locked()
+
+        waiter.cancel()
+        await wait([waiter])
+
+        assert waiter.cancelled()
+        assert not await lock.registry.get(name=GLOBAL_SCHEMA_LOCK).locked()
+    finally:
+        release_local_lock.set()
+        await holder
 
 
 def test_generate_name() -> None:
