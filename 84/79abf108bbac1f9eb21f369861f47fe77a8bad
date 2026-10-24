@@ -1,0 +1,48 @@
+backend/tests/unit/core/query/read_plan/conftest.py
+  s_6947b4d8b10fbd::t_73c4ef7ef97f45 1-31
+backend/infrahub/core/query/read_plan/builder.py
+  s_6947b4d8b10fbd::t_f49e1e2b69058e 322,332-333,335
+  s_6947b4d8b10fbd::t_73d70a34c2987e 1-308,310-314,318-321,323,325-328,330-331,336-338,343-351,353-356,358,360-361,363-364,366-379,382-394,396,398,400-412,471-474,478-481,485-630
+  s_6947b4d8b10fbd::t_7d4a598777c560 324,329,334,352,357,359,362,365
+  s_6947b4d8b10fbd::t_2a0d7ffae6c7e8 395,397,399,413-470
+  s_6947b4d8b10fbd::t_d9b32ea0925dcf 315-317,339-342,380-381,475-477,482-484
+  s_6947b4d8b10fbd::t_922120cf006392 309
+backend/tests/unit/core/query/read_plan/test_builder.py
+  s_6947b4d8b10fbd::t_adcfa744bf67dd 1-78,84-275,279-287,292-371,375-383,388-407,412-439,444-467,472-522,526-537,542-719,723-758,763-815,819-837,841-854,859-861,872-1022,1027-1039
+  s_6947b4d8b10fbd::t_d9b32ea0925dcf 79-83,276-278,288-291,372-374,384-387,408-411,440-443,468-471,523-525,538-541,720-722,759-762,816-818,838-840,855-858,862-871,1023-1026
+backend/tests/unit/core/query/read_plan/test_dependencies.py
+  s_6947b4d8b10fbd::t_d9b32ea0925dcf 61-64,122-128,158-160,163-165,263-268,352-357
+  s_6947b4d8b10fbd::t_48b5a8549c84aa 1-60,65-121,129-157,161-162,166-262,269-351,358-498
+dev/specs/artifact-regeneration-poc/data-model.md
+  s_6947b4d8b10fbd::t_1d7e476150dd12 61
+  s_6947b4d8b10fbd::t_7b510c3a1341b9 46,53
+dev/specs/artifact-regeneration-poc/tasks.md
+  s_6947b4d8b10fbd::t_c3014f928543d7 111-115
+backend/infrahub/core/query/read_plan/requirements.py
+  s_6947b4d8b10fbd::t_291c87f8d0b168 29-30
+backend/tests/unit/core/query/read_plan/test_models.py
+  s_6947b4d8b10fbd::t_63f3838906d5c0 9,69,79-80
+backend/infrahub/core/query/read_plan/dependencies.py
+  s_6947b4d8b10fbd::t_f5b986605fc3d5 1-109
+dev/specs/artifact-regeneration-poc/contracts/interfaces.md
+  s_6947b4d8b10fbd::t_7b510c3a1341b9 127-138
+backend/infrahub/core/query/read_plan/models.py
+  s_6947b4d8b10fbd::t_66a798de1e94a0 308-310,315-316,320-323
+  s_6947b4d8b10fbd::t_9b9c0665f7c850 221-223
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8479abf108bbac1f9eb21f369861f47fe77a8bad",
+  "prompts": {},
+  "sessions": {
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}
