@@ -165,6 +165,27 @@ per data shard. Rebalancing dial: move leaf files anywhere, sites files
 between sites_a/sites_b, topology files between sites_b/branches_repo —
 re-measure with each shard's CI junit before moving.
 
+Rebalanced 2026-06-27 (post dataset slim). The demo dataset was slimmed to two
+sites (atl1 + den1; see `tests/e2e/data/sites.py` `KEPT_SITES`), which dropped
+`data_sites` ~39s→~16s and the `data_topology` increment ~12s→~4s. The
+load-tier distinction between sites_a (data_sites) and sites_b
+(data_sites + data_topology) is therefore now ~4s — they are effectively ONE
+tier and topology files can live in either at negligible extra load cost. The
+load savings themselves are small against the ~5min/shard fixed overhead
+(checkout + uv sync + playwright install + `invoke dev.build` + boot), so
+re-sharding only rebalances the pytest-step time; the dominant CI lever remains
+a build-once/cached-deps job (deferred). To even the walls (sites_b was the
+~10m bottleneck, sites_a had headroom) five files moved into sites_a:
+`objects/test_object_{list,groups,filters}.py` from sites_b (sites_a now also
+loads data_topology — cheap) and the no-data ballast
+`role-management/test_group_management.py` + `branches/test_merge_branch.py`
+from branches_repo. New per-shard file counts: foundation 25 / sites_a 15 /
+sites_b 22 / branches_repo 14. Confirm the balance with a CI junit re-measure
+(local/CI ratios differ). NB: as of 2026-06-27 ~16 specs fail on stable from a
+pre-existing frontend regression (branch-selector dropdown + several
+forms/panels), unrelated to sharding — they inflate any wall measurement until
+fixed.
+
 ## Implementation notes
 
 1. Matrix on the existing job: `strategy.matrix.shard: [foundation, sites_a,
