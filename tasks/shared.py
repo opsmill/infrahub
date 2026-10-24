@@ -37,19 +37,12 @@ INFRAHUB_ADDRESS = os.getenv("INFRAHUB_ADDRESS", "http://localhost:8000")
 
 INFRAHUB_DEBUG: bool = str_to_bool(value=os.getenv("INFRAHUB_DEBUG", "false"))
 INFRAHUB_DEBUG_TRACE: bool = str_to_bool(value=os.getenv("INFRAHUB_DEBUG_TRACE", "false"))
-INFRAHUB_USE_NATS: bool = str_to_bool(os.getenv("INFRAHUB_USE_NATS", "false"))
 
 DATABASE_DOCKER_IMAGE = os.getenv("DATABASE_DOCKER_IMAGE", None)
 MEMGRAPH_DOCKER_IMAGE = os.getenv("MEMGRAPH_DOCKER_IMAGE", "memgraph/memgraph-mage:1.19-memgraph-2.19-no-ml")
 NEO4J_DOCKER_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:2026.05.0-enterprise")
-MESSAGE_QUEUE_DOCKER_IMAGE = os.getenv(
-    "MESSAGE_QUEUE_DOCKER_IMAGE",
-    "rabbitmq:4.2.1-management" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine",
-)
-CACHE_DOCKER_IMAGE = os.getenv(
-    "CACHE_DOCKER_IMAGE",
-    "redis:8.4.0" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine",
-)
+MESSAGE_QUEUE_DOCKER_IMAGE = os.getenv("MESSAGE_QUEUE_DOCKER_IMAGE", "rabbitmq:4.2.1-management")
+CACHE_DOCKER_IMAGE = os.getenv("CACHE_DOCKER_IMAGE", "redis:8.4.0")
 
 here = Path(__file__).parent.resolve()
 TOP_DIRECTORY_NAME = here.parent.name
@@ -76,10 +69,7 @@ AVAILABLE_SERVICES = [
 
 SUPPORTED_DATABASES = [DatabaseType.MEMGRAPH.value, DatabaseType.NEO4J.value]
 
-COMPOSE_FILES_DEPS = {
-    False: Path("development/docker-compose-deps.yml"),
-    True: Path("development/docker-compose-deps-nats.yml"),
-}
+COMPOSE_FILE_DEPS = Path("development/docker-compose-deps.yml")
 
 IMAGE_NAME = os.getenv("INFRAHUB_IMAGE_NAME", "registry.opsmill.io/opsmill/infrahub")
 REQUESTED_IMAGE_VER = os.getenv("INFRAHUB_IMAGE_VER")
@@ -90,23 +80,23 @@ DEFAULT_FILE = Path("development/docker-compose.default.yml")
 LOCAL_FILE = Path("development/docker-compose.local-build.yml")
 LOCAL_FILE_DEPS = Path("development/docker-compose.local-build-deps.yml")
 COMPOSE_FILES_MEMGRAPH = [
-    COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
+    COMPOSE_FILE_DEPS,
     Path("development/docker-compose-database-memgraph.yml"),
     Path("development/docker-compose.yml"),
 ]
 COMPOSE_FILES_NEO4J = [
-    COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
+    COMPOSE_FILE_DEPS,
     Path("development/docker-compose-database-neo4j.yml"),
     Path("development/docker-compose-observability.yml"),
     Path("development/docker-compose.yml"),
 ]
 
 DEV_COMPOSE_FILES_MEMGRAPH = [
-    COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
+    COMPOSE_FILE_DEPS,
     Path("development/docker-compose-database-memgraph.yml"),
 ]
 DEV_COMPOSE_FILES_NEO4J = [
-    COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
+    COMPOSE_FILE_DEPS,
     Path("development/docker-compose-database-neo4j.yml"),
     Path("development/docker-compose-observability.yml"),
 ]

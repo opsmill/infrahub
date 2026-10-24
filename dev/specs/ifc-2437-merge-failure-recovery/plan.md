@@ -64,8 +64,8 @@ proposed change) to `OPEN`.
 
 **Language/Version**: Python 3.13
 **Primary Dependencies**: FastAPI, Neo4j Python driver (Neo4j 5.28), Pydantic 2.10, Prefect
-(workflow scheduling), Typer / `AsyncTyper` (CLI), Redis **or** NATS (distributed lock + cache,
-selected by `config.SETTINGS.cache`)
+(workflow scheduling), Typer / `AsyncTyper` (CLI), Redis (distributed lock + cache,
+configured by `config.SETTINGS.cache`)
 **Storage**: Neo4j. Branch status and the new merge timestamp persist on the `:Branch` node
 (`Branch` is a `StandardNode`); they survive process and worker death.
 **Testing**: pytest — unit (`backend/tests/unit/`), component (`backend/tests/component/`, real

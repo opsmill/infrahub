@@ -162,7 +162,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_BROKER_MAXIMUM_MESSAGE_RETRIES` | The maximum number of retries that are attempted for failed messages | integer | 10 |
 | `INFRAHUB_BROKER_MAXIMUM_CONCURRENT_MESSAGES` | The maximum number of concurrent messages fetched by each worker | integer | 2 |
 | `INFRAHUB_BROKER_VIRTUALHOST` | The virtual host to connect to | string | / |
-| `INFRAHUB_BROKER_DRIVER` | Message bus implementation. RabbitMQ is the recommended and fully supported driver. NATS JetStream is experimental and not feature-complete: some functionality does not currently work, so it is not recommended for production. | string (rabbitmq, nats) | rabbitmq |
+| `INFRAHUB_BROKER_DRIVER` | Message bus implementation. RabbitMQ is the only supported value. | string (rabbitmq) | rabbitmq |
 
 ## Cache
 
@@ -171,15 +171,15 @@ Configuration settings for the message bus.
 | `INFRAHUB_CACHE_ADDRESS` | None | string | localhost |
 | `INFRAHUB_CACHE_PORT` | Specified if running on a non default port (6379) | integer | None |
 | `INFRAHUB_CACHE_DATABASE` | Id of the database to use | integer | 0 |
-| `INFRAHUB_CACHE_DRIVER` | Cache implementation. Redis is the recommended and fully supported driver. NATS JetStream is experimental and not feature-complete: some functionality does not currently work, so it is not recommended for production. | string (redis, nats) | redis |
+| `INFRAHUB_CACHE_DRIVER` | Cache implementation. Redis is the only supported value. | string (redis) | redis |
 | `INFRAHUB_CACHE_USERNAME` | None | string |  |
 | `INFRAHUB_CACHE_PASSWORD` | None | string |  |
-| `INFRAHUB_CACHE_URL` | Full Redis connection URL, authoritative over the scalar connection settings when set. Supports the redis://, rediss://, redis+sentinel:// and rediss+sentinel:// schemes; the Sentinel schemes accept a comma-separated list of members and a master group name, e.g. redis+sentinel://sentinel-a:26379,sentinel-b:26379/mymaster. TLS is enabled by the rediss:// and rediss+sentinel:// schemes, not by a query parameter, and is then tuned with the redis-py query parameters ssl_cert_reqs, ssl_check_hostname and ssl_ca_certs; on a rediss+sentinel:// URL these ssl_* options are shared with the Sentinel daemon connections, so ?ssl_cert_reqs=none (or ?ssl_ca_certs=/path/ca.pem for a private CA) covers the whole topology. A TLS URL without ?ssl_ca_certs= verifies against cache.tls_ca_file, which the global tls.ca_bundle fills. The Sentinel daemons can be authenticated separately with the sentinel_username and sentinel_password query parameters. See the high availability guide for details. Ignored when driver is not redis. | string | None |
+| `INFRAHUB_CACHE_URL` | Full Redis connection URL, authoritative over the scalar connection settings when set. Supports the redis://, rediss://, redis+sentinel:// and rediss+sentinel:// schemes; the Sentinel schemes accept a comma-separated list of members and a master group name, e.g. redis+sentinel://sentinel-a:26379,sentinel-b:26379/mymaster. TLS is enabled by the rediss:// and rediss+sentinel:// schemes, not by a query parameter, and is then tuned with the redis-py query parameters ssl_cert_reqs, ssl_check_hostname and ssl_ca_certs; on a rediss+sentinel:// URL these ssl_* options are shared with the Sentinel daemon connections, so ?ssl_cert_reqs=none (or ?ssl_ca_certs=/path/ca.pem for a private CA) covers the whole topology. A TLS URL without ?ssl_ca_certs= verifies against cache.tls_ca_file, which the global tls.ca_bundle fills. The Sentinel daemons can be authenticated separately with the sentinel_username and sentinel_password query parameters. See the high availability guide for details. | string | None |
 | `INFRAHUB_CACHE_TLS_ENABLED` | Indicates if TLS is enabled for the connection | boolean | False |
 | `INFRAHUB_CACHE_TLS_INSECURE` | Indicates if TLS certificates are verified | boolean | False |
 | `INFRAHUB_CACHE_TLS_CA_FILE` | File path to a CA cert or bundle in PEM format, or the PEM text itself. | string | None |
 | `INFRAHUB_CACHE_CLEAN_UP_DEADLOCKS_INTERVAL_MINS` | Age threshold in minutes: locks older than this and owned by inactive workers are deleted by the cleanup task. | integer | 15 |
-| `INFRAHUB_CACHE_INIT_LOCK_TTL_MINS` | Time-to-live in minutes for the global initialization locks. If a worker dies while holding one, the lock auto-expires after this period so Infrahub can recover on its own. Only enforced with the Redis cache driver. | integer | 20 |
+| `INFRAHUB_CACHE_INIT_LOCK_TTL_MINS` | Time-to-live in minutes for the global initialization locks. If a worker dies while holding one, the lock auto-expires after this period so Infrahub can recover on its own. | integer | 20 |
 
 ## Workflow
 

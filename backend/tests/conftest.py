@@ -76,7 +76,6 @@ from tests.helpers.constants import (
     PORT_HTTP_NEO4J,
     PORT_HTTP_RABBITMQ,
     PORT_MEMGRAPH,
-    PORT_NATS,
     PORT_PREFECT,
     PORT_REDIS,
 )
@@ -403,7 +402,7 @@ def neo4j(request: pytest.FixtureRequest, load_settings_before_session: None) ->
 
 @pytest.fixture(scope="session")
 def rabbitmq_container(request: pytest.FixtureRequest, load_settings_before_session: None) -> dict[int, int] | None:
-    if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.broker.driver != config.BrokerDriver.RabbitMQ:
+    if not INFRAHUB_USE_TEST_CONTAINERS:
         return None
 
     container = (
@@ -427,11 +426,7 @@ def rabbitmq_container(request: pytest.FixtureRequest, load_settings_before_sess
 def rabbitmq(
     rabbitmq_container: dict[int, int] | None, reload_settings_before_each_module: None
 ) -> dict[int, int] | None:
-    if (
-        rabbitmq_container
-        and INFRAHUB_USE_TEST_CONTAINERS
-        and config.SETTINGS.broker.driver == config.BrokerDriver.RabbitMQ
-    ):
+    if rabbitmq_container and INFRAHUB_USE_TEST_CONTAINERS:
         config.SETTINGS.broker.address = "localhost"
         config.SETTINGS.broker.port = rabbitmq_container[PORT_CLIENT_RABBITMQ]
         config.SETTINGS.broker.rabbitmq_http_port = rabbitmq_container[PORT_HTTP_RABBITMQ]
@@ -443,7 +438,7 @@ def rabbitmq(
 # NOTE: This fixture needs to run before initialize_lock_fixture which is guaranteed to run after as it has a module scope.
 @pytest.fixture(scope="session")
 def redis_container(request: pytest.FixtureRequest, load_settings_before_session: None) -> dict[int, int] | None:
-    if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.cache.driver != config.CacheDriver.Redis:
+    if not INFRAHUB_USE_TEST_CONTAINERS:
         return None
 
     container = DockerContainer(image="redis:8.4.0").with_exposed_ports(PORT_REDIS)
@@ -457,7 +452,7 @@ def redis_container(request: pytest.FixtureRequest, load_settings_before_session
 
 @pytest.fixture(scope="module")
 def redis(redis_container: dict[int, int] | None, reload_settings_before_each_module: None) -> dict[int, int] | None:
-    if redis_container and INFRAHUB_USE_TEST_CONTAINERS and config.SETTINGS.cache.driver == config.CacheDriver.Redis:
+    if redis_container and INFRAHUB_USE_TEST_CONTAINERS:
         config.SETTINGS.cache.address = "localhost"
         config.SETTINGS.cache.port = redis_container[PORT_REDIS]
         config.SETTINGS.cache.username = ""
@@ -509,36 +504,6 @@ def memgraph(request: pytest.FixtureRequest, load_settings_before_session: None)
     request.addfinalizer(container.stop)
 
     return {PORT_MEMGRAPH: get_exposed_port(container, PORT_MEMGRAPH)}
-
-
-@pytest.fixture(scope="session")
-def nats_container(request: pytest.FixtureRequest, load_settings_before_session: None) -> dict[int, int] | None:
-    if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.cache.driver != config.CacheDriver.NATS:
-        return None
-
-    # Per-message (per-key) TTL in KV buckets requires NATS 2.11 or later; pinned to a recent release.
-    container = DockerContainer(image="nats:2.14.3-alpine").with_command("--jetstream").with_exposed_ports(PORT_NATS)
-
-    container.start()
-    wait_for_logs(container, "Server is ready")  # wait_container_is_ready does not seem to be enough
-    request.addfinalizer(container.stop)
-
-    return {PORT_NATS: get_exposed_port(container, PORT_NATS)}
-
-
-@pytest.fixture(scope="module")
-def nats(nats_container: dict[int, int] | None, reload_settings_before_each_module: None) -> dict[int, int] | None:
-    if nats_container and INFRAHUB_USE_TEST_CONTAINERS and config.SETTINGS.cache.driver == config.CacheDriver.NATS:
-        config.SETTINGS.cache.address = "localhost"
-        config.SETTINGS.cache.port = nats_container[PORT_NATS]
-
-    if nats_container and INFRAHUB_USE_TEST_CONTAINERS and config.SETTINGS.broker.driver == config.BrokerDriver.NATS:
-        config.SETTINGS.broker.address = "localhost"
-        config.SETTINGS.broker.port = nats_container[PORT_NATS]
-
-        return nats_container
-
-    return None
 
 
 @pytest.fixture(scope="session")

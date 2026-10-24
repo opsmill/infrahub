@@ -76,9 +76,6 @@ class ReplyDelayingProxy:
 
 @pytest.fixture
 async def proxy(redis: dict[int, int] | None) -> AsyncGenerator[ReplyDelayingProxy, None]:
-    if config.SETTINGS.cache.driver != config.CacheDriver.Redis:
-        pytest.skip("Must use Redis to run this test")
-
     cache = config.SETTINGS.cache
     proxy = ReplyDelayingProxy(host=cache.address, port=cache.service_port)
     await proxy.start()
