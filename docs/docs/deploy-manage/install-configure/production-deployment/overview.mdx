@@ -25,6 +25,7 @@ Before beginning your production deployment, ensure you have:
 - Decided between Community or Enterprise edition based on your support and feature needs
 - Access to your organization's identity provider (for SSO configuration)
 - A backup strategy and storage location
+- Redis 6.0 or later, or a Redis-compatible service that supports the `HELLO` command. Infrahub opens each Redis connection with `HELLO`, which Redis 5.0 and earlier reject.
 
 ## Step 1: Create a hardened configuration file
 
@@ -190,6 +191,8 @@ The task manager connects to Redis and PostgreSQL with its own settings, so set 
 
 If a password contains special characters, percent-encode them where the password appears inside a URL, for example `@` as `%40` and `/` as `%2F`.
 
+If you connect to Redis through `INFRAHUB_CACHE_URL`, for example to reach a Redis Sentinel deployment, put the cache username and password in that URL instead. Once the URL is set, the Infrahub server, the task workers and the task manager ignore `INFRAHUB_CACHE_USERNAME` and `INFRAHUB_CACHE_PASSWORD`. See [Connecting to a Redis Sentinel that requires a password](./high-availability.mdx#connecting-to-a-redis-sentinel-that-requires-a-password) for the URL format and an example that keeps the URL in a Kubernetes Secret.
+
 <Tabs groupId="installation-method" queryString>
 <TabItem value="docker-compose" label="Docker Compose" default>
 
@@ -228,6 +231,8 @@ kubectl create secret generic infrahub-task-manager-cache \
   --from-literal=INFRAHUB_CACHE_USERNAME=infrahub \
   --from-literal=INFRAHUB_CACHE_PASSWORD='<strong-cache-password>'
 ```
+
+If you set `INFRAHUB_CACHE_URL`, store the URL, with the credentials in it, in this Secret instead of the username and password.
 
 Then reference the Secret and set the Prefect credentials in your values file:
 

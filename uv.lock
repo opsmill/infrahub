@@ -1614,7 +1614,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-aio-pika", specifier = "==0.65b0" },
     { name = "opentelemetry-instrumentation-fastapi", specifier = "==0.65b0" },
     { name = "prefect", specifier = "==3.8.6" },
-    { name = "prefect-redis", specifier = "==0.2.15" },
+    { name = "prefect-redis", specifier = "==0.3.0" },
     { name = "prometheus-client", specifier = ">=0.25,<0.26" },
     { name = "puremagic", specifier = ">=1.30,<2" },
     { name = "pyarrow", marker = "extra == 'object-transfer'", specifier = ">=14" },
@@ -1624,7 +1624,7 @@ requires-dist = [
     { name = "pytest", specifier = ">=9.0,<9.1" },
     { name = "python-multipart", specifier = "==0.0.31" },
     { name = "pyyaml", specifier = ">=6,<7" },
-    { name = "redis", extras = ["hiredis"], specifier = "==6.0.0" },
+    { name = "redis", extras = ["hiredis"], specifier = "==8.1.0" },
     { name = "rich", specifier = ">=13,<14" },
     { name = "starlette-exporter", specifier = ">=0.23,<0.24" },
     { name = "structlog", specifier = "==24.1.0" },
@@ -2993,15 +2993,15 @@ wheels = [
 
 [[package]]
 name = "prefect-redis"
-version = "0.2.15"
+version = "0.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "prefect" },
     { name = "redis" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/93/f2/0b1e921a003c61056bfe152be27b4dd0aeca8d2efab1dcaf03182f1ad165/prefect_redis-0.2.15.tar.gz", hash = "sha256:edf004a695d0539a6dea7dca38093cfbe103afa4a716680b415508833114e610", size = 65031, upload-time = "2026-09-08T18:32:54.588Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3c/58/d23ac6b0023406f637aea0f2c65faa16914d23fe496305d673e5fe980bf7/prefect_redis-0.3.0.tar.gz", hash = "sha256:724a65bb2ceed9a0eb9ad6af129e66e5427f0c4b364282f7ee5c9bacf8638549", size = 74363, upload-time = "2026-10-07T17:38:52.088Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c6/23/a412f4274c490b1cce42e95a8184e9052aebdf6315a549c50bb050ca7201/prefect_redis-0.2.15-py3-none-any.whl", hash = "sha256:60564ae097f6e34a84a9afc2065e39b301f0dc57dee0d1eaf46b3c481a2f9174", size = 39932, upload-time = "2026-09-08T18:32:53.306Z" },
+    { url = "https://files.pythonhosted.org/packages/d8/82/0635d455c00ed4cfd4d730555feedc3552786c5c2741fe2ae2d2c103a4dc/prefect_redis-0.3.0-py3-none-any.whl", hash = "sha256:d1ca0865a37f1c90a83d7c04127609c683c0f794d83ed491c5d0f33128dc1e42", size = 44819, upload-time = "2026-10-07T17:38:50.683Z" },
 ]
 
 [[package]]
@@ -3397,7 +3397,7 @@ wheels = [
 
 [[package]]
 name = "pydocket"
-version = "0.20.3"
+version = "0.27.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "burner-redis" },
@@ -3414,9 +3414,9 @@ dependencies = [
     { name = "tzdata", marker = "sys_platform == 'win32'" },
     { name = "uncalled-for" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/41/4e/4994a407ae4e7561e84881b1edda8fedb58e7078c693845bdd1b66a73765/pydocket-0.20.3.tar.gz", hash = "sha256:ecf923cbcc8f7f26c7e76cad03a03d179536e4d947f322a89e9cc899a2631f72", size = 381244, upload-time = "2026-05-19T13:42:50.165Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/75/42/9c3346650a2c1fcf74e717e94d68ef88e18d0a0a5159fb68ccc1b56e046e/pydocket-0.27.0.tar.gz", hash = "sha256:4969f6b22deaa72b1b8463e5efaaf0acfed538d007ab1ef8a4f997b61dbfe85b", size = 330815, upload-time = "2026-10-09T15:20:53.159Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c5/18/2cf2fcabdc99c858401b7a44b7577e7a3002648048bb4d77517c22d8264d/pydocket-0.20.3-py3-none-any.whl", hash = "sha256:ba009b53270c5e677175def464fed2137d6289a9c9f57f376885f6c27f24a466", size = 110356, upload-time = "2026-05-19T13:42:47.816Z" },
+    { url = "https://files.pythonhosted.org/packages/d5/ac/19236a0ff84a0683d880290e5352a105e626f9510b3a80fcf6453f3e67e0/pydocket-0.27.0-py3-none-any.whl", hash = "sha256:49504936f568bc09861afe2c880e2ca1c0bc191898efc56eaf56e3f7e1ab6a85", size = 155557, upload-time = "2026-10-09T15:20:51.646Z" },
 ]
 
 [[package]]
@@ -3764,11 +3764,11 @@ wheels = [
 
 [[package]]
 name = "redis"
-version = "6.0.0"
+version = "8.1.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/79/12/dffaaa4374b8d5f3b7ff5c40025c9db387e06264302d5a9da6043cd84e1f/redis-6.0.0.tar.gz", hash = "sha256:5446780d2425b787ed89c91ddbfa1be6d32370a636c8fdb687f11b1c26c1fa88", size = 4620969, upload-time = "2025-04-30T19:09:30.798Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a8/99/604f0b666d4c616d891cf77ebb9db6bb21601344c051aebf1b72b9ff915f/redis-8.1.0.tar.gz", hash = "sha256:6e1a19beef9225c83efd689c7e6b7da2d5215b1f42cd13b7fc3714d0a09c7b25", size = 5254356, upload-time = "2026-07-30T08:51:00.269Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/08/c8/68081c9d3531f7b2a4d663326b96a9dcbc2aef47df3c6b5c38dea90dff02/redis-6.0.0-py3-none-any.whl", hash = "sha256:a2e040aee2cdd947be1fa3a32e35a956cd839cc4c1dbbe4b2cdee5b9623fd27c", size = 268950, upload-time = "2025-04-30T19:09:28.432Z" },
+    { url = "https://files.pythonhosted.org/packages/66/9d/c5731f6e3608663d4d3656fd8d3aecee8b509c3082818f5a13eae925baea/redis-8.1.0-py3-none-any.whl", hash = "sha256:a4fe1aac3d3b3cc791d4b3d5931c5a956045dc951ee74d1c913ee3ac4d2ee9fb", size = 560618, upload-time = "2026-07-30T08:50:58.497Z" },
 ]
 
 [package.optional-dependencies]
@@ -4492,11 +4492,11 @@ wheels = [
 
 [[package]]
 name = "uncalled-for"
-version = "0.3.2"
+version = "0.4.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/b5/82/345cc927f7fbdae6065e7768759932fcc827fc20b29b45dfbafa2f1f7da4/uncalled_for-0.3.2.tar.gz", hash = "sha256:89f5dbcd71e2b8f47c030b1fa302e6cce2ec795d1ac565eeb6525c5fe55cb8a2", size = 50032, upload-time = "2026-05-06T13:38:25.204Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6c/54/4651e4c5fe84300f8e03c0390aaad41bcb9c7b81d7783542a3ee690b40ee/uncalled_for-0.4.1.tar.gz", hash = "sha256:6412b19d1b1e7d431981fee01f8b47be7802f48328a48cbe9603acee757ec553", size = 56971, upload-time = "2026-10-09T12:54:34.941Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3b/25/2c87754f3a9e692315f7b811244090e68f362979fc8886b3fbd2985a1d8c/uncalled_for-0.3.2-py3-none-any.whl", hash = "sha256:0ff60b142c7d1f8070bde9d42afaa70aedc77dcc10998c227687e9c15713418e", size = 11444, upload-time = "2026-05-06T13:38:24.025Z" },
+    { url = "https://files.pythonhosted.org/packages/bf/a6/ba763e3812e572de7291676c3a41adfac1ef1209a6acda6bae055970f127/uncalled_for-0.4.1-py3-none-any.whl", hash = "sha256:b611b38879d9fe5088297e7bb28f2ddd12d2d73dad933d93da107fb63eb4058e", size = 14889, upload-time = "2026-10-09T12:54:33.596Z" },
 ]
 
 [[package]]
