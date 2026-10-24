@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Any
 
 import pytest
@@ -191,6 +192,78 @@ async def test_ipaddress_nextavailable(
     assert not result.errors
     assert result.data
     assert result.data["InfrahubIPAddressGetNextAvailable"]["address"] == response
+
+
+@dataclass
+class IPv6FilterTestCase:
+    name: str
+    kind: str
+    filters: str
+
+
+IPV6_FILTER_TEST_CASES: list[IPv6FilterTestCase] = [
+    IPv6FilterTestCase(
+        name="prefix_exact_compressed",
+        kind="BuiltinIPPrefix",
+        filters='prefix__value: "2001:db8:1:57::/127"',
+    ),
+    IPv6FilterTestCase(
+        name="prefix_exact_leading_zeros",
+        kind="BuiltinIPPrefix",
+        filters='prefix__value: "2001:0db8:0001:57::/127"',
+    ),
+    IPv6FilterTestCase(
+        name="prefix_any_partial_compressed",
+        kind="BuiltinIPPrefix",
+        filters='any__value: "2001:db8:1:57::", partial_match: true',
+    ),
+    IPv6FilterTestCase(
+        name="prefix_any_partial_leading_zeros",
+        kind="BuiltinIPPrefix",
+        filters='any__value: "2001:0db8:0001:57::", partial_match: true',
+    ),
+    IPv6FilterTestCase(
+        name="address_exact_leading_zeros",
+        kind="BuiltinIPAddress",
+        filters='address__value: "2001:0db8:0001:0057::1/127"',
+    ),
+    IPv6FilterTestCase(
+        name="address_any_partial_leading_zeros",
+        kind="BuiltinIPAddress",
+        filters='any__value: "2001:0db8:0001:0057::1", partial_match: true',
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in IPV6_FILTER_TEST_CASES])
+async def test_ipv6_filter_matches_any_notation(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_ipam_schema: SchemaBranch,
+    test_case: IPv6FilterTestCase,
+) -> None:
+    """A filter on an IPv6 prefix or address matches the saved compressed value whichever notation is typed."""
+    prefix = await Node.init(db=db, schema="IpamIPPrefix")
+    await prefix.new(db=db, prefix="2001:0db8:0001:57::/127", ip_namespace=default_ipnamespace)
+    await prefix.save(db=db)
+
+    address = await Node.init(db=db, schema="IpamIPAddress")
+    await address.new(db=db, address="2001:0db8:0001:57::1/127", ip_namespace=default_ipnamespace)
+    await address.save(db=db)
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source="query { %s(%s) { count } }" % (test_case.kind, test_case.filters),
+        context_value=gql_params.context,
+    )
+
+    assert result.errors is None
+    assert result.data
+    assert result.data[test_case.kind]["count"] == 1
 
 
 @pytest.fixture(scope="class")
