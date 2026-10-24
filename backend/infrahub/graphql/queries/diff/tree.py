@@ -506,6 +506,16 @@ class DiffTreeResolver:
         name: str | None = None,
         proposed_change_id: str | None = None,
     ) -> DiffQueryParams:
+        # A tracking id already identifies a single stored diff, so applying the default time
+        # window on top of it would hide a diff stored for a period outside that window.
+        if name and not from_time and not to_time:
+            return DiffQueryParams(
+                from_time=None,
+                to_time=None,
+                tracking_id=NameTrackingId(name),
+                exclude_merged=False,
+            )
+
         # For terminal branches with no explicit time filters,
         # return the latest stored diff for the branch regardless of time
         if branch_info.is_terminal and not from_time and not to_time:
@@ -646,6 +656,7 @@ class DiffTreeResolver:
         root: dict,  # noqa: ARG002
         info: GraphQLResolveInfo,
         branch: str | None = None,
+        name: str | None = None,
         from_time: datetime | None = None,
         to_time: datetime | None = None,
         filters: dict | None = None,
@@ -663,6 +674,7 @@ class DiffTreeResolver:
             at=graphql_context.at or Timestamp(),
             from_time=from_time,
             to_time=to_time,
+            name=name,
             proposed_change_id=proposed_change_id,
         )
 
