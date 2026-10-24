@@ -11,6 +11,17 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=\"$CLAUDE_PROJECT_DIR/.agents/hooks/review_new_pr.py\"; [ -f \"$f\" ] || exit 0; p=$(cat); case \"$p\" in *'\"gitOperation\"'*) printf '%s' \"$p\" | python3 \"$f\";; esac"
+          }
+        ]
+      }
     ]
   }
 }

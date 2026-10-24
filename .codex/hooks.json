@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'f=\"$(git rev-parse --show-toplevel 2>/dev/null)/.agents/hooks/review_new_pr.py\"; [ -f \"$f\" ] || exit 0; p=$(cat); case \"$p\" in *\"gh pr create\"*) printf \"%s\" \"$p\" | python3 \"$f\" codex;; esac'"
+          }
+        ]
+      }
+    ]
+  }
+}
