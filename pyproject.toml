@@ -800,6 +800,11 @@ allow-dunder-method-names = [
     "SLF001",   # Private member accessed
 ]
 
+".github/scripts/tests/**.py" = [
+    "INP001",   # File is part of an implicit namespace package
+    "S101",     # Use of assert detected
+]
+
 "backend/tests/**.py" = [
     "ARG001",   # Unused function argument
     "ARG002",   # Unused method argument
