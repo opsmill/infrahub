@@ -1,0 +1,30 @@
+---
+title: Schema operations
+---
+
+As you build network automation with Infrahub, you can define the nodes, attributes, relationships, and generics that represent your network and the services running on it. You describe the model in YAML and load those definitions into Infrahub. As your designs or automation requirements change, you can extend the same model, review the updates on a branch, and merge them into the default branch.
+
+Infrahub stores a versioned schema on each branch. The loaded schema is what the GraphQL API, web interface, Generators, and Transformations work with; the YAML files remain the definitions you maintain, typically in a Git repository. See [About schema](./overview) for the building blocks of the model and [Create and load schema](./create-and-load) for the commands and loading methods.
+
+## How Infrahub applies a schema file
+
+Infrahub's schema format is **declarative and incremental**. A **schema definition** describes a node, generic, attribute, or relationship and its properties in YAML. Rather than writing database commands, you describe the model you want Infrahub to store. When you load a file on an Infrahub branch, Infrahub compares its definitions with the schema already loaded there. It adds new definitions, updates matching definitions, and retains existing definitions that the file does not mention.
+
+That incremental behavior is important because an instance can receive schema definitions from multiple files, [linked Git repositories](../git-integration/overview), [schema extensions](./extensions), and Infrahub's core schema. You can update one part of the model without repeating every definition supplied by another source. Infrahub stores the resulting schema rather than tracking which file originally defined each part.
+
+For nodes and generics, Infrahub normally matches a definition by its **Kind**, composed of `namespace` and `name`. Within a node or generic, it matches attributes and relationships by `name`. An internal `id` lets Infrahub recognize an existing definition when you change the identifier it would otherwise match by.
+
+When you remove or rename a schema element, Infrahub needs explicit information to identify the existing definition:
+
+- **Removing a definition:** Deleting a node or attribute from a YAML file does not remove it from Infrahub. To remove an existing definition, declare `state: absent` and load the file. See [Remove schema elements](./remove-schema-elements).
+- **Renaming a definition:** Changing only its name can create a second definition while leaving the existing one and its data in place. For a supported rename, include the existing definition's `id` with its new name. See [Rename schema elements](./rename-schema-elements).
+
+Omitting a definition from a file differs from omitting a property within a definition. Infrahub retains a definition that the file does not mention, but it may reset an omitted property to its default when you load an updated definition. When you [change node definitions](./change-node-definitions), include the properties you want to preserve.
+
+## Work with your schema
+
+To define and load a model, [build your schema with AI](./build-your-schema) or [create and load schema](./create-and-load) from YAML with `infrahubctl` or Git integration. You can also inspect the loaded schema to confirm what Infrahub stored.
+
+For existing models, [update a schema](./migration) through branch-based review and validation, or make a specific change: [change node definitions](./change-node-definitions), [change generics](./change-generics), [rename schema elements](./rename-schema-elements), or [remove schema elements](./remove-schema-elements).
+
+Refer to the [Schema Specification](../reference/schema) for supported properties and kinds, and the [Schema Update reference](../reference/schema/validator-migration) for which existing properties Infrahub can change.
