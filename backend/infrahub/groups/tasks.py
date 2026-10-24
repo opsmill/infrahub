@@ -19,7 +19,7 @@ async def update_graphql_query_group(model: RequestGraphQLQueryGroupUpdate) -> N
     if len(model.subscribers) == 1:
         related_nodes.append(model.subscribers[0])
 
-    await add_tags(branches=[model.branch], nodes=related_nodes, namespace=False)
+    await add_tags(branches=[model.branch], nodes=related_nodes)
 
     params_hash = dict_hash(model.params)
     group_name = f"{model.query_name}__{params_hash}"
