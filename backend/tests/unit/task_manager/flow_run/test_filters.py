@@ -63,6 +63,17 @@ class TestBuildFlowRunFilter:
         assert flow_run_filter.id is not None
         assert flow_run_filter.id.any_ == [UUID(id_a), UUID(id_b)]
 
+    def test_excluded_ids_are_converted_to_uuid(self) -> None:
+        excluded = "00000000-0000-0000-0000-000000000004"
+
+        flow_run_filter = FlowRunFilterBuilder().build_flow_run_filter(
+            criteria=FlowRunQueryCriteria(excluded_ids=[excluded])
+        )
+
+        assert flow_run_filter.id is not None
+        assert flow_run_filter.id.any_ is None
+        assert flow_run_filter.id.not_any_ == [UUID(excluded)]
+
     def test_invalid_id_raises_validation_error(self) -> None:
         with pytest.raises(ValidationError, match=r"^'not-a-uuid' is not a valid task id$"):
             FlowRunFilterBuilder().build_flow_run_filter(criteria=FlowRunQueryCriteria(ids=["not-a-uuid"]))
@@ -84,12 +95,14 @@ class TestBuildFlowRunFilter:
 
     def test_all_criteria_combine(self) -> None:
         node_id = "00000000-0000-0000-0000-000000000003"
+        excluded_id = "00000000-0000-0000-0000-000000000004"
         flow_run_filter = FlowRunFilterBuilder().build_flow_run_filter(
             criteria=FlowRunQueryCriteria(
                 tags=["custom"],
                 branch="main",
                 related_nodes=["rel-1"],
                 ids=[node_id],
+                excluded_ids=[excluded_id],
                 statuses=[StateType.COMPLETED],
                 q="deploy",
             )
@@ -104,6 +117,7 @@ class TestBuildFlowRunFilter:
         ]
         assert flow_run_filter.id is not None
         assert flow_run_filter.id.any_ == [UUID(node_id)]
+        assert flow_run_filter.id.not_any_ == [UUID(excluded_id)]
         assert flow_run_filter.state is not None
         assert flow_run_filter.state.type is not None
         assert flow_run_filter.state.type.any_ == [StateType.COMPLETED]
