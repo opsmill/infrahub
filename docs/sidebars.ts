@@ -78,6 +78,7 @@ const sidebars: SidebarsConfig = {
           link: { type: 'doc', id: 'learn/tutorials/overview' }, // hub
           items: [
             'learn/tutorials/build-your-first-schema',
+            'learn/tutorials/review-and-merge-a-change',
             'learn/tutorials/groups',
             'learn/tutorials/build-a-check',
             'learn/tutorials/transformations/build-a-jinja2-transformation',
