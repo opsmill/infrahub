@@ -116,7 +116,7 @@ coordinator = build_coordinator(db)
 await asyncio.gather(coordinator.update(), coordinator.update())
 ```
 
-Code that opens a session of its own is safe to race: flows do, pinned by [`test_flow_session_convention.py`](../../../backend/tests/unit/workflows/test_flow_session_convention.py), and so does GraphQL execution. A component a test calls directly does not.
+Code that opens a session of its own is safe to race: flows do, pinned by [`test_flow_session_convention.py`](../../../backend/tests/unit/workflows/test_flow_session_convention.py), and so do GraphQL query resolvers (see [GraphQL Execution Paths](../../knowledge/backend/graphql-execution.md#a-query-resolver-opens-its-own-database-session)). A component a test calls directly does not.
 
 ## Test Schemas
 
