@@ -1,10 +1,12 @@
 import os
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
 import requests
 from grpc import ssl_channel_credentials
 from opentelemetry import trace
+from opentelemetry.context import Context
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
     OTLPSpanExporter as GRPCSpanExporter,
 )
@@ -14,7 +16,9 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter, SpanExporter
-from opentelemetry.trace import StatusCode
+from opentelemetry.sdk.trace.sampling import Decision, Sampler, SamplingResult
+from opentelemetry.trace import Link, SpanKind, StatusCode, TraceState
+from opentelemetry.util.types import Attributes
 
 from infrahub.worker import WORKER_IDENTITY
 
@@ -56,6 +60,48 @@ def add_span_exception(exception: Exception) -> None:
     current_span = get_current_span_with_context()
     if current_span.is_recording():
         current_span.record_exception(exception)
+
+
+class ExcludeServerPathsSampler(Sampler):
+    """Drop server spans for the given request paths and leave every other decision to `delegate`.
+
+    A span whose parent in this process was not sampled is dropped as well, so no span of a dropped
+    request is recorded, even when `delegate` ignores the parent's decision.
+    """
+
+    def __init__(self, delegate: Sampler, paths: frozenset[str]) -> None:
+        self._delegate = delegate
+        self._paths = paths
+
+    def should_sample(
+        self,
+        parent_context: Context | None,
+        trace_id: int,
+        name: str,
+        kind: SpanKind | None = None,
+        attributes: Attributes = None,
+        links: Sequence[Link] | None = None,
+        trace_state: TraceState | None = None,
+    ) -> SamplingResult:
+        parent = trace.get_current_span(parent_context).get_span_context()
+        if parent.is_valid and not parent.is_remote and not parent.trace_flags.sampled:
+            return SamplingResult(Decision.DROP)
+        if kind == SpanKind.SERVER and attributes:
+            path = attributes.get("url.path")
+            if isinstance(path, str) and path in self._paths:
+                return SamplingResult(Decision.DROP)
+        return self._delegate.should_sample(
+            parent_context=parent_context,
+            trace_id=trace_id,
+            name=name,
+            kind=kind,
+            attributes=attributes,
+            links=links,
+            trace_state=trace_state,
+        )
+
+    def get_description(self) -> str:
+        return f"ExcludeServerPathsSampler{{{','.join(sorted(self._paths))}}}/{self._delegate.get_description()}"
 
 
 class InsecureTLSSession(requests.Session):
@@ -102,6 +148,7 @@ def create_tracer_provider(
     insecure: bool = True,
     tls_insecure: bool = False,
     tls_ca_bundle: str | None = None,
+    excluded_server_paths: frozenset[str] = frozenset(),
 ) -> TracerProvider:
     exporter = create_span_exporter(
         exporter_type=exporter_type,
@@ -127,6 +174,11 @@ def create_tracer_provider(
     )
     span_processor = BatchSpanProcessor(exporter)
     tracer_provider = TracerProvider(resource=resource)
+    if excluded_server_paths:
+        # Wrap the sampler the SDK resolved from OTEL_TRACES_SAMPLER so that setting keeps applying.
+        tracer_provider.sampler = ExcludeServerPathsSampler(
+            delegate=tracer_provider.sampler, paths=excluded_server_paths
+        )
     tracer_provider.add_span_processor(span_processor)
 
     return tracer_provider
@@ -141,6 +193,7 @@ def configure_trace(
     insecure: bool = True,
     tls_insecure: bool = False,
     tls_ca_bundle: str | None = None,
+    excluded_server_paths: frozenset[str] = frozenset(),
 ) -> None:
     # Create a trace provider with the exporter
     tracer_provider = create_tracer_provider(
@@ -152,6 +205,7 @@ def configure_trace(
         insecure=insecure,
         tls_insecure=tls_insecure,
         tls_ca_bundle=tls_ca_bundle,
+        excluded_server_paths=excluded_server_paths,
     )
 
     # Register the trace provider
