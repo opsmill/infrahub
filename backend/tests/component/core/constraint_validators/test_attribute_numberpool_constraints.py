@@ -3,6 +3,7 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, PathType, SchemaPathType
+from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.path import DataPath, SchemaPath
@@ -209,3 +210,33 @@ async def test_validator_range(
         )
         in data_paths
     )
+
+
+async def test_query_on_branch_finds_value_created_on_main_after_branch(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+) -> None:
+    branch = await create_branch(db=db, branch_name="branch-before-incident")
+    incident = await build_snow_incident(db=db, branch=default_branch)
+
+    incident_schema = registry.schema.get(name="SnowIncident")
+    number = incident_schema.get_attribute(name="number")
+    assert isinstance(number.parameters, NumberPoolParameters)
+    number.parameters.start_range = 100
+    number.parameters.end_range = 200
+    schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="SnowIncident", field_name="number")
+
+    query = await AttributeNumberPoolUpdateValidatorQuery.init(
+        db=db, branch=branch, node_schema=incident_schema, schema_path=schema_path
+    )
+    await query.execute(db=db)
+
+    assert (await query.get_paths()).get_all_data_paths() == [
+        DataPath(
+            branch=default_branch.name,
+            path_type=PathType.ATTRIBUTE,
+            node_id=incident.id,
+            kind="SnowIncident",
+            field_name="number",
+            value=1,
+        )
+    ]
