@@ -1,4 +1,4 @@
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
+import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 
 import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import { nodeCoreFragment } from "@/shared/api/graphql/fragments";
@@ -19,8 +19,6 @@ interface GetObjectsQueryParams {
   schemaKind: string;
   attributes: AttributeSchema[];
   relationships: RelationshipSchema[];
-  limit?: number;
-  offset?: number;
   filters?: Array<Filter>;
   sort?: Sort[] | null;
   attributesOptions?: AddAttributesToRequestOptions;
@@ -31,8 +29,6 @@ const getObjectsQuery = ({
   schemaKind,
   attributes,
   relationships,
-  limit,
-  offset,
   filters,
   sort,
   attributesOptions,
@@ -42,10 +38,14 @@ const getObjectsQuery = ({
     jsonToGraphQLQuery({
       query: {
         __name: `GetObjects${schemaKind}`,
+        __variables: {
+          limit: "Int",
+          offset: "Int",
+        },
         [schemaKind]: {
           __args: {
-            limit,
-            offset,
+            limit: new VariableType("limit"),
+            offset: new VariableType("offset"),
             ...(filters?.length ? addFiltersToRequest(filters) : {}),
             ...(sort?.length ? addOrderByToRequest(sort) : {}),
           },
@@ -85,13 +85,12 @@ export async function getObjectsFromApi({
       schemaKind,
       attributes,
       relationships,
-      limit,
-      offset,
       filters,
       sort,
       attributesOptions,
       relationshipsOptions,
     }),
+    variables: { limit, offset },
     context: {
       branch: branchName,
       date: atDate,
