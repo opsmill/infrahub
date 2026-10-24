@@ -922,10 +922,10 @@ class TLSSettings(BaseSettings):
             "LDAP. PEM text is written to a file under the system temporary directory at startup, so components "
             "that only read a file can use it. A component with its "
             "own `tls_ca_file` or `tls_ca_bundle` keeps that value, and a component with `tls_insecure` enabled or "
-            "a plaintext connection (S3 with `use_ssl` disabled, a trace exporter without TLS) is left alone. The "
-            "bundle replaces the system trust store for the components it applies to, so include the "
-            "public root certificates in the file when those components must keep reaching public services. When "
-            "unset, each component uses the system trust store."
+            "a plaintext connection (S3 with `use_ssl` disabled, a trace exporter without TLS) is left alone. Git, "
+            "Redis and NATS trust the bundle in addition to the system trust store. Every other component trusts "
+            "only the bundle, so include the public root certificates in the file when one of them must reach "
+            "public services. When unset, each component uses the system trust store."
         ),
     )
 
