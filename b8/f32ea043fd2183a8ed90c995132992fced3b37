@@ -1,0 +1,47 @@
+backend/tests/component/core/regeneration/impact/test_filtered_peer_reads.py
+  s_6947b4d8b10fbd::t_b1a0259cd85c3f 10,16
+backend/tests/component/core/regeneration/poc/harness.py
+  s_6947b4d8b10fbd::t_5169a98260e8b2 121-123,125,131,135,143-149,153-154,175-176,430
+backend/tests/component/core/regeneration/poc/test_regression_scenarios.py
+  s_6947b4d8b10fbd::t_9c95f843da40b0 210
+  s_6947b4d8b10fbd::t_f745b9b0d705c2 312
+  s_6947b4d8b10fbd::t_0041f7b0f27212 1-209,211-311,313-897
+dev/specs/artifact-regeneration-poc/tasks.md
+  s_6947b4d8b10fbd::t_24ac2967d3aa64 199-200
+backend/tests/helpers/schema/vehicle.py
+  s_0dc6b7ff12ebad::t_30e6ab56210f79 1-53
+dev/specs/artifact-regeneration-poc/test-inventory.md
+  s_26df4098f7aae5::t_cff00a6369fbf7 1-168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b8f32ea043fd2183a8ed90c995132992fced3b37",
+  "prompts": {},
+  "sessions": {
+    "s_0dc6b7ff12ebad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a3e1e1939cb9bef92",
+        "model": "unknown"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    },
+    "s_26df4098f7aae5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a0a8d15b08e5631d1",
+        "model": "unknown"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    },
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}
