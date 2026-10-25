@@ -47,7 +47,7 @@ one. Implications for local work:
 
 ## Submodules
 
-Infrahub includes `python_sdk` as a Git submodule. Always handle submodules correctly.
+Infrahub includes `python_sdk` as a Git submodule. Clone and pull with the submodule flags shown below.
 
 ### Essential Commands
 
