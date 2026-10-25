@@ -1,0 +1,21 @@
+backend/tests/component/core/regeneration/poc/harness.py
+  s_6947b4d8b10fbd::t_df7f68ebb90182 325-327,330-332,341-345,354,358-360,373-377
+  s_6947b4d8b10fbd::t_d9211539592196 403
+  s_6947b4d8b10fbd::t_36888acb79659f 424,427,434-452
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b89d90a31349e9afb728e0141a64019ea4e3deb3",
+  "prompts": {},
+  "sessions": {
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}
