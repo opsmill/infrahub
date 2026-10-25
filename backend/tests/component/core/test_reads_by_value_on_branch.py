@@ -262,17 +262,25 @@ class TestReadsByValueOnBranch:
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, dataset: BranchDataset
     ) -> None:
         person_schema = db.schema.get(name=TestKind.PERSON, branch=dataset.branch)
-        for branch, expected in ((default_branch_scope_class, {"car-red", "car-ruby"}), (dataset.branch, {"car-ruby"})):
-            peers = await NodeManager.query_peers(
-                db=db,
-                ids=[dataset.ids["alice"]],
-                source_kind=TestKind.PERSON,
-                schema=person_schema.get_relationship(name="cars"),
-                filters={"color__value": "red"},
-                branch=branch,
-            )
+        found: dict[tuple[str, str], set[str]] = {}
+        for branch in (default_branch_scope_class, dataset.branch):
+            for color in ("red", "blue"):
+                peers = await NodeManager.query_peers(
+                    db=db,
+                    ids=[dataset.ids["alice"]],
+                    source_kind=TestKind.PERSON,
+                    schema=person_schema.get_relationship(name="cars"),
+                    filters={"cars__color__value": color},
+                    branch=branch,
+                )
+                found[branch.name, color] = dataset.keys([peer.peer_id for peer in peers])
 
-            assert (branch.name, dataset.keys([peer.peer_id for peer in peers])) == (branch.name, expected)
+        assert found == {
+            (default_branch_scope_class.name, "red"): {"car-red", "car-ruby"},
+            (default_branch_scope_class.name, "blue"): set(),
+            (dataset.branch.name, "red"): {"car-ruby"},
+            (dataset.branch.name, "blue"): {"car-red"},
+        }
 
     async def test_graphql_reads_with_a_filter(self, db: InfrahubDatabase, dataset: BranchDataset) -> None:
         query = """
