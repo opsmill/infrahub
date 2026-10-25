@@ -1,0 +1,26 @@
+dev/specs/artifact-regeneration-poc/research.md
+  s_6947b4d8b10fbd::t_849c56b18d303d 242-270,272,274-281,283-307
+dev/specs/artifact-regeneration-poc/alignment-check.md
+  s_6947b4d8b10fbd::t_344017abe4a20c 20-22,35-36
+  s_6947b4d8b10fbd::t_849c56b18d303d 33
+dev/specs/artifact-regeneration-poc/spec.md
+  s_6947b4d8b10fbd::t_344017abe4a20c 59-60,238-239,244-245,377-380
+dev/specs/artifact-regeneration-poc/tasks.md
+  s_6947b4d8b10fbd::t_4ab9366cdfe6c5 207-243,300-301
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e4e423d5dd16c26b55ba981567a469c08c092615",
+  "prompts": {},
+  "sessions": {
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}
