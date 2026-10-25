@@ -1,0 +1,19 @@
+dev/specs/artifact-regeneration-poc/tasks.md
+  s_6947b4d8b10fbd::t_6a7a1a78651348 187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "06c032961c2c0d4bcbc5e825ac08683f0e78254d",
+  "prompts": {},
+  "sessions": {
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}
