@@ -21,7 +21,7 @@ If the bug is UNCLEAR, **STOP** here and escalate as described in your main prom
 
 ## Investigate the codebase
 
-1. Read root `AGENTS.md` and `dev/documentation-architecture.md` in order to determine which code packages are related to the issue. Then:
+1. Read root `AGENTS.md` and `dev/documentation-architecture.md` to determine which code packages are related to the issue. Then:
    - If you can determine the code package related to the bug, rate the code identification step as RESOLVED.
    - If you cannot determine the code package related to the bug, rate the code identification step as EXPLORATION REQUIRED, and explore the code base.
 
