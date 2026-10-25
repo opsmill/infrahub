@@ -154,31 +154,42 @@ def _build_latest_value_filter(
     prefix: str,
     extra_tail_properties: dict[str, str] | None,
 ) -> str:
-    """Rank the value paths of each attribute (per peer when through a relationship) before comparing the value."""
+    """Rank all value paths of each attribute that has a path to the filter value, then compare the latest one.
+
+    An attribute is ranked per peer when the filter goes through a relationship.
+    """
     tail = field_filter[-1]
     value_predicates = [f"{tail.name}.{key} = {value}" for key, value in (tail.params or {}).items()]
     value_predicates.extend(field_where)
-    unfiltered_tail = QueryNode(name=tail.name, labels=tail.labels)
-    filter_str = f"({node_alias}:Node {{uuid: {node_alias}.uuid}})" + "".join(
-        [str(item) for item in [*field_filter[:-1], unfiltered_tail]]
+    field_vertices = ", ".join(
+        dict.fromkeys(
+            [node_alias, *[item.name for item in field_filter[:-1] if isinstance(item, QueryNode) and item.name]]
+        )
     )
+    start = f"({node_alias}:Node {{uuid: {node_alias}.uuid}})"
+    candidate_str = start + "".join([str(item) for item in field_filter])
+    candidate_where = " AND ".join([*field_where, f"all(r IN relationships(candidate) WHERE ({branch_filter}))"])
+    unfiltered_tail = QueryNode(name=tail.name, labels=tail.labels)
+    filter_str = start + "".join([str(item) for item in [*field_filter[:-1], unfiltered_tail]])
     froms_str = db.render_list_comprehension(items="relationships(path)", item_name="from")
     to_return = prefix
     for variable_name, tail_property in (extra_tail_properties or {}).items():
         to_return += f", {tail.name}.{tail_property} AS {variable_name}"
 
     return f"""
+    MATCH candidate = {candidate_str}
+    WHERE {candidate_where}
+    WITH DISTINCT {field_vertices}
     MATCH path = {filter_str}
     WHERE all(r IN relationships(path) WHERE ({branch_filter}))
     WITH
-        {node_alias},
-        nodes(path)[1..-1] AS field_path,
+        {field_vertices},
         {tail.name},
         reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS branch_level,
         {froms_str} AS froms,
         all(r IN relationships(path) WHERE r.status = "active") AS is_active
     ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
-    WITH {node_alias}, field_path, head(collect([is_active, {tail.name}])) AS latest_value_details
+    WITH {field_vertices}, head(collect([is_active, {tail.name}])) AS latest_value_details
     WITH {node_alias}, latest_value_details[0] AS is_active, latest_value_details[1] AS {tail.name}
     WHERE is_active = TRUE AND {" AND ".join(value_predicates)}
     WITH {node_alias} AS {prefix}, {tail.name}
