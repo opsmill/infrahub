@@ -19,7 +19,7 @@
           {
             "type": "command",
             "if": "Bash(*gh pr create*)",
-            "command": "[ -z \"$PR_REVIEW_CHILD\" ] || exit 0; p=$(cat); url=$(printf '%s' \"$p\" | jq -r 'select(.tool_response.gitOperation.pr.action == \"created\") | .tool_response.gitOperation.pr.url // empty'); [ -n \"$url\" ] || exit 0; jq -nc --arg u \"$url\" '{systemMessage: (\"A code review of \" + $u + \" started in the background. Its findings will appear in this session when it finishes, usually after 10 to 15 minutes.\")}'"
+            "command": "[ -z \"$PR_REVIEW_CHILD\" ] || exit 0; p=$(cat); url=$(printf '%s' \"$p\" | jq -r 'select(.tool_response.gitOperation.pr.action == \"created\") | .tool_response.gitOperation.pr.url // empty'); [ -n \"$url\" ] || exit 0; jq -nc --arg u \"$url\" '{systemMessage: (\"A code review of \" + $u + \" started in the background. Its findings will appear in this session when it finishes, usually after 10 to 15 minutes.\"), hookSpecificOutput: {hookEventName: \"PostToolUse\", additionalContext: (\"A /code-review xhigh review of \" + $u + \" is now running in the background. The user has not been told about it yet, so the reply mentions that the review is running and that its findings will arrive in this session when it finishes, usually after 10 to 15 minutes.\")}}'"
           },
           {
             "type": "command",
