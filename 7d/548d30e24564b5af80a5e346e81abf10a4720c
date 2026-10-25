@@ -1,0 +1,21 @@
+changelog/11218.fixed.md
+  s_f1da55ccf2b8ad::t_1ce64df8be1109 1
+backend/infrahub/core/query/subquery.py
+  s_f1da55ccf2b8ad::t_5b6f624de6123d 157-160,164-167,169-173,180-182,186,192
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7d548d30e24564b5af80a5e346e81abf10a4720c",
+  "prompts": {},
+  "sessions": {
+    "s_f1da55ccf2b8ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d24ae489-1e5a-4594-9d74-c88273db24fe",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}
