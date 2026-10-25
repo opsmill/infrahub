@@ -48,9 +48,11 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.merge.constraints import build_merge_constraint_result, gather_conflicted_fields
 from infrahub.core.protocols import CoreDataCheck, CoreGenericAccount, CoreValidator
 from infrahub.core.protocols import CoreProposedChange as InternalCoreProposedChange
+from infrahub.core.regeneration.branch_artifacts import BranchArtifactDefinitionFinder
 from infrahub.core.regeneration.definitions import GATHER_ARTIFACT_DEFINITIONS, parse_artifact_definitions
 from infrahub.core.regeneration.impact import get_field_level_impacted_subscribers
 from infrahub.core.regeneration.members import (
+    artifacts_changed_since_branch_point,
     map_subscriber_ids_by_member,
     run_generator,
     should_render_artifact,
@@ -802,6 +804,13 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
         include=["object"],
         branch=model.source_branch,
     )
+    source_branch_data = await client.branch.get(branch_name=model.source_branch)
+    branch_point_artifacts = await client.filters(
+        kind=InfrahubKind.ARTIFACT,
+        definition__ids=[model.artifact_definition.definition_id],
+        branch=model.destination_branch,
+        at=Timestamp(source_branch_data.branched_from),
+    )
 
     group = await fetch_artifact_definition_targets(
         client=client, branch=model.source_branch, definition=artifact_definition
@@ -829,7 +838,16 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
         every_target=list(artifacts_by_member.values()),
         client=client,
     )
-    impacted_artifacts = selection.ids
+    changed_artifacts = artifacts_changed_since_branch_point(
+        checksums={artifact.id: artifact.checksum.value for artifact in existing_artifacts},
+        branch_point_checksums={artifact.id: artifact.checksum.value for artifact in branch_point_artifacts},
+    )
+    impacted_artifacts = sorted({*selection.ids, *changed_artifacts})
+    if changed_artifacts:
+        log.info(
+            f"Artifact definition {artifact_definition.name.value}: {len(changed_artifacts)} artifacts differ from "
+            f"their content when branch {model.source_branch} was created and will be re-rendered."
+        )
     if selection.widening is not None:
         log.warning(
             f"Artifact definition {artifact_definition.name.value}: {selection.widening.detail}. "
@@ -1359,6 +1377,12 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
         modified_kinds=get_modified_kinds(diff_summary=diff_summary, branch=model.source_branch),
         branch=model.source_branch,
     )
+    database = await get_database()
+    async with database.start_session(read_only=True) as db:
+        branch_artifact_definition_ids = await BranchArtifactDefinitionFinder(db=db).find(
+            source_branch=await registry.get_branch(db=db, branch=model.source_branch),
+            target_branch=await registry.get_branch(db=db, branch=model.destination_branch),
+        )
 
     for artifact_definition in artifact_definitions:
         select = DefinitionSelect.NONE
@@ -1394,6 +1418,11 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
             current=select,
             flag=DefinitionSelect.MODIFIED_KINDS,
             condition=any(changed_model in read_kinds for changed_model in modified_kinds),
+        )
+        select = select.add_flag(
+            current=select,
+            flag=DefinitionSelect.BRANCH_ARTIFACTS,
+            condition=artifact_definition.definition_id in branch_artifact_definition_ids,
         )
 
         if select:

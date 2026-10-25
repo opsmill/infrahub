@@ -9,7 +9,7 @@ from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.schema import NodeSchemaAPI, RelationshipSchemaAPI
 from infrahub_sdk.schema.main import RelationshipCardinality, RelationshipKind
 
-from infrahub.core.regeneration.members import map_subscriber_ids_by_member
+from infrahub.core.regeneration.members import artifacts_changed_since_branch_point, map_subscriber_ids_by_member
 
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
@@ -115,3 +115,61 @@ def test_map_subscriber_ids_by_member_skips_subscriber_whose_peer_has_no_id(
 
     assert result == {"member-live": "sub-live"}
     assert not caplog.text
+
+
+@dataclass(frozen=True, kw_only=True)
+class BranchPointCase:
+    name: str
+    checksums: dict[str, str | None]
+    branch_point_checksums: dict[str, str | None]
+    expected: list[str]
+
+
+BRANCH_POINT_CASES = [
+    BranchPointCase(
+        name="same-checksum",
+        checksums={"art-1": "aaa"},
+        branch_point_checksums={"art-1": "aaa"},
+        expected=[],
+    ),
+    BranchPointCase(
+        name="different-checksum",
+        checksums={"art-1": "bbb"},
+        branch_point_checksums={"art-1": "aaa"},
+        expected=["art-1"],
+    ),
+    BranchPointCase(
+        name="absent-at-branch-point",
+        checksums={"art-1": "bbb"},
+        branch_point_checksums={},
+        expected=[],
+    ),
+    BranchPointCase(
+        name="no-content-at-branch-point",
+        checksums={"art-1": "bbb"},
+        branch_point_checksums={"art-1": None},
+        expected=[],
+    ),
+    BranchPointCase(
+        name="no-content-on-branch",
+        checksums={"art-1": None},
+        branch_point_checksums={"art-1": "aaa"},
+        expected=["art-1"],
+    ),
+    BranchPointCase(
+        name="mixed",
+        checksums={"art-3": "ccc", "art-1": "bbb", "art-2": "aaa"},
+        branch_point_checksums={"art-1": "aaa", "art-2": "aaa", "art-3": "aaa"},
+        expected=["art-1", "art-3"],
+    ),
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(c, id=c.name) for c in BRANCH_POINT_CASES])
+def test_artifacts_changed_since_branch_point(case: BranchPointCase) -> None:
+    """Only artifacts whose checksum differs from a rendered artifact at the branch point are returned, sorted."""
+    result = artifacts_changed_since_branch_point(
+        checksums=case.checksums, branch_point_checksums=case.branch_point_checksums
+    )
+
+    assert result == case.expected

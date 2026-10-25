@@ -6,6 +6,7 @@ from infrahub_sdk.exceptions import NodeNotFoundError
 
 if TYPE_CHECKING:
     import logging
+    from collections.abc import Mapping
 
     from infrahub_sdk.node import InfrahubNode
 
@@ -34,6 +35,23 @@ def map_subscriber_ids_by_member(
             continue
         subscriber_by_member[member_id] = subscriber.id
     return subscriber_by_member
+
+
+def artifacts_changed_since_branch_point(
+    checksums: Mapping[str, str | None],
+    branch_point_checksums: Mapping[str, str | None],
+) -> list[str]:
+    """Return the ids of artifacts whose checksum differs from their checksum at the branch point.
+
+    The branch point is the reference because the target branch's current artifact can come from data the
+    branch does not see. An artifact absent or without content at the branch point is left out, as its first
+    rendering on the branch would never match and would be rendered again on every run.
+    """
+    return sorted(
+        artifact_id
+        for artifact_id, checksum in checksums.items()
+        if branch_point_checksums.get(artifact_id) is not None and branch_point_checksums[artifact_id] != checksum
+    )
 
 
 def should_render_artifact(
