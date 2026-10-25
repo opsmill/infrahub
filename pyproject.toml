@@ -779,14 +779,6 @@ allow-dunder-method-names = [
     "PGH004",  # Use specific rule codes when using `ruff: noqa`
 ]
 
-".agents/hooks/test_*.py" = [
-    # Agent hook tests run the hook commands through a shell, the way Claude Code and Codex do.
-    "INP001",   # File is part of an implicit namespace package
-    "S101",     # Use of assert detected
-    "S404",     # Suspicious use of the subprocess module
-    "S603",     # `subprocess` call: check for execution of untrusted input
-]
-
 "tests/e2e/**.py" = [
     # pytest-playwright e2e suite: relax the same test-idiom rules the other
     # test trees relax (fixtures injected by name, asserts, hardcoded demo

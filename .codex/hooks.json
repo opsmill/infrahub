@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "sh -c 'f=\"$(git rev-parse --show-toplevel 2>/dev/null)/.agents/hooks/review_new_pr.py\"; [ -f \"$f\" ] || exit 0; p=$(cat); case \"$p\" in *\"gh pr create\"*) printf \"%s\" \"$p\" | python3 \"$f\" codex;; esac'"
+            "command": "sh -c '[ -z \"$PR_REVIEW_CHILD\" ] || exit 0; p=$(cat); case \"$p\" in *\"gh pr create\"*) ;; *) exit 0;; esac; url=$(printf \"%s\" \"$p\" | jq -r \".tool_response | tostring\" | grep -oE \"https://github[.]com/[^/ ]+/[^/ ]+/pull/[0-9]+\" | head -1); [ -n \"$url\" ] || exit 0; cd \"$(printf \"%s\" \"$p\" | jq -r .cwd)\" || exit 0; f=\"$HOME/.cache/pr-review/$(printf \"%s\" \"$url\" | cut -d/ -f4-7 | tr / -).md\"; mkdir -p \"${f%/*}\"; (PR_REVIEW_CHILD=1 claude -p --setting-sources user --permission-mode auto \"/code-review xhigh $url\" >\"$f\" 2>&1; osascript -e \"display notification \\\"Findings saved to $f\\\" with title \\\"Review finished\\\"\") </dev/null >/dev/null 2>&1 &'"
           }
         ]
       }
