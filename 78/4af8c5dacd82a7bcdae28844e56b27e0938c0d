@@ -1,0 +1,19 @@
+dev/guidelines/backend/testing.md
+  s_332201fa331861::t_79224292a4ffdc 138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "784af8c5dacd82a7bcdae28844e56b27e0938c0d",
+  "prompts": {},
+  "sessions": {
+    "s_332201fa331861": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75bb2dd3-334f-43d2-b4e2-8692ee03124b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

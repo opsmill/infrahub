@@ -1,0 +1,21 @@
+backend/infrahub/core/merge/orchestrator.py
+  s_9fb2844a4c70ac::t_9363cb6436cb42 224
+backend/tests/component/core/merge/test_orchestrator.py
+  s_9fb2844a4c70ac::t_53c050dce412ee 293
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4657e85d1c945b49c9e8ed1ba6593d50027c2303",
+  "prompts": {},
+  "sessions": {
+    "s_9fb2844a4c70ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e99ffdbe-347d-498e-b8d1-63f456d31c13",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
