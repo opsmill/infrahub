@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "sh -c '[ -z \"$PR_REVIEW_CHILD\" ] || exit 0; p=$(cat); case \"$p\" in *\"gh pr create\"*) ;; *) exit 0;; esac; url=$(printf \"%s\" \"$p\" | jq -r \".tool_response | tostring\" | grep -oE \"https://github[.]com/[^/ ]+/[^/ ]+/pull/[0-9]+\" | head -1); [ -n \"$url\" ] || exit 0; cd \"$(printf \"%s\" \"$p\" | jq -r .cwd)\" || exit 0; f=\"$HOME/.cache/pr-review/$(printf \"%s\" \"$url\" | cut -d/ -f4-7 | tr / -).md\"; mkdir -p \"${f%/*}\"; (PR_REVIEW_CHILD=1 claude -p --setting-sources user --permission-mode auto \"/code-review xhigh $url\" >\"$f\" 2>&1; osascript -e \"display notification \\\"Findings saved to $f\\\" with title \\\"Review finished\\\"\") </dev/null >/dev/null 2>&1 &'"
+            "command": "sh -c '[ -z \"$PR_REVIEW_CHILD\" ] || exit 0; p=$(cat); case \"$p\" in *\"gh pr create\"*) ;; *) exit 0;; esac; url=$(printf \"%s\" \"$p\" | jq -r \".tool_response | tostring\" | grep -oE \"https://github[.]com/[^/ ]+/[^/ ]+/pull/[0-9]+\" | head -1); [ -n \"$url\" ] || exit 0; cd \"$(printf \"%s\" \"$p\" | jq -r .cwd)\" || exit 0; f=\"$HOME/.cache/pr-review/$(printf \"%s\" \"$url\" | cut -d/ -f4-7 | tr / -).md\"; mkdir -p \"${f%/*}\"; set --; r=\"$(git rev-parse --show-toplevel 2>/dev/null)/REVIEW.md\"; if [ -f \"$r\" ]; then d=$(mktemp -d) && cp \"$r\" \"$d/CLAUDE.md\" && set -- --add-dir \"$d\"; fi; (PR_REVIEW_CHILD=1 CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=1 claude -p \"/code-review xhigh $url\" --setting-sources user --permission-mode auto \"$@\" >\"$f\" 2>&1; [ -z \"$d\" ] || rm -rf \"$d\"; osascript -e \"display notification \\\"Findings saved to $f\\\" with title \\\"Review finished\\\"\") </dev/null >/dev/null 2>&1 &'"
           }
         ]
       }
