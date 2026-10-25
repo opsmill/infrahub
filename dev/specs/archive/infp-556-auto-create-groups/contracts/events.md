@@ -8,7 +8,7 @@ This structure parallels the existing `GroupMutatedEvent` → `GroupMemberAddedE
 
 ## Intermediate: `GroupAutoCreateEvent`
 
-Concrete base for any event emitted by the auto-create-group flow during a login. In practice not emitted standalone — every emission is one of the three concrete leaves below — but a valid type that consumers can subscribe to to receive any of the three.
+Concrete base for any event emitted by the auto-create-group flow during a login. In practice not emitted standalone — every emission is one of the three concrete leaves below — but a valid type that consumers can subscribe to in order to receive any of the three.
 
 ```python
 class GroupAutoCreateEvent(InfrahubEvent):
