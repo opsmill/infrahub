@@ -253,6 +253,17 @@ Get `branch_filter` via `self.branch.get_query_filter_path(at=self.at)`. For que
 
 Example: `NodeGetListByAttributeValueQuery` and `NodeGetByHFIDQuery` chain three such subqueries (`IS_PART_OF`, `HAS_ATTRIBUTE`, `HAS_VALUE`) to resolve the active attribute value for the requested branch/time.
 
+Rank every edge of the field, then compare the winner's target with the value you filter on. A branch that changes a value adds its own edge and leaves the default branch's edge to the old value open, so a subquery that only matches edges leading to the filter value elects that old edge on the branch.
+
+```cypher
+// ❌ ranks only the edges to the matched value vertex
+CALL (av, attr) { MATCH (av)<-[r:HAS_VALUE]-(attr) ... LIMIT 1 }
+// ✅ ranks every value edge of the attribute, then compares
+CALL (attr) { MATCH (attr)-[r:HAS_VALUE]->(av) ... RETURN r, av ... LIMIT 1 }
+WITH n, av, r
+WHERE r.status = "active" AND av.value IN $values
+```
+
 The outer `MATCH` returns one row per matching edge, and the graph keeps one `HAS_ATTRIBUTE` edge per branch that touched the attribute — so an attribute edited on three branches yields three rows, and the `CALL` subquery then runs three times to elect the same winning edge. Add `WITH DISTINCT <keys>` before the `CALL` and group at the natural cardinality: an Attribute has exactly one active AttributeValue per branch/time, so group by `(n, attr)` and re-apply value predicates after the subquery. Keep the outer edge anonymous (`-[:HAS_ATTRIBUTE]->`) while you are there — binding a variable you never read does not change the row count, but it does collide with the subquery's own edge variable (see below). See [Database Schema — Key Points](database-schema.md#key-points).
 
 ### Query performance

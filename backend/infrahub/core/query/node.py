@@ -1639,7 +1639,7 @@ class NodeGetByHFIDQuery(Query):
         MATCH (av:AttributeValueIndexed)
         WHERE av.value IN $hfid_values
         MATCH (av)<-[:HAS_VALUE]-(attr:Attribute {name: "human_friendly_id"})<-[:HAS_ATTRIBUTE]-(n:%(node_kind)s)
-        WITH DISTINCT n, attr, av
+        WITH DISTINCT n, attr
         // --------------------------
         // Filter IS_PART_OF edges to ensure node is active
         // --------------------------
@@ -1650,7 +1650,7 @@ class NodeGetByHFIDQuery(Query):
             ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
         }
-        WITH n, attr, av
+        WITH n, attr
         WHERE r.status = "active"
         // --------------------------
         // Filter HAS_ATTRIBUTE edges to confirm the attribute
@@ -1663,21 +1663,21 @@ class NodeGetByHFIDQuery(Query):
             ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
         }
-        WITH n, attr, av
+        WITH n, attr
         WHERE r.status = "active"
         // --------------------------
-        // Filter HAS_VALUE edges to resolve the active value
-        // on the correct branch at the requested point in time
+        // Resolve the active value among all HAS_VALUE edges, then compare it:
+        // a branch update leaves the default branch's edge to the previous value open
         // --------------------------
-        CALL (av, attr) {
-            MATCH (av)<-[r:HAS_VALUE]-(attr)
+        CALL (attr) {
+            MATCH (attr)-[r:HAS_VALUE]->(av:AttributeValue)
             WHERE %(branch_filter)s
-            RETURN r
+            RETURN r, av
             ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
         }
         WITH n, av, r
-        WHERE r.status = "active"
+        WHERE r.status = "active" AND av.value IN $hfid_values
         """ % {
             "branch_filter": branch_filter,
             "node_kind": self.node_kind,
@@ -2077,6 +2077,7 @@ WITH %(tracked_vars)s,
                 subquery_idx=far.index,
                 partial_match=self.partial_match,
                 extra_tail_properties=extra_tail_properties,
+                branch_agnostic=self.branch_agnostic,
             )
             for query_var in extra_tail_properties:
                 self._track_variable(query_var)
@@ -2504,19 +2505,21 @@ class NodeGetListByAttributeValueQuery(Query):
         // --------------------------
         MATCH (av:AttributeValueIndexed)<-[:HAS_VALUE]-(attr:Attribute)<-[:HAS_ATTRIBUTE]-(n)
         WHERE %(search_predicate)s %(kind_filter)s
-        WITH DISTINCT n, attr, av
+        WITH DISTINCT n, attr
         // --------------------------
-        // filter HAS_VALUE edges
+        // Resolve the active value among all HAS_VALUE edges, then compare it:
+        // a branch update leaves the default branch's edge to the previous value open
         // --------------------------
-        CALL (av, attr) {
-            MATCH (av)<-[r:HAS_VALUE]-(attr)
+        CALL (attr) {
+            MATCH (attr)-[r:HAS_VALUE]->(av:AttributeValue)
             WHERE %(branch_filter)s
-            RETURN r
+            RETURN r, av
             ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
         }
+        WITH n, attr, av, r
+        WHERE r.status = "active" AND %(search_predicate)s
         WITH n, attr
-        WHERE r.status = "active"
         // --------------------------
         // filter HAS_ATTRIBUTE edges
         // --------------------------

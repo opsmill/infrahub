@@ -2,15 +2,25 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.order import METADATA_CREATED_AT, METADATA_UPDATED_AT
-from infrahub.core.query import QueryNode
+from infrahub.core.query import QueryNode, QueryRel
 
 from .attribute import default_attribute_query_filter
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.query import QueryElement
     from infrahub.core.schema import AttributeSchema, RelationshipSchema
     from infrahub.database import InfrahubDatabase
+
+# A branch that changes one of these adds its own edge and leaves the default branch's edge open.
+VERSIONED_VALUE_EDGE_TYPES = {
+    DatabaseEdgeType.HAS_VALUE.value,
+    DatabaseEdgeType.IS_PROTECTED.value,
+    DatabaseEdgeType.HAS_SOURCE.value,
+    DatabaseEdgeType.HAS_OWNER.value,
+}
 
 
 async def build_subquery_filter(
@@ -27,6 +37,7 @@ async def build_subquery_filter(
     optional_match: bool = False,
     result_prefix: str = "filter",
     extra_tail_properties: dict[str, str] | None = None,
+    branch_agnostic: bool = False,
 ) -> tuple[str, dict[str, Any], str]:
     params = {}
     prefix = f"{result_prefix}{subquery_idx}"
@@ -51,6 +62,25 @@ async def build_subquery_filter(
         partial_match=partial_match,
     )
     params.update(field_params)
+
+    if _compares_latest_value(
+        field_filter=field_filter,
+        field_where=field_where,
+        filter_name=filter_name,
+        branch=branch,
+        branch_agnostic=branch_agnostic,
+        optional_match=optional_match,
+    ):
+        query = _build_latest_value_filter(
+            db=db,
+            field_filter=field_filter,
+            field_where=field_where,
+            branch_filter=branch_filter,
+            node_alias=node_alias,
+            prefix=prefix,
+            extra_tail_properties=extra_tail_properties,
+        )
+        return query, params, prefix
 
     field_where.append("all(r IN relationships(path) WHERE (%s))" % branch_filter)
     filter_str = f"({node_alias}:Node {{uuid: {node_alias}.uuid}})" + "".join([str(item) for item in field_filter])
@@ -93,6 +123,68 @@ async def build_subquery_filter(
     RETURN {to_return}
     """
     return query, params, prefix
+
+
+def _compares_latest_value(
+    field_filter: list[QueryElement],
+    field_where: list[str],
+    filter_name: str,
+    branch: Branch | None,
+    branch_agnostic: bool,
+    optional_match: bool,
+) -> bool:
+    # The default branch closes the previous edge on every update, so only one value edge is valid at a time.
+    if branch is None or branch.is_default or branch.is_global or branch_agnostic:
+        return False
+    if optional_match or filter_name == "isnull" or len(field_filter) < 2:
+        return False
+
+    tail_edge, tail = field_filter[-2], field_filter[-1]
+    if not isinstance(tail_edge, QueryRel) or not isinstance(tail, QueryNode) or not tail_edge.labels:
+        return False
+    return tail_edge.labels[0] in VERSIONED_VALUE_EDGE_TYPES and bool(tail.params or field_where)
+
+
+def _build_latest_value_filter(
+    db: InfrahubDatabase,
+    field_filter: list[QueryElement],
+    field_where: list[str],
+    branch_filter: str,
+    node_alias: str,
+    prefix: str,
+    extra_tail_properties: dict[str, str] | None,
+) -> str:
+    """Rank the value paths of each attribute (per peer when through a relationship) before comparing the value."""
+    tail = field_filter[-1]
+    value_predicates = [f"{tail.name}.{key} = {value}" for key, value in (tail.params or {}).items()]
+    value_predicates.extend(field_where)
+    unfiltered_tail = QueryNode(name=tail.name, labels=tail.labels)
+    filter_str = f"({node_alias}:Node {{uuid: {node_alias}.uuid}})" + "".join(
+        [str(item) for item in [*field_filter[:-1], unfiltered_tail]]
+    )
+    froms_str = db.render_list_comprehension(items="relationships(path)", item_name="from")
+    to_return = prefix
+    for variable_name, tail_property in (extra_tail_properties or {}).items():
+        to_return += f", {tail.name}.{tail_property} AS {variable_name}"
+
+    return f"""
+    MATCH path = {filter_str}
+    WHERE all(r IN relationships(path) WHERE ({branch_filter}))
+    WITH
+        {node_alias},
+        nodes(path)[1..-1] AS field_path,
+        {tail.name},
+        reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS branch_level,
+        {froms_str} AS froms,
+        all(r IN relationships(path) WHERE r.status = "active") AS is_active
+    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
+    WITH {node_alias}, field_path, head(collect([is_active, {tail.name}])) AS latest_value_details
+    WITH {node_alias}, latest_value_details[0] AS is_active, latest_value_details[1] AS {tail.name}
+    WHERE is_active = TRUE AND {" AND ".join(value_predicates)}
+    WITH {node_alias} AS {prefix}, {tail.name}
+    LIMIT 1
+    RETURN {to_return}
+    """
 
 
 async def build_subquery_order(
