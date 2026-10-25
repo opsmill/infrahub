@@ -1,0 +1,21 @@
+backend/tests/component/proposed_change/test_artifact_regen_reverted_value.py
+  s_9128a279c50f90::t_7cec344fbbcfc7 1-62,64-207,209-230
+  s_9128a279c50f90::t_60facfa0fa413a 208
+  s_9128a279c50f90::t_1ec54410c0047d 63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3374031492032ae3c88838c5df5ccd2f2871abe3",
+  "prompts": {},
+  "sessions": {
+    "s_9128a279c50f90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "11476f82-dee3-47fe-9315-70bb594190bd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}
