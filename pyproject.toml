@@ -252,13 +252,6 @@ disable_error_code = [
 ]
 
 [[tool.mypy.overrides]]
-module = "infrahub.core.query"
-disable_error_code = [
-    "arg-type",
-    "return-value",
-]
-
-[[tool.mypy.overrides]]
 module = "infrahub.core.query.node"
 disable_error_code = [
     "arg-type",
@@ -1242,7 +1235,6 @@ include = [
     "backend/infrahub/core/convert_object_type/**",
     "backend/infrahub/core/merge/**",
     "backend/infrahub/core/node/**",
-    "backend/infrahub/core/query/__init__.py",
     "backend/infrahub/core/query/node.py",
     "backend/infrahub/core/query/relationship.py",
     "backend/infrahub/core/relationship/**",
@@ -1283,7 +1275,6 @@ invalid-type-form = "ignore"
 include = [
     "backend/infrahub/core/merge/selective_regen/definition_selector/artifact_selector.py",
     "backend/infrahub/core/merge/selective_regen/definition_selector/generator_selector.py",
-    "backend/infrahub/core/query/__init__.py",
     "backend/infrahub/core/query/ipam.py",
     "backend/infrahub/core/query/relationship.py",
     "backend/infrahub/core/schema/basenode_schema.py",

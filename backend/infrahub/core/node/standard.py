@@ -201,7 +201,7 @@ class StandardNode(BaseModel):
         result = query.get_result()
         if not result:
             raise Error(f"Unable to create the node {self.get_type()}")
-        node = result.get("n")
+        node = result.get_node("n")
 
         self.id = node.element_id
         self.uuid = UUID(node["uuid"])
