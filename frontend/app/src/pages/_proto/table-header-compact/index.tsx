@@ -5,6 +5,7 @@ import type { ObjectKey } from "./data";
 import { DesignHistory, type Knob, type KnobValue, type Variant } from "./design-history-panel";
 import { type Direction, RelationshipTabRev01 } from "./relationship-tab-rev-01";
 import { type BranchHeader, type LabelWrap, RepositoryDetails } from "./repository-details";
+import { WhereItActsRev02 } from "./where-it-acts-rev-02";
 
 const knobs: Knob[] = [
   {
@@ -95,6 +96,20 @@ const variants: Variant[] = [
         note: "Columns icon in the header corner, Add in the page header",
         date: "2026-10-26",
         render: render("where-it-acts"),
+      },
+      {
+        rev: 2,
+        note: "Columns tooltip and changed-dot; Add leftmost so other buttons stay put; Schema in header",
+        date: "2026-10-26",
+        render: (k) =>
+          k.screen === "repository-details" ? (
+            render("where-it-acts")(k)
+          ) : (
+            <WhereItActsRev02
+              objectKey={k.object as ObjectKey}
+              denyPermission={k.deny as boolean}
+            />
+          ),
       },
     ],
   },
