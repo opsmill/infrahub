@@ -15,7 +15,7 @@ When someone requests a new service:
 3. Open a Proposed Change. Infrahub renders the configurations of the affected devices from the new objects, and reviewers compare the changes before the merge.
 4. Merge the Proposed Change. Your deployment tools read the new configurations from the default branch.
 
-Infrahub links each Generator run to the objects it created (see [Generator instances](#generator-instances)). When the service changes, for example to a higher bandwidth, run the Generator again for that service: it creates the objects the new values require and removes the ones it no longer needs. Every service follows the same design rules, because you write the rules once, in the Generator.
+Infrahub links each Generator run to the objects it created (see [Generator instances](#generator-instances)). When the service changes, for example to a higher bandwidth, run the Generator again for that service: it creates the objects the new values require and removes the ones it no longer needs. Removing a service from the target group does not delete the objects the Generator created for it: see [Dynamic targeting](#dynamic-targeting). Every service follows the same design rules, because you write the rules once, in the Generator.
 
 ## High level design
 

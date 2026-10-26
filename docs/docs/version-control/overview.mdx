@@ -17,7 +17,7 @@ Your automation reads its inputs from Infrahub. Transformations render device co
 
 With version control, you make that change on a branch, review every configuration it affects, and merge it only when it is correct. Infrahub keeps the earlier values, so you can find out later what the data was before the change.
 
-Git versions the files that define your automation: schemas, templates, Transformations, Generators, checks, and queries. Infrahub imports these files from your repository. The infrastructure data itself is stored in Infrahub's graph database, as objects, attributes, and the relationships between them. A diff of a file shows which lines changed. A diff in Infrahub shows which objects, attribute values, and relationships changed, and Infrahub regenerates every artifact whose query reads the changed data, so the diff includes the configurations that depend on it. Infrahub therefore versions the data in its database and imports the files from Git. See [Git integration](../git-integration/overview.mdx#two-version-control-planes) for how the two connect.
+Git versions the files that define your automation: schemas, templates, Transformations, Generators, checks, and queries. Infrahub imports these files from your repository. The infrastructure data itself is stored in Infrahub's graph database, as objects, attributes, and the relationships between them. A diff of a file shows which lines changed. If you keep infrastructure data in files in Git, Git cannot check that a changed address is still assigned to an interface, or find the configurations that use it. A diff in Infrahub shows which objects, attribute values, and relationships changed, and Infrahub regenerates every artifact whose query reads the changed data, so the diff includes the configurations that depend on it. Infrahub therefore versions the data in its database and imports the files from Git. See [Git integration](../git-integration/overview.mdx#two-version-control-planes) for how the two connect.
 
 ## How the parts work together
 
@@ -37,7 +37,7 @@ Infrahub applies the changes to the default branch and keeps the earlier version
 
 ### Prepare the change on a branch
 
-Create a branch when you start a change. Infrahub records when the branch starts and stores only the changes you make on it, so creating a branch does not copy your data. Changes on the branch, to the data or to the schema, are not visible on the default branch or on other branches until you merge the branch.
+Create a branch when you start a change. Infrahub records when the branch starts and stores only the changes you make on it, so creating a branch does not copy your data. Changes on the branch, to the data or to the schema, are not visible on the default branch until you merge the branch. After the merge, they become visible on another branch only when you rebase that branch.
 
 Some data is shared by every branch. When the schema defines an attribute or an object as branch-agnostic, a change to it applies to every branch at once. See [Branch-agnostic data](../branches/branch-agnostic-data.mdx).
 
@@ -60,7 +60,7 @@ When you merge, Infrahub checks conflicts and constraints again against the curr
 
 ### Query earlier versions of the data
 
-Each change in Infrahub creates a new version instead of replacing the previous one, for objects, attributes, relationships, and the schema. Query the data at an earlier time to see the objects, values, and relationships that existed then, or compare two times to see what changed. The [Activity log](../deploy-manage/run-observe/activity-log.mdx) records who made each change and when. Changes merged from a branch are recorded on the default branch at the time of the merge. Merging, rebasing, and deleting a branch change which earlier versions you can still read on that branch: see [How branches use immutable history](../immutable-history/overview.mdx#how-branches-use-immutable-history).
+Each change in Infrahub creates a new version instead of replacing the previous one, for objects, attributes, relationships, and the schema. Query the data at an earlier time to see the objects, values, and relationships that existed then, or compare two times to see what changed. The [Activity log](../deploy-manage/run-observe/activity-log.mdx) records who made each change and when. Changes merged from a branch are recorded on the default branch at the time of the merge. Rebasing or deleting a branch changes which earlier versions you can still read on it: see [How branches use immutable history](../immutable-history/overview.mdx#how-branches-use-immutable-history).
 
 ## Example: change the addresses of a point-to-point link
 
@@ -110,6 +110,7 @@ To require a branch for every change, give users permission to change objects on
 | Templates, Transformations, Generators, checks, and queries | Your Git repository, imported into Infrahub | If the branch has a matching Git branch, Infrahub imports the files from it into the Infrahub branch |
 | Artifacts | Infrahub's object storage, one version for each branch | Generated from the branch's data; after the merge, regenerated on the default branch |
 | Branch-agnostic data | Infrahub's database | Shared: a change applies to every branch at once |
+| Branch-local data | Infrahub's database | Stays on the branch, and is never merged |
 
 ## In this section
 
