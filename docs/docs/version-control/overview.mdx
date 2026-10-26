@@ -56,7 +56,7 @@ Reviewers comment on the change and approve or reject it. Infrahub blocks the me
 
 ### Merge the branch
 
-When you merge, Infrahub checks conflicts and constraints again against the current default branch, then applies the changes from the branch together. A merge either completes or is rolled back. If the merge is interrupted, the branch stays in a failed state until an administrator recovers it. After the merge, Infrahub regenerates the affected artifacts on the default branch from the default branch's data, and your deployment tools read them from there. Infrahub does not deploy configurations to devices. See [Merge a branch](../branches/merge.mdx).
+When you merge, Infrahub checks conflicts and constraints again against the current default branch, then applies the changes from the branch together. A merge either completes or is rolled back. If the merge is interrupted, the branch stays in a failed state, and writes to the default branch are blocked, until an administrator recovers it. After the merge, Infrahub regenerates the affected artifacts on the default branch from the default branch's data, and your deployment tools read them from there. Infrahub does not deploy configurations to devices. See [Merge a branch](../branches/merge.mdx).
 
 ### Query earlier versions of the data
 
@@ -108,7 +108,7 @@ To require a branch for every change, give users permission to change objects on
 | Objects, attributes, and relationships | Infrahub's database | Visible only on the branch |
 | The schema | Infrahub's database | Applies only on the branch |
 | Templates, Transformations, Generators, checks, and queries | Your Git repository, imported into Infrahub | If the branch has a matching Git branch, Infrahub imports the files from it into the Infrahub branch |
-| Artifacts | Infrahub's object storage, one version for each branch | Generated from the branch's data; after the merge, regenerated on the default branch |
+| Artifacts | Infrahub's object storage, one version for each branch | Generated from the branch's data in a Proposed Change; after the merge, regenerated on the default branch |
 | Branch-agnostic data | Infrahub's database | Shared: a change applies to every branch at once |
 | Branch-local data | Infrahub's database | Stays on the branch, and is never merged |
 
