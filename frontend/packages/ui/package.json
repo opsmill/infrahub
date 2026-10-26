@@ -25,7 +25,7 @@
   },
   "devDependencies": {
     "@rolldown/plugin-babel": "^0.2.4",
-    "@storybook/react-vite": "10.5.7",
+    "@storybook/react-vite": "10.6.4",
     "@tailwindcss/vite": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
@@ -36,7 +36,7 @@
     "globals": "^17.13.0",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "storybook": "10.5.7",
+    "storybook": "10.6.4",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:"
