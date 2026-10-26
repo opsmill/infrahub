@@ -13,10 +13,12 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.events.models import EventBranchContext, EventContext
+from infrahub.events.node_action import NodeUpdatedEvent
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.services import InfrahubServices
 from infrahub.workflows.catalogue import PROFILE_REFRESH_MULTIPLE
 from infrahub.workflows.constants import WorkflowTag
+from tests.adapters.event import MemoryInfrahubEvent
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
 from tests.helpers.graphql import graphql
@@ -26,8 +28,11 @@ from tests.helpers.schema import load_schema
 if TYPE_CHECKING:
     from collections import Counter
 
+    from infrahub.context import InfrahubContext
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+    from infrahub.workflows.constants import WorkflowPriority
+    from infrahub.workflows.models import WorkflowDefinition, WorkflowInfo
 
 DEVICE = NodeSchema(
     name="Device",
@@ -233,3 +238,64 @@ async def test_relationship_add_to_a_profile_runs_no_profile_query_per_added_nod
     # Four more peers cost four relationship writes and four peer reads, as any RelationshipAdd does.
     assert growth == {"node_list_get_attribute": 4, "node_list_get_info": 4, "relationship_create": 4}
     assert few["profile_get_data"] == 0
+
+
+class FailingWorkflow(WorkflowRecorder):
+    """Records each submission, then refuses it."""
+
+    async def submit_workflow(
+        self,
+        workflow: WorkflowDefinition,
+        context: InfrahubContext | EventContext | None = None,
+        parameters: dict[str, Any] | None = None,
+        tags: list[str] | None = None,
+        priority: WorkflowPriority | None = None,
+    ) -> WorkflowInfo:
+        await super().submit_workflow(
+            workflow=workflow, context=context, parameters=parameters, tags=tags, priority=priority
+        )
+        raise RuntimeError(f"{workflow.name} submission rejected")
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in PEER_CHANGE_TEST_CASES])
+async def test_profile_peer_change_sends_its_events_when_the_refresh_submission_fails(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    device_schema: None,
+    editor_session: AccountSession,
+    test_case: PeerChangeTestCase,
+) -> None:
+    name_field = "template_name" if test_case.peer_kind.startswith("Template") else "name"
+    peer = await _create_node(db=db, branch=default_branch, kind=test_case.peer_kind, **{name_field: "peer-0"})
+    linked = [peer] if test_case.mutation == "RelationshipRemove" else []
+    profile = await _create_node(
+        db=db,
+        branch=default_branch,
+        kind="ProfileTestDevice",
+        profile_name="profile-1",
+        profile_priority=10,
+        **{test_case.rel_name: linked},
+    )
+    events = MemoryInfrahubEvent()
+    gql_params = await prepare_graphql_params(
+        db=db,
+        branch=default_branch,
+        account_session=editor_session,
+        service=await InfrahubServices.new(workflow=FailingWorkflow(), event=events),
+    )
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=RELATIONSHIP_MUTATION % {"mutation": test_case.mutation},
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"id": profile.id, "name": test_case.rel_name, "nodes": [{"id": peer.id}]},
+    )
+    assert gql_params.context.background
+    await gql_params.context.background()
+
+    assert [error.message for error in result.errors or []] == ["objects-profiles-refresh-multiple submission rejected"]
+    assert [(type(event), event.node_id) for event in events.events] == [
+        (NodeUpdatedEvent, profile.id),
+        (NodeUpdatedEvent, peer.id),
+    ]
