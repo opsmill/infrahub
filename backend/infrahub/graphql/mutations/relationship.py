@@ -260,7 +260,7 @@ class RelationshipAdd(Mutation):
         async with graphql_context.db.start_transaction() as db:
             peers: list[EventNode] = []
             relationship_modified = False
-            added_peer_ids: list[str] = []
+            added_peer_ids: dict[str, None] = {}
             for node_data in data.get("nodes"):
                 # Instantiate and resolve a relationship
                 # This will take care of allocating a node from a pool if needed
@@ -276,8 +276,7 @@ class RelationshipAdd(Mutation):
                     node_changelog.create_relationship(relationship=rel)
                     await rel.save(db=db, user_id=graphql_context.assigned_user_id)
                     # A request can name the same peer more than once.
-                    if rel.get_peer_id() not in added_peer_ids:
-                        added_peer_ids.append(rel.get_peer_id())
+                    added_peer_ids[rel.get_peer_id()] = None
                     relationship_modified = True
 
             # peers that need to have their profile source cleared
@@ -293,9 +292,6 @@ class RelationshipAdd(Mutation):
                 user_id=graphql_context.assigned_user_id,
             )
 
-        await _submit_profile_peers_refresh(
-            graphql_context=graphql_context, source=source, relationship_name=relationship_name, peer_ids=added_peer_ids
-        )
         await _enrich_emitted_changelog(
             group_event_type=group_event_type,
             node_changelog=node_changelog,
@@ -311,6 +307,12 @@ class RelationshipAdd(Mutation):
             peers=peers,
             node_changelog=node_changelog,
             relationship_name=relationship_name,
+        )
+        await _submit_profile_peers_refresh(
+            graphql_context=graphql_context,
+            source=source,
+            relationship_name=relationship_name,
+            peer_ids=list(added_peer_ids),
         )
 
         return cls(ok=True)
@@ -393,12 +395,6 @@ class RelationshipRemove(Mutation):
                 user_id=graphql_context.assigned_user_id,
             )
 
-        await _submit_profile_peers_refresh(
-            graphql_context=graphql_context,
-            source=source,
-            relationship_name=relationship_name,
-            peer_ids=sorted(removed_peer_ids),
-        )
         await _enrich_emitted_changelog(
             group_event_type=group_event_type,
             node_changelog=node_changelog,
@@ -479,6 +475,12 @@ class RelationshipRemove(Mutation):
                 for event in events:
                     graphql_context.background.add_task(graphql_context.active_service.event.send, event)
 
+        await _submit_profile_peers_refresh(
+            graphql_context=graphql_context,
+            source=source,
+            relationship_name=relationship_name,
+            peer_ids=sorted(removed_peer_ids),
+        )
         return cls(ok=True)
 
 
