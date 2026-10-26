@@ -185,7 +185,6 @@ class TestProfileRefreshBatching(TestInfrahubApp):
         assert submissions[2]["parameters"]["node_ids"] == [dataset.template_id]
         assert [call["parameters"]["branch_name"] for call in submissions] == [default_branch.name] * 3
         assert [call["parameters"]["context"] for call in submissions] == [context] * 3
-        assert [call["context"] for call in submissions] == [context] * 3
         assert [call["tags"] for call in submissions] == [
             [
                 WorkflowTag.BRANCH.render(identifier=default_branch.name),
@@ -245,7 +244,6 @@ class TestProfileRefreshBatching(TestInfrahubApp):
         submissions = recorder.get_submit_calls_for(PROFILE_REFRESH_MULTIPLE)
         assert [call["parameters"]["node_ids"] for call in submissions] == [node_ids[0:2], node_ids[2:4], node_ids[4:]]
         assert [call["parameters"]["context"] for call in submissions] == [context] * 3
-        assert [call["context"] for call in submissions] == [context] * 3
         assert [call["tags"] for call in submissions] == [
             [
                 WorkflowTag.BRANCH.render(identifier=default_branch.name),

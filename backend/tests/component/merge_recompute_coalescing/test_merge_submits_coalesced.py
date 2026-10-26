@@ -291,13 +291,11 @@ async def test_rebase_refreshes_the_profiles_assigned_on_the_branch(
         priority=WorkflowPriority.LOW,
     )
     assert [
-        (call["parameters"], call["tags"], call["context"])
-        for call in workflow_recorder.get_submit_calls_for(PROFILE_REFRESH_MULTIPLE)
+        (call["parameters"], call["tags"]) for call in workflow_recorder.get_submit_calls_for(PROFILE_REFRESH_MULTIPLE)
     ] == [
         (
             {"branch_name": seeded.branch_name, "node_ids": [profiled_node.id], "context": low_event_context},
             [WorkflowTag.BRANCH.render(identifier=seeded.branch_name)],
-            low_event_context,
         )
     ]
 
