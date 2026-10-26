@@ -15,13 +15,13 @@ An **object** represents something you manage: a site, device, circuit, or servi
 These connections make the data useful beyond an inventory. You can find the services that depend on a circuit before planning its replacement.
 :::
 
-The **schema** defines the kinds of objects you can create, their attributes, relationships, and validation rules. You define it in YAML to match your infrastructure and business, including concepts such as customers or service tiers. Infrahub builds the forms and API from that schema.
+The **schema** defines the kinds of objects you can create, their attributes, relationships, and validation rules. You define it in YAML to match your infrastructure and business, including concepts such as customers or service tiers. Infrahub generates the web UI and API endpoints from that schema.
 
 Start with your existing model or [define a schema](../schema/overview.mdx), then evolve it as your requirements change.
 
 ## Branches and Proposed Changes
 
-A **branch** is a separate version of your infrastructure data and schema.
+A **branch** is a separate version of your infrastructure data, schema, and artifacts.
 
 :::info
 For a new site, you can prepare devices, addressing, and schema changes on a branch while others continue working on the default branch.
@@ -31,19 +31,17 @@ A **Proposed Change** is the review of a branch before merging, similar to a pul
 
 ![Create a new-site branch from the default branch, prepare changes, run checks and review a Proposed Change, then merge into the default branch.](../media/concepts-change-review.svg)
 
-[Branches](../branches/overview.mdx) isolate branch-aware data. You can also define [shared data](../schema/branch-awareness.mdx) that stays the same across branches, such as a common reference list.
+[Branches](../branches/overview.mdx) isolate branch-aware data. You can also define [shared data](../schema/branch-awareness.mdx) that stays the same across branches, such as an IP address Resource Pool.
 
 ## Validation before merge
 
-Schema rules describe valid data: required attributes, allowed values, and relationships. [Checks](../checks/overview.mdx) add your operational rules in Python, such as requiring two WAN circuits for every site. This can flag a design that leaves a site dependent on a single connection.
+Schema rules describe valid data: required attributes, allowed values, and relationships. [Checks](../checks/overview.mdx) add your business and infrastructure design rules in Python, such as requiring two WAN circuits for every site. This can flag a design that leaves a site dependent on a single connection.
 
 :::info
 Checks run as part of a [Proposed Change](../proposed-changes/overview.mdx), so reviewers can catch a missing backup connection before approving a site design. Finding that gap before deployment helps reduce the risk of an outage that interrupts business operations.
 :::
 
-You choose the rules to enforce; a passing check confirms those rules, not that a deployment will succeed.
-
-![A check requiring two WAN circuits fails for a site with one circuit. After adding the second circuit and rerunning the check, it passes for review.](../media/concepts-checks.svg)
+![A Check requiring two WAN circuits fails for a site with one circuit. After adding the second circuit and rerunning the Check, it passes for review.](../media/concepts-checks.svg)
 
 ## History and data ownership
 
@@ -77,30 +75,30 @@ A [Transformation](../transformations/overview.mdx) **converts queried data into
 
 ![A Generator turns a site design into firewall, switch, and monitoring objects in Infrahub. Transformations produce separate firewall, switch, and monitoring configuration artifacts for external deployment automation.](../media/concepts-automation.svg)
 
-The distinction is the output: Generators change the data model's objects; Transformations produce content from that data. You can use Transformations with manually entered or imported data too.
+The distinction is the output: Generators change the data model's objects; Transformations produce content from that data.
 
 ## Git integration
 
-An external Git repository stores the files that define your automation: schemas, GraphQL queries, Generators, Transformations, and checks (your custom validation logic). In the repository, [`.infrahub.yml`](../git-integration/infrahub-yml.mdx) declares which resources Infrahub imports and how they connect: which query a Transformation reads, which objects a Generator targets, or which checks validate a change.
+An external Git repository stores the files that define your automation: schemas, GraphQL queries, Generators, Transformations, and Checks. In the repository, [`.infrahub.yml`](../git-integration/infrahub-yml.mdx) declares which resources Infrahub imports and how they connect: which query a Transformation reads, which objects a Generator targets, or which checks validate a change.
 
-![An example Git repository contains .infrahub.yml alongside schema, queries, generators, transformations, and checks subdirectories. Infrahub imports the declared definitions into the corresponding branch, where they operate on infrastructure data.](../media/concepts-git-integration.svg)
+![An example Git repository contains .infrahub.yml alongside checks, generators, queries, schema, and transformations subdirectories. Infrahub imports the declared definitions into the corresponding branch, where they operate on infrastructure data.](../media/concepts-git-integration.svg)
 
 With a standard **Repository** connection, Infrahub automatically imports updates from Git into corresponding Infrahub branches. For a new site, you can change a configuration template in Git and add devices on the matching Infrahub branch, then review the resulting data and artifacts in a Proposed Change. When the branch is configured to **sync with Git, merging in Infrahub also merges the linked Git branch.**
 
 A **Read-only Repository** connection imports a selected branch, tag, or commit. You **request updates explicitly**; Infrahub does not poll it or write back to Git.
 
 :::info
-Choose this when you want to control when new automation code is imported.
+Choose a Read-only Repository connection when you want to control when new automation code is imported.
 :::
 
 Git versions the files; Infrahub versions the infrastructure data. Editing a device in Infrahub does not write that device back to Git. See [Git integration](../git-integration/overview.mdx) to choose a connection and configure synchronization.
 
 ## External automation
 
-External tools can query data through the [GraphQL API](../development-resources/graphql/overview.mdx) and retrieve artifacts for deployment. [Events](../events/overview.mdx) and [webhooks](../webhooks/overview.mdx) connect changes in Infrahub to other workflows, such as notifying an automation pipeline after a merge.
+External tools can query data through the [GraphQL API](../development-resources/graphql/overview.mdx) and retrieve artifacts for deployment through the REST API. [Events](../events/overview.mdx) and [webhooks](../webhooks/overview.mdx) connect changes in Infrahub to other workflows, such as notifying an automation pipeline after a merge.
 
-Merging updates the data in Infrahub. Your deployment automation controls when and how configurations are applied to infrastructure.
+Merging updates the data in the main branch of Infrahub. Infrahub does not deploy configurations. An external deployment tool that you operate, such as an Ansible playbook or a CI/CD pipeline, controls when and how they are applied to infrastructure.
 
 ## Try it
 
-[Explore Infrahub](./explore.mdx) to see objects, relationships, and branches in the interface, or [build your first schema](../learn/tutorials/build-your-first-schema.mdx) to model your own infrastructure.
+[Explore Infrahub](./explore.mdx) to view objects, relationships, and branches in the web UI, or [build your first schema](../learn/tutorials/build-your-first-schema.mdx) to model your own infrastructure.
