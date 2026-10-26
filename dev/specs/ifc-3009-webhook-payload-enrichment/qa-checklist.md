@@ -28,14 +28,14 @@ Live measurements: [IFC-3100](https://opsmill.atlassian.net/browse/IFC-3100?focu
 
 ## Prerequisites
 
-- [ ] Working copy is on `develop` at a commit that includes [PR #10833](https://github.com/opsmill/infrahub/pull/10833).
+- [ ] Working copy is on `release-1.12`, or on a 1.12 beta release once one is published, at a commit that includes [PR #10833](https://github.com/opsmill/infrahub/pull/10833).
 - [ ] `uv sync --all-groups` has completed cleanly.
 - [ ] Docker is running and port 8200 is free on the host.
 - [ ] `jq` is installed.
 
 ## Setup
 
-1. Start Infrahub from `develop` and load the demo schema. The `dev.*` tasks mount the working copy into the containers, so the image only needs a rebuild (`uv run invoke dev.build`) when `uv.lock` or the `python_sdk` submodule changed since the image was built.
+1. Start Infrahub from that working copy and load the demo schema. The `dev.*` tasks mount the working copy into the containers, so the image only needs a rebuild (`uv run invoke dev.build`) when `uv.lock` or the `python_sdk` submodule changed since the image was built.
 
 ```bash
 export INFRAHUB_IMAGE_VER=local
