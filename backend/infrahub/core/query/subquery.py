@@ -4,13 +4,12 @@ from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.order import METADATA_CREATED_AT, METADATA_UPDATED_AT
-from infrahub.core.query import QueryNode, QueryRel
+from infrahub.core.query import QueryElement, QueryNode, QueryRel
 
 from .attribute import default_attribute_query_filter
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
-    from infrahub.core.query import QueryElement
     from infrahub.core.schema import AttributeSchema, RelationshipSchema
     from infrahub.database import InfrahubDatabase
 
@@ -125,6 +124,15 @@ async def build_subquery_filter(
     return query, params, prefix
 
 
+def ranks_latest_value(branch: Branch | None, branch_agnostic: bool) -> bool:
+    """Whether a read by value must rank all value edges of an attribute before comparing the value.
+
+    A branch leaves the default branch's edge to a value it replaced open. A branch-agnostic read keeps matching the
+    value first, since ranking edges from every branch would elect another branch's value.
+    """
+    return branch is not None and not branch.is_default and not branch.is_global and not branch_agnostic
+
+
 def _compares_latest_value(
     field_filter: list[QueryElement],
     field_where: list[str],
@@ -133,8 +141,7 @@ def _compares_latest_value(
     branch_agnostic: bool,
     optional_match: bool,
 ) -> bool:
-    # The default branch closes the previous edge on every update, so only one value edge is valid at a time.
-    if branch is None or branch.is_default or branch.is_global or branch_agnostic:
+    if not ranks_latest_value(branch=branch, branch_agnostic=branch_agnostic):
         return False
     if optional_match or filter_name == "isnull" or len(field_filter) < 2:
         return False
@@ -159,7 +166,9 @@ def _build_latest_value_filter(
     An attribute is ranked per peer when the filter goes through a relationship.
     """
     tail = field_filter[-1]
-    value_predicates = [f"{tail.name}.{key} = {value}" for key, value in (tail.params or {}).items()]
+    value_predicates = [
+        f"{tail.name}.{key} = {QueryElement.render_param_value(value)}" for key, value in (tail.params or {}).items()
+    ]
     value_predicates.extend(field_where)
     field_vertices = ", ".join(
         dict.fromkeys(

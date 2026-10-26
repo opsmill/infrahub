@@ -362,6 +362,29 @@ class TestReadsByValueOnBranch:
             (dataset.branch.name, "t-new"): dataset.ids["ticket"],
         }
 
+    async def test_branch_agnostic_lookup_by_hfid_finds_the_default_branch_value(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, dataset: BranchDataset
+    ) -> None:
+        node = await NodeManager.get_one_by_hfid(
+            db=db, hfid=["t-old", "1"], kind=TestKind.TICKET, branch=default_branch_scope_class, branch_agnostic=True
+        )
+
+        assert node
+        assert node.id == dataset.ids["ticket"]
+
+    async def test_branch_agnostic_filter_finds_the_default_branch_value(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, dataset: BranchDataset
+    ) -> None:
+        nodes = await NodeManager.query(
+            db=db,
+            schema=TestKind.CAR,
+            branch=default_branch_scope_class,
+            filters={"color__value": "red"},
+            branch_agnostic=True,
+        )
+
+        assert dataset.keys([node.id for node in nodes]) == {"car-red", "car-ruby", "car-scarlet", "car-coral"}
+
     @pytest.mark.parametrize("case_sensitive", [True, False], ids=["case_sensitive", "case_insensitive"])
     async def test_search(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, dataset: BranchDataset, case_sensitive: bool
@@ -408,9 +431,14 @@ class TestHierarchyReadByValueOnBranch:
     async def dataset(
         self, db: InfrahubDatabase, hierarchical_location_data_scope_class: dict[str, Node]
     ) -> HierarchyDataset:
+        nodes = hierarchical_location_data_scope_class
         branch = await create_branch(db=db, branch_name="hierarchy-by-value")
-        await _update(db, branch, hierarchical_location_data_scope_class["paris-r1"].id, status={"value": "offline"})
-        return HierarchyDataset(branch=branch, nodes=hierarchical_location_data_scope_class)
+        await _update(db, branch, nodes["paris-r1"].id, status={"value": "offline"})
+        await _update(db, branch, nodes["chicago"].id, name={"value": "chi-town"})
+        moved_rack = await NodeManager.get_one(db=db, id=nodes["paris-r2"].id, branch=branch, raise_on_error=True)
+        await moved_rack.parent.update(db=db, data=nodes["london"].id)
+        await moved_rack.save(db=db)
+        return HierarchyDataset(branch=branch, nodes=nodes)
 
     async def test_descendants_filtered_by_value(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, dataset: HierarchyDataset
@@ -432,4 +460,27 @@ class TestHierarchyReadByValueOnBranch:
         assert found == {
             default_branch_scope_class.name: {"paris", "london", "paris-r1", "london-r1"},
             dataset.branch.name: {"paris", "london", "london-r1"},
+        }
+
+    async def test_filter_through_the_parent_relationship(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, dataset: HierarchyDataset
+    ) -> None:
+        names_by_id = {node.id: name for name, node in dataset.nodes.items()}
+        found: dict[tuple[str, str], set[str]] = {}
+        for branch in (default_branch_scope_class, dataset.branch):
+            for parent_name in ("paris", "chicago", "chi-town", "europe"):
+                racks = await NodeManager.query(
+                    db=db, schema="LocationRack", branch=branch, filters={"parent__name__value": parent_name}
+                )
+                found[branch.name, parent_name] = {names_by_id[rack.id] for rack in racks}
+
+        assert found == {
+            (default_branch_scope_class.name, "paris"): {"paris-r1", "paris-r2"},
+            (default_branch_scope_class.name, "chicago"): {"chicago-r1", "chicago-r2"},
+            (default_branch_scope_class.name, "chi-town"): set(),
+            (default_branch_scope_class.name, "europe"): {"paris-r1", "paris-r2", "london-r1", "london-r2"},
+            (dataset.branch.name, "paris"): {"paris-r1"},
+            (dataset.branch.name, "chicago"): set(),
+            (dataset.branch.name, "chi-town"): {"chicago-r1", "chicago-r2"},
+            (dataset.branch.name, "europe"): {"paris-r1", "paris-r2", "london-r1", "london-r2"},
         }

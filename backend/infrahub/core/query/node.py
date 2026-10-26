@@ -34,7 +34,12 @@ from infrahub.core.order import (
     OrderModel,
 )
 from infrahub.core.query import Query, QueryResult, QueryType
-from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order, build_subquery_order_metadata
+from infrahub.core.query.subquery import (
+    build_subquery_filter,
+    build_subquery_order,
+    build_subquery_order_metadata,
+    ranks_latest_value,
+)
 from infrahub.core.query.utils import find_node_schema
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.order_by import (
@@ -1639,7 +1644,7 @@ class NodeGetByHFIDQuery(Query):
         MATCH (av:AttributeValueIndexed)
         WHERE av.value IN $hfid_values
         MATCH (av)<-[:HAS_VALUE]-(attr:Attribute {name: "human_friendly_id"})<-[:HAS_ATTRIBUTE]-(n:%(node_kind)s)
-        WITH DISTINCT n, attr
+        WITH DISTINCT n, attr, av
         // --------------------------
         // Filter IS_PART_OF edges to ensure node is active
         // --------------------------
@@ -1650,7 +1655,7 @@ class NodeGetByHFIDQuery(Query):
             ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
         }
-        WITH n, attr
+        WITH n, attr, av
         WHERE r.status = "active"
         // --------------------------
         // Filter HAS_ATTRIBUTE edges to confirm the attribute
@@ -1663,22 +1668,42 @@ class NodeGetByHFIDQuery(Query):
             ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
         }
-        WITH n, attr
+        WITH n, attr, av
         WHERE r.status = "active"
+        """
+        if ranks_latest_value(branch=self.branch, branch_agnostic=self.branch_agnostic):
+            query += """
         // --------------------------
-        // Resolve the active value among all HAS_VALUE edges, then compare it:
-        // a branch update leaves the default branch's edge to the previous value open
+        // Keep the HFID only if it is the latest value of the attribute:
+        // on a branch, the default branch's edge to a replaced value stays open
         // --------------------------
         CALL (attr) {
-            MATCH (attr)-[r:HAS_VALUE]->(av:AttributeValue)
+            MATCH (attr)-[r:HAS_VALUE]->(latest_av:AttributeValue)
             WHERE %(branch_filter)s
-            RETURN r, av
+            RETURN r, latest_av
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH n, av, r, latest_av
+        WHERE r.status = "active" AND latest_av.value = av.value
+        """
+        else:
+            query += """
+        // --------------------------
+        // Filter HAS_VALUE edges to resolve the active value
+        // on the correct branch at the requested point in time
+        // --------------------------
+        CALL (av, attr) {
+            MATCH (av)<-[r:HAS_VALUE]-(attr)
+            WHERE %(branch_filter)s
+            RETURN r
             ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
         }
         WITH n, av, r
-        WHERE r.status = "active" AND av.value IN $hfid_values
-        """ % {
+        WHERE r.status = "active"
+        """
+        query %= {
             "branch_filter": branch_filter,
             "node_kind": self.node_kind,
         }
@@ -2505,11 +2530,14 @@ class NodeGetListByAttributeValueQuery(Query):
         // --------------------------
         MATCH (av:AttributeValueIndexed)<-[:HAS_VALUE]-(attr:Attribute)<-[:HAS_ATTRIBUTE]-(n)
         WHERE %(search_predicate)s %(kind_filter)s
+        """
+        if ranks_latest_value(branch=self.branch, branch_agnostic=self.branch_agnostic):
+            query += """
+        // --------------------------
+        // Search the latest value of each candidate attribute:
+        // on a branch, the default branch's edge to a replaced value stays open
+        // --------------------------
         WITH DISTINCT n, attr
-        // --------------------------
-        // Resolve the active value among all HAS_VALUE edges, then compare it:
-        // a branch update leaves the default branch's edge to the previous value open
-        // --------------------------
         CALL (attr) {
             MATCH (attr)-[r:HAS_VALUE]->(av:AttributeValue)
             WHERE %(branch_filter)s
@@ -2518,8 +2546,26 @@ class NodeGetListByAttributeValueQuery(Query):
             LIMIT 1
         }
         WITH n, attr, av, r
-        WHERE r.status = "active" AND %(search_predicate)s
+        WHERE r.status = "active" AND av:AttributeValueIndexed AND %(search_predicate)s
         WITH n, attr
+        """
+        else:
+            query += """
+        WITH DISTINCT n, attr, av
+        // --------------------------
+        // filter HAS_VALUE edges
+        // --------------------------
+        CALL (av, attr) {
+            MATCH (av)<-[r:HAS_VALUE]-(attr)
+            WHERE %(branch_filter)s
+            RETURN r
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH n, attr
+        WHERE r.status = "active"
+        """
+        query += """
         // --------------------------
         // filter HAS_ATTRIBUTE edges
         // --------------------------
@@ -2532,7 +2578,8 @@ class NodeGetListByAttributeValueQuery(Query):
         }
         WITH n, attr, r
         WHERE r.status = "active"
-        """ % {
+        """
+        query %= {
             "search_predicate": search_predicate,
             "kind_filter": kind_filter,
             "branch_filter": branch_filter,
