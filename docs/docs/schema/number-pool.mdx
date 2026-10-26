@@ -14,7 +14,7 @@ The `NumberPool` attribute kind enables the dynamic creation of a `CoreNumberPoo
 
 ## Defining a `NumberPool` attribute {#define-number-pool}
 
-When defining a `NumberPool` attribute, you'll have to define extra `parameters` on the attribute to define the `start_range` and `end_range` for the `CoreNumberPool` resource manager.
+The `parameters` of a `NumberPool` attribute set the numbers its `CoreNumberPool` allocates from. The parameters are optional: for an attribute that declares no range, the pool allocates from 1 upwards, as described in [Number ranges](#number-ranges).
 
 We'll define a generic service schema that nodes will inherit from to provide a global service identifier among different schema node services.
 
@@ -40,8 +40,9 @@ generics:
         kind: NumberPool
         read_only: true # Required
         parameters:
-          start_range: 100
-          end_range: 10000
+          ranges:
+            - start: 100
+              end: 10000
 nodes:
   - name: BackBoneService
     namespace: Infra
@@ -91,6 +92,32 @@ We can view the schema in the **Schema Visualizer**.
 
 ![numberpool-schema](../media/schema_numberpool.png)
 
+## Number ranges {#number-ranges}
+
+`parameters.ranges` lists the ranges the pool allocates from. Each range has a `start`, an `end` and an optional `weight`, and the ranges must not overlap. Infrahub allocates from the ranges with the highest weight first, and from the lowest start among ranges with the same weight.
+
+```yaml
+      - name: service_identifier
+        kind: NumberPool
+        read_only: true
+        parameters:
+          ranges:
+            - start: 100
+              end: 999
+              weight: 10
+            - start: 5000
+```
+
+A range without a `start` begins at 1. A range without an `end` stops at the largest number Infrahub supports. The pool page shows that end as `MAX`, so the second range above is shown as `5000 - MAX`.
+
+The declaration sets the ranges Infrahub creates for the pool:
+
+- Declare no range, with neither `ranges` nor `start_range`/`end_range`, and the pool holds one range without a start or an end. It allocates from 1 to `MAX`.
+- Declare `ranges: []` and the pool holds no range. Every allocation from it fails with `Pool <pool> has no number the attribute accepts in its ranges.`, where `<pool>` is the pool's name and id.
+- Declare `start_range` and `end_range` and the pool holds one range with those bounds. These two parameters are deprecated. Set only one of them for a range without the other bound. They cannot be combined with `ranges`.
+
+When a later schema load changes the declaration, Infrahub adds, updates and removes the pool's ranges to match it. When a later load declares neither `ranges` nor `start_range`/`end_range`, Infrahub keeps the ranges the pool already holds. To remove every range, declare `ranges: []`. Infrahub refuses a schema load that leaves a number held by an object outside every range of the pool, and identifies the objects that hold those numbers.
+
 ## Viewing the resource manager
 
 Once we create an initial `InfraBackBoneService`, we can navigate to the Resource Manager page and view the details of the created Resource Manager.
@@ -99,7 +126,7 @@ The naming of the Resource Manager will be `Kind.attribute_name [uuid]`.
 
 ![numberpool-resource-manager](../media/numberpool_attribute_kind_resource_manager.png)
 
-:::info Updating Parameters (Start/End Range)
+:::info Updating parameters (ranges)
 
 To update the **parameters** of a `NumberPool` attribute requires performing a schema update.
 
@@ -132,6 +159,7 @@ generics:
         kind: NumberPool
         read_only: true # Required
         parameters:
-          start_range: 100
-          end_range: 10000
+          ranges:
+            - start: 100
+              end: 10000
 ```

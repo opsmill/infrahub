@@ -90,6 +90,21 @@ def test_the_figures_of_a_division_are_measured_over_the_whole_pool() -> None:
     assert division.figures == UtilizationFigures(size=SIZE, used_default_branch=3, used_branches=2)
 
 
+def test_an_unbounded_pool_gives_null_figures_and_orders_divisions_by_numbers_in_use() -> None:
+    results = [
+        _result(values=("", "spine"), used=1),
+        _result(values=("", "border"), used=4, used_default_branch=4),
+    ]
+
+    divisions = build_division_usages(scope=SITE_ROLE, results=results, size=None, peers={})
+
+    assert [division.display_label for division in divisions] == [" / border", " / spine"]
+    assert [
+        (division.figures.size, division.figures.utilization, division.figures.utilization_default_branch)
+        for division in divisions
+    ] == [(None, None, None), (None, None, None)]
+
+
 def test_divisions_are_ordered_by_utilization_descending_then_by_display_label() -> None:
     results = [
         _result(values=("", "spine"), used=1),

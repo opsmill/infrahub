@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import sys
 from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
@@ -830,30 +829,43 @@ class OpenRangeLabelCase:
     name: str
     pool_name: str
     on_other_branch: bool
-    expected: tuple[str, int, int]
+    expected: tuple[str, int, int | None]
+    expected_size: int | None
+    expected_utilization: float | None
 
 
 OPEN_RANGE_LABEL_CASES = [
     OpenRangeLabelCase(
-        name="open-bounds-without-limits", pool_name="open", on_other_branch=False, expected=("1 - MAX", 1, sys.maxsize)
+        name="open-bounds-without-limits",
+        pool_name="open",
+        on_other_branch=False,
+        expected=("1 - MAX", 1, None),
+        expected_size=None,
+        expected_utilization=None,
     ),
     OpenRangeLabelCase(
         name="open-end-without-limits",
         pool_name="from-100",
         on_other_branch=False,
-        expected=("100 - MAX", 100, sys.maxsize),
+        expected=("100 - MAX", 100, None),
+        expected_size=None,
+        expected_utilization=None,
     ),
     OpenRangeLabelCase(
         name="open-bounds-follow-the-branch-limits",
         pool_name="open",
         on_other_branch=True,
         expected=("10 - 4094", 10, 4094),
+        expected_size=4085,
+        expected_utilization=0.0,
     ),
     OpenRangeLabelCase(
         name="open-end-follows-the-branch-max-value",
         pool_name="from-100",
         on_other_branch=True,
         expected=("100 - 4094", 100, 4094),
+        expected_size=3995,
+        expected_utilization=0.0,
     ),
 ]
 
@@ -928,10 +940,14 @@ class TestOpenRangeLabels:
 
         data = await self._data(db=db, branch_name=branch_name, query=UTILIZATION_QUERY, pool_id=pools[case.pool_name])
 
+        utilization = data["InfrahubNumberPoolUtilization"]
+        assert [(item["display_label"], item["start"], item["end"]) for item in utilization["ranges"]] == [
+            case.expected
+        ]
         assert [
-            (item["display_label"], item["start"], item["end"])
-            for item in data["InfrahubNumberPoolUtilization"]["ranges"]
-        ] == [case.expected]
+            (figures["size"], figures["utilization"], figures["utilization_default_branch"])
+            for figures in (utilization["figures"], utilization["ranges"][0]["figures"])
+        ] == [(case.expected_size, case.expected_utilization, case.expected_utilization)] * 2
 
     async def test_the_generic_range_query_returns_null_for_an_open_bound(
         self, db: InfrahubDatabase, pools: dict[str, str]
