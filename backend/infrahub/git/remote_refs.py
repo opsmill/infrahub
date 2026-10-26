@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import git
-from git.exc import GitCommandError, UnsafeOptionError
+from git.exc import GitCommandError, UnsafeOptionError, UnsafeProtocolError
 
 from infrahub.exceptions import RepositoryConnectionError, RepositoryError, RepositoryInvalidBranchError
 from infrahub.git.base import InfrahubRepositoryBase
@@ -42,7 +42,7 @@ def list_remote_refs(name: str, url: str) -> RemoteRefs:
     try:
         # The separator keeps git from reading a location that starts with a dash as an option.
         listing = cmd.ls_remote("--symref", "--", url, "HEAD", "refs/heads/*")
-    except UnsafeOptionError as exc:
+    except (UnsafeOptionError, UnsafeProtocolError) as exc:
         raise RepositoryError(
             identifier=name,
             message=f"Unable to read the remote of repository {name}: git does not accept the location {url}.",

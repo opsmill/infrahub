@@ -241,6 +241,19 @@ def test_list_remote_refs_reads_a_location_that_looks_like_an_option_as_a_locati
     assert not marker.exists()
 
 
+def test_list_remote_refs_refuses_a_location_that_runs_a_command(tmp_path: Path) -> None:
+    marker = tmp_path / "command-ran"
+    location = f"ext::sh -c touch% {marker}"
+
+    with pytest.raises(
+        RepositoryError,
+        match=rf"^Unable to read the remote of repository demo: git does not accept the location {re.escape(location)}\.$",
+    ):
+        list_remote_refs(name="demo", url=location)
+
+    assert not marker.exists()
+
+
 async def test_list_remote_heads_reads_a_location_that_looks_like_an_option_as_a_location(tmp_path: Path) -> None:
     location, marker = location_that_reads_as_an_option(directory=tmp_path)
 
