@@ -14,6 +14,8 @@ interface ModalConfirmProps {
   isLoading?: boolean;
   confirmLabel?: string;
   cancelLabel?: string;
+  /** Focuses Cancel when the modal opens, for a confirmation whose action is hard to undo. */
+  isCancelFocusedOnOpen?: boolean;
 }
 
 export function ModalConfirm({
@@ -25,6 +27,7 @@ export function ModalConfirm({
   isLoading,
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
+  isCancelFocusedOnOpen = false,
 }: ModalConfirmProps) {
   return (
     <Modal isDismissable={!isLoading} isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -43,7 +46,12 @@ export function ModalConfirm({
       </Col>
 
       <Row className="justify-end bg-content-muted p-3">
-        <Button variant="outline" onPress={() => onOpenChange(false)} isDisabled={isLoading}>
+        <Button
+          variant="outline"
+          onPress={() => onOpenChange(false)}
+          isDisabled={isLoading}
+          autoFocus={isCancelFocusedOnOpen}
+        >
           {cancelLabel}
         </Button>
         <Button variant="primary" onPress={onConfirm} isPending={isLoading} isDisabled={isLoading}>

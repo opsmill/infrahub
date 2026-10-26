@@ -26,6 +26,6 @@ export async function getLatestRepositoryImportTask({
   });
 
   if (!task) return { status: "none" };
-  if (task.state === TASK_STATE_RUNNING) return { status: "running" };
+  if (task.state === TASK_STATE_RUNNING) return { status: "running", taskId: task.id };
   return { status: "failed", taskId: task.id };
 }

@@ -38,7 +38,10 @@ describe("getLatestRepositoryImportTask", () => {
     });
 
     // WHEN / THEN
-    await expect(getLatestRepositoryImportTask(params)).resolves.toEqual({ status: "running" });
+    await expect(getLatestRepositoryImportTask(params)).resolves.toEqual({
+      status: "running",
+      taskId: "task-2",
+    });
   });
 
   it.each(["FAILED", "CRASHED"] as const)("reports a %s import with its task id", async (state) => {

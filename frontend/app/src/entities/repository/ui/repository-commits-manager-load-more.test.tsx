@@ -1,6 +1,7 @@
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { cleanup } from "vitest-browser-react";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getRepositoryCommitsFromApi } from "@/entities/repository/api/get-repository-commits-from-api";
@@ -13,6 +14,7 @@ import {
   generateFirstCommitsPage,
   PAGE_ONE_HEAD,
 } from "../../../../tests/fake/repository-commit";
+import { generateNodeSchema } from "../../../../tests/fake/schema";
 import { RepositoryCommitsManager } from "./repository-commits-manager";
 
 vi.mock("@/entities/branches/ui/branches-provider");
@@ -61,7 +63,9 @@ describe("RepositoryCommitsManager loading more", () => {
     });
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    // Unmounted first, or a background poll re-renders the tab against reset mocks.
+    await cleanup();
     vi.resetAllMocks();
   });
 
@@ -81,10 +85,11 @@ describe("RepositoryCommitsManager loading more", () => {
         <CaptureQueryClient />
         <RepositoryCommitsManager
           repositoryId="repo-1"
-          repositoryKind={REPOSITORY_KIND}
+          repositoryName="infrahub-demo"
+          repositorySchema={generateNodeSchema({ kind: REPOSITORY_KIND })}
           repositoryInternalStatus="active"
           repositoryLocation={null}
-          remoteCheck={null}
+          updatePermission={{ isAllowed: true }}
         />
       </>
     );
@@ -113,14 +118,17 @@ describe("RepositoryCommitsManager loading more", () => {
         <CaptureQueryClient />
         <RepositoryCommitsManager
           repositoryId="repo-1"
-          repositoryKind={REPOSITORY_KIND}
+          repositoryName="infrahub-demo"
+          repositorySchema={generateNodeSchema({ kind: REPOSITORY_KIND })}
           repositoryInternalStatus="active"
           repositoryLocation={null}
-          remoteCheck={null}
+          updatePermission={{ isAllowed: true }}
         />
       </>
     );
-    await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
+    await expect
+      .element(component.getByTestId("data-table-row").getByText(PAGE_ONE_HEAD))
+      .toBeVisible();
 
     // WHEN
     await queryClient.refetchQueries();

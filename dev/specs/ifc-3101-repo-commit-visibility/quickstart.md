@@ -158,14 +158,14 @@ uv run pytest backend/tests/component/message_bus/operations/git/test_commit_log
 
 2. On demand: push again, then press "Check remote now" on the repository's Commits tab (or run
    `InfrahubReadOnlyRepositoryCheckRefs`). Until the task you started ends, the button is disabled
-   and a "View task" link points to it in the repository's Tasks tab. When it ends, the commit view shows `BEHIND` with the new count, before the interval
+   and "Check running. View task" under the status block's actions opens that task's details page. When it ends, the commit view shows `BEHIND` with the new count, before the interval
    elapses. If a scheduled check holds the repository when you press the button, your task ends at
-   once without checking, and the new count shows once the scheduled check finishes and you refresh
-   the commit view. The button is absent on a read-write repository and disabled for a user without
+   once without checking, and the new count shows once the scheduled check finishes and you reload
+   the page. The button is absent on a read-write repository and disabled for a user without
    update permission on the repository.
 
 3. Idle cost: with no upstream change, the flow log shows a refs listing and no fetch. After an
-   on-demand check, the freshness line's check time is newer than before and the update time has
+   on-demand check, the check time on the status block's last line is newer than before and the update time has
    not changed (FR-007).
 
 4. Tag move: pin a read-only repository to a tag, move the tag upstream, run the check, then read a
@@ -213,7 +213,7 @@ Tests:
 
 ```bash
 uv run pytest backend/tests/component/git/test_check_refs.py backend/tests/integration/git/test_readonly_refs_check.py
-cd frontend/app && pnpm exec vitest run src/entities/repository/ui/repository-check-remote-button.test.tsx && cd ../..
+cd frontend/app && pnpm exec vitest run src/entities/repository/ui/repository-commits-remote-check.test.tsx && cd ../..
 # needs a local image: uv run invoke dev.build
 INFRAHUB_TESTING_IMAGE_VER=local INFRAHUB_TESTING_DOCKER_PULL=false uv run pytest -c tests/e2e/pytest.ini tests/e2e/repository/test_repository_check_remote.py
 ```

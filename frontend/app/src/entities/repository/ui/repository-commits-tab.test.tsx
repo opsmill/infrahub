@@ -1,6 +1,7 @@
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { userEvent } from "vitest/browser";
+import { cleanup } from "vitest-browser-react";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getRepositoryCommitsFromApi } from "@/entities/repository/api/get-repository-commits-from-api";
@@ -23,6 +24,7 @@ import {
   generateRebaseOnlyBehindCommitsResponse,
   generateRewrittenCommitsResponse,
 } from "../../../../tests/fake/repository-commit";
+import { generateNodeSchema } from "../../../../tests/fake/schema";
 import { RepositoryCommitsManager } from "./repository-commits-manager";
 import { RepositoryCommitsTab } from "./repository-commits-tab";
 
@@ -82,7 +84,9 @@ describe("RepositoryCommitsTab", () => {
     useBranch({ syncWithGit: true });
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    // Unmounted first, or a background poll re-renders the tab against reset mocks.
+    await cleanup();
     vi.useRealTimers();
     vi.resetAllMocks();
   });
@@ -383,10 +387,11 @@ describe("RepositoryCommitsTab", () => {
         />
         <RepositoryCommitsManager
           repositoryId="repo-1"
-          repositoryKind={REPOSITORY_KIND}
+          repositoryName="infrahub-demo"
+          repositorySchema={generateNodeSchema({ kind: REPOSITORY_KIND })}
           repositoryInternalStatus="active"
           repositoryLocation="/remote/repo"
-          remoteCheck={null}
+          updatePermission={{ isAllowed: true }}
         />
       </>
     );

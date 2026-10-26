@@ -52,7 +52,9 @@ describe("getLatestRepositoryImportTaskQueryOptions", () => {
   });
 
   it("polls while the newest import is still running", () => {
-    expect(taskRefetchIntervalFor(false, { data: { status: "running" } })).toBe(10_000);
+    expect(taskRefetchIntervalFor(false, { data: { status: "running", taskId: "task-1" } })).toBe(
+      10_000
+    );
   });
 
   it("fetches once otherwise", () => {
@@ -138,7 +140,10 @@ describe("useGetRepositoryImportError", () => {
 
   it("keeps the details loading while the newest import is running", async () => {
     // GIVEN
-    vi.mocked(getLatestRepositoryImportTask).mockResolvedValue({ status: "running" });
+    vi.mocked(getLatestRepositoryImportTask).mockResolvedValue({
+      status: "running",
+      taskId: "task-1",
+    });
 
     // WHEN
     const { queryClient, result } = await renderImportError();
@@ -146,7 +151,7 @@ describe("useGetRepositoryImportError", () => {
     // THEN
     await expect
       .poll(() => queryClient.getQueryData(["repository", "latest-import-task", params]))
-      .toEqual({ status: "running" });
+      .toEqual({ status: "running", taskId: "task-1" });
     expect(result.current).toBeUndefined();
     expect(getImportTaskErrorMessage).not.toHaveBeenCalled();
   });

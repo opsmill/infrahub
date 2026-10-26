@@ -63,6 +63,6 @@ export type RepositoryImportError =
   | { status: "not-found"; taskId: string | null };
 
 export type RepositoryImportTask =
-  | { status: "running" }
+  | { status: "running"; taskId: string }
   | { status: "failed"; taskId: string }
   | { status: "none" };

@@ -5,6 +5,7 @@ export const OBJECT_PERMISSION_OBJECT = "CoreObjectPermission";
 export const MANAGE_GLOBAL_PREFERENCES = "manage_global_preferences";
 export const MANAGE_REPOSITORIES = "manage_repositories";
 export const EDIT_DEFAULT_BRANCH = "edit_default_branch";
+export const REBASE_BRANCH = "rebase_branch";
 
 /** Super-admin grant bypasses every other global permission check. */
 export const SUPER_ADMIN = "super_admin";

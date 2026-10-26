@@ -1,7 +1,7 @@
-const GITHUB_HOST = "github.com";
+export const GITHUB_HOST = "github.com";
 const SCP_PREFIX = `git@${GITHUB_HOST}:`;
 const PATH_SEGMENT = /^[A-Za-z0-9._-]+$/;
-const COMMIT_HASH = /^[0-9a-f]{7,64}$/i;
+export const COMMIT_HASH = /^[0-9a-f]{7,64}$/i;
 
 const SSH_SCHEME = "ssh://";
 const SSH_DEFAULT_PORT = "22";
@@ -25,7 +25,7 @@ function parseRemote(location: string): URL | null {
   return url;
 }
 
-function getGitHubRepositoryPath(location: string): string | null {
+export function getGitHubRepositoryPath(location: string): string | null {
   const url = parseRemote(location.trim());
   if (!url || url.hostname !== GITHUB_HOST || url.port || url.search || url.hash) return null;
   if (url.protocol !== "https:" && url.protocol !== "http:") return null;
