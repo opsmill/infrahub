@@ -825,7 +825,7 @@ async def _check_lost_delivery(db: InfrahubDatabase, repository_data: Repository
         )
 
 
-@flow(name="git_repositories_sync", flow_run_name="Sync Git Repositories")
+@flow(name="git_repositories_sync", flow_run_name="Sync Git Repositories", persist_result=False)
 async def sync_remote_repositories() -> None:
     db = await get_database()
 
@@ -1621,7 +1621,11 @@ async def _check_due_repository(
         return await check_repository_refs(model=model, checker=checker, run_id=run_id)
 
 
-@flow(name="git-read-only-repositories-check-refs", flow_run_name="Check remote refs of read only git repositories")
+@flow(
+    name="git-read-only-repositories-check-refs",
+    flow_run_name="Check remote refs of read only git repositories",
+    persist_result=False,
+)
 async def check_read_only_repositories_refs() -> RefsCheckCycleSummary:
     log = get_run_logger()
 
