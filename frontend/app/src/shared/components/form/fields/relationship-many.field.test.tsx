@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { DynamicRelationshipFieldProps } from "@/shared/components/form/type";
 import { store } from "@/shared/stores";
@@ -29,10 +29,6 @@ describe("RelationshipMany - Field", () => {
       { id: "3", display_label: "Node 3", __typename: "TestNode" },
     ];
     vi.mocked(getRelationships).mockResolvedValue(mockNodes);
-  });
-
-  afterEach(() => {
-    vi.clearAllMocks();
   });
 
   const defaultProps: Omit<DynamicRelationshipFieldProps, "type"> = {

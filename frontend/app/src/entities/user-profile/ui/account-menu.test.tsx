@@ -35,7 +35,6 @@ function renderAccountMenu() {
 
 describe("AccountMenu", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     vi.mocked(getAccountProfile).mockResolvedValue({
       name: { value: "admin" },
       label: { value: "Admin" },

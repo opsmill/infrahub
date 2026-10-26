@@ -13,6 +13,8 @@ from tests.helpers.diff_summary import node_diff
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
+from .helpers import SUBSCRIBER_KIND, query_report
+
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
     from infrahub_sdk.diff import NodeDiff
@@ -51,10 +53,33 @@ query GetImpactCarLabel($ids: [ID!]!) {
 }
 """
 
-# The car is the group member; the tag stands in for an artifact or generator definition. The impact
-# mapping reads only the subscriber's id and typename, so a plain kind keeps the fixture free of the
-# transformation and repository wiring a real definition would demand.
-SUBSCRIBER_KIND = TestKind.TAG
+# The cars are selected by their owner's name, a filter argument the query never reads back: which cars
+# answer the query moves when a car's ``owner`` relationship changes.
+QUERY_CARS_BY_OWNER_NAME = """
+query GetImpactCarsByOwner($owner: String!) {
+    TestingCar(owner__name__value: $owner) {
+        edges {
+            node {
+                name { value }
+            }
+        }
+    }
+}
+"""
+
+# ``any__value`` matches a car on any of its attributes, so a change to an attribute the query never
+# reads can still move which cars answer it.
+QUERY_CARS_BY_ANY_VALUE = """
+query GetImpactCarsByAnyValue($value: String!) {
+    TestingCar(any__value: $value) {
+        edges {
+            node {
+                name { value }
+            }
+        }
+    }
+}
+"""
 
 
 class TestFieldLevelImpact(TestInfrahubApp):
@@ -132,7 +157,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
         diff_summary: list[NodeDiff],
     ) -> TargetSelection:
         return await get_field_level_impacted_subscribers(
-            query_payload=QUERY_CAR_WITH_OWNER,
+            query_report=query_report(QUERY_CAR_WITH_OWNER, default_branch),
             diff_summary=diff_summary,
             query_branch=default_branch.name,
             subscriber_kind=SUBSCRIBER_KIND,
@@ -179,7 +204,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
         car's own attributes, so the routing narrows to the car's subscriber rather than widening.
         """
         resolved = await get_field_level_impacted_subscribers(
-            query_payload=QUERY_CAR_DISPLAY_LABEL,
+            query_report=query_report(QUERY_CAR_DISPLAY_LABEL, default_branch),
             diff_summary=[
                 node_diff(
                     node_id=dataset["car_id"],
@@ -195,17 +220,17 @@ class TestFieldLevelImpact(TestInfrahubApp):
         )
         assert resolved == TargetSelection(ids=[dataset["subscriber_id"]])
 
-    async def test_related_node_change_selects_subscriber(
+    async def test_related_node_change_narrows_to_the_owning_member(
         self,
         dataset: dict[str, Any],
         default_branch: Branch,
         client: InfrahubClient,
     ) -> None:
-        """A change to a field the query reads on a *related* node still selects the subscriber.
+        """A change to a field the query reads on a *related* node narrows to the members owning it.
 
-        The changed owner is not itself a query-group member, so it cannot be mapped back to a
-        subscriber by membership lookup. Leaving the subscriber unselected would under-execute and ship
-        a stale artifact, so the impact mapping has to widen instead of returning nothing.
+        The changed owner is not itself a query-group member, so the relationship the query traverses
+        to reach it is walked back to the cars pointing at that owner, and only their subscribers are
+        selected -- not every member of the definition.
         """
         resolved = await self._resolve(
             dataset=dataset,
@@ -220,7 +245,94 @@ class TestFieldLevelImpact(TestInfrahubApp):
                 )
             ],
         )
+        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]])
+
+    async def test_unread_related_field_change_selects_nothing(
+        self,
+        dataset: dict[str, Any],
+        default_branch: Branch,
+        client: InfrahubClient,
+    ) -> None:
+        """A change to a related field the query does not read resolves to no subscriber.
+
+        Field-level precision holds through the relationship: only a change to a field the query
+        actually reads off the owner can implicate the cars that read it.
+        """
+        resolved = await self._resolve(
+            dataset=dataset,
+            default_branch=default_branch,
+            client=client,
+            diff_summary=[
+                node_diff(
+                    node_id=dataset["person_id"],
+                    kind=TestKind.PERSON,
+                    branch=default_branch.name,
+                    field_names=["height"],
+                )
+            ],
+        )
+        assert resolved == TargetSelection(ids=[])
+
+    async def test_change_to_a_filtered_relationship_selects_every_target(
+        self,
+        dataset: dict[str, Any],
+        default_branch: Branch,
+        client: InfrahubClient,
+    ) -> None:
+        """A change to a relationship the query filters on selects every target.
+
+        The query selects cars by their owner's name and reads only the car's ``name``. Moving a car to
+        another owner changes which cars answer the query for both owners, so every target has to run
+        even though no field the query reads back changed.
+        """
+        resolved = await get_field_level_impacted_subscribers(
+            query_report=query_report(QUERY_CARS_BY_OWNER_NAME, default_branch),
+            diff_summary=[
+                node_diff(
+                    node_id=dataset["car_id"],
+                    kind=TestKind.CAR,
+                    branch=default_branch.name,
+                    field_names=["owner"],
+                    element_type="RELATIONSHIP_ONE",
+                )
+            ],
+            query_branch=default_branch.name,
+            subscriber_kind=SUBSCRIBER_KIND,
+            every_target=[dataset["subscriber_id"]],
+            client=client,
+        )
         assert resolved == TargetSelection(
             ids=[dataset["subscriber_id"]],
-            widening=Widening(reason=WideningReason.RELATIONSHIP_REACHED_CHANGE, kinds=(TestKind.PERSON,)),
+            widening=Widening(reason=WideningReason.NON_UNIQUE_TARGETS),
+        )
+
+    async def test_change_to_an_attribute_matched_by_any_value_selects_every_target(
+        self,
+        dataset: dict[str, Any],
+        default_branch: Branch,
+        client: InfrahubClient,
+    ) -> None:
+        """A change to any attribute selects every target when the query filters on ``any__value``.
+
+        The query reads only the car's ``name``, but its filter matches on every attribute, so a
+        change to ``color`` can move which cars answer the query.
+        """
+        resolved = await get_field_level_impacted_subscribers(
+            query_report=query_report(QUERY_CARS_BY_ANY_VALUE, default_branch),
+            diff_summary=[
+                node_diff(
+                    node_id=dataset["car_id"],
+                    kind=TestKind.CAR,
+                    branch=default_branch.name,
+                    field_names=["color"],
+                )
+            ],
+            query_branch=default_branch.name,
+            subscriber_kind=SUBSCRIBER_KIND,
+            every_target=[dataset["subscriber_id"]],
+            client=client,
+        )
+        assert resolved == TargetSelection(
+            ids=[dataset["subscriber_id"]],
+            widening=Widening(reason=WideningReason.NON_UNIQUE_TARGETS),
         )

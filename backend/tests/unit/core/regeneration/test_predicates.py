@@ -41,7 +41,6 @@ def _build_definition(
         artifact_name="device-config",
         query_name="GetNetworkDevice",
         query_id=query_id,
-        query_models=["TestNetworkDevice"],
         query_payload="query { TestNetworkDevice { edges { node { id } } } }",
         repository_id="44444444-4444-4444-4444-444444444444",
         transform_kind=InfrahubKind.TRANSFORMJINJA2,

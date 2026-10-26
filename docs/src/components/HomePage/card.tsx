@@ -7,19 +7,19 @@ import styles from './styles.module.css';
 
 type SectionItem = {
     title: string;
-    svgPath: string;
+    svgPath?: string;
     description: React.ReactNode;
     link: string;
 };
 
 export default function HomePageCard({ title, svgPath, description, link }: SectionItem) {
-    const imgSrc = useBaseUrl(svgPath);
+    const imgSrc = useBaseUrl(svgPath ?? '');
 
     return (
         <div className='flex col col--4 margin-bottom--md'>
             <Link to={link} className={clsx(styles.heroCard, "card text--no-decoration")}>
                 <div className={clsx("card__header", styles.cardTitle)}>
-                    <img src={imgSrc} width="24px" alt={title} />
+                    {svgPath && <img src={imgSrc} width="24px" alt="" />}
                     <Heading as="h3">{title}</Heading>
                 </div>
 

@@ -47,7 +47,6 @@ async function renderWithEffective(data: EffectivePreferences | undefined) {
 
 describe("DatePreferencesProvider", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     mockAuth(true);
   });
 

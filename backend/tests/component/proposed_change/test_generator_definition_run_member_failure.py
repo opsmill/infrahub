@@ -231,7 +231,6 @@ class TestGeneratorDefinitionRunReportsFailingMember(TestInfrahubAppBase):
                 file_path="generators/tag.py",
                 query_name="GetGenTag",
                 query_id=dataset[_QUERY_ID],
-                query_models=[TAG_KIND],
                 query_payload=TAG_QUERY,
                 repository_id=dataset[_REPOSITORY_ID],
                 parameters={"name": "name__value"},

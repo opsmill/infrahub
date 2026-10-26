@@ -141,7 +141,6 @@ def _plan_with_one_of_each() -> SelectiveRegenerationPlan:
         execute_in_proposed_change=False,
         execute_after_merge=True,
         query_id="q1",
-        query_models=["TestDevice"],
         query_payload="query { TestDevice { edges { node { id } } } }",
         repository_id="repo-1",
     )
@@ -168,7 +167,6 @@ def _generator_run(*, definition_id: str) -> RequestGeneratorDefinitionRun:
         execute_in_proposed_change=False,
         execute_after_merge=True,
         query_id="q1",
-        query_models=["TestDevice"],
         query_payload="query { TestDevice { edges { node { id } } } }",
         repository_id="repo-1",
     )

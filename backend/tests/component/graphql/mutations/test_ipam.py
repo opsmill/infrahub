@@ -1,11 +1,15 @@
+import asyncio
 import ipaddress
+from dataclasses import dataclass
 from typing import Any
 
 import pytest
+from graphql import ExecutionResult
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
@@ -1481,3 +1485,63 @@ async def test_ipaddress_relationship_with_hfid(
     assert primary_ip
     address_value = primary_ip.address.value  # type: ignore[union-attr]
     assert str(address_value) == "10.0.0.1/32"
+
+
+@pytest.fixture
+async def register_ipam_schema_unique_address(default_branch: Branch, ipam_schema: SchemaRoot) -> SchemaBranch:
+    schema = ipam_schema.model_copy(deep=True)
+    ip_address = next(node for node in schema.nodes if node.name == "IPAddress")
+    ip_address.uniqueness_constraints = [["address__value", "ip_namespace"]]
+    ip_address.human_friendly_id = ["address__value", "ip_namespace__name__value"]
+    schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    default_branch.update_schema_hash()
+    return schema_branch
+
+
+@dataclass
+class ConcurrentCreateCase:
+    name: str
+    branch_name: str | None
+    address: str
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        ConcurrentCreateCase(name="default-branch", branch_name=None, address="192.0.2.10/24"),
+        ConcurrentCreateCase(name="other-branch", branch_name="concurrent-ipaddress", address="192.0.2.11/24"),
+    ],
+    ids=lambda case: case.name,
+)
+async def test_concurrent_ipaddress_creates_keep_address_unique(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema_unique_address: SchemaBranch,
+    case: ConcurrentCreateCase,
+) -> None:
+    """Concurrent creates of one address in one namespace leave a single IP address on the branch."""
+    branch = default_branch if case.branch_name is None else await create_branch(branch_name=case.branch_name, db=db)
+    branch.update_schema_hash()
+    address = case.address
+
+    async def create_in_own_session() -> ExecutionResult:
+        async with db.start_session() as session_db:
+            gql_params = await prepare_graphql_params(db=session_db, branch=branch)
+            return await graphql(
+                schema=gql_params.schema,
+                source=CREATE_IPADDRESS,
+                context_value=gql_params.context,
+                variable_values={"address": address},
+            )
+
+    results = await asyncio.gather(*(create_in_own_session() for _ in range(2)))
+
+    addresses = await NodeManager.query(
+        db=db, schema="IpamIPAddress", branch=branch, filters={"address__value": address}
+    )
+    assert len(addresses) == 1
+    assert [error.message for result in results for error in result.errors or []] == [
+        "Violates uniqueness constraint 'address-ip_namespace'"
+    ]

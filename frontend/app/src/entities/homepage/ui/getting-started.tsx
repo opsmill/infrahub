@@ -35,7 +35,7 @@ export const GettingStarted = ({ className }: { className?: string }) => {
               <Icon icon={"mdi:graduation-cap-outline"} className="size-4" />
               Infrahub Labs
               <GettingStartedContentItem.Link
-                href={"https://opsmill.instruqt.com/pages/labs/"}
+                href={"https://docs.infrahub.app/labs"}
                 target="_blank"
                 rel="noopener noreferrer"
               >
