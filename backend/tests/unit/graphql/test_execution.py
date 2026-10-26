@@ -10,6 +10,7 @@ SCHEMA = build_schema(
     type Mutation { rename(value: Int!): String }
     """
 )
+RECURSIVE_SCHEMA = build_schema("type Query { node: Node }  type Node { id: ID name: String child: Node }")
 
 
 def reject_mutations(next: Any, root: Any, info: GraphQLResolveInfo, **kwargs: Any) -> Any:  # noqa: A002
@@ -69,3 +70,25 @@ async def test_execution_context_class_is_used() -> None:
     assert result.errors is None
     assert result.data == {"greeting": "hello"}
     assert len(created) == 1
+
+
+async def test_overlapping_fields_budget_rejects_repeated_inline_fragments() -> None:
+    result = await execute_graphql_query(
+        schema=RECURSIVE_SCHEMA,
+        source="{ node { " + " ".join(["... on Node { id name child { id } }"] * 1000) + " } }",
+    )
+
+    assert result.data is None
+    assert [error.message for error in result.errors or []] == [
+        "Query is too complex to validate for overlapping fields: exceeded 250000 field comparisons."
+        " Validation was aborted."
+    ]
+
+
+async def test_truncated_escape_sequence_returns_syntax_error() -> None:
+    result = await execute_graphql_query(schema=SCHEMA, source='{ greeting(name: "abc\\')
+
+    assert result.data is None
+    assert [error.message for error in result.errors or []] == [
+        "Syntax Error: Invalid character escape sequence: '\\'."
+    ]
