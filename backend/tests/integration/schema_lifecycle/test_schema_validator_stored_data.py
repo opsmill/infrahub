@@ -18,9 +18,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters, NumberPoolParameters
-from infrahub.log import get_logger
-from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
-from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
+from tests.helpers.number_pool import provision_schema_number_pools
 from tests.helpers.test_app import TestInfrahubApp
 
 from ..shared import load_schema
@@ -31,7 +29,6 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
-log = get_logger()
 
 WIDGET_KIND = "TestingWidget"
 TICKET_KIND = "TestingTicket"
@@ -152,8 +149,7 @@ class TestSchemaChangeRefusedByStoredData(TestInfrahubApp):
         self, db: InfrahubDatabase, initialize_registry: None, schema_initial: SchemaRoot
     ) -> dict[str, str]:
         await load_schema(db=db, schema=schema_initial)
-        upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
-        await SchemaNumberPoolSynchronizer(db=db, log=log, schema_manager=registry.schema, upserter=upserter).run()
+        await provision_schema_number_pools(db=db)
 
         person = await Node.init(schema="TestingPerson", db=db)
         await person.new(db=db, name="person-1")
