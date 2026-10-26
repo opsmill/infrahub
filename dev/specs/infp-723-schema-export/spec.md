@@ -38,8 +38,9 @@ relationship, so the load likely fails for nodes that use templates (not tested,
 
 - The names of the export mode parameter, its values and the Infrahub version field. The design document
   says they are not final (D6, D7). The plan fixes them.
-- Whether a `FULL` export that changes a setting Infrahub cannot update, such as `branch` on an attribute or
-  relationship, is refused or ignored by the load. The design document says it is not known (D6).
+- What the load does today when a `FULL` export changes a setting Infrahub cannot update, such as `branch` on
+  an attribute or relationship: refuse the change or ignore it. The design document says it is not known
+  (D6). The export writes the setting either way (FR-015a), and the plan establishes the load's behaviour.
 - Whether `order_weight` can be left out and generated again identically, and whether the deprecated
   NumberPool `start_range` and `end_range` are converted into `ranges`. The design document lists both as
   checks to make during implementation.
@@ -59,6 +60,9 @@ relationship, so the load likely fails for nodes that use templates (not tested,
 - Q: Where does the namespace warning appear in the export response? → A: Nowhere. The export returns no
   warning. A filtered export contains only the selected namespaces, and the schema owner is responsible for
   loading the namespaces they reference (FR-017).
+- Q: What does a `FULL` export do with settings Infrahub cannot update, such as `branch` on an attribute or
+  relationship? → A: It writes them like any other value. When the target has a different value, the load
+  behaves as it does today, which the plan establishes and the documentation states (FR-015a, FR-025).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -207,8 +211,9 @@ the `Dcim` schema.
   found to export." and writes no file
   ([CLI](https://github.com/opsmill/infrahub-sdk-python/blob/infrahub-develop/infrahub_sdk/ctl/schema.py)).
   The sources do not say what the endpoint returns in this case (see Assumptions).
-- **`FULL` export that changes a setting Infrahub cannot update.** It is not known whether the load refuses
-  the change or ignores it (D6). The plan establishes it.
+- **`FULL` export that changes a setting Infrahub cannot update.** The export writes the setting (FR-015a).
+  When the target has a different value, the load behaves as it does today, either refusing the change or
+  ignoring it. Which one is not known (D6); the plan establishes it and the documentation states it.
 
 ## Requirements *(mandatory)*
 
@@ -259,6 +264,9 @@ the `Dcim` schema.
   relationships the user defines, including derived values such as `label`, `branch`, `order_weight` and a
   `human_friendly_id` taken from a unique attribute. It MUST still apply FR-002, FR-003, FR-005 and FR-009
   (D6).
+- **FR-015a**: In `FULL` mode, the export MUST write settings Infrahub cannot update, such as `branch` on an
+  attribute or relationship, like any other value. This feature MUST NOT change how the load handles a change
+  to such a setting.
 - **FR-016**: The export MUST NOT offer a mode that writes IDs. The `IDS` mode is deferred (D6).
 
 #### Branch and namespace selection, and access
@@ -290,8 +298,9 @@ the `Dcim` schema.
   rule, MUST be exported, loaded into an empty instance and checked against FR-012 and FR-013 in both modes
   (D12).
 - **FR-025**: The documentation MUST include a page on exporting the schema that describes the two modes, the
-  single-file option and the known limitations from D2, D3 and D4 (design document section 4,
-  "Follow-ups").
+  single-file option, the known limitations from D2, D3 and D4 (design document section 4,
+  "Follow-ups"), and what the load does when a `FULL` export changes a setting Infrahub cannot update
+  (FR-015a).
 
 ### Key Entities
 
