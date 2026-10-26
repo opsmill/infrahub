@@ -102,13 +102,32 @@ function UtilizationFiguresTooltip({ usage, className, children }: UtilizationFi
   );
 }
 
-interface UsageBarWithSizeProps {
+interface UsageBarWithoutSizeProps {
   usage: NumberPoolUsage;
-  size: number;
 }
 
-function UsageBarWithSize({ usage, size }: UsageBarWithSizeProps) {
-  const { used, usedDefaultBranch, usedBranches } = usage;
+function UsageBarWithoutSize({ usage }: UsageBarWithoutSizeProps) {
+  return (
+    <Row>
+      <div
+        role="img"
+        aria-label="No upper limit"
+        className="h-1.5 w-full min-w-6 rounded-full bg-accent-strong/10 bg-stripes-accent-strong/15"
+      />
+      <UtilizationFiguresTooltip usage={usage} className="min-w-11">
+        {formatNumberDisplay(usage.used)}
+      </UtilizationFiguresTooltip>
+    </Row>
+  );
+}
+
+export interface NumberPoolUsageBarProps {
+  usage: NumberPoolUsage;
+}
+
+export function NumberPoolUsageBar({ usage }: NumberPoolUsageBarProps) {
+  const { size, utilization, usedDefaultBranch, usedBranches } = usage;
+  if (size === null || utilization === null) return <UsageBarWithoutSize usage={usage} />;
 
   return (
     <Row>
@@ -139,37 +158,8 @@ function UsageBarWithSize({ usage, size }: UsageBarWithSizeProps) {
         ]}
       />
       <UtilizationFiguresTooltip usage={usage} className="w-11">
-        {formatUsagePercent(percentOf(used, size))}
+        {formatUsagePercent(utilization)}
       </UtilizationFiguresTooltip>
     </Row>
   );
-}
-
-interface UsageBarWithoutSizeProps {
-  usage: NumberPoolUsage;
-}
-
-function UsageBarWithoutSize({ usage }: UsageBarWithoutSizeProps) {
-  return (
-    <Row>
-      <div
-        role="img"
-        aria-label="No upper limit"
-        className="h-1.5 w-full min-w-6 rounded-full bg-accent-strong/10 bg-stripes-accent-strong/15"
-      />
-      <UtilizationFiguresTooltip usage={usage} className="min-w-11">
-        {formatNumberDisplay(usage.used)}
-      </UtilizationFiguresTooltip>
-    </Row>
-  );
-}
-
-export interface NumberPoolUsageBarProps {
-  usage: NumberPoolUsage;
-}
-
-export function NumberPoolUsageBar({ usage }: NumberPoolUsageBarProps) {
-  if (usage.size === null) return <UsageBarWithoutSize usage={usage} />;
-
-  return <UsageBarWithSize usage={usage} size={usage.size} />;
 }
