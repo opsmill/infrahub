@@ -1,0 +1,21 @@
+backend/tests/unit/git/test_remote_refs.py
+  s_d5954718fc8fe8::t_7b6e88e0bf48e0 244-256
+backend/infrahub/git/remote_refs.py
+  s_d5954718fc8fe8::t_7b6e88e0bf48e0 12,45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d6a150bbff47e6680a148b857b7c7b9ea340d2c4",
+  "prompts": {},
+  "sessions": {
+    "s_d5954718fc8fe8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a34a3173-1903-4f83-9345-86078fd19342",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
