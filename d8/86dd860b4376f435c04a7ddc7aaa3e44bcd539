@@ -1,0 +1,65 @@
+dev/specs/artifact-regeneration-poc/data-model.md
+  s_6947b4d8b10fbd::t_204b787595f426 109-111
+  s_6947b4d8b10fbd::t_9f3689bef758f0 84
+  s_6947b4d8b10fbd::t_d5f1a0dd5fbc8e 46-47
+  s_6947b4d8b10fbd::t_0b0fd3c406b78d 51-52,55
+  s_6947b4d8b10fbd::t_48021c2b136c6f 22-32
+dev/specs/artifact-regeneration-poc/spec.md
+  s_6947b4d8b10fbd::t_f44cd05b2b959f 405-412
+  s_6947b4d8b10fbd::t_3677dd187b7ea5 303-304
+  s_6947b4d8b10fbd::t_39926523b8cd2c 186-187
+  s_6947b4d8b10fbd::t_610c3ee191f13f 321-323
+  s_6947b4d8b10fbd::t_f2b777b9d5dac7 292-294
+  s_6947b4d8b10fbd::t_3578ba317f0ff8 390-392
+  s_6947b4d8b10fbd::t_8e4840d5121737 334-339
+  s_6947b4d8b10fbd::t_3fa52cd069a36c 46-47
+  s_6947b4d8b10fbd::t_f16c4860834991 211-213,215-216
+  s_6947b4d8b10fbd::t_3549430d2773f4 234-243
+  s_6947b4d8b10fbd::t_6eb1393cd3fc3c 328-331
+dev/specs/artifact-regeneration-poc/research.md
+  s_6947b4d8b10fbd::t_963670bf499138 288-293,296-300
+  s_6947b4d8b10fbd::t_34bcb969d4d12e 217-222
+  s_6947b4d8b10fbd::t_3e6473867b9e0b 321-323
+  s_6947b4d8b10fbd::t_1b2767828cd0f7 16-29
+  s_6947b4d8b10fbd::t_452e01129a5c93 49-116,123-125
+  s_6947b4d8b10fbd::t_eea891f37314c9 271-276
+  s_6947b4d8b10fbd::t_dcaca6fd292859 309-320,324-330
+  s_6947b4d8b10fbd::t_74d7670e411122 166-168,170-196,199-202
+  s_6947b4d8b10fbd::t_dc8d94847a7d02 336-341
+  s_6947b4d8b10fbd::t_6738779cbf98c1 226-231,235-240,242-243
+  s_6947b4d8b10fbd::t_4154a4dcd1dfdd 346-348
+  s_6947b4d8b10fbd::t_a2b2e70f0402c1 353-366
+dev/specs/artifact-regeneration-poc/plan.md
+  s_6947b4d8b10fbd::t_c986f4f93bd357 6,14-23,32-33,36-37,43-45,49-50,52-54,63-68,70-71,73,89,91,103-104,106,108-110,119,132-133,135-136,139,141,144,150,163-165,169-177,181-189,193-197,206-215,220-221,223-225,227-229,234-240,243-246,248,253-254,256-272,281-282,290-300,309-314,316-318,333-336,338,345-348
+dev/specs/artifact-regeneration-poc/critiques/critique-20261023.md
+  s_6947b4d8b10fbd::t_6ac7d52bf55f8e 230-231
+  s_6947b4d8b10fbd::t_0b74177a98922d 98-101
+  s_6947b4d8b10fbd::t_84d7af9fd7f9aa 1-97,102-229,232-311,317-473,476-488,490-580
+  s_6947b4d8b10fbd::t_aca795314f88b0 312-316
+  s_6947b4d8b10fbd::t_ad74d9e9fdd5d8 474-475
+  s_6947b4d8b10fbd::t_614712c3dea58b 489
+  s_6947b4d8b10fbd::t_ac3dc1a0b606c8 581-615
+dev/specs/artifact-regeneration-poc/contracts/state-files.md
+  s_6947b4d8b10fbd::t_631d2fd34cfa3b 3,5-14,18-22,24,26,30-36
+dev/specs/artifact-regeneration-poc/quickstart.md
+  s_6947b4d8b10fbd::t_7691d83b36cb15 19,22,25,28-31,36,39-41
+  s_6947b4d8b10fbd::t_b10a98a08cf737 45-46
+dev/specs/artifact-regeneration-poc/contracts/interfaces.md
+  s_6947b4d8b10fbd::t_e06ce3636a573c 34-37,40-42,44,46-48,50-52,55-69,71-75,85,98-104,107-108,111,116,119-122,125-130,148,156-157,169,175-176,188-190,197-211
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d886dd860b4376f435c04a7ddc7aaa3e44bcd539",
+  "prompts": {},
+  "sessions": {
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "unknown"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+backend/tests/component/core/regeneration/poc/test_regression_scenarios.py
+  s_6947b4d8b10fbd::t_3369a608e53ec5 71
+dev/specs/artifact-regeneration-poc/results.md
+  s_6947b4d8b10fbd::t_6cffc26e96f012 12,28-29,49-50,75-76,90,114-115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c9140fec015c117bd46bb52c5f6cc425322cf2fb",
+  "prompts": {},
+  "sessions": {
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

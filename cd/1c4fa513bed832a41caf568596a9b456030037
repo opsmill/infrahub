@@ -1,0 +1,24 @@
+dev/specs/artifact-regeneration-poc/results.md
+  s_6947b4d8b10fbd::t_4d323300ed2dfb 1-6,10-147
+  s_6947b4d8b10fbd::t_3d9587b95a6ed8 7-9
+backend/tests/component/core/regeneration/poc/test_selection.py
+  s_6947b4d8b10fbd::t_b131fddac57cbe 855-927
+dev/specs/artifact-regeneration-poc/tasks.md
+  s_6947b4d8b10fbd::t_ca3ad08c301972 201
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cd1c4fa513bed832a41caf568596a9b456030037",
+  "prompts": {},
+  "sessions": {
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

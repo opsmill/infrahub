@@ -1,0 +1,34 @@
+backend/tests/unit/core/regeneration/poc/test_selector.py
+  s_6947b4d8b10fbd::t_5d7304a4c04b95 439-448
+  s_6947b4d8b10fbd::t_da854838241c25 436-438
+  s_9b6fadc5b7dd57::t_ded857c467ea3d 434-435
+backend/tests/unit/core/regeneration/poc/test_run.py
+  s_6947b4d8b10fbd::t_c5c97b0a5a6ee5 354-427,429
+  s_6947b4d8b10fbd::t_07026232cffe20 428
+dev/specs/artifact-regeneration-poc/contracts/interfaces.md
+  s_6947b4d8b10fbd::t_1cebc668c83751 310,339
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "57aa5b241721200c385e5834772a8d3216ba663e",
+  "prompts": {},
+  "sessions": {
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    },
+    "s_9b6fadc5b7dd57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a4df15ba8979d1acb",
+        "model": "unknown"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

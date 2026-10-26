@@ -1,0 +1,21 @@
+backend/infrahub/core/query/read_plan/peer_filter.py
+  s_6947b4d8b10fbd::t_c127bfdc4751cd 3
+backend/infrahub/core/query/read_plan/requirements.py
+  s_6947b4d8b10fbd::t_c127bfdc4751cd 1,195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a162ee4353eb1712dd0553ad7727a5be4b44a4d5",
+  "prompts": {},
+  "sessions": {
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

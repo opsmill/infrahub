@@ -1,0 +1,19 @@
+dev/bug-pipeline/investigation.md
+  s_f6fdc7e2b10f50::t_0f1cca0a888f75 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "84ff4934dbffdab9bd68b7925ad47f07e6dc3c18",
+  "prompts": {},
+  "sessions": {
+    "s_f6fdc7e2b10f50": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e61c765-3ef9-4bdf-88f6-f089b241628f",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

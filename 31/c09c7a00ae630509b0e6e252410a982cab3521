@@ -1,0 +1,51 @@
+dev/specs/artifact-regeneration-poc/contracts/interfaces.md
+  s_6947b4d8b10fbd::t_c65496ecc42fde 52-55,58,60-61,64-70,73-79
+  s_6947b4d8b10fbd::t_70ac3a58c5a591 80
+dev/specs/artifact-regeneration-poc/data-model.md
+  s_6947b4d8b10fbd::t_c65496ecc42fde 24-26,30-31
+dev/specs/artifact-regeneration-poc/tasks.md
+  s_6947b4d8b10fbd::t_ef5d1cc60ea2bd 65-69
+  s_6947b4d8b10fbd::t_1a58b4a8d86c7a 70
+backend/infrahub/core/query/node.py
+  s_6947b4d8b10fbd::t_20d07b0c8b93ff 35-41
+  s_6947b4d8b10fbd::t_0a3eddccf0d751 1714,1942-1946,1948,1950
+dev/specs/artifact-regeneration-poc/research.md
+  s_6947b4d8b10fbd::t_c65496ecc42fde 92-94,99-101,112-124
+backend/infrahub/core/query/read_plan/requirements.py
+  s_6947b4d8b10fbd::t_39822b898ee96c 57-58,164-165,167-170,173,208,214,258,283,560
+  s_6947b4d8b10fbd::t_1d95d78ea2772e 1-16,18-56,59-163,166,171-172,174-207,209-213,215-231,233-257,259-282,284-518,522-559,561-572
+  s_6947b4d8b10fbd::t_7e2c3752dd305a 17
+  s_6947b4d8b10fbd::t_bfab7128a1ebf1 232,519-521
+backend/infrahub/core/query/relationship.py
+  s_6947b4d8b10fbd::t_57505ed5d39585 10,33,36
+  s_6947b4d8b10fbd::t_abde399931fe7c 834-838,840,845,847-852,854,856,859-861,874-875,919,921-923,932-933,939-942,945,967-971
+  s_6947b4d8b10fbd::t_10c444b40a899d 19,21,34,873,876,917
+  s_6947b4d8b10fbd::t_52ec713e6cbe6e 20
+dev/specs/artifact-regeneration-poc/plan.md
+  s_6947b4d8b10fbd::t_c65496ecc42fde 105
+backend/tests/unit/core/query/read_plan/test_requirements.py
+  s_6947b4d8b10fbd::t_236b5c301c3da6 1-3,5-154,156-164,166-168,170,172-307,309-380,383-389,391-439,441-447,449-528,530-546,548-553,555-570,572-590,592-598,602-608,612-619,621-644,646-662,664-739,743-760,762-779,785-792,794-801,803-808,810-815,818,820-821,832-835,837-847,857-868
+  s_6947b4d8b10fbd::t_2fd3db02932613 4,571,599-601,609-611,740-742,780-784,793,802,809,816-817,819,822-831,836,848-856
+  s_6947b4d8b10fbd::t_ca77088fe05967 155,165,169,171,308,381-382,390,440,448,529,547,554,591,620,645,663,761
+backend/infrahub/core/schema/relationship_schema.py
+  s_6947b4d8b10fbd::t_d0c8ee020c4499 155-156,182,184-185
+  s_6947b4d8b10fbd::t_7e2c3752dd305a 9
+backend/infrahub/core/query/read_plan/peer_filter.py
+  s_6947b4d8b10fbd::t_7e2c3752dd305a 1-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "31c09c7a00ae630509b0e6e252410a982cab3521",
+  "prompts": {},
+  "sessions": {
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}
