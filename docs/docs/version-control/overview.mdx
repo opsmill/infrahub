@@ -13,11 +13,11 @@ In Infrahub, version control is part of the database. Three parts work together:
 
 ## Why infrastructure data needs version control
 
-Your automation reads its inputs from Infrahub. Transformations render device configurations from the data, Generators create objects from it, and external tools query it through the API. One value can be used in many configurations: the IP address of a router interface is also used in the configuration of its BGP peer and in the firewall policies that refer to it. When you change that value, Infrahub renders each of those configurations again with the new value.
+Your automation reads its inputs from Infrahub. Transformations render device configurations from the data, Generators create objects from it, and external tools query it through the API. One value can be used in many configurations: the IP address of a router interface is also used in the configuration of its BGP peer and in the firewall policies that refer to it. When that value changes, each of those configurations has to change with it.
 
 With version control, you make that change on a branch, review every configuration it affects, and merge it only when it is correct. Infrahub keeps the earlier values, so you can find out later what the data was before the change.
 
-Git versions the files that define your automation: schemas, templates, Transformations, Generators, checks, and queries. Infrahub imports these files from your repository. The infrastructure data itself is stored in Infrahub's graph database, as objects, attributes, and the relationships between them. A diff of a file shows which lines changed. If you keep infrastructure data in files in Git, Git cannot check that a changed address is still assigned to an interface, or find the configurations that use it. A diff in Infrahub shows which objects, attribute values, and relationships changed, and Infrahub regenerates every artifact whose query reads the changed data, so the diff includes the configurations that depend on it. Infrahub therefore versions the data in its database and imports the files from Git. See [Git integration](../git-integration/overview.mdx#two-version-control-planes) for how the two connect.
+Git versions the files that define your automation: schemas, templates, Transformations, Generators, checks, and queries. Infrahub imports these files from your repository. The infrastructure data itself is stored in Infrahub's graph database, as objects, attributes, and the relationships between them. A diff of a file shows which lines changed. If you keep infrastructure data in files in Git, Git cannot check that a changed address is still assigned to an interface, or find the configurations that use it. A diff in Infrahub shows which objects, attribute values, and relationships changed. In a Proposed Change, Infrahub also regenerates every artifact whose query reads the changed data, so the review includes the configurations that depend on it. Infrahub therefore versions the data in its database and imports the files from Git. See [Git integration](../git-integration/overview.mdx#two-version-control-planes) for how the two connect.
 
 ## How the parts work together
 
@@ -56,7 +56,7 @@ Reviewers comment on the change and approve or reject it. Infrahub blocks the me
 
 ### Merge the branch
 
-When you merge, Infrahub checks conflicts and constraints again against the current default branch, then applies every change from the branch together. A merge either completes or is rolled back. After the merge, Infrahub regenerates the affected artifacts on the default branch from the default branch's data, and your deployment tools read them from there. Infrahub does not deploy configurations to devices. See [Merge a branch](../branches/merge.mdx).
+When you merge, Infrahub checks conflicts and constraints again against the current default branch, then applies the changes from the branch together. A merge either completes or is rolled back. If the merge is interrupted, the branch stays in a failed state until an administrator recovers it. After the merge, Infrahub regenerates the affected artifacts on the default branch from the default branch's data, and your deployment tools read them from there. Infrahub does not deploy configurations to devices. See [Merge a branch](../branches/merge.mdx).
 
 ### Query earlier versions of the data
 
@@ -72,7 +72,7 @@ Your team renumbers the point-to-point link between the core router `atl1-core1`
 4. A reviewer approves, and you merge the branch during the maintenance window. Infrahub applies both address changes to the default branch together and regenerates the configurations there. Your deployment tool, such as an Ansible playbook, applies them to the devices.
 5. Later, to find out what the link looked like before the change, query the data at a time before the merge. The Activity log shows who merged the change and when. To return to the previous addresses, make the reverse change on a new branch and merge it through a Proposed Change.
 
-If you made the first address change directly on the default branch, it would take effect at once. Infrahub would regenerate the router configurations with addresses in two different prefixes, and no check would run first.
+If you made the first address change directly on the default branch, it would take effect at once. Any automation that reads the address from the default branch would use the new value, while the peer still had the old one, and no check would run first.
 
 ## Example: prepare a large change for a maintenance window
 
@@ -112,7 +112,7 @@ To require a branch for every change, give users permission to change objects on
 | Branch-agnostic data | Infrahub's database | Shared: a change applies to every branch at once |
 | Branch-local data | Infrahub's database | Stays on the branch, and is never merged |
 
-## In this section
+## Related pages
 
 - [Immutable history](../immutable-history/overview.mdx) — query the data at an earlier time, and compare two times to see what changed
 - [Branches](../branches/overview.mdx) — create, rebase, merge, and delete branches, and resolve conflicts
