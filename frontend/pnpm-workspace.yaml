@@ -25,7 +25,7 @@ catalog:
   react-dom: ^19.3.1
   tailwind-merge: ^3.7.0
   tailwindcss: ^4.3.3
-  typescript: ^5.9.3
+  typescript: ^6.0.3
   vite: ^8.3.5
 
 overrides:
@@ -37,3 +37,4 @@ peerDependencyRules:
     graphiql-explorer>graphql: ^17.0.0
     graphiql-explorer>react: ^19.0.0
     graphiql-explorer>react-dom: ^19.0.0
+    openapi-typescript>typescript: ^6.0.0
