@@ -34,6 +34,6 @@ overrides:
 
 peerDependencyRules:
   allowedVersions:
-    graphiql-explorer>graphql: ^16.0.0
+    graphiql-explorer>graphql: ^17.0.0
     graphiql-explorer>react: ^19.0.0
     graphiql-explorer>react-dom: ^19.0.0
