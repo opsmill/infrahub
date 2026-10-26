@@ -114,7 +114,7 @@
     "@vitest/browser-playwright": "^5.0.5",
     "@vitest/coverage-v8": "^5.0.5",
     "babel-plugin-react-compiler": "catalog:",
-    "knip": "~6.27.0",
+    "knip": "~6.43.0",
     "openapi-typescript": "^7.13.0",
     "playwright": "1.60.0",
     "tailwindcss": "catalog:",
