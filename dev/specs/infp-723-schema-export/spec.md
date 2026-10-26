@@ -36,14 +36,12 @@ relationship, so the load likely fails for nodes that use templates (not tested,
 
 **Not decided yet.**
 
-- The names of the export mode parameter, its values and the Infrahub version field. The design document
-  says they are not final (D6, D7). The plan fixes them.
-- What the load does today when a `FULL` export changes a setting Infrahub cannot update, such as `branch` on
-  an attribute or relationship: refuse the change or ignore it. The design document says it is not known
-  (D6). The export writes the setting either way (FR-015a), and the plan establishes the load's behaviour.
-- Whether `order_weight` can be left out and generated again identically, and whether the deprecated
-  NumberPool `start_range` and `end_range` are converted into `ranges`. The design document lists both as
-  checks to make during implementation.
+- The release that ships the endpoint, which `infrahubctl` names when the server is older (FR-022).
+
+Decided during planning ([research.md](research.md)): the names `mode`, `brief`, `full` and
+`infrahub_version` (R7, R8); the load refuses a `FULL` change of a setting Infrahub cannot update (R10);
+processing does not convert the NumberPool `start_range` and `end_range`, so the export writes them as stored
+(R6); `order_weight` is left out only when processing gives the same value back (R5).
 
 ## Clarifications
 
@@ -207,13 +205,15 @@ the `Dcim` schema.
   `max_length` is exported with those settings under `parameters` (D5).
 - **`unique: true` on an attribute.** The export writes `unique: true` and leaves out the matching
   single-attribute uniqueness constraint (design document section 2, unchanged from today).
-- **Instance with no user-defined schema.** Today `infrahubctl schema export` prints "No user-defined schema
-  found to export." and writes no file
-  ([CLI](https://github.com/opsmill/infrahub-sdk-python/blob/infrahub-develop/infrahub_sdk/ctl/schema.py)).
-  The sources do not say what the endpoint returns in this case (see Assumptions).
+- **Instance with no user-defined schema.** The endpoint returns a document with empty `generics` and
+  `nodes`, and `infrahubctl schema export` prints "No user-defined schema found to export." and writes no
+  file, as it does today
+  ([CLI](https://github.com/opsmill/infrahub-sdk-python/blob/infrahub-develop/infrahub_sdk/ctl/schema.py),
+  [contract](contracts/rest-schema-export.md)).
 - **`FULL` export that changes a setting Infrahub cannot update.** The export writes the setting (FR-015a).
-  When the target has a different value, the load behaves as it does today, either refusing the change or
-  ignoring it. Which one is not known (D6); the plan establishes it and the documentation states it.
+  When the target has a different value for a node `branch`, an attribute `branch`, or a relationship
+  `identifier`, `branch` or `direction`, the load is refused, as it is today (research R10). A `BRIEF` export
+  then loads, because it leaves the derived value out. The documentation states this.
 
 ## Requirements *(mandatory)*
 
@@ -251,8 +251,10 @@ the `Dcim` schema.
 
 - **FR-011**: `POST /api/schema/load` and the SDK schema validation that `infrahubctl schema load` runs MUST
   accept the Infrahub version field and ignore it (D7).
-- **FR-012**: Loading an export into an empty instance MUST succeed with no warnings and give a user-defined
-  schema identical to the source instance's, ignoring IDs, in both modes (D1, D12).
+- **FR-012**: Loading an export into an empty instance MUST succeed and give a user-defined schema identical
+  to the source instance's, ignoring IDs, in both modes (D1, D12). The load MUST give no warning other than
+  the deprecation warnings for deprecated fields that the source schema contains, such as `display_labels`,
+  `default_filter` or the NumberPool `start_range` and `end_range` (research R6).
 - **FR-013**: Exporting the schema of that target instance again MUST give a document identical to the
   first export, apart from the Infrahub version field (D12).
 
@@ -323,8 +325,8 @@ the `Dcim` schema.
 ### Measurable Outcomes
 
 - **SC-001**: For every schema in `models/base/`, `models/examples/` and the per-rule test schemas, in both
-  modes, loading the export into an empty instance succeeds with zero warnings and gives a user-defined
-  schema identical to the source, ignoring IDs.
+  modes, loading the export into an empty instance succeeds with no warning other than the deprecation
+  warnings of FR-012 and gives a user-defined schema identical to the source, ignoring IDs.
 - **SC-002**: For every schema in SC-001, a second export from the target instance is identical to the first
   apart from the Infrahub version field.
 - **SC-003**: Adding a field to any of the five schema models named in FR-023 without an export decision
@@ -344,11 +346,8 @@ the `Dcim` schema.
 - **Endpoint form.** The export is a REST endpoint, `GET /api/schema/export`, that returns JSON (D11). It
   changes `schema/openapi.json` and the generated frontend REST types. `infrahubctl` converts the JSON to
   YAML files.
-- **Empty export.** When the selected branch and namespaces contain no user-defined schema, the endpoint
-  returns a document with no nodes and no generics, and `infrahubctl schema export` keeps printing its
-  current message. The sources do not state this; it is an assumption for the plan to confirm.
-- **Unknown branch.** An export for a branch that does not exist fails as `GET /api/schema` does for that
-  branch. The sources do not state this.
+- **Unknown branch.** An export for a branch that does not exist returns HTTP 400, as `GET /api/schema`
+  does ([contract](contracts/rest-schema-export.md)).
 - **Out of scope.** Downloading the export from the UI (clarification of 2026-10-26); comparing schemas,
   tracked in [INFP-751](https://opsmill.atlassian.net/browse/INFP-751); rejecting extensions to kinds in
   restricted namespaces, tracked in [opsmill/infrahub#10418](https://github.com/opsmill/infrahub/issues/10418);
