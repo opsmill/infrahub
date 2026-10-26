@@ -107,7 +107,7 @@ describe("NumberPoolEditForm", () => {
     });
   });
 
-  test("shows an open bound as empty and sends null for an end the user clears", async () => {
+  test("lets the user remove a limit from a range while editing the pool", async () => {
     // GIVEN
     vi.mocked(useGetNumberPool).mockReturnValue({
       isPending: false,

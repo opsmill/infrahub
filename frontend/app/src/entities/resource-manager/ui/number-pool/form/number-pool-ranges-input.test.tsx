@@ -179,7 +179,7 @@ describe("validateRangeBound", () => {
     expect(result).toBe(true);
   });
 
-  test("accepts an empty bound, which leaves that side of the range open", () => {
+  test("allows a range with no start or no end", () => {
     // WHEN
     const result = validateRangeBound(null);
 
@@ -254,7 +254,7 @@ describe("validateRangeOverlap", () => {
     expect(result).toBe("Overlaps 1 – 10");
   });
 
-  test("accepts an open end that starts after the other ranges", () => {
+  test("allows a range without an end above the other ranges", () => {
     // WHEN
     const result = validateRangeOverlap([row(null, 99), row(100, null)], 0);
 

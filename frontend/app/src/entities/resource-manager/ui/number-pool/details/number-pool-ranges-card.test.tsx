@@ -66,9 +66,9 @@ describe("NumberPoolRangesCard", () => {
     ]);
   });
 
-  it("names a range with an open end by the label the server wrote", async () => {
+  it("labels a range without an end the way the server does", async () => {
     // GIVEN
-    const openRange = generateNumberPoolRange({
+    const rangeWithoutEnd = generateNumberPoolRange({
       display_label: "100 - MAX",
       start: { value: 100 },
       end: { value: null },
@@ -77,7 +77,7 @@ describe("NumberPoolRangesCard", () => {
 
     // WHEN
     const component = await renderCard({
-      utilization: generateNumberPoolUtilization({ ranges: [openRange] }),
+      utilization: generateNumberPoolUtilization({ ranges: [rangeWithoutEnd] }),
     });
 
     // THEN

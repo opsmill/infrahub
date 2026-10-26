@@ -120,7 +120,7 @@ describe("mapToNumberPoolData", () => {
     ]);
   });
 
-  it("keeps a range whose start or end is open as null", () => {
+  it("keeps a range with an empty start or end when the pool is edited", () => {
     // GIVEN
     const node = buildNode({
       ranges: {

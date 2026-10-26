@@ -132,7 +132,7 @@ describe("NumberPoolDivisionsList", () => {
 
   it("sorts allocation scopes without a size by the count used", async () => {
     // GIVEN
-    const unboundedDivision = (label: string, used: number) =>
+    const divisionWithoutSize = (label: string, used: number) =>
       generateNumberPoolDivision({
         label,
         entries: [generateNumberPoolDivisionEntry({ value: `${label}-id`, label })],
@@ -141,9 +141,9 @@ describe("NumberPoolDivisionsList", () => {
     mockDivisions({
       fields: ["device"],
       divisions: [
-        unboundedDivision("leaf10", 5),
-        unboundedDivision("Leaf2", 3),
-        unboundedDivision("spine1", 1),
+        divisionWithoutSize("leaf10", 5),
+        divisionWithoutSize("Leaf2", 3),
+        divisionWithoutSize("spine1", 1),
       ],
     });
     const component = await renderCard();

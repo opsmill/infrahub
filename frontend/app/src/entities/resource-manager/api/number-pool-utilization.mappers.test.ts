@@ -50,7 +50,7 @@ describe("mapToNumberPoolUtilization", () => {
 
   it("keeps a null end, size and utilization for a range without an end", () => {
     // GIVEN
-    const unbounded = {
+    const figuresWithoutSize = {
       size: null,
       used: 2,
       used_default_branch: 2,
@@ -58,7 +58,7 @@ describe("mapToNumberPoolUtilization", () => {
       utilization: null,
     };
     const node = {
-      figures: unbounded,
+      figures: figuresWithoutSize,
       ranges: [
         {
           id: "range-1",
@@ -66,7 +66,7 @@ describe("mapToNumberPoolUtilization", () => {
           start: 1,
           end: null,
           weight: 0,
-          figures: unbounded,
+          figures: figuresWithoutSize,
         },
       ],
     } as NumberPoolUtilizationNode;
