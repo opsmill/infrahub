@@ -48,29 +48,7 @@ describe("sortRangesByFillOrder", () => {
     expect(sorted.map(({ id }) => id)).toEqual(["earlier", "later"]);
   });
 
-  it("lists the lowest end first when weight and start are equal", () => {
-    // GIVEN
-    const wide = generateNumberPoolRange({
-      id: "wide",
-      start: { value: 1 },
-      end: { value: 100 },
-      allocation_weight: { value: 5 },
-    });
-    const narrow = generateNumberPoolRange({
-      id: "narrow",
-      start: { value: 1 },
-      end: { value: 50 },
-      allocation_weight: { value: 5 },
-    });
-
-    // WHEN
-    const sorted = sortRangesByFillOrder([wide, narrow]);
-
-    // THEN
-    expect(sorted.map(({ id }) => id)).toEqual(["narrow", "wide"]);
-  });
-
-  it("lists a range without an end after one with an end when weight and start are equal", () => {
+  it("keeps the server's order for ranges with the same weight and start", () => {
     // GIVEN
     const withoutEnd = generateNumberPoolRange({
       id: "without-end",
@@ -89,7 +67,7 @@ describe("sortRangesByFillOrder", () => {
     const sorted = sortRangesByFillOrder([withoutEnd, withEnd]);
 
     // THEN
-    expect(sorted.map(({ id }) => id)).toEqual(["with-end", "without-end"]);
+    expect(sorted.map(({ id }) => id)).toEqual(["without-end", "with-end"]);
   });
 
   it("leaves the given list in its order", () => {

@@ -58,11 +58,10 @@ function UtilizationFiguresRow({ label, value, dotClassName }: UtilizationFigure
 
 interface UtilizationFiguresTooltipProps {
   usage: NumberPoolUsage;
-  className: string;
   children: React.ReactNode;
 }
 
-function UtilizationFiguresTooltip({ usage, className, children }: UtilizationFiguresTooltipProps) {
+function UtilizationFiguresTooltip({ usage, children }: UtilizationFiguresTooltipProps) {
   const { size, used, usedDefaultBranch, usedBranches } = usage;
   // the dots match the bar segments, which a usage without a size does not draw
   const hasBarSegments = size !== null;
@@ -90,12 +89,7 @@ function UtilizationFiguresTooltip({ usage, className, children }: UtilizationFi
         </Col>
       }
     >
-      <span
-        className={classNames(
-          "shrink-0 whitespace-nowrap text-right font-medium text-foreground text-xs tabular-nums",
-          className
-        )}
-      >
+      <span className="min-w-11 shrink-0 whitespace-nowrap text-right font-medium text-foreground text-xs tabular-nums">
         {children}
       </span>
     </Tooltip>
@@ -114,7 +108,7 @@ function UsageBarWithoutSize({ usage }: UsageBarWithoutSizeProps) {
         aria-label="No upper limit"
         className="h-1.5 w-full min-w-6 rounded-full bg-accent-strong/10 bg-stripes-accent-strong/15"
       />
-      <UtilizationFiguresTooltip usage={usage} className="min-w-11">
+      <UtilizationFiguresTooltip usage={usage}>
         {formatNumberDisplay(usage.used)}
       </UtilizationFiguresTooltip>
     </Row>
@@ -157,7 +151,7 @@ export function NumberPoolUsageBar({ usage }: NumberPoolUsageBarProps) {
           },
         ]}
       />
-      <UtilizationFiguresTooltip usage={usage} className="w-11">
+      <UtilizationFiguresTooltip usage={usage}>
         {formatUsagePercent(utilization)}
       </UtilizationFiguresTooltip>
     </Row>
