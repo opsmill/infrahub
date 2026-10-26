@@ -351,6 +351,7 @@ async def resolve_number_pool_allocation(
         db=db,
         pool=pool,
         ranges=space.as_query_ranges(),
+        include_inherited_branches=False,
         offset=offset,
         limit=limit,
         branch=graphql_context.branch,
