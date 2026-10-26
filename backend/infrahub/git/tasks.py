@@ -1621,7 +1621,11 @@ async def _check_due_repository(
         return await check_repository_refs(model=model, checker=checker, run_id=run_id)
 
 
-@flow(name="git-read-only-repositories-check-refs", flow_run_name="Check remote refs of read only git repositories")
+@flow(
+    name="git-read-only-repositories-check-refs",
+    flow_run_name="Check remote refs of read only git repositories",
+    persist_result=False,
+)
 async def check_read_only_repositories_refs() -> RefsCheckCycleSummary:
     log = get_run_logger()
 
