@@ -97,12 +97,10 @@ class NodeProfilesRefresher:
         log = get_run_logger()
         try:
             return await self._apply_in_transaction(db=db, branch=branch, node_ids=node_ids, user_id=user_id)
-        except (DatabaseError, QueryTimeoutError):
-            raise
         # The transaction rolled back, so the chunk can be applied again without the nodes that fail.
         except Exception as exc:
-            # The transaction already retried this error, and one node at a time cannot clear it.
-            if is_retriable_db_error(exc):
+            # One node at a time cannot clear these, and the transaction already retried the retriable ones.
+            if isinstance(exc, (DatabaseError, QueryTimeoutError)) or is_retriable_db_error(exc):
                 raise
             if len(node_ids) == 1:
                 log.warning(f"Skipping the profile refresh of {node_ids[0]}: {exc}", exc_info=True)
@@ -130,6 +128,8 @@ class NodeProfilesRefresher:
             nodes = await NodeManager.get_many(
                 db=dbt, ids=node_ids, branch=branch, include_metadata=MetadataOptions.SOURCE
             )
+            # Only the peer ids of this relationship are read, so a prefetch that skips the profile source is safe.
+            await NodeManager.prefetch_relationships(db=dbt, nodes=nodes.values(), names={"profiles"}, branch=branch)
             reader = ProfileDataReader(db=dbt, branch=branch)
             # One read of every field for each set of profiles, so nodes that take different fields share it.
             for node in nodes.values():
