@@ -2,7 +2,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import React from "react";
 import { toast } from "react-toastify";
 
-import { BranchStatus } from "@/shared/api/graphql/generated/types";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
@@ -26,21 +25,21 @@ import {
 } from "@/entities/repository/ui/queries/repository.query-keys";
 import {
   type ActionAccess,
+  type CommitLogActionKind,
   type CommitLogStatusContext,
   getRebaseAccess,
   getRepositoryActionAccess,
+  isErrorWithoutClientToast,
 } from "@/entities/repository/ui/repository-commits.view";
 import { BRANCH_REBASE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/domain/model/task";
 import { isTaskFinishedQueryOptions } from "@/entities/tasks/ui/queries/is-task-finished.query";
 import { toastTaskStarted } from "@/entities/tasks/ui/toast-task-started";
 
-export type RepositoryCommitsActionKind = "import" | "rebase" | "check";
-
 export interface RepositoryCommitsActions {
   running: CommitLogStatusContext["running"];
   repositoryAccess: ActionAccess;
   rebaseAccess: ActionAccess;
-  submitting: RepositoryCommitsActionKind | null;
+  submitting: CommitLogActionKind | null;
   isCheckRunning: boolean;
   importLatestCommit: () => void;
   rebaseBranch: (options: { onSettled: () => void }) => void;
@@ -117,21 +116,24 @@ export function useRepositoryCommitsActions({
 
   useRefreshCommitLogWhenTaskEnds({ isRunning: running !== null, repositoryId, branchName });
 
+  // A failed lookup leaves the decision to the server, which checks the permission again.
+  const canEditDefaultBranch = editDefaultBranch.isError ? true : editDefaultBranch.data;
+  const canRebase = rebasePermission.isError ? true : rebasePermission.data;
+
   return {
     running,
     repositoryAccess: getRepositoryActionAccess({
-      updatePermission,
       isAuthenticated,
+      branchStatus: currentBranch.status,
+      updatePermission,
       isDefaultBranch,
-      // A failed lookup leaves the decision to the server, which checks the permission again.
-      canEditDefaultBranch: editDefaultBranch.isError ? true : editDefaultBranch.data,
+      canEditDefaultBranch,
     }),
     rebaseAccess: getRebaseAccess({
       isAuthenticated,
       isDefaultBranch,
-      isMerged: currentBranch.status === BranchStatus.MERGED,
-      // A failed lookup leaves the decision to the server, which checks the permission again.
-      canRebase: rebasePermission.isError ? true : rebasePermission.data,
+      branchStatus: currentBranch.status,
+      canRebase,
       isRunningKnown: !ongoingRebases.isPending,
     }),
     submitting: importMutation.isPending
@@ -142,13 +144,18 @@ export function useRepositoryCommitsActions({
           ? "check"
           : null,
     isCheckRunning: remoteCheck.isOngoing,
-    importLatestCommit: () => importMutation.mutate({ repositoryId }),
+    importLatestCommit: () =>
+      importMutation.mutate(
+        { repositoryId },
+        { onError: (error) => toastErrorWithoutClientToast("importing the latest commit", error) }
+      ),
     rebaseBranch: ({ onSettled }) =>
       rebaseMutation.mutate(
         { branchName, waitUntilCompletion: false },
         {
           onSuccess: (result) =>
             toastTaskStarted("Branch rebase started.", result.relatedTaskId ?? undefined),
+          onError: (error) => toastErrorWithoutClientToast("rebasing the branch", error),
           onSettled,
         }
       ),
@@ -167,6 +174,11 @@ export function useRepositoryCommitsActions({
         }
       ),
   };
+}
+
+function toastErrorWithoutClientToast(doing: string, error: Error) {
+  if (!isErrorWithoutClientToast(error)) return;
+  toast(<Alert type={ALERT_TYPES.ERROR} message={`Error ${doing}: ${error.message}`} />);
 }
 
 // The poll sets an infinite stale time once the task ends or the poll gives up, so only a stale result can still be running.

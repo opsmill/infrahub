@@ -1,23 +1,14 @@
 import { Button, Tooltip } from "@infrahub/ui";
-import { useIsFetching, useQueryClient } from "@tanstack/react-query";
-import {
-  ArrowDownToLineIcon,
-  GitBranchIcon,
-  type LucideIcon,
-  RadarIcon,
-  RefreshCwIcon,
-} from "lucide-react";
+import { ArrowDownToLineIcon, GitBranchIcon, type LucideIcon, RadarIcon } from "lucide-react";
 import React from "react";
 
+import { RefreshButton } from "@/shared/components/buttons/refresh-button";
 import { Col, Row } from "@/shared/components/container";
 import { ModalConfirm } from "@/shared/components/modals/modal-confirm";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { useDefaultBranch } from "@/entities/branches/ui/hooks/use-default-branch";
-import {
-  type RepositoryCommitLog,
-  RepositoryGitCondition,
-} from "@/entities/repository/domain/model/repository";
+import type { RepositoryCommitLog } from "@/entities/repository/domain/model/repository";
 import type { RepositoryCommitsActions } from "@/entities/repository/ui/hooks/use-repository-commits-actions";
 import { repositoriesQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 import {
@@ -25,6 +16,8 @@ import {
   type CommitLogActionKind,
   getDeniedReason,
   getDeniedReasons,
+  getReasonId,
+  mayKeepOwnCommit,
   type RepositoryCommitsRepository,
 } from "@/entities/repository/ui/repository-commits.view";
 
@@ -32,19 +25,18 @@ const ACTION_LABEL: Record<CommitLogActionKind, string> = {
   import: "Import latest commit",
   rebase: "Rebase branch",
   check: "Check remote now",
-  refresh: "Refresh",
 };
 
 const ACTION_ICON: Record<CommitLogActionKind, LucideIcon> = {
   import: ArrowDownToLineIcon,
   rebase: GitBranchIcon,
   check: RadarIcon,
-  refresh: RefreshCwIcon,
 };
 
 export interface RepositoryCommitsStatusActionsProps {
   primary: CommitLogAction | null;
   secondary: CommitLogAction | null;
+  canRefresh: boolean;
   condition: RepositoryCommitLog["condition"] | null;
   repository: RepositoryCommitsRepository;
   actions: RepositoryCommitsActions;
@@ -53,23 +45,14 @@ export interface RepositoryCommitsStatusActionsProps {
 export function RepositoryCommitsStatusActions({
   primary,
   secondary,
+  canRefresh,
   condition,
   repository,
   actions,
 }: RepositoryCommitsStatusActionsProps) {
-  const queryClient = useQueryClient();
-  const { currentBranch } = useCurrentBranch();
   const [isConfirmingRebase, setIsConfirmingRebase] = React.useState(false);
   const reasonIdPrefix = React.useId();
-  const commitLogKey = repositoriesQueryKeys.repository({
-    repositoryId: repository.id,
-    branchName: currentBranch.name,
-  });
   const deniedReasons = getDeniedReasons([secondary, primary]);
-  const getReasonId = (action: CommitLogAction) => {
-    const reason = getDeniedReason(action);
-    return reason ? `${reasonIdPrefix}-${deniedReasons.indexOf(reason)}` : undefined;
-  };
 
   const onPress = ({ kind }: CommitLogAction) => {
     switch (kind) {
@@ -79,22 +62,20 @@ export function RepositoryCommitsStatusActions({
         return setIsConfirmingRebase(true);
       case "check":
         return actions.checkRemote();
-      case "refresh":
-        return queryClient.invalidateQueries({ queryKey: commitLogKey });
     }
   };
 
   return (
     <>
       <Col className="shrink-0 items-start gap-1.5">
-        {(secondary || primary) && (
+        {(canRefresh || secondary || primary) && (
           <Row className="flex-wrap gap-2">
+            {canRefresh && <CommitLogRefreshButton repositoryId={repository.id} />}
             {secondary && (
               <CommitLogActionButton
                 action={secondary}
                 actions={actions}
-                commitLogKey={commitLogKey}
-                describedBy={getReasonId(secondary)}
+                describedBy={getReasonId(secondary, deniedReasons, reasonIdPrefix)}
                 onPress={() => onPress(secondary)}
               />
             )}
@@ -102,8 +83,7 @@ export function RepositoryCommitsStatusActions({
               <CommitLogActionButton
                 action={primary}
                 actions={actions}
-                commitLogKey={commitLogKey}
-                describedBy={getReasonId(primary)}
+                describedBy={getReasonId(primary, deniedReasons, reasonIdPrefix)}
                 onPress={() => onPress(primary)}
                 isPrimary
               />
@@ -132,10 +112,22 @@ export function RepositoryCommitsStatusActions({
   );
 }
 
+export function CommitLogRefreshButton({ repositoryId }: { repositoryId: string }) {
+  const { currentBranch } = useCurrentBranch();
+
+  return (
+    <RefreshButton
+      className="rounded-md border-border-strong"
+      queryKeys={[
+        repositoriesQueryKeys.repository({ repositoryId, branchName: currentBranch.name }),
+      ]}
+    />
+  );
+}
+
 interface CommitLogActionButtonProps {
   action: CommitLogAction;
   actions: Pick<RepositoryCommitsActions, "submitting" | "isCheckRunning">;
-  commitLogKey: readonly unknown[];
   describedBy?: string;
   onPress: () => void;
   isPrimary?: boolean;
@@ -144,12 +136,10 @@ interface CommitLogActionButtonProps {
 export function CommitLogActionButton({
   action,
   actions,
-  commitLogKey,
   describedBy,
   onPress,
   isPrimary = false,
 }: CommitLogActionButtonProps) {
-  const isRefreshing = useIsFetching({ queryKey: commitLogKey }) > 0;
   const Icon = ACTION_ICON[action.kind];
   const isCheckRunning = action.kind === "check" && actions.isCheckRunning;
   const deniedReason = getDeniedReason(action);
@@ -164,7 +154,7 @@ export function CommitLogActionButton({
           !deniedReason && (action.access.status === "pending" || isCheckRunning || isSubmitting)
         }
         isDisabledAndFocusable={!!deniedReason}
-        isPending={isSubmitting || (action.kind === "refresh" && isRefreshing)}
+        isPending={isSubmitting}
         aria-describedby={describedBy}
         onPress={onPress}
       >
@@ -174,11 +164,6 @@ export function CommitLogActionButton({
     </Tooltip>
   );
 }
-
-const CONDITIONS_WITHOUT_CURRENT_COMMIT: RepositoryGitCondition[] = [
-  RepositoryGitCondition.REWRITTEN,
-  RepositoryGitCondition.ORPHANED,
-];
 
 interface RebaseConfirmProps {
   condition: RepositoryCommitLog["condition"] | null;
@@ -199,8 +184,6 @@ function RebaseConfirm({
 }: RebaseConfirmProps) {
   const branchName = useCurrentBranch().currentBranch.name;
   const defaultBranchName = useDefaultBranch()?.name ?? null;
-  const mayKeepOwnCommit =
-    condition !== null && CONDITIONS_WITHOUT_CURRENT_COMMIT.includes(condition);
 
   return (
     <ModalConfirm
@@ -216,7 +199,7 @@ function RebaseConfirm({
           on {defaultBranchName ? <Ref>{defaultBranchName}</Ref> : "the default branch"}. Every
           change on this branch is rebased: all its data and all its repositories, not only{" "}
           {repositoryName}.
-          {mayKeepOwnCommit &&
+          {mayKeepOwnCommit(condition) &&
             ` If the branch has a commit of its own in ${repositoryName}, the rebase does not replace it.`}
         </>
       }

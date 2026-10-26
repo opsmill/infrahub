@@ -1,7 +1,10 @@
+import { CombinedError } from "@urql/core";
+import { GraphQLError } from "graphql";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { cleanup } from "vitest-browser-react";
 
-import type { Branch } from "@/shared/api/graphql/generated/types";
+import { ERROR_CODES } from "@/shared/api/errors";
+import { type Branch, BranchStatus } from "@/shared/api/graphql/generated/types";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { getBranchActionState } from "@/entities/branches/domain/use-cases/get-branch-action-state";
@@ -54,6 +57,12 @@ const behindLog: RepositoryCommitLog = {
   commits: [],
 };
 
+const graphQLError = (message: string, code?: string) =>
+  new GraphQLError(message, { extensions: code ? { code } : {} });
+
+const thrownByClient = (error: GraphQLError) =>
+  new Error(error.message, { cause: new CombinedError({ graphQLErrors: [error] }) });
+
 const renderHeader = ({
   kind = REPOSITORY_KIND,
   rebaseOnly = true,
@@ -72,6 +81,7 @@ const renderHeader = ({
         name: "infrahub-demo",
         isReadOnly: kind === READONLY_REPOSITORY_KIND,
         isStaging: false,
+        isActive: true,
         updatePermission,
       }}
     />
@@ -104,9 +114,28 @@ describe("RepositoryCommitsHeader", () => {
   });
 
   afterEach(async () => {
-    // Unmounted first, or a background poll re-renders the tab against reset mocks.
+    // Unmounted first, or a background poll re-renders the header against reset mocks.
     await cleanup();
+    vi.useRealTimers();
     vi.resetAllMocks();
+  });
+
+  test("stops showing a rebase started elsewhere once it ends", async () => {
+    // GIVEN
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"], shouldAdvanceTime: true });
+    vi.mocked(getBranchActionState)
+      .mockResolvedValueOnce({ ongoingTaskCount: 1 })
+      .mockResolvedValue({ ongoingTaskCount: 0 });
+    const component = await renderHeader();
+    await expect.element(component.getByRole("heading", { name: "Rebase running" })).toBeVisible();
+
+    // WHEN
+    await vi.advanceTimersByTimeAsync(5000);
+
+    // THEN
+    await expect
+      .element(component.getByRole("heading", { name: "Behind main by 2 commits" }))
+      .toBeVisible();
   });
 
   test("asks to confirm the rebase of the whole branch onto the default branch", async () => {
@@ -242,9 +271,6 @@ describe("RepositoryCommitsHeader", () => {
     await expect
       .element(component.getByRole("button", { name: "Import latest commit" }))
       .toHaveAccessibleDescription("Sign in to change this repository.");
-    expect(
-      component.getByText("You need permission to edit the default branch.").query()
-    ).toBeNull();
     await expect
       .element(component.getByRole("button", { name: "Import latest commit" }))
       .toBeDisabled();
@@ -263,6 +289,81 @@ describe("RepositoryCommitsHeader", () => {
       repositoryId: "repo-1",
       branchName: BRANCH_NAME,
     });
+  });
+
+  test("asks to rebase a branch that needs one before importing", async () => {
+    // GIVEN
+    vi.mocked(useCurrentBranch).mockReturnValue({
+      currentBranch: generateBranch({ name: BRANCH_NAME, status: BranchStatus.NEED_REBASE }),
+      setCurrentBranch: () => {},
+    });
+
+    // WHEN
+    const component = await renderHeader({ kind: READONLY_REPOSITORY_KIND, rebaseOnly: false });
+
+    // THEN
+    await expect
+      .element(component.getByRole("button", { name: "Import latest commit" }))
+      .toHaveAccessibleDescription("Rebase this branch before changing its repositories.");
+    await expect
+      .element(component.getByRole("button", { name: "Check remote now" }))
+      .toBeDisabled();
+  });
+
+  test("shows its own toast when the import is refused for a missing permission", async () => {
+    // GIVEN
+    vi.mocked(reimportLastCommit).mockRejectedValue(
+      thrownByClient(graphQLError("Missing import permission.", ERROR_CODES.PERMISSION_DENIED))
+    );
+    const component = await renderHeader({ kind: READONLY_REPOSITORY_KIND, rebaseOnly: false });
+
+    // WHEN
+    await component.getByRole("button", { name: "Import latest commit" }).click();
+
+    // THEN
+    await expect
+      .element(component.getByText("Error importing the latest commit: Missing import permission."))
+      .toBeVisible();
+    expect(
+      component.getByText("Error importing the latest commit: Missing import permission.").all()
+    ).toHaveLength(1);
+  });
+
+  test("leaves the toast of any other import error to the client", async () => {
+    // GIVEN
+    vi.mocked(reimportLastCommit)
+      .mockRejectedValueOnce(thrownByClient(graphQLError("Database unavailable.")))
+      .mockRejectedValueOnce(
+        thrownByClient(graphQLError("Missing import permission.", ERROR_CODES.PERMISSION_DENIED))
+      );
+    const component = await renderHeader({ kind: READONLY_REPOSITORY_KIND, rebaseOnly: false });
+    const importButton = component.getByRole("button", { name: "Import latest commit" });
+    await importButton.click();
+    await expect.element(importButton).toBeEnabled();
+
+    // WHEN
+    await importButton.click();
+
+    // THEN
+    await expect
+      .element(component.getByText(/Error importing the latest commit: Missing/))
+      .toBeVisible();
+    expect(component.getByText(/Database unavailable/).query()).toBeNull();
+  });
+
+  test("shows its own toast when the rebase cannot reach the server", async () => {
+    // GIVEN
+    vi.mocked(rebaseBranch).mockRejectedValue(new TypeError("Failed to fetch"));
+    const component = await renderHeader();
+    await component.getByRole("button", { name: "Rebase branch" }).click();
+
+    // WHEN
+    await component.getByRole("dialog").getByRole("button", { name: "Rebase branch" }).click();
+
+    // THEN
+    await expect
+      .element(component.getByText("Error rebasing the branch: Failed to fetch"))
+      .toBeVisible();
   });
 
   test("shows the tracked ref before the remote was ever checked", async () => {

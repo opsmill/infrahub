@@ -1,3 +1,6 @@
+import { ERROR_CODES } from "@/shared/api/errors";
+import { hasOnlyThrownCatalogueCode } from "@/shared/api/graphql/error-handling";
+import { BranchStatus } from "@/shared/api/graphql/generated/types";
 import type { BadgeProps } from "@/shared/components/ui/badge";
 import { warnUnexpectedType } from "@/shared/utils/common";
 import { formatNumberDisplay } from "@/shared/utils/number";
@@ -98,6 +101,7 @@ export interface RepositoryCommitsRepository {
   name: string;
   isReadOnly: boolean;
   isStaging: boolean;
+  isActive: boolean;
   updatePermission: PermissionDecision;
 }
 
@@ -139,7 +143,7 @@ export interface CommitLogEmptyState {
 
 export const NO_WORKER_ANSWER: CommitLogEmptyState = {
   title: "Commit log not available yet",
-  message: "No worker has answered yet. Refresh to check again.",
+  message: "No worker has answered yet. Use the refresh button to check again.",
 };
 
 export function getEmptyState(
@@ -155,7 +159,7 @@ export function getEmptyState(
   if (!isRetrying && reason === RepositoryGitUnavailableReason.NOT_CLONED) {
     return {
       title: "Commit log not available yet",
-      message: `${message || "No worker holds a copy of this repository yet."} Refresh to check again.`,
+      message: `${message || "No worker holds a copy of this repository yet."} Use the refresh button to check again.`,
     };
   }
   if (!isRetrying) return NO_WORKER_ANSWER;
@@ -234,6 +238,11 @@ const getRefName = (gitRef: string | null) => gitRef ?? "the default branch";
 
 export const REPOSITORY_SIGN_IN_REQUIRED = "Sign in to change this repository.";
 export const DEFAULT_BRANCH_EDIT_DENIED = "You need permission to edit the default branch.";
+export const BRANCH_NEEDS_REBASE = "Rebase this branch before changing its repositories.";
+export const BRANCH_MERGED = "This branch is merged, so it can no longer be changed.";
+export const BRANCH_MERGING = "This branch is being merged, so it cannot be changed now.";
+export const BRANCH_MERGE_FAILED =
+  "The merge of this branch failed. Recover the merge before changing the branch.";
 
 /** Whether the user may run an action now; pending while what decides it is still loading. */
 export type ActionAccess =
@@ -244,19 +253,42 @@ export type ActionAccess =
 const ALLOWED: ActionAccess = { status: "allowed" };
 const PENDING: ActionAccess = { status: "pending" };
 
+/** A rebase is the one change the server still accepts on a branch that needs a rebase. */
+export function getBranchStatusDeniedReason(
+  branchStatus: BranchStatus,
+  change: "repository" | "rebase"
+): string | null {
+  switch (branchStatus) {
+    case BranchStatus.MERGED:
+      return BRANCH_MERGED;
+    case BranchStatus.MERGING:
+      return BRANCH_MERGING;
+    case BranchStatus.MERGE_FAILED:
+      return BRANCH_MERGE_FAILED;
+    case BranchStatus.NEED_REBASE:
+      return change === "repository" ? BRANCH_NEEDS_REBASE : null;
+    default:
+      return null;
+  }
+}
+
 export function getRepositoryActionAccess({
   isAuthenticated,
+  branchStatus,
   updatePermission,
   isDefaultBranch,
   canEditDefaultBranch,
 }: {
   isAuthenticated: boolean;
+  branchStatus: BranchStatus;
   updatePermission: PermissionDecision;
   isDefaultBranch: boolean;
   /** Undefined while the permission is loading. */
   canEditDefaultBranch: boolean | undefined;
 }): ActionAccess {
   if (!isAuthenticated) return { status: "denied", reason: REPOSITORY_SIGN_IN_REQUIRED };
+  const branchReason = getBranchStatusDeniedReason(branchStatus, "repository");
+  if (branchReason) return { status: "denied", reason: branchReason };
   if (!updatePermission.isAllowed) return { status: "denied", reason: updatePermission.message };
   if (isDefaultBranch && canEditDefaultBranch === false) {
     return { status: "denied", reason: DEFAULT_BRANCH_EDIT_DENIED };
@@ -267,19 +299,18 @@ export function getRepositoryActionAccess({
 
 export const REBASE_SIGN_IN_REQUIRED = "Sign in to rebase the branch.";
 export const REBASE_DEFAULT_BRANCH = "The default branch cannot be rebased.";
-export const REBASE_MERGED_BRANCH = "A merged branch cannot be rebased.";
 export const REBASE_PERMISSION_DENIED = "You need permission to rebase branches.";
 
 export function getRebaseAccess({
   isAuthenticated,
   isDefaultBranch,
-  isMerged,
+  branchStatus,
   canRebase,
   isRunningKnown,
 }: {
   isAuthenticated: boolean;
   isDefaultBranch: boolean;
-  isMerged: boolean;
+  branchStatus: BranchStatus;
   /** Undefined while the permission is loading. */
   canRebase: boolean | undefined;
   /** False until the lookup of a running rebase answers, so a second rebase is not offered meanwhile. */
@@ -287,7 +318,8 @@ export function getRebaseAccess({
 }): ActionAccess {
   if (!isAuthenticated) return { status: "denied", reason: REBASE_SIGN_IN_REQUIRED };
   if (isDefaultBranch) return { status: "denied", reason: REBASE_DEFAULT_BRANCH };
-  if (isMerged) return { status: "denied", reason: REBASE_MERGED_BRANCH };
+  const branchReason = getBranchStatusDeniedReason(branchStatus, "rebase");
+  if (branchReason) return { status: "denied", reason: branchReason };
   if (canRebase === false) return { status: "denied", reason: REBASE_PERMISSION_DENIED };
   if (canRebase === undefined || !isRunningKnown) return PENDING;
   return ALLOWED;
@@ -303,9 +335,8 @@ export type CommitLogStatusIcon =
   | "unknown"
   | "running";
 
-export type CommitLogActionKind = "import" | "rebase" | "check" | "refresh";
+export type CommitLogActionKind = "import" | "rebase" | "check";
 
-/** A ref name or a commit hash is rendered as code. */
 export type CommitLogTextPart = string | { code: string };
 
 export interface CommitLogAction {
@@ -317,12 +348,37 @@ export function getDeniedReason(action: CommitLogAction | null): string | null {
   return action?.access.status === "denied" ? action.access.reason : null;
 }
 
-/** The distinct reasons the given actions are denied, in order. */
 export function getDeniedReasons(actions: (CommitLogAction | null)[]): string[] {
   const reasons = actions
     .map(getDeniedReason)
     .filter((reason): reason is string => reason !== null);
   return [...new Set(reasons)];
+}
+
+export function getReasonId(
+  action: CommitLogAction,
+  deniedReasons: string[],
+  idPrefix: string
+): string | undefined {
+  const reason = getDeniedReason(action);
+  return reason ? `${idPrefix}-${deniedReasons.indexOf(reason)}` : undefined;
+}
+
+const CONDITIONS_WITHOUT_CURRENT_COMMIT: RepositoryGitCondition[] = [
+  RepositoryGitCondition.REWRITTEN,
+  RepositoryGitCondition.ORPHANED,
+];
+
+/** Whether the branch may have a commit of its own in the repository, which a rebase does not replace. */
+export function mayKeepOwnCommit(condition: RepositoryCommitLog["condition"] | null): boolean {
+  return condition !== null && CONDITIONS_WITHOUT_CURRENT_COMMIT.includes(condition);
+}
+
+/** The client already shows a toast for any other GraphQL error. */
+export function isErrorWithoutClientToast(error: unknown): boolean {
+  if (hasOnlyThrownCatalogueCode(error, ERROR_CODES.PERMISSION_DENIED)) return true;
+  const cause = error instanceof Error ? error.cause : undefined;
+  return !(cause instanceof Error && "graphQLErrors" in cause);
 }
 
 export interface CommitLogStatus {
@@ -332,6 +388,7 @@ export interface CommitLogStatus {
   detail: CommitLogTextPart[];
   primary: CommitLogAction | null;
   secondary: CommitLogAction | null;
+  canRefresh: boolean;
 }
 
 export interface CommitLogStatusContext {
@@ -339,6 +396,8 @@ export interface CommitLogStatusContext {
   rebaseOnly: boolean;
   /** The repository was added on this branch and is not on the default branch yet. */
   isStaging: boolean;
+  /** The repository's internal status on this branch is active. */
+  isActive: boolean;
   branchName: string;
   /** Infrahub's default branch, which a rebase moves the branch onto; null while unknown. */
   defaultBranchName: string | null;
@@ -351,9 +410,21 @@ function getDefaultBranchPart(defaultBranchName: string | null): CommitLogTextPa
   return defaultBranchName ? { code: defaultBranchName } : "the default branch";
 }
 
-const NO_ACTION = { primary: null, secondary: null };
+const NO_ACTION = { primary: null, secondary: null, canRefresh: false };
 
 const SHORT_HASH_LENGTH = 7;
+
+// The server checks the remote only for a repository whose internal status on the branch is active.
+export function getCheckAction({
+  isReadOnly,
+  isActive,
+  repositoryAccess,
+}: Pick<
+  CommitLogStatusContext,
+  "isReadOnly" | "isActive" | "repositoryAccess"
+>): CommitLogAction | null {
+  return isReadOnly && isActive ? { kind: "check", access: repositoryAccess } : null;
+}
 
 export function getCommitLogStatus(
   {
@@ -371,11 +442,12 @@ export function getCommitLogStatus(
   const them = pending_count === 1 ? "it" : "them";
 
   const importAction: CommitLogAction = { kind: "import", access: context.repositoryAccess };
-  const checkAction: CommitLogAction = { kind: "check", access: context.repositoryAccess };
+  const checkAction = getCheckAction(context);
   const rebaseAction: CommitLogAction = { kind: "rebase", access: context.rebaseAccess };
-  const rebaseMovesToLatest = [
-    " A rebase moves the branch to the latest commit of ",
-    ref,
+  const defaultBranch = getDefaultBranchPart(context.defaultBranchName);
+  const rebaseMovesToDefault = [
+    " A rebase moves the branch to the commit used on ",
+    defaultBranch,
     ", unless the branch has a commit of its own in this repository.",
   ];
 
@@ -388,7 +460,7 @@ export function getCommitLogStatus(
       detail: [
         { code: branchName },
         " is being rebased on ",
-        getDefaultBranchPart(context.defaultBranchName),
+        defaultBranch,
         ", with all its data and all its repositories. The commit log updates when the rebase ends.",
       ],
     };
@@ -410,6 +482,7 @@ export function getCommitLogStatus(
   switch (condition) {
     case RepositoryGitCondition.IN_SYNC:
       return {
+        ...NO_ACTION,
         tone: "success",
         icon: "in-sync",
         headline: ["Up to date with ", ref],
@@ -420,12 +493,12 @@ export function getCommitLogStatus(
           ref,
           ...(used ? [", ", used, "."] : ["."]),
         ],
-        primary: null,
-        secondary: isReadOnly ? checkAction : null,
+        secondary: checkAction,
       };
     case RepositoryGitCondition.BEHIND:
       if (rebaseOnly) {
         return {
+          ...NO_ACTION,
           tone: "warning",
           icon: "behind",
           headline:
@@ -433,14 +506,17 @@ export function getCommitLogStatus(
               ? ["Behind ", ref]
               : ["Behind ", ref, ` by ${formatCommitCount(pending_count)}`],
           detail: [
-            `This branch does not sync with Git, so only a rebase of the branch brings ${them}.`,
+            "This branch does not sync with Git.",
+            " A rebase moves the branch to the commit used on ",
+            defaultBranch,
+            ".",
           ],
           primary: rebaseAction,
-          secondary: isReadOnly ? checkAction : null,
         };
       }
       if (isReadOnly) {
         return {
+          ...NO_ACTION,
           tone: "warning",
           icon: "pending-import",
           headline: [getPendingImportHeadline(pending_count)],
@@ -470,6 +546,7 @@ export function getCommitLogStatus(
       ];
       if (rebaseOnly) {
         return {
+          ...NO_ACTION,
           tone: "warning",
           icon: "warning",
           headline: ["Diverged from ", ref],
@@ -477,14 +554,14 @@ export function getCommitLogStatus(
             "The commit this branch uses",
             ...usedAside,
             ...lostFromHistory,
-            ...rebaseMovesToLatest,
+            ...rebaseMovesToDefault,
           ],
           primary: rebaseAction,
-          secondary: isReadOnly ? checkAction : null,
         };
       }
       if (isReadOnly) {
         return {
+          ...NO_ACTION,
           tone: "warning",
           icon: "warning",
           headline: ["History of ", ref, " was rewritten"],
@@ -520,16 +597,17 @@ export function getCommitLogStatus(
       ];
       if (rebaseOnly) {
         return {
+          ...NO_ACTION,
           tone: "warning",
           icon: "warning",
           headline,
-          detail: [...lostFromRemote, ...rebaseMovesToLatest],
+          detail: [...lostFromRemote, ...rebaseMovesToDefault],
           primary: rebaseAction,
-          secondary: isReadOnly ? checkAction : null,
         };
       }
       if (isReadOnly) {
         return {
+          ...NO_ACTION,
           tone: "warning",
           icon: "warning",
           headline,
@@ -558,6 +636,7 @@ export function getCommitLogStatus(
     }
     case RepositoryGitCondition.REF_MISSING:
       return {
+        ...NO_ACTION,
         tone: "warning",
         icon: "warning",
         headline: [ref, " no longer exists on the remote"],
@@ -570,8 +649,7 @@ export function getCommitLogStatus(
             ? " Change the tracked ref in the repository's Edit form, or restore it in Git and check the remote again."
             : " Restore the branch in Git, or change the default branch of the repository.",
         ],
-        primary: null,
-        secondary: isReadOnly ? checkAction : null,
+        secondary: checkAction,
       };
     case RepositoryGitCondition.NO_REMOTE:
       return {
@@ -584,6 +662,21 @@ export function getCommitLogStatus(
         ],
       };
     case RepositoryGitCondition.NOT_TRACKED:
+      if (isReadOnly) {
+        return {
+          ...NO_ACTION,
+          tone: "warning",
+          icon: "pending-import",
+          headline: ["No commit imported yet"],
+          detail: [
+            "No commit of ",
+            ref,
+            " has been imported yet. Nothing imports a read-only repository automatically. Import the latest commit to use it.",
+          ],
+          primary: importAction,
+          secondary: checkAction,
+        };
+      }
       return {
         ...NO_ACTION,
         tone: "neutral",
@@ -592,7 +685,7 @@ export function getCommitLogStatus(
         detail: ["This branch tracks no remote ref."],
       };
     case RepositoryGitCondition.UNAVAILABLE:
-      return getUnavailableStatus(NO_WORKER_ANSWER, { isRetrying: false });
+      return getUnavailableStatus(NO_WORKER_ANSWER, { isRetrying: false, checkAction });
     default:
       warnUnexpectedType(condition);
       return {
@@ -607,7 +700,7 @@ export function getCommitLogStatus(
 
 export function getUnavailableStatus(
   { title, message }: CommitLogEmptyState,
-  { isRetrying }: { isRetrying: boolean }
+  { isRetrying, checkAction }: { isRetrying: boolean; checkAction: CommitLogAction | null }
 ): CommitLogStatus {
   return {
     tone: "neutral",
@@ -615,7 +708,8 @@ export function getUnavailableStatus(
     headline: [title],
     detail: [message],
     primary: null,
-    secondary: isRetrying ? null : { kind: "refresh", access: ALLOWED },
+    secondary: isRetrying ? null : checkAction,
+    canRefresh: !isRetrying,
   };
 }
 
@@ -654,7 +748,7 @@ export function getCommitsTabBadge(
           kind: "behind",
           count: pending_count,
           summary,
-          tooltip: `${summary} — rebase the branch to use ${pronoun}`,
+          tooltip: `${summary} — a rebase moves the branch to the commit used on the default branch`,
         };
       }
       const summary = `${formatCommitCount(pending_count)} pending import`;
@@ -674,7 +768,7 @@ export function getCommitsTabBadge(
         ? {
             kind: "warning",
             summary: `diverged from ${ref}`,
-            tooltip: `This branch has diverged from ${ref}. Rebase the branch to use the latest commit of ${ref}.`,
+            tooltip: `This branch has diverged from ${ref}. A rebase moves the branch to the commit used on the default branch.`,
           }
         : {
             kind: "warning",

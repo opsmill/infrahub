@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import React from "react";
 
-import { RefreshButton } from "@/shared/components/buttons/refresh-button";
 import { Col, Row } from "@/shared/components/container";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { classNames } from "@/shared/utils/common";
@@ -21,13 +20,14 @@ import {
   type RepositoryCommitsActions,
   useRepositoryCommitsActions,
 } from "@/entities/repository/ui/hooks/use-repository-commits-actions";
-import { repositoriesQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 import {
+  type CommitLogAction,
   type CommitLogHeaderState,
   type CommitLogStatus,
   type CommitLogStatusIcon,
   type CommitLogStatusTone,
   type CommitLogTextPart,
+  getCheckAction,
   getCommitLogStatus,
   getFreshness,
   getUnavailableStatus,
@@ -35,6 +35,7 @@ import {
 } from "@/entities/repository/ui/repository-commits.view";
 import {
   CommitLogActionButton,
+  CommitLogRefreshButton,
   Ref,
   RepositoryCommitsStatusActions,
 } from "@/entities/repository/ui/repository-commits-status-actions";
@@ -59,26 +60,30 @@ export function RepositoryCommitsHeader({
     updatePermission: repository.updatePermission,
   });
 
+  const checkAction = getCheckAction({
+    isReadOnly: repository.isReadOnly,
+    isActive: repository.isActive,
+    repositoryAccess: actions.repositoryAccess,
+  });
+
   switch (commitLog.kind) {
     case "loading":
       return <LoadingBlock />;
     case "failed":
-      return (
-        <Toolbar
-          repositoryId={repository.id}
-          hasRemoteCheck={repository.isReadOnly}
-          actions={actions}
-        />
-      );
+      return <Toolbar repositoryId={repository.id} checkAction={checkAction} actions={actions} />;
   }
 
   const status =
     commitLog.kind === "unavailable"
-      ? getUnavailableStatus(commitLog.emptyState, { isRetrying: commitLog.isRetrying })
+      ? getUnavailableStatus(commitLog.emptyState, {
+          isRetrying: commitLog.isRetrying,
+          checkAction,
+        })
       : getCommitLogStatus(commitLog.log, {
           isReadOnly: repository.isReadOnly,
           rebaseOnly,
           isStaging: repository.isStaging,
+          isActive: repository.isActive,
           branchName: currentBranch.name,
           defaultBranchName,
           running: actions.running,
@@ -139,6 +144,7 @@ function StatusBlock({ status, log, repository, actions }: StatusBlockProps) {
           <RepositoryCommitsStatusActions
             primary={status.primary}
             secondary={status.secondary}
+            canRefresh={status.canRefresh}
             condition={log.condition}
             repository={repository}
             actions={actions}
@@ -228,27 +234,19 @@ function Freshness({
 
 interface ToolbarProps {
   repositoryId: string;
-  /** False where the repository has no remote check: a read-write repository. */
-  hasRemoteCheck: boolean;
+  checkAction: CommitLogAction | null;
   actions: RepositoryCommitsActions;
 }
 
-function Toolbar({ repositoryId, hasRemoteCheck, actions }: ToolbarProps) {
-  const { currentBranch } = useCurrentBranch();
-  const commitLogKey = repositoriesQueryKeys.repository({
-    repositoryId,
-    branchName: currentBranch.name,
-  });
-
+function Toolbar({ repositoryId, checkAction, actions }: ToolbarProps) {
   return (
     <Row className="items-center gap-2 p-2">
-      <RefreshButton className="rounded-md border-border-strong" queryKeys={[commitLogKey]} />
-      {hasRemoteCheck && (
+      <CommitLogRefreshButton repositoryId={repositoryId} />
+      {checkAction && (
         <Row className="ml-auto">
           <CommitLogActionButton
-            action={{ kind: "check", access: actions.repositoryAccess }}
+            action={checkAction}
             actions={actions}
-            commitLogKey={commitLogKey}
             onPress={actions.checkRemote}
           />
         </Row>

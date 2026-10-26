@@ -1,4 +1,9 @@
+import { CombinedError } from "@urql/core";
+import { GraphQLError } from "graphql";
 import { describe, expect, test } from "vitest";
+
+import { ERROR_CODES } from "@/shared/api/errors";
+import { BranchStatus } from "@/shared/api/graphql/generated/types";
 
 import type { PermissionDecision } from "@/entities/permission/domain/model/permission";
 import {
@@ -10,11 +15,17 @@ import {
 import { RepositoryGitUnavailableError } from "@/entities/repository/domain/model/repository-git-unavailable-error";
 import {
   type ActionAccess,
+  BRANCH_MERGE_FAILED,
+  BRANCH_MERGED,
+  BRANCH_MERGING,
+  BRANCH_NEEDS_REBASE,
   type CommitLogStatusContext,
   type CommitLogTextPart,
   canLoadOlderCommits,
   DEFAULT_BRANCH_EDIT_DENIED,
   formatCommitsTabCount,
+  getBranchStatusDeniedReason,
+  getCheckAction,
   getCommitLogHeaderState,
   getCommitLogStatus,
   getCommitLogWithoutPages,
@@ -24,15 +35,17 @@ import {
   getFreshness,
   getLoadedCommits,
   getNextPageState,
+  getReasonId,
   getRebaseAccess,
   getRepositoryActionAccess,
   getStateBadges,
   getUnavailableStatus,
+  isErrorWithoutClientToast,
   isLoadingFirstPage,
   isShowingStaleCommits,
+  mayKeepOwnCommit,
   NO_WORKER_ANSWER,
   REBASE_DEFAULT_BRANCH,
-  REBASE_MERGED_BRANCH,
   REBASE_PERMISSION_DENIED,
   REBASE_SIGN_IN_REQUIRED,
   REPOSITORY_SIGN_IN_REQUIRED,
@@ -90,7 +103,7 @@ describe("getEmptyState", () => {
     // THEN
     expect(emptyState).toEqual({
       title: "Commit log not available yet",
-      message: "Not cloned. Refresh to check again.",
+      message: "Not cloned. Use the refresh button to check again.",
     });
   });
 
@@ -101,7 +114,7 @@ describe("getEmptyState", () => {
     // THEN
     expect(emptyState).toEqual({
       title: "Commit log not available yet",
-      message: "No worker has answered yet. Refresh to check again.",
+      message: "No worker has answered yet. Use the refresh button to check again.",
     });
   });
 
@@ -599,7 +612,8 @@ describe("getCommitsTabBadge", () => {
       kind: "behind",
       count: 1,
       summary: "1 commit behind release-1.4",
-      tooltip: "1 commit behind release-1.4 — rebase the branch to use it",
+      tooltip:
+        "1 commit behind release-1.4 — a rebase moves the branch to the commit used on the default branch",
     });
   });
 
@@ -623,7 +637,7 @@ describe("getCommitsTabBadge", () => {
       kind: "warning",
       summary: "diverged from main",
       tooltip:
-        "This branch has diverged from main. Rebase the branch to use the latest commit of main.",
+        "This branch has diverged from main. A rebase moves the branch to the commit used on the default branch.",
     });
   });
 
@@ -689,6 +703,7 @@ describe("getRepositoryActionAccess", () => {
       case: "allows an update on another branch without the default branch permission",
       params: {
         isAuthenticated: true,
+        branchStatus: BranchStatus.OPEN,
         updatePermission: ALLOWED,
         isDefaultBranch: false,
         canEditDefaultBranch: false,
@@ -699,6 +714,7 @@ describe("getRepositoryActionAccess", () => {
       case: "keeps the reason of the update permission decision",
       params: {
         isAuthenticated: true,
+        branchStatus: BranchStatus.OPEN,
         updatePermission: DENIED,
         isDefaultBranch: false,
         canEditDefaultBranch: true,
@@ -709,6 +725,7 @@ describe("getRepositoryActionAccess", () => {
       case: "names the update permission first on the default branch",
       params: {
         isAuthenticated: true,
+        branchStatus: BranchStatus.OPEN,
         updatePermission: DENIED,
         isDefaultBranch: true,
         canEditDefaultBranch: false,
@@ -719,6 +736,7 @@ describe("getRepositoryActionAccess", () => {
       case: "names the default branch permission when the update is allowed",
       params: {
         isAuthenticated: true,
+        branchStatus: BranchStatus.OPEN,
         updatePermission: ALLOWED,
         isDefaultBranch: true,
         canEditDefaultBranch: false,
@@ -729,6 +747,7 @@ describe("getRepositoryActionAccess", () => {
       case: "waits without a reason while the default branch permission loads",
       params: {
         isAuthenticated: true,
+        branchStatus: BranchStatus.OPEN,
         updatePermission: ALLOWED,
         isDefaultBranch: true,
         canEditDefaultBranch: undefined,
@@ -739,6 +758,7 @@ describe("getRepositoryActionAccess", () => {
       case: "keeps a known update denial while the default branch permission loads",
       params: {
         isAuthenticated: true,
+        branchStatus: BranchStatus.OPEN,
         updatePermission: DENIED,
         isDefaultBranch: true,
         canEditDefaultBranch: undefined,
@@ -749,6 +769,7 @@ describe("getRepositoryActionAccess", () => {
       case: "asks a signed-out user to sign in before naming the default branch permission",
       params: {
         isAuthenticated: false,
+        branchStatus: BranchStatus.OPEN,
         updatePermission: DENIED,
         isDefaultBranch: true,
         canEditDefaultBranch: false,
@@ -756,9 +777,43 @@ describe("getRepositoryActionAccess", () => {
       expected: { status: "denied", reason: REPOSITORY_SIGN_IN_REQUIRED },
     },
     {
+      case: "asks a signed-out user to sign in before naming the branch status",
+      params: {
+        isAuthenticated: false,
+        branchStatus: BranchStatus.NEED_REBASE,
+        updatePermission: DENIED,
+        isDefaultBranch: false,
+        canEditDefaultBranch: undefined,
+      },
+      expected: { status: "denied", reason: REPOSITORY_SIGN_IN_REQUIRED },
+    },
+    {
+      case: "names the branch status before the update permission",
+      params: {
+        isAuthenticated: true,
+        branchStatus: BranchStatus.NEED_REBASE,
+        updatePermission: DENIED,
+        isDefaultBranch: false,
+        canEditDefaultBranch: undefined,
+      },
+      expected: { status: "denied", reason: BRANCH_NEEDS_REBASE },
+    },
+    {
+      case: "refuses a merged branch",
+      params: {
+        isAuthenticated: true,
+        branchStatus: BranchStatus.MERGED,
+        updatePermission: ALLOWED,
+        isDefaultBranch: false,
+        canEditDefaultBranch: undefined,
+      },
+      expected: { status: "denied", reason: BRANCH_MERGED },
+    },
+    {
       case: "allows an update on the default branch with both permissions",
       params: {
         isAuthenticated: true,
+        branchStatus: BranchStatus.OPEN,
         updatePermission: ALLOWED,
         isDefaultBranch: true,
         canEditDefaultBranch: true,
@@ -770,11 +825,27 @@ describe("getRepositoryActionAccess", () => {
   });
 });
 
+describe("getBranchStatusDeniedReason", () => {
+  test.each<[BranchStatus, string | null, string | null]>([
+    [BranchStatus.OPEN, null, null],
+    [BranchStatus.NEED_REBASE, BRANCH_NEEDS_REBASE, null],
+    [BranchStatus.MERGING, BRANCH_MERGING, BRANCH_MERGING],
+    [BranchStatus.MERGE_FAILED, BRANCH_MERGE_FAILED, BRANCH_MERGE_FAILED],
+    [BranchStatus.MERGED, BRANCH_MERGED, BRANCH_MERGED],
+  ])(
+    "on a %s branch, denies a repository change with %j and a rebase with %j",
+    (branchStatus, repositoryReason, rebaseReason) => {
+      expect(getBranchStatusDeniedReason(branchStatus, "repository")).toBe(repositoryReason);
+      expect(getBranchStatusDeniedReason(branchStatus, "rebase")).toBe(rebaseReason);
+    }
+  );
+});
+
 describe("getRebaseAccess", () => {
   const ALLOWED_PARAMS: Parameters<typeof getRebaseAccess>[0] = {
     isAuthenticated: true,
     isDefaultBranch: false,
-    isMerged: false,
+    branchStatus: BranchStatus.OPEN,
     canRebase: true,
     isRunningKnown: true,
   };
@@ -783,7 +854,12 @@ describe("getRebaseAccess", () => {
     ["allows a signed-in user with the permission", {}, { status: "allowed" }],
     [
       "asks to sign in before checking anything else",
-      { isAuthenticated: false, isDefaultBranch: true, isMerged: true, canRebase: false },
+      {
+        isAuthenticated: false,
+        isDefaultBranch: true,
+        branchStatus: BranchStatus.MERGED,
+        canRebase: false,
+      },
       { status: "denied", reason: REBASE_SIGN_IN_REQUIRED },
     ],
     [
@@ -792,9 +868,19 @@ describe("getRebaseAccess", () => {
       { status: "denied", reason: REBASE_DEFAULT_BRANCH },
     ],
     [
-      "refuses a merged branch",
-      { isMerged: true },
-      { status: "denied", reason: REBASE_MERGED_BRANCH },
+      "names a merged branch before the missing permission",
+      { branchStatus: BranchStatus.MERGED, canRebase: false },
+      { status: "denied", reason: BRANCH_MERGED },
+    ],
+    [
+      "refuses a branch being merged",
+      { branchStatus: BranchStatus.MERGING },
+      { status: "denied", reason: BRANCH_MERGING },
+    ],
+    [
+      "allows the rebase of a branch that needs one",
+      { branchStatus: BranchStatus.NEED_REBASE },
+      { status: "allowed" },
     ],
     [
       "names the missing permission",
@@ -824,6 +910,7 @@ describe("getCommitLogStatus", () => {
     isReadOnly: false,
     rebaseOnly: false,
     isStaging: false,
+    isActive: true,
     branchName: "feature-1",
     defaultBranchName: "trunk",
     running: null,
@@ -894,19 +981,23 @@ describe("getCommitLogStatus", () => {
     // THEN
     expect(toText(status.headline)).toBe("Behind main by 3 commits");
     expect(toText(status.detail)).toBe(
-      "This branch does not sync with Git, so only a rebase of the branch brings them."
+      "This branch does not sync with Git. A rebase moves the branch to the commit used on trunk."
     );
     expect(status.primary).toEqual({ kind: "rebase", access: rebaseAccess });
     expect(status.secondary).toBeNull();
   });
 
-  test("offers Check remote now beside the rebase of a read-only repository behind its ref", () => {
+  test("says a rebase moves the branch to the commit used on the default branch while its name is unknown", () => {
     // WHEN
-    const status = getCommitLogStatus(behind, context({ rebaseOnly: true, isReadOnly: true }));
+    const status = getCommitLogStatus(
+      behind,
+      context({ rebaseOnly: true, defaultBranchName: null })
+    );
 
     // THEN
-    expect(status.primary).toEqual({ kind: "rebase", access: ALLOWED_ACCESS });
-    expect(status.secondary).toEqual({ kind: "check", access: ALLOWED_ACCESS });
+    expect(toText(status.detail)).toBe(
+      "This branch does not sync with Git. A rebase moves the branch to the commit used on the default branch."
+    );
   });
 
   test("refers to a single commit as it", () => {
@@ -929,17 +1020,79 @@ describe("getCommitLogStatus", () => {
     expect(status.secondary).toBeNull();
   });
 
-  test.each([false, true])(
-    "offers Check remote now on an up-to-date read-only repository (rebase-only: %s)",
-    (rebaseOnly) => {
+  test("offers Check remote now on an up-to-date read-only repository", () => {
+    // WHEN
+    const status = getCommitLogStatus(log(), context({ isReadOnly: true }));
+
+    // THEN
+    expect(status.primary).toBeNull();
+    expect(status.secondary).toEqual({ kind: "check", access: ALLOWED_ACCESS });
+  });
+
+  test.each([
+    RepositoryGitCondition.IN_SYNC,
+    RepositoryGitCondition.BEHIND,
+    RepositoryGitCondition.REWRITTEN,
+    RepositoryGitCondition.ORPHANED,
+    RepositoryGitCondition.REF_MISSING,
+    RepositoryGitCondition.NO_REMOTE,
+    RepositoryGitCondition.NOT_TRACKED,
+    RepositoryGitCondition.UNAVAILABLE,
+  ])(
+    "offers no Check remote now for a read-only repository that is not active on the branch (%s)",
+    (condition) => {
       // WHEN
-      const status = getCommitLogStatus(log(), context({ isReadOnly: true, rebaseOnly }));
+      const status = getCommitLogStatus(
+        log({ condition }),
+        context({ isReadOnly: true, isStaging: true, isActive: false })
+      );
 
       // THEN
-      expect(status.primary).toBeNull();
-      expect(status.secondary).toEqual({ kind: "check", access: ALLOWED_ACCESS });
+      expect(status.secondary).toBeNull();
     }
   );
+
+  test.each([RepositoryGitCondition.NOT_TRACKED, RepositoryGitCondition.UNAVAILABLE])(
+    "offers Check remote now on a read-only repository whose log is %s",
+    (condition) => {
+      // WHEN
+      const readOnly = getCommitLogStatus(log({ condition }), context({ isReadOnly: true }));
+      const readWrite = getCommitLogStatus(log({ condition }), context());
+
+      // THEN
+      expect(readOnly.secondary).toEqual({ kind: "check", access: ALLOWED_ACCESS });
+      expect(readWrite.secondary).toBeNull();
+    }
+  );
+
+  test("asks to import the first commit of a read-only repository that has imported none", () => {
+    // WHEN
+    const status = getCommitLogStatus(
+      log({ condition: RepositoryGitCondition.NOT_TRACKED, imported_commit: null }),
+      context({ isReadOnly: true })
+    );
+
+    // THEN
+    expect(toText(status.headline)).toBe("No commit imported yet");
+    expect(toText(status.detail)).toBe(
+      "No commit of main has been imported yet. Nothing imports a read-only repository automatically. Import the latest commit to use it."
+    );
+    expect(status.primary).toEqual({ kind: "import", access: ALLOWED_ACCESS });
+    expect(status.secondary).toEqual({ kind: "check", access: ALLOWED_ACCESS });
+  });
+
+  test("says a read-write branch tracks no remote ref, without an action", () => {
+    // WHEN
+    const status = getCommitLogStatus(
+      log({ condition: RepositoryGitCondition.NOT_TRACKED }),
+      context()
+    );
+
+    // THEN
+    expect(toText(status.detail)).toBe("This branch tracks no remote ref.");
+    expect(status.primary).toBeNull();
+    expect(status.secondary).toBeNull();
+  });
 
   test("says a rebase does not replace the branch's own commit when the branch has diverged", () => {
     // WHEN
@@ -948,29 +1101,11 @@ describe("getCommitLogStatus", () => {
     // THEN
     expect(toText(status.headline)).toBe("Diverged from main");
     expect(toText(status.detail)).toBe(
-      "The commit this branch uses, aaaaaaa, is no longer in the history of main, for example after a force push. A rebase moves the branch to the latest commit of main, unless the branch has a commit of its own in this repository."
+      "The commit this branch uses, aaaaaaa, is no longer in the history of main, for example after a force push. A rebase moves the branch to the commit used on trunk, unless the branch has a commit of its own in this repository."
     );
     expect(status.primary).toEqual({ kind: "rebase", access: ALLOWED_ACCESS });
+    expect(status.secondary).toBeNull();
   });
-
-  test.each([
-    ["rewritten", rewritten],
-    ["orphaned", orphaned],
-  ])(
-    "offers Check remote now beside the rebase of a %s read-only repository, and not of a read-write one",
-    (_, condition) => {
-      // WHEN
-      const readOnly = getCommitLogStatus(
-        condition,
-        context({ rebaseOnly: true, isReadOnly: true })
-      );
-      const readWrite = getCommitLogStatus(condition, context({ rebaseOnly: true }));
-
-      // THEN
-      expect(readOnly.secondary).toEqual({ kind: "check", access: ALLOWED_ACCESS });
-      expect(readWrite.secondary).toBeNull();
-    }
-  );
 
   test("says the next sync imports the new head after a rewrite on a read-write repository", () => {
     // WHEN
@@ -1020,14 +1155,14 @@ describe("getCommitLogStatus", () => {
 
   test("asks for a rebase, not a sync, when the commit in use left the remote on a rebase-only branch", () => {
     // WHEN
-    const status = getCommitLogStatus(orphaned, context({ rebaseOnly: true, isReadOnly: true }));
+    const status = getCommitLogStatus(orphaned, context({ rebaseOnly: true }));
 
     // THEN
     expect(toText(status.detail)).toBe(
-      "The commit this branch uses, aaaaaaa, is no longer on the remote. A rebase moves the branch to the latest commit of main, unless the branch has a commit of its own in this repository."
+      "The commit this branch uses, aaaaaaa, is no longer on the remote. A rebase moves the branch to the commit used on trunk, unless the branch has a commit of its own in this repository."
     );
     expect(status.primary).toEqual({ kind: "rebase", access: ALLOWED_ACCESS });
-    expect(status.secondary).toEqual({ kind: "check", access: ALLOWED_ACCESS });
+    expect(status.secondary).toBeNull();
   });
 
   test("points to the Edit form and offers only Check remote now when the tracked ref of a read-only repository is missing", () => {
@@ -1103,28 +1238,61 @@ describe("getCommitLogStatus", () => {
     );
 
     // THEN
-    expect(status).toEqual(getUnavailableStatus(NO_WORKER_ANSWER, { isRetrying: false }));
+    expect(status).toEqual(
+      getUnavailableStatus(NO_WORKER_ANSWER, { isRetrying: false, checkAction: null })
+    );
+  });
+
+  test("offers no Refresh while the commit log is available", () => {
+    // WHEN
+    const statuses = [log(), behind, rewritten, orphaned].map((commitLog) =>
+      getCommitLogStatus(commitLog, context())
+    );
+
+    // THEN
+    expect(statuses.map((status) => status.canRefresh)).toEqual([false, false, false, false]);
   });
 });
 
-describe("getUnavailableStatus", () => {
-  const emptyState = { title: "Commit log not available yet", message: "Refresh to check again." };
+describe("getCheckAction", () => {
+  const repositoryAccess: ActionAccess = { status: "allowed" };
 
-  test("offers Refresh once retrying has stopped", () => {
+  test.each([
+    { isReadOnly: true, isActive: true, expected: { kind: "check", access: repositoryAccess } },
+    { isReadOnly: true, isActive: false, expected: null },
+    { isReadOnly: false, isActive: true, expected: null },
+  ])(
+    "returns $expected for a repository read-only $isReadOnly and active on the branch $isActive",
+    ({ isReadOnly, isActive, expected }) => {
+      expect(getCheckAction({ isReadOnly, isActive, repositoryAccess })).toEqual(expected);
+    }
+  );
+});
+
+describe("getUnavailableStatus", () => {
+  const emptyState = {
+    title: "Commit log not available yet",
+    message: "Use the refresh button to check again.",
+  };
+  const checkAction = { kind: "check" as const, access: { status: "allowed" as const } };
+
+  test("offers Refresh and Check remote now once retrying has stopped", () => {
     // WHEN
-    const status = getUnavailableStatus(emptyState, { isRetrying: false });
+    const status = getUnavailableStatus(emptyState, { isRetrying: false, checkAction });
 
     // THEN
     expect(status.headline).toEqual(["Commit log not available yet"]);
-    expect(status.secondary).toEqual({ kind: "refresh", access: { status: "allowed" } });
+    expect(status.canRefresh).toBe(true);
+    expect(status.secondary).toEqual(checkAction);
   });
 
   test("shows a spinner and no action while it retries", () => {
     // WHEN
-    const status = getUnavailableStatus(emptyState, { isRetrying: true });
+    const status = getUnavailableStatus(emptyState, { isRetrying: true, checkAction });
 
     // THEN
     expect(status.icon).toBe("running");
+    expect(status.canRefresh).toBe(false);
     expect(status.secondary).toBeNull();
   });
 });
@@ -1138,7 +1306,7 @@ describe("getDeniedReasons", () => {
     const reasons = getDeniedReasons([
       { kind: "check", access: denied("No update permission.") },
       { kind: "import", access: denied("No update permission.") },
-      { kind: "refresh", access: { status: "allowed" } },
+      { kind: "check", access: { status: "allowed" } },
       { kind: "rebase", access: { status: "pending" } },
       null,
       { kind: "check", access: denied("No default branch permission.") },
@@ -1146,6 +1314,65 @@ describe("getDeniedReasons", () => {
 
     // THEN
     expect(reasons).toEqual(["No update permission.", "No default branch permission."]);
+  });
+});
+
+describe("getReasonId", () => {
+  const deniedReasons = ["Sign in to change this repository.", "You need permission."];
+
+  test("points a denied action to the line of its reason", () => {
+    // WHEN
+    const id = getReasonId(
+      { kind: "import", access: { status: "denied", reason: "You need permission." } },
+      deniedReasons,
+      "reasons"
+    );
+
+    // THEN
+    expect(id).toBe("reasons-1");
+  });
+
+  test.each<ActionAccess>([{ status: "allowed" }, { status: "pending" }])(
+    "gives no id to an action that is $status",
+    (access) => {
+      expect(getReasonId({ kind: "import", access }, deniedReasons, "reasons")).toBeUndefined();
+    }
+  );
+});
+
+describe("mayKeepOwnCommit", () => {
+  test.each([
+    [RepositoryGitCondition.REWRITTEN, true],
+    [RepositoryGitCondition.ORPHANED, true],
+    [RepositoryGitCondition.BEHIND, false],
+    [RepositoryGitCondition.IN_SYNC, false],
+    [null, false],
+  ])("returns %j for %s", (condition, expected) => {
+    expect(mayKeepOwnCommit(condition)).toBe(expected);
+  });
+});
+
+describe("isErrorWithoutClientToast", () => {
+  const thrownByTransport = (...graphQLErrors: GraphQLError[]) =>
+    new Error("Request failed", { cause: new CombinedError({ graphQLErrors }) });
+  const permissionDenial = () =>
+    new GraphQLError("Denied", { extensions: { code: ERROR_CODES.PERMISSION_DENIED } });
+
+  test.each([
+    { case: "a permission denial", error: thrownByTransport(permissionDenial()), expected: true },
+    { case: "a network error", error: new TypeError("Failed to fetch"), expected: true },
+    {
+      case: "another GraphQL error",
+      error: thrownByTransport(new GraphQLError("Database unavailable")),
+      expected: false,
+    },
+    {
+      case: "a permission denial that comes with another GraphQL error",
+      error: thrownByTransport(permissionDenial(), new GraphQLError("Database unavailable")),
+      expected: false,
+    },
+  ])("returns $expected for $case", ({ error, expected }) => {
+    expect(isErrorWithoutClientToast(error)).toBe(expected);
   });
 });
 

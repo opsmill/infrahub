@@ -232,7 +232,7 @@ describe("RepositoryCommitsTab", () => {
       await expect
         .element(
           component.getByRole("tooltip", {
-            name: "2 commits behind main — rebase the branch to use them",
+            name: "2 commits behind main — a rebase moves the branch to the commit used on the default branch",
           })
         )
         .toBeVisible();

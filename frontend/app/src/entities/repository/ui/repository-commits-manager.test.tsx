@@ -63,7 +63,7 @@ const formatDate = (date: string) =>
   formatWithPreferences(date, { pattern: null, timezone: null }, "date");
 
 const REBASE_ONLY_BEHIND =
-  "This branch does not sync with Git, so only a rebase of the branch brings them.";
+  "This branch does not sync with Git. A rebase moves the branch to the commit used on the default branch.";
 const REBASE_ONLY_UP_TO_DATE =
   "This branch does not sync with Git and uses the latest commit of main";
 
@@ -222,6 +222,48 @@ describe("RepositoryCommitsManager", () => {
     }
   });
 
+  test.each<{ condition: RepositoryGitCondition; heading: string }>([
+    { condition: "REF_MISSING", heading: "main no longer exists on the remote" },
+    { condition: "UNAVAILABLE", heading: "Commit log not available yet" },
+  ])("explains an empty $condition log only in the status", async ({ condition, heading }) => {
+    // GIVEN
+    apiMock.mockResolvedValue(
+      generateCommitsApiResult(generateRepositoryCommitsResponse({ condition }))
+    );
+
+    // WHEN
+    const component = await renderTab();
+
+    // THEN
+    await expect.element(component.getByRole("heading", { name: heading })).toBeVisible();
+    expect(component.getByText("This ref has no commits.").query()).toBeNull();
+  });
+
+  test("says an empty log of a ref in sync has no commits", async () => {
+    // GIVEN
+    apiMock.mockResolvedValue(generateCommitsApiResult(generateRepositoryCommitsResponse()));
+
+    // WHEN
+    const component = await renderTab();
+
+    // THEN
+    await expect.element(component.getByText("This ref has no commits.")).toBeVisible();
+  });
+
+  test("shows one loading state while the first page loads", async () => {
+    // GIVEN
+    apiMock.mockReturnValue(new Promise(() => {}));
+
+    // WHEN
+    const component = await renderTab();
+
+    // THEN
+    await expect
+      .element(component.getByRole("heading", { name: "Reading the commit log" }))
+      .toBeVisible();
+    expect(component.getByRole("status").all()).toHaveLength(1);
+  });
+
   test("shows the not-yet-available state as the status, without a table", async () => {
     // GIVEN
     apiMock.mockResolvedValue(generateCommitsApiResult(generateNotClonedCommitsResponse()));
@@ -351,21 +393,24 @@ describe("RepositoryCommitsManager", () => {
       apiMock.mock.calls.filter(([params]) => params.repositoryId === repositoryId).length;
     const component = await renderTab();
     await expect.element(component.getByText(NOT_CLONED_MESSAGE)).toBeVisible();
-    expect(component.getByRole("button", { name: "Refresh" }).query()).toBeNull();
+    expect(component.getByRole("button", { name: "Refresh data" }).query()).toBeNull();
     for (let retry = 1; retry <= REPOSITORY_COMMITS_MAX_RETRIES; retry++) {
       await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_RETRY_DELAY_MS);
       await expect.poll(() => callsFor("repo-1")).toBe(retry + 1);
     }
-    await expect.element(component.getByRole("button", { name: "Refresh" })).toBeVisible();
+    await expect.element(component.getByRole("button", { name: "Refresh data" })).toBeVisible();
     apiMock.mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));
     const unsubscribeOtherLog = new InfiniteQueryObserver(
       queryClient,
       getRepositoryCommitsQueryOptions({ repositoryId: "repo-2", branchName: "test-branch" })
     ).subscribe(() => {});
     await expect.poll(() => callsFor("repo-2")).toBe(1);
+    vi.spyOn(appQueryClient, "invalidateQueries").mockImplementation((filters) =>
+      queryClient.invalidateQueries(filters)
+    );
 
     // WHEN
-    await component.getByRole("button", { name: "Refresh" }).click();
+    await component.getByRole("button", { name: "Refresh data" }).click();
 
     // THEN
     await expect
@@ -390,7 +435,7 @@ describe("RepositoryCommitsManager", () => {
 
     // THEN
     await expect
-      .element(component.getByText(`${NOT_CLONED_MESSAGE} Refresh to check again.`))
+      .element(component.getByText(`${NOT_CLONED_MESSAGE} Use the refresh button to check again.`))
       .toBeVisible();
     await expect.element(component.getByText("Commit log not available yet")).toBeVisible();
     await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_RETRY_DELAY_MS);
@@ -961,7 +1006,7 @@ describe("RepositoryCommitsManager", () => {
       await expect
         .element(
           component.getByText(
-            `The commit this branch uses, ${BEHIND_IMPORTED}, is no longer in the history of main, for example after a force push. A rebase moves the branch to the latest commit of main, unless the branch has a commit of its own in this repository.`
+            `The commit this branch uses, ${BEHIND_IMPORTED}, is no longer in the history of main, for example after a force push. A rebase moves the branch to the commit used on the default branch, unless the branch has a commit of its own in this repository.`
           )
         )
         .toBeVisible();

@@ -3,12 +3,12 @@ import { Button, Spinner } from "@infrahub/ui";
 import { Col } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
-import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { DataTable } from "@/shared/components/table/data-table";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 
 import type { PermissionDecision } from "@/entities/permission/domain/model/permission";
 import {
+  REPOSITORY_INTERNAL_STATUS_ACTIVE,
   REPOSITORY_INTERNAL_STATUS_STAGING,
   RepositoryGitCondition,
 } from "@/entities/repository/domain/model/repository";
@@ -40,9 +40,11 @@ export interface RepositoryCommitsManagerProps {
 const gridTemplateColumns = () =>
   "fit-content(8rem) minmax(16rem, 1fr) fit-content(14rem) fit-content(12rem) fit-content(16rem) 2.5rem";
 
-const CONDITIONS_WITHOUT_COMMIT_LOG: RepositoryGitCondition[] = [
+const CONDITIONS_EXPLAINING_EMPTY_LOG: RepositoryGitCondition[] = [
   RepositoryGitCondition.NOT_TRACKED,
   RepositoryGitCondition.NO_REMOTE,
+  RepositoryGitCondition.REF_MISSING,
+  RepositoryGitCondition.UNAVAILABLE,
 ];
 
 export function RepositoryCommitsManager({
@@ -63,6 +65,7 @@ export function RepositoryCommitsManager({
     name: repositoryName,
     isReadOnly,
     isStaging: repositoryInternalStatus === REPOSITORY_INTERNAL_STATUS_STAGING,
+    isActive: repositoryInternalStatus === REPOSITORY_INTERNAL_STATUS_ACTIVE,
     updatePermission,
   };
   const {
@@ -93,7 +96,6 @@ export function RepositoryCommitsManager({
       <Col className="h-full gap-0">
         {header}
         {withoutPages.kind === "failed" && <ErrorScreen message={withoutPages.error.message} />}
-        {withoutPages.kind === "loading" && <LoadingIndicator className="h-40 p-4" />}
       </Col>
     );
   }
@@ -105,7 +107,7 @@ export function RepositoryCommitsManager({
     failureReason,
   });
 
-  if (commits.length === 0 && CONDITIONS_WITHOUT_COMMIT_LOG.includes(log.condition)) {
+  if (commits.length === 0 && CONDITIONS_EXPLAINING_EMPTY_LOG.includes(log.condition)) {
     return <Col className="h-full gap-0">{header}</Col>;
   }
 

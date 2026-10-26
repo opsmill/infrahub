@@ -436,14 +436,24 @@ determinism logic, no test and no documentation entry.
   missing commits, and offers at most one main action and one second action. A read-only repository
   offers "Import latest commit" and "Check remote now"; when its tracked ref is missing on the
   remote, it offers only "Check remote now" and the supporting line says to change the tracked ref
-  in the repository's Edit form or restore it in Git. A branch that does not sync with Git offers "Rebase branch" when it is
+  in the repository's Edit form or restore it in Git. A read-only repository also offers "Check
+  remote now" when its commit log is unavailable and not being retried. When it has imported no
+  commit yet, it says so and offers "Import latest commit" and "Check remote now". A read-only
+  repository whose internal status on the branch is not active, for example one added on the
+  branch, never offers "Check remote now", because the server checks the remote only for an active
+  repository. A branch that does not sync with Git offers "Rebase branch" when it is
   behind, diverged or missing the imported commit, after a confirmation that the whole branch, with
   all its data and repositories, is rebased onto the default branch; it requires the
-  `rebase_branch` permission. A read-write repository on a branch that syncs with Git offers no
-  action, because the next sync imports the commits. A disabled action says which permission is
-  missing. A running import, rebase or check replaces the headline with "Import running" or
+  `rebase_branch` permission. The rebase moves the branch to the commit used on Infrahub's default
+  branch, not to the latest commit of the remote. A read-write repository on a branch that syncs with Git offers no
+  action, because the next sync imports the commits. "Import latest commit" and "Check remote now"
+  are disabled on a branch that needs a rebase, is being merged, is merged or whose merge failed,
+  and "Rebase branch" on a branch that is being merged, is merged or whose merge failed, because
+  the server refuses those changes. A disabled
+  action says why it is disabled: sign-in first, then the branch status, then the permission. A
+  running import, rebase or check replaces the headline with "Import running" or
   "Rebase running", or labels the button "Check running". The Refresh button shows only when the
-  commit log is unavailable or failed to load (T111).
+  commit log is unavailable and not being retried, or failed to load (T111).
 - Departure from FR-025 in the interface, recorded rather than fixed here: the commit view follows
   only the task it started, so it cannot see a scheduled check. Pressing the button while one, or
   another user's on-demand check, holds the repository submits a run that exits at once as

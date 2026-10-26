@@ -13,6 +13,7 @@ import { getRemoteCheckTaskFromApi } from "@/entities/repository/api/get-remote-
 import { getRepositoryCommitsFromApi } from "@/entities/repository/api/get-repository-commits-from-api";
 import {
   READONLY_REPOSITORY_KIND,
+  REPOSITORY_INTERNAL_STATUS_STAGING,
   REPOSITORY_KIND,
 } from "@/entities/repository/domain/model/repository";
 import { CHECK_REMOTE_REFS_MUTATION_KEY } from "@/entities/repository/ui/queries/check-remote-refs.mutation";
@@ -25,6 +26,7 @@ import { generatePermission } from "../../../../tests/fake/permission";
 import {
   generateCommitsApiResult,
   generateReadOnlyCommitsResponse,
+  generateRepositoryCommitsResponse,
   READ_ONLY_CHECKED_AT,
 } from "../../../../tests/fake/repository-commit";
 import {
@@ -61,11 +63,13 @@ function CaptureQueryClient() {
 
 interface CommitLogOptions {
   isReadOnly?: boolean;
+  isStaging?: boolean;
   updatePermission?: PermissionDecision;
 }
 
 const commitLog = ({
   isReadOnly = true,
+  isStaging = false,
   updatePermission = generatePermission().update,
 }: CommitLogOptions = {}) => (
   <>
@@ -76,7 +80,7 @@ const commitLog = ({
         repositoryKind={isReadOnly ? READONLY_REPOSITORY_KIND : REPOSITORY_KIND}
         repositoryName="infrahub-demo"
         isReadOnly={isReadOnly}
-        repositoryInternalStatus="active"
+        repositoryInternalStatus={isStaging ? REPOSITORY_INTERNAL_STATUS_STAGING : "active"}
         repositoryLocation={null}
         updatePermission={updatePermission}
       />
@@ -151,6 +155,48 @@ describe("Check remote now in the commit log", () => {
     // THEN
     await expect.element(component.getByText("No worker answered")).toBeVisible();
     await expect.element(component.getByRole("button", CHECK_BUTTON)).toBeEnabled();
+  });
+
+  test("is offered beside Import latest commit when no commit was imported yet", async () => {
+    // GIVEN
+    commitsApiMock.mockResolvedValue(
+      generateCommitsApiResult(generateRepositoryCommitsResponse({ condition: "NOT_TRACKED" }))
+    );
+
+    // WHEN
+    const component = await renderCommitLog();
+
+    // THEN
+    await expect
+      .element(component.getByRole("heading", { name: "No commit imported yet" }))
+      .toBeVisible();
+    await expect
+      .element(component.getByRole("button", { name: "Import latest commit" }))
+      .toBeEnabled();
+    await expect.element(component.getByRole("button", CHECK_BUTTON)).toBeEnabled();
+  });
+
+  test("is not offered for a read-only repository added on the branch", async () => {
+    // WHEN
+    const component = await renderCommitLog({ isStaging: true });
+
+    // THEN
+    await expect
+      .element(component.getByRole("heading", { name: "1 commit pending import" }))
+      .toBeVisible();
+    expect(component.getByRole("button", CHECK_BUTTON).query()).toBeNull();
+  });
+
+  test("is not offered for a read-only repository added on the branch when the commit log failed to load", async () => {
+    // GIVEN
+    commitsApiMock.mockRejectedValue(new Error("No worker answered"));
+
+    // WHEN
+    const component = await renderCommitLog({ isStaging: true });
+
+    // THEN
+    await expect.element(component.getByText("No worker answered")).toBeVisible();
+    expect(component.getByRole("button", CHECK_BUTTON).query()).toBeNull();
   });
 
   test("explains why it is disabled with the reason of the update permission decision", async () => {
