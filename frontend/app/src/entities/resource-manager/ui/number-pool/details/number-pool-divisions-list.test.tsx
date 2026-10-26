@@ -152,7 +152,7 @@ describe("NumberPoolDivisionsList", () => {
     await userEvent.click(component.getByRole("button", { name: "Usage" }));
 
     // THEN
-    await expect.element(component.getByRole("link").first()).toHaveTextContent("spine1");
+    await expect.element(component.getByRole("link").first()).toMatchTextContent("spine1");
     expect(rowLabels(component)).toEqual(["spine1", "Leaf2", "leaf10"]);
   });
 
