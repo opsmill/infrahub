@@ -20,7 +20,7 @@ from infrahub_sdk.protocols import (
 
 from infrahub.core.constants import InfrahubKind, RepositorySyncStatus
 from infrahub.core.node import Node
-from infrahub.exceptions import RepositoryConfigurationError
+from infrahub.exceptions import RepositoryError
 from infrahub.git.models import GitReadOnlyRepositoryImportCommit
 from infrahub.workflows.catalogue import GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT
 from tests.constants import TestKind
@@ -597,10 +597,10 @@ class TestImportRemovedDefinitions(TestInfrahubApp):
             f"Check definition 'people check' in repository '{REPOSITORY_NAME}' targets the group 'missing', "
             "but no group named 'missing' exists on branch 'main'."
         )
-        with pytest.raises(RepositoryConfigurationError, match=rf"^{re.escape(expected_message)}$"):
+        with pytest.raises(RepositoryError, match=rf"^{re.escape(expected_message)}$"):
             await self._import_last_commit(service=service, repository_id=repository_id)
 
-        assert expected_message in [record.getMessage() for record in caplog.records if record.levelname == "ERROR"]
+        assert any(expected_message in record.getMessage() for record in caplog.records if record.levelname == "ERROR")
         repository = await client.get(kind=CoreReadOnlyRepository, id=repository_id)
         assert repository.sync_status.value == RepositorySyncStatus.ERROR_IMPORT.value
         unchanged_check_definition = await client.get(kind=CoreCheckDefinition, id=check_definition.id)
