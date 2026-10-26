@@ -179,9 +179,7 @@ async def test_profile_peer_change_submits_the_refresh_of_the_changed_peers(
             PROFILE_REFRESH_MULTIPLE,
             {
                 "branch_name": default_branch.name,
-                "node_ids": sorted(peer.id for peer in changed)
-                if test_case.mutation == "RelationshipRemove"
-                else [peer.id for peer in changed],
+                "node_ids": [peer.id for peer in changed],
                 "context": expected_context,
             },
             [
