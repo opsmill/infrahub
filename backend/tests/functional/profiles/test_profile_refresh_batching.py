@@ -13,6 +13,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.exceptions import ProfileRefreshError
 from infrahub.graphql.mutations.profile import InfrahubProfileMutation
+from infrahub.profiles.graphql_queries import ProfileNodeIDQuery
 from infrahub.profiles.tasks import objects_profiles_refresh_multiple, profile_refresh_process
 from infrahub.workflows.catalogue import PROFILE_REFRESH_MULTIPLE
 from infrahub.workflows.constants import WorkflowTag
@@ -165,8 +166,8 @@ class TestProfileRefreshBatching(TestInfrahubApp):
         """
         # Limit 4 -> chunk size 2, so the three linked devices split into [2, 1].
         monkeypatch.setenv("PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES", "4")
-        # The default pagination size would return all three ids in one page, leaving paging between chunks untested.
-        monkeypatch.setattr(client.config, "pagination_size", 2)
+        # The real page size would return all three ids in one page, leaving paging between chunks untested.
+        monkeypatch.setattr(ProfileNodeIDQuery, "page_size", 2)
 
         recorder = WorkflowRecorder()
         with override_workflow(recorder, dependency_provider=dependency_provider):
@@ -202,7 +203,7 @@ class TestProfileRefreshBatching(TestInfrahubApp):
     ) -> None:
         """A profile of a generic reads its linked nodes and templates of every concrete kind through the generics."""
         monkeypatch.setenv("PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES", "4")
-        monkeypatch.setattr(client.config, "pagination_size", 2)
+        monkeypatch.setattr(ProfileNodeIDQuery, "page_size", 2)
 
         recorder = WorkflowRecorder()
         with override_workflow(recorder, dependency_provider=dependency_provider):
