@@ -6,7 +6,6 @@ from infrahub_sdk.exceptions import GraphQLError
 from prefect import flow
 from prefect.logging import get_run_logger
 
-from infrahub.events.limits import get_submission_chunk_size
 from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
 from infrahub.exceptions import ProfileRefreshError
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
@@ -118,7 +117,7 @@ async def profile_refresh_process(
     """Process profile refresh when a profile's attributes or relationships change.
 
     This flow reads the ids of the nodes and templates linked to the profile in pages, and submits
-    one profile refresh flow for each chunk of ids.
+    one profile refresh flow for each chunk of ids of a page.
     """
     log = get_run_logger()
     client = get_client()
@@ -132,12 +131,11 @@ async def profile_refresh_process(
         peer_kinds.append(related_templates.peer)
 
     workflow = get_workflow()
-    chunk_size = get_submission_chunk_size()
     for peer_kind in peer_kinds:
         node_query = ProfileNodeIDQuery(kind=peer_kind, profile_id=profile_id)
         submitted = 0
-        async for node_ids in node_query.fetch_all_chunked(
-            client=client, branch_name=branch_name, chunk_size=chunk_size
+        async for node_ids in node_query.fetch_all_paginated(
+            client=client, branch_name=branch_name, page_size=node_query.page_size
         ):
             await submit_profile_refresh(
                 workflow=workflow, branch_name=branch_name, node_ids=node_ids, context=context, profile_id=profile_id
