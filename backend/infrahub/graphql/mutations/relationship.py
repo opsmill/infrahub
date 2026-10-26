@@ -275,7 +275,9 @@ class RelationshipAdd(Mutation):
                         peers.append(EventNode(id=rel.get_peer_id(), kind=nodes[rel.get_peer_id()].get_kind()))
                     node_changelog.create_relationship(relationship=rel)
                     await rel.save(db=db, user_id=graphql_context.assigned_user_id)
-                    added_peer_ids.append(rel.get_peer_id())
+                    # A request can name the same peer more than once.
+                    if rel.get_peer_id() not in added_peer_ids:
+                        added_peer_ids.append(rel.get_peer_id())
                     relationship_modified = True
 
             # peers that need to have their profile source cleared
@@ -739,15 +741,16 @@ async def _detach_relationship_from_profiles(
 async def _submit_profile_peers_refresh(
     graphql_context: GraphqlContext, source: Node, relationship_name: str, peer_ids: list[str]
 ) -> None:
-    if not peer_ids or not source.get_schema().is_profile_schema:
-        return
-    if relationship_name not in PROFILE_PEER_RELATIONSHIP_NAMES:
+    if (
+        not peer_ids
+        or not source.get_schema().is_profile_schema
+        or relationship_name not in PROFILE_PEER_RELATIONSHIP_NAMES
+    ):
         return
     await submit_profile_refresh(
         workflow=graphql_context.active_service.workflow,
         branch_name=graphql_context.branch.name,
-        # A request can name the same peer more than once.
-        node_ids=list(dict.fromkeys(peer_ids)),
+        node_ids=peer_ids,
         context=graphql_context.to_event_context(),
         profile_id=source.get_id(),
     )
