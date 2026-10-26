@@ -2,7 +2,7 @@
 
 Author: the owner (pasted in session).
 
-```
+```markdown
 <!-- design-jam:table-header-compact -->
 ## design-jam feedback — table-header-compact
 
