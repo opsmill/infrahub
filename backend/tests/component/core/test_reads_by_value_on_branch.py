@@ -118,6 +118,20 @@ VALUE_FILTER_CASES = [
         expected_on_branch={"car-red"},
     ),
     ValueFilterCase(
+        name="attribute_owner",
+        kind=TestKind.CAR,
+        filters={"color__owner__id": "alice"},
+        expected_on_default={"car-red"},
+        expected_on_branch=set(),
+    ),
+    ValueFilterCase(
+        name="attribute_owner_set_on_the_branch",
+        kind=TestKind.CAR,
+        filters={"color__owner__id": "carol"},
+        expected_on_default=set(),
+        expected_on_branch={"car-red"},
+    ),
+    ValueFilterCase(
         name="peer_attribute",
         kind=TestKind.CAR,
         filters={"owner__name__value": "bob"},
@@ -179,7 +193,11 @@ class TestReadsByValueOnBranch:
             ids[name] = person.id
 
         cars: dict[str, dict[str, Any]] = {
-            "car-red": {"color": {"value": "red", "source": ids["alice"]}, "description": "fast", "owner": "alice"},
+            "car-red": {
+                "color": {"value": "red", "source": ids["alice"], "owner": ids["alice"]},
+                "description": "fast",
+                "owner": "alice",
+            },
             "car-ruby": {"color": "red", "owner": "alice"},
             "car-scarlet": {"color": "red", "description": "red", "owner": "bob"},
             "car-green": {"color": "green", "owner": "carol"},
@@ -202,7 +220,9 @@ class TestReadsByValueOnBranch:
         ids["ticket"] = ticket.id
 
         branch = await create_branch(db=db, branch_name="reads-by-value")
-        await _update(db, branch, ids["car-red"], color={"value": "blue", "source": ids["carol"]})
+        await _update(
+            db, branch, ids["car-red"], color={"value": "blue", "source": ids["carol"], "owner": ids["carol"]}
+        )
         await _update(db, branch, ids["car-scarlet"], color={"value": "blue"})
         await _update(db, branch, ids["car-green"], color={"is_protected": True}, name={"value": "car-teal"})
         await _update(db, branch, ids["car-coral"], color={"value": "blue"}, description={"value": "shiny"})
