@@ -25,7 +25,7 @@ Because the SBOMs are attested against the image digest, they are attached to th
 
 To verify an image and retrieve its SBOM you need:
 
-- [Cosign](https://docs.sigstore.dev/system_config/installation/) **v3 or later** installed locally. Cosign v2 is not compatible — it emits a different attestation envelope and the verification commands below will not work with it.
+- [Cosign](https://docs.sigstore.dev/cosign/system_config/installation/) **v3 or later** installed locally. Cosign v2 is not compatible — it emits a different attestation envelope and the verification commands below will not work with it.
 - [`jq`](https://jqlang.github.io/jq/) to extract the SBOM document from the attestation payload.
 - Access to the registry that hosts the image you deploy, for example `registry.opsmill.io/opsmill/infrahub`.
 
