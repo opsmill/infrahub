@@ -1,0 +1,19 @@
+backend/infrahub/git/tasks.py
+  s_d5954718fc8fe8::t_5ae190bf416970 1624-1628
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2a453c90f4d36f606b29d1029b3b7ee4510a9e83",
+  "prompts": {},
+  "sessions": {
+    "s_d5954718fc8fe8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a34a3173-1903-4f83-9345-86078fd19342",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
