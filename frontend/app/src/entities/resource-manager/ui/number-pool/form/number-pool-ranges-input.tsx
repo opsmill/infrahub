@@ -21,10 +21,6 @@ export function validateRangeBound(value: number | null): string | true {
   return true;
 }
 
-export function validateRangeWeight(value: number | null): string | true {
-  return validateRangeBound(value);
-}
-
 // The server reads a range without a start as starting at 1 and a range without an end as ending at the largest number it can store.
 const resolveRangeBounds = ({ start, end }: Pick<NumberPoolRangeRow, "start" | "end">) => ({
   start: start ?? 1,
@@ -104,7 +100,7 @@ function NumberPoolRangeRowInput({ index, rowCount, onRemove }: NumberPoolRangeR
   });
   const weight = useController<NumberPoolFormData, `ranges.${number}.allocation_weight`>({
     name: `ranges.${index}.allocation_weight`,
-    rules: { validate: validateRangeWeight },
+    rules: { validate: validateRangeBound },
   });
   const startRef = usePreventScrollOnNumberInput();
   const endRef = usePreventScrollOnNumberInput();

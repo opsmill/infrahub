@@ -8,7 +8,6 @@ import {
   validateRangeBound,
   validateRangeOrder,
   validateRangeOverlap,
-  validateRangeWeight,
 } from "./number-pool-ranges-input";
 
 const row = (start: number | null, end: number | null): NumberPoolRangeRow => ({
@@ -197,24 +196,6 @@ describe("validateRangeBound", () => {
 
     // THEN
     expect(result).toBe(message);
-  });
-});
-
-describe("validateRangeWeight", () => {
-  test("accepts an empty weight, which means the range has none", () => {
-    // WHEN
-    const result = validateRangeWeight(null);
-
-    // THEN
-    expect(result).toBe(true);
-  });
-
-  test("refuses a weight that is not a whole number", () => {
-    // WHEN
-    const result = validateRangeWeight(1.5);
-
-    // THEN
-    expect(result).toBe("Whole number");
   });
 });
 
