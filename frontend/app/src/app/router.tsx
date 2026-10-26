@@ -48,6 +48,11 @@ export const router = createBrowserRouter([
                 index: true,
                 lazy: () => import("@/pages/homepage"),
               },
+              // PROTOTYPE design-jam table-header-compact
+              {
+                path: "/_proto/table-header-compact",
+                lazy: () => import("@/pages/_proto/table-header-compact"),
+              },
               {
                 path: "/branches",
                 children: [
