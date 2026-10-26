@@ -174,9 +174,7 @@ async def test_profile_peer_change_submits_the_refresh_of_the_changed_peers(
         branch=EventBranchContext(name=default_branch.name, id=str(default_branch.uuid)),
         account_id=editor_session.account_id,
     )
-    assert [
-        (call["workflow"], call["parameters"], call["context"], call["tags"]) for call in workflow.submit_calls
-    ] == [
+    assert [(call["workflow"], call["parameters"], call["tags"]) for call in workflow.submit_calls] == [
         (
             PROFILE_REFRESH_MULTIPLE,
             {
@@ -186,7 +184,6 @@ async def test_profile_peer_change_submits_the_refresh_of_the_changed_peers(
                 else [peer.id for peer in changed],
                 "context": expected_context,
             },
-            expected_context,
             [
                 WorkflowTag.BRANCH.render(identifier=default_branch.name),
                 WorkflowTag.RELATED_NODE.render(identifier=profile.id),
