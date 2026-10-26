@@ -52,10 +52,13 @@ relationship, so the load likely fails for nodes that use templates (not tested,
   on the endpoint and in `infrahubctl schema export`. The `IDS` mode stays deferred (FR-014 to FR-016).
 - Q: With a namespace filter, when the selected namespaces reference kinds in a namespace outside the
   selection, what does the export do? → A: It exports only the selected namespaces and returns a warning
-  that names the referenced namespaces, following the engineering recommendation in the design document
-  (FR-017).
+  that names the referenced namespaces, following the engineering recommendation in the design document.
+  Replaced by the answer on where the warning appears, below: the export has no warning.
 - Q: Is a download of the export from the UI part of this spec? → A: No. The export is available from the
   API and `infrahubctl` only. The estimate on INFP-723 does not include a UI action.
+- Q: Where does the namespace warning appear in the export response? → A: Nowhere. The export returns no
+  warning. A filtered export contains only the selected namespaces, and the schema owner is responsible for
+  loading the namespaces they reference (FR-017).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -159,26 +162,26 @@ export into the target, and check that the attribute's label on the target is th
 ### User Story 4 - Export only some namespaces (Priority: P3)
 
 A schema owner exports only the namespaces they own, for example to load one namespace into an instance that
-already has the others. The export contains only the selected namespaces. When those namespaces reference
-kinds in a namespace outside the selection, the schema owner receives a warning that names the referenced
-namespaces, so they know the export does not load into an empty instance on its own.
+already has the others. The export contains only the selected namespaces, even when they reference kinds in a
+namespace outside the selection. Infrahub does not warn about those references, so an export of one namespace
+that references another does not load into an empty instance on its own.
 
 **Why this priority**: `infrahubctl schema export --namespaces` already offers this. The other stories work
 without a namespace filter.
 
 **Independent Test**: Load a schema where a node in `Network` has a relationship to a node in `Dcim`. Export
-only `Network` and check that the export contains only `Network` and that the response includes a warning
-naming `Dcim`.
+only `Network`, check that the export contains only `Network`, and load it into an instance that already has
+the `Dcim` schema.
 
 **Acceptance Scenarios**:
 
 1. **Given** a node in `Network` with a relationship to a node in `Dcim`, **When** the schema owner exports
-   with `namespaces=Network`, **Then** the export contains only the `Network` nodes and generics, and the
-   response includes a warning that names `Dcim`.
+   with `namespaces=Network`, **Then** the export contains only the `Network` nodes and generics, and no
+   warning.
 2. **Given** the same schema, **When** the schema owner runs `infrahubctl schema export --namespaces Network`,
-   **Then** the command writes only the `Network` file and prints the warning.
-3. **Given** a selection whose kinds reference no other namespace, **When** the schema owner exports it,
-   **Then** the response includes no warning.
+   **Then** the command writes only the `Network` file.
+3. **Given** the `Network` export from scenario 1, **When** the schema owner loads it into an instance that
+   already has the `Dcim` schema, **Then** the load succeeds.
 
 ---
 
@@ -261,9 +264,9 @@ naming `Dcim`.
 #### Branch and namespace selection, and access
 
 - **FR-017**: The export MUST accept the same `branch` and `namespaces` parameters as `GET /api/schema`
-  (D11). When `namespaces` is set, the export MUST contain only the selected namespaces. When the selected
-  namespaces reference kinds in a namespace outside the selection, the export MUST still be returned, together
-  with a warning that names each referenced namespace.
+  (D11). When `namespaces` is set, the export MUST contain only the selected namespaces, including when they
+  reference kinds in a namespace outside the selection. The export MUST NOT add the referenced namespaces or
+  return a warning about them.
 - **FR-018**: Any user who can call `GET /api/schema` MUST be able to export the schema. Loading the export
   still requires the permission to manage the schema on the target instance (D10).
 
@@ -274,7 +277,7 @@ naming `Dcim`.
 - **FR-020**: By default, `infrahubctl schema export` MUST write one YAML file per namespace, with the file
   names it uses today. A command-line option MUST write one YAML file for all namespaces (D9).
 - **FR-021**: `infrahubctl schema export` MUST pass its `--branch` and `--namespaces` options to the endpoint,
-  offer a `--mode` option for `BRIEF` and `FULL`, and print the namespace warning from FR-017.
+  and offer a `--mode` option for `BRIEF` and `FULL`.
 - **FR-022**: Against a server without the export endpoint, `infrahubctl schema export` MUST fail with a
   message that names the server version it needs (D8).
 
