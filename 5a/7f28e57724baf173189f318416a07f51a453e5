@@ -1,0 +1,25 @@
+changelog/+ifc-3365-number-pool-form.changed.md
+  s_f4804ce89d1616::t_d05cfb56b137f9 1
+docs/docs/schema/number-pool.mdx
+  s_f4804ce89d1616::t_720cb0555089a3 116
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 17,43-45,95-115,117-120,129,162-164
+docs/docs/resource-manager/allocate-number.mdx
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 44-47,61,127-145
+  s_f4804ce89d1616::t_b0f78ebeebda44 146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5a7f28e57724baf173189f318416a07f51a453e5",
+  "prompts": {},
+  "sessions": {
+    "s_f4804ce89d1616": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3055b56a-6f63-4403-9864-1ac7a9372a6a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
