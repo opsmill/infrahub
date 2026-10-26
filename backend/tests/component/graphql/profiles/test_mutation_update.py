@@ -134,7 +134,6 @@ async def test_profile_update_refreshes_the_removed_peers(
             call["parameters"]["branch_name"],
             sorted(call["parameters"]["node_ids"]),
             call["parameters"]["context"],
-            call["context"],
             call["tags"],
         )
         for call in workflow.submit_calls
@@ -143,7 +142,6 @@ async def test_profile_update_refreshes_the_removed_peers(
             PROFILE_REFRESH_MULTIPLE,
             default_branch.name,
             sorted([peers[1].id, peers[2].id]),
-            event_context,
             event_context,
             [
                 WorkflowTag.BRANCH.render(identifier=default_branch.name),
