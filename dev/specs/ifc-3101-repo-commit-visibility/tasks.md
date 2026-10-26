@@ -153,7 +153,7 @@ it whole. Should it need splitting, the seam that preserves that property is T00
 before anything is edited, so a later regeneration diff is unambiguously ours.
 
 - [x] T001 Record the "Ask First" sign-off in the Governance paragraph of `dev/specs/ifc-3101-repo-commit-visibility/plan.md`: the additive GraphQL query and mutation surface, plus `BrokerSettings.rpc_timeout` and `GitSettings.read_only_refs_check_interval_mins`. **Done 2026-09-04**, approved by Patrick Ogenstad. The GraphQL gate was definitional (the feature *is* new queries); the substantive half was `rpc_timeout` changing behaviour for existing `rpc` callers, and 30 seconds was the agreed default. **Raised to 120 seconds on 2026-10-08**, agreed in a discussion between Patrick and Dimitris; the reasons are in the Governance paragraph of `plan.md`
-- [ ] T094 [P] Get the three design-canvas updates the spec's Assumptions record, and the one presentation question the PRD left to the designer, settled on the [Git sync visibility canvas](https://claude.ai/design/p/d8efb789-c722-4622-b8d8-0bceb7054774?file=Git+sync+visibility.dc.html&via=share): drop the commit-count badge (FR-024), add a check time alongside the update time on the freshness line for read-only repositories (FR-007), place a "check remote now" action (FR-015), and settle how a rewritten ref is distinguished from ordinary drift without introducing a new repository status value. Blocks T054 and T072 only, so it runs alongside the whole of Phase 2 rather than gating it. Three of the four were settled through T054 as it shipped: the tab shows no commit count, the freshness line shows the check time beside the update time when they differ, and a rewritten ref replaces the pending line with its own notice rather than a new status value. Only the placement of "check remote now" (FR-015) stays open, and it moves with T072
+- [ ] T094 [P] Get the three design-canvas updates the spec's Assumptions record, and the one presentation question the PRD left to the designer, settled on the [Git sync visibility canvas](https://claude.ai/design/p/d8efb789-c722-4622-b8d8-0bceb7054774?file=Git+sync+visibility.dc.html&via=share): drop the commit-count badge (FR-024), add a check time alongside the update time on the freshness line for read-only repositories (FR-007), place a "check remote now" action (FR-015), and settle how a rewritten ref is distinguished from ordinary drift without introducing a new repository status value. Blocks T054 and T072 only, so it runs alongside the whole of Phase 2 rather than gating it. Three of the four were settled through T054 as it shipped: the tab shows no commit count, the freshness line shows the check time beside the update time when they differ, and a rewritten ref is stated in the status block's headline rather than as a new status value. The fourth, the placement of "check remote now" (FR-015), is settled through T111: it is the second action of the status block for a read-only repository. Whether the canvas itself was updated to match is not recorded
 - [x] T002 [P] **Done 2026-09-08. All four clean, no pre-existing drift**: `uv run invoke schema.validate-graphqlschema`, `uv run invoke docs.validate`, `uv run invoke release.validate-dockercomposeenv`, and `cd frontend/app && pnpm codegen && git diff --exit-code src/shared/api/graphql/generated` each left the tree unchanged, so every regeneration diff from block 2.6 onward is unambiguously ours. One environment note for anyone picking this up in a fresh worktree: `uv sync --all-groups` alone is not enough. Run `git submodule update --init --recursive` first, and if the editable install was already built against an empty `python_sdk/`, `uv sync` reports everything satisfied while `infrahub_sdk` stays unimportable, because the `.pth` maps only the roots that existed at build time. `uv sync --all-groups --reinstall-package infrahub-server` rebuilds it
 
 **Checkpoint**: approval recorded, generated files known clean. Nothing here is a pull request of its
@@ -273,7 +273,7 @@ hash.
 
 **Independent Test**: against a `FileRepo` fixture whose remote has advanced past the imported
 commit, open the Commits tab on that branch and confirm both markers, the pending range, the
-per-commit fields, the freshness line, and hash copying. No read-only repository and no branch list
+per-commit fields, the status block's update time, and hash copying. No read-only repository and no branch list
 involved.
 
 **Parallelism**: block 3.5 (frontend) depends only on checkpoint 2A, so it runs alongside blocks 3.1
@@ -408,11 +408,12 @@ edit and can land at any point in PR 8. Five separate files, parallel.
 
 T073 depends only on checkpoint 2A; T072 depends on T067.
 
-- [X] T072 [US2] Add the "check remote now" action to the commit view's header, `frontend/app/src/entities/repository/ui/repository-commits-header.tsx` (beside the refresh button and the freshness line; `repository-commits-tab.tsx` is only the tab link), read-only repositories only, submitting `InfrahubReadOnlyRepositoryCheckRefs`, disabled while a check is in flight, surfacing the running task rather than firing a second run. Without it the on-demand half of this story has no entry point outside the API. Built as `repository-check-remote-button.tsx`, which polls the returned task by id until it ends. Placement is provisional until T094
+- [X] T072 [US2] Add the "check remote now" action to the commit view's header, `frontend/app/src/entities/repository/ui/repository-commits-header.tsx` (beside the refresh button and the freshness line; `repository-commits-tab.tsx` is only the tab link), read-only repositories only, submitting `InfrahubReadOnlyRepositoryCheckRefs`, disabled while a check is in flight, surfacing the running task rather than firing a second run. Without it the on-demand half of this story has no entry point outside the API. Built as `repository-check-remote-button.tsx`, which polls the returned task by id until it ends. Placement is provisional until T094. Placement settled by T111: the action is the status block's second action for a read-only repository, and the Refresh button shows only when the commit log is unavailable or failed to load
 - [X] T073 [P] [US2] Test the action's states, asserted by accessible name, in `frontend/app/src/entities/repository/ui/repository-check-remote-button.test.tsx`, which renders it through the commit view. The freshness line showing a recent `checked_at` beside an older `fetched_at` is already covered in `repository-commits-manager.test.tsx` ("shows both the check time and the update time when they differ")
 - [x] T095 [US2] **Done, checked 2026-10-14.** All three tests in `test_repository_check_remote.py` passed in the `branches_repo` shard of `develop` CI run 38551370153. Extend `tests/e2e/repository/` with the on-demand check against a read-only repository fixture: the action is present for the read-only kind and absent for the read-write kind, triggering it surfaces a task id, and the freshness line's check time advances afterwards even when the remote has not moved. Constitution IV requires e2e for user-facing features and this button is one; it needs a read-only repository in the e2e data set, which `demo_edge_repo` does not provide, so budget the fixture with the task. Written as `tests/e2e/repository/test_repository_check_remote.py`; open until it passes in CI
 - [x] T074 [P] [US2] Add `changelog/+ifc-3101-readonly-refs-check.added.md` (the `+` orphan prefix T027 records) covering the periodic check, the on-demand action and the new interval setting
 - [X] T075 [US2] Walk quickstart.md "Phase C" and reconcile any divergence. Steps 2–3 and the Tests block match the shipped action and test files
+- [x] T111 [US2] Replace the commit view's header in `frontend/app/src/entities/repository/ui/repository-commits-header.tsx` with a status block, and its actions in `frontend/app/src/entities/repository/ui/hooks/use-repository-commits-actions.tsx`. The headline states the condition ("Behind main by 2 commits", "Up to date with main", "Diverged from main", "2 commits pending import", "<ref> no longer exists on the remote"), a supporting line says what brings the missing commits, and the last line shows the tracked ref and when the remote was last checked. At most one main action and one second action: "Import latest commit" and "Check remote now" for a read-only repository, including after a rewritten history or a missing imported commit; only "Check remote now" when a read-only repository's tracked ref is missing on the remote, with a supporting line that says to change the tracked ref in the repository's Edit form or restore it in Git; "Rebase branch" for a branch that does not sync with Git when it is behind, diverged or missing the imported commit, after a confirmation that the whole branch, with all its data and repositories, is rebased onto the default branch, and only with the `rebase_branch` permission. A read-write repository on a branch that syncs with Git gets no action, because the next sync imports the commits. A running import or rebase replaces the headline with "Import running" or "Rebase running", a running check labels its button "Check running", and a disabled action says which permission is missing. The Refresh button shows only when the commit log is unavailable or failed to load. Settles T094's placement of "check remote now"
 
 **Checkpoint**: a commit pushed to a read-only repository's tracked ref becomes visible within the
 interval with no user action and immediately on demand, and nothing about what Infrahub runs has
@@ -598,3 +599,24 @@ The eleven pull requests do not shrink under parallelism; the elapsed time does.
 - Commit after each task or coherent block, and add the changelog fragment in the same commit as the
   user-visible change it describes
 - Stop at any checkpoint to validate a story on its own
+
+---
+
+## Erratum: commit view header replaced by the status block
+
+T111 replaced the commit view's header. The done tasks below are left as written; each statement in
+them that no longer matches the commit view is listed here with what replaced it.
+
+- T054, "a distinct banner for `REWRITTEN`": the status block's headline states a rewritten history;
+  there is no separate banner
+- T054, "the freshness line and condition notice in `repository-commits-header.tsx`": that file
+  renders the status block, whose last line shows the tracked ref, the check time and the update
+  time when they differ, and whose headline states the condition
+- T056, "the rewritten banner replaces the pending range": the status block's headline states the
+  rewritten history in place of a pending count
+- T072, "beside the refresh button and the freshness line": "Check remote now" is the status block's
+  second action for a read-only repository, and the Refresh button shows only when the commit log
+  is unavailable or failed to load
+- T073 and T095, "the freshness line": the check time is on the status block's last line
+- T095, "triggering it surfaces a task id": the commit view links no task; while the check runs,
+  the button reads "Check running", and the e2e test checks that label

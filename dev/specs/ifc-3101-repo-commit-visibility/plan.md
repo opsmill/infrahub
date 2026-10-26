@@ -203,9 +203,10 @@ frontend/app/src/
 ├── entities/repository/ui/queries/repository-commits.constants.ts                 # NEW  page size, stale time, retry delay and cap
 ├── entities/repository/ui/queries/repository.query-keys.ts                        # NEW or EDIT
 ├── entities/repository/ui/hooks/use-is-rebase-only.ts                             # NEW  current branch read for the rebase-only rule
+├── entities/repository/ui/hooks/use-repository-commits-actions.tsx                # NEW  status block actions: import, check, rebase, and the running task
 ├── entities/repository/ui/repository-commits-tab.tsx                              # NEW  tab link with the pending-import or behind badge, or a warning marker
 ├── entities/repository/ui/repository-commits-manager.tsx                          # NEW  commit list: DataTable inside InfiniteScroll, empty and error states
-├── entities/repository/ui/repository-commits-header.tsx                           # NEW  refresh button, freshness line, condition notice
+├── entities/repository/ui/repository-commits-header.tsx                           # NEW  status block: headline, supporting line, actions, tracked ref and check time
 ├── entities/repository/ui/repository-commits.view.ts                              # NEW  pure display decisions (empty state, stale rows, next-page state, badges)
 ├── entities/repository/ui/repository-commits-notice.tsx                           # NEW
 ├── entities/repository/ui/get-repository-commits-columns.tsx                      # NEW
@@ -408,7 +409,8 @@ determinism logic, no test and no documentation entry.
 ### Phase D: frontend
 
 - Commits tab on the repository detail page with markers, per-row state, `DateDisplay fullTimestamp`
-  for the freshness line, `NoDataFound` for `UNAVAILABLE` and a notice for `REWRITTEN`. The list is a
+  for the check and update times, `NoDataFound` for `UNAVAILABLE` and the status block's headline for
+  `REWRITTEN`. The list is a
   `DataTable` inside `InfiniteScroll`, which loads the next page when the end of the list comes into
   view and shows no total; `Pagination` was dropped because it always shows a total, which FR-024
   forbids. The full hash is copied from the row menu item "Copy commit hash", built on the shared
@@ -418,17 +420,30 @@ determinism logic, no test and no documentation entry.
   page of the same query through `select`, so the label and the list share one read. That query runs on every repository tab, so
   the request passes `processErrorMessage: () => {}`: the label never raises a toast, and the commit
   view shows the error itself.
-- Freshness line shows `checked_at` when present and `fetched_at` otherwise, so a quiet read-only
+- The status block's last line shows the tracked ref, and `checked_at` when present and `fetched_at` otherwise, so a quiet read-only
   repository reads as recently checked rather than weeks stale. Both are shown when they differ.
 - "Check remote now" action, read-only repositories only, submitting
   `InfrahubReadOnlyRepositoryCheckRefs`. The commit view polls the task the mutation returned, by
-  its id, every 2 seconds until it leaves the ongoing states or is no longer listed. Meanwhile the button is disabled and a
-  "View task" link beside it opens that task in the repository's Tasks tab; when it ends, the commit
+  its id, every 2 seconds until it leaves the ongoing states or is no longer listed. Meanwhile the button is disabled and
+  reads "Check running"; when it ends, the commit
   log is refetched. The started task is read back from the mutation cache, so it survives the commit
   view remounting, and only on the branch it was started on. A check started from another browser
   tab or by another user is not shown. Without it the on-demand half of User Story 2 has no entry
-  point outside the API, which matters because the interval stays at 15 minutes. Its placement on
-  the design canvas is still open (T094).
+  point outside the API, which matters because the interval stays at 15 minutes. Its placement is
+  settled: the second action of the status block for a read-only repository (T094).
+- The status block at the top of the commit view states the condition in its headline ("Behind main
+  by 2 commits", "Diverged from main", "<ref> no longer exists on the remote"), says what brings the
+  missing commits, and offers at most one main action and one second action. A read-only repository
+  offers "Import latest commit" and "Check remote now"; when its tracked ref is missing on the
+  remote, it offers only "Check remote now" and the supporting line says to change the tracked ref
+  in the repository's Edit form or restore it in Git. A branch that does not sync with Git offers "Rebase branch" when it is
+  behind, diverged or missing the imported commit, after a confirmation that the whole branch, with
+  all its data and repositories, is rebased onto the default branch; it requires the
+  `rebase_branch` permission. A read-write repository on a branch that syncs with Git offers no
+  action, because the next sync imports the commits. A disabled action says which permission is
+  missing. A running import, rebase or check replaces the headline with "Import running" or
+  "Rebase running", or labels the button "Check running". The Refresh button shows only when the
+  commit log is unavailable or failed to load (T111).
 - Departure from FR-025 in the interface, recorded rather than fixed here: the commit view follows
   only the task it started, so it cannot see a scheduled check. Pressing the button while one, or
   another user's on-demand check, holds the repository submits a run that exits at once as

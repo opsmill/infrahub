@@ -1,6 +1,7 @@
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { cleanup } from "vitest-browser-react";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getRepositoryCommitsFromApi } from "@/entities/repository/api/get-repository-commits-from-api";
@@ -61,7 +62,9 @@ describe("RepositoryCommitsManager loading more", () => {
     });
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    // Unmounted first, or a background poll re-renders the tab against reset mocks.
+    await cleanup();
     vi.resetAllMocks();
   });
 
@@ -82,9 +85,11 @@ describe("RepositoryCommitsManager loading more", () => {
         <RepositoryCommitsManager
           repositoryId="repo-1"
           repositoryKind={REPOSITORY_KIND}
+          repositoryName="infrahub-demo"
+          isReadOnly={false}
           repositoryInternalStatus="active"
           repositoryLocation={null}
-          remoteCheck={null}
+          updatePermission={{ isAllowed: true }}
         />
       </>
     );
@@ -114,13 +119,17 @@ describe("RepositoryCommitsManager loading more", () => {
         <RepositoryCommitsManager
           repositoryId="repo-1"
           repositoryKind={REPOSITORY_KIND}
+          repositoryName="infrahub-demo"
+          isReadOnly={false}
           repositoryInternalStatus="active"
           repositoryLocation={null}
-          remoteCheck={null}
+          updatePermission={{ isAllowed: true }}
         />
       </>
     );
-    await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
+    await expect
+      .element(component.getByTestId("data-table-row").getByText(PAGE_ONE_HEAD))
+      .toBeVisible();
 
     // WHEN
     await queryClient.refetchQueries();

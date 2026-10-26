@@ -45,19 +45,6 @@ query RepositoryFreshness($id: String!) {
 """
 
 
-TASK_STATE_QUERY = """
-query TaskState($id: String!) {
-  InfrahubTask(ids: [$id]) {
-    edges {
-      node {
-        state
-      }
-    }
-  }
-}
-"""
-
-
 def commits_tab_url(kind: str, repository_id: str) -> str:
     return f"/objects/{kind}/{repository_id}/repository_commits"
 
@@ -67,13 +54,6 @@ async def read_freshness(client: InfrahubClient, repository_id: str) -> dict[str
         query=COMMITS_FRESHNESS_QUERY, variables={"id": repository_id}, tracker="query-repository-freshness"
     )
     return response["InfrahubRepositoryCommits"]
-
-
-async def read_task_state(client: InfrahubClient, task_id: str) -> str:
-    response = await client.execute_graphql(
-        query=TASK_STATE_QUERY, variables={"id": task_id}, tracker="query-task-state"
-    )
-    return response["InfrahubTask"]["edges"][0]["node"]["state"]
 
 
 @pytest.fixture(scope="module")
@@ -136,7 +116,7 @@ class TestRepositoryCheckRemote:
         )
         await expect(check_button).to_be_disabled()
 
-    async def test_check_links_its_task_and_advances_the_check_time(
+    async def test_check_shows_it_runs_and_advances_the_check_time(
         self, admin_page: Page, infrahub_client: InfrahubClient, read_only_repo_id: str
     ) -> None:
         before = await read_freshness(infrahub_client, read_only_repo_id)
@@ -146,17 +126,12 @@ class TestRepositoryCheckRemote:
         await expect(check_button).to_be_enabled()
         await check_button.click()
 
-        await expect(check_button).to_be_disabled()
-        task_link = admin_page.get_by_role("link", name="View task")
-        await expect(task_link).to_have_attribute("href", re.compile(r"/tasks/[\w-]+$"))
-        href = await task_link.get_attribute("href")
-        assert href is not None
-        task_id = href.rsplit("/", 1)[-1]
+        running_button = admin_page.get_by_role("button", name="Check running")
+        await expect(running_button).to_be_disabled()
 
-        await expect(task_link).to_have_count(0, timeout=CHECK_TIMEOUT_MS)
+        await expect(running_button).to_have_count(0, timeout=CHECK_TIMEOUT_MS)
         await expect(check_button).to_be_enabled()
 
-        assert await read_task_state(infrahub_client, task_id) == "COMPLETED"
         after = await read_freshness(infrahub_client, read_only_repo_id)
         assert before["checked_at"] is not None
         assert after["checked_at"] is not None
