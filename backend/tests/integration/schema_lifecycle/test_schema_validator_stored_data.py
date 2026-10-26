@@ -289,12 +289,13 @@ class TestSchemaChangeRefusedByStoredData(TestInfrahubApp):
 
     async def test_schema_load_renaming_a_hierarchical_kind_with_stored_nodes_is_accepted(
         self,
+        db: InfrahubDatabase,
         client: InfrahubClient,
         default_branch: Branch,
         initial_dataset: dict[str, str],
         schema_initial: SchemaRoot,
     ) -> None:
-        """Stored nodes keep the old kind label until the migration runs, so the rename must not be refused."""
+        """Renaming hierarchical kinds with stored nodes is accepted."""
         country_id = registry.schema.get_node_schema(name=COUNTRY_KIND, branch=default_branch.name).id
         schema = _with_pool_id(schema_initial, default_branch.name)
         nodes = _nodes_by_name(schema)
@@ -307,3 +308,7 @@ class TestSchemaChangeRefusedByStoredData(TestInfrahubApp):
         assert not response.errors
         site_schema = registry.schema.get_node_schema(name=SITE_KIND, branch=default_branch.name)
         assert site_schema.parent == "LocationNation"
+        stored_site = await registry.manager.get_one(db=db, id=initial_dataset["site"], branch=default_branch)
+        site_parent = await stored_site.get_relationship("parent").get_peer(db=db, raise_on_error=True)
+        assert site_parent.get_id() == initial_dataset["country"]
+        assert site_parent.get_kind() == "LocationNation"
