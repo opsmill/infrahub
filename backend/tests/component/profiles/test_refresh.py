@@ -254,14 +254,13 @@ class QueryCountTestCase:
     name: str
     node_count: int
     transaction_chunk_size: int
-    expected_reads: int
-    """Reads of the nodes and of the profile data: one of each for every transaction chunk."""
+    chunk_count: int
 
 
 QUERY_COUNT_TEST_CASES: list[QueryCountTestCase] = [
-    QueryCountTestCase(name="two_nodes_one_chunk", node_count=2, transaction_chunk_size=4, expected_reads=1),
-    QueryCountTestCase(name="four_nodes_one_chunk", node_count=4, transaction_chunk_size=4, expected_reads=1),
-    QueryCountTestCase(name="six_nodes_two_chunks", node_count=6, transaction_chunk_size=4, expected_reads=2),
+    QueryCountTestCase(name="two_nodes_one_chunk", node_count=2, transaction_chunk_size=4, chunk_count=1),
+    QueryCountTestCase(name="four_nodes_one_chunk", node_count=4, transaction_chunk_size=4, chunk_count=1),
+    QueryCountTestCase(name="six_nodes_two_chunks", node_count=6, transaction_chunk_size=4, chunk_count=2),
 ]
 
 
@@ -280,8 +279,12 @@ async def test_refresh_reads_the_nodes_and_the_profile_data_once_per_transaction
 
     assert failed_node_ids == []
     assert len(doubles.events.events) == test_case.node_count
-    assert counting_db.count_for("node_list_get_info") == test_case.expected_reads
-    assert counting_db.count_for("profile_get_data") == test_case.expected_reads
+    # Each chunk reads its nodes, then the profiles of all of them and their data, once.
+    assert counting_db.count_for("node_list_get_info") == 2 * test_case.chunk_count
+    assert counting_db.count_for("node_list_get_relationship") == test_case.chunk_count
+    assert counting_db.count_for("profile_get_data") == test_case.chunk_count
+    # The room of each node is still read on its own, because the applier needs its profile source.
+    assert counting_db.count_for("relationship_get_peer") == test_case.node_count
 
 
 def _failing_applier(failing_node_id: str, error: Exception) -> type[NodeProfilesApplier]:
