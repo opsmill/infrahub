@@ -231,7 +231,9 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
         )
         assert attached["TestTicketUpdate"]["object"]["ticket_id"]["value"] == 1
 
-        assert await self._allocation_count(client=client, pool_id=pool.id) == 1
+        assert await self._allocation_count(client=client, pool_id=pool.id) == 2, (
+            "the number is listed on main and on the branch, which holds it without writing it"
+        )
         assert await self._allocate_ticket(client=client, pool_id=pool.id, title="before delete") == 2, (
             "the number attached on the branch is taken on main, with no uniqueness constraint to skip it"
         )

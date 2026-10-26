@@ -346,21 +346,31 @@ class TestNumberPoolSurface:
         await device_from_pool(db=db, dataset=dataset, branch=branch, name="sw2", expected=2)
 
         assert await tracked_numbers(db=db, dataset=dataset, pool_id=dataset.scoped_pool_id) == [
+            (1, OTHER_BRANCH, "D0"),
             (1, "main", "D0"),
+            (5, OTHER_BRANCH, "D1"),
             (5, "main", "D1"),
+            (6, OTHER_BRANCH, "D2"),
             (6, "main", "D2"),
             (7, OTHER_BRANCH, "X"),
+            (51, OTHER_BRANCH, "B0"),
             (51, "main", "B0"),
             (52, "main", "B1"),
+            (53, OTHER_BRANCH, "B2"),
             (53, "main", "B2"),
             (54, OTHER_BRANCH, "B1"),
         ]
         assert await tracked_numbers(db=db, dataset=dataset, pool_id=dataset.unscoped_pool_id) == [
+            (1, OTHER_BRANCH, "sw1"),
             (1, "main", "sw1"),
             (2, OTHER_BRANCH, "sw2"),
+            (51, OTHER_BRANCH, "sw3"),
             (51, "main", "sw3"),
         ]
-        assert await tracked_numbers(db=db, dataset=dataset, pool_id=dataset.small_pool_id) == [(9, "main", "R0")]
+        assert await tracked_numbers(db=db, dataset=dataset, pool_id=dataset.small_pool_id) == [
+            (9, OTHER_BRANCH, "R0"),
+            (9, "main", "R0"),
+        ]
         return dataset
 
     @pytest.fixture(scope="class")
@@ -477,10 +487,12 @@ class TestNumberPoolSurface:
             gql_params, ALLOCATIONS_QUERY, pool_id=dataset.scoped_pool_id, division=dataset.division("site-b")
         )
 
-        assert data["InfrahubNumberPoolAllocations"]["count"] == 4
+        assert data["InfrahubNumberPoolAllocations"]["count"] == 6
         assert self._rows(data) == [
+            (51, OTHER_BRANCH, "B0", "PROVIDED", SECOND_RANGE),
             (51, "main", "B0", "PROVIDED", SECOND_RANGE),
             (52, "main", "B1", "PROVIDED", SECOND_RANGE),
+            (53, OTHER_BRANCH, "B2", "PROVIDED", SECOND_RANGE),
             (53, "main", "B2", "PROVIDED", SECOND_RANGE),
             (54, OTHER_BRANCH, "B1", "PROVIDED", SECOND_RANGE),
         ]
@@ -509,12 +521,15 @@ class TestNumberPoolSurface:
         )
 
         assert [row[:3] for row in self._rows(site_a)] == [
+            (1, OTHER_BRANCH, "D0"),
             (1, "main", "D0"),
+            (5, OTHER_BRANCH, "D1"),
             (5, "main", "D1"),
+            (6, OTHER_BRANCH, "D2"),
             (6, "main", "D2"),
             (7, OTHER_BRANCH, "X"),
         ]
-        assert [row[:3] for row in self._rows(site_c)] == [(5, "main", "D1")]
+        assert [row[:3] for row in self._rows(site_c)] == [(5, OTHER_BRANCH, "D1"), (5, "main", "D1")]
 
     async def test_allocations_filter_on_branch_and_provenance(
         self, dataset: SurfaceDataset, gql_params: GraphqlParams
@@ -525,10 +540,16 @@ class TestNumberPoolSurface:
         )
 
         assert self._rows(on_branch) == [
+            (1, OTHER_BRANCH, "D0", "PROVIDED", FIRST_RANGE),
+            (5, OTHER_BRANCH, "D1", "PROVIDED", FIRST_RANGE),
+            (6, OTHER_BRANCH, "D2", "PROVIDED", FIRST_RANGE),
             (7, OTHER_BRANCH, "X", "PROVIDED", FIRST_RANGE),
+            (51, OTHER_BRANCH, "B0", "PROVIDED", SECOND_RANGE),
+            (53, OTHER_BRANCH, "B2", "PROVIDED", SECOND_RANGE),
             (54, OTHER_BRANCH, "B1", "PROVIDED", SECOND_RANGE),
         ]
         assert self._rows(allocated) == [
+            (1, OTHER_BRANCH, "sw1", "ALLOCATED", FIRST_RANGE),
             (1, "main", "sw1", "ALLOCATED", FIRST_RANGE),
             (2, OTHER_BRANCH, "sw2", "ALLOCATED", FIRST_RANGE),
         ]
@@ -538,11 +559,11 @@ class TestNumberPoolSurface:
     ) -> None:
         data = await self._data(gql_params, ALLOCATIONS_QUERY, pool_id=dataset.scoped_pool_id, offset=2, limit=3)
 
-        assert data["InfrahubNumberPoolAllocations"]["count"] == 8
+        assert data["InfrahubNumberPoolAllocations"]["count"] == 13
         assert [row[:3] for row in self._rows(data)] == [
-            (6, "main", "D2"),
-            (7, OTHER_BRANCH, "X"),
-            (51, "main", "B0"),
+            (5, OTHER_BRANCH, "D1"),
+            (5, "main", "D1"),
+            (6, OTHER_BRANCH, "D2"),
         ]
 
     async def test_a_limit_of_zero_gives_an_empty_page(
@@ -550,7 +571,7 @@ class TestNumberPoolSurface:
     ) -> None:
         data = await self._data(gql_params, ALLOCATIONS_QUERY, pool_id=dataset.scoped_pool_id, offset=2, limit=0)
 
-        assert data["InfrahubNumberPoolAllocations"] == {"count": 8, "allocations": []}
+        assert data["InfrahubNumberPoolAllocations"] == {"count": 13, "allocations": []}
 
     async def test_unscoped_pool(self, dataset: SurfaceDataset, gql_params: GraphqlParams) -> None:
         utilization = await self._data(gql_params, UTILIZATION_QUERY, pool_id=dataset.unscoped_pool_id)
@@ -571,6 +592,7 @@ class TestNumberPoolSurface:
         ]
         assert divisions["InfrahubNumberPoolDivisions"] == {"count": 0, "allocation_scope": [], "divisions": []}
         assert self._rows(first_range) == [
+            (1, OTHER_BRANCH, "sw1", "ALLOCATED", FIRST_RANGE),
             (1, "main", "sw1", "ALLOCATED", FIRST_RANGE),
             (2, OTHER_BRANCH, "sw2", "ALLOCATED", FIRST_RANGE),
         ]

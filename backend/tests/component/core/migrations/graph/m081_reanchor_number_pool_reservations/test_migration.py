@@ -701,9 +701,23 @@ class TestMigration081:
     @pytest.mark.parametrize(
         ("ticket", "pool", "rows"),
         [
-            ("on_main_a", "alpha", {"main": ("reserved", PoolRecordProvenance.ALLOCATED)}),
+            (
+                "on_main_a",
+                "alpha",
+                {
+                    "main": ("reserved", PoolRecordProvenance.ALLOCATED),
+                    "feature": ("reserved", PoolRecordProvenance.ALLOCATED),
+                },
+            ),
             ("on_feature", "alpha", {"feature": ("reserved", PoolRecordProvenance.ALLOCATED)}),
-            ("set_back_main", "gamma", {"main": ("reserved", PoolRecordProvenance.ALLOCATED)}),
+            (
+                "set_back_main",
+                "gamma",
+                {
+                    "main": ("reserved", PoolRecordProvenance.ALLOCATED),
+                    "feature": ("reserved", PoolRecordProvenance.ALLOCATED),
+                },
+            ),
             (
                 "set_back_branch",
                 "gamma",

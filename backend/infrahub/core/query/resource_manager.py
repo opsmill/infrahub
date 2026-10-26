@@ -205,6 +205,10 @@ class NumberPoolGetAllocated(Query):
     keeps the values held on that branch and `provenance` the values of that provenance. With a division, which may
     give a value for only some of the scope elements, only the values whose holding object is in the division on some
     live branch are reported.
+
+    A value is reported on each live branch that holds it, including a branch that inherits the default branch's
+    value without an edge of its own. With `include_inherited_branches=False`, such a value is reported on the default
+    branch only, which is enough for a caller that only tells the default branch from the other branches.
     """
 
     name = "numberpool_get_allocated"
@@ -217,6 +221,7 @@ class NumberPoolGetAllocated(Query):
         branch_name: str | None = None,
         provenance: PoolRecordProvenance | None = None,
         division: Division | None = None,
+        include_inherited_branches: bool = True,
         **kwargs: Unpack[QueryInitKwargs],
     ) -> None:
         self.pool = pool
@@ -224,6 +229,7 @@ class NumberPoolGetAllocated(Query):
         self.branch_name = branch_name
         self.provenance = provenance
         self.division = division
+        self.include_inherited_branches = include_inherited_branches
 
         super().__init__(**kwargs)
 
@@ -240,6 +246,7 @@ class NumberPoolGetAllocated(Query):
             at=self.at.to_string(),
             default_branch_name=registry.default_branch,
             division_filter=division_filter,
+            include_inherited_open_values=self.include_inherited_branches,
         )
         self.params.update(reserved_values_params)
 
