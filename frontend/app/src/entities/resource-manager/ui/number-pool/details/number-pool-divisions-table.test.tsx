@@ -72,7 +72,7 @@ describe("NumberPoolDivisionsTable", () => {
     // THEN
     await expect
       .element(component.getByRole("row").first())
-      .toHaveTextContent(/^Device\s*Role\s*Usage/);
+      .toMatchTextContent(/^Device\s*Role\s*Usage/);
   });
 
   it("keeps the usage column pinned on the right edge", async () => {

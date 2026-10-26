@@ -58,8 +58,8 @@ describe("BranchesDataTable", () => {
     await component.getByRole("button", { name: "Delete" }).click();
 
     // THEN
-    await expect.element(component.getByRole("toolbar")).toHaveTextContent("1 selected");
-    await expect.element(component.getByRole("dialog")).toHaveTextContent("`feature`");
+    await expect.element(component.getByRole("toolbar")).toMatchTextContent("1 selected");
+    await expect.element(component.getByRole("dialog")).toMatchTextContent("`feature`");
   });
 
   test("sizes each column by its own track, whatever its position", async () => {

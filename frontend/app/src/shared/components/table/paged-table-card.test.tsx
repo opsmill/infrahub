@@ -112,7 +112,7 @@ describe("PagedTableCard", () => {
     const { component } = await renderShell();
 
     // THEN
-    await expect.element(component.getByTestId("widgets-table")).toHaveTextContent("first");
+    await expect.element(component.getByTestId("widgets-table")).toMatchTextContent("first");
     await expect.element(component.getByText("Widget footer")).toBeVisible();
   });
 
@@ -145,7 +145,7 @@ describe("PagedTableCard", () => {
     const { component } = await renderShell({ query });
     await expect
       .element(component.getByRole("alert"))
-      .toHaveTextContent("Widgets couldn't be loaded.");
+      .toMatchTextContent("Widgets couldn't be loaded.");
 
     // WHEN
     await component.getByRole("button", { name: "Try again" }).click();
