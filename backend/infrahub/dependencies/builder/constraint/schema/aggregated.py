@@ -5,10 +5,7 @@ from .attribute_choices import SchemaAttributeChoicesConstraintDependency
 from .attribute_enum import SchemaAttributeEnumConstraintDependency
 from .attribute_kind import SchemaAttributeKindConstraintDependency
 from .attribute_length import SchemaAttributLengthConstraintDependency
-<<<<<<< HEAD
-=======
 from .attribute_number import SchemaAttributeNumberConstraintDependency
->>>>>>> stable
 from .attribute_number_pool import SchemaAttributeNumberPoolConstraintDependency
 from .attribute_optional import SchemaAttributeOptionalConstraintDependency
 from .attribute_regex import SchemaAttributeRegexConstraintDependency
@@ -44,10 +41,7 @@ class AggregatedSchemaConstraintsDependency(DependencyBuilder[AggregatedConstrai
                 SchemaAttributeChoicesConstraintDependency.build(context=context),
                 SchemaAttributeEnumConstraintDependency.build(context=context),
                 SchemaAttributLengthConstraintDependency.build(context=context),
-<<<<<<< HEAD
-=======
                 SchemaAttributeNumberConstraintDependency.build(context=context),
->>>>>>> stable
                 SchemaAttributeNumberPoolConstraintDependency.build(context=context),
                 SchemaAttributeKindConstraintDependency.build(context=context),
                 SchemaNodeAttributeAddConstraintDependency.build(context=context),

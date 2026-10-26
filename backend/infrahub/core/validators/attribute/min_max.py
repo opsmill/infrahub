@@ -21,13 +21,8 @@ if TYPE_CHECKING:
 class AttributeNumberUpdateValidatorQuery(AttributeSchemaValidatorQuery):
     name: str = "attribute_constraints_number_validator"
 
-<<<<<<< HEAD
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
-=======
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
->>>>>>> stable
         self.params.update(branch_params)
 
         if not isinstance(self.attribute_schema.parameters, NumberAttributeParameters):
