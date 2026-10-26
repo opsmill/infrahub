@@ -1,0 +1,121 @@
+---
+title: Version control
+description: How branches, Proposed Changes, and immutable history work together to version infrastructure data in Infrahub.
+---
+
+With version control, you prepare a change to your infrastructure data separately from the data your automation reads, review what the change does before it takes effect, and look up what the data was at any earlier time.
+
+In Infrahub, version control is part of the database. Three parts work together:
+
+- On a **branch**, a change stays separate from the default branch until you merge it.
+- In a **Proposed Change**, you review what a branch changes before the merge, while Infrahub shows the differences and runs your checks.
+- With **immutable history**, Infrahub keeps every earlier version of your data, so a query for an earlier time returns the data as it was then.
+
+## Why infrastructure data needs version control
+
+Your automation reads its inputs from Infrahub. Transformations render device configurations from the data, Generators create objects from it, and external tools query it through the API. One value can be used in many configurations: the IP address of a router interface is also used in the configuration of its BGP peer and in the firewall policies that refer to it. When you change that value, Infrahub renders each of those configurations again with the new value.
+
+With version control, you make that change on a branch, review every configuration it affects, and merge it only when it is correct. Infrahub keeps the earlier values, so you can find out later what the data was before the change.
+
+Git versions the files that define your automation: schemas, templates, Transformations, Generators, checks, and queries. Infrahub imports these files from your repository. The infrastructure data itself is stored in Infrahub's graph database, as objects, attributes, and the relationships between them. A diff of a file shows which lines changed. A diff in Infrahub shows which objects, attribute values, and relationships changed, and Infrahub regenerates every artifact whose query reads the changed data, so the diff includes the configurations that depend on it. Infrahub therefore versions the data in its database and imports the files from Git. See [Git integration](../git-integration/overview.mdx#two-version-control-planes) for how the two connect.
+
+## How the parts work together
+
+```text
+create a branch
+    ↓
+change the data, and the schema if needed, on the branch
+    ↓
+open a Proposed Change
+    ↓
+Infrahub shows the diff, regenerates the affected artifacts, and runs checks
+    ↓
+reviewers approve, and you merge
+    ↓
+Infrahub applies the changes to the default branch and keeps the earlier versions
+```
+
+### Prepare the change on a branch
+
+Create a branch when you start a change. Infrahub records when the branch starts and stores only the changes you make on it, so creating a branch does not copy your data. Changes on the branch, to the data or to the schema, are not visible on the default branch or on other branches until you merge the branch.
+
+Some data is shared by every branch. When the schema defines an attribute or an object as branch-agnostic, a change to it applies to every branch at once. See [Branch-agnostic data](../branches/branch-agnostic-data.mdx).
+
+When a branch has `sync_with_git` turned on, Infrahub also creates a matching branch in each read-write repository. Commit changes to templates or Transformations on that Git branch, and Infrahub imports them into the Infrahub branch, so the data and the code change together. See [Branches](../branches/overview.mdx).
+
+### Review the change in a Proposed Change
+
+When the changes on your branch are ready, open a Proposed Change to merge the branch into the default branch. A Proposed Change works like a pull request in GitHub or a merge request in GitLab, for infrastructure data as well as for files. In a Proposed Change, Infrahub:
+
+- shows the differences in data, schema, files from connected repositories, and artifacts;
+- regenerates the artifacts whose queries read data that changed on the branch, so you compare each configuration before and after the change;
+- runs the Generators affected by the change;
+- runs the built-in checks, your own checks, and the tests in your repository.
+
+Reviewers comment on the change and approve or reject it. Infrahub blocks the merge while a check fails, with one exception: the Data Integrity check lists the conflicts between the branch and the default branch, and Infrahub blocks the merge only until each conflict is resolved. Infrahub Enterprise adds two settings for administrators: a minimum number of approvals before a merge, and automatic revocation of approvals when the branch changes after it was approved. See [Proposed Changes](../proposed-changes/overview.mdx) and [Change Approval Policy](../change-approval/change-approval-workflow.mdx).
+
+### Merge the branch
+
+When you merge, Infrahub checks conflicts and constraints again against the current default branch, then applies every change from the branch together. A merge either completes or is rolled back. After the merge, Infrahub regenerates the affected artifacts on the default branch from the default branch's data, and your deployment tools read them from there. Infrahub does not deploy configurations to devices. See [Merge a branch](../branches/merge.mdx).
+
+### Query earlier versions of the data
+
+Each change in Infrahub creates a new version instead of replacing the previous one, for objects, attributes, relationships, and the schema. Query the data at an earlier time to see the objects, values, and relationships that existed then, or compare two times to see what changed. The [Activity log](../deploy-manage/run-observe/activity-log.mdx) records who made each change and when. Changes merged from a branch are recorded on the default branch at the time of the merge. See [Immutable history](../immutable-history/overview.mdx).
+
+## Example: change the addresses of a point-to-point link
+
+Your team renumbers the point-to-point link between the core router `atl1-core1` and the edge router `atl1-edge1` into a new /31 prefix. In this example, the schema relates each IP address to its interface, and the firewall policies and BGP sessions refer to those addresses. Transformations render the router and firewall configurations.
+
+1. Create a branch and change the address of the interface on `atl1-core1` from `192.0.2.0/31` to `192.0.2.4/31`. The default branch, and every configuration rendered from it, still has the old address.
+2. Open a Proposed Change. The data diff shows the changed address. Infrahub regenerates every artifact whose query reads that address. Here, those are the configuration of `atl1-core1`, the BGP configuration of `atl1-edge1`, which uses the address for its neighbor, and the firewall configuration whose policies refer to the address. The reviewer compares each one with the current version.
+3. Your team has written a check that both ends of each point-to-point link are in the same /31 prefix. The interface on `atl1-edge1` still has `192.0.2.1/31`, so the check fails and the merge is blocked. Change that address to `192.0.2.5/31` on the same branch and run the checks again. The check passes, and the artifact diff now shows both new addresses.
+4. A reviewer approves, and you merge the branch during the maintenance window. Infrahub applies both address changes to the default branch together and regenerates the configurations there. Your deployment tool, such as an Ansible playbook, applies them to the devices.
+5. Later, to find out what the link looked like before the change, query the data at a time before the merge. The Activity log shows who merged the change and when. To return to the previous addresses, make the reverse change on a new branch and merge it through a Proposed Change.
+
+If you made the first address change directly on the default branch, it would take effect at once. Infrahub would regenerate the router configurations with addresses in two different prefixes, and no check would run first.
+
+## Example: prepare a large change for a maintenance window
+
+A network software upgrade can take several days to prepare and is applied in a maintenance window. Prepare it on one branch that has `sync_with_git` turned on:
+
+1. Add the attribute that the new software version needs to the schema, such as a new interface setting.
+2. On the matching Git branch, update the templates and Transformations that use the attribute. Infrahub imports them into the Infrahub branch.
+3. Set the new values on the branch.
+4. Open a Proposed Change. Infrahub regenerates the configurations with the new attribute and runs your checks and tests. Reviewers compare the new configurations with the current ones.
+5. Merge the branch in the maintenance window. Infrahub also merges the matching Git branch.
+
+While you prepare the branch, other people merge their own changes into the default branch. Those changes are not visible on your branch until you rebase it, so rebase before you open the Proposed Change. See [Parallel branches](../branches/parallel-branches.mdx).
+
+## When to make a change on a branch
+
+Changes made directly on the default branch take effect at once and do not go through a Proposed Change. Infrahub validates them against the schema, but there is no review, and your checks do not run.
+
+Make the change on a branch when:
+
+- someone else should review it, or your checks should validate it, before your automation reads it;
+- it changes data that configurations are rendered from, and you want to compare the new configurations first;
+- several changes must take effect together, such as the addresses at both ends of a link;
+- it takes longer than one working session to prepare, or it depends on a schema change.
+
+Data that no configuration or automation reads, such as an internal note on an object, can be changed directly on the default branch.
+
+To require a branch for every change, give users permission to change objects on non-default branches only. See [Permissions and roles](../deploy-manage/user-management/permissions-roles/overview.mdx).
+
+## Where each kind of change is stored
+
+| What changes | Where it is stored | Until you merge the branch |
+| --- | --- | --- |
+| Objects, attributes, and relationships | Infrahub's database | Visible only on the branch |
+| The schema | Infrahub's database | Applies only on the branch |
+| Templates, Transformations, Generators, checks, and queries | Your Git repository, imported into Infrahub | Infrahub imports the files from the matching Git branch into the Infrahub branch |
+| Artifacts | Infrahub's object storage, one version for each branch | Generated from the branch's data; after the merge, regenerated on the default branch |
+| Branch-agnostic data | Infrahub's database | Shared: a change applies to every branch at once |
+
+## In this section
+
+- [Immutable history](../immutable-history/overview.mdx) — query the data at an earlier time, and compare two times to see what changed
+- [Branches](../branches/overview.mdx) — create, rebase, merge, and delete branches, and resolve conflicts
+- [Proposed Changes](../proposed-changes/overview.mdx) — review a branch, run checks, and merge it
+- [Checks & Validation](../checks/overview.mdx) — write checks for your design rules
+- [Change Approval Policy](../change-approval/change-approval-workflow.mdx) — require approvals before a merge, in Infrahub Enterprise
+- [Git integration](../git-integration/overview.mdx) — how Infrahub imports the files in your repositories
