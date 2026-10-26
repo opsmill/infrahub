@@ -21,8 +21,13 @@ if TYPE_CHECKING:
 class AttributeNumberUpdateValidatorQuery(AttributeSchemaValidatorQuery):
     name: str = "attribute_constraints_number_validator"
 
+<<<<<<< HEAD
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+=======
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
+>>>>>>> stable
         self.params.update(branch_params)
 
         if not isinstance(self.attribute_schema.parameters, NumberAttributeParameters):
@@ -78,6 +83,8 @@ class AttributeNumberUpdateValidatorQuery(AttributeSchemaValidatorQuery):
 
 class AttributeNumberChecker(ConstraintCheckerInterface):
     query_classes = [AttributeNumberUpdateValidatorQuery]
+    # Writing a node already checks its value against the limits, so only a change to the limits can be refused.
+    triggered_by_data_change = False
 
     def __init__(self, db: InfrahubDatabase, branch: Branch | None = None) -> None:
         self.db = db

@@ -75,6 +75,7 @@ async def execute_graphql_query(
 
     # Execute
     result = execute(
+<<<<<<< HEAD
         schema=schema,
         document=document,
         root_value=root_value,
@@ -83,6 +84,16 @@ async def execute_graphql_query(
         operation_name=operation_name,
         field_resolver=field_resolver,
         type_resolver=type_resolver,
+=======
+        schema,
+        document,
+        root_value,
+        context_value,
+        variable_values,
+        operation_name,
+        field_resolver,
+        type_resolver,
+>>>>>>> stable
         middleware=middleware,
         execution_context_class=execution_context_class,
         is_awaitable=is_awaitable,
