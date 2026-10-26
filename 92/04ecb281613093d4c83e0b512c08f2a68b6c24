@@ -1,0 +1,19 @@
+AGENTS.md
+  s_fd720d10ce69fc::t_fedbd28d303530 136-145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9204ecb281613093d4c83e0b512c08f2a68b6c24",
+  "prompts": {},
+  "sessions": {
+    "s_fd720d10ce69fc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd1e6989-2412-46dc-874b-841d76996a2e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}
