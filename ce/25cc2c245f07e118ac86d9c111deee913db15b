@@ -1,0 +1,19 @@
+backend/tests/integration/schema_lifecycle/test_schema_validator_stored_data.py
+  s_d5954718fc8fe8::t_9d21c1de14acbc 21,152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ce25cc2c245f07e118ac86d9c111deee913db15b",
+  "prompts": {},
+  "sessions": {
+    "s_d5954718fc8fe8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a34a3173-1903-4f83-9345-86078fd19342",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
