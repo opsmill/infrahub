@@ -67,7 +67,7 @@ When adding another site, some details repeat and others must be unique. These c
 | [IPAM](../ipam/overview.mdx) | Model IP prefixes and addresses and their relationships to your infrastructure. |
 | [Resource Manager](../resource-manager/overview.mdx) | Allocate addresses, prefixes, or numbers such as VLAN IDs from defined pools. |
 
-## Generators, Transformations and Artifacts
+## Generators, Transformations, and artifacts
 
 A [Generator](../generators/overview.mdx) runs your **Python logic to create or update objects** and relationships in Infrahub. For example, a Generator can turn a site design into firewall and switch devices, their networks, and monitoring services according to your rules.
 
@@ -81,7 +81,7 @@ The distinction is the output: Generators change the data model's objects; Trans
 
 An external Git repository stores the files that define your automation: schemas, GraphQL queries, Generators, Transformations, and Checks. In the repository, [`.infrahub.yml`](../git-integration/infrahub-yml.mdx) declares which resources Infrahub imports and how they connect: which query a Transformation reads, which objects a Generator targets, or which checks validate a change.
 
-![An example Git repository contains .infrahub.yml alongside checks, generators, queries, schema, and transformations subdirectories. Infrahub imports the declared definitions into the corresponding branch, where they operate on infrastructure data.](../media/concepts-git-integration.svg)
+![An example Git repository contains .infrahub.yml alongside checks, generators, queries, schema, and transformations, each in a separate subdirectory. Infrahub imports the declared definitions into the corresponding branch, where they operate on infrastructure data.](../media/concepts-git-integration.svg)
 
 With a standard **Repository** connection, Infrahub automatically imports updates from Git into corresponding Infrahub branches. For a new site, you can change a configuration template in Git and add devices on the matching Infrahub branch, then review the resulting data and artifacts in a Proposed Change. When the branch is configured to **sync with Git, merging in Infrahub also merges the linked Git branch.**
 
