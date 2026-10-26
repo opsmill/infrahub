@@ -393,6 +393,19 @@
   }
 }
 
+@utility bg-stripes-* {
+  --tw-stripes-color: --value(--color-*, [color]);
+  --tw-stripes-color: --alpha(
+    --value(--color-*, [color]) /
+    calc(--modifier(integer) * 1%)
+  );
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--tw-stripes-color) 0 2px,
+    transparent 2px 6px
+  );
+}
+
 @layer base {
   *,
   ::after,

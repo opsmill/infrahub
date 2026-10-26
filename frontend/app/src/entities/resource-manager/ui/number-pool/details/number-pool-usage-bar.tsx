@@ -1,16 +1,16 @@
 import { Tooltip } from "@infrahub/ui";
+import type React from "react";
 
 import { Col, Row } from "@/shared/components/container";
 import MultipleProgressBar from "@/shared/components/stats/multiple-progress-bar";
+import { classNames } from "@/shared/utils/common";
 import { formatNumberDisplay } from "@/shared/utils/number";
 
 import type { NumberPoolUsage } from "@/entities/resource-manager/domain/model/number-pool";
 
-const percentOf = (part: number, total: number | null) =>
-  total === null || total === 0 ? 0 : (part / total) * 100;
+const percentOf = (part: number, total: number) => (total === 0 ? 0 : (part / total) * 100);
 
-export const formatUsagePercent = (value: number | null) => {
-  if (value === null) return "–";
+export const formatUsagePercent = (value: number) => {
   if (value === 0) return "0%";
   if (value < 0.1) return "<0.1%";
   if (value < 10) return `${value.toFixed(1).replace(/\.0$/, "")}%`;
@@ -36,12 +36,79 @@ function UtilizationTooltipMessage({ title, value }: UtilizationTooltipMessagePr
   );
 }
 
-export interface NumberPoolUsageBarProps {
-  usage: NumberPoolUsage;
+interface UtilizationFiguresRowProps {
+  label: string;
+  value: number;
+  dotClassName?: string;
 }
 
-export function NumberPoolUsageBar({ usage }: NumberPoolUsageBarProps) {
-  const { size, used, usedDefaultBranch, usedBranches, utilization } = usage;
+function UtilizationFiguresRow({ label, value, dotClassName }: UtilizationFiguresRowProps) {
+  return (
+    <Row className="justify-between gap-5">
+      <Row className="text-white/70">
+        {dotClassName && (
+          <span className={classNames("size-2 shrink-0 rounded-full", dotClassName)} />
+        )}
+        {label}
+      </Row>
+      <span>{formatNumberDisplay(value)}</span>
+    </Row>
+  );
+}
+
+interface UtilizationFiguresTooltipProps {
+  usage: NumberPoolUsage;
+  className: string;
+  children: React.ReactNode;
+}
+
+function UtilizationFiguresTooltip({ usage, className, children }: UtilizationFiguresTooltipProps) {
+  const { size, used, usedDefaultBranch, usedBranches } = usage;
+  // the dots match the bar segments, which a usage without a size does not draw
+  const hasBarSegments = size !== null;
+
+  return (
+    <Tooltip
+      nonInteractiveTrigger
+      message={
+        <Col className="gap-1 text-xs tabular-nums">
+          <UtilizationFiguresRow
+            label="Default branch"
+            value={usedDefaultBranch}
+            dotClassName={hasBarSegments ? "bg-accent-strong" : undefined}
+          />
+          <UtilizationFiguresRow
+            label="Other branches"
+            value={usedBranches}
+            dotClassName={hasBarSegments ? "bg-accent-strong/45" : undefined}
+          />
+          <span className="my-0.5 h-px bg-white/15" />
+          <Row className="justify-between gap-5 font-medium">
+            <span>Used</span>
+            <span>{formatUsedOfSize(used, size)}</span>
+          </Row>
+        </Col>
+      }
+    >
+      <span
+        className={classNames(
+          "shrink-0 whitespace-nowrap text-right font-medium text-foreground text-xs tabular-nums",
+          className
+        )}
+      >
+        {children}
+      </span>
+    </Tooltip>
+  );
+}
+
+interface UsageBarWithSizeProps {
+  usage: NumberPoolUsage;
+  size: number;
+}
+
+function UsageBarWithSize({ usage, size }: UsageBarWithSizeProps) {
+  const { used, usedDefaultBranch, usedBranches } = usage;
 
   return (
     <Row>
@@ -71,14 +138,38 @@ export function NumberPoolUsageBar({ usage }: NumberPoolUsageBarProps) {
           },
         ]}
       />
-      <Tooltip
-        nonInteractiveTrigger
-        message={<UtilizationTooltipMessage title="Used" value={formatUsedOfSize(used, size)} />}
-      >
-        <span className="w-11 shrink-0 text-right font-medium text-foreground text-xs tabular-nums">
-          {formatUsagePercent(utilization)}
-        </span>
-      </Tooltip>
+      <UtilizationFiguresTooltip usage={usage} className="w-11">
+        {formatUsagePercent(percentOf(used, size))}
+      </UtilizationFiguresTooltip>
     </Row>
   );
+}
+
+interface UsageBarWithoutSizeProps {
+  usage: NumberPoolUsage;
+}
+
+function UsageBarWithoutSize({ usage }: UsageBarWithoutSizeProps) {
+  return (
+    <Row>
+      <div
+        role="img"
+        aria-label="No upper limit"
+        className="h-1.5 w-full min-w-6 rounded-full bg-accent-strong/10 bg-stripes-accent-strong/15"
+      />
+      <UtilizationFiguresTooltip usage={usage} className="min-w-11">
+        {formatNumberDisplay(usage.used)}
+      </UtilizationFiguresTooltip>
+    </Row>
+  );
+}
+
+export interface NumberPoolUsageBarProps {
+  usage: NumberPoolUsage;
+}
+
+export function NumberPoolUsageBar({ usage }: NumberPoolUsageBarProps) {
+  if (usage.size === null) return <UsageBarWithoutSize usage={usage} />;
+
+  return <UsageBarWithSize usage={usage} size={usage.size} />;
 }
