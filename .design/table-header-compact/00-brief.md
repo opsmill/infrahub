@@ -6,6 +6,7 @@ Run mode: `--fast` (the user asked to "quickly build a few ideas"). Product fram
 - **Who hits this:** anyone opening a relationship tab on an object detail page (for example a device's Interfaces tab, which lists a generic, cardinality-many relationship) or the children tab of a hierarchical node (for example a country's Site tab). They arrive from the Details tab of the same object.
 - **Riskiest assumption:** that the Add and Columns controls can share one place on every host of the relationship table. The IPAM and repository hosts show the table without an Add button.
 - **Out of scope:** the object list view toolbar, the table footer ("15 counts"), and changing which fields appear on the repository card.
+- **Deferred (2026-10-26, owner's call):** the "On this branch" card header and the wrapping of long field labels move to a later session; this run covers only the Add and Columns buttons above relationship tables. The `branchHeader`, `labelWrap` and `screen` knobs stay in rev 1 for that later session.
 - **Where it's used:** desk. The mobile-native pass is skipped.
 
 Source: user request in session, 2026-10-26.
