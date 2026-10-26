@@ -21,7 +21,7 @@ class AttributeNumberPoolUpdateValidatorQuery(AttributeSchemaValidatorQuery):
     name: str = "attribute_constraints_numberpool_validator"
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
         self.params.update(branch_params)
 
         if not isinstance(self.attribute_schema.parameters, NumberPoolParameters):
@@ -73,6 +73,8 @@ class AttributeNumberPoolUpdateValidatorQuery(AttributeSchemaValidatorQuery):
 
 class AttributeNumberPoolChecker(ConstraintCheckerInterface):
     query_classes = [AttributeNumberPoolUpdateValidatorQuery]
+    # Writing a node does not check its value against the pool range, so only a change to the range can be refused.
+    triggered_by_data_change = False
 
     def __init__(self, db: InfrahubDatabase, branch: Branch | None = None) -> None:
         self.db = db
@@ -80,7 +82,7 @@ class AttributeNumberPoolChecker(ConstraintCheckerInterface):
 
     @property
     def name(self) -> str:
-        return "attribute.number.update"
+        return "attribute.number_pool.update"
 
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
         return request.constraint_name in (
