@@ -326,12 +326,17 @@ class TestArtifactRegenBranchPoint(ArtifactRegenTestBase):
         client: InfrahubClient,
     ) -> None:
         """Content stored again under a new storage id, with the branch point's checksum, is not regenerated."""
+        branch = dataset["branches"][BRANCH_STORAGE]
         await self._set_artifact(
             db=db,
-            branch=dataset["branches"][BRANCH_STORAGE],
+            branch=branch,
             artifact_id=dataset["artifact_ids"]["dev-storage"],
             checksum="checksum-dev-storage-blue",
             storage_id="storage-dev-storage-uploaded-again",
+        )
+        # A change to a field the query does not read makes the checks look at the definition's targets.
+        await self._set_device(
+            db=db, branch=branch, device_id=dataset["device_ids"]["dev-storage"], color="blue", description="edited"
         )
 
         assert await self._run_artifact_checks(

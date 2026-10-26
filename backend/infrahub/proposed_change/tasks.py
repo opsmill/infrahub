@@ -1380,8 +1380,7 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
     database = await get_database()
     async with database.start_session(read_only=True) as db:
         branch_artifact_definition_ids = await BranchArtifactDefinitionFinder(db=db).find(
-            source_branch=await registry.get_branch(db=db, branch=model.source_branch),
-            target_branch=await registry.get_branch(db=db, branch=model.destination_branch),
+            branch=await registry.get_branch(db=db, branch=model.source_branch)
         )
 
     for artifact_definition in artifact_definitions:
