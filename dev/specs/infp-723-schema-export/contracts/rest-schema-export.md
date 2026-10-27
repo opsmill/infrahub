@@ -23,7 +23,9 @@ Same as `GET /api/schema`: an authenticated account, or an anonymous request whe
 
 ### Response 200
 
-`application/json`, an `InfrahubSchemaWrite` document (see [data-model.md](../data-model.md)):
+`application/json`, an `InfrahubSchemaWrite` document (see [data-model.md](../data-model.md)). The OpenAPI
+schema documents it with a reference to the `SchemaLoadAPI` component, the document the load accepts
+(research R17):
 
 ```json
 {

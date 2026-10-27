@@ -138,6 +138,7 @@ Each entry says *when* to load it — open the doc before working in that area.
 - `dev/knowledge/backend/webhooks.md` - Webhook delivery and failure classification; read when touching webhook delivery
 - `dev/knowledge/backend/computed-attributes.md` - Jinja2 and Python-transform computed attributes, their automations and recompute paths; read when touching either
 - `dev/knowledge/backend/display-labels-and-hfid.md` - Display-label and human-friendly-id derivation; read when touching either
+- `dev/knowledge/backend/schema-export.md` - The schema export and how its brief mode decides what to leave out; read before changing schema processing, adding a schema field, or changing the export
 - `dev/knowledge/backend/templates.md` - Object template generation and application; read when touching templates
 - `dev/knowledge/backend/code-generation.md` - Generated-file pipeline (protocols, schema, SDK); read before/after changing event, schema, CLI, or config code
 - `dev/knowledge/backend/git-sync.md` - Remote branch import/mapping and git error surfacing; read when touching repository sync or debugging branch-import behavior

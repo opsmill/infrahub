@@ -30,6 +30,9 @@ The root never contains `main`, `namespaces`, `profiles`, `templates` or `extens
   node, the properties in FR-007 are kept when a generic in `inherit_from` sets them (research R4).
 - `unique: true` is written on the attribute, and the matching single-attribute uniqueness constraint is
   left out (FR-008); `SchemaBranch.sync_uniqueness_constraints_and_unique_attributes` adds it again on load.
+- `include_in_menu` unset is written as `true`, the value an instance stores (research R16).
+- A deprecated `default_filter` or `display_labels` equal to the value of the first generic in `inherit_from`
+  that sets it is left out in both modes (research R4).
 
 ### Attribute
 

@@ -119,6 +119,7 @@ const sidebars: SidebarsConfig = {
           items: [
             { type: 'doc', id: 'schema/build-your-schema', label: 'Build your schema with AI' },
             { type: 'doc', id: 'schema/create-and-load', label: 'Create and load schema' },
+            { type: 'doc', id: 'schema/export', label: 'Export the schema' },
             { type: 'doc', id: 'schema/migration', label: 'Schema migration' },
             { type: 'doc', id: 'schema/marketplace/index', label: 'Marketplace' },
           ],

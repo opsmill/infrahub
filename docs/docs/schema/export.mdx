@@ -1,0 +1,123 @@
+---
+title: Export the schema
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+An export is the schema of a branch of your Infrahub instance, written in the [schema file format](./create-and-load#schema-file). It contains the nodes and generics you defined, and you can load it into another instance without editing it.
+
+Export the schema to set up a new instance from one that already runs, to start a Git repository of schema files from an instance where the schema was loaded with `infrahubctl`, or to load the schema of a production instance into a staging instance.
+
+## Export the schema of a branch
+
+The export is served by Infrahub, so the API, the Python SDK and `infrahubctl` return the same document. Each call takes the branch, the namespaces to export and the mode, which is described in [Choose between brief and full](#choose-between-brief-and-full).
+
+<Tabs groupId="method" queryString>
+  <TabItem value="infrahubctl" label="infrahubctl" default>
+
+`infrahubctl schema export` writes one YAML file per namespace, named after the namespace in lowercase, into the directory you give it:
+
+```shell
+infrahubctl schema export --directory schemas/ [--branch <branch_name>] [--namespaces <namespace>] [--mode brief|full]
+```
+
+Add `--single-file` to write every namespace to one file, `schemas/schema.yml`. Without `--directory`, the command writes to a new directory named `infrahub-schema-export-<timestamp>`.
+
+When the branch has no nodes or generics that you defined, the command prints `No user-defined schema found to export.` and writes no file.
+
+  </TabItem>
+  <TabItem value="sdk" label="Python SDK">
+
+`client.schema.export()` returns the export as an `InfrahubSchemaWrite` model. Dump it with `exclude_unset=True` to keep only the values the export contains:
+
+```python
+import yaml
+from infrahub_sdk import InfrahubClient
+
+client = InfrahubClient()
+exported = await client.schema.export(branch="main", namespaces=["Network"], mode="brief")
+
+with open("network.yml", "w", encoding="utf-8") as file:
+    yaml.safe_dump(exported.model_dump(mode="json", exclude_unset=True), file, sort_keys=False)
+```
+
+  </TabItem>
+  <TabItem value="api" label="REST API">
+
+`GET /api/schema/export` returns the export as one JSON document:
+
+```shell
+curl -H "X-INFRAHUB-KEY: $INFRAHUB_API_TOKEN" \
+  "http://localhost:8000/api/schema/export?branch=main&namespaces=Network&mode=brief"
+```
+
+Repeat `namespaces` to export several namespaces. Infrahub answers a request for an unknown branch with HTTP 400.
+
+  </TabItem>
+</Tabs>
+
+Any account that can read the schema can export it, and so can anonymous users when anonymous access is allowed. Loading the export still needs the permission to manage the schema on the other instance.
+
+## What the export contains
+
+The export contains the nodes and generics you defined, with their attributes and relationships. Attributes and relationships that a [schema extension](./extensions) added to one of your own nodes are written on that node, not as a separate extension.
+
+Infrahub leaves out everything it creates or manages itself:
+
+- the nodes and generics in restricted namespaces, such as `Core` and `Builtin`, and the core models every instance has;
+- the profile and template schemas that Infrahub generates for your nodes;
+- attributes and relationships a node takes from its generics, which are written on the generic only;
+- the relationships Infrahub adds to every node, such as `member_of_groups`, `subscriber_of_groups`, `profiles` and `object_template`;
+- IDs, hashes and the ID of a number pool.
+
+Validation settings are written under `parameters`, even when the schema was loaded with the deprecated top-level `regex`, `min_length` and `max_length`.
+
+Each document starts with the schema file format version and the version of the Infrahub instance that exported it:
+
+```yaml
+version: "1.0"
+infrahub_version: "1.13.0"
+```
+
+`infrahubctl schema load` and `POST /api/schema/load` accept `infrahub_version` and ignore it. An instance on a release earlier than 1.13.0 rejects it as an unknown field.
+
+## Choose between brief and full
+
+The two modes differ in whether the export includes the values that Infrahub derives when it loads a schema: a label taken from the name, `optional: true` on an attribute with a default value, a relationship identifier, an `order_weight` taken from the position, or a human-friendly ID taken from the first unique attribute.
+
+- With **`brief`**, the default, the export leaves out every value that Infrahub derives again on load, and includes a value only where it differs from the derived one. The files stay close to the ones you write by hand. Infrahub checks each value left out by processing the export before returning it.
+- With **`full`**, the export includes every value, derived values included.
+
+Use `brief` to load the schema into an instance that does not have it yet, or to start a repository of schema files.
+
+Use `full` to update an instance that already has some of the same nodes. Infrahub copies a value from the file only when the file sets it, so a value that a `brief` export leaves out does not change the target:
+
+- For a field without a default, such as `label`, `description`, `order_weight` or `human_friendly_id`, the target keeps the value it already has. If the source has the derived label `Hostname` and the target has `label: Host name`, the target keeps `Host name` after a `brief` load and gets `Hostname` after a `full` load.
+- A field with a default, such as `optional`, `unique` or `cardinality`, takes the value of the source in both modes, because a `brief` export leaves it out only when it equals the default.
+
+## Load the export into another instance
+
+Load the exported files as you would load any schema file, preferably on a branch:
+
+```shell
+infrahubctl schema load schemas/ --branch <branch_name>
+```
+
+Loading the export into an empty instance gives the same nodes and generics as on the source instance. Exporting from the new instance gives the same document again, apart from `infrahub_version` when the two instances run different releases.
+
+When you export only some namespaces, the export contains only those, even when their nodes reference nodes in another namespace. Load it into an instance that already has the namespaces it references, or export them together.
+
+## Limitations
+
+- **Extensions to restricted namespaces are not exported.** Attributes or relationships added to a node in `Core` or another restricted namespace are left out, and the export does not warn about them.
+- **A `brief` export leaves out a value you set when it equals the derived value.** On the other instance, Infrahub derives it again: the label `Hostname` that you wrote on the attribute `hostname` changes when you rename the attribute.
+- **Properties a node takes from its generic are written on the node.** When a node does not set `icon`, `human_friendly_id`, `display_label`, `menu_placement`, `uniqueness_constraints` or `order_by`, Infrahub copies the value from the first generic in `inherit_from` that sets it. Infrahub does not record whether a value was copied or written by you, so the export writes the value on the node. On the other instance, a later change to the generic is no longer copied to that node. To have a node take these properties from its generic again, remove them from the node in the exported file before you load it. The deprecated `default_filter` and `display_labels` are the exception: when they equal the value of the generic, the export leaves them out, so loading the export gives no new deprecation warning.
+- **Deprecated fields still cause warnings.** A schema that uses `default_filter`, `display_labels` or the `start_range` and `end_range` of a number pool is exported with them, and loading the export gives the same deprecation warnings as loading the original files.
+- **A `full` load is refused when a setting Infrahub cannot update differs.** Infrahub does not change the `branch` of a node, an attribute or a relationship, or the `identifier` or `direction` of a relationship, on an existing schema. If the target has a different value, the load fails with a `not supported` error and changes nothing. When the source has the derived value, a `brief` export leaves it out and the load succeeds.
+
+## Related
+
+- [Create and load schema](./create-and-load) explains the schema file format and how to check and load schema files.
+- The [`infrahubctl schema` reference]($(base_url)infrahubctl/infrahubctl-schema) lists every option of `infrahubctl schema export`.
+- [Schema migration](./migration) describes what happens to existing data when a load changes the schema.

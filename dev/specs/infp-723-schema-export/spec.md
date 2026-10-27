@@ -226,8 +226,9 @@ the `Dcim` schema.
 - **FR-001**: The export MUST return one document in the schema file format for one branch, with the existing
   schema file format field `version: "1.0"` unchanged (D7, D11).
 - **FR-002**: The export MUST contain only the nodes and generics the user defines. It MUST leave out the
-  restricted namespaces and the generated profile and template schemas, as `infrahubctl schema export` does
-  today ([SDK export](https://github.com/opsmill/infrahub-sdk-python/blob/infrahub-develop/infrahub_sdk/schema/__init__.py#L141-L183)).
+  restricted namespaces, the generated profile and template schemas, and the core models that every instance
+  has in a namespace that is not restricted, such as `IpamNamespace` (research R3), as `infrahubctl schema
+  export` does today for the first two ([SDK export](https://github.com/opsmill/infrahub-sdk-python/blob/infrahub-develop/infrahub_sdk/schema/__init__.py#L141-L183)).
 - **FR-003**: The export MUST leave out IDs, hashes, inherited attributes and relationships, and generated
   relationships, including `member_of_groups`, `subscriber_of_groups`, `profiles` and `object_template`
   (design document section 2 and D4 example).
@@ -241,7 +242,9 @@ the `Dcim` schema.
   equals the value derived from the node or the peer (D3).
 - **FR-007**: The export MUST write on the node the properties it took from a generic: `human_friendly_id`,
   `display_label`, `display_labels`, `default_filter`, `menu_placement`, `uniqueness_constraints`, `icon` and
-  `order_by`. This is an exception to FR-006 (D4).
+  `order_by`. This is an exception to FR-006 (D4). The deprecated `default_filter` and `display_labels` are
+  left out when they equal the value of the first generic in `inherit_from` that sets them, because
+  processing copies them back and writing them adds a deprecation warning per node (research R4).
 - **FR-008**: The export MUST write `unique: true` on an attribute and leave out the matching
   single-attribute uniqueness constraint.
 - **FR-009**: The export MUST write validation settings (`regex`, `min_length`, `max_length`) only in
@@ -300,7 +303,8 @@ the `Dcim` schema.
   needing one MUST fail CI (D12).
 - **FR-024**: The schemas in `models/base/` and `models/examples/`, and one small schema for each export
   rule, MUST be exported, loaded into an empty instance and checked against FR-012 and FR-013 in both modes
-  (D12).
+  (D12). `models/examples/extension_power.yml` and `extension_rack.yml` are left out: the first declares nodes
+  in the restricted `Template` namespace and the second needs `InfraSite`, so neither loads through the API.
 - **FR-025**: The documentation MUST include a page on exporting the schema that describes the two modes, the
   single-file option, the known limitations from D2, D3 and D4 (design document section 4,
   "Follow-ups"), and what the load does when a `FULL` export changes a setting Infrahub cannot update
