@@ -133,7 +133,9 @@ The command:
 
 :::tip
 
-On very large instances, tasks may pause for a few seconds while tables are rewritten, because a task that writes to a table waits until the rewrite of that table ends. In OpsMill benchmarks, tasks waited up to 7.4 seconds with the instance running on 25 GB of task history, and the slowest table took about 20 seconds on 100 GB. How long the activity log tables take after you lower a long activity log retention was not measured.
+On very large instances, tasks may pause for a few seconds while tables are rewritten, because a task that reads or writes a table waits until the rewrite of that table ends. In OpsMill benchmarks, tasks waited up to 7.4 seconds with the instance running on 25 GB of task history, and the slowest table took about 20 seconds on 100 GB. How long the activity log tables take after you lower a long activity log retention was not measured.
+
+To keep these pauses short, the command waits at most 3 seconds for a table that another session is using, and tries again 20 seconds later, up to 5 times. It stops a rewrite that takes longer than 60 seconds, which leaves that table as it was. Before the next table, it pauses ten times as long as the previous table was locked, up to 60 seconds, so that the tasks that waited catch up.
 
 :::
 
@@ -150,7 +152,8 @@ The last lines of the command report the result:
 |---|---|
 | `Rewrote flow_run, flow_run_state, …` | Infrahub rewrote the listed tables, and their files shrank. |
 | `Left events, event_resources as they are, because their live rows hold at least half of their disk space` | Rewriting the listed tables would return little space, so Infrahub left them as they were. |
-| `Did not rewrite log, which stayed locked by other sessions` | Another session held a lock on the listed table for more than 60 seconds on each of four attempts, so Infrahub left that table as it was. Run the command again later. |
+| `Did not rewrite log, which stayed locked by other sessions` | Another session held a lock on the listed table for more than 3 seconds on each of five attempts, so Infrahub left that table as it was. Run the command again later. |
+| `Did not rewrite events, whose rewrite took longer than its time limit and was stopped` | The rewrite of the listed table took longer than 60 seconds, so Infrahub stopped it and the table stayed as it was. A table that is not already in memory takes longer to rewrite, for example on a slow disk. Run the command again later. |
 | `ERROR …`, then `Deleted N runs before the failure` | The cleanup stopped with an error. The days already deleted stay deleted, and a table whose rewrite failed is left as it was. Run the command again. |
 | `The task manager does not provide the task history cleanup yet; skipped.` | The command reached a task manager from a release without the cleanup, and nothing was deleted. |
 

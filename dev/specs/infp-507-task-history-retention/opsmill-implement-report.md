@@ -204,6 +204,13 @@ cubic findings on PR 1 and PR 2 (16 in total) were all fixed or recorded as know
     - The docs describe the cleanup step after the upgrade, the same for Compose and Helm, with a tip about short pauses on very large instances.
     - Commits: PR 2 `43accf114` (T061), `708d814a2` (hint wording), `688c60056` (T062); PR 6 `0de8ee584`, `dfcdda8c7`, `198c2afc8`.
 
+14. **How each table is rewritten, changed on 27 Oct (T064)**: the design doc adopted the limits of the manual cleanup of the event tables of OpsMill's production task manager on 26 Oct ([cleanup report](https://app.notion.com/p/405228b8302581d2b77cec9ee9b720f6)).
+    - A 3 s lock timeout with up to 4 retries 20 s apart, instead of 60 s with 3 retries: while a rewrite waits for a table, every later query on it queues behind the rewrite.
+    - A 60 s statement timeout per `VACUUM FULL`. A stopped rewrite leaves the table as it was, and the job lists it in a new `timed_out` field, which the command prints.
+    - A `VACUUM (ANALYZE)` of each rewritten table, and a pause before the next table so that Prefect catches up on the writes that waited: ten times as long as the previous table was locked, up to 60 s. The manual cleanup paused 60 s after every table; with the scaled pause, every table locked 6 s or more still gets 60 s, and the Docker test of the command no longer waits 5 minutes for its six small tables (the user's choice).
+    - The job goes on with the next table after one it could not rewrite, where the manual cleanup stopped at the first problem.
+    - Not adopted: the manual cleanup's free-space check and its read of the table files into memory, because the task manager only sends queries to the database; and its rebuild of the indexes without blocking, parked by the user.
+
 ## 7. Suggested next steps
 
 1. **Maintainer approval of the constitution deviation**: the cleanup route deletes data without authentication (Principle VI). It is recorded in PR 2's body.

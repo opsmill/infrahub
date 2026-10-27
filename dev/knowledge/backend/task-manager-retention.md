@@ -87,11 +87,18 @@ database, and can then rewrite the tables to return the disk space.
   over about that many random pages, so a mostly live event table of hundreds of GB is not read
   whole only to be left as it is. A small table usually counts as mostly free, because space is
   counted in whole pages and the upgrade replaces Prefect's scheduled runs, and is rewritten in
-  milliseconds. The rewrite is `VACUUM FULL`, on PostgreSQL only, in autocommit with a 60-second
-  `lock_timeout` and 3 retries per table. A `VACUUM FULL` waiting for its lock makes every later
-  query on the table queue behind it, hence the timeout. The job lists the tables in `rewritten`,
-  `mostly_live` (left because their live rows take at least half of their size) and
-  `not_rewritten` (still timed out), and the CLI prints one line per list.
+  milliseconds. The rewrite is `VACUUM FULL`, on PostgreSQL only, in autocommit, with the limits of the
+  manual cleanup of the event tables of OpsMill's production task manager on 26 Oct 2026: a 3-second `lock_timeout` with
+  4 retries 20 seconds apart, a 60-second `statement_timeout` per `VACUUM FULL`, a non-blocking
+  `VACUUM (ANALYZE)` of each rewritten table, and a pause before the next table so that Prefect
+  catches up on the writes that waited: ten times as long as the previous table was locked, up to
+  60 seconds, so a table rewritten in milliseconds adds no wait. A `VACUUM FULL` waiting for its lock makes every
+  later query on the table queue behind it, hence the short lock timeout; a cancelled `VACUUM FULL`
+  leaves the table as it was, so the statement timeout only bounds how long the table stays locked.
+  The job lists the tables in `rewritten`, `mostly_live` (left because their live rows take at
+  least half of their size), `not_rewritten` (still locked after the retries) and `timed_out`
+  (stopped at the statement timeout), and the CLI prints one line per list. The rewrite goes on
+  with the next table after one it could not rewrite.
 - **Database pool**: the job uses a small pool of its own with a statement timeout long enough for a
   day of deletes, since Prefect's default database timeout of 10 seconds would cut it short.
 - **One job at a time**: `CleanupJobs` keeps the job of this process, and a PostgreSQL advisory lock,
