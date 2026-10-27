@@ -142,6 +142,14 @@ Handlers:
 - Use dependency injection for services
 - Return nothing for broadcasts, or response object for RPC
 
+## RabbitMQ Queue Types
+
+Declare a durable queue with the arguments from `infrahub/services/adapters/message_bus/rabbitmq.py::_durable_queue_arguments`, never with a fixed `x-queue-type` or `x-max-priority`: quorum queues reject `x-max-priority`, and a fixed type breaks the deployments that use the other one.
+
+- **Durable queues** (`<namespace>.rpcs`, `<namespace>.delay.*_seconds`) take their type from `broker.queue_type`: classic by default, quorum on a RabbitMQ cluster, where RabbitMQ replicates them across nodes.
+- **Per-process queues** (`api-*`, `worker-*`) stay classic: they are exclusive to one connection, which quorum queues cannot be, and the process declares them again when it reconnects.
+- **Changing the type** requires deleting the durable queues first: RabbitMQ refuses a redeclaration with other arguments (`PRECONDITION_FAILED`), so the server does not start. The procedure is in the high availability deployment docs.
+
 ## Key Locations
 
 | Component | Location |
