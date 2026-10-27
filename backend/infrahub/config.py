@@ -174,6 +174,11 @@ class BrokerDriver(StrEnum):
                 return "RabbitMQMessageBus"
 
 
+class BrokerQueueType(StrEnum):
+    CLASSIC = "classic"
+    QUORUM = "quorum"
+
+
 class CacheDriver(StrEnum):
     Redis = "redis"
     NATS = "nats"
@@ -577,6 +582,14 @@ class BrokerSettings(BaseSettings):
             "Message bus implementation. RabbitMQ is the recommended and fully supported driver. "
             "NATS JetStream is experimental and not feature-complete: some functionality does not currently "
             "work, so it is not recommended for production."
+        ),
+    )
+    queue_type: BrokerQueueType = Field(
+        default=BrokerQueueType.CLASSIC,
+        description=(
+            "RabbitMQ type of the durable queues. Use quorum on a RabbitMQ cluster to replicate these queues across "
+            "nodes; a classic queue is stored on a single node. RabbitMQ does not change the type of an existing "
+            "queue, so the durable queues must be deleted before this setting is changed."
         ),
     )
 
