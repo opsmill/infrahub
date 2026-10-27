@@ -260,6 +260,11 @@ round never looked at, or fix a finding only partly.
 - **Scope**: `git diff HEAD --name-only`, minus the paths left out or set aside in the scope
   step. List each path in it that the manifest does not list. Every such path must come from an
   Ask the user approved; revert any other change to it before the review continues.
+- **Each fix**: spawn one reviewer (read-only) that did not write the fixes, given the classified
+  list and `git diff HEAD`. For each fix it answers: does the change resolve the finding it cites,
+  fully or in part, and is it the smallest change that does? It reports a fix that resolves
+  nothing, resolves another problem, or changes more than the finding needs. A partial or
+  oversized fix goes back to the fixer for the next round.
 - **Bugs**: invoke `code-review` with the arguments `high <path> <path> ...` for those paths.
 - **Rules**: one reviewer per area, as in the rule check, given `git diff HEAD -- <paths>` as the
   change and asked to check the fixed lines and the code around them.
