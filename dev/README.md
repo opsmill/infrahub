@@ -127,5 +127,6 @@ folder, which is not a command.
 The `/reviewing-pull-requests <PR>` skill in [../.agents/skills/](../.agents/skills/) reviews a pull
 request in a subagent that has not seen the conversation, with the rules in
 [REVIEW.md](../REVIEW.md). To run it after every `gh pr create`, turn it on as described under
-"Basic settings" in the [Backend guide](../docs/docs/development/backend.mdx). The Codex hook
-checks the same `PR_REVIEW` variable and runs `codex review` instead.
+"Automatic pull request review" in the
+[Git guide](../docs/docs/development/git-best-practices.mdx). The Codex hook checks the same
+`PR_REVIEW` variable and runs `codex review` instead.
