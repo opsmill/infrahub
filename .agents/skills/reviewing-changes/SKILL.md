@@ -27,8 +27,9 @@ push. It does not repeat other tools:
 - **Repository context** comes from the project hooks in `.claude/settings.json`: they give
   subagents the root `AGENTS.md`, and add the matching rules and area `AGENTS.md` after Bash,
   Grep and Glob calls. Read and Write load them natively.
-- **This skill adds** the rule check, the design and per-file checks, the checks the diff cannot
-  show, a local cubic run, one verified list of findings, and the fixes.
+- **This skill adds** a challenge of the approach against its requirement, the rule check, the
+  design and per-file checks, the checks the diff cannot show, a local cubic run, one verified
+  list of findings, and the fixes, each checked by a reviewer that did not write it.
 
 With `compare <PR number>` in the arguments, skip to "Compare with the PR review".
 
@@ -96,6 +97,22 @@ Findings on paths outside the manifest still go to "Out of scope" in the report.
 
 Invoke the `code-review` skill at level `high` on the branch against `<base>`, limited to the
 files in the manifest. Keep its findings for the verification; do not let it apply fixes.
+
+## Phase 2b — Challenge the approach
+
+The other checks review the files that exist; none asks whether the change should look like this.
+Find what the change was asked to do, in this order: the spec (`dev/specs/<feature>/spec.md`),
+the Jira ticket or GitHub issue named in the branch name or PR title, then the PR description.
+If none states it, ask the user for one sentence before going on.
+
+Spawn one reviewer (read-only) with that requirement and `git diff origin/<base>...HEAD`, and no
+other findings, so it argues from the change alone. It answers, each with `file:line`:
+
+- **Requirement.** Which requirement does the change not meet, or meet only in part? (P1)
+- **Simpler version.** What is the smallest change that would meet the requirement? Name each
+  file, layer or abstraction the change adds beyond it. (P2)
+- **Unrequested scope.** What does the change do that nobody asked for? (P2)
+- **Rejection.** What would a maintainer reject outright, and why? (P2)
 
 ## Phase 3 — Rules and docs
 
@@ -197,8 +214,10 @@ in scope), spawn one reviewer per area (read-only), with `.agents/rules/code-des
    - Exit code 1 with `error` null: cubic found issues; take them.
    - Any other non-zero exit, or an empty result without a clear success: report the exit code
      and stderr. Never present such a run as clean.
-2. **Merge** the bug, rule, design, per-file, diff-cannot-show and cubic findings, and remove
-   duplicates. Move findings on paths outside the manifest to "Out of scope".
+2. **Merge** the bug, challenge, rule, design, per-file, diff-cannot-show and cubic findings, and
+   remove duplicates. Move findings on paths outside the manifest to "Out of scope". A challenge
+   finding that would change the approach, rather than one line, is **Ask**: the approach is the
+   author's decision.
 3. **Verify each finding** by reading the code at the line and its callers. When the finding
    depends on how a library behaves, read the installed source (`frontend/node_modules/...`,
    `.venv/lib/.../site-packages/...`) before deciding. When it depends on framework behaviour the
@@ -298,6 +317,10 @@ cubic: <exit code, n findings | error: <message> | not installed>
 
 ### Records to update
 - <Jira ticket | PR description | changelog fragment | spec file>: <link or path> — "<old sentence>" → "<new sentence>" (fix: `file:line`)
+
+### Challenge
+Requirement from: <spec path | ticket or issue link | PR description | the user>
+- <Requirement | Simpler version | Unrequested scope | Rejection>: `file:line` — <finding> (P1/P2; fixed | declined | deferred | asked)
 
 ### Design
 - <Queries | Request context | Entity dependencies | Position | Copied files | States | Volume | Reuse | Simplicity>: `file:line` — <finding> (P2/P3; fixed | declined | deferred | asked)
