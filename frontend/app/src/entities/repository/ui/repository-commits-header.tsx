@@ -36,7 +36,7 @@ import {
 import {
   CommitLogActionButton,
   CommitLogRefreshButton,
-  Ref,
+  InlineCode,
   RepositoryCommitsStatusActions,
 } from "@/entities/repository/ui/repository-commits-status-actions";
 
@@ -70,7 +70,13 @@ export function RepositoryCommitsHeader({
     case "loading":
       return <LoadingBlock />;
     case "failed":
-      return <Toolbar repositoryId={repository.id} checkAction={checkAction} actions={actions} />;
+      return (
+        <FailedLogToolbar
+          repositoryId={repository.id}
+          checkAction={checkAction}
+          actions={actions}
+        />
+      );
   }
 
   const status =
@@ -101,7 +107,7 @@ const SECTION_CLASS_NAME =
 
 const HEADING_CLASS_NAME = "font-semibold text-base text-foreground leading-8 tabular-nums";
 
-const TONE_ICON: Record<CommitLogStatusTone, string> = {
+const TONE_CLASS_NAME: Record<CommitLogStatusTone, string> = {
   success: "bg-success-surface text-success",
   info: "bg-info-surface text-info",
   warning: "bg-warning-surface text-warning",
@@ -176,7 +182,7 @@ function StatusIcon({ tone, icon }: { tone: CommitLogStatusTone; icon: CommitLog
     <span
       className={classNames(
         "flex size-8 shrink-0 items-center justify-center rounded-lg",
-        TONE_ICON[tone]
+        TONE_CLASS_NAME[tone]
       )}
     >
       {Icon ? <Icon className="size-4" aria-hidden="true" /> : <Spinner />}
@@ -194,7 +200,7 @@ function StatusText({ parts }: { parts: CommitLogTextPart[] }) {
     return typeof part === "string" ? (
       <React.Fragment key={key}>{part}</React.Fragment>
     ) : (
-      <Ref key={key}>{part.code}</Ref>
+      <InlineCode key={key}>{part.code}</InlineCode>
     );
   });
 }
@@ -215,7 +221,7 @@ function Freshness({
     <p className="flex flex-wrap items-center gap-x-1.5 text-foreground-muted text-xs tabular-nums">
       {trackedRef && (
         <span className={FRESHNESS_ITEM_CLASS_NAME}>
-          Tracking <Ref>{trackedRef}</Ref>
+          Tracking <InlineCode>{trackedRef}</InlineCode>
         </span>
       )}
       {checkedAt && (
@@ -232,13 +238,13 @@ function Freshness({
   );
 }
 
-interface ToolbarProps {
+interface FailedLogToolbarProps {
   repositoryId: string;
   checkAction: CommitLogAction | null;
   actions: RepositoryCommitsActions;
 }
 
-function Toolbar({ repositoryId, checkAction, actions }: ToolbarProps) {
+function FailedLogToolbar({ repositoryId, checkAction, actions }: FailedLogToolbarProps) {
   return (
     <Row className="items-center gap-2 p-2">
       <CommitLogRefreshButton repositoryId={repositoryId} />

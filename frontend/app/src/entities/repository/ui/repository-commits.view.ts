@@ -244,7 +244,6 @@ export const BRANCH_MERGING = "This branch is being merged, so it cannot be chan
 export const BRANCH_MERGE_FAILED =
   "The merge of this branch failed. Recover the merge before changing the branch.";
 
-/** Whether the user may run an action now; pending while what decides it is still loading. */
 export type ActionAccess =
   | { status: "allowed" }
   | { status: "pending" }
@@ -283,7 +282,6 @@ export function getRepositoryActionAccess({
   branchStatus: BranchStatus;
   updatePermission: PermissionDecision;
   isDefaultBranch: boolean;
-  /** Undefined while the permission is loading. */
   canEditDefaultBranch: boolean | undefined;
 }): ActionAccess {
   if (!isAuthenticated) return { status: "denied", reason: REPOSITORY_SIGN_IN_REQUIRED };
@@ -311,7 +309,6 @@ export function getRebaseAccess({
   isAuthenticated: boolean;
   isDefaultBranch: boolean;
   branchStatus: BranchStatus;
-  /** Undefined while the permission is loading. */
   canRebase: boolean | undefined;
   /** False until the lookup of a running rebase answers, so a second rebase is not offered meanwhile. */
   isRunningKnown: boolean;
@@ -348,34 +345,17 @@ export function getDeniedReason(action: CommitLogAction | null): string | null {
   return action?.access.status === "denied" ? action.access.reason : null;
 }
 
-export function getDeniedReasons(actions: (CommitLogAction | null)[]): string[] {
-  const reasons = actions
-    .map(getDeniedReason)
-    .filter((reason): reason is string => reason !== null);
-  return [...new Set(reasons)];
-}
-
-export function getReasonId(
-  action: CommitLogAction,
-  deniedReasons: string[],
-  idPrefix: string
-): string | undefined {
-  const reason = getDeniedReason(action);
-  return reason ? `${idPrefix}-${deniedReasons.indexOf(reason)}` : undefined;
-}
-
 const CONDITIONS_WITHOUT_CURRENT_COMMIT: RepositoryGitCondition[] = [
   RepositoryGitCondition.REWRITTEN,
   RepositoryGitCondition.ORPHANED,
 ];
 
-/** Whether the branch may have a commit of its own in the repository, which a rebase does not replace. */
 export function mayKeepOwnCommit(condition: RepositoryCommitLog["condition"] | null): boolean {
   return condition !== null && CONDITIONS_WITHOUT_CURRENT_COMMIT.includes(condition);
 }
 
 /** The client already shows a toast for any other GraphQL error. */
-export function isErrorWithoutClientToast(error: unknown): boolean {
+export function isErrorNotToastedByClient(error: unknown): boolean {
   if (hasOnlyThrownCatalogueCode(error, ERROR_CODES.PERMISSION_DENIED)) return true;
   const cause = error instanceof Error ? error.cause : undefined;
   return !(cause instanceof Error && "graphQLErrors" in cause);
@@ -396,10 +376,8 @@ export interface CommitLogStatusContext {
   rebaseOnly: boolean;
   /** The repository was added on this branch and is not on the default branch yet. */
   isStaging: boolean;
-  /** The repository's internal status on this branch is active. */
   isActive: boolean;
   branchName: string;
-  /** Infrahub's default branch, which a rebase moves the branch onto; null while unknown. */
   defaultBranchName: string | null;
   running: "rebase" | "import" | null;
   repositoryAccess: ActionAccess;
@@ -439,17 +417,45 @@ export function getCommitLogStatus(
   const ref = { code: getRefName(git_ref) };
   const used = imported_commit ? { code: imported_commit.slice(0, SHORT_HASH_LENGTH) } : null;
   const usedAside = used ? [", ", used, ","] : [];
-  const them = pending_count === 1 ? "it" : "them";
-
-  const importAction: CommitLogAction = { kind: "import", access: context.repositoryAccess };
-  const checkAction = getCheckAction(context);
-  const rebaseAction: CommitLogAction = { kind: "rebase", access: context.rebaseAccess };
   const defaultBranch = getDefaultBranchPart(context.defaultBranchName);
-  const rebaseMovesToDefault = [
-    " A rebase moves the branch to the commit used on ",
-    defaultBranch,
-    ", unless the branch has a commit of its own in this repository.",
-  ];
+
+  const withRemedy = (
+    problem: CommitLogTextPart[],
+    missing: CommitLogTextPart[]
+  ): Pick<CommitLogStatus, "detail" | "primary" | "secondary"> => {
+    const remedy = rebaseOnly
+      ? {
+          text: [
+            "A rebase moves the branch to the commit used on ",
+            defaultBranch,
+            mayKeepOwnCommit(condition)
+              ? ", unless the branch has a commit of its own in this repository."
+              : ".",
+          ],
+          primary: { kind: "rebase", access: context.rebaseAccess } as const,
+          secondary: null,
+        }
+      : isReadOnly
+        ? {
+            text: [
+              "Nothing imports a read-only repository automatically. Import the latest commit to use ",
+              ...missing,
+              ".",
+            ],
+            primary: { kind: "import", access: context.repositoryAccess } as const,
+            secondary: getCheckAction(context),
+          }
+        : {
+            text: ["The next sync imports ", ...missing, ", usually within a minute."],
+            primary: null,
+            secondary: null,
+          };
+    return {
+      detail: problem.length > 0 ? [...problem, " ", ...remedy.text] : remedy.text,
+      primary: remedy.primary,
+      secondary: remedy.secondary,
+    };
+  };
 
   if (running === "rebase") {
     return {
@@ -479,6 +485,15 @@ export function getCommitLogStatus(
     };
   }
 
+  const pending = pending_count === 1 ? "it" : "them";
+  const lostFromHistory = [
+    "The commit this branch uses",
+    ...usedAside,
+    " is no longer in the history of ",
+    ref,
+    ", for example after a force push.",
+  ];
+
   switch (condition) {
     case RepositoryGitCondition.IN_SYNC:
       return {
@@ -493,7 +508,7 @@ export function getCommitLogStatus(
           ref,
           ...(used ? [", ", used, "."] : ["."]),
         ],
-        secondary: checkAction,
+        secondary: getCheckAction(context),
       };
     case RepositoryGitCondition.BEHIND:
       if (rebaseOnly) {
@@ -505,135 +520,35 @@ export function getCommitLogStatus(
             pending_count === null
               ? ["Behind ", ref]
               : ["Behind ", ref, ` by ${formatCommitCount(pending_count)}`],
-          detail: [
-            "This branch does not sync with Git.",
-            " A rebase moves the branch to the commit used on ",
-            defaultBranch,
-            ".",
-          ],
-          primary: rebaseAction,
-        };
-      }
-      if (isReadOnly) {
-        return {
-          ...NO_ACTION,
-          tone: "warning",
-          icon: "pending-import",
-          headline: [getPendingImportHeadline(pending_count)],
-          detail: [
-            `Nothing imports a read-only repository automatically. Import the latest commit to use ${them}.`,
-          ],
-          primary: importAction,
-          secondary: checkAction,
+          ...withRemedy(["This branch does not sync with Git."], []),
         };
       }
       return {
         ...NO_ACTION,
-        tone: "info",
+        tone: isReadOnly ? "warning" : "info",
         icon: "pending-import",
         headline: [getPendingImportHeadline(pending_count)],
-        detail: [
-          isStaging
-            ? `This repository was added on this branch. The next sync imports ${them}, usually within a minute.`
-            : `The next sync imports ${them}, usually within a minute.`,
-        ],
+        ...withRemedy(isStaging ? ["This repository was added on this branch."] : [], [pending]),
       };
-    case RepositoryGitCondition.REWRITTEN: {
-      const lostFromHistory = [
-        " is no longer in the history of ",
-        ref,
-        ", for example after a force push.",
-      ];
-      if (rebaseOnly) {
-        return {
-          ...NO_ACTION,
-          tone: "warning",
-          icon: "warning",
-          headline: ["Diverged from ", ref],
-          detail: [
-            "The commit this branch uses",
-            ...usedAside,
-            ...lostFromHistory,
-            ...rebaseMovesToDefault,
-          ],
-          primary: rebaseAction,
-        };
-      }
-      if (isReadOnly) {
-        return {
-          ...NO_ACTION,
-          tone: "warning",
-          icon: "warning",
-          headline: ["History of ", ref, " was rewritten"],
-          detail: [
-            "The commit in use",
-            ...usedAside,
-            ...lostFromHistory,
-            " Nothing imports a read-only repository automatically. Import the latest commit to use the new head.",
-          ],
-          primary: importAction,
-          secondary: checkAction,
-        };
-      }
+    case RepositoryGitCondition.REWRITTEN:
       return {
         ...NO_ACTION,
         tone: "warning",
         icon: "warning",
-        headline: ["History of ", ref, " was rewritten"],
-        detail: [
-          "The commit in use",
-          ...usedAside,
-          ...lostFromHistory,
-          " The next sync imports the new head, usually within a minute.",
-        ],
+        headline: rebaseOnly ? ["Diverged from ", ref] : ["History of ", ref, " was rewritten"],
+        ...withRemedy(lostFromHistory, ["the new head"]),
       };
-    }
-    case RepositoryGitCondition.ORPHANED: {
-      const headline = ["Commit in use not found on the remote"];
-      const lostFromRemote = [
-        "The commit this branch uses",
-        ...usedAside,
-        " is no longer on the remote.",
-      ];
-      if (rebaseOnly) {
-        return {
-          ...NO_ACTION,
-          tone: "warning",
-          icon: "warning",
-          headline,
-          detail: [...lostFromRemote, ...rebaseMovesToDefault],
-          primary: rebaseAction,
-        };
-      }
-      if (isReadOnly) {
-        return {
-          ...NO_ACTION,
-          tone: "warning",
-          icon: "warning",
-          headline,
-          detail: [
-            ...lostFromRemote,
-            " Nothing imports a read-only repository automatically. Import the latest commit of ",
-            ref,
-            " to use its new head.",
-          ],
-          primary: importAction,
-          secondary: checkAction,
-        };
-      }
+    case RepositoryGitCondition.ORPHANED:
       return {
         ...NO_ACTION,
         tone: "warning",
         icon: "warning",
-        headline,
-        detail: [
-          ...lostFromRemote,
-          " The next sync imports the new head of ",
-          ref,
-          ", usually within a minute.",
-        ],
+        headline: ["Commit in use not found on the remote"],
+        ...withRemedy(
+          ["The commit this branch uses", ...usedAside, " is no longer on the remote."],
+          ["the new head of ", ref]
+        ),
       };
-    }
     case RepositoryGitCondition.REF_MISSING:
       return {
         ...NO_ACTION,
@@ -649,7 +564,7 @@ export function getCommitLogStatus(
             ? " Change the tracked ref in the repository's Edit form, or restore it in Git and check the remote again."
             : " Restore the branch in Git, or change the default branch of the repository.",
         ],
-        secondary: checkAction,
+        secondary: getCheckAction(context),
       };
     case RepositoryGitCondition.NO_REMOTE:
       return {
@@ -668,13 +583,7 @@ export function getCommitLogStatus(
           tone: "warning",
           icon: "pending-import",
           headline: ["No commit imported yet"],
-          detail: [
-            "No commit of ",
-            ref,
-            " has been imported yet. Nothing imports a read-only repository automatically. Import the latest commit to use it.",
-          ],
-          primary: importAction,
-          secondary: checkAction,
+          ...withRemedy(["No commit of ", ref, " has been imported yet."], ["it"]),
         };
       }
       return {
@@ -685,7 +594,10 @@ export function getCommitLogStatus(
         detail: ["This branch tracks no remote ref."],
       };
     case RepositoryGitCondition.UNAVAILABLE:
-      return getUnavailableStatus(NO_WORKER_ANSWER, { isRetrying: false, checkAction });
+      return getUnavailableStatus(NO_WORKER_ANSWER, {
+        isRetrying: false,
+        checkAction: getCheckAction(context),
+      });
     default:
       warnUnexpectedType(condition);
       return {
@@ -752,7 +664,6 @@ export function getCommitsTabBadge(
         };
       }
       const summary = `${formatCommitCount(pending_count)} pending import`;
-      // Nothing imports a read-only repository on its own; its periodic check only notices that the ref moved.
       const action = isReadOnly
         ? `run Import latest commit to use ${pronoun}`
         : `the next sync imports ${pronoun}`;

@@ -15,8 +15,6 @@ import {
   type CommitLogAction,
   type CommitLogActionKind,
   getDeniedReason,
-  getDeniedReasons,
-  getReasonId,
   mayKeepOwnCommit,
   type RepositoryCommitsRepository,
 } from "@/entities/repository/ui/repository-commits.view";
@@ -51,8 +49,9 @@ export function RepositoryCommitsStatusActions({
   actions,
 }: RepositoryCommitsStatusActionsProps) {
   const [isConfirmingRebase, setIsConfirmingRebase] = React.useState(false);
-  const reasonIdPrefix = React.useId();
-  const deniedReasons = getDeniedReasons([secondary, primary]);
+  const reasonId = React.useId();
+  // Both actions of a status share one access decision, so they share one reason.
+  const deniedReason = getDeniedReason(primary ?? secondary);
 
   const onPress = ({ kind }: CommitLogAction) => {
     switch (kind) {
@@ -75,7 +74,7 @@ export function RepositoryCommitsStatusActions({
               <CommitLogActionButton
                 action={secondary}
                 actions={actions}
-                describedBy={getReasonId(secondary, deniedReasons, reasonIdPrefix)}
+                describedBy={getDeniedReason(secondary) ? reasonId : undefined}
                 onPress={() => onPress(secondary)}
               />
             )}
@@ -83,22 +82,18 @@ export function RepositoryCommitsStatusActions({
               <CommitLogActionButton
                 action={primary}
                 actions={actions}
-                describedBy={getReasonId(primary, deniedReasons, reasonIdPrefix)}
+                describedBy={getDeniedReason(primary) ? reasonId : undefined}
                 onPress={() => onPress(primary)}
                 isPrimary
               />
             )}
           </Row>
         )}
-        {deniedReasons.map((reason, index) => (
-          <p
-            key={reason}
-            id={`${reasonIdPrefix}-${index}`}
-            className="max-w-72 text-foreground-muted text-xs"
-          >
-            {reason}
+        {deniedReason && (
+          <p id={reasonId} className="max-w-72 text-foreground-muted text-xs">
+            {deniedReason}
           </p>
-        ))}
+        )}
       </Col>
       <RebaseConfirm
         condition={condition}
@@ -196,8 +191,9 @@ function RebaseConfirm({
       description={
         <>
           <span className="break-all font-semibold text-foreground">{branchName}</span> is rebased
-          on {defaultBranchName ? <Ref>{defaultBranchName}</Ref> : "the default branch"}. Every
-          change on this branch is rebased: all its data and all its repositories, not only{" "}
+          on{" "}
+          {defaultBranchName ? <InlineCode>{defaultBranchName}</InlineCode> : "the default branch"}.
+          Every change on this branch is rebased: all its data and all its repositories, not only{" "}
           {repositoryName}.
           {mayKeepOwnCommit(condition) &&
             ` If the branch has a commit of its own in ${repositoryName}, the rebase does not replace it.`}
@@ -207,7 +203,7 @@ function RebaseConfirm({
   );
 }
 
-export function Ref({ children }: { children: string }) {
+export function InlineCode({ children }: { children: string }) {
   return (
     <code title={children} className="inline-block max-w-64 truncate align-bottom font-mono">
       {children}

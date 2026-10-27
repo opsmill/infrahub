@@ -29,7 +29,7 @@ import {
   type CommitLogStatusContext,
   getRebaseAccess,
   getRepositoryActionAccess,
-  isErrorWithoutClientToast,
+  isErrorNotToastedByClient,
 } from "@/entities/repository/ui/repository-commits.view";
 import { BRANCH_REBASE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/domain/model/task";
 import { isTaskFinishedQueryOptions } from "@/entities/tasks/ui/queries/is-task-finished.query";
@@ -107,12 +107,11 @@ export function useRepositoryCommitsActions({
   const { mutate: checkRemoteRefs } = useCheckRemoteRefsMutation();
   const remoteCheck = useGetRemoteCheckTask({ repositoryId });
 
-  const running =
-    rebaseOnly && isRebaseRunning
-      ? "rebase"
-      : (isReadOnly && latestImport?.status === "running") || isStartedImportRunning
-        ? "import"
-        : null;
+  const running = isRebaseRunning
+    ? "rebase"
+    : (isReadOnly && latestImport?.status === "running") || isStartedImportRunning
+      ? "import"
+      : null;
 
   useRefreshCommitLogWhenTaskEnds({ isRunning: running !== null, repositoryId, branchName });
 
@@ -147,7 +146,7 @@ export function useRepositoryCommitsActions({
     importLatestCommit: () =>
       importMutation.mutate(
         { repositoryId },
-        { onError: (error) => toastErrorWithoutClientToast("importing the latest commit", error) }
+        { onError: (error) => toastIfClientShowedNone("importing the latest commit", error) }
       ),
     rebaseBranch: ({ onSettled }) =>
       rebaseMutation.mutate(
@@ -155,7 +154,7 @@ export function useRepositoryCommitsActions({
         {
           onSuccess: (result) =>
             toastTaskStarted("Branch rebase started.", result.relatedTaskId ?? undefined),
-          onError: (error) => toastErrorWithoutClientToast("rebasing the branch", error),
+          onError: (error) => toastIfClientShowedNone("rebasing the branch", error),
           onSettled,
         }
       ),
@@ -176,8 +175,8 @@ export function useRepositoryCommitsActions({
   };
 }
 
-function toastErrorWithoutClientToast(doing: string, error: Error) {
-  if (!isErrorWithoutClientToast(error)) return;
+function toastIfClientShowedNone(doing: string, error: Error) {
+  if (!isErrorNotToastedByClient(error)) return;
   toast(<Alert type={ALERT_TYPES.ERROR} message={`Error ${doing}: ${error.message}`} />);
 }
 

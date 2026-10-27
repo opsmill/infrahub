@@ -30,17 +30,15 @@ import {
   getCommitLogStatus,
   getCommitLogWithoutPages,
   getCommitsTabBadge,
-  getDeniedReasons,
   getEmptyState,
   getFreshness,
   getLoadedCommits,
   getNextPageState,
-  getReasonId,
   getRebaseAccess,
   getRepositoryActionAccess,
   getStateBadges,
   getUnavailableStatus,
-  isErrorWithoutClientToast,
+  isErrorNotToastedByClient,
   isLoadingFirstPage,
   isShowingStaleCommits,
   mayKeepOwnCommit,
@@ -1123,7 +1121,7 @@ describe("getCommitLogStatus", () => {
 
     // THEN
     expect(toText(status.detail)).toBe(
-      "The commit in use, aaaaaaa, is no longer in the history of main, for example after a force push. Nothing imports a read-only repository automatically. Import the latest commit to use the new head."
+      "The commit this branch uses, aaaaaaa, is no longer in the history of main, for example after a force push. Nothing imports a read-only repository automatically. Import the latest commit to use the new head."
     );
     expect(status.primary).toEqual({ kind: "import", access: ALLOWED_ACCESS });
     expect(status.secondary).toEqual({ kind: "check", access: ALLOWED_ACCESS });
@@ -1147,7 +1145,7 @@ describe("getCommitLogStatus", () => {
 
     // THEN
     expect(toText(status.detail)).toBe(
-      "The commit this branch uses, aaaaaaa, is no longer on the remote. Nothing imports a read-only repository automatically. Import the latest commit of main to use its new head."
+      "The commit this branch uses, aaaaaaa, is no longer on the remote. Nothing imports a read-only repository automatically. Import the latest commit to use the new head of main."
     );
     expect(status.primary).toEqual({ kind: "import", access: ALLOWED_ACCESS });
     expect(status.secondary).toEqual({ kind: "check", access: ALLOWED_ACCESS });
@@ -1297,49 +1295,6 @@ describe("getUnavailableStatus", () => {
   });
 });
 
-describe("getDeniedReasons", () => {
-  test("lists each reason once, in the order of the actions, and skips allowed or pending actions", () => {
-    // GIVEN
-    const denied = (reason: string): ActionAccess => ({ status: "denied", reason });
-
-    // WHEN
-    const reasons = getDeniedReasons([
-      { kind: "check", access: denied("No update permission.") },
-      { kind: "import", access: denied("No update permission.") },
-      { kind: "check", access: { status: "allowed" } },
-      { kind: "rebase", access: { status: "pending" } },
-      null,
-      { kind: "check", access: denied("No default branch permission.") },
-    ]);
-
-    // THEN
-    expect(reasons).toEqual(["No update permission.", "No default branch permission."]);
-  });
-});
-
-describe("getReasonId", () => {
-  const deniedReasons = ["Sign in to change this repository.", "You need permission."];
-
-  test("points a denied action to the line of its reason", () => {
-    // WHEN
-    const id = getReasonId(
-      { kind: "import", access: { status: "denied", reason: "You need permission." } },
-      deniedReasons,
-      "reasons"
-    );
-
-    // THEN
-    expect(id).toBe("reasons-1");
-  });
-
-  test.each<ActionAccess>([{ status: "allowed" }, { status: "pending" }])(
-    "gives no id to an action that is $status",
-    (access) => {
-      expect(getReasonId({ kind: "import", access }, deniedReasons, "reasons")).toBeUndefined();
-    }
-  );
-});
-
 describe("mayKeepOwnCommit", () => {
   test.each([
     [RepositoryGitCondition.REWRITTEN, true],
@@ -1352,7 +1307,7 @@ describe("mayKeepOwnCommit", () => {
   });
 });
 
-describe("isErrorWithoutClientToast", () => {
+describe("isErrorNotToastedByClient", () => {
   const thrownByTransport = (...graphQLErrors: GraphQLError[]) =>
     new Error("Request failed", { cause: new CombinedError({ graphQLErrors }) });
   const permissionDenial = () =>
@@ -1372,7 +1327,7 @@ describe("isErrorWithoutClientToast", () => {
       expected: false,
     },
   ])("returns $expected for $case", ({ error, expected }) => {
-    expect(isErrorWithoutClientToast(error)).toBe(expected);
+    expect(isErrorNotToastedByClient(error)).toBe(expected);
   });
 });
 
