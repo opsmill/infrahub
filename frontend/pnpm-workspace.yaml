@@ -14,26 +14,30 @@ allowBuilds:
 # with `"<dep>": "catalog:"`. Add a dep here only if it's used by more than one workspace member.
 catalog:
   "@tailwindcss/vite": ^4.3.3
-  "@types/node": ^26.2.0
-  "@types/react": ^19.2.18
-  "@types/react-dom": ^19.2.4
-  "@vitejs/plugin-react": ^6.0.5
+  "@types/node": ^26.6.5
+  "@types/react": ^19.3.0
+  "@types/react-dom": ^19.3.0
+  "@vitejs/plugin-react": ^6.1.2
   babel-plugin-react-compiler: ^1.0.0
-  lucide-react: ^1.31.0
-  react: ^19.2.8
+  lucide-react: ^1.61.0
+  react: ^19.3.1
   react-aria-components: ^1.22.1
-  react-dom: ^19.2.8
-  tailwind-merge: ^3.6.0
+  react-dom: ^19.3.1
+  tailwind-merge: ^3.7.0
   tailwindcss: ^4.3.3
-  typescript: ^5.9.3
-  vite: ^8.2.1
+  typescript: ^6.0.3
+  vite: ^8.3.5
 
 overrides:
   playwright: 1.60.0
   playwright-core: 1.60.0
+  # Security fixes that the parent packages do not accept yet.
+  "@betterer/betterer>simple-git": ^4.0.2
+  katex: ^0.18.2
 
 peerDependencyRules:
   allowedVersions:
-    graphiql-explorer>graphql: ^16.0.0
+    graphiql-explorer>graphql: ^17.0.0
     graphiql-explorer>react: ^19.0.0
     graphiql-explorer>react-dom: ^19.0.0
+    openapi-typescript>typescript: ^6.0.0
