@@ -63,6 +63,10 @@ class CleanupJob(BaseModel):
     not_rewritten: list[str] = Field(
         default_factory=list, description="Tables whose rewrite still waited too long for a lock after its retries"
     )
+    timed_out: list[str] = Field(
+        default_factory=list,
+        description="Tables whose rewrite took longer than its time limit and was stopped, which leaves them as they were",
+    )
     error: str | None = None
 
 

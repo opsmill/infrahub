@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 
-from infrahub.prefect_server.task_history import TableSpace
+from infrahub.prefect_server.task_history import RewriteResult, TableSpace
 
 PAUSE_TIMEOUT_SECONDS = 30
 
@@ -10,15 +10,21 @@ PAUSE_TIMEOUT_SECONDS = 30
 class RecordingRewriter:
     """Records its calls in order, measuring 1000 bytes until a rewrite and 100 after it, and the given space of each table.
 
-    Its rewrite leaves out the tables given as locked. Given a call number, it pauses at that call until the test lets it go on.
+    Its rewrite leaves out the tables given as locked or timed out. Given a call number, it pauses at that call until the
+    test lets it go on.
     """
 
     def __init__(
-        self, spaces: dict[str, TableSpace], locked: tuple[str, ...] = (), pause_at_call: int | None = None
+        self,
+        spaces: dict[str, TableSpace],
+        locked: tuple[str, ...] = (),
+        timed_out: tuple[str, ...] = (),
+        pause_at_call: int | None = None,
     ) -> None:
         self.calls: list[str] = []
         self._spaces = spaces
         self._locked = locked
+        self._timed_out = timed_out
         self._pause_at_call = pause_at_call
         self._paused = asyncio.Event()
         self._resumed = asyncio.Event()
@@ -35,9 +41,12 @@ class RecordingRewriter:
         await self._record(call=f"space {table}")
         return self._spaces[table]
 
-    async def rewrite(self, tables: list[str]) -> list[str]:
+    async def rewrite(self, tables: list[str]) -> RewriteResult:
         await self._record(call=f"rewrite {' '.join(tables)}")
-        return [table for table in tables if table in self._locked]
+        return RewriteResult(
+            locked=[table for table in tables if table in self._locked],
+            timed_out=[table for table in tables if table in self._timed_out],
+        )
 
     async def wait_until_paused(self) -> None:
         async with asyncio.timeout(PAUSE_TIMEOUT_SECONDS):
@@ -70,5 +79,5 @@ class FailingRewriter:
     async def space(self, table: str) -> TableSpace:
         return TableSpace(disk_bytes=1000, live_bytes=0)
 
-    async def rewrite(self, tables: list[str]) -> list[str]:
+    async def rewrite(self, tables: list[str]) -> RewriteResult:
         raise RuntimeError("rewrite rejected")

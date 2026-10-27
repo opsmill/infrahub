@@ -50,7 +50,7 @@ SPACES = {
 }
 LOCKED = ("log",)
 REWRITE_CALLS = ["space flow_run", "space log", "space events", "rewrite flow_run log", "total_size"]
-REWRITE_OUTCOME = {"rewritten": ["flow_run"], "mostly_live": ["events"], "not_rewritten": ["log"]}
+REWRITE_OUTCOME = {"rewritten": ["flow_run"], "mostly_live": ["events"], "not_rewritten": ["log"], "timed_out": []}
 
 
 @pytest.fixture
@@ -305,6 +305,7 @@ async def test_cleanup_on_sqlite_reports_that_it_rewrites_nothing(app: FastAPI, 
         "rewritten": [],
         "mostly_live": [],
         "not_rewritten": [],
+        "timed_out": [],
         "error": None,
     }
     assert await _flow_run_ids(db=db) == set()

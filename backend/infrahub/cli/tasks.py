@@ -177,6 +177,10 @@ def _rewrite_lines(job: CleanupJob) -> list[str]:
         )
     if job.not_rewritten:
         lines.append(f"Did not rewrite {', '.join(job.not_rewritten)}, which stayed locked by other sessions")
+    if job.timed_out:
+        lines.append(
+            f"Did not rewrite {', '.join(job.timed_out)}, whose rewrite took longer than its time limit and was stopped"
+        )
     return lines
 
 
@@ -207,8 +211,8 @@ async def flow_runs(
         "--rewrite",
         help=(
             "After the deletes, rewrite each task history and activity log table whose live rows hold less than "
-            "half of its disk space, to return that space to the disk. Tasks that write to a table wait while it is "
-            "rewritten."
+            "half of its disk space, to return that space to the disk. Tasks that read or write a table wait while it "
+            "is rewritten, for at most a minute."
         ),
     ),
 ) -> None:

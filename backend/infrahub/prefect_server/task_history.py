@@ -3,13 +3,15 @@ from __future__ import annotations
 import asyncio
 import itertools
 import threading
+import time
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from enum import Enum
 from typing import TYPE_CHECKING, Annotated, Protocol
 from uuid import uuid4
 
 import sqlalchemy as sa
-from asyncpg.exceptions import LockNotAvailableError
+from asyncpg.exceptions import LockNotAvailableError, QueryCanceledError
 from fastapi import APIRouter, Depends, HTTPException, status
 from prefect.logging import get_logger
 from prefect.server.database import PrefectDBInterface, provide_database_interface
@@ -23,6 +25,8 @@ from sqlalchemy.exc import DBAPIError
 from .task_history_models import CleanupJob, CleanupJobState, CleanupRequest, CleanupRewrite, TaskHistorySize
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from sqlalchemy.ext.asyncio import AsyncConnection
 
 log = get_logger(__name__)
@@ -33,8 +37,15 @@ _ACTIVITY_LOG_TABLES = ("events", "event_resources")
 _EXACT_MEASURE_PAGES = 10_000
 # Counting stops here, so the count of old runs stays fast on a task history of millions of runs.
 _OLD_RUNS_COUNT_LIMIT = 100_000
-_REWRITE_LOCK_TIMEOUT = timedelta(seconds=60)
-_REWRITE_RETRIES = 3
+# Short, because every query that reaches a table while a rewrite waits for it queues behind the rewrite.
+_REWRITE_LOCK_TIMEOUT = timedelta(seconds=3)
+_REWRITE_RETRIES = 4
+_REWRITE_RETRY_PAUSE = timedelta(seconds=20)
+# A stopped rewrite leaves its table as it was, so the limit only bounds how long the table stays locked.
+_REWRITE_TIME_LIMIT = timedelta(seconds=60)
+# Lets Prefect catch up on the writes that waited for one table before the next one is locked, so it grows with the wait.
+_REWRITE_PAUSE_FACTOR = 10
+_REWRITE_MAX_PAUSE = timedelta(seconds=60)
 _CLEANUP_LOCK_KEY = int.from_bytes(b"taskhist", byteorder="big")
 # Outlasts a day of deletes; Prefect 3.8.6 turns None into the API's 10 s timeout, and so into the API's engine.
 _MAINTENANCE_STATEMENT_TIMEOUT = timedelta(hours=24)
@@ -162,6 +173,26 @@ class TableSpace:
     live_bytes: int
 
 
+@dataclass(frozen=True)
+class RewriteResult:
+    """The tables a rewrite left as they were, by why."""
+
+    locked: list[str]
+    timed_out: list[str]
+
+
+class _TableOutcome(Enum):
+    REWRITTEN = "rewritten"
+    LOCKED = "locked"
+    TIMED_OUT = "timed_out"
+
+
+@dataclass(frozen=True)
+class _TableRewrite:
+    outcome: _TableOutcome
+    held_for: timedelta
+
+
 class TableRewriter(Protocol):
     """Rewrites tables to return the space of deleted rows to the disk."""
 
@@ -176,8 +207,8 @@ class TableRewriter(Protocol):
         """Measure the disk space of the table, and the part of it that its live rows hold."""
         ...
 
-    async def rewrite(self, tables: list[str]) -> list[str]:
-        """Rewrite the tables, returning those that stayed locked by other sessions."""
+    async def rewrite(self, tables: list[str]) -> RewriteResult:
+        """Rewrite the tables, returning those it left as they were."""
         ...
 
 
@@ -193,7 +224,7 @@ async def total_size(db: PrefectDBInterface, tables: tuple[str, ...]) -> int:
 
 
 class PostgresTableRewriter:
-    """Rewrites tables with VACUUM FULL, giving up on a table that stays locked."""
+    """Rewrites tables with VACUUM FULL, giving up on a table that stays locked or takes too long."""
 
     def __init__(
         self,
@@ -202,12 +233,22 @@ class PostgresTableRewriter:
         exact_measure_pages: int,
         lock_timeout: timedelta,
         retries: int,
+        retry_pause: timedelta,
+        time_limit: timedelta,
+        pause_factor: int,
+        max_pause: timedelta,
+        clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self._db = db
         self._tables = tables
         self._exact_measure_pages = exact_measure_pages
         self._lock_timeout = lock_timeout
         self._retries = retries
+        self._retry_pause = retry_pause
+        self._time_limit = time_limit
+        self._pause_factor = pause_factor
+        self._max_pause = max_pause
+        self._clock = clock
 
     @property
     def tables(self) -> tuple[str, ...]:
@@ -243,41 +284,72 @@ class PostgresTableRewriter:
             row_bytes += sa.func.coalesce(sa.func.pg_column_size(column), 0)
         return sa.select(sa.func.coalesce(sa.func.sum(row_bytes), 0)).select_from(source)
 
-    async def rewrite(self, tables: list[str]) -> list[str]:
+    async def rewrite(self, tables: list[str]) -> RewriteResult:
         engine = await self._db.engine()
-        not_rewritten: list[str] = []
+        locked: list[str] = []
+        timed_out: list[str] = []
         async with engine.connect() as connection:
             try:
                 await connection.execution_options(isolation_level="AUTOCOMMIT")
-                await connection.execute(
-                    sa.select(sa.func.set_config("lock_timeout", f"{int(self._lock_timeout.total_seconds())}s", False))
-                )
+                await _set_timeout(connection=connection, name="lock_timeout", value=self._lock_timeout)
+                held_for = timedelta(0)
                 for table in tables:
-                    if not await self._rewrite_table(connection=connection, table=table):
-                        not_rewritten.append(table)
+                    await asyncio.sleep(min(held_for * self._pause_factor, self._max_pause).total_seconds())
+                    rewrite = await self._rewrite_table(connection=connection, table=table)
+                    held_for = rewrite.held_for
+                    if rewrite.outcome is _TableOutcome.LOCKED:
+                        locked.append(table)
+                    elif rewrite.outcome is _TableOutcome.TIMED_OUT:
+                        timed_out.append(table)
             finally:
-                # Discarded, so no pooled connection keeps the lock timeout of this session.
+                # Discarded, so no pooled connection keeps the timeouts of this session.
                 await connection.invalidate()
-        return not_rewritten
+        return RewriteResult(locked=locked, timed_out=timed_out)
 
-    async def _rewrite_table(self, connection: AsyncConnection, table: str) -> bool:
-        statement = sa.text(f"VACUUM FULL {connection.dialect.identifier_preparer.quote(table)}")
+    async def _rewrite_table(self, connection: AsyncConnection, table: str) -> _TableRewrite:
+        quoted = connection.dialect.identifier_preparer.quote(table)
         attempts = 1 + self._retries
         for attempt in range(1, attempts + 1):
+            if attempt > 1:
+                await asyncio.sleep(self._retry_pause.total_seconds())
+            await _set_timeout(connection=connection, name="statement_timeout", value=self._time_limit)
+            started = self._clock()
             try:
-                await connection.execute(statement)
+                await connection.execute(sa.text(f"VACUUM FULL {quoted}"))
             except DBAPIError as exc:
-                if not _is_lock_timeout(exc):
+                if _caused_by(error=exc, cause=QueryCanceledError):
+                    log.warning(f"Task history cleanup: stopped the rewrite of {table}, which took too long")
+                    return _TableRewrite(outcome=_TableOutcome.TIMED_OUT, held_for=self._since(started))
+                if not _caused_by(error=exc, cause=LockNotAvailableError):
                     raise
                 log.warning(f"Task history cleanup: {table} stayed locked, rewrite attempt {attempt} of {attempts}")
                 continue
-            log.info(f"Task history cleanup: rewrote {table}")
-            return True
-        return False
+            held_for = self._since(started)
+            log.info(f"Task history cleanup: rewrote {table} in {held_for.total_seconds():.1f} s")
+            await self._refresh_statistics(connection=connection, table=table)
+            return _TableRewrite(outcome=_TableOutcome.REWRITTEN, held_for=held_for)
+        return _TableRewrite(outcome=_TableOutcome.LOCKED, held_for=timedelta(0))
+
+    def _since(self, started: float) -> timedelta:
+        return timedelta(seconds=self._clock() - started)
+
+    async def _refresh_statistics(self, connection: AsyncConnection, table: str) -> None:
+        """Refresh the planner statistics of a rewritten table, which its rewrite does not update."""
+        await _set_timeout(connection=connection, name="statement_timeout", value=timedelta(0))
+        try:
+            await connection.execute(sa.text(f"VACUUM (ANALYZE) {connection.dialect.identifier_preparer.quote(table)}"))
+        # The table is already rewritten, and autovacuum refreshes the statistics later anyway.
+        except DBAPIError as exc:
+            log.warning(f"Task history cleanup: could not refresh the statistics of {table}: {exc}")
 
 
-def _is_lock_timeout(error: DBAPIError) -> bool:
-    return isinstance(error.orig, Exception) and isinstance(error.orig.__cause__, LockNotAvailableError)
+async def _set_timeout(connection: AsyncConnection, name: str, value: timedelta) -> None:
+    milliseconds = int(value / timedelta(milliseconds=1))
+    await connection.execute(sa.select(sa.func.set_config(name, f"{milliseconds}ms", False)))
+
+
+def _caused_by(error: DBAPIError, cause: type[Exception]) -> bool:
+    return isinstance(error.orig, Exception) and isinstance(error.orig.__cause__, cause)
 
 
 def _start_of_day(moment: datetime) -> datetime:
@@ -305,8 +377,10 @@ class TaskHistoryCleanup:
         if mode is CleanupRewrite.IF_FREED:
             freed = await self._freed_tables(job=job, rewriter=self._rewriter)
             if freed:
-                job.not_rewritten = await self._rewriter.rewrite(tables=freed)
-                job.rewritten = [table for table in freed if table not in job.not_rewritten]
+                result = await self._rewriter.rewrite(tables=freed)
+                job.not_rewritten = result.locked
+                job.timed_out = result.timed_out
+                job.rewritten = [table for table in freed if table not in result.locked + result.timed_out]
         job.size_after = await self._rewriter.total_size()
 
     async def _freed_tables(self, job: CleanupJob, rewriter: TableRewriter) -> list[str]:
@@ -461,6 +535,10 @@ def build_task_history_cleanup(
                 exact_measure_pages=_EXACT_MEASURE_PAGES,
                 lock_timeout=_REWRITE_LOCK_TIMEOUT,
                 retries=_REWRITE_RETRIES,
+                retry_pause=_REWRITE_RETRY_PAUSE,
+                time_limit=_REWRITE_TIME_LIMIT,
+                pause_factor=_REWRITE_PAUSE_FACTOR,
+                max_pause=_REWRITE_MAX_PAUSE,
             ),
         )
     return TaskHistoryCleanup(tables=TaskHistoryTables(db=db, ids_per_statement=ids_per_statement), rewriter=None)

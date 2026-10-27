@@ -101,9 +101,10 @@ async def test_progress_lines_then_the_summary_with_each_table_are_printed() -> 
             polled(
                 rewrite="if_freed",
                 state="completed",
-                rewritten=["flow_run", "flow_run_state", "task_run", "task_run_state"],
+                rewritten=["flow_run", "flow_run_state", "task_run"],
                 mostly_live=["events", "event_resources"],
                 not_rewritten=["log", "artifact"],
+                timed_out=["task_run_state"],
                 current_day="2026-01-16",
                 deleted_runs=1234,
                 size_before=25_300_000_000,
@@ -121,9 +122,10 @@ async def test_progress_lines_then_the_summary_with_each_table_are_printed() -> 
         "Deleting the runs that ended on 2026-01-16, 1200 runs deleted so far",
         "Deleted 1234 runs that ended before 2026-09-04 00:00 UTC",
         "Task history and activity log tables: 25.3 GB before, 1.2 GB after",
-        "Rewrote flow_run, flow_run_state, task_run, task_run_state",
+        "Rewrote flow_run, flow_run_state, task_run",
         "Left events, event_resources as they are, because their live rows hold at least half of their disk space",
         "Did not rewrite log, artifact, which stayed locked by other sessions",
+        "Did not rewrite task_run_state, whose rewrite took longer than its time limit and was stopped",
     ]
 
 

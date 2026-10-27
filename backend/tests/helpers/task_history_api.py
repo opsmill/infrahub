@@ -35,6 +35,7 @@ def cleanup_job(**fields: Any) -> dict[str, Any]:
         "rewritten": [],
         "mostly_live": [],
         "not_rewritten": [],
+        "timed_out": [],
         "error": None,
     } | fields
 

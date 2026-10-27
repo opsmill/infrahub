@@ -25,6 +25,9 @@ LOG_LOCK_HOLDER = "task-history-cleanup-test-log-lock"
 ADVISORY_LOCK_KEY = int.from_bytes(b"locktest", byteorder="big")
 # Long enough to outwait autovacuum and Prefect's own writes, far shorter than the hold on the locked table.
 REWRITE_LOCK_TIMEOUT_SECONDS = 5
+REWRITE_TIME_LIMIT_MILLISECONDS = 60_000
+# Far shorter than any rewrite takes, so the rewrite is always stopped.
+TOO_SHORT_TIME_LIMIT_MILLISECONDS = 1
 OLD_RUN_AGE_DAYS = 35
 RECENT_RUN_AGE_DAYS = 5
 # Far more rows than the stack's own runs hold, so their freed space is most of the runs table whatever ran before.
@@ -73,7 +76,7 @@ from prefect.server.utilities.database import get_max_query_parameters
 from infrahub.prefect_server.task_history import PostgresTableRewriter, TaskHistoryCleanup, TaskHistoryTables
 from infrahub.prefect_server.task_history_models import CleanupJob, CleanupJobState, CleanupRewrite
 
-async def main(tables):
+async def main(time_limit_milliseconds, tables):
     db = provide_database_interface()
     job = CleanupJob(
         id="tables-of-the-test",
@@ -89,13 +92,17 @@ async def main(tables):
             exact_measure_pages={EXACT_MEASURE_PAGES},
             lock_timeout=timedelta(seconds={REWRITE_LOCK_TIMEOUT_SECONDS}),
             retries=0,
+            retry_pause=timedelta(0),
+            time_limit=timedelta(milliseconds=time_limit_milliseconds),
+            pause_factor=0,
+            max_pause=timedelta(0),
         ),
     )
     await cleanup.delete(job=job)
     await cleanup.rewrite(job=job, mode=job.rewrite)
     print(job.model_dump_json())
 
-asyncio.run(main(tables=tuple(sys.argv[1:])))
+asyncio.run(main(time_limit_milliseconds=int(sys.argv[1]), tables=tuple(sys.argv[2:])))
 """
 
 _INSERT_FILLER_LOGS_SCRIPT = f"""
@@ -204,6 +211,9 @@ _REWRITE_OUTCOMES = {
         r"Left (?P<tables>.+) as they are, because their live rows hold at least half of their disk space$"
     ),
     "not_rewritten": re.compile(r"Did not rewrite (?P<tables>.+), which stayed locked by other sessions$"),
+    "timed_out": re.compile(
+        r"Did not rewrite (?P<tables>.+), whose rewrite took longer than its time limit and was stopped$"
+    ),
 }
 
 
@@ -234,10 +244,18 @@ def _insert_finished_runs(compose: InfrahubDockerCompose, runs: int, ended_days_
     )
 
 
-def _clean_tables(compose: InfrahubDockerCompose, tables: tuple[str, ...]) -> dict[str, Any]:
+def _clean_tables(
+    compose: InfrahubDockerCompose,
+    tables: tuple[str, ...],
+    time_limit_milliseconds: int = REWRITE_TIME_LIMIT_MILLISECONDS,
+) -> dict[str, Any]:
     """Run a cleanup that rewrites each of the tables that is mostly free space, returning the job once it ended."""
     job: dict[str, Any] = json.loads(
-        _python_in_task_manager(compose=compose, script=_CLEANUP_OF_TABLES_SCRIPT, arguments=tables)
+        _python_in_task_manager(
+            compose=compose,
+            script=_CLEANUP_OF_TABLES_SCRIPT,
+            arguments=(str(time_limit_milliseconds), *tables),
+        )
     )
     return job
 
@@ -382,21 +400,28 @@ class TestTaskHistoryCleanup(TestInfrahubDockerClient):
     ) -> None:
         """A cleanup returns the space of runs deleted before it, as at a restart, and leaves a mostly live table alone.
 
-        Both tables are measured from a sample of their pages when they hold more pages than the test allows.
+        Both tables are measured from a sample of their pages when they hold more pages than the test allows, and the
+        statistics of the rewritten table are refreshed.
         """
         _free_most_of_the_runs_table(compose=infrahub_compose)
         # Packs the events, so that whatever was deleted from them before does not count as free space.
         compacted = _query_task_manager_database(compose=infrahub_compose, query="VACUUM FULL events")
         file_nodes_before = _file_nodes(compose=infrahub_compose)
+        [started] = _query_task_manager_database(compose=infrahub_compose, query="SELECT now()")
 
         job = _clean_tables(compose=infrahub_compose, tables=("flow_run", "events"))
 
         file_nodes_after = _file_nodes(compose=infrahub_compose)
+        analyzed = _query_task_manager_database(
+            compose=infrahub_compose,
+            query=f"SELECT relname FROM pg_stat_user_tables WHERE last_analyze > '{started}' ORDER BY relname",  # noqa: S608 - a time the database returned
+        )
         assert compacted == ["VACUUM"]
         assert (job["rewritten"], job["mostly_live"], job["not_rewritten"]) == (["flow_run"], ["events"], [])
         assert {table for table in file_nodes_before if file_nodes_after[table] != file_nodes_before[table]} == {
             "flow_run"
         }
+        assert analyzed == ["flow_run"]
 
     def test_the_cleanup_lock_has_one_holder_at_a_time_until_it_is_released(
         self,
@@ -425,3 +450,20 @@ class TestTaskHistoryCleanup(TestInfrahubDockerClient):
         assert {table for table in file_nodes_before if file_nodes_after[table] != file_nodes_before[table]} == {
             "flow_run"
         }
+
+    def test_a_rewrite_past_its_time_limit_is_stopped_and_leaves_the_table_as_it_was(
+        self, infrahub_compose: InfrahubDockerCompose
+    ) -> None:
+        """A freed table whose rewrite outlasts the time limit is reported timed out, and keeps its file."""
+        _free_most_of_the_runs_table(compose=infrahub_compose)
+        file_nodes_before = _file_nodes(compose=infrahub_compose)
+
+        job = _clean_tables(
+            compose=infrahub_compose,
+            tables=("flow_run",),
+            time_limit_milliseconds=TOO_SHORT_TIME_LIMIT_MILLISECONDS,
+        )
+
+        file_nodes_after = _file_nodes(compose=infrahub_compose)
+        assert (job["rewritten"], job["not_rewritten"], job["timed_out"]) == ([], [], ["flow_run"])
+        assert file_nodes_after == file_nodes_before
