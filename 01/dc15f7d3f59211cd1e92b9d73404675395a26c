@@ -1,0 +1,42 @@
+backend/tests/functional/pools/test_numberpool_branch.py
+  s_fe96a376afe301::t_3084540eda1e21 234-236
+backend/tests/component/graphql/resource_manager/number_pool_attach/test_attach.py
+  s_fe96a376afe301::t_b801c6d9b20937 585,587,589
+backend/tests/component/core/resource_manager/test_number_pool_divisions.py
+  s_fe96a376afe301::t_96bc2e9ba8b511 528
+  s_fe96a376afe301::t_4b226c19778f77 58-61,134-137,142-147,167,169,177,208-212,217-219,222,249-252,265-267,338-344,351,365-370,527,569-577,795,801,804
+backend/tests/component/core/migrations/graph/m081_reanchor_number_pool_reservations/test_migration.py
+  s_fe96a376afe301::t_42e4c339b49b15 704-711,713-720
+backend/infrahub/core/query/resource_manager.py
+  s_fe96a376afe301::t_d117dc51638b7a 208-211,224,232,249
+backend/tests/component/graphql/resource_manager/number_pool_attach/test_provenance.py
+  s_fe96a376afe301::t_b801c6d9b20937 111-112,133-137,156-159
+backend/tests/component/core/resource_manager/test_number_pool_query.py
+  s_fe96a376afe301::t_3995719916efb6 2,83-86,93-94,101-104,548-616,619-630,633-652,655-663,665-669
+  s_fe96a376afe301::t_42e4c339b49b15 146-148,151,324-331,353,355-362,367-372,393-398,402,429-437,442-447,482-490,494-499,528-536,540-547,617-618,631-632,653-654,664,761-764,770-773
+backend/infrahub/pools/number.py
+  s_fe96a376afe301::t_d117dc51638b7a 114
+backend/tests/component/graphql/queries/test_number_pool_surface.py
+  s_fe96a376afe301::t_e5b904cf6b7f10 349,351,353,356,359,364,367,370-373,490,492,495,524,526,528,532,543-545,547-548,552,562,564-566,574,595
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "01dc15f7d3f59211cd1e92b9d73404675395a26c",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_fe96a376afe301": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e2f27833-94fa-4027-a2dd-b7db0790e578",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
