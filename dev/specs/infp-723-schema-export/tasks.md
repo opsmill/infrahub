@@ -165,7 +165,7 @@ of the selected namespaces still take the other namespaces into account (FR-017)
 - [X] T042 Check that the documentation of T037 matches the results of T031 and T032, and fix the page if not.
 - [X] T043 Re-read `dev/specs/infp-723-schema-export/spec.md`, `plan.md` and `research.md` against the code, and update every statement the implementation changed (root `AGENTS.md`, "Always Do").
 - [ ] T044 Once the SDK pull request is merged, update `python_sdk` to the merged commit on `origin/infrahub-develop` and run `uv run invoke backend.generate` to check that the generated SDK models match.
-- [ ] T045 Run `/pre-ci` and fix every failure.
+- [X] T045 Run `/pre-ci` and fix every failure.
 - [ ] T046 Run the automated checks and the manual check of [quickstart.md](quickstart.md) and report the results.
 - [ ] T047 Commit the submodule bump with the Infrahub changes. Push and open the pull request only when the user asks.
 - [ ] T048 Write `tests/e2e/schema/test_schema_export.py` (constitution Principle IV; no browser): with the `schema_base` fixture of `tests/e2e/conftest.py`, call `infrahub_client.schema.export()`, send the result to `infrahub_client.schema.check()`, and assert an empty diff and no warning. Run it with `uv run pytest -c tests/e2e/pytest.ini tests/e2e/schema/test_schema_export.py -s --pdb` after T044.
