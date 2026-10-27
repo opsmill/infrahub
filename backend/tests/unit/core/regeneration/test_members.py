@@ -9,7 +9,13 @@ from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.schema import NodeSchemaAPI, RelationshipSchemaAPI
 from infrahub_sdk.schema.main import RelationshipCardinality, RelationshipKind
 
-from infrahub.core.regeneration.members import artifacts_changed_since_branch_point, map_subscriber_ids_by_member
+from infrahub.core.regeneration.members import (
+    ArtifactCheckRecord,
+    ArtifactRecheckPlan,
+    map_subscriber_ids_by_member,
+    plan_artifact_recheck,
+)
+from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
@@ -117,59 +123,155 @@ def test_map_subscriber_ids_by_member_skips_subscriber_whose_peer_has_no_id(
     assert not caplog.text
 
 
+BRANCHED_FROM = Timestamp("2026-10-01T10:00:00Z")
+PREVIOUS_RUN = Timestamp("2026-10-01T12:00:00Z")
+
+
+def _check(artifact_id: str, checked_at: str, failed: bool = False) -> ArtifactCheckRecord:
+    return ArtifactCheckRecord(artifact_id=artifact_id, checked_at=Timestamp(checked_at), failed=failed)
+
+
 @dataclass(frozen=True, kw_only=True)
-class BranchPointCase:
+class RecheckCase:
     name: str
-    checksums: dict[str, str | None]
-    branch_point_checksums: dict[str, str | None]
-    expected: list[str]
+    artifact_ids: list[str]
+    checks: list[ArtifactCheckRecord]
+    previous_run_started_at: Timestamp | None
+    expected: ArtifactRecheckPlan
 
 
-BRANCH_POINT_CASES = [
-    BranchPointCase(
-        name="same-checksum",
-        checksums={"art-1": "aaa"},
-        branch_point_checksums={"art-1": "aaa"},
-        expected=[],
+RECHECK_CASES = [
+    RecheckCase(
+        name="never-checked-counts-as-checked-at-the-branch-point",
+        artifact_ids=["art-1"],
+        checks=[],
+        previous_run_started_at=None,
+        expected=ArtifactRecheckPlan(
+            recent_ids=frozenset(),
+            recent_since=None,
+            recent_latest=None,
+            older_ids=frozenset({"art-1"}),
+            older_since=BRANCHED_FROM,
+            older_latest=BRANCHED_FROM,
+            always_ids=frozenset(),
+        ),
     ),
-    BranchPointCase(
-        name="different-checksum",
-        checksums={"art-1": "bbb"},
-        branch_point_checksums={"art-1": "aaa"},
-        expected=["art-1"],
+    RecheckCase(
+        name="checked-during-the-previous-run-is-recent",
+        artifact_ids=["art-1"],
+        checks=[_check("art-1", "2026-10-01T12:00:05Z")],
+        previous_run_started_at=PREVIOUS_RUN,
+        expected=ArtifactRecheckPlan(
+            recent_ids=frozenset({"art-1"}),
+            recent_since=PREVIOUS_RUN,
+            recent_latest=Timestamp("2026-10-01T12:00:05Z"),
+            older_ids=frozenset(),
+            older_since=None,
+            older_latest=None,
+            always_ids=frozenset(),
+        ),
     ),
-    BranchPointCase(
-        name="absent-at-branch-point",
-        checksums={"art-1": "bbb"},
-        branch_point_checksums={},
-        expected=[],
+    RecheckCase(
+        name="checked-before-the-previous-run-is-older",
+        artifact_ids=["art-1", "art-2"],
+        checks=[_check("art-1", "2026-10-01T11:00:00Z"), _check("art-2", "2026-10-01T11:30:00Z")],
+        previous_run_started_at=PREVIOUS_RUN,
+        expected=ArtifactRecheckPlan(
+            recent_ids=frozenset(),
+            recent_since=None,
+            recent_latest=None,
+            older_ids=frozenset({"art-1", "art-2"}),
+            older_since=Timestamp("2026-10-01T11:00:00Z"),
+            older_latest=Timestamp("2026-10-01T11:30:00Z"),
+            always_ids=frozenset(),
+        ),
     ),
-    BranchPointCase(
-        name="no-content-at-branch-point",
-        checksums={"art-1": "bbb"},
-        branch_point_checksums={"art-1": None},
-        expected=[],
+    RecheckCase(
+        name="latest-check-wins",
+        artifact_ids=["art-1"],
+        checks=[_check("art-1", "2026-10-01T11:00:00Z"), _check("art-1", "2026-10-01T12:00:05Z")],
+        previous_run_started_at=PREVIOUS_RUN,
+        expected=ArtifactRecheckPlan(
+            recent_ids=frozenset({"art-1"}),
+            recent_since=PREVIOUS_RUN,
+            recent_latest=Timestamp("2026-10-01T12:00:05Z"),
+            older_ids=frozenset(),
+            older_since=None,
+            older_latest=None,
+            always_ids=frozenset(),
+        ),
     ),
-    BranchPointCase(
-        name="no-content-on-branch",
-        checksums={"art-1": None},
-        branch_point_checksums={"art-1": "aaa"},
-        expected=["art-1"],
+    RecheckCase(
+        name="failed-last-check-is-always-checked",
+        artifact_ids=["art-1"],
+        checks=[_check("art-1", "2026-10-01T12:00:05Z", failed=True)],
+        previous_run_started_at=PREVIOUS_RUN,
+        expected=ArtifactRecheckPlan(
+            recent_ids=frozenset(),
+            recent_since=None,
+            recent_latest=None,
+            older_ids=frozenset(),
+            older_since=None,
+            older_latest=None,
+            always_ids=frozenset({"art-1"}),
+        ),
     ),
-    BranchPointCase(
-        name="mixed",
-        checksums={"art-3": "ccc", "art-1": "bbb", "art-2": "aaa"},
-        branch_point_checksums={"art-1": "aaa", "art-2": "aaa", "art-3": "aaa"},
-        expected=["art-1", "art-3"],
+    RecheckCase(
+        name="checked-before-the-branch-point-is-always-checked",
+        artifact_ids=["art-1"],
+        checks=[_check("art-1", "2026-10-01T09:00:00Z")],
+        previous_run_started_at=Timestamp("2026-10-01T08:59:00Z"),
+        expected=ArtifactRecheckPlan(
+            recent_ids=frozenset(),
+            recent_since=None,
+            recent_latest=None,
+            older_ids=frozenset(),
+            older_since=None,
+            older_latest=None,
+            always_ids=frozenset({"art-1"}),
+        ),
+    ),
+    RecheckCase(
+        name="checks-of-other-artifacts-are-ignored",
+        artifact_ids=["art-1"],
+        checks=[_check("art-other", "2026-10-01T12:00:05Z", failed=True)],
+        previous_run_started_at=PREVIOUS_RUN,
+        expected=ArtifactRecheckPlan(
+            recent_ids=frozenset(),
+            recent_since=None,
+            recent_latest=None,
+            older_ids=frozenset({"art-1"}),
+            older_since=BRANCHED_FROM,
+            older_latest=BRANCHED_FROM,
+            always_ids=frozenset(),
+        ),
     ),
 ]
 
 
-@pytest.mark.parametrize("case", [pytest.param(c, id=c.name) for c in BRANCH_POINT_CASES])
-def test_artifacts_changed_since_branch_point(case: BranchPointCase) -> None:
-    """Only artifacts whose checksum differs from a rendered artifact at the branch point are returned, sorted."""
-    result = artifacts_changed_since_branch_point(
-        checksums=case.checksums, branch_point_checksums=case.branch_point_checksums
+@pytest.mark.parametrize("case", [pytest.param(c, id=c.name) for c in RECHECK_CASES])
+def test_plan_artifact_recheck(case: RecheckCase) -> None:
+    """Artifacts are grouped by their last check, and failed or pre-rebase checks are always checked again."""
+    plan = plan_artifact_recheck(
+        artifact_ids=case.artifact_ids,
+        check_records=case.checks,
+        previous_run_started_at=case.previous_run_started_at,
+        branched_from=BRANCHED_FROM,
     )
 
-    assert result == case.expected
+    assert plan == case.expected
+
+
+def test_recheck_plan_edits_since_is_the_earliest_group_time() -> None:
+    """Edits are read from the earliest time either group needs."""
+    plan = ArtifactRecheckPlan(
+        recent_ids=frozenset({"art-1"}),
+        recent_since=PREVIOUS_RUN,
+        recent_latest=Timestamp("2026-10-01T12:00:05Z"),
+        older_ids=frozenset({"art-2"}),
+        older_since=BRANCHED_FROM,
+        older_latest=BRANCHED_FROM,
+        always_ids=frozenset(),
+    )
+
+    assert plan.edits_since == BRANCHED_FROM

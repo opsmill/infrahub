@@ -208,7 +208,8 @@ class DefinitionSelect(IntFlag):
     FILE_CHANGES = 2
     QUERY_CHANGED = 4
     DEFINITION_CHANGED = 8
-    BRANCH_ARTIFACTS = 16
+    BRANCH_EDITS = 16
+    REBASED = 32
 
     @staticmethod
     def add_flag(current: DefinitionSelect, flag: DefinitionSelect, condition: bool) -> DefinitionSelect:
@@ -231,8 +232,11 @@ class DefinitionSelect(IntFlag):
         if DefinitionSelect.FILE_CHANGES in self:
             change_types.append("file changes affecting the transform's dependencies")
 
-        if DefinitionSelect.BRANCH_ARTIFACTS in self:
-            change_types.append("artifacts rendered on the branch")
+        if DefinitionSelect.BRANCH_EDITS in self:
+            change_types.append("edits on the branch since the last check")
+
+        if DefinitionSelect.REBASED in self:
+            change_types.append("a rebase of the branch since the last check")
 
         if self:
             return f"Requesting generation due to {' and '.join(change_types)}"
