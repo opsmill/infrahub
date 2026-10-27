@@ -1,7 +1,6 @@
 import pytest
 from neo4j import Record
-from neo4j._codec.hydration.v1 import HydrationHandler
-from neo4j._codec.hydration.v1.hydration_handler import _GraphHydrator
+from neo4j._codec.hydration.bolt.v1.hydration_handler import _GraphHydrator
 from neo4j.graph import Node as Neo4jNode
 from neo4j.graph import Path as Neo4jPath
 from neo4j.graph import Relationship as Neo4jRelationship
@@ -102,7 +101,7 @@ def build_result(**columns: CypherValue) -> QueryResult:
 
 @pytest.fixture
 def graph() -> _GraphHydrator:
-    return HydrationHandler().new_hydration_scope()._graph_hydrator
+    return _GraphHydrator()
 
 
 @pytest.fixture
