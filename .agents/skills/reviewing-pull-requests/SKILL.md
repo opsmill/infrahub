@@ -2,11 +2,10 @@
 name: reviewing-pull-requests
 description: >-
   Reviews a pull request in a separate subagent that has not seen this conversation, applying the
-  rules in REVIEW.md. TRIGGER when: the user asks for a review of a pull request by URL or number,
-  or a hook reports that the user has turned on automatic reviews and this session opened a pull
-  request or pushed large changes to one. DO NOT TRIGGER when: this session opened or pushed to a
-  pull request and nobody asked for a review; answering existing review comments →
-  addressing-review; watching CI → monitoring-pull-requests.
+  rules in REVIEW.md. TRIGGER when: this session has just opened a pull request, for example with
+  `gh pr create`; the user asks for a review of a pull request by URL or number; or a hook reports
+  that large changes were pushed to a pull request. DO NOT TRIGGER when: answering existing review
+  comments → addressing-review; watching CI → monitoring-pull-requests.
 argument-hint: <pull request URL or number>
 context: fork
 agent: general-purpose
