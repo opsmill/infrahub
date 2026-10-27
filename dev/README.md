@@ -126,7 +126,19 @@ folder, which is not a command.
 
 The `/reviewing-pull-requests <PR>` skill in [../.agents/skills/](../.agents/skills/) reviews a pull
 request in a subagent that has not seen the conversation, with the rules in
-[REVIEW.md](../REVIEW.md). To run it after every `gh pr create`, turn it on as described under
-"Automatic pull request review" in the
-[Git guide](../docs/docs/development/git-best-practices.mdx). The Codex hook checks the same
-`PR_REVIEW` variable and runs `codex review` instead.
+[REVIEW.md](../REVIEW.md).
+
+Claude Code can also run it after every `gh pr create`. This is off by default: `.claude/settings.json`
+sets `PR_REVIEW` to `off`. To turn it on, add this `env` block to `.claude/settings.local.json` in
+your main checkout, which Git ignores. Sessions in its worktrees read that file too.
+
+```json
+{
+  "env": {
+    "PR_REVIEW": "on"
+  }
+}
+```
+
+The hook needs `jq`. The Codex hook checks `PR_REVIEW` in the environment Codex starts
+with and runs `codex review` instead.

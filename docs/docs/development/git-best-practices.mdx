@@ -221,7 +221,7 @@ Follow these practices to ensure smooth code review and integration.
    git checkout develop
    git pull origin develop
    git checkout -b feature/your-feature-name
-
+   
    # For urgent fixes
    git checkout stable
    git pull origin stable
@@ -238,7 +238,7 @@ Follow these practices to ensure smooth code review and integration.
    ```bash
    # Ensure submodules are current
    git submodule update --recursive --remote
-
+   
    # If submodule updates are needed, commit them
    git add python_sdk
    git commit -m "chore(deps): update python_sdk submodule"
@@ -252,11 +252,11 @@ Follow these practices to ensure smooth code review and integration.
 
    # Run the full test suite
    uv run invoke test
-
+   
    # Run linting and formatting
    uv run invoke lint
    uv run invoke format
-
+   
    # Test with submodules
    uv run invoke backend.test
    ```
@@ -300,20 +300,6 @@ Follow these practices to ensure smooth code review and integration.
    - Rebase on target branch if requested
    - Squash commits if needed
    - Use merge commit for feature branches
-
-### Automatic pull request review
-
-If you use Claude Code, it can review each pull request it opens with `gh pr create`. This review is off by default. To turn it on, set `PR_REVIEW` in the `env` block of `~/.claude/settings.json`:
-
-```json
-{
-  "env": {
-    "PR_REVIEW": "on"
-  }
-}
-```
-
-The review runs the `reviewing-pull-requests` skill in the background, and its findings appear in the session when it finishes. It needs [`jq`](https://jqlang.org/).
 
 ## Documentation branching workflow
 
