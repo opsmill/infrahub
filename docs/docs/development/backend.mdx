@@ -89,7 +89,7 @@ docs
 ```shell
 NAME                       IMAGE                        COMMAND                  SERVICE         CREATED       STATUS                 PORTS
 infrahub-cache-1           redis:7.2                    "docker-entrypoint.s…"   cache           2 hours ago   Up 2 hours (healthy)   0.0.0.0:6379->6379/tcp
-infrahub-database-1        neo4j:2026.05.0-enterprise   "tini -g -- /startup…"   database        2 hours ago   Up 2 hours (healthy)   0.0.0.0:6362->6362/tcp, 7473/tcp, 0.0.0.0:7474->7474/tcp, 0.0.0.0:7687->7687/tcp
+infrahub-database-1        neo4j:2026.09.0-enterprise   "tini -g -- /startup…"   database        2 hours ago   Up 2 hours (healthy)   0.0.0.0:6362->6362/tcp, 7473/tcp, 0.0.0.0:7474->7474/tcp, 0.0.0.0:7687->7687/tcp
 infrahub-message-queue-1   rabbitmq:3.12-management     "docker-entrypoint.s…"   message-queue   2 hours ago   Up 2 hours (healthy)   4369/tcp, 5671/tcp, 0.0.0.0:5672->5672/tcp, 15671/tcp, 15691-15692/tcp, 25672/tcp, 0.0.0.0:15672->15672/tcp
 ```
 
