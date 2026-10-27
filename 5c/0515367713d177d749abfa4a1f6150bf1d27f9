@@ -1,0 +1,33 @@
+dev/knowledge/backend/query-pattern.md
+  s_6947b4d8b10fbd::t_88101adc97e1e3 456-459
+  s_6947b4d8b10fbd::t_7a6eba3b8a8c1c 482
+dev/knowledge/backend/graphql-execution.md
+  s_6947b4d8b10fbd::t_e5aa6c12f05368 53-61
+  s_6947b4d8b10fbd::t_40d720d83a429d 5
+dev/specs/artifact-regeneration-poc/tasks.md
+  s_d344caf72fb163::t_a50391ee2a28aa 283
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5c0515367713d177d749abfa4a1f6150bf1d27f9",
+  "prompts": {},
+  "sessions": {
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    },
+    "s_d344caf72fb163": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a77237abb5d5883e5",
+        "model": "unknown"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}
