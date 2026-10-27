@@ -95,7 +95,7 @@ Git versions the files; Infrahub versions the infrastructure data. Editing a dev
 
 ## External automation
 
-External tools can query data through the [GraphQL API](../development-resources/graphql/overview.mdx) and retrieve artifacts for deployment through the REST API. [Events](../events/overview.mdx) and [webhooks](../webhooks/overview.mdx) connect changes in Infrahub to other workflows, such as notifying an automation pipeline after a merge.
+External tools can query data through the [GraphQL API](../development-resources/graphql/overview.mdx) and retrieve artifacts for deployment through the REST API. [Events](../events/overview.mdx) and [webhooks](../webhooks/overview.mdx) connect changes in Infrahub to other workflows, such as notifying an automation pipeline after a merge. Write scripts against the [Python SDK]($(base_url)python-sdk/introduction), manage Infrahub from the command line with [`infrahubctl`]($(base_url)infrahubctl/infrahubctl), and import data from systems such as NetBox or Nautobot with [Infrahub Sync]($(base_url)sync).
 
 Merging updates the data in the main branch of Infrahub. Infrahub does not deploy configurations. An external deployment tool that you operate, such as an Ansible playbook or a CI/CD pipeline, controls when and how they are applied to infrastructure.
 
