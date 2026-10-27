@@ -27,10 +27,13 @@ insecure and connects over TLS. Adapters never read `tls.ca_bundle`; they keep r
 section, and the value they see is already resolved. Inspecting `config.SETTINGS.<section>` therefore
 shows the effective CA, not what the operator typed.
 
-A CA bundle *replaces* the system trust store, it never extends it: `ssl.create_default_context(cafile=...)`,
-git's `http.sslCAInfo`, boto3's `verify`, the Neo4j driver's `TrustCustomCAs` and redis-py's `ssl_ca_certs`
-all behave that way. The user docs tell operators to append the public roots when a component must keep
-reaching public services.
+Git, Redis and NATS trust the bundle *and* the system trust store. The NATS clients and redis-py load the
+bundle into a default SSL context with `load_verify_locations`. The image's git uses libcurl with GnuTLS,
+which still loads `/etc/ssl/certs` when `http.sslCAInfo` is set.
+
+Every other component trusts *only* the bundle: `ssl.create_default_context(cafile=...)`, boto3's `verify`,
+the Neo4j driver's `TrustCustomCAs` and the gRPC exporter's `root_certificates` replace the system store.
+The user docs tell operators to append the public roots when one of these must reach public services.
 
 ## Where each component applies it
 
