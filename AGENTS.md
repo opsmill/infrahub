@@ -135,13 +135,12 @@ checkout.
 
 ## Automatic PR Review
 
-When Claude Code or Codex opens a pull request with `gh pr create`, a hook in
-`.claude/settings.json` or `.codex/hooks.json` reviews it in the background with the rules in
-`REVIEW.md`. Claude Code adds the findings to the session when the review finishes; Codex saves
-them to `~/.cache/pr-review/`.
+The `reviewing-pull-requests` skill reviews a pull request in a subagent that has not seen the
+conversation, with the rules in `REVIEW.md`. Run it with `/reviewing-pull-requests <PR>`.
 
-To turn it off in Claude Code, set `PR_REVIEW=off` in the `env` block of `~/.claude/settings.json`.
-Codex runs the hook only after you trust it, so leave it untrusted to keep it off.
+To run it every time Claude Code opens a pull request, set `PR_REVIEW=on` in the `env` block of
+`~/.claude/settings.json`. Codex runs `codex review` instead and saves the findings to
+`~/.cache/pr-review/`; it needs the same variable and your trust in its hook.
 
 ## Coding Standards
 

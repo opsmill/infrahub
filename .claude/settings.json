@@ -19,16 +19,7 @@
           {
             "type": "command",
             "if": "Bash(*gh pr create*)",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.agents/hooks/pr-review.sh notice"
-          },
-          {
-            "type": "command",
-            "if": "Bash(*gh pr create*)",
-            "asyncRewake": true,
-            "timeout": 10800,
-            "rewakeSummary": "PR code review finished",
-            "rewakeMessage": "The background code review of the pull request opened in this session finished. Summarize its findings for the user, separating the issues this pull request introduced from older ones, and change nothing unless the user asks:",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.agents/hooks/pr-review.sh review"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.agents/hooks/pr-review.sh claude"
           }
         ]
       }
