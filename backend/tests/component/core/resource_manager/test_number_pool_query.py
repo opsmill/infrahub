@@ -1,4 +1,5 @@
 import sys
+from dataclasses import dataclass
 from typing import Any
 from unittest.mock import AsyncMock
 
@@ -79,20 +80,28 @@ INCIDENT = NodeSchema(
 
 @pytest.fixture
 async def register_test_schema(default_branch: Branch, register_core_models_schema: SchemaBranch) -> SchemaBranch:
+    return do_register_test_schema(branch=default_branch)
+
+
+def do_register_test_schema(branch: Branch) -> SchemaBranch:
     registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
 
     schema = SchemaRoot(
         version="1.0",
         nodes=[REQUEST, INCIDENT],
     )
-    schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
-    default_branch.update_schema_hash()
+    schema_branch = registry.schema.register_schema(schema=schema, branch=branch.name)
+    branch.update_schema_hash()
 
     return schema_branch
 
 
 @pytest.fixture
 async def run_number_pool_validation(db: InfrahubDatabase) -> None:
+    await do_run_number_pool_validation(db=db)
+
+
+async def do_run_number_pool_validation(db: InfrahubDatabase) -> None:
     upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository)
     snps = SchemaNumberPoolSynchronizer(
         db=db,
@@ -134,10 +143,12 @@ async def get_reservations(db: InfrahubDatabase, pool: CoreNumberPoolProtocol, b
     return {item.identifier: item.value for item in query1.get_data()}
 
 
-async def get_allocated_values(db: InfrahubDatabase, pool: CoreNumberPoolProtocol, branch: Branch) -> list[int]:
+async def get_allocated_rows(
+    db: InfrahubDatabase, pool: CoreNumberPoolProtocol, branch: Branch
+) -> list[tuple[int, str]]:
     query = await NumberPoolGetAllocated.init(db=db, pool=pool, ranges=whole_pool_ranges(pool), branch=branch)
     await query.execute(db=db)
-    return sorted(result.value for result in query.get_data())
+    return [(result.value, result.branch) for result in query.get_data()]
 
 
 async def get_number_attribute_id(db: InfrahubDatabase, node_id: str, branch: Branch) -> str:
@@ -310,10 +321,14 @@ class TestNumberPoolGetAllocated:
         await query.execute(db=db)
         results = query.get_data()
 
-        allocated_values = sorted([r.value for r in results])
-        assert allocated_values == [1, 2, 3], (
-            f"Expected allocation (value=2) to remain visible (active on main), got {allocated_values}"
-        )
+        main = default_branch.name
+        assert [(r.value, r.branch) for r in results] == [
+            (1, branch2.name),
+            (1, main),
+            (2, main),
+            (3, branch2.name),
+            (3, main),
+        ], "value 2 stays allocated on main, and branch2, which deleted the object, does not hold it"
 
     async def test_source_cleared_on_a_branch_neither_detaches_nor_prevents_a_detach(
         self,
@@ -335,14 +350,26 @@ class TestNumberPoolGetAllocated:
         incident2.get_attribute("number").clear_source()
         await incident2.save(db=db)
 
+        main = default_branch.name
         for branch in (br1, default_branch):
-            allocated_values = await get_allocated_values(db=db, pool=incident_pool, branch=branch)
-            assert allocated_values == [1, 2, 3], f"Expected every allocation on {branch.name}, got {allocated_values}"
+            assert await get_allocated_rows(db=db, pool=incident_pool, branch=branch) == [
+                (1, br1.name),
+                (1, main),
+                (2, br1.name),
+                (2, main),
+                (3, br1.name),
+                (3, main),
+            ], f"Expected every allocation read on {branch.name}"
 
         await detach(db=db, node_id=incidents[1].get_id(), branch=br1)
 
         for branch in (br1, default_branch):
-            assert await get_allocated_values(db=db, pool=incident_pool, branch=branch) == [1, 3]
+            assert await get_allocated_rows(db=db, pool=incident_pool, branch=branch) == [
+                (1, br1.name),
+                (1, main),
+                (3, br1.name),
+                (3, main),
+            ]
 
     async def test_source_cleared_on_the_allocating_branch_neither_detaches_nor_prevents_a_detach(
         self,
@@ -363,12 +390,16 @@ class TestNumberPoolGetAllocated:
         incident2.get_attribute("number").clear_source()
         await incident2.save(db=db)
 
-        allocated_values = await get_allocated_values(db=db, pool=incident_pool, branch=default_branch)
-        assert allocated_values == [1, 2, 3], f"Expected value=2 to stay allocated, got {allocated_values}"
+        main = default_branch.name
+        assert await get_allocated_rows(db=db, pool=incident_pool, branch=default_branch) == [
+            (1, main),
+            (2, main),
+            (3, main),
+        ], "Expected value=2 to stay allocated"
 
         await detach(db=db, node_id=incidents[1].get_id(), branch=default_branch)
 
-        assert await get_allocated_values(db=db, pool=incident_pool, branch=default_branch) == [1, 3]
+        assert await get_allocated_rows(db=db, pool=incident_pool, branch=default_branch) == [(1, main), (3, main)]
 
     async def test_source_cleared_on_two_branches_neither_detaches_nor_prevents_a_detach(
         self,
@@ -395,13 +426,25 @@ class TestNumberPoolGetAllocated:
         incident2_on_main.get_attribute("number").clear_source()
         await incident2_on_main.save(db=db)
 
-        allocated_values = await get_allocated_values(db=db, pool=incident_pool, branch=default_branch)
-        assert allocated_values == [1, 2, 3], f"Expected value=2 to stay allocated, got {allocated_values}"
+        main = default_branch.name
+        assert await get_allocated_rows(db=db, pool=incident_pool, branch=default_branch) == [
+            (1, br1.name),
+            (1, main),
+            (2, br1.name),
+            (2, main),
+            (3, br1.name),
+            (3, main),
+        ], "Expected value=2 to stay allocated"
 
         await detach(db=db, node_id=incidents[1].get_id(), branch=default_branch)
 
         for branch in (br1, default_branch):
-            assert await get_allocated_values(db=db, pool=incident_pool, branch=branch) == [1, 3]
+            assert await get_allocated_rows(db=db, pool=incident_pool, branch=branch) == [
+                (1, br1.name),
+                (1, main),
+                (3, br1.name),
+                (3, main),
+            ]
 
     async def test_source_reassigned_to_the_pool_on_a_branch_neither_detaches_nor_prevents_a_detach(
         self,
@@ -436,16 +479,24 @@ class TestNumberPoolGetAllocated:
         )
         await query.execute(db=db)
 
-        results = query.get_data()
-        allocated_values = sorted([r.value for r in results])
-        assert allocated_values == [1, 2, 3], f"Expected value=2 to stay allocated, got {allocated_values}"
-        assert len([r for r in results if r.value == 2]) == 1, "an allocation is reported once, whatever the source"
+        main = default_branch.name
+        assert [(r.value, r.branch) for r in query.get_data()] == [
+            (1, br1.name),
+            (1, main),
+            (2, br1.name),
+            (2, main),
+            (3, br1.name),
+            (3, main),
+        ], "an allocation is reported once per branch holding it, whatever the source"
 
         await detach(db=db, node_id=incidents[1].get_id(), branch=br1)
 
-        assert await get_allocated_values(db=db, pool=incident_pool, branch=br1) == [1, 3], (
-            "a source naming the pool does not keep a detached number reported"
-        )
+        assert await get_allocated_rows(db=db, pool=incident_pool, branch=br1) == [
+            (1, br1.name),
+            (1, main),
+            (3, br1.name),
+            (3, main),
+        ], "a source naming the pool does not keep a detached number reported"
 
     async def test_merging_a_cleared_source_neither_detaches_nor_prevents_a_detach(
         self,
@@ -474,12 +525,148 @@ class TestNumberPoolGetAllocated:
         diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=br1)
         await diff_merger.merge_graph(at=Timestamp())
 
-        allocated_values = await get_allocated_values(db=db, pool=incident_pool, branch=default_branch)
-        assert allocated_values == [1, 2, 3], f"Expected value=2 to stay allocated, got {allocated_values}"
+        main = default_branch.name
+        assert await get_allocated_rows(db=db, pool=incident_pool, branch=default_branch) == [
+            (1, br1.name),
+            (1, main),
+            (2, br1.name),
+            (2, main),
+            (3, br1.name),
+            (3, main),
+        ], "Expected value=2 to stay allocated"
 
         await detach(db=db, node_id=incidents[1].get_id(), branch=default_branch)
 
-        assert await get_allocated_values(db=db, pool=incident_pool, branch=default_branch) == [1, 3]
+        assert await get_allocated_rows(db=db, pool=incident_pool, branch=default_branch) == [
+            (1, br1.name),
+            (1, main),
+            (3, br1.name),
+            (3, main),
+        ]
+
+
+@dataclass
+class InheritedNumbersDataset:
+    """The incident pool and the holding objects of the inheriting-branch dataset, by name."""
+
+    default_branch: Branch
+    feature: Branch
+    pool: CoreNumberPoolProtocol
+    names_by_id: dict[str, str]
+
+
+@dataclass(frozen=True)
+class InheritedRowsCase:
+    name: str
+    branch_name: str | None
+    include_inherited_branches: bool
+    expected: list[tuple[int, str, str]]
+
+
+INHERITED_ROWS_CASES = [
+    InheritedRowsCase(
+        name="every-branch-holding-a-number",
+        branch_name=None,
+        include_inherited_branches=True,
+        expected=[
+            (1, "feature", "inherited"),
+            (1, "main", "inherited"),
+            (2, "feature", "changed-on-main"),
+            (3, "main", "changed-on-feature"),
+            (4, "main", "created-after-fork"),
+            (50, "main", "changed-on-main"),
+            (70, "feature", "changed-on-feature"),
+        ],
+    ),
+    InheritedRowsCase(
+        name="branch-filter",
+        branch_name="feature",
+        include_inherited_branches=True,
+        expected=[
+            (1, "feature", "inherited"),
+            (2, "feature", "changed-on-main"),
+            (70, "feature", "changed-on-feature"),
+        ],
+    ),
+    InheritedRowsCase(
+        name="without-inherited-branches",
+        branch_name=None,
+        include_inherited_branches=False,
+        expected=[
+            (1, "main", "inherited"),
+            (2, "feature", "changed-on-main"),
+            (3, "main", "changed-on-feature"),
+            (4, "main", "created-after-fork"),
+            (50, "main", "changed-on-main"),
+            (70, "feature", "changed-on-feature"),
+        ],
+    ),
+]
+
+
+class TestNumberPoolGetAllocatedOnInheritingBranches:
+    """Every test reads the one dataset of the class and writes nothing.
+
+    On main, `inherited` holds 1, `changed-on-main` holds 2 and `changed-on-feature` holds 3 when `feature` is
+    created. Main then changes `changed-on-main` to 50, `feature` changes `changed-on-feature` to 70, and
+    `created-after-fork` is created on main and allocated 4.
+    """
+
+    @pytest.fixture(scope="class")
+    async def dataset(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        register_core_models_schema_scope_class: SchemaBranch,
+    ) -> InheritedNumbersDataset:
+        main = default_branch_scope_class
+        do_register_test_schema(branch=main)
+        await do_run_number_pool_validation(db=db)
+        incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=main)
+        pools = await NodeManager.query(db=db, schema=CoreNumberPoolProtocol, branch=main)
+        pool = next(pool for pool in pools if pool.get_attribute("node").value == INCIDENT.kind)
+
+        inherited, changed_on_main, changed_on_feature = await create_objects(
+            db=db, schema=incident_schema, branch=main.name, start=1, end=3
+        )
+        feature = await create_branch(db=db, branch_name="feature")
+        for node_id, branch, number in ((changed_on_main.id, main, 50), (changed_on_feature.id, feature, 70)):
+            node = await NodeManager.get_one(db=db, id=node_id, branch=branch, raise_on_error=True)
+            node.get_attribute("number").value = number
+            await node.save(db=db)
+        (created_after_fork,) = await create_objects(db=db, schema=incident_schema, branch=main.name, start=4, end=4)
+
+        assert [
+            node.get_attribute("number").value
+            for node in (inherited, changed_on_main, changed_on_feature, created_after_fork)
+        ] == [1, 2, 3, 4]
+        return InheritedNumbersDataset(
+            default_branch=main,
+            feature=feature,
+            pool=pool,
+            names_by_id={
+                inherited.id: "inherited",
+                changed_on_main.id: "changed-on-main",
+                changed_on_feature.id: "changed-on-feature",
+                created_after_fork.id: "created-after-fork",
+            },
+        )
+
+    @pytest.mark.parametrize("case", INHERITED_ROWS_CASES, ids=[case.name for case in INHERITED_ROWS_CASES])
+    async def test_rows(self, db: InfrahubDatabase, dataset: InheritedNumbersDataset, case: InheritedRowsCase) -> None:
+        query = await NumberPoolGetAllocated.init(
+            db=db,
+            pool=dataset.pool,
+            ranges=whole_pool_ranges(dataset.pool),
+            branch_name=case.branch_name,
+            include_inherited_branches=case.include_inherited_branches,
+            branch=dataset.default_branch,
+        )
+
+        await query.execute(db=db)
+
+        assert [(row.value, row.branch, dataset.names_by_id[row.id]) for row in query.get_data()] == case.expected
+        assert await query.count(db=db) == len(case.expected)
 
 
 GAPPED_RANGES = [[7, 8], [2, 3]]
@@ -571,13 +758,19 @@ class TestNumberPoolReleaseReserved:
         await move.execute(db=db)
         assert await get_tracking_pool_id(db=db, attribute_id=attribute_id) == other_pool.get_id()
         assert await live_record_count(db=db, node_id=moved.get_id(), attribute_name="number") == 1
-        assert await get_allocated_values(db=db, pool=incident_pool, branch=default_branch) == [1, 3]
+        assert await get_allocated_rows(db=db, pool=incident_pool, branch=default_branch) == [
+            (1, default_branch.name),
+            (3, default_branch.name),
+        ]
 
         await detach(db=db, node_id=moved.get_id(), branch=default_branch)
 
         assert await live_record_count(db=db, node_id=moved.get_id(), attribute_name="number") == 0
         assert await get_tracking_pool_id(db=db, attribute_id=attribute_id) is None
-        assert await get_allocated_values(db=db, pool=incident_pool, branch=default_branch) == [1, 3]
+        assert await get_allocated_rows(db=db, pool=incident_pool, branch=default_branch) == [
+            (1, default_branch.name),
+            (3, default_branch.name),
+        ]
         reloaded = await NodeManager.get_one(db=db, id=moved.get_id(), branch=default_branch)
         assert reloaded is not None
         assert reloaded.get_attribute("number").value == 2, "a release keeps the number on the object"

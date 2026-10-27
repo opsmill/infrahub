@@ -111,6 +111,7 @@ class NumberUtilizationGetter:
                 ranges=space.as_query_ranges(),
                 branch=self.branch,
                 division=division,
+                include_inherited_branches=False,
             )
             await query.execute(db=self.db)
             used = [UsedNumber(number=item.value, branch=item.branch) for item in query.get_data()]

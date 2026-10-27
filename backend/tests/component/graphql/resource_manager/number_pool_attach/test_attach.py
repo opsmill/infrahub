@@ -582,8 +582,11 @@ class TestNumberPoolAttach:
         assert await allocated_rows(db=db, branch=main_branch, pool=successor) == sorted(
             [
                 (first["id"], "main", 1700, "provided"),
+                (first["id"], other_branch.name, 1700, "provided"),
                 (second["id"], "main", 1701, "provided"),
+                (second["id"], other_branch.name, 1701, "provided"),
                 (provided["id"], "main", 1705, "provided"),
+                (provided["id"], other_branch.name, 1705, "provided"),
             ]
         ), "the successor tracks numbers it never allocated"
         assert await used_numbers(db=db, branch=main_branch, pool=successor) == [1700, 1701, 1705]
