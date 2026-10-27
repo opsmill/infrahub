@@ -24,7 +24,7 @@ dependencies = [
     "pytest",
     "httpx>=0.20",
     "pydantic>=2.10.6,<3",
-    "prefect-client==3.8.6",
+    "prefect-client==3.8.8",
 ]
 
 [project.urls]
