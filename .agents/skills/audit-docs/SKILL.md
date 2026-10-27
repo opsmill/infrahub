@@ -1,7 +1,7 @@
 ---
 name: audit-docs
 description: >-
-  Audits internal (dev/) and external (docs/) documentation completeness for a feature, subject, or set of existing docs, maps changes indicated by the user, across Infrahub's documentation layers, reports gaps, and optionally applies the fixes. TRIGGER when: the user wants to audit or check documentation coverage, find doc gaps after a feature branch, or verify docs are still current for a subject or specific files. DO NOT TRIGGER when: authoring new documentation from scratch → use the add-docs flow; only linting/formatting Markdown → run `uv run invoke docs.lint`.
+  Audits internal (dev/) and external (docs/) documentation completeness for a feature, subject, or set of existing docs, maps changes indicated by the user, across Infrahub's documentation layers, reports gaps, and optionally applies the fixes. TRIGGER when: the user wants to audit or check documentation coverage, find doc gaps after a feature branch, or verify docs are still current for a subject or specific files. DO NOT TRIGGER when: authoring new documentation from scratch → opsmill-dev-writing-infrahub-docs; only linting/formatting Markdown → run `uv run invoke docs.lint`.
 argument-hint: <commit-range, branch name, subject, or doc paths to audit>
 compatibility: Requires the Infrahub repository checked out. Commit-range and branch audits additionally require Git history.
 metadata:

@@ -258,7 +258,6 @@ scales with the change it documents. See [Git Workflow → Pull Requests](git-wo
 - `_shared.md` - Shared instructions for all flows
 - `new-component.md` - React component creation flow
 - `bug-analyze.md` - Bug root cause analysis
-- `add-docs.md` - Documentation creation flow
 
 **Subdirectories**: None. Keep flat for easy discovery by agents.
 

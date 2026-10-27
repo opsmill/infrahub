@@ -1,6 +1,9 @@
 ---
+name: pre-ci
 description: Run all locally-executable CI checks (format, lint, unit tests) for the areas you changed
 argument-hint: "[--fast] [--all]"
+user-invocable: true
+disable-model-invocation: true
 allowed-tools:
   - Bash(git fetch:*)
   - Bash(git merge-base:*)
