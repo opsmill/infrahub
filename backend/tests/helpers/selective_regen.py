@@ -10,9 +10,12 @@ from infrahub.core.merge.selective_regen.models import DefinitionModel, GateResu
 from infrahub.core.regeneration.models import TargetSelection
 from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
 from infrahub.git.models import RequestArtifactDefinitionGenerate
+from infrahub.graphql.analyzer import GraphQLQueryReport
 from infrahub.message_bus.types import ProposedChangeArtifactDefinition
 
 if TYPE_CHECKING:
+    from collections.abc import Collection
+
     from infrahub_sdk.diff import NodeDiff
 
 
@@ -23,7 +26,13 @@ class RejectingGate(DefinitionGate):
         pass
 
     def evaluate(
-        self, *, definition: object, diff_summary: list[NodeDiff], modified_kinds: list[str], group_id: str
+        self,
+        *,
+        definition: object,
+        diff_summary: list[NodeDiff],
+        modified_kinds: list[str],
+        read_kinds: Collection[str],
+        group_id: str,
     ) -> GateResult:
         return GateResult(regenerate_all_members=False, selected=False)
 
@@ -34,10 +43,13 @@ class NoImpactResolver(ImpactedSubscriberResolver):
     def __init__(self) -> None:
         pass
 
+    def analyze(self, *, query_payload: str, target_branch: str) -> GraphQLQueryReport:
+        return GraphQLQueryReport(queries=[])
+
     async def resolve(
         self,
         *,
-        query_payload: str,
+        query_report: GraphQLQueryReport,
         diff_summary: list[NodeDiff],
         target_branch: str,
         subscriber_kind: str,

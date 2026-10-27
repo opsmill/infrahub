@@ -9,7 +9,7 @@ from infrahub.core.regeneration.classifier_builder import QueryClassifierBuilder
 from infrahub.core.regeneration.derived_dependencies import DerivedFieldDependencies, PeerDependency
 from infrahub.core.regeneration.impact_classifier import QueryImpactClassifier
 from infrahub.core.regeneration.models import ReachedPath, RelationshipHop
-from infrahub.core.schema import AttributeSchema, MainSchemaTypes, NodeSchema, RelationshipSchema
+from infrahub.core.schema import AttributeSchema, GenericSchema, MainSchemaTypes, NodeSchema, RelationshipSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.graphql.analyzer import ObjectAccess
 
@@ -57,6 +57,12 @@ READER = _node(
     human_friendly_id=["owner__name__value"],
 )
 OWNER = _node("Owner")
+PORT = GenericSchema(
+    name="Port",
+    namespace="Test",
+    attributes=[AttributeSchema(name="name", kind="Text")],
+    used_by=["TestPhysicalPort", "TestVirtualPort"],
+)
 OWNER_HOP = RelationshipHop(
     node_kind="TestReader",
     relationship_identifier="reader__owner",
@@ -65,7 +71,7 @@ OWNER_HOP = RelationshipHop(
 
 
 def _builder() -> QueryClassifierBuilder:
-    schemas: dict[str, MainSchemaTypes] = {"TestReader": READER, "TestOwner": OWNER}
+    schemas: dict[str, MainSchemaTypes] = {"TestReader": READER, "TestOwner": OWNER, "TestPort": PORT}
     branch = SchemaBranch(cache={}, name="test")
     for kind, schema in schemas.items():
         branch.set(name=kind, schema=schema)
@@ -123,6 +129,116 @@ def test_build_counts_a_filtered_field_as_read() -> None:
         reached_paths_by_kind={},
         depends_on_everything=False,
     )
+
+
+def test_build_counts_a_read_on_a_traversed_generic_for_each_implementation() -> None:
+    """A field read off a generic, such as inside a fragment on it, is matched against each implementation.
+
+    A diff reports a node under its concrete kind, and an implementation is reached the way its generic is.
+    """
+    report = _FakeAnalyzedQuery(
+        requested_read={
+            "TestReader": ObjectAccess(attributes={"name"}),
+            "TestPort": ObjectAccess(attributes={"name"}),
+        },
+        traversed_kinds={"TestPort"},
+    )
+
+    classifier = _builder().build(report)
+
+    assert classifier == QueryImpactClassifier(
+        query_branch=QUERY_BRANCH,
+        only_has_unique_targets=True,
+        traversed_kinds={"TestPort", "TestPhysicalPort", "TestVirtualPort"},
+        readable_fields_by_kind={
+            "TestReader": {"name"},
+            "TestPort": {"name"},
+            "TestPhysicalPort": {"name"},
+            "TestVirtualPort": {"name"},
+        },
+        reached_paths_by_kind={},
+        depends_on_everything=False,
+    )
+
+
+def test_build_keeps_the_implementations_of_a_generic_read_at_a_root_out_of_the_traversed_kinds() -> None:
+    report = _FakeAnalyzedQuery(requested_read={"TestPort": ObjectAccess(attributes={"name"})})
+
+    classifier = _builder().build(report)
+
+    assert classifier.traversed_kinds == set()
+    assert classifier.readable_fields_by_kind == {
+        "TestPort": {"name"},
+        "TestPhysicalPort": {"name"},
+        "TestVirtualPort": {"name"},
+    }
+
+
+SLOTS_HOP = RelationshipHop(
+    node_kind="TestRack",
+    relationship_identifier="rack__slots",
+    relationship_direction=RelationshipDirection.OUTBOUND,
+)
+CARD_HOP = RelationshipHop(
+    node_kind="TestPowerSlot",
+    relationship_identifier="powerslot__card",
+    relationship_direction=RelationshipDirection.OUTBOUND,
+)
+SLOTS_PATH = ReachedPath(hops=(SLOTS_HOP,))
+
+
+def _rack_builder() -> QueryClassifierBuilder:
+    """A rack whose slots are a generic without an hfid, implemented by a slot whose hfid is its card's name."""
+    slot = GenericSchema(
+        name="Slot",
+        namespace="Test",
+        attributes=[AttributeSchema(name="name", kind="Text")],
+        used_by=["TestPowerSlot"],
+    )
+    power_slot = _node(
+        "PowerSlot",
+        relationships=(
+            RelationshipSchema(
+                name="card",
+                peer="TestCard",
+                kind=RelationshipKind.ATTRIBUTE,
+                identifier="powerslot__card",
+                cardinality=RelationshipCardinality.ONE,
+                direction=RelationshipDirection.OUTBOUND,
+            ),
+        ),
+        human_friendly_id=["card__name__value"],
+    )
+    power_slot.inherit_from = ["TestSlot"]
+    schemas: dict[str, MainSchemaTypes] = {
+        "TestRack": _node("Rack"),
+        "TestSlot": slot,
+        "TestPowerSlot": power_slot,
+        "TestCard": _node("Card"),
+    }
+    branch = SchemaBranch(cache={}, name="test")
+    for kind, schema in schemas.items():
+        branch.set(name=kind, schema=schema)
+    return QueryClassifierBuilder(query_branch=QUERY_BRANCH, schema_branch=branch)
+
+
+def test_build_extends_a_derived_read_on_a_traversed_generic_through_each_implementation_to_the_root() -> None:
+    """The peer chain of an implementation's hfid is extended through the chain reaching that implementation."""
+    report = _FakeAnalyzedQuery(
+        requested_read={
+            "TestRack": ObjectAccess(attributes={"name"}),
+            "TestSlot": ObjectAccess(attributes={"human_friendly_id"}),
+        },
+        traversed_kinds={"TestSlot"},
+        relationship_reached_paths_by_kind={"TestPowerSlot": (SLOTS_PATH,)},
+    )
+
+    classifier = _rack_builder().build(report)
+
+    assert classifier.depends_on_everything is False
+    assert {"TestSlot", "TestPowerSlot", "TestCard"} <= classifier.traversed_kinds
+    assert classifier.readable_fields_by_kind["TestCard"] == {"name"}
+    assert classifier.reached_paths_by_kind["TestCard"] == (ReachedPath(hops=(CARD_HOP, SLOTS_HOP)),)
 
 
 MAKER_HOP = RelationshipHop(
@@ -186,16 +302,16 @@ FOLD_CASES = [
         ),
     ),
     FoldCase(
-        name="a_peer_already_read_at_a_root_widens",
+        name="a_peer_already_read_at_a_root_keeps_an_empty_chain_besides_the_derived_one",
         readable_fields_by_kind={"TestReader": {"human_friendly_id"}, "TestOwner": {"name"}},
         traversed_kinds=set(),
         reached_paths_by_kind={},
         dependencies=DerivedFieldDependencies(peers=(OWNER_PEER,), widen=False),
         expected=_classifier(
-            traversed_kinds=set(),
+            traversed_kinds={"TestOwner"},
             readable_fields_by_kind={"TestReader": {"human_friendly_id"}, "TestOwner": {"name"}},
-            reached_paths_by_kind={},
-            depends_on_everything=True,
+            reached_paths_by_kind={"TestOwner": (ReachedPath(hops=()), ReachedPath(hops=(OWNER_HOP,)))},
+            depends_on_everything=False,
         ),
     ),
     FoldCase(

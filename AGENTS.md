@@ -8,9 +8,9 @@ Style: be direct and substantive. No filler, preamble, or pleasantries. Challeng
 
 ## Tech Stack
 
-- **Backend:** Python 3.14, FastAPI 0.131.0, Neo4j 2026.05 (driver 6.2), Pydantic 2.12
+- **Backend:** Python 3.14, FastAPI 0.131.0, Neo4j 2026.05 (driver 6.4), Pydantic 2.12
 - **Frontend:** TypeScript 5.9, React 19.2, Vite 8.0, Tailwind CSS 4.2
-- **Testing:** pytest 9.0, Vitest 4.1, Playwright 1.60
+- **Testing:** pytest 9.0, Vitest 5.0, Playwright 1.60
 - **Linting:** ruff 0.15, mypy 2.3, Biome 2.4
 - **Package Managers:** uv (Python), pnpm (Frontend)
 - **Task Runner:** Invoke 2.2.1
@@ -132,15 +132,6 @@ upstream and open a separate PR on the submodule repo first. Only once that is
 merged (or the commit is otherwise available upstream) should the submodule
 pointer bump land here — a pointer to an unpushed commit breaks every other
 checkout.
-
-## Automatic PR Review
-
-The `reviewing-pull-requests` skill reviews a pull request in a subagent that has not seen the
-conversation, with the rules in `REVIEW.md`. Run it with `/reviewing-pull-requests <PR>`.
-
-To run it every time Claude Code opens a pull request, set `PR_REVIEW=on` in the `env` block of
-`~/.claude/settings.json`. Codex runs `codex review` instead and saves the findings to
-`~/.cache/pr-review/`; it needs the same variable and your trust in its hook.
 
 ## Coding Standards
 

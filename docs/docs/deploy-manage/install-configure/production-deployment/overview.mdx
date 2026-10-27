@@ -2,6 +2,8 @@
 title: Production deployment
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 import ReferenceLink from "../../../../src/components/Card";
 import EnterpriseBadge from "../../../../src/components/EnterpriseBadge";
 
@@ -130,16 +132,18 @@ Replace `neo4j` with the database name you set in `INFRAHUB_DB_DATABASE` if you 
 
 ### Redis
 
-Infrahub uses Redis for caching and distributed locks, and in distributed deployments the task manager also uses it for workflow coordination. The user needs read and write access to keys, the connection commands used to authenticate, the scripting commands used by the locks, and transactions (`MULTI`/`EXEC`) used by the task manager. It does not need administrative or destructive commands. With a Redis ACL file:
+Infrahub uses Redis for caching and distributed locks, and in distributed deployments the task manager also uses it for workflow coordination. The task manager is based on Prefect, which coordinates the task manager's background services, such as the scheduler, with a component called Docket. When the Docket URL points at Redis, Docket publishes task state, progress and cancellation events on Redis Pub/Sub channels and subscribes to the cancellation events. The user needs read and write access to keys, the connection commands used to authenticate, the scripting commands used by the locks, transactions (`MULTI`/`EXEC`) used by the task manager, and the Pub/Sub commands with access to every channel. It does not need administrative or destructive commands. With a Redis ACL file:
 
 ```text title="users.acl"
 user default off
-user infrahub on ><strong-cache-password> ~* resetchannels +@read +@write +@connection +@scripting +@transaction -@dangerous
+user infrahub on ><strong-cache-password> ~* allchannels +@read +@write +@connection +@scripting +@transaction +@pubsub -@dangerous
 ```
 
 :::note
-`+@transaction` is only exercised when the task manager is backed by Redis (distributed or high-availability deployments). It is harmless to grant otherwise.
+`+@transaction` is only used when the task manager is backed by Redis (distributed or high-availability deployments). `+@pubsub` and `allchannels` are only used when the Docket URL, `PREFECT_SERVER_DOCKET_URL`, points at Redis, as it does in the Enterprise Docker Compose file and the Enterprise Helm sizing presets. Prefect's default Docket URL is in-memory (`memory://`). All three are harmless to grant otherwise.
 :::
+
+Since Redis 7.0, a new ACL user has no access to Pub/Sub channels unless the ACL grants it, so keep `allchannels` in the line. Without `allchannels` or `+@pubsub`, the task manager stops at startup with an error such as `NoPermissionError: User infrahub has no permissions to run the 'publish' command` or `NoPermissionError: No permissions to access a channel`.
 
 ### RabbitMQ
 
@@ -162,9 +166,11 @@ ALTER SCHEMA public OWNER TO prefect;
 GRANT ALL ON SCHEMA public TO prefect;
 ```
 
-Then point the task manager's database connection string at this role instead of a superuser.
+Then point the task manager's database connection, `PREFECT_API_DATABASE_CONNECTION_URL`, at this role instead of a superuser, as shown in the next section.
 
 ### Point Infrahub at the restricted users
+
+The Infrahub server and the task workers read the `INFRAHUB_*` settings:
 
 ```shell title=".env"
 INFRAHUB_DB_USERNAME=infrahub
@@ -174,6 +180,81 @@ INFRAHUB_CACHE_PASSWORD=<strong-cache-password>
 INFRAHUB_BROKER_USERNAME=infrahub
 INFRAHUB_BROKER_PASSWORD=<strong-broker-password>
 ```
+
+The task manager connects to Redis and PostgreSQL with its own settings, so set those as well:
+
+- `INFRAHUB_CACHE_USERNAME` and `INFRAHUB_CACHE_PASSWORD`: in a distributed deployment, the task manager takes an Infrahub lock in Redis while it starts.
+- `PREFECT_REDIS_MESSAGING_USERNAME` and `PREFECT_REDIS_MESSAGING_PASSWORD`: Prefect's Redis client for workflow coordination. Without them, it connects as the `default` user, which the `user default off` line above disables.
+- `PREFECT_SERVER_DOCKET_URL`: the Docket URL, with the username and password in it.
+- `PREFECT_API_DATABASE_CONNECTION_URL`: the PostgreSQL connection, as the `prefect` role.
+
+If a password contains special characters, percent-encode them where the password appears inside a URL, for example `@` as `%40` and `/` as `%2F`.
+
+<Tabs groupId="installation-method" queryString>
+<TabItem value="docker-compose" label="Docker Compose" default>
+
+The Enterprise Docker Compose file defines the task manager as two services, `task-manager` and `task-manager-background-svc`. Both receive the `INFRAHUB_CACHE_*` settings from your `.env` file, but not Prefect's Redis credentials, and the file sets a Docket URL without credentials. Create a `docker-compose.override.yml` file next to your `docker-compose.yml` for the remaining settings. Docker Compose merges it automatically, so the shipped file stays unchanged for upgrades.
+
+```yaml title="docker-compose.override.yml"
+---
+services:
+  task-manager:
+    environment:
+      PREFECT_REDIS_MESSAGING_USERNAME: infrahub
+      PREFECT_REDIS_MESSAGING_PASSWORD: "<strong-cache-password>"
+      PREFECT_SERVER_DOCKET_URL: "redis://infrahub:<strong-cache-password>@cache:6379/2"
+      PREFECT_API_DATABASE_CONNECTION_URL: "postgresql+asyncpg://prefect:<strong-task-manager-db-password>@task-manager-db:5432/prefect"
+  task-manager-background-svc:
+    environment:
+      PREFECT_REDIS_MESSAGING_USERNAME: infrahub
+      PREFECT_REDIS_MESSAGING_PASSWORD: "<strong-cache-password>"
+      PREFECT_SERVER_DOCKET_URL: "redis://infrahub:<strong-cache-password>@cache:6379/2"
+      PREFECT_API_DATABASE_CONNECTION_URL: "postgresql+asyncpg://prefect:<strong-task-manager-db-password>@task-manager-db:5432/prefect"
+```
+
+The host names and the Docket database number (`2`) are the defaults of the Enterprise file. Change them if you set `INFRAHUB_CACHE_ADDRESS` or run Redis and PostgreSQL elsewhere.
+
+The community Docker Compose file defines the task manager as a single `task-manager` service that does not use Redis. With that file, set only `PREFECT_API_DATABASE_CONNECTION_URL` on `task-manager` and leave out the `task-manager-background-svc` block.
+
+</TabItem>
+<TabItem value="helm" label="Helm">
+
+The Infrahub chart includes the Prefect chart as `prefect-server`, and you set the task manager settings under that key. In the Enterprise chart, `prefect-server` is nested under the top-level `infrahub` key, as below. With the community chart, remove the `infrahub` level.
+
+Store the Infrahub cache credentials in a Kubernetes Secret:
+
+```shell
+kubectl create secret generic infrahub-task-manager-cache \
+  --from-literal=INFRAHUB_CACHE_USERNAME=infrahub \
+  --from-literal=INFRAHUB_CACHE_PASSWORD='<strong-cache-password>'
+```
+
+Then reference the Secret and set the Prefect credentials in your values file:
+
+```yaml title="values.yml"
+infrahub:
+  prefect-server:
+    server:
+      extraEnvVarsSecret: infrahub-task-manager-cache
+    backgroundServices:
+      extraEnvVarsSecret: infrahub-task-manager-cache
+      messaging:
+        redis:
+          username: infrahub
+          password: "<strong-cache-password>"
+        docket:
+          url: "redis://infrahub:<strong-cache-password>@infrahub-cache-master:6379/2"
+```
+
+Set the cache credentials through `extraEnvVarsSecret` rather than `server.env`: the chart already sets `server.env`, and Helm replaces a list from the chart with the list in your values file instead of merging them. The Prefect chart can also read the Redis password and the Docket URL from existing Secrets, through the `existingSecret` settings under `backgroundServices.messaging.redis` and `backgroundServices.messaging.docket`.
+
+For PostgreSQL, the user depends on where the database runs:
+
+- With the PostgreSQL chart bundled in the Prefect chart, which the Infrahub chart enables by default, Prefect connects as the user in `prefect-server.postgresql.auth.username` (`prefect` by default).
+- With an external PostgreSQL server (`prefect-server.postgresql.enabled: false`), set the role in `prefect-server.secret.username` and `prefect-server.secret.password`, together with `host`, `port` and `database`, as in the [high availability](./high-availability.mdx) example.
+
+</TabItem>
+</Tabs>
 
 ## Operations and maintenance
 

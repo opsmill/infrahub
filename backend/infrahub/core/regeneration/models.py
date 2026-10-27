@@ -2,10 +2,41 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import IntFlag, StrEnum
-from typing import TYPE_CHECKING, Protocol, assert_never
+from typing import TYPE_CHECKING, Any, Protocol, assert_never
 
 if TYPE_CHECKING:
     from infrahub.core.constants import RelationshipDirection
+
+type FilterLiteral = str | int | bool | tuple[str | int | bool, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class ExcludedChange:
+    """A changed field of one node that no read of the query can see, so it selects no target."""
+
+    node_id: str
+    field_name: str
+
+
+@dataclass(frozen=True, slots=True)
+class PeerFilters:
+    """The filters a relationship read applies to its peers, keyed as the peer query takes them.
+
+    Each key starts with ``relationship_name``, and list values are stored as tuples.
+    """
+
+    relationship_name: str
+    filters: tuple[tuple[str, FilterLiteral], ...]
+
+    @property
+    def filtered_fields(self) -> frozenset[str]:
+        """The peer fields the filters test; ``id`` and ``ids`` test none, as an id never changes."""
+        names = (key.removeprefix(f"{self.relationship_name}__") for key, _ in self.filters)
+        return frozenset(name.split("__", maxsplit=1)[0] for name in names if "__" in name)
+
+    def as_query_filters(self) -> dict[str, Any]:
+        """The filters in the shape the peer query takes them."""
+        return {key: list(value) if isinstance(value, tuple) else value for key, value in self.filters}
 
 
 @dataclass(frozen=True, slots=True)
@@ -13,17 +44,47 @@ class RelationshipHop:
     """One relationship hop, expressed from the owner object that carries the relationship.
 
     ``node_kind`` owns ``relationship_identifier``; ``relationship_direction`` is that relationship's
-    direction on the owner.
+    direction on the owner. ``peer_filters`` are the filters of the read the hop comes from; None means
+    every peer is read.
     """
 
     node_kind: str
     relationship_identifier: str
     relationship_direction: RelationshipDirection
+    peer_filters: PeerFilters | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class RelationshipRead:
+    """One read of a relationship in a query.
+
+    ``peer_filters`` is None when the read has no filter or its filters are unknown.
+    """
+
+    owner_kind: str
+    relationship_name: str
+    relationship_identifier: str
+    relationship_direction: RelationshipDirection
+    peer_kinds: frozenset[str]
+    peer_filters: PeerFilters | None
+
+    @property
+    def hop(self) -> RelationshipHop:
+        """The read as a hop from its owner."""
+        return RelationshipHop(
+            node_kind=self.owner_kind,
+            relationship_identifier=self.relationship_identifier,
+            relationship_direction=self.relationship_direction,
+            peer_filters=self.peer_filters,
+        )
 
 
 @dataclass(frozen=True, slots=True)
 class ReachedPath:
-    """The relationship chain a query follows from a root object down to a related kind."""
+    """The relationship chain a query follows from a root object down to a related kind.
+
+    An empty chain stands for a read at the root itself, so a changed node maps to its own member.
+    """
 
     hops: tuple[RelationshipHop, ...]
 
@@ -131,7 +192,6 @@ class RegenerationDefinition(Protocol):
     definition_name: str
     query_id: str
     query_name: str
-    query_models: list[str]
     dependencies: list[str] | None
     dependencies_complete: bool | None
 

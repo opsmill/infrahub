@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import { getGlobalPermissionsFromApi } from "@/entities/permission/api/get-global-permissions-from-api";
 import { hasGlobalPermission } from "@/entities/permission/domain/use-cases/has-global-permission";
@@ -27,10 +27,6 @@ function mockGlobalPermissions(globalPermissions: unknown) {
 }
 
 describe("hasGlobalPermission", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   test("resolves true for any granting decision (2/4/6)", async () => {
     for (const decision of ["2", "4", "6"]) {
       mockEdges([["manage_global_preferences", decision]]);

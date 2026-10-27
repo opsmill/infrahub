@@ -399,20 +399,20 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
     async def _get_peer(self, db: InfrahubDatabase) -> None:
         peer: Node
-        try:
-            if self.peer_hfid:
-                peer = await registry.manager.get_one_by_hfid(
-                    db=db,
-                    hfid=self.peer_hfid,
-                    kind=self.schema.peer,
-                    raise_on_error=True,
-                    at=self.at,
-                    branch=self.branch,
-                    include_metadata=MetadataOptions.LINKED_NODES,
-                    prefetch_relationships=False,
-                    branch_agnostic=self.schema.branch is BranchSupportType.AGNOSTIC,
-                )
-            else:
+        if self.peer_hfid:
+            peer = await registry.manager.get_one_by_hfid(
+                db=db,
+                hfid=self.peer_hfid,
+                kind=self._get_hfid_lookup_kind(db=db),
+                raise_on_error=True,
+                at=self.at,
+                branch=self.branch,
+                include_metadata=MetadataOptions.LINKED_NODES,
+                prefetch_relationships=False,
+                branch_agnostic=self.schema.branch is BranchSupportType.AGNOSTIC,
+            )
+        else:
+            try:
                 peer = await registry.manager.get_one_by_id_or_default_filter(
                     db=db,
                     id=self.get_peer_id(),
@@ -422,15 +422,22 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                     include_metadata=MetadataOptions.LINKED_NODES,
                     branch_agnostic=self.schema.branch is BranchSupportType.AGNOSTIC,
                 )
-        except NodeNotFoundError:
-            self._peer = None
-            return
+            except NodeNotFoundError:
+                self._peer = None
+                return
 
         self._peer = peer
         self.peer_id = self._peer.id
 
     def get_peer_schema(self, db: InfrahubDatabase) -> MainSchemaTypes:
         return db.schema.get(name=self.schema.peer, branch=self.branch, duplicate=False)
+
+    def _get_hfid_lookup_kind(self, db: InfrahubDatabase) -> str:
+        """Return the kind to look the peer up by HFID, preferring the concrete kind given for a generic peer."""
+        kind = self.data.get("kind") if isinstance(self.data, dict) else None
+        if isinstance(kind, str) and self.get_peer_schema(db=db).is_generic_schema:
+            return kind
+        return self.schema.peer
 
     def compare_properties_with_data(self, data: RelationshipPeerData) -> list[str]:
         different_properties = []
@@ -587,17 +594,11 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 self.set_peer(value=peer)
 
         if not self.peer_id and self.peer_hfid:
-            peer_schema = db.schema.get(name=self.schema.peer, branch=self.branch, duplicate=False)
-            kind = (
-                self.data["kind"]
-                if isinstance(self.data, dict) and "kind" in self.data and peer_schema.is_generic_schema
-                else self.schema.peer
-            )
             peer = await registry.manager.get_one_by_hfid(
                 db=db,
                 hfid=self.peer_hfid,
                 branch=self.branch,
-                kind=kind,
+                kind=self._get_hfid_lookup_kind(db=db),
                 fields=query_fields,
                 raise_on_error=True,
             )
