@@ -112,12 +112,9 @@ Backend guides in [guides/backend/](guides/backend/):
 Agent commands live in [../.agents/commands/](../.agents/commands/); run one by its name:
 
 - `/new-component` - React component creation flow
-- `/guided-task` - General task flow
-- `/add-docs` - Documentation flow
 - `/bug-analyze <issue>` - Root cause analysis
 - `/bug-tdd <issue>` - Failing test from analysis
 - `/bug-fix <issue>` - Fix implementation
-- `/fix-github-issue` - GitHub issue fixing
 - `/fix-mypy-module` - Mypy type fixes
 - `/fix-ruff-rule` - Ruff linting fixes
 
