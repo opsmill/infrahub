@@ -887,7 +887,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 identifier=self.name,
                 message=f"Repository '{self.name}' is missing a configuration file. "
                 f"Please add a '.infrahub.yml' or '.infrahub.yaml' file to the repository root. "
-                f"See https://docs.infrahub.app/topics/repository for more information.",
+                f"See https://docs.infrahub.app/git-integration/infrahub-yml for more information.",
             )
 
         config_file_content = config_file.read_text(encoding="utf-8")

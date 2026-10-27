@@ -72,7 +72,7 @@ export const GettingStarted = ({ className }: { className?: string }) => {
               <Icon icon={"mdi:code-json"} className="size-4" />
               Schema
               <GettingStartedContentItem.Link
-                href={"https://docs.infrahub.app/topics/schema/"}
+                href={"https://docs.infrahub.app/schema/overview"}
                 target="_blank"
                 rel="noopener noreferrer"
               >
