@@ -133,15 +133,6 @@ merged (or the commit is otherwise available upstream) should the submodule
 pointer bump land here — a pointer to an unpushed commit breaks every other
 checkout.
 
-## Automatic PR Review
-
-The `reviewing-pull-requests` skill reviews a pull request in a subagent that has not seen the
-conversation, with the rules in `REVIEW.md`. Run it with `/reviewing-pull-requests <PR>`.
-
-To run it every time Claude Code opens a pull request, set `PR_REVIEW=on` in the `env` block of
-`~/.claude/settings.json`. Codex runs `codex review` instead and saves the findings to
-`~/.cache/pr-review/`; it needs the same variable and your trust in its hook.
-
 ## Coding Standards
 
 - Backend: `dev/guidelines/backend/python.md` (load before writing or reviewing backend Python — imports, data structures), `dev/guidelines/backend/typing.md` (load when a type checker flags your change, or when you narrow a type or review code that does), `dev/guidelines/backend/exceptions.md` (load when writing or reviewing a `try`/`except`), `dev/guidelines/backend/testing.md` (load before writing, changing or reviewing backend tests), `dev/guidelines/backend/component-design.md` (load before adding a backend class or reshaping responsibilities, or reviewing a change that does), `dev/guidelines/backend/prefect-payloads.md` (load when adding, changing or reviewing a `@flow`/`@task`, or passing data across one) and `dev/guidelines/backend/checklist.md` (feature-planning checklist)

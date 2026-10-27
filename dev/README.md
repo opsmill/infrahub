@@ -123,3 +123,9 @@ Agent commands live in [../.agents/commands/](../.agents/commands/); run one by 
 
 The flows read their shared testing options and execution checklist from `_shared.md` in the same
 folder, which is not a command.
+
+The `/reviewing-pull-requests <PR>` skill in [../.agents/skills/](../.agents/skills/) reviews a pull
+request in a subagent that has not seen the conversation, with the rules in
+[REVIEW.md](../REVIEW.md). To run it after every `gh pr create`, turn it on as described under
+"Basic settings" in the [Backend guide](../docs/docs/development/backend.mdx). The Codex hook
+checks the same `PR_REVIEW` variable and runs `codex review` instead.
