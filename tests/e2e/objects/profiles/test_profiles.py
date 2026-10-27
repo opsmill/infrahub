@@ -148,11 +148,13 @@ class TestProfiles:
         await expect(admin_page.get_by_role("heading", name="tag with profile")).to_be_visible()
 
         # Refresh profile is an async task
+        # The activity panel shows the same text once the update event of the refresh arrives.
+        details = admin_page.get_by_test_id("object-details")
         deadline = Deadline("the edited profile description to propagate to the tag")
-        while await admin_page.get_by_text("DescriptionA profile for E2E test edited").is_hidden():
+        while await details.get_by_text("DescriptionA profile for E2E test edited").is_hidden():
             await deadline.tick()
             await admin_page.reload()
-            await expect(admin_page.get_by_text("DescriptionA profile for E2E test")).to_be_visible()
+            await expect(details.get_by_text("DescriptionA profile for E2E test")).to_be_visible()
 
     async def test_edit_profile_of_tag_without_touching_other_fields(self, admin_page: Page, branch: str) -> None:
         # got to edit form of tag
