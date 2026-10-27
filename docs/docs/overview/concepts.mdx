@@ -69,7 +69,7 @@ When adding another site, some details repeat and others must be unique. These c
 
 ## Generators, Transformations, and artifacts
 
-A [Generator](../generators/overview.mdx) runs your **Python logic to create or update objects** and relationships in Infrahub. For example, a Generator can turn a site design into firewall and switch devices, their networks, and monitoring services according to your rules.
+A [Generator](../generators/overview.mdx) runs your **Python logic to create or update objects** and relationships in Infrahub. For example, a Generator can turn a site design into firewall and switch devices, their networks, and monitoring services according to your rules. Infrahub records which objects each Generator run created. When the site design changes and the Generator runs again, it creates the objects the new design needs and removes the ones it no longer needs.
 
 A [Transformation](../transformations/overview.mdx) **converts queried data into an output format** using Jinja2 or Python. It can produce a device configuration, an automation inventory or a report. An [artifact](../artifacts/overview.mdx) is a **stored output for a particular target**, available for review and retrieval.
 
