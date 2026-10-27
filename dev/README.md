@@ -123,3 +123,26 @@ Agent commands live in [../.agents/commands/](../.agents/commands/); run one by 
 
 The flows read their shared testing options and execution checklist from `_shared.md` in the same
 folder, which is not a command.
+
+The `/reviewing-pull-requests <PR>` skill in [../.agents/skills/](../.agents/skills/) reviews a pull
+request in a subagent that has not seen the conversation, with the rules in
+[REVIEW.md](../REVIEW.md). Claude Code also runs it on its own after opening a pull request, though
+not every time.
+
+A hook makes it run after every `gh pr create`, and again when pushes add 300 or more changed lines
+to an open pull request since its last automatic review. The hook is off by default:
+`.claude/settings.json` sets `PR_REVIEW` to `off`. To turn it on, add this `env` block to
+`.claude/settings.local.json` in your main checkout, which Git ignores. Sessions in its worktrees
+read that file too.
+
+```json
+{
+  "env": {
+    "PR_REVIEW": "on"
+  }
+}
+```
+
+Set `PR_REVIEW_MIN_LINES` in the same block to change the 300. The hook needs `jq`. The Codex hook
+checks `PR_REVIEW` in the environment Codex starts with and runs `codex review` instead, only after
+`gh pr create`.
