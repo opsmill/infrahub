@@ -183,7 +183,8 @@ names differ and an identical `GRAPH_VERSION` bump merges cleanly, so it shows u
 1. `git mv` the migration (file or package) and its component test to the new number.
 2. Rename the class to `Migration{NNN}`, update the number in its `name`, and set
    `minimum_version` to the new number minus one.
-3. Update the old number everywhere it appears in the test.
+3. `git grep` the old number and update every hit: a package's `__init__.py` re-exports the
+   class, and tests and docs name the migration by its number.
 4. Set `GRAPH_VERSION` to the new number and rerun
    `uv run pytest backend/tests/unit/core/graph/test_graph_version.py`.
 
