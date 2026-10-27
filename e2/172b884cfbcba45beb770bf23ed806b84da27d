@@ -1,0 +1,54 @@
+backend/tests/component/core/regeneration/test_branch_artifacts.py
+  s_9128a279c50f90::t_bbfcecb62858a0 1-121,123,125-132
+  s_9128a279c50f90::t_b4b081ad52d612 122,124
+backend/tests/component/git/test_git_repository.py
+  s_9128a279c50f90::t_731256b00814fe 21,51-52,972,1014,1019-1032,1046,1186-1275
+  s_9128a279c50f90::t_5e09193b2e7188 1276-1277
+backend/infrahub/core/regeneration/models.py
+  s_9128a279c50f90::t_1d73c5e6bf6ac7 211,234-235
+backend/infrahub/artifacts/query_data.py
+  s_9128a279c50f90::t_14e9cc5789aea4 1-47
+backend/infrahub/core/regeneration/branch_artifacts.py
+  s_9128a279c50f90::t_ab6661b80115fb 1-27,29-38,40-49,51-75,77-84
+  s_9128a279c50f90::t_21ac279aab169f 28,39,50,76
+backend/infrahub/proposed_change/models.py
+  s_9128a279c50f90::t_21ac279aab169f 59-61
+backend/infrahub/proposed_change/tasks.py
+  s_9128a279c50f90::t_21ac279aab169f 6,55,791,800,1447,1449-1452,1492-1493,1504
+  s_9128a279c50f90::t_05eba1c647a56b 782
+  s_9128a279c50f90::t_06eb6ff57ae7f6 887-892,1478-1483
+  s_9128a279c50f90::t_97b9dec3560d9b 8,10,12,34,759-776,780-781,783,785,787-789,792-798,801-802,804-818,911,913,916-919,921-922,924-926,1489-1491
+backend/tests/component/proposed_change/test_artifact_regen_recheck.py
+  s_9128a279c50f90::t_bbfcecb62858a0 253
+  s_9128a279c50f90::t_8137aed51ca0de 161,190,216,241,244-245,267,269,272,309,312,339,387,434,437-438,444,447-448
+backend/tests/unit/core/regeneration/test_members.py
+  s_9128a279c50f90::t_06eb6ff57ae7f6 12
+backend/tests/unit/artifacts/test_query_data.py
+  s_9128a279c50f90::t_e3e71b955c9007 1-29
+backend/infrahub/core/regeneration/members.py
+  s_9128a279c50f90::t_06eb6ff57ae7f6 42
+backend/tests/component/proposed_change/artifact_recheck_harness.py
+  s_9128a279c50f90::t_915ac3cbd76aba 9,13,37,39-40,102,107-108,112-117,119-127
+dev/knowledge/backend/selective-merge-regeneration.md
+  s_9128a279c50f90::t_f66e9b14499fd6 47
+backend/infrahub/git/integrator.py
+  s_9128a279c50f90::t_526281d9aa0bb1 97,2246
+  s_9128a279c50f90::t_4a2fa9e24dbd30 54,82,2245,2247-2251,2294-2296,2330-2332,2335-2343
+  s_9128a279c50f90::t_da9f62fc18ae59 2344
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e2172b884cfbcba45beb770bf23ed806b84da27d",
+  "prompts": {},
+  "sessions": {
+    "s_9128a279c50f90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "11476f82-dee3-47fe-9315-70bb594190bd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}
