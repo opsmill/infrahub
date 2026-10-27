@@ -1,0 +1,20 @@
+dev/specs/artifact-regeneration-poc/opsmill-implement-report.md
+  s_6947b4d8b10fbd::t_c5c491e4a6fb1f 5-7,9,11-18,27-48,54,58,62-94,98-100,104-105,107-111,113-121
+  s_6947b4d8b10fbd::t_a851403331a381 122-128,130,134-143,148-152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3e4e527fa9c7ad385bc4b3a90d333a25da0edb32",
+  "prompts": {},
+  "sessions": {
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}
