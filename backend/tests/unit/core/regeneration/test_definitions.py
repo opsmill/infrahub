@@ -22,7 +22,6 @@ def _artifact_definition_edge(
     dependencies: list[str] | None = None,
     dependencies_complete: bool | None = None,
     fingerprint: str | None = None,
-    query_models: list[str] | None = None,
 ) -> dict[str, Any]:
     """Build one edge of the artifact-definition gathering query's response."""
     transformation: dict[str, Any] = {
@@ -34,7 +33,6 @@ def _artifact_definition_edge(
             "node": {
                 "id": "query-1",
                 "name": _attribute("GetCars"),
-                "models": _attribute(query_models),
                 "query": _attribute(QUERY_PAYLOAD),
             }
         },
@@ -91,13 +89,6 @@ def test_computed_closure_is_carried_through() -> None:
     assert definition.dependencies == [".infrahub.yml", "templates/config.j2"]
     assert definition.dependencies_complete is True
     assert definition.fingerprint == "abc123"
-
-
-def test_unset_query_models_parse_as_an_empty_list() -> None:
-    """``query_models`` is typed as a plain list, so a null has to be absorbed at parse time."""
-    parsed = parse_artifact_definitions([_artifact_definition_edge(query_models=None)])
-
-    assert parsed[0].query_models == []
 
 
 def test_jinja2_transform_carries_its_template_path() -> None:

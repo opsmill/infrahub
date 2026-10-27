@@ -116,8 +116,8 @@
     "@types/react-syntax-highlighter": "^15.5.13",
     "@types/sha1": "^1.1.5",
     "@vitejs/plugin-react": "catalog:",
-    "@vitest/browser-playwright": "^4.1.10",
-    "@vitest/coverage-v8": "^4.1.10",
+    "@vitest/browser-playwright": "^5.0.5",
+    "@vitest/coverage-v8": "^5.0.5",
     "babel-plugin-react-compiler": "catalog:",
     "html-to-image": "^1.11.13",
     "knip": "~6.27.0",
@@ -132,8 +132,8 @@
     "vite": "catalog:",
     "vite-plugin-monaco-editor-esm": "^2.0.3",
     "vite-plugin-svgr": "^5.2.0",
-    "vitest": "^4.1.10",
-    "vitest-browser-react": "^2.2.0"
+    "vitest": "^5.0.5",
+    "vitest-browser-react": "^2.3.0"
   },
   "engines": {
     "node": ">=24.0"

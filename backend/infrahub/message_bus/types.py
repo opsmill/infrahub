@@ -104,7 +104,6 @@ class ProposedChangeArtifactDefinition(BaseModel):
     artifact_name: str
     query_name: str
     query_id: str
-    query_models: list[str]
     query_payload: str = Field(..., description="GraphQL query")
     repository_id: str
     transform_kind: str
@@ -136,15 +135,6 @@ class ProposedChangeArtifactDefinition(BaseModel):
     @property
     def instance_noun(self) -> str:
         return "artifacts"
-
-    def reads_kind(self, kind: str) -> bool:
-        """Whether a data change to ``kind`` is relevant because the query reads that kind.
-
-        An artifact query may read a kind through its Profile, so the profile-stripped kind matches too.
-        """
-        return kind in self.query_models or (
-            kind.startswith("Profile") and kind.replace("Profile", "", 1) in self.query_models
-        )
 
     @property
     def transform_location(self) -> str:

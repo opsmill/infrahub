@@ -11,6 +11,61 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.11.9](https://github.com/opsmill/infrahub/tree/infrahub-v1.11.9) - 2026-10-22
+
+### Security
+
+- Updated `certifi` to 2026.10.19, which removes the emSign root certificates after intermediates were revoked due to key compromise (GHSA-6q48-6c7w-9gw2).
+
+### Changed
+
+- In the GraphQL schema, the `node_metadata` field of the `NestedEdged` type of every generic can now be null: its type changes from `InfrahubNodeMetadata!` to `InfrahubNodeMetadata`, as it already was on the `NestedEdged` types of node kinds. Teams that generate client types from the GraphQL schema will see `node_metadata` on these types as optional and must handle a null value. ([#11100](https://github.com/opsmill/infrahub/issues/11100))
+- Artifacts and Generators that read a relationship with a filter are no longer regenerated when a change only affects related objects that the filter excludes.
+
+### Fixed
+
+- Fixed GraphQL queries failing with a "Cannot return null for non-nullable field" error when they requested `node_metadata` on a relationship whose peer kind is a generic. An empty cardinality-one relationship, such as the `parent` of a node at the top of a hierarchy, now returns `node` and `node_metadata` as null. The `ancestors` and `descendants` of a hierarchical node now return the `node_metadata` of each node. ([#11100](https://github.com/opsmill/infrahub/issues/11100))
+- Fixed proposed changes that showed data conflicts on the fingerprint of Generator and Transformation definitions after another branch with Git changes was merged.
+
+## [Infrahub - v1.11.8](https://github.com/opsmill/infrahub/tree/infrahub-v1.11.8) - 2026-10-19
+
+### Added
+
+- Added support for Python 3.15 to the `infrahub-testcontainers` package.
+
+### Changed
+
+- Changed proposed-change and post-merge regeneration to follow a `display_label` or `human_friendly_id` read on a generic through the value that each implementation defines or inherits, instead of selecting every target when the generic defines none.
+- Changed proposed-change and post-merge regeneration to select only the targets that read a changed node when the query reaches that node through an inline or named fragment, instead of every target of the definition.
+- Changed proposed-change and post-merge regeneration to select only the targets that read a changed node when the query reads its kind both at the root and through a relationship, instead of every target of the definition.
+
+### Fixed
+
+- Fixed GraphQL queries ignoring the fields read through a named fragment used inside another fragment, such as `... on InfraDevice { ...DeviceInterfaces }`. When such a field changes, artifacts and Generators that read it are now regenerated and computed attributes based on a Python transform are recomputed. Object permissions are now checked on these fields.
+- Fixed artifacts and Generators not being selected after a change to an object whose kind was added to a generic after their query was saved, when the query reads that generic. The kinds a query reads are now taken from the query text each time a change is checked, instead of from the list stored when the query was saved. The `models` attribute of a GraphQL query is still computed only when the query text is saved, so it can miss kinds the query reads, such as a kind added to a generic afterwards. It no longer affects which artifacts and Generators are regenerated.
+- Fixed artifacts not being regenerated and Generators not being run after a change to a field that their query reads only inside a fragment on a generic.
+- Fixed the `infrahub-git-credential` helper returning "No such command 'erase'" in the task log after Git fails to authenticate with a remote repository.
+- Fixed the scheduled job that revokes approvals on updated proposed changes (Enterprise) checking every proposed change, including merged, closed and canceled ones, instead of only the open ones. On an instance with many old proposed changes, the job started one whole-graph scan per proposed change every 10 minutes and could make the database too slow to log in.
+
+## [Infrahub - v1.11.7](https://github.com/opsmill/infrahub/tree/infrahub-v1.11.7) - 2026-10-14
+
+### Fixed
+
+- Concurrent creates of the same IP address on a branch other than the default branch now leave a single IP address when the schema declares a uniqueness constraint on it. The extra creates are rejected with the uniqueness error, as they are on the default branch. ([#11059](https://github.com/opsmill/infrahub/issues/11059))
+- Fixed the "info" severity badge in task logs having the same color as the "warning" badge; it is now blue.
+
+## [Infrahub - v1.11.6](https://github.com/opsmill/infrahub/tree/infrahub-v1.11.6) - 2026-10-13
+
+### Changed
+
+- Post-merge and proposed-change regeneration now regenerate only the affected members when a Generator or artifact query reads a `display_label` or `human_friendly_id` built from a related node's attribute and that related node changes. A query that does not target unique objects, or whose `display_label` or `human_friendly_id` path cannot be resolved, still regenerates every member of the definition.
+- Post-merge regeneration now narrows to the affected members when the changed data is read through a relationship (for example an owner's name rendered by an artifact, or an interface's field on a device), instead of regenerating every member of the definition. Changes that cannot be attributed to specific members unambiguously still regenerate the whole group.
+
+### Fixed
+
+- Fixed artifacts and Generators not being regenerated after a merge or in a proposed change when the change was to a field their query filters on, such as moving an object to the related node the query selects by. ([#11024](https://github.com/opsmill/infrahub/issues/11024))
+- Fixed Generators not running in a proposed change or after a merge when the only change was to a Profile of a kind their query reads.
+
 ## [Infrahub - v1.11.5](https://github.com/opsmill/infrahub/tree/infrahub-v1.11.5) - 2026-10-08
 
 ### Security
