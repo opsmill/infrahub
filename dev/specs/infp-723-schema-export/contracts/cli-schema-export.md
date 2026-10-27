@@ -26,7 +26,7 @@ Output:
 - When the response has no generics and no nodes: prints "No user-defined schema found to export." and
   writes no file, as today.
 - Against a server without the endpoint: prints "Schema export requires Infrahub X or later." with no
-  traceback, and exits with code 1. X is the release that ships the endpoint (not known yet).
+  traceback, and exits with code 1. X is 1.13.0, the release that ships the endpoint.
 
 ## SDK client
 
@@ -36,10 +36,12 @@ async def export(
     branch: str | None = None,
     namespaces: list[str] | None = None,
     mode: Literal["brief", "full"] = "brief",
-) -> dict[str, Any]: ...
+) -> InfrahubSchemaWrite: ...
 ```
 
-Same signature on `InfrahubSchemaSync.export`. Returns the response body. Raises
+Same signature on `InfrahubSchemaSync.export`. Returns the response body parsed into the generated
+`infrahub_sdk.schema.generated.write::InfrahubSchemaWrite`; `model_dump(mode="json", exclude_unset=True)`
+gives back the response. Raises
 `VersionNotSupportedError` when the server answers 404 or 422 on `/api/schema/export`, and
 `BranchNotFoundError` on 400. The type of `mode` stops the client from sending an invalid mode, so a 422 on
 that URL means an older server.

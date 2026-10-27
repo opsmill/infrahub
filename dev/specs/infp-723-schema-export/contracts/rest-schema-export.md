@@ -1,8 +1,7 @@
 # Contract: Schema Export (REST)
 
-**Requirements**: FR-001 to FR-018 | **Status**: proposed. The design document chose a REST endpoint (D11);
-its status is "Draft", and the endpoint is an "Ask First" API change (root `AGENTS.md`), so it needs the
-approval of the design document's reviewers before implementation.
+**Requirements**: FR-001 to FR-018 | **Status**: approved by Damien Garros on 2026-10-27 ("Ask First" API
+change, root `AGENTS.md`). The design document chose a REST endpoint (D11).
 
 ## `GET /api/schema/export`
 

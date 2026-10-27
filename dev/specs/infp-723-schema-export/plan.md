@@ -59,12 +59,12 @@ generated files (`schema/openapi.json`, frontend REST types, SDK write models).
 |-----------|--------|-------|
 | I. Schema-Driven Integrity | Pass | The export reads the schema and changes nothing. `infrahub_version` is added through the generator (`tasks/backend.py::_sdk_root`), never by editing generated files. `schema/openapi.json`, the frontend REST types and the SDK write models are regenerated. |
 | II. Branch-Safe by Default | Pass | The export reads the schema of the requested branch through `get_branch_dep`, as `GET /api/schema`. No query. |
-| III. Type Safety & Explicit Contracts | Pass | `SchemaExportMode` string enum; the response is validated against the generated `InfrahubSchemaWrite`. Contracts in [contracts/](contracts/) before implementation. |
-| IV. Test Discipline | Pass with one exception | Unit, component and functional tests (R14). No end-to-end test: the feature has no UI (see Complexity Tracking). |
+| III. Type Safety & Explicit Contracts | Pass | `SchemaExportMode` string enum. The exporter and the SDK client return the generated `InfrahubSchemaWrite`, never an untyped `dict`; the document is serialised with the values that were set only at the HTTP and YAML boundaries. Contracts in [contracts/](contracts/) before implementation. |
+| IV. Test Discipline | Pass | Unit, component, functional and one end-to-end test without a browser (R14). The rule schemas reuse existing fixtures where one covers the rule (T010). |
 | V. Query Performance & Efficiency | Pass | No database query. Processing is in memory and bounded by R1. |
 | VI. Security & Input Boundaries | Pass | Read-only. Same access as `GET /api/schema` (D10). `mode` is validated by the enum. A 500 from a failed self-check does not include the schema. |
 | VII. Simplicity & Maintainability | Pass | Reuses `SchemaBranch.process`, the write models and the existing schema API dependencies. The remove-and-restore loop (R1) replaces a rule list that drifted; see Complexity Tracking. |
-| Ask First (root `AGENTS.md`, `backend/AGENTS.md`) | Pending | A new REST endpoint is an API change, and `backend/AGENTS.md` prefers GraphQL for new SDK needs. D11 chose REST because the schema read, check and load are REST and GraphQL has no query that returns the node schema. The design document is in "Draft": its architect and engineering reviewers approve D11 before implementation. |
+| Ask First (root `AGENTS.md`, `backend/AGENTS.md`) | Pass | A new REST endpoint is an API change, and `backend/AGENTS.md` prefers GraphQL for new SDK needs. D11 chose REST because the schema read, check and load are REST and GraphQL has no query that returns the node schema. Damien Garros approved `GET /api/schema/export` as specified in [contracts/rest-schema-export.md](contracts/rest-schema-export.md) on 2026-10-27, in the implementation session. |
 
 Re-check after Phase 1: unchanged. The design adds no table, no query, no setting and no dependency.
 
@@ -162,5 +162,4 @@ repository's generator.
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
-| No end-to-end test (Principle IV asks for pytest-playwright on user-facing features) | The feature has no UI (clarification of 2026-10-26). The functional tests load the response through the real endpoint into an empty database. | A browser test would only call the REST API. |
 | `BRIEF` processes the candidate in memory and repeats until stable (R1) | Some derived values depend on order or on other values (dropdown colours, `human_friendly_id`, `order_weight`), so no per-field rule reproduces them. | A fixed rule list is what IFC-2964 reports as drifting from the schema model. |

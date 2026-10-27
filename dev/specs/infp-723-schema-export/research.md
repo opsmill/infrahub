@@ -135,6 +135,10 @@ Fields removed in step 2 (each is restored by step 5 when processing does not re
 - **Rationale**: Dropping `display_labels` or `default_filter` changes the stored schema (FR-012 asks for an
   identical schema), and converting the shorthand changes the stored value. These fields exist only when a
   schema owner wrote them, so the source load gave the same warnings.
+- **Warnings are reported per element**: `gather_warnings` adds one warning per node or generic. A
+  `default_filter` or `display_labels` copied from a generic onto its nodes (FR-007) therefore gives one
+  warning per node, where the source load gave one for the generic. The tests compare the warning messages
+  (the deprecated fields named), not their number.
 - **Spec change**: FR-012 and SC-001 say "no warnings". They now say "no warnings other than the
   deprecation warnings for deprecated fields that the source schema contains". This is the only way to
   meet "identical schema" for a source that uses deprecated fields.
@@ -220,13 +224,16 @@ Fields removed in step 2 (each is restored by step 5 when processing does not re
   - HTTP 404 or 422 on that URL raises `infrahub_sdk.exceptions::VersionNotSupportedError` ("Schema export
     requires Infrahub X or later"). An older server answers 422, because `/api/schema/export` reaches
     `get_schema_by_kind` and raises `SchemaNotFoundError` (**not verified** against a running server).
+  - The client returns the generated `infrahub_sdk.schema.generated.write::InfrahubSchemaWrite`, parsed from
+    the response, so the values left out stay unset and `model_dump(exclude_unset=True)` gives back the
+    response (constitution Principle III).
   - `infrahub_sdk.ctl.utils::handle_exception` prints `VersionNotSupportedError` without a traceback.
   - `infrahubctl schema export` splits the document by namespace into `<namespace>.yml` files, as today.
     `--single-file` writes the whole document to `schema.yml` in the directory. `--mode` passes the mode.
   - `infrahub_sdk.ctl.schema_format::RESTRICTED_NAMESPACES`, used by `infrahubctl schema format`, stays: it is
     not part of the export (SC-005 covers the export rules only).
-- **Unknown**: The release that ships the endpoint, which the error message names. It is set in the SDK
-  when the release is known.
+- The release that ships the endpoint, which the error message names, is 1.13.0 (decided by Damien Garros
+  on 2026-10-27; it matches the roadmap field of INFP-723).
 
 ## R13. Delivery order
 
@@ -248,16 +255,25 @@ Fields removed in step 2 (each is restored by step 5 when processing does not re
   - **Unit**, field coverage (FR-023): iterate the fields of the five write models and the attribute
     parameter write models, and fail for any field that is in neither the map of fields to the test schema
     that covers them nor the list of fields that need no test, each with a reason.
-  - **Functional** (`backend/tests/functional/api/`, `TestInfrahubApp`, an empty database per class): call
-    the endpoint, load the response into an empty database through `POST /api/schema/load`, check no
-    warnings and the same schema (US1); User Story 3 (label kept by `BRIEF`, replaced by `FULL`); a `FULL`
-    load refused when `branch` differs (FR-015a); a namespace filter (US4).
+  - **Functional** (`backend/tests/functional/api/`, `TestInfrahubApp`, an empty database per class). A
+    class cannot empty its database part-way, so the round trip uses two independent classes and the
+    in-memory export as the link: the first loads the source schema through the API and checks that the
+    endpoint returns the in-memory export of the same files; the second loads that in-memory export into its
+    empty database through `POST /api/schema/load`, checks the warnings, and checks that the endpoint
+    returns it again (US1). Also User Story 3 (label kept by `BRIEF`, replaced by `FULL`) and a namespace
+    filter (US4), each in one database.
+  - **Unit**, FR-015a: a `FULL` change of a setting Infrahub cannot update cannot be set up in one database,
+    because the load refuses to create it. The test builds the source and the target as two processed
+    branches and checks that `SchemaBranch.validate_update` reports `NOT_SUPPORTED`, as
+    `evaluate_candidate_schemas` does on a load.
+  - **End-to-end** (`tests/e2e/schema/`, testcontainers stack, no browser): load `models/base/`, export
+    through the SDK client, and send the export to `POST /api/schema/check`; expect an empty diff and no
+    warning. This covers the deployed stack (constitution Principle IV).
   - **Component** (`backend/tests/component/api/test_40_schema.py`): parameters, anonymous access, unknown
     branch (400), unknown mode (422).
   - **SDK unit**: client export for both clients with `pytest_httpx`; `VersionNotSupportedError` on 422; CLI
     with `typer.testing.CliRunner` (files per namespace, `--single-file`, `--mode`, clean error);
     validation accepts `infrahub_version` with no warning (`tests/unit/test_schema_offline_validation.py`).
-  - No end-to-end test: there is no UI (spec clarification of 2026-10-26).
 - **Rationale**: `dev/guidelines/backend/testing.md` asks for the cheapest tier that covers the behaviour.
   The round trip is in memory, and the functional tier covers the real load once per story.
 

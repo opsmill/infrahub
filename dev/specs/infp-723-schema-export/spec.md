@@ -36,7 +36,8 @@ relationship, so the load likely fails for nodes that use templates (not tested,
 
 **Not decided yet.**
 
-- The release that ships the endpoint, which `infrahubctl` names when the server is older (FR-022).
+Nothing. The release that ships the endpoint, which `infrahubctl` names when the server is older
+(FR-022), is 1.13.0 (Damien Garros, 2026-10-27).
 
 Decided during planning ([research.md](research.md)): the names `mode`, `brief`, `full` and
 `infrahub_version` (R7, R8); the load refuses a `FULL` change of a setting Infrahub cannot update (R10);
@@ -60,7 +61,8 @@ processing does not convert the NumberPool `start_range` and `end_range`, so the
   loading the namespaces they reference (FR-017).
 - Q: What does a `FULL` export do with settings Infrahub cannot update, such as `branch` on an attribute or
   relationship? → A: It writes them like any other value. When the target has a different value, the load
-  behaves as it does today, which the plan establishes and the documentation states (FR-015a, FR-025).
+  behaves as it does today: it refuses the change (research R10). The documentation states it (FR-015a,
+  FR-025).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -334,7 +336,8 @@ the `Dcim` schema.
 - **SC-004**: A schema owner moves a schema from one instance to an empty instance with one export command
   and one load command, with no manual edit of the exported files.
 - **SC-005**: The export rules exist in one place: the SDK contains no list of restricted namespaces or
-  fields to remove for the export.
+  fields to remove for the export. `infrahubctl schema format` keeps its own list, which is not part of the
+  export.
 
 ## Assumptions
 
