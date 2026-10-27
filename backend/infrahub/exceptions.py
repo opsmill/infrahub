@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from infrahub.log import suppress_traceback_in_logs
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -146,7 +148,9 @@ class RepositoryNotFoundError(RepositoryConnectionError):
 
 
 class RepositoryCredentialsError(RepositoryError):
-    def __init__(self, identifier: str, message: str | None = None) -> None:
+    def __init__(self, identifier: str, message: str | None = None, git_output: str | None = None) -> None:
+        """`git_output` is the error output of the git command, for a reader that has no traceback to show it."""
+        self.git_output = git_output
         super().__init__(
             identifier=identifier,
             message=message or f"Authentication failed for {identifier}, please validate the credentials.",
@@ -573,12 +577,19 @@ class HTTPServerSSLError(HTTPServerError):
     HTTP_CODE = 503
 
 
+@suppress_traceback_in_logs
 class RepositoryNotSynchronizedError(ValidationError):
     """Raised when a branch merge would build on a Git branch whose remote head Infrahub has not imported."""
 
 
+@suppress_traceback_in_logs
 class RepositoryCredentialsRefusedError(ValidationError):
     """Raised when a branch merge is refused because a remote refuses the credentials its Git merge needs."""
+
+
+@suppress_traceback_in_logs
+class MergeRefusedError(ValidationError):
+    """Raised when a branch merge is refused before the graph merge for a reason the user can clear."""
 
 
 class MergeFailedError(Error):
@@ -589,6 +600,7 @@ class MergeFailedError(Error):
         super().__init__(self.message)
 
 
+@suppress_traceback_in_logs
 class MergeConstraintsViolatedError(ValidationError):
     """Raised when merging a branch would violate a schema/data constraint on the destination."""
 
@@ -598,6 +610,7 @@ class MergeConstraintsViolatedError(ValidationError):
         super().__init__(",\n".join(violation.message for violation in violations) or "Merge constraints violated")
 
 
+@suppress_traceback_in_logs
 class MergeConflictsUnresolvedError(ValidationError):
     """Raised when a branch cannot be merged because conflicts with the destination are unresolved."""
 
@@ -609,6 +622,7 @@ class MergeConflictsUnresolvedError(ValidationError):
         )
 
 
+@suppress_traceback_in_logs
 class MergeRepositoryImportError(ValidationError):
     """Raised when a branch cannot be merged because the objects a repository registered on it may not match it."""
 
