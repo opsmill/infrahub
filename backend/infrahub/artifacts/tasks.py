@@ -49,7 +49,6 @@ async def create(model: CheckArtifactCreate) -> ValidatorConclusion:
     except Exception as exc:
         artifact.status.value = "Error"
         await artifact.save()
-        artifact_result["artifact_id"] = artifact.id
         severity = "critical"
         conclusion = ValidatorConclusion.FAILURE
         check_message += f": {str(exc)}"

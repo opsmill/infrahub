@@ -158,7 +158,7 @@ async def _rebuild_branch_diff(db: InfrahubDatabase, default_branch: Branch, bra
 
 
 class TestArtifactRecheckDevices(ArtifactRecheckTestBase):
-    """An artifact is checked again when the values it reads were edited on the branch after its last check.
+    """An artifact rendered on the branch is checked again when its query returns other data than it was rendered from.
 
     Each scenario has its own device, with an artifact rendered on the default branch from ``blue``, and its own
     branch and proposed change.
@@ -187,7 +187,7 @@ class TestArtifactRecheckDevices(ArtifactRecheckTestBase):
             transformation=transform,
             content_type="text/plain",
             artifact_name="device-config",
-            parameters={"value": {"name": "name__value"}},
+            parameters={"value": {"ids": "id"}},
         )
         await definition.save(db=db)
 
@@ -213,7 +213,7 @@ class TestArtifactRecheckDevices(ArtifactRecheckTestBase):
 
         return {
             "repository_id": repository.id,
-            "definition_id": definition.id,
+            "query_id": query.id,
             "device_ids": {scenario: device.id for scenario, device in devices.items()},
             "artifact_ids": artifact_ids,
             "branches": branches,
@@ -238,12 +238,11 @@ class TestArtifactRecheckDevices(ArtifactRecheckTestBase):
     async def _record(
         self, pipeline: ArtifactPipeline, dataset: dict[str, Any], scenario: str, checksum: str, failed: bool = False
     ) -> None:
-        await pipeline.record_check(
+        await pipeline.record_render(
             branch=dataset["branches"][scenario],
-            proposed_change_id=dataset["proposed_change_ids"][scenario],
-            definition_id=dataset["definition_id"],
             artifact_id=dataset["artifact_ids"][scenario],
-            check_name=f"device-config: dev-{scenario}",
+            query_id=dataset["query_id"],
+            variables={"ids": dataset["device_ids"][scenario]},
             checksum=checksum,
             failed=failed,
         )
@@ -251,7 +250,7 @@ class TestArtifactRecheckDevices(ArtifactRecheckTestBase):
     async def test_value_changed_back_before_a_rebase_is_checked_once_after_the_rebase(
         self, db: InfrahubDatabase, default_branch: Branch, dataset: dict[str, Any], pipeline: ArtifactPipeline
     ) -> None:
-        """A rebase drops a changed-back value from the diff, and the artifact checked before it is checked once."""
+        """A rebase drops a changed-back value from the diff, and the artifact rendered before it is checked once."""
         device_id = dataset["device_ids"]["rebase"]
         await self._set_device(db, dataset, "rebase", color="red")
         assert await self._run(pipeline, dataset, "rebase") == ([DEVICE_DEFINITION], [device_id])
@@ -265,12 +264,12 @@ class TestArtifactRecheckDevices(ArtifactRecheckTestBase):
         assert await self._run(pipeline, dataset, "rebase") == ([DEVICE_DEFINITION], [device_id])
         await self._record(pipeline, dataset, "rebase", checksum="rebase-from-blue-after-rebase")
 
-        assert await self._run(pipeline, dataset, "rebase") == ([], [])
+        assert await self._run(pipeline, dataset, "rebase") == ([DEVICE_DEFINITION], [])
 
-    async def test_artifact_rendered_with_new_content_is_not_checked_again_without_new_edits(
+    async def test_artifact_rendered_from_the_current_data_is_not_checked_again(
         self, db: InfrahubDatabase, dataset: dict[str, Any], pipeline: ArtifactPipeline
     ) -> None:
-        """A re-rendered artifact whose content never matches the default branch's is not checked on every run."""
+        """An artifact whose content never matches the default branch's is not rendered on every run."""
         device_id = dataset["device_ids"]["settle"]
         await self._set_device(db, dataset, "settle", color="red")
         assert await self._run(pipeline, dataset, "settle") == ([DEVICE_DEFINITION], [device_id])
@@ -307,15 +306,13 @@ class TestArtifactRecheckDevices(ArtifactRecheckTestBase):
 
         assert await self._run(pipeline, dataset, "default-render") == ([DEVICE_DEFINITION], [])
 
-    async def test_artifact_whose_last_check_failed_is_checked_again(
+    async def test_artifact_whose_rendering_failed_is_checked_again(
         self, db: InfrahubDatabase, dataset: dict[str, Any], pipeline: ArtifactPipeline
     ) -> None:
-        """When the definition is checked again, an artifact whose last check failed is rendered again."""
+        """An artifact whose last rendering failed is rendered again, though nothing it reads changed since."""
         await self._set_device(db, dataset, "failed", color="blue", description="edited")
         assert await self._run(pipeline, dataset, "failed") == ([DEVICE_DEFINITION], [])
         await self._record(pipeline, dataset, "failed", checksum="unused", failed=True)
-
-        await self._set_device(db, dataset, "failed", color="blue", description="edited again")
 
         assert await self._run(pipeline, dataset, "failed") == (
             [DEVICE_DEFINITION],
@@ -339,7 +336,7 @@ class TestArtifactRecheckDevices(ArtifactRecheckTestBase):
     async def test_artifact_checked_before_a_rebase_that_brings_a_change_is_checked_again(
         self, db: InfrahubDatabase, default_branch: Branch, dataset: dict[str, Any], pipeline: ArtifactPipeline
     ) -> None:
-        """A rebase can bring default-branch changes to a target the branch never edited, so its artifact is checked."""
+        """A rebase can bring default-branch changes to the data of an artifact rendered on the branch."""
         scenario = "rebase-brings-change"
         await self._set_device(db, dataset, scenario, color="blue", description="edited")
         assert await self._run(pipeline, dataset, scenario) == ([DEVICE_DEFINITION], [])
@@ -387,7 +384,7 @@ class TestArtifactRecheckRelationships(ArtifactRecheckTestBase):
             transformation=transform,
             content_type="text/plain",
             artifact_name="person-config",
-            parameters={"value": {"name": "name__value"}},
+            parameters={"value": {"ids": "id"}},
         )
         await definition.save(db=db)
         john_artifact = await _create_artifact(db, default_branch, definition, query, john, "john-with-car")
@@ -434,23 +431,21 @@ class TestArtifactRecheckRelationships(ArtifactRecheckTestBase):
             [definition_name],
             both,
         )
-        await pipeline.record_check(
+        await pipeline.record_render(
             branch=branch,
-            proposed_change_id=dataset["proposed_change_id"],
-            definition_id=dataset["definition_id"],
             artifact_id=dataset["john_artifact_id"],
-            check_name=f"person-config: {self.prefix}-john",
+            query_id=dataset["query"].id,
+            variables={"ids": john.id},
             checksum="john-without-car",
         )
         jane_artifact = await _create_artifact(
             db, branch, dataset["definition"], dataset["query"], jane, "jane-with-car"
         )
-        await pipeline.record_check(
+        await pipeline.record_render(
             branch=branch,
-            proposed_change_id=dataset["proposed_change_id"],
-            definition_id=dataset["definition_id"],
             artifact_id=jane_artifact.id,
-            check_name=f"person-config: {self.prefix}-jane",
+            query_id=dataset["query"].id,
+            variables={"ids": jane.id},
             checksum="jane-with-car",
         )
 

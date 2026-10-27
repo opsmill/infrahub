@@ -56,8 +56,9 @@ class RequestArtifactDefinitionCheck(BaseModel):
     source_branch: str = Field(..., description="The source branch")
     source_branch_sync_with_git: bool = Field(..., description="Indicates if the source branch should sync with git")
     destination_branch: str = Field(..., description="The target branch")
-    source_branched_from: str | None = Field(
-        default=None, description="When the source branch was created or last rebased, read once for the pipeline run"
+    artifacts_written_on_branch: list[str] = Field(
+        default_factory=list,
+        description="The definition's artifacts that the source branch rendered, failed to render or created",
     )
 
 

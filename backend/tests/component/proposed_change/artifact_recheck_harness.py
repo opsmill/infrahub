@@ -5,15 +5,14 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
-from infrahub_sdk.protocols import CoreArtifactCheck, CoreArtifactValidator
 
+from infrahub.artifacts.query_data import RenderedQueryData, fingerprint_query_data
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
-from infrahub.core.constants import RepositoryInternalStatus, ValidatorConclusion
+from infrahub.core.constants import RepositoryInternalStatus
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.manager import NodeManager
-from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.message_bus.types import ProposedChangeBranchDiff, ProposedChangeRepository
 from infrahub.proposed_change.branch_diff import set_diff_summary_cache
@@ -35,10 +34,10 @@ if TYPE_CHECKING:
 
 @dataclass
 class ArtifactPipeline:
-    """Runs the artifact part of a proposed change pipeline, and records checks as the artifact check flow does.
+    """Runs the artifact part of a proposed change pipeline, and records renderings as the render step does.
 
-    The per-target artifact check is only recorded by the workflow backend, so a scenario writes what that check
-    stores: the rendered artifact on the branch, and the check record linked to the definition's validator.
+    The per-target artifact check is only recorded by the workflow backend, so a scenario writes what rendering
+    stores: the rendered artifact on the branch, and the fingerprint of the query data it was rendered from.
     """
 
     db: InfrahubDatabase
@@ -100,53 +99,33 @@ class ArtifactPipeline:
         )
         return selected, checked
 
-    async def record_check(
+    async def record_render(
         self,
         *,
         branch: Branch,
-        proposed_change_id: str,
-        definition_id: str,
         artifact_id: str,
-        check_name: str,
+        query_id: str,
+        variables: dict[str, str],
         checksum: str,
         failed: bool = False,
     ) -> None:
-        """Write what the artifact check flow stores after rendering an artifact, or after failing to."""
-        if not failed:
-            artifact = await NodeManager.get_one(db=self.db, branch=branch, id=artifact_id)
-            artifact.checksum.value = checksum
-            artifact.storage_id.value = f"storage-{checksum}"
+        """Write what rendering an artifact on the branch stores, or what a failed rendering leaves behind."""
+        artifact = await NodeManager.get_one(db=self.db, branch=branch, id=artifact_id)
+        rendered_query_data = RenderedQueryData(cache=self.memory_cache)
+        branch_id = str(branch.get_uuid())
+        if failed:
+            artifact.status.value = "Error"
             await artifact.save(db=self.db)
+            await rendered_query_data.forget(branch_id=branch_id, artifact_id=artifact_id)
+            return
 
-        validators = await self.client.filters(
-            kind=CoreArtifactValidator, proposed_change__ids=[proposed_change_id], definition__ids=[definition_id]
+        artifact.checksum.value = checksum
+        artifact.storage_id.value = f"storage-{checksum}"
+        await artifact.save(db=self.db)
+        response = await self.client.query_gql_query(name=query_id, variables=variables, branch_name=branch.name)
+        await rendered_query_data.save(
+            branch_id=branch_id, artifact_id=artifact_id, fingerprint=fingerprint_query_data(response)
         )
-        assert len(validators) == 1
-        conclusion = ValidatorConclusion.FAILURE if failed else ValidatorConclusion.SUCCESS
-        existing = await self.client.filters(
-            kind=CoreArtifactCheck, validator__ids=[validators[0].id], name__value=check_name
-        )
-        if existing:
-            check = existing[0]
-        else:
-            check = await self.client.create(
-                kind=CoreArtifactCheck,
-                data={
-                    "name": check_name,
-                    "origin": self.repository_id,
-                    "kind": "ArtifactDefinition",
-                    "validator": validators[0].id,
-                },
-            )
-        check.created_at.value = Timestamp().to_string()
-        check.message.value = "Failed to render artifact" if failed else "Artifact rendered successfully"
-        check.conclusion.value = conclusion.value
-        check.severity.value = "critical" if failed else "info"
-        check.changed.value = not failed
-        check.checksum.value = None if failed else checksum
-        check.artifact_id.value = artifact_id
-        check.storage_id.value = None if failed else f"storage-{checksum}"
-        await check.save()
 
 
 class ArtifactRecheckTestBase(ArtifactRegenTestBase):

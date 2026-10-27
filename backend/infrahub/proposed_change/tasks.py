@@ -3,14 +3,16 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
+from collections import defaultdict
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
+import httpx
 import pytest
+from infrahub_sdk.exceptions import Error as InfrahubSdkError
 from infrahub_sdk.exceptions import ModuleImportError, NodeNotFoundError, URLNotFoundError
 from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import (
-    CoreArtifactCheck,
     CoreArtifactDefinition,
     CoreArtifactValidator,
     CoreGeneratorDefinition,
@@ -29,6 +31,7 @@ from pydantic import BaseModel
 
 from infrahub import config, lock
 from infrahub.artifacts.models import CheckArtifactCreate
+from infrahub.artifacts.query_data import RenderedQueryData, fingerprint_query_data
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -49,13 +52,11 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.merge.constraints import build_merge_constraint_result, gather_conflicted_fields
 from infrahub.core.protocols import CoreDataCheck, CoreGenericAccount, CoreValidator
 from infrahub.core.protocols import CoreProposedChange as InternalCoreProposedChange
-from infrahub.core.regeneration.branch_edits import BranchEditReader, edits_seen_since, edits_to_diff_summary
+from infrahub.core.regeneration.branch_artifacts import ArtifactsWrittenOnBranchReader
 from infrahub.core.regeneration.definitions import GATHER_ARTIFACT_DEFINITIONS, parse_artifact_definitions
 from infrahub.core.regeneration.impact import get_field_level_impacted_subscribers
 from infrahub.core.regeneration.members import (
-    ArtifactCheckRecord,
     map_subscriber_ids_by_member,
-    plan_artifact_recheck,
     run_generator,
     should_render_artifact,
 )
@@ -143,7 +144,6 @@ if TYPE_CHECKING:
     from infrahub.core.models import SchemaUpdateConstraintInfo
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
-    from infrahub.graphql.analyzer import GraphQLQueryReport
 
 
 async def _proposed_change_transition_state(
@@ -756,77 +756,66 @@ async def run_proposed_change_user_tests(model: RequestProposedChangeUserTests) 
             log.info(msg=f"repository_tests_completed return_code={return_code}")
 
 
-async def _select_artifacts_to_recheck(
+async def _query_data_fingerprint(
+    *, client: InfrahubClient, model: RequestArtifactDefinitionCheck, variables: dict[str, Any]
+) -> str | None:
+    """Return the fingerprint of the definition's query response for one target, or None when the query fails."""
+    try:
+        response = await client.query_gql_query(
+            name=model.artifact_definition.query_id,
+            variables=variables,
+            update_group=False,
+            branch_name=model.source_branch,
+            timeout=model.artifact_definition.timeout,
+        )
+    except (InfrahubSdkError, httpx.HTTPError):
+        return None
+    return fingerprint_query_data(response)
+
+
+async def _artifacts_with_changed_query_data(
     *,
     model: RequestArtifactDefinitionCheck,
     client: InfrahubClient,
-    query_report: GraphQLQueryReport,
-    artifact_ids: list[str],
-    previous_validator: CoreArtifactValidator | None,
-    previous_run_started_at: Timestamp | None,
+    members: list[InfrahubNode],
+    artifacts_by_member: dict[str, str],
+    parameters: dict[str, str],
+    already_selected: set[str],
 ) -> set[str]:
-    """Return the artifacts whose last check may be out of date for a reason the branch diff no longer shows.
+    """Return the artifacts written on the branch that were rendered from other query data than the branch holds now.
 
-    A branch diff compares the branch with the destination branch, so a value changed back to the destination
-    branch's value is marked unchanged, or left out, while an artifact rendered in between stays on the branch.
-    The edits made on the branch after each artifact's last check are read from the graph instead.
+    The branch diff compares the branch with the destination branch, so a value changed back to the destination
+    branch's value drops out of it, while the artifact rendered from the value in between stays on the branch.
+    An artifact whose rendering has no stored fingerprint, or whose query fails, is returned too.
     """
-    check_records: list[ArtifactCheckRecord] = []
-    if previous_validator is not None:
-        checks = await client.filters(kind=CoreArtifactCheck, validator__ids=[previous_validator.id])
-        check_records = [
-            ArtifactCheckRecord(
-                artifact_id=check.artifact_id.value,
-                checked_at=Timestamp(check.created_at.value),
-                failed=check.conclusion.value == ValidatorConclusion.FAILURE.value,
-            )
-            for check in checks
-            if check.artifact_id.value and check.created_at.value
-        ]
+    written_ids = set(model.artifacts_written_on_branch) - already_selected
+    members_by_artifact = {
+        artifact_id: member
+        for member in members
+        if (artifact_id := artifacts_by_member.get(member.id)) is not None and artifact_id in written_ids
+    }
+    if not members_by_artifact:
+        return set()
 
-    source_branch = registry.get_branch_from_registry(branch=model.source_branch)
-    branched_from = Timestamp(model.source_branched_from or source_branch.get_branched_from())
-    plan = plan_artifact_recheck(
-        artifact_ids=artifact_ids,
-        check_records=check_records,
-        previous_run_started_at=previous_run_started_at,
-        branched_from=branched_from,
+    branch = registry.get_branch_from_registry(branch=model.source_branch)
+    stored = await RenderedQueryData(cache=await get_cache()).get_many(
+        branch_id=str(branch.get_uuid()), artifact_ids=sorted(members_by_artifact)
     )
-    selected = set(plan.always_ids)
-    edits_since = plan.edits_since
-    if edits_since is None:
-        return selected
-
-    database = await get_database()
-    async with database.start_session(read_only=True) as db:
-        edits = await BranchEditReader(db=db).read(
-            branch=source_branch, since=edits_since, kinds=query_report.impacted_models
-        )
-
-    schema_branch = registry.schema.get_schema_branch(name=model.source_branch)
-    for group_ids, group_since, group_latest in (
-        (plan.recent_ids, plan.recent_since, plan.recent_latest),
-        (plan.older_ids, plan.older_since, plan.older_latest),
-    ):
-        if not group_ids or group_since is None or group_latest is None:
-            continue
-        edit_summary = edits_to_diff_summary(
-            edits=edits_seen_since(edits=edits, since=group_since, latest_check=group_latest),
-            branch_name=model.source_branch,
-            schema_branch=schema_branch,
-        )
-        if not edit_summary:
-            continue
-        edit_selection = await get_field_level_impacted_subscribers(
-            query_report=query_report,
-            diff_summary=edit_summary,
-            query_branch=model.source_branch,
-            subscriber_kind=InfrahubKind.ARTIFACT,
-            every_target=sorted(group_ids),
-            client=client,
-        )
-        selected |= group_ids & set(edit_selection.ids)
-    return selected
+    changed = {artifact_id for artifact_id, fingerprint in stored.items() if fingerprint is None}
+    batch = await client.create_batch()
+    for artifact_id, member in members_by_artifact.items():
+        if artifact_id not in changed:
+            batch.add(
+                task=_query_data_fingerprint,
+                node=artifact_id,
+                client=client,
+                model=model,
+                variables=await member.extract(params=parameters),
+            )
+    async for artifact_id, fingerprint in batch.execute():
+        if fingerprint is None or fingerprint != stored[artifact_id]:
+            changed.add(artifact_id)
+    return changed
 
 
 @flow(
@@ -859,13 +848,6 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
             and existing_validator.definition.id == model.artifact_definition.definition_id
         ):
             previous_validator = existing_validator
-
-    # Restarting the validator clears the time its previous run started.
-    previous_run_started_at = (
-        Timestamp(previous_validator.started_at.value)
-        if previous_validator is not None and previous_validator.started_at.value
-        else None
-    )
 
     validator = await start_validator(
         client=client,
@@ -901,21 +883,19 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
     repository = model.branch_diff.get_repository(repository_id=model.artifact_definition.repository_id)
 
     diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
-    query_report = InfrahubGraphQLQueryAnalyzer(
-        query=model.artifact_definition.query_payload,
-        branch=registry.get_branch_from_registry(branch=model.source_branch),
-        schema_branch=registry.schema.get_schema_branch(name=model.source_branch),
-        document=cached_parse(model.artifact_definition.query_payload),
-    ).query_report
     selection = await get_field_level_impacted_subscribers(
-        query_report=query_report,
+        query_report=InfrahubGraphQLQueryAnalyzer(
+            query=model.artifact_definition.query_payload,
+            branch=registry.get_branch_from_registry(branch=model.source_branch),
+            schema_branch=registry.schema.get_schema_branch(name=model.source_branch),
+            document=cached_parse(model.artifact_definition.query_payload),
+        ).query_report,
         diff_summary=diff_summary,
         query_branch=model.source_branch,
         subscriber_kind=InfrahubKind.ARTIFACT,
         every_target=list(artifacts_by_member.values()),
         client=client,
     )
-
     repo_diff_for_definition = repo_diff_or_none(
         branch_diff=model.branch_diff, repository_id=model.artifact_definition.repository_id
     )
@@ -928,22 +908,22 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
         )
     )
 
-    recheck_artifacts: set[str] = set()
+    changed_query_data: set[str] = set()
     if not managed_branch and selection.widening is None:
-        recheck_artifacts = await _select_artifacts_to_recheck(
+        changed_query_data = await _artifacts_with_changed_query_data(
             model=model,
             client=client,
-            query_report=query_report,
-            artifact_ids=list(artifacts_by_member.values()),
-            previous_validator=previous_validator,
-            previous_run_started_at=previous_run_started_at,
+            members=[relationship.peer for relationship in group.members.peers],
+            artifacts_by_member=artifacts_by_member,
+            parameters=artifact_definition.parameters.value,
+            already_selected=set(selection.ids),
         )
-    impacted_artifacts = set(selection.ids) | recheck_artifacts
-    if recheck_artifacts:
+    impacted_artifacts = sorted(set(selection.ids) | changed_query_data)
+    if changed_query_data:
         log.info(
-            f"Artifact definition {artifact_definition.name.value}: {len(recheck_artifacts)} artifacts were edited "
-            "on the branch after their last check, failed that check, or were checked before the branch was "
-            "rebased, and will be re-rendered."
+            f"Artifact definition {artifact_definition.name.value}: {len(changed_query_data)} artifacts rendered on "
+            "the branch were rendered from other query data than the branch holds now, or cannot be compared, "
+            "and will be re-rendered."
         )
     if selection.widening is not None:
         log.warning(
@@ -1439,22 +1419,6 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
         )
 
 
-async def _artifact_check_starts(client: InfrahubClient, proposed_change_id: str) -> dict[str, Timestamp]:
-    """Return, per artifact definition, when the proposed change last started checking its artifacts."""
-    validators = await client.filters(
-        kind=CoreArtifactValidator, proposed_change__ids=[proposed_change_id], include=["definition"]
-    )
-    started: dict[str, Timestamp] = {}
-    for validator in validators:
-        if not validator.started_at.value or not validator.definition.id:
-            continue
-        started_at = Timestamp(validator.started_at.value)
-        known = started.get(validator.definition.id)
-        if known is None or started_at < known:
-            started[validator.definition.id] = started_at
-    return started
-
-
 @flow(
     name="proposed-changed-refresh-artifacts",
     flow_run_name="Trigger artifacts refresh",
@@ -1478,36 +1442,14 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
         modified_kinds=get_modified_kinds(diff_summary=diff_summary, branch=model.source_branch),
         branch=model.source_branch,
     )
-    read_kinds_by_definition = {
-        artifact_definition.definition_id: InfrahubGraphQLQueryAnalyzer(
-            query=artifact_definition.query_payload,
-            branch=registry.get_branch_from_registry(branch=model.source_branch),
-            schema_branch=registry.schema.get_schema_branch(name=model.source_branch),
-            document=cached_parse(artifact_definition.query_payload),
-        ).query_report.impacted_models
-        for artifact_definition in artifact_definitions
-    }
-    last_check_started = await _artifact_check_starts(client=client, proposed_change_id=model.proposed_change)
-
-    # A rebase moves the branch point, so it is read from the database rather than from this worker's registry.
     database = await get_database()
     async with database.start_session(read_only=True) as db:
+        # A rebase moves the branch point, so the branch is read from the database rather than from the registry.
         source_branch = await Branch.get_by_name(name=model.source_branch, db=db)
-        branched_from = Timestamp(source_branch.get_branched_from())
-        latest_edit_by_kind: dict[str, Timestamp] = {}
-        if last_check_started:
-            edits = await BranchEditReader(db=db).read(
-                branch=source_branch,
-                since=min(last_check_started.values()),
-                kinds={
-                    kind
-                    for definition_id in last_check_started
-                    for kind in read_kinds_by_definition.get(definition_id, [])
-                },
-            )
-            for edit in edits:
-                if edit.kind not in latest_edit_by_kind or latest_edit_by_kind[edit.kind] < edit.edited_at:
-                    latest_edit_by_kind[edit.kind] = edit.edited_at
+        branch_artifacts = await ArtifactsWrittenOnBranchReader(db=db).read(branch=source_branch)
+    branch_artifact_ids: dict[str, list[str]] = defaultdict(list)
+    for branch_artifact in branch_artifacts:
+        branch_artifact_ids[branch_artifact.definition_id].append(branch_artifact.artifact_id)
 
     for artifact_definition in artifact_definitions:
         select = DefinitionSelect.NONE
@@ -1533,24 +1475,22 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
             if transform_outcome.reason is not None:
                 log.info(transform_outcome.reason)
 
-        read_kinds = read_kinds_by_definition[artifact_definition.definition_id]
+        read_kinds = InfrahubGraphQLQueryAnalyzer(
+            query=artifact_definition.query_payload,
+            branch=registry.get_branch_from_registry(branch=model.source_branch),
+            schema_branch=registry.schema.get_schema_branch(name=model.source_branch),
+            document=cached_parse(artifact_definition.query_payload),
+        ).query_report.impacted_models
         select = select.add_flag(
             current=select,
             flag=DefinitionSelect.MODIFIED_KINDS,
             condition=any(changed_model in read_kinds for changed_model in modified_kinds),
         )
-        last_check = last_check_started.get(artifact_definition.definition_id)
-        if last_check is not None:
-            select = select.add_flag(
-                current=select, flag=DefinitionSelect.REBASED, condition=last_check < branched_from
-            )
-            select = select.add_flag(
-                current=select,
-                flag=DefinitionSelect.BRANCH_EDITS,
-                condition=any(
-                    kind in latest_edit_by_kind and latest_edit_by_kind[kind] > last_check for kind in read_kinds
-                ),
-            )
+        select = select.add_flag(
+            current=select,
+            flag=DefinitionSelect.ARTIFACTS_ON_BRANCH,
+            condition=artifact_definition.definition_id in branch_artifact_ids,
+        )
 
         if select:
             log.info(f"Trigger processing of {artifact_definition.definition_name}")
@@ -1561,7 +1501,7 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
                 source_branch=model.source_branch,
                 source_branch_sync_with_git=model.source_branch_sync_with_git,
                 destination_branch=model.destination_branch,
-                source_branched_from=branched_from.to_string(),
+                artifacts_written_on_branch=branch_artifact_ids.get(artifact_definition.definition_id, []),
             )
 
             await get_workflow().submit_workflow(

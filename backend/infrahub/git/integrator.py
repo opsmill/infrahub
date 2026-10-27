@@ -51,6 +51,7 @@ from pydantic import ValidationError as PydanticValidationError
 from typing_extensions import Self
 
 from infrahub import config, lock
+from infrahub.artifacts.query_data import RenderedQueryData, fingerprint_query_data
 from infrahub.auth.session import AnonymousSession
 from infrahub.context import InfrahubContext
 from infrahub.core.constants import ArtifactStatus, ContentType, InfrahubKind, RepositoryObjects, RepositorySyncStatus
@@ -78,7 +79,7 @@ from infrahub.git.fingerprint.composer import (
     build_fingerprint_composer,
 )
 from infrahub.log import get_logger
-from infrahub.workers.dependencies import get_event_service
+from infrahub.workers.dependencies import get_cache, get_event_service
 from infrahub.workflows.utils import add_tags
 
 if TYPE_CHECKING:
@@ -93,6 +94,7 @@ if TYPE_CHECKING:
     from infrahub_sdk.transforms import InfrahubTransform
 
     from infrahub.artifacts.models import CheckArtifactCreate
+    from infrahub.core.branch import Branch
     from infrahub.git.closure_builder.result import ClosureResult
     from infrahub.git.models import RequestArtifactGenerate
 
@@ -2240,6 +2242,13 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         artifact_created: bool,
         message: CheckArtifactCreate | RequestArtifactGenerate,
     ) -> ArtifactGenerateResult:
+        branch = registry.get_branch_from_registry(branch=message.branch_name)
+        # Proposed change checks are the only reader, and they never check the default branch.
+        rendered_query_data = None if branch.is_default else RenderedQueryData(cache=await get_cache())
+        if rendered_query_data is not None:
+            # A rendering that fails must not leave the fingerprint of an earlier one behind.
+            await rendered_query_data.forget(branch_id=str(branch.get_uuid()), artifact_id=artifact.id)
+
         response = await self.sdk.query_gql_query(
             name=message.query_id,
             variables=message.variables,
@@ -2249,7 +2258,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             branch_name=message.branch_name,
             timeout=message.timeout,
         )
-        branch = registry.get_branch_from_registry(branch=message.branch_name)
 
         previous_checksum = artifact.checksum.value
         previous_storage_id = artifact.storage_id.value
@@ -2283,6 +2291,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             not message.check_stored_file
             or await self._stored_content_matches(storage_id=artifact.storage_id.value, checksum=checksum)
         ):
+            await self._remember_query_data(
+                rendered_query_data=rendered_query_data, branch=branch, artifact_id=artifact.id, data=response
+            )
             return ArtifactGenerateResult(
                 changed=False, checksum=checksum, storage_id=artifact.storage_id.value, artifact_id=artifact.id
             )
@@ -2316,7 +2327,20 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         event_service = await get_event_service()
         await event_service.send(event=event)
+        await self._remember_query_data(
+            rendered_query_data=rendered_query_data, branch=branch, artifact_id=artifact.id, data=response
+        )
         return ArtifactGenerateResult(changed=True, checksum=checksum, storage_id=storage_id, artifact_id=artifact.id)
+
+    @staticmethod
+    async def _remember_query_data(
+        rendered_query_data: RenderedQueryData | None, branch: Branch, artifact_id: str, data: dict[str, Any]
+    ) -> None:
+        if rendered_query_data is None:
+            return
+        await rendered_query_data.save(
+            branch_id=str(branch.get_uuid()), artifact_id=artifact_id, fingerprint=fingerprint_query_data(data)
+        )
 
 
 def repo_object_type_to_file_type(repo_object: RepositoryObjects) -> type[InfrahubFile]:
