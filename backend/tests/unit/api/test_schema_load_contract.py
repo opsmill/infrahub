@@ -42,6 +42,15 @@ LOAD_CONTRACT_CASES = [
         accepted=True,
     ),
     LoadContractCase(
+        name="infrahub-version-accepted",
+        payload={
+            "version": "1.0",
+            "infrahub_version": "1.13.0",
+            "nodes": [{"namespace": "Test", "name": "Widget", "attributes": [{"name": "field_one", "kind": "Text"}]}],
+        },
+        accepted=True,
+    ),
+    LoadContractCase(
         name="unknown-field-on-extension-rejected",
         payload={"version": "1.0", "extensions": {"nodes": [{"kind": "BuiltinTag", "namespace": "Dropped"}]}},
         accepted=False,
@@ -268,6 +277,17 @@ def test_read_only_fields_are_reported_as_warnings_grouped_by_field() -> None:
 def test_a_payload_without_read_only_fields_reports_no_warning() -> None:
     payload = {
         "version": "1.0",
+        "nodes": [{"namespace": "Test", "name": "Widget", "attributes": [{"name": "field_one", "kind": "Text"}]}],
+    }
+
+    assert SchemaLoadAPI.model_validate(payload).contract_warnings == []
+
+
+def test_infrahub_version_reports_no_warning() -> None:
+    # An exported schema records the release that produced it and must load back silently.
+    payload = {
+        "version": "1.0",
+        "infrahub_version": "1.13.0",
         "nodes": [{"namespace": "Test", "name": "Widget", "attributes": [{"name": "field_one", "kind": "Text"}]}],
     }
 

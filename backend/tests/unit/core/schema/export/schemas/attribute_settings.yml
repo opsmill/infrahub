@@ -1,0 +1,39 @@
+# Dropdown choices, validation settings in their deprecated form, NumberPool ranges, deprecated node properties.
+version: "1.0"
+nodes:
+  - name: Circuit
+    namespace: Settings
+    display_labels: ["circuit_id__value"]
+    default_filter: circuit_id__value
+    attributes:
+      - name: circuit_id
+        kind: Text
+        unique: true
+        regex: "^[A-Z]{3}-[0-9]+$"
+        min_length: 5
+        max_length: 20
+      - name: comment
+        kind: TextArea
+        optional: true
+        parameters:
+          max_length: 500
+      - name: status
+        kind: Dropdown
+        optional: true
+        choices:
+          - name: active
+            color: "#7fbf7f"
+          - name: planned
+          - name: decommissioned
+            label: Retired
+            description: No longer in service
+      - name: vlan_id
+        kind: NumberPool
+        read_only: true
+        parameters:
+          ranges:
+            - start: 100
+              end: 199
+            - start: 300
+              end: 399
+              weight: 2

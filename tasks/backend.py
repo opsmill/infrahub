@@ -666,7 +666,8 @@ def _sdk_root(suffix: str, with_version: bool, model_config_args: str, with_exte
     config_field = [f"model_config = ConfigDict({model_config_args})"] if model_config_args else []
     # Required on write: the load endpoint rejects a payload without it, so the offline
     # validator must reach the same verdict.
-    version_field = ["version: str"] if with_version else []
+    # An export records the release that produced it; the load accepts the value and ignores it.
+    version_field = ["version: str", "infrahub_version: str | None = None"] if with_version else []
     extensions_field = [f"extensions: SchemaExtension{suffix} | None = None"] if with_extensions else []
     fields = [
         *config_field,

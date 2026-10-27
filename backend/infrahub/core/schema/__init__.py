@@ -71,6 +71,7 @@ class SchemaRoot(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     version: str | None = Field(default=None)
+    infrahub_version: str | None = Field(default=None, description="Release that exported the schema, never read")
     generics: list[GenericSchema] = Field(default_factory=list)
     nodes: list[NodeSchema] = Field(default_factory=list)
     extensions: SchemaExtension = SchemaExtension()

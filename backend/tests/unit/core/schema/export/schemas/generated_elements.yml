@@ -1,0 +1,34 @@
+# Elements that processing adds next to the ones a schema owner writes, and schema extensions.
+version: "1.0"
+nodes:
+  - name: Collector
+    namespace: Generated
+    generate_template: true
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+    relationships:
+      - name: watched_groups
+        peer: CoreStandardGroup
+        kind: Group
+        cardinality: many
+        optional: true
+  - name: Probe
+    namespace: Generated
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+extensions:
+  nodes:
+    - kind: GeneratedProbe
+      attributes:
+        - name: location
+          kind: Text
+          optional: true
+    - kind: BuiltinTag
+      attributes:
+        - name: owner_team
+          kind: Text
+          optional: true

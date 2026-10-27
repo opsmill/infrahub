@@ -368,6 +368,15 @@ class PoolExhaustedError(Error):
         super().__init__(self.message)
 
 
+class SchemaExportError(Error):
+    HTTP_CODE: int = 500
+    DESCRIPTION: str = "The exported schema would not load back as it is"
+
+    def __init__(self, message: str) -> None:
+        self.message = f"Unable to export the schema: {message}"
+        super().__init__(self.message)
+
+
 class SchemaNotFoundError(Error):
     HTTP_CODE: int = 422
 

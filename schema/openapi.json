@@ -1322,6 +1322,91 @@
                 }
             }
         },
+        "/api/schema/export": {
+            "get": {
+                "summary": "Export the user-defined schema in the schema file format",
+                "description": "Return the user-defined nodes and generics of a branch as one schema file document, which loads into another instance through `POST /api/schema/load` without editing. Restricted namespaces, the core models, inherited and generated elements, IDs and hashes are left out. `brief` also leaves out every value that Infrahub derives again on load; `full` writes them, so a load overwrites them on an instance that already has the schema.",
+                "operationId": "export_schema_api_schema_export_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    },
+                    {
+                        "APIKeyHeader": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "namespaces",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Namespaces"
+                        }
+                    },
+                    {
+                        "name": "mode",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/SchemaExportMode",
+                            "default": "brief"
+                        }
+                    },
+                    {
+                        "name": "branch",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Name of the branch to use for the query",
+                            "title": "Branch"
+                        },
+                        "description": "Name of the branch to use for the query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The exported schema",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SchemaLoadAPI"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/schema/{schema_kind}": {
             "get": {
                 "summary": "Get Schema By Kind",
@@ -8567,6 +8652,14 @@
                 "type": "object",
                 "title": "SchemaDiff"
             },
+            "SchemaExportMode": {
+                "type": "string",
+                "enum": [
+                    "brief",
+                    "full"
+                ],
+                "title": "SchemaExportMode"
+            },
             "SchemaExtensionWrite": {
                 "properties": {
                     "nodes": {
@@ -8586,6 +8679,17 @@
                     "version": {
                         "type": "string",
                         "title": "Version"
+                    },
+                    "infrahub_version": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Infrahub Version"
                     },
                     "nodes": {
                         "items": {

@@ -23,16 +23,17 @@ from pydantic import (
 )
 from pydantic import ValidationError as PydanticValidationError
 from pydantic_core import InitErrorDetails, PydanticCustomError
+from starlette.concurrency import run_in_threadpool
 from starlette.responses import JSONResponse
 
-from infrahub import lock
+from infrahub import __version__, lock
 from infrahub.api.dependencies import get_branch_dep, get_context, get_current_user, get_db, get_permission_manager
 from infrahub.api.exceptions import SchemaNotValidError
 from infrahub.branch.status_checker import BranchStatusChecker
 from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch  # noqa: TC001
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions, PermissionDecision
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions, PermissionDecision, SchemaExportMode
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.models import (  # noqa: TC001
     SchemaBranchHash,
@@ -52,6 +53,7 @@ from infrahub.core.schema import (
     TemplateSchema,
 )
 from infrahub.core.schema.constants import SchemaNamespace  # noqa: TC001
+from infrahub.core.schema.export.exporter import build_schema_exporter
 from infrahub.core.schema.update_coordinator import MigrationExecutor, SchemaUpdateCoordinator
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.validators.models.validate_migration import (
@@ -281,6 +283,43 @@ async def get_schema_summary(
     log.debug("schema_summary_request", branch=branch.name)
     schema_branch = registry.schema.get_schema_branch(name=branch.name)
     return schema_branch.get_hash_full()
+
+
+@router.get(
+    "/export",
+    response_model=None,
+    # The document is the one the load accepts; a response model would split the write schemas into input and
+    # output variants and rename the published ones.
+    responses={
+        200: {
+            "description": "The exported schema",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SchemaLoadAPI"}}},
+        }
+    },
+    summary="Export the user-defined schema in the schema file format",
+    description=(
+        "Return the user-defined nodes and generics of a branch as one schema file document, which loads into "
+        "another instance through `POST /api/schema/load` without editing. Restricted namespaces, the core models, "
+        "inherited and generated elements, IDs and hashes are left out. `brief` also leaves out every value that "
+        "Infrahub derives again on load; `full` writes them, so a load overwrites them on an instance that already "
+        "has the schema."
+    ),
+)
+async def export_schema(
+    branch: Branch = Depends(get_branch_dep),
+    namespaces: list[str] | None = Query(default=None),
+    mode: SchemaExportMode = Query(default=SchemaExportMode.BRIEF),
+    _: AccountSession = Depends(get_current_user),
+) -> JSONResponse:
+    log.debug("schema_export_request", branch=branch.name, mode=mode.value)
+    exporter = build_schema_exporter(infrahub_version=__version__)
+    exported = await run_in_threadpool(
+        exporter.export,
+        schema_branch=registry.schema.get_schema_branch(name=branch.name),
+        namespaces=namespaces,
+        mode=mode,
+    )
+    return JSONResponse(content=exported.model_dump(mode="json", exclude_unset=True))
 
 
 @router.get("/{schema_kind}")

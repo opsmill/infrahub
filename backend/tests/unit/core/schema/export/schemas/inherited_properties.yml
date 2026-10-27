@@ -1,0 +1,40 @@
+# Properties a node takes from its generic stay on the node; a unique attribute gives the human-friendly ID.
+version: "1.0"
+generics:
+  - name: Interface
+    namespace: Network
+    icon: mdi:ethernet
+    human_friendly_id: ["device__name__value", "name__value"]
+    display_label: "{{ device__name__value }} {{ name__value }}"
+    order_by: ["name__value"]
+    default_filter: name__value
+    attributes:
+      - name: name
+        kind: Text
+      - name: description
+        kind: Text
+        optional: true
+    relationships:
+      - name: device
+        peer: NetworkDevice
+        cardinality: one
+        optional: false
+        kind: Attribute
+nodes:
+  - name: Device
+    namespace: Network
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+  - name: PhysicalInterface
+    namespace: Network
+    inherit_from: [NetworkInterface]
+    attributes:
+      - name: speed
+        kind: Number
+  - name: VirtualInterface
+    namespace: Network
+    inherit_from: [NetworkInterface]
+    icon: mdi:lan
+    order_by: ["description__value"]

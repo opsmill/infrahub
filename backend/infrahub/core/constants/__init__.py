@@ -183,6 +183,11 @@ class BranchSupportType(InfrahubStringEnum):
     LOCAL = "local"
 
 
+class SchemaExportMode(InfrahubStringEnum):
+    BRIEF = "brief"
+    FULL = "full"
+
+
 class ComputedAttributeKind(InfrahubStringEnum):
     USER = "User"
     JINJA2 = "Jinja2"

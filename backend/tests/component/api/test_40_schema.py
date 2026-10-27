@@ -9,7 +9,7 @@ from infrahub_sdk.schema.generated.read import (
     RelationshipSchemaRead,
 )
 
-from infrahub import config
+from infrahub import __version__, config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
@@ -168,6 +168,101 @@ async def test_schema_read_endpoint_wrong_branch(
 
     assert response.status_code == 400
     assert response.json() is not None
+
+
+def _exported_kinds(exported: dict[str, typing.Any]) -> dict[str, list[str]]:
+    return {
+        section: [f"{element['namespace']}{element['name']}" for element in exported[section]]
+        for section in ("generics", "nodes")
+    }
+
+
+async def test_schema_export_endpoint_returns_the_user_defined_schema(
+    db: InfrahubDatabase,
+    client: TestClient,
+    client_headers: dict[str, str],
+    default_branch: Branch,
+    car_person_schema_generics: SchemaRoot,
+) -> None:
+    with client:
+        response = client.get("/api/schema/export", headers=client_headers)
+
+    assert response.status_code == 200
+    exported = response.json()
+    assert exported["version"] == "1.0"
+    assert exported["infrahub_version"] == __version__
+    assert _exported_kinds(exported=exported) == {
+        "generics": ["TestCar"],
+        "nodes": ["TestElectricCar", "TestGazCar", "TestPerson"],
+    }
+    person = next(node for node in exported["nodes"] if node["name"] == "Person")
+    assert person["attributes"] == [
+        {"name": "name", "kind": "Text", "unique": True},
+        {"name": "height", "kind": "Number", "optional": True},
+    ]
+
+
+async def test_schema_export_endpoint_full_mode_writes_derived_values(
+    db: InfrahubDatabase,
+    client: TestClient,
+    client_headers: dict[str, str],
+    default_branch: Branch,
+    car_person_schema_generics: SchemaRoot,
+) -> None:
+    with client:
+        response = client.get("/api/schema/export?mode=full&namespaces=Test", headers=client_headers)
+
+    assert response.status_code == 200
+    person = next(node for node in response.json()["nodes"] if node["name"] == "Person")
+    assert {attribute["name"]: attribute["label"] for attribute in person["attributes"]} == {
+        "name": "Name",
+        "height": "Height",
+    }
+
+
+async def test_schema_export_endpoint_selects_the_branch(
+    db: InfrahubDatabase,
+    client: TestClient,
+    client_headers: dict[str, str],
+    default_branch: Branch,
+    car_person_schema_generics: SchemaRoot,
+) -> None:
+    await create_branch(branch_name="branch1", db=db)
+    branch_schema = registry.schema.get_schema_branch(name=default_branch.name).duplicate(name="branch1")
+    branch_schema.load_schema(
+        schema=SchemaRoot(
+            nodes=[{"name": "Bike", "namespace": "Test", "attributes": [{"name": "name", "kind": "Text"}]}]
+        )
+    )
+    branch_schema.process()
+    registry.schema.set_schema_branch(name="branch1", schema=branch_schema)
+
+    with client:
+        on_branch = client.get("/api/schema/export?branch=branch1", headers=client_headers)
+        on_main = client.get("/api/schema/export", headers=client_headers)
+
+    assert _exported_kinds(exported=on_branch.json())["nodes"] == [
+        "TestBike",
+        "TestElectricCar",
+        "TestGazCar",
+        "TestPerson",
+    ]
+    assert _exported_kinds(exported=on_main.json())["nodes"] == ["TestElectricCar", "TestGazCar", "TestPerson"]
+
+
+async def test_schema_export_endpoint_rejects_an_unknown_branch_or_mode(
+    db: InfrahubDatabase,
+    client: TestClient,
+    client_headers: dict[str, str],
+    default_branch: Branch,
+    car_person_schema_generics: SchemaRoot,
+) -> None:
+    with client:
+        unknown_branch = client.get("/api/schema/export?branch=notvalid", headers=client_headers)
+        unknown_mode = client.get("/api/schema/export?mode=ids", headers=client_headers)
+
+    assert unknown_branch.status_code == 400
+    assert unknown_mode.status_code == 422
 
 
 async def test_schema_load_blocked_on_merged_branch(
@@ -578,6 +673,11 @@ async def test_schema_read_endpoints_anonymous_account(
 
     with client:
         response = client.get("/api/schema/json_schema/TestCar")
+
+    assert response.status_code == 200 if allow_anonymous_access else 401
+
+    with client:
+        response = client.get("/api/schema/export")
 
     assert response.status_code == 200 if allow_anonymous_access else 401
 

@@ -335,6 +335,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/schema/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export the user-defined schema in the schema file format
+         * @description Return the user-defined nodes and generics of a branch as one schema file document, which loads into another instance through `POST /api/schema/load` without editing. Restricted namespaces, the core models, inherited and generated elements, IDs and hashes are left out. `brief` also leaves out every value that Infrahub derives again on load; `full` writes them, so a load overwrites them on an instance that already has the schema.
+         */
+        get: operations["export_schema_api_schema_export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/schema/{schema_kind}": {
         parameters: {
             query?: never;
@@ -3269,6 +3289,11 @@ export interface components {
                 [key: string]: components["schemas"]["HashableModelDiff"];
             };
         };
+        /**
+         * SchemaExportMode
+         * @enum {string}
+         */
+        SchemaExportMode: "brief" | "full";
         /** SchemaExtensionWrite */
         SchemaExtensionWrite: {
             /**
@@ -3281,6 +3306,8 @@ export interface components {
         SchemaLoadAPI: {
             /** Version */
             version: string;
+            /** Infrahub Version */
+            infrahub_version?: string | null;
             /** Nodes */
             nodes?: components["schemas"]["NodeSchemaWrite"][];
             /** Generics */
@@ -4578,6 +4605,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SchemaBranchHash"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_schema_api_schema_export_get: {
+        parameters: {
+            query?: {
+                namespaces?: string[] | null;
+                mode?: components["schemas"]["SchemaExportMode"];
+                /** @description Name of the branch to use for the query */
+                branch?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The exported schema */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SchemaLoadAPI"];
                 };
             };
             /** @description Validation Error */

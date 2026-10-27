@@ -1,0 +1,56 @@
+# Values that processing derives, set equal to and different from the derived value.
+version: "1.0"
+nodes:
+  - name: Router
+    namespace: Derived
+    label: Router
+    attributes:
+      - name: hostname
+        kind: Text
+        unique: true
+        label: Hostname
+      - name: serial_number
+        kind: Text
+        label: Serial
+        optional: true
+        order_weight: 5000
+      - name: role
+        kind: Text
+        default_value: edge
+      - name: asn
+        kind: Number
+        optional: true
+        branch: agnostic
+        order_weight: 7000
+    relationships:
+      - name: site
+        peer: DerivedSite
+        cardinality: one
+        optional: false
+        kind: Attribute
+      - name: uplinks
+        peer: DerivedSite
+        cardinality: many
+        identifier: router_uplink_sites
+        on_delete: cascade
+        label: Uplink sites
+  - name: Site
+    namespace: Derived
+    label: Physical site
+    uniqueness_constraints:
+      - ["name__value", "code__value"]
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: code
+        kind: Text
+    relationships:
+      - name: routers
+        peer: DerivedRouter
+        cardinality: many
+        kind: Component
+      - name: uplink_routers
+        peer: DerivedRouter
+        cardinality: many
+        identifier: router_uplink_sites

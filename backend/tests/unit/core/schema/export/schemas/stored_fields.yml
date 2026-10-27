@@ -1,0 +1,120 @@
+# Fields that processing never derives, each set to a value other than its default.
+version: "1.0"
+generics:
+  - name: Asset
+    namespace: Stored
+    description: Something the organization owns
+    documentation: https://example.com/assets
+    include_in_menu: false
+    generate_profile: false
+    restricted_namespaces: ["Stored"]
+    branch: agnostic
+    menu_placement: StoredCluster
+    display_labels: ["name__value"]
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+nodes:
+  - name: Server
+    namespace: Stored
+    inherit_from: ["StoredAsset"]
+    description: A physical server
+    documentation: https://example.com/servers
+    branch: agnostic
+    generate_profile: false
+    menu_placement: StoredAsset
+    order_by: ["name__value"]
+    human_friendly_id: ["name__value"]
+    attributes:
+      - name: role
+        kind: Text
+        enum: ["compute", "storage"]
+        optional: true
+        description: What the server is used for
+      - name: hostname
+        kind: Text
+        optional: true
+        parameters:
+          regex: "^[a-z0-9-]+$"
+          min_length: 3
+      - name: notes
+        kind: TextArea
+        optional: true
+        display: extra
+        allow_override: none
+      - name: aliases
+        kind: List
+        optional: true
+        ordered: false
+        parameters:
+          regex: "^[a-z]+$"
+      - name: rack_unit
+        kind: Number
+        optional: true
+        parameters:
+          min_value: 1
+          max_value: 48
+          excluded_values: "13,40-42"
+      - name: legacy_id
+        kind: Text
+        optional: true
+        deprecation: Use name instead
+      - name: owner_team
+        kind: Text
+        optional: true
+        read_only: true
+        computed_attribute:
+          kind: User
+    relationships:
+      - name: datacenter
+        peer: StoredDatacenter
+        cardinality: one
+        optional: false
+        kind: Parent
+      - name: cluster
+        peer: StoredCluster
+        cardinality: one
+        optional: true
+        direction: outbound
+        read_only: true
+        common_parent: datacenter
+        display: extra
+        description: Cluster the server belongs to
+        order_weight: 50
+        branch: agnostic
+      - name: peers
+        peer: StoredServer
+        cardinality: many
+        min_count: 0
+        max_count: 4
+        common_relatives: ["cluster"]
+        deprecation: Use cluster instead
+        allow_override: none
+  - name: Cluster
+    namespace: Stored
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+    relationships:
+      - name: datacenter
+        peer: StoredDatacenter
+        cardinality: one
+        optional: false
+        kind: Parent
+  - name: Datacenter
+    namespace: Stored
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+    relationships:
+      - name: clusters
+        peer: StoredCluster
+        cardinality: many
+        kind: Component
+      - name: servers
+        peer: StoredServer
+        cardinality: many
+        kind: Component
