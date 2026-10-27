@@ -14,6 +14,7 @@ infrahub:
         INFRAHUB_DB_ADDRESS: infrahub-headless.infrahub.svc.cluster.local # use FQDN to match neo4j's Helm cluster domain so that client-side routing is used
         INFRAHUB_DB_PROTOCOL: neo4j # required for client-side routing
         INFRAHUB_BROKER_ADDRESS: messagequeue-rabbitmq
+        INFRAHUB_BROKER_QUEUE_TYPE: quorum
         INFRAHUB_CACHE_ADDRESS: redis-sentinel-proxy
         INFRAHUB_CACHE_PORT: 6379
         INFRAHUB_WORKFLOW_ADDRESS: prefect-server
@@ -48,6 +49,7 @@ infrahub:
         INFRAHUB_DB_ADDRESS: infrahub-headless.infrahub.svc.cluster.local # use FQDN to match neo4j's Helm cluster domain so that client-side routing is used
         INFRAHUB_DB_PROTOCOL: neo4j # required for client-side routing
         INFRAHUB_BROKER_ADDRESS: messagequeue-rabbitmq
+        INFRAHUB_BROKER_QUEUE_TYPE: quorum
         INFRAHUB_CACHE_ADDRESS: redis-sentinel-proxy
         INFRAHUB_CACHE_PORT: 6379
         INFRAHUB_WORKFLOW_ADDRESS: prefect-server

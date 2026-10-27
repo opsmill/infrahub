@@ -24,7 +24,7 @@ A highly available Infrahub deployment runs redundant instances of every statefu
 
 - **Neo4j cluster** — 3+ nodes for graph database redundancy with automatic failover
 - **Redis Sentinel** — automatic detection of master failures and promotion of replicas
-- **RabbitMQ cluster** — message bus redundancy with mirrored queues
+- **RabbitMQ cluster** — message bus redundancy with quorum queues replicated across the cluster nodes
 - **PostgreSQL replication** — task manager database with primary-replica setup
 - **Multiple API and worker instances** — stateless services distributed across availability zones
 - **Redundant load balancers** — fronting the API layer for traffic distribution
@@ -139,6 +139,45 @@ INFRAHUB_DB_ADDRESS=neo4j-core-1,neo4j-core-2,neo4j-core-3
 ```
 
 In both cases the driver tries the members in turn until one answers, so the initial connection succeeds even when some members are down.
+
+## Connecting Infrahub to a RabbitMQ cluster
+
+RabbitMQ 4.0 removed classic queue mirroring. A classic queue is stored on one node of the cluster: when that node stops, the queue is unavailable, and Infrahub cannot send or receive the messages that use it until the node is back. A quorum queue stores a copy of its messages on several nodes, and RabbitMQ elects a new leader for the queue when the node of the current leader stops.
+
+Set `INFRAHUB_BROKER_QUEUE_TYPE` to `quorum` on the Infrahub server and the task workers, so that Infrahub declares its durable queues as quorum queues:
+
+```bash
+INFRAHUB_BROKER_QUEUE_TYPE=quorum
+```
+
+- The queues that each Infrahub process creates for its own replies and events stay classic queues. RabbitMQ deletes them when the process disconnects, and the process creates them again when it reconnects.
+- A quorum queue stays available while a majority of its copies are on running nodes, so a 3-node cluster continues to operate when one node stops.
+- Set `INFRAHUB_BROKER_ADDRESS` to an address that reaches every node of the cluster, such as the Kubernetes service of the RabbitMQ cluster or a TCP load balancer. When the node of a connection stops, Infrahub reconnects to that address.
+
+:::warning
+
+Do not set the default queue type of the RabbitMQ virtual host to `quorum` while `INFRAHUB_BROKER_QUEUE_TYPE` is `classic`. RabbitMQ then declares the durable queues of Infrahub as quorum queues with an argument that quorum queues reject, and the Infrahub server fails to start.
+
+:::
+
+### Switch an existing deployment to quorum queues
+
+RabbitMQ does not change the type of an existing queue. When the durable queues already exist as classic queues, the Infrahub server fails to start with a `PRECONDITION_FAILED - inequivalent arg` error until you delete them. Deleting a queue discards the messages it holds.
+
+1. Stop the Infrahub server and the task workers.
+2. Delete the durable queues in the virtual host that Infrahub uses (`INFRAHUB_BROKER_VIRTUALHOST`, `/` by default). The queue names start with the value of `INFRAHUB_BROKER_NAMESPACE`, `infrahub` by default:
+
+   ```bash
+   rabbitmqctl delete_queue --vhost / infrahub.rpcs
+   rabbitmqctl delete_queue --vhost / infrahub.delay.five_seconds
+   rabbitmqctl delete_queue --vhost / infrahub.delay.ten_seconds
+   rabbitmqctl delete_queue --vhost / infrahub.delay.twenty_seconds
+   ```
+
+3. Set `INFRAHUB_BROKER_QUEUE_TYPE` to `quorum` on the Infrahub server and the task workers.
+4. Start the Infrahub server, then the task workers. The server declares the durable queues again as quorum queues.
+
+To switch back to classic queues, follow the same steps with `INFRAHUB_BROKER_QUEUE_TYPE` set to `classic`.
 
 ## Load balancer configuration
 
