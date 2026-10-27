@@ -3,14 +3,18 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import sys
+from pathlib import Path
 
 from fastapi import APIRouter, FastAPI
 from prefect.context import refresh_global_settings_context
 from prefect.server.api.server import create_app
+from pydantic import ValidationError
 
 from . import events
 from .bootstrap import init_prefect
 from .retention import apply_prefect_retention_env, prefect_retention_env_in_effect
+from .retention_settings import load_task_manager_settings, print_configuration_errors
 
 log = logging.getLogger(__name__)
 
@@ -35,12 +39,18 @@ async def _init_prefect() -> None:
 
 
 def apply_infrahub_settings_to_prefect() -> None:
-    """Load Infrahub's configuration into Prefect's retention settings and log them, exiting when it is invalid."""
-    # The original Prefect container used by some test suites has no infrahub package.
-    from infrahub import config  # noqa: PLC0415
+    """Read the task manager section of Infrahub's configuration into Prefect's retention settings and log them, exiting when it is invalid."""
+    # Sets up the log handler and level that the retention lines need, and is imported here because the stock
+    # Prefect container of some test suites has no infrahub package.
+    import infrahub.log  # noqa: F401, PLC0415
 
-    config.SETTINGS.initialize_and_exit()
-    for warning in apply_prefect_retention_env(environ=os.environ, settings=config.SETTINGS.task_manager.retention):
+    config_file = Path(os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")).resolve()
+    try:
+        retention = load_task_manager_settings(config_file=config_file).retention
+    except ValidationError as error:
+        print_configuration_errors(error=error)
+        sys.exit(1)
+    for warning in apply_prefect_retention_env(environ=os.environ, settings=retention):
         log.warning(warning)
     # Prefect reads its settings from the environment once at import, so new values apply only after a refresh.
     refresh_global_settings_context()
@@ -66,6 +76,9 @@ def create_infrahub_prefect() -> FastAPI:
         and os.getenv("PREFECT_API_DATABASE_MIGRATE_ON_START") == "false"
     ):
         # We are probably running distributed mode
+        from infrahub import config  # noqa: PLC0415
+
+        config.SETTINGS.initialize_and_exit()
         asyncio.run(_init_prefect())
 
     return create_prefect_app_with_infrahub_routes()

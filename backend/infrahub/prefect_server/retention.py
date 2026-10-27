@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
     from pydantic_settings import BaseSettings
 
-    from infrahub.config import TaskManagerRetentionSettings
+    from .retention_settings import TaskManagerRetentionSettings
 
 _STATE_NAMES = (
     "AwaitingConcurrencySlot",

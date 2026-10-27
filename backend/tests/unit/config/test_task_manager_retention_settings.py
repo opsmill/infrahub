@@ -9,11 +9,13 @@ import pytest
 from pydantic import ValidationError
 
 from infrahub.config import TaskManagerRetentionSettings, load
+from infrahub.prefect_server.retention_settings import load_task_manager_settings
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 RETENTION_ENV_VARIABLES = (
+    "INFRAHUB_TASK_MANAGER_RETENTION",
     "INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY",
     "INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG",
     "INFRAHUB_TASK_MANAGER_RETENTION_PREFECT_OWN_EVENTS",
@@ -153,3 +155,80 @@ def test_invalid_environment_variable_fails_the_configuration_load(
         ValidationError, match=re.escape("Invalid task manager retention: activity_log must be at least 1 day")
     ):
         load(config_file_name=tmp_path / "absent.toml")
+
+
+@dataclass
+class TaskManagerSectionTestCase:
+    name: str
+    file_content: str | None
+    environ: dict[str, str]
+    task_history: timedelta
+    activity_log: timedelta
+    prefect_own_events: timedelta
+
+
+TASK_MANAGER_SECTION_TEST_CASES: list[TaskManagerSectionTestCase] = [
+    TaskManagerSectionTestCase(
+        name="no_file",
+        file_content=None,
+        environ={"INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG": "14d"},
+        task_history=timedelta(days=30),
+        activity_log=timedelta(days=14),
+        prefect_own_events=timedelta(days=7),
+    ),
+    TaskManagerSectionTestCase(
+        name="file_only",
+        file_content='[task_manager.retention]\ntask_history = "45d"\n',
+        environ={},
+        task_history=timedelta(days=45),
+        activity_log=timedelta(days=7),
+        prefect_own_events=timedelta(days=7),
+    ),
+    TaskManagerSectionTestCase(
+        name="file_and_environment_for_another_field",
+        file_content='[task_manager.retention]\ntask_history = "45d"\n',
+        environ={"INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG": "14d"},
+        task_history=timedelta(days=45),
+        activity_log=timedelta(days=14),
+        prefect_own_events=timedelta(days=7),
+    ),
+    TaskManagerSectionTestCase(
+        name="file_over_environment_for_the_same_field",
+        file_content='[task_manager.retention]\ntask_history = "45d"\n',
+        environ={"INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY": "60d"},
+        task_history=timedelta(days=45),
+        activity_log=timedelta(days=7),
+        prefect_own_events=timedelta(days=7),
+    ),
+    TaskManagerSectionTestCase(
+        name="json_environment_variable",
+        file_content="[main]\n",
+        environ={
+            "INFRAHUB_TASK_MANAGER_RETENTION": '{"task_history": "60d"}',
+            "INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG": "14d",
+        },
+        task_history=timedelta(days=60),
+        activity_log=timedelta(days=14),
+        prefect_own_events=timedelta(days=7),
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in TASK_MANAGER_SECTION_TEST_CASES])
+def test_task_manager_section_reads_like_the_whole_configuration(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, test_case: TaskManagerSectionTestCase
+) -> None:
+    config_file = tmp_path / "infrahub.toml"
+    if test_case.file_content is not None:
+        config_file.write_text(test_case.file_content, encoding="utf-8")
+    for name, value in test_case.environ.items():
+        monkeypatch.setenv(name, value)
+
+    retention = load_task_manager_settings(config_file=config_file).retention
+
+    assert (retention.task_history, retention.activity_log, retention.prefect_own_events) == (
+        test_case.task_history,
+        test_case.activity_log,
+        test_case.prefect_own_events,
+    )
+    assert retention == load(config_file_name=config_file).task_manager.retention

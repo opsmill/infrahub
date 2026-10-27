@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import json
 import logging
 import os
+import subprocess  # noqa: S404
+import sys
+import tomllib
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
@@ -127,7 +131,114 @@ def test_prefect_runs_with_the_configured_retention(monkeypatch: pytest.MonkeyPa
     assert prefect_settings.server.services.db_vacuum.enabled_vacuum_types == {"events", "flow_runs", "orphans"}
     assert prefect_settings.server.services.db_vacuum.retention_period == timedelta(days=45)
     assert prefect_settings.server.events.retention_period == timedelta(days=14)
-    assert config.SETTINGS.task_manager.retention.task_history == timedelta(days=45)
+
+
+@pytest.mark.usefixtures("task_manager_environment")
+def test_a_setting_outside_the_task_manager_section_does_not_stop_the_task_manager(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    config_file = tmp_path / "infrahub.toml"
+    config_file.write_text(
+        '[git]\ndelete_git_branch_after_merge = true\n\n[storage]\ndriver = "nope"\n\n'
+        '[task_manager.retention]\ntask_history = "45d"\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("INFRAHUB_CONFIG", str(config_file))
+
+    apply_infrahub_settings_to_prefect()
+
+    assert get_current_settings().server.services.db_vacuum.retention_period == timedelta(days=45)
+    assert config.SETTINGS.initialized is False
+
+
+@pytest.mark.usefixtures("task_manager_environment")
+def test_an_invalid_retention_in_the_configuration_file_stops_the_task_manager(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    config_file = tmp_path / "infrahub.toml"
+    config_file.write_text(
+        '[storage]\ndriver = "nope"\n\n[task_manager.retention]\ntask_history = "PT12H"\n', encoding="utf-8"
+    )
+    monkeypatch.setenv("INFRAHUB_CONFIG", str(config_file))
+
+    with pytest.raises(SystemExit) as exit_info:
+        apply_infrahub_settings_to_prefect()
+
+    assert exit_info.value.code == 1
+    assert capsys.readouterr().out == (
+        "Configuration not valid, found 1 error(s)\n"
+        "  task_manager/retention/task_history | Value error, Invalid task manager retention: task_history must be "
+        "at least 1 day (value_error)\n"
+    )
+    assert {name: os.environ.get(name) for name in PREFECT_RETENTION_VARIABLES} == dict.fromkeys(
+        PREFECT_RETENTION_VARIABLES
+    )
+
+
+@pytest.mark.usefixtures("task_manager_environment")
+def test_a_configuration_file_that_cannot_be_parsed_stops_the_task_manager(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    config_file = tmp_path / "infrahub.toml"
+    config_file.write_text("[task_manager.retention\n", encoding="utf-8")
+    monkeypatch.setenv("INFRAHUB_CONFIG", str(config_file))
+
+    with pytest.raises(
+        tomllib.TOMLDecodeError, match=r"^Expected '\]' at the end of a table declaration \(at line 1, column 24\)$"
+    ):
+        apply_infrahub_settings_to_prefect()
+
+    assert {name: os.environ.get(name) for name in PREFECT_RETENTION_VARIABLES} == dict.fromkeys(
+        PREFECT_RETENTION_VARIABLES
+    )
+
+
+_STANDALONE_TASK_MANAGER_SCRIPT = """
+import sys
+
+from prefect.settings import get_current_settings
+
+from infrahub.prefect_server.app import apply_infrahub_settings_to_prefect
+
+apply_infrahub_settings_to_prefect()
+retention_period = get_current_settings().server.services.db_vacuum.retention_period
+print("infrahub.config" in sys.modules, "infrahub.log" in sys.modules, retention_period.days)
+"""
+
+
+def test_the_standalone_task_manager_ignores_infrahub_settings_it_does_not_use(tmp_path: Path) -> None:
+    """A fresh process is needed because this one has already imported Infrahub's configuration."""
+    environ = {
+        name: value
+        for name, value in os.environ.items()
+        if name not in PREFECT_RETENTION_VARIABLES
+        and not name.startswith(("INFRAHUB_TASK_MANAGER_", "PREFECT_API_BLOCKS_", "PREFECT_API_DATABASE_"))
+    }
+    environ |= {
+        "INFRAHUB_CONFIG": str(tmp_path / "absent.toml"),
+        "INFRAHUB_LOG_LEVEL": "INFO",
+        "INFRAHUB_PRODUCTION": "true",
+        "INFRAHUB_STORAGE_DRIVER": "nope",
+        "INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY": "45d",
+    }
+
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, "-c", _STANDALONE_TASK_MANAGER_SCRIPT],
+        cwd=tmp_path,
+        env=environ,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=60,
+    )
+
+    assert (result.returncode, result.stdout) == (0, "False True 45\n"), result.stderr
+    task_history_log_lines = [
+        line["event"]
+        for line in (json.loads(text) for text in result.stderr.splitlines() if text.startswith("{"))
+        if line.get("logger") == APP_LOGGER and VACUUM_RETENTION_PERIOD in line["event"]
+    ]
+    assert task_history_log_lines == [f"Task manager retention: {VACUUM_RETENTION_PERIOD}=P45D"]
 
 
 @pytest.mark.usefixtures("task_manager_environment")

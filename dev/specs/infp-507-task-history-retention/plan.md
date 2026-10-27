@@ -74,9 +74,10 @@ dev/specs/infp-507-task-history-retention/
 
 ```text
 backend/infrahub/
-├── config.py                          # new retention settings section (validation)
+├── config.py                          # imports the retention settings into the configuration
 ├── prefect_server/
-│   ├── app.py                         # load config in all modes, apply derived Prefect settings, mount cleanup router
+│   ├── app.py                         # read the task_manager section in all modes, apply derived Prefect settings, mount cleanup router
+│   ├── retention_settings.py          # new: retention settings (validation) and the reader of the task_manager section
 │   ├── retention.py                   # new: settings translation + PREFECT_EVENT_TYPES list
 │   ├── task_history.py                # new: cleanup job (SQL deletes per day, rewrite on Postgres) + routes
 │   ├── database.py                    # newest-first time windows, optional count, plan per query

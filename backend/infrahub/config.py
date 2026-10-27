@@ -5,7 +5,6 @@ import re
 import sys
 import tomllib
 from dataclasses import dataclass
-from datetime import timedelta
 from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any
@@ -18,9 +17,7 @@ from pydantic import (
     EmailStr,
     Field,
     PrivateAttr,
-    TypeAdapter,
     ValidationError,
-    ValidationInfo,
     computed_field,
     field_validator,
     model_validator,
@@ -31,6 +28,11 @@ from typing_extensions import Self
 from infrahub.constants.database import DatabaseType
 from infrahub.exceptions import InitializationError, ProcessingError
 from infrahub.log import get_logger
+from infrahub.prefect_server.retention_settings import (
+    TaskManagerRetentionSettings,  # noqa: F401 - re-exported with the other settings models
+    TaskManagerSettings,
+    print_configuration_errors,
+)
 from infrahub.tls.bundle import resolve_ca_bundle
 
 if TYPE_CHECKING:
@@ -683,104 +685,6 @@ class WorkflowSettings(BaseSettings):
             url += f":{self.port}"
         url += "/api"
         return url
-
-
-_RETENTION_IN_DAYS = re.compile(r"(\d+)d")
-_ISO_8601_DURATION = re.compile(
-    r"P(?=\d|T\d)(?:\d+Y)?(?:\d+M)?(?:\d+W)?(?:\d+D)?(?:T(?=\d)(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?"
-)
-_MINIMUM_RETENTION = timedelta(days=1)
-# Prefect's cutoff of now minus the retention must stay a valid date, which a century keeps far from overflowing.
-_MAXIMUM_RETENTION = timedelta(days=36500)
-_TIMEDELTA_ADAPTER: TypeAdapter[timedelta] = TypeAdapter(timedelta)
-
-
-def _days(count: str) -> timedelta:
-    try:
-        return timedelta(days=int(count))
-    except (OverflowError, ValueError):
-        # Still a number of days, so it is refused by the upper bound rather than as an unreadable value.
-        return timedelta.max
-
-
-def _parse_retention(value: Any) -> timedelta | None:
-    if isinstance(value, timedelta):
-        return value
-    if not isinstance(value, str):
-        return None
-    text = value.strip()
-    if match := _RETENTION_IN_DAYS.fullmatch(text):
-        return _days(count=match.group(1))
-    # Pydantic also reads forms such as "1 day, 00:00:00", which are not part of the documented contract.
-    if not text.startswith("P"):
-        return None
-    try:
-        return _TIMEDELTA_ADAPTER.validate_python(text)
-    except ValidationError:
-        # A well-formed duration too large to read is refused by the upper bound rather than as an unreadable value.
-        return timedelta.max if _ISO_8601_DURATION.fullmatch(text) else None
-
-
-class TaskManagerRetentionSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="INFRAHUB_TASK_MANAGER_RETENTION_")
-
-    task_history: timedelta = Field(
-        default="30d",
-        validate_default=True,
-        description=(
-            "How long finished task runs are kept, with their logs and artifacts, as a number of days (`30d`) "
-            "or an ISO 8601 duration (`P30D`), from 1 to 36500 days. `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` and "
-            "`PREFECT_SERVER_SERVICES_DB_VACUUM_RETENTION_PERIOD` take precedence when set."
-        ),
-    )
-    activity_log: timedelta = Field(
-        default="7d",
-        validate_default=True,
-        description=(
-            "How long the events of the activity log are kept, as a number of days (`7d`) or an ISO 8601 "
-            "duration (`P7D`), from 1 to 36500 days. `PREFECT_SERVER_EVENTS_RETENTION_PERIOD`, or its legacy name "
-            "`PREFECT_EVENTS_RETENTION_PERIOD`, takes precedence when set."
-        ),
-    )
-    prefect_own_events: timedelta = Field(
-        default="7d",
-        validate_default=True,
-        description=(
-            "How long the task manager's own Prefect events are kept, as a number of days (`7d`) or an ISO 8601 "
-            "duration (`P7D`), from 1 to 36500 days; a value longer than `activity_log` is capped to it. "
-            "`PREFECT_SERVER_SERVICES_DB_VACUUM_EVENT_RETENTION_OVERRIDES` takes precedence when set."
-        ),
-    )
-
-    @field_validator("task_history", "activity_log", "prefect_own_events", mode="before")
-    @classmethod
-    def validate_retention_from_one_to_36500_days(cls, value: Any, info: ValidationInfo) -> timedelta:
-        """Read a number of days such as `30d` or an ISO 8601 duration such as `P30D`.
-
-        Raises:
-            ValueError: When the value is in neither form, is shorter than 1 day or is longer than 36500 days.
-
-        """
-        retention = _parse_retention(value)
-        if retention is None:
-            raise ValueError(
-                f"Invalid task manager retention: {info.field_name} must be a number of days such as 30d "
-                "or an ISO 8601 duration such as P30D"
-            )
-        if retention < _MINIMUM_RETENTION:
-            raise ValueError(f"Invalid task manager retention: {info.field_name} must be at least 1 day")
-        if retention > _MAXIMUM_RETENTION:
-            raise ValueError(f"Invalid task manager retention: {info.field_name} must be at most 36500 days")
-        return retention
-
-
-class TaskManagerSettings(BaseSettings):
-    """How long the task manager keeps its task history and activity log."""
-
-    model_config = SettingsConfigDict(env_prefix="INFRAHUB_TASK_MANAGER_")
-    retention: TaskManagerRetentionSettings = Field(
-        default_factory=TaskManagerRetentionSettings, description="How long each kind of record is kept."
-    )
 
 
 class ApiSettings(BaseSettings):
@@ -2317,10 +2221,7 @@ def load_and_exit(config_file_name: Path | str = "infrahub.toml", config_data: d
     try:
         SETTINGS.settings = load(config_file_name=config_file_name, config_data=config_data)
     except ValidationError as err:
-        print(f"Configuration not valid, found {len(err.errors())} error(s)")
-        for error in err.errors():
-            error_locations = [str(location) for location in error["loc"]]
-            print(f"  {'/'.join(error_locations)} | {error['msg']} ({error['type']})")
+        print_configuration_errors(error=err)
         sys.exit(1)
 
 
