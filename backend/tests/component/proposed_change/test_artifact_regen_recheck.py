@@ -23,7 +23,16 @@ if TYPE_CHECKING:
 
 DEVICE_DEFINITION = "device-recheck"
 PERSON_DEFINITION = "person-recheck"
-DEVICE_SCENARIOS = ("rebase", "settle", "partial", "default-render", "failed", "rebuilt", "rebase-brings-change")
+DEVICE_SCENARIOS = (
+    "rebase",
+    "settle",
+    "partial",
+    "default-render",
+    "failed",
+    "rebuilt",
+    "rebase-brings-change",
+    "changed-back",
+)
 
 DEVICE_SCHEMA = SchemaRoot(
     nodes=[
@@ -293,6 +302,20 @@ class TestArtifactRecheckDevices(ArtifactRecheckTestBase):
         await self._set_device(db, dataset, "partial", color="blue", description="edited")
 
         assert await self._run(pipeline, dataset, "partial") == ([DEVICE_DEFINITION], [device_id])
+
+    async def test_value_changed_and_changed_back_between_two_runs_is_not_checked(
+        self, db: InfrahubDatabase, dataset: dict[str, Any], pipeline: ArtifactPipeline
+    ) -> None:
+        """An artifact rendered from the data the branch holds again is not rendered, though the data changed between."""
+        scenario = "changed-back"
+        await self._set_device(db, dataset, scenario, color="blue", description="edited")
+        assert await self._run(pipeline, dataset, scenario) == ([DEVICE_DEFINITION], [])
+        await self._record(pipeline, dataset, scenario, checksum="rendered-on-branch-from-blue")
+
+        await self._set_device(db, dataset, scenario, color="red", description="edited")
+        await self._set_device(db, dataset, scenario, color="blue", description="edited")
+
+        assert await self._run(pipeline, dataset, scenario) == ([DEVICE_DEFINITION], [])
 
     async def test_artifact_rendered_again_on_the_default_branch_is_not_checked(
         self, db: InfrahubDatabase, default_branch: Branch, dataset: dict[str, Any], pipeline: ArtifactPipeline

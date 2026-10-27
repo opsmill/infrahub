@@ -5,7 +5,7 @@ import os
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import httpx
 import pytest
@@ -757,9 +757,10 @@ async def run_proposed_change_user_tests(model: RequestProposedChangeUserTests) 
 
 
 async def _query_data_fingerprint(
-    *, client: InfrahubClient, model: RequestArtifactDefinitionCheck, variables: dict[str, Any]
+    *, client: InfrahubClient, model: RequestArtifactDefinitionCheck, member: InfrahubNode, parameters: dict[str, str]
 ) -> str | None:
     """Return the fingerprint of the definition's query response for one target, or None when the query fails."""
+    variables = await member.extract(params=parameters)
     try:
         response = await client.query_gql_query(
             name=model.artifact_definition.query_id,
@@ -810,7 +811,8 @@ async def _artifacts_with_changed_query_data(
                 node=artifact_id,
                 client=client,
                 model=model,
-                variables=await member.extract(params=parameters),
+                member=member,
+                parameters=parameters,
             )
     async for artifact_id, fingerprint in batch.execute():
         if fingerprint is None or fingerprint != stored[artifact_id]:
