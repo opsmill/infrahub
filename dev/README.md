@@ -128,9 +128,11 @@ The `/reviewing-pull-requests <PR>` skill in [../.agents/skills/](../.agents/ski
 request in a subagent that has not seen the conversation, with the rules in
 [REVIEW.md](../REVIEW.md).
 
-Claude Code can also run it after every `gh pr create`. This is off by default: `.claude/settings.json`
-sets `PR_REVIEW` to `off`. To turn it on, add this `env` block to `.claude/settings.local.json` in
-your main checkout, which Git ignores. Sessions in its worktrees read that file too.
+Claude Code can also run it after every `gh pr create`, and again when pushes add 300 or more
+changed lines to an open pull request since its last automatic review. This is off by default:
+`.claude/settings.json` sets `PR_REVIEW` to `off`. To turn it on, add this `env` block to
+`.claude/settings.local.json` in your main checkout, which Git ignores. Sessions in its worktrees
+read that file too.
 
 ```json
 {
@@ -140,5 +142,6 @@ your main checkout, which Git ignores. Sessions in its worktrees read that file 
 }
 ```
 
-The hook needs `jq`. The Codex hook checks `PR_REVIEW` in the environment Codex starts
-with and runs `codex review` instead.
+Set `PR_REVIEW_MIN_LINES` in the same block to change the 300. The hook needs `jq`. The Codex hook
+checks `PR_REVIEW` in the environment Codex starts with and runs `codex review` instead, only after
+`gh pr create`.
