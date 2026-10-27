@@ -1,3 +1,4 @@
+---
 # Elements that processing adds next to the ones a schema owner writes, and schema extensions.
 version: "1.0"
 nodes:

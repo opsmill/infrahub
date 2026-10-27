@@ -1,3 +1,4 @@
+---
 # Properties a node takes from its generic stay on the node; a unique attribute gives the human-friendly ID.
 version: "1.0"
 generics:
