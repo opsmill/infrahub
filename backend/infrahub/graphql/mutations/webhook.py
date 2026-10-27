@@ -118,12 +118,7 @@ class InfrahubWebhookMutation(InfrahubMutationMixin, Mutation):
             )
             _validate_input(graphql_context=graphql_context, branch=branch, input_data=updated_data)
 
-        try:
-            obj, result = await cls._call_mutate_update(info=info, data=data, db=db, branch=branch, obj=obj)
-        except ValidationError as exc:
-            raise ValueError(str(exc)) from exc
-
-        return obj, result
+        return await cls._call_mutate_update(info=info, data=data, db=db, branch=branch, obj=obj)
 
 
 def _validate_input(graphql_context: GraphqlContext, branch: Branch, input_data: WebhookCreate) -> None:
