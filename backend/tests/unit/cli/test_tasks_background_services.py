@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass
 from datetime import timedelta
@@ -22,6 +23,15 @@ if TYPE_CHECKING:
 def task_manager_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Generator[None, None, None]:
     with unloaded_task_manager_retention(monkeypatch=monkeypatch, directory=tmp_path):
         yield
+
+
+@pytest.fixture(autouse=True)
+def restored_docket_log_level() -> Generator[None, None, None]:
+    """Put back the level of the Docket logger, which the command sets for the whole process."""
+    docket_logger = logging.getLogger("docket")
+    level = docket_logger.level
+    yield
+    docket_logger.setLevel(level)
 
 
 @dataclass(frozen=True)
@@ -138,3 +148,24 @@ def test_a_missing_configuration_file_leaves_the_retention_to_the_environment(
             own_events=set(),
         )
     ]
+
+
+@pytest.mark.usefixtures("task_manager_environment")
+def test_the_services_log_only_the_warnings_and_errors_of_docket(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Docket, which runs Prefect's services, logs every run of every service at INFO."""
+
+    def start_services() -> None:
+        logging.getLogger("docket.worker").info("monitor_late_runs started")
+        logging.getLogger("docket.dependencies").info("monitor_late_runs finished")
+        logging.getLogger("docket.worker").warning("monitor_late_runs failed")
+
+    with caplog.at_level(logging.INFO, logger="docket"):
+        run_background_services(config_file=tmp_path / "absent.toml", start_services=start_services)
+
+    assert [
+        (record.name, record.levelname, record.getMessage())
+        for record in caplog.records
+        if record.name.startswith("docket")
+    ] == [("docket.worker", "WARNING", "monitor_late_runs failed")]

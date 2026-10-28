@@ -95,8 +95,10 @@ async def execute(
 
 
 def run_background_services(config_file: Path, start_services: Callable[[], None]) -> None:
-    """Apply the retention of the configuration to Prefect's settings, then run the services until they stop."""
+    """Apply the configuration's retention to Prefect's settings, then run the services until they stop, logging only Docket's warnings and errors."""
     apply_infrahub_settings_to_prefect(config_file=config_file)
+    # Docket, which runs Prefect's services, logs every run of every service at INFO, about three lines a second.
+    logging.getLogger("docket").setLevel(logging.WARNING)
     start_services()
 
 
