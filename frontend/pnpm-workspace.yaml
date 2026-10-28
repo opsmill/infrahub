@@ -25,11 +25,7 @@ catalog:
   react-dom: ^19.3.1
   tailwind-merge: ^3.7.0
   tailwindcss: ^4.3.3
-<<<<<<< HEAD
-  typescript: ^5.9.3
-=======
   typescript: ^6.0.3
->>>>>>> origin/release-1.12
   vite: ^8.3.5
 
 overrides:

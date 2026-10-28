@@ -43,13 +43,8 @@
     "@radix-ui/react-progress": "^1.2.1",
     "@radix-ui/react-slot": "^1.5.0",
     "@radix-ui/react-tabs": "^1.2.1",
-<<<<<<< HEAD
-    "@tanstack/react-query": "^5.104.5",
-    "@tanstack/react-query-devtools": "^5.104.5",
-=======
     "@tanstack/react-query": "^5.105.0",
     "@tanstack/react-query-devtools": "^5.105.0",
->>>>>>> origin/release-1.12
     "@tanstack/react-table": "^8.21.3",
     "@uiw/react-color": "^2.10.3",
     "@urql/core": "^6.0.3",
@@ -64,11 +59,7 @@
     "date-fns": "^4.4.0",
     "gql.tada": "^1.11.4",
     "graphiql": "^5.4.0",
-<<<<<<< HEAD
-    "graphql": "^16.14.2",
-=======
     "graphql": "^17.0.2",
->>>>>>> origin/release-1.12
     "infrahub-schema-visualizer": "workspace:*",
     "jotai": "^3.0.1",
     "json-to-graphql-query": "^2.3.0",
@@ -98,11 +89,7 @@
     "rehype-mermaid": "^3.0.0",
     "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.1",
-<<<<<<< HEAD
-    "remeda": "^2.53.0",
-=======
     "remeda": "^2.54.1",
->>>>>>> origin/release-1.12
     "sha1": "^1.1.1",
     "tailwind-merge": "catalog:",
     "tailwindcss-animate": "^1.0.7",
@@ -136,11 +123,7 @@
     "vite": "catalog:",
     "vite-plugin-monaco-editor-esm": "^2.0.3",
     "vite-plugin-svgr": "^5.2.0",
-<<<<<<< HEAD
-    "vitest": "^4.1.10",
-=======
     "vitest": "^5.0.5",
->>>>>>> origin/release-1.12
     "vitest-browser-react": "^2.3.0"
   },
   "engines": {
