@@ -6,7 +6,10 @@ from prefect.server.utilities.schemas import PrefectBaseModel
 from prefect.settings import get_current_settings
 from pydantic import BaseModel, Field
 
+from .retention import deletes_old_events
+
 MAXIMUM_RETENTION_SECONDS = 36_500 * 24 * 60 * 60
+KEPT_EVENTS_READ_WINDOW = timedelta(days=180)
 
 
 class InfrahubEventFilter(EventFilter):
@@ -41,7 +44,8 @@ class InfrahubEventfilterInput(BaseModel):
         le=MAXIMUM_RETENTION_SECONDS,
         description=(
             "Time window read back from the end of the filter when it sets no start; "
-            "the task manager's event retention by default"
+            "by default the task manager's event retention, "
+            "or at least 180 days when the task manager does not delete old events"
         ),
     )
 
@@ -49,4 +53,9 @@ class InfrahubEventfilterInput(BaseModel):
     def retention(self) -> timedelta:
         if self.retention_seconds is not None:
             return timedelta(seconds=self.retention_seconds)
-        return get_current_settings().server.events.retention_period
+        settings = get_current_settings()
+        retention = settings.server.events.retention_period
+        if deletes_old_events(vacuum=settings.server.services.db_vacuum):
+            return retention
+        # Events past the retention stay stored, so at least Prefect's default 180-day range is read.
+        return max(retention, KEPT_EVENTS_READ_WINDOW)

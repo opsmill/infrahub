@@ -51,7 +51,10 @@ PRIMARY_NODE_OUTSIDE_RESOURCE_EVENTS = frozenset(
 
 class InfrahubEventFilter(EventFilter):
     def to_request(self) -> dict[str, Any]:
-        """Serialize the filter for the task manager, which bounds an unset start by its activity log retention."""
+        """Serialize the filter for the task manager, which bounds an unset start by its read window.
+
+        The read window is the activity log retention, or at least 180 days when the task manager does not delete old events.
+        """
         exclude = None if "since" in self.occurred.model_fields_set else {"occurred": {"since"}}
         return self.model_dump(mode="json", exclude_none=True, exclude=exclude)
 

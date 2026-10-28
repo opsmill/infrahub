@@ -439,7 +439,7 @@ class PrefectEvent:
 
     @classmethod
     async def resolve_branch_ids(cls, names: list[str], current_branch_ids: Mapping[str, str]) -> list[str]:
-        """Return the ID of each named branch: the current branch, else the newest deletion of that name inside the retention.
+        """Return the ID of each named branch: the current branch, else the newest deletion of that name inside the read window.
 
         A name that matches neither is left out.
         """

@@ -285,6 +285,15 @@ def task_run_deletion_off_reason(vacuum: ServerServicesDBVacuumSettings) -> str 
     return None
 
 
+def deletes_old_events(vacuum: ServerServicesDBVacuumSettings) -> bool:
+    """Return whether Prefect's vacuum switch turns on the deletion of old events."""
+    try:
+        return "events" in vacuum.enabled_vacuum_types
+    except ValueError:
+        # With an unknown vacuum type it is not known whether old events are deleted, so they are treated as kept.
+        return False
+
+
 def _vacuum_switch(enabled: set[str] | bool | None) -> str:
     if isinstance(enabled, bool):
         return "true" if enabled else "false"

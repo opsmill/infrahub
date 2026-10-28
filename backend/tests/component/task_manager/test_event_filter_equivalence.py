@@ -225,8 +225,8 @@ def _seeded_events() -> dict[str, tuple[InfrahubEvent, timedelta]]:
             _branch_deleted((TWICE_DELETED_NAME, TWICE_DELETED_SECOND_ID)),
             timedelta(days=2),
         ),
-        "expired": (_node_updated(meta=_meta(EXPIRED_BRANCH)), timedelta(days=31)),
-        "expired_deleted": (_branch_deleted(EXPIRED_BRANCH), timedelta(days=30)),
+        "expired": (_node_updated(meta=_meta(EXPIRED_BRANCH)), timedelta(days=201)),
+        "expired_deleted": (_branch_deleted(EXPIRED_BRANCH), timedelta(days=200)),
         "node_1": (_node_updated(meta=_meta(OTHER_BRANCH), node_id=NODE_ID), timedelta(minutes=25)),
         "node_2": (_node_updated(meta=_meta(OTHER_BRANCH), node_id=NODE_ID), timedelta(days=12)),
         "artifact_node_created": (
@@ -332,7 +332,7 @@ BRANCH_RESOLUTION_CASES = [
         expected=[TWICE_DELETED_SECOND_ID],
     ),
     BranchResolutionCase(
-        name="deletion_older_than_the_retention",
+        name="deletion_older_than_the_read_window",
         names=[EXPIRED_BRANCH[0]],
         current_branch_ids={},
         expected=[],
@@ -354,7 +354,7 @@ BRANCH_RESOLUTION_CASES = [
 
 @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in BRANCH_RESOLUTION_CASES])
 async def test_branch_names_resolve_to_branch_ids(test_case: BranchResolutionCase, seeded: dict[str, str]) -> None:
-    """A name resolves to its current branch, else to the newest deletion of that name inside the retention, else to nothing."""
+    """A name resolves to its current branch, else to the newest deletion of that name inside the read window, else to nothing."""
     branch_ids = await PrefectEvent.resolve_branch_ids(
         names=test_case.names, current_branch_ids=test_case.current_branch_ids
     )

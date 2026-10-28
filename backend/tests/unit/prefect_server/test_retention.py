@@ -16,6 +16,7 @@ from infrahub.prefect_server.retention import (
     apply_prefect_retention_env,
     background_services_warning,
     build_prefect_retention_env,
+    deletes_old_events,
     prefect_retention_already_set,
     prefect_retention_in_effect,
     remove_blank_vacuum_switch,
@@ -529,6 +530,34 @@ def test_old_task_runs_are_deleted_only_when_the_vacuum_switch_turns_on_flow_run
     monkeypatch.setenv(VACUUM_ENABLED, test_case.vacuum_enabled)
 
     assert task_run_deletion_off_reason(vacuum=ServerServicesDBVacuumSettings()) == test_case.expected_reason
+
+
+@dataclass
+class EventDeletionTestCase:
+    name: str
+    vacuum_enabled: str
+    expected: bool
+
+
+EVENT_DELETION_TEST_CASES: list[EventDeletionTestCase] = [
+    EventDeletionTestCase(name="events_and_flow_runs", vacuum_enabled="events,flow_runs", expected=True),
+    EventDeletionTestCase(name="true", vacuum_enabled="true", expected=True),
+    EventDeletionTestCase(name="false", vacuum_enabled="false", expected=True),
+    EventDeletionTestCase(name="events_only", vacuum_enabled="events", expected=True),
+    EventDeletionTestCase(name="flow_runs_only", vacuum_enabled="flow_runs", expected=False),
+    EventDeletionTestCase(name="none", vacuum_enabled="[]", expected=False),
+    EventDeletionTestCase(name="unknown_type", vacuum_enabled="Flow_Runs", expected=False),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in EVENT_DELETION_TEST_CASES])
+def test_old_events_are_deleted_only_when_the_vacuum_switch_turns_on_events(
+    monkeypatch: pytest.MonkeyPatch, test_case: EventDeletionTestCase
+) -> None:
+    """The answer follows Prefect's own reading of the switch, where false still deletes old events."""
+    monkeypatch.setenv(VACUUM_ENABLED, test_case.vacuum_enabled)
+
+    assert deletes_old_events(vacuum=ServerServicesDBVacuumSettings()) is test_case.expected
 
 
 @dataclass
