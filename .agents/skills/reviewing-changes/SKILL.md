@@ -5,7 +5,7 @@ description: >-
 argument-hint: <empty for the current branch, or a base branch (develop); add `report` to review without fixing; `compare <PR number>` after the PR review>
 compatibility: A Claude Code session started at the repository root, with `origin` fetched. The `gh` CLI finds the PR base and description. The cubic CLI is optional (`curl -fsSL https://cubic.dev/install | bash`, `cubic auth login`, and a seat on OpsMill's subscription).
 metadata:
-  version: 3.3.0
+  version: 3.4.0
   author: OpsMill
 ---
 
@@ -31,7 +31,25 @@ push. It does not repeat other tools:
   design and per-file checks, the checks the diff cannot show, a local cubic run, one verified
   list of findings, and the fixes, each checked by a reviewer that did not write it.
 
-With `compare <PR number>` in the arguments, skip to "Compare with the PR review".
+With `compare <PR number>` in the arguments, read `references/compare.md` and follow it instead
+of the phases.
+
+## Files of this skill
+
+Phases 0 to 5 are in this file. The later steps are in `references/`, next to this file, at
+`.agents/skills/reviewing-changes/references/` from the repository root. Read each one with the
+Read tool when its step starts, even when you remember it from an earlier run: the file holds the
+current steps, and a step run from memory misses the checks added since.
+
+| File | Read when |
+|---|---|
+| `references/fix.md` | Phase 6 starts, unless the run is report-only |
+| `references/report.md` | Phase 7 starts |
+| `references/improve.md` | the report is saved, and at the end of a compare |
+| `references/compare.md` | the arguments contain `compare <PR number>` |
+
+The report lists every file of `references/` read during the run. A file missing from that list
+means its step ran without its instructions: read it and run the step again.
 
 ## Phase 0 — Scope and context
 
@@ -246,144 +264,14 @@ in scope), spawn one reviewer per area (read-only), with `.agents/rules/code-des
 
 ## Phase 6 — Fix and review the fixes
 
-Skip for a report-only run. Show the classified list and wait for approval. Fix the approved
-items with the smallest change each, run the checks in the touched area's `AGENTS.md`, and do
-not commit: the user reviews the fixes.
-
-A browser-mode Vitest or Playwright timeout in a file the fixes did not touch can come from load
-on the machine, for example other agents driving browsers at the same time. Rerun the failing
-files once before treating the timeout as a failure, and report both runs.
-
-Then review the fixes as a new change. This is not optional: a fix can break something the first
-round never looked at, or fix a finding only partly.
-
-- **Scope**: `git diff HEAD --name-only`, minus the paths left out or set aside in the scope
-  step. List each path in it that the manifest does not list. Every such path must come from an
-  Ask the user approved; revert any other change to it before the review continues.
-- **Each fix**: spawn one reviewer (read-only) that did not write the fixes, given the classified
-  list and `git diff HEAD`. For each fix it answers: does the change resolve the finding it cites,
-  fully or in part, and is it the smallest change that does? It reports a fix that resolves
-  nothing, resolves another problem, or changes more than the finding needs. A partial or
-  oversized fix goes back to the fixer for the next round.
-- **Bugs**: invoke `code-review` with the arguments `high <path> <path> ...` for those paths.
-- **Rules**: one reviewer per area, as in the rule check, given `git diff HEAD -- <paths>` as the
-  change and asked to check the fixed lines and the code around them.
-- **Design**: when a fix moves code between files or entities, run the design check on the
-  fixed lines: a move can add an import cycle or a request the old place did not make.
-- **Claims**: when a fix touches docs, a changelog, a guideline or the PR body, run the claims
-  check again on the fixed lines.
-- **Removed exceptions**: when a fix removes an exception from a rule or guideline, check that the
-  rule and its rationale still hold for shipped code. If not, narrow the rule or propose a cleanup
-  task instead of deleting the exception.
-
-Stop when no P1 or P2 remains other than declined or deferred ones, or after three rounds.
-
-**Records outside the code.** When an approved fix reverses a behaviour or decision that is also
-written down elsewhere, find each record that still states the old one:
-
-- the Jira ticket named in the branch name or the PR title (read it with the Atlassian tools)
-- the open PR's description (`gh pr view <n> --json body`)
-- the `changelog/` fragments of this change
-- the spec folder: grep `dev/specs/<feature>/` for the old behaviour
-
-List each record with the sentence to change under "Records to update" in the report. Do not
-edit Jira or GitHub yourself: the user updates them.
+Skip for a report-only run. Otherwise read `references/fix.md` and follow it: approval, the
+fixes, the review of the fixes for up to three rounds, and the records outside the code that a
+fix makes out of date.
 
 ## Phase 7 — Report
 
-If files were set aside, restore them first: `git stash apply <sha>`, then drop that entry
-(`git stash list --format='%gd %H'` gives its reference).
+Read `references/report.md` and follow it: the report template and where to save the report.
 
-```markdown
-## Pre-push review — <branch> (base: <base>, from <argument | PR | closest of stable/develop>)
+## After the report
 
-Scope: <committed only | committed and uncommitted>; left out: <globs or "nothing">; set aside: <paths or "nothing">
-Context hooks: <active | inactive: paths passed explicitly>
-P1: <n> | P2: <n> | P3: <n> — fixed: <n>, declined: <n>, deferred: <n>, asked: <n>, rounds: <n>
-Fixes outside the manifest: <paths, each with the approved Ask | "none">
-cubic: <exit code, n findings | error: <message> | not installed>
-
-### Context
-| File | Kind | Why it applies | Read by |
-|---|---|---|---|
-| <path> | Rule / AGENTS.md / Guideline / Article opened | <glob match, or the question> | <reviewer, or "not read"> |
-
-### Fixed
-- `file:line` — <finding> (<source path:line, or the failure>)
-
-### Declined — paste into the PR description
-- `file:line` — "<finding>": <reason>
-
-### Deferred
-- `file:line` — <finding>, or the corrected PR-description sentence
-
-### Questions for you
-- `file:line` — <finding>; the fix would contradict <requirement ID: quote | commit sha: subject>
-
-### Records to update
-- <Jira ticket | PR description | changelog fragment | spec file>: <link or path> — "<old sentence>" → "<new sentence>" (fix: `file:line`)
-
-### Challenge
-Requirement from: <spec path | ticket or issue link | PR description | the user>
-- <Requirement | Simpler version | Unrequested scope | Rejection>: `file:line` — <finding> (P1/P2; fixed | declined | deferred | asked)
-
-### Design
-- <Queries | Request context | Entity dependencies | Position | Copied files | States | Volume | Reuse | Simplicity>: `file:line` — <finding> (P2/P3; fixed | declined | deferred | asked)
-
-### Per file
-- `file:line` — <need | simpler way | naming | comment | test cannot fail | duplicate test>: <one line>
-
-### Advisory (P3)
-- `file:line` — <one line>
-
-### Out of scope (excluded paths)
-- `file:line` — <finding> (<source>) — not counted above
-
-### Gaps in the rules
-<findings declined because a rule did not say so, and changed areas no rule covers>
-```
-
-Save the report to `$(git rev-parse --git-common-dir)/reviewing-changes/<branch>.md`, replacing
-any earlier one. Inside `.git` it is never committed and every worktree of the repository can
-read it.
-
-## Compare with the PR review
-
-Run after cubic and reviewers have commented on the PR, to find what the local review missed.
-
-1. Read the saved report for the PR's head branch (`gh pr view <n> --json headRefName`). If there
-   is none, say so and stop.
-2. Collect the PR's comments: inline ones with
-   `gh api repos/{owner}/{repo}/pulls/<n>/comments --paginate`, and review bodies and
-   conversation comments with `gh pr view <n> --json reviews,comments`. Skip replies, bot status
-   messages and comments on lines changed after the report was saved.
-3. Classify each comment against the report, by file, line and issue:
-   - **Caught**: the report has it under Fixed, Deferred or Advisory.
-   - **Declined locally**: the report has it under Declined. Check whether the reason still holds.
-   - **Missed**: the report does not have it. Read the code, and decide whether the comment is
-     right before counting it. Count a miss on a line the review's own fix changed separately,
-     as "introduced by a fix".
-4. For each real miss, say which part of the review should have caught it (a rule, an article,
-   the design or per-file check, the claims check, the bug review, cubic) and why it did not:
-   the rule is missing, the article was not loaded, the file was out of scope, a reviewer had the
-   rule and missed it, the claims check did not read the code that produces the claim (for
-   example a backend resolver), or a fix introduced it.
-5. Report the counts (caught, declined, missed, introduced by a fix, wrong comments), then
-   propose fixes as in the next section. A miss that no rule or document change would prevent
-   becomes a proposed change to this skill, for the user to decide.
-
-## Improve the rules and the index after each run
-
-Propose each of these, and apply only with the user's approval:
-
-- **A "Not violations" line** in a rule, for a finding declined because the rule did not mention
-  the accepted pattern. When the declined pattern is debt rather than an accepted pattern,
-  propose a cleanup task instead: a rule states the target, not exceptions for existing code.
-- **A new rule line** in `.agents/rules/`, for what cubic or a reviewer caught that no rule states.
-- **A `paths:` glob or a new rule file**, for each changed area that no rule's globs cover.
-- **A better "load before" line** in an `AGENTS.md`, for each article a reviewer had to open on
-  its own: say when that article applies, so the next agent is pointed to it.
-
-Keep each `cubic.yaml` entry under 9,000 characters (`wc -m`); cubic drops everything past
-10,000. A new rule file with new paths also goes in `cubic.yaml`; a new `dev/` article needs an
-`AGENTS.md` line, or `repo-context.py --check-index` fails in CI.
+Read `references/improve.md` and propose the changes it lists.
