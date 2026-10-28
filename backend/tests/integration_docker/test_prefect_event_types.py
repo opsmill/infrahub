@@ -184,14 +184,19 @@ async def _wait_for_a_running_flow_run(prefect_client: PrefectClient) -> None:
 
 
 async def _unsettled_flow_runs(prefect_client: PrefectClient) -> list[FlowRun]:
-    """The flow runs that are pending, running, or scheduled to start by now."""
-    unsettled = FlowRunFilter(
-        state=FlowRunFilterState(
-            type=FlowRunFilterStateType(any_=[StateType.SCHEDULED, StateType.PENDING, StateType.RUNNING])
-        ),
+    """The flow runs that are pending or running, and the scheduled flow runs due to start by now."""
+    due = FlowRunFilter(
+        state=FlowRunFilterState(type=FlowRunFilterStateType(any_=[StateType.SCHEDULED])),
         expected_start_time=FlowRunFilterExpectedStartTime(before_=datetime.now(UTC)),
     )
-    return await prefect_client.read_flow_runs(flow_run_filter=unsettled)
+    # A worker sets a run it claims early to pending before its expected start time, so these have no time condition.
+    in_progress = FlowRunFilter(
+        state=FlowRunFilterState(type=FlowRunFilterStateType(any_=[StateType.PENDING, StateType.RUNNING]))
+    )
+    # Scheduled runs are read first, so a run that leaves the scheduled state between the two reads is in the second.
+    scheduled = await prefect_client.read_flow_runs(flow_run_filter=due)
+    runs = {run.id: run for run in [*scheduled, *await prefect_client.read_flow_runs(flow_run_filter=in_progress)]}
+    return list(runs.values())
 
 
 async def _post_event(prefect_client: PrefectClient, event_type: str) -> uuid.UUID:
@@ -226,7 +231,7 @@ async def _wait_for_stored_marker(compose: InfrahubDockerCompose, prefect_client
 
 
 async def _wait_until_settled(compose: InfrahubDockerCompose, prefect_client: PrefectClient) -> None:
-    """Wait until no flow run is left to run and the task manager has stored every event it received.
+    """Wait until no flow run is pending, running or due, and the task manager has stored every event it received.
 
     Raises:
         TimeoutError: When a flow run is still pending, running or due at the deadline, or the task manager does not
@@ -237,7 +242,8 @@ async def _wait_until_settled(compose: InfrahubDockerCompose, prefect_client: Pr
     while True:
         unsettled = await _unsettled_flow_runs(prefect_client=prefect_client)
         if not unsettled:
-            # The task manager stores events in arrival order, so the marker is stored after every earlier event.
+            # The default stack's one event persister keeps arrival order, so the marker is stored after every
+            # earlier event.
             await _wait_for_stored_marker(compose=compose, prefect_client=prefect_client)
             # A run that started while the marker waited sends events that the marker does not cover.
             unsettled = await _unsettled_flow_runs(prefect_client=prefect_client)
