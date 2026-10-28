@@ -104,6 +104,7 @@ async def main(time_limit_milliseconds, tables):
             pause_factor=0,
             max_pause=timedelta(0),
         ),
+        runs_per_transaction=1000,
     )
     await cleanup.delete(job=job)
     await cleanup.rewrite(job=job, mode=job.rewrite)

@@ -36,6 +36,8 @@ _ACTIVITY_LOG_TABLES = ("events", "event_resources")
 _EXACT_MEASURE_PAGES = 10_000
 # Counting stops here, so the count of old runs stays fast on a task history of millions of runs.
 _OLD_RUNS_COUNT_LIMIT = 100_000
+# Bounds how long one delete holds its runs locked and how much a failure rolls back, while each statement still removes many rows.
+_RUNS_PER_TRANSACTION = 1_000
 # Short, because every query that reaches a table while a rewrite waits for it queues behind the rewrite.
 _REWRITE_LOCK_TIMEOUT = timedelta(seconds=3)
 _REWRITE_RETRIES = 4
@@ -222,16 +224,19 @@ class TaskHistoryTables:
             )
         return counted
 
-    async def delete_runs(self, ended_from: datetime, ended_before: datetime) -> int:
-        """Delete the runs that ended within the time range, then their logs and artifacts, in one transaction.
+    async def delete_runs(self, ended_from: datetime, ended_before: datetime, limit: int) -> int:
+        """Delete at most `limit` runs that ended within the time range, earliest first, then their logs and artifacts.
 
-        Task runs and states go with their runs by cascade, and runs that another session holds locked are skipped.
+        It commits them in one transaction. Task runs and states go with their runs by cascade, and runs that another
+        session holds locked are skipped.
         """
         db = self._db
         async with db.session_context(begin_transaction=True, with_for_update=True) as session:
             eligible = (
                 sa.select(db.FlowRun.id)
                 .where(self._eligible(ended_before=ended_before, ended_from=ended_from))
+                .order_by(db.FlowRun.end_time)
+                .limit(limit)
                 .with_for_update(skip_locked=True)
             )
             deleted = (
@@ -465,9 +470,10 @@ def _start_of_day(moment: datetime) -> datetime:
 class TaskHistoryCleanup:
     """Deletes the task history older than a cleanup's cutoff a day at a time, then rewrites the tables as it asks."""
 
-    def __init__(self, tables: TaskHistoryTables, rewriter: TableRewriter | None) -> None:
+    def __init__(self, tables: TaskHistoryTables, rewriter: TableRewriter | None, runs_per_transaction: int) -> None:
         self._tables = tables
         self._rewriter = rewriter
+        self._runs_per_transaction = runs_per_transaction
 
     async def delete(self, job: CleanupJob) -> None:
         """Delete the runs that ended before the job's cutoff, recording the progress on the job."""
@@ -520,12 +526,26 @@ class TaskHistoryCleanup:
             day_start = _start_of_day(oldest)
             day_end = min(day_start + timedelta(days=1), job.cutoff)
             job.current_day = day_start.date()
-            deleted = await self._tables.delete_runs(ended_from=day_start, ended_before=day_end)
-            job.deleted_runs += deleted
+            deleted = await self._delete_day(job=job, ended_from=day_start, ended_before=day_end)
             deleted_in_pass += deleted
             log.info(f"Task history cleanup {job.id}: deleted {deleted} runs that ended on {job.current_day}")
             oldest = await self._tables.oldest_end_time(ended_before=job.cutoff, ended_from=day_end)
         return deleted_in_pass
+
+    async def _delete_day(self, job: CleanupJob, ended_from: datetime, ended_before: datetime) -> int:
+        """Delete the runs that ended within the time range a transaction at a time, returning how many it deleted.
+
+        A transaction that deletes fewer runs than its limit leaves only runs that other sessions hold locked.
+        """
+        deleted_on_day = 0
+        while True:
+            deleted = await self._tables.delete_runs(
+                ended_from=ended_from, ended_before=ended_before, limit=self._runs_per_transaction
+            )
+            job.deleted_runs += deleted
+            deleted_on_day += deleted
+            if deleted < self._runs_per_transaction:
+                return deleted_on_day
 
 
 class CleanupJobs:
@@ -678,8 +698,13 @@ def build_task_history_cleanup(
                 pause_factor=_REWRITE_PAUSE_FACTOR,
                 max_pause=_REWRITE_MAX_PAUSE,
             ),
+            runs_per_transaction=_RUNS_PER_TRANSACTION,
         )
-    return TaskHistoryCleanup(tables=TaskHistoryTables(db=db, ids_per_statement=ids_per_statement), rewriter=None)
+    return TaskHistoryCleanup(
+        tables=TaskHistoryTables(db=db, ids_per_statement=ids_per_statement),
+        rewriter=None,
+        runs_per_transaction=_RUNS_PER_TRANSACTION,
+    )
 
 
 router = APIRouter(prefix="/task-history", tags=["Infrahub"])

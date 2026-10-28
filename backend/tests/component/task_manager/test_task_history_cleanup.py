@@ -11,6 +11,7 @@ from prefect.server.services.db_vacuum import vacuum_old_flow_runs
 from prefect.settings import temporary_settings
 from tests.adapters.task_history import RecordingRewriter
 from tests.helpers.task_manager_seed import (
+    TaskHistoryIds,
     copy_task_manager_database,
     days_ago,
     read_task_history_ids,
@@ -47,30 +48,35 @@ def _job(rewrite: CleanupRewrite = CleanupRewrite.NEVER) -> CleanupJob:
 
 
 @dataclass
-class StatementSizeCase:
+class DeleteSizeCase:
     name: str
     ids_per_statement: int
+    runs_per_transaction: int
 
 
-STATEMENT_SIZE_CASES: list[StatementSizeCase] = [
-    StatementSizeCase(name="one_run_per_statement", ids_per_statement=1),
-    StatementSizeCase(name="as_many_runs_as_sqlite_takes", ids_per_statement=999),
+DELETE_SIZE_CASES: list[DeleteSizeCase] = [
+    DeleteSizeCase(name="one_run_per_statement_and_transaction", ids_per_statement=1, runs_per_transaction=1),
+    DeleteSizeCase(name="a_day_over_two_transactions", ids_per_statement=999, runs_per_transaction=2),
+    DeleteSizeCase(name="a_day_filling_one_transaction", ids_per_statement=999, runs_per_transaction=3),
+    DeleteSizeCase(name="as_many_runs_as_sqlite_takes", ids_per_statement=999, runs_per_transaction=1000),
 ]
 
 
-@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in STATEMENT_SIZE_CASES])
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in DELETE_SIZE_CASES])
 @pytest.mark.usefixtures("thirty_day_retention")
 async def test_cleanup_leaves_the_task_history_prefect_leaves(
-    task_manager_database_path: Path, case: StatementSizeCase
+    task_manager_database_path: Path, case: DeleteSizeCase
 ) -> None:
-    """The cleanup leaves the same task history as Prefect's vacuum of old flow runs, however many runs a statement takes."""
+    """The cleanup leaves the task history Prefect's vacuum of old flow runs leaves, whatever its statement and transaction sizes."""
     prefect_db = task_manager_database(task_manager_database_path)
     seeded = await seed_task_history(db=prefect_db, old_runs=RUNS_ENDED_ON_ONE_DAY)
     copy_path = task_manager_database_path.with_name("copy.db")
     copy_task_manager_database(source=task_manager_database_path, target=copy_path)
     cleanup_db = task_manager_database(copy_path)
     cleanup = TaskHistoryCleanup(
-        tables=TaskHistoryTables(db=cleanup_db, ids_per_statement=case.ids_per_statement), rewriter=None
+        tables=TaskHistoryTables(db=cleanup_db, ids_per_statement=case.ids_per_statement),
+        rewriter=None,
+        runs_per_transaction=case.runs_per_transaction,
     )
     job = _job()
 
@@ -104,10 +110,43 @@ async def test_cleanup_keeps_a_run_that_ended_after_the_cutoff_on_the_cutoff_day
     )
     job = CleanupJob(id="test", state=CleanupJobState.RUNNING, rewrite=CleanupRewrite.NEVER, cutoff=cutoff)
 
-    await TaskHistoryCleanup(tables=TaskHistoryTables(db=db, ids_per_statement=999), rewriter=None).delete(job=job)
+    await TaskHistoryCleanup(
+        tables=TaskHistoryTables(db=db, ids_per_statement=999), rewriter=None, runs_per_transaction=1000
+    ).delete(job=job)
 
     assert (await read_task_history_ids(db=db)).flow_runs == {ended_after_the_cutoff.id}
     assert (job.deleted_runs, job.current_day) == (1, date(2026, 1, 15))
+
+
+async def test_a_delete_takes_the_earliest_ended_runs_up_to_the_limit(task_manager_database_path: Path) -> None:
+    """A delete takes no more runs than its limit, the earliest ended first, whatever order the runs were stored in."""
+    db = task_manager_database(task_manager_database_path)
+    day = datetime(2026, 1, 10, tzinfo=UTC)
+    latest = await seed_flow_run(
+        db=db,
+        state_type=StateType.COMPLETED,
+        start_time=day + timedelta(hours=3),
+        end_time=day + timedelta(hours=3, minutes=5),
+    )
+    for hour in (1, 2):
+        await seed_flow_run(
+            db=db,
+            state_type=StateType.COMPLETED,
+            start_time=day + timedelta(hours=hour),
+            end_time=day + timedelta(hours=hour, minutes=5),
+        )
+
+    deleted = await TaskHistoryTables(db=db, ids_per_statement=999).delete_runs(
+        ended_from=day, ended_before=day + timedelta(days=1), limit=2
+    )
+
+    assert deleted == 2
+    assert await read_task_history_ids(db=db) == TaskHistoryIds(
+        flow_runs={latest.id},
+        flow_run_states={latest.state_id},
+        task_runs=set(latest.task_run_ids),
+        task_run_states=set(latest.task_run_state_ids),
+    )
 
 
 @pytest.mark.usefixtures("thirty_day_retention")
@@ -280,7 +319,9 @@ async def test_each_table_is_rewritten_when_the_cleanup_asks_and_most_of_it_is_f
         await seed_flow_run(db=db, state_type=StateType.COMPLETED, start_time=days_ago(41), end_time=days_ago(40))
     rewriter = RecordingRewriter(spaces=case.spaces, locked=case.locked, timed_out=case.timed_out, failed=case.failed)
     job = _job(rewrite=case.rewrite)
-    cleanup = TaskHistoryCleanup(tables=TaskHistoryTables(db=db, ids_per_statement=999), rewriter=rewriter)
+    cleanup = TaskHistoryCleanup(
+        tables=TaskHistoryTables(db=db, ids_per_statement=999), rewriter=rewriter, runs_per_transaction=1000
+    )
 
     await cleanup.delete(job=job)
     await cleanup.rewrite(job=job, mode=job.rewrite)
@@ -328,7 +369,9 @@ async def test_a_rewrite_that_fails_at_a_table_keeps_the_outcome_of_each_table_b
         fails_on="task_run",
     )
     job = _job(rewrite=CleanupRewrite.IF_FREED)
-    cleanup = TaskHistoryCleanup(tables=TaskHistoryTables(db=db, ids_per_statement=999), rewriter=rewriter)
+    cleanup = TaskHistoryCleanup(
+        tables=TaskHistoryTables(db=db, ids_per_statement=999), rewriter=rewriter, runs_per_transaction=1000
+    )
 
     with pytest.raises(RuntimeError, match=r"^rewrite of task_run rejected$"):
         await cleanup.rewrite(job=job, mode=job.rewrite)

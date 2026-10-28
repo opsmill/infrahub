@@ -98,7 +98,7 @@ def _client(app: FastAPI) -> httpx.AsyncClient:
 def _rewrite_through(app: FastAPI, db: PrefectDBInterface, rewriter: TableRewriter) -> None:
     """Have the routes run their cleanups with the rewriter, which SQLite has none of."""
     app.dependency_overrides[build_task_history_cleanup] = lambda: TaskHistoryCleanup(
-        tables=TaskHistoryTables(db=db, ids_per_statement=999), rewriter=rewriter
+        tables=TaskHistoryTables(db=db, ids_per_statement=999), rewriter=rewriter, runs_per_transaction=1000
     )
 
 

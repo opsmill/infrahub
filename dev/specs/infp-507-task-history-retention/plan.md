@@ -151,7 +151,7 @@ Each of parts 1 to 3 merges only with its private-test evidence. The final run o
 
 | Risk | Mitigation |
 |---|---|
-| The cleanup step takes hours on large instances (Q1) | It runs after the upgrade with the instance up, not inside the upgrade; per-day commits, progress output, re-runnable; operators can set a longer retention before upgrading. Release notes wait for the 100 GB figure. |
+| The cleanup step takes hours on large instances (Q1) | It runs after the upgrade with the instance up, not inside the upgrade; commits of at most 1,000 runs, progress output, re-runnable; operators can set a longer retention before upgrading. Release notes wait for the 100 GB figure. |
 | API clients that select `count` | They still get it, and still wait for it (about 10 minutes for level 0 events on a year of activity log), as the design doc states. |
 | SQL cleanup drifts from Prefect's rules on a Prefect upgrade | Cleanup equivalence component test in CI. |
 | New Prefect event type not in the list | Integration-docker guard on the full stack (real workers, failure paths) plus unit tests over the event names, name patterns, statuses, lifecycle record kinds and state names in the pinned Prefect's source; a missed type only costs disk. |

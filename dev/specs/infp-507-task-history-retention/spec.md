@@ -99,7 +99,7 @@ An operator sets how long task history, the activity log and the task manager's 
 
 ### Edge Cases
 
-- **Cleanup step interrupted** (stopped session, timeout, crash): the cleanup keeps running in the task manager or can be re-run, and a re-run continues where the first one stopped, because it commits one day at a time and logs its progress.
+- **Cleanup step interrupted** (stopped session, timeout, crash): the cleanup keeps running in the task manager or can be re-run, and a re-run continues where the first one stopped, because it commits at most 1,000 runs at a time, oldest first, and logs its progress.
 - **Upgrade run against a task manager that does not answer the task history size**, for example one that is still the previous version during the Helm upgrade hook: the upgrade waits at most a few seconds for the size, prints that it could not read it with the error type, then the command for old runs, and continues. The command for old runs against such a task manager reports that the cleanup is not available and exits successfully.
 - **Little to delete** (a new or small instance, or the step run again): the command deletes what is older than the retention and rewrites only the tables whose live rows hold less than half of their disk space. A table of a few rows can count as mostly free, because disk space is counted in whole pages; its rewrite takes milliseconds.
 - **Lowering a retention**: the automatic cleanup deletes the old records before the operator runs the step, so the command for old runs deletes little or nothing; with the rewrite option it still rewrites each table that is mostly free space, because it measures the free space whoever freed it.
@@ -238,7 +238,7 @@ From the design doc's "Design changes for implementation" list, entries of 8 and
 
 ## Dependencies & Open Questions
 
-- **Q1 (blocks the release notes)**: how long the cleanup step takes on a large instance. Measured about 8.5 minutes on 25 GB and about 2 h 20 min on 100 GB, almost all of it the deletes; why 100 GB is about 4 times slower per run is not confirmed. Known instances hold about 20 to 35 GB. The upgrade no longer includes it.
+- **Q1 (blocks the release notes)**: how long the cleanup step takes on a large instance. Measured about 8.5 minutes on 25 GB and about 2 h 20 min on 100 GB, almost all of it the deletes; why 100 GB is about 4 times slower per run is not confirmed. Both were measured before 28 Oct, when the deletes were limited to 1,000 runs per transaction; how long they take since then is not measured yet. Known instances hold about 20 to 35 GB. The upgrade no longer includes it.
 - **Deep scrolling by time**: scrolling far down a combined filter, on both supported database versions, is being measured.
 - Non-blocking: whether runs accumulate in SCHEDULED, LATE, PAUSED or CANCELLING, and whether runs legitimately stay RUNNING more than 2 days; what happens to Community instances configured above a future Enterprise-only limit.
 - **Release evidence**: the private performance tests listed in the design doc (Activities queries, concurrent paging, task history retention, the cleanup step, activity log retention, cleanups under load, database size and dead space) must pass and be attached to each part's PR and to INFP-507; PR #33 in opsmill/infrahub-private-tests lands first.
