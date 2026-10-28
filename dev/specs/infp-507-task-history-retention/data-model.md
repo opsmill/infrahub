@@ -27,8 +27,8 @@ A Prefect setting that one of Prefect's sources already sets is left as is: the 
 
 ## Prefect event types list (new constant)
 
-- A fixed list of the event types the pinned Prefect release emits for Infrahub's workload (flow-run and task-run state events, heartbeat, worker, automation, deployment, work pool, work queue, block events).
-- Changes only with a Prefect upgrade; guarded by a unit test over Prefect's built-in states and an integration-docker test on a real workload.
+- A fixed list of the event types the pinned Prefect release sends (flow-run and task-run state events for every state name Prefect defines or sets, heartbeat, worker, automation, deployment, work pool, work queue, block and workspace transfer events).
+- Changes only with a Prefect upgrade; guarded by unit tests over the event names, name patterns, statuses, lifecycle record kinds and state names in the pinned Prefect's source, and by an integration-docker test on a real workload.
 - Infrahub event types (prefix `infrahub.`) are never in it.
 
 ## Existing Prefect records touched

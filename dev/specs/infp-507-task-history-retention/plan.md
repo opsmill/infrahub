@@ -95,7 +95,7 @@ backend/tests/
 ├── unit/task_manager/event/           # filter construction
 ├── unit/prefect_server/               # settings translation and validation
 ├── component/task_manager/            # cleanup equivalence, filter equivalence, cleanup routes, count
-├── unit/prefect_server/test_prefect_event_types.py  # every built-in Prefect state in the list
+├── unit/prefect_server/test_prefect_event_types.py  # the list against the event and state names in Prefect's source
 └── integration_docker/                # Prefect event-type list guard on the full stack
 
 frontend/app/src/entities/events/      # page by `until`, drop `count`, dedupe by id
@@ -153,7 +153,7 @@ Each of parts 1 to 3 merges only with its private-test evidence. The final run o
 | Upgrade step takes hours on large instances (Q1) | Per-day commits, progress output, re-runnable; operators can set a longer retention before upgrading. Release notes wait for the 100 GB figure. |
 | API clients that select `count` | They still get it, and still wait for it (about 10 minutes for level 0 events on a year of activity log), as the design doc states. |
 | SQL cleanup drifts from Prefect's rules on a Prefect upgrade | Cleanup equivalence component test in CI. |
-| New Prefect event type not in the list | Integration-docker guard on the full stack (real workers, failure paths) plus a unit test over every built-in Prefect state; a missed type only costs disk. |
+| New Prefect event type not in the list | Integration-docker guard on the full stack (real workers, failure paths) plus unit tests over the event names, name patterns, statuses, lifecycle record kinds and state names in the pinned Prefect's source; a missed type only costs disk. |
 | Filter results change on a Prefect upgrade | Filter equivalence component test in CI. |
 | Behaviour proven only on small CI data | Private tests on restored production-scale backups for each part, on both Postgres versions, attached as evidence. |
 | PR #33's retention override bypasses the new Infrahub setting | Switch it to `INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG` (T037). |
