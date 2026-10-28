@@ -20,11 +20,8 @@ async def read_events(
 
     async with db.session_context() as session:
         if session.bind is not None and session.bind.dialect.name == "postgresql":
-            # After five executions of a prepared statement Postgres may switch it to a
-            # generic plan chosen without seeing the parameter values; for these event
-            # filters that plan degrades to a quadratic join that stalls for tens of
-            # seconds. Force per-execution planning for this transaction only, so the
-            # rest of the Prefect server keeps its prepared-statement plan caching.
+            # Postgres may switch a prepared statement to a generic plan after five executions,
+            # and for these event filters that plan is a quadratic join that stalls for tens of seconds.
             await session.execute(text("SET LOCAL plan_cache_mode = force_custom_plan"))
         events, total = await query_events(
             session=session,
