@@ -51,7 +51,7 @@
 - [ ] T010 [P] [US1] Component tests for the routes: `POST` returns the running job on a second call, `409` when the lock is held elsewhere (simulate by holding the lock), `GET` unknown id → `404`, no rewrite on SQLite, in `backend/tests/component/task_manager/test_task_history_routes.py`
 - [ ] T011 [P] [US1] Unit tests for the CLI client loop: 404 on start → message and exit 0; 409 or 404 while polling → wait and post again; failed job → exit 1; progress lines printed; `--days-to-keep` and `--batch-size` no longer accepted, using a fake HTTP transport, in `backend/tests/unit/cli/test_tasks_flush_flow_runs.py`
 - [ ] T012 [P] [US1] Unit test that `infrahub upgrade` runs the task history cleanup step after the task manager step with `rewrite=True`, skips it with `--no-task-history-cleanup`, and numbers steps 1/7 to 7/7, in `backend/tests/unit/cli/test_upgrade_task_history.py`
-- [ ] T013 [US1] Integration-docker test on Postgres: seed old runs, run `infrahub tasks flush flow-runs --rewrite` against the stack, assert the same end state as T008 and smaller table sizes, in `backend/tests/integration_docker/test_task_history_cleanup.py`
+- [ ] T013 [US1] Integration-docker test on Postgres: seed old finished runs that are more than half of the runs the tables hold, run `infrahub tasks flush flow-runs --rewrite` against the stack, assert the same end state as T008 and smaller table sizes, in `backend/tests/integration_docker/test_task_history_cleanup.py`
 
 ### Implementation for User Story 1
 

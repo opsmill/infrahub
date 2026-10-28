@@ -31,6 +31,11 @@
 
 ## Notes
 
-- The users are operators, so deployment modes (Compose, Helm) and operator commands are part of the user-facing behaviour, not implementation detail. The database version appears only in Assumptions, because supported versions constrain the outcome.
+- The users are operators and API clients, so the spec keeps these technical details on purpose:
+  - The deployment modes (Compose, Helm), the operator commands and their options, and the activity log API, because operators and API clients use them.
+  - The table rewrite, its locks and the free disk it needs (Edge Cases), because the operator runs the rewrite and waits for it.
+  - How the Activities page reads the activity log (FR-022) and the same query repeated on one connection (FR-026), because the page's load times depend on them.
+  - The `stable` and `develop` branches (FR-025), which say where the page already omits the total count.
+  - The database versions, in Assumptions and in the paragraph that opens Success Criteria, because the supported versions constrain the outcome and the performance tests run on them.
 - The two open items (upgrade duration on 100 GB, deep scrolling measurement) are external measurements and sign-offs, not specification gaps, so they live under Dependencies & Open Questions rather than as [NEEDS CLARIFICATION] markers.
 - Timings in Success Criteria are indicative, as agreed in the grilling session.

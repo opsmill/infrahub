@@ -128,7 +128,7 @@ An operator sets how long task history, the activity log and the task manager's 
 - **FR-002**: System MUST apply the three settings to the task manager's cleanups at start, without the operator setting task-manager-specific variables.
 - **FR-003**: System MUST apply the same settings when the task manager's background services run in their own deployment, by starting that deployment through an Infrahub command.
 - **FR-004**: System MUST refuse to start the task manager, naming the setting, when a retention is shorter than 1 day or longer than 36,500 days; it MUST also refuse to start, naming both settings, when the own-event retention is longer than the activity log retention.
-- **FR-005**: System MUST accept the same retention settings in every edition, with no edition-specific limit; values above 36,500 days (100 years) are refused, a safety bound far below the point where Prefect's cutoff date overflows.
+- **FR-005**: System MUST accept the same retention settings in every edition, with no edition-specific limit; values above 36,500 days (100 years) are refused, a safety bound far below the point where the task manager's cutoff date overflows.
 
 **Task history**
 
