@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 import pytest
 import sqlalchemy as sa
 from prefect.server.database import provide_database_interface
+from prefect.server.database.dependencies import temporary_database_interface
 from prefect.server.services.db_vacuum import vacuum_events_with_retention_overrides, vacuum_old_events
 from prefect.settings import temporary_settings
 from prefect.settings.models.server.events import ServerEventsSettings
@@ -20,7 +21,10 @@ from infrahub.events.branch_action import BranchCreatedEvent
 from infrahub.prefect_server.retention import PREFECT_EVENT_TYPES, build_prefect_retention_env
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import AsyncGenerator, Generator
+    from pathlib import Path
+
+    from prefect.server.database import PrefectDBInterface
 
 
 @pytest.fixture
@@ -41,6 +45,21 @@ def year_of_activity_log(monkeypatch: pytest.MonkeyPatch) -> Generator[None, Non
         yield
 
 
+@pytest.fixture
+async def database(tmp_path: Path) -> AsyncGenerator[PrefectDBInterface, None]:
+    """An empty, migrated task manager database of the test's own, apart from the one the test Prefect server uses."""
+    # Prefect keeps the first database configuration it builds, so a new connection URL alone is not enough.
+    with (
+        temporary_database_interface(),
+        temporary_settings(
+            updates={"server.database.connection_url": f"sqlite+aiosqlite:///{tmp_path / 'prefect.db'}"}
+        ),
+    ):
+        db = provide_database_interface()
+        await db.create_db()
+        yield db
+
+
 def _branch_created_event() -> BranchCreatedEvent:
     branch_id = uuid.uuid4()
     return BranchCreatedEvent(
@@ -52,7 +71,7 @@ def _branch_created_event() -> BranchCreatedEvent:
 
 
 @pytest.mark.usefixtures("year_of_activity_log")
-async def test_prefect_own_events_expire_before_the_activity_log() -> None:
+async def test_prefect_own_events_expire_before_the_activity_log(database: PrefectDBInterface) -> None:
     """Listed Prefect events go after 7 days with their related items, Infrahub and unlisted events after a year."""
     now = datetime.now(UTC)
     kept = {
@@ -66,15 +85,16 @@ async def test_prefect_own_events_expire_before_the_activity_log() -> None:
         await seed_prefect_event(event_name="prefect.task-run.Running", occurred=now - timedelta(days=8)),
     }
     seeded = kept | deleted
-    db = provide_database_interface()
 
-    await vacuum_events_with_retention_overrides(db=db)
-    await vacuum_old_events(db=db)
+    await vacuum_events_with_retention_overrides(db=database)
+    await vacuum_old_events(db=database)
 
-    async with db.session_context() as session:
-        remaining_events = set(await session.scalars(sa.select(db.Event.id).where(db.Event.id.in_(seeded))))
+    async with database.session_context() as session:
+        remaining_events = set(await session.scalars(sa.select(database.Event.id).where(database.Event.id.in_(seeded))))
         events_with_resources = set(
-            await session.scalars(sa.select(db.EventResource.event_id).where(db.EventResource.event_id.in_(seeded)))
+            await session.scalars(
+                sa.select(database.EventResource.event_id).where(database.EventResource.event_id.in_(seeded))
+            )
         )
     assert remaining_events == kept
     assert events_with_resources == kept
