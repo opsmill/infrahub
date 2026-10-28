@@ -23,6 +23,10 @@ ACTIVITY_LOG_TABLES = ("events", "event_resources")
 LOG_LOCK_HOLDER = "task-history-cleanup-test-log-lock"
 # A key of the test's own, so a cleanup that another test runs on the shared stack never holds it.
 ADVISORY_LOCK_KEY = int.from_bytes(b"locktest", byteorder="big")
+LOCK_CHECK_INTERVAL_SECONDS = 1
+# Several check intervals, so that a check that does not find the held lock shows before the session ends.
+LOCK_HELD_SECONDS = 3.5
+LOCK_LOST_WAIT_SECONDS = 10
 # Long enough to outwait autovacuum and Prefect's own writes, far shorter than the hold on the locked table.
 REWRITE_LOCK_TIMEOUT_SECONDS = 5
 REWRITE_TIME_LIMIT_MILLISECONDS = 60_000
@@ -173,13 +177,16 @@ asyncio.run(main(runs=int(sys.argv[1]), ended_days_ago=int(sys.argv[2])))
 
 _ADVISORY_LOCK_SCRIPT = f"""
 import asyncio, json, sys
+from datetime import timedelta
 sys.path.insert(0, "/source/backend")
 from prefect.server.database import provide_database_interface
 from infrahub.prefect_server.task_history import PostgresAdvisoryLock
 
 async def main():
     db = provide_database_interface()
-    first, second, third = (PostgresAdvisoryLock(db=db, key={ADVISORY_LOCK_KEY}) for _ in range(3))
+    first, second, third = (
+        PostgresAdvisoryLock(db=db, key={ADVISORY_LOCK_KEY}, check_interval=timedelta(seconds=30)) for _ in range(3)
+    )
     acquired = [await first.try_acquire(), await second.try_acquire()]
     await first.release()
     acquired.append(await second.try_acquire())
@@ -189,6 +196,52 @@ async def main():
     print(json.dumps(acquired))
 
 asyncio.run(main())
+"""
+
+# Ends the lock's session from a second connection, as an administrator, an idle timeout or a failover does.
+_LOST_LOCK_SCRIPT = """
+import asyncio, json, sys
+from datetime import timedelta
+import sqlalchemy as sa
+sys.path.insert(0, "/source/backend")
+from prefect.server.database import provide_database_interface
+from infrahub.prefect_server.task_history import PostgresAdvisoryLock
+
+async def main(key, check_interval, held_seconds, lost_wait_seconds):
+    db = provide_database_interface()
+    lock = PostgresAdvisoryLock(db=db, key=key, check_interval=check_interval)
+    result = {"acquired": await lock.try_acquire()}
+    lost = asyncio.ensure_future(lock.wait_lost())
+    await asyncio.sleep(held_seconds)
+    result["lost_while_held"] = lost.done()
+    engine = await db.engine()
+    async with engine.connect() as connection:
+        await connection.execute(
+            sa.text(
+                "SELECT pg_terminate_backend(pid) FROM pg_locks "
+                "WHERE locktype = 'advisory' AND classid = :high AND objid = :low AND objsubid = 1"
+            ),
+            {"high": key >> 32, "low": key & 0xFFFFFFFF},
+        )
+    try:
+        await asyncio.wait_for(lost, timeout=lost_wait_seconds)
+        result["lost_after_terminate"] = True
+    except TimeoutError:
+        result["lost_after_terminate"] = False
+    await lock.release()
+    fresh = PostgresAdvisoryLock(db=db, key=key, check_interval=check_interval)
+    result["taken_after"] = await fresh.try_acquire()
+    await fresh.release()
+    print(json.dumps(result))
+
+asyncio.run(
+    main(
+        key=int(sys.argv[1]),
+        check_interval=timedelta(seconds=float(sys.argv[2])),
+        held_seconds=float(sys.argv[3]),
+        lost_wait_seconds=float(sys.argv[4]),
+    )
+)
 """
 
 # The queries below interpolate only this module's constants, so S608 has no input to guard against.
@@ -477,6 +530,27 @@ class TestTaskHistoryCleanup(TestInfrahubDockerClient):
         acquired = json.loads(_python_in_task_manager(compose=infrahub_compose, script=_ADVISORY_LOCK_SCRIPT))
 
         assert acquired == [True, False, True, True]
+
+    def test_a_cleanup_lock_whose_session_ends_is_reported_lost(
+        self,
+        infrahub_app: dict[str, int],
+        infrahub_compose: InfrahubDockerCompose,
+    ) -> None:
+        """The lock is reported lost only once its session ends, and is then free to take."""
+        result = json.loads(
+            _python_in_task_manager(
+                compose=infrahub_compose,
+                script=_LOST_LOCK_SCRIPT,
+                arguments=(
+                    str(ADVISORY_LOCK_KEY),
+                    str(LOCK_CHECK_INTERVAL_SECONDS),
+                    str(LOCK_HELD_SECONDS),
+                    str(LOCK_LOST_WAIT_SECONDS),
+                ),
+            )
+        )
+
+        assert result == {"acquired": True, "lost_while_held": False, "lost_after_terminate": True, "taken_after": True}
 
     @pytest.mark.usefixtures("log_table_locked")
     def test_a_table_locked_past_the_lock_timeout_is_left_out_of_the_rewrite(

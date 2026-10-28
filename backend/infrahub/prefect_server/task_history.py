@@ -24,7 +24,7 @@ from sqlalchemy.exc import DBAPIError
 from .task_history_models import CleanupJob, CleanupJobState, CleanupRequest, CleanupRewrite, TaskHistorySize
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Awaitable, Callable
 
     from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -48,17 +48,37 @@ _REWRITE_MAX_PAUSE = timedelta(seconds=60)
 _SQLSTATE_LOCK_NOT_AVAILABLE = "55P03"
 _SQLSTATE_QUERY_CANCELED = "57014"
 _CLEANUP_LOCK_KEY = int.from_bytes(b"taskhist", byteorder="big")
+# Shorter than the usual idle timeouts that end a quiet database session, so the checks also keep the session open.
+_CLEANUP_LOCK_CHECK_INTERVAL = timedelta(seconds=30)
 # Outlasts a day of deletes; Prefect 3.8.6 turns None into the API's 10 s timeout, and so into the API's engine.
 _MAINTENANCE_STATEMENT_TIMEOUT = timedelta(hours=24)
 # The tuple header and line pointer that Postgres stores with each row, which the size of its values leaves out.
 _ROW_OVERHEAD_BYTES = 28
 _PG_CLASS = sa.table("pg_class", sa.column("oid"), sa.column("reltoastrelid"))
+# 64-bit binds, which Postgres casts to its unsigned 32-bit type, so a half of the key of 2**31 or more still matches.
+_PG_LOCKS = sa.table(
+    "pg_locks",
+    sa.column("locktype"),
+    sa.column("pid"),
+    sa.column("classid", sa.BigInteger),
+    sa.column("objid", sa.BigInteger),
+    sa.column("objsubid"),
+    sa.column("granted"),
+)
+
+
+class CleanupLockLostError(Exception):
+    """The cleanup could not confirm that it still holds the cleanup lock."""
 
 
 class CleanupLock(Protocol):
     """Lets one cleanup run at a time across every task manager on the database."""
 
     async def try_acquire(self) -> bool: ...
+
+    async def wait_lost(self) -> None:
+        """Wait until the lock can no longer be confirmed as held, which may never happen."""
+        ...
 
     async def release(self) -> None: ...
 
@@ -72,17 +92,27 @@ class ProcessCleanupLock:
     async def try_acquire(self) -> bool:
         return self._lock.acquire(blocking=False)
 
+    async def wait_lost(self) -> None:
+        # Only this process releases a process lock, so nothing else can take it from the holder.
+        await asyncio.Event().wait()
+
     async def release(self) -> None:
         self._lock.release()
 
 
 class PostgresAdvisoryLock:
-    """Cleanup lock held as a Postgres advisory lock by a connection of its own until it is released."""
+    """Cleanup lock held as a Postgres advisory lock by a connection of its own until it is released.
 
-    def __init__(self, db: PrefectDBInterface, key: int) -> None:
+    At each check interval, the connection checks that its session still holds the lock.
+    """
+
+    def __init__(self, db: PrefectDBInterface, key: int, check_interval: timedelta) -> None:
         self._db = db
         self._key = key
+        self._check_interval = check_interval
         self._connection: AsyncConnection | None = None
+        self._watch: asyncio.Task[None] | None = None
+        self._lost = asyncio.Event()
 
     async def try_acquire(self) -> bool:
         engine = await self._db.engine()
@@ -97,15 +127,62 @@ class PostgresAdvisoryLock:
                 await connection.close()
         if acquired:
             self._connection = connection
+            self._lost = asyncio.Event()
+            self._watch = asyncio.create_task(self._watch_held(connection=connection))
         return acquired
+
+    async def wait_lost(self) -> None:
+        await self._lost.wait()
 
     async def release(self) -> None:
         if self._connection is None:
             return
         connection, self._connection = self._connection, None
+        if self._watch is not None:
+            self._watch.cancel()
+            await asyncio.wait((self._watch,))
         # Ending the session releases the lock, and a discarded connection cannot return to the pool still holding it.
         await connection.invalidate()
         await connection.close()
+
+    async def _watch_held(self, connection: AsyncConnection) -> None:
+        """Check at each interval that the session still holds the lock, until a check cannot confirm it."""
+        try:
+            while True:
+                if not await self._still_held(connection=connection):
+                    return
+                await asyncio.sleep(self._check_interval.total_seconds())
+        finally:
+            self._lost.set()
+
+    async def _still_held(self, connection: AsyncConnection) -> bool:
+        held_by_session = sa.select(
+            sa.exists().where(
+                _PG_LOCKS.c.locktype == "advisory",
+                _PG_LOCKS.c.pid == sa.func.pg_backend_pid(),
+                _PG_LOCKS.c.classid == self._key >> 32,
+                _PG_LOCKS.c.objid == self._key & 0xFFFFFFFF,
+                _PG_LOCKS.c.objsubid == 1,
+                _PG_LOCKS.c.granted,
+            )
+        )
+        try:
+            async with asyncio.timeout(self._check_interval.total_seconds()) as bound:
+                held = bool(await connection.scalar(held_by_session))
+        except DBAPIError as exc:
+            log.warning(f"Task history cleanup: the check of the cleanup lock failed: {exc}")
+            return False
+        except TimeoutError:
+            if not bound.expired():
+                raise
+            log.warning(
+                "Task history cleanup: the session that holds the cleanup lock did not answer "
+                f"within {self._check_interval.total_seconds():.0f} s"
+            )
+            return False
+        if not held:
+            log.warning("Task history cleanup: the session that took the cleanup lock no longer holds it")
+        return held
 
 
 class TaskHistoryTables:
@@ -489,7 +566,7 @@ class CleanupJobs:
     async def _run(self, job: CleanupJob, lock: CleanupLock, cleanup: TaskHistoryCleanup) -> None:
         """Run the job to its end, deciding the rewrite again whenever a start raised its mode after the decision."""
         try:
-            await cleanup.delete(job=job)
+            await _stop_when_lost(step=cleanup.delete(job=job), lock=lock)
             decided: CleanupRewrite | None = None
             while True:
                 # Ending the job in the same hold as the check leaves no moment where a start raises a mode it ignores.
@@ -500,7 +577,16 @@ class CleanupJobs:
                         job.state = CleanupJobState.COMPLETED
                         return
                     decided = job.rewrite
-                await cleanup.rewrite(job=job, mode=decided)
+                await _stop_when_lost(step=cleanup.rewrite(job=job, mode=decided), lock=lock)
+        except CleanupLockLostError:
+            # The check of the lock already logged why it could not confirm the lock, so a traceback adds nothing.
+            log.error(
+                f"Task history cleanup {job.id} stopped, because it could not confirm that it holds the cleanup lock"
+            )
+            job.state = CleanupJobState.FAILED
+            job.error = (
+                "The cleanup stopped, because it could not confirm that it holds the cleanup lock; start it again"
+            )
         # A background job has no caller to raise to, so the failure is logged and recorded on the job instead.
         except Exception as exc:
             log.exception(f"Task history cleanup {job.id} failed")
@@ -511,6 +597,27 @@ class CleanupJobs:
                 if self._running is job:
                     self._running = None
                     await lock.release()
+
+
+async def _stop_when_lost(step: Awaitable[None], lock: CleanupLock) -> None:
+    """Run the step, cancelling it once the lock can no longer be confirmed as held.
+
+    Raises:
+        CleanupLockLostError: When the lock can no longer be confirmed as held before the step ends.
+
+    """
+    work = asyncio.ensure_future(step)
+    lost = asyncio.ensure_future(lock.wait_lost())
+    try:
+        await asyncio.wait((work, lost), return_when=asyncio.FIRST_COMPLETED)
+    finally:
+        work_ended = work.done()
+        lost.cancel()
+        work.cancel()
+        await asyncio.wait((work,))
+    if not work_ended:
+        raise CleanupLockLostError
+    work.result()
 
 
 class _MaintenancePostgresConfiguration(AsyncPostgresConfiguration):
@@ -546,7 +653,9 @@ def get_cleanup_jobs() -> CleanupJobs:
 
 def get_cleanup_lock(db: Annotated[PrefectDBInterface, Depends(provide_database_interface)]) -> CleanupLock:
     if isinstance(db.database_config, AsyncPostgresConfiguration):
-        return PostgresAdvisoryLock(db=_maintenance_database(db), key=_CLEANUP_LOCK_KEY)
+        return PostgresAdvisoryLock(
+            db=_maintenance_database(db), key=_CLEANUP_LOCK_KEY, check_interval=_CLEANUP_LOCK_CHECK_INTERVAL
+        )
     return _PROCESS_CLEANUP_LOCK
 
 

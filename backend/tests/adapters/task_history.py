@@ -116,3 +116,27 @@ class FailingRewriter:
 
     async def rewrite(self, tables: list[str], on_table: Callable[[str, TableOutcome], None]) -> None:
         raise RuntimeError("rewrite rejected")
+
+
+class LosableCleanupLock:
+    """A cleanup lock the test can take from its holder, as a database that ends the holding session does."""
+
+    def __init__(self) -> None:
+        self._held = False
+        self._lost = asyncio.Event()
+
+    async def try_acquire(self) -> bool:
+        if self._held:
+            return False
+        self._held = True
+        self._lost = asyncio.Event()
+        return True
+
+    async def wait_lost(self) -> None:
+        await self._lost.wait()
+
+    async def release(self) -> None:
+        self._held = False
+
+    def lose(self) -> None:
+        self._lost.set()

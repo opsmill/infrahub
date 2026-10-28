@@ -12,7 +12,7 @@ from fastapi import FastAPI
 from prefect.server.database import provide_database_interface
 from prefect.server.schemas.states import StateType
 from prefect.settings import temporary_settings
-from tests.adapters.task_history import FailingRewriter, RecordingRewriter
+from tests.adapters.task_history import FailingRewriter, LosableCleanupLock, RecordingRewriter
 from tests.helpers.task_manager_seed import days_ago, seed_flow_run, task_manager_database
 
 from infrahub.prefect_server.app import router
@@ -57,6 +57,7 @@ REWRITE_OUTCOME = {
     "timed_out": [],
     "failed": [],
 }
+LOST_LOCK_ERROR = "The cleanup stopped, because it could not confirm that it holds the cleanup lock; start it again"
 
 
 @pytest.fixture
@@ -262,6 +263,50 @@ async def test_a_start_after_a_failed_cleanup_starts_a_new_cleanup(app: FastAPI,
     assert failed == first | failure | {"deleted_runs": 1, "current_day": "2026-01-15"}
     assert second.json()["id"] != first["id"]
     assert failed_again == second.json() | failure | {"deleted_runs": 0, "current_day": None}
+
+
+async def test_a_cleanup_that_loses_its_lock_fails_keeps_its_deletes_and_lets_the_next_start_run(
+    app: FastAPI, db: PrefectDBInterface
+) -> None:
+    """A cleanup that can no longer confirm it holds the lock stops its rewrite and fails, keeping the runs it deleted.
+
+    The next start takes the lock and runs to its end.
+    """
+    recent_runs = await _seed_old_and_recent_runs(db=db)
+    lock = LosableCleanupLock()
+    app.dependency_overrides[get_cleanup_lock] = lambda: lock
+    # The rewrite of the freed tables, where the lock is lost before the rewrite reports a table.
+    rewriter = RecordingRewriter(spaces=SPACES, locked=LOCKED, pause_at_call=5)
+    _rewrite_through(app=app, db=db, rewriter=rewriter)
+
+    async with _client(app) as client:
+        first = (await client.post(CLEANUP_URL, json={"rewrite": "if_freed"})).json()
+        await rewriter.wait_until_paused()
+        lock.lose()
+        failed = await _finished_job(client=client, job_id=first["id"])
+        second = await client.post(CLEANUP_URL, json={"rewrite": "never"})
+        assert second.status_code == 202, second.json()
+        completed = await _finished_job(client=client, job_id=second.json()["id"])
+
+    assert failed == first | {
+        "state": "failed",
+        "deleted_runs": OLD_RUNS,
+        "current_day": "2026-01-15",
+        "size_before": 1000,
+        "mostly_live": ["events"],
+        "error": LOST_LOCK_ERROR,
+    }
+    assert completed == second.json() | {"state": "completed", "deleted_runs": 0, "size_before": 100, "size_after": 100}
+    assert rewriter.calls == [
+        "total_size",
+        "space flow_run",
+        "space log",
+        "space events",
+        "rewrite flow_run log",
+        "total_size",
+        "total_size",
+    ]
+    assert await _flow_run_ids(db=db) == recent_runs
 
 
 @pytest.mark.usefixtures("cleanup_lock_held_elsewhere")
