@@ -246,3 +246,25 @@ def test_assigning_the_tracking_pool_makes_it_known(branch: Branch, test_case: T
 
     assert attr.tracking_pool_known is test_case.known
     assert attr.tracking_pool == (test_case.assigned[-1] if test_case.assigned else None)
+
+
+@pytest.fixture
+def number_schema() -> AttributeSchema:
+    return AttributeSchema(name="vlan_id", kind="Number")
+
+
+@pytest.mark.parametrize("value", [-(2**63), 0, 2**63 - 1])
+def test_validate_format_number_accepts_a_64_bit_value(number_schema: AttributeSchema, value: int) -> None:
+    Integer.validate_format(value=value, name=number_schema.name, schema=number_schema)
+
+
+@pytest.mark.parametrize("value", [-(2**63) - 1, 2**63, 9223372036854776000])
+def test_validate_format_number_refuses_a_value_outside_64_bits(number_schema: AttributeSchema, value: int) -> None:
+    with pytest.raises(
+        ValidationError,
+        match=(
+            rf"^{value} is outside the supported range of numbers "
+            r"\(-9223372036854775808 to 9223372036854775807\) at vlan_id$"
+        ),
+    ):
+        Integer.validate_format(value=value, name=number_schema.name, schema=number_schema)

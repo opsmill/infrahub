@@ -7,10 +7,13 @@ from functools import cached_property
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Mapping, Sequence
 
 OPEN_START = 1
 OPEN_END = sys.maxsize
+# One above the 64-bit minimum, so the allocation query can subtract 1 from a range start without overflowing.
+SUPPORTED_MIN = -sys.maxsize
+SUPPORTED_MAX = sys.maxsize
 
 
 def allocation_bounds(start: int | None, end: int | None) -> tuple[int, int]:
@@ -21,6 +24,15 @@ def allocation_bounds(start: int | None, end: int | None) -> tuple[int, int]:
 def format_range_label(start: int, end: int) -> str:
     """Return the `start - end` label of a range, writing the widest end as MAX."""
     return f"{start} - {'MAX' if end == OPEN_END else end}"
+
+
+def unsupported_range_values(label: str, values: Mapping[str, int | None]) -> list[str]:
+    """Return one message per value of the range labelled `label` that the database cannot store as a bound or weight."""
+    return [
+        f"Range {label} has {name} {value} outside the supported numbers ({SUPPORTED_MIN} to {SUPPORTED_MAX})"
+        for name, value in values.items()
+        if value is not None and not SUPPORTED_MIN <= value <= SUPPORTED_MAX
+    ]
 
 
 @dataclass(frozen=True, kw_only=True)

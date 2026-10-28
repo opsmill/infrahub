@@ -132,6 +132,30 @@ REFUSED_DECLARATION_TEST_CASES: list[RefusedDeclarationTestCase] = [
         parameters={"ranges": [{"start": 300, "end": 350}, {"start": 100, "end": 400}, {"start": 150, "end": 200}]},
         message="Range 100 - 400 overlaps 150 - 200, 300 - 350",
     ),
+    RefusedDeclarationTestCase(
+        name="range_end_above_the_largest_supported_number",
+        parameters={"ranges": [{"start": 1, "end": 9223372036854775808}]},
+        message=(
+            r"Range 1 - 9223372036854775808 has end 9223372036854775808 "
+            r"outside the supported numbers \(-9223372036854775807 to 9223372036854775807\)"
+        ),
+    ),
+    RefusedDeclarationTestCase(
+        name="range_weight_above_the_largest_supported_number",
+        parameters={"ranges": [{"start": 1, "end": 10, "weight": 9223372036854775808}]},
+        message=(
+            r"Range 1 - 10 has weight 9223372036854775808 "
+            r"outside the supported numbers \(-9223372036854775807 to 9223372036854775807\)"
+        ),
+    ),
+    RefusedDeclarationTestCase(
+        name="shorthand_start_on_the_64_bit_minimum",
+        parameters={"start_range": -9223372036854775808},
+        message=(
+            r"Range -9223372036854775808 - MAX has start -9223372036854775808 "
+            r"outside the supported numbers \(-9223372036854775807 to 9223372036854775807\)"
+        ),
+    ),
 ]
 
 
@@ -139,6 +163,16 @@ REFUSED_DECLARATION_TEST_CASES: list[RefusedDeclarationTestCase] = [
 def test_refused_declaration(test_case: RefusedDeclarationTestCase) -> None:
     with pytest.raises(pydantic.ValidationError, match=test_case.message):
         NumberPoolParameters(**test_case.parameters)
+
+
+def test_declaration_on_the_supported_limits_is_accepted() -> None:
+    parameters = NumberPoolParameters(
+        ranges=[NumberPoolRangeParameters(start=-sys.maxsize, end=sys.maxsize, weight=sys.maxsize)],
+    )
+
+    assert [(item.start, item.end, item.weight) for item in parameters.effective_ranges()] == [
+        (-sys.maxsize, sys.maxsize, sys.maxsize)
+    ]
 
 
 def test_pool_size_sums_effective_ranges() -> None:
