@@ -5,6 +5,7 @@ import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -24,7 +25,6 @@ from infrahub.prefect_server.retention import PREFECT_EVENT_TYPES
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
-    from pathlib import Path
 
 APP_LOGGER = "infrahub.prefect_server.app"
 LISTED_PREFECT_EVENT = "prefect.flow-run.Completed"
@@ -191,11 +191,13 @@ def _database_without_tables(directory: Path) -> PrefectDBInterface:
     return task_manager_database(directory / "unmigrated.db")
 
 
-def _unreachable_postgres(directory: Path) -> PrefectDBInterface:
+def _unreachable_postgres(_directory: Path) -> PrefectDBInterface:
+    # A socket directory that does not exist makes the driver fail at once without a network connection, and a path
+    # at the root stays under the Unix socket path length limit, which a long temporary directory can exceed.
+    socket_directory = Path("/") / f"infrahub-no-socket-{uuid.uuid4().hex}"
     return PrefectDBInterface(
-        # A socket directory that does not exist makes the driver fail at once, without a network connection.
         database_config=AsyncPostgresConfiguration(
-            connection_url=f"postgresql+asyncpg://prefect:prefect@/prefect?host={directory / 'no-socket'}"
+            connection_url=f"postgresql+asyncpg://prefect:prefect@/prefect?host={socket_directory}"
         ),
         query_components=AsyncPostgresQueryComponents(),
         orm=AsyncPostgresORMConfiguration(),
