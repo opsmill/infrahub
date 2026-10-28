@@ -11,7 +11,12 @@ from infrahub_sdk.protocols import CoreProposedChange, CoreReadOnlyRepository
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 from infrahub_sdk.testing.repository import GitRepo, GitRepoType
 from infrahub_sdk.testing.schemas.car_person import TESTING_MANUFACTURER, SchemaCarPerson
-from prefect.client.schemas.filters import FlowRunFilter, FlowRunFilterState, FlowRunFilterStateType
+from prefect.client.schemas.filters import (
+    FlowRunFilter,
+    FlowRunFilterExpectedStartTime,
+    FlowRunFilterState,
+    FlowRunFilterStateType,
+)
 from prefect.client.schemas.objects import StateType
 from prefect.client.schemas.responses import OrchestrationResult, SetStateStatus
 from prefect.events.schemas.events import Event, Resource
@@ -28,17 +33,20 @@ if TYPE_CHECKING:
     from infrahub_sdk.schema import SchemaRoot
     from infrahub_testcontainers.container import InfrahubDockerCompose
     from prefect.client.orchestration import PrefectClient
+    from prefect.client.schemas.objects import FlowRun
 
 pytestmark = pytest.mark.shard_b
 
 WORKLOAD_EVENT_TYPES = {"prefect.flow-run.Completed", "prefect.flow-run.Failed", "prefect.flow-run.Cancelled"}
 WORKER_STARTED = "prefect.worker.started"
+# Its `infrahub.` prefix keeps it out of the Prefect event types that the tests and the startup check read.
+SETTLED_MARKER_EVENT = "infrahub.test.event-types-settled"
 EVENT_WAIT_SECONDS = 180
 RUNNING_FLOW_WAIT_SECONDS = 60
 # Short enough that a missing warning raises within the test timeout, after the workload.
 TASK_MANAGER_RESTART_WAIT_SECONDS = 120
-# Three flush intervals of the task manager's event persister, so events emitted just before the read are stored.
-EVENT_PERSISTER_SETTLE_SECONDS = 15
+# Six flush intervals of the task manager's event persister.
+SETTLED_MARKER_WAIT_SECONDS = 30
 POLL_SECONDS = 1
 
 CANCELLED_RUN_DEPLOYMENT = "git_repositories_sync/git_repositories_sync"
@@ -144,6 +152,72 @@ async def _wait_for_a_running_flow_run(prefect_client: PrefectClient) -> None:
     )
 
 
+async def _unsettled_flow_runs(prefect_client: PrefectClient) -> list[FlowRun]:
+    """The flow runs that are pending, running, or scheduled to start by now."""
+    unsettled = FlowRunFilter(
+        state=FlowRunFilterState(
+            type=FlowRunFilterStateType(any_=[StateType.SCHEDULED, StateType.PENDING, StateType.RUNNING])
+        ),
+        expected_start_time=FlowRunFilterExpectedStartTime(before_=datetime.now(UTC)),
+    )
+    return await prefect_client.read_flow_runs(flow_run_filter=unsettled)
+
+
+async def _post_event(prefect_client: PrefectClient, event_type: str) -> uuid.UUID:
+    """Post an event of the given type to the task manager and return its id."""
+    event = Event(
+        id=uuid.uuid4(),
+        event=event_type,
+        resource=Resource({"prefect.resource.id": f"infrahub-test.{uuid.uuid4()}"}),
+    )
+    response = await prefect_client._client.post("/events", json=[event.model_dump(mode="json")])
+    response.raise_for_status()
+    return event.id
+
+
+async def _event_is_stored(compose: InfrahubDockerCompose, event_id: uuid.UUID) -> bool:
+    query = f"SELECT count(*) FROM events WHERE id = '{event_id}'"  # noqa: S608 - an id the test generated
+    return await _query_task_manager_database(compose=compose, query=query) == ["1"]
+
+
+async def _wait_for_stored_marker(compose: InfrahubDockerCompose, prefect_client: PrefectClient) -> None:
+    """Post a marker event and wait until the task manager stores it."""
+    marker_id = await _post_event(prefect_client=prefect_client, event_type=SETTLED_MARKER_EVENT)
+
+    async def _stored() -> bool:
+        return await _event_is_stored(compose=compose, event_id=marker_id)
+
+    await _poll_until(
+        condition=_stored,
+        waiting_for=f"the task manager to store the event {marker_id}",
+        seconds=SETTLED_MARKER_WAIT_SECONDS,
+    )
+
+
+async def _wait_until_settled(compose: InfrahubDockerCompose, prefect_client: PrefectClient) -> None:
+    """Wait until no flow run is left to run and the task manager has stored every event it received.
+
+    Raises:
+        TimeoutError: When a flow run is still pending, running or due at the deadline, or the task manager does not
+            store the marker event in time.
+
+    """
+    deadline = time.monotonic() + EVENT_WAIT_SECONDS
+    while True:
+        unsettled = await _unsettled_flow_runs(prefect_client=prefect_client)
+        if not unsettled:
+            # The task manager stores events in arrival order, so the marker is stored after every earlier event.
+            await _wait_for_stored_marker(compose=compose, prefect_client=prefect_client)
+            # A run that started while the marker waited sends events that the marker does not cover.
+            unsettled = await _unsettled_flow_runs(prefect_client=prefect_client)
+            if not unsettled:
+                return
+        if time.monotonic() >= deadline:
+            names = ", ".join(sorted(f"{run.name} ({run.state_name})" for run in unsettled))
+            raise TimeoutError(f"Flow runs not finished after {EVENT_WAIT_SECONDS} s: {names}")
+        await asyncio.sleep(POLL_SECONDS)
+
+
 class TestPrefectEventTypes(TestInfrahubDockerClient, SchemaCarPerson):
     @pytest.fixture(scope="class")
     async def stored_prefect_event_types(
@@ -214,7 +288,7 @@ class TestPrefectEventTypes(TestInfrahubDockerClient, SchemaCarPerson):
         infrahub_compose._run_command(cmd=[*infrahub_compose.compose_command_property, "restart", "task-worker"])
         await _wait_for_worker_restart(compose=infrahub_compose, started_before=started_before)
 
-        await asyncio.sleep(EVENT_PERSISTER_SETTLE_SECONDS)
+        await _wait_until_settled(compose=infrahub_compose, prefect_client=prefect_client)
         return set(await _stored_prefect_events(compose=infrahub_compose))
 
     def test_every_stored_prefect_event_type_is_listed(self, stored_prefect_event_types: set[str]) -> None:
@@ -238,14 +312,8 @@ class TestPrefectEventTypes(TestInfrahubDockerClient, SchemaCarPerson):
 
         It requests the workload so that the task manager restarts only after the workload has run.
         """
-        event = Event(
-            id=uuid.uuid4(),
-            event=UNLISTED_PREFECT_EVENT,
-            resource=Resource({"prefect.resource.id": f"infrahub-test.{uuid.uuid4()}"}),
-        )
         try:
-            response = await prefect_client._client.post("/events", json=[event.model_dump(mode="json")])
-            response.raise_for_status()
+            await _post_event(prefect_client=prefect_client, event_type=UNLISTED_PREFECT_EVENT)
             await _wait_for_stored_event_types(compose=infrahub_compose, event_types={UNLISTED_PREFECT_EVENT})
             infrahub_compose._run_command(cmd=[*infrahub_compose.compose_command_property, "restart", "task-manager"])
             await _wait_for_task_manager_log_line(compose=infrahub_compose, text=UNLISTED_WARNING)
