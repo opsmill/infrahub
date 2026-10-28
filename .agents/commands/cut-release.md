@@ -108,8 +108,8 @@ release they ship in, such as a Neo4j chart upgrade, and show them to the user. 
 whose Infrahub pull request is part of this release; for the others, change the release named in
 the description. Once the user confirms, mark each one ready for review and merge it now: the New
 Release workflow publishes the chart from infrahub-helm `stable`, so a change merged after the
-release is missing from its chart. If a merge fails, stop and report it. See
-[Upgrading infrastructure dependencies](../../dev/guides/backend/upgrading-infrastructure-dependencies.md).
+release is missing from its chart. If a merge fails, stop and report it. The
+`upgrading-infrastructure-dependencies` skill opens these pull requests.
 
 ## Step 4: Build Changelog
 
