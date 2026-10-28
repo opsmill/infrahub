@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import json
 from dataclasses import dataclass
 from enum import Enum
@@ -12,7 +13,7 @@ from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.exceptions import ValidationError
-from infrahub.types import get_attribute_type
+from infrahub.types import get_attribute_type, is_large_attribute_type
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -97,10 +98,15 @@ class AllocationScope:
 
 @dataclass(frozen=True)
 class DivisionElementPath:
-    """Where a Node keeps the value of one scope element: an attribute by name, or a relationship by identifier."""
+    """Where a Node keeps the value of one scope element: an attribute by name, or a relationship by identifier.
+
+    `value_indexed` is true for an attribute whose values are stored as `AttributeValueIndexed` vertices.
+    """
 
     name: str
     relationship_direction: RelationshipDirection | None = None
+    # Derived from the field's kind, so it does not change which element a path names.
+    value_indexed: bool = dataclasses.field(default=False, compare=False)
 
     @property
     def is_relationship(self) -> bool:
@@ -209,7 +215,7 @@ def division_element_path(field: AttributeSchema | RelationshipSchema) -> Divisi
     """Return where a Node keeps the value of the scope element that `field` holds."""
     if isinstance(field, RelationshipSchema):
         return DivisionElementPath(name=field.get_identifier(), relationship_direction=field.direction)
-    return DivisionElementPath(name=field.name)
+    return DivisionElementPath(name=field.name, value_indexed=not is_large_attribute_type(field.kind))
 
 
 def _entry_value(
