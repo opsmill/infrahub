@@ -145,7 +145,7 @@ services:
       mode: replicated
       replicas: ${INFRAHUB_TESTING_TASKMGR_BACKGROUND_SVC_REPLICAS:-0}
     image: "${INFRAHUB_TESTING_DOCKER_IMAGE}:${INFRAHUB_TESTING_IMAGE_VERSION}"
-    command: infrahub tasks background-services
+    command: "${INFRAHUB_TESTING_TASKMGR_BACKGROUND_SVC_COMMAND:-infrahub tasks background-services}"
     restart: unless-stopped
     depends_on:
       task-manager:
