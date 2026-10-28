@@ -119,13 +119,20 @@ async def _task_manager_log_lines_with(compose: InfrahubDockerCompose, text: str
     return [line for line in f"{stdout}\n{stderr}".splitlines() if text in line]
 
 
-async def _wait_for_task_manager_log_line(compose: InfrahubDockerCompose, text: str) -> None:
+async def _wait_for_task_manager_log_lines(compose: InfrahubDockerCompose, text: str, count: int) -> None:
     async def _logged() -> bool:
-        return bool(await _task_manager_log_lines_with(compose=compose, text=text))
+        return len(await _task_manager_log_lines_with(compose=compose, text=text)) >= count
 
     await _poll_until(
-        condition=_logged, waiting_for=f"the task manager to log {text!r}", seconds=TASK_MANAGER_RESTART_WAIT_SECONDS
+        condition=_logged,
+        waiting_for=f"{count} task manager log lines with {text!r}",
+        seconds=TASK_MANAGER_RESTART_WAIT_SECONDS,
     )
+
+
+def _task_manager_web_workers(compose: InfrahubDockerCompose) -> int:
+    """The number of web server processes in the task manager container, each of which checks the stored types at startup."""
+    return int(compose.get_env_var("INFRAHUB_TESTING_TASKMGR_API_WORKERS"))
 
 
 async def _wait_for_worker_restart(compose: InfrahubDockerCompose, started_before: int) -> None:
@@ -309,17 +316,18 @@ class TestPrefectEventTypes(TestInfrahubDockerClient, SchemaCarPerson):
         prefect_client: PrefectClient,
         infrahub_compose: InfrahubDockerCompose,
     ) -> None:
-        """At startup the task manager names the stored Prefect event types missing from the list, read on Postgres.
+        """At startup each web server process of the task manager names the stored Prefect event types missing from the list once, read on Postgres.
 
         It requests the workload so that the task manager restarts only after the workload has run.
         """
+        workers = _task_manager_web_workers(compose=infrahub_compose)
         try:
             await _post_event(prefect_client=prefect_client, event_type=UNLISTED_PREFECT_EVENT)
             await _wait_for_stored_event_types(compose=infrahub_compose, event_types={UNLISTED_PREFECT_EVENT})
             infrahub_compose._run_command(cmd=[*infrahub_compose.compose_command_property, "restart", "task-manager"])
-            await _wait_for_task_manager_log_line(compose=infrahub_compose, text=UNLISTED_WARNING)
+            await _wait_for_task_manager_log_lines(compose=infrahub_compose, text=UNLISTED_WARNING, count=workers)
         finally:
             _delete_unlisted_prefect_events(compose=infrahub_compose)
 
-        assert len(await _task_manager_log_lines_with(compose=infrahub_compose, text=UNLISTED_WARNING)) == 1
+        assert len(await _task_manager_log_lines_with(compose=infrahub_compose, text=UNLISTED_WARNING)) == workers
         assert await _task_manager_log_lines_with(compose=infrahub_compose, text=STARTUP_CHECK_FAILED) == []
