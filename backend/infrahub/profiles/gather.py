@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from prefect import task
 from prefect.cache_policies import NONE
 
@@ -9,6 +11,20 @@ from infrahub.database import InfrahubDatabase  # noqa: TC001  needed for prefec
 from infrahub.workflows.catalogue import PROFILE_REFRESH_PROCESS
 
 from .models import ProfileRefreshTriggerDefinition
+
+if TYPE_CHECKING:
+    from infrahub.core.schema import ProfileSchema
+
+
+def get_profile_trigger_fields(profile_schema: ProfileSchema) -> list[str]:
+    """Return the fields of a profile whose change refreshes the nodes and templates linked to it."""
+    trigger_attr = [attr.name for attr in profile_schema.attributes if attr.name != "profile_name"]
+    trigger_rels = [
+        rel.name
+        for rel in profile_schema.relationships
+        if rel.kind in {RelationshipKind.GENERIC, RelationshipKind.ATTRIBUTE} and rel.name != "related_nodes"
+    ]
+    return sorted(trigger_attr + trigger_rels)
 
 
 @task(name="gather-trigger-profile-refresh", cache_policy=NONE)
@@ -33,14 +49,7 @@ async def gather_trigger_profile_refresh(
 
         for profile_name in schema_branch.profile_names:
             profile_schema = schema_branch.get_profile(name=profile_name, duplicate=False)
-
-            trigger_attr = [attr.name for attr in profile_schema.attributes if attr.name != "profile_name"]
-            trigger_rels = [
-                rel.name
-                for rel in profile_schema.relationships
-                if rel.kind in {RelationshipKind.GENERIC, RelationshipKind.ATTRIBUTE} and rel.name != "related_nodes"
-            ]
-            trigger_fields = sorted(trigger_attr + trigger_rels)
+            trigger_fields = get_profile_trigger_fields(profile_schema=profile_schema)
 
             if trigger_fields:
                 triggers.append(

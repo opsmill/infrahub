@@ -34,7 +34,7 @@ The bulk writer stamps `recompute` on its own writes so a chained recompute does
 re-enter the per-node path either.
 
 Families that are not coalesced in this pass keep receiving every event whatever the origin:
-profile refresh, user action rules, and webhooks.
+user action rules and webhooks. Profile refresh did too until the amendment below.
 
 ## Consequences
 
@@ -74,3 +74,18 @@ and rely on them firing on merge, so dropping emission silently breaks them.
 Rejected. The merge/rebase relationship is present in `meta.parent` / `meta.ancestors`, but that
 lineage is not exposed as a Prefect match label, so a trigger cannot filter on it. A dedicated
 `EventMeta` field surfaced as a label is matchable.
+
+## Amendment: profile refresh matches only `live` (2026-10-28)
+
+The profile refresh automation matched a profile update whatever its origin. A merge replays each
+changed profile as a `merge` event, so the destination refreshed every node and template linked to
+the profile, although the merge had already carried the values that the branch refresh wrote. A
+rebase did the same on the branch with `rebase` events, and every rebase replays all the changes of
+the branch.
+
+The profile refresh automation now carries the same `live` match. The merge post-process and the
+rebase flow submit the refresh of the profiles they replay themselves, narrowed to the linked nodes
+that do not hold the new values from the profile
+([ADR 0017](0017-coalesced-merge-rebase-recompute.md#amendment-the-merge-and-the-rebase-refresh-the-profiles-they-replay-2026-10-28)).
+Only user action rules and webhooks still receive every event whatever the origin.
+

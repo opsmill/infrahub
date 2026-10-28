@@ -19,6 +19,7 @@ from infrahub.core.registry import registry
 from infrahub.events.branch_action import BranchMergedEvent
 from infrahub.events.schema_action import SchemaUpdatedEvent
 from infrahub.git.writeback.store import WritebackIntentStore
+from infrahub.profiles.replay import ProfileReplayRefresher
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.adapters.event import FailingInfrahubEvent, MemoryInfrahubEvent
 from tests.adapters.python_target_sources import RecordingPythonTargetResolver, ResolveCall
@@ -63,6 +64,7 @@ def _build_dispatcher(
         default_branch=destination_branch,
         python_resolver=python_resolver,
         barrier=regeneration_barrier(state=state, default_branch_name=destination_branch.name),
+        profile_replay_refresher=ProfileReplayRefresher(workflow=workflow),
     )
 
 

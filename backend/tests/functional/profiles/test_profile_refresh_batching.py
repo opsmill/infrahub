@@ -289,6 +289,22 @@ class TestProfileRefreshBatching(TestInfrahubApp):
         assert sorted(interface_chunk_ids) == sorted(interface_dataset.linked_interface_ids)
         assert submissions[2]["parameters"]["node_ids"] == [interface_dataset.template_id]
 
+    async def test_profile_refresh_leaves_out_the_nodes_that_hold_the_profile_value(
+        self, dataset: ProfileDataset, default_branch: Branch, client: InfrahubClient, context: EventContext
+    ) -> None:
+        """Every linked device and the template hold the part number of the profile, so no refresh is submitted."""
+        recorder = WorkflowRecorder()
+        with override_workflow(recorder, dependency_provider=dependency_provider):
+            await profile_refresh_process(
+                branch_name=default_branch.name,
+                profile_kind=DEVICE_PROFILE_KIND,
+                profile_id=dataset.profile_id,
+                context=context,
+                held_attribute_names=["part_number"],
+            )
+
+        assert recorder.submit_calls == []
+
     async def test_send_profile_refresh_workflows_submits_one_flow_per_chunk(
         self,
         db: InfrahubDatabase,
