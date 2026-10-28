@@ -108,7 +108,18 @@ When the task manager does not delete old task runs, because `PREFECT_SERVER_SER
 Task history takes 24.8 GB, with 1,234 runs older than the retention. Old task runs are not deleted, because PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED does not turn on flow_runs.
 ```
 
-When the upgrade cannot read the size from the task manager within 10 seconds, for example because the task manager still runs the previous release, it prints `Could not read the task history size from the task manager`, with the reason, then the command, and continues.
+When the upgrade cannot read the size, it prints the type of the error in parentheses, then the command, and continues:
+
+```console
+Could not read the task history size from the task manager (PrefectHTTPStatusError). To get the disk space of old task history back, run: infrahub tasks flush flow-runs --rewrite
+```
+
+The most common types are:
+
+- `PrefectHTTPStatusError`: the task manager answered with an HTTP error. A task manager that runs the previous release answers this way at once, because that release does not provide the size.
+- `TimeoutError`: the task manager did not answer within 10 seconds.
+- `ConnectError`: the upgrade could not connect to the task manager.
+- `ValidationError`: the task manager gave an answer that the upgrade cannot read, such as one without the count of old runs.
 
 <SnippetTaskHistoryWarning />
 
