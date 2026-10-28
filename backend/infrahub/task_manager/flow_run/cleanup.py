@@ -86,8 +86,9 @@ async def run_task_history_cleanup(
 
     Raises:
         TaskHistoryCleanupFailedError: When the cleanup fails in the task manager.
-        TaskHistoryCleanupError: When the task manager refuses the cleanup, with its reason, or shows no cleanup for
-            `give_up_after`, naming the reason of the last wait.
+        TaskHistoryCleanupError: When the task manager refuses the cleanup, with its reason, shows no cleanup for
+            `give_up_after`, naming the reason of the last wait, or answers a start or a read with a body that holds
+            no cleanup.
         httpx.TransportError: When the task manager cannot be reached to start the cleanup.
         PrefectHTTPStatusError: When the task manager answers with an error other than 403, 404 or 409.
 
@@ -154,7 +155,8 @@ async def _answer(request: Awaitable[httpx.Response], posted: bool) -> CleanupJo
     """Return the cleanup in the task manager's answer, why it holds none, or None when it does not provide the cleanup.
 
     Raises:
-        TaskHistoryCleanupError: When the task manager refuses the cleanup, with its reason.
+        TaskHistoryCleanupError: When the task manager refuses the cleanup, with its reason, or answers with a body
+            that holds no cleanup.
         PrefectHTTPStatusError: When the task manager answers with an error other than 403, 404 or 409.
 
     """
@@ -171,7 +173,15 @@ async def _answer(request: Awaitable[httpx.Response], posted: bool) -> CleanupJo
                 return None if posted else CleanupWait.UNKNOWN
             case _:
                 raise
-    return CleanupJob.model_validate_json(response.content)
+    try:
+        return CleanupJob.model_validate_json(response.content)
+    except ValidationError as exc:
+        raise TaskHistoryCleanupError(
+            message=(
+                f"The task manager answered {response.status_code} with no cleanup that Infrahub can read "
+                f"({_errors(error=exc)})"
+            )
+        ) from exc
 
 
 def _refusal(response: httpx.Response) -> str:
@@ -180,6 +190,14 @@ def _refusal(response: httpx.Response) -> str:
         return _ErrorAnswer.model_validate_json(response.content).detail
     except ValidationError:
         return f"The task manager refused the cleanup with {response.status_code} {response.reason_phrase}"
+
+
+def _errors(error: ValidationError) -> str:
+    """Return the location and message of each validation error on one line, without the input, which can be a whole page."""
+    return "; ".join(
+        f"{'.'.join(str(part) for part in detail['loc'])}: {detail['msg']}" if detail["loc"] else detail["msg"]
+        for detail in error.errors(include_url=False)
+    )
 
 
 def _duration(duration: timedelta) -> str:

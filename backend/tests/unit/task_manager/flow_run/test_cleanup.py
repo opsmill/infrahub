@@ -260,6 +260,67 @@ async def test_a_refused_cleanup_raises_the_task_managers_reason_without_waiting
     assert clock.sleeps == []
 
 
+@dataclass
+class AnswerWithoutCleanupCase:
+    name: str
+    responses: list[httpx.Response | httpx.TransportError]
+    expected_error: str
+    expected_requests: list[RecordedRequest]
+    expected_sleeps: list[float]
+
+
+ANSWER_WITHOUT_CLEANUP_CASES: list[AnswerWithoutCleanupCase] = [
+    AnswerWithoutCleanupCase(
+        name="html_page_answering_the_start",
+        responses=[httpx.Response(status_code=200, text="<html><body>Sign in</body></html>")],
+        expected_error=(
+            "The task manager answered 200 with no cleanup that Infrahub can read "
+            "(Invalid JSON: expected value at line 1 column 1)"
+        ),
+        expected_requests=[RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "never"})],
+        expected_sleeps=[],
+    ),
+    AnswerWithoutCleanupCase(
+        name="unknown_state_while_polled",
+        responses=[started(), polled(state="cancelled")],
+        expected_error=(
+            "The task manager answered 200 with no cleanup that Infrahub can read "
+            "(state: Input should be 'running', 'completed' or 'failed')"
+        ),
+        expected_requests=[
+            RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "never"}),
+            RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-1"),
+        ],
+        expected_sleeps=[2.0],
+    ),
+    AnswerWithoutCleanupCase(
+        name="several_fields_unreadable",
+        responses=[started(id=None, rewrite="always")],
+        expected_error=(
+            "The task manager answered 202 with no cleanup that Infrahub can read "
+            "(id: Input should be a valid string; rewrite: Input should be 'never' or 'if_freed')"
+        ),
+        expected_requests=[RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "never"})],
+        expected_sleeps=[],
+    ),
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in ANSWER_WITHOUT_CLEANUP_CASES])
+async def test_an_answer_without_a_cleanup_raises_the_validation_errors_on_one_line(
+    case: AnswerWithoutCleanupCase,
+) -> None:
+    """An answer that holds no cleanup raises its status and each validation error on one line, with no wait or retry."""
+    task_manager = ScriptedTaskManager(responses=case.responses)
+    clock = FakeClock()
+
+    with pytest.raises(TaskHistoryCleanupError, match=f"^{re.escape(case.expected_error)}$"):
+        await _run(task_manager=task_manager, clock=clock)
+
+    assert task_manager.requests == case.expected_requests
+    assert clock.sleeps == case.expected_sleeps
+
+
 async def test_waiting_for_a_cleanup_gives_up_when_the_task_manager_never_shows_one() -> None:
     """The start is posted again until the task manager has shown no cleanup for the wait limit, then it gives up."""
     task_manager = ScriptedTaskManager(responses=[running_elsewhere() for _ in range(6)])

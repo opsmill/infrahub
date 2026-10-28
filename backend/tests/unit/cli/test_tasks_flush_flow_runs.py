@@ -334,6 +334,20 @@ async def test_an_unexpected_answer_prints_the_error_and_fails() -> None:
     ]
 
 
+async def test_an_answer_without_a_cleanup_prints_the_error_on_one_line_and_fails() -> None:
+    """An answer that holds no cleanup, such as one with a state this release does not know, prints one error line."""
+    task_manager = ScriptedTaskManager(responses=[started(), polled(state="cancelled")])
+    console = RecordedConsole()
+
+    exit_code = await _flush(task_manager=task_manager, console=console)
+
+    assert exit_code == 1
+    assert console.lines == [
+        "ERROR The task manager answered 200 with no cleanup that Infrahub can read "
+        "(state: Input should be 'running', 'completed' or 'failed')"
+    ]
+
+
 @dataclass
 class RemovedOptionCase:
     name: str
