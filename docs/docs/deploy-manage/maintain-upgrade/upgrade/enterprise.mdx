@@ -63,6 +63,30 @@ You can do this with: `docker image prune -a`
 </TabItem>
 <TabItem value="helm" label="Helm">
 
+:::warning Sizing presets: start the background services with `infrahub tasks background-services`
+
+The sizing presets of the Infrahub Enterprise Helm chart (`small`, `medium`, `medium-data`, `large`, and `large-data`) run the background services of the task manager in a pod of their own. These services delete old task runs and events every hour. When that pod starts with `prefect server services start`, it does not read the task manager retention settings: it deletes no task runs, so the task history keeps growing after the upgrade, and it keeps events for Prefect's default of 7 days, whatever the activity log retention is. To view the command of that pod:
+
+```bash
+kubectl get deployment prefect-server-background-services -o jsonpath='{.spec.template.spec.containers[0].args}'
+```
+
+If the output contains `prefect server services start`, start the pod with `infrahub tasks background-services` instead, in the same `helm upgrade` that moves the images to this release, because earlier images do not have that command. In your values file:
+
+```yaml title="values.yml"
+infrahub:
+  prefect-server:
+    backgroundServices:
+      args:
+        - sh
+        - -c
+        - "while true; do if curl -s -o /dev/null http://prefect-server:4200; then break; fi; sleep 10; echo try; done; infrahub tasks background-services"
+```
+
+Helm replaces the whole `args` list, so keep the wait loop as shown. If the namespace of your Infrahub release has no `prefect-server-background-services` deployment, the background services run inside the task manager, which reads the retention settings, and you do not need this change. See [Background services in their own container](../../run-observe/tasks.mdx#background-services-in-their-own-container).
+
+:::
+
 ```bash
 # Upgrade the Helm release
 helm upgrade
