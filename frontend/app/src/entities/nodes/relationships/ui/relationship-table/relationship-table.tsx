@@ -1,3 +1,5 @@
+import type React from "react";
+
 import { Col } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { DataTable } from "@/shared/components/table/data-table";
@@ -23,13 +25,16 @@ import { useGetObjectPermissions } from "@/entities/permission/ui/queries/get-ob
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
-export interface RelationshipTableProps extends UseObjectRelationshipsParams {}
+export interface RelationshipTableProps extends UseObjectRelationshipsParams {
+  actions?: React.ReactNode;
+}
 
 export function RelationshipTable({
   relationshipSchema,
   parentId,
   relationshipName,
   parentKind,
+  actions,
   ...props
 }: RelationshipTableProps) {
   const { schema: parentSchema } = useSchema(parentKind);
@@ -55,8 +60,15 @@ export function RelationshipTable({
       ...props,
     });
 
+  const toolbar = <RelationshipTableToolbar schema={relationshipSchema} actions={actions} />;
+
   if (error) {
-    return <ErrorScreen message={error.message} />;
+    return (
+      <Col className="gap-0">
+        {toolbar}
+        <ErrorScreen message={error.message} />
+      </Col>
+    );
   }
 
   const flatData = data?.pages?.flat() ?? [];
@@ -96,7 +108,7 @@ export function RelationshipTable({
 
   return (
     <Col className="gap-0">
-      <RelationshipTableToolbar schema={relationshipSchema} />
+      {toolbar}
 
       <InfiniteScroll
         scrollX
