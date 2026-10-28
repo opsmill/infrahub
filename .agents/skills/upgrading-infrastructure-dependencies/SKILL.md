@@ -106,7 +106,8 @@ release, not in an earlier one that was not tested with it.
   there for every upgrade, also when no file has to change there. Point its `community` submodule
   at the last commit of the Infrahub upgrade branch, and again after each push to that branch. Its
   CI then runs the Enterprise unit, component, functional, Docker integration and end-to-end tests
-  on the new version.
+  on the new version. Its `AGENTS.md` says how to run the same tests on your machine, for example
+  to debug a failure.
   - If a test fails, check whether it also fails without the upgrade: open a second draft pull
     request from `develop` there that only points `community` at the commit of `develop` that the
     upgrade branch starts from. A test that fails in both does not fail because of the upgrade, but
