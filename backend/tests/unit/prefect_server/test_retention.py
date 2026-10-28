@@ -157,6 +157,7 @@ def test_prefect_reads_the_derived_values(monkeypatch: pytest.MonkeyPatch, test_
 
 
 def test_apply_sets_every_variable_missing_from_the_environment() -> None:
+    """Per-type overrides equal to the activity log retention shorten nothing, so they are written empty."""
     settings = TaskManagerRetentionSettings(task_history="30d", activity_log="7d", prefect_own_events="7d")
     environ = {"PREFECT_API_DATABASE_CONNECTION_URL": "sqlite+aiosqlite:///prefect.db"}
 
@@ -188,13 +189,6 @@ WRITTEN_OVERRIDES_TEST_CASES: list[WrittenOverridesTestCase] = [
         prefect_own_events="3d",
         already_set=frozenset(),
         expected_overrides=dict.fromkeys(PREFECT_EVENT_TYPES, "P3D"),
-    ),
-    WrittenOverridesTestCase(
-        name="equal_retentions",
-        activity_log="7d",
-        prefect_own_events="7d",
-        already_set=frozenset(),
-        expected_overrides={},
     ),
     WrittenOverridesTestCase(
         name="events_retention_preset",
