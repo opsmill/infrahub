@@ -114,7 +114,11 @@ PREFECT_EVENT_PREFIX = "prefect."
 
 
 def event_types_with_retention_override(settings: Settings) -> frozenset[str]:
-    """Return the event types that Prefect deletes after a retention of their own, or none when Prefect deletes no events."""
+    """Return the event types that Prefect deletes after a retention of their own.
+
+    None are returned when Prefect deletes no events, or when no per-type retention is shorter than the event
+    retention, because every event type is then kept for the same time.
+    """
     services = settings.server.services
     try:
         enabled = services.db_vacuum.enabled_vacuum_types
@@ -123,7 +127,10 @@ def event_types_with_retention_override(settings: Settings) -> frozenset[str]:
         return frozenset()
     if "events" not in enabled or not services.event_persister.enabled:
         return frozenset()
-    return frozenset(services.db_vacuum.event_retention_overrides)
+    overrides = services.db_vacuum.event_retention_overrides
+    if all(kept >= settings.server.events.retention_period for kept in overrides.values()):
+        return frozenset()
+    return frozenset(overrides)
 
 
 def unlisted_prefect_event_types_warning(

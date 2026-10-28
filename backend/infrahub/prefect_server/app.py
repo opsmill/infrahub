@@ -90,7 +90,7 @@ async def warn_about_unlisted_prefect_event_types(db: PrefectDBInterface) -> Non
     """Log the stored Prefect event types that have no per-type retention, which the event retention keeps."""
     settings = get_current_settings()
     overridden = event_types_with_retention_override(settings=settings)
-    # Without a per-type retention in effect, Prefect keeps every event type for the same time.
+    # Without a per-type retention shorter than the event retention, Prefect keeps every event type for the same time.
     if not overridden:
         return
     try:

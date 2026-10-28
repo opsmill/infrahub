@@ -145,6 +145,23 @@ async def test_nothing_is_logged_when_no_per_type_retention_is_in_effect(
     assert _app_warnings(caplog=caplog) == []
 
 
+async def test_nothing_is_logged_when_no_per_type_retention_is_shorter_than_the_event_retention(
+    database: PrefectDBInterface, caplog: pytest.LogCaptureFixture
+) -> None:
+    await _store_events(
+        db=database, event_types=["infrahub.node.created", LISTED_PREFECT_EVENT, UNLISTED_PREFECT_EVENT]
+    )
+
+    with (
+        _per_type_retention_in_effect(),
+        temporary_settings(updates={"server.events.retention_period": timedelta(days=7)}),
+        caplog.at_level(logging.WARNING, logger=APP_LOGGER),
+    ):
+        await warn_about_unlisted_prefect_event_types(db=database)
+
+    assert _app_warnings(caplog=caplog) == []
+
+
 async def test_nothing_is_logged_when_prefect_deletes_no_events(
     database: PrefectDBInterface, caplog: pytest.LogCaptureFixture
 ) -> None:

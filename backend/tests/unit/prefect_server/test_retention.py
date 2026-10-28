@@ -755,8 +755,13 @@ TWO_OVERRIDES = '{"prefect.flow-run.Completed": "P7D", "prefect.flow-run.heartbe
 BOTH_OVERRIDDEN = frozenset({"prefect.flow-run.Completed", "prefect.flow-run.heartbeat"})
 
 
-def _retention_environ(vacuum_enabled: str, overrides: str = TWO_OVERRIDES) -> dict[str, str]:
-    return {VACUUM_ENABLED: vacuum_enabled, EVENTS_RETENTION_PERIOD: "P30D", EVENT_RETENTION_OVERRIDES: overrides}
+def _retention_environ(
+    vacuum_enabled: str, overrides: str | None = TWO_OVERRIDES, event_retention: str = "P30D"
+) -> dict[str, str]:
+    environ = {VACUUM_ENABLED: vacuum_enabled, EVENTS_RETENTION_PERIOD: event_retention}
+    if overrides is not None:
+        environ[EVENT_RETENTION_OVERRIDES] = overrides
+    return environ
 
 
 @dataclass
@@ -793,6 +798,34 @@ RETENTION_OVERRIDE_TEST_CASES: list[RetentionOverrideTestCase] = [
         environ={**_retention_environ(vacuum_enabled="events"), EVENT_PERSISTER_ENABLED: "false"},
         expected=frozenset(),
     ),
+    RetentionOverrideTestCase(
+        name="override_equal_to_event_retention",
+        environ=_retention_environ(
+            vacuum_enabled="events", overrides='{"prefect.flow-run.Completed": "P7D"}', event_retention="P7D"
+        ),
+        expected=frozenset(),
+    ),
+    RetentionOverrideTestCase(
+        name="override_longer_than_event_retention",
+        environ=_retention_environ(
+            vacuum_enabled="events", overrides='{"prefect.flow-run.Completed": "P7D"}', event_retention="P3D"
+        ),
+        expected=frozenset(),
+    ),
+    RetentionOverrideTestCase(
+        name="prefect_default_heartbeat_override",
+        environ=_retention_environ(vacuum_enabled="events", overrides=None, event_retention="P7D"),
+        expected=frozenset(),
+    ),
+    RetentionOverrideTestCase(
+        name="one_shorter_override_among_others",
+        environ=_retention_environ(
+            vacuum_enabled="events",
+            overrides='{"prefect.flow-run.heartbeat": "P1D", "prefect.flow-run.Completed": "P7D"}',
+            event_retention="P7D",
+        ),
+        expected=BOTH_OVERRIDDEN,
+    ),
 ]
 
 
@@ -801,7 +834,7 @@ RETENTION_OVERRIDE_TEST_CASES: list[RetentionOverrideTestCase] = [
 def test_event_types_with_a_retention_override_follow_what_prefect_deletes(
     monkeypatch: pytest.MonkeyPatch, test_case: RetentionOverrideTestCase
 ) -> None:
-    """Prefect deletes events per type only while its vacuum switch turns on events and its event persister runs."""
+    """Prefect deletes events per type only while it deletes events and an override is shorter than the event retention that caps it."""
     monkeypatch.delenv(EVENT_PERSISTER_ENABLED, raising=False)
     for name, value in test_case.environ.items():
         monkeypatch.setenv(name, value)
