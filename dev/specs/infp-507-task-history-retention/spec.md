@@ -93,7 +93,7 @@ An operator sets how long task history, the activity log and the task manager's 
 1. **Given** the three retention settings, **When** the task manager starts, **Then** its cleanups use them, without the operator setting any task-manager-specific variable.
 2. **Given** the task manager's background services in their own deployment (a Helm option), **When** they start, **Then** they use the same retention values, because Infrahub's command starts them.
 3. **Given** a retention shorter than 1 day, **When** the task manager starts, **Then** it refuses to start and names the setting.
-4. **Given** an own-event retention longer than the activity log retention, **When** the task manager starts, **Then** it refuses to start and names both settings, because every event older than the activity log retention is deleted anyway.
+4. **Given** an own-event retention longer than the activity log retention, **When** the task manager starts, **Then** it refuses to start and names both settings, because when the task manager sets the event retention, every event older than the activity log retention is deleted, so a longer own-event retention would have no effect.
 
 ---
 
