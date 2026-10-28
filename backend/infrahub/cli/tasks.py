@@ -19,6 +19,7 @@ from infrahub.prefect_server.task_history_models import CleanupJob, CleanupRewri
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 from infrahub.task_manager.flow_run.cleanup import (
     POLL_INTERVAL,
+    FollowedCleanup,
     TaskHistoryCleanupError,
     TaskHistoryCleanupFailedError,
     read_task_history_size,
@@ -137,16 +138,16 @@ async def flush_old_flow_runs(
 
     """
     try:
-        job = await run_task_history_cleanup(
+        cleanup = await run_task_history_cleanup(
             client=client,
             rewrite=CleanupRewrite.IF_FREED if rewrite else CleanupRewrite.NEVER,
-            on_progress=lambda progress: console.log(_progress_line(job=progress)),
+            on_progress=lambda progress: console.log(_progress_line(cleanup=progress)),
             on_wait=lambda wait: console.log(f"Waiting to start the cleanup, because {wait.reason}"),
             poll_interval=poll_interval,
         )
     except TaskHistoryCleanupFailedError as exc:
         console.log(f"{ERROR_BADGE} {exc.message}")
-        for line in _committed_lines(job=exc.job):
+        for line in _committed_lines(cleanup=exc.cleanup):
             console.log(line)
         return 1
     except TaskHistoryCleanupError as exc:
@@ -155,10 +156,10 @@ async def flush_old_flow_runs(
     except httpx.HTTPError as exc:
         console.log(f"{ERROR_BADGE} {type(exc).__name__}: {exc}")
         return 1
-    if job is None:
+    if cleanup is None:
         console.log(TASK_HISTORY_CLEANUP_NOT_PROVIDED)
         return 0
-    for line in _summary_lines(job=job):
+    for line in _summary_lines(cleanup=cleanup):
         console.log(line)
     return 0
 
@@ -167,8 +168,14 @@ def _runs(count: int) -> str:
     return f"{count} run" if count == 1 else f"{count} runs"
 
 
-def _progress_line(job: CleanupJob) -> str:
-    return f"Deleting the runs that ended on {job.current_day}, {_runs(job.deleted_runs)} deleted so far"
+def _deleted_runs(cleanup: FollowedCleanup) -> str:
+    """The runs deleted, after "at least" when they count a lost cleanup as it was last seen."""
+    runs = _runs(cleanup.deleted_runs)
+    return f"at least {runs}" if cleanup.counts_lost_cleanups else runs
+
+
+def _progress_line(cleanup: FollowedCleanup) -> str:
+    return f"Deleting the runs that ended on {cleanup.job.current_day}, {_runs(cleanup.deleted_runs)} deleted so far"
 
 
 def _rewrite_lines(job: CleanupJob) -> list[str]:
@@ -194,13 +201,16 @@ def _rewrite_lines(job: CleanupJob) -> list[str]:
     return lines
 
 
-def _committed_lines(job: CleanupJob) -> list[str]:
-    """The runs a failed cleanup deleted, and the tables it rewrote."""
-    return [f"Deleted {_runs(job.deleted_runs)} before the failure", *_rewrite_lines(job=job)]
+def _committed_lines(cleanup: FollowedCleanup) -> list[str]:
+    """The runs a failed cleanup and the cleanups lost before it deleted, and the tables the failed cleanup rewrote."""
+    return [f"Deleted {_deleted_runs(cleanup=cleanup)} before the failure", *_rewrite_lines(job=cleanup.job)]
 
 
-def _summary_lines(job: CleanupJob) -> list[str]:
-    lines = [f"Deleted {_runs(job.deleted_runs)} that ended before {job.cutoff.astimezone(UTC):%Y-%m-%d %H:%M} UTC"]
+def _summary_lines(cleanup: FollowedCleanup) -> list[str]:
+    job = cleanup.job
+    lines = [
+        f"Deleted {_deleted_runs(cleanup=cleanup)} that ended before {job.cutoff.astimezone(UTC):%Y-%m-%d %H:%M} UTC"
+    ]
     if job.size_before is not None and job.size_after is not None:
         lines.append(
             f"Task history and activity log tables: {decimal(job.size_before)} before, {decimal(job.size_after)} after"

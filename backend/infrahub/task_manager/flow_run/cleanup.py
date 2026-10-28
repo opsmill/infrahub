@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+from dataclasses import dataclass
 from datetime import timedelta
 from enum import StrEnum
 from http import HTTPStatus
@@ -50,6 +51,23 @@ class CleanupWait(StrEnum):
         return reason
 
 
+@dataclass(frozen=True)
+class FollowedCleanup:
+    """The cleanup the client follows, with the cleanups the task manager lost while the client followed them."""
+
+    job: CleanupJob
+    lost_deleted_runs: tuple[int, ...]
+    """The runs each lost cleanup had deleted when the client last saw it, which may be fewer than it deleted."""
+
+    @property
+    def deleted_runs(self) -> int:
+        return self.job.deleted_runs + sum(self.lost_deleted_runs)
+
+    @property
+    def counts_lost_cleanups(self) -> bool:
+        return bool(self.lost_deleted_runs)
+
+
 class TaskHistoryCleanupError(Error):
     def __init__(self, message: str) -> None:
         self.message = message
@@ -57,11 +75,14 @@ class TaskHistoryCleanupError(Error):
 
 
 class TaskHistoryCleanupFailedError(TaskHistoryCleanupError):
-    """A cleanup that ended failed in the task manager, with the job as it ended, which holds what it had done."""
+    """A cleanup that ended failed in the task manager.
 
-    def __init__(self, job: CleanupJob) -> None:
-        self.job = job
-        super().__init__(message=job.error or f"The cleanup {job.id} failed")
+    It carries the cleanup as it ended, which holds what it and the cleanups lost before it had done.
+    """
+
+    def __init__(self, cleanup: FollowedCleanup) -> None:
+        self.cleanup = cleanup
+        super().__init__(message=cleanup.job.error or f"The cleanup {cleanup.job.id} failed")
 
 
 class _ErrorAnswer(BaseModel):
@@ -71,21 +92,22 @@ class _ErrorAnswer(BaseModel):
 async def run_task_history_cleanup(
     client: PrefectClient,
     rewrite: CleanupRewrite,
-    on_progress: Callable[[CleanupJob], None],
+    on_progress: Callable[[FollowedCleanup], None],
     on_wait: Callable[[CleanupWait], None],
     poll_interval: timedelta = POLL_INTERVAL,
     give_up_after: timedelta = GIVE_UP_AFTER,
     clock: Callable[[], float] = time.monotonic,
     sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
-) -> CleanupJob | None:
+) -> FollowedCleanup | None:
     """Run a task history cleanup in the task manager to its end, or return None when the task manager does not provide it.
 
     A cleanup already running in the task manager is followed instead, the task manager raising its rewrite to the
     one asked for when that is stronger. A cleanup that runs elsewhere, that the task manager no longer knows, or
     that the task manager cannot be reached about once it answered, directly or through a proxy that answers 502,
-    503 or 504, is started again after a wait; the days it already deleted stay deleted. Progress is reported each
-    time the day or the number of deleted runs changes, and a wait when it starts, when its reason changes, and when
-    it starts again after a cleanup showed.
+    503 or 504, is started again after a wait; the days it already deleted stay deleted, and the runs it deleted until
+    the client last saw it are counted with the next cleanup's. Progress is reported each time the day or the number
+    of deleted runs changes, and a wait when it starts, when its reason changes, and when it starts again after a
+    cleanup showed.
 
     Raises:
         TaskHistoryCleanupFailedError: When the cleanup fails in the task manager.
@@ -98,6 +120,7 @@ async def run_task_history_cleanup(
 
     """
     job: CleanupJob | None = None
+    deleted_by_job: dict[str, int] = {}
     answered = False
     reported: tuple[date | None, int] | None = None
     waiting: CleanupWait | None = None
@@ -122,13 +145,17 @@ async def run_task_history_cleanup(
 
         if isinstance(answer, CleanupJob):
             job, last_seen, waiting = answer, clock(), None
+            deleted_by_job[job.id] = job.deleted_runs
+            followed = FollowedCleanup(
+                job=job, lost_deleted_runs=tuple(runs for job_id, runs in deleted_by_job.items() if job_id != job.id)
+            )
             if job.state is CleanupJobState.COMPLETED:
-                return job
+                return followed
             if job.state is CleanupJobState.FAILED:
-                raise TaskHistoryCleanupFailedError(job=job)
-            progress = (job.current_day, job.deleted_runs)
+                raise TaskHistoryCleanupFailedError(cleanup=followed)
+            progress = (job.current_day, followed.deleted_runs)
             if job.current_day is not None and progress != reported:
-                on_progress(job)
+                on_progress(followed)
                 reported = progress
         else:
             job = None

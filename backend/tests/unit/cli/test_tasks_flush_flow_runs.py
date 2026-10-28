@@ -186,7 +186,7 @@ async def test_each_wait_prints_one_line_when_it_starts_or_its_reason_changes() 
         "Waiting to start the cleanup, because the task manager answered that a cleanup runs elsewhere",
         "Waiting to start the cleanup, because the task manager answered that it does not know the cleanup",
         "Waiting to start the cleanup, because the task manager could not be reached",
-        "Deleted 0 runs that ended before 2026-09-04 00:00 UTC",
+        "Deleted at least 0 runs that ended before 2026-09-04 00:00 UTC",
         "Tables not rewritten",
     ]
 
@@ -204,7 +204,34 @@ async def test_a_proxy_error_while_the_cleanup_runs_prints_a_wait_and_the_summar
     assert exit_code == 0
     assert console.lines == [
         "Waiting to start the cleanup, because the task manager could not be reached",
-        "Deleted 0 runs that ended before 2026-09-04 00:00 UTC",
+        "Deleted at least 0 runs that ended before 2026-09-04 00:00 UTC",
+        "Tables not rewritten",
+    ]
+
+
+@pytest.mark.usefixtures("prefect_client_without_retries")
+async def test_the_runs_of_a_cleanup_lost_in_a_restart_are_counted_in_the_progress_and_the_summary() -> None:
+    """After a restart the runs the lost cleanup had deleted when last seen are added to those of the next cleanup."""
+    task_manager = ScriptedTaskManager(
+        responses=[
+            started(),
+            polled(current_day="2026-01-15", deleted_runs=900_000),
+            unreachable(),
+            started(id="job-2"),
+            polled(id="job-2", current_day="2026-02-01", deleted_runs=5_000),
+            polled(id="job-2", state="completed", current_day="2026-02-01", deleted_runs=5_000),
+        ]
+    )
+    console = RecordedConsole()
+
+    exit_code = await _flush(task_manager=task_manager, console=console)
+
+    assert exit_code == 0
+    assert console.lines == [
+        "Deleting the runs that ended on 2026-01-15, 900000 runs deleted so far",
+        "Waiting to start the cleanup, because the task manager could not be reached",
+        "Deleting the runs that ended on 2026-02-01, 905000 runs deleted so far",
+        "Deleted at least 905000 runs that ended before 2026-09-04 00:00 UTC",
         "Tables not rewritten",
     ]
 
@@ -243,6 +270,36 @@ async def test_a_failed_cleanup_prints_its_error_and_fails() -> None:
         "Deleting the runs that ended on 2026-01-15, 7 runs deleted so far",
         "ERROR The cleanup failed with DBAPIError; the task manager log has the details",
         "Deleted 7 runs before the failure",
+    ]
+
+
+async def test_a_cleanup_that_failed_after_a_lost_one_prints_the_runs_both_deleted() -> None:
+    """A cleanup that fails after the task manager lost the one before it prints the runs both had deleted."""
+    task_manager = ScriptedTaskManager(
+        responses=[
+            started(),
+            polled(current_day="2026-01-15", deleted_runs=900),
+            unknown_cleanup(),
+            started(id="job-2"),
+            polled(
+                id="job-2",
+                state="failed",
+                current_day="2026-02-01",
+                deleted_runs=3,
+                error="The cleanup failed with DBAPIError; the task manager log has the details",
+            ),
+        ]
+    )
+    console = RecordedConsole()
+
+    exit_code = await _flush(task_manager=task_manager, console=console)
+
+    assert exit_code == 1
+    assert console.lines == [
+        "Deleting the runs that ended on 2026-01-15, 900 runs deleted so far",
+        "Waiting to start the cleanup, because the task manager answered that it does not know the cleanup",
+        "ERROR The cleanup failed with DBAPIError; the task manager log has the details",
+        "Deleted at least 903 runs before the failure",
     ]
 
 

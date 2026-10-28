@@ -11,9 +11,10 @@ import httpx
 import pytest
 from prefect.exceptions import PrefectHTTPStatusError
 
-from infrahub.prefect_server.task_history_models import CleanupJob, CleanupJobState, CleanupRewrite
+from infrahub.prefect_server.task_history_models import CleanupJobState, CleanupRewrite
 from infrahub.task_manager.flow_run.cleanup import (
     CleanupWait,
+    FollowedCleanup,
     TaskHistoryCleanupError,
     TaskHistoryCleanupFailedError,
     run_task_history_cleanup,
@@ -43,8 +44,8 @@ class RecordedReports:
         self.progress: list[tuple[str, date | None, int]] = []
         self.waits: list[CleanupWait] = []
 
-    def on_progress(self, job: CleanupJob) -> None:
-        self.progress.append((job.id, job.current_day, job.deleted_runs))
+    def on_progress(self, cleanup: FollowedCleanup) -> None:
+        self.progress.append((cleanup.job.id, cleanup.job.current_day, cleanup.deleted_runs))
 
     def on_wait(self, wait: CleanupWait) -> None:
         self.waits.append(wait)
@@ -56,7 +57,7 @@ async def _run(
     reports: RecordedReports | None = None,
     rewrite: CleanupRewrite = CleanupRewrite.NEVER,
     give_up_after: timedelta = timedelta(hours=1),
-) -> CleanupJob | None:
+) -> FollowedCleanup | None:
     reports = reports or RecordedReports()
     async with task_manager.client() as client:
         return await run_task_history_cleanup(
@@ -122,7 +123,13 @@ async def test_a_cleanup_is_polled_until_it_completes_reporting_each_change_of_p
     result = await _run(task_manager=task_manager, clock=clock, reports=reports, rewrite=CleanupRewrite.IF_FREED)
 
     assert result is not None
-    assert (result.state, result.rewritten, result.deleted_runs, result.size_before, result.size_after) == (
+    assert (
+        result.job.state,
+        result.job.rewritten,
+        result.deleted_runs,
+        result.job.size_before,
+        result.job.size_after,
+    ) == (
         CleanupJobState.COMPLETED,
         ["flow_run"],
         12,
@@ -151,7 +158,7 @@ async def test_a_cleanup_running_elsewhere_is_started_again_after_a_wait() -> No
     result = await _run(task_manager=task_manager, clock=clock)
 
     assert result is not None
-    assert (result.state, result.deleted_runs) == (CleanupJobState.COMPLETED, 3)
+    assert (result.job.state, result.deleted_runs) == (CleanupJobState.COMPLETED, 3)
     assert task_manager.requests == [
         *[RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "never"})] * 3,
         RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-1"),
@@ -177,7 +184,12 @@ async def test_a_cleanup_the_task_manager_no_longer_knows_is_started_again_after
     result = await _run(task_manager=task_manager, clock=clock, reports=reports)
 
     assert result is not None
-    assert (result.id, result.state, result.deleted_runs) == ("job-2", CleanupJobState.COMPLETED, 2)
+    assert (result.job.id, result.job.state, result.deleted_runs, result.counts_lost_cleanups) == (
+        "job-2",
+        CleanupJobState.COMPLETED,
+        6,
+        True,
+    )
     assert task_manager.requests == [
         RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "never"}),
         RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-1"),
@@ -186,7 +198,7 @@ async def test_a_cleanup_the_task_manager_no_longer_knows_is_started_again_after
         RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-2"),
         RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-2"),
     ]
-    assert reports.progress == [("job-1", date(2026, 1, 15), 4), ("job-2", date(2026, 1, 16), 2)]
+    assert reports.progress == [("job-1", date(2026, 1, 15), 4), ("job-2", date(2026, 1, 16), 6)]
     assert clock.sleeps == [2.0] * 5
 
 
@@ -213,7 +225,7 @@ async def test_a_failed_cleanup_raises_the_error_the_task_manager_recorded_with_
     ) as raised:
         await _run(task_manager=task_manager, clock=FakeClock(), rewrite=CleanupRewrite.IF_FREED)
 
-    job = raised.value.job
+    job = raised.value.cleanup.job
     assert (job.id, job.state, job.deleted_runs, job.current_day, job.rewritten, job.not_rewritten) == (
         "job-1",
         CleanupJobState.FAILED,
@@ -367,7 +379,7 @@ async def test_a_wait_is_reported_when_it_starts_when_its_reason_changes_and_aga
     result = await _run(task_manager=task_manager, clock=FakeClock(), reports=reports)
 
     assert result is not None
-    assert (result.id, result.state) == ("job-4", CleanupJobState.COMPLETED)
+    assert (result.job.id, result.job.state) == ("job-4", CleanupJobState.COMPLETED)
     assert len(task_manager.requests) == 12
     assert reports.waits == [
         CleanupWait.RUNNING_ELSEWHERE,
@@ -444,7 +456,7 @@ async def test_an_answer_showing_the_cleanup_restarts_the_wait_limit() -> None:
     result = await _run(task_manager=task_manager, clock=clock, give_up_after=timedelta(seconds=5))
 
     assert result is not None
-    assert (result.id, result.state) == ("job-2", CleanupJobState.COMPLETED)
+    assert (result.job.id, result.job.state) == ("job-2", CleanupJobState.COMPLETED)
     assert len(task_manager.requests) == 8
 
 
@@ -467,7 +479,12 @@ async def test_a_cleanup_the_task_manager_cannot_be_reached_about_is_started_aga
     result = await _run(task_manager=task_manager, clock=clock, reports=reports)
 
     assert result is not None
-    assert (result.id, result.state, result.deleted_runs) == ("job-2", CleanupJobState.COMPLETED, 2)
+    assert (result.job.id, result.job.state, result.deleted_runs, result.counts_lost_cleanups) == (
+        "job-2",
+        CleanupJobState.COMPLETED,
+        6,
+        True,
+    )
     assert task_manager.requests == [
         RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "never"}),
         RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-1"),
@@ -478,6 +495,60 @@ async def test_a_cleanup_the_task_manager_cannot_be_reached_about_is_started_aga
     ]
     assert reports.progress == [("job-1", date(2026, 1, 15), 4)]
     assert clock.sleeps == [2.0] * 5
+
+
+@pytest.mark.usefixtures("prefect_client_without_retries")
+async def test_a_cleanup_followed_again_after_a_wait_is_counted_once() -> None:
+    """A cleanup the task manager still runs when the start is posted again is counted with its latest progress only."""
+    task_manager = ScriptedTaskManager(
+        responses=[
+            started(),
+            polled(current_day="2026-01-15", deleted_runs=4),
+            unreachable(),
+            started(current_day="2026-01-16", deleted_runs=6),
+            polled(state="completed", current_day="2026-01-16", deleted_runs=9),
+        ]
+    )
+    reports = RecordedReports()
+
+    result = await _run(task_manager=task_manager, clock=FakeClock(), reports=reports)
+
+    assert result is not None
+    assert (result.job.id, result.deleted_runs, result.counts_lost_cleanups) == ("job-1", 9, False)
+    assert reports.progress == [("job-1", date(2026, 1, 15), 4), ("job-1", date(2026, 1, 16), 6)]
+
+
+async def test_a_failed_cleanup_counts_the_runs_of_the_cleanup_the_task_manager_lost_before_it() -> None:
+    """A cleanup that fails after the task manager lost the one before it holds the runs both had deleted."""
+    task_manager = ScriptedTaskManager(
+        responses=[
+            started(),
+            polled(current_day="2026-01-15", deleted_runs=4),
+            unknown_cleanup(),
+            started(id="job-2"),
+            polled(
+                id="job-2",
+                state="failed",
+                current_day="2026-01-16",
+                deleted_runs=3,
+                error="The cleanup failed with DBAPIError; the task manager log has the details",
+            ),
+        ]
+    )
+
+    with pytest.raises(
+        TaskHistoryCleanupFailedError,
+        match=r"^The cleanup failed with DBAPIError; the task manager log has the details$",
+    ) as raised:
+        await _run(task_manager=task_manager, clock=FakeClock())
+
+    cleanup = raised.value.cleanup
+    assert (cleanup.job.id, cleanup.job.deleted_runs, cleanup.deleted_runs, cleanup.counts_lost_cleanups) == (
+        "job-2",
+        3,
+        7,
+        True,
+    )
 
 
 async def test_a_task_manager_unreachable_when_the_cleanup_starts_raises_at_once() -> None:
@@ -547,7 +618,12 @@ async def test_a_proxy_error_while_a_cleanup_is_followed_starts_it_again_after_a
     result = await _run(task_manager=task_manager, clock=clock, reports=reports)
 
     assert result is not None
-    assert (result.id, result.state, result.deleted_runs) == ("job-2", CleanupJobState.COMPLETED, 2)
+    assert (result.job.id, result.job.state, result.deleted_runs, result.counts_lost_cleanups) == (
+        "job-2",
+        CleanupJobState.COMPLETED,
+        6,
+        True,
+    )
     assert task_manager.requests == [
         RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "never"}),
         RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-1"),
