@@ -21,6 +21,7 @@ from infrahub.prefect_server.retention import PREFECT_EVENT_TYPES
 from tests.helpers.fixtures import get_fixtures_dir
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
     from pathlib import Path
 
     from infrahub_sdk import InfrahubClient
@@ -34,7 +35,7 @@ WORKLOAD_EVENT_TYPES = {"prefect.flow-run.Completed", "prefect.flow-run.Failed",
 WORKER_STARTED = "prefect.worker.started"
 EVENT_WAIT_SECONDS = 180
 RUNNING_FLOW_WAIT_SECONDS = 60
-# Short enough that a missing warning fails on its assertion within the test timeout, after the workload.
+# Short enough that a missing warning raises within the test timeout, after the workload.
 TASK_MANAGER_RESTART_WAIT_SECONDS = 120
 # Three flush intervals of the task manager's event persister, so events emitted just before the read are stored.
 EVENT_PERSISTER_SETTLE_SECONDS = 15
@@ -56,29 +57,45 @@ _DELETE_UNLISTED_PREFECT_EVENTS = (
 _STORED_PREFECT_EVENTS_QUERY = "SELECT event, count(*) FROM events WHERE event NOT LIKE 'infrahub.%' GROUP BY event"
 
 
-def _stored_prefect_events(compose: InfrahubDockerCompose) -> dict[str, int]:
-    """The number of stored events of each type that does not start with `infrahub.`."""
-    stdout, _, _ = compose.exec_in_container(
-        command=[
-            "psql",
-            "--username=postgres",
-            "--dbname=prefect",
-            "--tuples-only",
-            "--no-align",
-            "-c",
-            _STORED_PREFECT_EVENTS_QUERY,
-        ],
+async def _poll_until(
+    *, condition: Callable[[], Awaitable[bool]], waiting_for: str, seconds: float, interval: float = POLL_SECONDS
+) -> None:
+    """Await the condition every interval until it holds.
+
+    Raises:
+        TimeoutError: When the condition does not hold within the given seconds.
+
+    """
+    deadline = time.monotonic() + seconds
+    while not await condition():
+        if time.monotonic() >= deadline:
+            raise TimeoutError(f"Waited {seconds} s for {waiting_for}")
+        await asyncio.sleep(interval)
+
+
+async def _query_task_manager_database(compose: InfrahubDockerCompose, query: str) -> list[str]:
+    """The rows the query returns from the task manager's database, one line per row with `|` between columns."""
+    stdout, _, _ = await asyncio.to_thread(
+        compose.exec_in_container,
+        command=["psql", "--username=postgres", "--dbname=prefect", "--tuples-only", "--no-align", "-c", query],
         service_name="task-manager-db",
     )
-    return {event: int(count) for event, count in (line.split("|") for line in stdout.strip().splitlines())}
+    return stdout.strip().splitlines()
+
+
+async def _stored_prefect_events(compose: InfrahubDockerCompose) -> dict[str, int]:
+    """The number of stored events of each type that does not start with `infrahub.`."""
+    rows = await _query_task_manager_database(compose=compose, query=_STORED_PREFECT_EVENTS_QUERY)
+    return {event: int(count) for event, count in (row.split("|") for row in rows)}
 
 
 async def _wait_for_stored_event_types(compose: InfrahubDockerCompose, event_types: set[str]) -> None:
-    deadline = time.monotonic() + EVENT_WAIT_SECONDS
-    while time.monotonic() < deadline:
-        if event_types <= set(_stored_prefect_events(compose=compose)):
-            return
-        await asyncio.sleep(POLL_SECONDS)
+    async def _stored() -> bool:
+        return event_types <= set(await _stored_prefect_events(compose=compose))
+
+    await _poll_until(
+        condition=_stored, waiting_for=f"the task manager to store {sorted(event_types)}", seconds=EVENT_WAIT_SECONDS
+    )
 
 
 def _delete_unlisted_prefect_events(compose: InfrahubDockerCompose) -> None:
@@ -88,34 +105,43 @@ def _delete_unlisted_prefect_events(compose: InfrahubDockerCompose) -> None:
     )
 
 
-def _task_manager_log_lines_with(compose: InfrahubDockerCompose, text: str) -> list[str]:
-    stdout, stderr = compose.get_logs("task-manager")
+async def _task_manager_log_lines_with(compose: InfrahubDockerCompose, text: str) -> list[str]:
+    stdout, stderr = await asyncio.to_thread(compose.get_logs, "task-manager")
     return [line for line in f"{stdout}\n{stderr}".splitlines() if text in line]
 
 
 async def _wait_for_task_manager_log_line(compose: InfrahubDockerCompose, text: str) -> None:
-    deadline = time.monotonic() + TASK_MANAGER_RESTART_WAIT_SECONDS
-    while time.monotonic() < deadline:
-        if _task_manager_log_lines_with(compose=compose, text=text):
-            return
-        await asyncio.sleep(POLL_SECONDS)
+    async def _logged() -> bool:
+        return bool(await _task_manager_log_lines_with(compose=compose, text=text))
+
+    await _poll_until(
+        condition=_logged, waiting_for=f"the task manager to log {text!r}", seconds=TASK_MANAGER_RESTART_WAIT_SECONDS
+    )
 
 
 async def _wait_for_worker_restart(compose: InfrahubDockerCompose, started_before: int) -> None:
-    deadline = time.monotonic() + EVENT_WAIT_SECONDS
-    while time.monotonic() < deadline:
-        if _stored_prefect_events(compose=compose).get(WORKER_STARTED, 0) > started_before:
-            return
-        await asyncio.sleep(POLL_SECONDS)
+    async def _restarted() -> bool:
+        return (await _stored_prefect_events(compose=compose)).get(WORKER_STARTED, 0) > started_before
+
+    await _poll_until(
+        condition=_restarted,
+        waiting_for=f"a {WORKER_STARTED} event from the restarted task worker",
+        seconds=EVENT_WAIT_SECONDS,
+    )
 
 
 async def _wait_for_a_running_flow_run(prefect_client: PrefectClient) -> None:
     running = FlowRunFilter(state=FlowRunFilterState(type=FlowRunFilterStateType(any_=[StateType.RUNNING])))
-    deadline = time.monotonic() + RUNNING_FLOW_WAIT_SECONDS
-    while time.monotonic() < deadline:
-        if await prefect_client.read_flow_runs(flow_run_filter=running):
-            return
-        await asyncio.sleep(POLL_SECONDS / 4)
+
+    async def _a_run_is_running() -> bool:
+        return bool(await prefect_client.read_flow_runs(flow_run_filter=running))
+
+    await _poll_until(
+        condition=_a_run_is_running,
+        waiting_for="a running flow run",
+        seconds=RUNNING_FLOW_WAIT_SECONDS,
+        interval=POLL_SECONDS / 4,
+    )
 
 
 class TestPrefectEventTypes(TestInfrahubDockerClient, SchemaCarPerson):
@@ -184,12 +210,12 @@ class TestPrefectEventTypes(TestInfrahubDockerClient, SchemaCarPerson):
 
         # A task worker stopped while a run is running reports that run crashed.
         await _wait_for_a_running_flow_run(prefect_client=prefect_client)
-        started_before = _stored_prefect_events(compose=infrahub_compose).get(WORKER_STARTED, 0)
+        started_before = (await _stored_prefect_events(compose=infrahub_compose)).get(WORKER_STARTED, 0)
         infrahub_compose._run_command(cmd=[*infrahub_compose.compose_command_property, "restart", "task-worker"])
         await _wait_for_worker_restart(compose=infrahub_compose, started_before=started_before)
 
         await asyncio.sleep(EVENT_PERSISTER_SETTLE_SECONDS)
-        return set(_stored_prefect_events(compose=infrahub_compose))
+        return set(await _stored_prefect_events(compose=infrahub_compose))
 
     def test_every_stored_prefect_event_type_is_listed(self, stored_prefect_event_types: set[str]) -> None:
         """Every Prefect event type the workload stores is in the list given its own retention."""
@@ -226,5 +252,5 @@ class TestPrefectEventTypes(TestInfrahubDockerClient, SchemaCarPerson):
         finally:
             _delete_unlisted_prefect_events(compose=infrahub_compose)
 
-        assert len(_task_manager_log_lines_with(compose=infrahub_compose, text=UNLISTED_WARNING)) == 1
-        assert _task_manager_log_lines_with(compose=infrahub_compose, text=STARTUP_CHECK_FAILED) == []
+        assert len(await _task_manager_log_lines_with(compose=infrahub_compose, text=UNLISTED_WARNING)) == 1
+        assert await _task_manager_log_lines_with(compose=infrahub_compose, text=STARTUP_CHECK_FAILED) == []
