@@ -47,7 +47,18 @@ activity_log = "7d"
 prefect_own_events = "7d"
 ```
 
-Set the values on the task manager, and on the container of its background services if they run in a container of their own. The Docker Compose file passes the three environment variables to the task manager, so you can set them in your `.env` file; [How to configure Infrahub](../install-configure/configure-infrahub.mdx) describes the ways to set environment variables. The values apply when the task manager starts.
+Set the values on the task manager, and on the container of its background services if they run in a container of their own: that container runs the hourly cleanups with its own values, and `infrahub tasks flush flow-runs` uses the values of the task manager. The Docker Compose file passes the three environment variables to the task manager, so you can set them in your `.env` file. [How to configure Infrahub](../install-configure/configure-infrahub.mdx) describes the ways to set environment variables. The values apply when the task manager, or the container of its background services, starts.
+
+With Helm, set them in the `env` list under `prefect-server.global.prefect` in your values file, or under `infrahub.prefect-server.global.prefect` with the Infrahub Enterprise chart. That list reaches the task manager container and, when the background services run in a container of their own, that container too. The `env` list under `prefect-server.server` reaches only the task manager. Helm replaces a list as a whole, so a list that you set replaces any list that the chart sets at the same place.
+
+```yaml title="values.yml"
+prefect-server:
+  global:
+    prefect:
+      env:
+        - name: INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY
+          value: "90d"
+```
 
 Each value is a number of days, such as `30d`, or an ISO 8601 duration, such as `P30D`, from 1 to 36,500 days. A value outside that range, or in another form, stops the task manager at startup. It also stops every other Infrahub process that receives the value and loads the whole configuration, such as the API server and the task workers, which receive the same three environment variables in the Docker Compose file. The error names the setting:
 
