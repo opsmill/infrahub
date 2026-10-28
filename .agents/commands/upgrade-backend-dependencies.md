@@ -274,8 +274,15 @@ git checkout -b deps/upgrade-backend-deps-$(date +%Y%m%d)
 
 ## Step 6: Update Version Files
 
-For each component being upgraded, update ALL relevant files. Then search for the old tag, for
-example `git grep -n 'neo4j:2026.05.0'`, to find any pin this list misses.
+For each component being upgraded, update ALL relevant files. Then search for the old tag to find
+any pin this list misses:
+
+```bash
+git grep -n '<old tag>' -- ':!docs/archive' ':!.github/workflows/version-upgrade.yml'
+```
+
+The search leaves out `.github/workflows/version-upgrade.yml` on purpose: its images are the
+versions that the upgrade test starts from, so they stay unchanged.
 
 ### Neo4j Updates
 1. `backend/tests/helpers/constants.py`:
@@ -521,8 +528,8 @@ This PR upgrades backend infrastructure dependencies.
 - [ ] Changelog entry
 
 ## Pull Requests in Other Repositories
-- opsmill/infrahub-private: {link} (merge after: {Infrahub release})
-- opsmill/infrahub-helm: {link} (merge after: {Infrahub release})
+- opsmill/infrahub-private: {link, or "no change needed"}, ships in Infrahub Enterprise {release}
+- opsmill/infrahub-helm: {link, or "no change needed"}, ships in Infrahub {release}
 
 ## Testing
 - [ ] CI passes all tests

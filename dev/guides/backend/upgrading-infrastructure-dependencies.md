@@ -39,9 +39,10 @@ releases can contain breaking changes.
 ## Merge the other pull requests with the same release
 
 A pull request in another repository must ship in the same Infrahub release as the Infrahub one,
-not in an earlier release that was not tested with it, so it often waits as a draft. The
-`AGENTS.md` of its repository says when it can merge. For `opsmill/infrahub-helm`, that is while
-the release is cut, which is a step of [`/cut-release`](../../../.agents/commands/cut-release.md).
+not in an earlier release that was not tested with it, so it often waits as a draft. Name that
+release in its description, and change it if the Infrahub pull request moves to a later release.
+The `AGENTS.md` of its repository says when it can merge, and
+[`/cut-release`](../../../.agents/commands/cut-release.md) merges the waiting `infrahub-helm` ones.
 
 ## Run the tests that CI does not run
 
@@ -55,11 +56,13 @@ maintainer to, and post the results on the Infrahub pull request.
     release pins, unless `NEO4J_DOCKER_IMAGE` is set. A cluster deployment reads
     `DATABASE_DOCKER_IMAGE` instead.
   - Prefect: the task manager of the test stack runs the Infrahub image, so run the tests on an
-    Infrahub image built from the upgrade branch.
+    Infrahub image built from the upgrade branch. The test containers take it from
+    `INFRAHUB_TESTING_DOCKER_IMAGE` and `INFRAHUB_TESTING_IMAGE_VERSION`.
 - High availability on Kubernetes: deploy the example from the
   [high-availability guide](../../../docs/docs/deploy-manage/install-configure/production-deployment/high-availability.mdx)
-  with the new version, and test it by hand. It runs a Neo4j cluster and the split Prefect
-  deployments, and no CI job deploys it.
+  and test it by hand. It runs a Neo4j cluster and the split Prefect deployments, and no CI job
+  deploys it. Its values pin an older Infrahub image, so set `infrahubTag` and `prefectTag` to an
+  image built from the upgrade branch.
   - Neo4j: the example turns off the Neo4j of the Infrahub chart and installs the `neo4j/neo4j`
     chart directly, so use the chart version of this pull request, from the high-availability
     guide or `development/deploy.tf`.
