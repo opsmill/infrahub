@@ -13,11 +13,11 @@ database: it sets Prefect settings, deletes rows in Prefect's existing tables, a
 
 | Situation | What happens |
 |---|---|
-| The task manager or `infrahub tasks background-services` starts | Infrahub reads the `task_manager` section of the configuration file and the environment, refuses to start when a retention is outside 1 to 36,500 days (the error names the setting), removes an empty vacuum switch, sets the derived `PREFECT_*` variables whose setting no Prefect source sets, refreshes Prefect's settings, and logs each warning and the value Prefect applies for each setting. The task manager reads the file `INFRAHUB_CONFIG` names, else `infrahub.toml`; `background-services` reads its `CONFIG_FILE` argument, else the same files |
+| The task manager or `infrahub tasks background-services` starts | Infrahub reads the `task_manager` section of the configuration file and the environment, refuses to start when a retention is not a number of days or an ISO 8601 duration, or is outside 1 to 36,500 days (the error names the setting), removes an empty vacuum switch, sets the derived `PREFECT_*` variables whose setting no Prefect source sets, refreshes Prefect's settings, and logs each warning and the value Prefect applies for each setting. The task manager reads the file `INFRAHUB_CONFIG` names, else `infrahub.toml`; `background-services` reads its `CONFIG_FILE` argument, else the same files |
 | `infrahub tasks background-services` gets a `CONFIG_FILE` argument that is not an existing file | It prints `Configuration file not found: <path>` and exits 1 before the services start; without the argument, a missing file leaves the settings to the environment |
 | A Prefect retention setting is already set, by an environment variable under any name Prefect accepts, by Prefect's `.env` file, `prefect.toml` or `pyproject.toml`, or by its active profile | The setting wins, and one warning per setting names the Infrahub setting it hides |
 | `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` is already set | It is kept, and one warning per cleanup it turns off (`flow_runs`, `events`) names the retention that is not applied; an empty or blank value is removed first, because Prefect reads it as `false` |
-| `prefect_own_events` is longer than `activity_log` | The task manager and `background-services` refuse to start |
+| `prefect_own_events` is longer than `activity_log` | Every process that loads the configuration refuses to start: the task manager and `background-services`, and the API server, the task workers and the CLI commands that load the whole configuration, because `config.py::Settings` includes the `task_manager` section. A retention outside its range stops the same processes |
 | `PREFECT__SERVER_WEBSERVER_ONLY` is set | The task manager logs at INFO that this process does not run Prefect's background services and names `infrahub tasks background-services` |
 | Every hour | Prefect deletes finished top-level runs older than `task_history` with their logs and artifacts, events older than `activity_log`, and listed Prefect event types older than `prefect_own_events` |
 | A Prefect event type is missing from `PREFECT_EVENT_TYPES` | It is kept for `activity_log`: it costs disk, and no Infrahub event is ever deleted early |
@@ -27,7 +27,7 @@ database: it sets Prefect settings, deletes rows in Prefect's existing tables, a
 | A retention is lowered | The next hourly run deletes the older records; disk space returns only with `flush flow-runs --rewrite`, which rewrites each task history and activity log table that is mostly free space |
 | A run stays RUNNING or PENDING | Nothing deletes it until `infrahub tasks flush stale-runs` marks it CRASHED; see [Stuck runs](#stuck-runs) |
 | A branch is deleted | `branch-purge-tasks` deletes the finished runs tagged with the branch, independently of the retention |
-| Tests on the Prefect harness | `backend/tests/helpers/constants.py` sets `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` to `[]`, which takes precedence, so Prefect's vacuum stays off |
+| Tests on the Prefect harness | `backend/tests/helpers/constants.py` sets `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` to `[]`, which takes precedence, so Prefect's vacuum stays off, the task manager logs both turned-off-cleanup warnings, and an event query that sets no start reads 180 days back |
 
 ## Settings and their translation
 
@@ -201,16 +201,21 @@ deleted with their event.
 
 - `prefect_server/retention.py::PREFECT_EVENT_TYPES` lists Prefect's own event types for the pinned
   Prefect release: the flow-run and task-run state events for every built-in state name, the
-  heartbeat, and the runner, worker, flow, deployment, work pool, work queue, automation, block,
-  variable, concurrency limit, artifact and asset events. It never lists an `infrahub.` type, so no
+  heartbeat, the flow-run pull-step events, and the runner, workspace transfer, worker, flow,
+  deployment, work pool, work queue, automation, block, variable, concurrency limit, artifact and
+  asset events. It never lists an `infrahub.` type, so no
   Infrahub event is deleted before `activity_log`.
-- Two tests guard the list. `backend/tests/unit/prefect_server/test_prefect_event_types.py` checks
-  that every built-in state of the pinned Prefect is listed, and
+- `backend/tests/unit/prefect_server/test_prefect_event_types.py` reads the installed Prefect's
+  source with `ast`. It fails when Prefect builds an event name from an f-string pattern that the
+  test does not know, and when one of these has no listed event: a literal `prefect.*` event name, a
+  deployment, work pool or work queue status, an automation trigger state, a kind of record with
+  lifecycle events, or a state name that Prefect defines or sets.
   `backend/tests/integration_docker/test_prefect_event_types.py` runs a workload on the full stack,
   including failed and cancelled flows and a worker restart, and fails on any stored non-`infrahub.`
   type that is missing. Update the list when either fails after a Prefect upgrade, and when an
   Infrahub flow introduces a custom state name, which creates a new state event type.
-- Neither test sees a type that Prefect emits outside the workload. So once Prefect's startup has
+- Neither test sees an event name that Prefect builds in a way the source scan does not read, or a
+  custom state name that the workload does not reach. So once Prefect's startup has
   migrated the database, `prefect_server/app.py::create_infrahub_prefect` reads each stored event
   type, one index lookup per type through `prefect_server/database.py::read_stored_event_types`,
   and logs a warning naming every stored `prefect.*` type that has no per-type retention in the
