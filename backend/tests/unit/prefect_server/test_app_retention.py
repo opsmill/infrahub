@@ -6,6 +6,7 @@ import os
 import subprocess  # noqa: S404
 import sys
 import tomllib
+from dataclasses import dataclass
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
@@ -36,13 +37,23 @@ PREFECT_RETENTION_VARIABLES = (
     EVENT_RETENTION_OVERRIDES,
 )
 
+# Prefect skips the profile while any of these is set.
+PREFECT_TEST_MODE_VARIABLES = (
+    "PREFECT_TEST_MODE",
+    "PREFECT_UNIT_TEST_MODE",
+    "PREFECT_TESTING_UNIT_TEST_MODE",
+    "PREFECT_TESTING_TEST_MODE",
+)
+
 
 @pytest.fixture
 def task_manager_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Generator[None, None, None]:
-    """Start from an unloaded configuration and no retention variable, and put the process state back afterwards."""
+    """Start with no configuration loaded and no Prefect setting from any source, then restore the process state."""
     monkeypatch.setattr(config.SETTINGS, "settings", None)
     monkeypatch.setattr(prefect.context, "GLOBAL_SETTINGS_CONTEXT", prefect.context.GLOBAL_SETTINGS_CONTEXT)
+    monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("INFRAHUB_CONFIG", str(tmp_path / "absent.toml"))
+    monkeypatch.setenv("PREFECT_PROFILES_PATH", str(tmp_path / "profiles.toml"))
     for name in (
         "INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY",
         "INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG",
@@ -50,6 +61,7 @@ def task_manager_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) ->
         "PREFECT_API_BLOCKS_REGISTER_ON_START",
         "PREFECT_API_DATABASE_MIGRATE_ON_START",
         "PREFECT__SERVER_WEBSERVER_ONLY",
+        *PREFECT_TEST_MODE_VARIABLES,
     ):
         monkeypatch.delenv(name, raising=False)
     saved = {name: os.environ.pop(name, None) for name in PREFECT_RETENTION_VARIABLES}
@@ -251,6 +263,7 @@ def test_the_standalone_task_manager_ignores_infrahub_settings_it_does_not_use(t
     }
     environ |= {
         "INFRAHUB_CONFIG": str(tmp_path / "absent.toml"),
+        "PREFECT_PROFILES_PATH": str(tmp_path / "profiles.toml"),
         "INFRAHUB_LOG_LEVEL": "INFO",
         "INFRAHUB_PRODUCTION": "true",
         "INFRAHUB_STORAGE_DRIVER": "nope",
@@ -277,10 +290,10 @@ def test_the_standalone_task_manager_ignores_infrahub_settings_it_does_not_use(t
 
 
 @pytest.mark.usefixtures("task_manager_environment")
-def test_startup_logs_the_retention_variables_prefect_reads(
+def test_startup_logs_the_retention_prefect_applies(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
-    """The startup log shows the value of each retention variable, whether Infrahub derived it or it was preset."""
+    """The startup log shows the value Prefect applies for each retention, derived by Infrahub or preset."""
     monkeypatch.setenv("INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY", "45d")
     monkeypatch.setenv("INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG", "P14D")
     monkeypatch.setenv(EVENT_RETENTION_OVERRIDES, '{"prefect.flow-run.heartbeat": "P1D"}')
@@ -297,10 +310,10 @@ def test_startup_logs_the_retention_variables_prefect_reads(
 
 
 @pytest.mark.usefixtures("task_manager_environment")
-def test_preset_legacy_variable_is_logged_and_applied_under_its_own_name(
+def test_preset_legacy_variable_is_named_in_the_warning_and_its_value_logged(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
-    """A retention preset under Prefect's legacy variable name is the one Prefect applies, and both logs name it."""
+    """A retention preset under Prefect's legacy variable name is the one Prefect applies, and the warning names it."""
     monkeypatch.setenv(LEGACY_EVENTS_RETENTION_PERIOD, "P3D")
     monkeypatch.setenv(EVENT_RETENTION_OVERRIDES, '{"prefect.flow-run.heartbeat": "P1D"}')
 
@@ -314,8 +327,51 @@ def test_preset_legacy_variable_is_logged_and_applied_under_its_own_name(
     assert _app_messages(caplog=caplog, level=logging.INFO) == [
         f"Task manager retention: {VACUUM_ENABLED}=events,flow_runs",
         f"Task manager retention: {VACUUM_RETENTION_PERIOD}=P30D",
-        f"Task manager retention: {LEGACY_EVENTS_RETENTION_PERIOD}=P3D",
+        f"Task manager retention: {EVENTS_RETENTION_PERIOD}=P3D",
         f"Task manager retention: {EVENT_RETENTION_OVERRIDES}=P1D for 1 event types",
     ]
     assert EVENTS_RETENTION_PERIOD not in os.environ
     assert get_current_settings().server.events.retention_period == timedelta(days=3)
+
+
+@dataclass
+class PrefectSettingsFileTestCase:
+    name: str
+    file_name: str
+    content: str
+
+
+PREFECT_SETTINGS_FILE_TEST_CASES: list[PrefectSettingsFileTestCase] = [
+    PrefectSettingsFileTestCase(
+        name="prefect_toml", file_name="prefect.toml", content='[server.events]\nretention_period = "P90D"\n'
+    ),
+    PrefectSettingsFileTestCase(name="dotenv", file_name=".env", content=f"{EVENTS_RETENTION_PERIOD}=P90D\n"),
+    PrefectSettingsFileTestCase(
+        name="active_profile",
+        file_name="profiles.toml",
+        content=f'active = "infrahub"\n\n[profiles.infrahub]\n{EVENTS_RETENTION_PERIOD} = "P90D"\n',
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in PREFECT_SETTINGS_FILE_TEST_CASES])
+@pytest.mark.usefixtures("task_manager_environment")
+def test_retention_set_in_a_prefect_settings_file_is_kept_and_logged(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture, test_case: PrefectSettingsFileTestCase
+) -> None:
+    """An environment variable would replace a value Prefect reads from its own files, so none is written for it."""
+    (tmp_path / test_case.file_name).write_text(test_case.content, encoding="utf-8")
+
+    with caplog.at_level(logging.INFO, logger=APP_LOGGER):
+        apply_infrahub_settings_to_prefect()
+
+    assert _app_messages(caplog=caplog, level=logging.WARNING) == [
+        f"{EVENTS_RETENTION_PERIOD} is set in a Prefect settings file or profile and overrides "
+        "task_manager.retention.activity_log"
+    ]
+    assert EVENTS_RETENTION_PERIOD not in os.environ
+    assert get_current_settings().server.events.retention_period == timedelta(days=90)
+    events_retention_log_lines = [
+        message for message in _app_messages(caplog=caplog, level=logging.INFO) if EVENTS_RETENTION_PERIOD in message
+    ]
+    assert events_retention_log_lines == [f"Task manager retention: {EVENTS_RETENTION_PERIOD}=P90D"]

@@ -23,7 +23,7 @@ No graph schema, GraphQL schema or database schema changes. The feature adds one
 | `PREFECT_SERVER_EVENTS_RETENTION_PERIOD` | `activity_log` |
 | `PREFECT_SERVER_SERVICES_DB_VACUUM_EVENT_RETENTION_OVERRIDES` | `{type: prefect_own_events for type in PREFECT_EVENT_TYPES}` |
 
-A Prefect variable already set in the environment to a value that is not empty is left as is. A preset retention variable comes with a warning naming the setting it overrides. A preset `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` replaces no retention, so it gets no such warning; instead the task manager warns for each of `flow_runs` and `events` that the switch leaves off, naming the retention that is then not applied. An empty or blank variable is replaced with the derived value.
+A Prefect setting that one of Prefect's sources already sets is left as is: the task manager writes no variable for it, because an environment variable takes precedence over every other source. The sources are an environment variable that is not empty, a `.env` file, `prefect.toml`, the `[tool.prefect]` table of `pyproject.toml` and the active profile. A preset retention setting comes with a warning naming the setting it overrides. A preset `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` replaces no retention, so it gets no such warning; instead the task manager warns for each of `flow_runs` and `events` that the switch leaves off, naming the retention that is then not applied. An empty or blank environment variable is removed first, so it does not count as set. The startup log shows each of the four values as Prefect parsed it after the refresh, whatever its source.
 
 ## Prefect event types list (new constant)
 

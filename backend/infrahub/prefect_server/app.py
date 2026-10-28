@@ -17,7 +17,8 @@ from .bootstrap import init_prefect
 from .retention import (
     apply_prefect_retention_env,
     background_services_warning,
-    prefect_retention_env_in_effect,
+    prefect_retention_already_set,
+    prefect_retention_in_effect,
     remove_blank_retention_variables,
     turned_off_cleanup_warnings,
 )
@@ -58,13 +59,16 @@ def apply_infrahub_settings_to_prefect() -> None:
         print_configuration_errors(error=error)
         sys.exit(1)
     remove_blank_retention_variables(environ=os.environ)
-    for warning in apply_prefect_retention_env(environ=os.environ, settings=retention):
+    # Read before any write, since a variable written here would count as one the operator set.
+    already_set = prefect_retention_already_set()
+    for warning in apply_prefect_retention_env(environ=os.environ, settings=retention, already_set=already_set):
         log.warning(warning)
     # Prefect reads its settings from the environment once at import, so new values apply only after a refresh.
     refresh_global_settings_context()
-    for warning in turned_off_cleanup_warnings(vacuum=get_current_settings().server.services.db_vacuum):
+    prefect_settings = get_current_settings()
+    for warning in turned_off_cleanup_warnings(vacuum=prefect_settings.server.services.db_vacuum):
         log.warning(warning)
-    for name, value in prefect_retention_env_in_effect(environ=os.environ).items():
+    for name, value in prefect_retention_in_effect(settings=prefect_settings).items():
         log.info(f"Task manager retention: {name}={value}")
 
 

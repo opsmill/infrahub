@@ -12,6 +12,7 @@ from prefect.settings.models.server.services import ServerServicesDBVacuumSettin
 if TYPE_CHECKING:
     from collections.abc import Mapping, MutableMapping
 
+    from prefect.settings import Settings
     from pydantic_settings import BaseSettings
 
     from .retention_settings import TaskManagerRetentionSettings
@@ -187,21 +188,45 @@ def build_prefect_retention_env(settings: TaskManagerRetentionSettings, event_ty
     }
 
 
-def apply_prefect_retention_env(environ: MutableMapping[str, str], settings: TaskManagerRetentionSettings) -> list[str]:
-    """Set the retention variables that the environment does not already set, and return the warnings to log.
+def prefect_retention_already_set() -> frozenset[str]:
+    """Return the retention variables whose Prefect setting a Prefect source already sets.
 
-    A Prefect setting already present under any name Prefect accepts for it is left as it is, so an operator's
-    explicit Prefect setting keeps precedence, with a warning when it replaces a retention. A variable that is
-    present but empty or blank does not count as set, and the caller removes it first.
+    Prefect reads a setting from the environment, a `.env` file, `prefect.toml`, the `[tool.prefect]` table of
+    `pyproject.toml` or the active profile, and marks a field as set only when one of them supplies it. An empty
+    variable counts as set, so the caller removes blank ones first.
+    """
+    return frozenset(
+        name for name, setting in _PREFECT_SETTINGS.items() if setting.field in setting.model().model_fields_set
+    )
+
+
+def apply_prefect_retention_env(
+    environ: MutableMapping[str, str], settings: TaskManagerRetentionSettings, already_set: frozenset[str]
+) -> list[str]:
+    """Set the retention variables whose Prefect setting no Prefect source sets, and return the warnings to log.
+
+    A Prefect setting that is already set is left as it is, so an operator's explicit Prefect setting keeps
+    precedence, with a warning when it replaces a retention.
+
+    Args:
+        already_set: Retention variables whose Prefect setting the environment, a Prefect settings file or the
+            active profile already sets, read before any variable is written.
+
     """
     warnings: list[str] = []
     for name, value in build_prefect_retention_env(settings=settings, event_types=PREFECT_EVENT_TYPES).items():
+        if name not in already_set:
+            environ[name] = value
+            continue
         setting = _PREFECT_SETTINGS[name]
+        if setting.overridden_retention is None:
+            continue
+        overrides = f"overrides task_manager.retention.{setting.overridden_retention}"
         name_set = _name_set_in(environ=environ, setting=setting)
         if name_set is None:
-            environ[name] = value
-        elif setting.overridden_retention is not None:
-            warnings.append(f"{name_set} is set and overrides task_manager.retention.{setting.overridden_retention}")
+            warnings.append(f"{name} is set in a Prefect settings file or profile and {overrides}")
+        else:
+            warnings.append(f"{name_set} is set and {overrides}")
     return warnings
 
 
@@ -240,27 +265,32 @@ def turned_off_cleanup_warnings(vacuum: ServerServicesDBVacuumSettings) -> list[
     return warnings
 
 
-def _count_overrides_per_retention(value: str) -> str:
-    try:
-        overrides = json.loads(value)
-    except json.JSONDecodeError:
-        return value
-    if not isinstance(overrides, dict):
-        return value
-    per_retention = Counter(str(retention) for retention in overrides.values())
-    return ", ".join(f"{retention} for {count} event types" for retention, count in sorted(per_retention.items()))
+def _vacuum_switch(enabled: set[str] | bool | None) -> str:
+    if isinstance(enabled, bool):
+        return "true" if enabled else "false"
+    if enabled is None:
+        return "null"
+    return ",".join(sorted(enabled)) or "[]"
 
 
-def prefect_retention_env_in_effect(environ: Mapping[str, str]) -> dict[str, str]:
-    """Return the variable Prefect reads for each retention setting present in the environment, with its value.
+def _count_overrides_per_retention(overrides: Mapping[str, timedelta]) -> str:
+    if not overrides:
+        return "{}"
+    per_retention = Counter(overrides.values())
+    return ", ".join(
+        f"{_iso_8601(retention)} for {count} event types" for retention, count in sorted(per_retention.items())
+    )
+
+
+def prefect_retention_in_effect(settings: Settings) -> dict[str, str]:
+    """Return the value Prefect applies for each retention setting, keyed by the variable Infrahub derives for it.
 
     The per-type overrides are counted per retention rather than listed, as the list holds over a hundred types.
     """
-    in_effect: dict[str, str] = {}
-    for name, setting in _PREFECT_SETTINGS.items():
-        name_set = _name_set_in(environ=environ, setting=setting)
-        if name_set is None:
-            continue
-        value = environ[name_set]
-        in_effect[name_set] = _count_overrides_per_retention(value) if name == EVENT_RETENTION_OVERRIDES else value
-    return in_effect
+    vacuum = settings.server.services.db_vacuum
+    return {
+        VACUUM_ENABLED: _vacuum_switch(enabled=vacuum.enabled),
+        VACUUM_RETENTION_PERIOD: _iso_8601(vacuum.retention_period),
+        EVENTS_RETENTION_PERIOD: _iso_8601(settings.server.events.retention_period),
+        EVENT_RETENTION_OVERRIDES: _count_overrides_per_retention(overrides=vacuum.event_retention_overrides),
+    }
