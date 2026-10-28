@@ -62,23 +62,27 @@ async def _run_mutation(
 
 
 @dataclass
-class RemovalTestCase:
+class PeerChangeTestCase:
     name: str
     mutation: str
     rel_name: str
     peer_kind: str
 
 
-REMOVAL_TEST_CASES: list[RemovalTestCase] = [
-    RemovalTestCase(name="update_related_nodes", mutation="Update", rel_name="related_nodes", peer_kind="TestDevice"),
-    RemovalTestCase(name="upsert_related_nodes", mutation="Upsert", rel_name="related_nodes", peer_kind="TestDevice"),
-    RemovalTestCase(
+PEER_CHANGE_TEST_CASES: list[PeerChangeTestCase] = [
+    PeerChangeTestCase(
+        name="update_related_nodes", mutation="Update", rel_name="related_nodes", peer_kind="TestDevice"
+    ),
+    PeerChangeTestCase(
+        name="upsert_related_nodes", mutation="Upsert", rel_name="related_nodes", peer_kind="TestDevice"
+    ),
+    PeerChangeTestCase(
         name="update_related_templates",
         mutation="Update",
         rel_name="related_templates",
         peer_kind="TemplateTestDevice",
     ),
-    RemovalTestCase(
+    PeerChangeTestCase(
         name="upsert_related_templates",
         mutation="Upsert",
         rel_name="related_templates",
@@ -87,13 +91,13 @@ REMOVAL_TEST_CASES: list[RemovalTestCase] = [
 ]
 
 
-@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in REMOVAL_TEST_CASES])
-async def test_profile_update_refreshes_the_removed_peers(
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in PEER_CHANGE_TEST_CASES])
+async def test_profile_update_refreshes_the_added_and_removed_peers(
     db: InfrahubDatabase,
     default_branch: Branch,
     device_schema: None,
     session_admin: AccountSession,
-    test_case: RemovalTestCase,
+    test_case: PeerChangeTestCase,
 ) -> None:
     profile = await _create_node(
         db=db, branch=default_branch, kind="ProfileTestDevice", profile_name="profile-1", profile_priority=10
@@ -101,9 +105,9 @@ async def test_profile_update_refreshes_the_removed_peers(
     name_field = "template_name" if test_case.peer_kind.startswith("Template") else "name"
     peers = [
         await _create_node(
-            db=db, branch=default_branch, kind=test_case.peer_kind, profiles=[profile], **{name_field: f"peer-{idx}"}
+            db=db, branch=default_branch, kind=test_case.peer_kind, profiles=profiles, **{name_field: f"peer-{idx}"}
         )
-        for idx in range(3)
+        for idx, profiles in enumerate([[profile], [profile], []])
     ]
 
     workflow = await _run_mutation(
@@ -114,7 +118,7 @@ async def test_profile_update_refreshes_the_removed_peers(
             ProfileTestDevice{test_case.mutation}(data: {{
                 id: "{profile.id}",
                 profile_name: {{ value: "profile-1" }},
-                {test_case.rel_name}: [{{ id: "{peers[0].id}" }}]
+                {test_case.rel_name}: [{{ id: "{peers[0].id}" }}, {{ id: "{peers[2].id}" }}]
             }}) {{ ok }}
         }}
         """,
@@ -123,7 +127,7 @@ async def test_profile_update_refreshes_the_removed_peers(
 
     profile = await NodeManager.get_one(db=db, branch=default_branch, id=profile.id, raise_on_error=True)
     relationships = await profile.get_relationship(name=test_case.rel_name).get_relationships(db=db)
-    assert [rel.peer_id for rel in relationships] == [peers[0].id]
+    assert {rel.peer_id for rel in relationships} == {peers[0].id, peers[2].id}
     event_context = EventContext(
         branch=EventBranchContext(name=default_branch.name, id=str(default_branch.uuid)),
         account_id=session_admin.account_id,

@@ -165,7 +165,7 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
         cls._validate_no_resource_pools_in_data(data)
 
         workflow_service = info.context.active_service.workflow
-        # Only a payload with these relationships can remove peers, and a read of all peers is slow on a large profile.
+        # Only these payload fields can change the peers, and a read of all peers is slow on a large profile.
         rel_names = [rel_name for rel_name in PROFILE_PEER_RELATIONSHIP_NAMES if rel_name in data]
         original_related_node_ids = await cls._get_profile_related_node_ids(db=db, obj=obj, rel_names=rel_names)
 
@@ -175,17 +175,16 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
 
         updated_related_node_ids = await cls._get_profile_related_node_ids(db=db, obj=obj, rel_names=rel_names)
 
-        # Handle nodes removed from related_nodes - these need explicit refresh
-        # since the async automation won't find them in the profile's related_nodes after the change.
-        # Attribute changes and added nodes are handled by the Prefect automation
-        if removed_node_ids := original_related_node_ids - updated_related_node_ids:
+        # The automation of the profile does not trigger on these relationships, so the added and removed peers
+        # are refreshed here.
+        if changed_node_ids := original_related_node_ids ^ updated_related_node_ids:
             await cls._send_profile_refresh_workflows(
                 db=db,
                 workflow_service=workflow_service,
                 branch_name=branch.name,
                 obj=obj,
                 context=info.context.to_event_context(),
-                node_ids=list(removed_node_ids),
+                node_ids=sorted(changed_node_ids),
             )
 
         return obj, mutation
