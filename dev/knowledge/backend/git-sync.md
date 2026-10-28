@@ -174,10 +174,9 @@ is not a setting, so for N non-global branches the read costs `ceil(N / 100)` pe
 top of the node read, rather than one query per branch. When no repository exists the function
 returns after the node read and issues no per-branch query at all.
 
-Note that the chunk size bounds the *branch* dimension only. A chunk's result set is repositories ×
-branches-in-chunk × attributes rows, and because the underlying query sets an explicit limit it does
-not go through `database.query_size_limit` pagination — so the rows per chunk still grow with the
-number of repositories.
+The chunk size bounds the *branch* dimension only. A chunk's result set is repositories ×
+branches-in-chunk × attributes rows, so the rows per chunk still grow with the number of
+repositories.
 
 The attribute source both callers read through is built by
 `build_repository_branch_attributes_source` in
