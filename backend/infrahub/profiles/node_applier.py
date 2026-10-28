@@ -146,16 +146,11 @@ class NodeProfilesApplier:
 
             if is_changed:
                 node_rel.is_from_profile = False
-                await node_rel.save(db=self.db)
             return is_changed
 
-        is_changed = await self._replace_profile_peers(
+        return await self._replace_profile_peers(
             node=node, node_rel=node_rel, profile_set_rels=profile_set_rels, peer_ids=peer_ids, profile_id=profile_id
         )
-        if is_changed:
-            await node_rel.save(db=self.db)
-
-        return is_changed
 
     async def _replace_profile_peers(
         self,
@@ -201,7 +196,14 @@ class NodeProfilesApplier:
 
     async def _remove_profile_from_relationship(self, relationship_manager: RelationshipManager) -> None:
         relationship_manager.is_from_profile = False
-        await relationship_manager.delete(db=self.db)
+        # A peer the writer named in the same request is no longer from a profile, so it stays.
+        await relationship_manager.update_relationships(
+            db=self.db,
+            relationships_to_remove=[
+                rel for rel in await relationship_manager.get_relationships(db=self.db) if rel.is_from_profile
+            ],
+            relationships_to_insert=[],
+        )
 
     async def get_field_values(self, node: Node, attr_names: list[str], rel_names: list[str]) -> ProfileFieldValues:
         """Return the values and the peers the node's profiles give the named fields, leaving the node unchanged.
@@ -268,7 +270,8 @@ class NodeProfilesApplier:
 
         Returns the names of the attributes and relationships that this method modified. Fields the
         caller changed before calling this method are not reported unless applying profiles changed
-        them further; an empty list means nothing was modified here.
+        them further; an empty list means nothing was modified here. The changes stay on the node, so
+        that saving it with these fields writes them and records them in its changelog.
         """
         profile_ids = await self._get_profile_ids(node=node)
         attr_names_for_profiles = await self._get_attr_names_for_profiles(node=node)
@@ -318,9 +321,11 @@ class NodeProfilesApplier:
                         updated_field_names.append(node_rel.name)
                     break
 
+            if has_profile_rel_data:
+                continue
             # Refresh the relationship manager to update the is_from_profile property
             await node_rel.refresh_update_details(db=self.db)
-            if not has_profile_rel_data and node_rel.is_from_profile:
+            if node_rel.is_from_profile:
                 await self._remove_profile_from_relationship(relationship_manager=node_rel)
                 updated_field_names.append(node_rel.name)
 

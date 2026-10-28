@@ -1080,3 +1080,40 @@ async def test_node_with_cardinality_one_relationship_profile_updated_on_profile
             ExpectedProfileRelationship(name="driver", peers=[peter], source_uuid=car_profile.id),
         ],
     )
+
+
+async def test_node_keeps_the_peer_its_writer_names_when_the_profile_that_set_it_is_replaced(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
+) -> None:
+    """An update that swaps the profiles and names the peer the old profile set keeps that peer, as user-set."""
+    john = await Node.init(db=db, branch=default_branch, schema="TestPerson")
+    await john.new(db=db, name="John")
+    await john.save(db=db)
+    driver_profile = await Node.init(db=db, branch=default_branch, schema="ProfileTestCar")
+    await driver_profile.new(db=db, profile_name="with driver", driver=john.id, profile_priority=1000)
+    await driver_profile.save(db=db)
+    other_profile = await Node.init(db=db, branch=default_branch, schema="ProfileTestCar")
+    await other_profile.new(db=db, profile_name="without driver", profile_priority=1000)
+    await other_profile.save(db=db)
+    car = await Node.init(db=db, branch=default_branch, schema="TestCar")
+    await car.new(db=db, name="Sample car", owner=john.id, profiles=[driver_profile.id])
+    await car.save(db=db)
+    applier = NodeProfilesApplier(
+        db=db, branch=default_branch, profile_data_reader=ProfileDataReader(db=db, branch=default_branch)
+    )
+    await car.save(db=db, fields=await applier.apply_profiles(node=car))
+
+    car = await NodeManager.get_one(db=db, id=car.id, branch=default_branch, raise_on_error=True)
+    await car.get_relationship(name="driver").update(db=db, data=john.id)
+    await car.get_relationship(name="profiles").update(db=db, data=[other_profile.id])
+    applier = NodeProfilesApplier(
+        db=db, branch=default_branch, profile_data_reader=ProfileDataReader(db=db, branch=default_branch)
+    )
+    await car.save(db=db, fields=["driver", "profiles", *await applier.apply_profiles(node=car)])
+
+    reloaded = await NodeManager.get_one(
+        db=db, id=car.id, branch=default_branch, include_metadata=MetadataOptions.SOURCE, raise_on_error=True
+    )
+    assert [
+        (rel.peer_id, rel.source_id) for rel in await reloaded.get_relationship(name="driver").get_relationships(db=db)
+    ] == [(john.id, None)]

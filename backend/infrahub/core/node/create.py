@@ -341,10 +341,13 @@ async def create_component(
 
     template_profile_ids = await get_profile_ids(db=db, obj=component.subtemplate)
     if template_profile_ids:
-        node_profiles_applier = NodeProfilesApplier(
-            db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+        await _apply_profiles_before_create(
+            db=db,
+            node=obj_peer,
+            profiles_applier=NodeProfilesApplier(
+                db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+            ),
         )
-        await node_profiles_applier.apply_profiles(node=obj_peer)
 
     await obj_peer.save(db=db, user_id=user_id)
     NodeMutationContext.record_if_active(node=obj_peer, action=MutationAction.CREATED)
@@ -455,10 +458,19 @@ def _has_profiles_set(node: Node) -> bool:
     return len(profiles) > 0
 
 
+async def _apply_profiles_before_create(
+    db: InfrahubDatabase, node: Node, profiles_applier: NodeProfilesApplier
+) -> None:
+    if await profiles_applier.apply_profiles(node=node):
+        # The macros were rendered from the values the node held before its profiles gave theirs.
+        await node._process_macros(db=db)
+
+
 @dataclass(frozen=True)
 class _NodeWriteComponents:
     pool_applier: AttributePoolApplier
     profiles_mandatory_field_getter: ProfilesMandatoryFieldGetter
+    profiles_applier: NodeProfilesApplier
 
 
 def _build_node_write_components(
@@ -466,15 +478,15 @@ def _build_node_write_components(
 ) -> _NodeWriteComponents:
     """Build the components that write one node, reading the node's profiles through one reader."""
     profile_data_reader = ProfileDataReader(db=db, branch=branch)
+    profiles_applier = NodeProfilesApplier(db=db, branch=branch, profile_data_reader=profile_data_reader)
     return _NodeWriteComponents(
         pool_applier=build_attribute_pool_applier(
-            profiles_applier=NodeProfilesApplier(db=db, branch=branch, profile_data_reader=profile_data_reader),
-            db=db,
-            schema_branch=schema_branch,
+            profiles_applier=profiles_applier, db=db, schema_branch=schema_branch
         ),
         profiles_mandatory_field_getter=ProfilesMandatoryFieldGetter(
             db=db, branch=branch, profile_data_reader=profile_data_reader
         ),
+        profiles_applier=profiles_applier,
     )
 
 
@@ -483,6 +495,7 @@ async def _do_create_node(
     node_constraint_runner: NodeConstraintRunner,
     pool_applier: AttributePoolApplierInterface,
     profiles_mandatory_field_getter: ProfilesMandatoryFieldGetter,
+    profiles_applier: NodeProfilesApplier,
     mutation_context: NodeMutationContext,
     db: InfrahubDatabase,
     schema: NonGenericSchemaTypes,
@@ -504,6 +517,8 @@ async def _do_create_node(
             user_id=user_id,
         )
         await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
+        if _has_profiles_set(node=obj):
+            await _apply_profiles_before_create(db=db, node=obj, profiles_applier=profiles_applier)
         await obj.save(db=db, at=at, user_id=user_id)
 
         if object_template:
@@ -604,6 +619,7 @@ async def create_node(
                 node_constraint_runner=node_constraint_runner,
                 pool_applier=components.pool_applier,
                 profiles_mandatory_field_getter=components.profiles_mandatory_field_getter,
+                profiles_applier=components.profiles_applier,
                 mutation_context=mutation_context,
                 db=db,
                 schema=schema,
@@ -628,6 +644,7 @@ async def create_node(
                     node_constraint_runner=node_constraint_runner,
                     pool_applier=transaction_components.pool_applier,
                     profiles_mandatory_field_getter=transaction_components.profiles_mandatory_field_getter,
+                    profiles_applier=transaction_components.profiles_applier,
                     mutation_context=mutation_context,
                     db=dbt,
                     schema=schema,
@@ -638,14 +655,5 @@ async def create_node(
                     user_id=user_id,
                     object_template=object_template,
                 )
-
-    # The node was written from its in-memory state, so the profiles it is linked to are the ones
-    # its payload or its template set on it; there is nothing to read back.
-    if _has_profiles_set(node=obj):
-        node_profiles_applier = NodeProfilesApplier(
-            db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
-        )
-        await node_profiles_applier.apply_profiles(node=obj)
-        await obj.save(db=db, user_id=user_id)
 
     return obj
