@@ -150,6 +150,9 @@ def load_task_manager_settings(config_file: Path) -> TaskManagerSettings:
 
     Raises:
         ValidationError: When a task manager setting is invalid.
+        tomllib.TOMLDecodeError: When the configuration file is not valid TOML.
+        UnicodeDecodeError: When the configuration file is not UTF-8 text.
+        OSError: When the configuration file exists but cannot be read.
 
     """
     data = tomllib.loads(config_file.read_text(encoding="utf-8")) if config_file.exists() else {}
