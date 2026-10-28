@@ -82,3 +82,6 @@ class TaskHistorySize(BaseModel):
         description="Finished top-level runs older than the task history retention, counted up to a limit"
     )
     old_runs_limit_reached: bool = Field(description="Whether more runs than `old_runs` are older than the retention")
+    deletion_off_reason: str | None = Field(
+        description="Why Prefect's vacuum switch keeps old task runs, or None when it turns their deletion on"
+    )

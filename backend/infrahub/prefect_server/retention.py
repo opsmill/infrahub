@@ -273,6 +273,18 @@ def turned_off_cleanup_warnings(vacuum: ServerServicesDBVacuumSettings) -> list[
     return warnings
 
 
+def task_run_deletion_off_reason(vacuum: ServerServicesDBVacuumSettings) -> str | None:
+    """Return why Prefect's vacuum switch keeps old task runs, or None when it turns their deletion on."""
+    try:
+        enabled = vacuum.enabled_vacuum_types
+    except ValueError as exc:
+        # Prefect checks the vacuum types only when its services read them, so its settings load with an unknown one.
+        return f"{VACUUM_ENABLED} is not valid: {exc}"
+    if "flow_runs" not in enabled:
+        return f"{VACUUM_ENABLED} does not turn on flow_runs"
+    return None
+
+
 def _vacuum_switch(enabled: set[str] | bool | None) -> str:
     if isinstance(enabled, bool):
         return "true" if enabled else "false"

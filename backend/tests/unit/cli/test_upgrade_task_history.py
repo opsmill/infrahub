@@ -15,6 +15,7 @@ from prefect.client.orchestration import PrefectClient
 from infrahub.cli.tasks import task_history_size_hint
 from infrahub.cli.upgrade import _upgrade_execute
 from tests.helpers.task_history_api import (
+    DELETION_OFF_REASON,
     SIZE_PATH,
     TASK_MANAGER_API,
     RecordedRequest,
@@ -35,9 +36,17 @@ def _with_size(measured: str) -> str:
     return f"{measured} To get the space back, run: infrahub tasks flush flow-runs --rewrite"
 
 
-def _measured(size: int | None, old_runs: int, old_runs_limit_reached: bool) -> httpx.Response:
+def _measured(
+    size: int | None, old_runs: int, old_runs_limit_reached: bool, deletion_off_reason: str | None = None
+) -> httpx.Response:
     return httpx.Response(
-        status_code=200, json={"size": size, "old_runs": old_runs, "old_runs_limit_reached": old_runs_limit_reached}
+        status_code=200,
+        json={
+            "size": size,
+            "old_runs": old_runs,
+            "old_runs_limit_reached": old_runs_limit_reached,
+            "deletion_off_reason": deletion_off_reason,
+        },
     )
 
 
@@ -97,6 +106,16 @@ HINT_CASES: list[HintCase] = [
         expected_hint=_with_size("Task history takes 99.0 GB, with more than 100,000 runs older than the retention."),
     ),
     HintCase(
+        name="old_runs_kept_by_the_vacuum_switch",
+        answer=_measured(
+            size=23_400_000_000, old_runs=1234, old_runs_limit_reached=False, deletion_off_reason=DELETION_OFF_REASON
+        ),
+        expected_hint=(
+            "Task history takes 23.4 GB, with 1,234 runs older than the retention. Old task runs are not deleted, "
+            "because PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED does not turn on flow_runs."
+        ),
+    ),
+    HintCase(
         name="size_not_measured_on_sqlite",
         answer=_measured(size=None, old_runs=3, old_runs_limit_reached=False),
         expected_hint=None,
@@ -123,7 +142,10 @@ HINT_CASES: list[HintCase] = [
 @pytest.mark.usefixtures("prefect_client_without_retries")
 @pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in HINT_CASES])
 async def test_the_hint_gives_the_size_and_the_command_or_why_it_has_no_size(case: HintCase) -> None:
-    """The hint gives the size and the old runs the task manager measured, nothing on SQLite, and why it has no size otherwise."""
+    """The hint gives the size and the old runs the task manager measured, nothing on SQLite, and why it has no size otherwise.
+
+    It gives the command, or why old task runs are not deleted when the task manager says its vacuum switch keeps them.
+    """
     task_manager = ScriptedTaskManager(responses=[case.answer])
 
     async with task_manager.client() as client:
@@ -141,7 +163,10 @@ async def test_the_hint_gives_the_command_without_the_size_when_the_task_manager
         if request.url.path == "/api/csrf-token":
             return httpx.Response(status_code=422, json={"detail": "CSRF protection is disabled."})
         await answered.wait()
-        return httpx.Response(status_code=200, json={"size": 1, "old_runs": 0, "old_runs_limit_reached": False})
+        return httpx.Response(
+            status_code=200,
+            json={"size": 1, "old_runs": 0, "old_runs_limit_reached": False, "deletion_off_reason": None},
+        )
 
     client = PrefectClient(api=TASK_MANAGER_API, httpx_settings={"transport": httpx.MockTransport(never_answers)})
     async with client:

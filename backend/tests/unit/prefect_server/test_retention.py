@@ -19,6 +19,7 @@ from infrahub.prefect_server.retention import (
     prefect_retention_already_set,
     prefect_retention_in_effect,
     remove_blank_vacuum_switch,
+    task_run_deletion_off_reason,
     turned_off_cleanup_warnings,
 )
 from tests.helpers.task_manager_retention import (
@@ -482,6 +483,52 @@ def test_turned_off_cleanups_are_warned(monkeypatch: pytest.MonkeyPatch, test_ca
     monkeypatch.setenv(VACUUM_ENABLED, test_case.vacuum_enabled)
 
     assert turned_off_cleanup_warnings(vacuum=ServerServicesDBVacuumSettings()) == test_case.expected_warnings
+
+
+@dataclass
+class TaskRunDeletionTestCase:
+    name: str
+    vacuum_enabled: str
+    expected_reason: str | None
+
+
+TASK_RUN_DELETION_TEST_CASES: list[TaskRunDeletionTestCase] = [
+    TaskRunDeletionTestCase(name="events_and_flow_runs", vacuum_enabled="events,flow_runs", expected_reason=None),
+    TaskRunDeletionTestCase(name="true", vacuum_enabled="true", expected_reason=None),
+    TaskRunDeletionTestCase(
+        name="events_only",
+        vacuum_enabled="events",
+        expected_reason="PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED does not turn on flow_runs",
+    ),
+    TaskRunDeletionTestCase(
+        name="false",
+        vacuum_enabled="false",
+        expected_reason="PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED does not turn on flow_runs",
+    ),
+    TaskRunDeletionTestCase(
+        name="none",
+        vacuum_enabled="[]",
+        expected_reason="PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED does not turn on flow_runs",
+    ),
+    TaskRunDeletionTestCase(
+        name="unknown_type",
+        vacuum_enabled="Flow_Runs",
+        expected_reason=(
+            "PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED is not valid: Invalid vacuum type(s): ['Flow_Runs']. "
+            "Valid values are: ['events', 'flow_runs', 'orphans']"
+        ),
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in TASK_RUN_DELETION_TEST_CASES])
+def test_old_task_runs_are_deleted_only_when_the_vacuum_switch_turns_on_flow_runs(
+    monkeypatch: pytest.MonkeyPatch, test_case: TaskRunDeletionTestCase
+) -> None:
+    """The reason follows Prefect's own reading of the switch, where true turns on flow_runs and false does not."""
+    monkeypatch.setenv(VACUUM_ENABLED, test_case.vacuum_enabled)
+
+    assert task_run_deletion_off_reason(vacuum=ServerServicesDBVacuumSettings()) == test_case.expected_reason
 
 
 @dataclass

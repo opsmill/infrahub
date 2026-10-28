@@ -16,6 +16,7 @@ from tests.helpers.task_history_api import (
     RecordedRequest,
     ScriptedTaskManager,
     polled,
+    refused,
     route_missing,
     running_elsewhere,
     started,
@@ -302,6 +303,20 @@ async def test_an_unreachable_task_manager_prints_the_error_and_fails() -> None:
     assert exit_code == 1
     assert task_manager.requests == [RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "if_freed"})]
     assert console.lines == ["ERROR ConnectError: All connection attempts failed"]
+
+
+async def test_a_refused_cleanup_prints_why_and_fails() -> None:
+    """A cleanup the task manager refuses prints its reason on one line and exits with code 1, without waiting."""
+    task_manager = ScriptedTaskManager(responses=[refused()])
+    console = RecordedConsole()
+
+    exit_code = await _flush(task_manager=task_manager, console=console, rewrite=True)
+
+    assert exit_code == 1
+    assert task_manager.requests == [RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "if_freed"})]
+    assert console.lines == [
+        "ERROR Old task runs are not deleted, because PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED does not turn on flow_runs"
+    ]
 
 
 async def test_an_unexpected_answer_prints_the_error_and_fails() -> None:

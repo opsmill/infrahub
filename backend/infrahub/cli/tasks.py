@@ -96,7 +96,10 @@ app.add_typer(flush_app, name="flush")
 async def task_history_size_hint(
     client: PrefectClient, answer_within: timedelta = TASK_HISTORY_SIZE_TIMEOUT
 ) -> str | None:
-    """Return the disk space the task history takes and the command that returns it, or None on SQLite."""
+    """Return the disk space the task history takes and the command that returns it, or None on SQLite.
+
+    When Prefect's vacuum switch keeps old task runs, the hint gives that reason instead of the command.
+    """
     try:
         async with asyncio.timeout(answer_within.total_seconds()):
             measured = await read_task_history_size(client=client)
@@ -108,10 +111,12 @@ async def task_history_size_hint(
         )
     if measured.size is None:
         return None
-    return (
-        f"Task history takes {decimal(measured.size)}, with {_old_runs(measured=measured)} older than the retention. "
-        f"To get the space back, run: {TASK_HISTORY_REWRITE_COMMAND}"
+    taken = (
+        f"Task history takes {decimal(measured.size)}, with {_old_runs(measured=measured)} older than the retention."
     )
+    if measured.deletion_off_reason is not None:
+        return f"{taken} Old task runs are not deleted, because {measured.deletion_off_reason}."
+    return f"{taken} To get the space back, run: {TASK_HISTORY_REWRITE_COMMAND}"
 
 
 def _old_runs(measured: TaskHistorySize) -> str:
@@ -224,7 +229,7 @@ async def flow_runs(
     """Delete the finished task runs older than the task history retention, with their logs and artifacts.
 
     Raises:
-        typer.Exit: With code 1 when the cleanup fails.
+        typer.Exit: With code 1 when the task manager refuses or fails the cleanup.
 
     """
     logging.getLogger("infrahub").setLevel(logging.WARNING)

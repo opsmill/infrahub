@@ -58,6 +58,7 @@ A Prefect setting that one of Prefect's sources already sets is left as is: the 
 | `failed` | Tables whose rewrite failed with a database error, which leaves them as they were |
 | `error` | Message when `failed` |
 
+- A job starts only when the vacuum switch, as Prefect parses it, turns on `flow_runs`, so that the job deletes no run that Prefect's own cleanup keeps. Otherwise the start is refused with the reason, before any lock is taken.
 - At most one job runs at a time across all task-manager replicas, enforced by a Postgres advisory lock held for the job's run and checked every 30 s; a job that cannot confirm it holds the lock stops and fails. A new request on the same replica returns the running job, raising its `rewrite` to the request's when that is stronger (`never` < `if_freed`); on another replica it is refused with "running elsewhere".
 - Each transaction deletes at most 1,000 runs of one day of end times, the earliest ended first, then the logs and artifacts of those runs (Prefect's order), so a job stopped midway leaves a consistent state and a new job continues from the oldest remaining run. On Postgres, each transaction sets a 60 s `lock_timeout` for itself only; a job whose transaction reaches it fails with an `error` that names the day, and nothing of that transaction is deleted.
 - The job lives in the task-manager process that runs it; a restart loses its status but not its committed progress.
@@ -70,6 +71,7 @@ A Prefect setting that one of Prefect's sources already sets is left as is: the 
 | `size` | Disk space in bytes of the six task-history tables with their indexes; `null` on SQLite |
 | `old_runs` | Finished top-level runs older than the task history retention, counted up to 100,000 |
 | `old_runs_limit_reached` | Whether more runs than `old_runs` are older than the retention |
+| `deletion_off_reason` | Why the vacuum switch keeps old task runs (`PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED does not turn on flow_runs`, or `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED is not valid: <Prefect's error>`); `null` when it turns their deletion on |
 
 - The size is read with `pg_total_relation_size`, which reads no table data. The count selects the runs as the cleanup does and stops at 100,001, so it stays fast on millions of runs.
 

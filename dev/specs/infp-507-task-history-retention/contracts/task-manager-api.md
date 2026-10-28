@@ -20,6 +20,7 @@ Response `202`:
 
 - Starts a cleanup job in the task manager, or returns the running job if this replica runs one. A request whose `rewrite` is stronger than the running job's (`never` < `if_freed`) raises the job's to it; a weaker or equal one changes nothing. The response shows the job's `rewrite` after the request.
 - Response `409` `{"detail": "a cleanup is running elsewhere"}` when another replica holds the cleanup lock.
+- Response `403` `{"detail": "Old task runs are not deleted, because PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED does not turn on flow_runs"}` when the vacuum switch, as Prefect parses it, does not turn on `flow_runs`, so Prefect's own cleanup deletes no old task runs. For a vacuum type that Prefect does not accept, the detail is `Old task runs are not deleted, because PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED is not valid: <Prefect's error>`. No job starts and no lock is taken.
 - The only input is `rewrite`; any other field is refused with `422`. The cutoff is now minus the task history retention read from the task manager's own configuration; nothing about the cutoff is taken from the request.
 - No authentication, like Infrahub's existing task-manager route and Prefect's own API; this is a recorded constitution deviation (see plan.md).
 
@@ -39,12 +40,13 @@ Response `200`: the job, same shape as above, with `state` `running`, `completed
 Response `200`:
 
 ```json
-{"size": 23400000000, "old_runs": 1234, "old_runs_limit_reached": false}
+{"size": 23400000000, "old_runs": 1234, "old_runs_limit_reached": false, "deletion_off_reason": null}
 ```
 
 - `size` is the disk space in bytes of the six task-history tables with their indexes, from `pg_total_relation_size`, which reads no table data; `null` on SQLite.
 - `old_runs` is the number of finished top-level runs older than the task history retention, the runs a cleanup would delete now, counted up to 100,000; `old_runs_limit_reached` is `true` when there are more. The count works on SQLite too.
-- The upgrade prints both with the command that returns the space. A task manager without this route answers `404`.
+- `deletion_off_reason` is `null` when the vacuum switch, as Prefect parses it, turns on `flow_runs`. Otherwise it says why old task runs are not deleted, as the `403` of the cleanup start does after `because`, for example `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED does not turn on flow_runs`. The count of old runs does not change with it.
+- The upgrade prints the size and the count with the command that returns the space, or with the reason when `deletion_off_reason` is set. A task manager without this route answers `404`.
 
 ## `POST /infrahub/events/filter` (changed)
 

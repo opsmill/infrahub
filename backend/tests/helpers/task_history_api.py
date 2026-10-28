@@ -12,6 +12,10 @@ from rich.console import Console
 TASK_MANAGER_API = "http://task-manager:4200/api"
 CLEANUP_PATH = "/api/infrahub/task-history/cleanup"
 SIZE_PATH = "/api/infrahub/task-history/size"
+DELETION_OFF_REASON = "PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED does not turn on flow_runs"
+DELETION_OFF_DETAIL = (
+    "Old task runs are not deleted, because PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED does not turn on flow_runs"
+)
 
 
 @dataclass(frozen=True)
@@ -59,6 +63,11 @@ def running_elsewhere() -> httpx.Response:
 
 def unknown_cleanup() -> httpx.Response:
     return httpx.Response(status_code=404, json={"detail": "the cleanup is unknown to this task manager"})
+
+
+def refused() -> httpx.Response:
+    """The answer of a task manager whose vacuum switch keeps old task runs."""
+    return httpx.Response(status_code=403, json={"detail": DELETION_OFF_DETAIL})
 
 
 def unreachable() -> httpx.ConnectError:

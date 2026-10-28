@@ -21,6 +21,7 @@ from prefect.settings import get_current_settings
 from sqlalchemy.dialects.postgresql import REGCLASS
 from sqlalchemy.exc import DBAPIError
 
+from .retention import task_run_deletion_off_reason
 from .task_history_models import CleanupJob, CleanupJobState, CleanupRequest, CleanupRewrite, TaskHistorySize
 
 if TYPE_CHECKING:
@@ -774,15 +775,20 @@ async def start_cleanup(
     A cleanup already running takes the rewrite asked for when that one is stronger than its own.
 
     Raises:
-        HTTPException: 409 when another task manager runs a cleanup.
+        HTTPException: 403 when Prefect's vacuum switch keeps old task runs, and 409 when another task manager runs a
+            cleanup.
 
     """
-    retention = get_current_settings().server.services.db_vacuum.retention_period
+    vacuum = get_current_settings().server.services.db_vacuum
+    if (deletion_off := task_run_deletion_off_reason(vacuum=vacuum)) is not None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=f"Old task runs are not deleted, because {deletion_off}"
+        )
     job = CleanupJob(
         id=uuid4().hex,
         state=CleanupJobState.RUNNING,
         rewrite=body.rewrite,
-        cutoff=datetime.now(UTC) - retention,
+        cutoff=datetime.now(UTC) - vacuum.retention_period,
     )
     started = await jobs.start(job=job, lock=lock, cleanup=cleanup)
     if started is None:
@@ -794,10 +800,15 @@ async def start_cleanup(
 async def read_task_history_size(
     db: Annotated[PrefectDBInterface, Depends(provide_database_interface)],
 ) -> TaskHistorySize:
-    """Return the disk space of the task history tables, which is not measured on SQLite, and how many runs are old."""
-    retention = get_current_settings().server.services.db_vacuum.retention_period
+    """Return the disk space of the task history tables, which is not measured on SQLite, and how many runs are old.
+
+    The answer also says why old task runs are not deleted when Prefect's vacuum switch keeps them.
+    """
+    vacuum = get_current_settings().server.services.db_vacuum
     tables = TaskHistoryTables(db=db, ids_per_statement=get_max_query_parameters(), lock_timeout=None)
-    counted = await tables.count_runs(ended_before=datetime.now(UTC) - retention, limit=_OLD_RUNS_COUNT_LIMIT + 1)
+    counted = await tables.count_runs(
+        ended_before=datetime.now(UTC) - vacuum.retention_period, limit=_OLD_RUNS_COUNT_LIMIT + 1
+    )
     size = None
     if isinstance(db.database_config, AsyncPostgresConfiguration):
         size = await total_size(db=db, tables=_TASK_HISTORY_TABLES)
@@ -805,6 +816,7 @@ async def read_task_history_size(
         size=size,
         old_runs=min(counted, _OLD_RUNS_COUNT_LIMIT),
         old_runs_limit_reached=counted > _OLD_RUNS_COUNT_LIMIT,
+        deletion_off_reason=task_run_deletion_off_reason(vacuum=vacuum),
     )
 
 

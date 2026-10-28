@@ -88,7 +88,13 @@ def app(db: PrefectDBInterface, cleanup_lock: ProcessCleanupLock) -> Generator[F
     app.dependency_overrides[provide_database_interface] = lambda: db
     app.dependency_overrides[get_cleanup_jobs] = lambda: jobs
     app.dependency_overrides[get_cleanup_lock] = lambda: cleanup_lock
-    with temporary_settings(updates={"server.services.db_vacuum.retention_period": timedelta(days=30)}):
+    # The test session's environment turns off every one of Prefect's cleanups, which would refuse each start.
+    with temporary_settings(
+        updates={
+            "server.services.db_vacuum.retention_period": timedelta(days=30),
+            "server.services.db_vacuum.enabled": {"events", "flow_runs"},
+        }
+    ):
         yield app
 
 
@@ -356,6 +362,42 @@ async def test_start_is_refused_while_another_task_manager_holds_the_cleanup_loc
     assert await _flow_run_ids(db=db) == {old_run}
 
 
+async def test_a_cleanup_is_refused_and_deletes_nothing_when_the_vacuum_switch_keeps_old_task_runs(
+    app: FastAPI, db: PrefectDBInterface, cleanup_lock: ProcessCleanupLock
+) -> None:
+    """A start is refused with 403 and the reason, takes no lock and deletes nothing, while the size still counts."""
+    await _seed_old_and_recent_runs(db=db)
+    seeded = await _flow_run_ids(db=db)
+
+    with temporary_settings(updates={"server.services.db_vacuum.enabled": {"events"}}):
+        async with _client(app) as client:
+            started = await client.post(CLEANUP_URL, json={"rewrite": "if_freed"})
+            measured = await client.get(SIZE_URL)
+
+    assert (started.status_code, started.json()) == (
+        403,
+        {
+            "detail": (
+                "Old task runs are not deleted, because "
+                "PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED does not turn on flow_runs"
+            )
+        },
+    )
+    assert (measured.status_code, measured.json()) == (
+        200,
+        {
+            "size": None,
+            "old_runs": OLD_RUNS,
+            "old_runs_limit_reached": False,
+            "deletion_off_reason": "PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED does not turn on flow_runs",
+        },
+    )
+    assert len(seeded) == OLD_RUNS + RECENT_RUNS
+    assert await _flow_run_ids(db=db) == seeded
+    assert await cleanup_lock.try_acquire()
+    await cleanup_lock.release()
+
+
 async def test_an_unknown_cleanup_is_not_found(app: FastAPI) -> None:
     """Reading a cleanup the task manager does not know answers 404."""
     async with _client(app) as client:
@@ -407,5 +449,5 @@ async def test_on_sqlite_the_task_manager_counts_the_old_runs_without_measuring_
 
     assert (response.status_code, response.json()) == (
         200,
-        {"size": None, "old_runs": OLD_RUNS, "old_runs_limit_reached": False},
+        {"size": None, "old_runs": OLD_RUNS, "old_runs_limit_reached": False, "deletion_off_reason": None},
     )

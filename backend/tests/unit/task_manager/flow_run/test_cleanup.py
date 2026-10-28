@@ -23,6 +23,7 @@ from tests.helpers.task_history_api import (
     RecordedRequest,
     ScriptedTaskManager,
     polled,
+    refused,
     route_missing,
     running_elsewhere,
     started,
@@ -219,6 +220,44 @@ async def test_a_failed_cleanup_raises_the_error_the_task_manager_recorded_with_
         ["flow_run"],
         ["log"],
     )
+
+
+@dataclass
+class RefusalCase:
+    name: str
+    answer: httpx.Response
+    expected_error: str
+
+
+REFUSAL_CASES: list[RefusalCase] = [
+    RefusalCase(
+        name="reason_given",
+        answer=refused(),
+        expected_error=(
+            "Old task runs are not deleted, because PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED does not turn on flow_runs"
+        ),
+    ),
+    RefusalCase(
+        name="no_reason_given",
+        answer=httpx.Response(status_code=403, text="<html>Forbidden</html>"),
+        expected_error="The task manager refused the cleanup with 403 Forbidden",
+    ),
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in REFUSAL_CASES])
+async def test_a_refused_cleanup_raises_the_task_managers_reason_without_waiting(case: RefusalCase) -> None:
+    """A start the task manager refuses raises the reason it gave, or its status without one, and is not posted again."""
+    task_manager = ScriptedTaskManager(responses=[case.answer])
+    clock = FakeClock()
+    reports = RecordedReports()
+
+    with pytest.raises(TaskHistoryCleanupError, match=f"^{re.escape(case.expected_error)}$"):
+        await _run(task_manager=task_manager, clock=clock, reports=reports)
+
+    assert task_manager.requests == [RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "never"})]
+    assert reports.waits == []
+    assert clock.sleeps == []
 
 
 async def test_waiting_for_a_cleanup_gives_up_when_the_task_manager_never_shows_one() -> None:

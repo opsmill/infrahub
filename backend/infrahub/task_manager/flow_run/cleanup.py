@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, assert_never
 
 import httpx
 from prefect.exceptions import PrefectHTTPStatusError
+from pydantic import BaseModel, ValidationError
 
 from infrahub.exceptions import Error
 from infrahub.prefect_server.task_history_models import CleanupJob, CleanupJobState, CleanupRewrite, TaskHistorySize
@@ -61,6 +62,10 @@ class TaskHistoryCleanupFailedError(TaskHistoryCleanupError):
         super().__init__(message=job.error or f"The cleanup {job.id} failed")
 
 
+class _ErrorAnswer(BaseModel):
+    detail: str
+
+
 async def run_task_history_cleanup(
     client: PrefectClient,
     rewrite: CleanupRewrite,
@@ -81,10 +86,10 @@ async def run_task_history_cleanup(
 
     Raises:
         TaskHistoryCleanupFailedError: When the cleanup fails in the task manager.
-        TaskHistoryCleanupError: When the task manager shows no cleanup for `give_up_after`, naming the reason of
-            the last wait.
+        TaskHistoryCleanupError: When the task manager refuses the cleanup, with its reason, or shows no cleanup for
+            `give_up_after`, naming the reason of the last wait.
         httpx.TransportError: When the task manager cannot be reached to start the cleanup.
-        PrefectHTTPStatusError: When the task manager answers with an error other than 404 or 409.
+        PrefectHTTPStatusError: When the task manager answers with an error other than 403, 404 or 409.
 
     """
     job: CleanupJob | None = None
@@ -134,9 +139,11 @@ async def run_task_history_cleanup(
 async def read_task_history_size(client: PrefectClient) -> TaskHistorySize:
     """Return the disk space of the task history tables, unmeasured on SQLite, and how many runs are older than the retention.
 
+    The answer also says why old task runs are not deleted when Prefect's vacuum switch keeps them.
+
     Raises:
         httpx.HTTPError: When the task manager cannot be reached or answers with an error, such as 404 without the route.
-        pydantic.ValidationError: When the answer does not hold a size and a count.
+        pydantic.ValidationError: When the answer does not hold every field of the size, such as the count of old runs.
 
     """
     response = await client._client.get(SIZE_PATH)
@@ -147,13 +154,16 @@ async def _answer(request: Awaitable[httpx.Response], posted: bool) -> CleanupJo
     """Return the cleanup in the task manager's answer, why it holds none, or None when it does not provide the cleanup.
 
     Raises:
-        PrefectHTTPStatusError: When the task manager answers with an error other than 404 or 409.
+        TaskHistoryCleanupError: When the task manager refuses the cleanup, with its reason.
+        PrefectHTTPStatusError: When the task manager answers with an error other than 403, 404 or 409.
 
     """
     try:
         response = await request
     except PrefectHTTPStatusError as exc:
         match exc.response.status_code:
+            case HTTPStatus.FORBIDDEN:
+                raise TaskHistoryCleanupError(message=_refusal(response=exc.response)) from exc
             case HTTPStatus.CONFLICT:
                 return CleanupWait.RUNNING_ELSEWHERE
             case HTTPStatus.NOT_FOUND:
@@ -162,6 +172,14 @@ async def _answer(request: Awaitable[httpx.Response], posted: bool) -> CleanupJo
             case _:
                 raise
     return CleanupJob.model_validate_json(response.content)
+
+
+def _refusal(response: httpx.Response) -> str:
+    """Return the reason the task manager gave for refusing the cleanup, or its status when the answer holds none."""
+    try:
+        return _ErrorAnswer.model_validate_json(response.content).detail
+    except ValidationError:
+        return f"The task manager refused the cleanup with {response.status_code} {response.reason_phrase}"
 
 
 def _duration(duration: timedelta) -> str:

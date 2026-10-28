@@ -579,8 +579,8 @@ class TestTaskHistoryCleanup(TestInfrahubDockerClient):
         after = _task_history_size(compose=infrahub_compose)
 
         assert before <= answer["size"] <= after
-        # A new stack holds no run that ended more than 30 days ago.
-        assert (answer["old_runs"], answer["old_runs_limit_reached"]) == (0, False)
+        # A new stack holds no run that ended more than 30 days ago, and its vacuum switch turns on flow_runs.
+        assert (answer["old_runs"], answer["old_runs_limit_reached"], answer["deletion_off_reason"]) == (0, False, None)
 
     def test_flush_flow_runs_with_rewrite_deletes_the_old_task_history_and_reports_each_table(
         self,
