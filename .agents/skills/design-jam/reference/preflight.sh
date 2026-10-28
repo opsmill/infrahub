@@ -5,7 +5,7 @@
 # judgement and produces something that looks like a design-jam run but skipped the pass
 # that mattered. Two minutes here beats discovering it at the review gate.
 #
-# Usage: bash ~/.claude/skills/design-jam/reference/preflight.sh
+# Usage: bash .agents/skills/design-jam/reference/preflight.sh  (from the repo root)
 
 set -uo pipefail
 
@@ -69,8 +69,11 @@ done
 echo
 if [ "$missing_required" -gt 0 ]; then
   echo "BLOCKED: $missing_required required skill(s) missing."
-  echo "  emil-* skills:   see the install command at https://aiforui.dev/learn/skills"
-  echo "  grilling-ideas:  ships with this repo (.claude/skills) or the opsmill-dev plugin"
+  echo "  See \"Setup, once per machine\" in .agents/skills/design-jam/SKILL.md."
+  echo "  emil-design-eng: public, from https://github.com/emilkowalski/skills"
+  echo "  other emil-*:    paid, from https://aiforui.dev/learn/skills; ask @pa-lem for the token"
+  echo "                   and never commit it"
+  echo "  grilling-ideas:  ships with this repo (.agents/skills) or the opsmill-dev plugin"
   exit 1
 fi
 

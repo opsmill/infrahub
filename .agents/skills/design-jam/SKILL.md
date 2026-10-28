@@ -2,10 +2,10 @@
 name: design-jam
 description: >-
   Takes one piece of Infrahub frontend UI from a rough idea to a design other people can
-  argue with, before any implementation starts. Six phases, each invoking one skill and
-  writing one file: frame (is it worth building, then grill it), inventory (what @infrahub/ui already covers),
+  argue with, before any implementation starts. Seven phases, each writing one file: frame
+  (is it worth building, then grill it), inventory (what @infrahub/ui already covers),
   explore (3-4 real directions behind a switcher), refine, review, hand off (a published,
-  shareable design doc). Progress lives in `.design/<slug>/`, so a run resumes after a
+  shareable design doc), improve (fixes to this skill and the docs the run surfaced). Progress lives in `.design/<slug>/`, so a run resumes after a
   crash, a `/clear`, or a week away. Everything is built from the existing design system.
   TRIGGER when: the user wants to design a screen, flow, or component before building it;
   says "design jam", "let's design this", "what should this look like"; or asks to resume a
@@ -21,9 +21,26 @@ front of the team and get a real decision out of them — before anyone implemen
 
 ## User input
 
-```
+```text
 $ARGUMENTS
 ```
+
+## Setup, once per machine
+
+Design-jam invokes skills that are not in this repo, and the preflight below blocks a run
+until the required ones are installed.
+
+- `grilling-ideas` ships with this repo.
+- `emil-design-eng` and the other public skills install from
+  [`emilkowalski/skills`](https://github.com/emilkowalski/skills) (MIT).
+- Every other `emil-*` skill is paid and installs from
+  [aiforui.dev](https://aiforui.dev/learn/skills) with a personal access token. Ask
+  @pa-lem for the token.
+
+Keep the token out of the repo. Put it in an environment variable or your home `~/.npmrc`,
+never in a file under this checkout, and never paste it into a design-jam file, a commit
+or a PR. Do not copy the paid skills into `.agents/skills/` either: their licence does not
+allow redistribution, and this repo is public.
 
 ## First action, every invocation
 
@@ -43,7 +60,7 @@ $ARGUMENTS
    being waited on — then the phase files it points at. Say which phase, revision and
    round you are resuming at, and what the state says is next, before doing anything else.
    If the user says "gather", or pastes a *Copy all notes* block, you are resuming at the
-   gather step of a round (see § Rounds): gather or read the paste before the files.
+   *Gather* step of a round (see § Rounds): gather or read the paste before the files.
 
    `git log --oneline -- .design/<slug>/` is the backstop when `STATE.md` is missing or
    stale — it tells you what was approved and when, including in sessions you have no
@@ -65,8 +82,8 @@ six weeks later when they ask why the UI works this way.
 
 ## The contract
 
-Six phases. Each reads named files, invokes one named skill, writes one named file, and
-stops at a checkpoint.
+Seven phases. Each reads named files, invokes at most one named skill (phases 0 and 4
+invoke a sequence), writes one named file, and stops at a checkpoint.
 
 | # | Phase | Skill to invoke | Writes |
 |---|-------|-----------------|--------|
@@ -76,6 +93,7 @@ stops at a checkpoint.
 | 3 | Refine | `emil-design-eng` | refined route, `03-decisions.md` |
 | 4 | Review | `emil-ui-polish` → `emil-surfaces` → `emil-ui-review` → `emil-prep-for-prod` | `04-review.md` |
 | 5 | Hand off | — (publishes an Artifact) | `05-handoff.md`, `05-implement.md`, a URL |
+| 6 | Improve | — (reads the run) | `06-improvements.md`, a PR off `develop` if approved |
 
 Phases 0 and 4 each invoke two skills, in the order given. In phase 0 that order matters:
 `emil-product-thinking` decides whether this is the right thing to build, `grilling-ideas`
@@ -128,7 +146,7 @@ At the end of every phase, **commit first, then stop**.
 
 Commit `.design/<slug>/` together with whatever prototype code changed, as one commit:
 
-```
+```text
 design(<slug>): phase 2 — three directions for the change summary
 design(<slug>): rev 3 — filters moved into the header
 ```
@@ -203,184 +221,22 @@ not yours, and they make it after the design is approved.
 prototype path is the change as code. Both work because of the commit rule above — say so
 in the handoff doc so the next person knows the history is there.
 
-## The history panel
+## The history panel and notes
 
-Both axes are driven from one control bar, built in phase 2 and extended in phase 3. Copy
-`reference/design-history-panel.tsx` from this skill's folder into the prototype route and
-adapt it; do not invent a different one, because a panel that behaves differently on every
-run is a panel nobody learns.
+Both axes are driven from one control bar. Copy `reference/design-history-panel.tsx` into
+the prototype route and adapt it; do not invent a different one, because a panel that
+behaves differently on every run is a panel nobody learns. Read
+[`reference/history-panel.md`](reference/history-panel.md) before you copy it: it says what
+the panel must do, how knobs and pinned notes work, and where notes are stored.
 
-Two things to do on the way in, both learned the hard way: run `pnpm biome:fix` on the
-copies, because the reference files are not formatted to this repo's line width; and pass
-`frame` so the shell fills the app's content area rather than the whole window. A screen
-reviewed without the real sidebar and top bar is reviewed at a width it will never have.
-Once the draft design PR exists (end of phase 2), pass its URL as `prUrl`; that is what
-turns the panel's primary action into *Post to PR*.
+On the way in, run `pnpm biome:fix` on the copies, because the reference files are not
+formatted to this repo's line width, and pass `frame` so the shell fills the app's content
+area rather than the whole window.
 
-What it must do, and why each one is non-negotiable:
-
-- **Open on the latest revision when the URL says nothing.** People reopen old links. A
-  bare link must show the current design, or someone reviews last week's work believing
-  it's today's.
-- **Say so, loudly, when you are not on the latest.** An amber pill centred at the top of
-  the **viewport** — fixed to the window, not to the panel's frame, so it clears the app's
-  own sidebar and header. It reads "Revision 2 of 5 — not the latest" with one button back,
-  and it carries an icon as well as the colour, because colour alone is invisible to some
-  readers and ignorable by everyone else. The layer around it is inert; only the pill takes
-  clicks, so nothing behind it becomes unreachable. The most expensive failure this tool
-  can produce is a reviewer approving a superseded revision. In compare mode the pill is
-  not shown — the side headers already name each revision, looking at an old one is the
-  point, and a pill over those headers hides the very labels that say which is which. The
-  warning moves into the header as an amber `not latest` chip, same colour, same meaning.
-- **Scrub, don't hunt.** A slider across the revisions with ‹ › steps and arrow keys, the
-  revision's one-line note always visible next to it. Going back in time has to be one
-  drag, or nobody does it and the history may as well not exist.
-- **Compare two revisions as two complete apps, not two panes.** Compare mode loads each
-  revision in its own iframe (`dj.embed=1`, which renders the design and nothing else) and
-  splits the whole viewport between them. Two panes inside the content area could only
-  ever compare the content area; a change to the sidebar, the header, a global banner —
-  anything outside the route — would be invisible. Two documents compare everything, at the
-  real width, with the real chrome. Pins are made in single view; compare is for looking.
-  Each side is labelled — rev, `latest`, the note, `current` / `compared` — because two
-  near-identical screens are unreadable without knowing which is which.
-- **Float over the design, inside a fixed shell.** The panel owns the viewport — the design
-  scrolls inside its own pane, so there is never page-level scroll — and the controls sit
-  in a click-through dock laid on top of that pane, rounded and inset from the edges. The
-  design is the thing being judged, so it gets the whole frame and the panel reads as an
-  instrument resting on it. Never buy clearance with `padding-bottom` on the design; that
-  changes the thing being reviewed. If the bar covers something, hide it.
-- **Collapse to one circle.** Hidden, the whole panel becomes a 44px round button carrying
-  the unsent-note count. Small enough to forget, visible enough to find, and it keeps the
-  escape hatch one click away in both directions.
-- **Live in a corner, and move between them.** Drag the grip strip (or the collapsed
-  circle) and the dock snaps to whichever of the four corners the pointer ends nearest;
-  pressing the grip cycles them for keyboard users. Corners, not free placement: a
-  free-floating panel ends up half off-screen or over the one thing you wanted to look at,
-  and "which corner" is a single value that survives a reload. Top corners flip the column
-  so the knobs drawer opens toward the middle of the screen, never off its edge.
-- **The drag follows the hand; the release settles.** While held, no transition at all —
-  the dock tracks the pointer 1:1 and lifts 2%. The position never goes through React
-  state: a state update per `pointermove` re-renders the whole panel for every event, and
-  events arrive faster than that render finishes, which reads as a low frame rate. Write
-  `transform` straight to the element, coalesced to one write per frame with
-  `requestAnimationFrame`, and keep only the on/off class in state. (Lift: `scale(1.02)`, shadow deepened by fading a
-  second layer in, never by animating `box-shadow`). On release it is a FLIP: React moves
-  the dock to the new corner instantly (fixed offsets are layout properties and are never
-  animated), the effect measures where it landed, translates it back to where the hand let
-  go, and transitions that translate to zero — `cubic-bezier(0.32, 0.72, 0, 1)`, 180–320ms
-  scaled to the distance. Transform only, so it runs on the compositor; ease-out because a
-  released object leaves the hand fast and brakes into place, not the other way round.
-  Interruptible: grabbing mid-settle retargets from wherever the dock is. Under
-  `prefers-reduced-motion` the corner changes with no travel at all.
-- **Hide itself.** One key, one button. Screenshots for the handoff doc must not have the
-  tool in them.
-- **A header and three sections, each owning its own actions.** A fixed-width corner
-  panel. The header carries the run name and the only two panel-level actions — move
-  (grip) and hide. Below it, three sections under uppercase micro-labels, separated by
-  hairline rules, each with its actions in its own head row so a button is always next to
-  the thing it acts on: **Prototype** (the direction, plus Knobs — knobs tune this
-  prototype); **Revision** (scrubber and note, plus Latest and Compare — both are about
-  revisions); **Feedback** (a plain-words status line saying where notes live and whose
-  name they will carry, then Add note and the one primary action — *Post to PR* once
-  `prUrl` is set, *Copy all notes* before that). Owner-only tools — Copy all, Copy rev —
-  sit behind a ⋯ toggle, so a reviewer sees two buttons, not four.
-  There is no "View" or "misc" section: a section that collects leftovers is a section
-  nobody can predict the contents of. A full-width bar spanning the viewport competes with
-  the design for the eye; a corner panel at a fixed width is read as a tool and leaves the
-  design its frame.
-
-Keys: `←` `→` step revisions, `L` latest, `C` compare, `K` knobs, `A` annotate, `H` hide,
-`Esc` disarm.
-
-## Iterating inside the prototype
-
-Most iteration should never reach you. Three things in the panel, in the order they save
-the most time:
-
-**Knobs.** Values worth tuning go on controls in the panel — a width, a gutter, a
-truncation threshold, a density mode. The user drags, the design updates, no agent turn
-happens at all. Values live in the URL, so a link carries the exact configuration someone
-liked.
-
-Be sparing. Exposing a knob is itself a design decision: every knob says "we haven't
-decided this yet", and a panel with twenty of them says the design has no point of view.
-Expose a value when the right answer is genuinely found by feel, not when you couldn't be
-bothered to choose.
-
-**Knobs belong to the direction that reads them.** A split-pane's divider position means
-nothing in a stacked layout, so it must not appear when the stacked variant is selected —
-a control that visibly does nothing reads as a broken prototype, not as an inapplicable
-option. Declare a knob on the `Variant` when only that direction uses it, and at the panel
-level only when every direction reads it. The drawer separates the two with a seam and a
-`<direction> only` label, and the URL carries only the knobs the recipient will actually
-see.
-
-The render function receives **only the active subset**, never the whole value map. A
-revision that reaches for another direction's knob then gets `undefined` and breaks
-loudly — the alternative is a slider that moves while nothing on screen changes, which is
-the bug this rule exists to prevent.
-
-**Annotations.** The user arms the pin tool, clicks the thing that's wrong, and types what
-should change. The note stores the element's text and a CSS path alongside the comment.
-This is the highest-value part: "the second column header, the one next to the branch name"
-costs a sentence to write, a sentence to misread, and a round trip to correct. A pin costs
-a click, and it is unambiguous.
-
-Notes are scoped to `<slug>:<variant>:rev<N>`. Feedback on rev 2 is feedback on rev 2, and
-must not reappear on rev 4 as though it were still open.
-
-While the pin tool is armed, a real overlay element covers the design and swallows the
-pointer. Two things make that necessary, and both are easy to get wrong:
-
-- A pass-through overlay is not an overlay. If it sets `pointer-events: none`, clicking a
-  button to annotate it presses the button — and the most important things to annotate are
-  the interactive ones.
-- Listening for `click` is too late. Menus, popovers and selects open on `pointerdown`, so
-  the overlay listens there, calls `preventDefault`, and only then disables its own
-  hit-testing for the single call to `elementFromPoint` that identifies what is underneath.
-- The overlay covers the **whole viewport**, not the design pane. It is portaled to
-  `document.body` and fixed at `inset: 0`, because a fixed element inside a transformed or
-  scrolling ancestor is clipped to that ancestor. Feedback is often about the chrome around
-  the prototype, and a layer that stops at the pane edge says "comment only in here". A pin
-  inside the pane is stored relative to the pane; a pin on the chrome is stored relative to
-  the viewport, with a selector rooted at `body`. The overlay sits below the dock, so *Add
-  note* can still be pressed again to cancel.
-
-**Where notes live: each reviewer's browser, then the design PR.** Previews are used
-through one shared admin account, so nothing on the instance can say who wrote a note.
-Notes therefore stay local to each browser (`reference/notes-store.ts`, `local` backend)
-until the reviewer posts them, and the **PR comment is the shared copy**. GitHub gives it
-an author, keeps it through any preview redeploy, and notifies the owner.
-
-- **A name, once.** The panel asks the reviewer's name the first time and remembers it in
-  that browser. Every note and every posted block carries it. It stands in for accounts;
-  without it the owner gets a pile of feedback from "admin".
-- **Post to PR** — the primary action once `prUrl` is set. It copies this reviewer's new
-  notes, every direction and revision, as markdown, and opens the PR's comment box. The
-  reviewer pastes and submits; GitHub cannot pre-fill a comment from a link, so that paste
-  is the one manual step. Posted notes are marked `sent` in the panel and left on screen,
-  so the next post carries only what was added since.
-- **What a block carries.** A `<!-- design-jam:<slug> -->` marker on its first line, the
-  reviewer's name, and per note the element's text and CSS path, grouped by scope, each
-  group with the link that reopens that exact direction, revision and knob values. The pin
-  survives as data even though it is not drawn for other reviewers.
-- **Copy all notes** — the primary action before the PR exists, and the owner's fallback
-  behind ⋯ after: every note on the run, posted or not, to paste into `/design-jam`.
-- **Copy rev** — the same for the current revision only.
-
-Reviewers do not see each other's pins in the prototype; they see each other's notes on
-the PR. That is the accepted cost of the first version. Do not wire up the `infrahub`
-backend or the `DesignJamNote` schema to fix it: both are dormant behind `SHARED_NOTES` in
-the store, and they only make sense once reviewers have their own accounts on the preview.
-
-Do not build a "send to the agent" button that triggers work directly. The owner saying
-"gather", and reading what came in before acting on it, is the triage step; a button that
-skips it turns feedback into a queue nobody reads.
-
-**At the start of every phase-3 round, gather first** (§ Rounds, step 4). The gathered
-notes are the user's actual instructions for this revision, written while they were looking
-at the thing. Asking anyone to re-describe what they already pinned is the failure this
-whole mechanism exists to prevent.
+**At the start of every phase-3 round, gather notes first** (the *Gather* step of
+§ Rounds). The gathered notes are the user's actual instructions for this revision,
+written while they were looking at the thing. Asking anyone to re-describe what they
+already pinned is the failure this whole mechanism exists to prevent.
 
 ### Revisions are frozen copies
 
@@ -432,7 +288,7 @@ Invoke `emil-product-thinking` first, on the user's request as written.
 Its job is the question that comes before any design one: is this the right thing to build?
 What problem does it actually solve, for whom, and what happens if we build nothing? A
 screen that is beautifully designed and solves a problem nobody has is the most expensive
-thing you can produce at a hackathon.
+thing this skill can produce.
 
 Then invoke `grilling-ideas` on what came back — **unless the idea is already hardened**.
 
@@ -443,8 +299,7 @@ Skip it when any of these is true, and say in the checkpoint that you skipped it
 - the user answers the four questions below without pushback, in one reply
 
 That skill's own trigger conditions rule it out once an idea is formalised — grilling
-something already specced re-litigates a decision the team has made, which burns the one
-thing a hackathon has least of. In that case, carry the existing spec's answers into
+something already specced re-litigates a decision the team has made. In that case, carry the existing spec's answers into
 `00-brief.md` yourself and name the source.
 
 `grilling-ideas` writes no file — its output is an idea brief that lives in the
@@ -510,12 +365,12 @@ Requirements on the prototype:
 - Worst-case data in every variant, per the rule above.
 - Any value you'd otherwise re-prompt to change — a width, a threshold, a delay, a column
   count — declared as a knob on the panel, so the user finds the right number by dragging
-  instead of by asking you. See § Iterating inside the prototype for how sparing to be.
+  instead of by asking you. See *Knobs* in `reference/history-panel.md` for how sparing to be.
 
 Write `02-directions.md`: one section per direction — what it bets on, what it costs, who
 it's best for. Do not recommend one yet. Let them see it first.
 
-**Before the checkpoint, open the draft design PR** (§ The design PR). Reviewers can only
+**Before the checkpoint, open the draft design PR** (see `reference/design-pr.md`). Reviewers can only
 comment on a prototype they can open, and the preview that PR builds is the first link
 anyone else can open; waiting until phase 5 means every refine round runs on localhost
 with nobody but the owner looking. Then pass the PR URL to the panel as `prUrl`, commit,
@@ -687,111 +542,43 @@ Then give the user the link and the single sentence they should paste above it.
 
 ### The design PR — opened in phase 2, approved in phase 5
 
-The PR is opened at the **end of phase 2**, as soon as there are directions to look at,
-because its preview is the only link reviewers can open and its comments are where their
-notes go. Until phase 5 its body is short: what is being designed, the preview link, and
-how to give feedback (pin notes, press *Post to PR*). At phase 5 the body is replaced with
-`05-handoff.md` and the PR becomes the approval vehicle.
-
-The design is 100% ready when there is a **draft pull request** that someone can approve.
-Not the artifact page, not a Slack message: a PR, because approval on a PR is recorded,
-attributable, and sits next to the code it approves. Open it through the repo's own `pr`
-skill so branch discipline and attribution follow house rules. Know what that skill can
-and cannot take, because it has no base argument:
-
-- Its only argument is `commit`. It infers the base from `origin/HEAD` — `stable` in this
-  repo — unless the branch is clearly forked from elsewhere, and it presents the base for
-  approval before creating anything. So: pass `base: <value from STATE.md>` in the
-  invocation text anyway, and **at its approval step, check the base it proposes against
-  `STATE.md` and correct it if they differ.** That step exists for exactly this.
-- It takes labels (`--label`, from `gh label list`); ask for `cd/preview` there.
-- It does not create drafts. Immediately after it reports the PR URL, run
-  `gh pr ready --undo <number>`. Do not skip this — an undrafted design PR looks mergeable.
-
-- **Base:** `base:` from `STATE.md`.
-- **Title:** `design(<slug>): <the one-line "done looks like" from the brief>`.
-- **Body:** at phase 2, the short feedback body above. At phase 5, `05-handoff.md`,
-  verbatim — it was written to be this — via `gh pr edit <number> --body-file`. Lift sheet
-  linked at the bottom.
-- **Draft.** It must never read as mergeable code; the prototype route is registered
-  unconditionally and merging it ships the prototype.
-- **Label `design-jam`.** Classification only — it makes design PRs filterable and gives a
-  future workflow something to key on without
-  touching the mechanism below. One label per meaning: never overload `cd/preview` with
-  "this is a design". If `design-jam` is not in `.github/labels.yml` yet, adding it is a
-  one-line PR; do not invent it ad hoc on the PR.
-- **Label `cd/preview`.** This is what turns the design into something anyone can open:
-  CI builds a preview instance from the PR, and *that* URL — not localhost — is the
-  shareable prototype. Once it exists, replace `preview:` in `STATE.md` with it and put it
-  at the top of the PR body. If the label did not make it on, `gh pr edit --add-label
-  cd/preview`.
-
-Record the PR URL as `pr:` in `STATE.md` when it opens. At phase 5, add it at the top of
-`05-handoff.md`, set `status: awaiting approval`, and stop. **The design PR is never merged.** Approval on it is the
-decision to implement, and implementation is the next section.
+Open a **draft** PR at the end of phase 2, so reviewers have a preview link and a place to
+post notes. At phase 5, replace its body with `05-handoff.md`, set `status: awaiting
+approval` in `STATE.md`, and stop. The design PR is never merged: approval on it is the
+decision to implement. Base, title, labels, the draft check and the preview link are in
+[`reference/design-pr.md`](reference/design-pr.md).
 
 ### `05-implement.md` — the lift sheet
 
-The chosen revision is not a mockup. It is React, in this repo, built from `@infrahub/ui`
-and the same tokens production uses. Implementation should start by **copying that file to
-its real home and deleting what was scaffolding** — not by reading a document and building
-it again. Rebuilding from a description throws away the only artifact everyone already
-agreed on, and reintroduces every decision the review just settled.
+Write `05-implement.md` so implementation starts by copying the approved revision to its
+real home, not by rebuilding it from a description. Its four lists, the implementation
+branch and the teardown checklist are in
+[`reference/implementation.md`](reference/implementation.md).
 
-So write a second file that makes the lift mechanical. Four lists, no prose:
+## Phase 6 — Improve the skill and the docs
 
-- **Lift as-is** — the final `rev-NN.tsx` by path, and which parts transfer untouched:
-  markup, component composition, the states, the copy. Name the real destination from
-  `01-system.md`.
-- **Replace at the seams** — each place the prototype fakes something, and what replaces
-  it: mock rows → the actual GraphQL query, stub handlers → the real mutations, fake
-  latency → real loading states.
-- **Resolve, don't ship** — every knob, with the value that was chosen, written as a
-  constant. Knobs are a design instrument; shipping a slider because nobody wrote the
-  number down is the most embarrassing way for this to leak into production.
-- **Do not lift** — the history panel, the annotation layer, the older `rev-*.tsx` files,
-  and the duplication between them. All of it is scaffolding, and all of it is deleted with
-  the prototype route.
+Run this after the phase-5 checkpoint, and again at teardown if the implementation turned
+up more. Every run finds something that slowed it down, and if nobody writes it down the
+next run hits it too.
 
-Close with what still needs writing that a prototype never has: the tests, per the repo's
-own testing guides.
+Go through `STATE.md`, the `feedback/` files, `git log .design/<slug>/` and this
+conversation, and list each place where the run had to work around something. Put each one
+in exactly one bucket:
 
-### From approval to implementation
+- **This skill** — a rule that was wrong, missing or ignored; a panel or notes-store bug; a
+  preflight check that should have caught something. Fix target: `.agents/skills/design-jam/`.
+- **A skill it invokes** — a pass that gave advice that did not fit Infrahub. Record it only;
+  the `emil-*` skills are not in this repo.
+- **Internal docs** — a frontend fact the run had to discover from code because
+  `frontend/app/AGENTS.md`, `dev/guidelines/frontend/` or `dev/knowledge/` did not say it.
+  Follow `dev/guidelines/documentation.md` for where it goes.
+- **`@infrahub/ui`** — already in the `Missing` list of `01-system.md`; link it, do not repeat it.
 
-Implementation branches **from the design branch**, not from `develop`, so it starts with
-`.design/<slug>/` and the approved revision already in place:
+Write `06-improvements.md`: one line per finding, its bucket, and the edit you propose.
+Show it to the user and apply only what they approve. Make the edits on a new branch off
+`develop`, never on the design branch, because the design PR is never merged and anything
+committed to it is lost. Open that PR with the repo's `pr` skill and add its URL to
+`06-improvements.md`.
 
-1. `git switch -c <your-prefix>-<slug> <your-prefix>-design/<slug>`
-2. Follow `05-implement.md` — lift, seams, resolved knobs, tests — then run the teardown
-   checklist below, all on this branch.
-3. Open a normal feature PR against the same `base:`. `.design/<slug>/` lands with it, so
-   the record and the code share one history.
-4. Close the design PR as *superseded by #N*. Its thread stays readable; its branch can go.
-
-Two PRs, deliberately. A four-revision prototype and a production implementation are
-different things to review, and someone who approved the design should not have to re-read
-it to approve the code.
-
-### Teardown — the last item on the lift sheet
-
-Write the teardown into `05-implement.md` as a checklist, to be run **when the
-implementation merges**, not before. Until then the prototype is the only working
-reference, and deleting it early leaves reviewers with a document and no way to check it.
-
-- Delete the prototype route and every `rev-*.tsx`, the history panel, and the annotation
-  layer.
-- Keep `.design/<slug>/` in full, screenshots included. It costs nothing and it is the only
-  answer to "why does it work this way" six months from now.
-- Add one line to `05-handoff.md`: the PR that implemented it, and the date the prototype
-  came down.
-
-Grep for the marker before merging anything unrelated: every prototype-only file and every
-line added to shared config carries a `PROTOTYPE design-jam <slug>` comment, so nothing
-scaffolded is left behind by accident. Add that marker as you create them, not at teardown
-— by then you will not remember which lines were yours.
-
-**The final revision is the spec.** If the implementation has to diverge from it, that is a
-design decision, and it goes back into `.design/<slug>/` as a new revision or a line in
-`03-decisions.md` — never a silent drift discovered in review three weeks later.
-
-Stop there. Implementation is a separate decision, made by people who have now seen this.
+A run with no findings writes that in one line. "Nothing to improve" and "nobody checked"
+are different things.
