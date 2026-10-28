@@ -222,9 +222,9 @@ Webhook branch scoping matches an event against `meta.context.branch` (see [Webh
 | The Activities page loads its first page | The task manager reads newest first, one time window at a time, back from now |
 | The user loads more events | The page sends the time of the oldest event shown as `until` (`since` in ascending order) and drops the events it already shows by ID |
 | A filter names a branch | The resolver sends the ID of the current branch with that name, else the ID from the newest `infrahub.branch.deleted` event for that name; with neither, it returns an empty page without querying |
-| A query sets no `since` | The task manager reads back to its event retention, past Prefect's 180-day default |
+| A query sets no `since` | The task manager reads back to its event retention, which can reach past Prefect's 180-day default, or at least 180 days when it does not delete old events |
 | A query selects `count` | The task manager counts the whole range; otherwise `total` is null and no count runs |
-| An API client pages with `offset` | Still accepted; a window counts as full only when it holds `offset + limit` matches, so the result equals one read of the whole range, but deep offsets get slower |
+| An API client pages with `offset` | Still accepted; each window is read from `until` with the offset until one returns events, and the wider windows then add only older events, so the result equals one read of the whole range, but deep offsets get slower |
 
 ## Querying Events
 

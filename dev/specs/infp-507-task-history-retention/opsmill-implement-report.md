@@ -44,7 +44,7 @@ Orchestrator commits outside the chunks:
 - `9ed5cea0e`: after review on PR 3, the event query reads branch IDs from the database instead of the global registry, which new code avoids (`dev/knowledge/backend/query-pattern.md`). A branch whose deletion has started still resolves; a new component test covers it.
 - `8720d526c`: the event query reads the IDs of all the branch names in its filter with one database query, `BranchGetIdsByNameQuery`, instead of one query per name.
 - `ae43f968c`: the telemetry component test compares the window with its count before seeding. CI failed it once because the event filter equivalence test, on the same worker, stores a branch-deleted event one day old, which falls inside the previous UTC day at some times of day.
-- `84815404c`, `a8679ba51`: at startup, after Prefect's own startup, the task manager logs a warning naming every stored `prefect.*` event type missing from the list (T060).
+- `84815404c`, `a8679ba51`: at startup, after Prefect's own startup, the task manager logs a warning naming every stored `prefect.*` event type missing from the list (T060). Changed on 28 Oct in PR 4: the warning names each stored `prefect.*` type that has no per-type retention in the overrides Prefect applies, and the check runs only when Prefect deletes events and a per-type retention is shorter than the event retention.
 - Spec, docs and changelog corrections: `f3cd8e562`, `a352e9f85`, `2044fae28`, `44ae08b9f`, `1049c485d`, `de1216f83`, `13eabdc9e`, `6c807f2ec`, `14f377da4`, `d3ba2a449`.
 
 ## 3. Tasks not completed
@@ -168,11 +168,11 @@ Stack-wide review (no critical findings):
 | Suggestion | `config.py` | Bare `P`/`PT` reported as too long instead of unreadable | 1 | Fixed |
 | Suggestion | `changelog/+task-manager-retention.added.md` | "Never deleted" was false | 1 | Fixed |
 | Suggestion | `cli/upgrade.py` | `--check` said nothing about the cleanup step | 2 | Fixed |
-| Suggestion | `cleanup.py` | A failed job's committed work was not printed | 2 | Partial: deleted runs and a completed rewrite are printed; tables rewritten before a mid-rewrite failure are not recorded |
+| Suggestion | `cleanup.py` | A failed job's committed work was not printed | 2 | Partial: deleted runs and a completed rewrite are printed; tables rewritten before a mid-rewrite failure are not recorded. Fixed on 28 Oct in PR 2 (T065): the job records each table as soon as its rewrite ends, and the command prints them after a failure |
 | Suggestion | `task_history.py`, `cleanup.py` | Two simplifications | 2 | Fixed |
 | Suggestion | `prefect_server/models.py`, e2e test | Misleading `retention_seconds` description; a comment that restates the code | 3 | Fixed |
 | Suggestion | `dev/knowledge/backend/task-manager-retention.md` | Three statements did not match the code | 6 | Fixed |
-| Suggestion | several | Rewriter `None` on SQLite; `since` read from `model_fields_set`; 36,500-day maximum defined twice; a repeated `VACUUM FULL` when a load balancer spreads requests across replicas; retry warning on the last attempt (#10379) | 2, 3 | Deferred; the last one goes to #10379 |
+| Suggestion | several | Rewriter `None` on SQLite; `since` read from `model_fields_set`; 36,500-day maximum defined twice; a repeated `VACUUM FULL` when a load balancer spreads requests across replicas; retry warning on the last attempt (#10379) | 2, 3 | Deferred; the last one goes to #10379. The last one was fixed on 28 Oct in PR 3: a `4xx` answer is not retried, and a query that fails for good logs one warning |
 
 cubic findings on PR 1 and PR 2 (16 in total) were all fixed or recorded as known limitations in the PR bodies.
 
@@ -195,11 +195,11 @@ cubic findings on PR 1 and PR 2 (16 in total) were all fixed or recorded as know
 7. **Carrying opsmill/infrahub#10379**: PR 3 carries the two commits with `cherry-pick -x`. Nothing was posted on that PR.
 8. **Reviews**: cubic ran on PR 1 and PR 2 only, because the user asked to stop after PR 2. `/pre-ci` ran before every push. One stack-wide `speckit-review-run` ran at the end, and its fixes were applied on the branch that introduced each issue, then the stack was rebased and force-pushed with lease.
 9. **GitHub stacked PRs**: the `github/gh-stack` extension was installed. PRs were created with `gh pr create --draft` and linked with `gh stack link`, never `gh stack submit`, which may rewrite the PR bodies.
-10. **No change to the public GraphQL schema**: the `since` description still says 180 days.
+10. **No change to the public GraphQL schema**: the `since` description still says 180 days. Changed on 28 Oct in PR 3: no argument or type changed, and the `since` description now reads "Search events since this timestamp, defaults to the activity log retention before until, or at least 180 days before until when the task manager does not delete old events".
 11. **`if_freed` measures free space, not runs (FR-011 changed; extended on 11 Oct to each table, item 13)**: the upgrade rewrites the tables when the live rows of `flow_run` take less than half of its size on disk, whoever deleted the runs and when. The earlier rule compared the runs left with the runs counted when the job started, so it missed the runs that Prefect's cleanup deletes when the task manager starts. The design doc's "freed most of the tables" describes space, so this follows the doc more closely than the run count did.
     - Side effects: an upgrade that applies a lower retention now rewrites the tables, and small tables are rewritten on most upgrades, in milliseconds.
     - Rejected: rewriting on every upgrade. With a long retention and a lot of retained task history, each upgrade would need free disk for a full copy of the tables.
-12. **Startup warning about unlisted Prefect event types** (T060, asked for during review): the tests only see the event types their workload produces, so the task manager also checks what is stored at each start. The check reads only `prefect.*` types, as asked, and a type appears from the first start after Prefect stored an event of it.
+12. **Startup warning about unlisted Prefect event types** (T060, asked for during review): the tests only see the event types their workload produces, so the task manager also checks what is stored at each start. The check reads only `prefect.*` types, as asked, and a type appears from the first start after Prefect stored an event of it. Changed on 28 Oct in PR 4: the check compares the stored types with the per-type overrides Prefect applies, runs only when Prefect deletes events and a per-type retention is shorter than the event retention, gives up after 5 s on PostgreSQL, and logs any error of the read without stopping the task manager.
 13. **Design changes of 8 and 11 Oct (T061)**: the design doc's "Design changes for implementation" list moved the one-off cleanup out of the upgrade and extended the rewrite.
     - The upgrade deletes nothing. Its task manager step prints the task history size and the count of old runs from a new `GET /infrahub/task-history/size` route and the command, within 10 s, or the error type and the command; the upgrade step, `--no-task-history-cleanup` and the `--check` text are gone.
     - `--rewrite` sends `if_freed`; `always` is gone. The job rewrites each of the six task history tables and `events`, `event_resources` whose live rows hold less than half of its disk space, and records the tables rewritten, left as mostly live and left locked.
@@ -224,6 +224,7 @@ cubic findings on PR 1 and PR 2 (16 in total) were all fixed or recorded as know
    - The Enterprise presets start the separate background services pod with `infrahub tasks background-services`, and the retention variables go in `prefect-server.global.prefect.env`; the upgrade hook is unchanged.
    - Merge it only once the chart's images move to Infrahub 1.13: earlier images do not have the command, so the presets' background services pod would fail to start.
    - Open in that PR: a version check for the presets, and a command for a separate background services pod without a preset.
+   - Since 28 Oct (PR 5), `infrahub tasks background-services` exits with code 1 when a `CONFIG_FILE` given on the command line does not exist, so the chart must not pass one that names a file it does not mount. The chart should also pass `INFRAHUB_PRODUCTION` and `INFRAHUB_LOG_LEVEL` to the background services deployment, as to the other Infrahub containers. Whether opsmill/infrahub-helm#100 does both is not known.
 
    The Enterprise sizing presets run the background services in their own pod, so the hourly deletion does not run there until this chart PR ships.
 4. **`infrahub-taskmanager` (T063)**: [opsmill/infrahub-backup#179](https://github.com/opsmill/infrahub-backup/pull/179), a draft, makes the maintenance tool run `flush flow-runs` without a number of days on 1.13; without it, the tool fails on 1.13. It can ship before 1.13.
@@ -231,7 +232,7 @@ cubic findings on PR 1 and PR 2 (16 in total) were all fixed or recorded as know
 6. **Update the Notion design doc for the decisions made here**:
    - the 36,500-day maximum;
    - the "Primary Node" filter;
-   - the GraphQL `since` description (180 days), which needs a schema change.
+   - the GraphQL `since` description, which PR 3 changed on 28 Oct to the activity log retention, or at least 180 days when the task manager does not delete old events.
 7. **Telemetry spec**: it assumes task history reaches back well beyond 24 hours, but the retention can now be 1 day.
 8. **When opsmill/infrahub#10379 merges**: rebase the stack to drop its two carried commits, and send it the review findings on its code.
 9. **Deferred review items** (§5): if wanted, give the job model one model per state.

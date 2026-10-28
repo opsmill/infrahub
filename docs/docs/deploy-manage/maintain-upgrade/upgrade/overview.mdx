@@ -100,6 +100,12 @@ Task history takes 24.8 GB, with 1,234 runs older than the retention. To get the
 
 The count stops at 100,000, so a larger backlog shows as `more than 100,000 runs`. When it shows `no runs older than the retention`, there is no backlog left to delete, and the cleanup step only shrinks the tables: in OpsMill benchmarks, that took about 20 seconds for 25 GB of task history and 85 seconds for 100 GB.
 
+When the task manager does not delete old task runs, because `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` is set to a value without `flow_runs`, the line ends with the reason instead of the command, and the task manager refuses the cleanup step. See [Set the retention](../../run-observe/tasks.mdx#set-the-retention).
+
+```console
+Task history takes 24.8 GB, with 1,234 runs older than the retention. Old task runs are not deleted, because PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED does not turn on flow_runs.
+```
+
 When the upgrade cannot read the size from the task manager within 10 seconds, for example because the task manager still runs the previous release, it prints `Could not read the task history size from the task manager`, with the reason, then the command, and continues.
 
 :::warning
@@ -144,7 +150,7 @@ Plan for the time and the disk space the step needs:
 - **Time**: almost all of it is spent deleting. In OpsMill benchmarks, the step took about 8.5 minutes for 25 GB of task history and about 2 hours 20 minutes for 100 GB. These are benchmark figures, not a guarantee: the duration depends on the hardware and the data of your instance.
 - **Free disk space**: the rewrite writes a copy of the rows that a table keeps before it removes the old files. In the same benchmarks, that was under 0.5 GB for 25 GB of task history and 2.2 GB for 100 GB. For the activity log tables, the copy holds the events that the activity log retention keeps.
 
-The cleanup runs inside the task manager, so it continues if the session that runs the command ends. Running the command again follows the cleanup that is still running, or starts a new one that continues from the oldest remaining day.
+The cleanup runs inside the task manager, so it continues if the session that runs the command ends. Running the command again follows the cleanup that is still running, or starts a new one that continues from the oldest remaining run. If the task manager restarts while the command follows the cleanup, the command waits until the task manager answers again and starts a new cleanup. The command then reports `Deleted at least N runs`, because the cleanup that the restart stopped may have deleted more runs than the command saw.
 
 The last lines of the command report the result:
 
@@ -154,7 +160,11 @@ The last lines of the command report the result:
 | `Left events, event_resources as they are, because their live rows hold at least half of their disk space` | Rewriting the listed tables would return little space, so Infrahub left them as they were. |
 | `Did not rewrite log, which stayed locked by other sessions` | Another session held a lock on the listed table for more than 3 seconds on each of five attempts, so Infrahub left that table as it was. Run the command again later. |
 | `Did not rewrite events, whose rewrite took longer than its time limit and was stopped` | The rewrite of the listed table took longer than 60 seconds, so Infrahub stopped it and the table stayed as it was. A table that is not already in memory takes longer to rewrite, for example on a slow disk. Run the command again later. |
-| `ERROR …`, then `Deleted N runs before the failure` | The cleanup stopped with an error. The days already deleted stay deleted, and a table whose rewrite failed is left as it was. Run the command again. |
+| `Did not rewrite event_resources, whose rewrite failed with a database error; the task manager log has the details` | The database refused the rewrite of the listed table, for example because there was not enough free disk space for the copy, so the table stayed as it was. The command went on with the next table. Fix the cause, then run the command again. |
+| `ERROR …`, then `Deleted N runs before the failure` | The cleanup stopped with an error, such as one of the two below, or a lost connection between the task manager and its database. The runs already deleted stay deleted. After a restart of the task manager, the line reads `Deleted at least N runs before the failure`. The lines that follow name the tables whose rewrite ended before the failure, and the table whose rewrite the failure stopped stays as it was. Run the command again. |
+| `ERROR The cleanup stopped, because it could not confirm that it holds the cleanup lock; start it again` | The task manager checks every 30 seconds that its database session still holds the lock that lets one cleanup run at a time. The check failed or got no answer within 30 seconds, for example because the database ended that session, so the cleanup stopped. Run the command again. The cleanup needs a direct connection to the task manager database, or one through a connection pool that does not run in transaction mode. |
+| `ERROR The runs that ended on 2026-09-01 stayed locked by another session for more than 60 seconds, so the cleanup stopped` | Another database session held a lock on a run that ended on that day, or on a record of such a run, for more than 60 seconds. Run the command again later. |
+| `ERROR Old task runs are not deleted, because PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED does not turn on flow_runs` | The task manager does not delete old task runs, so it refused the cleanup, and nothing was deleted. See [Set the retention](../../run-observe/tasks.mdx#set-the-retention). |
 | `The task manager does not provide the task history cleanup yet; skipped.` | The command reached a task manager from a release without the cleanup, and nothing was deleted. |
 
 ### After you lower a retention

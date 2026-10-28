@@ -98,8 +98,9 @@ The decision to store events in Prefect stands. Infrahub now sets the retention 
 
 - `activity_log` (7 days by default, at most 36,500 days) is Prefect's global event retention, so
   Infrahub events are kept that long.
-- `prefect_own_events` (7 days by default) applies to Prefect's own event types through Prefect's
-  per-type retention, so a longer activity log does not keep them longer.
+- `prefect_own_events` (7 days by default, at most `activity_log`) applies to Prefect's own event
+  types through Prefect's per-type retention when it is shorter than `activity_log`, so a longer
+  activity log does not keep them longer.
 - `task_history` (30 days by default) bounds the flow runs stored in the same database.
 
 The activity log is therefore the history of the configured retention, not a complete history.

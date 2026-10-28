@@ -55,22 +55,26 @@ Each value is a number of days, such as `30d`, or an ISO 8601 duration, such as 
 task_history | Value error, Invalid task manager retention: task_history must be at least 1 day (value_error)
 ```
 
-At startup, the task manager logs the values in effect, in lines that start with `Task manager retention:`.
+At startup, the task manager logs the value that Prefect applies for each of the Prefect settings below, whatever sets it, in lines that start with `Task manager retention:`. With the default values, the line for `PREFECT_SERVER_SERVICES_DB_VACUUM_EVENT_RETENTION_OVERRIDES` shows `{}`, because `prefect_own_events` equals `activity_log`, so no event type needs a retention of its own.
 
-The task manager applies these settings through the settings of Prefect, the workflow engine it runs. If one of the following Prefect variables is already set in the environment of the task manager, under any name Prefect accepts for it, its value takes precedence, and the task manager logs a warning such as `PREFECT_EVENTS_RETENTION_PERIOD is set and overrides task_manager.retention.activity_log`:
+The task manager applies these settings through the settings of Prefect, the workflow engine it runs. If one of the following Prefect settings is already set, its value takes precedence, and the task manager logs a warning such as `PREFECT_EVENTS_RETENTION_PERIOD is set and overrides task_manager.retention.activity_log`. A setting counts as set when one of these sets it:
+
+* An environment variable of the task manager, under any name Prefect accepts for it.
+* Prefect's own settings files: a `.env` file, `prefect.toml`, the `[tool.prefect]` table of `pyproject.toml`, or the active section of `profiles.toml`.
 
 | Prefect variable | Setting it overrides |
 |---|---|
-| `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` | `task_history`: the task manager deletes task runs every hour only when the value includes `flow_runs` |
 | `PREFECT_SERVER_SERVICES_DB_VACUUM_RETENTION_PERIOD` | `task_history` |
 | `PREFECT_SERVER_EVENTS_RETENTION_PERIOD`, or its older name `PREFECT_EVENTS_RETENTION_PERIOD` | `activity_log` |
 | `PREFECT_SERVER_SERVICES_DB_VACUUM_EVENT_RETENTION_OVERRIDES` | `prefect_own_events` |
 
 Remove these variables from your deployment to let the `task_manager.retention` settings apply.
 
+`PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` does not override a retention. It turns each of the hourly cleanups on or off, and the task manager sets it to `events,flow_runs` when none of the sources above sets it. When it is already set, the task manager keeps its value and logs a warning for each cleanup that the value turns off, such as `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED does not turn on flow_runs, so old task runs are not deleted and task_manager.retention.task_history is not applied`. An empty value does not count as set: the task manager removes it, because Prefect would read it as `false`, which turns off the deletion of task runs.
+
 ### Delete old task runs and get disk space back
 
-`infrahub tasks flush flow-runs` deletes the same runs as the hourly cleanup, with their logs and artifacts, using the task history retention in effect on the task manager. The deletion runs inside the task manager, one day of end times at a time, and the command prints the progress and then a summary. If the command is interrupted, the deletion continues in the task manager. Running the command again follows the deletion that is still running, or continues from the oldest remaining day.
+`infrahub tasks flush flow-runs` deletes the same runs as the hourly cleanup, with their logs and artifacts, using the task history retention in effect on the task manager. The deletion runs inside the task manager, one day of end times at a time, and the command prints the progress and then a summary. If the command is interrupted, the deletion continues in the task manager. Running the command again follows the deletion that is still running, or continues from the oldest remaining run. If the task manager restarts while the command follows the deletion, the command waits until the task manager answers again and starts the deletion again. Its summary then reads `Deleted at least N runs`, because the deletion that the restart stopped may have deleted more runs than the command saw.
 
 Deleting runs does not shrink the database files: PostgreSQL reuses the space of deleted rows for new runs, so the disk usage stays level but does not go down. With `--rewrite`, the command then rewrites each task history and activity log table whose live rows hold less than half of its disk space, which returns that space to the disk, and leaves a table whose rows mostly hold live data as it is. You do not need to stop anything: a task that reads or writes a table waits until the rewrite of that table ends, which on very large instances can take a few seconds, and at most a minute. The rewrite needs free disk space for a copy of the rows that a table keeps. On Docker Compose:
 
@@ -78,14 +82,19 @@ Deleting runs does not shrink the database files: PostgreSQL reuses the space of
 docker compose exec infrahub-server infrahub tasks flush flow-runs --rewrite
 ```
 
-The summary reports the number of runs deleted, the size of the task history and activity log tables before and after, and what the rewrite did with each table: the tables it rewrote, the tables it left as they are, the tables it could not lock, and the tables whose rewrite took too long. If another session holds a lock on a table for more than 3 seconds, the command tries that table again 20 seconds later, up to 5 times, then skips it and names it in the summary. A rewrite that takes longer than 60 seconds is stopped, which leaves that table as it was. Run the command again later to rewrite a table it skipped.
+The summary reports the number of runs deleted, the size of the task history and activity log tables before and after, and what the rewrite did with each table: the tables it rewrote, the tables it left as they are, the tables it could not lock, the tables whose rewrite took too long, and the tables whose rewrite failed with a database error. If another session holds a lock on a table for more than 3 seconds, the command tries that table again 20 seconds later, up to 5 times, then skips it and names it in the summary. A rewrite that takes longer than 60 seconds is stopped, which leaves that table as it was. A table whose rewrite fails with a database error, for example because there is not enough free disk space for the copy, also stays as it was, and the command goes on with the next table. Run the command again later to rewrite a table it skipped.
 
 Use `--rewrite` once after you upgrade an existing instance that holds a lot of task history, as described in [Clean up old task history after the upgrade](../maintain-upgrade/upgrade/overview.mdx#clean-up-old-task-history-after-the-upgrade), and after you lower the task history or the activity log retention. The next hourly cleanup deletes the records older than the new value, and the command still rewrites the tables that are mostly free space, even though it has little left to delete.
 
 The command exits with:
 
 * `0` when the deletion completed, and also when the task manager runs a release without the cleanup, in which case it prints `The task manager does not provide the task history cleanup yet; skipped.` and deletes nothing.
-* `1` when the deletion failed, when the task manager could not be reached to start it, when the task manager answered with an unexpected error, or when the command gave up after 3 hours in which the task manager only answered that another task manager replica runs a deletion, or could not be reached.
+* `1` in these cases:
+  * The deletion failed.
+  * The task manager could not be reached to start the deletion, or a proxy in front of it answered with `502`, `503` or `504`.
+  * The task manager does not delete old task runs, because `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` is set to a value without `flow_runs`. The command prints `Old task runs are not deleted, because PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED does not turn on flow_runs` and deletes nothing.
+  * The task manager answered with an unexpected error, or with an answer that the command cannot read.
+  * The command gave up after 3 hours in which the task manager only answered that another task manager replica runs a deletion, or could not be reached. The command treats a `502`, `503` or `504` answer from a proxy in front of the task manager the same way.
 
 The command no longer accepts `--days-to-keep` and `--batch-size`. Set the `task_history` retention instead.
 
@@ -97,8 +106,12 @@ A run can stay running or pending after the task worker that ran it stopped, for
 docker compose exec infrahub-server infrahub tasks flush stale-runs
 ```
 
-A crashed run has an end time, so the hourly cleanup deletes it once it is older than the task history retention. Change the number of days with `--days-to-keep`. The command selects runs by the time they started, so it does not mark a pending run that never started. It also marks a run that is still working after that many days, so check that no task is meant to run that long before you run it.
+A crashed run has an end time, so the hourly cleanup deletes it once it is older than the task history retention. Change the number of days with `--days-to-keep`. The command counts the days from the time a run started, or, for a pending run that never started, from the time it was expected to start. It also marks a run that is still working after that many days, so check that no task is meant to run that long before you run it.
 
 ### Background services in their own container
 
 The task manager runs the hourly cleanups in its background services. When these services run in a container of their own instead of inside the task manager, start that container with `infrahub tasks background-services` rather than `prefect server services start`. `prefect server services start` does not read the `task_manager.retention` settings, so it does not delete task runs and keeps events for Prefect's default retention.
+
+When `PREFECT__SERVER_WEBSERVER_ONLY` is set, the task manager runs without its background services, and at startup it logs a line that starts with `Task manager retention: PREFECT__SERVER_WEBSERVER_ONLY is set` and names `infrahub tasks background-services`.
+
+`infrahub tasks background-services` reads the `task_manager` section of the configuration file passed as its argument, else of the file that `INFRAHUB_CONFIG` names, else of `infrahub.toml`, together with the environment variables. A file passed as the argument must exist: otherwise the command prints `Configuration file not found: <path>` and exits with code `1`. Without the argument, a missing file leaves the settings to the environment variables.
