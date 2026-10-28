@@ -139,7 +139,7 @@ The command:
 
 On very large instances, tasks may pause for a few seconds while tables are rewritten, because a task that reads or writes a table waits until the rewrite of that table ends. In OpsMill benchmarks, tasks waited up to 7.4 seconds with the instance running on 25 GB of task history, and the slowest table took about 20 seconds on 100 GB. How long the activity log tables take after you lower a long activity log retention was not measured.
 
-To keep these pauses short, the command waits at most 3 seconds for a table that another session is using, and tries again 20 seconds later, up to 5 times. It stops a rewrite that takes longer than 60 seconds, which leaves that table as it was. Before the next table, it pauses ten times as long as the previous table was locked, up to 60 seconds, so that the tasks that waited catch up.
+To keep these pauses short, the command waits at most 3 seconds for a table that another session is using. When the table is still in use, it tries again 20 seconds later, up to four more times, so it makes at most five attempts on each table. It stops a rewrite that takes longer than 60 seconds, which leaves that table as it was. Before the next table, it pauses ten times as long as the previous table was locked, up to 60 seconds, so that the tasks that waited catch up.
 
 :::
 
