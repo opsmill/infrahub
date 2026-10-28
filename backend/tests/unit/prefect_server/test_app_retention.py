@@ -16,11 +16,15 @@ from prefect.settings import get_current_settings
 
 from infrahub import config
 from infrahub.prefect_server.app import apply_infrahub_settings_to_prefect, create_infrahub_prefect
-from infrahub.prefect_server.retention import (
+from tests.helpers.task_manager_retention import (
     EVENT_RETENTION_OVERRIDES,
     EVENTS_RETENTION_PERIOD,
+    LEGACY_EVENTS_RETENTION_PERIOD,
+    PREFECT_RETENTION_VARIABLES,
+    PREFECT_TEST_MODE_VARIABLES,
     VACUUM_ENABLED,
     VACUUM_RETENTION_PERIOD,
+    WEBSERVER_ONLY,
 )
 
 if TYPE_CHECKING:
@@ -28,22 +32,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 APP_LOGGER = "infrahub.prefect_server.app"
-LEGACY_EVENTS_RETENTION_PERIOD = "PREFECT_EVENTS_RETENTION_PERIOD"
-PREFECT_RETENTION_VARIABLES = (
-    VACUUM_ENABLED,
-    VACUUM_RETENTION_PERIOD,
-    EVENTS_RETENTION_PERIOD,
-    LEGACY_EVENTS_RETENTION_PERIOD,
-    EVENT_RETENTION_OVERRIDES,
-)
-
-# Prefect skips the profile while any of these is set.
-PREFECT_TEST_MODE_VARIABLES = (
-    "PREFECT_TEST_MODE",
-    "PREFECT_UNIT_TEST_MODE",
-    "PREFECT_TESTING_UNIT_TEST_MODE",
-    "PREFECT_TESTING_TEST_MODE",
-)
 
 
 @pytest.fixture
@@ -60,7 +48,7 @@ def task_manager_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) ->
         "INFRAHUB_TASK_MANAGER_RETENTION_PREFECT_OWN_EVENTS",
         "PREFECT_API_BLOCKS_REGISTER_ON_START",
         "PREFECT_API_DATABASE_MIGRATE_ON_START",
-        "PREFECT__SERVER_WEBSERVER_ONLY",
+        WEBSERVER_ONLY,
         *PREFECT_TEST_MODE_VARIABLES,
         *PREFECT_RETENTION_VARIABLES,
     ):

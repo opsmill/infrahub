@@ -21,27 +21,22 @@ from infrahub.prefect_server.retention import (
     remove_blank_vacuum_switch,
     turned_off_cleanup_warnings,
 )
+from tests.helpers.task_manager_retention import (
+    EVENT_RETENTION_OVERRIDES,
+    EVENTS_RETENTION_PERIOD,
+    LEGACY_EVENTS_RETENTION_PERIOD,
+    PREFECT_RETENTION_VARIABLES,
+    PREFECT_TEST_MODE_VARIABLES,
+    VACUUM_ENABLED,
+    VACUUM_RETENTION_PERIOD,
+    WEBSERVER_ONLY,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-VACUUM_ENABLED = "PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED"
-VACUUM_RETENTION_PERIOD = "PREFECT_SERVER_SERVICES_DB_VACUUM_RETENTION_PERIOD"
-EVENTS_RETENTION_PERIOD = "PREFECT_SERVER_EVENTS_RETENTION_PERIOD"
-EVENT_RETENTION_OVERRIDES = "PREFECT_SERVER_SERVICES_DB_VACUUM_EVENT_RETENTION_OVERRIDES"
-WEBSERVER_ONLY = "PREFECT__SERVER_WEBSERVER_ONLY"
-
-LEGACY_EVENTS_RETENTION_PERIOD = "PREFECT_EVENTS_RETENTION_PERIOD"
 EVERY_RETENTION_VARIABLE = frozenset(
     {VACUUM_ENABLED, VACUUM_RETENTION_PERIOD, EVENTS_RETENTION_PERIOD, EVENT_RETENTION_OVERRIDES}
-)
-
-# Prefect skips the profile while any of these is set.
-PREFECT_TEST_MODE_VARIABLES = (
-    "PREFECT_TEST_MODE",
-    "PREFECT_UNIT_TEST_MODE",
-    "PREFECT_TESTING_UNIT_TEST_MODE",
-    "PREFECT_TESTING_TEST_MODE",
 )
 
 EVENT_TYPES = ("prefect.flow-run.Completed", "prefect.task-run.Running")
@@ -52,7 +47,7 @@ def prefect_settings_sources(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) ->
     """Give Prefect an empty working directory, an absent profiles file and no retention variable."""
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("PREFECT_PROFILES_PATH", str(tmp_path / "profiles.toml"))
-    for name in (*EVERY_RETENTION_VARIABLE, LEGACY_EVENTS_RETENTION_PERIOD, *PREFECT_TEST_MODE_VARIABLES):
+    for name in (*PREFECT_RETENTION_VARIABLES, *PREFECT_TEST_MODE_VARIABLES):
         monkeypatch.delenv(name, raising=False)
     return tmp_path
 
