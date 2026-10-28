@@ -1,1 +1,1 @@
-Loading an object with a relationship to many peers, such as a Profile with all its objects or a group with all its members, is now faster. For 100,000 peers, the check for duplicate peers took about 19 seconds, and now takes less than 0.1 seconds.
+Loading an object with a relationship to many peers, such as a Profile with all its objects or a group with all its members, is now faster. The check for duplicate peers no longer compares each peer with all the other peers.
