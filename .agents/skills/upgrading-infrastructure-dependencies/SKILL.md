@@ -34,10 +34,17 @@ check in the release notes. Load only the one for the service you upgrade:
 - Redis, RabbitMQ, PostgreSQL and NATS:
   [references/redis-rabbitmq-postgresql-nats.md](references/redis-rabbitmq-postgresql-nats.md)
 
-## 1. Agree on the scope
+## 1. Agree on the scope and the release
 
 Ask the user which services to upgrade and to which version. Never default to all of them. The
 reference file has a query that lists the latest versions.
+
+Then find the Infrahub release that the upgrade ships in, and confirm it with the user. It is the
+release that `develop` holds: the minor release after the latest release tag
+(`git ls-remote --tags origin 'infrahub-v*'`), or the one after that when a `release-x.y` branch
+already holds that next minor release. For example, with `infrahub-v1.11.9` as the latest tag and
+a `release-1.12` branch, the upgrade ships in 1.13.0. Infrahub Enterprise releases use the same
+version numbers.
 
 ## 2. Check what the new version changes
 
@@ -60,44 +67,60 @@ you change anything.
 ## 4. Change the files in this repository
 
 Change every file that the reference lists for `opsmill/infrahub`. Then search for the old version
-to find any pin the list misses:
+to find any pin the list misses. Use the search of the reference file when it has one, because it
+also finds the other forms of the version. Otherwise search for the old tag:
 
 ```bash
-git grep -n '<old tag>' -- ':!docs/archive' ':!.github/workflows/version-upgrade.yml'
+git grep -nF '<old tag>' -- ':!CHANGELOG.md' ':!changelog' ':!docs/docs/release-notes' \
+  ':!dev/specs' ':!docs/archive' ':!.github/workflows/version-upgrade.yml'
 ```
 
-The search leaves out `.github/workflows/version-upgrade.yml` on purpose: its images are the
-versions that the upgrade test starts from, so they stay as they are.
+The search leaves out the files that record past changes, which stay as they are, and
+`.github/workflows/version-upgrade.yml`: its images are the versions that the upgrade test starts
+from, so they stay as they are too.
 
 Add a changelog fragment of type `changed` with the `creating-changelog-entries` skill, because the
 version that users run changes. Before you push, run the checks that `AGENTS.md` lists.
 
-## 5. Change the other two repositories
+## 5. Open the Infrahub pull request
+
+Open it as a draft against `develop` with the `pr` skill, with the title
+`chore(deps): upgrade <service> from <old version> to <new version>`. It stays a draft until the
+runs of step 7 pass. In the description, write:
+
+- The release it ships in.
+- Each change in the release notes that can reach Infrahub, and how you checked it.
+- What you did not test, and why.
+- The pull requests in the other repositories, each with the release it ships in, or "no change
+  needed". Add them once step 6 opens them.
+- The results of the runs of step 7, or that they are still to do.
+
+## 6. Change the other two repositories
 
 Read the `AGENTS.md` of each repository before you change it. Change every file that the reference
 lists for it, and search there for the old version too. When the reference says that nothing has
-to change in a repository, open no pull request there and say so in the Infrahub pull request.
+to change in a repository, open no pull request there and write "no change needed" in the
+Infrahub pull request.
 
 Show the user the changes for each repository, and open the pull requests only after they agree.
-Open each one as a draft, and name in its description the Infrahub release the upgrade ships in.
-It must ship in that release, not in an earlier one that was not tested with it:
+Open each one as a draft that links the Infrahub pull request and names the release the upgrade
+ships in. It must ship in that release, not in an earlier one that was not tested with it:
 
 - `opsmill/infrahub-helm`: every final Infrahub and Infrahub Enterprise release publishes its chart
-  from `stable`. So the pull request merges while that Infrahub release is cut, before it is
-  published, and only if the Infrahub pull request is part of that release. Merged earlier, it
-  ships with a release that was not tested with it. Merged later, the charts of the release do not
-  contain it. The `/cut-release` command has this step. Leave `version` and `appVersion` alone:
-  the release process changes them just before the merge, so a change in the pull request
-  conflicts with it.
+  from `stable`, and so does a chart release cut by hand there. So the pull request merges while
+  that Infrahub release is cut, before it is published, and only if the Infrahub pull request is
+  part of that release. Merged earlier, it ships with a release that was not tested with it. Merged
+  later, the charts of the release do not contain it. Leave `version` and `appVersion` alone: the release process changes them on `stable`
+  just before the merge, so a change in the pull request conflicts with it.
 - `opsmill/infrahub-private`: the pull request merges after the Infrahub pull request, once
   `develop` there holds the release the upgrade ships in. While `opsmill/infrahub` has a
   `release-x.y` branch that `opsmill/infrahub-private` does not have, `develop` there still holds
   release x.y.
 
 If the Infrahub pull request moves to a later release, change the release named in these
-descriptions. Never merge any of the pull requests yourself.
+descriptions.
 
-## 6. Run the tests that CI does not run
+## 7. Run the tests that CI does not run
 
 A Neo4j or Prefect upgrade is ready to merge only after these two runs. Run them, or ask a
 maintainer to, and post the results on the Infrahub pull request. The reference file says what
@@ -106,25 +129,40 @@ each run needs for its service.
 - Performance: run the tests of `opsmill/infrahub-private-tests` with the new version and with the
   current one, on the same datasets, and compare the failures and the durations. Check in the
   output of each run that it used the version you meant to test.
-- High availability on Kubernetes: deploy the example from the
+- High availability on Kubernetes: no CI job deploys this setup. It runs a Neo4j cluster and splits
+  the Prefect server into a web server and background services. Deploy the example from the
   [high-availability guide](../../../docs/docs/deploy-manage/install-configure/production-deployment/high-availability.mdx),
-  which `development/deploy.tf` also deploys, and test it by hand. It runs a Neo4j cluster and
-  splits the Prefect server into a web server and background services, and no CI job deploys it.
-  Its values pin an older Infrahub image, so set `infrahubTag` and `prefectTag` to the image you
-  test.
+  which `development/deploy.tf` also deploys, and test it by hand. The example pins a published
+  chart and an Infrahub image that can be much older than the code you test, so change two things:
+  - Install the `infrahub-enterprise` chart from a checkout of `opsmill/infrahub-helm`, as its
+    `AGENTS.md` describes, and add `-f charts/infrahub-enterprise/values.small.yaml` before the
+    values file of the example. Use the branch of the pull request there, or `stable` when the
+    upgrade has none.
+  - Set `infrahub.global.infrahubTag` and `infrahub.prefect-server.global.prefect.image.prefectTag`
+    to the image you test.
 
-## 7. Open the Infrahub pull request
+Run both on images built from the upgrade branch, so that they test the code that ships with the
+upgrade. Ask the user before you build one, because it publishes an image:
 
-Open it against `develop` with the `pr` skill, with the title
-`chore(deps): upgrade <service> from <old version> to <new version>`. In the description, write:
+- Infrahub: add the `cd/preview` label to the Infrahub pull request. Each push to it then publishes
+  `opsmill/infrahub` with the tag `dev-<first 7 characters of the commit>`.
+- Infrahub Enterprise, which the `infrahub-enterprise` chart needs: push a branch to
+  `opsmill/infrahub-private`, from the branch of its pull request when there is one, whose
+  `community` submodule points at the last commit of the Infrahub upgrade branch. Then run the
+  "Publish development docker image" workflow there with the commit of that branch. It publishes `opsmill/infrahub-enterprise` with the tag
+  `dev-<first 7 characters of the commit>`:
 
-- Each change in the release notes that can reach Infrahub, and how you checked it.
-- What you did not test, and why.
-- The pull requests in the other repositories, each with the release it ships in, or "no change
-  needed".
-- The results of the two runs, or that they are still to do.
+  ```bash
+  gh workflow run publish-dev-docker-image.yml --repo opsmill/infrahub-private -f commit=<commit>
+  ```
 
-Then watch CI with the `monitoring-pull-requests` skill.
+When both runs pass and the user agrees, mark the Infrahub pull request ready for review.
+
+## Who merges the pull requests
+
+Never merge any of the pull requests yourself. A maintainer merges the Infrahub pull request after
+review, and the `opsmill/infrahub-private` one after it. The person who cuts the release merges the
+`opsmill/infrahub-helm` one: the `/cut-release` command has this step.
 
 ## Report
 
