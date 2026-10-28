@@ -36,7 +36,6 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from prefect.server.database import PrefectDBInterface
-    from starlette.types import Lifespan
 
 log = logging.getLogger(__name__)
 
@@ -119,14 +118,10 @@ async def warn_about_unlisted_prefect_event_types(db: PrefectDBInterface) -> Non
         log.warning(warning)
 
 
-def _with_event_type_check(lifespan: Lifespan[FastAPI]) -> Lifespan[FastAPI]:
-    @asynccontextmanager
-    async def lifespan_with_event_type_check(app: FastAPI) -> AsyncGenerator[None]:
-        async with lifespan(app):
-            await warn_about_unlisted_prefect_event_types(db=provide_database_interface())
-            yield
-
-    return lifespan_with_event_type_check
+@asynccontextmanager
+async def _check_stored_event_types(_app: FastAPI) -> AsyncGenerator[None]:
+    await warn_about_unlisted_prefect_event_types(db=provide_database_interface())
+    yield
 
 
 def create_prefect_app_with_infrahub_routes() -> FastAPI:
@@ -155,6 +150,6 @@ def create_infrahub_prefect() -> FastAPI:
         asyncio.run(_init_prefect())
 
     app = create_prefect_app_with_infrahub_routes()
-    # Prefect's own startup creates and migrates the database, so the stored event types are read after it.
-    app.router.lifespan_context = _with_event_type_check(app.router.lifespan_context)
+    # FastAPI enters an included router's lifespan after the app's own, so the read runs once Prefect's startup has migrated the database.
+    app.include_router(APIRouter(lifespan=_check_stored_event_types))
     return app
