@@ -358,3 +358,82 @@ async def test_relationship_remove_refuses_a_node_that_inherits_a_required_value
         server.id
     ]
     assert workflow.submit_calls == []
+
+
+@dataclass
+class NodeProfilesChangeTestCase:
+    name: str
+    mutation: str
+    linked: bool
+    description: str | None
+    description_previous: str | None
+
+
+NODE_PROFILES_CHANGE_TEST_CASES: list[NodeProfilesChangeTestCase] = [
+    NodeProfilesChangeTestCase(
+        name="add", mutation="RelationshipAdd", linked=False, description="from-profile", description_previous=None
+    ),
+    NodeProfilesChangeTestCase(
+        name="remove", mutation="RelationshipRemove", linked=True, description=None, description_previous="from-profile"
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in NODE_PROFILES_CHANGE_TEST_CASES])
+async def test_node_profiles_change_records_the_profile_values_as_the_requesting_user(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    device_schema: None,
+    editor_session: AccountSession,
+    test_case: NodeProfilesChangeTestCase,
+) -> None:
+    profile = await _create_node(
+        db=db,
+        branch=default_branch,
+        kind="ProfileTestDevice",
+        profile_name="profile-1",
+        profile_priority=10,
+        description="from-profile",
+    )
+    device = await _create_node(
+        db=db, branch=default_branch, kind="TestDevice", name="device-1", profiles=[profile] if test_case.linked else []
+    )
+    if test_case.linked:
+        await _apply_profile_values(db=db, branch=default_branch, node_id=device.id)
+    events = MemoryInfrahubEvent()
+    gql_params = await prepare_graphql_params(
+        db=db,
+        branch=default_branch,
+        account_session=editor_session,
+        service=await InfrahubServices.new(workflow=WorkflowRecorder(), event=events),
+    )
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=RELATIONSHIP_MUTATION % {"mutation": test_case.mutation},
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"id": device.id, "name": "profiles", "nodes": [{"id": profile.id}]},
+    )
+    assert gql_params.context.background
+    await gql_params.context.background()
+
+    assert result.errors is None
+    device_events = [
+        event for event in events.events if isinstance(event, NodeUpdatedEvent) and event.node_id == device.id
+    ]
+    assert [sorted(event.fields) for event in device_events] == [["description", "profiles"]]
+    description = device_events[0].changelog.attributes["description"]
+    assert (description.value, description.value_previous) == (test_case.description, test_case.description_previous)
+    reloaded = await NodeManager.get_one(
+        db=db,
+        id=device.id,
+        branch=default_branch,
+        include_metadata=MetadataOptions.SOURCE | MetadataOptions.UPDATED_BY,
+        raise_on_error=True,
+    )
+    reloaded_description = reloaded.get_attribute(name="description")
+    assert (reloaded_description.value, reloaded_description._get_updated_by()) == (
+        test_case.description,
+        editor_session.account_id,
+    )
