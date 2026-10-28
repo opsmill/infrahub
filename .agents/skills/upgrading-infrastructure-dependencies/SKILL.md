@@ -83,15 +83,11 @@ Search there for the old version too. Show the user the changes, and open the pu
 after they agree, as drafts that link the Infrahub pull request and name the release the upgrade
 ships in.
 
-- `opsmill/infrahub-private`: open a pull request for every upgrade, also when no file changes
-  there. Point its `community` submodule at the last commit of the Infrahub upgrade branch, and
-  again after each push to that branch. Its CI then runs the Enterprise tests on the new version.
-  - If a test fails, open a second draft pull request from `develop` there that only points
-    `community` at the commit of `develop` that the upgrade branch starts from. A test that fails
-    in both does not fail because of the upgrade: say so in the Infrahub pull request.
-  - The pull request merges after the Infrahub pull request, once `develop` there holds the release
-    the upgrade ships in. Before the merge, update it from `develop` and keep the `community`
-    commit of `develop`, which points at a release tag. When no other change is left, close it.
+- `opsmill/infrahub-private`: its tests must pass with the new version before the Infrahub pull
+  request merges. Run them with `community` at the upgrade branch, as its `AGENTS.md` describes,
+  and post the result on the Infrahub pull request. A pull request there merges after the Infrahub
+  pull request, once `develop` there holds the release the upgrade ships in. If it moved
+  `community`, set it back to the commit of `develop` before the merge.
 - `opsmill/infrahub-helm`: only when the charts change. Every final Infrahub and Infrahub
   Enterprise release publishes its chart from `stable`, and so does a chart release cut by hand
   there. So the pull request merges while the Infrahub release it ships in is cut, before it is
@@ -118,15 +114,16 @@ A Neo4j or Prefect upgrade also needs these two runs. Run them, or ask a maintai
   `infrahub.prefect-server.global.prefect.image.prefectTag` to the image you test.
 
 Run both on images built from the upgrade branch. With the user's agreement, add the `cd/preview`
-label to the Infrahub pull request (`opsmill/infrahub`) and to the `opsmill/infrahub-private` one
-(`opsmill/infrahub-enterprise`): each push then publishes the image with the tag `dev-` followed by
-the first 7 characters of the commit. For an image without the upgrade, run the "Publish
-development docker image" workflow of the same repository with a commit that does not have it.
+label to the Infrahub pull request for `opsmill/infrahub`, and for `opsmill/infrahub-enterprise` to
+a draft pull request in `opsmill/infrahub-private` whose `community` points at the upgrade branch.
+Each push then publishes the image with the tag `dev-` followed by the first 7 characters of the
+commit. For an image without the upgrade, run the "Publish development docker image" workflow of
+the same repository with a commit that does not have it.
 
 ## 8. Mark the Infrahub pull request ready
 
-It is ready for review when CI passes on it and on the `opsmill/infrahub-private` pull request
-and, for Neo4j and Prefect, the two runs of step 7 pass. Once the user agrees, mark it ready.
+It is ready for review when its CI and the `opsmill/infrahub-private` tests of step 6 pass and,
+for Neo4j and Prefect, the two runs of step 7 pass. Once the user agrees, mark it ready.
 
 Never merge any of the pull requests yourself. A maintainer merges the Infrahub pull request and
 then the `opsmill/infrahub-private` one. The person who cuts the release merges the
