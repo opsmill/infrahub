@@ -49,9 +49,10 @@ git grep -nF '<current version>' -- ':!*.lock' ':!CHANGELOG.md' ':!changelog' \
 
 ## `opsmill/infrahub-private`
 
-There is no version to change: Prefect comes from the `community` submodule.
-`TASK_MANAGER_DOCKER_IMAGE` in `tasks/shared.py` names an old Prefect image that no Docker Compose
-file uses, so leave it.
+There is no version to change: Prefect comes from the `community` submodule, so the pull request
+there runs its tests on the new Prefect once `community` points at the upgrade (step 6 of the
+skill). `TASK_MANAGER_DOCKER_IMAGE` in `tasks/shared.py` names an old Prefect image that no Docker
+Compose file uses, so leave it.
 
 - Compare the Prefect settings with the release notes. Find them with
   `git grep -lE 'PREFECT_|INFRAHUB_TASKMANAGER_'`. They are in `docker-compose.yml`, the size
@@ -76,7 +77,7 @@ file uses, so leave it.
 
 - Performance: the task manager of the test stack runs the Infrahub image, so the image is what
   changes the Prefect version. The test containers take it from `INFRAHUB_TESTING_DOCKER_IMAGE` and
-  `INFRAHUB_TESTING_IMAGE_VERSION`. For the run with the current version, build an image as step 7
-  of the skill describes, from the commit of `develop` that the upgrade branch starts from.
+  `INFRAHUB_TESTING_IMAGE_VERSION`. The run with the current version needs an image without the
+  upgrade: step 7 of the skill says how to build it.
 - High availability: the Prefect server runs the image that `prefectTag` names, so set it as well
   as `infrahubTag`. Otherwise the Prefect server runs the released Prefect version.
