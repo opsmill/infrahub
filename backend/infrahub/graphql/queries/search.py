@@ -132,57 +132,56 @@ async def search_resolver(
 
     fields = extract_graphql_fields(info=info)
 
-    if is_valid_uuid(q):
-        matching = await NodeManager.get_one(
-            db=graphql_context.db, branch=graphql_context.branch, at=graphql_context.at, id=q
-        )
-        if matching:
-            results.append({"id": matching.id, "kind": matching.get_kind()})
-    else:
-        with contextlib.suppress(ValueError, ipaddress.AddressValueError):
-            # Convert any IPv6 address, network or partial address to collapsed format as it might be stored in db.
-            q = _collapse_ipv6(q)
-
-        # Detect if the query is a valid IP address or CIDR prefix for parent prefix lookup
-        parsed_ip = _try_parse_ip_or_prefix(q)
-        if parsed_ip is not None and "parent_prefixes" in fields:
-            prefix_query = await IPParentPrefixLookupQuery.init(
-                db=graphql_context.db, branch=graphql_context.branch, at=graphql_context.at, ip_value=parsed_ip
-            )
-            await prefix_query.execute(db=graphql_context.db)
-            parent_prefix_results = [
-                {"node": {"id": result.prefix_id, "kind": result.prefix_kind}} for result in prefix_query.get_data()
-            ]
-            response["parent_prefixes"] = parent_prefix_results
-
-        if case_sensitive:
-            # Case-sensitive search using the dedicated query
-            query = await NodeGetListByAttributeValueQuery.init(
-                db=graphql_context.db,
-                branch=graphql_context.branch,
-                at=graphql_context.at,
-                search_value=q,
-                kinds=[InfrahubKind.NODE, InfrahubKind.GENERICGROUP],
-                limit=limit,
-                partial_match=partial_match,
-            )
-            await query.execute(db=graphql_context.db)
-
-            for result in query.get_data():
-                results.append({"id": result.uuid, "kind": result.kind})
+    async with graphql_context.db.start_session(read_only=True) as db:
+        if is_valid_uuid(q):
+            matching = await NodeManager.get_one(db=db, branch=graphql_context.branch, at=graphql_context.at, id=q)
+            if matching:
+                results.append({"id": matching.id, "kind": matching.get_kind()})
         else:
-            # Default: case-insensitive search using NodeManager.query
-            for kind in [InfrahubKind.NODE, InfrahubKind.GENERICGROUP]:
-                objs = await NodeManager.query(
-                    db=graphql_context.db,
+            with contextlib.suppress(ValueError, ipaddress.AddressValueError):
+                # Convert any IPv6 address, network or partial address to collapsed format as it might be stored in db.
+                q = _collapse_ipv6(q)
+
+            # Detect if the query is a valid IP address or CIDR prefix for parent prefix lookup
+            parsed_ip = _try_parse_ip_or_prefix(q)
+            if parsed_ip is not None and "parent_prefixes" in fields:
+                prefix_query = await IPParentPrefixLookupQuery.init(
+                    db=db, branch=graphql_context.branch, at=graphql_context.at, ip_value=parsed_ip
+                )
+                await prefix_query.execute(db=db)
+                parent_prefix_results = [
+                    {"node": {"id": result.prefix_id, "kind": result.prefix_kind}} for result in prefix_query.get_data()
+                ]
+                response["parent_prefixes"] = parent_prefix_results
+
+            if case_sensitive:
+                # Case-sensitive search using the dedicated query
+                query = await NodeGetListByAttributeValueQuery.init(
+                    db=db,
                     branch=graphql_context.branch,
-                    schema=kind,
-                    filters={"any__value": q},
+                    at=graphql_context.at,
+                    search_value=q,
+                    kinds=[InfrahubKind.NODE, InfrahubKind.GENERICGROUP],
                     limit=limit,
                     partial_match=partial_match,
                 )
-                for obj in objs:
-                    results.append({"id": obj.id, "kind": obj.get_kind()})
+                await query.execute(db=db)
+
+                for result in query.get_data():
+                    results.append({"id": result.uuid, "kind": result.kind})
+            else:
+                # Default: case-insensitive search using NodeManager.query
+                for kind in [InfrahubKind.NODE, InfrahubKind.GENERICGROUP]:
+                    objs = await NodeManager.query(
+                        db=db,
+                        branch=graphql_context.branch,
+                        schema=kind,
+                        filters={"any__value": q},
+                        limit=limit,
+                        partial_match=partial_match,
+                    )
+                    for obj in objs:
+                        results.append({"id": obj.id, "kind": obj.get_kind()})
 
     if "edges" in fields:
         response["edges"] = [{"node": result} for result in results]
