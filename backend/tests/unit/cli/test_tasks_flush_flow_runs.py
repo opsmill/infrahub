@@ -16,6 +16,7 @@ from tests.helpers.task_history_api import (
     RecordedRequest,
     ScriptedTaskManager,
     polled,
+    proxy_error,
     refused,
     route_missing,
     running_elsewhere,
@@ -184,6 +185,24 @@ async def test_each_wait_prints_one_line_when_it_starts_or_its_reason_changes() 
     assert console.lines == [
         "Waiting to start the cleanup, because the task manager answered that a cleanup runs elsewhere",
         "Waiting to start the cleanup, because the task manager answered that it does not know the cleanup",
+        "Waiting to start the cleanup, because the task manager could not be reached",
+        "Deleted 0 runs that ended before 2026-09-04 00:00 UTC",
+        "Tables not rewritten",
+    ]
+
+
+@pytest.mark.usefixtures("prefect_client_without_retries")
+async def test_a_proxy_error_while_the_cleanup_runs_prints_a_wait_and_the_summary() -> None:
+    """A proxy that answers for a restarting task manager prints the wait for an unreachable one, and the command succeeds."""
+    task_manager = ScriptedTaskManager(
+        responses=[started(), proxy_error(status_code=503), started(id="job-2"), polled(id="job-2", state="completed")]
+    )
+    console = RecordedConsole()
+
+    exit_code = await _flush(task_manager=task_manager, console=console)
+
+    assert exit_code == 0
+    assert console.lines == [
         "Waiting to start the cleanup, because the task manager could not be reached",
         "Deleted 0 runs that ended before 2026-09-04 00:00 UTC",
         "Tables not rewritten",

@@ -9,6 +9,7 @@ from datetime import date, timedelta
 
 import httpx
 import pytest
+from prefect.exceptions import PrefectHTTPStatusError
 
 from infrahub.prefect_server.task_history_models import CleanupJob, CleanupJobState, CleanupRewrite
 from infrahub.task_manager.flow_run.cleanup import (
@@ -23,6 +24,7 @@ from tests.helpers.task_history_api import (
     RecordedRequest,
     ScriptedTaskManager,
     polled,
+    proxy_error,
     refused,
     route_missing,
     running_elsewhere,
@@ -510,3 +512,95 @@ async def test_waiting_for_a_cleanup_gives_up_when_the_task_manager_stays_unreac
     ]
     assert clock.sleeps == [2.0] * 5
     assert reports.waits == [CleanupWait.UNREACHABLE]
+
+
+@dataclass
+class ProxyErrorCase:
+    name: str
+    status_code: int
+
+
+PROXY_ERROR_CASES: list[ProxyErrorCase] = [
+    ProxyErrorCase(name="bad_gateway", status_code=502),
+    ProxyErrorCase(name="service_unavailable", status_code=503),
+    ProxyErrorCase(name="gateway_timeout", status_code=504),
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in PROXY_ERROR_CASES])
+@pytest.mark.usefixtures("prefect_client_without_retries")
+async def test_a_proxy_error_while_a_cleanup_is_followed_starts_it_again_after_a_wait(case: ProxyErrorCase) -> None:
+    """A proxy that answers for a restarting task manager while a cleanup is followed leads to the wait for an unreachable one."""
+    task_manager = ScriptedTaskManager(
+        responses=[
+            started(),
+            polled(current_day="2026-01-15", deleted_runs=4),
+            proxy_error(status_code=case.status_code),
+            proxy_error(status_code=case.status_code),
+            started(id="job-2"),
+            polled(id="job-2", state="completed", current_day="2026-01-16", deleted_runs=2),
+        ]
+    )
+    clock = FakeClock()
+    reports = RecordedReports()
+
+    result = await _run(task_manager=task_manager, clock=clock, reports=reports)
+
+    assert result is not None
+    assert (result.id, result.state, result.deleted_runs) == ("job-2", CleanupJobState.COMPLETED, 2)
+    assert task_manager.requests == [
+        RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "never"}),
+        RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-1"),
+        RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-1"),
+        RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "never"}),
+        RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "never"}),
+        RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-2"),
+    ]
+    assert reports.waits == [CleanupWait.UNREACHABLE]
+    assert clock.sleeps == [2.0] * 5
+
+
+@pytest.mark.usefixtures("prefect_client_without_retries")
+async def test_a_proxy_error_when_the_cleanup_starts_raises_at_once() -> None:
+    """A proxy error to the first start raises, as a task manager that cannot be reached then does, with no wait."""
+    task_manager = ScriptedTaskManager(responses=[proxy_error(status_code=503)])
+    clock = FakeClock()
+
+    with pytest.raises(
+        PrefectHTTPStatusError,
+        match=(
+            r"^Server error '503 Service Unavailable' for url "
+            r"'http://task-manager:4200/api/infrahub/task-history/cleanup' - "
+            r"For more information check: https://developer\.mozilla\.org/en-US/docs/Web/HTTP/Status/503$"
+        ),
+    ) as raised:
+        await _run(task_manager=task_manager, clock=clock)
+
+    assert raised.value.response.status_code == 503
+    assert task_manager.requests == [RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "never"})]
+    assert clock.sleeps == []
+
+
+async def test_a_server_error_while_a_cleanup_is_followed_is_raised() -> None:
+    """An error answer other than a proxy's while a cleanup is followed raises, with no wait for a new start."""
+    task_manager = ScriptedTaskManager(responses=[started(), httpx.Response(status_code=500, json={"detail": "boom"})])
+    clock = FakeClock()
+    reports = RecordedReports()
+
+    with pytest.raises(
+        PrefectHTTPStatusError,
+        match=(
+            r"^Server error '500 Internal Server Error' for url "
+            r"'http://task-manager:4200/api/infrahub/task-history/cleanup/job-1' - Response: \{'detail': 'boom'\} - "
+            r"For more information check: https://developer\.mozilla\.org/en-US/docs/Web/HTTP/Status/500$"
+        ),
+    ) as raised:
+        await _run(task_manager=task_manager, clock=clock, reports=reports)
+
+    assert raised.value.response.status_code == 500
+    assert task_manager.requests == [
+        RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "never"}),
+        RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-1"),
+    ]
+    assert clock.sleeps == [2.0]
+    assert reports.waits == []

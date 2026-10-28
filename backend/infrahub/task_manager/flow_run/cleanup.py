@@ -25,6 +25,8 @@ SIZE_PATH = "/infrahub/task-history/size"
 POLL_INTERVAL = timedelta(seconds=2)
 # Long enough to wait out a cleanup another task manager runs on a large task history, short enough to end a stuck loop.
 GIVE_UP_AFTER = timedelta(hours=3)
+# A proxy in front of a restarting task manager answers with these instead of failing the connection.
+UNREACHABLE_STATUSES = frozenset({HTTPStatus.BAD_GATEWAY, HTTPStatus.SERVICE_UNAVAILABLE, HTTPStatus.GATEWAY_TIMEOUT})
 
 
 class CleanupWait(StrEnum):
@@ -80,9 +82,10 @@ async def run_task_history_cleanup(
 
     A cleanup already running in the task manager is followed instead, the task manager raising its rewrite to the
     one asked for when that is stronger. A cleanup that runs elsewhere, that the task manager no longer knows, or
-    that the task manager cannot be reached about once it answered, is started again after a wait; the days it
-    already deleted stay deleted. Progress is reported each time the day or the number of deleted runs changes, and
-    a wait when it starts, when its reason changes, and when it starts again after a cleanup showed.
+    that the task manager cannot be reached about once it answered, directly or through a proxy that answers 502,
+    503 or 504, is started again after a wait; the days it already deleted stay deleted. Progress is reported each
+    time the day or the number of deleted runs changes, and a wait when it starts, when its reason changes, and when
+    it starts again after a cleanup showed.
 
     Raises:
         TaskHistoryCleanupFailedError: When the cleanup fails in the task manager.
@@ -90,7 +93,8 @@ async def run_task_history_cleanup(
             `give_up_after`, naming the reason of the last wait, or answers a start or a read with a body that holds
             no cleanup.
         httpx.TransportError: When the task manager cannot be reached to start the cleanup.
-        PrefectHTTPStatusError: When the task manager answers with an error other than 403, 404 or 409.
+        PrefectHTTPStatusError: When the task manager answers with an error other than 403, 404 or 409, except a 502,
+            503 or 504 once it answered.
 
     """
     job: CleanupJob | None = None
@@ -106,9 +110,10 @@ async def run_task_history_cleanup(
         )
         try:
             answer = await _answer(request=request, posted=posted)
-        except httpx.TransportError:
+        except (httpx.TransportError, PrefectHTTPStatusError) as exc:
+            unreachable = isinstance(exc, httpx.TransportError) or exc.response.status_code in UNREACHABLE_STATUSES
             # Unreachable after it answered is a restart, which loses the cleanup as an unknown one does.
-            if not answered:
+            if not answered or not unreachable:
                 raise
             answer = CleanupWait.UNREACHABLE
         answered = True

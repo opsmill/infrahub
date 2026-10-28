@@ -70,6 +70,11 @@ def refused() -> httpx.Response:
     return httpx.Response(status_code=403, json={"detail": DELETION_OFF_DETAIL})
 
 
+def proxy_error(status_code: int) -> httpx.Response:
+    """What a proxy answers for a task manager it cannot reach, with Retry-After 0 so that Prefect's client retries it without a real wait."""
+    return httpx.Response(status_code=status_code, text="no healthy upstream", headers={"Retry-After": "0"})
+
+
 def unreachable() -> httpx.ConnectError:
     """The error Prefect's client raises for a stopped task manager: at once before its first answer, after retries from then on."""
     return httpx.ConnectError("All connection attempts failed")
