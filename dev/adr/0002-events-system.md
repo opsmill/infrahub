@@ -104,7 +104,9 @@ The decision to store events in Prefect stands. Infrahub now sets the retention 
 - `task_history` (30 days by default) bounds the flow runs stored in the same database.
 
 The activity log is therefore the history of the configured retention, not a complete history.
-Keeping events longer for audit or compliance means exporting them with log forwarding. See
+Keeping events longer for audit or compliance means exporting them before they are deleted: log
+forwarding does this in the Enterprise Edition, and in the Community Edition, where log forwarding
+is not available, a script reads them with the `InfrahubEvent` GraphQL query. See
 [Task Manager Retention](../knowledge/backend/task-manager-retention.md) for how the settings are
 applied.
 
