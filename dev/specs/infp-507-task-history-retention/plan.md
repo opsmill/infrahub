@@ -164,6 +164,7 @@ Each of parts 1 to 3 merges only with its private-test evidence. The final run o
 | Several task-manager replicas run two cleanups | Postgres advisory lock, checked every 30 s on its own session; a job that cannot confirm it holds the lock fails. The CLI retries on "running elsewhere" or an unknown job. |
 | The cleanup and Prefect's now-enabled vacuum run at the same time | Same order as Prefect (runs, then their children); Prefect skips locked runs and each side deletes children only for its own runs, so they cannot deadlock; the concurrency test (T009) guards it. |
 | A table rewrite waits forever on a lock, makes queries queue behind it, or locks a table for long | 3 s lock timeout per table, up to 4 retries 20 s apart, 60 s statement timeout, and before the next table a pause of ten times as long as the previous table was locked, up to 60 s; skipped and stopped tables are reported. |
+| A delete waits on a row that a stuck session holds locked | 60 s lock timeout per delete transaction; the job fails naming the day and releases the cleanup lock; a re-run continues from that day. |
 | Existing cleanup scripts pass `--days-to-keep` or `--batch-size` | Removed per the design doc; the changelog marks the change as breaking and the CLI reference documents the retention setting. |
 
 ## Complexity Tracking

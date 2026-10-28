@@ -5,7 +5,7 @@ import itertools
 import threading
 import time
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from enum import StrEnum
 from typing import TYPE_CHECKING, Annotated, Protocol, assert_never
 from uuid import uuid4
@@ -26,7 +26,7 @@ from .task_history_models import CleanupJob, CleanupJobState, CleanupRequest, Cl
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
-    from sqlalchemy.ext.asyncio import AsyncConnection
+    from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession
 
 log = get_logger(__name__)
 
@@ -38,6 +38,8 @@ _EXACT_MEASURE_PAGES = 10_000
 _OLD_RUNS_COUNT_LIMIT = 100_000
 # Bounds how long one delete holds its runs locked and how much a failure rolls back, while each statement still removes many rows.
 _RUNS_PER_TRANSACTION = 1_000
+# A lock held this long belongs to a stuck or long-running session, which would otherwise hold the cleanup until the maintenance timeout.
+_DELETE_LOCK_TIMEOUT = timedelta(minutes=1)
 # Short, because every query that reaches a table while a rewrite waits for it queues behind the rewrite.
 _REWRITE_LOCK_TIMEOUT = timedelta(seconds=3)
 _REWRITE_RETRIES = 4
@@ -52,7 +54,8 @@ _SQLSTATE_QUERY_CANCELED = "57014"
 _CLEANUP_LOCK_KEY = int.from_bytes(b"taskhist", byteorder="big")
 # Shorter than the usual idle timeouts that end a quiet database session, so the checks also keep the session open.
 _CLEANUP_LOCK_CHECK_INTERVAL = timedelta(seconds=30)
-# Outlasts a day of deletes; Prefect 3.8.6 turns None into the API's 10 s timeout, and so into the API's engine.
+# Outlasts any maintenance statement and keys an engine of its own, since Prefect 3.8.6 caches engines by timeout: an omitted
+# timeout gives the API's 10 s engine, and None the one-connection engine of Prefect's vacuum.
 _MAINTENANCE_STATEMENT_TIMEOUT = timedelta(hours=24)
 # The tuple header and line pointer that Postgres stores with each row, which the size of its values leaves out.
 _ROW_OVERHEAD_BYTES = 28
@@ -71,6 +74,17 @@ _PG_LOCKS = sa.table(
 
 class CleanupLockLostError(Exception):
     """The cleanup could not confirm that it still holds the cleanup lock."""
+
+
+class RunsLockedError(Exception):
+    """Another session held a run of the day, or a row deleted or changed with it, locked past the lock timeout."""
+
+    def __init__(self, day: date, lock_timeout: timedelta) -> None:
+        self.message = (
+            f"The runs that ended on {day} stayed locked by another session for more than "
+            f"{int(lock_timeout.total_seconds())} seconds, so the cleanup stopped"
+        )
+        super().__init__(self.message)
 
 
 class CleanupLock(Protocol):
@@ -188,11 +202,18 @@ class PostgresAdvisoryLock:
 
 
 class TaskHistoryTables:
-    """Deletes finished top-level runs on the same conditions as Prefect's own cleanup of old runs."""
+    """Deletes finished top-level runs on the same conditions as Prefect's own cleanup of old runs.
 
-    def __init__(self, db: PrefectDBInterface, ids_per_statement: int) -> None:
+    Args:
+        lock_timeout: How long a delete waits for a lock that another session holds; None leaves the database's own
+            limit, as on SQLite, which has no such setting.
+
+    """
+
+    def __init__(self, db: PrefectDBInterface, ids_per_statement: int, lock_timeout: timedelta | None) -> None:
         self._db = db
         self._ids_per_statement = ids_per_statement
+        self._lock_timeout = lock_timeout
 
     def _eligible(self, ended_before: datetime, ended_from: datetime | None) -> sa.ColumnElement[bool]:
         conditions = [
@@ -229,22 +250,39 @@ class TaskHistoryTables:
 
         It commits them in one transaction. Task runs and states go with their runs by cascade, and runs that another
         session holds locked are skipped.
+
+        Raises:
+            RunsLockedError: When the transaction waits longer than the lock timeout for a lock that another session
+                holds, which rolls the transaction back.
+            DBAPIError: When a statement fails for any other reason.
+
         """
         db = self._db
-        async with db.session_context(begin_transaction=True, with_for_update=True) as session:
-            eligible = (
-                sa.select(db.FlowRun.id)
-                .where(self._eligible(ended_before=ended_before, ended_from=ended_from))
-                .order_by(db.FlowRun.end_time)
-                .limit(limit)
-                .with_for_update(skip_locked=True)
-            )
-            deleted = (
-                await session.scalars(sa.delete(db.FlowRun).where(db.FlowRun.id.in_(eligible)).returning(db.FlowRun.id))
-            ).all()
-            for flow_run_ids in itertools.batched(deleted, self._ids_per_statement):
-                await session.execute(sa.delete(db.Log).where(db.Log.flow_run_id.in_(flow_run_ids)))
-                await session.execute(sa.delete(db.Artifact).where(db.Artifact.flow_run_id.in_(flow_run_ids)))
+        try:
+            async with db.session_context(begin_transaction=True, with_for_update=True) as session:
+                if self._lock_timeout is not None:
+                    await _set_timeout(
+                        connection=session, name="lock_timeout", value=self._lock_timeout, transaction_only=True
+                    )
+                eligible = (
+                    sa.select(db.FlowRun.id)
+                    .where(self._eligible(ended_before=ended_before, ended_from=ended_from))
+                    .order_by(db.FlowRun.end_time)
+                    .limit(limit)
+                    .with_for_update(skip_locked=True)
+                )
+                deleted = (
+                    await session.scalars(
+                        sa.delete(db.FlowRun).where(db.FlowRun.id.in_(eligible)).returning(db.FlowRun.id)
+                    )
+                ).all()
+                for flow_run_ids in itertools.batched(deleted, self._ids_per_statement):
+                    await session.execute(sa.delete(db.Log).where(db.Log.flow_run_id.in_(flow_run_ids)))
+                    await session.execute(sa.delete(db.Artifact).where(db.Artifact.flow_run_id.in_(flow_run_ids)))
+        except DBAPIError as exc:
+            if self._lock_timeout is None or _sqlstate(error=exc) != _SQLSTATE_LOCK_NOT_AVAILABLE:
+                raise
+            raise RunsLockedError(day=ended_from.date(), lock_timeout=self._lock_timeout) from exc
         return len(deleted)
 
 
@@ -422,9 +460,11 @@ class PostgresTableRewriter:
             log.warning(f"Task history cleanup: could not refresh the statistics of {table}: {exc}")
 
 
-async def _set_timeout(connection: AsyncConnection, name: str, value: timedelta) -> None:
+async def _set_timeout(
+    connection: AsyncConnection | AsyncSession, name: str, value: timedelta, transaction_only: bool = False
+) -> None:
     milliseconds = int(value / timedelta(milliseconds=1))
-    await connection.execute(sa.select(sa.func.set_config(name, f"{milliseconds}ms", False)))
+    await connection.execute(sa.select(sa.func.set_config(name, f"{milliseconds}ms", transaction_only)))
 
 
 def rewrite_error_outcome(error: DBAPIError) -> TableOutcome | None:
@@ -476,7 +516,12 @@ class TaskHistoryCleanup:
         self._runs_per_transaction = runs_per_transaction
 
     async def delete(self, job: CleanupJob) -> None:
-        """Delete the runs that ended before the job's cutoff, recording the progress on the job."""
+        """Delete the runs that ended before the job's cutoff, recording the progress on the job.
+
+        Raises:
+            RunsLockedError: When a delete waits longer than the lock timeout for a lock that another session holds.
+
+        """
         log.info(f"Task history cleanup {job.id}: deleting the runs that ended before {job.cutoff.isoformat()}")
         if self._rewriter is not None:
             job.size_before = await self._rewriter.total_size()
@@ -607,6 +652,11 @@ class CleanupJobs:
             job.error = (
                 "The cleanup stopped, because it could not confirm that it holds the cleanup lock; start it again"
             )
+        except RunsLockedError as exc:
+            # The message names the day and how long the delete waited, so a traceback adds nothing.
+            log.error(f"Task history cleanup {job.id} stopped: {exc.message}")
+            job.state = CleanupJobState.FAILED
+            job.error = exc.message
         # A background job has no caller to raise to, so the failure is logged and recorded on the job instead.
         except Exception as exc:
             log.exception(f"Task history cleanup {job.id} failed")
@@ -686,7 +736,9 @@ def build_task_history_cleanup(
     if isinstance(db.database_config, AsyncPostgresConfiguration):
         maintenance = _maintenance_database(db)
         return TaskHistoryCleanup(
-            tables=TaskHistoryTables(db=maintenance, ids_per_statement=ids_per_statement),
+            tables=TaskHistoryTables(
+                db=maintenance, ids_per_statement=ids_per_statement, lock_timeout=_DELETE_LOCK_TIMEOUT
+            ),
             rewriter=PostgresTableRewriter(
                 db=maintenance,
                 tables=_TASK_HISTORY_TABLES + _ACTIVITY_LOG_TABLES,
@@ -701,7 +753,7 @@ def build_task_history_cleanup(
             runs_per_transaction=_RUNS_PER_TRANSACTION,
         )
     return TaskHistoryCleanup(
-        tables=TaskHistoryTables(db=db, ids_per_statement=ids_per_statement),
+        tables=TaskHistoryTables(db=db, ids_per_statement=ids_per_statement, lock_timeout=None),
         rewriter=None,
         runs_per_transaction=_RUNS_PER_TRANSACTION,
     )
@@ -744,7 +796,7 @@ async def read_task_history_size(
 ) -> TaskHistorySize:
     """Return the disk space of the task history tables, which is not measured on SQLite, and how many runs are old."""
     retention = get_current_settings().server.services.db_vacuum.retention_period
-    tables = TaskHistoryTables(db=db, ids_per_statement=get_max_query_parameters())
+    tables = TaskHistoryTables(db=db, ids_per_statement=get_max_query_parameters(), lock_timeout=None)
     counted = await tables.count_runs(ended_before=datetime.now(UTC) - retention, limit=_OLD_RUNS_COUNT_LIMIT + 1)
     size = None
     if isinstance(db.database_config, AsyncPostgresConfiguration):

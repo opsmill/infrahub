@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import timedelta
 from typing import TYPE_CHECKING
 
 from sqlalchemy.exc import DBAPIError
 
-from infrahub.prefect_server.task_history import TableOutcome, TableSpace
+from infrahub.prefect_server.task_history import RunsLockedError, TableOutcome, TableSpace, TaskHistoryTables
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from datetime import datetime
 
 PAUSE_TIMEOUT_SECONDS = 30
 
@@ -140,3 +142,10 @@ class LosableCleanupLock:
 
     def lose(self) -> None:
         self._lost.set()
+
+
+class LockedDayTables(TaskHistoryTables):
+    """Raises on every delete as when another session keeps a row of the day locked past a lock timeout of one minute."""
+
+    async def delete_runs(self, ended_from: datetime, ended_before: datetime, limit: int) -> int:
+        raise RunsLockedError(day=ended_from.date(), lock_timeout=timedelta(minutes=1))

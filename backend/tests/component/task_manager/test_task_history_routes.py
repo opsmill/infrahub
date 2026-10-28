@@ -12,7 +12,7 @@ from fastapi import FastAPI
 from prefect.server.database import provide_database_interface
 from prefect.server.schemas.states import StateType
 from prefect.settings import temporary_settings
-from tests.adapters.task_history import FailingRewriter, LosableCleanupLock, RecordingRewriter
+from tests.adapters.task_history import FailingRewriter, LockedDayTables, LosableCleanupLock, RecordingRewriter
 from tests.helpers.task_manager_seed import days_ago, seed_flow_run, task_manager_database
 
 from infrahub.prefect_server.app import router
@@ -58,6 +58,7 @@ REWRITE_OUTCOME = {
     "failed": [],
 }
 LOST_LOCK_ERROR = "The cleanup stopped, because it could not confirm that it holds the cleanup lock; start it again"
+RUNS_LOCKED_ERROR = "The runs that ended on 2026-01-15 stayed locked by another session for more than 60 seconds, so the cleanup stopped"
 
 
 @pytest.fixture
@@ -98,7 +99,9 @@ def _client(app: FastAPI) -> httpx.AsyncClient:
 def _rewrite_through(app: FastAPI, db: PrefectDBInterface, rewriter: TableRewriter) -> None:
     """Have the routes run their cleanups with the rewriter, which SQLite has none of."""
     app.dependency_overrides[build_task_history_cleanup] = lambda: TaskHistoryCleanup(
-        tables=TaskHistoryTables(db=db, ids_per_statement=999), rewriter=rewriter, runs_per_transaction=1000
+        tables=TaskHistoryTables(db=db, ids_per_statement=999, lock_timeout=None),
+        rewriter=rewriter,
+        runs_per_transaction=1000,
     )
 
 
@@ -307,6 +310,36 @@ async def test_a_cleanup_that_loses_its_lock_fails_keeps_its_deletes_and_lets_th
         "total_size",
     ]
     assert await _flow_run_ids(db=db) == recent_runs
+
+
+async def test_a_cleanup_stopped_by_runs_locked_elsewhere_fails_naming_their_day_and_frees_the_lock(
+    app: FastAPI, db: PrefectDBInterface
+) -> None:
+    """A cleanup whose delete waits past the lock timeout fails with an error that names the day, deleting nothing of it.
+
+    The next start takes the cleanup lock.
+    """
+    old_run = await _seed_old_run(db=db)
+    app.dependency_overrides[build_task_history_cleanup] = lambda: TaskHistoryCleanup(
+        tables=LockedDayTables(db=db, ids_per_statement=999, lock_timeout=None),
+        rewriter=None,
+        runs_per_transaction=1000,
+    )
+
+    async with _client(app) as client:
+        first = (await client.post(CLEANUP_URL, json={"rewrite": "never"})).json()
+        failed = await _finished_job(client=client, job_id=first["id"])
+        second = await client.post(CLEANUP_URL, json={"rewrite": "never"})
+        assert second.status_code == 202, second.json()
+        await _finished_job(client=client, job_id=second.json()["id"])
+
+    assert failed == first | {
+        "state": "failed",
+        "deleted_runs": 0,
+        "current_day": "2026-01-15",
+        "error": RUNS_LOCKED_ERROR,
+    }
+    assert await _flow_run_ids(db=db) == {old_run}
 
 
 @pytest.mark.usefixtures("cleanup_lock_held_elsewhere")

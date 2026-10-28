@@ -21,6 +21,7 @@ SCENARIO_DELETED_RUNS = 8
 TASK_HISTORY_TABLES = ("flow_run", "flow_run_state", "task_run", "task_run_state", "log", "artifact")
 ACTIVITY_LOG_TABLES = ("events", "event_resources")
 LOG_LOCK_HOLDER = "task-history-cleanup-test-log-lock"
+TASK_RUN_LOCK_HOLDER = "task-history-cleanup-test-task-run-lock"
 # A key of the test's own, so a cleanup that another test runs on the shared stack never holds it.
 ADVISORY_LOCK_KEY = int.from_bytes(b"locktest", byteorder="big")
 LOCK_CHECK_INTERVAL_SECONDS = 1
@@ -33,6 +34,10 @@ REWRITE_TIME_LIMIT_MILLISECONDS = 60_000
 # Far shorter than any rewrite takes, so the rewrite is always stopped.
 TOO_SHORT_TIME_LIMIT_MILLISECONDS = 1
 OLD_RUN_AGE_DAYS = 35
+# A day no other old run of the test ends on, so the delete of that day reaches only the run whose task run is locked.
+LOCKED_RUN_AGE_DAYS = 38
+# Far shorter than the hold on the task run, so the test does not wait the minute that a cleanup allows.
+DELETE_LOCK_TIMEOUT_SECONDS = 2
 RECENT_RUN_AGE_DAYS = 5
 # Far more rows than the stack's own runs hold, so their freed space is most of the runs table whatever ran before.
 RUNS_DELETED_BEFORE_THE_CLEANUP = 2000
@@ -92,7 +97,9 @@ async def main(time_limit_milliseconds, tables):
         cutoff=datetime.now(UTC) - timedelta(days=30),
     )
     cleanup = TaskHistoryCleanup(
-        tables=TaskHistoryTables(db=db, ids_per_statement=get_max_query_parameters()),
+        tables=TaskHistoryTables(
+            db=db, ids_per_statement=get_max_query_parameters(), lock_timeout=timedelta(minutes=1)
+        ),
         rewriter=PostgresTableRewriter(
             db=db,
             tables=tables,
@@ -128,6 +135,53 @@ async def main(logs):
     print(logs)
 
 asyncio.run(main(logs=int(sys.argv[1])))
+"""
+
+_SEED_LOCKED_RUN_SCRIPT = f"""
+import asyncio, json, sys
+from datetime import timedelta
+sys.path.insert(0, "/source/backend")
+from prefect.server.database import provide_database_interface
+from prefect.server.schemas.states import StateType
+from tests.helpers.task_manager_seed import days_ago, seed_flow_run
+
+async def main():
+    end_time = days_ago({LOCKED_RUN_AGE_DAYS})
+    run = await seed_flow_run(
+        db=provide_database_interface(),
+        state_type=StateType.COMPLETED,
+        start_time=end_time - timedelta(hours=1),
+        end_time=end_time,
+    )
+    print(json.dumps({{"run": str(run.id), "task_run": str(run.task_run_ids[0]), "day": end_time.date().isoformat()}}))
+
+asyncio.run(main())
+"""
+
+# Reads the lock timeout back on a pooled connection, which would keep a lock timeout set for the delete's whole session.
+_DELETE_DAY_SCRIPT = """
+import asyncio, json, sys
+from datetime import UTC, date, datetime, time, timedelta
+import sqlalchemy as sa
+sys.path.insert(0, "/source/backend")
+from prefect.server.database import provide_database_interface
+from prefect.server.utilities.database import get_max_query_parameters
+from infrahub.prefect_server.task_history import RunsLockedError, TaskHistoryTables
+
+async def main(day, lock_timeout):
+    db = provide_database_interface()
+    tables = TaskHistoryTables(db=db, ids_per_statement=get_max_query_parameters(), lock_timeout=lock_timeout)
+    ended_from = datetime.combine(day, time(0), tzinfo=UTC)
+    try:
+        deleted = await tables.delete_runs(ended_from=ended_from, ended_before=ended_from + timedelta(days=1), limit=1000)
+        result = ["deleted", deleted]
+    except RunsLockedError as exc:
+        result = [type(exc).__name__, exc.message]
+    async with db.session_context() as session:
+        result.append(await session.scalar(sa.text("SHOW lock_timeout")))
+    print(json.dumps(result))
+
+asyncio.run(main(day=date.fromisoformat(sys.argv[1]), lock_timeout=timedelta(seconds=float(sys.argv[2]))))
 """
 
 _TASK_HISTORY_SIZE_SCRIPT = """
@@ -259,6 +313,14 @@ _LOG_LOCK_QUERY = (
 )
 _RELEASE_LOG_LOCK_QUERY = (
     f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE application_name = '{LOG_LOCK_HOLDER}'"  # noqa: S608
+)
+# A session takes a transaction id only once it locks a row, so the lock on its own id shows that the row is locked.
+_TASK_RUN_LOCK_QUERY = (
+    "SELECT count(*) FROM pg_locks JOIN pg_stat_activity USING (pid) "  # noqa: S608
+    f"WHERE application_name = '{TASK_RUN_LOCK_HOLDER}' AND locktype = 'transactionid' AND granted"
+)
+_RELEASE_TASK_RUN_LOCK_QUERY = (
+    f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE application_name = '{TASK_RUN_LOCK_HOLDER}'"  # noqa: S608
 )
 # A VACUUM FULL evaluates the index expression as it rebuilds the index, and only that statement makes it raise.
 _REFUSE_LOG_REWRITE_QUERIES = (
@@ -395,6 +457,40 @@ def _ids_by_table(ids: dict[str, list[str]]) -> dict[str, set[str]]:
     return {table: set(values) for table, values in ids.items()}
 
 
+def _start_holding_session(compose: InfrahubDockerCompose, holder: str, statements: str) -> None:
+    """Run the statements in the background, in a database session named after the holder."""
+    compose._run_command(
+        cmd=[
+            *compose.compose_command_property,
+            "exec",
+            "--detach",
+            "-T",
+            "--env",
+            f"PGAPPNAME={holder}",
+            "task-manager-db",
+            "psql",
+            "--username=postgres",
+            "--dbname=prefect",
+            "-c",
+            statements,
+        ]
+    )
+
+
+def _wait_until_held(compose: InfrahubDockerCompose, holder: str, held_query: str) -> None:
+    """Wait until the query counts the one lock that the holder's session takes.
+
+    Raises:
+        TimeoutError: When the lock does not show within a minute.
+
+    """
+    deadline = time.monotonic() + 60
+    while _query_task_manager_database(compose=compose, query=held_query) != ["1"]:
+        if time.monotonic() > deadline:
+            raise TimeoutError(f"{holder} did not take its lock within 60 seconds")
+        time.sleep(0.5)
+
+
 class TestTaskHistoryCleanup(TestInfrahubDockerClient):
     @pytest.fixture
     def log_table_locked(
@@ -408,32 +504,50 @@ class TestTaskHistoryCleanup(TestInfrahubDockerClient):
             TimeoutError: When the lock does not show within a minute.
 
         """
-        infrahub_compose._run_command(
-            cmd=[
-                *infrahub_compose.compose_command_property,
-                "exec",
-                "--detach",
-                "-T",
-                "--env",
-                f"PGAPPNAME={LOG_LOCK_HOLDER}",
-                "task-manager-db",
-                "psql",
-                "--username=postgres",
-                "--dbname=prefect",
-                "-c",
-                "BEGIN; LOCK TABLE log IN ACCESS SHARE MODE; SELECT pg_sleep(600); COMMIT;",
-            ]
+        _start_holding_session(
+            compose=infrahub_compose,
+            holder=LOG_LOCK_HOLDER,
+            statements="BEGIN; LOCK TABLE log IN ACCESS SHARE MODE; SELECT pg_sleep(600); COMMIT;",
         )
         # The session outlives a failed wait as well, holding the lock for minutes unless it is ended.
         try:
-            deadline = time.monotonic() + 60
-            while _query_task_manager_database(compose=infrahub_compose, query=_LOG_LOCK_QUERY) != ["1"]:
-                if time.monotonic() > deadline:
-                    raise TimeoutError(f"{LOG_LOCK_HOLDER} did not lock the log table within 60 seconds")
-                time.sleep(0.5)
+            _wait_until_held(compose=infrahub_compose, holder=LOG_LOCK_HOLDER, held_query=_LOG_LOCK_QUERY)
             yield
         finally:
             _query_task_manager_database(compose=infrahub_compose, query=_RELEASE_LOG_LOCK_QUERY)
+
+    @pytest.fixture
+    def old_run_with_a_task_run_locked(
+        self,
+        infrahub_app: dict[str, int],
+        infrahub_compose: InfrahubDockerCompose,
+    ) -> Iterator[dict[str, str]]:
+        """An old run whose first task run another session keeps locked until the test ends, after which it is deleted.
+
+        Raises:
+            TimeoutError: When the lock does not show within a minute.
+
+        """
+        run: dict[str, str] = json.loads(
+            _python_in_task_manager(compose=infrahub_compose, script=_SEED_LOCKED_RUN_SCRIPT)
+        )
+        try:
+            _start_holding_session(
+                compose=infrahub_compose,
+                holder=TASK_RUN_LOCK_HOLDER,
+                statements=(
+                    f"BEGIN; SELECT 1 FROM task_run WHERE id = '{run['task_run']}' FOR UPDATE; "  # noqa: S608 - an id the test seeded
+                    "SELECT pg_sleep(600); COMMIT;"
+                ),
+            )
+            _wait_until_held(compose=infrahub_compose, holder=TASK_RUN_LOCK_HOLDER, held_query=_TASK_RUN_LOCK_QUERY)
+            yield run
+        finally:
+            _query_task_manager_database(compose=infrahub_compose, query=_RELEASE_TASK_RUN_LOCK_QUERY)
+            _query_task_manager_database(
+                compose=infrahub_compose,
+                query=f"DELETE FROM flow_run WHERE id = '{run['run']}'",  # noqa: S608 - an id the test seeded
+            )
 
     @pytest.fixture
     def log_rewrite_refused(
@@ -610,3 +724,32 @@ class TestTaskHistoryCleanup(TestInfrahubDockerClient):
         assert {table for table in file_nodes_before if file_nodes_after[table] != file_nodes_before[table]} == {
             "flow_run"
         }
+
+    def test_a_delete_waiting_on_a_task_run_locked_elsewhere_stops_at_the_lock_timeout(
+        self, infrahub_compose: InfrahubDockerCompose, old_run_with_a_task_run_locked: dict[str, str]
+    ) -> None:
+        """A delete that waits past its lock timeout for a task run of its runs fails naming their day, deleting nothing.
+
+        The lock timeout holds for the delete's transaction only, so the pooled connections keep the database's own.
+        """
+        run = old_run_with_a_task_run_locked
+
+        result = json.loads(
+            _python_in_task_manager(
+                compose=infrahub_compose,
+                script=_DELETE_DAY_SCRIPT,
+                arguments=(run["day"], str(DELETE_LOCK_TIMEOUT_SECONDS)),
+            )
+        )
+
+        remaining = _query_task_manager_database(
+            compose=infrahub_compose,
+            query=f"SELECT id FROM flow_run WHERE id = '{run['run']}'",  # noqa: S608 - an id the test seeded
+        )
+        assert result == [
+            "RunsLockedError",
+            f"The runs that ended on {run['day']} stayed locked by another session for more than "
+            f"{DELETE_LOCK_TIMEOUT_SECONDS} seconds, so the cleanup stopped",
+            "0",
+        ]
+        assert remaining == [run["run"]]
