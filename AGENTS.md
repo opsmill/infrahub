@@ -120,11 +120,13 @@ The `python_sdk` submodule tracks the SDK branch **named after** the current
 Infrahub branch, not the SDK's own same-named branch:
 
 - Infrahub `develop` → SDK `infrahub-develop`
+- Infrahub `release-x.y` → SDK `infrahub-release-x.y`
 - Infrahub `stable` → SDK `stable`
 
 The SDK repo also has its own `develop` branch. It is **not** the counterpart of
 Infrahub `develop` — do not use it to update the submodule. When updating
-`python_sdk` from Infrahub `develop`, pin `origin/infrahub-develop`.
+`python_sdk` from Infrahub `develop`, pin `origin/infrahub-develop`; from Infrahub
+`release-x.y`, pin `origin/infrahub-release-x.y`.
 
 You can modify code inside a submodule, but the changes live in a separate
 repository. Before opening a PR on this repository, push the submodule commit
