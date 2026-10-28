@@ -62,17 +62,15 @@ def task_manager_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) ->
         "PREFECT_API_DATABASE_MIGRATE_ON_START",
         "PREFECT__SERVER_WEBSERVER_ONLY",
         *PREFECT_TEST_MODE_VARIABLES,
+        *PREFECT_RETENTION_VARIABLES,
     ):
         monkeypatch.delenv(name, raising=False)
-    saved = {name: os.environ.pop(name, None) for name in PREFECT_RETENTION_VARIABLES}
 
     yield
 
-    for name, value in saved.items():
-        if value is None:
-            os.environ.pop(name, None)
-        else:
-            os.environ[name] = value
+    # The code under test writes these directly, and pytest puts back only the values set before the test.
+    for name in PREFECT_RETENTION_VARIABLES:
+        os.environ.pop(name, None)
 
 
 def _app_messages(caplog: pytest.LogCaptureFixture, level: int) -> list[str]:
