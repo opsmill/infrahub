@@ -56,7 +56,7 @@ class BuiltinIPPrefix(Node):
         if not missing:
             return
         retrieved = await NodeManager.get_one(
-            db=db, branch=self._branch, id=self.id, fields=dict.fromkeys(missing), raise_on_error=True
+            db=db, branch=self._branch, at=self._at, id=self.id, fields=dict.fromkeys(missing), raise_on_error=True
         )
         for name in missing:
             setattr(self, name, retrieved.get_attribute(name=name))
