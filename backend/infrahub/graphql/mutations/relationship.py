@@ -749,13 +749,17 @@ async def _submit_profile_peers_refresh(
         or relationship_name not in PROFILE_PEER_RELATIONSHIP_NAMES
     ):
         return
-    await submit_profile_refresh(
-        workflow=graphql_context.active_service.workflow,
-        branch_name=graphql_context.branch.name,
-        node_ids=peer_ids,
-        context=graphql_context.to_event_context(),
-        profile_id=source.get_id(),
-    )
+    workflow = graphql_context.active_service.workflow
+    context = graphql_context.to_event_context()
+    # The change is committed, so a client error would invite a retry that adds or removes no peer.
+    with log_exception_guard(log, f"Failed to submit the profile refresh of the peers of {source.get_id()}"):
+        await submit_profile_refresh(
+            workflow=workflow,
+            branch_name=graphql_context.branch.name,
+            node_ids=peer_ids,
+            context=context,
+            profile_id=source.get_id(),
+        )
 
 
 async def _apply_profiles_after_relationship_change(
