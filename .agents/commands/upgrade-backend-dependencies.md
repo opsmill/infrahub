@@ -538,9 +538,9 @@ This PR upgrades backend infrastructure dependencies.
 
 `opsmill/infrahub-private` and `opsmill/infrahub-helm` pin the same versions or configure the same
 services. Follow
-[Upgrading infrastructure dependencies](../../dev/guides/backend/upgrading-infrastructure-dependencies.md)
-for what to change in each repository, the branch each pull request targets, and the Infrahub
-release each one waits for before it can merge. Then edit the Infrahub pull request description:
+[Upgrading infrastructure dependencies](../../dev/guides/backend/upgrading-infrastructure-dependencies.md):
+it links the `AGENTS.md` of each repository, which says what to change there and when its pull
+request can merge. Then edit the Infrahub pull request description:
 replace the `{link}` placeholders under "Pull Requests in Other Repositories" with these pull
 requests.
 
