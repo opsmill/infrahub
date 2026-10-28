@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import pytest
+from structlog.testing import capture_logs
 
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
@@ -258,7 +259,7 @@ class FailingWorkflow(WorkflowRecorder):
 
 
 @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in PEER_CHANGE_TEST_CASES])
-async def test_profile_peer_change_sends_its_events_when_the_refresh_submission_fails(
+async def test_profile_peer_change_succeeds_when_the_refresh_submission_fails(
     db: InfrahubDatabase,
     default_branch: Branch,
     device_schema: None,
@@ -284,17 +285,25 @@ async def test_profile_peer_change_sends_its_events_when_the_refresh_submission_
         service=await InfrahubServices.new(workflow=FailingWorkflow(), event=events),
     )
 
-    result = await graphql(
-        schema=gql_params.schema,
-        source=RELATIONSHIP_MUTATION % {"mutation": test_case.mutation},
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={"id": profile.id, "name": test_case.rel_name, "nodes": [{"id": peer.id}]},
-    )
+    with capture_logs() as records:
+        result = await graphql(
+            schema=gql_params.schema,
+            source=RELATIONSHIP_MUTATION % {"mutation": test_case.mutation},
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"id": profile.id, "name": test_case.rel_name, "nodes": [{"id": peer.id}]},
+        )
     assert gql_params.context.background
     await gql_params.context.background()
 
-    assert [error.message for error in result.errors or []] == ["objects-profiles-refresh-multiple submission rejected"]
+    assert result.errors is None
+    assert result.data == {test_case.mutation: {"ok": True}}
+    profile = await NodeManager.get_one(db=db, branch=default_branch, id=profile.id, raise_on_error=True)
+    relationships = await profile.get_relationship(name=test_case.rel_name).get_relationships(db=db)
+    assert [rel.peer_id for rel in relationships] == ([] if linked else [peer.id])
+    assert [(record["log_level"], record["event"]) for record in records if record["log_level"] == "error"] == [
+        ("error", f"Failed to submit the profile refresh of the peers of {profile.id}")
+    ]
     assert [(type(event), event.node_id) for event in events.events] == [
         (NodeUpdatedEvent, profile.id),
         (NodeUpdatedEvent, peer.id),
