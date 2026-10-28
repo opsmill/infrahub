@@ -67,9 +67,10 @@ Behaviour changes:
 - Every query runs with a plan per query (PR #10379).
 - Response `total` becomes nullable.
 
-## GraphQL `InfrahubEvent` (no schema change)
+## GraphQL `InfrahubEvent` (no new or changed arguments)
 
 - `count` is computed only when selected.
+- A query without `since` reads back the activity log retention from `until`, or at least 180 days when the task manager does not delete old events, instead of Prefect's 180-day default; the `since` description says so.
 - `branches`, `account__ids`, `primary_node__ids`, `parent__ids` and the branch-name `event_type_filter` keep their arguments and results, except for the combination in the next item; their matching changes as described in data-model.md.
 - `primary_node__ids` combined with branch names, identity providers or protocols in `event_type_filter` returns only the events that match both; before, the primary node conditions replaced the others (data-model.md, Activities filters).
 - The Activities page passes `until` instead of `offset` for "load more"; it already does not select `count`.

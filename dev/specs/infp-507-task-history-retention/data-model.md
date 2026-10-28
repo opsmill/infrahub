@@ -1,6 +1,6 @@
 # Data Model: Task History and Activity Log Retention
 
-No graph schema, GraphQL schema or database schema changes. The feature adds one configuration section, reads and deletes rows in Prefect's existing tables, and changes how Activities filters are expressed.
+No graph schema or database schema changes, and no new or changed GraphQL arguments or types; only the descriptions of the `since` and `until` arguments of `InfrahubEvent` change. The feature adds one configuration section, reads and deletes rows in Prefect's existing tables, and changes how Activities filters are expressed.
 
 ## Retention settings (new configuration section)
 

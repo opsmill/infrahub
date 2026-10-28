@@ -26780,9 +26780,11 @@ type Query {
     primary_node__ids: [String!]
     """Filter events where the related node ids are within indicated node ids"""
     related_node__ids: [String!]
-    """Search events since this timestamp, defaults to 180 days back"""
+    """
+    Search events since this timestamp, defaults to the activity log retention before until, or at least 180 days before until when the task manager does not delete old events
+    """
     since: DateTime
-    """Search events until this timestamp, defaults the current time"""
+    """Search events until this timestamp, defaults to the current time"""
     until: DateTime
   ): Events!
   InfrahubGlobalPreferences: RawPreferencesType!

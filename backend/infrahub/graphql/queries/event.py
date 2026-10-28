@@ -154,8 +154,14 @@ Event = Field(
     parent__ids=List(
         NonNull(String), description="Search events that has any of the indicated event ids listed as parents"
     ),
-    since=DateTime(required=False, description="Search events since this timestamp, defaults to 180 days back"),
-    until=DateTime(required=False, description="Search events until this timestamp, defaults the current time"),
+    since=DateTime(
+        required=False,
+        description=(
+            "Search events since this timestamp, defaults to the activity log retention before until, "
+            "or at least 180 days before until when the task manager does not delete old events"
+        ),
+    ),
+    until=DateTime(required=False, description="Search events until this timestamp, defaults to the current time"),
     branches=List(NonNull(String), required=False, description="Filter the query to specific branches"),
     account__ids=List(NonNull(String), required=False, description="Filter the query to specific accounts"),
     ids=List(NonNull(String)),
