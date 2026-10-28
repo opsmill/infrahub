@@ -111,6 +111,35 @@ describe("getEventsQueryOptions", () => {
     expect(getEventsMock).toHaveBeenCalledTimes(1);
   });
 
+  it("stops paging when a page holds fewer events than the limit the caller set", async () => {
+    // GIVEN
+    getEventsMock.mockResolvedValueOnce(eventsFrom("child", countDown(1000, 49)));
+
+    // WHEN
+    await fetchPages({ parentIds: ["parent-event"], limit: 50 }, 2);
+
+    // THEN
+    expect(getEventsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks for the next page when a page holds as many events as the limit the caller set", async () => {
+    // GIVEN
+    getEventsMock
+      .mockResolvedValueOnce(eventsFrom("first", countDown(1000, 5)))
+      .mockResolvedValueOnce([]);
+
+    // WHEN
+    await fetchPages({ relatedNodeIds: ["node-1"], limit: 5 }, 2);
+
+    // THEN
+    expect(getEventsMock).toHaveBeenCalledTimes(2);
+    expect(getEventsMock.mock.calls[1]?.[0]).toEqual({
+      relatedNodeIds: ["node-1"],
+      limit: 5,
+      until: occurredAt(996),
+    });
+  });
+
   it("stops paging when every event of a full page shares the time it was asked up to", async () => {
     // GIVEN
     const firstPage = eventsFrom("first", countDown(1000, DEFAULT_PAGE_SIZE));
