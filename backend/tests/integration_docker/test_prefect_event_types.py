@@ -56,10 +56,11 @@ UNLISTED_WARNING = (
     f"retention (7 days) instead of prefect_own_events: {UNLISTED_PREFECT_EVENT}"
 )
 STARTUP_CHECK_FAILED = "Task manager retention: could not read the stored event types"
+# The statements interpolate only this module's constant, so S608 has no input to guard against.
 _DELETE_UNLISTED_PREFECT_EVENTS = (
-    "DELETE FROM event_resources WHERE event_id IN "
-    "(SELECT id FROM events WHERE event = 'prefect.infrahub-test.unlisted'); "
-    "DELETE FROM events WHERE event = 'prefect.infrahub-test.unlisted'"
+    "DELETE FROM event_resources WHERE event_id IN "  # noqa: S608
+    f"(SELECT id FROM events WHERE event = '{UNLISTED_PREFECT_EVENT}'); "
+    f"DELETE FROM events WHERE event = '{UNLISTED_PREFECT_EVENT}'"
 )
 
 _STORED_PREFECT_EVENTS_QUERY = "SELECT event, count(*) FROM events WHERE event NOT LIKE 'infrahub.%' GROUP BY event"
