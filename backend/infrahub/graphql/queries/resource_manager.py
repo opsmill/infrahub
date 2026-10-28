@@ -112,21 +112,6 @@ class PoolAllocated(ObjectType):
 
             fields = extract_graphql_fields(info=info)
 
-<<<<<<< HEAD
-        allocated_kinds: list[str] = []
-        pool = _validate_pool_type(pool_id=pool_id, pool=pool)
-        match pool.get_kind():
-            case InfrahubKind.NUMBERPOOL:
-                return await resolve_number_pool_allocation(
-                    db=graphql_context.db,
-                    graphql_context=graphql_context,
-                    domains=SchemaAttributeDomains(schema=graphql_context.db.schema, branch=graphql_context.branch),
-                    pool=pool,
-                    resource_id=resource_id,
-                    fields=fields,
-                    offset=offset,
-                    limit=limit,
-=======
             allocated_kinds: list[str] = []
             pool = _validate_pool_type(pool_id=pool_id, pool=pool)
             match pool.get_kind():
@@ -134,7 +119,9 @@ class PoolAllocated(ObjectType):
                     return await resolve_number_pool_allocation(
                         db=db,
                         graphql_context=graphql_context,
+                        domains=SchemaAttributeDomains(schema=db.schema, branch=graphql_context.branch),
                         pool=pool,
+                        resource_id=resource_id,
                         fields=fields,
                         offset=offset,
                         limit=limit,
@@ -148,7 +135,6 @@ class PoolAllocated(ObjectType):
             if resource_id not in resources:
                 raise ValidationError(
                     input_value=f"The selected pool_id={pool_id} doesn't contain the requested resource_id={resource_id}"
->>>>>>> stable
                 )
 
             resource = resources[resource_id]
@@ -230,24 +216,16 @@ class PoolUtilization(ObjectType):
         pool_id: str,
     ) -> dict:
         graphql_context: GraphqlContext = info.context
-<<<<<<< HEAD
-        db: InfrahubDatabase = graphql_context.db
-        pool = await NodeManager.get_one(id=pool_id, db=db, branch=graphql_context.branch)
-        pool = _validate_pool_type(pool_id=pool_id, pool=pool)
-        if pool.get_kind() == "CoreNumberPool":
-            return await resolve_number_pool_utilization(
-                db=db,
-                domains=SchemaAttributeDomains(schema=db.schema, branch=graphql_context.branch),
-                at=graphql_context.at,
-                pool=pool,
-                branch=graphql_context.branch,
-=======
         async with graphql_context.db.start_session(read_only=True) as db:
             pool = await NodeManager.get_one(id=pool_id, db=db, branch=graphql_context.branch)
             pool = _validate_pool_type(pool_id=pool_id, pool=pool)
             if pool.get_kind() == "CoreNumberPool":
                 return await resolve_number_pool_utilization(
-                    db=db, at=graphql_context.at, pool=pool, branch=graphql_context.branch
+                    db=db,
+                    domains=SchemaAttributeDomains(schema=db.schema, branch=graphql_context.branch),
+                    at=graphql_context.at,
+                    pool=pool,
+                    branch=graphql_context.branch,
                 )
 
             resources_map: dict[str, Node] = {}
@@ -259,7 +237,6 @@ class PoolUtilization(ObjectType):
             resources = list(resources_map.values())
             branch_getter = PrefixUtilizationGetter(
                 db=db, ip_prefixes=resources, branch=graphql_context.branch, at=graphql_context.at
->>>>>>> stable
             )
             # Reuse the single-branch query when the request is already on the default branch,
             # otherwise the two getters cache independent result sets.
