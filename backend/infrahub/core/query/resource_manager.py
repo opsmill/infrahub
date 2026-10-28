@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Generator, Unpack
 
 from infrahub.core import registry
 from infrahub.core.constants import (
+    GLOBAL_BRANCH_NAME,
     NULL_VALUE,
     InfrahubKind,
     PoolRecordProvenance,
@@ -203,8 +204,8 @@ class NumberPoolGetAllocated(Query):
     Reports every value a live branch holds for the given NumberPool along with its parent object ID,
     the holding branch, and reservation identifier, ordered by value, then branch, then the holding object's id. `branch_name`
     keeps the values held on that branch and `provenance` the values of that provenance. With a division, which may
-    give a value for only some of the scope elements, only the values whose holding object is in the division on some
-    live branch are reported.
+    give a value for only some of the scope elements, only the values whose holding object is in the division on the
+    branch holding the value are reported.
 
     A value is reported on each live branch that holds it, including a branch that inherits the default branch's
     value without an edge of its own. With `include_inherited_branches=False`, such a value is reported on the default
@@ -406,7 +407,7 @@ class NumberPoolGetReserved(Query):
 
     Returns the values and identifiers for a given NumberPool's reservations on a given branch. Can
     optionally be filtered by identifier. With a division, only the reservations whose Attribute's Node is in
-    the division on some live branch are returned.
+    the division on this branch are returned.
     """
 
     name = "numberpool_get_reserved"
@@ -441,7 +442,9 @@ class NumberPoolGetReserved(Query):
         if self.division is not None:
             live_branches = LIVE_BRANCHES_QUERY
             branch_variables = ", deleting_branches, branch_windows"
-            division_filter, division_params = division_filter_query(division=self.division)
+            division_filter, division_params = division_on_branch_query(
+                division=self.division, branch_name=self.branch.name
+            )
             self.params.update(division_params)
             self.params["default_branch_name"] = registry.default_branch
 
@@ -762,86 +765,172 @@ LIVE_BRANCHES_QUERY = """
             | {name: b.name, origin_name: b.origin_branch, fork_at: b.branched_from}] AS branch_windows"""
 
 
-def _live_on_some_branch(edge: str, hiding_pattern: str) -> str:
-    """Return a Cypher predicate that is true when `edge` is visible now from at least one live branch.
+# Reads `edge` and `deleting_branches`: an edge some live branch can see, open now, or closed on the default branch.
+EDGE_IS_LIVE = """edge.status = "active"
+            AND edge.from <= $at
+            AND NOT edge.branch IN deleting_branches
+            // closed on the default branch could still be active on other branches
+            AND (edge.to IS NULL OR edge.to > $at OR edge.branch = $default_branch_name)"""
 
-    The edge is visible when it is open now on a branch not being deleted, or when it was closed on the default branch
-    after a user branch forked and that branch has written no edge of its own matching `hiding_pattern` since.
-    """
-    return f"""{edge}.status = "active"
-            AND {edge}.from <= $at
-            AND NOT {edge}.branch IN deleting_branches
+# Reads `edge`, `hidden`, and `branch_windows`. end result is list of branches where this edge is
+# visible, ``null`` means global branch, so every branch. an edge on the default branch is visible
+# from each user branch that forked while it was open and is not in `hidden`.
+EDGE_BRANCHES = """CASE
+                WHEN edge.branch = $global_branch_name THEN null
+                WHEN edge.branch <> $default_branch_name THEN [edge.branch]
+                ELSE CASE WHEN edge.to IS NULL OR edge.to > $at THEN [$default_branch_name] ELSE [] END
+                    + [window IN branch_windows WHERE edge.from <= window.fork_at
+                        AND (edge.to IS NULL OR edge.to > window.fork_at)
+                        AND NOT window.name IN hidden | window.name]
+            END"""
+
+# Reads `node`, `element`, `node_branches`, `deleting_branches` and `branch_windows`: every value or peer the Node has
+# for the element, once each, with the branches that see it, null meaning every branch. An element with a `value`
+# keeps only that value or peer.
+ELEMENT_VALUES = """COLLECT {
+            MATCH (node)-[:HAS_ATTRIBUTE]->(element_attr:Attribute { name: element.name })
+            WHERE element.direction IS NULL
+            WITH element_attr, COLLECT {
+                MATCH (element_attr)-[hiding:HAS_VALUE]->()
+                WHERE hiding.from <= $at AND (hiding.to IS NULL OR hiding.to > $at)
+                RETURN hiding.branch
+            } AS hidden
+            MATCH (element_attr)-[edge:HAS_VALUE]->(av)
+            WHERE (element.value IS NULL OR av.value = element.value OR (element.value = "" AND av.value = $null_value))
+            AND edge.status = "active"
+            AND edge.from <= $at
+            AND NOT edge.branch IN deleting_branches
+            AND (edge.to IS NULL OR edge.to > $at OR edge.branch = $default_branch_name)
+            AND (node_branches IS NULL OR edge.branch IN node_branches
+                OR edge.branch IN [$default_branch_name, $global_branch_name])
+            WITH CASE WHEN av.value = $null_value THEN "" ELSE av.value END AS element_value, CASE
+                WHEN edge.branch = $global_branch_name THEN null
+                WHEN edge.branch <> $default_branch_name THEN [edge.branch]
+                ELSE CASE WHEN edge.to IS NULL OR edge.to > $at THEN [$default_branch_name] ELSE [] END
+                    + [window IN branch_windows WHERE edge.from <= window.fork_at
+                        AND (edge.to IS NULL OR edge.to > window.fork_at)
+                        AND NOT window.name IN hidden | window.name]
+            END AS branches
+            WHERE branches IS NULL OR size(branches) > 0
+            WITH element_value, collect({branches: branches}) AS branch_lists
+            RETURN {
+                value: element_value,
+                branches: CASE WHEN any(b IN branch_lists WHERE b.branches IS NULL) THEN null
+                    ELSE reduce(union = [], b IN branch_lists | union + b.branches) END
+            }
+        } + COLLECT {
+            MATCH (node)-[:IS_RELATED]-(rel:Relationship { name: element.name })
+            WHERE element.direction IS NOT NULL
+            WITH DISTINCT rel
+            WITH rel, COLLECT {
+                MATCH (node)-[hiding:IS_RELATED]-(rel)
+                WHERE hiding.from <= $at AND (hiding.to IS NULL OR hiding.to > $at)
+                RETURN hiding.branch
+            } AS hidden
+            MATCH (node)-[edge:IS_RELATED]-(rel)-[r2:IS_RELATED]-(peer:Node)
+            WHERE (element.value IS NULL OR peer.uuid = element.value)
             AND (
-                {edge}.to IS NULL OR {edge}.to > $at
-                OR (
-                    {edge}.branch = $default_branch_name
-                    AND any(window IN branch_windows WHERE window.origin_name = {edge}.branch
-                        AND {edge}.from <= window.fork_at AND window.fork_at < {edge}.to
-                        AND NOT window.name IN COLLECT {{
-                            MATCH {hiding_pattern}
-                            WHERE hiding.from <= $at AND (hiding.to IS NULL OR hiding.to > $at)
-                            RETURN hiding.branch
-                        }})
-                )
-            )"""
+                (element.direction = "outbound" AND startNode(edge) = node AND startNode(r2) = rel)
+                OR (element.direction = "inbound" AND endNode(edge) = node AND endNode(r2) = rel)
+                OR (element.direction = "bidirectional" AND endNode(edge) = rel AND endNode(r2) = rel)
+            )
+            AND peer.uuid <> node.uuid
+            AND r2.status = "active"
+            AND edge.status = "active"
+            AND edge.from <= $at
+            AND NOT edge.branch IN deleting_branches
+            AND (edge.to IS NULL OR edge.to > $at OR edge.branch = $default_branch_name)
+            AND (node_branches IS NULL OR edge.branch IN node_branches
+                OR edge.branch IN [$default_branch_name, $global_branch_name])
+            WITH peer.uuid AS element_value, CASE
+                WHEN edge.branch = $global_branch_name THEN null
+                WHEN edge.branch <> $default_branch_name THEN [edge.branch]
+                ELSE CASE WHEN edge.to IS NULL OR edge.to > $at THEN [$default_branch_name] ELSE [] END
+                    + [window IN branch_windows WHERE edge.from <= window.fork_at
+                        AND (edge.to IS NULL OR edge.to > window.fork_at)
+                        AND NOT window.name IN hidden | window.name]
+            END AS branches
+            WHERE branches IS NULL OR size(branches) > 0
+            WITH element_value, collect({branches: branches}) AS branch_lists
+            RETURN {
+                value: element_value,
+                branches: CASE WHEN any(b IN branch_lists WHERE b.branches IS NULL) THEN null
+                    ELSE reduce(union = [], b IN branch_lists | union + b.branches) END
+            }
+        }"""
 
-
-_LIVE_EDGES = {
-    "node_is_live": _live_on_some_branch(edge="ha", hiding_pattern="(node)-[hiding:HAS_ATTRIBUTE]->(attr)"),
-    "value_is_live": _live_on_some_branch(edge="hv", hiding_pattern="(element_attr)-[hiding:HAS_VALUE]->()"),
-    "peer_is_live": _live_on_some_branch(edge="r1", hiding_pattern="(node)-[hiding:IS_RELATED]-(rel)"),
-    "direction_matches": """(
-                        (element.direction = "outbound" AND startNode(r1) = node AND startNode(r2) = rel)
-                        OR (element.direction = "inbound" AND endNode(r1) = node AND endNode(r2) = rel)
-                        OR (element.direction = "bidirectional" AND endNode(r1) = rel AND endNode(r2) = rel)
-                    )""",
-}
+# Reads `attr`, `value`, `branch`, `division_branches` and `branch_windows`: one row per branch that holds the value and
+# on which the Node is in the division, as `held_branch`. A value on the default branch is held on that branch when it
+# puts the Node in the division, and otherwise on each user branch that still reads the value and does.
+HELD_BRANCH = """UNWIND CASE
+            WHEN division_branches IS NULL OR branch = $global_branch_name OR branch IN division_branches THEN [branch]
+            WHEN branch = $default_branch_name THEN division_branches
+            ELSE []
+        END AS held_branch
+        WITH *
+        WHERE held_branch = branch OR EXISTS {
+            MATCH (attr)-[value_edge:HAS_VALUE { branch: $default_branch_name }]->(value_vertex)
+            WHERE value_vertex.value = value
+            AND value_edge.status = "active"
+            AND value_edge.from <= $at AND (value_edge.to IS NULL OR value_edge.to > $at)
+            AND any(window IN branch_windows WHERE window.name = held_branch AND value_edge.from <= window.fork_at)
+            AND NOT EXISTS {
+                MATCH (attr)-[hiding:HAS_VALUE]->()
+                WHERE hiding.branch = held_branch
+                AND hiding.from <= $at AND (hiding.to IS NULL OR hiding.to > $at)
+            }
+        }"""
 
 # A schema migration can leave several Node vertices linked to one Attribute, each live on different branches.
-DIVISION_FILTER_QUERY = (
-    """
+DIVISION_FILTER_QUERY = """
     // --------------
-    // Keep the reserved Attribute when one of its Nodes is in the division on some live branch, each scope element
-    // matching any value or peer that some live branch gives it
+    // Find the branches on which a Node of the reserved Attribute is in the division, as `division_branches`.
+    // Drop the Attribute when there are none. A null list means every branch.
     // --------------
-    WITH *
-    WHERE EXISTS {
-        MATCH (node:Node)-[ha:HAS_ATTRIBUTE]->(attr)
-        WHERE %(node_is_live)s
-        AND all(element IN $division_elements WHERE
-            (
-                element.direction IS NULL
-                AND EXISTS {
-                    MATCH (node)-[:HAS_ATTRIBUTE]->(element_attr:Attribute { name: element.name })-[hv:HAS_VALUE]->(av)
-                    WHERE (av.value = element.value OR (element.value = "" AND av.value = $null_value))
-                    AND %(value_is_live)s
-                }
-            )
-            OR (
-                element.direction IS NOT NULL
-                AND EXISTS {
-                    MATCH (node)-[r1:IS_RELATED]-(rel:Relationship { name: element.name })
-                        -[r2:IS_RELATED]-(peer:Node { uuid: element.value })
-                    WHERE %(direction_matches)s
-                    AND r2.status = "active"
-                    AND %(peer_is_live)s
-                }
-            )
-        )
+    CALL (attr, deleting_branches, branch_windows) {
+        MATCH (node:Node)-[edge:HAS_ATTRIBUTE]->(attr)
+        WHERE %(edge_is_live)s
+        WITH node, edge, deleting_branches, branch_windows, COLLECT {
+            MATCH (node)-[hiding:HAS_ATTRIBUTE]->(attr)
+            WHERE hiding.from <= $at AND (hiding.to IS NULL OR hiding.to > $at)
+            RETURN hiding.branch
+        } AS hidden
+        WITH node, deleting_branches, branch_windows, %(edge_branches)s AS node_branches
+        WHERE node_branches IS NULL OR size(node_branches) > 0
+        // --------------
+        // One stage per element: keep the branches that also see one of the element's edges with the division's
+        // value, and drop the Node as soon as no branch is left
+        // --------------
+%(element_stages)s
+        WITH collect({branches: node_branches}) AS branch_lists
+        WHERE size(branch_lists) > 0
+        RETURN CASE WHEN any(b IN branch_lists WHERE b.branches IS NULL) THEN null
+            ELSE reduce(union = [], b IN branch_lists | union + b.branches) END AS division_branches
     }
 """
-    % _LIVE_EDGES
-)
+
+DIVISION_ELEMENT_STAGE = """
+        WITH node, deleting_branches, branch_windows, node_branches, $division_elements[%(idx)s] AS element
+        WITH node, deleting_branches, branch_windows, node_branches, %(element_values)s AS edges
+        WHERE size(edges) > 0
+        WITH node, deleting_branches, branch_windows, CASE
+            WHEN any(e IN edges WHERE e.branches IS NULL) THEN node_branches
+            WHEN node_branches IS NULL THEN reduce(union = [], e IN edges | union + e.branches)
+            ELSE [name IN node_branches WHERE any(e IN edges WHERE name IN e.branches)]
+        END AS node_branches
+        WHERE node_branches IS NULL OR size(node_branches) > 0"""
+
+DIVISION_VALUE_FILTER_QUERY = """
+    // --------------
+    // Keep the values held on a branch on which their Node is in the division, reported on that branch
+    // --------------
+    %(held_branch)s
+    WITH res, attr, value, held_branch AS branch, deleting_branches, branch_windows
+""" % {"held_branch": HELD_BRANCH}
 
 
-def division_filter_query(division: Division) -> tuple[str, dict[str, Any]]:
-    """Return the Cypher that keeps the reserved `attr` whose Node is in `division` on any live branch, with its parameters.
-
-    A Node counts in every division it occupies on some branch, each scope element checked on its own, so a number is
-    never handed out twice in one division whatever branches the two Nodes are on. The fragment reads the
-    `deleting_branches`, `branch_windows`, `$at` and `$default_branch_name` that the enclosing query provides.
-    """
-    return DIVISION_FILTER_QUERY, {
+def _division_params(division: Division) -> dict[str, Any]:
+    return {
         "division_elements": [
             {
                 "name": element.name,
@@ -853,57 +942,103 @@ def division_filter_query(division: Division) -> tuple[str, dict[str, Any]]:
             for element, value in zip(division.elements, division.values, strict=True)
         ],
         "null_value": NULL_VALUE,
+        "global_branch_name": GLOBAL_BRANCH_NAME,
     }
 
 
-LIVE_DIVISIONS_QUERY = """
-    // --------------
-    // Every division a Node of the reserved Attribute occupies on some live branch, each scope element taking any
-    // value or peer that some live branch gives it
-    // --------------
-    CALL (attr, deleting_branches, branch_windows) {
-        MATCH (node:Node)-[ha:HAS_ATTRIBUTE]->(attr)
-        WHERE %(node_is_live)s
-        %(elements)s
-        RETURN DISTINCT %(division_values)s AS division_values
-    }"""
+def division_filter_query(division: Division) -> tuple[str, dict[str, Any]]:
+    """Return the Cypher that keeps the reserved `attr` whose Node is in `division` on some live branch, with its parameters.
 
-LIVE_ATTRIBUTE_ELEMENT_QUERY = """
-        CALL (node, deleting_branches, branch_windows) {
-            WITH node, $division_elements[%(idx)s] AS element
-            MATCH (node)-[:HAS_ATTRIBUTE]->(element_attr:Attribute { name: element.name })-[hv:HAS_VALUE]->(av)
-            WHERE %(value_is_live)s
-            RETURN DISTINCT CASE WHEN av.value = $null_value THEN "" ELSE av.value END AS division_value_%(idx)s
-        }"""
+    The fragment adds `division_branches`, the branches on which the Node is in the division, which the value filter
+    reads. It reads the `deleting_branches`, `branch_windows`, `$at` and `$default_branch_name` that the enclosing
+    query provides.
+    """
+    query = DIVISION_FILTER_QUERY % {
+        "edge_is_live": EDGE_IS_LIVE,
+        "edge_branches": EDGE_BRANCHES,
+        "element_stages": "".join(
+            DIVISION_ELEMENT_STAGE % {"idx": idx, "element_values": ELEMENT_VALUES}
+            for idx in range(len(division.elements))
+        ),
+    }
+    return query, _division_params(division=division)
+
+
+def division_on_branch_query(division: Division, branch_name: str) -> tuple[str, dict[str, Any]]:
+    """Return the Cypher that keeps the reserved `attr` whose Node is in `division` on the branch `branch_name`."""
+    query, params = division_filter_query(division=division)
+    query += """
+    WITH *
+    WHERE division_branches IS NULL OR $division_branch_name IN division_branches
+"""
+    return query, {**params, "division_branch_name": branch_name}
+
 
 # A schema migration can link another vertex of the same Node to the Relationship vertex, which is not a peer.
-LIVE_RELATIONSHIP_ELEMENT_QUERY = """
-        CALL (node, deleting_branches, branch_windows) {
-            WITH node, $division_elements[%(idx)s] AS element
-            MATCH (node)-[r1:IS_RELATED]-(rel:Relationship { name: element.name })-[r2:IS_RELATED]-(peer:Node)
-            WHERE %(direction_matches)s
-            AND peer.uuid <> node.uuid
-            AND r2.status = "active"
-            AND %(peer_is_live)s
-            RETURN DISTINCT peer.uuid AS division_value_%(idx)s
-        }"""
+LIVE_DIVISIONS_QUERY = """
+    // --------------
+    // Every division a Node of the reserved Attribute occupies, with the branches on which it does, read once per
+    // Attribute
+    // --------------
+    CALL (attr, deleting_branches, branch_windows) {
+        MATCH (node:Node)-[edge:HAS_ATTRIBUTE]->(attr)
+        WHERE %(edge_is_live)s
+        WITH node, edge, deleting_branches, branch_windows, COLLECT {
+            MATCH (node)-[hiding:HAS_ATTRIBUTE]->(attr)
+            WHERE hiding.from <= $at AND (hiding.to IS NULL OR hiding.to > $at)
+            RETURN hiding.branch
+        } AS hidden
+        WITH node, deleting_branches, branch_windows, %(edge_branches)s AS node_branches
+        WHERE node_branches IS NULL OR size(node_branches) > 0
+        WITH node, deleting_branches, branch_windows, node_branches, [{values: [], branches: node_branches}] AS divisions
+        // --------------
+        // One stage per element, in scope order: extend each division with every value or peer the Node has for the
+        // element, keeping the branches that see both, and drop the Node as soon as no division is left
+        // --------------
+%(element_stages)s
+        UNWIND divisions AS division
+        RETURN division.values AS division_values, division.branches AS division_branches
+    }
+    // --------------
+    // Count each value in the divisions its Node occupies on a branch holding the value
+    // --------------
+    UNWIND held_values AS held
+    WITH attr, branch_windows, division_values, division_branches, held.value AS value, held.branch AS branch
+    %(held_branch)s"""
+
+# Reads `node`, `node_branches`, `divisions`, `deleting_branches` and `branch_windows`, one stage per scope element in
+# scope order: each division built so far is extended with every value or peer the Node has for the element, keeping
+# the branches that see both. A division no branch sees is dropped, and so is the Node when no division is left.
+LIVE_DIVISION_ELEMENT_STAGE = """
+        WITH node, deleting_branches, branch_windows, node_branches, divisions, $division_elements[%(idx)s] AS element
+        WITH node, deleting_branches, branch_windows, node_branches, divisions, %(element_values)s AS element_values
+        WITH node, deleting_branches, branch_windows, node_branches, [
+            extended IN reduce(acc = [], division IN divisions | acc + [entry IN element_values | {
+                values: division.values + [entry.value],
+                branches: CASE WHEN entry.branches IS NULL THEN division.branches
+                    WHEN division.branches IS NULL THEN entry.branches
+                    ELSE [name IN division.branches WHERE name IN entry.branches] END
+            }])
+            WHERE extended.branches IS NULL OR size(extended.branches) > 0
+        ] AS divisions
+        WHERE size(divisions) > 0"""
 
 
 def live_divisions_query(elements: Sequence[DivisionElementPath]) -> tuple[str, dict[str, Any]]:
-    """Return the Cypher that gives each reserved `attr` one row per division its Node occupies on any live branch.
+    """Return the Cypher that gives each reserved value one row per division its Node occupies on a live branch holding it.
 
-    A Node with no live value for an element of the scope occupies no division. The fragment reads the
-    `deleting_branches`, `branch_windows`, `$at` and `$default_branch_name` that the enclosing query provides.
+    A Node with no live value for an element of the scope occupies no division. The fragment reads the `attr`,
+    `held_values` (the `value` and `branch` of each value the Attribute holds), `deleting_branches`, `branch_windows`,
+    `$at` and `$default_branch_name` that the enclosing query provides, and gives `division_values`, `value` and
+    `held_branch`.
     """
-    element_queries = [
-        (LIVE_ATTRIBUTE_ELEMENT_QUERY if element.relationship_direction is None else LIVE_RELATIONSHIP_ELEMENT_QUERY)
-        % {**_LIVE_EDGES, "idx": idx}
-        for idx, element in enumerate(elements)
-    ]
     query = LIVE_DIVISIONS_QUERY % {
-        "node_is_live": _LIVE_EDGES["node_is_live"],
-        "elements": "".join(element_queries),
-        "division_values": "[%s]" % ", ".join(f"division_value_{idx}" for idx in range(len(elements))),
+        "edge_is_live": EDGE_IS_LIVE,
+        "edge_branches": EDGE_BRANCHES,
+        "element_stages": "".join(
+            LIVE_DIVISION_ELEMENT_STAGE % {"idx": idx, "element_values": ELEMENT_VALUES} for idx in range(len(elements))
+        ),
+        "held_branch": HELD_BRANCH,
     }
     return query, {
         "division_elements": [
@@ -916,6 +1051,7 @@ def live_divisions_query(elements: Sequence[DivisionElementPath]) -> tuple[str, 
             for element in elements
         ],
         "null_value": NULL_VALUE,
+        "global_branch_name": GLOBAL_BRANCH_NAME,
     }
 
 
@@ -942,7 +1078,8 @@ class NumberPoolGetDivisions(Query):
     """Count the numbers each division of a scoped pool holds, for every division that holds at least one.
 
     A number counts while any branch holds it, as for the pool's figures, and in every division its holding object
-    occupies on any live branch. `elements` says where a Node keeps each scope element, in scope order.
+    occupies on a live branch holding the number. `elements` says where a Node keeps each scope element, in scope
+    order.
     """
 
     name = "numberpool_get_divisions"
@@ -978,8 +1115,9 @@ class NumberPoolGetDivisions(Query):
         %(reserved_values)s
         WHERE any(r IN $ranges WHERE toInteger(value) >= r[0] AND toInteger(value) <= r[1])
         WITH DISTINCT attr, value, branch, deleting_branches, branch_windows
+        WITH attr, deleting_branches, branch_windows, collect({value: value, branch: branch}) AS held_values
         %(divisions)s
-        WITH division_values, value, collect(DISTINCT branch) AS branches
+        WITH division_values, value, collect(DISTINCT held_branch) AS branches
         WITH division_values, value, $default_branch_name IN branches AS on_default_branch
         """ % {
             "reserved_values": reserved_values,
@@ -1086,7 +1224,8 @@ def reserved_values_query(
     value counts on the edge's branch when its HAS_VALUE edge is open now, and on each branch that forked from the
     edge's branch while the edge was open and has written no edge of its own that hides the default-branch version.
 
-    `division_filter` is inserted after the reserved Attributes are matched, to keep only those of a division.
+    `division_filter` is inserted after the reserved Attributes are matched, to keep only those of a division, and
+    then only the values held on a branch on which the Attribute's Node is in the division.
     `include_inherited_open_values` also reports a value on each branch inheriting a default-branch value that is
     still open, which otherwise counts on the default branch only.
 
@@ -1108,10 +1247,11 @@ def reserved_values_query(
     WHERE res.status = "active" AND res.from <= $at AND (res.to IS NULL OR res.to > $at)
 %(division)s    CALL (attr, deleting_branches, branch_windows) {
 %(live_values)s%(inherited_values)s    }
-    WITH DISTINCT res, attr, value, branch, deleting_branches, branch_windows
+%(division_values)s    WITH DISTINCT res, attr, value, branch, deleting_branches, branch_windows
     """ % {
         "number_pool": InfrahubKind.NUMBERPOOL,
         "division": division_filter,
+        "division_values": DIVISION_VALUE_FILTER_QUERY if division_filter else "",
         "live_branches": LIVE_BRANCHES_QUERY,
         "live_values": LIVE_ATTRIBUTE_VALUES_QUERY,
         "inherited_values": f"            UNION\n{INHERITED_OPEN_VALUES_QUERY}"
@@ -1185,7 +1325,7 @@ class NumberPoolGetUsed(Query):
     """A pool is branch-agnostic, and so is the set of numbers it accounts for.
 
     The read of the IS_RESERVED edges carries no branch filter: the edge is global, and a value counts while any
-    branch holds it. For a division, a value counts when its Node is in the division on any branch.
+    branch holds it. For a division, a value counts when its Node is in the division on a branch holding the value.
     """
 
     name = "number_pool_get_used"
@@ -1249,7 +1389,7 @@ class NumberPoolGetFree(Query):
     """A pool is branch-agnostic, and so is the set of numbers it accounts for.
 
     The read of the IS_RESERVED edges carries no branch filter: the edge is global, and a value counts while any
-    branch holds it. For a division, a value counts when its Node is in the division on any branch.
+    branch holds it. For a division, a value counts when its Node is in the division on a branch holding the value.
     """
 
     name = "number_pool_get_free"

@@ -333,6 +333,42 @@ async def test_a_reservation_is_read_only_in_the_division_of_its_node(
     assert await reservation(division=Division(elements=(SITE_PATH,), values=(site_b.id,))) is None
 
 
+async def test_a_reservation_is_read_in_the_division_its_node_occupies_on_the_request_branch(
+    db: InfrahubDatabase, default_branch: Branch, site_scoped_pool: CoreNumberPool
+) -> None:
+    site_a = await scoped_site(db=db, branch=default_branch, name="site-a")
+    site_b = await scoped_site(db=db, branch=default_branch, name="site-b")
+    device = await scoped_device_holding(
+        db=db, branch=default_branch, pool=site_scoped_pool, name="device-a1", site=site_a, number=4
+    )
+    unchanged_branch = await create_branch(branch_name="reads-device-a1-unchanged", db=db)
+    moving_branch = await create_branch(branch_name="moves-device-a1", db=db)
+    moved = await NodeManager.get_one(db=db, branch=moving_branch, id=device.id, raise_on_error=True)
+    await moved.get_relationship(name="site").update(db=db, data=site_b)
+    await moved.save(db=db)
+    repository = NumberPoolRepository(db=db)
+
+    reservations = {
+        (branch.name, site_name): await repository.get_reservation(
+            pool_id=site_scoped_pool.id,
+            branch=branch,
+            identifier=device.id,
+            division=Division(elements=(SITE_PATH,), values=(site.id,)),
+        )
+        for branch in (default_branch, unchanged_branch, moving_branch)
+        for site_name, site in (("site-a", site_a), ("site-b", site_b))
+    }
+
+    assert reservations == {
+        (default_branch.name, "site-a"): 4,
+        (default_branch.name, "site-b"): None,
+        (unchanged_branch.name, "site-a"): 4,
+        (unchanged_branch.name, "site-b"): None,
+        (moving_branch.name, "site-a"): None,
+        (moving_branch.name, "site-b"): 4,
+    }
+
+
 async def test_without_a_division_every_tracked_number_is_read(
     db: InfrahubDatabase, default_branch: Branch, site_scoped_pool: CoreNumberPool
 ) -> None:
