@@ -6,8 +6,8 @@ import threading
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from enum import Enum
-from typing import TYPE_CHECKING, Annotated, Protocol
+from enum import StrEnum
+from typing import TYPE_CHECKING, Annotated, Protocol, assert_never
 from uuid import uuid4
 
 import sqlalchemy as sa
@@ -173,15 +173,9 @@ class TableSpace:
     live_bytes: int
 
 
-@dataclass(frozen=True)
-class RewriteResult:
-    """The tables a rewrite left as they were, by why."""
+class TableOutcome(StrEnum):
+    """What the rewrite of one table did."""
 
-    locked: list[str]
-    timed_out: list[str]
-
-
-class _TableOutcome(Enum):
     REWRITTEN = "rewritten"
     LOCKED = "locked"
     TIMED_OUT = "timed_out"
@@ -189,7 +183,7 @@ class _TableOutcome(Enum):
 
 @dataclass(frozen=True)
 class _TableRewrite:
-    outcome: _TableOutcome
+    outcome: TableOutcome
     held_for: timedelta
 
 
@@ -207,8 +201,8 @@ class TableRewriter(Protocol):
         """Measure the disk space of the table, and the part of it that its live rows hold."""
         ...
 
-    async def rewrite(self, tables: list[str]) -> RewriteResult:
-        """Rewrite the tables, returning those it left as they were."""
+    async def rewrite(self, tables: list[str], on_table: Callable[[str, TableOutcome], None]) -> None:
+        """Rewrite the tables one by one, reporting each table's outcome as soon as it is known."""
         ...
 
 
@@ -284,10 +278,8 @@ class PostgresTableRewriter:
             row_bytes += sa.func.coalesce(sa.func.pg_column_size(column), 0)
         return sa.select(sa.func.coalesce(sa.func.sum(row_bytes), 0)).select_from(source)
 
-    async def rewrite(self, tables: list[str]) -> RewriteResult:
+    async def rewrite(self, tables: list[str], on_table: Callable[[str, TableOutcome], None]) -> None:
         engine = await self._db.engine()
-        locked: list[str] = []
-        timed_out: list[str] = []
         async with engine.connect() as connection:
             try:
                 await connection.execution_options(isolation_level="AUTOCOMMIT")
@@ -297,14 +289,10 @@ class PostgresTableRewriter:
                     await asyncio.sleep(min(held_for * self._pause_factor, self._max_pause).total_seconds())
                     rewrite = await self._rewrite_table(connection=connection, table=table)
                     held_for = rewrite.held_for
-                    if rewrite.outcome is _TableOutcome.LOCKED:
-                        locked.append(table)
-                    elif rewrite.outcome is _TableOutcome.TIMED_OUT:
-                        timed_out.append(table)
+                    on_table(table, rewrite.outcome)
             finally:
                 # Discarded, so no pooled connection keeps the timeouts of this session.
                 await connection.invalidate()
-        return RewriteResult(locked=locked, timed_out=timed_out)
 
     async def _rewrite_table(self, connection: AsyncConnection, table: str) -> _TableRewrite:
         quoted = connection.dialect.identifier_preparer.quote(table)
@@ -319,7 +307,7 @@ class PostgresTableRewriter:
             except DBAPIError as exc:
                 if _caused_by(error=exc, cause=QueryCanceledError):
                     log.warning(f"Task history cleanup: stopped the rewrite of {table}, which took too long")
-                    return _TableRewrite(outcome=_TableOutcome.TIMED_OUT, held_for=self._since(started))
+                    return _TableRewrite(outcome=TableOutcome.TIMED_OUT, held_for=self._since(started))
                 if not _caused_by(error=exc, cause=LockNotAvailableError):
                     raise
                 log.warning(f"Task history cleanup: {table} stayed locked, rewrite attempt {attempt} of {attempts}")
@@ -327,16 +315,16 @@ class PostgresTableRewriter:
             held_for = self._since(started)
             log.info(f"Task history cleanup: rewrote {table} in {held_for.total_seconds():.1f} s")
             await self._refresh_statistics(connection=connection, table=table)
-            return _TableRewrite(outcome=_TableOutcome.REWRITTEN, held_for=held_for)
-        return _TableRewrite(outcome=_TableOutcome.LOCKED, held_for=timedelta(0))
+            return _TableRewrite(outcome=TableOutcome.REWRITTEN, held_for=held_for)
+        return _TableRewrite(outcome=TableOutcome.LOCKED, held_for=timedelta(0))
 
     def _since(self, started: float) -> timedelta:
         return timedelta(seconds=self._clock() - started)
 
     async def _refresh_statistics(self, connection: AsyncConnection, table: str) -> None:
         """Refresh the planner statistics of a rewritten table, which its rewrite does not update."""
-        await _set_timeout(connection=connection, name="statement_timeout", value=timedelta(0))
         try:
+            await _set_timeout(connection=connection, name="statement_timeout", value=timedelta(0))
             await connection.execute(sa.text(f"VACUUM (ANALYZE) {connection.dialect.identifier_preparer.quote(table)}"))
         # The table is already rewritten, and autovacuum refreshes the statistics later anyway.
         except DBAPIError as exc:
@@ -350,6 +338,18 @@ async def _set_timeout(connection: AsyncConnection, name: str, value: timedelta)
 
 def _caused_by(error: DBAPIError, cause: type[Exception]) -> bool:
     return isinstance(error.orig, Exception) and isinstance(error.orig.__cause__, cause)
+
+
+def _record_outcome(job: CleanupJob, table: str, outcome: TableOutcome) -> None:
+    match outcome:
+        case TableOutcome.REWRITTEN:
+            job.rewritten.append(table)
+        case TableOutcome.LOCKED:
+            job.not_rewritten.append(table)
+        case TableOutcome.TIMED_OUT:
+            job.timed_out.append(table)
+        case _:
+            assert_never(outcome)
 
 
 def _start_of_day(moment: datetime) -> datetime:
@@ -377,10 +377,10 @@ class TaskHistoryCleanup:
         if mode is CleanupRewrite.IF_FREED:
             freed = await self._freed_tables(job=job, rewriter=self._rewriter)
             if freed:
-                result = await self._rewriter.rewrite(tables=freed)
-                job.not_rewritten = result.locked
-                job.timed_out = result.timed_out
-                job.rewritten = [table for table in freed if table not in result.locked + result.timed_out]
+                await self._rewriter.rewrite(
+                    tables=freed,
+                    on_table=lambda table, outcome: _record_outcome(job=job, table=table, outcome=outcome),
+                )
         job.size_after = await self._rewriter.total_size()
 
     async def _freed_tables(self, job: CleanupJob, rewriter: TableRewriter) -> list[str]:

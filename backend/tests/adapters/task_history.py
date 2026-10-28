@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+from typing import TYPE_CHECKING
 
-from infrahub.prefect_server.task_history import RewriteResult, TableSpace
+from infrahub.prefect_server.task_history import TableOutcome, TableSpace
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 PAUSE_TIMEOUT_SECONDS = 30
 
@@ -10,8 +14,9 @@ PAUSE_TIMEOUT_SECONDS = 30
 class RecordingRewriter:
     """Records its calls in order, measuring 1000 bytes until a rewrite and 100 after it, and the given space of each table.
 
-    Its rewrite leaves out the tables given as locked or timed out. Given a call number, it pauses at that call until the
-    test lets it go on.
+    Its rewrite reports each table in order: locked or timed out when given as such, rewritten otherwise. Given a table
+    to fail on, it raises on reaching that table. Given a call number, it pauses at that call until the test lets it go
+    on.
     """
 
     def __init__(
@@ -19,12 +24,14 @@ class RecordingRewriter:
         spaces: dict[str, TableSpace],
         locked: tuple[str, ...] = (),
         timed_out: tuple[str, ...] = (),
+        fails_on: str | None = None,
         pause_at_call: int | None = None,
     ) -> None:
         self.calls: list[str] = []
         self._spaces = spaces
         self._locked = locked
         self._timed_out = timed_out
+        self._fails_on = fails_on
         self._pause_at_call = pause_at_call
         self._paused = asyncio.Event()
         self._resumed = asyncio.Event()
@@ -41,12 +48,17 @@ class RecordingRewriter:
         await self._record(call=f"space {table}")
         return self._spaces[table]
 
-    async def rewrite(self, tables: list[str]) -> RewriteResult:
+    async def rewrite(self, tables: list[str], on_table: Callable[[str, TableOutcome], None]) -> None:
         await self._record(call=f"rewrite {' '.join(tables)}")
-        return RewriteResult(
-            locked=[table for table in tables if table in self._locked],
-            timed_out=[table for table in tables if table in self._timed_out],
-        )
+        for table in tables:
+            if table == self._fails_on:
+                raise RuntimeError(f"rewrite of {table} rejected")
+            if table in self._locked:
+                on_table(table, TableOutcome.LOCKED)
+            elif table in self._timed_out:
+                on_table(table, TableOutcome.TIMED_OUT)
+            else:
+                on_table(table, TableOutcome.REWRITTEN)
 
     async def wait_until_paused(self) -> None:
         async with asyncio.timeout(PAUSE_TIMEOUT_SECONDS):
@@ -64,7 +76,7 @@ class RecordingRewriter:
 
 
 class FailingRewriter:
-    """Measures 1000 bytes and a runs table with no live rows, and raises on every rewrite.
+    """Measures 1000 bytes and a runs table with no live rows, and raises on every rewrite before its first table.
 
     It proves that a failed cleanup lets the next one start.
     """
@@ -79,5 +91,5 @@ class FailingRewriter:
     async def space(self, table: str) -> TableSpace:
         return TableSpace(disk_bytes=1000, live_bytes=0)
 
-    async def rewrite(self, tables: list[str]) -> RewriteResult:
+    async def rewrite(self, tables: list[str], on_table: Callable[[str, TableOutcome], None]) -> None:
         raise RuntimeError("rewrite rejected")

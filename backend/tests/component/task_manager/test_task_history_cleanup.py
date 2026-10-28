@@ -293,3 +293,45 @@ async def test_each_table_is_rewritten_when_the_cleanup_asks_and_most_of_it_is_f
         1000,
         case.expected_size_after,
     )
+
+
+async def test_a_rewrite_that_fails_at_a_table_keeps_the_outcome_of_each_table_before_it(
+    task_manager_database_path: Path,
+) -> None:
+    """A rewrite that fails at a table keeps what it did with each table before it, and measures no size after."""
+    db = task_manager_database(task_manager_database_path)
+    rewriter = RecordingRewriter(
+        spaces={
+            "flow_run": MOSTLY_FREE,
+            "log": MOSTLY_FREE,
+            "artifact": MOSTLY_FREE,
+            "task_run": MOSTLY_FREE,
+            "event_resources": MOSTLY_FREE,
+            "events": MOSTLY_LIVE,
+        },
+        locked=("log",),
+        timed_out=("artifact",),
+        fails_on="task_run",
+    )
+    job = _job(rewrite=CleanupRewrite.IF_FREED)
+    cleanup = TaskHistoryCleanup(tables=TaskHistoryTables(db=db, ids_per_statement=999), rewriter=rewriter)
+
+    with pytest.raises(RuntimeError, match=r"^rewrite of task_run rejected$"):
+        await cleanup.rewrite(job=job, mode=job.rewrite)
+
+    assert rewriter.calls == [
+        "space flow_run",
+        "space log",
+        "space artifact",
+        "space task_run",
+        "space event_resources",
+        "space events",
+        "rewrite flow_run log artifact task_run event_resources",
+    ]
+    assert (job.rewritten, job.mostly_live, job.not_rewritten, job.timed_out, job.size_after) == (
+        ["flow_run"],
+        ["events"],
+        ["log"],
+        ["artifact"],
+        None,
+    )

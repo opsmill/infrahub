@@ -167,7 +167,7 @@ def _progress_line(job: CleanupJob) -> str:
 
 
 def _rewrite_lines(job: CleanupJob) -> list[str]:
-    """What the rewrite did with each table, which a job records only once its rewrite finished."""
+    """What the rewrite did with each table it finished."""
     lines: list[str] = []
     if job.rewritten:
         lines.append(f"Rewrote {', '.join(job.rewritten)}")
