@@ -310,6 +310,21 @@ def test_startup_logs_the_retention_prefect_applies(
 
 
 @pytest.mark.usefixtures("task_manager_environment")
+def test_default_retention_writes_no_per_type_override(caplog: pytest.LogCaptureFixture) -> None:
+    """With equal own-event and activity log retentions, Prefect's general event cleanup alone applies both."""
+    with caplog.at_level(logging.INFO, logger=APP_LOGGER):
+        apply_infrahub_settings_to_prefect()
+
+    assert _app_messages(caplog=caplog, level=logging.INFO) == [
+        f"Task manager retention: {VACUUM_ENABLED}=events,flow_runs",
+        f"Task manager retention: {VACUUM_RETENTION_PERIOD}=P30D",
+        f"Task manager retention: {EVENTS_RETENTION_PERIOD}=P7D",
+        f"Task manager retention: {EVENT_RETENTION_OVERRIDES}={{}}",
+    ]
+    assert get_current_settings().server.services.db_vacuum.event_retention_overrides == {}
+
+
+@pytest.mark.usefixtures("task_manager_environment")
 def test_preset_legacy_variable_is_named_in_the_warning_and_its_value_logged(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:

@@ -177,6 +177,7 @@ def build_prefect_retention_env(settings: TaskManagerRetentionSettings, event_ty
 
     Args:
         event_types: Prefect event types kept for the own-event retention instead of the activity log retention.
+            No type gives an empty mapping, which also replaces Prefect's default override for heartbeats.
 
     """
     own_events = _iso_8601(settings.prefect_own_events)
@@ -206,15 +207,20 @@ def apply_prefect_retention_env(
     """Set the retention variables whose Prefect setting no Prefect source sets, and return the warnings to log.
 
     A Prefect setting that is already set is left as it is, so an operator's explicit Prefect setting keeps
-    precedence, with a warning when it replaces a retention.
+    precedence, with a warning when it replaces a retention. The per-type event overrides are written as an empty
+    mapping when they cannot shorten the event retention that Infrahub writes.
 
     Args:
         already_set: Retention variables whose Prefect setting the environment, a Prefect settings file or the
             active profile already sets, read before any variable is written.
 
     """
+    # Prefect deletes every event older than the general retention anyway, so overrides that are not shorter only
+    # add delete queries.
+    write_overrides = EVENTS_RETENTION_PERIOD in already_set or settings.prefect_own_events < settings.activity_log
+    event_types = PREFECT_EVENT_TYPES if write_overrides else ()
     warnings: list[str] = []
-    for name, value in build_prefect_retention_env(settings=settings, event_types=PREFECT_EVENT_TYPES).items():
+    for name, value in build_prefect_retention_env(settings=settings, event_types=event_types).items():
         if name not in already_set:
             environ[name] = value
             continue

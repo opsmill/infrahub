@@ -90,9 +90,10 @@ class PrefectReadTestCase:
     task_history: str
     activity_log: str
     prefect_own_events: str
+    event_types: tuple[str, ...]
     expected_vacuum_retention: timedelta
     expected_events_retention: timedelta
-    expected_own_events_retention: timedelta
+    expected_overrides: dict[str, timedelta]
 
 
 PREFECT_READ_TEST_CASES: list[PrefectReadTestCase] = [
@@ -101,18 +102,36 @@ PREFECT_READ_TEST_CASES: list[PrefectReadTestCase] = [
         task_history="30d",
         activity_log="365d",
         prefect_own_events="7d",
+        event_types=EVENT_TYPES,
         expected_vacuum_retention=timedelta(days=30),
         expected_events_retention=timedelta(days=365),
-        expected_own_events_retention=timedelta(days=7),
+        expected_overrides={
+            "prefect.flow-run.Completed": timedelta(days=7),
+            "prefect.task-run.Running": timedelta(days=7),
+        },
     ),
     PrefectReadTestCase(
         name="part_below_a_day",
         task_history="P1DT12H",
         activity_log="P400D",
         prefect_own_events="P1DT0.5S",
+        event_types=EVENT_TYPES,
         expected_vacuum_retention=timedelta(days=1, hours=12),
         expected_events_retention=timedelta(days=400),
-        expected_own_events_retention=timedelta(days=1, milliseconds=500),
+        expected_overrides={
+            "prefect.flow-run.Completed": timedelta(days=1, milliseconds=500),
+            "prefect.task-run.Running": timedelta(days=1, milliseconds=500),
+        },
+    ),
+    PrefectReadTestCase(
+        name="no_event_types_replaces_the_heartbeat_default",
+        task_history="30d",
+        activity_log="30d",
+        prefect_own_events="30d",
+        event_types=(),
+        expected_vacuum_retention=timedelta(days=30),
+        expected_events_retention=timedelta(days=30),
+        expected_overrides={},
     ),
 ]
 
@@ -125,7 +144,7 @@ def test_prefect_reads_the_derived_values(monkeypatch: pytest.MonkeyPatch, test_
         activity_log=test_case.activity_log,
         prefect_own_events=test_case.prefect_own_events,
     )
-    for name, value in build_prefect_retention_env(settings=settings, event_types=EVENT_TYPES).items():
+    for name, value in build_prefect_retention_env(settings=settings, event_types=test_case.event_types).items():
         monkeypatch.setenv(name, value)
 
     vacuum = ServerServicesDBVacuumSettings()
@@ -133,10 +152,7 @@ def test_prefect_reads_the_derived_values(monkeypatch: pytest.MonkeyPatch, test_
 
     assert vacuum.enabled_vacuum_types == {"events", "flow_runs", "orphans"}
     assert vacuum.retention_period == test_case.expected_vacuum_retention
-    assert vacuum.event_retention_overrides == {
-        "prefect.flow-run.Completed": test_case.expected_own_events_retention,
-        "prefect.task-run.Running": test_case.expected_own_events_retention,
-    }
+    assert vacuum.event_retention_overrides == test_case.expected_overrides
     assert events.retention_period == test_case.expected_events_retention
 
 
@@ -152,8 +168,57 @@ def test_apply_sets_every_variable_missing_from_the_environment() -> None:
         VACUUM_ENABLED: "events,flow_runs",
         VACUUM_RETENTION_PERIOD: "P30D",
         EVENTS_RETENTION_PERIOD: "P7D",
-        EVENT_RETENTION_OVERRIDES: dict.fromkeys(PREFECT_EVENT_TYPES, "P7D"),
+        EVENT_RETENTION_OVERRIDES: {},
     }
+
+
+@dataclass
+class WrittenOverridesTestCase:
+    name: str
+    activity_log: str
+    prefect_own_events: str
+    already_set: frozenset[str]
+    expected_overrides: dict[str, str]
+
+
+WRITTEN_OVERRIDES_TEST_CASES: list[WrittenOverridesTestCase] = [
+    WrittenOverridesTestCase(
+        name="own_events_shorter",
+        activity_log="7d",
+        prefect_own_events="3d",
+        already_set=frozenset(),
+        expected_overrides=dict.fromkeys(PREFECT_EVENT_TYPES, "P3D"),
+    ),
+    WrittenOverridesTestCase(
+        name="equal_retentions",
+        activity_log="7d",
+        prefect_own_events="7d",
+        already_set=frozenset(),
+        expected_overrides={},
+    ),
+    WrittenOverridesTestCase(
+        name="events_retention_preset",
+        activity_log="7d",
+        prefect_own_events="7d",
+        already_set=frozenset({EVENTS_RETENTION_PERIOD}),
+        expected_overrides=dict.fromkeys(PREFECT_EVENT_TYPES, "P7D"),
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in WRITTEN_OVERRIDES_TEST_CASES])
+def test_overrides_are_written_only_when_they_can_shorten_the_event_retention(
+    test_case: WrittenOverridesTestCase,
+) -> None:
+    """A preset event retention may be longer than prefect_own_events, so the overrides are kept for it."""
+    settings = TaskManagerRetentionSettings(
+        task_history="30d", activity_log=test_case.activity_log, prefect_own_events=test_case.prefect_own_events
+    )
+    environ: dict[str, str] = {}
+
+    apply_prefect_retention_env(environ=environ, settings=settings, already_set=test_case.already_set)
+
+    assert json.loads(environ[EVENT_RETENTION_OVERRIDES]) == test_case.expected_overrides
 
 
 @dataclass
@@ -162,6 +227,7 @@ class PresetVariableTestCase:
     preset: str
     preset_value: str
     expected_value: object
+    expected_overrides: dict[str, str]
     expected_warning: str
 
 
@@ -171,6 +237,7 @@ PRESET_VARIABLE_TEST_CASES: list[PresetVariableTestCase] = [
         preset=VACUUM_RETENTION_PERIOD,
         preset_value="P90D",
         expected_value="P90D",
+        expected_overrides={},
         expected_warning=f"{VACUUM_RETENTION_PERIOD} is set and overrides task_manager.retention.task_history",
     ),
     PresetVariableTestCase(
@@ -178,6 +245,7 @@ PRESET_VARIABLE_TEST_CASES: list[PresetVariableTestCase] = [
         preset=EVENTS_RETENTION_PERIOD,
         preset_value="P14D",
         expected_value="P14D",
+        expected_overrides=dict.fromkeys(PREFECT_EVENT_TYPES, "P7D"),
         expected_warning=f"{EVENTS_RETENTION_PERIOD} is set and overrides task_manager.retention.activity_log",
     ),
     PresetVariableTestCase(
@@ -185,6 +253,7 @@ PRESET_VARIABLE_TEST_CASES: list[PresetVariableTestCase] = [
         preset=EVENT_RETENTION_OVERRIDES,
         preset_value='{"prefect.flow-run.heartbeat": "P1D"}',
         expected_value={"prefect.flow-run.heartbeat": "P1D"},
+        expected_overrides={"prefect.flow-run.heartbeat": "P1D"},
         expected_warning=(
             f"{EVENT_RETENTION_OVERRIDES} is set and overrides task_manager.retention.prefect_own_events"
         ),
@@ -206,7 +275,7 @@ def test_preset_variable_wins_with_a_warning(test_case: PresetVariableTestCase) 
         VACUUM_ENABLED: "events,flow_runs",
         VACUUM_RETENTION_PERIOD: "P30D",
         EVENTS_RETENTION_PERIOD: "P7D",
-        EVENT_RETENTION_OVERRIDES: dict.fromkeys(PREFECT_EVENT_TYPES, "P7D"),
+        EVENT_RETENTION_OVERRIDES: test_case.expected_overrides,
         test_case.preset: test_case.expected_value,
     }
 
@@ -223,7 +292,7 @@ def test_preset_vacuum_switch_is_kept_without_an_override_warning() -> None:
         VACUUM_ENABLED: "[]",
         VACUUM_RETENTION_PERIOD: "P30D",
         EVENTS_RETENTION_PERIOD: "P7D",
-        EVENT_RETENTION_OVERRIDES: dict.fromkeys(PREFECT_EVENT_TYPES, "P7D"),
+        EVENT_RETENTION_OVERRIDES: {},
     }
 
 
