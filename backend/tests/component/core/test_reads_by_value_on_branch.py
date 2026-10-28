@@ -11,6 +11,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.order import OrderByEntry, OrderModel
+from infrahub.core.query.node import NodeGetByHFIDQuery
 from infrahub.core.schema import SchemaRoot
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.constants import TestKind
@@ -484,3 +485,70 @@ class TestHierarchyReadByValueOnBranch:
             (dataset.branch.name, "chi-town"): {"chicago-r1", "chicago-r2"},
             (dataset.branch.name, "europe"): {"paris-r1", "paris-r2", "london-r1", "london-r2"},
         }
+
+
+class TestBranchAgnosticLookupByHFID:
+    """A branch-agnostic HFID lookup returns a node whose HFID is the active value on any branch."""
+
+    @pytest.fixture(scope="class")
+    async def dataset(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        register_core_models_schema_scope_class: SchemaBranch,
+    ) -> BranchDataset:
+        await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+
+        ids: dict[str, str] = {}
+        for key, title, ticket_id in (
+            ("renamed-before-branching", "b-old", 11),
+            ("renamed-on-default", "a-old", 12),
+            ("deleted-on-default", "d-old", 13),
+            ("renamed-on-branch", "c-old", 14),
+        ):
+            ticket = await Node.init(db=db, schema=TestKind.TICKET)
+            await ticket.new(db=db, title=title, ticket_id=ticket_id)
+            await ticket.save(db=db)
+            ids[key] = ticket.id
+
+        await _update(db, default_branch_scope_class, ids["renamed-before-branching"], title={"value": "b-new"})
+        branch = await create_branch(db=db, branch_name="agnostic-hfid")
+        await _update(db, default_branch_scope_class, ids["renamed-on-default"], title={"value": "a-new"})
+        deleted = await NodeManager.get_one(
+            db=db, id=ids["deleted-on-default"], branch=default_branch_scope_class, raise_on_error=True
+        )
+        await deleted.delete(db=db)
+        await _update(db, branch, ids["renamed-on-branch"], title={"value": "c-new"})
+
+        return BranchDataset(branch=branch, ids=ids)
+
+    async def test_lookup_finds_a_value_active_on_any_branch(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, dataset: BranchDataset
+    ) -> None:
+        hfids = {
+            "b-old": ["b-old", "11"],
+            "b-new": ["b-new", "11"],
+            "a-old": ["a-old", "12"],
+            "a-new": ["a-new", "12"],
+            "d-old": ["d-old", "13"],
+            "c-old": ["c-old", "14"],
+            "c-new": ["c-new", "14"],
+        }
+        found: dict[str, set[str]] = {}
+        for title, hfid in hfids.items():
+            query = await NodeGetByHFIDQuery.init(
+                db=db, branch=default_branch_scope_class, node_kind=TestKind.TICKET, hfids=[hfid], branch_agnostic=True
+            )
+            await query.execute(db=db)
+            found[title] = dataset.keys(query.get_node_uuids())
+
+        assert found == {
+            "b-old": set(),
+            "b-new": {"renamed-before-branching"},
+            "a-old": {"renamed-on-default"},
+            "a-new": {"renamed-on-default"},
+            "d-old": {"deleted-on-default"},
+            "c-old": {"renamed-on-branch"},
+            "c-new": {"renamed-on-branch"},
+        }
+

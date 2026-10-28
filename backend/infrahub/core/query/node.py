@@ -38,7 +38,6 @@ from infrahub.core.query.subquery import (
     build_subquery_filter,
     build_subquery_order,
     build_subquery_order_metadata,
-    ranks_latest_value,
 )
 from infrahub.core.query.utils import find_node_schema
 from infrahub.core.schema.attribute_schema import AttributeSchema
@@ -1627,15 +1626,115 @@ class NodeGetByHFIDQuery(Query):
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        branch_filter, branch_params = self.branch.get_query_filter_path(
-            at=self.at, branch_agnostic=self.branch_agnostic
-        )
-        self.params.update(branch_params)
-
         # The list is stored as a string in the database
         self.params["hfid_values"] = [ujson.dumps(hfid) for hfid in self.hfids]
 
-        query = """
+        query = self._build_branch_agnostic_query() if self.branch_agnostic else self._build_branch_query()
+        self.add_to_query(query)
+        self.return_labels = ["DISTINCT n.uuid AS node_uuid", "av.value AS hfid"]
+
+    def _build_branch_agnostic_query(self) -> str:
+        """Match a node whose HFID is the active value on at least one branch.
+
+        Each branch reads its own edges at the requested time and its origin branch's edges at the time it
+        branched, so an edge the default branch closed after a branch was created stays active on that branch.
+        """
+        self.params["at"] = self.at.to_string()
+        self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
+        window_filter = """(
+            r.branch IN [$global_branch_name, window.name]
+            AND r.from <= $at AND (r.to IS NULL OR r.to > $at)
+        ) OR (
+            r.branch = window.origin_name
+            AND r.from <= window.origin_at AND (r.to IS NULL OR r.to > window.origin_at)
+        )"""
+
+        return """
+        // --------------------------
+        // Read the window of every branch once
+        // --------------------------
+        MATCH (branch:Branch)
+        WHERE branch.name <> $global_branch_name
+        AND branch.status <> "DELETING"
+        WITH collect({
+            name: branch.name,
+            origin_name: CASE WHEN branch.is_default THEN NULL ELSE branch.origin_branch END,
+            origin_at: CASE
+                WHEN branch.is_default THEN NULL
+                WHEN branch.branched_from < $at THEN branch.branched_from
+                ELSE $at
+            END
+        }) AS branch_windows
+        // --------------------------
+        // Start from the indexed HFID value to ensure the query planner
+        // uses the AttributeValueIndexed index. HFIDs larger than
+        // MAX_STRING_LENGTH are not indexed and thus not searchable.
+        // --------------------------
+        MATCH (av:AttributeValueIndexed)
+        WHERE av.value IN $hfid_values
+        MATCH (av)<-[:HAS_VALUE]-(attr:Attribute {name: "human_friendly_id"})<-[:HAS_ATTRIBUTE]-(n:%(node_kind)s)
+        WITH DISTINCT n, attr, av, branch_windows
+        // --------------------------
+        // Keep the branches on which the node is active
+        // --------------------------
+        CALL (n, branch_windows) {
+            UNWIND branch_windows AS window
+            CALL (n, window) {
+                MATCH (n)-[r:IS_PART_OF]->(:Root)
+                WHERE %(window_filter)s
+                RETURN r
+                ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+                LIMIT 1
+            }
+            WITH window, r
+            WHERE r.status = "active"
+            RETURN collect(window) AS node_windows
+        }
+        WITH n, attr, av, node_windows
+        WHERE size(node_windows) > 0
+        // --------------------------
+        // Of those, keep the branches on which the attribute is linked to the node
+        // --------------------------
+        CALL (n, attr, node_windows) {
+            UNWIND node_windows AS window
+            CALL (n, attr, window) {
+                MATCH (attr)<-[r:HAS_ATTRIBUTE]-(n)
+                WHERE %(window_filter)s
+                RETURN r
+                ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+                LIMIT 1
+            }
+            WITH window, r
+            WHERE r.status = "active"
+            RETURN collect(window) AS attribute_windows
+        }
+        WITH n, attr, av, attribute_windows
+        WHERE size(attribute_windows) > 0
+        // --------------------------
+        // Keep the node if the HFID is the latest value on one of those branches
+        // --------------------------
+        CALL (attr, av, attribute_windows) {
+            UNWIND attribute_windows AS window
+            CALL (attr, window) {
+                MATCH (attr)-[r:HAS_VALUE]->(latest_av:AttributeValue)
+                WHERE %(window_filter)s
+                RETURN r, latest_av
+                ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+                LIMIT 1
+            }
+            WITH av, r, latest_av
+            WHERE r.status = "active" AND latest_av.value = av.value
+            RETURN r AS matching_value_edge
+            LIMIT 1
+        }
+        WITH n, av
+        """ % {"node_kind": self.node_kind, "window_filter": window_filter}
+
+    def _build_branch_query(self) -> str:
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)
+        self.params.update(branch_params)
+
+        return """
         // --------------------------
         // Start from the indexed HFID value to ensure the query planner
         // uses the AttributeValueIndexed index. HFIDs larger than
@@ -1670,9 +1769,6 @@ class NodeGetByHFIDQuery(Query):
         }
         WITH n, attr, av
         WHERE r.status = "active"
-        """
-        if ranks_latest_value(branch=self.branch, branch_agnostic=self.branch_agnostic):
-            query += """
         // --------------------------
         // Keep the HFID only if it is the latest value of the attribute:
         // on a branch, the default branch's edge to a replaced value stays open
@@ -1686,30 +1782,10 @@ class NodeGetByHFIDQuery(Query):
         }
         WITH n, av, r, latest_av
         WHERE r.status = "active" AND latest_av.value = av.value
-        """
-        else:
-            query += """
-        // --------------------------
-        // Filter HAS_VALUE edges to resolve the active value
-        // on the correct branch at the requested point in time
-        // --------------------------
-        CALL (av, attr) {
-            MATCH (av)<-[r:HAS_VALUE]-(attr)
-            WHERE %(branch_filter)s
-            RETURN r
-            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-            LIMIT 1
-        }
-        WITH n, av, r
-        WHERE r.status = "active"
-        """
-        query %= {
+        """ % {
             "branch_filter": branch_filter,
             "node_kind": self.node_kind,
         }
-
-        self.add_to_query(query)
-        self.return_labels = ["DISTINCT n.uuid AS node_uuid", "av.value AS hfid"]
 
     def get_node_uuids(self) -> list[str]:
         """Get the list of node UUIDs from the query results."""
@@ -2530,9 +2606,6 @@ class NodeGetListByAttributeValueQuery(Query):
         // --------------------------
         MATCH (av:AttributeValueIndexed)<-[:HAS_VALUE]-(attr:Attribute)<-[:HAS_ATTRIBUTE]-(n)
         WHERE %(search_predicate)s %(kind_filter)s
-        """
-        if ranks_latest_value(branch=self.branch, branch_agnostic=self.branch_agnostic):
-            query += """
         // --------------------------
         // Search the latest value of each candidate attribute:
         // on a branch, the default branch's edge to a replaced value stays open
@@ -2548,24 +2621,6 @@ class NodeGetListByAttributeValueQuery(Query):
         WITH n, attr, av, r
         WHERE r.status = "active" AND av:AttributeValueIndexed AND %(search_predicate)s
         WITH n, attr
-        """
-        else:
-            query += """
-        WITH DISTINCT n, attr, av
-        // --------------------------
-        // filter HAS_VALUE edges
-        // --------------------------
-        CALL (av, attr) {
-            MATCH (av)<-[r:HAS_VALUE]-(attr)
-            WHERE %(branch_filter)s
-            RETURN r
-            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-            LIMIT 1
-        }
-        WITH n, attr
-        WHERE r.status = "active"
-        """
-        query += """
         // --------------------------
         // filter HAS_ATTRIBUTE edges
         // --------------------------
@@ -2578,8 +2633,7 @@ class NodeGetListByAttributeValueQuery(Query):
         }
         WITH n, attr, r
         WHERE r.status = "active"
-        """
-        query %= {
+        """ % {
             "search_predicate": search_predicate,
             "kind_filter": kind_filter,
             "branch_filter": branch_filter,
