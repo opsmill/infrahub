@@ -1,4 +1,4 @@
-# Phase 7 — Report
+# Phase 8 — Report
 
 If files were set aside, restore them first: `git stash apply <sha>`, then drop that entry
 (`git stash list --format='%gd %H'` gives its reference).
@@ -49,10 +49,23 @@ Requirement from: <spec path | ticket or issue link | PR description | the user>
 ### Out of scope (excluded paths)
 - `file:line` — <finding> (<source>) — not counted above
 
-### Gaps in the rules
-<findings declined because a rule did not say so, and changed areas no rule covers>
+### Rejected by you
+- `file:line` — <finding> (<source>): <reason given>
+
+### Proposed improvements
+Rules and index:
+- `<target path>` — <change in one line> (<the finding or file that shows the need>; <new | proposed in n runs | rejected on <date>: new reason>)
+
+Knowledge and guideline articles:
+- `<article path:line>` — "<old sentence>" → "<new sentence>" (shown by `file:line`)
+
+This skill:
+- `<SKILL.md | references/<file>>`, <step> — <change in one line> (<what happened in this run>)
 ```
 
 Save the report to `$(git rev-parse --git-common-dir)/reviewing-changes/<branch>.md`, replacing
 any earlier one. Inside `.git` it is never committed and every worktree of the repository can
 read it.
+
+Then follow "After the report" in `references/improve.md`: ask which proposals to apply, and log
+the decisions.

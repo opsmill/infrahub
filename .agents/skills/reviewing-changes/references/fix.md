@@ -2,7 +2,7 @@
 
 Show the classified list and wait for approval. Fix the approved items with the smallest change
 each, run the checks in the touched area's `AGENTS.md`, and do not commit: the user reviews the
-fixes.
+fixes. Note each finding the user rejects, with the reason they give: Phase 7 uses them.
 
 A browser-mode Vitest or Playwright timeout in a file the fixes did not touch can come from load
 on the machine, for example other agents driving browsers at the same time. Rerun the failing

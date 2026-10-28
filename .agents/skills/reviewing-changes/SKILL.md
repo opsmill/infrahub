@@ -5,7 +5,7 @@ description: >-
 argument-hint: <empty for the current branch, or a base branch (develop); add `report` to review without fixing; `compare <PR number>` after the PR review>
 compatibility: A Claude Code session started at the repository root, with `origin` fetched. The `gh` CLI finds the PR base and description. The cubic CLI is optional (`curl -fsSL https://cubic.dev/install | bash`, `cubic auth login`, and a seat on OpsMill's subscription).
 metadata:
-  version: 3.4.0
+  version: 3.5.0
   author: OpsMill
 ---
 
@@ -29,7 +29,8 @@ push. It does not repeat other tools:
   Grep and Glob calls. Read and Write load them natively.
 - **This skill adds** a challenge of the approach against its requirement, the rule check, the
   design and per-file checks, the checks the diff cannot show, a local cubic run, one verified
-  list of findings, and the fixes, each checked by a reviewer that did not write it.
+  list of findings, the fixes, each checked by a reviewer that did not write it, and proposed
+  changes to the rules, the docs and this skill.
 
 With `compare <PR number>` in the arguments, read `references/compare.md` and follow it instead
 of the phases.
@@ -44,8 +45,8 @@ current steps, and a step run from memory misses the checks added since.
 | File | Read when |
 |---|---|
 | `references/fix.md` | Phase 6 starts, unless the run is report-only |
-| `references/report.md` | Phase 7 starts |
-| `references/improve.md` | the report is saved, and at the end of a compare |
+| `references/improve.md` | Phase 7 starts, and at the end of a compare |
+| `references/report.md` | Phase 8 starts |
 | `references/compare.md` | the arguments contain `compare <PR number>` |
 
 The report lists every file of `references/` read during the run. A file missing from that list
@@ -241,7 +242,9 @@ in scope), spawn one reviewer per area (read-only), with `.agents/rules/code-des
    `.venv/lib/.../site-packages/...`) before deciding. When it depends on framework behaviour the
    repository already handles (React Compiler memoization, generic schema kinds), check the rules
    and `AGENTS.md` first; record such a cubic comment as "wrong because cubic lacks the rule" and
-   propose the matching `cubic.yaml` entry. Then classify it:
+   propose the matching `cubic.yaml` entry. When the code you read contradicts a `dev/` article,
+   or you had to find a fact in the code that no article states, note it for Phase 7.
+   Then classify it:
    **Fix** (real, part of this change), **Decline** (contradicts a "Not violations" list or does
    not survive the source; one-sentence reason) or **Defer** (real, outside this change).
    Corrections to an open PR's description are Defer, with the corrected sentence: they change
@@ -268,10 +271,13 @@ Skip for a report-only run. Otherwise read `references/fix.md` and follow it: ap
 fixes, the review of the fixes for up to three rounds, and the records outside the code that a
 fix makes out of date.
 
-## Phase 7 — Report
+## Phase 7 — Propose improvements
 
-Read `references/report.md` and follow it: the report template and where to save the report.
+Read `references/improve.md` and follow it: draft the changes to the rules, the index, the
+knowledge articles and this skill that this run shows a need for, checked against the log of
+earlier proposals. This phase also runs in a report-only run.
 
-## After the report
+## Phase 8 — Report
 
-Read `references/improve.md` and propose the changes it lists.
+Read `references/report.md` and follow it: the report template, where to save the report, and
+the decision on each proposal.
