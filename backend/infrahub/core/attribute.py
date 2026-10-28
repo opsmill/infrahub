@@ -834,7 +834,7 @@ class Integer(BaseAttribute):
 
     @classmethod
     def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
-        """Make sure boolean objects and numbers the database cannot store are not accepted as value.
+        """Make sure boolean objects are not accepted as value.
 
         Need to override `validate_format`
         as `isinstance(True, int)` is True.
@@ -850,6 +850,16 @@ class Integer(BaseAttribute):
         # Note that we might want to do this check directly in parent function.
         if value_to_check.__class__ != cls.type:
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"})
+
+    @classmethod
+    def validate_content(cls, value: Any, name: str, schema: AttributeSchema) -> None:
+        """Refuse a number the database cannot store, then apply the checks shared by every attribute.
+
+        Raises:
+            ValidationError: When the value is outside the supported range of numbers, or fails a shared check.
+
+        """
+        value_to_check = value.value if schema.enum and isinstance(value, Enum) else value
         if not MIN_SUPPORTED_INTEGER <= value_to_check <= MAX_SUPPORTED_INTEGER:
             raise ValidationError(
                 {
@@ -859,6 +869,7 @@ class Integer(BaseAttribute):
                     )
                 }
             )
+        super().validate_content(value=value, name=name, schema=schema)
 
 
 class IntegerOptional(Integer):

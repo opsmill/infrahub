@@ -254,14 +254,12 @@ def number_schema() -> AttributeSchema:
 
 
 @pytest.mark.parametrize("value", [-9223372036854775807, 0, 9223372036854775807])
-def test_validate_format_number_accepts_a_value_within_the_supported_range(
-    number_schema: AttributeSchema, value: int
-) -> None:
-    Integer.validate_format(value=value, name=number_schema.name, schema=number_schema)
+def test_validate_number_accepts_a_value_within_the_supported_range(number_schema: AttributeSchema, value: int) -> None:
+    assert Integer.validate(value=value, name=number_schema.name, schema=number_schema)
 
 
 @pytest.mark.parametrize("value", [-9223372036854775808, 9223372036854775808, 9223372036854776000])
-def test_validate_format_number_refuses_a_value_outside_the_supported_range(
+def test_validate_number_refuses_a_value_outside_the_supported_range(
     number_schema: AttributeSchema, value: int
 ) -> None:
     with pytest.raises(
@@ -271,4 +269,4 @@ def test_validate_format_number_refuses_a_value_outside_the_supported_range(
             r"\(-9223372036854775807 to 9223372036854775807\) at vlan_id$"
         ),
     ):
-        Integer.validate_format(value=value, name=number_schema.name, schema=number_schema)
+        Integer.validate(value=value, name=number_schema.name, schema=number_schema)

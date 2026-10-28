@@ -1,10 +1,10 @@
-import sys
 from dataclasses import dataclass
 from typing import Any
 
 import pydantic
 import pytest
 
+from infrahub.constants.database import MAX_SUPPORTED_INTEGER, MIN_SUPPORTED_INTEGER
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters, NumberPoolRangeParameters
 
 
@@ -167,11 +167,15 @@ def test_refused_declaration(test_case: RefusedDeclarationTestCase) -> None:
 
 def test_declaration_on_the_supported_limits_is_accepted() -> None:
     parameters = NumberPoolParameters(
-        ranges=[NumberPoolRangeParameters(start=-sys.maxsize, end=sys.maxsize, weight=sys.maxsize)],
+        ranges=[
+            NumberPoolRangeParameters(
+                start=MIN_SUPPORTED_INTEGER, end=MAX_SUPPORTED_INTEGER, weight=MAX_SUPPORTED_INTEGER
+            )
+        ],
     )
 
     assert [(item.start, item.end, item.weight) for item in parameters.effective_ranges()] == [
-        (-sys.maxsize, sys.maxsize, sys.maxsize)
+        (MIN_SUPPORTED_INTEGER, MAX_SUPPORTED_INTEGER, MAX_SUPPORTED_INTEGER)
     ]
 
 
@@ -195,8 +199,10 @@ class OpenPoolSizeTestCase:
 
 
 OPEN_POOL_SIZE_TEST_CASES: list[OpenPoolSizeTestCase] = [
-    OpenPoolSizeTestCase(name="nothing_declared", parameters={}, expected=sys.maxsize),
-    OpenPoolSizeTestCase(name="start_only_shorthand", parameters={"start_range": 101}, expected=sys.maxsize - 100),
+    OpenPoolSizeTestCase(name="nothing_declared", parameters={}, expected=MAX_SUPPORTED_INTEGER),
+    OpenPoolSizeTestCase(
+        name="start_only_shorthand", parameters={"start_range": 101}, expected=MAX_SUPPORTED_INTEGER - 100
+    ),
     OpenPoolSizeTestCase(name="open_start_range", parameters={"ranges": [{"end": 50}]}, expected=50),
 ]
 
@@ -213,7 +219,7 @@ def test_hash_of_a_range_with_open_bounds_is_stable_and_differs_from_the_resolve
     second = NumberPoolParameters(ranges=[open_start.duplicate(), open_end.duplicate()])
     resolved = NumberPoolParameters(
         ranges=[
-            NumberPoolRangeParameters(start=205, end=sys.maxsize),
+            NumberPoolRangeParameters(start=205, end=MAX_SUPPORTED_INTEGER),
             NumberPoolRangeParameters(start=1, end=200, weight=10),
         ]
     )

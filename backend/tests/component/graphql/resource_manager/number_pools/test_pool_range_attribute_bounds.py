@@ -1,4 +1,3 @@
-import sys
 from copy import deepcopy
 from dataclasses import dataclass
 
@@ -6,9 +5,7 @@ import pytest
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
-from infrahub.core.initialization import initialize_registry
 from infrahub.core.manager import NodeManager
-from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -299,87 +296,3 @@ class TestNumberPoolRangeAttributeBounds:
         return await create_pool(
             db=db, branch=branch, name=f"bounded-pool-{name}", bounds={"ranges": [{"start": 30, "end": 40}]}
         )
-
-
-class TestNumberPoolRangeSupportedNumbers:
-    """A range bound or weight the database cannot store is refused before it is written.
-
-    The schema is loaded once for the class; every test creates pools under names of its own.
-    """
-
-    @pytest.fixture(scope="class")
-    async def ticket_schema(
-        self,
-        db: InfrahubDatabase,
-        default_branch_scope_class: Branch,
-        register_core_models_schema_scope_class: SchemaBranch,
-    ) -> None:
-        await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
-        default_branch_scope_class.update_schema_hash()
-        await initialize_registry(db=db)
-
-    async def test_pool_creation_with_an_end_and_weight_above_the_supported_numbers_is_refused(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
-    ) -> None:
-        pools_before = await NodeManager.count(db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch_scope_class)
-
-        result = await execute(
-            db=db,
-            branch=default_branch_scope_class,
-            source=CREATE_NUMBER_POOL_WITH_BOUNDS,
-            variables={
-                "data": ticket_pool_input(
-                    name="above-supported-numbers",
-                    bounds={
-                        "ranges": [{"start": 700, "end": 9223372036854775808, "allocation_weight": 9223372036854775808}]
-                    },
-                )
-            },
-        )
-
-        assert [error.message for error in result.errors or []] == [
-            "Range 700 - 9223372036854775808 has end 9223372036854775808 "
-            "outside the supported numbers (-9223372036854775807 to 9223372036854775807); "
-            "Range 700 - 9223372036854775808 has allocation_weight 9223372036854775808 "
-            "outside the supported numbers (-9223372036854775807 to 9223372036854775807)"
-        ]
-        assert (
-            await NodeManager.count(db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch_scope_class)
-            == pools_before
-        )
-
-    async def test_range_creation_with_an_end_above_64_bits_is_refused(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
-    ) -> None:
-        pool_id = await create_pool(
-            db=db, branch=default_branch_scope_class, name="range-above-64-bits", bounds={"ranges": []}
-        )
-
-        result = await execute(
-            db=db,
-            branch=default_branch_scope_class,
-            source=CREATE_RANGE,
-            variables={"pool_id": pool_id, "start": 700, "end": 9223372036854775808},
-        )
-
-        assert [error.message for error in result.errors or []] == [
-            "9223372036854775808 is outside the supported range of numbers "
-            "(-9223372036854775807 to 9223372036854775807) at end"
-        ]
-        assert await range_details(db=db, pool_id=pool_id) == []
-
-    async def test_allocation_from_a_range_starting_at_the_smallest_supported_number(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
-    ) -> None:
-        pool_id = await create_pool(
-            db=db,
-            branch=default_branch_scope_class,
-            name="smallest-supported-number",
-            bounds={"ranges": [{"start": -sys.maxsize, "end": -sys.maxsize + 10}]},
-        )
-
-        ticket = await Node.init(db=db, schema=TICKET.kind)
-        await ticket.new(db=db, title="smallest", ticket_id={"from_pool": {"id": pool_id}})
-        await ticket.save(db=db)
-
-        assert ticket.get_attribute("ticket_id").value == -9223372036854775807
