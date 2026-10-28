@@ -258,8 +258,6 @@ CALL (n) {
 
 @dataclass(frozen=True)
 class BranchGetIdsByNameQueryResult:
-    """Result from BranchGetIdsByNameQuery."""
-
     name: str
     uuid: str
 
