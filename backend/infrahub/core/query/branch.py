@@ -265,7 +265,10 @@ class BranchGetIdsByNameQueryResult:
 
 
 class BranchGetIdsByNameQuery(Query):
-    """Read the ID of every branch with one of the names, including a branch whose deletion has started."""
+    """Read one branch ID per name, preferring a branch whose deletion has not started.
+
+    A delete that fails partway leaves its branch in DELETING under the same name as a branch created afterwards.
+    """
 
     name: str = "branch_get_ids_by_name"
     type: QueryType = QueryType.READ
@@ -276,12 +279,16 @@ class BranchGetIdsByNameQuery(Query):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["names"] = self.names
+        self.params["deleting_status"] = BranchStatus.DELETING.value
         query = """
         MATCH (n:Branch)
         WHERE n.name IN $names
+        WITH n
+        ORDER BY CASE n.status WHEN $deleting_status THEN 1 ELSE 0 END, n.uuid DESC
+        WITH n.name AS name, head(collect(n.uuid)) AS uuid
         """
         self.add_to_query(query)
-        self.return_labels = ["n.name AS name", "n.uuid AS uuid"]
+        self.return_labels = ["name", "uuid"]
 
     def get_data(self) -> Generator[BranchGetIdsByNameQueryResult, None, None]:
         for result in self.get_results():

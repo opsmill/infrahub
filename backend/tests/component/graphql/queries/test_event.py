@@ -849,6 +849,56 @@ async def test_event_query_branch_name_of_a_branch_being_deleted(
     assert [edge["node"]["id"] for edge in result.data["InfrahubEvent"]["edges"]] == [rebased.get_id()]
 
 
+@pytest.mark.parametrize(
+    "deleting_saved_first",
+    [
+        pytest.param(True, id="deleting-branch-saved-first"),
+        pytest.param(False, id="current-branch-saved-first"),
+    ],
+)
+async def test_event_query_branch_name_held_by_a_current_and_a_deleting_branch(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    prefect_client: PrefectClient,
+    session_admin: AccountSession,
+    deleting_saved_first: bool,
+) -> None:
+    """A name that a current branch shares with a branch whose deletion has started resolves to the current branch."""
+    name = f"reused-{_TEST_ID}-{int(deleting_saved_first)}"
+    first_branch = await create_branch(branch_name=name, db=db)
+    second_branch = await create_branch(branch_name=name, db=db)
+    deleting_branch, current_branch = (
+        (first_branch, second_branch) if deleting_saved_first else (second_branch, first_branch)
+    )
+    deleting_branch.status = BranchStatus.DELETING
+    await deleting_branch.save(db=db)
+    deleting_rebased = BranchRebasedEvent(
+        branch_name=name,
+        branch_id=str(deleting_branch.get_uuid()),
+        meta=dummy_event_meta(branch=deleting_branch),
+    )
+    current_rebased = BranchRebasedEvent(
+        branch_name=name,
+        branch_id=str(current_branch.get_uuid()),
+        meta=dummy_event_meta(branch=current_branch),
+    )
+    await send_events(client=prefect_client, events=[deleting_rebased, current_rebased])
+
+    result = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_EVENT,
+        variables={"branch": [name]},
+        account_session=session_admin,
+    )
+
+    assert result.errors is None
+    assert result.data
+    assert result.data["InfrahubEvent"]["count"] == 1
+    assert [edge["node"]["id"] for edge in result.data["InfrahubEvent"]["edges"]] == [current_rebased.get_id()]
+
+
 @pytest.fixture
 async def group_auto_create_events(
     default_branch: Branch,
