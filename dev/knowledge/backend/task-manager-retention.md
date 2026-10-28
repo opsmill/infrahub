@@ -114,6 +114,9 @@ database, and can then rewrite the tables to return the disk space.
   A `VACUUM FULL` waiting for its lock makes every
   later query on the table queue behind it, hence the short lock timeout; a cancelled `VACUUM FULL`
   leaves the table as it was, so the statement timeout only bounds how long the table stays locked.
+  A table whose rewrite always takes longer than the timeout is never rewritten by the job: each run
+  locks it for the full 60 seconds and is stopped again, and the limit has no setting, so the
+  operator docs give a manual `VACUUM FULL` during a maintenance window.
   The job lists the tables in `rewritten`, `mostly_live` (left because their live rows take at
   least half of their size), `not_rewritten` (still locked after the retries), `timed_out`
   (stopped at the statement timeout) and `failed` (another error from the database server, such as
