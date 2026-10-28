@@ -12,14 +12,14 @@ from typer.testing import CliRunner
 
 from infrahub.cli import app
 from infrahub.cli.tasks import run_background_services
-from infrahub.prefect_server.retention import (
+from tests.helpers.task_manager_retention import (
     EVENT_RETENTION_OVERRIDES,
     EVENTS_RETENTION_PERIOD,
-    PREFECT_EVENT_TYPES,
+    PREFECT_RETENTION_VARIABLES,
     VACUUM_ENABLED,
     VACUUM_RETENTION_PERIOD,
+    unloaded_task_manager_retention,
 )
-from tests.helpers.task_manager_retention import PREFECT_RETENTION_VARIABLES, unloaded_task_manager_retention
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -30,7 +30,7 @@ APP_LOGGER = "infrahub.prefect_server.app"
 
 @pytest.fixture
 def task_manager_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Generator[None, None, None]:
-    with unloaded_task_manager_retention(monkeypatch=monkeypatch, config_file=tmp_path / "absent.toml"):
+    with unloaded_task_manager_retention(monkeypatch=monkeypatch, directory=tmp_path):
         yield
 
 
@@ -76,14 +76,14 @@ def test_the_retention_is_applied_before_the_services_start(tmp_path: Path, capl
     starter = RecordingServicesStarter(caplog=caplog)
 
     with caplog.at_level(logging.INFO, logger=APP_LOGGER):
-        run_background_services(config_file=str(config_file), start_services=starter)
+        run_background_services(config_file=config_file, start_services=starter)
 
     assert [start.logged for start in starter.starts] == [
         [
             f"Task manager retention: {VACUUM_ENABLED}=events,flow_runs",
             f"Task manager retention: {VACUUM_RETENTION_PERIOD}=P45D",
             f"Task manager retention: {EVENTS_RETENTION_PERIOD}=P7D",
-            f"Task manager retention: {EVENT_RETENTION_OVERRIDES}=P7D for {len(PREFECT_EVENT_TYPES)} event types",
+            f"Task manager retention: {EVENT_RETENTION_OVERRIDES}={{}}",
         ]
     ]
 
@@ -100,7 +100,7 @@ def test_the_services_read_the_retention_derived_from_the_configuration(
     )
     starter = RecordingServicesStarter(caplog=caplog)
 
-    run_background_services(config_file=str(config_file), start_services=starter)
+    run_background_services(config_file=config_file, start_services=starter)
 
     assert [
         (start.vacuum_types, start.task_history, start.activity_log, start.own_events) for start in starter.starts

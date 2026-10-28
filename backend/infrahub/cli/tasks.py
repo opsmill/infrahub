@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import UTC, timedelta
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import httpx
@@ -93,7 +94,7 @@ async def execute(
         print(result)
 
 
-def run_background_services(config_file: str, start_services: Callable[[], None]) -> None:
+def run_background_services(config_file: Path, start_services: Callable[[], None]) -> None:
     """Apply the retention of the configuration to Prefect's settings, then run the services until they stop."""
     apply_infrahub_settings_to_prefect(config_file=config_file)
     start_services()
@@ -104,7 +105,7 @@ def background_services(
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
     """Run the task manager's background services in the foreground, with the retention set in the configuration."""
-    run_background_services(config_file=config_file, start_services=start_prefect_services)
+    run_background_services(config_file=Path(config_file), start_services=start_prefect_services)
 
 
 flush_app = AsyncTyper()

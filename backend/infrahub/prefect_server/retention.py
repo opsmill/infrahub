@@ -279,16 +279,17 @@ def apply_prefect_retention_env(
     return warnings
 
 
-def background_services_warning(environ: Mapping[str, str]) -> str | None:
-    """Return the warning to log when Prefect's background services, which delete old records, run in another process."""
+def background_services_notice(environ: Mapping[str, str]) -> str | None:
+    """Return the message to log when Prefect's background services, which delete old records, run in another process."""
     # Prefect's server reads any non-empty value of this variable as true, "false" included.
     if not environ.get(WEBSERVER_ONLY):
         return None
     return (
         f"Task manager retention: {WEBSERVER_ONLY} is set, so this process does not run Prefect's background "
-        "services, which delete old task runs and events. The process that runs them, such as "
-        "`prefect server services start`, does not read task_manager.retention: unless it sets the same PREFECT_* "
-        "variables, it deletes no task runs and keeps events for Prefect's default of 7 days."
+        "services, which delete old task runs and events. Start them with `infrahub tasks background-services`, "
+        "which applies task_manager.retention. `prefect server services start` does not read "
+        "task_manager.retention: unless it sets the same PREFECT_* variables, it deletes no task runs and keeps "
+        "events for Prefect's default of 7 days."
     )
 
 

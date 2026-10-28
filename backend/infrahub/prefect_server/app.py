@@ -22,7 +22,7 @@ from .bootstrap import init_prefect
 from .database import read_stored_event_types
 from .retention import (
     apply_prefect_retention_env,
-    background_services_warning,
+    background_services_notice,
     event_types_with_retention_override,
     prefect_retention_already_set,
     prefect_retention_in_effect,
@@ -142,8 +142,9 @@ def create_prefect_app_with_infrahub_routes() -> FastAPI:
 def create_infrahub_prefect() -> FastAPI:
     """Build the task manager app with Prefect's settings derived from Infrahub's configuration."""
     apply_infrahub_settings_to_prefect()
-    if warning := background_services_warning(environ=os.environ):
-        log.warning(warning)
+    # A correct setup with the services in their own process also logs this, so it is not a warning.
+    if notice := background_services_notice(environ=os.environ):
+        log.info(notice)
 
     if (
         os.getenv("PREFECT_API_BLOCKS_REGISTER_ON_START") == "false"

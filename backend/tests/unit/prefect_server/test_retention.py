@@ -14,7 +14,7 @@ from infrahub.config import TaskManagerRetentionSettings
 from infrahub.prefect_server.retention import (
     PREFECT_EVENT_TYPES,
     apply_prefect_retention_env,
-    background_services_warning,
+    background_services_notice,
     build_prefect_retention_env,
     deletes_old_events,
     event_types_with_retention_override,
@@ -715,39 +715,40 @@ def test_retention_in_effect_is_read_from_prefects_parsed_settings(
     assert prefect_retention_in_effect(settings=Settings()) == test_case.expected
 
 
-BACKGROUND_SERVICES_WARNING = (
+BACKGROUND_SERVICES_NOTICE = (
     "Task manager retention: PREFECT__SERVER_WEBSERVER_ONLY is set, so this process does not run Prefect's "
-    "background services, which delete old task runs and events. The process that runs them, such as "
-    "`prefect server services start`, does not read task_manager.retention: unless it sets the same PREFECT_* "
-    "variables, it deletes no task runs and keeps events for Prefect's default of 7 days."
+    "background services, which delete old task runs and events. Start them with "
+    "`infrahub tasks background-services`, which applies task_manager.retention. `prefect server services start` "
+    "does not read task_manager.retention: unless it sets the same PREFECT_* variables, it deletes no task runs and "
+    "keeps events for Prefect's default of 7 days."
 )
 
 
 @dataclass
-class BackgroundServicesWarningTestCase:
+class BackgroundServicesNoticeTestCase:
     name: str
     environ: dict[str, str]
-    expected_warning: str | None
+    expected_notice: str | None
 
 
-BACKGROUND_SERVICES_WARNING_TEST_CASES: list[BackgroundServicesWarningTestCase] = [
-    BackgroundServicesWarningTestCase(name="unset", environ={}, expected_warning=None),
-    BackgroundServicesWarningTestCase(name="empty", environ={WEBSERVER_ONLY: ""}, expected_warning=None),
-    BackgroundServicesWarningTestCase(
-        name="true", environ={WEBSERVER_ONLY: "true"}, expected_warning=BACKGROUND_SERVICES_WARNING
+BACKGROUND_SERVICES_NOTICE_TEST_CASES: list[BackgroundServicesNoticeTestCase] = [
+    BackgroundServicesNoticeTestCase(name="unset", environ={}, expected_notice=None),
+    BackgroundServicesNoticeTestCase(name="empty", environ={WEBSERVER_ONLY: ""}, expected_notice=None),
+    BackgroundServicesNoticeTestCase(
+        name="true", environ={WEBSERVER_ONLY: "true"}, expected_notice=BACKGROUND_SERVICES_NOTICE
     ),
-    BackgroundServicesWarningTestCase(
-        name="false_is_still_set", environ={WEBSERVER_ONLY: "false"}, expected_warning=BACKGROUND_SERVICES_WARNING
+    BackgroundServicesNoticeTestCase(
+        name="false_is_still_set", environ={WEBSERVER_ONLY: "false"}, expected_notice=BACKGROUND_SERVICES_NOTICE
     ),
 ]
 
 
-@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in BACKGROUND_SERVICES_WARNING_TEST_CASES])
-def test_background_services_warning_follows_prefects_reading_of_the_variable(
-    test_case: BackgroundServicesWarningTestCase,
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in BACKGROUND_SERVICES_NOTICE_TEST_CASES])
+def test_background_services_notice_follows_prefects_reading_of_the_variable(
+    test_case: BackgroundServicesNoticeTestCase,
 ) -> None:
-    """Prefect runs only its web server for any non-empty value of the variable, so the warning follows the same rule."""
-    assert background_services_warning(environ=test_case.environ) == test_case.expected_warning
+    """Prefect runs only its web server for any non-empty value of the variable, so the notice follows the same rule."""
+    assert background_services_notice(environ=test_case.environ) == test_case.expected_notice
 
 
 EVENT_PERSISTER_ENABLED = "PREFECT_SERVER_SERVICES_EVENT_PERSISTER_ENABLED"
