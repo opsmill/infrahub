@@ -223,3 +223,33 @@ async def test_total_is_counted_over_the_whole_range_only_when_requested(
     assert counted["total"] == 6
     assert [event["id"] for event in not_counted["events"]] == seeded.sparse[:1]
     assert not_counted["total"] is None
+
+
+@pytest.mark.parametrize("order", [EventSortOrder.DESC, EventSortOrder.ASC])
+@pytest.mark.usefixtures("seeded")
+async def test_a_range_reaching_before_year_1_starts_at_the_earliest_time(
+    order: EventSortOrder, prefect_client: PrefectClient
+) -> None:
+    """A range whose retention reaches before year 1 starts at the earliest datetime instead of failing."""
+    event_filter = InfrahubEventFilter.from_filters(
+        order=order, account__ids=[SPARSE_ACCOUNT], until=datetime(1, 1, 2, tzinfo=UTC)
+    )
+
+    page = await filter_events(client=prefect_client, event_filter=event_filter, limit=10, include_total=True)
+
+    assert page == {"events": [], "total": 0}
+
+
+@pytest.mark.usefixtures("seeded")
+async def test_a_window_reaching_before_year_1_starts_at_the_earliest_time(prefect_client: PrefectClient) -> None:
+    """A time window that reaches before year 1 starts at the earliest datetime instead of failing."""
+    event_filter = InfrahubEventFilter.from_filters(
+        order=EventSortOrder.DESC,
+        account__ids=[SPARSE_ACCOUNT],
+        since=datetime(1, 1, 1, tzinfo=UTC),
+        until=datetime(1, 1, 1, 0, 30, tzinfo=UTC),
+    )
+
+    page = await filter_events(client=prefect_client, event_filter=event_filter, limit=10, include_total=True)
+
+    assert page == {"events": [], "total": 0}
