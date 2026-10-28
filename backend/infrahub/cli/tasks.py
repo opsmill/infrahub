@@ -181,6 +181,11 @@ def _rewrite_lines(job: CleanupJob) -> list[str]:
         lines.append(
             f"Did not rewrite {', '.join(job.timed_out)}, whose rewrite took longer than its time limit and was stopped"
         )
+    if job.failed:
+        lines.append(
+            f"Did not rewrite {', '.join(job.failed)}, whose rewrite failed with a database error; "
+            "the task manager log has the details"
+        )
     return lines
 
 

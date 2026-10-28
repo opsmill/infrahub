@@ -180,6 +180,7 @@ class TableOutcome(StrEnum):
     REWRITTEN = "rewritten"
     LOCKED = "locked"
     TIMED_OUT = "timed_out"
+    FAILED = "failed"
 
 
 @dataclass(frozen=True)
@@ -219,7 +220,10 @@ async def total_size(db: PrefectDBInterface, tables: tuple[str, ...]) -> int:
 
 
 class PostgresTableRewriter:
-    """Rewrites tables with VACUUM FULL, giving up on a table that stays locked or takes too long."""
+    """Rewrites tables with VACUUM FULL.
+
+    A table that stays locked, takes too long or fails with a database error is left as it was.
+    """
 
     def __init__(
         self,
@@ -313,6 +317,9 @@ class PostgresTableRewriter:
                 if outcome is TableOutcome.TIMED_OUT:
                     log.warning(f"Task history cleanup: stopped the rewrite of {table}, which took too long")
                     return _TableRewrite(outcome=outcome, held_for=self._since(started))
+                if outcome is TableOutcome.FAILED:
+                    log.exception(f"Task history cleanup: could not rewrite {table}, which is left as it was")
+                    return _TableRewrite(outcome=outcome, held_for=self._since(started))
                 raise
             held_for = self._since(started)
             log.info(f"Task history cleanup: rewrote {table} in {held_for.total_seconds():.1f} s")
@@ -348,7 +355,10 @@ def rewrite_error_outcome(error: DBAPIError) -> TableOutcome | None:
         return TableOutcome.TIMED_OUT
     if sqlstate == _SQLSTATE_LOCK_NOT_AVAILABLE:
         return TableOutcome.LOCKED
-    return None
+    if error.connection_invalidated or sqlstate is None:
+        return None
+    # The server rolled back this rewrite alone, which leaves the table as it was and the session usable.
+    return TableOutcome.FAILED
 
 
 def _sqlstate(error: DBAPIError) -> str | None:
@@ -365,6 +375,8 @@ def _record_outcome(job: CleanupJob, table: str, outcome: TableOutcome) -> None:
             job.not_rewritten.append(table)
         case TableOutcome.TIMED_OUT:
             job.timed_out.append(table)
+        case TableOutcome.FAILED:
+            job.failed.append(table)
         case _:
             assert_never(outcome)
 

@@ -30,6 +30,16 @@ REWRITE_ERROR_TEST_CASES: list[RewriteErrorTestCase] = [
     RewriteErrorTestCase(
         name="disk_full",
         error=database_error(sqlstate="53100"),
+        expected_outcome=TableOutcome.FAILED,
+    ),
+    RewriteErrorTestCase(
+        name="deadlock",
+        error=database_error(sqlstate="40P01"),
+        expected_outcome=TableOutcome.FAILED,
+    ),
+    RewriteErrorTestCase(
+        name="lost_connection",
+        error=database_error(sqlstate="08003", connection_invalidated=True),
         expected_outcome=None,
     ),
     RewriteErrorTestCase(

@@ -175,11 +175,13 @@ class RewriteDecisionCase:
     spaces: dict[str, TableSpace]
     locked: tuple[str, ...]
     timed_out: tuple[str, ...]
+    failed: tuple[str, ...]
     expected_calls: list[str]
     expected_rewritten: list[str]
     expected_mostly_live: list[str]
     expected_not_rewritten: list[str]
     expected_timed_out: list[str]
+    expected_failed: list[str]
     expected_size_after: int
 
 
@@ -190,6 +192,7 @@ REWRITE_DECISION_CASES: list[RewriteDecisionCase] = [
         old_runs=3,
         spaces={
             "flow_run": MOSTLY_FREE,
+            "task_run": MOSTLY_FREE,
             "log": MOSTLY_FREE,
             "artifact": MOSTLY_FREE,
             "events": HALF_FREE,
@@ -197,20 +200,23 @@ REWRITE_DECISION_CASES: list[RewriteDecisionCase] = [
         },
         locked=("log",),
         timed_out=("artifact",),
+        failed=("task_run",),
         expected_calls=[
             "total_size",
             "space flow_run",
+            "space task_run",
             "space log",
             "space artifact",
             "space events",
             "space event_resources",
-            "rewrite flow_run log artifact event_resources",
+            "rewrite flow_run task_run log artifact event_resources",
             "total_size",
         ],
         expected_rewritten=["flow_run", "event_resources"],
         expected_mostly_live=["events"],
         expected_not_rewritten=["log"],
         expected_timed_out=["artifact"],
+        expected_failed=["task_run"],
         expected_size_after=100,
     ),
     RewriteDecisionCase(
@@ -220,11 +226,13 @@ REWRITE_DECISION_CASES: list[RewriteDecisionCase] = [
         spaces={"flow_run": TableSpace(disk_bytes=1000, live_bytes=100)},
         locked=(),
         timed_out=(),
+        failed=(),
         expected_calls=["total_size", "space flow_run", "rewrite flow_run", "total_size"],
         expected_rewritten=["flow_run"],
         expected_mostly_live=[],
         expected_not_rewritten=[],
         expected_timed_out=[],
+        expected_failed=[],
         expected_size_after=100,
     ),
     RewriteDecisionCase(
@@ -234,11 +242,13 @@ REWRITE_DECISION_CASES: list[RewriteDecisionCase] = [
         spaces={"flow_run": MOSTLY_LIVE, "events": MOSTLY_LIVE},
         locked=(),
         timed_out=(),
+        failed=(),
         expected_calls=["total_size", "space flow_run", "space events", "total_size"],
         expected_rewritten=[],
         expected_mostly_live=["flow_run", "events"],
         expected_not_rewritten=[],
         expected_timed_out=[],
+        expected_failed=[],
         expected_size_after=1000,
     ),
     RewriteDecisionCase(
@@ -248,11 +258,13 @@ REWRITE_DECISION_CASES: list[RewriteDecisionCase] = [
         spaces={"flow_run": TableSpace(disk_bytes=1000, live_bytes=0)},
         locked=(),
         timed_out=(),
+        failed=(),
         expected_calls=["total_size", "total_size"],
         expected_rewritten=[],
         expected_mostly_live=[],
         expected_not_rewritten=[],
         expected_timed_out=[],
+        expected_failed=[],
         expected_size_after=1000,
     ),
 ]
@@ -266,7 +278,7 @@ async def test_each_table_is_rewritten_when_the_cleanup_asks_and_most_of_it_is_f
     db = task_manager_database(task_manager_database_path)
     for _ in range(case.old_runs):
         await seed_flow_run(db=db, state_type=StateType.COMPLETED, start_time=days_ago(41), end_time=days_ago(40))
-    rewriter = RecordingRewriter(spaces=case.spaces, locked=case.locked, timed_out=case.timed_out)
+    rewriter = RecordingRewriter(spaces=case.spaces, locked=case.locked, timed_out=case.timed_out, failed=case.failed)
     job = _job(rewrite=case.rewrite)
     cleanup = TaskHistoryCleanup(tables=TaskHistoryTables(db=db, ids_per_statement=999), rewriter=rewriter)
 
@@ -281,6 +293,7 @@ async def test_each_table_is_rewritten_when_the_cleanup_asks_and_most_of_it_is_f
         job.mostly_live,
         job.not_rewritten,
         job.timed_out,
+        job.failed,
         job.size_before,
         job.size_after,
     ) == (
@@ -290,6 +303,7 @@ async def test_each_table_is_rewritten_when_the_cleanup_asks_and_most_of_it_is_f
         case.expected_mostly_live,
         case.expected_not_rewritten,
         case.expected_timed_out,
+        case.expected_failed,
         1000,
         case.expected_size_after,
     )

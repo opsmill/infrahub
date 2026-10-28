@@ -37,6 +37,9 @@ RUNS_AFTER_THE_DELETED_ONES = 20
 # Small enough that a runs table of the test's inserted runs is measured from a sample of its pages.
 EXACT_MEASURE_PAGES = 100
 FILLER_LOG_NAME = "task-history-cleanup-test-filler"
+REFUSE_REWRITE_FUNCTION = "task_history_cleanup_test_refuse_rewrite"
+REFUSE_REWRITE_INDEX = "task_history_cleanup_test_refuse_rewrite_index"
+REFUSED_REWRITE_LOG_NAME = "task-history-cleanup-test-refused-rewrite"
 # The bytes a filler log takes, roughly, so that the fillers can outweigh whatever the log table already holds.
 FILLER_LOG_BYTES = 600
 
@@ -203,6 +206,26 @@ _LOG_LOCK_QUERY = (
 _RELEASE_LOG_LOCK_QUERY = (
     f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE application_name = '{LOG_LOCK_HOLDER}'"  # noqa: S608
 )
+# A VACUUM FULL evaluates the index expression as it rebuilds the index, and only that statement makes it raise.
+_REFUSE_LOG_REWRITE_QUERIES = (
+    (
+        f"CREATE FUNCTION {REFUSE_REWRITE_FUNCTION}(value text) RETURNS integer LANGUAGE plpgsql IMMUTABLE AS $$ "
+        "BEGIN IF current_query() ILIKE 'VACUUM FULL%' THEN RAISE EXCEPTION 'the test refuses this rewrite'; END IF; "
+        "RETURN 0; END $$",
+        "CREATE FUNCTION",
+    ),
+    (f"CREATE INDEX {REFUSE_REWRITE_INDEX} ON log ({REFUSE_REWRITE_FUNCTION}(name))", "CREATE INDEX"),
+    (
+        "INSERT INTO log (name, level, message, timestamp) "  # noqa: S608
+        f"VALUES ('{REFUSED_REWRITE_LOG_NAME}', 20, 'kept', now())",
+        "INSERT 0 1",
+    ),
+)
+_ALLOW_LOG_REWRITE_QUERIES = (
+    f"DELETE FROM log WHERE name = '{REFUSED_REWRITE_LOG_NAME}'",  # noqa: S608
+    f"DROP INDEX IF EXISTS {REFUSE_REWRITE_INDEX}",
+    f"DROP FUNCTION IF EXISTS {REFUSE_REWRITE_FUNCTION}(text)",
+)
 
 _DELETED_RUNS = re.compile(r"Deleted (?P<count>\d+) runs that ended before \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC")
 _REWRITE_OUTCOMES = {
@@ -213,6 +236,10 @@ _REWRITE_OUTCOMES = {
     "not_rewritten": re.compile(r"Did not rewrite (?P<tables>.+), which stayed locked by other sessions$"),
     "timed_out": re.compile(
         r"Did not rewrite (?P<tables>.+), whose rewrite took longer than its time limit and was stopped$"
+    ),
+    "failed": re.compile(
+        r"Did not rewrite (?P<tables>.+), whose rewrite failed with a database error; "
+        r"the task manager log has the details$"
     ),
 }
 
@@ -354,6 +381,24 @@ class TestTaskHistoryCleanup(TestInfrahubDockerClient):
         finally:
             _query_task_manager_database(compose=infrahub_compose, query=_RELEASE_LOG_LOCK_QUERY)
 
+    @pytest.fixture
+    def log_rewrite_refused(
+        self,
+        infrahub_app: dict[str, int],
+        infrahub_compose: InfrahubDockerCompose,
+    ) -> Iterator[None]:
+        """Each rewrite of the log table rejected by the database with an error until the test ends.
+
+        The log row it adds gives the rewrite a value of the refusing index to evaluate, whatever the table held before.
+        """
+        try:
+            for query, status in _REFUSE_LOG_REWRITE_QUERIES:
+                assert _query_task_manager_database(compose=infrahub_compose, query=query) == [status]
+            yield
+        finally:
+            for query in _ALLOW_LOG_REWRITE_QUERIES:
+                _query_task_manager_database(compose=infrahub_compose, query=query)
+
     def test_the_task_manager_measures_the_disk_space_of_the_task_history(
         self,
         infrahub_app: dict[str, int],
@@ -467,3 +512,26 @@ class TestTaskHistoryCleanup(TestInfrahubDockerClient):
         file_nodes_after = _file_nodes(compose=infrahub_compose)
         assert (job["rewritten"], job["not_rewritten"], job["timed_out"]) == ([], [], ["flow_run"])
         assert file_nodes_after == file_nodes_before
+
+    @pytest.mark.usefixtures("log_rewrite_refused")
+    def test_a_table_whose_rewrite_fails_is_left_as_it_was_and_the_next_one_is_rewritten(
+        self, infrahub_compose: InfrahubDockerCompose
+    ) -> None:
+        """A table whose rewrite fails with a database error keeps its file, and the next table is rewritten."""
+        _free_most_of_the_log_table(compose=infrahub_compose)
+        _free_most_of_the_runs_table(compose=infrahub_compose)
+        file_nodes_before = _file_nodes(compose=infrahub_compose)
+
+        job = _clean_tables(compose=infrahub_compose, tables=("log", "flow_run"))
+
+        file_nodes_after = _file_nodes(compose=infrahub_compose)
+        assert (job["rewritten"], job["mostly_live"], job["not_rewritten"], job["timed_out"], job["failed"]) == (
+            ["flow_run"],
+            [],
+            [],
+            [],
+            ["log"],
+        )
+        assert {table for table in file_nodes_before if file_nodes_after[table] != file_nodes_before[table]} == {
+            "flow_run"
+        }

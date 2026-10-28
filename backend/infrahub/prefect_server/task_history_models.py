@@ -67,6 +67,10 @@ class CleanupJob(BaseModel):
         default_factory=list,
         description="Tables whose rewrite took longer than its time limit and was stopped, which leaves them as they were",
     )
+    failed: list[str] = Field(
+        default_factory=list,
+        description="Tables whose rewrite failed with a database error, which leaves them as they were",
+    )
     error: str | None = None
 
 

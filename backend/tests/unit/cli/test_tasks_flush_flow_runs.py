@@ -103,8 +103,9 @@ async def test_progress_lines_then_the_summary_with_each_table_are_printed() -> 
                 state="completed",
                 rewritten=["flow_run", "flow_run_state", "task_run"],
                 mostly_live=["events", "event_resources"],
-                not_rewritten=["log", "artifact"],
+                not_rewritten=["log"],
                 timed_out=["task_run_state"],
+                failed=["artifact"],
                 current_day="2026-01-16",
                 deleted_runs=1234,
                 size_before=25_300_000_000,
@@ -124,8 +125,9 @@ async def test_progress_lines_then_the_summary_with_each_table_are_printed() -> 
         "Task history and activity log tables: 25.3 GB before, 1.2 GB after",
         "Rewrote flow_run, flow_run_state, task_run",
         "Left events, event_resources as they are, because their live rows hold at least half of their disk space",
-        "Did not rewrite log, artifact, which stayed locked by other sessions",
+        "Did not rewrite log, which stayed locked by other sessions",
         "Did not rewrite task_run_state, whose rewrite took longer than its time limit and was stopped",
+        "Did not rewrite artifact, whose rewrite failed with a database error; the task manager log has the details",
     ]
 
 

@@ -15,7 +15,7 @@ Request:
 Response `202`:
 
 ```json
-{"id": "<job id>", "state": "running", "rewrite": "never", "cutoff": "2026-09-04T00:00:00Z", "deleted_runs": 0, "current_day": null, "size_before": null, "size_after": null, "rewritten": [], "mostly_live": [], "not_rewritten": [], "timed_out": [], "error": null}
+{"id": "<job id>", "state": "running", "rewrite": "never", "cutoff": "2026-09-04T00:00:00Z", "deleted_runs": 0, "current_day": null, "size_before": null, "size_after": null, "rewritten": [], "mostly_live": [], "not_rewritten": [], "timed_out": [], "failed": [], "error": null}
 ```
 
 - Starts a cleanup job in the task manager, or returns the running job if this replica runs one. A request whose `rewrite` is stronger than the running job's (`never` < `if_freed`) raises the job's to it; a weaker or equal one changes nothing. The response shows the job's `rewrite` after the request.
@@ -29,7 +29,7 @@ Response `200`: the job, same shape as above, with `state` `running`, `completed
 
 - `rewrite` is the job's mode: the one it was started with, raised by a request for `if_freed` while it runs. On Postgres, with `if_freed`, the job rewrites each of `flow_run`, `flow_run_state`, `task_run`, `task_run_state`, `log`, `artifact`, `events` and `event_resources` whose live rows hold less than half of its disk space, whoever deleted its rows and when: rows that Prefect's own cleanup deleted before the job started count too. A table's disk space is its main data and TOAST without indexes, and its live size the sum of `pg_column_size` per column plus 28 bytes a row, measured on a random sample of its pages above 10,000 pages. With `never`, and on SQLite, nothing is rewritten.
 - The job decides about the rewrite with the mode it holds once its deletes end. When `if_freed` arrives after a decision with `never`, the job decides again before it completes. A job rewrites at most once.
-- `rewritten` lists the tables rewritten, `mostly_live` the tables left because their live rows hold at least half of their disk space, `not_rewritten` the tables whose rewrite still hit the lock timeout after its retries, and `timed_out` the tables whose rewrite was stopped at its statement timeout, which leaves them as they were; each table joins its list as soon as its rewrite ends, so a failed job lists the tables its rewrite finished; all four are empty with `never` and on SQLite.
+- `rewritten` lists the tables rewritten, `mostly_live` the tables left because their live rows hold at least half of their disk space, `not_rewritten` the tables whose rewrite still hit the lock timeout after its retries, `timed_out` the tables whose rewrite was stopped at its statement timeout, which leaves them as they were, and `failed` the tables whose rewrite failed with a database error, such as no free disk for the copy, which leaves them as they were; after each table in the last three lists the job goes on with the next table, and a lost database connection or an error that did not come from the database server fails the job; each table joins its list as soon as its rewrite ends, so a failed job lists the tables its rewrite finished; all five are empty with `never` and on SQLite.
 - `size_before` (before the deletes) and `size_after` (at the end) are the total size of the eight tables the job may rewrite, and `null` on SQLite.
 - `current_day` is the day of end times being deleted, and once the deletes end the last such day; `null` before the first.
 - `error` names the exception type and points to the task manager log, which holds the details.

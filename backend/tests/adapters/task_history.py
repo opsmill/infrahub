@@ -33,9 +33,9 @@ def database_error(sqlstate: str, connection_invalidated: bool = False) -> DBAPI
 class RecordingRewriter:
     """Records its calls in order, measuring 1000 bytes until a rewrite and 100 after it, and the given space of each table.
 
-    Its rewrite reports each table in order: locked or timed out when given as such, rewritten otherwise. Given a table
-    to fail on, it raises on reaching that table. Given a call number, it pauses at that call until the test lets it go
-    on.
+    Its rewrite reports each table in order: locked, timed out or failed when given as such, rewritten otherwise. Given
+    a table to fail on, it raises on reaching that table. Given a call number, it pauses at that call until the test
+    lets it go on.
     """
 
     def __init__(
@@ -43,6 +43,7 @@ class RecordingRewriter:
         spaces: dict[str, TableSpace],
         locked: tuple[str, ...] = (),
         timed_out: tuple[str, ...] = (),
+        failed: tuple[str, ...] = (),
         fails_on: str | None = None,
         pause_at_call: int | None = None,
     ) -> None:
@@ -50,6 +51,7 @@ class RecordingRewriter:
         self._spaces = spaces
         self._locked = locked
         self._timed_out = timed_out
+        self._failed = failed
         self._fails_on = fails_on
         self._pause_at_call = pause_at_call
         self._paused = asyncio.Event()
@@ -76,6 +78,8 @@ class RecordingRewriter:
                 on_table(table, TableOutcome.LOCKED)
             elif table in self._timed_out:
                 on_table(table, TableOutcome.TIMED_OUT)
+            elif table in self._failed:
+                on_table(table, TableOutcome.FAILED)
             else:
                 on_table(table, TableOutcome.REWRITTEN)
 
