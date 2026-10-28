@@ -45,6 +45,12 @@ if TYPE_CHECKING:
 
 app = AsyncTyper()
 
+
+@app.callback()
+def callback() -> None:
+    """Manage the task manager and its task history."""
+
+
 # States a flow run can be stuck in: RUNNING for a worker that died mid-flow, PENDING for one
 # that was picked up but never got to start.
 STALE_FLOW_RUN_STATES = [StateType.RUNNING, StateType.PENDING]
@@ -75,7 +81,7 @@ async def execute(
     debug: bool = typer.Option(False, help="Enable advanced logging and troubleshooting"),  # noqa: ARG001
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
-    """Check the current format of the internal graph and apply the necessary migrations."""
+    """Run a sample workflow through the task manager and a worker, and print its result."""
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("prefect").setLevel(logging.ERROR)
@@ -127,6 +133,11 @@ def background_services(
 flush_app = AsyncTyper()
 
 app.add_typer(flush_app, name="flush")
+
+
+@flush_app.callback()
+def flush_callback() -> None:
+    """Delete old task runs, or mark stale task runs as crashed."""
 
 
 async def task_history_size_hint(
