@@ -229,7 +229,7 @@ Timings are indicative: they come from local benchmarks, not a production contra
 - **Deep scrolling by time**: scrolling far down a combined filter, on both supported database versions, is being measured.
 - Non-blocking: whether runs accumulate in SCHEDULED, LATE, PAUSED or CANCELLING, and whether runs legitimately stay RUNNING more than 2 days; what happens to Community instances configured above a future Enterprise-only limit.
 - **Release evidence**: the private performance tests listed in the design doc (Activities queries, concurrent paging, task history retention, the upgrade step, activity log retention, cleanups under load, database size and dead space) must pass and be attached to each part's PR and to INFP-507; PR #33 in opsmill/infrahub-private-tests lands first.
-- Delivery order: part 1 task history (User Story 1), part 2 Activities page (User Story 2), part 3 activity log retention (User Story 3), part 4 documentation with parts 1 and 3. Part 2 lands before part 3.
+- Delivery order: part 1 task history (User Story 1, with the background-services command of User Story 4), part 2 Activities page (User Story 2), part 3 activity log retention (User Story 3), part 4 documentation with parts 1 and 3. Part 2 lands before part 3.
 
 ## Out of Scope
 

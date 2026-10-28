@@ -72,7 +72,7 @@ Run through the `test-dataset` workflow (`test_filter=...`) on restored backups 
 - [ ] T023 [P] [US1] Cleanup under a live workload: run the hourly cleanup, the command for old runs and Prefect's own cleanup while tasks run and the Activities and Tasks pages are queried; record lock waits, deadlocks, errors and the effect on running tasks, in `tests/performance/test_task_history_cleanup_load.py` of opsmill/infrahub-private-tests
 - [ ] T024 [P] [US1] Track task-manager database size and dead space per table on the performance dashboard, extending `tests/performance/test_database_size.py` of opsmill/infrahub-private-tests
 
-**Checkpoint**: US1 is shippable on its own (part 1).
+**Checkpoint**: US1 is shippable together with US4 (part 1), because T021 needs the background-services command of T048.
 
 ---
 
@@ -146,7 +146,7 @@ Run through the `test-dataset` workflow (`test_filter=...`) on restored backups 
 **Independent Test**: Start the task manager and the separate background services with valid and invalid values (quickstart Part 1 steps 1, 2, 8 and Part 3 step 2).
 
 - [X] T047 [P] [US4] Unit test: `create_infrahub_prefect` refuses to start on a retention under 1 day, logs a warning per pre-set `PREFECT_*` retention variable, and logs a warning per cleanup that a pre-set vacuum switch turns off, in `backend/tests/unit/prefect_server/test_app_retention.py`
-- [ ] T048 [US4] Add `infrahub tasks background-services [CONFIG_FILE]`: load the configuration, apply `apply_prefect_retention_env`, then start Prefect's background services in the foreground as `prefect server services start` does, in `backend/infrahub/cli/tasks.py`
+- [ ] T048 [US4] Add `infrahub tasks background-services [CONFIG_FILE]`: run the steps of `apply_infrahub_settings_to_prefect()` from T007 on the configuration file given as `CONFIG_FILE` (stop on an invalid retention, remove a blank vacuum switch, read `prefect_retention_already_set()`, apply `apply_prefect_retention_env`, refresh Prefect's global settings with `prefect.context.refresh_global_settings_context()` so the vacuum services read the new values, and log the warnings and the values in effect), then start Prefect's background services in the foreground as `prefect server services start` does, in `backend/infrahub/cli/tasks.py`
 - [ ] T049 [P] [US4] Switch `task-manager-background-svc` to `command: infrahub tasks background-services` in `python_testcontainers/infrahub_testcontainers/docker-compose.test.yml` and `python_testcontainers/infrahub_testcontainers/docker-compose-cluster.test.yml`
 - [ ] T050 [US4] Open the opsmill/infrahub-helm PR for the same release: background-services deployment runs `infrahub tasks background-services`, the upgrade hook passes `--no-task-history-cleanup`, retention values exposed in values.yaml (outside this repository)
 
@@ -190,7 +190,7 @@ Run through the `test-dataset` workflow (`test_filter=...`) on restored backups 
 
 Each slice ships only with its private-test evidence (the "Evidence" block of its phase) attached to the PR and to INFP-507.
 
-1. **MVP**: Setup, Foundational, US1 with T021-T024. This alone stops the disk-filling incidents and can ship (part 1).
+1. **MVP**: Setup, Foundational, US1 with T021-T024, and US4 (T047-T050), as in part 1 of the delivery order in plan.md. T021 checks that the retention reaches Prefect's background services when they run in their own container, which only the command of T048 does. This stops the disk-filling incidents and can ship (part 1).
 2. **Then US2**: the Activities page fix, independent of the retention values.
-3. **Then US3 and US4**: configurable activity log retention and the separate background services, once US2 is merged.
+3. **Then US3**: configurable activity log retention, once US2 is merged.
 4. **Documentation** ships with US1 and US3.
