@@ -93,7 +93,7 @@ An operator sets how long task history, the activity log and the task manager's 
 1. **Given** the three retention settings, **When** the task manager starts, **Then** its cleanups use them, without the operator setting any task-manager-specific variable.
 2. **Given** the task manager's background services in their own deployment (a Helm option), **When** they start, **Then** they use the same retention values, because Infrahub's command starts them.
 3. **Given** a retention shorter than 1 day, **When** the task manager starts, **Then** it refuses to start and names the setting.
-4. **Given** an own-event retention longer than the activity log retention, **When** the task manager starts, **Then** it logs a warning and uses the activity log retention for Prefect's own events, because every event older than that is deleted anyway.
+4. **Given** an own-event retention longer than the activity log retention, **When** the task manager starts, **Then** it refuses to start and names both settings, because every event older than the activity log retention is deleted anyway.
 
 ---
 
@@ -127,7 +127,7 @@ An operator sets how long task history, the activity log and the task manager's 
 - **FR-001**: System MUST provide three retention settings: task history (default 30 days), activity log (default 7 days) and the task manager's own events (default 7 days), settable in the Infrahub configuration, Helm values and compose environment.
 - **FR-002**: System MUST apply the three settings to the task manager's cleanups at start, without the operator setting task-manager-specific variables.
 - **FR-003**: System MUST apply the same settings when the task manager's background services run in their own deployment, by starting that deployment through an Infrahub command.
-- **FR-004**: System MUST refuse to start the task manager, naming the setting, when a retention is shorter than 1 day or longer than 36,500 days; when the own-event retention is longer than the activity log retention, it MUST log a warning and use the activity log retention for Prefect's own events.
+- **FR-004**: System MUST refuse to start the task manager, naming the setting, when a retention is shorter than 1 day or longer than 36,500 days; it MUST also refuse to start, naming both settings, when the own-event retention is longer than the activity log retention.
 - **FR-005**: System MUST accept the same retention settings in every edition, with no edition-specific limit; values above 36,500 days (100 years) are refused, a safety bound far below the point where Prefect's cutoff date overflows.
 
 **Task history**
@@ -208,7 +208,7 @@ Timings are indicative: they come from local benchmarks, not a production contra
 - Q: How do retention settings reach a separate background-services deployment? → A: A thin Infrahub command starts it after applying the same settings.
 - Q: Are the SQL cleanup and the new filters checked on task-manager upgrades? → A: Yes, by CI equivalence checks.
 - Q: Fallback if product refuses to remove the total count? → A: None; argue for removal. (Later found moot: the page never asked for the count; the design doc dropped D7 and Q2.)
-- Q: Values accepted by the settings? → A: Durations of at least 1 day, refuse to start otherwise; an own-event retention longer than the activity log is capped to it with a warning (design doc D5).
+- Q: Values accepted by the settings? → A: Durations of at least 1 day, refuse to start otherwise; an own-event retention longer than the activity log is refused at startup, instead of being capped to it with a warning as design doc D5 decided.
 - Q: Activity log default? → A: Stays 7 days; a year or more is a capability, not the default.
 - Q: Helm upgrade? → A: The pre-upgrade hook does not run the cleanup; a maintenance step after the rollout does.
 - Q: Load more by time and time windows? → A: Windows count back from the oldest event shown.

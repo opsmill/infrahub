@@ -8,7 +8,7 @@ No graph schema, GraphQL schema or database schema changes. The feature adds one
 |---|---|---|---|
 | `task_history` | duration | 30 days | ≥ 1 day, ≤ 36,500 days |
 | `activity_log` | duration | 7 days | ≥ 1 day, ≤ 36,500 days |
-| `prefect_own_events` | duration | 7 days | ≥ 1 day, ≤ 36,500 days; above `activity_log`, capped to it with a warning |
+| `prefect_own_events` | duration | 7 days | ≥ 1 day, ≤ 36,500 days, ≤ `activity_log` |
 
 - Owned by the Infrahub configuration, as a section of the main settings with its own environment prefix (names final in the configuration contract).
 - Same values in every edition, with no edition limit. The 36,500-day (100-year) maximum is a technical safety bound, far below the roughly 739,000 days at which Prefect's cutoff date overflows.

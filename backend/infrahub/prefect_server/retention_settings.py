@@ -3,9 +3,18 @@ from __future__ import annotations
 import re
 import tomllib
 from datetime import timedelta
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError, ValidationInfo, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    TypeAdapter,
+    ValidationError,
+    ValidationInfo,
+    field_validator,
+    model_validator,
+)
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 if TYPE_CHECKING:
@@ -64,8 +73,9 @@ class TaskManagerRetentionSettings(BaseSettings):
         validate_default=True,
         description=(
             "How long the events of the activity log are kept, as a number of days (`7d`) or an ISO 8601 "
-            "duration (`P7D`), from 1 to 36500 days. `PREFECT_SERVER_EVENTS_RETENTION_PERIOD`, or its legacy name "
-            "`PREFECT_EVENTS_RETENTION_PERIOD`, takes precedence when set."
+            "duration (`P7D`), from 1 to 36500 days, and at least `prefect_own_events`. "
+            "`PREFECT_SERVER_EVENTS_RETENTION_PERIOD`, or its legacy name `PREFECT_EVENTS_RETENTION_PERIOD`, takes "
+            "precedence when set."
         ),
     )
     prefect_own_events: timedelta = Field(
@@ -73,7 +83,7 @@ class TaskManagerRetentionSettings(BaseSettings):
         validate_default=True,
         description=(
             "How long the task manager's own Prefect events are kept, as a number of days (`7d`) or an ISO 8601 "
-            "duration (`P7D`), from 1 to 36500 days; a value longer than `activity_log` is capped to it. "
+            "duration (`P7D`), from 1 to 36500 days, and at most `activity_log`. "
             "`PREFECT_SERVER_SERVICES_DB_VACUUM_EVENT_RETENTION_OVERRIDES` takes precedence when set."
         ),
     )
@@ -98,6 +108,21 @@ class TaskManagerRetentionSettings(BaseSettings):
         if retention > _MAXIMUM_RETENTION:
             raise ValueError(f"Invalid task manager retention: {info.field_name} must be at most 36500 days")
         return retention
+
+    @model_validator(mode="after")
+    def validate_prefect_own_events_within_activity_log(self) -> Self:
+        """Require Prefect's own events to be kept no longer than the activity log.
+
+        Raises:
+            ValueError: When `prefect_own_events` is longer than `activity_log`.
+
+        """
+        if self.prefect_own_events > self.activity_log:
+            raise ValueError(
+                "Invalid task manager retention: prefect_own_events must not be longer than activity_log, "
+                "because the task manager deletes every event older than activity_log"
+            )
+        return self
 
 
 class TaskManagerSettings(BaseSettings):

@@ -43,17 +43,6 @@ def test_variables_follow_the_retention() -> None:
     }
 
 
-def test_own_events_are_capped_to_the_activity_log() -> None:
-    settings = TaskManagerRetentionSettings(task_history="30d", activity_log="7d", prefect_own_events="30d")
-
-    variables = build_prefect_retention_env(settings=settings, event_types=EVENT_TYPES)
-
-    assert json.loads(variables[EVENT_RETENTION_OVERRIDES]) == {
-        "prefect.flow-run.Completed": "P7D",
-        "prefect.task-run.Running": "P7D",
-    }
-
-
 def test_durations_keep_their_part_below_a_day() -> None:
     settings = TaskManagerRetentionSettings(task_history="P1DT12H", activity_log="P400D", prefect_own_events="P1DT0.5S")
 
@@ -134,18 +123,6 @@ def test_apply_sets_every_variable_missing_from_the_environment() -> None:
         EVENTS_RETENTION_PERIOD: "P7D",
         EVENT_RETENTION_OVERRIDES: dict.fromkeys(PREFECT_EVENT_TYPES, "P7D"),
     }
-
-
-def test_apply_warns_when_own_events_are_capped() -> None:
-    settings = TaskManagerRetentionSettings(task_history="30d", activity_log="7d", prefect_own_events="30d")
-    environ: dict[str, str] = {}
-
-    warnings = apply_prefect_retention_env(environ=environ, settings=settings)
-
-    assert warnings == [
-        "task_manager.retention.prefect_own_events P30D is longer than task_manager.retention.activity_log P7D, "
-        "Prefect's own events are kept for P7D"
-    ]
 
 
 @dataclass
@@ -268,7 +245,7 @@ def test_setting_preset_under_any_name_prefect_accepts_wins(
 
 
 def test_environment_with_every_variable_preset_is_left_unchanged() -> None:
-    settings = TaskManagerRetentionSettings(task_history="30d", activity_log="7d", prefect_own_events="30d")
+    settings = TaskManagerRetentionSettings(task_history="30d", activity_log="7d", prefect_own_events="7d")
     environ = {
         VACUUM_ENABLED: "[]",
         VACUUM_RETENTION_PERIOD: "P90D",
@@ -279,8 +256,6 @@ def test_environment_with_every_variable_preset_is_left_unchanged() -> None:
     warnings = apply_prefect_retention_env(environ=environ, settings=settings)
 
     assert warnings == [
-        "task_manager.retention.prefect_own_events P30D is longer than task_manager.retention.activity_log P7D, "
-        "Prefect's own events are kept for P7D",
         f"{VACUUM_ENABLED} is set and overrides task_manager.retention.task_history",
         f"{VACUUM_RETENTION_PERIOD} is set and overrides task_manager.retention.task_history",
         f"{EVENTS_RETENTION_PERIOD} is set and overrides task_manager.retention.activity_log",

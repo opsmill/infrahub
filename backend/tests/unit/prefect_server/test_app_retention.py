@@ -88,20 +88,6 @@ def test_task_manager_refuses_to_start_on_a_retention_under_one_day(
 
 
 @pytest.mark.usefixtures("task_manager_environment")
-def test_capped_own_events_are_logged(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
-    monkeypatch.setenv("INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG", "7d")
-    monkeypatch.setenv("INFRAHUB_TASK_MANAGER_RETENTION_PREFECT_OWN_EVENTS", "30d")
-
-    with caplog.at_level(logging.WARNING, logger=APP_LOGGER):
-        apply_infrahub_settings_to_prefect()
-
-    assert _app_messages(caplog=caplog, level=logging.WARNING) == [
-        "task_manager.retention.prefect_own_events P30D is longer than task_manager.retention.activity_log P7D, "
-        "Prefect's own events are kept for P7D"
-    ]
-
-
-@pytest.mark.usefixtures("task_manager_environment")
 def test_each_preset_prefect_variable_is_logged_and_kept(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:

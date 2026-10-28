@@ -151,11 +151,6 @@ def _iso_8601(duration: timedelta) -> str:
     return f"{days}T{seconds}S"
 
 
-def _own_events_retention(settings: TaskManagerRetentionSettings) -> timedelta:
-    # Prefect deletes every event older than the global event retention whatever its per-type override says.
-    return min(settings.prefect_own_events, settings.activity_log)
-
-
 def _name_set_in(environ: Mapping[str, str], setting: _PrefectSetting) -> str | None:
     # Prefect matches environment names case-insensitively and reads the first accepted name present.
     names_in_environ = {name.upper(): name for name in environ}
@@ -172,7 +167,7 @@ def build_prefect_retention_env(settings: TaskManagerRetentionSettings, event_ty
         event_types: Prefect event types kept for the own-event retention instead of the activity log retention.
 
     """
-    own_events = _iso_8601(_own_events_retention(settings))
+    own_events = _iso_8601(settings.prefect_own_events)
     return {
         VACUUM_ENABLED: "events,flow_runs",
         VACUUM_RETENTION_PERIOD: _iso_8601(settings.task_history),
@@ -188,14 +183,6 @@ def apply_prefect_retention_env(environ: MutableMapping[str, str], settings: Tas
     explicit Prefect setting keeps precedence.
     """
     warnings: list[str] = []
-    own_events = _own_events_retention(settings)
-    if own_events < settings.prefect_own_events:
-        warnings.append(
-            f"task_manager.retention.prefect_own_events {_iso_8601(settings.prefect_own_events)} is longer than "
-            f"task_manager.retention.activity_log {_iso_8601(settings.activity_log)}, "
-            f"Prefect's own events are kept for {_iso_8601(own_events)}"
-        )
-
     for name, value in build_prefect_retention_env(settings=settings, event_types=PREFECT_EVENT_TYPES).items():
         setting = _PREFECT_SETTINGS[name]
         name_set = _name_set_in(environ=environ, setting=setting)

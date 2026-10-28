@@ -61,7 +61,10 @@ ACCEPTED_RETENTION_TEST_CASES: list[AcceptedRetentionTestCase] = [
 @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in ACCEPTED_RETENTION_TEST_CASES])
 @pytest.mark.parametrize("key", ["task_history", "activity_log", "prefect_own_events"])
 def test_retention_accepts_days_and_iso_8601_durations(key: str, test_case: AcceptedRetentionTestCase) -> None:
-    settings = TaskManagerRetentionSettings.model_validate({key: test_case.value})
+    # With activity_log at its maximum and prefect_own_events at its minimum, no accepted value makes the second longer.
+    settings = TaskManagerRetentionSettings.model_validate(
+        {"activity_log": "36500d", "prefect_own_events": "1d", key: test_case.value}
+    )
 
     assert getattr(settings, key) == test_case.expected
 
@@ -113,11 +116,44 @@ def test_retention_refusal_names_the_setting(key: str, test_case: RefusedRetenti
         TaskManagerRetentionSettings.model_validate({key: test_case.value})
 
 
-def test_own_events_longer_than_activity_log_is_accepted() -> None:
-    settings = TaskManagerRetentionSettings(activity_log="7d", prefect_own_events="30d")
+@dataclass
+class OwnEventsLongerThanActivityLogTestCase:
+    name: str
+    retention: dict[str, str]
 
-    assert settings.activity_log == timedelta(days=7)
-    assert settings.prefect_own_events == timedelta(days=30)
+
+OWN_EVENTS_LONGER_THAN_ACTIVITY_LOG_TEST_CASES: list[OwnEventsLongerThanActivityLogTestCase] = [
+    OwnEventsLongerThanActivityLogTestCase(
+        name="own_events_raised_above_the_activity_log",
+        retention={"activity_log": "7d", "prefect_own_events": "30d"},
+    ),
+    OwnEventsLongerThanActivityLogTestCase(
+        name="activity_log_lowered_below_the_own_events_default", retention={"activity_log": "3d"}
+    ),
+    OwnEventsLongerThanActivityLogTestCase(
+        name="longer_by_one_second", retention={"activity_log": "P7D", "prefect_own_events": "P7DT1S"}
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "test_case", [pytest.param(tc, id=tc.name) for tc in OWN_EVENTS_LONGER_THAN_ACTIVITY_LOG_TEST_CASES]
+)
+def test_own_events_longer_than_activity_log_are_refused(test_case: OwnEventsLongerThanActivityLogTestCase) -> None:
+    with pytest.raises(
+        ValidationError,
+        match=re.escape(
+            "Invalid task manager retention: prefect_own_events must not be longer than activity_log, "
+            "because the task manager deletes every event older than activity_log"
+        ),
+    ):
+        TaskManagerRetentionSettings.model_validate(test_case.retention)
+
+
+def test_own_events_as_long_as_activity_log_are_accepted() -> None:
+    settings = TaskManagerRetentionSettings(activity_log="30d", prefect_own_events="30d")
+
+    assert (settings.activity_log, settings.prefect_own_events) == (timedelta(days=30), timedelta(days=30))
 
 
 def test_environment_variables_set_the_retention(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
