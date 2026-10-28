@@ -32,6 +32,12 @@ The [Notion design doc](https://app.notion.com/p/opsmill/Task-history-and-Activi
   - custom state names;
   - load events of block types that Infrahub does not load;
   - `prefect.*` events that API clients post.
+
+  The tests also do not read some values that Prefect's source puts into the known patterns, so a new value is caught only by the integration-docker guard, and only when the workload reaches it:
+  - the actions of lifecycle events, which the tests take to be `created`, `updated` and `deleted`;
+  - the phases in `prefect.concurrency-limit.<phase>` and `prefect.concurrency-limit.v1.<phase>`;
+  - the statuses in `prefect.asset.materialization.<status>`;
+  - an event name passed through a helper whose parameter is not named `event` or `event_type`.
 - **Alternatives considered**: deleting every event whose type does not start with `infrahub.` once it is older than `prefect_own_events`, which needs no list. Prefect's settings cannot do this: the overrides match exact names and are capped by the event retention, and the general cleanup deletes every event older than the event retention. It would need a periodic delete that Infrahub runs in the process that runs Prefect's services, which goes against D1 and D3: both leave the deletes to Prefect's own cleanups.
 
 ## R5. The command for old runs and its endpoint (D9)

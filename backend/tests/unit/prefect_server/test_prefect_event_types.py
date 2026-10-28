@@ -32,7 +32,9 @@ class _PrefectSourceNames:
     """Kinds of record that Prefect sends created, updated and deleted events for."""
 
 
-def _state_constructors(module: ModuleType) -> list[tuple[str, Callable[[], object]]]:
+def _state_constructors(
+    module: ModuleType,
+) -> list[tuple[str, Callable[[], client_states.State | server_states.State]]]:
     return [
         (name, constructor)
         for name, constructor in inspect.getmembers(module, inspect.isfunction)
@@ -116,7 +118,8 @@ def test_every_prefect_event_name_in_prefect_source_is_listed() -> None:
 def test_prefect_builds_event_names_from_known_patterns_only() -> None:
     """Prefect's source builds event names from these patterns only.
 
-    A new pattern builds names that the other tests do not read, so it fails here until its names are listed.
+    A new pattern fails this test until its names are listed and the pattern is added here. The other tests do not read
+    the lifecycle actions, concurrency limit phases or asset materialization statuses put into these patterns.
     """
     assert _names_in_prefect_source().event_name_patterns == {
         "prefect.flow-run.{}",
