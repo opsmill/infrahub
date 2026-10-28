@@ -344,6 +344,12 @@ BRANCH_RESOLUTION_CASES = [
         expected=[],
     ),
     BranchResolutionCase(
+        name="several_deleted_names",
+        names=[TWICE_DELETED_NAME, UNKNOWN_BRANCH_NAME, DELETED_BRANCH[0], TWICE_DELETED_NAME],
+        current_branch_ids={},
+        expected=[TWICE_DELETED_SECOND_ID, DELETED_BRANCH[1]],
+    ),
+    BranchResolutionCase(
         name="several_names",
         names=[LIVE_BRANCH[0], UNKNOWN_BRANCH_NAME, DELETED_BRANCH[0]],
         current_branch_ids={LIVE_BRANCH[0]: LIVE_BRANCH[1]},

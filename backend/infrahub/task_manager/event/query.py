@@ -454,11 +454,10 @@ class PrefectEvent:
 
         A name that matches neither is left out.
         """
-        deleted_branch_ids: dict[str, str | None] = {}
+        deleted_branch_ids: dict[str, str] = {}
         if missing_names := [name for name in names if name not in current_branch_ids]:
             async with get_client(sync_client=False) as client:
-                for name in missing_names:
-                    deleted_branch_ids[name] = await cls._deleted_branch_id(client=client, name=name)
+                deleted_branch_ids = await cls._deleted_branch_ids(client=client, names=missing_names)
 
         branch_ids: list[str] = []
         for name in names:
@@ -468,15 +467,23 @@ class PrefectEvent:
         return branch_ids
 
     @classmethod
-    async def _deleted_branch_id(cls, client: PrefectClient, name: str) -> str | None:
+    async def _deleted_branch_ids(cls, client: PrefectClient, names: list[str]) -> dict[str, str]:
+        """Return the branch ID of the newest deletion of each name inside the read window, by name, in one request."""
+        names_by_resource_id = {f"infrahub.branch.{name}": name for name in names}
         deletions = InfrahubEventFilter(
             event=EventNameFilter(name=[BranchDeletedEvent.event_name]),
-            resource=EventResourceFilter(id=[f"infrahub.branch.{name}"]),
+            resource=EventResourceFilter(id=list(names_by_resource_id), distinct=True),
         )
-        response = await cls.query_events(client=client, limit=1, filters=deletions, include_total=False)
-        if not response.events:
-            return None
-        return response.events[0].resource.get("infrahub.branch.id")
+        response = await cls.query_events(
+            client=client, limit=len(names_by_resource_id), filters=deletions, include_total=False
+        )
+        deleted_branch_ids: dict[str, str] = {}
+        for event in response.events:
+            name = names_by_resource_id.get(event.resource.id)
+            branch_id = event.resource.get("infrahub.branch.id")
+            if name is not None and branch_id:
+                deleted_branch_ids[name] = branch_id
+        return deleted_branch_ids
 
     @classmethod
     async def query(
