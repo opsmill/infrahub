@@ -226,7 +226,11 @@ Events can be queried through:
 The `/infrahub/events/filter` endpoint reads the `LIMIT`-ed page newest first, one time window
 at a time (1 hour, 1 day, 7 days, 30 days, then the task manager's event retention, or at least
 180 days when the task manager does not delete old events, back from the filter's `until`), and
-runs an unbounded `count(*)` over the whole range when asked.
+runs an unbounded `count(*)` over the whole range when asked. A wider window reads only the events
+older than the window before it, and the page keeps the events found so far. With an `offset`,
+each window is read from `until` until one returns events, because the offset counts matches back
+from `until`. A filter that keeps one event per resource (`resource.distinct`) reads every window
+from `until`, so each resource keeps its newest event of the whole range.
 Two hard-earned constraints apply to this path:
 
 - **The count is only computed when the caller asks for it.** The count aggregates every

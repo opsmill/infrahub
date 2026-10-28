@@ -59,8 +59,9 @@ Request gains:
 
 Behaviour changes:
 
-- Events are read newest first, through the time windows 1 h, 1 d, 7 d, 30 d, then the retention, counted back from the filter's `occurred.until` or now, stopping at the first window that fills the page (or at the retention).
-- With `offset`, a window counts as full only when it holds `offset + limit` matches, so position paging returns the same events as reading the whole retention.
+- Events are read newest first, through the time windows 1 h, 1 d, 7 d, 30 d, then the retention, counted back from the filter's `occurred.until` or now, stopping at the first window that fills the page (or at the retention); each wider window reads only the events older than the window before it, and the page keeps the events found so far.
+- With `offset`, each window is read from `occurred.until` until one returns events, and the wider windows then read only older events, so position paging returns the same events as reading the whole range.
+- A filter that keeps one event per resource (`resource.distinct`) reads every window from `occurred.until`, so each resource keeps its newest event of the whole range.
 - A filter that sets `occurred.since` is read from that start instead of the retention; the Infrahub server leaves `since` out of the request when the caller did not set it.
 - A window or retention that reaches before 0001-01-01T00:00:00 UTC starts at that time, so the request returns the events up to `occurred.until` instead of failing.
 - A filter in ascending order is read in one query over the whole range.

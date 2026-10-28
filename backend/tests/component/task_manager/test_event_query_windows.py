@@ -7,6 +7,7 @@ from uuid import uuid4
 
 import pytest
 from prefect.client.orchestration import PrefectClient, get_client
+from prefect.events.filters import EventResourceFilter
 from prefect.server.database import provide_database_interface
 from prefect.server.events.filters import EventFilter as StoredEventFilter
 from prefect.server.events.storage.database import read_events
@@ -24,6 +25,9 @@ if TYPE_CHECKING:
 
 DENSE_ACCOUNT = str(uuid4())
 SPARSE_ACCOUNT = str(uuid4())
+BOUNDARY_ACCOUNT = str(uuid4())
+REPEATED_NODE_ACCOUNT = str(uuid4())
+REPEATED_NODE_IDS = (str(uuid4()), str(uuid4()))
 BRANCH_ID = str(uuid4())
 
 DENSE_AGES = [timedelta(minutes=4 * index + 1) for index in range(12)] + [
@@ -42,6 +46,19 @@ SPARSE_AGES = [
     timedelta(days=200),
     timedelta(days=300),
 ]
+BOUNDARY_AGES = [
+    timedelta(hours=1),
+    timedelta(hours=1, microseconds=1),
+    timedelta(days=1),
+    timedelta(days=1, microseconds=1),
+    timedelta(days=7),
+    timedelta(days=7, microseconds=1),
+]
+REPEATED_NODE_EVENTS = [
+    (REPEATED_NODE_IDS[0], timedelta(minutes=30)),
+    (REPEATED_NODE_IDS[0], timedelta(days=2)),
+    (REPEATED_NODE_IDS[1], timedelta(days=3)),
+]
 
 
 @dataclass
@@ -49,13 +66,15 @@ class Seeded:
     now: datetime
     dense: list[str]
     sparse: list[str]
+    boundary: list[str]
+    repeated_node: list[str]
 
     def account_events(self, account: str) -> list[str]:
-        return self.dense if account == DENSE_ACCOUNT else self.sparse
+        return {DENSE_ACCOUNT: self.dense, SPARSE_ACCOUNT: self.sparse, BOUNDARY_ACCOUNT: self.boundary}[account]
 
 
-def _event(account: str) -> NodeUpdatedEvent:
-    node_id = str(uuid4())
+def _event(account: str, node_id: str | None = None) -> NodeUpdatedEvent:
+    node_id = node_id or str(uuid4())
     return NodeUpdatedEvent(
         kind="TestingNode",
         node_id=node_id,
@@ -73,11 +92,18 @@ async def prefect_client(prefect_test_fixture: None) -> AsyncGenerator[PrefectCl
 
 @pytest.fixture(scope="module")
 async def seeded(prefect_client: PrefectClient) -> Seeded:
-    """Events of a dense and a sparse account, newest first, each at a time of its own."""
+    """Events of each account, newest first, each at a time of its own."""
     now = datetime.now(UTC)
     dense = [str(await seed_infrahub_event(event=_event(DENSE_ACCOUNT), occurred=now - age)) for age in DENSE_AGES]
     sparse = [str(await seed_infrahub_event(event=_event(SPARSE_ACCOUNT), occurred=now - age)) for age in SPARSE_AGES]
-    return Seeded(now=now, dense=dense, sparse=sparse)
+    boundary = [
+        str(await seed_infrahub_event(event=_event(BOUNDARY_ACCOUNT), occurred=now - age)) for age in BOUNDARY_AGES
+    ]
+    repeated_node = [
+        str(await seed_infrahub_event(event=_event(REPEATED_NODE_ACCOUNT, node_id=node_id), occurred=now - age))
+        for node_id, age in REPEATED_NODE_EVENTS
+    ]
+    return Seeded(now=now, dense=dense, sparse=sparse, boundary=boundary, repeated_node=repeated_node)
 
 
 @dataclass
@@ -147,6 +173,19 @@ WINDOW_CASES = [
         expected=list(range(12)),
     ),
     WindowCase(
+        name="events_on_window_bounds_are_read_once",
+        account=BOUNDARY_ACCOUNT,
+        limit=5,
+        expected=[0, 1, 2, 3, 4],
+    ),
+    WindowCase(
+        name="events_on_window_bounds_after_an_offset",
+        account=BOUNDARY_ACCOUNT,
+        limit=3,
+        offset=1,
+        expected=[1, 2, 3],
+    ),
+    WindowCase(
         name="oldest_first",
         account=SPARSE_ACCOUNT,
         limit=3,
@@ -193,6 +232,24 @@ async def test_windows_return_the_events_of_a_single_read(
         limit=test_case.limit,
         offset=test_case.offset,
     )
+
+
+async def test_one_event_per_resource_is_the_newest_of_the_whole_range(
+    seeded: Seeded, prefect_client: PrefectClient
+) -> None:
+    """A filter that keeps one event per resource returns the newest event of each resource, as a single read does."""
+    event_filter = InfrahubEventFilter.from_filters(
+        order=EventSortOrder.DESC, account__ids=[REPEATED_NODE_ACCOUNT], until=seeded.now
+    )
+    event_filter.resource = EventResourceFilter(
+        id=[f"infrahub.node.{node_id}" for node_id in REPEATED_NODE_IDS], distinct=True
+    )
+    retention = timedelta(days=400)
+
+    page = await filter_event_ids(client=prefect_client, event_filter=event_filter, limit=2, retention=retention)
+
+    assert page == [seeded.repeated_node[0], seeded.repeated_node[2]]
+    assert page == await _read_once(event_filter=event_filter, since=seeded.now - retention, limit=2, offset=None)
 
 
 async def test_task_manager_retention_bounds_the_widest_window_by_default(
