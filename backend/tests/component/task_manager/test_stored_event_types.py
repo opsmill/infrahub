@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
@@ -13,6 +14,7 @@ from tests.helpers.task_manager_seed import task_manager_database
 
 from infrahub.prefect_server.app import warn_about_unlisted_prefect_event_types
 from infrahub.prefect_server.database import read_stored_event_types
+from infrahub.prefect_server.retention import PREFECT_EVENT_TYPES
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -23,16 +25,34 @@ if TYPE_CHECKING:
 APP_LOGGER = "infrahub.prefect_server.app"
 LISTED_PREFECT_EVENT = "prefect.flow-run.Completed"
 UNLISTED_PREFECT_EVENT = "prefect.work-pool.new-status"
+UNLISTED_WARNING = (
+    "Task manager retention: these stored Prefect event types have no per-type retention in "
+    "PREFECT_SERVER_SERVICES_DB_VACUUM_EVENT_RETENTION_OVERRIDES, so they are kept for the activity log retention "
+    f"(P365D): {UNLISTED_PREFECT_EVENT}"
+)
+
+
+@contextmanager
+def _per_type_retention_in_effect() -> Generator[None]:
+    # The component session turns Prefect's cleanups off, and the check reads the stored types only while a per-type
+    # retention deletes events.
+    with temporary_settings(
+        updates={
+            "server.events.retention_period": timedelta(days=365),
+            "server.services.db_vacuum.enabled": {"events"},
+            "server.services.db_vacuum.event_retention_overrides": dict.fromkeys(
+                PREFECT_EVENT_TYPES, timedelta(days=7)
+            ),
+        }
+    ):
+        yield
 
 
 @pytest.fixture
 def database(task_manager_database_path: Path) -> Generator[PrefectDBInterface, None, None]:
     # Prefect picks how it writes events from the configured database, not from the session it is given.
     with temporary_settings(
-        updates={
-            "server.database.connection_url": f"sqlite+aiosqlite:///{task_manager_database_path}",
-            "server.events.retention_period": timedelta(days=365),
-        }
+        updates={"server.database.connection_url": f"sqlite+aiosqlite:///{task_manager_database_path}"}
     ):
         yield task_manager_database(task_manager_database_path)
 
@@ -78,20 +98,17 @@ async def test_each_stored_event_type_is_read_once(database: PrefectDBInterface)
     assert sorted(stored) == ["custom.event", "infrahub.node.created", LISTED_PREFECT_EVENT, UNLISTED_PREFECT_EVENT]
 
 
-async def test_a_stored_prefect_event_type_missing_from_the_list_is_logged(
+async def test_a_stored_prefect_event_type_without_a_per_type_retention_is_logged(
     database: PrefectDBInterface, caplog: pytest.LogCaptureFixture
 ) -> None:
     await _store_events(
         db=database, event_types=["infrahub.node.created", LISTED_PREFECT_EVENT, UNLISTED_PREFECT_EVENT]
     )
 
-    with caplog.at_level(logging.WARNING, logger=APP_LOGGER):
+    with _per_type_retention_in_effect(), caplog.at_level(logging.WARNING, logger=APP_LOGGER):
         await warn_about_unlisted_prefect_event_types(db=database)
 
-    assert _app_warnings(caplog=caplog) == [
-        "Task manager retention: Infrahub does not list these Prefect event types, so they are kept for the activity "
-        f"log retention (P365D) instead of prefect_own_events: {UNLISTED_PREFECT_EVENT}"
-    ]
+    assert _app_warnings(caplog=caplog) == [UNLISTED_WARNING]
 
 
 async def test_nothing_is_logged_when_every_stored_prefect_event_type_is_listed(
@@ -99,7 +116,47 @@ async def test_nothing_is_logged_when_every_stored_prefect_event_type_is_listed(
 ) -> None:
     await _store_events(db=database, event_types=["infrahub.node.created", LISTED_PREFECT_EVENT, "custom.event"])
 
-    with caplog.at_level(logging.WARNING, logger=APP_LOGGER):
+    with _per_type_retention_in_effect(), caplog.at_level(logging.WARNING, logger=APP_LOGGER):
+        await warn_about_unlisted_prefect_event_types(db=database)
+
+    assert _app_warnings(caplog=caplog) == []
+
+
+async def test_nothing_is_logged_when_no_per_type_retention_is_in_effect(
+    database: PrefectDBInterface, caplog: pytest.LogCaptureFixture
+) -> None:
+    await _store_events(
+        db=database, event_types=["infrahub.node.created", LISTED_PREFECT_EVENT, UNLISTED_PREFECT_EVENT]
+    )
+
+    # Prefect merges a mapping into the overrides in effect, so they are emptied outside the per-type retention.
+    with (
+        temporary_settings(
+            updates={
+                "server.events.retention_period": timedelta(days=365),
+                "server.services.db_vacuum.enabled": {"events"},
+                "server.services.db_vacuum.event_retention_overrides": {},
+            }
+        ),
+        caplog.at_level(logging.WARNING, logger=APP_LOGGER),
+    ):
+        await warn_about_unlisted_prefect_event_types(db=database)
+
+    assert _app_warnings(caplog=caplog) == []
+
+
+async def test_nothing_is_logged_when_prefect_deletes_no_events(
+    database: PrefectDBInterface, caplog: pytest.LogCaptureFixture
+) -> None:
+    await _store_events(
+        db=database, event_types=["infrahub.node.created", LISTED_PREFECT_EVENT, UNLISTED_PREFECT_EVENT]
+    )
+
+    with (
+        _per_type_retention_in_effect(),
+        temporary_settings(updates={"server.services.db_vacuum.enabled": {"flow_runs"}}),
+        caplog.at_level(logging.WARNING, logger=APP_LOGGER),
+    ):
         await warn_about_unlisted_prefect_event_types(db=database)
 
     assert _app_warnings(caplog=caplog) == []

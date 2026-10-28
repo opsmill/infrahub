@@ -11,6 +11,7 @@ from infrahub_sdk.protocols import CoreProposedChange, CoreReadOnlyRepository
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 from infrahub_sdk.testing.repository import GitRepo, GitRepoType
 from infrahub_sdk.testing.schemas.car_person import TESTING_MANUFACTURER, SchemaCarPerson
+from infrahub_testcontainers.container import InfrahubDockerCompose
 from prefect.client.schemas.filters import (
     FlowRunFilter,
     FlowRunFilterExpectedStartTime,
@@ -26,12 +27,11 @@ from infrahub.prefect_server.retention import PREFECT_EVENT_TYPES
 from tests.helpers.fixtures import get_fixtures_dir
 
 if TYPE_CHECKING:
-    from collections.abc import Awaitable, Callable
+    from collections.abc import Awaitable, Callable, Generator
     from pathlib import Path
 
     from infrahub_sdk import InfrahubClient
     from infrahub_sdk.schema import SchemaRoot
-    from infrahub_testcontainers.container import InfrahubDockerCompose
     from prefect.client.orchestration import PrefectClient
     from prefect.client.schemas.objects import FlowRun
 
@@ -50,10 +50,12 @@ SETTLED_MARKER_WAIT_SECONDS = 30
 POLL_SECONDS = 1
 
 CANCELLED_RUN_DEPLOYMENT = "git_repositories_sync/git_repositories_sync"
+ACTIVITY_LOG_RETENTION = "30d"
 UNLISTED_PREFECT_EVENT = "prefect.infrahub-test.unlisted"
 UNLISTED_WARNING = (
-    "Task manager retention: Infrahub does not list these Prefect event types, so they are kept for the activity log "
-    f"retention (P7D) instead of prefect_own_events: {UNLISTED_PREFECT_EVENT}"
+    "Task manager retention: these stored Prefect event types have no per-type retention in "
+    "PREFECT_SERVER_SERVICES_DB_VACUUM_EVENT_RETENTION_OVERRIDES, so they are kept for the activity log retention "
+    f"(P30D): {UNLISTED_PREFECT_EVENT}"
 )
 STARTUP_CHECK_FAILED = "Task manager retention: could not read the stored event types"
 # The statements interpolate only this module's constant, so S608 has no input to guard against.
@@ -228,6 +230,23 @@ async def _wait_until_settled(compose: InfrahubDockerCompose, prefect_client: Pr
 
 class TestPrefectEventTypes(TestInfrahubDockerClient, SchemaCarPerson):
     @pytest.fixture(scope="class")
+    def infrahub_compose(
+        self,
+        tmp_directory: Path,
+        # Requested so that both directories exist before the stack mounts them.
+        remote_repos_dir: Path,
+        remote_backups_dir: Path,
+        infrahub_version: str,
+        deployment_type: str | None,
+    ) -> Generator[InfrahubDockerCompose, None, None]:
+        # The compose file passes this variable from the environment that starts the stack into the task manager.
+        with pytest.MonkeyPatch.context() as monkeypatch:
+            monkeypatch.setenv("INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG", ACTIVITY_LOG_RETENTION)
+            yield InfrahubDockerCompose.init(
+                directory=tmp_directory, version=infrahub_version, deployment_type=deployment_type
+            )
+
+    @pytest.fixture(scope="class")
     async def stored_prefect_event_types(
         self,
         client: InfrahubClient,
@@ -316,9 +335,10 @@ class TestPrefectEventTypes(TestInfrahubDockerClient, SchemaCarPerson):
         prefect_client: PrefectClient,
         infrahub_compose: InfrahubDockerCompose,
     ) -> None:
-        """At startup each web server process of the task manager names the stored Prefect event types missing from the list once, read on Postgres.
+        """At startup each task manager web server process names the stored Prefect event types without a per-type retention once, read on Postgres.
 
-        It requests the workload so that the task manager restarts only after the workload has run.
+        The stack keeps the activity log for 30 days and Prefect's own events for 7, so the per-type retentions are in
+        effect. It requests the workload so that the task manager restarts only after the workload has run.
         """
         workers = _task_manager_web_workers(compose=infrahub_compose)
         try:

@@ -17,6 +17,7 @@ from infrahub.prefect_server.retention import (
     background_services_warning,
     build_prefect_retention_env,
     deletes_old_events,
+    event_types_with_retention_override,
     prefect_retention_already_set,
     prefect_retention_in_effect,
     remove_blank_vacuum_switch,
@@ -36,6 +37,7 @@ from tests.helpers.task_manager_retention import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Collection
     from pathlib import Path
 
 EVERY_RETENTION_VARIABLE = frozenset(
@@ -748,6 +750,65 @@ def test_background_services_warning_follows_prefects_reading_of_the_variable(
     assert background_services_warning(environ=test_case.environ) == test_case.expected_warning
 
 
+EVENT_PERSISTER_ENABLED = "PREFECT_SERVER_SERVICES_EVENT_PERSISTER_ENABLED"
+TWO_OVERRIDES = '{"prefect.flow-run.Completed": "P7D", "prefect.flow-run.heartbeat": "P7D"}'
+BOTH_OVERRIDDEN = frozenset({"prefect.flow-run.Completed", "prefect.flow-run.heartbeat"})
+
+
+def _retention_environ(vacuum_enabled: str, overrides: str = TWO_OVERRIDES) -> dict[str, str]:
+    return {VACUUM_ENABLED: vacuum_enabled, EVENTS_RETENTION_PERIOD: "P30D", EVENT_RETENTION_OVERRIDES: overrides}
+
+
+@dataclass
+class RetentionOverrideTestCase:
+    name: str
+    environ: dict[str, str]
+    expected: frozenset[str]
+
+
+RETENTION_OVERRIDE_TEST_CASES: list[RetentionOverrideTestCase] = [
+    RetentionOverrideTestCase(
+        name="events_and_flow_runs",
+        environ=_retention_environ(vacuum_enabled="events,flow_runs"),
+        expected=BOTH_OVERRIDDEN,
+    ),
+    RetentionOverrideTestCase(name="true", environ=_retention_environ(vacuum_enabled="true"), expected=BOTH_OVERRIDDEN),
+    RetentionOverrideTestCase(
+        name="false_still_deletes_events", environ=_retention_environ(vacuum_enabled="false"), expected=BOTH_OVERRIDDEN
+    ),
+    RetentionOverrideTestCase(
+        name="no_override",
+        environ=_retention_environ(vacuum_enabled="events,flow_runs", overrides="{}"),
+        expected=frozenset(),
+    ),
+    RetentionOverrideTestCase(
+        name="events_off", environ=_retention_environ(vacuum_enabled="flow_runs"), expected=frozenset()
+    ),
+    RetentionOverrideTestCase(name="no_cleanup", environ=_retention_environ(vacuum_enabled="[]"), expected=frozenset()),
+    RetentionOverrideTestCase(
+        name="unknown_vacuum_type", environ=_retention_environ(vacuum_enabled="events,Flow_Runs"), expected=frozenset()
+    ),
+    RetentionOverrideTestCase(
+        name="event_persister_off",
+        environ={**_retention_environ(vacuum_enabled="events"), EVENT_PERSISTER_ENABLED: "false"},
+        expected=frozenset(),
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in RETENTION_OVERRIDE_TEST_CASES])
+@pytest.mark.usefixtures("prefect_settings_sources")
+def test_event_types_with_a_retention_override_follow_what_prefect_deletes(
+    monkeypatch: pytest.MonkeyPatch, test_case: RetentionOverrideTestCase
+) -> None:
+    """Prefect deletes events per type only while its vacuum switch turns on events and its event persister runs."""
+    monkeypatch.delenv(EVENT_PERSISTER_ENABLED, raising=False)
+    for name, value in test_case.environ.items():
+        monkeypatch.setenv(name, value)
+
+    assert event_types_with_retention_override(settings=Settings()) == test_case.expected
+
+
 STORED_EVENT_TYPES = [
     "prefect.flow-run.Completed",
     "prefect.work-pool.new-status",
@@ -756,59 +817,70 @@ STORED_EVENT_TYPES = [
     "infrahub.node.created",
     "custom.prefect.flow-run.Completed",
 ]
-
-
-def _unlisted_warning(event_retention: str) -> str:
-    return (
-        "Task manager retention: Infrahub does not list these Prefect event types, so they are kept for the activity "
-        f"log retention ({event_retention}) instead of prefect_own_events: prefect.automation.new-action, "
-        "prefect.work-pool.new-status"
-    )
+UNLISTED_WARNING_PREFIX = (
+    "Task manager retention: these stored Prefect event types have no per-type retention in "
+    "PREFECT_SERVER_SERVICES_DB_VACUUM_EVENT_RETENTION_OVERRIDES, so they are kept for the activity log retention "
+)
+NOT_OVERRIDDEN_IN_STORED_EVENT_TYPES = "prefect.automation.new-action, prefect.work-pool.new-status"
 
 
 @dataclass
 class UnlistedWarningTestCase:
     name: str
     stored_event_types: list[str]
+    overridden: Collection[str]
     event_retention: timedelta
     expected_warning: str | None
 
 
 UNLISTED_WARNING_TEST_CASES: list[UnlistedWarningTestCase] = [
     UnlistedWarningTestCase(
-        name="whole_days",
+        name="infrahub_list_as_overrides",
         stored_event_types=STORED_EVENT_TYPES,
-        event_retention=timedelta(days=7),
-        expected_warning=_unlisted_warning(event_retention="P7D"),
+        overridden=PREFECT_EVENT_TYPES,
+        event_retention=timedelta(days=30),
+        expected_warning=f"{UNLISTED_WARNING_PREFIX}(P30D): {NOT_OVERRIDDEN_IN_STORED_EVENT_TYPES}",
     ),
     UnlistedWarningTestCase(
         name="part_below_a_day",
         stored_event_types=STORED_EVENT_TYPES,
+        overridden=PREFECT_EVENT_TYPES,
         event_retention=timedelta(days=1, hours=12),
-        expected_warning=_unlisted_warning(event_retention="P1DT43200S"),
+        expected_warning=f"{UNLISTED_WARNING_PREFIX}(P1DT43200S): {NOT_OVERRIDDEN_IN_STORED_EVENT_TYPES}",
     ),
     UnlistedWarningTestCase(
         name="shorter_than_a_day",
         stored_event_types=STORED_EVENT_TYPES,
+        overridden=PREFECT_EVENT_TYPES,
         event_retention=timedelta(hours=12),
-        expected_warning=_unlisted_warning(event_retention="P0DT43200S"),
+        expected_warning=f"{UNLISTED_WARNING_PREFIX}(P0DT43200S): {NOT_OVERRIDDEN_IN_STORED_EVENT_TYPES}",
     ),
     UnlistedWarningTestCase(
-        name="every_type_listed",
-        stored_event_types=["prefect.flow-run.Completed", "infrahub.node.created"],
+        name="operator_overrides",
+        stored_event_types=["prefect.flow-run.Completed", "prefect.flow-run.heartbeat"],
+        overridden=frozenset({"prefect.flow-run.heartbeat"}),
         event_retention=timedelta(days=7),
+        expected_warning=f"{UNLISTED_WARNING_PREFIX}(P7D): prefect.flow-run.Completed",
+    ),
+    UnlistedWarningTestCase(
+        name="every_type_overridden",
+        stored_event_types=["infrahub.node.created", "prefect.work-pool.new-status"],
+        overridden=frozenset({*PREFECT_EVENT_TYPES, "prefect.work-pool.new-status"}),
+        event_retention=timedelta(days=30),
         expected_warning=None,
     ),
 ]
 
 
 @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in UNLISTED_WARNING_TEST_CASES])
-def test_the_unlisted_event_type_warning_states_the_event_retention_in_iso_8601(
+def test_the_warning_names_the_stored_prefect_event_types_without_a_per_type_retention(
     test_case: UnlistedWarningTestCase,
 ) -> None:
-    """Only the stored `prefect.` types missing from the list are named, once each, with the retention in ISO 8601."""
+    """Only the stored `prefect.` types without an override are named, once each, with the retention in ISO 8601."""
     warning = unlisted_prefect_event_types_warning(
-        stored_event_types=test_case.stored_event_types, event_retention=test_case.event_retention
+        stored_event_types=test_case.stored_event_types,
+        overridden=test_case.overridden,
+        event_retention=test_case.event_retention,
     )
 
     assert warning == test_case.expected_warning

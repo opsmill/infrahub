@@ -10,7 +10,7 @@ from prefect.settings.models.server.events import ServerEventsSettings
 from prefect.settings.models.server.services import ServerServicesDBVacuumSettings
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping, MutableMapping
+    from collections.abc import Collection, Iterable, Mapping, MutableMapping
 
     from prefect.settings import Settings
     from pydantic_settings import BaseSettings
@@ -113,22 +113,39 @@ PREFECT_EVENT_TYPES: tuple[str, ...] = (
 PREFECT_EVENT_PREFIX = "prefect."
 
 
-def unlisted_prefect_event_types_warning(stored_event_types: Iterable[str], event_retention: timedelta) -> str | None:
-    """Return the warning naming the stored Prefect event types missing from the list, or None when every one is listed.
+def event_types_with_retention_override(settings: Settings) -> frozenset[str]:
+    """Return the event types that Prefect deletes after a retention of their own, or none when Prefect deletes no events."""
+    services = settings.server.services
+    try:
+        enabled = services.db_vacuum.enabled_vacuum_types
+    except ValueError:
+        # The startup warnings already name an unknown vacuum type.
+        return frozenset()
+    if "events" not in enabled or not services.event_persister.enabled:
+        return frozenset()
+    return frozenset(services.db_vacuum.event_retention_overrides)
+
+
+def unlisted_prefect_event_types_warning(
+    stored_event_types: Iterable[str], overridden: Collection[str], event_retention: timedelta
+) -> str | None:
+    """Return the warning naming the stored Prefect event types that have no per-type retention, or None when every one has one.
 
     Args:
-        event_retention: The event retention Prefect applies, which keeps the missing types.
+        overridden: The event types that Prefect deletes after a retention of their own.
+        event_retention: The event retention Prefect applies, which keeps the other types.
 
     """
     prefect_event_types = {
         event_type for event_type in stored_event_types if event_type.startswith(PREFECT_EVENT_PREFIX)
     }
-    unlisted = sorted(prefect_event_types.difference(PREFECT_EVENT_TYPES))
+    unlisted = sorted(prefect_event_types.difference(overridden))
     if not unlisted:
         return None
     return (
-        "Task manager retention: Infrahub does not list these Prefect event types, so they are kept for the activity "
-        f"log retention ({_iso_8601(event_retention)}) instead of prefect_own_events: {', '.join(unlisted)}"
+        "Task manager retention: these stored Prefect event types have no per-type retention in "
+        f"{EVENT_RETENTION_OVERRIDES}, so they are kept for the activity log retention "
+        f"({_iso_8601(event_retention)}): {', '.join(unlisted)}"
     )
 
 

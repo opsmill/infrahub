@@ -22,6 +22,7 @@ from .database import read_stored_event_types
 from .retention import (
     apply_prefect_retention_env,
     background_services_warning,
+    event_types_with_retention_override,
     prefect_retention_already_set,
     prefect_retention_in_effect,
     remove_blank_vacuum_switch,
@@ -86,7 +87,12 @@ def apply_infrahub_settings_to_prefect() -> None:
 
 
 async def warn_about_unlisted_prefect_event_types(db: PrefectDBInterface) -> None:
-    """Log the stored Prefect event types that Infrahub does not list, which the activity log retention keeps."""
+    """Log the stored Prefect event types that have no per-type retention, which the event retention keeps."""
+    settings = get_current_settings()
+    overridden = event_types_with_retention_override(settings=settings)
+    # Without a per-type retention in effect, Prefect keeps every event type for the same time.
+    if not overridden:
+        return
     try:
         async with db.session_context() as session:
             stored = await read_stored_event_types(session=session)
@@ -95,7 +101,7 @@ async def warn_about_unlisted_prefect_event_types(db: PrefectDBInterface) -> Non
         log.warning(f"Task manager retention: could not read the stored event types ({type(exc).__name__})")
         return
     if warning := unlisted_prefect_event_types_warning(
-        stored_event_types=stored, event_retention=get_current_settings().server.events.retention_period
+        stored_event_types=stored, overridden=overridden, event_retention=settings.server.events.retention_period
     ):
         log.warning(warning)
 
