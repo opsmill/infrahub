@@ -165,14 +165,13 @@ def _name_set_in(environ: Mapping[str, str], setting: _PrefectSetting) -> str | 
     return None
 
 
-def remove_blank_retention_variables(environ: MutableMapping[str, str]) -> None:
-    """Remove each retention variable that is present but empty or blank, under any name Prefect accepts for it."""
-    # A compose file passes an unset host variable as an empty value, and Prefect reads an empty vacuum switch as
-    # false, which deletes no task runs.
-    for setting in _PREFECT_SETTINGS.values():
-        accepted = {name.upper() for name in setting.environment_names()}
-        for name in [name for name in environ if name.upper() in accepted and not environ[name].strip()]:
-            del environ[name]
+def remove_blank_vacuum_switch(environ: MutableMapping[str, str]) -> None:
+    """Remove the vacuum switch when it is present but empty or blank, under any name Prefect accepts for it."""
+    # A compose file passes an unset host variable as an empty value, which Prefect reads as false for this switch
+    # and so deletes no task runs, while an empty retention variable already made the import of Prefect fail.
+    accepted = {name.upper() for name in _PREFECT_SETTINGS[VACUUM_ENABLED].environment_names()}
+    for name in [name for name in environ if name.upper() in accepted and not environ[name].strip()]:
+        del environ[name]
 
 
 def build_prefect_retention_env(settings: TaskManagerRetentionSettings, event_types: tuple[str, ...]) -> dict[str, str]:
@@ -197,7 +196,7 @@ def prefect_retention_already_set() -> frozenset[str]:
 
     Prefect reads a setting from the environment, a `.env` file, `prefect.toml`, the `[tool.prefect]` table of
     `pyproject.toml` or the active profile, and marks a field as set only when one of them supplies it. An empty
-    variable counts as set, so the caller removes blank ones first.
+    vacuum switch counts as set, so the caller removes a blank one first.
     """
     return frozenset(
         name for name, setting in _PREFECT_SETTINGS.items() if setting.field in setting.model().model_fields_set

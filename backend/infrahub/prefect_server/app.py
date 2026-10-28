@@ -19,7 +19,7 @@ from .retention import (
     background_services_warning,
     prefect_retention_already_set,
     prefect_retention_in_effect,
-    remove_blank_retention_variables,
+    remove_blank_vacuum_switch,
     turned_off_cleanup_warnings,
 )
 from .retention_settings import load_task_manager_settings, print_configuration_errors
@@ -58,7 +58,7 @@ def apply_infrahub_settings_to_prefect() -> None:
     except ValidationError as error:
         print_configuration_errors(error=error)
         sys.exit(1)
-    remove_blank_retention_variables(environ=os.environ)
+    remove_blank_vacuum_switch(environ=os.environ)
     # Read before any write, since a variable written here would count as one the operator set.
     already_set = prefect_retention_already_set()
     for warning in apply_prefect_retention_env(environ=os.environ, settings=retention, already_set=already_set):

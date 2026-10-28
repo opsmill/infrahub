@@ -18,7 +18,7 @@ from infrahub.prefect_server.retention import (
     build_prefect_retention_env,
     prefect_retention_already_set,
     prefect_retention_in_effect,
-    remove_blank_retention_variables,
+    remove_blank_vacuum_switch,
     turned_off_cleanup_warnings,
 )
 
@@ -374,7 +374,7 @@ def test_setting_preset_under_any_name_prefect_accepts_wins(
 
 
 @dataclass
-class BlankVariableTestCase:
+class BlankVacuumSwitchTestCase:
     name: str
     environ: dict[str, str]
     expected_environ: dict[str, str]
@@ -382,53 +382,28 @@ class BlankVariableTestCase:
 
 UNRELATED_VARIABLE = {"PREFECT_API_DATABASE_CONNECTION_URL": "sqlite+aiosqlite:///prefect.db"}
 
-BLANK_VARIABLE_TEST_CASES: list[BlankVariableTestCase] = [
-    BlankVariableTestCase(
-        name="vacuum_enabled_empty",
+BLANK_VACUUM_SWITCH_TEST_CASES: list[BlankVacuumSwitchTestCase] = [
+    BlankVacuumSwitchTestCase(
+        name="empty",
         environ={**UNRELATED_VARIABLE, VACUUM_ENABLED: ""},
         expected_environ=UNRELATED_VARIABLE,
     ),
-    BlankVariableTestCase(
-        name="vacuum_enabled_blank",
+    BlankVacuumSwitchTestCase(
+        name="blank",
         environ={**UNRELATED_VARIABLE, VACUUM_ENABLED: "  "},
         expected_environ=UNRELATED_VARIABLE,
     ),
-    BlankVariableTestCase(
-        name="lower_case_vacuum_enabled_empty",
+    BlankVacuumSwitchTestCase(
+        name="lower_case_name_empty",
         environ={**UNRELATED_VARIABLE, "prefect_server_services_db_vacuum_enabled": ""},
         expected_environ=UNRELATED_VARIABLE,
     ),
-    BlankVariableTestCase(
-        name="vacuum_retention_period_empty",
-        environ={**UNRELATED_VARIABLE, VACUUM_RETENTION_PERIOD: ""},
-        expected_environ=UNRELATED_VARIABLE,
-    ),
-    BlankVariableTestCase(
-        name="events_retention_period_empty",
-        environ={**UNRELATED_VARIABLE, EVENTS_RETENTION_PERIOD: ""},
-        expected_environ=UNRELATED_VARIABLE,
-    ),
-    BlankVariableTestCase(
-        name="legacy_events_retention_period_empty",
-        environ={**UNRELATED_VARIABLE, LEGACY_EVENTS_RETENTION_PERIOD: ""},
-        expected_environ=UNRELATED_VARIABLE,
-    ),
-    BlankVariableTestCase(
-        name="event_retention_overrides_empty",
-        environ={**UNRELATED_VARIABLE, EVENT_RETENTION_OVERRIDES: ""},
-        expected_environ=UNRELATED_VARIABLE,
-    ),
-    BlankVariableTestCase(
-        name="empty_legacy_name_beside_a_value",
-        environ={**UNRELATED_VARIABLE, EVENTS_RETENTION_PERIOD: "P14D", LEGACY_EVENTS_RETENTION_PERIOD: ""},
-        expected_environ={**UNRELATED_VARIABLE, EVENTS_RETENTION_PERIOD: "P14D"},
-    ),
-    BlankVariableTestCase(
+    BlankVacuumSwitchTestCase(
         name="false_is_kept",
         environ={**UNRELATED_VARIABLE, VACUUM_ENABLED: "false"},
         expected_environ={**UNRELATED_VARIABLE, VACUUM_ENABLED: "false"},
     ),
-    BlankVariableTestCase(
+    BlankVacuumSwitchTestCase(
         name="empty_unrelated_variable_is_kept",
         environ={**UNRELATED_VARIABLE, WEBSERVER_ONLY: ""},
         expected_environ={**UNRELATED_VARIABLE, WEBSERVER_ONLY: ""},
@@ -436,11 +411,11 @@ BLANK_VARIABLE_TEST_CASES: list[BlankVariableTestCase] = [
 ]
 
 
-@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in BLANK_VARIABLE_TEST_CASES])
-def test_blank_retention_variable_is_removed_under_any_name_prefect_accepts(test_case: BlankVariableTestCase) -> None:
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in BLANK_VACUUM_SWITCH_TEST_CASES])
+def test_blank_vacuum_switch_is_removed_under_any_name_prefect_accepts(test_case: BlankVacuumSwitchTestCase) -> None:
     environ = dict(test_case.environ)
 
-    remove_blank_retention_variables(environ=environ)
+    remove_blank_vacuum_switch(environ=environ)
 
     assert environ == test_case.expected_environ
 

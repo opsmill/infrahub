@@ -122,7 +122,7 @@ def test_each_preset_prefect_variable_is_logged_and_kept(
 def test_empty_vacuum_switch_keeps_task_run_deletion(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
-    """An empty variable, as a compose file passes for an unset host variable, is replaced with the derived value."""
+    """An empty switch, as a compose file passes for an unset host variable, is replaced with the derived value."""
     monkeypatch.setenv(VACUUM_ENABLED, "")
 
     with caplog.at_level(logging.WARNING, logger=APP_LOGGER):
@@ -131,6 +131,25 @@ def test_empty_vacuum_switch_keeps_task_run_deletion(
     assert _app_messages(caplog=caplog, level=logging.WARNING) == []
     assert os.environ[VACUUM_ENABLED] == "events,flow_runs"
     assert get_current_settings().server.services.db_vacuum.enabled_vacuum_types == {"events", "flow_runs", "orphans"}
+
+
+@pytest.mark.usefixtures("task_manager_environment")
+def test_empty_vacuum_switch_gives_way_to_a_prefect_settings_file(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Prefect reads an empty switch as false, which would replace the file value and turn off task run deletion."""
+    (tmp_path / "prefect.toml").write_text('[server.services.db_vacuum]\nenabled = "flow_runs"\n', encoding="utf-8")
+    monkeypatch.setenv(VACUUM_ENABLED, "")
+
+    with caplog.at_level(logging.WARNING, logger=APP_LOGGER):
+        apply_infrahub_settings_to_prefect()
+
+    assert _app_messages(caplog=caplog, level=logging.WARNING) == [
+        "PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED does not turn on events, so old events are not deleted and "
+        "task_manager.retention.activity_log and task_manager.retention.prefect_own_events are not applied"
+    ]
+    assert VACUUM_ENABLED not in os.environ
+    assert get_current_settings().server.services.db_vacuum.enabled_vacuum_types == {"flow_runs", "orphans"}
 
 
 @pytest.mark.usefixtures("task_manager_environment")
