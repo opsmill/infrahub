@@ -25,6 +25,7 @@ from infrahub.dependencies.registry import get_component_registry
 from infrahub.git.sync_status import RepositoryBranchSyncStatusReader
 from infrahub.git.writeback.constants import NARROWED_HOLD_MAX_BYTES, NARROWED_HOLD_TTL_SECONDS
 from infrahub.git.writeback.store import WritebackIntentStore
+from infrahub.profiles.replay import ProfileReplayRefresher
 from infrahub.workers.dependencies import get_cache, get_client, get_event_service, get_workflow
 
 from .constraints import MergeConstraintValidator
@@ -152,6 +153,7 @@ async def build_branch_merge_orchestrator(
             ),
             default_branch_name=destination_branch.name,
         ),
+        profile_replay_refresher=ProfileReplayRefresher(workflow=workflow),
         logger=logger,
     )
 
