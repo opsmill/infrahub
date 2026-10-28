@@ -6,7 +6,7 @@
 
 **Tests**: Requested. The spec requires three CI guards (FR-027 to FR-029) and the constitution requires tests at the right tier, plus an E2E test for user-facing behaviour.
 
-**Organization**: One phase per user story, in the delivery order of the design doc: US1 (part 1, task history), US2 (part 2, Activities page, before US3), US3 (part 3, activity log retention), US4 (single configuration entry point). Documentation (part 4) is in the final phase and ships with US1 and US3.
+**Organization**: One phase per user story: US1 (part 1, task history), US2 (part 2, Activities page, before US3), US3 (part 3, activity log retention), US4 (single configuration entry point, which ships in part 1 with US1 because T021 needs T048). Documentation (part 4) is in the final phase and ships with US1 and US3.
 
 ## Format: `[ID] [P?] [Story] Description`
 
