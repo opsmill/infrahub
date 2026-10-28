@@ -120,12 +120,7 @@ def event_types_with_retention_override(settings: Settings) -> frozenset[str]:
     retention, because every event type is then kept for the same time.
     """
     services = settings.server.services
-    try:
-        enabled = services.db_vacuum.enabled_vacuum_types
-    except ValueError:
-        # The startup warnings already name an unknown vacuum type.
-        return frozenset()
-    if "events" not in enabled or not services.event_persister.enabled:
+    if not deletes_old_events(vacuum=services.db_vacuum) or not services.event_persister.enabled:
         return frozenset()
     overrides = services.db_vacuum.event_retention_overrides
     if all(kept >= settings.server.events.retention_period for kept in overrides.values()):
