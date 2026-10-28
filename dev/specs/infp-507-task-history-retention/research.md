@@ -79,7 +79,7 @@ The [Notion design doc](https://app.notion.com/p/opsmill/Task-history-and-Activi
 - `docs/docs/deploy-manage/maintain-upgrade/upgrade/{overview,community,enterprise}.mdx`: the cleanup step after the upgrade for existing instances with a lot of task history, the same for Compose and Helm, setting the retention before upgrading, free disk for the rewrite, short pauses while tables are rewritten.
 - `docs/docs/reference/configuration.mdx`: generated from the settings classes by `invoke docs.generate`.
 - `docs/docs/reference/infrahub-cli/`: `tasks/docs.py::CLI_COMMANDS` does not list `infrahub tasks`; add it so the flush commands and the background-services command are documented.
-- `dev/knowledge/backend/events.md` and `dev/knowledge/backend/async-tasks.md`: retention, the list of Prefect event types, Activities queries, stuck runs; add a behaviour table to each.
+- `dev/knowledge/backend/events.md` and `dev/knowledge/backend/async-tasks.md`: retention, the list of Prefect event types, Activities queries, stuck runs; add a behaviour table to `events.md`; `async-tasks.md`, already above its size range, only links to `task-manager-retention.md`, which holds the retention mechanics.
 - A changelog fragment per user-visible part.
 
 ## Open items carried from the design doc

@@ -27,6 +27,7 @@ database: it sets Prefect settings, deletes rows in Prefect's existing tables, a
 | A retention is lowered | The next hourly run deletes the older records; disk space returns only with `flush flow-runs --rewrite`, which rewrites each task history and activity log table that is mostly free space |
 | A run stays RUNNING or PENDING | Nothing deletes it until `infrahub tasks flush stale-runs` marks it CRASHED; see [Stuck runs](#stuck-runs) |
 | A branch is deleted | `branch-purge-tasks` deletes the finished runs tagged with the branch, independently of the retention |
+| The retention deletes a flow run | Anything built on flow runs loses it: the webhook delivery history no longer lists the delivery, and a retry or cancel of it is refused with `This delivery is no longer available.`; see [ADR-0013](../../adr/0013-webhook-delivery-on-prefect-run-primitives.md) |
 | Tests on the Prefect harness | `backend/tests/helpers/constants.py` sets `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` to `[]`, which takes precedence, so Prefect's vacuum stays off, the task manager logs both turned-off-cleanup warnings, and an event query that sets no start reads 180 days back |
 
 ## Settings and their translation
