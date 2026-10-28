@@ -80,20 +80,23 @@ def test_the_services_start_once_with_the_retention_of_the_given_configuration_f
 
 @pytest.mark.usefixtures("task_manager_environment")
 def test_an_invalid_retention_stops_the_command_before_the_services_start(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """The command exits with the validation error of the configuration file it is given, leaving Prefect unchanged."""
+    """The command exits with the given configuration file's validation error, without starting the services or changing Prefect's settings."""
     config_file = _config_file(directory=tmp_path, name="infrahub.toml", retention='task_history = "PT12H"')
     other_config_file = _config_file(directory=tmp_path, name="other.toml", retention='activity_log = "PT1H"')
     monkeypatch.setenv("INFRAHUB_CONFIG", str(other_config_file))
+    starter = RecordingServicesStarter()
 
-    result = CliRunner().invoke(app, ["tasks", "background-services", str(config_file)])
+    with pytest.raises(SystemExit) as exit_info:
+        run_background_services(config_file=config_file, start_services=starter)
 
-    assert (result.exit_code, result.stdout) == (
+    assert (exit_info.value.code, capsys.readouterr().out, starter.starts) == (
         1,
         "Configuration not valid, found 1 error(s)\n"
         "  task_manager/retention/task_history | Value error, Invalid task manager retention: task_history must be "
         "at least 1 day (value_error)\n",
+        [],
     )
     assert {name: os.environ.get(name) for name in PREFECT_RETENTION_VARIABLES} == dict.fromkeys(
         PREFECT_RETENTION_VARIABLES
