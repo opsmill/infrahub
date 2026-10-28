@@ -136,7 +136,7 @@ A crashed run has an end time, so the hourly cleanup deletes it once it is older
 
 ### Background services in their own container
 
-The task manager runs the hourly cleanups in its background services. When these services run in a container of their own instead of inside the task manager, start that container with `infrahub tasks background-services` rather than `prefect server services start`. `prefect server services start` does not read the `task_manager.retention` settings, so it does not delete task runs and keeps events for Prefect's default retention. The sizing presets of the Infrahub Enterprise Helm chart run these services in a pod of their own; [Upgrade Enterprise](../maintain-upgrade/upgrade/enterprise.mdx) describes how to view and change the command of that pod.
+The task manager runs the hourly cleanups in its background services. When these services run in a container of their own instead of inside the task manager, start that container with `infrahub tasks background-services` rather than `prefect server services start`. `prefect server services start` does not read the `task_manager.retention` settings, so it does not delete task runs and keeps events for Prefect's default retention. The Docker Compose file of Infrahub Enterprise and the sizing presets of the Infrahub Enterprise Helm chart run these services in a container of their own; [Upgrade Enterprise](../maintain-upgrade/upgrade/enterprise.mdx) describes how to view and change the command of that container.
 
 When `PREFECT__SERVER_WEBSERVER_ONLY` is set, the task manager runs without its background services, and at startup it logs a line that starts with `Task manager retention: PREFECT__SERVER_WEBSERVER_ONLY is set` and names `infrahub tasks background-services`.
 
