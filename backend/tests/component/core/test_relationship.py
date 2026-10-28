@@ -1,3 +1,5 @@
+from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Any
 
 import pytest
@@ -471,6 +473,95 @@ async def test_relationship_validate_many_less_than_min_raise(
         result.remove(rel_doe_one)
     with pytest.raises(infra_execs.ValidationError, match=expected_msg):
         del result[0]
+
+
+@dataclass
+class ValidatorListChangeCase:
+    name: str
+    change: Callable[[RelationshipValidatorList, list[Relationship]], object]
+    expected: list[int]
+    """Positions in the relationships of the fixture, in the order the list holds them after the change."""
+
+
+VALIDATOR_LIST_CHANGE_CASES = [
+    ValidatorListChangeCase(name="append", change=lambda result, rels: result.append(rels[2]), expected=[0, 1, 2]),
+    ValidatorListChangeCase(
+        name="append_duplicate", change=lambda result, rels: result.append(rels[0]), expected=[0, 1]
+    ),
+    ValidatorListChangeCase(name="insert", change=lambda result, rels: result.insert(0, rels[2]), expected=[2, 0, 1]),
+    ValidatorListChangeCase(
+        name="insert_duplicate", change=lambda result, rels: result.insert(0, rels[1]), expected=[0, 1]
+    ),
+    ValidatorListChangeCase(
+        name="extend_with_duplicates",
+        change=lambda result, rels: result.extend([rels[2], rels[2], rels[0]]),
+        expected=[0, 1, 2],
+    ),
+    ValidatorListChangeCase(
+        name="setitem", change=lambda result, rels: result.__setitem__(1, rels[2]), expected=[0, 2]
+    ),
+    ValidatorListChangeCase(name="delitem", change=lambda result, _: result.__delitem__(0), expected=[1]),
+    ValidatorListChangeCase(name="pop_last", change=lambda result, _: result.pop(), expected=[0]),
+    ValidatorListChangeCase(name="pop_first", change=lambda result, _: result.pop(0), expected=[1]),
+    ValidatorListChangeCase(
+        name="replace",
+        change=lambda result, rels: result.replace(rel_to_insert=rels[2], rel_to_remove=rels[0]),
+        expected=[1, 2],
+    ),
+    ValidatorListChangeCase(
+        name="replace_with_held_relationship",
+        change=lambda result, rels: result.replace(rel_to_insert=rels[1], rel_to_remove=rels[0]),
+        expected=[1],
+    ),
+    ValidatorListChangeCase(name="remove", change=lambda result, rels: result.remove(rels[1]), expected=[0]),
+    ValidatorListChangeCase(name="clear", change=lambda result, _: result.clear(), expected=[]),
+]
+
+
+@pytest.mark.parametrize("test_case", VALIDATOR_LIST_CHANGE_CASES, ids=lambda case: case.name)
+async def test_relationship_validate_change_keeps_ids_in_sync(
+    db: InfrahubDatabase, person_jack_main: Node, branch: Branch, test_case: ValidatorListChangeCase
+) -> None:
+    person_schema = registry.schema.get_node_schema(name="TestPerson")
+    rel_schema = person_schema.get_relationship("tags")
+    rels = [
+        Relationship(
+            schema=rel_schema,
+            branch=branch,
+            source_kind=person_schema.kind,
+            node=Node(person_schema, branch, at=Timestamp()),
+        )
+        for _ in range(3)
+    ]
+    result = RelationshipValidatorList(rels[0], rels[1], name="name")
+
+    test_case.change(result, rels)
+
+    # Read before len(), which corrects a count that a change left behind.
+    assert result._relationships_count == len(test_case.expected)
+    assert [rels.index(rel) for rel in result] == test_case.expected
+    assert result._relationship_ids == {id(rels[position]) for position in test_case.expected}
+    assert [rel in result for rel in rels] == [position in test_case.expected for position in range(3)]
+
+    # A relationship the change removed can be added again, and one still held is not added twice.
+    result.extend(rels)
+    assert [rels.index(rel) for rel in result] == test_case.expected + [
+        position for position in range(3) if position not in test_case.expected
+    ]
+
+
+async def test_relationship_validate_init_duplicate(
+    db: InfrahubDatabase, person_jack_main: Node, branch: Branch
+) -> None:
+    person_schema = registry.schema.get(name="TestPerson")
+    rel_schema = person_schema.get_relationship("tags")
+    rel = Relationship(schema=rel_schema, branch=branch, source_kind=person_jack_main.get_kind(), node=person_jack_main)
+
+    result = RelationshipValidatorList(rel, rel, name="name")
+
+    assert result.as_list() == [rel]
+    assert result._relationships_count == 1
+    assert result._relationship_ids == {id(rel)}
 
 
 async def test_relationship_assign_from_pool(

@@ -1,0 +1,1 @@
+Loading an object with a relationship to many peers, such as a Profile with all its objects or a group with all its members, is now faster. The check for duplicate peers no longer compares each peer with all the other peers.
