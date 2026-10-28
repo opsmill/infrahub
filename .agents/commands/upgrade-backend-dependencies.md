@@ -1,3 +1,4 @@
+````markdown
 ---
 description: Upgrade backend infrastructure dependencies (Neo4j, Redis, RabbitMQ, PostgreSQL, NATS, Memgraph) and create a GitHub PR
 allowed-tools: mcp__github__*, Bash(curl:*), Bash(gh:*), Read, Edit, Grep, Glob, WebFetch
@@ -45,7 +46,7 @@ Current versions defined in:
 - `python_testcontainers/infrahub_testcontainers/docker-compose.test.yml`
 - `python_testcontainers/infrahub_testcontainers/docker-compose-cluster.test.yml`
 - `utilities/db_backup/__main__.py` - `NEO4J_BACKUP_DOCKER_IMAGE`
-- `.github/workflows/version-upgrade.yml`
+- `.github/workflows/version-upgrade.yml` - `neo4j_image`, the Neo4j version the upgrade test starts from: leave it unchanged
 - `docs/docs/development-resources/local-demo-environment.mdx`
 - `docs/docs/deploy-manage/install-configure/production-deployment/high-availability.mdx` - Helm chart versions
 - `development/deploy.tf` - Neo4j Helm chart versions of the high-availability example
@@ -273,7 +274,8 @@ git checkout -b deps/upgrade-backend-deps-$(date +%Y%m%d)
 
 ## Step 6: Update Version Files
 
-For each component being upgraded, update ALL relevant files:
+For each component being upgraded, update ALL relevant files. Then search for the old tag, for
+example `git grep -n 'neo4j:2026.05.0'`, to find any pin this list misses.
 
 ### Neo4j Updates
 1. `backend/tests/helpers/constants.py`:
@@ -287,7 +289,8 @@ For each component being upgraded, update ALL relevant files:
    - Update `NEO4J_DOCKER_IMAGE` default
 
 4. `python_testcontainers/infrahub_testcontainers/container.py`:
-   - Update `NEO4J_DOCKER_IMAGE` in env dict
+   - Update both `NEO4J_DOCKER_IMAGE` values: the community default in `PROJECT_ENV_VARIABLES`
+     and the enterprise value in `create_env_file`
 
 5. `python_testcontainers/infrahub_testcontainers/docker-compose.test.yml`:
    - Update `NEO4J_DOCKER_IMAGE` default
@@ -299,7 +302,8 @@ For each component being upgraded, update ALL relevant files:
    - Update `NEO4J_BACKUP_DOCKER_IMAGE` default
 
 8. `.github/workflows/version-upgrade.yml`:
-   - Update `neo4j_image` in matrix
+   - Do not update `neo4j_image`: it is the Neo4j version of the release that the upgrade test
+     starts from, and the upgrade step already runs the new default from `tasks/shared.py`
 
 9. `docs/docs/development-resources/local-demo-environment.mdx`:
    - Update the Neo4j version in the components table
@@ -526,8 +530,8 @@ This PR upgrades backend infrastructure dependencies.
 - [ ] Integration tests pass
 - [ ] No performance regression when running infrahub-private-tests (scale tests)
 - [ ] Migration and auto-upgrade of persistent containers pass (version-upgrade job succeeds)
-- [ ] High-availability setup on Kubernetes tested with the new version and the infrahub-helm changes
-- [ ] [Deployment examples](https://docs.infrahub.app/guides/installation#high-availability-deployment-examples) have been updated
+- [ ] High-availability example on Kubernetes tested with the new version
+- [ ] [Deployment examples](https://docs.infrahub.app/deploy-manage/install-configure/production-deployment/high-availability#deployment-examples) have been updated
 ```
 
 ## Step 12: Open the Pull Requests in infrahub-private and infrahub-helm
@@ -536,8 +540,9 @@ This PR upgrades backend infrastructure dependencies.
 services. Follow
 [Upgrading infrastructure dependencies](../../dev/guides/backend/upgrading-infrastructure-dependencies.md)
 for what to change in each repository, the branch each pull request targets, and the Infrahub
-release each one waits for before it can merge. List these pull requests in the Infrahub pull
-request description.
+release each one waits for before it can merge. Then edit the Infrahub pull request description:
+replace the `{link}` placeholders under "Pull Requests in Other Repositories" with these pull
+requests.
 
 ## Step 13: Monitor CI and Report Results
 
@@ -604,3 +609,4 @@ If the upgrade causes issues:
    git push origin --delete {branch-name}
    ```
 3. Document the issues encountered for future reference
+````

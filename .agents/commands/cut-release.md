@@ -103,6 +103,12 @@ uv run invoke release.validate-docker-compose --version <new_version>
 If the workflow run fails, or the validation fails after pulling, stop — do NOT tag with a stale
 docker-compose.yml.
 
+Search the open pull requests of `opsmill/infrahub-helm` for one that names this release as the
+release it waits for, such as a Neo4j chart upgrade, and merge it now. The New Release workflow
+publishes the chart from infrahub-helm `stable`, so a change merged after the release is missing
+from its chart. See
+[Upgrading infrastructure dependencies](../../dev/guides/backend/upgrading-infrastructure-dependencies.md).
+
 ## Step 4: Build Changelog
 
 Run towncrier to:
