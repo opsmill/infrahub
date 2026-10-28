@@ -114,14 +114,15 @@ class RepositoryImportsUsable(Check):
         self,
         proposed_change: CoreProposedChange,
         proposed_change_author: CoreGenericAccount,  # noqa: ARG002
-        graphql_context: GraphqlContext,
+        db: InfrahubDatabase,
+        graphql_context: GraphqlContext,  # noqa: ARG002
     ) -> None:
         try:
-            source_branch = await registry.get_branch(db=graphql_context.db, branch=proposed_change.source_branch.value)
+            source_branch = await registry.get_branch(db=db, branch=proposed_change.source_branch.value)
         except BranchNotFoundError:
             # A deleted source branch has no imports to check.
             return
-        await build_repository_import_guard(db=graphql_context.db).verify(branch=source_branch)
+        await build_repository_import_guard(db=db).verify(branch=source_branch)
 
 
 @dataclass
