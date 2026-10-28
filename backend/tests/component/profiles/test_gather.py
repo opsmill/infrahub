@@ -42,7 +42,7 @@ async def test_gather_trigger_profile_refresh_with_attributes(
     assert trigger.name == "ProfileTestDevice::refresh"
     assert trigger.generate_name() == "profile::main::ProfileTestDevice::refresh"
     assert trigger.trigger.events == {NodeUpdatedEvent.event_name}
-    assert trigger.trigger.match == {"infrahub.node.kind": "ProfileTestDevice"}
+    assert trigger.trigger.match == {"infrahub.node.kind": "ProfileTestDevice", "infrahub.node.origin": "live"}
 
     assert "infrahub.field.name" in trigger.trigger.match_related
     trigger_fields = trigger.trigger.match_related["infrahub.field.name"]
