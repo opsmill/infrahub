@@ -1,5 +1,8 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "env": {
+    "PR_REVIEW": "off"
+  },
   "hooks": {
     "SessionStart": [
       {
@@ -8,6 +11,23 @@
           {
             "type": "command",
             "command": "dev/setup-environment.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(*gh pr create*)",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.agents/hooks/pr-review.sh claude"
+          },
+          {
+            "type": "command",
+            "if": "Bash(*git push*)",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.agents/hooks/pr-review.sh push"
           }
         ]
       }
