@@ -125,7 +125,7 @@ class TaskManagerRetentionSettings(BaseSettings):
         if self.prefect_own_events > self.activity_log:
             raise ValueError(
                 "Invalid task manager retention: prefect_own_events must not be longer than activity_log, "
-                "because the task manager deletes every event older than activity_log"
+                "so set prefect_own_events to at most the activity_log value"
             )
         return self
 

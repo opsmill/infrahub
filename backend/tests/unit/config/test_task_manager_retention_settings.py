@@ -144,7 +144,7 @@ def test_own_events_longer_than_activity_log_are_refused(test_case: OwnEventsLon
         ValidationError,
         match=re.escape(
             "Invalid task manager retention: prefect_own_events must not be longer than activity_log, "
-            "because the task manager deletes every event older than activity_log"
+            "so set prefect_own_events to at most the activity_log value"
         ),
     ):
         TaskManagerRetentionSettings.model_validate(test_case.retention)
