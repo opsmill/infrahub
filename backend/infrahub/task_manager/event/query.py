@@ -25,6 +25,8 @@ from .models import InfrahubEventFilter
 
 log = get_logger()
 
+EVENT_QUERY_ATTEMPTS = 4
+
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
@@ -410,13 +412,16 @@ class PrefectEvent:
         }
 
         # Retry due to https://github.com/PrefectHQ/prefect/issues/16299
-        for attempt in range(1, 5):
+        for attempt in range(1, EVENT_QUERY_ATTEMPTS + 1):
             prefect_error: PrefectHTTPStatusError | None = None
             try:
                 response = await client._client.post("/infrahub/events/filter", json=body)
                 break
             except PrefectHTTPStatusError as exc:
                 prefect_error = exc
+                # A request the task manager refuses (4xx) is refused the same way on every attempt.
+                if not exc.response.is_server_error or attempt == EVENT_QUERY_ATTEMPTS:
+                    break
                 # Each failed attempt can hide up to a full task-manager request timeout,
                 # so a silent loop here turns into a multi-minute stall for the caller.
                 log.warning(
@@ -427,9 +432,15 @@ class PrefectEvent:
                 await asyncio.sleep(0.1)
 
         if prefect_error:
+            log.warning(
+                "Event query to the task manager failed",
+                attempts=attempt,
+                status_code=prefect_error.response.status_code,
+                error=str(prefect_error),
+            )
             raise ServiceUnavailableError(
                 message=f"Unable to query prefect due to invalid response from the server (status_code={prefect_error.response.status_code})"
-            )
+            ) from prefect_error
         data: dict[str, Any] = response.json()
 
         return PrefectEventResponse(
