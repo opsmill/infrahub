@@ -24,10 +24,11 @@ LOG_LOCK_HOLDER = "task-history-cleanup-test-log-lock"
 TASK_RUN_LOCK_HOLDER = "task-history-cleanup-test-task-run-lock"
 # A key of the test's own, so a cleanup that another test runs on the shared stack never holds it.
 ADVISORY_LOCK_KEY = int.from_bytes(b"locktest", byteorder="big")
-LOCK_CHECK_INTERVAL_SECONDS = 1
+# Each check waits one interval for its answer, so this is long enough for a slow answer on a busy runner.
+LOCK_CHECK_INTERVAL_SECONDS = 3
 # Several check intervals, so that a check that does not find the held lock shows before the session ends.
-LOCK_HELD_SECONDS = 3.5
-LOCK_LOST_WAIT_SECONDS = 10
+LOCK_HELD_SECONDS = 10
+LOCK_LOST_WAIT_SECONDS = 15
 # Long enough to outwait autovacuum and Prefect's own writes, far shorter than the hold on the locked table.
 REWRITE_LOCK_TIMEOUT_SECONDS = 5
 REWRITE_TIME_LIMIT_MILLISECONDS = 60_000
@@ -287,6 +288,80 @@ async def main(key, check_interval, held_seconds, lost_wait_seconds):
     fresh = PostgresAdvisoryLock(db=db, key=key, check_interval=check_interval)
     result["taken_after"] = await fresh.try_acquire()
     await fresh.release()
+    print(json.dumps(result))
+
+asyncio.run(
+    main(
+        key=int(sys.argv[1]),
+        check_interval=timedelta(seconds=float(sys.argv[2])),
+        held_seconds=float(sys.argv[3]),
+        lost_wait_seconds=float(sys.argv[4]),
+    )
+)
+"""
+
+# Stops forwarding the lock's traffic through a proxy, as a lost network or a server that stops answering does.
+_SILENT_LOCK_SCRIPT = """
+import asyncio, json, sys
+from datetime import timedelta
+import sqlalchemy as sa
+from sqlalchemy.engine import make_url
+sys.path.insert(0, "/source/backend")
+from prefect.server.database import PrefectDBInterface, provide_database_interface
+from prefect.server.database.configurations import AsyncPostgresConfiguration
+from infrahub.prefect_server.task_history import PostgresAdvisoryLock
+
+async def main(key, check_interval, held_seconds, lost_wait_seconds):
+    db = provide_database_interface()
+    url = make_url(db.database_config.connection_url)
+    silent = asyncio.Event()
+
+    async def forward(reader, writer):
+        while data := await reader.read(65536):
+            if not silent.is_set():
+                writer.write(data)
+                await writer.drain()
+
+    async def tunnel(client_reader, client_writer):
+        server_reader, server_writer = await asyncio.open_connection(url.host, url.port or 5432)
+        await asyncio.gather(
+            forward(client_reader, server_writer), forward(server_reader, client_writer), return_exceptions=True
+        )
+
+    proxy = await asyncio.start_server(tunnel, "127.0.0.1", 0)
+    proxied_url = url.set(host="127.0.0.1", port=proxy.sockets[0].getsockname()[1])
+    proxied = PrefectDBInterface(
+        database_config=AsyncPostgresConfiguration(connection_url=proxied_url.render_as_string(hide_password=False)),
+        query_components=db.queries,
+        orm=db.orm,
+    )
+    lock = PostgresAdvisoryLock(db=proxied, key=key, check_interval=check_interval)
+    result = {"acquired": await lock.try_acquire()}
+    lost = asyncio.ensure_future(lock.wait_lost())
+    await asyncio.sleep(held_seconds)
+    result["lost_while_answering"] = lost.done()
+    silent.set()
+    try:
+        await asyncio.wait_for(lost, timeout=lost_wait_seconds)
+        result["lost_after_silence"] = True
+    except TimeoutError:
+        result["lost_after_silence"] = False
+    try:
+        await asyncio.wait_for(lock.release(), timeout=lost_wait_seconds)
+        result["released"] = True
+    except TimeoutError:
+        result["released"] = False
+    # The server still holds the lock for the silenced session, so the test ends that session as an administrator would.
+    engine = await db.engine()
+    async with engine.connect() as connection:
+        await connection.execute(
+            sa.text(
+                "SELECT pg_terminate_backend(pid) FROM pg_locks "
+                "WHERE locktype = 'advisory' AND classid = :high AND objid = :low AND objsubid = 1"
+            ),
+            {"high": key >> 32, "low": key & 0xFFFFFFFF},
+        )
+    proxy.close()
     print(json.dumps(result))
 
 asyncio.run(
@@ -666,6 +741,27 @@ class TestTaskHistoryCleanup(TestInfrahubDockerClient):
         )
 
         assert result == {"acquired": True, "lost_while_held": False, "lost_after_terminate": True, "taken_after": True}
+
+    def test_a_cleanup_lock_whose_session_stops_answering_is_reported_lost_and_released(
+        self,
+        infrahub_app: dict[str, int],
+        infrahub_compose: InfrahubDockerCompose,
+    ) -> None:
+        """A check that gets no answer within the interval reports the lock lost, and the release does not wait for one."""
+        result = json.loads(
+            _python_in_task_manager(
+                compose=infrahub_compose,
+                script=_SILENT_LOCK_SCRIPT,
+                arguments=(
+                    str(ADVISORY_LOCK_KEY),
+                    str(LOCK_CHECK_INTERVAL_SECONDS),
+                    str(LOCK_HELD_SECONDS),
+                    str(LOCK_LOST_WAIT_SECONDS),
+                ),
+            )
+        )
+
+        assert result == {"acquired": True, "lost_while_answering": False, "lost_after_silence": True, "released": True}
 
     @pytest.mark.usefixtures("log_table_locked")
     def test_a_table_locked_past_the_lock_timeout_is_left_out_of_the_rewrite(

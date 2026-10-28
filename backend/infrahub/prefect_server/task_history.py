@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import itertools
 import threading
 import time
@@ -27,7 +28,9 @@ from .task_history_models import CleanupJob, CleanupJobState, CleanupRequest, Cl
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
+    from sqlalchemy.engine import Dialect
     from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession
+    from sqlalchemy.pool import PoolProxiedConnection
 
 log = get_logger(__name__)
 
@@ -120,7 +123,8 @@ class ProcessCleanupLock:
 class PostgresAdvisoryLock:
     """Cleanup lock held as a Postgres advisory lock by a connection of its own until it is released.
 
-    At each check interval, the connection checks that its session still holds the lock.
+    At each check interval, the connection checks that its session still holds the lock, and the connection is closed
+    when a check gets no answer within the interval.
     """
 
     def __init__(self, db: PrefectDBInterface, key: int, check_interval: timedelta) -> None:
@@ -130,6 +134,7 @@ class PostgresAdvisoryLock:
         self._connection: AsyncConnection | None = None
         self._watch: asyncio.Task[None] | None = None
         self._lost = asyncio.Event()
+        self._released = asyncio.Event()
 
     async def try_acquire(self) -> bool:
         engine = await self._db.engine()
@@ -145,7 +150,8 @@ class PostgresAdvisoryLock:
         if acquired:
             self._connection = connection
             self._lost = asyncio.Event()
-            self._watch = asyncio.create_task(self._watch_held(connection=connection))
+            self._released = asyncio.Event()
+            self._watch = asyncio.create_task(self._watch_held(connection=connection, released=self._released))
         return acquired
 
     async def wait_lost(self) -> None:
@@ -155,20 +161,20 @@ class PostgresAdvisoryLock:
         if self._connection is None:
             return
         connection, self._connection = self._connection, None
+        self._released.set()
         if self._watch is not None:
-            self._watch.cancel()
+            # Awaited, not cancelled, because a check cancelled during its query waits for the server without a limit.
             await asyncio.wait((self._watch,))
         # Ending the session releases the lock, and a discarded connection cannot return to the pool still holding it.
         await connection.invalidate()
         await connection.close()
 
-    async def _watch_held(self, connection: AsyncConnection) -> None:
-        """Check at each interval that the session still holds the lock, until a check cannot confirm it."""
+    async def _watch_held(self, connection: AsyncConnection, released: asyncio.Event) -> None:
+        """Check at each interval that the session holds the lock, until it is released or a check cannot confirm it."""
         try:
-            while True:
-                if not await self._still_held(connection=connection):
-                    return
-                await asyncio.sleep(self._check_interval.total_seconds())
+            while not released.is_set() and await self._still_held(connection=connection):
+                with contextlib.suppress(TimeoutError):
+                    await asyncio.wait_for(released.wait(), timeout=self._check_interval.total_seconds())
         finally:
             self._lost.set()
 
@@ -183,23 +189,38 @@ class PostgresAdvisoryLock:
                 _PG_LOCKS.c.granted,
             )
         )
+        pooled = await connection.get_raw_connection()
+        unanswered = asyncio.Event()
+        # Closing the connection bounds the check, because a cancelled query waits for the server's answer without a limit.
+        timer = asyncio.get_running_loop().call_later(
+            self._check_interval.total_seconds(), _close_at_once, connection.dialect, pooled, unanswered
+        )
         try:
-            async with asyncio.timeout(self._check_interval.total_seconds()) as bound:
-                held = bool(await connection.scalar(held_by_session))
+            held = bool(await connection.scalar(held_by_session))
         except DBAPIError as exc:
-            log.warning(f"Task history cleanup: the check of the cleanup lock failed: {exc}")
-            return False
-        except TimeoutError:
-            if not bound.expired():
-                raise
+            held = False
+            if not unanswered.is_set():
+                log.warning(f"Task history cleanup: the check of the cleanup lock failed: {exc}")
+                return False
+        finally:
+            timer.cancel()
+        if unanswered.is_set():
             log.warning(
                 "Task history cleanup: the session that holds the cleanup lock did not answer "
-                f"within {self._check_interval.total_seconds():.0f} s"
+                f"within {self._check_interval.total_seconds():.0f} s, so the task manager closed its connection"
             )
             return False
         if not held:
             log.warning("Task history cleanup: the session that took the cleanup lock no longer holds it")
         return held
+
+
+def _close_at_once(dialect: Dialect, pooled: PoolProxiedConnection, closed: asyncio.Event) -> None:
+    """Close the pooled connection without waiting for an answer from the server."""
+    closed.set()
+    if pooled.dbapi_connection is not None:
+        # SQLAlchemy 2.0's asyncpg dialect, called outside its greenlet, closes the connection without waiting for the server.
+        dialect.do_terminate(pooled.dbapi_connection)
 
 
 class TaskHistoryTables:
