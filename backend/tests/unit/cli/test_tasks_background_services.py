@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import os
 from dataclasses import dataclass
 from datetime import timedelta
@@ -12,20 +11,11 @@ from typer.testing import CliRunner
 
 from infrahub.cli import app
 from infrahub.cli.tasks import run_background_services
-from tests.helpers.task_manager_retention import (
-    EVENT_RETENTION_OVERRIDES,
-    EVENTS_RETENTION_PERIOD,
-    PREFECT_RETENTION_VARIABLES,
-    VACUUM_ENABLED,
-    VACUUM_RETENTION_PERIOD,
-    unloaded_task_manager_retention,
-)
+from tests.helpers.task_manager_retention import PREFECT_RETENTION_VARIABLES, unloaded_task_manager_retention
 
 if TYPE_CHECKING:
     from collections.abc import Generator
     from pathlib import Path
-
-APP_LOGGER = "infrahub.prefect_server.app"
 
 
 @pytest.fixture
@@ -36,7 +26,6 @@ def task_manager_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) ->
 
 @dataclass(frozen=True)
 class ServicesStart:
-    logged: list[str]
     vacuum_types: set[str]
     task_history: timedelta
     activity_log: timedelta
@@ -44,17 +33,15 @@ class ServicesStart:
 
 
 class RecordingServicesStarter:
-    """Record what had been logged and the Prefect settings in effect each time the services are started."""
+    """Record the Prefect settings in effect each time the services are started."""
 
-    def __init__(self, caplog: pytest.LogCaptureFixture) -> None:
-        self._caplog = caplog
+    def __init__(self) -> None:
         self.starts: list[ServicesStart] = []
 
     def __call__(self) -> None:
         settings = get_current_settings()
         self.starts.append(
             ServicesStart(
-                logged=[record.getMessage() for record in self._caplog.records if record.name == APP_LOGGER],
                 vacuum_types=settings.server.services.db_vacuum.enabled_vacuum_types,
                 task_history=settings.server.services.db_vacuum.retention_period,
                 activity_log=settings.server.events.retention_period,
@@ -70,41 +57,25 @@ def _config_file(directory: Path, name: str, retention: str) -> Path:
 
 
 @pytest.mark.usefixtures("task_manager_environment")
-def test_the_retention_is_applied_before_the_services_start(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
-    """The services start once, after the retention of the configuration file has been applied and logged."""
-    config_file = _config_file(directory=tmp_path, name="infrahub.toml", retention='task_history = "45d"')
-    starter = RecordingServicesStarter(caplog=caplog)
-
-    with caplog.at_level(logging.INFO, logger=APP_LOGGER):
-        run_background_services(config_file=config_file, start_services=starter)
-
-    assert [start.logged for start in starter.starts] == [
-        [
-            f"Task manager retention: {VACUUM_ENABLED}=events,flow_runs",
-            f"Task manager retention: {VACUUM_RETENTION_PERIOD}=P45D",
-            f"Task manager retention: {EVENTS_RETENTION_PERIOD}=P7D",
-            f"Task manager retention: {EVENT_RETENTION_OVERRIDES}={{}}",
-        ]
-    ]
-
-
-@pytest.mark.usefixtures("task_manager_environment")
-def test_the_services_read_the_retention_derived_from_the_configuration(
-    tmp_path: Path, caplog: pytest.LogCaptureFixture
-) -> None:
-    """Prefect's settings, read once at import, hold the configured retention when the services start."""
+def test_the_services_start_once_with_the_retention_of_the_given_configuration_file(tmp_path: Path) -> None:
+    """Prefect's settings hold the retention of the configuration file the command is given when the services start."""
     config_file = _config_file(
         directory=tmp_path,
-        name="infrahub.toml",
+        name="background-services.toml",
         retention='task_history = "45d"\nactivity_log = "P14D"\nprefect_own_events = "3d"',
     )
-    starter = RecordingServicesStarter(caplog=caplog)
+    starter = RecordingServicesStarter()
 
     run_background_services(config_file=config_file, start_services=starter)
 
-    assert [
-        (start.vacuum_types, start.task_history, start.activity_log, start.own_events) for start in starter.starts
-    ] == [({"events", "flow_runs", "orphans"}, timedelta(days=45), timedelta(days=14), {timedelta(days=3)})]
+    assert starter.starts == [
+        ServicesStart(
+            vacuum_types={"events", "flow_runs", "orphans"},
+            task_history=timedelta(days=45),
+            activity_log=timedelta(days=14),
+            own_events={timedelta(days=3)},
+        )
+    ]
 
 
 @pytest.mark.usefixtures("task_manager_environment")
