@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING
 import httpx
 import typer
 from infrahub_sdk.async_typer import AsyncTyper
-from prefect.cli.server import start_services as start_prefect_services
 from prefect.client.orchestration import get_client
 from prefect.client.schemas.objects import StateType
 from pydantic import ValidationError
@@ -105,6 +104,9 @@ def background_services(
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
     """Run the task manager's background services in the foreground, with the retention set in the configuration."""
+    # Prefect's command-line application loads only for this command, so no other infrahub command depends on it.
+    from prefect.cli.server import start_services as start_prefect_services  # noqa: PLC0415
+
     run_background_services(config_file=Path(config_file), start_services=start_prefect_services)
 
 
