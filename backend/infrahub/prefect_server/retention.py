@@ -117,7 +117,7 @@ WEBSERVER_ONLY = "PREFECT__SERVER_WEBSERVER_ONLY"
 class _PrefectSetting:
     model: type[BaseSettings]
     field: str
-    retention_key: str
+    overridden_retention: str | None
 
     def environment_names(self) -> list[str]:
         """Every environment variable Prefect reads the setting from, in the order Prefect tries them."""
@@ -126,17 +126,18 @@ class _PrefectSetting:
 
 
 _PREFECT_SETTINGS: dict[str, _PrefectSetting] = {
-    VACUUM_ENABLED: _PrefectSetting(
-        model=ServerServicesDBVacuumSettings, field="enabled", retention_key="task_history"
-    ),
+    # The switch turns cleanups on or off and replaces no retention.
+    VACUUM_ENABLED: _PrefectSetting(model=ServerServicesDBVacuumSettings, field="enabled", overridden_retention=None),
     VACUUM_RETENTION_PERIOD: _PrefectSetting(
-        model=ServerServicesDBVacuumSettings, field="retention_period", retention_key="task_history"
+        model=ServerServicesDBVacuumSettings, field="retention_period", overridden_retention="task_history"
     ),
     EVENTS_RETENTION_PERIOD: _PrefectSetting(
-        model=ServerEventsSettings, field="retention_period", retention_key="activity_log"
+        model=ServerEventsSettings, field="retention_period", overridden_retention="activity_log"
     ),
     EVENT_RETENTION_OVERRIDES: _PrefectSetting(
-        model=ServerServicesDBVacuumSettings, field="event_retention_overrides", retention_key="prefect_own_events"
+        model=ServerServicesDBVacuumSettings,
+        field="event_retention_overrides",
+        overridden_retention="prefect_own_events",
     ),
 }
 
@@ -190,17 +191,17 @@ def apply_prefect_retention_env(environ: MutableMapping[str, str], settings: Tas
     """Set the retention variables that the environment does not already set, and return the warnings to log.
 
     A Prefect setting already present under any name Prefect accepts for it is left as it is, so an operator's
-    explicit Prefect setting keeps precedence. A variable that is present but empty or blank does not count as set,
-    and the caller removes it first.
+    explicit Prefect setting keeps precedence, with a warning when it replaces a retention. A variable that is
+    present but empty or blank does not count as set, and the caller removes it first.
     """
     warnings: list[str] = []
     for name, value in build_prefect_retention_env(settings=settings, event_types=PREFECT_EVENT_TYPES).items():
         setting = _PREFECT_SETTINGS[name]
         name_set = _name_set_in(environ=environ, setting=setting)
-        if name_set is not None:
-            warnings.append(f"{name_set} is set and overrides task_manager.retention.{setting.retention_key}")
-            continue
-        environ[name] = value
+        if name_set is None:
+            environ[name] = value
+        elif setting.overridden_retention is not None:
+            warnings.append(f"{name_set} is set and overrides task_manager.retention.{setting.overridden_retention}")
     return warnings
 
 
@@ -215,6 +216,28 @@ def background_services_warning(environ: Mapping[str, str]) -> str | None:
         "`prefect server services start`, does not read task_manager.retention: unless it sets the same PREFECT_* "
         "variables, it deletes no task runs and keeps events for Prefect's default of 7 days."
     )
+
+
+def turned_off_cleanup_warnings(vacuum: ServerServicesDBVacuumSettings) -> list[str]:
+    """Return a warning for each of Prefect's cleanups that the vacuum switch turns off, naming the retention not applied."""
+    try:
+        enabled = vacuum.enabled_vacuum_types
+    except ValueError as exc:
+        # Prefect checks the vacuum types only when its services read them, so an unknown one is named here and
+        # the failure is left to Prefect.
+        return [f"{VACUUM_ENABLED} is not valid: {exc}"]
+    warnings: list[str] = []
+    if "flow_runs" not in enabled:
+        warnings.append(
+            f"{VACUUM_ENABLED} does not turn on flow_runs, so old task runs are not deleted and "
+            "task_manager.retention.task_history is not applied"
+        )
+    if "events" not in enabled:
+        warnings.append(
+            f"{VACUUM_ENABLED} does not turn on events, so old events are not deleted and "
+            "task_manager.retention.activity_log and task_manager.retention.prefect_own_events are not applied"
+        )
+    return warnings
 
 
 def _count_overrides_per_retention(value: str) -> str:

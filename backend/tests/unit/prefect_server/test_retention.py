@@ -16,6 +16,7 @@ from infrahub.prefect_server.retention import (
     build_prefect_retention_env,
     prefect_retention_env_in_effect,
     remove_blank_retention_variables,
+    turned_off_cleanup_warnings,
 )
 
 VACUUM_ENABLED = "PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED"
@@ -137,13 +138,6 @@ class PresetVariableTestCase:
 
 PRESET_VARIABLE_TEST_CASES: list[PresetVariableTestCase] = [
     PresetVariableTestCase(
-        name="vacuum_enabled",
-        preset=VACUUM_ENABLED,
-        preset_value="[]",
-        expected_value="[]",
-        expected_warning=f"{VACUUM_ENABLED} is set and overrides task_manager.retention.task_history",
-    ),
-    PresetVariableTestCase(
         name="vacuum_retention_period",
         preset=VACUUM_RETENTION_PERIOD,
         preset_value="P90D",
@@ -183,6 +177,22 @@ def test_preset_variable_wins_with_a_warning(test_case: PresetVariableTestCase) 
         EVENTS_RETENTION_PERIOD: "P7D",
         EVENT_RETENTION_OVERRIDES: dict.fromkeys(PREFECT_EVENT_TYPES, "P7D"),
         test_case.preset: test_case.expected_value,
+    }
+
+
+def test_preset_vacuum_switch_is_kept_without_an_override_warning() -> None:
+    """The switch turns cleanups on or off, so the retentions are still derived from the settings."""
+    settings = TaskManagerRetentionSettings(task_history="30d", activity_log="7d", prefect_own_events="7d")
+    environ = {VACUUM_ENABLED: "[]"}
+
+    warnings = apply_prefect_retention_env(environ=environ, settings=settings)
+
+    assert warnings == []
+    assert _with_parsed_overrides(environ) == {
+        VACUUM_ENABLED: "[]",
+        VACUUM_RETENTION_PERIOD: "P30D",
+        EVENTS_RETENTION_PERIOD: "P7D",
+        EVENT_RETENTION_OVERRIDES: dict.fromkeys(PREFECT_EVENT_TYPES, "P7D"),
     }
 
 
@@ -329,7 +339,6 @@ def test_environment_with_every_variable_preset_is_left_unchanged() -> None:
     warnings = apply_prefect_retention_env(environ=environ, settings=settings)
 
     assert warnings == [
-        f"{VACUUM_ENABLED} is set and overrides task_manager.retention.task_history",
         f"{VACUUM_RETENTION_PERIOD} is set and overrides task_manager.retention.task_history",
         f"{EVENTS_RETENTION_PERIOD} is set and overrides task_manager.retention.activity_log",
         f"{EVENT_RETENTION_OVERRIDES} is set and overrides task_manager.retention.prefect_own_events",
@@ -340,6 +349,57 @@ def test_environment_with_every_variable_preset_is_left_unchanged() -> None:
         EVENTS_RETENTION_PERIOD: "P14D",
         EVENT_RETENTION_OVERRIDES: '{"prefect.flow-run.heartbeat": "P1D"}',
     }
+
+
+TASK_RUNS_NOT_DELETED_WARNING = (
+    "PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED does not turn on flow_runs, so old task runs are not deleted and "
+    "task_manager.retention.task_history is not applied"
+)
+EVENTS_NOT_DELETED_WARNING = (
+    "PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED does not turn on events, so old events are not deleted and "
+    "task_manager.retention.activity_log and task_manager.retention.prefect_own_events are not applied"
+)
+
+
+@dataclass
+class TurnedOffCleanupTestCase:
+    name: str
+    vacuum_enabled: str
+    expected_warnings: list[str]
+
+
+TURNED_OFF_CLEANUP_TEST_CASES: list[TurnedOffCleanupTestCase] = [
+    TurnedOffCleanupTestCase(name="true", vacuum_enabled="true", expected_warnings=[]),
+    TurnedOffCleanupTestCase(name="events_and_flow_runs", vacuum_enabled="events,flow_runs", expected_warnings=[]),
+    TurnedOffCleanupTestCase(
+        name="events_only", vacuum_enabled="events", expected_warnings=[TASK_RUNS_NOT_DELETED_WARNING]
+    ),
+    TurnedOffCleanupTestCase(name="false", vacuum_enabled="false", expected_warnings=[TASK_RUNS_NOT_DELETED_WARNING]),
+    TurnedOffCleanupTestCase(
+        name="flow_runs_only", vacuum_enabled="flow_runs", expected_warnings=[EVENTS_NOT_DELETED_WARNING]
+    ),
+    TurnedOffCleanupTestCase(
+        name="none",
+        vacuum_enabled="[]",
+        expected_warnings=[TASK_RUNS_NOT_DELETED_WARNING, EVENTS_NOT_DELETED_WARNING],
+    ),
+    TurnedOffCleanupTestCase(
+        name="unknown_type",
+        vacuum_enabled="Flow_Runs",
+        expected_warnings=[
+            "PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED is not valid: Invalid vacuum type(s): ['Flow_Runs']. "
+            "Valid values are: ['events', 'flow_runs', 'orphans']"
+        ],
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in TURNED_OFF_CLEANUP_TEST_CASES])
+def test_turned_off_cleanups_are_warned(monkeypatch: pytest.MonkeyPatch, test_case: TurnedOffCleanupTestCase) -> None:
+    """The warnings follow Prefect's own reading of the switch, where false still deletes old events."""
+    monkeypatch.setenv(VACUUM_ENABLED, test_case.vacuum_enabled)
+
+    assert turned_off_cleanup_warnings(vacuum=ServerServicesDBVacuumSettings()) == test_case.expected_warnings
 
 
 def test_overrides_in_effect_are_counted_per_retention() -> None:

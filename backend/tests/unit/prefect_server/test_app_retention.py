@@ -122,6 +122,39 @@ def test_empty_vacuum_switch_keeps_task_run_deletion(
 
 
 @pytest.mark.usefixtures("task_manager_environment")
+def test_preset_vacuum_switch_with_flow_runs_keeps_the_task_history_retention(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A preset vacuum switch only turns cleanups on or off, so task_history still sets how long task runs are kept."""
+    monkeypatch.setenv(VACUUM_ENABLED, "true")
+
+    with caplog.at_level(logging.WARNING, logger=APP_LOGGER):
+        apply_infrahub_settings_to_prefect()
+
+    assert _app_messages(caplog=caplog, level=logging.WARNING) == []
+    assert os.environ[VACUUM_ENABLED] == "true"
+    vacuum = get_current_settings().server.services.db_vacuum
+    assert vacuum.enabled_vacuum_types == {"events", "flow_runs", "orphans"}
+    assert vacuum.retention_period == timedelta(days=30)
+
+
+@pytest.mark.usefixtures("task_manager_environment")
+def test_preset_vacuum_switch_that_turns_off_a_cleanup_is_logged(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    monkeypatch.setenv(VACUUM_ENABLED, "flow_runs")
+
+    with caplog.at_level(logging.WARNING, logger=APP_LOGGER):
+        apply_infrahub_settings_to_prefect()
+
+    assert _app_messages(caplog=caplog, level=logging.WARNING) == [
+        "PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED does not turn on events, so old events are not deleted and "
+        "task_manager.retention.activity_log and task_manager.retention.prefect_own_events are not applied"
+    ]
+    assert get_current_settings().server.services.db_vacuum.enabled_vacuum_types == {"flow_runs", "orphans"}
+
+
+@pytest.mark.usefixtures("task_manager_environment")
 def test_prefect_runs_with_the_configured_retention(monkeypatch: pytest.MonkeyPatch) -> None:
     """Prefect's settings, read once at import, reflect the retention once the configuration is applied."""
     monkeypatch.setenv("INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY", "45d")

@@ -23,7 +23,7 @@ No graph schema, GraphQL schema or database schema changes. The feature adds one
 | `PREFECT_SERVER_EVENTS_RETENTION_PERIOD` | `activity_log` |
 | `PREFECT_SERVER_SERVICES_DB_VACUUM_EVENT_RETENTION_OVERRIDES` | `{type: prefect_own_events for type in PREFECT_EVENT_TYPES}` |
 
-A Prefect variable already set in the environment to a value that is not empty is left as is, with a warning. An empty or blank one is replaced with the derived value.
+A Prefect variable already set in the environment to a value that is not empty is left as is. A preset retention variable comes with a warning naming the setting it overrides. A preset `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` replaces no retention, so it gets no such warning; instead the task manager warns for each of `flow_runs` and `events` that the switch leaves off, naming the retention that is then not applied. An empty or blank variable is replaced with the derived value.
 
 ## Prefect event types list (new constant)
 

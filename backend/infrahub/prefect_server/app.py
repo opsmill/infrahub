@@ -9,6 +9,7 @@ from pathlib import Path
 from fastapi import APIRouter, FastAPI
 from prefect.context import refresh_global_settings_context
 from prefect.server.api.server import create_app
+from prefect.settings import get_current_settings
 from pydantic import ValidationError
 
 from . import events
@@ -18,6 +19,7 @@ from .retention import (
     background_services_warning,
     prefect_retention_env_in_effect,
     remove_blank_retention_variables,
+    turned_off_cleanup_warnings,
 )
 from .retention_settings import load_task_manager_settings, print_configuration_errors
 
@@ -60,6 +62,8 @@ def apply_infrahub_settings_to_prefect() -> None:
         log.warning(warning)
     # Prefect reads its settings from the environment once at import, so new values apply only after a refresh.
     refresh_global_settings_context()
+    for warning in turned_off_cleanup_warnings(vacuum=get_current_settings().server.services.db_vacuum):
+        log.warning(warning)
     for name, value in prefect_retention_env_in_effect(environ=os.environ).items():
         log.info(f"Task manager retention: {name}={value}")
 

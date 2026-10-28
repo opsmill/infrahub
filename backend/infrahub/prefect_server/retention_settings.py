@@ -64,8 +64,10 @@ class TaskManagerRetentionSettings(BaseSettings):
         validate_default=True,
         description=(
             "How long finished task runs are kept, with their logs and artifacts, as a number of days (`30d`) "
-            "or an ISO 8601 duration (`P30D`), from 1 to 36500 days. `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` and "
-            "`PREFECT_SERVER_SERVICES_DB_VACUUM_RETENTION_PERIOD` take precedence when set."
+            "or an ISO 8601 duration (`P30D`), from 1 to 36500 days. "
+            "`PREFECT_SERVER_SERVICES_DB_VACUUM_RETENTION_PERIOD` takes precedence when set. When "
+            "`PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` is set to a value that does not turn on `flow_runs`, old "
+            "task runs are not deleted."
         ),
     )
     activity_log: timedelta = Field(
@@ -75,7 +77,8 @@ class TaskManagerRetentionSettings(BaseSettings):
             "How long the events of the activity log are kept, as a number of days (`7d`) or an ISO 8601 "
             "duration (`P7D`), from 1 to 36500 days, and at least `prefect_own_events`. "
             "`PREFECT_SERVER_EVENTS_RETENTION_PERIOD`, or its legacy name `PREFECT_EVENTS_RETENTION_PERIOD`, takes "
-            "precedence when set."
+            "precedence when set. When `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` is set to a value that does not "
+            "turn on `events`, old events are not deleted."
         ),
     )
     prefect_own_events: timedelta = Field(
@@ -84,7 +87,9 @@ class TaskManagerRetentionSettings(BaseSettings):
         description=(
             "How long the task manager's own Prefect events are kept, as a number of days (`7d`) or an ISO 8601 "
             "duration (`P7D`), from 1 to 36500 days, and at most `activity_log`. "
-            "`PREFECT_SERVER_SERVICES_DB_VACUUM_EVENT_RETENTION_OVERRIDES` takes precedence when set."
+            "`PREFECT_SERVER_SERVICES_DB_VACUUM_EVENT_RETENTION_OVERRIDES` takes precedence when set. When "
+            "`PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` is set to a value that does not turn on `events`, old "
+            "events are not deleted."
         ),
     )
 
