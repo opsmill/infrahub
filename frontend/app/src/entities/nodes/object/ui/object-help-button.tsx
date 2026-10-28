@@ -14,7 +14,7 @@ interface ObjectHelpButtonProps extends ButtonProps {
 export const ObjectHelpButton = ({ documentationUrl, kind, ...props }: ObjectHelpButtonProps) => {
   const docFullUrl = documentationUrl
     ? documentationUrl.startsWith("http")
-      ? INFRAHUB_DOC_LOCAL
+      ? documentationUrl
       : `${INFRAHUB_DOC_LOCAL}${documentationUrl}`
     : "";
 

@@ -258,7 +258,6 @@ scales with the change it documents. See [Git Workflow → Pull Requests](git-wo
 - `_shared.md` - Shared instructions for all flows
 - `new-component.md` - React component creation flow
 - `bug-analyze.md` - Bug root cause analysis
-- `add-docs.md` - Documentation creation flow
 
 **Subdirectories**: None. Keep flat for easy discovery by agents.
 
@@ -324,10 +323,16 @@ source), not under `dev/`. Tool adapters symlink here (e.g. `.claude/skills` →
 skills/
 └── {skill-name}/
     ├── SKILL.md          # Main skill documentation
+    ├── agents/
+    │   └── openai.yaml   # Optional: Codex settings for the skill
     └── references/       # Optional: Supporting reference materials
         ├── file1.md
         └── file2.md
 ```
+
+For a skill that only a person may start, set `disable-model-invocation: true` in the `SKILL.md`
+frontmatter for Claude Code, and `policy.allow_implicit_invocation: false` in
+`agents/openai.yaml` for Codex. `pre-ci` is the example.
 
 **Example**:
 

@@ -39,7 +39,7 @@ core_repository = NodeSchema(
         InfrahubKind.GENERICREPOSITORY,
         InfrahubKind.TASKTARGET,
     ],
-    documentation="/topics/repository",
+    documentation="/git-integration/overview/",
     attributes=[
         Attr(
             name="default_branch",
@@ -248,7 +248,7 @@ core_read_only_repository = NodeSchema(
         InfrahubKind.GENERICREPOSITORY,
         InfrahubKind.TASKTARGET,
     ],
-    documentation="/topics/repository",
+    documentation="/git-integration/overview/",
     attributes=[
         Attr(
             name="ref",
@@ -281,7 +281,7 @@ core_generic_repository = GenericSchema(
     icon="mdi:source-repository",
     branch=BranchSupportType.AGNOSTIC,
     uniqueness_constraints=[["name__value"], ["location__value"]],
-    documentation="/topics/repository",
+    documentation="/git-integration/overview/",
     restricted_namespaces=["Core"],
     attributes=[
         Attr(

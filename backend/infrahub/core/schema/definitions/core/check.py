@@ -26,6 +26,7 @@ core_check_definition = NodeSchema(
     uniqueness_constraints=[["name__value"]],
     generate_profile=False,
     inherit_from=[InfrahubKind.TASKTARGET],
+    documentation="/checks/overview/",
     attributes=[
         Attr(name="name", kind="Text", unique=True),
         Attr(name="description", kind="Text", optional=True),

@@ -15,6 +15,7 @@ from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
+from infrahub.graphql.error_formatter import catalogue_error_formatter
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
 
@@ -293,6 +294,7 @@ async def test_protected_default_ipnamespace(
 
     assert result.errors
     assert result.errors[0].message == "Cannot delete default IPAM namespace"
+    assert catalogue_error_formatter(result.errors[0])["extensions"]["http_status"] == 422
 
 
 async def test_delete_regular_ipnamespace(

@@ -48,15 +48,16 @@ async def resolve_account_tokens(
 
     filters = {"account__ids": [graphql_context.account_session.account_id]}
     response: dict[str, Any] = {}
-    if "count" in fields:
-        response["count"] = await NodeManager.count(db=graphql_context.db, schema=InternalAccountToken, filters=filters)
-    if "edges" in fields:
-        objs = await NodeManager.query(
-            db=graphql_context.db, schema=InternalAccountToken, filters=filters, limit=limit, offset=offset
-        )
-        response["edges"] = [
-            {"node": {"id": obj.id, "name": obj.name.value, "expiration": obj.expiration.value}} for obj in objs
-        ]
+    async with graphql_context.db.start_session(read_only=True) as db:
+        if "count" in fields:
+            response["count"] = await NodeManager.count(db=db, schema=InternalAccountToken, filters=filters)
+        if "edges" in fields:
+            objs = await NodeManager.query(
+                db=db, schema=InternalAccountToken, filters=filters, limit=limit, offset=offset
+            )
+            response["edges"] = [
+                {"node": {"id": obj.id, "name": obj.name.value, "expiration": obj.expiration.value}} for obj in objs
+            ]
 
     return response
 
