@@ -43,7 +43,7 @@ Effects, in order:
    validation error, which names the limit (FR-026). A duration replaces an end time in the request, so
    an end time in the past cannot be sent.
 2. When tracing is off, returns HTTP 400 with the error "Tracing is not enabled on this instance; set
-   `INFRAHUB_TRACE_ENABLE`" (`ProcessingError`, FR-031). Nothing is broadcast.
+   INFRAHUB_TRACE_ENABLE" (`ProcessingError`, FR-031). Nothing is broadcast.
 3. Broadcasts `RefreshSettingsTraceSampleRatio(ratio, expires_at)`. A new change replaces the active one.
 4. Sends `TraceSampleRatioUpdatedEvent` (FR-030).
 5. Returns `TraceSampleRatioAPI` with the new state.
@@ -64,4 +64,12 @@ for these lines in their log store to check that every API server and task worke
 Tracked in [IFC-3420](https://opsmill.atlassian.net/browse/IFC-3420). A command in
 [infrahub-sdk-python](https://github.com/opsmill/infrahub-sdk-python) calls these
 endpoints to read, set (ratio and duration) and clear the ratio, and prints the error message of
-FR-031 unchanged. Its name and options are decided in that repository.
+FR-031 unchanged:
+
+```text
+infrahubctl troubleshooting trace-sample-ratio get
+infrahubctl troubleshooting trace-sample-ratio set --ratio <0 to 1> --duration <1 to 86400 seconds>
+infrahubctl troubleshooting trace-sample-ratio clear
+```
+
+Delivered in [opsmill/infrahub-sdk-python#1447](https://github.com/opsmill/infrahub-sdk-python/pull/1447).
