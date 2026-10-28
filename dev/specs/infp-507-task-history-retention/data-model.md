@@ -23,7 +23,7 @@ No graph schema, GraphQL schema or database schema changes. The feature adds one
 | `PREFECT_SERVER_EVENTS_RETENTION_PERIOD` | `activity_log` |
 | `PREFECT_SERVER_SERVICES_DB_VACUUM_EVENT_RETENTION_OVERRIDES` | `{type: prefect_own_events for type in PREFECT_EVENT_TYPES}` |
 
-A Prefect variable already set in the environment is left as is, with a warning.
+A Prefect variable already set in the environment to a value that is not empty is left as is, with a warning. An empty or blank one is replaced with the derived value.
 
 ## Prefect event types list (new constant)
 

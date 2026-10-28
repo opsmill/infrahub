@@ -13,7 +13,12 @@ from pydantic import ValidationError
 
 from . import events
 from .bootstrap import init_prefect
-from .retention import apply_prefect_retention_env, background_services_warning, prefect_retention_env_in_effect
+from .retention import (
+    apply_prefect_retention_env,
+    background_services_warning,
+    prefect_retention_env_in_effect,
+    remove_blank_retention_variables,
+)
 from .retention_settings import load_task_manager_settings, print_configuration_errors
 
 log = logging.getLogger(__name__)
@@ -50,6 +55,7 @@ def apply_infrahub_settings_to_prefect() -> None:
     except ValidationError as error:
         print_configuration_errors(error=error)
         sys.exit(1)
+    remove_blank_retention_variables(environ=os.environ)
     for warning in apply_prefect_retention_env(environ=os.environ, settings=retention):
         log.warning(warning)
     # Prefect reads its settings from the environment once at import, so new values apply only after a refresh.

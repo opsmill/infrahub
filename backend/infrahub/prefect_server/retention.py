@@ -160,6 +160,16 @@ def _name_set_in(environ: Mapping[str, str], setting: _PrefectSetting) -> str | 
     return None
 
 
+def remove_blank_retention_variables(environ: MutableMapping[str, str]) -> None:
+    """Remove each retention variable that is present but empty or blank, under any name Prefect accepts for it."""
+    # A compose file passes an unset host variable as an empty value, and Prefect reads an empty vacuum switch as
+    # false, which deletes no task runs.
+    for setting in _PREFECT_SETTINGS.values():
+        accepted = {name.upper() for name in setting.environment_names()}
+        for name in [name for name in environ if name.upper() in accepted and not environ[name].strip()]:
+            del environ[name]
+
+
 def build_prefect_retention_env(settings: TaskManagerRetentionSettings, event_types: tuple[str, ...]) -> dict[str, str]:
     """Return the Prefect variables that enforce the retention.
 
@@ -180,7 +190,8 @@ def apply_prefect_retention_env(environ: MutableMapping[str, str], settings: Tas
     """Set the retention variables that the environment does not already set, and return the warnings to log.
 
     A Prefect setting already present under any name Prefect accepts for it is left as it is, so an operator's
-    explicit Prefect setting keeps precedence.
+    explicit Prefect setting keeps precedence. A variable that is present but empty or blank does not count as set,
+    and the caller removes it first.
     """
     warnings: list[str] = []
     for name, value in build_prefect_retention_env(settings=settings, event_types=PREFECT_EVENT_TYPES).items():

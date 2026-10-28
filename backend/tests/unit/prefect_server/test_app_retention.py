@@ -107,6 +107,21 @@ def test_each_preset_prefect_variable_is_logged_and_kept(
 
 
 @pytest.mark.usefixtures("task_manager_environment")
+def test_empty_vacuum_switch_keeps_task_run_deletion(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """An empty variable, as a compose file passes for an unset host variable, is replaced with the derived value."""
+    monkeypatch.setenv(VACUUM_ENABLED, "")
+
+    with caplog.at_level(logging.WARNING, logger=APP_LOGGER):
+        apply_infrahub_settings_to_prefect()
+
+    assert _app_messages(caplog=caplog, level=logging.WARNING) == []
+    assert os.environ[VACUUM_ENABLED] == "events,flow_runs"
+    assert get_current_settings().server.services.db_vacuum.enabled_vacuum_types == {"events", "flow_runs", "orphans"}
+
+
+@pytest.mark.usefixtures("task_manager_environment")
 def test_prefect_runs_with_the_configured_retention(monkeypatch: pytest.MonkeyPatch) -> None:
     """Prefect's settings, read once at import, reflect the retention once the configuration is applied."""
     monkeypatch.setenv("INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY", "45d")
