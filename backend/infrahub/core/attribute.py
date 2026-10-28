@@ -13,6 +13,7 @@ from infrahub_sdk.uuidt import UUIDT
 from pydantic import BaseModel, Field
 
 from infrahub import config
+from infrahub.constants.database import MAX_SUPPORTED_INTEGER, MIN_SUPPORTED_INTEGER
 from infrahub.core import registry
 from infrahub.core.changelog.models import AttributeChangelog
 from infrahub.core.constants import (
@@ -55,10 +56,6 @@ if TYPE_CHECKING:
 
 
 log = get_logger()
-
-# Neo4j stores integers as signed 64-bit values.
-INT64_MIN = -(2**63)
-INT64_MAX = 2**63 - 1
 
 # Use a more user-friendly threshold than Neo4j one (8167 bytes).
 MAX_STRING_LENGTH = 4096
@@ -853,9 +850,14 @@ class Integer(BaseAttribute):
         # Note that we might want to do this check directly in parent function.
         if value_to_check.__class__ != cls.type:
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"})
-        if not INT64_MIN <= value_to_check <= INT64_MAX:
+        if not MIN_SUPPORTED_INTEGER <= value_to_check <= MAX_SUPPORTED_INTEGER:
             raise ValidationError(
-                {name: f"{value} is outside the supported range of numbers ({INT64_MIN} to {INT64_MAX})"}
+                {
+                    name: (
+                        f"{value} is outside the supported range of numbers "
+                        f"({MIN_SUPPORTED_INTEGER} to {MAX_SUPPORTED_INTEGER})"
+                    )
+                }
             )
 
 

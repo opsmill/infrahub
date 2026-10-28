@@ -364,7 +364,7 @@ class TestNumberPoolRangeSupportedNumbers:
 
         assert [error.message for error in result.errors or []] == [
             "9223372036854775808 is outside the supported range of numbers "
-            "(-9223372036854775808 to 9223372036854775807) at end"
+            "(-9223372036854775807 to 9223372036854775807) at end"
         ]
         assert await range_details(db=db, pool_id=pool_id) == []
 
