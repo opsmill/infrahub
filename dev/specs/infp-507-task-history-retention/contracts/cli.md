@@ -17,7 +17,7 @@ infrahub tasks flush flow-runs [CONFIG_FILE] [--rewrite]
 ## `infrahub tasks flush stale-runs` (unchanged, now documented)
 
 - Marks runs RUNNING or PENDING since more than `--days-to-keep` days (default 2) as CRASHED, which gives them an end time so that the cleanup deletes them later.
-- Does not catch PENDING runs that never started (no start time).
+- A PENDING run that never started has no start time; Prefect then filters on its expected start time, so the command marks it once that time is older than `--days-to-keep` days.
 
 ## `infrahub tasks background-services` (new)
 

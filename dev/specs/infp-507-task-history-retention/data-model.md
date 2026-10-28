@@ -35,7 +35,7 @@ A Prefect setting that one of Prefect's sources already sets is left as is: the 
 
 | Record | Table(s) | Lifecycle after this feature |
 |---|---|---|
-| Flow run (task history) | `flow_run`, `flow_run_state`, `task_run`, `task_run_state` | Deleted when top-level, in a terminal state (COMPLETED, FAILED, CANCELLED, CRASHED), and `end_time` older than `task_history`. Runs RUNNING or PENDING are never deleted; the stuck-runs command moves them to CRASHED with an end time. |
+| Flow run (task history) | `flow_run`, `flow_run_state`, `task_run`, `task_run_state` | Deleted when top-level, in a terminal state (COMPLETED, FAILED, CANCELLED, CRASHED), and `end_time` older than `task_history`. Runs RUNNING or PENDING are not deleted. `infrahub tasks flush stale-runs` moves those whose start time, or expected start time for a run that never started, is more than `--days-to-keep` days old (default 2) to CRASHED with an end time, so the cleanup deletes them once that end time is older than `task_history`. |
 | Log, artifact | `log`, `artifact` | Deleted with their flow run; orphans removed daily by Prefect. |
 | Infrahub event | `events`, `event_resources` | Deleted when older than `activity_log`, with its related items. |
 | Prefect event | `events`, `event_resources` | Deleted when older than `prefect_own_events` if its type is in the list, otherwise when older than `activity_log`. |

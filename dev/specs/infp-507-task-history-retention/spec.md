@@ -108,7 +108,7 @@ An operator sets how long task history, the activity log and the task manager's 
 - **Existing scripts call the command for old runs with `--days-to-keep` or `--batch-size`**: those options are removed (the command reads the retention setting); the changelog flags it as a breaking change.
 - **Rewrite during operation**: the rewrite option is off by default, because each table is locked until its rewrite ends; running it while the instance is up is the operator's choice.
 - **Not enough free disk for the rewrite**: the rewrite needs free space for a copy of the remaining rows (under 0.5 GB for 25 GB of task history, 2.2 GB for 100 GB); the upgrade guide states this.
-- **PENDING runs that never started**: the command for stuck runs does not catch them; they stay until a follow-up fixes the command.
+- **PENDING runs that never started**: they have no start time, so the command for stuck runs selects them by their expected start time and marks them CRASHED once that time is more than 2 days old.
 - **Runs stuck in SCHEDULED, LATE, PAUSED or CANCELLING**: not covered; whether they accumulate is an open question.
 - **Branch deleted**: finished runs tagged with the branch are deleted as today, unchanged.
 - **Branch name that matches no existing branch and has no "branch deleted" event inside the retention**: the activity log filter returns no events straight away.
@@ -140,7 +140,7 @@ An operator sets how long task history, the activity log and the task manager's 
 - **FR-011**: On Compose, the upgrade MUST run the command for old runs with the rewrite option before the instance starts; the Compose upgrade guide offers no way to skip it.
 - **FR-012**: The upgrade MUST NOT fail when the task manager it reaches does not yet provide the cleanup; it MUST report that the cleanup was not run.
 - **FR-013**: On Helm, the upgrade hook MUST leave the cleanup out, also once the task manager provides it, because the instance is still serving; the Helm upgrade guide MUST describe the maintenance step after the rollout.
-- **FR-014**: The command for stuck runs MUST be documented, including that it marks runs RUNNING or PENDING for more than 2 days as CRASHED, and that PENDING runs that never started are not caught.
+- **FR-014**: The command for stuck runs MUST be documented, including that it marks runs RUNNING or PENDING for more than 2 days as CRASHED, measured from the start time, or from the expected start time for a PENDING run that never started.
 - **FR-015**: Branch deletion MUST keep deleting the finished runs tagged with the branch, as today.
 
 **Activity log**
@@ -236,7 +236,6 @@ Timings are indicative: they come from local benchmarks, not a production contra
 - Tasks page performance at 1M+ runs, latency targets and an Infrahub-owned activity-log store (INFP-727).
 - Memory growth from task-manager cache keys that never expire.
 - The value of an Enterprise-only retention limit.
-- Fixing the command for stuck runs to catch PENDING runs that never started (follow-up).
 - New indexes or tables in the task manager's database, a capped total count, and the newest-events shortcut query (rejected in the design doc).
 - Upstream task-manager changes (prefix keys in per-type retention, faster per-type cleanup).
 - Keeping activity beyond the retention for audit (log forwarding, unchanged).
