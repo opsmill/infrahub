@@ -125,6 +125,10 @@ the same repository with a commit that does not have it.
 It is ready for review when its CI and the `opsmill/infrahub-private` tests of step 6 pass and,
 for Neo4j and Prefect, the two runs of step 7 pass. Once the user agrees, mark it ready.
 
+Before you mark it ready, merge the latest `develop` into the branch and run the searches of step 4
+and of the service notes again. A pin that reaches `develop` while the branch is open is not in your
+first search, and stays on the old version unless you search again.
+
 Never merge any of the pull requests yourself. A maintainer merges the Infrahub pull request and
 then the `opsmill/infrahub-private` one. The person who cuts the release merges the
 `opsmill/infrahub-helm` one: `/cut-release` has this step.
@@ -156,8 +160,13 @@ then the `opsmill/infrahub-private` one. The person who cuts the release merges 
   `utilities/db_backup`. Compare the memory settings of the size presets in the other two
   repositories with the release notes, and check that the `neo4j` driver and `neo4j-rust-ext` in
   `pyproject.toml` support the new version.
-- The end-to-end job of `.github/workflows/ci.yml` sets its own Neo4j image: changing it is a CI
-  change, which `AGENTS.md` says to agree on first.
+- `python_testcontainers/infrahub_testcontainers/container.py` has two images: the Community
+  default in `PROJECT_ENV_VARIABLES` and the Enterprise image in `create_env_file`. Both are
+  written into the `.env` file of the test stack, so they win over the fallback of
+  `docker-compose.test.yml`, and no test fails when one of them is old.
+- The end-to-end job of `.github/workflows/ci.yml` sets its own Neo4j image. Changing it is a CI
+  change, which `AGENTS.md` says to agree on first: get that agreement and change it in the same
+  pull request, or the end-to-end suite keeps testing a version that Infrahub no longer ships.
 - Performance runs: set `NEO4J_DOCKER_IMAGE`, or `DATABASE_DOCKER_IMAGE` for a cluster, in both
   runs, because the defaults of the test containers can differ. The high-availability example
   installs the `neo4j/neo4j` charts itself: install them at the new chart version.
