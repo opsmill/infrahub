@@ -100,6 +100,7 @@ async def test_a_cleanup_is_polled_until_it_completes_reporting_each_change_of_p
             started(rewrite="if_freed"),
             polled(rewrite="if_freed", current_day="2026-01-15", deleted_runs=5),
             polled(rewrite="if_freed", current_day="2026-01-15", deleted_runs=5),
+            polled(rewrite="if_freed", current_day="2026-01-15", deleted_runs=7),
             polled(rewrite="if_freed", current_day="2026-01-16", deleted_runs=9),
             polled(
                 rewrite="if_freed",
@@ -127,10 +128,14 @@ async def test_a_cleanup_is_polled_until_it_completes_reporting_each_change_of_p
     )
     assert task_manager.requests == [
         RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "if_freed"}),
-        *[RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-1")] * 4,
+        *[RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-1")] * 5,
     ]
-    assert reports.progress == [("job-1", date(2026, 1, 15), 5), ("job-1", date(2026, 1, 16), 9)]
-    assert clock.sleeps == [2.0, 2.0, 2.0, 2.0]
+    assert reports.progress == [
+        ("job-1", date(2026, 1, 15), 5),
+        ("job-1", date(2026, 1, 15), 7),
+        ("job-1", date(2026, 1, 16), 9),
+    ]
+    assert clock.sleeps == [2.0] * 5
 
 
 async def test_a_cleanup_running_elsewhere_is_started_again_after_a_wait() -> None:
