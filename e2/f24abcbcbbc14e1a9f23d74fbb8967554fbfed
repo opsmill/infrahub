@@ -1,0 +1,22 @@
+backend/infrahub/proposed_change/tasks.py
+  s_9128a279c50f90::t_97970dd7feb54f 8,760,763,814-815
+backend/tests/component/proposed_change/test_artifact_regen_recheck.py
+  s_9128a279c50f90::t_97970dd7feb54f 26-35,306-318
+  s_9128a279c50f90::t_127b274830a3af 319
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e2f24abcbcbbc14e1a9f23d74fbb8967554fbfed",
+  "prompts": {},
+  "sessions": {
+    "s_9128a279c50f90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "11476f82-dee3-47fe-9315-70bb594190bd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

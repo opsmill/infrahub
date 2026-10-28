@@ -1,0 +1,25 @@
+dev/specs/artifact-regeneration-poc/results.md
+  s_6947b4d8b10fbd::t_126b045b79f7ff 262-264,266
+dev/specs/artifact-regeneration-poc/contracts/interfaces.md
+  s_6947b4d8b10fbd::t_ee54b3664bf2ec 313-316
+  s_6947b4d8b10fbd::t_126b045b79f7ff 327-334,391-394
+dev/specs/artifact-regeneration-poc/data-model.md
+  s_6947b4d8b10fbd::t_126b045b79f7ff 104-106,143-144,196
+  s_6947b4d8b10fbd::t_ee54b3664bf2ec 145-149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "99e8f28101dfd6521e3f692f2f72cc7fd4bab306",
+  "prompts": {},
+  "sessions": {
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

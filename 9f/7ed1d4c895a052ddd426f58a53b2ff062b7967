@@ -1,0 +1,25 @@
+.agents/skills/reviewing-pull-requests/SKILL.md
+  s_fd720d10ce69fc::t_3103a16fc80da6 1-18
+.claude/settings.json
+  s_fd720d10ce69fc::t_de0fe606e00e8b 22
+.agents/hooks/pr-review.sh
+  s_fd720d10ce69fc::t_f38ac50a61f566 3-4,7,11,46,50,53,67,86,89
+AGENTS.md
+  s_fd720d10ce69fc::t_2b3fbdff28e9b8 138-139,141-143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9f7ed1d4c895a052ddd426f58a53b2ff062b7967",
+  "prompts": {},
+  "sessions": {
+    "s_fd720d10ce69fc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd1e6989-2412-46dc-874b-841d76996a2e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

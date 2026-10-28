@@ -1,0 +1,41 @@
+.agents/hooks/pr-review.sh
+  s_6947b4d8b10fbd::t_cf868db0a5dd58 2-5,12,14-15,47-59,63,68-103,133,136
+.agents/skills/reviewing-pull-requests/SKILL.md
+  s_9c5b6446126571::t_5424ccc59b7f62 6-9
+.claude/settings.json
+  s_fd720d10ce69fc::t_19511a152a6723 26-30
+dev/README.md
+  s_9c5b6446126571::t_e77cf1c0d335c9 131-135,145-147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b8025afa7a67571d2d4df60b034a07cc3295128a",
+  "prompts": {},
+  "sessions": {
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    },
+    "s_9c5b6446126571": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "91f59d33-3322-493f-ad2a-f4f60dfe37db",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    },
+    "s_fd720d10ce69fc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd1e6989-2412-46dc-874b-841d76996a2e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

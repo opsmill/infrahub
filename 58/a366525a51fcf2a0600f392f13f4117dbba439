@@ -1,0 +1,19 @@
+dev/knowledge/backend/selective-merge-regeneration.md
+  s_9128a279c50f90::t_b8422b2b5c5eb4 47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "58a366525a51fcf2a0600f392f13f4117dbba439",
+  "prompts": {},
+  "sessions": {
+    "s_9128a279c50f90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "11476f82-dee3-47fe-9315-70bb594190bd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}
