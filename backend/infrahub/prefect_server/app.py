@@ -8,10 +8,12 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import sqlalchemy as sa
 from fastapi import APIRouter, FastAPI
 from prefect.context import refresh_global_settings_context
 from prefect.server.api.server import create_app
 from prefect.server.database import provide_database_interface
+from prefect.server.database.configurations import AsyncPostgresConfiguration
 from prefect.settings import get_current_settings
 from pydantic import ValidationError
 
@@ -37,6 +39,9 @@ if TYPE_CHECKING:
     from starlette.types import Lifespan
 
 log = logging.getLogger(__name__)
+
+# The task manager serves no request until the check ends, so a locked events table delays its start by at most this long.
+_STORED_EVENT_TYPES_TIME_LIMIT = "5s"
 
 router = APIRouter(prefix="/infrahub")
 
@@ -94,6 +99,11 @@ async def warn_about_unlisted_prefect_event_types(db: PrefectDBInterface) -> Non
         return
     try:
         async with db.session_context() as session:
+            if isinstance(db.database_config, AsyncPostgresConfiguration):
+                # Local to the read's transaction, so the pooled connection goes back to Prefect with its own limit.
+                await session.execute(
+                    sa.select(sa.func.set_config("statement_timeout", _STORED_EVENT_TYPES_TIME_LIMIT, sa.true()))
+                )
             stored = await read_stored_event_types(session=session)
     # A best-effort check: no error from the database or its driver may keep the task manager from starting.
     except Exception:

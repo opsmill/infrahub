@@ -27,7 +27,7 @@ from infrahub.prefect_server.retention import PREFECT_EVENT_TYPES
 from tests.helpers.fixtures import get_fixtures_dir
 
 if TYPE_CHECKING:
-    from collections.abc import Awaitable, Callable, Generator
+    from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
     from pathlib import Path
 
     from infrahub_sdk import InfrahubClient
@@ -48,6 +48,11 @@ TASK_MANAGER_RESTART_WAIT_SECONDS = 120
 # Six flush intervals of the task manager's event persister.
 SETTLED_MARKER_WAIT_SECONDS = 30
 POLL_SECONDS = 1
+EVENTS_LOCK_HOLDER = "event-types-test-events-lock"
+EVENTS_LOCK_SECONDS = 60
+EVENTS_LOCK_WAIT_SECONDS = 60
+# Longer than the lock, so a read without its own time limit waits for the lock to end.
+CHECK_DATABASE_TIMEOUT_SECONDS = 120
 
 CANCELLED_RUN_DEPLOYMENT = "git_repositories_sync/git_repositories_sync"
 ACTIVITY_LOG_RETENTION = "30d"
@@ -58,14 +63,30 @@ UNLISTED_WARNING = (
     f"(P30D): {UNLISTED_PREFECT_EVENT}"
 )
 STARTUP_CHECK_FAILED = "Task manager retention: could not read the stored event types"
-# The statements interpolate only this module's constant, so S608 has no input to guard against.
+# The statements interpolate only this module's constants, so S608 has no input to guard against.
 _DELETE_UNLISTED_PREFECT_EVENTS = (
     "DELETE FROM event_resources WHERE event_id IN "  # noqa: S608
     f"(SELECT id FROM events WHERE event = '{UNLISTED_PREFECT_EVENT}'); "
     f"DELETE FROM events WHERE event = '{UNLISTED_PREFECT_EVENT}'"
 )
+_EVENTS_LOCK_QUERY = (
+    "SELECT count(*) FROM pg_locks JOIN pg_stat_activity USING (pid) "  # noqa: S608
+    f"WHERE application_name = '{EVENTS_LOCK_HOLDER}' AND relation = 'events'::regclass AND granted"
+)
+_RELEASE_EVENTS_LOCK_QUERY = (
+    f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE application_name = '{EVENTS_LOCK_HOLDER}'"  # noqa: S608
+)
 
 _STORED_PREFECT_EVENTS_QUERY = "SELECT event, count(*) FROM events WHERE event NOT LIKE 'infrahub.%' GROUP BY event"
+
+_STARTUP_CHECK_SCRIPT = """
+import asyncio
+from prefect.server.database import provide_database_interface
+from infrahub.prefect_server.app import apply_infrahub_settings_to_prefect, warn_about_unlisted_prefect_event_types
+
+apply_infrahub_settings_to_prefect()
+asyncio.run(warn_about_unlisted_prefect_event_types(db=provide_database_interface()))
+"""
 
 
 async def _poll_until(
@@ -318,6 +339,49 @@ class TestPrefectEventTypes(TestInfrahubDockerClient, SchemaCarPerson):
         await _wait_until_settled(compose=infrahub_compose, prefect_client=prefect_client)
         return set(await _stored_prefect_events(compose=infrahub_compose))
 
+    @pytest.fixture
+    async def events_table_locked(
+        self,
+        infrahub_app: dict[str, int],
+        infrahub_compose: InfrahubDockerCompose,
+    ) -> AsyncGenerator[None]:
+        """The events table locked by another session for a minute, in the mode that a cleanup rewrite takes.
+
+        Raises:
+            TimeoutError: When the lock does not show within a minute.
+
+        """
+        infrahub_compose._run_command(
+            cmd=[
+                *infrahub_compose.compose_command_property,
+                "exec",
+                "--detach",
+                "-T",
+                "--env",
+                f"PGAPPNAME={EVENTS_LOCK_HOLDER}",
+                "task-manager-db",
+                "psql",
+                "--username=postgres",
+                "--dbname=prefect",
+                "-c",
+                f"BEGIN; LOCK TABLE events IN ACCESS EXCLUSIVE MODE; SELECT pg_sleep({EVENTS_LOCK_SECONDS}); COMMIT;",
+            ]
+        )
+
+        async def _held() -> bool:
+            return await _query_task_manager_database(compose=infrahub_compose, query=_EVENTS_LOCK_QUERY) == ["1"]
+
+        # The session outlives a failed wait as well, holding the lock until its sleep ends.
+        try:
+            await _poll_until(
+                condition=_held,
+                waiting_for=f"{EVENTS_LOCK_HOLDER} to lock the events table",
+                seconds=EVENTS_LOCK_WAIT_SECONDS,
+            )
+            yield
+        finally:
+            await _query_task_manager_database(compose=infrahub_compose, query=_RELEASE_EVENTS_LOCK_QUERY)
+
     def test_every_stored_prefect_event_type_is_listed(self, stored_prefect_event_types: set[str]) -> None:
         """Every Prefect event type the workload stores is in the list given its own retention."""
         assert sorted(stored_prefect_event_types - set(PREFECT_EVENT_TYPES)) == []
@@ -351,3 +415,31 @@ class TestPrefectEventTypes(TestInfrahubDockerClient, SchemaCarPerson):
 
         assert len(await _task_manager_log_lines_with(compose=infrahub_compose, text=UNLISTED_WARNING)) == workers
         assert await _task_manager_log_lines_with(compose=infrahub_compose, text=STARTUP_CHECK_FAILED) == []
+
+    @pytest.mark.usefixtures("events_table_locked")
+    async def test_the_startup_check_gives_up_while_a_cleanup_rewrite_locks_the_events_table(
+        self, infrahub_compose: InfrahubDockerCompose
+    ) -> None:
+        """While another session locks the events table, the startup check logs once that it could not read the stored types.
+
+        The check runs with a database timeout longer than the lock, so a lock that is still held after the check
+        returned shows that the check's own time limit ended the read.
+        """
+        result = await asyncio.to_thread(
+            infrahub_compose._run_command,
+            cmd=[
+                *infrahub_compose.compose_command_property,
+                "exec",
+                "-T",
+                "--env",
+                f"PREFECT_API_DATABASE_TIMEOUT={CHECK_DATABASE_TIMEOUT_SECONDS}",
+                "task-manager",
+                "python",
+                "-c",
+                _STARTUP_CHECK_SCRIPT,
+            ],
+        )
+
+        output = f"{result.stdout.decode()}\n{result.stderr.decode()}"
+        assert len([line for line in output.splitlines() if STARTUP_CHECK_FAILED in line]) == 1
+        assert await _query_task_manager_database(compose=infrahub_compose, query=_EVENTS_LOCK_QUERY) == ["1"]
