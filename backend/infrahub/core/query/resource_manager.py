@@ -786,10 +786,10 @@ EDGE_BRANCHES = """CASE
 
 # Reads `node`, `element`, `node_branches`, `deleting_branches` and `branch_windows`: every value or peer the Node has
 # for the element, once each, with the branches that see it, null meaning every branch. An element with a `value`
-# keeps only that value or peer.
-ELEMENT_VALUES = """COLLECT {
+# keeps only that value or peer. Neo4j 2025.10 rejects an aggregating COLLECT subquery used as an operand, so each
+# stage projects only the subquery matching its element on its own.
+ATTRIBUTE_ELEMENT_VALUES = """COLLECT {
             MATCH (node)-[:HAS_ATTRIBUTE]->(element_attr:Attribute { name: element.name })
-            WHERE element.direction IS NULL
             WITH element_attr, COLLECT {
                 MATCH (element_attr)-[hiding:HAS_VALUE]->()
                 WHERE hiding.from <= $at AND (hiding.to IS NULL OR hiding.to > $at)
@@ -818,9 +818,10 @@ ELEMENT_VALUES = """COLLECT {
                 branches: CASE WHEN any(b IN branch_lists WHERE b.branches IS NULL) THEN null
                     ELSE reduce(union = [], b IN branch_lists | union + b.branches) END
             }
-        } + COLLECT {
+        }"""
+
+RELATIONSHIP_ELEMENT_VALUES = """COLLECT {
             MATCH (node)-[:IS_RELATED]-(rel:Relationship { name: element.name })
-            WHERE element.direction IS NOT NULL
             WITH DISTINCT rel
             WITH rel, COLLECT {
                 MATCH (node)-[hiding:IS_RELATED]-(rel)
@@ -929,6 +930,10 @@ DIVISION_VALUE_FILTER_QUERY = """
 """ % {"held_branch": HELD_BRANCH}
 
 
+def _element_values(element: DivisionElementPath) -> str:
+    return RELATIONSHIP_ELEMENT_VALUES if element.is_relationship else ATTRIBUTE_ELEMENT_VALUES
+
+
 def _division_params(division: Division) -> dict[str, Any]:
     return {
         "division_elements": [
@@ -957,8 +962,8 @@ def division_filter_query(division: Division) -> tuple[str, dict[str, Any]]:
         "edge_is_live": EDGE_IS_LIVE,
         "edge_branches": EDGE_BRANCHES,
         "element_stages": "".join(
-            DIVISION_ELEMENT_STAGE % {"idx": idx, "element_values": ELEMENT_VALUES}
-            for idx in range(len(division.elements))
+            DIVISION_ELEMENT_STAGE % {"idx": idx, "element_values": _element_values(element=element)}
+            for idx, element in enumerate(division.elements)
         ),
     }
     return query, _division_params(division=division)
@@ -1036,7 +1041,8 @@ def live_divisions_query(elements: Sequence[DivisionElementPath]) -> tuple[str, 
         "edge_is_live": EDGE_IS_LIVE,
         "edge_branches": EDGE_BRANCHES,
         "element_stages": "".join(
-            LIVE_DIVISION_ELEMENT_STAGE % {"idx": idx, "element_values": ELEMENT_VALUES} for idx in range(len(elements))
+            LIVE_DIVISION_ELEMENT_STAGE % {"idx": idx, "element_values": _element_values(element=element)}
+            for idx, element in enumerate(elements)
         ),
         "held_branch": HELD_BRANCH,
     }
