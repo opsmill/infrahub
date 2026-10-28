@@ -245,10 +245,18 @@ class TestGRPCExporterTLS:
 
 
 class TestHTTPExporterTLS:
+    @pytest.fixture(params=[None, "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE"])
+    def http_ca_bundle(self, request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch, pki: LocalPKI) -> str:
+        monkeypatch.delenv("REQUESTS_CA_BUNDLE", raising=False)
+        monkeypatch.delenv("CURL_CA_BUNDLE", raising=False)
+        if request.param:
+            monkeypatch.setenv(request.param, str(pki.ca_bundle.parent / "other-ca.pem"))
+        return str(pki.ca_bundle)
+
     def test_ca_bundle_delivers_to_collector_with_private_certificate(
         self,
         http_collector: RunningCollector,
-        pki: LocalPKI,
+        http_ca_bundle: str,
         span: ReadableSpan,
         make_exporter: Callable[..., SpanExporter],
     ) -> None:
@@ -258,7 +266,7 @@ class TestHTTPExporterTLS:
             exporter_endpoint=http_collector.endpoint,
             insecure=True,
             tls_insecure=False,
-            tls_ca_bundle=str(pki.ca_bundle),
+            tls_ca_bundle=http_ca_bundle,
         )
         result = exporter.export([span])
 

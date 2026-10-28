@@ -50,10 +50,10 @@ dependencies = [
     "bcrypt>=4.1,<4.2", # Used to hash and validate password
     "pyjwt==2.15.0", # Used to manage JWT tokens
     "uvicorn[standard]>=0.32,<0.33",
-    "opentelemetry-instrumentation-aio-pika==0.65b0",
-    "opentelemetry-instrumentation-fastapi==0.65b0",
-    "opentelemetry-exporter-otlp-proto-grpc==1.44.0",
-    "opentelemetry-exporter-otlp-proto-http==1.44.0",
+    "opentelemetry-instrumentation-aio-pika==0.66b1",
+    "opentelemetry-instrumentation-fastapi==0.66b1",
+    "opentelemetry-exporter-otlp-proto-grpc==1.45.1",
+    "opentelemetry-exporter-otlp-proto-http==1.45.1",
     "nats-py==2.15.0",
     "netaddr==1.3.0",
     "authlib==1.6.12",
