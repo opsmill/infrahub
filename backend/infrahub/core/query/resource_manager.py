@@ -247,6 +247,7 @@ class NumberPoolGetAllocated(Query):
             at=self.at.to_string(),
             default_branch_name=registry.default_branch,
             division_filter=division_filter,
+            division_candidates=division_candidates_query(division=self.division),
             include_inherited_open_values=self.include_inherited_branches,
         )
         self.params.update(reserved_values_params)
@@ -775,14 +776,14 @@ EDGE_IS_LIVE = """edge.status = "active"
 # Reads `edge`, `hidden`, and `branch_windows`. end result is list of branches where this edge is
 # visible, ``null`` means global branch, so every branch. an edge on the default branch is visible
 # from each user branch that forked while it was open and is not in `hidden`.
-EDGE_BRANCHES = """CASE
-                WHEN edge.branch = $global_branch_name THEN null
-                WHEN edge.branch <> $default_branch_name THEN [edge.branch]
-                ELSE CASE WHEN edge.to IS NULL OR edge.to > $at THEN [$default_branch_name] ELSE [] END
-                    + [window IN branch_windows WHERE edge.from <= window.fork_at
-                        AND (edge.to IS NULL OR edge.to > window.fork_at)
+EDGE_BRANCHES = """head([e IN [edge { .branch, .from, .to }] | CASE
+                WHEN e.branch = $global_branch_name THEN null
+                WHEN e.branch <> $default_branch_name THEN [e.branch]
+                ELSE CASE WHEN e.to IS NULL OR e.to > $at THEN [$default_branch_name] ELSE [] END
+                    + [window IN branch_windows WHERE e.from <= window.fork_at
+                        AND (e.to IS NULL OR e.to > window.fork_at)
                         AND NOT window.name IN hidden | window.name]
-            END"""
+            END])"""
 
 # Reads `node`, `element`, `node_branches`, `deleting_branches` and `branch_windows`: every value or peer the Node has
 # for the element, once each, with the branches that see it, null meaning every branch. An element with a `value`
@@ -803,14 +804,14 @@ ATTRIBUTE_ELEMENT_VALUES = """COLLECT {
             AND (edge.to IS NULL OR edge.to > $at OR edge.branch = $default_branch_name)
             AND (node_branches IS NULL OR edge.branch IN node_branches
                 OR edge.branch IN [$default_branch_name, $global_branch_name])
-            WITH CASE WHEN av.value = $null_value THEN "" ELSE av.value END AS element_value, CASE
-                WHEN edge.branch = $global_branch_name THEN null
-                WHEN edge.branch <> $default_branch_name THEN [edge.branch]
-                ELSE CASE WHEN edge.to IS NULL OR edge.to > $at THEN [$default_branch_name] ELSE [] END
-                    + [window IN branch_windows WHERE edge.from <= window.fork_at
-                        AND (edge.to IS NULL OR edge.to > window.fork_at)
+            WITH CASE WHEN av.value = $null_value THEN "" ELSE av.value END AS element_value, head([e IN [edge { .branch, .from, .to }] | CASE
+                WHEN e.branch = $global_branch_name THEN null
+                WHEN e.branch <> $default_branch_name THEN [e.branch]
+                ELSE CASE WHEN e.to IS NULL OR e.to > $at THEN [$default_branch_name] ELSE [] END
+                    + [window IN branch_windows WHERE e.from <= window.fork_at
+                        AND (e.to IS NULL OR e.to > window.fork_at)
                         AND NOT window.name IN hidden | window.name]
-            END AS branches
+            END]) AS branches
             WHERE branches IS NULL OR size(branches) > 0
             WITH element_value, collect({branches: branches}) AS branch_lists
             RETURN {
@@ -843,14 +844,14 @@ RELATIONSHIP_ELEMENT_VALUES = """COLLECT {
             AND (edge.to IS NULL OR edge.to > $at OR edge.branch = $default_branch_name)
             AND (node_branches IS NULL OR edge.branch IN node_branches
                 OR edge.branch IN [$default_branch_name, $global_branch_name])
-            WITH peer.uuid AS element_value, CASE
-                WHEN edge.branch = $global_branch_name THEN null
-                WHEN edge.branch <> $default_branch_name THEN [edge.branch]
-                ELSE CASE WHEN edge.to IS NULL OR edge.to > $at THEN [$default_branch_name] ELSE [] END
-                    + [window IN branch_windows WHERE edge.from <= window.fork_at
-                        AND (edge.to IS NULL OR edge.to > window.fork_at)
+            WITH peer.uuid AS element_value, head([e IN [edge { .branch, .from, .to }] | CASE
+                WHEN e.branch = $global_branch_name THEN null
+                WHEN e.branch <> $default_branch_name THEN [e.branch]
+                ELSE CASE WHEN e.to IS NULL OR e.to > $at THEN [$default_branch_name] ELSE [] END
+                    + [window IN branch_windows WHERE e.from <= window.fork_at
+                        AND (e.to IS NULL OR e.to > window.fork_at)
                         AND NOT window.name IN hidden | window.name]
-            END AS branches
+            END]) AS branches
             WHERE branches IS NULL OR size(branches) > 0
             WITH element_value, collect({branches: branches}) AS branch_lists
             RETURN {
@@ -951,14 +952,16 @@ def _division_params(division: Division) -> dict[str, Any]:
     }
 
 
-def division_filter_query(division: Division) -> tuple[str, dict[str, Any]]:
+def division_filter_query(division: Division, with_candidate_set: bool = True) -> tuple[str, dict[str, Any]]:
     """Return the Cypher that keeps the reserved `attr` whose Node is in `division` on some live branch, with its parameters.
 
     The fragment adds `division_branches`, the branches on which the Node is in the division, which the value filter
     reads. It reads the `deleting_branches`, `branch_windows`, `$at` and `$default_branch_name` that the enclosing
     query provides.
     """
-    query = DIVISION_FILTER_QUERY % {
+    query = _division_candidate_filter(
+        division=division, with_candidate_set=with_candidate_set
+    ) + DIVISION_FILTER_QUERY % {
         "edge_is_live": EDGE_IS_LIVE,
         "edge_branches": EDGE_BRANCHES,
         "element_stages": "".join(
@@ -969,9 +972,65 @@ def division_filter_query(division: Division) -> tuple[str, dict[str, Any]]:
     return query, _division_params(division=division)
 
 
+# Ignores time, branch and direction, so it only drops an `attr` whose Node never held the division's value, which the
+# per-branch stages would drop too; a list built from `attr` keeps the planner from starting at the indexed value.
+DIVISION_CANDIDATE_RELATIONSHIP = """$division_elements[%(idx)s].value IN [
+        (attr)<-[:HAS_ATTRIBUTE]-(:Node)-[:IS_RELATED]-(:Relationship { name: $division_elements[%(idx)s].name })
+            -[:IS_RELATED]-(peer:Node) | peer.uuid
+    ]"""
+
+DIVISION_CANDIDATE_ATTRIBUTE = """$division_elements[%(idx)s].value IN [
+        (attr)<-[:HAS_ATTRIBUTE]-(:Node)-[:HAS_ATTRIBUTE]->(:Attribute { name: $division_elements[%(idx)s].name })
+            -[:HAS_VALUE]->(candidate_value:AttributeValue) | candidate_value.value
+    ]"""
+
+
+def _candidate_set_index(division: Division) -> int | None:
+    """Return the index of the first relationship element with a value, whose holders are read once from the peer."""
+    for idx, (element, value) in enumerate(zip(division.elements, division.values, strict=True)):
+        if element.is_relationship and value not in {None, ""}:
+            return idx
+    return None
+
+
+def division_candidates_query(division: Division | None) -> str:
+    """Return the Cypher that reads, once, the Attributes of every Node ever related to the division's first peer.
+
+    It gives `division_candidates`, which the division filter reads, and is empty when no relationship element of the
+    division has a value.
+    """
+    if division is None:
+        return ""
+    idx = _candidate_set_index(division=division)
+    if idx is None:
+        return ""
+    return """
+    CALL () {
+        MATCH (:Node { uuid: $division_elements[%(idx)s].value })-[:IS_RELATED]-(:Relationship { name: $division_elements[%(idx)s].name })
+            -[:IS_RELATED]-(:Node)-[:HAS_ATTRIBUTE]->(candidate:Attribute)
+        RETURN collect(DISTINCT elementId(candidate)) AS division_candidates
+    }
+""" % {"idx": idx}
+
+
+def _division_candidate_filter(division: Division, with_candidate_set: bool) -> str:
+    candidate_set_index = _candidate_set_index(division=division) if with_candidate_set else None
+    conditions = [
+        "elementId(attr) IN division_candidates"
+        if idx == candidate_set_index
+        else (DIVISION_CANDIDATE_RELATIONSHIP if element.is_relationship else DIVISION_CANDIDATE_ATTRIBUTE)
+        % {"idx": idx}
+        for idx, (element, value) in enumerate(zip(division.elements, division.values, strict=True))
+        if value not in {None, ""}
+    ]
+    if not conditions:
+        return ""
+    return "    WITH *\n    WHERE " + "\n    AND ".join(conditions) + "\n"
+
+
 def division_on_branch_query(division: Division, branch_name: str) -> tuple[str, dict[str, Any]]:
     """Return the Cypher that keeps the reserved `attr` whose Node is in `division` on the branch `branch_name`."""
-    query, params = division_filter_query(division=division)
+    query, params = division_filter_query(division=division, with_candidate_set=False)
     query += """
     WITH *
     WHERE division_branches IS NULL OR $division_branch_name IN division_branches
@@ -1223,6 +1282,7 @@ def reserved_values_query(
     default_branch_name: str,
     division_filter: str = "",
     include_inherited_open_values: bool = False,
+    division_candidates: str = "",
 ) -> tuple[str, dict[str, Any]]:
     """Cypher fragment to find all Attributes reserved for a given NumberPool, with the parameters it reads.
 
@@ -1246,6 +1306,7 @@ def reserved_values_query(
     }
     query = """
 %(live_branches)s
+%(division_candidates)s
     // --------------
     // Start with all the Attributes currently reserved for this pool
     // --------------
@@ -1257,6 +1318,7 @@ def reserved_values_query(
     """ % {
         "number_pool": InfrahubKind.NUMBERPOOL,
         "division": division_filter,
+        "division_candidates": division_candidates,
         "division_values": DIVISION_VALUE_FILTER_QUERY if division_filter else "",
         "live_branches": LIVE_BRANCHES_QUERY,
         "live_values": LIVE_ATTRIBUTE_VALUES_QUERY,
@@ -1363,6 +1425,7 @@ class NumberPoolGetUsed(Query):
             at=self.at.to_string(),
             default_branch_name=registry.default_branch,
             division_filter=division_filter,
+            division_candidates=division_candidates_query(division=self.division),
         )
         self.params.update(reserved_values_params)
 
@@ -1431,6 +1494,7 @@ class NumberPoolGetFree(Query):
             at=self.at.to_string(),
             default_branch_name=registry.default_branch,
             division_filter=division_filter,
+            division_candidates=division_candidates_query(division=self.division),
         )
         self.params.update(reserved_values_params)
 
