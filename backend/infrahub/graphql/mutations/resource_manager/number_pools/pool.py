@@ -299,7 +299,11 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
         if entries is None:
             return
         default_schema_branch = registry.schema.get_schema_branch(name=registry.default_branch)
-        scope = AllocationScopeResolver(schema_branch=default_schema_branch).resolve(kind=kind, entries=entries)
+        try:
+            scope = AllocationScopeResolver(schema_branch=default_schema_branch).resolve(kind=kind, entries=entries)
+        except UnknownScopeElementError as exc:
+            # Only a plain ValidationError is classified onto the field it names.
+            raise ValidationError({SCOPE_FIELD: exc.reason}) from exc
         AllocationScopeValidator(schema_branch=default_schema_branch).validate(
             kind=kind, tracked_attribute=attribute_name, scope=scope
         )
