@@ -78,7 +78,7 @@ graph TB
     %% Data Layer
     subgraph "Data Layer"
         subgraph "Primary Storage"
-            GraphDB[(Graph Database<br/>Neo4j)]
+            GraphDB[(Graph Database<br/>Neo4j/Memgraph)]
             TaskDB[(Task Database<br/>PostgreSQL)]
         end
 
@@ -220,7 +220,7 @@ The graph database is the heart of Infrahub's design. We selected **Neo4j**, a p
 - **Schema flexibility**: Supports Infrahub's evolving data model requirements
 
 :::note
-Under the hood, we use Bolt protocol and Cypher query language for database communication. This abstraction allows Infrahub to potentially support other graph database providers in the future.
+Under the hood, we use Bolt protocol and Cypher query language for database communication. This abstraction allows Infrahub to potentially support other graph database providers in the future (for example Memgraph).
 :::
 
 <ReferenceLink title="Neo4j Project" url="https://github.com/neo4j/neo4j" />

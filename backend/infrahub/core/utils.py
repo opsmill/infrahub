@@ -5,6 +5,7 @@ import re
 from inspect import isclass
 from typing import TYPE_CHECKING, Any
 
+from infrahub.constants.database import DatabaseType
 from infrahub.core.constants import RelationshipStatus
 from infrahub.core.models import NodeKind
 from infrahub.core.query import QueryType
@@ -143,10 +144,11 @@ having to hold every deleted vertex and edge in the heap.
 async def delete_all_nodes(db: InfrahubDatabase, batch_size: int = DELETE_ALL_NODES_BATCH_SIZE) -> list[Record]:
     """Delete every vertex and edge of the graph database.
 
-    The vertices are deleted in batches of ``batch_size``, each committed on its own, as long as
-    the connection is in auto-commit mode: Neo4j only accepts ``CALL ... IN TRANSACTIONS``
+    On Neo4j the vertices are deleted in batches of ``batch_size``, each committed on its own, as
+    long as the connection is in auto-commit mode: Neo4j only accepts ``CALL ... IN TRANSACTIONS``
     in an implicit transaction, so a caller that is already inside an explicit transaction gets a
-    single-statement delete instead.
+    single-statement delete instead. Memgraph has no batched transactions and always gets the
+    single statement.
 
     Args:
         db: Database connection.
@@ -157,7 +159,7 @@ async def delete_all_nodes(db: InfrahubDatabase, batch_size: int = DELETE_ALL_NO
 
     """
     params: dict[str, Any] = {}
-    if db.is_transaction:
+    if db.db_type is DatabaseType.MEMGRAPH or db.is_transaction:
         query = """
         MATCH (n)
         DETACH DELETE n

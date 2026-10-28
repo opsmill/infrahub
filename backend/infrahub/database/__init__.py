@@ -474,14 +474,24 @@ class InfrahubDatabase:
             raise DatabaseError(message="Unable to connect to the database") from exc
 
     def render_list_comprehension(self, items: str, item_name: str) -> str:
+        if self.db_type == DatabaseType.MEMGRAPH:
+            return f"extract(i in {items} | i.{item_name})"
         return f"[i IN {items} | i.{item_name}]"
 
     def render_list_comprehension_with_list(self, items: str, item_names: list[str]) -> str:
         item_names_str = ",".join([f"i.{name}" for name in item_names])
+        if self.db_type == DatabaseType.MEMGRAPH:
+            return f"extract(i in {items} | [{item_names_str}])"
         return f"[i IN {items} | [{item_names_str}]]"
 
-    def render_uuid_generation(self, node_label: str, node_attr: str) -> str:
-        return f"SET {node_label}.{node_attr} = randomUUID()"
+    def render_uuid_generation(self, node_label: str, node_attr: str, index: int = 1) -> str:
+        generate_uuid_query = f"SET {node_label}.{node_attr} = randomUUID()"
+        if self.db_type == DatabaseType.MEMGRAPH:
+            generate_uuid_query = f"""
+            CALL uuid_generator.get() YIELD uuid AS uuid{index}
+            SET {node_label}.{node_attr} = uuid{index}
+            """
+        return generate_uuid_query
 
     def get_id_function_name(self) -> str:
         if self.db_type == DatabaseType.NEO4J:
