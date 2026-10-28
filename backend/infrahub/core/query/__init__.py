@@ -24,7 +24,6 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
-    from neo4j import Record
     from typing_extensions import Self
 
     from infrahub.core.branch import Branch
@@ -711,17 +710,16 @@ class Query:
         rendered = self.render()
 
         if self.type == QueryType.READ:
-            if self.limit or self.offset:
-                results = await db.execute_query(
-                    query=rendered.text,
-                    params=rendered.params,
-                    name=self.name,
-                    context=self.get_context(),
-                    type=self.type,
-                    timeout_seconds=timeout_seconds,
-                )
-            else:
-                results = await self.query_with_size_limit(db=db, timeout_seconds=timeout_seconds)
+            # One run: a page after the first runs the whole query again to skip the rows before it,
+            # and the driver already streams the rows in batches.
+            results = await db.execute_query(
+                query=rendered.text,
+                params=rendered.params,
+                name=self.name,
+                context=self.get_context(),
+                type=self.type,
+                timeout_seconds=timeout_seconds,
+            )
 
         elif self.type == QueryType.WRITE:
             results, metadata = await db.execute_query_with_metadata(
@@ -745,31 +743,6 @@ class Query:
         self.has_been_executed = True
 
         return self
-
-    async def query_with_size_limit(self, db: InfrahubDatabase, timeout_seconds: float | None = None) -> list[Record]:
-        query_limit = config.SETTINGS.database.query_size_limit
-        offset = 0
-        results: list[Record] = []
-        remaining = True
-        while remaining:
-            rendered = self.render(limit=query_limit, offset=offset)
-            offset_results, metadata = await db.execute_query_with_metadata(
-                query=rendered.text,
-                params=rendered.params,
-                name=self.name,
-                context=self.get_context(),
-                type=self.type,
-                timeout_seconds=timeout_seconds,
-            )
-            if "stats" in metadata:
-                self.stats.add(metadata.get("stats"))
-            results.extend(offset_results)
-            offset += query_limit
-
-            if len(offset_results) < query_limit:
-                remaining = False
-
-        return results
 
     async def count(self, db: InfrahubDatabase) -> int:
         """Count the number of results matching a READ query.

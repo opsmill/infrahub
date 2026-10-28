@@ -1,0 +1,1 @@
+Large database reads are now faster. A read that returned more than 5,000 rows ran its query again for each block of 5,000 rows, and each run had to compute all the rows before the block. Such a read now runs its query once.
