@@ -98,3 +98,40 @@ def test_an_invalid_retention_stops_the_command_before_the_services_start(
     assert {name: os.environ.get(name) for name in PREFECT_RETENTION_VARIABLES} == dict.fromkeys(
         PREFECT_RETENTION_VARIABLES
     )
+
+
+@pytest.mark.usefixtures("task_manager_environment")
+def test_a_configuration_file_given_on_the_command_line_must_exist(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A mistyped path stops the command, instead of starting the services with the default retention."""
+    missing = tmp_path / "infrahub.tml"
+    # An invalid retention stops a run that gets past the check before Prefect's services start.
+    monkeypatch.setenv("INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY", "PT12H")
+
+    result = CliRunner().invoke(app, ["tasks", "background-services", str(missing)])
+
+    assert (result.exit_code, result.stdout) == (1, f"Configuration file not found: {missing}\n")
+    assert {name: os.environ.get(name) for name in PREFECT_RETENTION_VARIABLES} == dict.fromkeys(
+        PREFECT_RETENTION_VARIABLES
+    )
+
+
+@pytest.mark.usefixtures("task_manager_environment")
+def test_a_missing_configuration_file_leaves_the_retention_to_the_environment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Deployments that set every value in the environment, such as the test compose files, run the command without a file."""
+    monkeypatch.setenv("INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY", "45d")
+    starter = RecordingServicesStarter()
+
+    run_background_services(config_file=tmp_path / "absent.toml", start_services=starter)
+
+    assert starter.starts == [
+        ServicesStart(
+            vacuum_types={"events", "flow_runs", "orphans"},
+            task_history=timedelta(days=45),
+            activity_log=timedelta(days=7),
+            own_events=set(),
+        )
+    ]

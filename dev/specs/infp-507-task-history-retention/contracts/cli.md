@@ -26,7 +26,8 @@ infrahub tasks flush flow-runs [CONFIG_FILE] [--rewrite]
 infrahub tasks background-services [CONFIG_FILE]
 ```
 
-- Validates the retention settings, applies the derived Prefect settings, then runs Prefect's background services in the foreground, as `prefect server services start` does today.
+- Reads the `task_manager` section of `CONFIG_FILE` (default: the file `INFRAHUB_CONFIG` names, then `infrahub.toml`) and the `INFRAHUB_TASK_MANAGER_*` variables, validates the retention settings, applies the derived Prefect settings, then runs Prefect's background services in the foreground, as `prefect server services start` does today.
+- A `CONFIG_FILE` given on the command line must be an existing file; otherwise the command prints `Configuration file not found: <path>` and exits with code 1 before it changes any Prefect setting. Without the argument, the file that `INFRAHUB_CONFIG` names, or `infrahub.toml`, may be absent, as for the task manager; the settings then come from the `INFRAHUB_TASK_MANAGER_*` variables and the defaults.
 - Used by the separate background-services deployment (Helm option, test compose files).
 
 ## `infrahub upgrade` (changed)

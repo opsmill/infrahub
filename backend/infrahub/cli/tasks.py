@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 import httpx
 import typer
+from click.core import ParameterSource
 from infrahub_sdk.async_typer import AsyncTyper
 from prefect.client.orchestration import get_client
 from prefect.client.schemas.objects import StateType
@@ -101,13 +102,24 @@ def run_background_services(config_file: Path, start_services: Callable[[], None
 
 @app.command()
 def background_services(
+    ctx: typer.Context,
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
-    """Run the task manager's background services in the foreground, with the retention set in the configuration."""
+    """Run the task manager's background services in the foreground, with the retention set in the configuration.
+
+    Raises:
+        typer.Exit: With code 1 when the configuration file given on the command line does not exist.
+
+    """
     # Prefect's command-line application loads only for this command, so no other infrahub command depends on it.
     from prefect.cli.server import start_services as start_prefect_services  # noqa: PLC0415
 
-    run_background_services(config_file=Path(config_file), start_services=start_prefect_services)
+    path = Path(config_file)
+    # The default file and INFRAHUB_CONFIG may name no file, because a deployment can set every value in the environment.
+    if ctx.get_parameter_source("config_file") is ParameterSource.COMMANDLINE and not path.is_file():
+        print(f"Configuration file not found: {config_file}")
+        raise typer.Exit(1)
+    run_background_services(config_file=path, start_services=start_prefect_services)
 
 
 flush_app = AsyncTyper()
