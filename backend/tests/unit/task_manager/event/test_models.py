@@ -194,6 +194,67 @@ def test_branch_name_filter(test_case: BranchNameFilterCase) -> None:
     assert _resource(event_filter) == test_case.expected_resource
 
 
+@dataclass
+class PrimaryNodeWithEventTypeFilterCase:
+    name: str
+    event_type: list[str] | None
+    event_type_filter: dict[str, Any]
+    expected_resource: dict[str, Any]
+
+
+PRIMARY_NODE_WITH_EVENT_TYPE_FILTER_CASES = [
+    PrimaryNodeWithEventTypeFilterCase(
+        name="branch_merged_by_name",
+        event_type=None,
+        event_type_filter={"branch_merged": {"branches": ["feature-x"]}},
+        expected_resource={
+            "id": ["infrahub.branch.feature-x"],
+            "labels": {"infrahub.node.id": ["n1"]},
+            "distinct": False,
+        },
+    ),
+    PrimaryNodeWithEventTypeFilterCase(
+        name="branch_merged_by_name_with_another_event_type",
+        event_type=["infrahub.node.updated"],
+        event_type_filter={"branch_merged": {"branches": ["feature-x"]}},
+        expected_resource={
+            "labels": {"infrahub.branch.name": ["feature-x"], "infrahub.node.id": ["n1"]},
+            "distinct": False,
+        },
+    ),
+    PrimaryNodeWithEventTypeFilterCase(
+        name="group_creation_by_provider_and_protocol",
+        event_type=None,
+        event_type_filter={"group_auto_create": {"idp": ["provider1"], "protocol": ["oidc"]}},
+        expected_resource={
+            "labels": {
+                "infrahub.security.idp": ["provider1"],
+                "infrahub.security.protocol": ["oidc"],
+                "infrahub.node.id": ["n1"],
+            },
+            "distinct": False,
+        },
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "test_case", [pytest.param(tc, id=tc.name) for tc in PRIMARY_NODE_WITH_EVENT_TYPE_FILTER_CASES]
+)
+def test_primary_node_filter_keeps_the_event_type_filter_conditions(
+    test_case: PrimaryNodeWithEventTypeFilterCase,
+) -> None:
+    """A primary node filter adds its conditions to the branch or login conditions of the event type filter instead of replacing them."""
+    event_filter = InfrahubEventFilter.from_filters(
+        order=EventSortOrder.DESC,
+        event_type=test_case.event_type,
+        event_type_filter=test_case.event_type_filter,
+        primary_node__ids=["n1"],
+    )
+
+    assert _resource(event_filter) == test_case.expected_resource
+
+
 def test_request_leaves_an_unset_start_to_the_task_manager() -> None:
     """A filter without a start sends only its end, so the task manager bounds the start by its retention."""
     until = datetime(2026, 10, 4, 12, 0, tzinfo=UTC)

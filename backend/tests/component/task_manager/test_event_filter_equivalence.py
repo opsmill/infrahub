@@ -497,6 +497,26 @@ FILTER_CASES = [
         event_type_filter={"branch_merged": {"branches": [MERGED_BRANCH[0]]}},
         expected={"merged", "proposed_change_branch_merged", "merged_branch_node_updated"},
     ),
+    FilterCase(
+        name="proposed_change_merge_of_its_branch",
+        primary_node__ids=[PROPOSED_CHANGE_ID],
+        event_type_filter={"branch_merged": {"branches": [MERGED_BRANCH[0]]}},
+        expected={"proposed_change_branch_merged"},
+    ),
+    FilterCase(
+        name="proposed_change_merge_of_another_branch",
+        primary_node__ids=[PROPOSED_CHANGE_ID],
+        event_type_filter={"branch_merged": {"branches": [OTHER_BRANCH[0]]}},
+        expected=set(),
+        label_expected={"proposed_change_branch_merged"},
+    ),
+    FilterCase(
+        name="group_created_by_another_provider",
+        primary_node__ids=[str(GROUP_ID)],
+        event_type_filter={"group_auto_create": {"idp": ["provider2"]}},
+        expected=set(),
+        label_expected={"group_auto_created"},
+    ),
 ]
 
 
@@ -508,7 +528,11 @@ def _copy(values: list[str] | None) -> list[str] | None:
 async def test_filter_returns_the_events_of_the_label_filter(
     test_case: FilterCase, seeded: dict[str, str], prefect_client: PrefectClient
 ) -> None:
-    """Each resource-ID filter returns the events of the label filter, page by page, except for reused branch names."""
+    """Each resource-ID filter returns the events of the label filter, page by page, with two exceptions.
+
+    The exceptions are reused branch names, and a primary node combined with branch, provider or protocol conditions,
+    which the label filter drops.
+    """
     branch_ids = None
     if test_case.branches:
         branch_ids = await PrefectEvent.resolve_branch_ids(

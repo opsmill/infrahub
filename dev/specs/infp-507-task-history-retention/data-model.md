@@ -86,6 +86,8 @@ A Prefect setting that one of Prefect's sources already sets is left as is: the 
 | Merged, rebased, migrated by name | resource label `infrahub.branch.name` | resource id `infrahub.branch.<name>` when every listed event type is a branch event; otherwise today's label, which other event types also carry |
 | Level, event type, has children | unchanged | unchanged |
 
+The primary node conditions are added to the resource conditions that `event_type_filter` sets (branch name, identity provider, protocol). Before, they replaced them, so a request with both also returned events that matched the primary node but not those conditions.
+
 ## Activities page request (changed)
 
 | Field | Today | After |

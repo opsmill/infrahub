@@ -146,7 +146,10 @@ class InfrahubEventFilter(EventFilter):
         return EventResourceFilter(labels=ResourceSpecification({"infrahub.branch.name": branch_names}))
 
     def add_primary_node_filter(self, primary_node__ids: list[str] | None) -> None:
-        """Match the indexed resource ID too when the event types, set beforehand, all keep the node ID in it."""
+        """Add the node conditions to the resource conditions set beforehand, so an event must match both.
+
+        The indexed resource ID is matched too when every listed event type keeps the node ID in it.
+        """
         if not primary_node__ids:
             return
 
@@ -166,7 +169,9 @@ class InfrahubEventFilter(EventFilter):
                 ],
                 **labels,
             }
-        self.resource = EventResourceFilter(labels=ResourceSpecification(labels))
+        resource = self.resource or EventResourceFilter()
+        current_labels = resource.labels.root if resource.labels else {}
+        self.resource = resource.model_copy(update={"labels": ResourceSpecification({**current_labels, **labels})})
 
     def add_parent_filter(self, parent__ids: list[str] | None) -> None:
         if parent__ids:

@@ -69,5 +69,6 @@ Behaviour changes:
 ## GraphQL `InfrahubEvent` (no schema change)
 
 - `count` is computed only when selected.
-- `branches`, `account__ids`, `primary_node__ids`, `parent__ids` and the branch-name `event_type_filter` keep their arguments and results; their matching changes as described in data-model.md.
+- `branches`, `account__ids`, `primary_node__ids`, `parent__ids` and the branch-name `event_type_filter` keep their arguments and results, except for the combination in the next item; their matching changes as described in data-model.md.
+- `primary_node__ids` combined with branch names, identity providers or protocols in `event_type_filter` returns only the events that match both; before, the primary node conditions replaced the others (data-model.md, Activities filters).
 - The Activities page passes `until` instead of `offset` for "load more"; it already does not select `count`.
