@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, Annotated, Protocol, assert_never
 from uuid import uuid4
 
 import sqlalchemy as sa
-from asyncpg.exceptions import LockNotAvailableError, QueryCanceledError
 from fastapi import APIRouter, Depends, HTTPException, status
 from prefect.logging import get_logger
 from prefect.server.database import PrefectDBInterface, provide_database_interface
@@ -46,6 +45,8 @@ _REWRITE_TIME_LIMIT = timedelta(seconds=60)
 # Lets Prefect catch up on the writes that waited for one table before the next one is locked, so it grows with the wait.
 _REWRITE_PAUSE_FACTOR = 10
 _REWRITE_MAX_PAUSE = timedelta(seconds=60)
+_SQLSTATE_LOCK_NOT_AVAILABLE = "55P03"
+_SQLSTATE_QUERY_CANCELED = "57014"
 _CLEANUP_LOCK_KEY = int.from_bytes(b"taskhist", byteorder="big")
 # Outlasts a day of deletes; Prefect 3.8.6 turns None into the API's 10 s timeout, and so into the API's engine.
 _MAINTENANCE_STATEMENT_TIMEOUT = timedelta(hours=24)
@@ -305,13 +306,14 @@ class PostgresTableRewriter:
             try:
                 await connection.execute(sa.text(f"VACUUM FULL {quoted}"))
             except DBAPIError as exc:
-                if _caused_by(error=exc, cause=QueryCanceledError):
+                outcome = rewrite_error_outcome(error=exc)
+                if outcome is TableOutcome.LOCKED:
+                    log.warning(f"Task history cleanup: {table} stayed locked, rewrite attempt {attempt} of {attempts}")
+                    continue
+                if outcome is TableOutcome.TIMED_OUT:
                     log.warning(f"Task history cleanup: stopped the rewrite of {table}, which took too long")
-                    return _TableRewrite(outcome=TableOutcome.TIMED_OUT, held_for=self._since(started))
-                if not _caused_by(error=exc, cause=LockNotAvailableError):
-                    raise
-                log.warning(f"Task history cleanup: {table} stayed locked, rewrite attempt {attempt} of {attempts}")
-                continue
+                    return _TableRewrite(outcome=outcome, held_for=self._since(started))
+                raise
             held_for = self._since(started)
             log.info(f"Task history cleanup: rewrote {table} in {held_for.total_seconds():.1f} s")
             await self._refresh_statistics(connection=connection, table=table)
@@ -336,8 +338,23 @@ async def _set_timeout(connection: AsyncConnection, name: str, value: timedelta)
     await connection.execute(sa.select(sa.func.set_config(name, f"{milliseconds}ms", False)))
 
 
-def _caused_by(error: DBAPIError, cause: type[Exception]) -> bool:
-    return isinstance(error.orig, Exception) and isinstance(error.orig.__cause__, cause)
+def rewrite_error_outcome(error: DBAPIError) -> TableOutcome | None:
+    """Return what a rewrite stopped by the error did with its table, or None when the error must fail the cleanup.
+
+    A table that stayed locked may still be tried again.
+    """
+    sqlstate = _sqlstate(error=error)
+    if sqlstate == _SQLSTATE_QUERY_CANCELED:
+        return TableOutcome.TIMED_OUT
+    if sqlstate == _SQLSTATE_LOCK_NOT_AVAILABLE:
+        return TableOutcome.LOCKED
+    return None
+
+
+def _sqlstate(error: DBAPIError) -> str | None:
+    # SQLAlchemy 2.0 sets sqlstate on its asyncpg dialect's error without declaring the attribute.
+    sqlstate = getattr(error.orig, "sqlstate", None)
+    return sqlstate if isinstance(sqlstate, str) else None
 
 
 def _record_outcome(job: CleanupJob, table: str, outcome: TableOutcome) -> None:

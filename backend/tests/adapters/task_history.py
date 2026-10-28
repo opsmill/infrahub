@@ -3,12 +3,31 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING
 
+from sqlalchemy.exc import DBAPIError
+
 from infrahub.prefect_server.task_history import TableOutcome, TableSpace
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
 PAUSE_TIMEOUT_SECONDS = 30
+
+
+class DriverError(Exception):
+    """A driver error as SQLAlchemy's asyncpg dialect wraps it, with the SQLSTATE the server sent."""
+
+    def __init__(self, sqlstate: str) -> None:
+        super().__init__(f"server error {sqlstate}")
+        self.sqlstate = sqlstate
+
+
+def database_error(sqlstate: str, connection_invalidated: bool = False) -> DBAPIError:
+    return DBAPIError(
+        statement="VACUUM FULL log",
+        params=None,
+        orig=DriverError(sqlstate=sqlstate),
+        connection_invalidated=connection_invalidated,
+    )
 
 
 class RecordingRewriter:
