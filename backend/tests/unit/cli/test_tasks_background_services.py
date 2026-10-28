@@ -12,17 +12,11 @@ from typer.testing import CliRunner
 
 from infrahub.cli import app
 from infrahub.cli.tasks import run_background_services
-from tests.helpers.task_manager_retention import PREFECT_RETENTION_VARIABLES, unloaded_task_manager_retention
+from tests.helpers.task_manager_retention import PREFECT_RETENTION_VARIABLES
 
 if TYPE_CHECKING:
     from collections.abc import Generator
     from pathlib import Path
-
-
-@pytest.fixture
-def task_manager_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Generator[None, None, None]:
-    with unloaded_task_manager_retention(monkeypatch=monkeypatch, directory=tmp_path):
-        yield
 
 
 @pytest.fixture(autouse=True)

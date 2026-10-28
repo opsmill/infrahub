@@ -22,20 +22,12 @@ from tests.helpers.task_manager_retention import (
     PREFECT_RETENTION_VARIABLES,
     VACUUM_ENABLED,
     VACUUM_RETENTION_PERIOD,
-    unloaded_task_manager_retention,
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
     from pathlib import Path
 
 APP_LOGGER = "infrahub.prefect_server.app"
-
-
-@pytest.fixture
-def task_manager_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Generator[None, None, None]:
-    with unloaded_task_manager_retention(monkeypatch=monkeypatch, directory=tmp_path):
-        yield
 
 
 def _app_messages(caplog: pytest.LogCaptureFixture, level: int) -> list[str]:
