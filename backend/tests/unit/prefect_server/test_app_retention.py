@@ -49,6 +49,7 @@ def task_manager_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) ->
         "INFRAHUB_TASK_MANAGER_RETENTION_PREFECT_OWN_EVENTS",
         "PREFECT_API_BLOCKS_REGISTER_ON_START",
         "PREFECT_API_DATABASE_MIGRATE_ON_START",
+        "PREFECT__SERVER_WEBSERVER_ONLY",
     ):
         monkeypatch.delenv(name, raising=False)
     saved = {name: os.environ.pop(name, None) for name in PREFECT_RETENTION_VARIABLES}

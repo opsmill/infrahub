@@ -110,6 +110,7 @@ VACUUM_ENABLED = "PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED"
 VACUUM_RETENTION_PERIOD = "PREFECT_SERVER_SERVICES_DB_VACUUM_RETENTION_PERIOD"
 EVENTS_RETENTION_PERIOD = "PREFECT_SERVER_EVENTS_RETENTION_PERIOD"
 EVENT_RETENTION_OVERRIDES = "PREFECT_SERVER_SERVICES_DB_VACUUM_EVENT_RETENTION_OVERRIDES"
+WEBSERVER_ONLY = "PREFECT__SERVER_WEBSERVER_ONLY"
 
 
 @dataclass(frozen=True)
@@ -203,6 +204,19 @@ def apply_prefect_retention_env(environ: MutableMapping[str, str], settings: Tas
             continue
         environ[name] = value
     return warnings
+
+
+def background_services_warning(environ: Mapping[str, str]) -> str | None:
+    """Return the warning to log when Prefect's background services, which delete old records, run in another process."""
+    # Prefect's server reads any non-empty value of this variable as true, "false" included.
+    if not environ.get(WEBSERVER_ONLY):
+        return None
+    return (
+        f"Task manager retention: {WEBSERVER_ONLY} is set, so this process does not run Prefect's background "
+        "services, which delete old task runs and events. The process that runs them, such as "
+        "`prefect server services start`, does not read task_manager.retention: unless it sets the same PREFECT_* "
+        "variables, it deletes no task runs and keeps events for Prefect's default of 7 days."
+    )
 
 
 def _count_overrides_per_retention(value: str) -> str:

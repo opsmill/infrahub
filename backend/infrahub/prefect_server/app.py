@@ -13,7 +13,7 @@ from pydantic import ValidationError
 
 from . import events
 from .bootstrap import init_prefect
-from .retention import apply_prefect_retention_env, prefect_retention_env_in_effect
+from .retention import apply_prefect_retention_env, background_services_warning, prefect_retention_env_in_effect
 from .retention_settings import load_task_manager_settings, print_configuration_errors
 
 log = logging.getLogger(__name__)
@@ -70,6 +70,8 @@ def create_prefect_app_with_infrahub_routes() -> FastAPI:
 def create_infrahub_prefect() -> FastAPI:
     """Build the task manager app with Prefect's settings derived from Infrahub's configuration."""
     apply_infrahub_settings_to_prefect()
+    if warning := background_services_warning(environ=os.environ):
+        log.warning(warning)
 
     if (
         os.getenv("PREFECT_API_BLOCKS_REGISTER_ON_START") == "false"

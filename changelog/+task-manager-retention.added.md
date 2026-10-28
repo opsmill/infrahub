@@ -5,3 +5,5 @@ Until now, finished task runs were not deleted automatically by age. The task ma
 The activity log is still kept for 7 days by default. To keep it longer, raise `activity_log`, for example to `365d`, while the events the task manager records for its own use are still deleted after `prefect_own_events`.
 
 A `PREFECT_*` variable already set in the task manager environment, such as `PREFECT_SERVER_EVENTS_RETENTION_PERIOD`, takes precedence over the matching setting, and the task manager logs a warning that names it.
+
+When the task manager runs only its web server (`PREFECT__SERVER_WEBSERVER_ONLY` is set) and its background services run in a process of their own, such as one started with `prefect server services start`, that process does not read these settings, so it deletes no task runs unless its own environment sets the matching `PREFECT_*` variables; the task manager logs a warning at startup.

@@ -12,6 +12,7 @@ from infrahub.config import TaskManagerRetentionSettings
 from infrahub.prefect_server.retention import (
     PREFECT_EVENT_TYPES,
     apply_prefect_retention_env,
+    background_services_warning,
     build_prefect_retention_env,
     prefect_retention_env_in_effect,
 )
@@ -20,6 +21,7 @@ VACUUM_ENABLED = "PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED"
 VACUUM_RETENTION_PERIOD = "PREFECT_SERVER_SERVICES_DB_VACUUM_RETENTION_PERIOD"
 EVENTS_RETENTION_PERIOD = "PREFECT_SERVER_EVENTS_RETENTION_PERIOD"
 EVENT_RETENTION_OVERRIDES = "PREFECT_SERVER_SERVICES_DB_VACUUM_EVENT_RETENTION_OVERRIDES"
+WEBSERVER_ONLY = "PREFECT__SERVER_WEBSERVER_ONLY"
 
 EVENT_TYPES = ("prefect.flow-run.Completed", "prefect.task-run.Running")
 
@@ -313,3 +315,38 @@ def test_overrides_in_effect_that_are_not_a_mapping_are_reported_as_set() -> Non
     environ = {EVENT_RETENTION_OVERRIDES: "not json"}
 
     assert prefect_retention_env_in_effect(environ=environ) == {EVENT_RETENTION_OVERRIDES: "not json"}
+
+
+BACKGROUND_SERVICES_WARNING = (
+    "Task manager retention: PREFECT__SERVER_WEBSERVER_ONLY is set, so this process does not run Prefect's "
+    "background services, which delete old task runs and events. The process that runs them, such as "
+    "`prefect server services start`, does not read task_manager.retention: unless it sets the same PREFECT_* "
+    "variables, it deletes no task runs and keeps events for Prefect's default of 7 days."
+)
+
+
+@dataclass
+class BackgroundServicesWarningTestCase:
+    name: str
+    environ: dict[str, str]
+    expected_warning: str | None
+
+
+BACKGROUND_SERVICES_WARNING_TEST_CASES: list[BackgroundServicesWarningTestCase] = [
+    BackgroundServicesWarningTestCase(name="unset", environ={}, expected_warning=None),
+    BackgroundServicesWarningTestCase(name="empty", environ={WEBSERVER_ONLY: ""}, expected_warning=None),
+    BackgroundServicesWarningTestCase(
+        name="true", environ={WEBSERVER_ONLY: "true"}, expected_warning=BACKGROUND_SERVICES_WARNING
+    ),
+    BackgroundServicesWarningTestCase(
+        name="false_is_still_set", environ={WEBSERVER_ONLY: "false"}, expected_warning=BACKGROUND_SERVICES_WARNING
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in BACKGROUND_SERVICES_WARNING_TEST_CASES])
+def test_background_services_warning_follows_prefects_reading_of_the_variable(
+    test_case: BackgroundServicesWarningTestCase,
+) -> None:
+    """Prefect runs only its web server for any non-empty value of the variable, so the warning follows the same rule."""
+    assert background_services_warning(environ=test_case.environ) == test_case.expected_warning
