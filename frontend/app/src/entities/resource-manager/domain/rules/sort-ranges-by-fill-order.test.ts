@@ -48,26 +48,26 @@ describe("sortRangesByFillOrder", () => {
     expect(sorted.map(({ id }) => id)).toEqual(["earlier", "later"]);
   });
 
-  it("lists the lowest end first when weight and start are equal", () => {
+  it("keeps the server's order for ranges with the same weight and start", () => {
     // GIVEN
-    const wide = generateNumberPoolRange({
-      id: "wide",
+    const withoutEnd = generateNumberPoolRange({
+      id: "without-end",
       start: { value: 1 },
-      end: { value: 100 },
+      end: { value: null },
       allocation_weight: { value: 5 },
     });
-    const narrow = generateNumberPoolRange({
-      id: "narrow",
+    const withEnd = generateNumberPoolRange({
+      id: "with-end",
       start: { value: 1 },
       end: { value: 50 },
       allocation_weight: { value: 5 },
     });
 
     // WHEN
-    const sorted = sortRangesByFillOrder([wide, narrow]);
+    const sorted = sortRangesByFillOrder([withoutEnd, withEnd]);
 
     // THEN
-    expect(sorted.map(({ id }) => id)).toEqual(["narrow", "wide"]);
+    expect(sorted.map(({ id }) => id)).toEqual(["without-end", "with-end"]);
   });
 
   it("leaves the given list in its order", () => {

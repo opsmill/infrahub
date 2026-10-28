@@ -55,7 +55,10 @@ OTHER_BRANCH = "branch1"
 
 @dataclass
 class AllocatedDataset:
-    """An unscoped pool whose number 1 is held by two devices on the default branch and one on another branch."""
+    """An unscoped pool whose numbers 1 and 2 are held on the default branch and on another branch created after them.
+
+    The other branch inherits every number the default branch holds and adds a third device holding 1.
+    """
 
     pool: CoreNumberPool
     default_branch: Branch
@@ -128,12 +131,20 @@ ALLOCATED_FILTER_CASES = [
     AllocatedFilterCase(
         name="range-bounds",
         ranges=[[2, SCOPED_POOL_END]],
-        expected=[(2, "main", "allocated-2", PoolRecordProvenance.ALLOCATED)],
+        expected=[
+            (2, OTHER_BRANCH, "allocated-2", PoolRecordProvenance.ALLOCATED),
+            (2, "main", "allocated-2", PoolRecordProvenance.ALLOCATED),
+        ],
     ),
     AllocatedFilterCase(
         name="branch-holding-the-value",
         branch_name=OTHER_BRANCH,
-        expected=[(1, OTHER_BRANCH, "provided-branch1", PoolRecordProvenance.PROVIDED)],
+        expected=[
+            (1, OTHER_BRANCH, "allocated-1", PoolRecordProvenance.ALLOCATED),
+            (1, OTHER_BRANCH, "provided-main", PoolRecordProvenance.PROVIDED),
+            (1, OTHER_BRANCH, "provided-branch1", PoolRecordProvenance.PROVIDED),
+            (2, OTHER_BRANCH, "allocated-2", PoolRecordProvenance.ALLOCATED),
+        ],
     ),
     AllocatedFilterCase(
         name="default-branch",
@@ -153,7 +164,9 @@ ALLOCATED_FILTER_CASES = [
         name="allocated",
         provenance=PoolRecordProvenance.ALLOCATED,
         expected=[
+            (1, OTHER_BRANCH, "allocated-1", PoolRecordProvenance.ALLOCATED),
             (1, "main", "allocated-1", PoolRecordProvenance.ALLOCATED),
+            (2, OTHER_BRANCH, "allocated-2", PoolRecordProvenance.ALLOCATED),
             (2, "main", "allocated-2", PoolRecordProvenance.ALLOCATED),
         ],
     ),
@@ -161,6 +174,7 @@ ALLOCATED_FILTER_CASES = [
         name="provided",
         provenance=PoolRecordProvenance.PROVIDED,
         expected=[
+            (1, OTHER_BRANCH, "provided-main", PoolRecordProvenance.PROVIDED),
             (1, OTHER_BRANCH, "provided-branch1", PoolRecordProvenance.PROVIDED),
             (1, "main", "provided-main", PoolRecordProvenance.PROVIDED),
         ],
@@ -191,13 +205,21 @@ class TestNumberPoolGetAllocated:
             for holding_object_id, name in dataset.names_by_id.items()
             if name in {"allocated-1", "provided-main"}
         )
+        holding_objects_of_one_on_branch = sorted(
+            holding_object_id
+            for holding_object_id, name in dataset.names_by_id.items()
+            if name in {"allocated-1", "provided-main", "provided-branch1"}
+        )
 
         rows = await allocated_rows(db=db, dataset=dataset)
 
         assert [(value, branch, name) for value, branch, name, _ in rows] == [
-            (1, OTHER_BRANCH, "provided-branch1"),
+            (1, OTHER_BRANCH, dataset.name_of(holding_objects_of_one_on_branch[0])),
+            (1, OTHER_BRANCH, dataset.name_of(holding_objects_of_one_on_branch[1])),
+            (1, OTHER_BRANCH, dataset.name_of(holding_objects_of_one_on_branch[2])),
             (1, "main", dataset.name_of(holding_objects_of_one_on_main[0])),
             (1, "main", dataset.name_of(holding_objects_of_one_on_main[1])),
+            (2, OTHER_BRANCH, "allocated-2"),
             (2, "main", "allocated-2"),
         ]
 
@@ -224,8 +246,10 @@ class TestNumberPoolGetAllocated:
 
         await query.execute(db=db)
 
-        assert await query.count(db=db) == 2
-        assert [(row.value, dataset.name_of(row.id)) for row in query.get_data()] == [(2, "allocated-2")]
+        assert await query.count(db=db) == 4
+        assert [(row.value, row.branch, dataset.name_of(row.id)) for row in query.get_data()] == [
+            (1, "main", "allocated-1")
+        ]
 
 
 @dataclass
@@ -238,6 +262,9 @@ class DivisionsDataset:
 
     The pool scoped by `site` and `role`: on the default branch leaf-1 holds 1 and leaf-2 holds 2 as leaves
     of site-a, and spine-1 holds 1 as a spine of site-a.
+
+    The other branch is created after the default branch's numbers, so it also holds every number it does not
+    change: those of a1, a2, leaf-1, leaf-2 and spine-1.
     """
 
     default_branch: Branch
@@ -308,14 +335,20 @@ SITE_DIVISION_CASES = [
     SiteDivisionCase(
         name="two-sites-and-one-branch-only",
         site="site-a",
-        expected=[(1, "main", "a1"), (2, "main", "a2"), (4, OTHER_BRANCH, "x")],
+        expected=[
+            (1, OTHER_BRANCH, "a1"),
+            (1, "main", "a1"),
+            (2, OTHER_BRANCH, "a2"),
+            (2, "main", "a2"),
+            (4, OTHER_BRANCH, "x"),
+        ],
     ),
     SiteDivisionCase(
         name="renumbered-on-a-branch",
         site="site-b",
         expected=[(3, "main", "b1"), (5, OTHER_BRANCH, "b1")],
     ),
-    SiteDivisionCase(name="moved-on-a-branch", site="site-c", expected=[(2, "main", "a2")]),
+    SiteDivisionCase(name="moved-on-a-branch", site="site-c", expected=[(2, OTHER_BRANCH, "a2"), (2, "main", "a2")]),
     SiteDivisionCase(name="no-number", site="site-d", expected=[]),
 ]
 
@@ -329,7 +362,12 @@ class DivisionFilterCase:
 
 
 DIVISION_FILTER_CASES = [
-    DivisionFilterCase(name="branch", branch_name=OTHER_BRANCH, provenance=None, expected=[(4, OTHER_BRANCH, "x")]),
+    DivisionFilterCase(
+        name="branch",
+        branch_name=OTHER_BRANCH,
+        provenance=None,
+        expected=[(1, OTHER_BRANCH, "a1"), (2, OTHER_BRANCH, "a2"), (4, OTHER_BRANCH, "x")],
+    ),
     DivisionFilterCase(
         name="branch-and-provenance",
         branch_name="main",
@@ -486,8 +524,8 @@ class TestScopedPoolQueries:
 
         await query.execute(db=db)
 
-        assert await query.count(db=db) == 3
-        assert [(row.value, dataset.names_by_id[row.id]) for row in query.get_data()] == [(2, "a2")]
+        assert await query.count(db=db) == 5
+        assert [(row.value, row.branch, dataset.names_by_id[row.id]) for row in query.get_data()] == [(1, "main", "a1")]
 
     async def test_divisions_count_only_the_numbers_inside_the_space(
         self, db: InfrahubDatabase, dataset: DivisionsDataset
@@ -528,8 +566,15 @@ class TestScopedPoolQueries:
             entries=[("role", "spine")],
         )
 
-        assert sorted(site_only) == [(1, "main", "leaf-1"), (1, "main", "spine-1"), (2, "main", "leaf-2")]
-        assert role_only == [(1, "main", "spine-1")]
+        assert sorted(site_only) == [
+            (1, OTHER_BRANCH, "leaf-1"),
+            (1, OTHER_BRANCH, "spine-1"),
+            (1, "main", "leaf-1"),
+            (1, "main", "spine-1"),
+            (2, OTHER_BRANCH, "leaf-2"),
+            (2, "main", "leaf-2"),
+        ]
+        assert role_only == [(1, OTHER_BRANCH, "spine-1"), (1, "main", "spine-1")]
 
     @pytest.mark.parametrize("on_other_branch", [False, True], ids=["default-branch", "other-branch"])
     async def test_the_allocated_numbers_of_each_listed_division_give_its_figures(
@@ -747,16 +792,16 @@ async def test_the_allocated_numbers_of_a_division_keep_a_node_moved_on_the_defa
     device = await scoped_device_holding(
         db=db, branch=default_branch, pool=site_scoped_pool, name="device-1", site=site_a, number=5
     )
-    await create_branch(branch_name="forked-in-site-a", db=db)
+    forked = await create_branch(branch_name="forked-in-site-a", db=db)
     moved = await NodeManager.get_one(db=db, branch=default_branch, id=device.id, raise_on_error=True)
     await moved.get_relationship(name="site").update(db=db, data=site_c)
     await moved.save(db=db)
 
     for site in (site_a, site_c):
-        values = await allocated_values_in_division(
+        rows = await allocated_rows_in_division(
             db=db, pool=site_scoped_pool, branch=default_branch, entries=[("site", site.id)]
         )
-        assert values == [5]
+        assert rows == [(5, forked.name), (5, default_branch.name)]
 
 
 async def test_the_allocated_numbers_of_a_division_drop_a_node_once_the_branch_that_moved_it_is_deleted(

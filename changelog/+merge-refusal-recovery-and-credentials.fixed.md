@@ -1,0 +1,1 @@
+A branch merge that is refused because an earlier merge failed now says that an administrator must recover that merge, instead of reporting a merge in progress. A merge refused because the remote of a repository rejects the credentials now logs the error output of Git as a warning in the task log.

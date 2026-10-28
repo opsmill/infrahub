@@ -154,7 +154,6 @@ async def test_get_proposed_change_schema_integrity_constraints(
         ("attribute.unique.update", "TestPerson", "name", "unique", SchemaPathType.ATTRIBUTE, None),
         ("attribute.unique.update", "TestPerson", "height", "unique", SchemaPathType.ATTRIBUTE, None),
         ("relationship.optional.update", "TestPerson", "cars", "optional", SchemaPathType.RELATIONSHIP, None),
-        ("relationship.peer.update", "TestPerson", "cars", "peer", SchemaPathType.RELATIONSHIP, None),
         ("relationship.cardinality.update", "TestPerson", "cars", "cardinality", SchemaPathType.RELATIONSHIP, None),
         ("relationship.min_count.update", "TestPerson", "cars", "min_count", SchemaPathType.RELATIONSHIP, None),
         ("relationship.max_count.update", "TestPerson", "cars", "max_count", SchemaPathType.RELATIONSHIP, None),

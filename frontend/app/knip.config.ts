@@ -16,6 +16,11 @@ const config: KnipConfig = {
   ],
 
   ignoreExportsUsedInFile: true,
+
+  rules: {
+    // Knip reads the pnpm catalog only from its working directory, and the catalog lives one level up.
+    catalogReferences: "off",
+  },
 };
 
 export default config;

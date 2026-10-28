@@ -14,24 +14,30 @@ import type { NumberPoolFormData } from "@/entities/resource-manager/ui/number-p
 
 export type NumberPoolRangeRow = NumberPoolFormData["ranges"][number];
 
-// A number input reports an empty field as NaN.
-export function validateRangeBound(value: number): string | true {
-  if (Number.isNaN(value)) return "Required";
+export function validateRangeBound(value: number | null): string | true {
+  if (value === null) return true;
   if (!Number.isInteger(value) || value < 0) return "Whole number";
   if (!Number.isSafeInteger(value)) return "Too large";
   return true;
 }
 
-export function validateRangeWeight(value: number | null): string | true {
-  return value === null || validateRangeBound(value);
-}
+// The server reads a range without a start as starting at 1 and a range without an end as ending at the largest number it can store.
+const resolveRangeBounds = ({ start, end }: Pick<NumberPoolRangeRow, "start" | "end">) => ({
+  start: start ?? 1,
+  end: end ?? Number.POSITIVE_INFINITY,
+});
+
+const formatRangeBound = (value: number) =>
+  value === Number.POSITIVE_INFINITY ? "MAX" : String(value);
 
 export function validateRangeOrder(
   rows: ReadonlyArray<NumberPoolRangeRow>,
   index: number
 ): string | true {
   const row = rows[index];
-  return row && row.start > row.end ? "End is below start" : true;
+  if (!row) return true;
+  const { start, end } = resolveRangeBounds(row);
+  return start > end ? "End is below start" : true;
 }
 
 export function validateRangeOverlap(
@@ -39,13 +45,15 @@ export function validateRangeOverlap(
   index: number
 ): string | true {
   // An inverted row is reported by its own order check, so it takes no part in overlaps.
-  const completeRows = rows
-    .map(({ start, end }, key) => ({ key, start, end }))
-    .filter(({ start, end }) => !Number.isNaN(start) && !Number.isNaN(end) && start <= end);
-  const others = findOverlappingRanges(completeRows).get(index);
+  const orderedRows = rows
+    .map((row, key) => ({ key, ...resolveRangeBounds(row) }))
+    .filter(({ start, end }) => start <= end);
+  const others = findOverlappingRanges(orderedRows).get(index);
   if (!others) return true;
 
-  return `Overlaps ${others.map(({ start, end }) => `${start} – ${end}`).join(", ")}`;
+  return `Overlaps ${others
+    .map(({ start, end }) => `${formatRangeBound(start)} – ${formatRangeBound(end)}`)
+    .join(", ")}`;
 }
 
 const numberInputClassName = "h-9 min-h-0 rounded-lg px-2 tabular-nums";
@@ -54,8 +62,8 @@ const weightClassName = "w-18 shrink-0";
 const removeColumnClassName = "w-9 shrink-0";
 
 export const createRangeRow = (): NumberPoolRangeRow => ({
-  start: Number.NaN,
-  end: Number.NaN,
+  start: null,
+  end: null,
   allocation_weight: null,
 });
 
@@ -74,8 +82,9 @@ const getRangeBoundNames = (rowCount: number) =>
 function NumberPoolRangeRowInput({ index, rowCount, onRemove }: NumberPoolRangeRowInputProps) {
   // An edit to one row can create or clear an overlap with any other row.
   const boundsOfAllRows = getRangeBoundNames(rowCount);
-  const order = (_: number, values: NumberPoolFormData) => validateRangeOrder(values.ranges, index);
-  const overlap = (_: number, values: NumberPoolFormData) =>
+  const order = (_: number | null, values: NumberPoolFormData) =>
+    validateRangeOrder(values.ranges, index);
+  const overlap = (_: number | null, values: NumberPoolFormData) =>
     validateRangeOverlap(values.ranges, index);
 
   const start = useController<NumberPoolFormData, `ranges.${number}.start`>({
@@ -91,7 +100,7 @@ function NumberPoolRangeRowInput({ index, rowCount, onRemove }: NumberPoolRangeR
   });
   const weight = useController<NumberPoolFormData, `ranges.${number}.allocation_weight`>({
     name: `ranges.${index}.allocation_weight`,
-    rules: { validate: validateRangeWeight },
+    rules: { validate: validateRangeBound },
   });
   const startRef = usePreventScrollOnNumberInput();
   const endRef = usePreventScrollOnNumberInput();
@@ -108,19 +117,21 @@ function NumberPoolRangeRowInput({ index, rowCount, onRemove }: NumberPoolRangeR
       label: `Start of ${position}`,
       ref: startRef,
       fieldState: start.fieldState,
-      value: Number.isNaN(start.field.value) ? "" : start.field.value,
-      onChange: (value: number) => start.field.onChange(value),
+      value: start.field.value ?? "",
+      onChange: (value: number) => start.field.onChange(Number.isNaN(value) ? null : value),
       onBlur: start.field.onBlur,
       className: boundClassName,
+      placeholder: "MIN",
     },
     {
       label: `End of ${position}`,
       ref: endRef,
       fieldState: end.fieldState,
-      value: Number.isNaN(end.field.value) ? "" : end.field.value,
-      onChange: (value: number) => end.field.onChange(value),
+      value: end.field.value ?? "",
+      onChange: (value: number) => end.field.onChange(Number.isNaN(value) ? null : value),
       onBlur: end.field.onBlur,
       className: boundClassName,
+      placeholder: "MAX",
     },
     {
       label: `Weight of ${position}`,

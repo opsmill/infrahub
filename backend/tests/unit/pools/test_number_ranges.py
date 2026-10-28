@@ -202,7 +202,45 @@ def test_size_of_counts_the_numbers_a_range_contributes() -> None:
     assert space.size_of("b") == 11
     assert space.size_of("c") == 0, "a range clipped to nothing contributes no number"
     assert space.size_of("missing") == 0
-    assert space.size == space.size_of("a") + space.size_of("b") + space.size_of("c")
+    assert space.size == 20
+
+
+@dataclass
+class OpenEndSizeTestCase:
+    name: str
+    domain: NumberDomain
+    expected_size: int | None
+    expected_by_range: dict[str, int | None]
+
+
+OPEN_END_SIZE_TEST_CASES = [
+    OpenEndSizeTestCase(
+        name="open_end_without_upper_limit",
+        domain=NumberDomain(),
+        expected_size=None,
+        expected_by_range={"closed": 50, "open": None, "missing": 0},
+    ),
+    OpenEndSizeTestCase(
+        name="open_end_clipped_by_upper_limit",
+        domain=NumberDomain(upper=4094),
+        expected_size=50 + 3995,
+        expected_by_range={"closed": 50, "open": 3995, "missing": 0},
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", OPEN_END_SIZE_TEST_CASES, ids=[case.name for case in OPEN_END_SIZE_TEST_CASES])
+def test_a_space_running_up_to_the_largest_number_has_no_size(test_case: OpenEndSizeTestCase) -> None:
+    space = EffectiveSpace(
+        ranges=[PoolRange(id="closed", start=1, end=50), PoolRange(id="open", start=100, end=sys.maxsize)],
+        domain=test_case.domain,
+    )
+
+    assert space.size == test_case.expected_size
+    assert {range_id: space.size_of(range_id) for range_id in test_case.expected_by_range} == (
+        test_case.expected_by_range
+    )
+    assert not space.is_empty
 
 
 def test_a_span_counts_both_of_its_bounds() -> None:

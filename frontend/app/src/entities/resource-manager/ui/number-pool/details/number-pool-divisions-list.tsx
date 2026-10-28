@@ -41,7 +41,7 @@ const sortDivisions = (divisions: NumberPoolDivision[], sort: NumberPoolDivision
   // the backend order is the default sort, so ties keep it
   return [...divisions].sort((a, b) => {
     if (sort.by === NUMBER_POOL_DIVISION_SORT_BY_USAGE) {
-      return sign * (a.usage.utilization - b.usage.utilization);
+      return sign * (a.usage.used - b.usage.used);
     }
     return sign * compareLabels(labelOf(a), labelOf(b));
   });

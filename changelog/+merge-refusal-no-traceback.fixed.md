@@ -1,0 +1,1 @@
+A branch merge that Infrahub refuses for a reason you can fix, such as unresolved conflicts, a failed repository import or a repository that is not synchronized, no longer shows a Python traceback in the task log. The log keeps the message that explains why the merge was refused.

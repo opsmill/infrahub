@@ -143,7 +143,7 @@ describe("BranchesTable", () => {
     // THEN
     await expect
       .element(component.getByTestId("branch-git-state-cell-zulu"))
-      .toHaveTextContent("3/3");
+      .toMatchTextContent("3/3");
     await expect
       .element(component.getByRole("link", { name: "+2 more repositories on zulu" }))
       .toBeVisible();
@@ -161,7 +161,7 @@ describe("BranchesTable", () => {
     const component = await render(<BranchesTable />);
     await expect
       .element(component.getByTestId("branch-git-state-cell-zulu"))
-      .toHaveTextContent("3/3");
+      .toMatchTextContent("3/3");
 
     // WHEN
     mockBranchPages([zulu, main, alpha], [yankee]);
@@ -170,7 +170,7 @@ describe("BranchesTable", () => {
     // THEN
     await expect
       .element(component.getByTestId("branch-git-state-cell-yankee"))
-      .toHaveTextContent("3/3");
+      .toMatchTextContent("3/3");
     expect(getBranchGitRepositories).toHaveBeenCalledTimes(1);
     expect(getRepositoryBranchStatus).toHaveBeenCalledTimes(3);
   });
@@ -212,7 +212,7 @@ describe("BranchesTable", () => {
     // THEN
     await expect
       .element(component.getByTestId("branch-repositories-cell-main"))
-      .toHaveTextContent(/repo-one.*\+1 more.*1 repository could not be loaded/);
+      .toMatchTextContent(/repo-one.*\+1 more.*1 repository could not be loaded/);
     await expect
       .element(component.getByTestId("branch-repositories-cell-alpha"))
       .toHaveTextContent("1 repository could not be loadedrepo-two: Repository index unavailable");

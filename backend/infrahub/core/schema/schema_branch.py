@@ -1425,7 +1425,31 @@ class SchemaBranch:
         default_branch_schema: SchemaBranch | None,
         on_implementing_node: bool = False,
     ) -> None:
-        if not isinstance(attribute.parameters, NumberPoolParameters) or not attribute.parameters.allocation_scope:
+        """Refuse a NumberPool declaration whose allocation scope cannot divide its pool on this schema.
+
+        An attribute not attached to a pool yet must also fit the scoped pool the default branch holds for the same
+        kind and attribute. A declared scope then resolves against the default branch for a new declaration, and on
+        this schema once the pool exists.
+
+        Args:
+            kind_schema: The kind that declares the attribute.
+            attribute: The NumberPool attribute to check; an attribute of another kind is ignored.
+            default_branch_schema: The schema of the default branch, or None when it is not known.
+            on_implementing_node: Whether the attribute is the copy a node inherits from a generic, whose pool belongs
+                to the generic.
+
+        Raises:
+            ValidationError: When the kind cannot use the scoped pool of the default branch, or when a scope element
+                cannot divide the pool; the message names the kind and the attribute.
+
+        """
+        if not isinstance(attribute.parameters, NumberPoolParameters):
+            return
+        if not on_implementing_node and attribute.parameters.number_pool_id is None:
+            self._validate_default_branch_pool(
+                kind_schema=kind_schema, attribute=attribute, default_branch_schema=default_branch_schema
+            )
+        if not attribute.parameters.allocation_scope:
             return
         pool_exists = on_implementing_node or attribute.parameters.number_pool_id is not None
         # Only a new declaration resolves against the default branch.
@@ -1443,6 +1467,53 @@ class SchemaBranch:
                 tracked_attribute=attribute.name,
                 entries=attribute.parameters.allocation_scope,
                 pool_exists=pool_exists,
+            )
+        except ValidationError as exc:
+            raise ValidationError(
+                f"{kind_schema.kind}.{attribute.name}: allocation_scope: {scope_refusal_reason(error=exc)}"
+            ) from exc
+
+    def _validate_default_branch_pool(
+        self,
+        kind_schema: NodeSchema | GenericSchema,
+        attribute: AttributeSchema,
+        default_branch_schema: SchemaBranch | None,
+    ) -> None:
+        """Refuse a NumberPool attribute whose kind cannot use the scoped pool the default branch holds for it.
+
+        Nothing is checked on the default branch itself, or when the default branch does not define the kind or the
+        attribute, or holds no scoped pool for them.
+
+        Args:
+            kind_schema: The kind that declares the attribute on this branch.
+            attribute: The NumberPool attribute, not attached to a pool on this branch yet.
+            default_branch_schema: The schema of the default branch, or None when it is not known.
+
+        Raises:
+            ValidationError: When the kind on this branch lacks a field the pool of the default branch is scoped by,
+                or holds it with another id; the message names the kind and the attribute.
+
+        """
+        if default_branch_schema is None or default_branch_schema.name == self.name:
+            return
+        if not default_branch_schema.has(name=kind_schema.kind):
+            return
+        default_attribute = default_branch_schema.get(name=kind_schema.kind, duplicate=False).get_attribute_or_none(
+            name=attribute.name
+        )
+        if (
+            default_attribute is None
+            or not isinstance(default_attribute.parameters, NumberPoolParameters)
+            or default_attribute.parameters.number_pool_id is None
+            or not default_attribute.parameters.allocation_scope
+        ):
+            return
+        try:
+            DeclaredScopeValidator().validate_default_branch_pool(
+                candidate=self,
+                default_branch_schema=default_branch_schema,
+                kind=kind_schema.kind,
+                default_entries=default_attribute.parameters.allocation_scope,
             )
         except ValidationError as exc:
             raise ValidationError(

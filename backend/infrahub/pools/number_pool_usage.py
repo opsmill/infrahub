@@ -16,7 +16,8 @@ class RangeUsage:
     id: str
     display_label: str
     start: int
-    end: int
+    end: int | None
+    """None when the range runs up to the largest supported number."""
     weight: int
     figures: UtilizationFigures
 

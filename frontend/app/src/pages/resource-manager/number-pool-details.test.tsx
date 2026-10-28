@@ -186,7 +186,7 @@ describe("NumberPoolDetailsPage", () => {
 
     // THEN
     await expect
-      .element(component.getByRole("option", { name: /^1 – 50/ }))
+      .element(component.getByRole("option", { name: /^1 - 50/ }))
       .toHaveAttribute("aria-selected", "true");
     await expect.element(component.getByText(`Numbers of ${firstRange?.id}`)).toBeVisible();
   });
@@ -286,7 +286,7 @@ describe("NumberPoolDetailsPage", () => {
     // THEN
     await expect
       .element(component.getByRole("button", { name: /Allocation scope/ }))
-      .toHaveTextContent(firstDivision?.label ?? "");
+      .toMatchTextContent(firstDivision?.label ?? "");
     await expect
       .element(component.getByText(`Numbers of every range in ${values?.join(" / ")}`))
       .toBeVisible();
@@ -310,7 +310,7 @@ describe("NumberPoolDetailsPage", () => {
 
     // THEN
     await expect
-      .element(component.getByRole("option", { name: /^1 – 50/ }))
+      .element(component.getByRole("option", { name: /^1 - 50/ }))
       .toHaveAttribute("aria-selected", "true");
     await expect
       .element(component.getByText(`Numbers of ${firstRange?.id} in ${values?.join(" / ")}`))

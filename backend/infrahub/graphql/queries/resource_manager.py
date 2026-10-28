@@ -351,6 +351,7 @@ async def resolve_number_pool_allocation(
         db=db,
         pool=pool,
         ranges=space.as_query_ranges(),
+        include_inherited_branches=False,
         offset=offset,
         limit=limit,
         branch=graphql_context.branch,
@@ -386,9 +387,9 @@ async def _range_edge(db: InfrahubDatabase, range_node: CoreNumberPoolRange, fig
             "kind": InfrahubKind.NUMBERPOOLRANGE,
             "display_label": await range_node.get_display_label(db=db),
             "weight": range_node.allocation_weight.value or 0,
-            "utilization": figures.utilization,
-            "utilization_default_branch": figures.utilization_default_branch,
-            "utilization_branches": figures.utilization_branches,
+            "utilization": figures.utilization or 0.0,
+            "utilization_default_branch": figures.utilization_default_branch or 0.0,
+            "utilization_branches": figures.utilization_branches or 0.0,
         }
     }
 
@@ -411,9 +412,9 @@ async def resolve_number_pool_utilization(
     figures = number_pool.figures
     return {
         "count": len(ranges),
-        "utilization": figures.utilization,
-        "utilization_default_branch": figures.utilization_default_branch,
-        "utilization_branches": figures.utilization_branches,
+        "utilization": figures.utilization or 0.0,
+        "utilization_default_branch": figures.utilization_default_branch or 0.0,
+        "utilization_branches": figures.utilization_branches or 0.0,
         "edges": [
             await _range_edge(
                 db=db, range_node=range_node, figures=number_pool.range_figures(range_id=range_node.get_id())

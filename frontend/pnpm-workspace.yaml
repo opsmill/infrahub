@@ -25,15 +25,23 @@ catalog:
   react-dom: ^19.3.1
   tailwind-merge: ^3.7.0
   tailwindcss: ^4.3.3
+<<<<<<< HEAD
   typescript: ^5.9.3
+=======
+  typescript: ^6.0.3
+>>>>>>> origin/release-1.12
   vite: ^8.3.5
 
 overrides:
   playwright: 1.60.0
   playwright-core: 1.60.0
+  # Security fixes that the parent packages do not accept yet.
+  "@betterer/betterer>simple-git": ^4.0.2
+  katex: ^0.18.2
 
 peerDependencyRules:
   allowedVersions:
-    graphiql-explorer>graphql: ^16.0.0
+    graphiql-explorer>graphql: ^17.0.0
     graphiql-explorer>react: ^19.0.0
     graphiql-explorer>react-dom: ^19.0.0
+    openapi-typescript>typescript: ^6.0.0

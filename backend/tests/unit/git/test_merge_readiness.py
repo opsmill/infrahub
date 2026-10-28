@@ -21,6 +21,7 @@ from tests.adapters.remote_heads import (
     FailingRemoteHeadReader,
     HeadRead,
     InMemoryRemoteHeadReader,
+    RefusingRemoteHeadReader,
     StalledRemoteHeadReader,
 )
 
@@ -51,7 +52,9 @@ def target(
 
 
 def check(
-    reader: InMemoryRemoteHeadReader | FailingRemoteHeadReader, parallel_reads: int = 8, deadline_seconds: float = 30
+    reader: InMemoryRemoteHeadReader | FailingRemoteHeadReader | RefusingRemoteHeadReader,
+    parallel_reads: int = 8,
+    deadline_seconds: float = 30,
 ) -> RemoteHeadsMergeCheck:
     return RemoteHeadsMergeCheck(
         reader=reader,
@@ -241,6 +244,30 @@ async def test_a_remote_that_refuses_the_credentials_refuses_the_merge() -> None
         )
 
     assert type(refusal.value.__cause__) is RepositoryCredentialsError
+
+
+async def test_a_credentials_refusal_logs_the_git_output_of_each_refused_remote(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The refusal is logged without its traceback, so the Git output reaches the log another way."""
+    caplog.set_level(logging.WARNING, logger=LOGGER_NAME)
+    reader = RefusingRemoteHeadReader(git_output="remote: HTTP Basic: Access denied")
+    message = (
+        f"Unable to merge branch {SOURCE}, because Infrahub cannot read the remote of a repository with its "
+        "credentials. Authentication failed for network-repo, please validate the credentials. Authentication "
+        "failed for campus-repo, please validate the credentials. The Git merge would fail the same way, after the "
+        "merge in Infrahub. Fix the credentials, then merge again."
+    )
+
+    with pytest.raises(RepositoryCredentialsRefusedError, match=rf"^{re.escape(message)}$"):
+        await check(reader=reader).check(
+            source_branch=SOURCE, targets=[target(name="network-repo"), target(name="campus-repo")]
+        )
+
+    assert [record.getMessage() for record in caplog.records if record.name == LOGGER_NAME] == [
+        "Git could not authenticate to the remote of repository network-repo: remote: HTTP Basic: Access denied",
+        "Git could not authenticate to the remote of repository campus-repo: remote: HTTP Basic: Access denied",
+    ]
 
 
 async def test_a_credentials_error_on_a_repository_whose_branch_records_the_trunk_commit_lets_the_merge_go_on(

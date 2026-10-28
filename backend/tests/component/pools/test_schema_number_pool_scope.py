@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from infrahub.api.schema import evaluate_candidate_schemas
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -35,7 +36,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-def _pooled_attribute(name: str, scope: list[str]) -> AttributeSchema:
+def _pooled_attribute(name: str, scope: list[str] | None) -> AttributeSchema:
     return AttributeSchema(
         name=name,
         kind="NumberPool",
@@ -222,3 +223,46 @@ async def test_declaration_on_a_branch_leaving_out_the_scope_attaches_the_scoped
     # A schema load keeps a parameter it leaves out, so the branch declaration stands for the scope the pool holds.
     assert [pool.id for pool in pools] == [branch_parameters.number_pool_id]
     assert pools[0].allocation_scope.value == [{"id": role_id, "name": "role"}]
+
+
+async def test_loading_a_kind_new_on_a_branch_whose_pool_the_default_branch_scoped_is_refused(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """A kind created on the branch on its own holds other field ids than the pool of the default branch is scoped by."""
+    branch = await create_branch(db=db, branch_name="new-kind")
+    main_device = copy.deepcopy(SCOPED_DEVICE)
+    main_device.attributes.append(_pooled_attribute(name="vlan_index", scope=["role"]))
+    await _load_and_provision(db=db, schema=_schema(device=main_device))
+    branch_device = copy.deepcopy(SCOPED_DEVICE)
+    branch_device.attributes.append(_pooled_attribute(name="vlan_index", scope=None))
+
+    with pytest.raises(ValidationError) as exc_info:
+        evaluate_candidate_schemas(
+            branch_schema=registry.schema.get_schema_branch(name=branch.name),
+            schemas_to_evaluate=[_schema(device=branch_device)],
+        )
+
+    assert exc_info.value.message == (
+        'ScopeDevice.vlan_index: allocation_scope: "role" is a different field on branch new-kind than on the default'
+        " branch main, where the pool of the attribute is scoped by it; declare the attribute once the field is the"
+        " same on both branches"
+    )
+
+
+async def test_loading_on_a_branch_a_declaration_of_an_existing_kind_leaving_out_the_scope_is_accepted(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    await save_schema(db=db, schema=SCOPED_POOL_SCHEMA)
+    branch = await create_branch(db=db, branch_name="existing-kind")
+    main_device = copy.deepcopy(SCOPED_DEVICE)
+    main_device.attributes.append(_pooled_attribute(name="vlan_index", scope=["role"]))
+    await _load_and_provision(db=db, schema=_schema(device=main_device))
+    branch_device = copy.deepcopy(SCOPED_DEVICE)
+    branch_device.attributes.append(_pooled_attribute(name="vlan_index", scope=None))
+
+    _, result = evaluate_candidate_schemas(
+        branch_schema=registry.schema.get_schema_branch(name=branch.name),
+        schemas_to_evaluate=[_schema(device=branch_device)],
+    )
+
+    assert result.errors == []

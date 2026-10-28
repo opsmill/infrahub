@@ -46,7 +46,9 @@ describe("getBranchRepositoriesFromApi", () => {
       })
     );
     expect(sentQuery()).toContain("CoreGenericRepository(");
-    expect(sentQuery()).toMatch(/order: \{by: \[\{field: "name__value", direction: ASC\}\]\}/);
+    expect(sentQuery()).toMatch(
+      /order: \{\s*by: \[\{\s*field: "name__value", direction: ASC\s*\}\]\s*\}/
+    );
   });
 
   it("lists read-only repositories only for the read-only kind", async () => {

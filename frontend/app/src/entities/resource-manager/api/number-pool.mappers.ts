@@ -32,15 +32,15 @@ export const mapToNumberPoolData = (node: NumberPoolNode): NumberPoolData => {
         )?.map(({ name }) => name) ?? [],
     },
     ranges: (node.ranges?.edges ?? []).flatMap(({ node: range }) =>
-      range?.start?.value == null || range.end?.value == null
-        ? []
-        : [
+      range
+        ? [
             {
-              start: range.start.value,
-              end: range.end.value,
+              start: range.start?.value ?? null,
+              end: range.end?.value ?? null,
               allocation_weight: range.allocation_weight?.value ?? null,
             },
           ]
+        : []
     ),
   };
 };

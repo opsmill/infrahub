@@ -101,6 +101,8 @@ Setting `MERGED` is the point of no return of the merge flow. It comes only afte
 
 After setting `MERGED`, the flow triggers `BRANCH_CANCEL_PROPOSED_CHANGES` to cancel any open proposed changes that reference the merged branch as their source.
 
+A merge that cannot go ahead for a reason the user can clear raises a `ValidationError` subclass registered with `@suppress_traceback_in_logs` (`backend/infrahub/log.py`): `MergeRefusedError`, `MergeRepositoryImportError`, `RepositoryNotSynchronizedError`, `RepositoryCredentialsRefusedError`, `MergeConflictsUnresolvedError` and `MergeConstraintsViolatedError`. The task log then shows the refusal message in the `Finished in state Failed(...)` line, with no traceback. The first four are raised before the merge start is recorded, so the branch stays `OPEN`. The conflict and constraint refusals come from the graph merge, after the branch is set to `MERGING`; the rollback returns it to `OPEN`. The filter matches the exact type, so a new refusal needs a registered type of its own, or raises `MergeRefusedError`; a plain `ValidationError` keeps its traceback. A merge refused because the merge of another branch failed and needs recovery raises `MergeRecoveryRequiredError`, which is not registered, so its traceback stays in the log. The proposed change merge returns the message of each refusal as its failed state, except a constraint refusal, which it records as a failed Schema Integrity check.
+
 ## Adding a New Status Check
 
 If a new endpoint or mutation must respect branch status:

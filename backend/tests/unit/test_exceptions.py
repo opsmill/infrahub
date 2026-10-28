@@ -1,26 +1,36 @@
-"""Tests for (un)pickling errors.
+"""Tests for (un)pickling errors, and for the errors whose traceback the Prefect run logs drop.
 
 Prefect rebuilds errors using pickle.
 """
 
+import logging
 import pickle  # noqa: S403
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 import pytest
 
+from infrahub.core.validators.model import SchemaViolation
 from infrahub.exceptions import (
     CommitNotFoundError,
     Error,
     GraphQLQueryError,
+    MergeConflictsUnresolvedError,
+    MergeConstraintsViolatedError,
+    MergeRefusedError,
     MergeRepositoryImportError,
     PropagatedFromWorkerError,
+    RepositoryCredentialsRefusedError,
     RepositoryFileNotFoundError,
     RepositoryInvalidBranchError,
+    RepositoryNotSynchronizedError,
     RepositoryPushRejectedError,
     RPCError,
     SchemaNotFoundError,
+    ValidationError,
 )
 from infrahub.git.models import PushRejectionReason
+from infrahub.log import _TRACEBACK_SUPPRESSED_TYPES, TracebackSuppressionFilter
 
 
 def _round_trip(error: Error) -> Error:
@@ -87,6 +97,10 @@ ERROR_PICKLE_CASES = [
             incomplete_repositories=["repo-2"],
             ref_missing_repositories={"repo-3": "v1.0"},
         ),
+    ),
+    ErrorPickleCase(
+        name="merge_refused",
+        error=MergeRefusedError("Cannot merge a branch while a merge is in progress."),
     ),
     ErrorPickleCase(
         name="push_rejection_with_its_reason_and_remote_lines",
@@ -259,3 +273,72 @@ def test_reconstructed_error_can_be_raised_and_caught() -> None:
 
     with pytest.raises(SchemaNotFoundError, match=r"Unable to find the schema CoreNode in the database\."):
         raise restored
+
+
+@dataclass
+class MergeRefusalCase:
+    name: str
+    build: Callable[[], ValidationError]
+
+
+MERGE_REFUSAL_CASES = [
+    MergeRefusalCase(
+        name="refused",
+        build=lambda: MergeRefusedError("Cannot merge a branch while a merge is in progress."),
+    ),
+    MergeRefusalCase(
+        name="repository_import_failed",
+        build=lambda: MergeRepositoryImportError(
+            failed_repositories=["blue"], incomplete_repositories=[], ref_missing_repositories={}
+        ),
+    ),
+    MergeRefusalCase(
+        name="repository_not_synchronized",
+        build=lambda: RepositoryNotSynchronizedError("Unable to merge branch branch-c, a remote head is not imported."),
+    ),
+    MergeRefusalCase(
+        name="repository_credentials_refused",
+        build=lambda: RepositoryCredentialsRefusedError("Unable to merge branch branch-c, fix the credentials."),
+    ),
+    MergeRefusalCase(
+        name="conflicts_unresolved",
+        build=lambda: MergeConflictsUnresolvedError(conflict_paths=["data/TestCar/name"], branch_name="branch-c"),
+    ),
+    MergeRefusalCase(
+        name="constraints_violated",
+        build=lambda: MergeConstraintsViolatedError(
+            violations=[
+                SchemaViolation(
+                    node_id="car-1",
+                    node_kind="TestCar",
+                    display_label="volt",
+                    full_display_label="TestCar volt",
+                    message="TestCar volt violates the uniqueness constraint on name.",
+                )
+            ],
+            schema_conflicts=[],
+        ),
+    ),
+]
+
+
+def _flow_run_record(exception: BaseException) -> logging.LogRecord:
+    return logging.LogRecord(
+        name="prefect.flow_runs",
+        level=logging.ERROR,
+        pathname=__file__,
+        lineno=1,
+        msg="Encountered exception during execution: %r",
+        args=(exception,),
+        exc_info=(type(exception), exception, exception.__traceback__),
+    )
+
+
+@pytest.mark.parametrize("case", MERGE_REFUSAL_CASES, ids=lambda case: case.name)
+def test_merge_refusal_drops_its_traceback_record(case: MergeRefusalCase) -> None:
+    """A parent flow re-raises the refusal of its subflow after unpickling it, so the rebuilt error is checked too."""
+    refusal = case.build()
+    suppression_filter = TracebackSuppressionFilter(_TRACEBACK_SUPPRESSED_TYPES)
+
+    assert suppression_filter.filter(_flow_run_record(refusal)) is False
+    assert suppression_filter.filter(_flow_run_record(_round_trip(refusal))) is False

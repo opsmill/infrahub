@@ -417,7 +417,7 @@ is traced, then check that the default applies after 2 minutes.
 5. **Given** an account without the super admin permission, **When** it tries to change the ratio,
    **Then** the request is rejected.
 6. **Given** tracing is off, **When** an administrator tries to change the ratio, **Then** the API and
-   `infrahubctl` return "Tracing is not enabled on this instance; set `INFRAHUB_TRACE_ENABLE`".
+   `infrahubctl` return "Tracing is not enabled on this instance; set INFRAHUB_TRACE_ENABLE".
 7. **Given** a process that starts after the change, **When** it records traces, **Then** it uses the
    default ratio.
 8. **Given** an administrator, **When** they set a ratio without an end time or with an end time more

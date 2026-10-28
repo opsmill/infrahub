@@ -372,8 +372,9 @@ def failing_remote_location(
 ) -> str:
     """Return a remote location whose Git transport waits ``delay_seconds``, prints ``stderr`` and fails.
 
-    Git runs ``git-remote-<transport>`` for a ``<transport>::<address>`` location and passes its stderr
-    through, as it does for the HTTPS helper whose messages a real remote failure produces.
+    Git runs ``git-remote-<transport>`` for a ``<transport>://<address>`` location and passes its stderr
+    through, as it does for the HTTPS helper whose messages a real remote failure produces. The
+    ``<transport>::<address>`` form is not used because GitPython 3.2 refuses it before running Git.
     """
     helper_directory = tmp_path / "remote-helper"
     helper_directory.mkdir()
@@ -383,7 +384,7 @@ def failing_remote_location(
     monkeypatch.setenv("PATH", f"{helper_directory}{os.pathsep}{os.environ['PATH']}")
     # Allow the helper's transport whatever protocol policy the host's Git configuration sets.
     monkeypatch.setenv("GIT_ALLOW_PROTOCOL", "failing")
-    return "failing::https://git.example.com/net/repo.git"
+    return "failing://git.example.com/net/repo.git"
 
 
 class StatusRecordingClient(InfrahubClient):

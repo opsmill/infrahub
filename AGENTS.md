@@ -9,8 +9,8 @@ Style: be direct and substantive. No filler, preamble, or pleasantries. Challeng
 ## Tech Stack
 
 - **Backend:** Python 3.14, FastAPI 0.131.0, Neo4j 2026.05 (driver 6.4), Pydantic 2.12
-- **Frontend:** TypeScript 5.9, React 19.2, Vite 8.0, Tailwind CSS 4.2
-- **Testing:** pytest 9.0, Vitest 4.1, Playwright 1.60
+- **Frontend:** TypeScript 6.0, React 19.3, Vite 8.3, Tailwind CSS 4.3
+- **Testing:** pytest 9.0, Vitest 5.0, Playwright 1.60
 - **Linting:** ruff 0.15, mypy 2.3, Biome 2.4
 - **Package Managers:** uv (Python), pnpm (Frontend)
 - **Task Runner:** Invoke 2.2.1
