@@ -90,7 +90,7 @@ async def test_a_stored_prefect_event_type_missing_from_the_list_is_logged(
 
     assert _app_warnings(caplog=caplog) == [
         "Task manager retention: Infrahub does not list these Prefect event types, so they are kept for the activity "
-        f"log retention (365 days) instead of prefect_own_events: {UNLISTED_PREFECT_EVENT}"
+        f"log retention (P365D) instead of prefect_own_events: {UNLISTED_PREFECT_EVENT}"
     ]
 
 

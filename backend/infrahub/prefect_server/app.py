@@ -26,7 +26,7 @@ from .retention import (
     prefect_retention_in_effect,
     remove_blank_vacuum_switch,
     turned_off_cleanup_warnings,
-    unlisted_prefect_event_types,
+    unlisted_prefect_event_types_warning,
 )
 from .retention_settings import load_task_manager_settings, print_configuration_errors
 
@@ -94,13 +94,10 @@ async def warn_about_unlisted_prefect_event_types(db: PrefectDBInterface) -> Non
     except DBAPIError as exc:
         log.warning(f"Task manager retention: could not read the stored event types ({type(exc).__name__})")
         return
-    unlisted = unlisted_prefect_event_types(stored)
-    if unlisted:
-        days = get_current_settings().server.events.retention_period.days
-        log.warning(
-            f"Task manager retention: Infrahub does not list these Prefect event types, so they are kept for the "
-            f"activity log retention ({days} days) instead of prefect_own_events: {', '.join(unlisted)}"
-        )
+    if warning := unlisted_prefect_event_types_warning(
+        stored_event_types=stored, event_retention=get_current_settings().server.events.retention_period
+    ):
+        log.warning(warning)
 
 
 def _with_event_type_check(lifespan: Lifespan[FastAPI]) -> Lifespan[FastAPI]:

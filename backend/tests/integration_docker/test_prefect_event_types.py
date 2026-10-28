@@ -53,7 +53,7 @@ CANCELLED_RUN_DEPLOYMENT = "git_repositories_sync/git_repositories_sync"
 UNLISTED_PREFECT_EVENT = "prefect.infrahub-test.unlisted"
 UNLISTED_WARNING = (
     "Task manager retention: Infrahub does not list these Prefect event types, so they are kept for the activity log "
-    f"retention (7 days) instead of prefect_own_events: {UNLISTED_PREFECT_EVENT}"
+    f"retention (P7D) instead of prefect_own_events: {UNLISTED_PREFECT_EVENT}"
 )
 STARTUP_CHECK_FAILED = "Task manager retention: could not read the stored event types"
 # The statements interpolate only this module's constant, so S608 has no input to guard against.

@@ -13,7 +13,7 @@ from prefect.server.events.schemas.automations import TriggerState
 from prefect.server.schemas import states as server_states
 from prefect.server.schemas.statuses import DeploymentStatus, WorkPoolStatus, WorkQueueStatus
 
-from infrahub.prefect_server.retention import PREFECT_EVENT_TYPES, unlisted_prefect_event_types
+from infrahub.prefect_server.retention import PREFECT_EVENT_TYPES
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -190,19 +190,3 @@ def test_every_built_in_prefect_state_has_its_run_events_listed() -> None:
         )
         == []
     )
-
-
-def test_only_prefect_event_types_missing_from_the_list_are_unlisted() -> None:
-    event_types = [
-        "prefect.flow-run.Completed",
-        "prefect.work-pool.new-status",
-        "prefect.work-pool.new-status",
-        "prefect.automation.new-action",
-        "infrahub.node.created",
-        "custom.prefect.flow-run.Completed",
-    ]
-
-    assert unlisted_prefect_event_types(event_types) == [
-        "prefect.automation.new-action",
-        "prefect.work-pool.new-status",
-    ]

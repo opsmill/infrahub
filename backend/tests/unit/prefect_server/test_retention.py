@@ -22,6 +22,7 @@ from infrahub.prefect_server.retention import (
     remove_blank_vacuum_switch,
     task_run_deletion_off_reason,
     turned_off_cleanup_warnings,
+    unlisted_prefect_event_types_warning,
 )
 from tests.helpers.task_manager_retention import (
     EVENT_RETENTION_OVERRIDES,
@@ -745,3 +746,69 @@ def test_background_services_warning_follows_prefects_reading_of_the_variable(
 ) -> None:
     """Prefect runs only its web server for any non-empty value of the variable, so the warning follows the same rule."""
     assert background_services_warning(environ=test_case.environ) == test_case.expected_warning
+
+
+STORED_EVENT_TYPES = [
+    "prefect.flow-run.Completed",
+    "prefect.work-pool.new-status",
+    "prefect.work-pool.new-status",
+    "prefect.automation.new-action",
+    "infrahub.node.created",
+    "custom.prefect.flow-run.Completed",
+]
+
+
+def _unlisted_warning(event_retention: str) -> str:
+    return (
+        "Task manager retention: Infrahub does not list these Prefect event types, so they are kept for the activity "
+        f"log retention ({event_retention}) instead of prefect_own_events: prefect.automation.new-action, "
+        "prefect.work-pool.new-status"
+    )
+
+
+@dataclass
+class UnlistedWarningTestCase:
+    name: str
+    stored_event_types: list[str]
+    event_retention: timedelta
+    expected_warning: str | None
+
+
+UNLISTED_WARNING_TEST_CASES: list[UnlistedWarningTestCase] = [
+    UnlistedWarningTestCase(
+        name="whole_days",
+        stored_event_types=STORED_EVENT_TYPES,
+        event_retention=timedelta(days=7),
+        expected_warning=_unlisted_warning(event_retention="P7D"),
+    ),
+    UnlistedWarningTestCase(
+        name="part_below_a_day",
+        stored_event_types=STORED_EVENT_TYPES,
+        event_retention=timedelta(days=1, hours=12),
+        expected_warning=_unlisted_warning(event_retention="P1DT43200S"),
+    ),
+    UnlistedWarningTestCase(
+        name="shorter_than_a_day",
+        stored_event_types=STORED_EVENT_TYPES,
+        event_retention=timedelta(hours=12),
+        expected_warning=_unlisted_warning(event_retention="P0DT43200S"),
+    ),
+    UnlistedWarningTestCase(
+        name="every_type_listed",
+        stored_event_types=["prefect.flow-run.Completed", "infrahub.node.created"],
+        event_retention=timedelta(days=7),
+        expected_warning=None,
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in UNLISTED_WARNING_TEST_CASES])
+def test_the_unlisted_event_type_warning_states_the_event_retention_in_iso_8601(
+    test_case: UnlistedWarningTestCase,
+) -> None:
+    """Only the stored `prefect.` types missing from the list are named, once each, with the retention in ISO 8601."""
+    warning = unlisted_prefect_event_types_warning(
+        stored_event_types=test_case.stored_event_types, event_retention=test_case.event_retention
+    )
+
+    assert warning == test_case.expected_warning

@@ -113,10 +113,23 @@ PREFECT_EVENT_TYPES: tuple[str, ...] = (
 PREFECT_EVENT_PREFIX = "prefect."
 
 
-def unlisted_prefect_event_types(event_types: Iterable[str]) -> list[str]:
-    """Return the Prefect event types among the given ones that are missing from the list, sorted."""
-    listed = set(PREFECT_EVENT_TYPES)
-    return sorted({event_type for event_type in event_types if event_type.startswith(PREFECT_EVENT_PREFIX)} - listed)
+def unlisted_prefect_event_types_warning(stored_event_types: Iterable[str], event_retention: timedelta) -> str | None:
+    """Return the warning naming the stored Prefect event types missing from the list, or None when every one is listed.
+
+    Args:
+        event_retention: The event retention Prefect applies, which keeps the missing types.
+
+    """
+    prefect_event_types = {
+        event_type for event_type in stored_event_types if event_type.startswith(PREFECT_EVENT_PREFIX)
+    }
+    unlisted = sorted(prefect_event_types.difference(PREFECT_EVENT_TYPES))
+    if not unlisted:
+        return None
+    return (
+        "Task manager retention: Infrahub does not list these Prefect event types, so they are kept for the activity "
+        f"log retention ({_iso_8601(event_retention)}) instead of prefect_own_events: {', '.join(unlisted)}"
+    )
 
 
 VACUUM_ENABLED = "PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED"
