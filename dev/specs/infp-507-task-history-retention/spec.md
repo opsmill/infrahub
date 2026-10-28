@@ -193,7 +193,7 @@ Timings are indicative: they come from local benchmarks, not a production contra
 ### Measurable Outcomes
 
 - **SC-001**: With a constant workload, the task manager's storage grows by less than 10 % over a second full task history retention period after the upgrade.
-- **SC-002**: After the cleanup step, the task history storage is no larger than what the runs within the retention need; the step takes about 8.5 minutes per 25 GB of task history, and the upgrade itself takes no longer than before.
+- **SC-002**: After the cleanup step, the task history storage is no larger than what the runs within the retention need, and the upgrade itself takes no longer than before. The step takes about 8.5 minutes per 25 GB of task history, measured before the deletes were limited to 1,000 runs per transaction and without the pauses between rewritten tables, which add at most 60 s per table after the first.
 - **SC-003**: Operators set all retention in one place: 3 settings, zero task-manager-specific variables.
 - **SC-004**: With a year of activity log, the Activities default view and the account, branch and node filters load in about 1 s on a repeat load and up to about 3 s on the first load; combined filters load in 3 to 6 s and never more than 10 s.
 - **SC-005**: With a year of activity log, sub-activities, branch-name filters and deleted-branch filters load in under 1 s (against 40 s to 5 minutes today).
@@ -241,7 +241,7 @@ From the design doc's "Design changes for implementation" list, entries of 8 and
 
 ## Dependencies & Open Questions
 
-- **Q1 (blocks the release notes)**: how long the cleanup step takes on a large instance. Measured about 8.5 minutes on 25 GB and about 2 h 20 min on 100 GB, almost all of it the deletes; why 100 GB is about 4 times slower per run is not confirmed. Both were measured before 28 Oct, when the deletes were limited to 1,000 runs per transaction; how long they take since then is not measured yet. Known instances hold about 20 to 35 GB. The upgrade no longer includes it.
+- **Q1 (blocks the release notes)**: how long the cleanup step takes on a large instance. Measured about 8.5 minutes on 25 GB and about 2 h 20 min on 100 GB, almost all of it the deletes; why 100 GB is about 4 times slower per run is not confirmed. Both were measured before 28 Oct, when the deletes were limited to 1,000 runs per transaction; how long they take since then is not measured yet. Both were also measured without the pauses between rewritten tables, which add at most 60 s per table after the first. Known instances hold about 20 to 35 GB. The upgrade no longer includes it.
 - **Deep scrolling by time**: scrolling far down a combined filter, on both supported database versions, is being measured.
 - Non-blocking: whether runs accumulate in SCHEDULED, LATE, PAUSED or CANCELLING, and whether runs legitimately stay RUNNING more than 2 days; what happens to Community instances configured above a future Enterprise-only limit.
 - **Release evidence**: the private performance tests (Activities queries, task history retention, the cleanup step, activity log retention, cleanups under load, database size and dead space) must pass and be attached to each part's PR and to INFP-507; PR #33 in opsmill/infrahub-private-tests lands first.

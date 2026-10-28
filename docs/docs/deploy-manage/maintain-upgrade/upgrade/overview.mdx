@@ -100,7 +100,7 @@ The upgrade deletes no task runs. In step 5/6, it prints how much disk space the
 Task history takes 24.8 GB, with 1,234 runs older than the retention. To get the space back, run: infrahub tasks flush flow-runs --rewrite
 ```
 
-The count stops at 100,000, so a larger backlog shows as `more than 100,000 runs`. When it shows `no runs older than the retention`, there is no backlog left to delete, and the cleanup step only shrinks the tables: in OpsMill benchmarks, that took about 20 seconds for 25 GB of task history and 85 seconds for 100 GB.
+The count stops at 100,000, so a larger backlog shows as `more than 100,000 runs`. When it shows `no runs older than the retention`, there is no backlog left to delete, and the cleanup step only shrinks the tables. In OpsMill benchmarks, rewriting the tables took about 20 seconds for 25 GB of task history and 85 seconds for 100 GB. These figures leave out the pauses between tables: before each table after the first, the command pauses ten times as long as the previous table was locked, up to 60 seconds.
 
 When the task manager does not delete old task runs, because `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` is set to a value without `flow_runs`, the line ends with the reason instead of the command, and the task manager refuses the cleanup step. See [Set the retention](../../run-observe/tasks.mdx#set-the-retention).
 
@@ -145,7 +145,7 @@ To keep these pauses short, the command waits at most 3 seconds for a table that
 
 Plan for the time and the disk space the step needs:
 
-- **Time**: almost all of it is spent deleting. In OpsMill benchmarks, the step took about 8.5 minutes for 25 GB of task history and about 2 hours 20 minutes for 100 GB. These are benchmark figures, not a guarantee: the duration depends on the hardware and the data of your instance.
+- **Time**: most of it is spent deleting. In OpsMill benchmarks, the step took about 8.5 minutes for 25 GB of task history and about 2 hours 20 minutes for 100 GB. These figures were measured before the step limited each delete transaction to 1,000 runs and before it paused between tables, and how long the step takes with the limit and the pauses was not measured. The pauses between tables add at most 60 seconds for each table after the first, so at most 7 minutes when the command rewrites all eight task history and activity log tables. The figures are not a guarantee: the duration depends on the hardware and the data of your instance.
 - **Free disk space**: the rewrite writes a copy of the rows that a table keeps before it removes the old files. In the same benchmarks, that was under 0.5 GB for 25 GB of task history and 2.2 GB for 100 GB. For the activity log tables, the copy holds the events that the activity log retention keeps.
 
 The cleanup runs inside the task manager, so it continues if the session that runs the command ends. Running the command again follows the cleanup that is still running, or starts a new one that continues from the oldest remaining run. If the task manager restarts while the command follows the cleanup, the command waits until the task manager answers again and starts a new cleanup. The command then reports `Deleted at least N runs`, because the cleanup that the restart stopped may have deleted more runs than the command saw.
