@@ -190,6 +190,14 @@ async def test_refresh_applies_the_profiles_and_recomputes_their_readers(
     assert [(type(event), event.node_id, event.fields, event.meta.origin) for event in doubles.events.events] == [
         (NodeUpdatedEvent, node_id, ["role", "room"], NodeMutationOrigin.RECOMPUTE) for node_id in dataset.server_ids
     ]
+    assert [
+        (
+            sorted(event.changelog.updated_fields),
+            event.changelog.relationships["room"].model_dump(include={"peer_id", "peer_id_previous"}),
+        )
+        for event in doubles.events.events
+        if isinstance(event, NodeUpdatedEvent)
+    ] == [(["role", "room"], {"peer_id": dataset.room_id, "peer_id_previous": None})] * 2
     assert [call.node_ids for call in doubles.resolver.calls] == [tuple(dataset.server_ids)]
     assert [
         (
@@ -247,6 +255,14 @@ async def test_refresh_reports_a_relationship_that_a_profile_no_longer_sets(
     assert [(event.node_id, event.fields) for event in doubles.events.events] == [
         (node_id, ["room"]) for node_id in dataset.server_ids
     ]
+    assert [
+        (
+            event.changelog.updated_fields,
+            event.changelog.relationships["room"].model_dump(include={"peer_id", "peer_id_previous"}),
+        )
+        for event in doubles.events.events
+        if isinstance(event, NodeUpdatedEvent)
+    ] == [(["room"], {"peer_id": None, "peer_id_previous": dataset.room_id})] * 2
 
 
 @dataclass

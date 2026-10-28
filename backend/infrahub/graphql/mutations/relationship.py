@@ -80,7 +80,6 @@ async def _emit_relationship_add_events(
     source: Node,
     peers: list[EventNode],
     node_changelog: NodeChangelog,
-    relationship_name: str,
 ) -> None:
     """Schedule background events for an add-relationship mutation.
 
@@ -145,7 +144,7 @@ async def _emit_relationship_add_events(
         kind=source.get_schema().kind,
         node_id=source.id,
         changelog=node_changelog,
-        fields=[relationship_name],
+        fields=node_changelog.updated_fields,
         meta=EventMeta(branch=graphql_context.branch, context=event_context),
     )
     relationship_changelogs = build_relationship_changelog_getter(db=graphql_context.db, branch=graphql_context.branch)
@@ -281,7 +280,7 @@ class RelationshipAdd(Mutation):
 
             # peers that need to have their profile source cleared
             profile_sourced_peers = [peer for peer in existing_peers.values() if peer.is_from_profile]
-            await _apply_profiles_after_relationship_change(
+            profile_changelog = await _apply_profiles_after_relationship_change(
                 db=db,
                 branch=graphql_context.branch,
                 source=source,
@@ -291,6 +290,7 @@ class RelationshipAdd(Mutation):
                 profile_sourced_peers=profile_sourced_peers,
                 user_id=graphql_context.assigned_user_id,
             )
+            _add_profile_changes(node_changelog=node_changelog, profile_changelog=profile_changelog)
 
         await _enrich_emitted_changelog(
             group_event_type=group_event_type,
@@ -306,7 +306,6 @@ class RelationshipAdd(Mutation):
             source=source,
             peers=peers,
             node_changelog=node_changelog,
-            relationship_name=relationship_name,
         )
         await _submit_profile_peers_refresh(
             graphql_context=graphql_context,
@@ -384,7 +383,7 @@ class RelationshipRemove(Mutation):
                 for peer_id, peer in existing_peers.items()
                 if peer.is_from_profile and peer_id not in removed_peer_ids
             ]
-            await _apply_profiles_after_relationship_change(
+            profile_changelog = await _apply_profiles_after_relationship_change(
                 db=db,
                 branch=graphql_context.branch,
                 source=source,
@@ -394,6 +393,7 @@ class RelationshipRemove(Mutation):
                 profile_sourced_peers=profile_sourced_peers,
                 user_id=graphql_context.assigned_user_id,
             )
+            _add_profile_changes(node_changelog=node_changelog, profile_changelog=profile_changelog)
 
         await _enrich_emitted_changelog(
             group_event_type=group_event_type,
@@ -450,7 +450,7 @@ class RelationshipRemove(Mutation):
                     kind=source.get_schema().kind,
                     node_id=source.id,
                     changelog=node_changelog,
-                    fields=[relationship_name],
+                    fields=node_changelog.updated_fields,
                     meta=EventMeta(branch=graphql_context.branch, context=event_context),
                 )
 
@@ -706,14 +706,29 @@ def _get_group_event_type(
     return group_event_type
 
 
-async def _apply_profiles(node: Node, db: InfrahubDatabase, branch: Branch) -> None:
-    refreshed_node = await NodeManager.get_one(db=db, id=node.get_id(), branch=branch)
+async def _apply_profiles(node: Node, db: InfrahubDatabase, branch: Branch, user_id: str) -> NodeChangelog | None:
+    refreshed_node = await NodeManager.get_one(
+        db=db, id=node.get_id(), branch=branch, include_metadata=MetadataOptions.SOURCE, raise_on_error=True
+    )
     node_profiles_applier = NodeProfilesApplier(
         db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
     )
     updated_fields = await node_profiles_applier.apply_profiles(node=refreshed_node)
-    if updated_fields:
-        await refreshed_node.save(db=db, fields=updated_fields)
+    if not updated_fields:
+        return None
+    await refreshed_node.save(db=db, fields=updated_fields, user_id=user_id)
+    return refreshed_node.node_changelog
+
+
+def _add_profile_changes(node_changelog: NodeChangelog, profile_changelog: NodeChangelog | None) -> None:
+    if profile_changelog is None:
+        return
+    if node_changelog.parent is None and profile_changelog.parent is not None:
+        node_changelog.add_parent(parent=profile_changelog.parent)
+    for attribute in profile_changelog.attributes.values():
+        node_changelog.add_attribute(attribute=attribute)
+    for relationship in profile_changelog.relationships.values():
+        node_changelog.add_relationship(relationship_changelog=relationship)
 
 
 async def _detach_relationship_from_profiles(
@@ -771,10 +786,11 @@ async def _apply_profiles_after_relationship_change(
     relationship_modified: bool,
     profile_sourced_peers: list[RelationshipPeerData],
     user_id: str,
-) -> None:
+) -> NodeChangelog | None:
+    """Return the changes that the profiles made to the source, when the relationship is its profiles."""
     if relationship_name == "profiles":
-        await _apply_profiles(node=source, db=db, branch=branch)
-    elif relationship_modified and rel_schema.support_profiles:
+        return await _apply_profiles(node=source, db=db, branch=branch, user_id=user_id)
+    if relationship_modified and rel_schema.support_profiles:
         await _detach_relationship_from_profiles(
             db=db,
             branch=branch,
@@ -783,3 +799,4 @@ async def _apply_profiles_after_relationship_change(
             profile_sourced_peers=profile_sourced_peers,
             user_id=user_id,
         )
+    return None

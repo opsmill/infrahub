@@ -67,9 +67,8 @@ PROFILE_SCOPE_CASES = [
         expected_site="site-a",
         expected_division=("site-a",),
         expected_number=2,
-        # The preview and the write each read the profiles once, for the mandatory fields and the division together,
-        # and the saved device reads them once more to apply them.
-        expected_profile_reads=3,
+        # The preview and the write each read the profiles once, and the write applies them from that same read.
+        expected_profile_reads=2,
     ),
     ProfileScopeCase(
         name="site-and-role-set-by-the-profile",
@@ -80,7 +79,7 @@ PROFILE_SCOPE_CASES = [
         expected_site="site-a",
         expected_division=("site-a", "spine"),
         expected_number=2,
-        expected_profile_reads=3,
+        expected_profile_reads=2,
     ),
     ProfileScopeCase(
         name="site-of-the-payload-over-the-site-of-the-profile",
@@ -91,7 +90,7 @@ PROFILE_SCOPE_CASES = [
         expected_site="site-c",
         expected_division=("site-c",),
         expected_number=2,
-        # Only the saved device reads the profiles, because the payload sets every element of the scope.
+        # Only the write reads the profiles, to apply them, because the payload sets every element of the scope.
         expected_profile_reads=1,
     ),
     ProfileScopeCase(
@@ -104,7 +103,7 @@ PROFILE_SCOPE_CASES = [
         expected_division=("rack-1",),
         expected_number=2,
         # The mandatory fields leave the optional rack out, so their read covers it only by reading every field.
-        expected_profile_reads=3,
+        expected_profile_reads=2,
     ),
 ]
 

@@ -143,7 +143,6 @@ class NodeProfilesRefresher:
                 if not profile_fields:
                     continue
                 await node.save(db=dbt, user_id=user_id, fields=profile_fields)
-                # The applier writes relationships itself, so the changelog can miss one that a profile no longer sets.
                 fields = tuple(sorted(set(profile_fields) | set(node.node_changelog.updated_fields)))
                 applied.append(AppliedNode(node=node, fields=fields))
 
