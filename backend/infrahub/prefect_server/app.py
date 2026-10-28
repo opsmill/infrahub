@@ -14,7 +14,6 @@ from prefect.server.api.server import create_app
 from prefect.server.database import provide_database_interface
 from prefect.settings import get_current_settings
 from pydantic import ValidationError
-from sqlalchemy.exc import DBAPIError
 
 from . import events, task_history
 from .bootstrap import init_prefect
@@ -96,9 +95,13 @@ async def warn_about_unlisted_prefect_event_types(db: PrefectDBInterface) -> Non
     try:
         async with db.session_context() as session:
             stored = await read_stored_event_types(session=session)
-    # A check of what is stored must not keep the task manager from starting.
-    except DBAPIError as exc:
-        log.warning(f"Task manager retention: could not read the stored event types ({type(exc).__name__})")
+    # A best-effort check: no error from the database or its driver may keep the task manager from starting.
+    except Exception:
+        log.warning(
+            "Task manager retention: could not read the stored event types, so the check for Prefect event types "
+            "without a per-type retention was skipped",
+            exc_info=True,
+        )
         return
     if warning := unlisted_prefect_event_types_warning(
         stored_event_types=stored, overridden=overridden, event_retention=settings.server.events.retention_period
