@@ -2,6 +2,8 @@
 title: Upgrade
 ---
 
+import SnippetTaskHistoryWarning from '../../../snippets/upgrade-task-history-warning.mdx';
+
 # Upgrade
 
 Upgrading Infrahub involves pulling the latest container images, running database and schema migrations, and restarting services. The specific steps vary by edition (Community vs Enterprise) and deployment method (Docker Compose vs Helm).
@@ -108,11 +110,7 @@ Task history takes 24.8 GB, with 1,234 runs older than the retention. Old task r
 
 When the upgrade cannot read the size from the task manager within 10 seconds, for example because the task manager still runs the previous release, it prints `Could not read the task history size from the task manager`, with the reason, then the command, and continues.
 
-:::warning
-
-After the upgrade, the task manager deletes the task runs older than the retention, and the deletion cannot be undone. If you need task runs older than 30 days, set a longer task history retention on the task manager before you upgrade, for example `INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY=90d`. The task manager deletes according to the retention set on the task manager, not on the container that runs `infrahub upgrade`. See [Task history retention](../../run-observe/tasks.mdx#task-history-retention) for the ways to set it.
-
-:::
+<SnippetTaskHistoryWarning />
 
 ### Who needs the cleanup step
 
