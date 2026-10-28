@@ -9,7 +9,7 @@ from fast_depends import dependency_provider
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.manager import NodeManager
 from infrahub.exceptions import ProfileRefreshError
 from infrahub.graphql.mutations.profile import InfrahubProfileMutation
@@ -437,3 +437,46 @@ class TestProfileRefreshBatching(TestInfrahubApp):
 
         assert added == [["part-rel"], ["part-rel"]]
         assert removed == [[None], [None]]
+
+    async def _part_number_sources(
+        self, db: InfrahubDatabase, node_ids: list[str]
+    ) -> list[tuple[str | None, bool, str | None]]:
+        nodes = await NodeManager.get_many(db=db, ids=node_ids, include_metadata=MetadataOptions.SOURCE)
+        attributes = [nodes[node_id].get_attribute(name="part_number") for node_id in node_ids]
+        return [
+            (attribute.value, attribute.is_from_profile, str(attribute.source_id) if attribute.source_id else None)
+            for attribute in attributes
+        ]
+
+    async def test_profile_update_refreshes_the_added_and_removed_nodes_and_templates(
+        self, db: InfrahubDatabase, load_schema: None, client: InfrahubClient
+    ) -> None:
+        profile = await client.create(
+            kind=DEVICE_PROFILE_KIND, profile_name="update-profile", profile_priority=800, part_number="part-update"
+        )
+        await profile.save()
+        device = await client.create(
+            kind=TestKind.DEVICE, name="device-update", manufacturer="manufacturer", weight=1, airflow="Front to rear"
+        )
+        await device.save()
+        template = await client.create(kind=DEVICE_TEMPLATE_KIND, template_name="template-update")
+        await template.save()
+
+        profile = await client.get(kind=DEVICE_PROFILE_KIND, id=profile.id)
+        await profile.related_nodes.fetch()
+        await profile.related_templates.fetch()
+        profile.related_nodes.add(device.id)
+        profile.related_templates.add(template.id)
+        await profile.save()
+        added = await self._part_number_sources(db=db, node_ids=[device.id, template.id])
+
+        profile = await client.get(kind=DEVICE_PROFILE_KIND, id=profile.id)
+        await profile.related_nodes.fetch()
+        await profile.related_templates.fetch()
+        profile.related_nodes.remove(device.id)
+        profile.related_templates.remove(template.id)
+        await profile.save()
+        removed = await self._part_number_sources(db=db, node_ids=[device.id, template.id])
+
+        assert added == [("part-update", True, profile.id), ("part-update", True, profile.id)]
+        assert removed == [(None, False, None), (None, False, None)]

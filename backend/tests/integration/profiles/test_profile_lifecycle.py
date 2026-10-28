@@ -1078,8 +1078,6 @@ class TestProfileLifecycle(TestInfrahubApp):
         assert len(updated_person_profile_1.related_nodes.peers) == 1
         assert updated_person_profile_1.related_nodes.peers[0].id == person_2.id
 
-        await self.refresh_profiles(client=client, branch_name=default_branch.name, node_id=person_2.id)
-
     async def test_step_14_check_persons_again(
         self, default_branch: Branch, person_1: Node, person_profile_1: Node, client: InfrahubClient
     ) -> None:
