@@ -191,9 +191,14 @@ in-window events.
 
 ### Edge Cases
 
-- **Event-retention leakage**: The 24h window is far shorter than the underlying
-  event retention (7 days for events, 30 days by default for webhook flow runs), so a correct
-  window must never include retained-but-out-of-window records.
+- **Event-retention leakage**: With the default retentions (7 days for events, 30 days
+  for webhook flow runs) the task manager stores records outside the 24h window, so a
+  correct window must never include retained-but-out-of-window records.
+- **Retention shorter than the window's age**: The job reads the window 26 to 27 hours
+  after the window starts. When the activity log or task history retention is shorter
+  than that (both settings accept 1 day), the hourly cleanup has already deleted the
+  records of the first hours of the window, so the counts are lower than the activity.
+  The metrics are not set to `null` in that case.
 - **Window anchoring vs. jittered schedule**: The daily job runs at a per-deployment
   random minute. If the window were anchored to the job's execution time, day-over-day
   execution drift would make consecutive windows overlap (double-count) or gap (miss
@@ -355,10 +360,11 @@ in-window events.
   authentication and stored there); the graph database holds no last-login
   timestamp, so a windowed event query is the correct and only source.
 - The 24h window is anchored to the previous full UTC calendar day (a fixed
-  boundary, not job-execution time) and is comfortably shorter than the underlying
-  retention windows (7-day event retention, 30-day default webhook flow-run retention), so
-  all in-window records are available at gather time and consecutive daily
-  snapshots tile exactly.
+  boundary, not job-execution time), so consecutive daily snapshots tile exactly.
+  All in-window records are available at gather time only while the event
+  retention and the webhook flow-run retention are both longer than the window's
+  age at gather time, 26 to 27 hours. The defaults (7 days for events, 30 days for
+  flow runs) meet this; a 1-day retention, which the settings accept, does not.
 - Activity counts are best-effort trend signals (event dispatch can drop), not
   billing-grade exact figures; correctness is judged on windowing behavior, not
   against an external ground truth.

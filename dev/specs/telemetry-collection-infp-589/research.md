@@ -122,10 +122,11 @@ half-open `[start, end)`; an exact-boundary event now lands in exactly one windo
 test seeds events at exactly `window_start` — counted — and exactly `window_end` — excluded).
 
 **Rationale**: Logins are events stored in Prefect (ADR 0002); Neo4j has no `last_login`. The
-event name is `infrahub.account.logged_in` (`AccountLoggedInEvent.event_name`). The 24h
-window (≪ 7-day event retention) guarantees no retention leakage when the `occurred` filter
-is applied (SC-002). Counting by resource id is the natural distinct-count primitive without
-pulling every event.
+event name is `infrahub.account.logged_in` (`AccountLoggedInEvent.event_name`). The `occurred`
+filter keeps out events that are still stored but fall outside the window, so there is no
+retention leakage (SC-002). Events are kept for the activity log retention, 7 days by default;
+Decision 4 states when the whole window is still stored at gather time. Counting by resource id
+is the natural distinct-count primitive without pulling every event.
 
 **Alternatives considered**: (a) modify `gather_prefect_events` to add a window — rejected by
 FR-007 (must not change existing output). (b) pull all events and de-dup in Python —
@@ -142,9 +143,15 @@ Query via the Prefect
 client's flow-run read API filtered by flow name and `start_time` in `[window_start, window_end)`.
 
 **Rationale**: Webhook delivery is a flow run, not an InfrahubEvent, so flow-run state is the
-correct signal. Webhook flow-run retention is 30 days by default (≫ 24h), so the window is always fully
-covered. Counts are best-effort trend signals (dispatch can drop), framed against windowing
-correctness, not an external ground truth.
+correct signal. Webhook flow runs are kept for the task history retention, 30 days by default.
+The job runs between 02:00 and 03:00 UTC, when the window started 26 to 27 hours earlier, so the
+window is complete only while the task history and activity log retentions are both longer than
+that. `task_manager.retention.task_history` and `task_manager.retention.activity_log` accept
+1 day, and the Prefect settings that take precedence accept shorter values. With a 1-day
+retention the hourly cleanup has already deleted the runs and events of the first 1 to 3 hours of
+the window, so the counts are lower than the activity and nothing reports it. Counts are
+best-effort trend signals (dispatch can drop), framed against windowing correctness, not an
+external ground truth.
 
 **Alternatives considered**: Deriving from events — rejected: webhook outcome lives in the
 flow-run state, not an event.
