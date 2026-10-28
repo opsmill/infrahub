@@ -1,4 +1,3 @@
-````markdown
 ---
 description: Upgrade backend infrastructure dependencies (Neo4j, Redis, RabbitMQ, PostgreSQL, NATS, Memgraph) and create a GitHub PR
 allowed-tools: mcp__github__*, Bash(curl:*), Bash(gh:*), Read, Edit, Grep, Glob, WebFetch
@@ -47,8 +46,10 @@ Current versions defined in:
 - `python_testcontainers/infrahub_testcontainers/docker-compose-cluster.test.yml`
 - `utilities/db_backup/__main__.py` - `NEO4J_BACKUP_DOCKER_IMAGE`
 - `.github/workflows/version-upgrade.yml`
-- `docs/docs/topics/local-demo-environment.mdx`
-- `docs/docs/guides/installation.mdx` - Helm chart versions
+- `docs/docs/development-resources/local-demo-environment.mdx`
+- `docs/docs/deploy-manage/install-configure/production-deployment/high-availability.mdx` - Helm chart versions
+- `development/deploy.tf` - Neo4j Helm chart versions of the high-availability example
+- `AGENTS.md` - Neo4j version in the tech stack line
 
 ### Redis
 Current versions defined in:
@@ -59,8 +60,8 @@ Current versions defined in:
 - `python_testcontainers/infrahub_testcontainers/docker-compose.test.yml`
 - `python_testcontainers/infrahub_testcontainers/docker-compose-cluster.test.yml`
 - `backend/tests/conftest.py`
-- `docs/docs/topics/local-demo-environment.mdx`
-- `docs/docs/guides/installation.mdx` - Helm chart versions
+- `docs/docs/development-resources/local-demo-environment.mdx`
+- `docs/docs/deploy-manage/install-configure/production-deployment/high-availability.mdx` - Helm chart versions
 
 ### RabbitMQ
 Current versions defined in:
@@ -71,8 +72,8 @@ Current versions defined in:
 - `python_testcontainers/infrahub_testcontainers/docker-compose.test.yml`
 - `python_testcontainers/infrahub_testcontainers/docker-compose-cluster.test.yml`
 - `backend/tests/conftest.py`
-- `docs/docs/topics/local-demo-environment.mdx`
-- `docs/docs/guides/installation.mdx` - Helm chart versions
+- `docs/docs/development-resources/local-demo-environment.mdx`
+- `docs/docs/deploy-manage/install-configure/production-deployment/high-availability.mdx` - Helm chart versions
 
 ### PostgreSQL
 Current versions defined in:
@@ -81,7 +82,7 @@ Current versions defined in:
 - `development/docker-compose-deps-nats.yml`
 - `python_testcontainers/infrahub_testcontainers/docker-compose.test.yml`
 - `python_testcontainers/infrahub_testcontainers/docker-compose-cluster.test.yml`
-- `docs/docs/topics/local-demo-environment.mdx`
+- `docs/docs/development-resources/local-demo-environment.mdx`
 
 ### NATS (Alternative to RabbitMQ/Redis)
 Current versions defined in:
@@ -300,11 +301,17 @@ For each component being upgraded, update ALL relevant files:
 8. `.github/workflows/version-upgrade.yml`:
    - Update `neo4j_image` in matrix
 
-9. `docs/docs/topics/local-demo-environment.mdx`:
+9. `docs/docs/development-resources/local-demo-environment.mdx`:
    - Update the Neo4j version in the components table
 
-10. `docs/docs/guides/installation.mdx`:
+10. `docs/docs/deploy-manage/install-configure/production-deployment/high-availability.mdx`:
     - Update Helm chart versions for Neo4j
+
+11. `development/deploy.tf`:
+    - Update the `neo4j` and `neo4j-headless-service` chart versions
+
+12. `AGENTS.md`:
+    - Update the Neo4j version in the tech stack line
 
 ### Redis Updates
 1. `docker-compose.yml`:
@@ -328,10 +335,10 @@ For each component being upgraded, update ALL relevant files:
 7. `backend/tests/conftest.py`:
    - Update Redis DockerContainer image
 
-8. `docs/docs/topics/local-demo-environment.mdx`:
+8. `docs/docs/development-resources/local-demo-environment.mdx`:
    - Update Redis version in components table
 
-9. `docs/docs/guides/installation.mdx`:
+9. `docs/docs/deploy-manage/install-configure/production-deployment/high-availability.mdx`:
    - Update Helm chart version for Redis
 
 ### RabbitMQ Updates
@@ -356,10 +363,10 @@ For each component being upgraded, update ALL relevant files:
 7. `backend/tests/conftest.py`:
    - Update RabbitMQ DockerContainer image
 
-8. `docs/docs/topics/local-demo-environment.mdx`:
+8. `docs/docs/development-resources/local-demo-environment.mdx`:
    - Update RabbitMQ version in components table
 
-9. `docs/docs/guides/installation.mdx`:
+9. `docs/docs/deploy-manage/install-configure/production-deployment/high-availability.mdx`:
    - Update Helm chart version for RabbitMQ
 
 ### PostgreSQL Updates
@@ -378,7 +385,7 @@ For each component being upgraded, update ALL relevant files:
 5. `python_testcontainers/infrahub_testcontainers/docker-compose-cluster.test.yml`:
    - Update `POSTGRES_DOCKER_IMAGE` default
 
-6. `docs/docs/topics/local-demo-environment.mdx`:
+6. `docs/docs/development-resources/local-demo-environment.mdx`:
    - Update PostgreSQL version in components table
 
 ### NATS Updates (if upgrading)
@@ -509,17 +516,30 @@ This PR upgrades backend infrastructure dependencies.
 - [ ] Documentation
 - [ ] Changelog entry
 
+## Pull Requests in Other Repositories
+- opsmill/infrahub-private: {link} (merge after: {Infrahub release})
+- opsmill/infrahub-helm: {link} (merge after: {Infrahub release})
+
 ## Testing
 - [ ] CI passes all tests
 - [ ] Local docker-compose starts successfully
 - [ ] Integration tests pass
 - [ ] No performance regression when running infrahub-private-tests (scale tests)
 - [ ] Migration and auto-upgrade of persistent containers pass (version-upgrade job succeeds)
-- [ ] Helm chart has been tested with upgraded dependencies
+- [ ] High-availability setup on Kubernetes tested with the new version and the infrahub-helm changes
 - [ ] [Deployment examples](https://docs.infrahub.app/guides/installation#high-availability-deployment-examples) have been updated
 ```
 
-## Step 12: Monitor CI and Report Results
+## Step 12: Open the Pull Requests in infrahub-private and infrahub-helm
+
+`opsmill/infrahub-private` and `opsmill/infrahub-helm` pin the same versions or configure the same
+services. Follow
+[Upgrading infrastructure dependencies](../../dev/guides/backend/upgrading-infrastructure-dependencies.md)
+for what to change in each repository, the branch each pull request targets, and the Infrahub
+release each one waits for before it can merge. List these pull requests in the Infrahub pull
+request description.
+
+## Step 13: Monitor CI and Report Results
 
 After PR creation:
 
@@ -584,4 +604,3 @@ If the upgrade causes issues:
    git push origin --delete {branch-name}
    ```
 3. Document the issues encountered for future reference
-````

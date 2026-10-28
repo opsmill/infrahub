@@ -145,6 +145,7 @@ Each entry says *when* to load it — open the doc before working in that area.
 - `dev/guides/backend/creating-messages.md` - Creating message bus messages
 - `dev/guides/backend/creating-migrations.md` - Choosing a migration base class, `GRAPH_VERSION` bookkeeping, batching, transaction retry, and error handling. Load when adding a graph or schema migration, renumbering one after a rebase, or fixing data a migration got wrong.
 - `dev/guides/backend/creating-permission-checkers.md` - Adding a checker to the GraphQL permission pipeline: category, registration, permission report, denial message, tests. Load when enforcing a permission that object permissions cannot express.
+- `dev/guides/backend/upgrading-infrastructure-dependencies.md` - Upgrading Neo4j, Prefect, Redis, RabbitMQ, PostgreSQL or NATS: the target branch, the pull requests in `infrahub-private` and `infrahub-helm` and when each one can merge, and the tests that CI does not run. Load before starting one of these upgrades.
 
 ### ADRs (Why we decided)
 

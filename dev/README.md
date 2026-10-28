@@ -106,6 +106,7 @@ Backend guides in [guides/backend/](guides/backend/):
 - [creating-events.md](guides/backend/creating-events.md) - How to create new events
 - [creating-async-tasks.md](guides/backend/creating-async-tasks.md) - How to create async tasks
 - [creating-messages.md](guides/backend/creating-messages.md) - How to create message bus messages
+- [upgrading-infrastructure-dependencies.md](guides/backend/upgrading-infrastructure-dependencies.md) - How to upgrade Neo4j, Prefect and the other services, including the pull requests in `infrahub-private` and `infrahub-helm`
 
 ## Current Commands
 
