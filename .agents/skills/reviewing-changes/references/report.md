@@ -37,6 +37,13 @@ cubic: <exit code, n findings | error: <message> | not installed>
 Requirement from: <spec path | ticket or issue link | PR description | the user>
 - <Requirement | Simpler version | Unrequested scope | Rejection>: `file:line` — <finding> (P1/P2; fixed | declined | deferred | asked)
 
+### Architecture and decisions
+- <Layer | ADR | Ask First | Reversal | Failure | Scale>: `file:line` — <finding> (`<doc path:line>`; P1/P2/P3/Ask; fixed | declined | deferred | asked)
+
+| Decision | `file:line` | Alternative the codebase uses | Reason written in |
+|---|---|---|---|
+| <dependency, contract, data model, where the work runs, state, pattern> | <path:line> | <path:line, or "none"> | <spec, plan, ADR, PR description, commit, or "nowhere"> |
+
 ### Design
 - <Queries | Request context | Entity dependencies | Position | Copied files | States | Volume | Reuse | Simplicity>: `file:line` — <finding> (P2/P3; fixed | declined | deferred | asked)
 

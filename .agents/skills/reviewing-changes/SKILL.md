@@ -5,7 +5,7 @@ description: >-
 argument-hint: <empty for the current branch, or a base branch (develop); add `report` to review without fixing; `compare <PR number>` after the PR review>
 compatibility: A Claude Code session started at the repository root, with `origin` fetched. The `gh` CLI finds the PR base and description. The cubic CLI is optional (`curl -fsSL https://cubic.dev/install | bash`, `cubic auth login`, and a seat on OpsMill's subscription).
 metadata:
-  version: 3.5.0
+  version: 3.6.0
   author: OpsMill
 ---
 
@@ -28,7 +28,8 @@ push. It does not repeat other tools:
   subagents the root `AGENTS.md`, and add the matching rules and area `AGENTS.md` after Bash,
   Grep and Glob calls. Read and Write load them natively.
 - **This skill adds** a challenge of the approach against its requirement, the rule check, the
-  design and per-file checks, the checks the diff cannot show, a local cubic run, one verified
+  design and per-file checks, a check of the architecture and the decisions the change makes,
+  the checks the diff cannot show, a local cubic run, one verified
   list of findings, the fixes, each checked by a reviewer that did not write it, and proposed
   changes to the rules, the docs and this skill.
 
@@ -44,6 +45,7 @@ current steps, and a step run from memory misses the checks added since.
 
 | File | Read when |
 |---|---|
+| `references/architecture.md` | Phase 3d starts |
 | `references/fix.md` | Phase 6 starts, unless the run is report-only |
 | `references/improve.md` | Phase 7 starts, and at the end of a compare |
 | `references/report.md` | Phase 8 starts |
@@ -202,6 +204,12 @@ in scope), spawn one reviewer per area (read-only), with `.agents/rules/code-des
   When no input in the test ever produces X, the assertion passes whether or not the code works;
   flag it and name the fixture change that would let it fail.
 
+## Phase 3d — Architecture and decisions
+
+Read `references/architecture.md` and follow it: one reviewer checks the change against the
+architecture articles, the ADRs and the "Ask First" lists, and lists each decision the change
+makes with the alternative the codebase uses and where the reason is written.
+
 ## Phase 4 — What the diff cannot show
 
 - **Specs.** If `specs/` or `dev/specs/` changed, collect the task IDs the diff touches in
@@ -233,10 +241,11 @@ in scope), spawn one reviewer per area (read-only), with `.agents/rules/code-des
    - Exit code 1 with `error` null: cubic found issues; take them.
    - Any other non-zero exit, or an empty result without a clear success: report the exit code
      and stderr. Never present such a run as clean.
-2. **Merge** the bug, challenge, rule, design, per-file, diff-cannot-show and cubic findings, and
-   remove duplicates. Move findings on paths outside the manifest to "Out of scope". A challenge
-   finding that would change the approach, rather than one line, is **Ask**: the approach is the
-   author's decision.
+2. **Merge** the bug, challenge, rule, design, per-file, architecture, diff-cannot-show and cubic
+   findings, and remove duplicates. Move findings on paths outside the manifest to "Out of
+   scope". A challenge or architecture finding that would change the approach, rather than one
+   line, is **Ask**: the approach is the author's decision. Handle the other architecture
+   findings as `references/architecture.md` says at its end.
 3. **Verify each finding** by reading the code at the line and its callers. When the finding
    depends on how a library behaves, read the installed source (`frontend/node_modules/...`,
    `.venv/lib/.../site-packages/...`) before deciding. When it depends on framework behaviour the
