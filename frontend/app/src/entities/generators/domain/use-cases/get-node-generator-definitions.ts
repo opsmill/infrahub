@@ -47,7 +47,7 @@ export const getNodeGeneratorDefinitions: GetNodeGeneratorDefinitions = async ({
     branchName,
     atDate,
   });
-  const countByAlias = new Map<string, unknown>(
+  const countByAlias = new Map(
     typeof countData === "object" && countData !== null ? Object.entries(countData) : []
   );
   const kindCountByGroupId = new Map(

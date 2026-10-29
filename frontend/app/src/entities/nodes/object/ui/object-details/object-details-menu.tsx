@@ -132,11 +132,7 @@ export function ObjectDetailsMenu({
               />
             )}
 
-            <NodeGeneratorsMenuSection
-              nodeId={objectData.id}
-              nodeKind={objectData.__typename}
-              nodeLabel={nodeLabel}
-            />
+            <NodeGeneratorsMenuSection node={objectData} />
 
             <MenuSection title="Manage">
               <MenuItem

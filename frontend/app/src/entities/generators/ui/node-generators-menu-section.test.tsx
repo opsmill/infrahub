@@ -2,6 +2,8 @@ import { Menu } from "@infrahub/ui";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 
+import { store } from "@/shared/stores";
+
 import { AuthContext, type AuthContextType } from "@/entities/authentication/ui/auth-provider";
 import type { BranchListItem } from "@/entities/branches/domain/model/branch";
 import { BranchContext } from "@/entities/branches/ui/branches-provider";
@@ -10,10 +12,12 @@ import { getNodeGeneratorDefinitions } from "@/entities/generators/domain/use-ca
 import { runGenerator } from "@/entities/generators/domain/use-cases/run-generator";
 import { EDIT_DEFAULT_BRANCH } from "@/entities/permission/domain/model/permission";
 import { hasGlobalPermission } from "@/entities/permission/domain/use-cases/has-global-permission";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 import { render } from "../../../../tests/components/render";
 import { initPointerTracking } from "../../../../tests/components/utils";
 import { generateBranch } from "../../../../tests/fake/branch";
+import { generateNodeSchema } from "../../../../tests/fake/schema";
 import { NodeGeneratorsMenuSection } from "./node-generators-menu-section";
 
 vi.mock("@/entities/generators/domain/use-cases/get-node-generator-definitions");
@@ -60,9 +64,7 @@ const renderSection = ({
       <AuthContext value={auth}>
         <Menu aria-label="Node actions">
           <NodeGeneratorsMenuSection
-            nodeId="node-1"
-            nodeKind="NetworkFabric"
-            nodeLabel="Fabric-E"
+            node={{ id: "node-1", __typename: "NetworkFabric", display_label: "Fabric-E" }}
           />
         </Menu>
       </AuthContext>
@@ -72,6 +74,7 @@ const renderSection = ({
 describe("NodeGeneratorsMenuSection", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    store.set(nodeSchemasAtom, [generateNodeSchema({ kind: "NetworkFabric" })]);
   });
 
   describe("running a generator", () => {
