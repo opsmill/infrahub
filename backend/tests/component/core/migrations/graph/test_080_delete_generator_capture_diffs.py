@@ -1,6 +1,7 @@
 from uuid import uuid4
 
 import pytest
+from rich.console import Console
 
 from infrahub import config
 from infrahub.core.branch import Branch
@@ -19,6 +20,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
+from tests.helpers.db_query_failer import FailingQueryInfrahubDatabase
 
 DIFF_VERTEX_LABELS = [
     "DiffRoot",
@@ -137,8 +139,8 @@ CREATE (:DiffRoot {uuid: 'keep-frozen', tracking_id: $prefix + 'frozen', is_froz
 
     migration = Migration080WithFailingRepository()
     counting_db = CountingInfrahubDatabase.from_db(db=db)
-    assert (await migration.validate_migration(db=counting_db)).errors
-    assert counting_db.rows_for("generator_capture_diffs") == 1
+    assert (await migration.validate_migration(db=counting_db)).success
+    assert counting_db.count_for("generator_capture_diffs") == 0
     counting_db.reset_counts()
     result = await migration.execute(migration_input=MigrationInput(db=counting_db))
 
@@ -152,6 +154,30 @@ CREATE (:DiffRoot {uuid: 'keep-frozen', tracking_id: $prefix + 'frozen', is_froz
     assert (await migration.validate_migration(db=db)).errors == []
     assert (await migration.execute(migration_input=MigrationInput(db=counting_db))).errors == []
     assert await diff_vertex_ids(db=db) == kept_vertices
+
+
+async def test_lookup_failure_does_not_block_migration(db: InfrahubDatabase, default_branch: Branch) -> None:
+    await db.execute_query(
+        query="CREATE (:DiffRoot {uuid: 'capture', tracking_id: 'name.selective-regen-capture--lookup'})"
+    )
+    failing_db = FailingQueryInfrahubDatabase.from_db(db=db, failing_query_names={"generator_capture_diffs"})
+    migration = Migration080()
+    console = Console(width=1000, log_time=False, log_path=False)
+
+    with console.capture() as capture:
+        result = await migration.execute(migration_input=MigrationInput(db=failing_db, console=console))
+
+    assert result.success
+    assert [line.rstrip() for line in capture.get().splitlines()] == [
+        "Generator capture diff cleanup encountered 1 error(s).",
+        "Unable to look up the generator capture diffs: Query 'generator_capture_diffs' failed on purpose",
+        "To retry this cleanup, run: infrahub db migrate --migration-number 80",
+    ]
+    assert (await migration.validate_migration(db=failing_db)).success
+    assert await stored_root_uuids(db=db) == {"capture"}
+
+    assert (await migration.execute(migration_input=MigrationInput(db=db))).success
+    assert await stored_root_uuids(db=db) == set()
 
 
 class TestMigration080:
@@ -295,16 +321,23 @@ class TestMigration080:
         monkeypatch.setattr(config.SETTINGS.database, "query_size_limit", 1)
 
         migration = Migration080WithFailingRepository(failing_root_uuid=failing_diff[0])
-        execution_result = await migration.execute(
-            migration_input=MigrationInput(db=CountingInfrahubDatabase.from_db(db=db))
-        )
+        console = Console(width=1000, log_time=False, log_path=False)
+        with console.capture() as capture:
+            execution_result = await migration.execute(
+                migration_input=MigrationInput(db=CountingInfrahubDatabase.from_db(db=db), console=console)
+            )
 
-        assert execution_result.errors == [f"diff with roots {failing_diff}: FAILED"]
+        assert execution_result.success
+        assert [line.rstrip() for line in capture.get().splitlines()[-3:]] == [
+            "Generator capture diff cleanup encountered 1 error(s).",
+            f"diff with roots {failing_diff}: FAILED",
+            "To retry this cleanup, run: infrahub db migrate --migration-number 80",
+        ]
         assert migration.diff_repository is not None
         assert migration.diff_repository.attempted == capture_diffs
         assert await stored_root_uuids(db=db) == set(failing_diff)
         validation_result = await migration.validate_migration(db=db)
-        assert validation_result.errors == [f"Generator capture diff remains with roots {failing_diff}"]
+        assert validation_result.success
 
         assert (await Migration080().execute(migration_input=MigrationInput(db=db))).errors == []
         assert await stored_root_uuids(db=db) == set()

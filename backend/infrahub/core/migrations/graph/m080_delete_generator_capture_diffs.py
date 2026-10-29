@@ -82,7 +82,8 @@ class Migration080(ArbitraryMigration):
     Every merge that ran a generator set to execute after merge stored one diff of the default branch, covering
     every change made on it while the generators ran, and nothing read that diff again. Their name tracking id
     carries a prefix that no other diff uses. Each diff is deleted on its own, since one diff can be large and the
-    delete query already commits a large diff in several transactions.
+    delete query already commits a large diff in several transactions. Cleanup failures are reported for a manual
+    retry without blocking the upgrade, since these diffs are unused.
     """
 
     name: str = "080_delete_generator_capture_diffs"
@@ -126,14 +127,14 @@ class Migration080(ArbitraryMigration):
 
         if errors:
             console.log(f"Generator capture diff cleanup encountered {len(errors)} error(s).")
-        return MigrationResult(errors=errors)
+            for error in errors:
+                console.log(error, markup=False)
+            console.log("To retry this cleanup, run: infrahub db migrate --migration-number 80")
+        return MigrationResult()
 
-    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
-        result = MigrationResult()
-        remaining = await self._get_capture_diffs(db=db, limit=1)
-        if remaining.diffs:
-            result.errors.append(f"Generator capture diff remains with roots {list(remaining.diffs[0])}")
-        return result
+    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
+        # Unused capture diffs can remain after a cleanup failure without preventing an upgrade.
+        return MigrationResult()
 
     async def _get_capture_diffs(
         self, db: InfrahubDatabase, limit: int, after_uuid: str | None = None
