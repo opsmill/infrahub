@@ -1,1 +1,0 @@
-Fixed the `InfrahubEvent` GraphQL query ignoring the branch names, identity providers and protocols set in `event_type_filter` when `primary_node__ids` was also set, which returned events of other branches, identity providers or protocols. The query now returns only the events that match both.
