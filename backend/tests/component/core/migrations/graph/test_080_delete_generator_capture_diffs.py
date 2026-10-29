@@ -2,6 +2,7 @@ from uuid import uuid4
 
 import pytest
 
+from infrahub import config
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.model.path import EnrichedDiffRootMetadata
@@ -89,6 +90,55 @@ CREATE (root)-[:DIFF_HAS_PARTNER]->(partner)
 async def stored_root_uuids(db: InfrahubDatabase) -> set[str]:
     results = await db.execute_query(query="MATCH (root:DiffRoot) RETURN root.uuid AS uuid")
     return {result["uuid"] for result in results}
+
+
+@pytest.mark.parametrize(
+    ("root_count", "nodes_per_root"),
+    [pytest.param(31, 1, id="multiple-read-pages"), pytest.param(1, 3001, id="multiple-delete-transactions")],
+)
+async def test_cleanup_across_batch_boundaries(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    monkeypatch: pytest.MonkeyPatch,
+    root_count: int,
+    nodes_per_root: int,
+) -> None:
+    monkeypatch.setattr(config.SETTINGS.database, "query_size_limit", 10)
+    await db.execute_query(
+        query="""
+UNWIND range(1, $root_count) AS root_index
+CREATE (root:DiffRoot {uuid: 'capture-' + toString(root_index),
+    tracking_id: $prefix + toString(root_index)})
+WITH root
+UNWIND range(1, $nodes_per_root) AS node_index
+CREATE (root)-[:DIFF_HAS_NODE]->(node:DiffNode {uuid: root.uuid + '-' + toString(node_index)})
+CREATE (node)-[:DIFF_HAS_ATTRIBUTE]->(:DiffAttribute {name: 'name'})
+    -[:DIFF_HAS_PROPERTY]->(:DiffProperty {property_type: 'value', new_value: 'updated'})
+        """,
+        params={"root_count": root_count, "nodes_per_root": nodes_per_root, "prefix": "name.selective-regen-capture--"},
+    )
+    await db.execute_query(
+        query="""
+CREATE (:DiffRoot {uuid: 'keep-named', tracking_id: 'name.keep'})
+    -[:DIFF_HAS_NODE]->(:DiffNode {uuid: 'keep-named-node'})
+CREATE (:DiffRoot {uuid: 'keep-frozen', tracking_id: $prefix + 'frozen', is_frozen: true})
+    -[:DIFF_HAS_NODE]->(:DiffNode {uuid: 'keep-frozen-node'})
+        """,
+        params={"prefix": "name.selective-regen-capture--"},
+    )
+    kept_roots = {"keep-named", "keep-frozen"}
+    kept_vertices = await diff_vertex_ids(db=db, of_root_uuids=sorted(kept_roots))
+    assert len(await diff_vertex_ids(db=db)) == root_count * (1 + nodes_per_root * 3) + 4
+
+    migration = Migration080()
+    result = await migration.execute(migration_input=MigrationInput(db=db))
+
+    assert result.errors == []
+    assert await stored_root_uuids(db=db) == kept_roots
+    assert await diff_vertex_ids(db=db) == kept_vertices
+    assert (await migration.validate_migration(db=db)).errors == []
+    assert (await migration.execute(migration_input=MigrationInput(db=db))).errors == []
+    assert await diff_vertex_ids(db=db) == kept_vertices
 
 
 class TestMigration080:
