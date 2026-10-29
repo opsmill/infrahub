@@ -27,7 +27,15 @@ Infrahub refuses to merge a branch when the sync status that a Git repository re
 
 A repository that never imported on the branch shows the status that the default branch had when the branch was created. That status does not block the merge. Inactive repositories are not checked.
 
-A refused merge writes nothing. The branch stays open, the default branch is not modified, and the error message names each repository that blocks the merge.
+For a branch that syncs with Git, Infrahub also reads the remote of each active read-write repository before the merge. It compares the latest commit of the Git branch on the remote with the commit that Infrahub recorded for the repository on the branch. When the branch is at another commit than the default branch in that repository, for example because it changes files of the repository, Infrahub also compares the remote default branch with the commit recorded on the default branch. If you pushed a commit to the Git branch after the last synchronization, the remote has a commit that Infrahub has not recorded, and Infrahub refuses the merge:
+
+```text
+Unable to merge branch <branch>, because Infrahub has not recorded the latest commit of branch <branch> of repository <name> (<commit> on the remote, <commit> in Infrahub). Merge again after Infrahub records the latest commit of that branch.
+```
+
+Infrahub merges the commit that it recorded, not the latest commit on the remote. Without this refusal, the commit you pushed would not be merged into the default branch of the repository. Infrahub starts a synchronization every minute. Merge again after Infrahub records the new commit. To check the recorded commit, hover the repository in the **Repositories** column of the [branches list](../git-integration/branch-synchronization.mdx#checking-git-state-from-the-branches-list). When the commit that Infrahub has not recorded is on the remote default branch while pushes to the repository are pending, follow [what waits while a push is pending](../git-integration/branch-synchronization.mdx#what-waits-while-a-push-is-pending) instead.
+
+A refused merge writes nothing. The branch and its Proposed Change stay open, the default branch is not modified, and the error message names each repository that blocks the merge.
 
 ## During the merge
 

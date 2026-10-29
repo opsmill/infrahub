@@ -725,9 +725,20 @@ class TestMergeProposedChangeHeldByGit(TestInfrahubApp):
     BRANCH_COMMIT = "b" * 40
 
     async def open_proposed_change(
-        self, db: InfrahubDatabase, branch_name: str, repository_name: str, location: str, trunk_commit: str
+        self,
+        db: InfrahubDatabase,
+        branch_name: str,
+        repository_name: str,
+        location: str,
+        trunk_commit: str,
+        records_trunk_commit: bool = False,
     ) -> Node:
-        """Open a proposed change on a branch that changed one repository, as the sync records them."""
+        """Open a proposed change on a branch that changed one repository, as the sync records them.
+
+        Args:
+            records_trunk_commit: Leave the branch on the commit of main, as before the sync imports a commit of it.
+
+        """
         repository = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
         await repository.new(
             db=db,
@@ -740,11 +751,12 @@ class TestMergeProposedChangeHeldByGit(TestInfrahubApp):
         branch = await create_branch(branch_name=branch_name, db=db)
         branch.sync_with_git = True
         await branch.save(db=db)
-        on_branch = await NodeManager.get_one(
-            db=db, id=repository.id, kind=CoreRepository, branch=branch, raise_on_error=True
-        )
-        on_branch.commit.value = self.BRANCH_COMMIT
-        await on_branch.save(db=db)
+        if not records_trunk_commit:
+            on_branch = await NodeManager.get_one(
+                db=db, id=repository.id, kind=CoreRepository, branch=branch, raise_on_error=True
+            )
+            on_branch.commit.value = self.BRANCH_COMMIT
+            await on_branch.save(db=db)
         proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
         await proposed_change.new(
             db=db, name=f"pc-{branch_name}", destination_branch="main", source_branch=branch_name, state="open"
@@ -826,6 +838,45 @@ class TestMergeProposedChangeHeldByGit(TestInfrahubApp):
         assert errors == [
             f"Unable to merge branch {branch_name}, because Infrahub has not recorded the latest commit of branch "
             f"{branch_name} of repository held-repo ({remote_head} on the remote, {self.BRANCH_COMMIT} in Infrahub). "
+            "Merge again after Infrahub records the latest commit of that branch."
+        ]
+        await self.assert_still_open(db=db, proposed_change=proposed_change, branch_name=branch_name)
+
+    async def test_a_new_commit_of_a_branch_that_records_the_trunk_commit_fails_the_merge_with_the_refusal(
+        self,
+        db: InfrahubDatabase,
+        default_permission_backend: None,
+        register_core_models_schema: None,
+        session_admin: AccountSession,
+        client: InfrahubClient,
+        dependency_provider: Provider,
+        tmp_path: Path,
+    ) -> None:
+        """The branch has nothing to merge in the graph, so only its remote head shows the commit that the merge would lose."""
+        branch_name = "held-by-a-new-commit"
+        remote = LocalRemote.create(directory=tmp_path / "remote", trunk="main", branches=[])
+        trunk_commit = str(remote.repo.commit("main"))
+        remote_head = remote.commit(branch_name=branch_name, files={"transform.j2": "{{ data }}\n"})
+        proposed_change = await self.open_proposed_change(
+            db=db,
+            branch_name=branch_name,
+            repository_name="new-commit-repo",
+            location=str(remote.directory),
+            trunk_commit=trunk_commit,
+            records_trunk_commit=True,
+        )
+
+        errors = await self.merge(
+            db=db,
+            client=client,
+            session_admin=session_admin,
+            dependency_provider=dependency_provider,
+            proposed_change=proposed_change,
+        )
+
+        assert errors == [
+            f"Unable to merge branch {branch_name}, because Infrahub has not recorded the latest commit of branch "
+            f"{branch_name} of repository new-commit-repo ({remote_head} on the remote, {trunk_commit} in Infrahub). "
             "Merge again after Infrahub records the latest commit of that branch."
         ]
         await self.assert_still_open(db=db, proposed_change=proposed_change, branch_name=branch_name)
