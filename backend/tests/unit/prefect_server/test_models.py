@@ -16,9 +16,34 @@ class ReadWindowTestCase:
     events_retention: timedelta
     retention_seconds: int | None
     expected: timedelta
+    event_persister_enabled: bool = True
 
 
 READ_WINDOW_TEST_CASES: list[ReadWindowTestCase] = [
+    ReadWindowTestCase(
+        name="event_persister_disabled_keeps_older_events",
+        vacuum_enabled={"events", "flow_runs"},
+        events_retention=timedelta(days=7),
+        retention_seconds=None,
+        expected=timedelta(days=180),
+        event_persister_enabled=False,
+    ),
+    ReadWindowTestCase(
+        name="event_persister_disabled_keeps_longer_retention",
+        vacuum_enabled={"events", "flow_runs"},
+        events_retention=timedelta(days=365),
+        retention_seconds=None,
+        expected=timedelta(days=365),
+        event_persister_enabled=False,
+    ),
+    ReadWindowTestCase(
+        name="request_sets_the_window_with_event_persister_disabled",
+        vacuum_enabled={"events", "flow_runs"},
+        events_retention=timedelta(days=7),
+        retention_seconds=86400,
+        expected=timedelta(days=1),
+        event_persister_enabled=False,
+    ),
     ReadWindowTestCase(
         name="events_deleted",
         vacuum_enabled={"events", "flow_runs"},
@@ -77,6 +102,7 @@ def test_read_window_without_a_start(test_case: ReadWindowTestCase) -> None:
     with temporary_settings(
         updates={
             "server.services.db_vacuum.enabled": test_case.vacuum_enabled,
+            "server.services.event_persister.enabled": test_case.event_persister_enabled,
             "server.events.retention_period": test_case.events_retention,
         }
     ):

@@ -38,13 +38,13 @@ The `task_manager.retention` section of the configuration holds three retention 
 |---|---|---|---|
 | `task_history` | `INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY` | `30d` | Finished task runs, with their logs and artifacts |
 | `activity_log` | `INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG` | `7d` | The events of the [activity log](./activity-log.mdx#retention) |
-| `prefect_own_events` | `INFRAHUB_TASK_MANAGER_RETENTION_PREFECT_OWN_EVENTS` | `7d` | The events that the task manager records for its own use, which the activity log does not show |
+| `prefect_own_events` | `INFRAHUB_TASK_MANAGER_RETENTION_PREFECT_OWN_EVENTS` | `2d` | The events that the task manager records for its own use, which the activity log does not show |
 
 ```toml
 [task_manager.retention]
 task_history = "90d"
 activity_log = "7d"
-prefect_own_events = "7d"
+prefect_own_events = "2d"
 ```
 
 Set the values on the task manager, and on the container of its background services if they run in a container of their own: that container runs the hourly cleanups with its own values, and `infrahub tasks flush flow-runs` uses the values of the task manager. The Docker Compose file passes the three environment variables to the task manager, so you can set them in your `.env` file. [How to configure Infrahub](../install-configure/configure-infrahub.mdx) describes the ways to set environment variables. The values apply when the task manager, or the container of its background services, starts.
@@ -66,9 +66,9 @@ Each value is a number of days, such as `30d`, or an ISO 8601 duration, such as 
 task_history | Value error, Invalid task manager retention: task_history must be at least 1 day (value_error)
 ```
 
-`prefect_own_events` must not be longer than `activity_log`, because the task manager deletes every event older than the activity log retention. A longer value stops the same processes with the error `Invalid task manager retention: prefect_own_events must not be longer than activity_log, so set prefect_own_events to at most the activity_log value`. When you set `activity_log` below 7 days, also set `prefect_own_events` to that value or less, because its default is 7 days.
+`prefect_own_events` must not be longer than `activity_log`, because the task manager deletes every event older than the activity log retention. A longer value stops the same processes with the error `Invalid task manager retention: prefect_own_events must not be longer than activity_log, so set prefect_own_events to at most the activity_log value`. When you set `activity_log` below 2 days, also set `prefect_own_events` to that value or less, because its default is 2 days.
 
-At startup, the task manager logs the value that Prefect applies for each of the Prefect settings below, whatever sets it, in lines that start with `Task manager retention:`. With the default values, the line for `PREFECT_SERVER_SERVICES_DB_VACUUM_EVENT_RETENTION_OVERRIDES` shows `{}`, because `prefect_own_events` equals `activity_log`, so no event type needs a retention of its own.
+At startup, the task manager logs the value that Prefect applies for each of the Prefect settings below, whatever sets it, in lines that start with `Task manager retention:`. With the default values, the line for `PREFECT_SERVER_SERVICES_DB_VACUUM_EVENT_RETENTION_OVERRIDES` shows `P2D for <count> event types`, including heartbeat events. When both event retentions are equal and no Prefect source sets the event retention, it shows `{}`.
 
 The task manager applies these settings through the settings of Prefect, the workflow engine it runs. If one of the following Prefect settings is already set, its value takes precedence, and the task manager logs a warning, such as `PREFECT_EVENTS_RETENTION_PERIOD is set and overrides task_manager.retention.activity_log` for an environment variable, or `PREFECT_SERVER_EVENTS_RETENTION_PERIOD is set in a Prefect settings file or profile and overrides task_manager.retention.activity_log` for a settings file. A setting counts as set when one of these sets it:
 

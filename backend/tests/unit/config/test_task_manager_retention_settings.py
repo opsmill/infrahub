@@ -33,7 +33,7 @@ def test_shipped_defaults() -> None:
 
     assert settings.task_history == timedelta(days=30)
     assert settings.activity_log == timedelta(days=7)
-    assert settings.prefect_own_events == timedelta(days=7)
+    assert settings.prefect_own_events == timedelta(days=2)
 
 
 @dataclass
@@ -126,7 +126,7 @@ OWN_EVENTS_LONGER_THAN_ACTIVITY_LOG_TEST_CASES: list[OwnEventsLongerThanActivity
         retention={"activity_log": "7d", "prefect_own_events": "30d"},
     ),
     OwnEventsLongerThanActivityLogTestCase(
-        name="activity_log_lowered_below_the_own_events_default", retention={"activity_log": "3d"}
+        name="activity_log_lowered_below_the_own_events_default", retention={"activity_log": "1d"}
     ),
     OwnEventsLongerThanActivityLogTestCase(
         name="longer_by_one_second", retention={"activity_log": "P7D", "prefect_own_events": "P7DT1S"}
@@ -208,7 +208,7 @@ TASK_MANAGER_SECTION_TEST_CASES: list[TaskManagerSectionTestCase] = [
         environ={"INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG": "14d"},
         task_history=timedelta(days=30),
         activity_log=timedelta(days=14),
-        prefect_own_events=timedelta(days=7),
+        prefect_own_events=timedelta(days=2),
     ),
     TaskManagerSectionTestCase(
         name="file_only",
@@ -216,7 +216,7 @@ TASK_MANAGER_SECTION_TEST_CASES: list[TaskManagerSectionTestCase] = [
         environ={},
         task_history=timedelta(days=45),
         activity_log=timedelta(days=7),
-        prefect_own_events=timedelta(days=7),
+        prefect_own_events=timedelta(days=2),
     ),
     TaskManagerSectionTestCase(
         name="file_and_environment_for_another_field",
@@ -224,7 +224,7 @@ TASK_MANAGER_SECTION_TEST_CASES: list[TaskManagerSectionTestCase] = [
         environ={"INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG": "14d"},
         task_history=timedelta(days=45),
         activity_log=timedelta(days=14),
-        prefect_own_events=timedelta(days=7),
+        prefect_own_events=timedelta(days=2),
     ),
     TaskManagerSectionTestCase(
         name="file_over_environment_for_the_same_field",
@@ -232,7 +232,7 @@ TASK_MANAGER_SECTION_TEST_CASES: list[TaskManagerSectionTestCase] = [
         environ={"INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY": "60d"},
         task_history=timedelta(days=45),
         activity_log=timedelta(days=7),
-        prefect_own_events=timedelta(days=7),
+        prefect_own_events=timedelta(days=2),
     ),
     TaskManagerSectionTestCase(
         name="json_environment_variable",
@@ -243,7 +243,7 @@ TASK_MANAGER_SECTION_TEST_CASES: list[TaskManagerSectionTestCase] = [
         },
         task_history=timedelta(days=60),
         activity_log=timedelta(days=14),
-        prefect_own_events=timedelta(days=7),
+        prefect_own_events=timedelta(days=2),
     ),
 ]
 
