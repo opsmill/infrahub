@@ -1,15 +1,14 @@
 import { Spinner, Tooltip } from "@infrahub/ui";
 import { ArrowDownToLineIcon, GitBranchIcon, TriangleAlertIcon } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { Focusable } from "react-aria-components";
 
 import { Badge } from "@/shared/components/ui/badge";
 import { LinkTab } from "@/shared/components/ui/link";
+import { classNames } from "@/shared/utils/common";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
-import {
-  READONLY_REPOSITORY_KIND,
-  REPOSITORY_COMMITS_TAB,
-} from "@/entities/repository/domain/model/repository";
+import { REPOSITORY_COMMITS_TAB } from "@/entities/repository/domain/model/repository";
+import { isReadOnlyRepositoryKind } from "@/entities/repository/domain/rules/is-read-only-repository";
 import { useIsRebaseOnly } from "@/entities/repository/ui/hooks/use-is-rebase-only";
 import { useGetRepositoryCommits } from "@/entities/repository/ui/queries/get-repository-commits.query";
 import {
@@ -18,8 +17,6 @@ import {
   getCommitsTabBadge,
   isLoadingFirstPage,
 } from "@/entities/repository/ui/repository-commits.view";
-
-const TOOLTIP_DELAY_MS = 200;
 
 const BADGE_ICONS = {
   "pending-import": ArrowDownToLineIcon,
@@ -39,7 +36,7 @@ export function RepositoryCommitsTab({
   internalStatus,
 }: RepositoryCommitsTabProps) {
   const rebaseOnly = useIsRebaseOnly({ repositoryKind: objectKind, internalStatus });
-  const isReadOnly = objectKind === READONLY_REPOSITORY_KIND;
+  const isReadOnly = isReadOnlyRepositoryKind(objectKind);
   const {
     isPending,
     failureReason,
@@ -53,24 +50,23 @@ export function RepositoryCommitsTab({
   );
   const to = getObjectDetailsUrl(objectKind, objectId, undefined, REPOSITORY_COMMITS_TAB);
 
-  if (isLoadingFirstPage({ isPending, failureReason })) {
-    return (
-      <LinkTabWithTooltip to={to}>
-        Commits
-        <Spinner />
-      </LinkTabWithTooltip>
-    );
-  }
-
   return (
-    <LinkTabWithTooltip
-      to={to}
-      tooltip={badge?.tooltip}
-      ariaLabel={badge ? `Commits, ${badge.summary}` : undefined}
-    >
-      Commits
-      {badge && <CommitsTabBadgeContent badge={badge} />}
-    </LinkTabWithTooltip>
+    <Tooltip message={badge?.tooltip} isDisabled={!badge}>
+      <Focusable>
+        <LinkTab
+          to={to}
+          scrollIntoViewOnActive
+          aria-label={badge ? `Commits, ${badge.summary}` : undefined}
+        >
+          Commits
+          {isLoadingFirstPage({ isPending, failureReason }) ? (
+            <Spinner />
+          ) : (
+            badge && <CommitsTabBadgeContent badge={badge} />
+          )}
+        </LinkTab>
+      </Focusable>
+    </Tooltip>
   );
 }
 
@@ -81,59 +77,13 @@ function CommitsTabBadgeContent({ badge }: { badge: CommitsTabBadge }) {
     <Badge
       variant="warning"
       aria-hidden="true"
-      className="h-5 gap-1 rounded-full py-0 font-medium tabular-nums"
+      className={classNames(
+        "h-5 gap-1 rounded-full py-0 font-medium tabular-nums",
+        badge.kind !== "warning" && "motion-safe:animate-pulse"
+      )}
     >
       <Icon className="size-3 shrink-0" strokeWidth={2.25} />
       {badge.kind !== "warning" && formatCommitsTabCount(badge.count)}
     </Badge>
-  );
-}
-
-interface LinkTabWithTooltipProps {
-  to: string;
-  tooltip?: string;
-  ariaLabel?: string;
-  children: ReactNode;
-}
-
-// Opened by the link's own handlers: a non-interactive tooltip trigger inside a link never receives keyboard focus.
-function LinkTabWithTooltip({ to, tooltip, ariaLabel, children }: LinkTabWithTooltipProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const triggerRef = useRef<HTMLSpanElement>(null);
-  const openTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-
-  useEffect(() => () => clearTimeout(openTimer.current), []);
-
-  const open = (delay: number) => {
-    clearTimeout(openTimer.current);
-    openTimer.current = setTimeout(() => setIsOpen(true), delay);
-  };
-  const close = () => {
-    clearTimeout(openTimer.current);
-    setIsOpen(false);
-  };
-
-  return (
-    <LinkTab
-      to={to}
-      scrollIntoViewOnActive
-      aria-label={ariaLabel}
-      onMouseEnter={() => open(TOOLTIP_DELAY_MS)}
-      onMouseLeave={close}
-      onClick={close}
-      onFocus={(event) => {
-        if (event.currentTarget.matches(":focus-visible")) open(0);
-      }}
-      onBlur={close}
-      onKeyDown={(event) => {
-        if (event.key === "Escape") close();
-      }}
-    >
-      <Tooltip message={tooltip} isOpen={isOpen} onOpenChange={setIsOpen} triggerRef={triggerRef}>
-        <span ref={triggerRef} className="inline-flex items-center gap-2">
-          {children}
-        </span>
-      </Tooltip>
-    </LinkTab>
   );
 }

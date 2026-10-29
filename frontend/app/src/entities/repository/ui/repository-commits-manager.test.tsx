@@ -92,7 +92,6 @@ const tab = ({
         repositoryId="repo-1"
         repositoryKind={repositoryKind}
         repositoryName="infrahub-demo"
-        isReadOnly={repositoryKind === READONLY_REPOSITORY_KIND}
         repositoryInternalStatus={internalStatus}
         repositoryLocation="https://github.com/opsmill/infrahub-demo.git"
         updatePermission={{ isAllowed: true }}

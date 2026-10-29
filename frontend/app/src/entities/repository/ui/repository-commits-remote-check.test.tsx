@@ -79,7 +79,6 @@ const commitLog = ({
         repositoryId={REPOSITORY_ID}
         repositoryKind={isReadOnly ? READONLY_REPOSITORY_KIND : REPOSITORY_KIND}
         repositoryName="infrahub-demo"
-        isReadOnly={isReadOnly}
         repositoryInternalStatus={isStaging ? REPOSITORY_INTERNAL_STATUS_STAGING : "active"}
         repositoryLocation={null}
         updatePermission={updatePermission}

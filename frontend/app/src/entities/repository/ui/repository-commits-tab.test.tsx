@@ -388,7 +388,6 @@ describe("RepositoryCommitsTab", () => {
           repositoryId="repo-1"
           repositoryKind={REPOSITORY_KIND}
           repositoryName="infrahub-demo"
-          isReadOnly={false}
           repositoryInternalStatus="active"
           repositoryLocation="/remote/repo"
           updatePermission={{ isAllowed: true }}

@@ -12,6 +12,7 @@ import {
   REPOSITORY_INTERNAL_STATUS_STAGING,
   RepositoryGitCondition,
 } from "@/entities/repository/domain/model/repository";
+import { isReadOnlyRepositoryKind } from "@/entities/repository/domain/rules/is-read-only-repository";
 import { getRepositoryCommitsColumns } from "@/entities/repository/ui/get-repository-commits-columns";
 import { useIsRebaseOnly } from "@/entities/repository/ui/hooks/use-is-rebase-only";
 import { useGetRepositoryCommits } from "@/entities/repository/ui/queries/get-repository-commits.query";
@@ -31,7 +32,6 @@ export interface RepositoryCommitsManagerProps {
   repositoryId: string;
   repositoryKind: string;
   repositoryName: string;
-  isReadOnly: boolean;
   repositoryInternalStatus: string | null;
   repositoryLocation: string | null;
   updatePermission: PermissionDecision;
@@ -51,7 +51,6 @@ export function RepositoryCommitsManager({
   repositoryId,
   repositoryKind,
   repositoryName,
-  isReadOnly,
   repositoryInternalStatus,
   repositoryLocation,
   updatePermission,
@@ -63,7 +62,7 @@ export function RepositoryCommitsManager({
   const repository: RepositoryCommitsRepository = {
     id: repositoryId,
     name: repositoryName,
-    isReadOnly,
+    isReadOnly: isReadOnlyRepositoryKind(repositoryKind),
     isStaging: repositoryInternalStatus === REPOSITORY_INTERNAL_STATUS_STAGING,
     isActive: repositoryInternalStatus === REPOSITORY_INTERNAL_STATUS_ACTIVE,
     updatePermission,
