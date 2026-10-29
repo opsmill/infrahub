@@ -29,7 +29,7 @@ import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export const SEARCH_FIRST_PAGE_SIZE = 4;
-const SEARCH_MORE_PAGE_SIZE = 10;
+const SEARCH_MORE_PAGE_SIZE = 20;
 
 function useShownResultCount({ searchKey }: { searchKey: string }) {
   const [extraRows, setExtraRows] = React.useState({ searchKey: "", count: 0 });

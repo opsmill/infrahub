@@ -10,6 +10,7 @@ from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import GraphqlParams, prepare_graphql_params
 from infrahub.graphql.queries.search import _collapse_ipv6
@@ -494,11 +495,11 @@ async def test_search_anywhere_case_sensitive_enabled(
     person_luffy_main: Node,
     branch: Branch,
 ) -> None:
-    """With case_sensitive=True, only values written in the same case as the query match."""
+    """With case_sensitive=True, a value matches the query as typed, lowercase, UPPERCASE or Title case only."""
     branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=branch)
 
-    assert await _search_ids(gql_params=gql_params, query="john", case_sensitive=True) == []
+    assert await _search_ids(gql_params=gql_params, query="john", case_sensitive=True) == [person_john_main.id]
     assert await _search_ids(gql_params=gql_params, query="luffy", case_sensitive=True) == []
     assert await _search_ids(gql_params=gql_params, query="John", case_sensitive=True) == [person_john_main.id]
     assert await _search_ids(gql_params=gql_params, query="lUffy", case_sensitive=True) == [person_luffy_main.id]
@@ -538,6 +539,9 @@ async def test_search_anywhere_exact_match(
     person_johnny = await Node.init(db=db, schema="TestPerson", branch=branch)
     await person_johnny.new(db=db, name="Johnny")
     await person_johnny.save(db=db)
+    person_tall = await Node.init(db=db, schema="TestPerson", branch=branch)
+    await person_tall.new(db=db, name="Tall", height=1234)
+    await person_tall.save(db=db)
 
     branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=branch)
@@ -548,16 +552,17 @@ async def test_search_anywhere_exact_match(
     assert await _search_ids(gql_params=gql_params, query="John", partial_match=False, case_sensitive=True) == [
         person_john_main.id
     ]
+    assert await _search_ids(gql_params=gql_params, query="1234", partial_match=False, case_sensitive=True) == [
+        person_tall.id
+    ]
 
 
-@pytest.mark.parametrize("case_sensitive", [False, True])
 async def test_search_anywhere_matches_long_text(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
-    case_sensitive: bool,
 ) -> None:
-    """Values of large attribute kinds such as TextArea are searched in every case mode."""
+    """Values of large attribute kinds such as TextArea are searched by the default search."""
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
     ticket = await Node.init(db=db, schema="TestingTicket", branch=default_branch)
     await ticket.new(db=db, title="Optics", description="Replace the faulty Optic in rack B12")
@@ -566,7 +571,38 @@ async def test_search_anywhere_matches_long_text(
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
-    assert await _search_ids(gql_params=gql_params, query="faulty Optic", case_sensitive=case_sensitive) == [ticket.id]
+    assert await _search_ids(gql_params=gql_params, query="faulty Optic") == [ticket.id]
+
+
+@pytest.mark.parametrize("case_sensitive", [False, True])
+async def test_search_anywhere_at_past_date(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema: SchemaBranch,
+    case_sensitive: bool,
+) -> None:
+    """A search at a past date matches the values as they were then, and skips nodes created since."""
+    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person.new(db=db, name="Brandon")
+    await person.save(db=db)
+    before_rename = Timestamp()
+
+    person.name.value = "Marlon"
+    await person.save(db=db)
+    created_later = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await created_later.new(db=db, name="Brandy")
+    await created_later.save(db=db)
+
+    default_branch.update_schema_hash()
+    gql_params_past = await prepare_graphql_params(db=db, branch=default_branch, at=before_rename)
+    gql_params_now = await prepare_graphql_params(db=db, branch=default_branch)
+
+    assert await _search_ids(gql_params=gql_params_past, query="Brand", case_sensitive=case_sensitive) == [person.id]
+    assert await _search_ids(gql_params=gql_params_past, query="Marlon", case_sensitive=case_sensitive) == []
+    assert await _search_ids(gql_params=gql_params_now, query="Brandy", case_sensitive=case_sensitive) == [
+        created_later.id
+    ]
+    assert await _search_ids(gql_params=gql_params_now, query="Marlon", case_sensitive=case_sensitive) == [person.id]
 
 
 async def _search_ids(

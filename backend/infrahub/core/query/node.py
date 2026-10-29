@@ -2575,15 +2575,33 @@ class NodeGetListByAttributeValueQuery(Query):
         self.params["null_value"] = NULL_VALUE
         self.params["label_attribute_names"] = ["display_label", "name"]
 
-        # Comparing toString() of every value, whatever its attribute kind, keeps long text such as
-        # descriptions searchable in every mode, at the cost of not using the value indexes.
-        if self.case_sensitive:
+        if self.case_sensitive and self.partial_match:
+            # Matching four spellings on indexed values keeps the TEXT index usable, at the cost of long text.
+            value_label = "AttributeValueIndexed"
+            match_predicate = (
+                "(av.value CONTAINS $search_original OR av.value CONTAINS $search_lower "
+                "OR av.value CONTAINS $search_upper OR av.value CONTAINS $search_title)"
+            )
+            self.params["search_original"] = self.search_value
+            self.params["search_lower"] = self.search_value.lower()
+            self.params["search_upper"] = self.search_value.upper()
+            self.params["search_title"] = self.search_value.capitalize()
+            value = "toLower(toString(av.value))"
+            search = "toLower($search_value)"
+        elif self.case_sensitive:
+            # Equality on the raw value lets the RANGE index find the matches directly, at the cost of long text.
+            value_label = "AttributeValueIndexed"
+            match_predicate = "av.value IN $exact_values"
+            self.params["exact_values"] = self._exact_values()
             value = "toString(av.value)"
             search = "$search_value"
         else:
+            # Comparing toString() of every value, whatever its attribute kind, keeps long text searchable.
+            value_label = "AttributeValue"
             value = "toLower(toString(av.value))"
             search = "toLower($search_value)"
-        operator = "CONTAINS" if self.partial_match else "="
+            operator = "CONTAINS" if self.partial_match else "="
+            match_predicate = f"{value} {operator} {search}"
 
         kind_filter = ""
         if self.kinds:
@@ -2594,9 +2612,9 @@ class NodeGetListByAttributeValueQuery(Query):
         // --------------------------
         // start with all possible Node-Attribute-AttributeValue combinations
         // --------------------------
-        MATCH (av:AttributeValue)<-[:HAS_VALUE]-(attr:Attribute)<-[:HAS_ATTRIBUTE]-(n)
+        MATCH (av:%(value_label)s)<-[:HAS_VALUE]-(attr:Attribute)<-[:HAS_ATTRIBUTE]-(n)
         WHERE av.value <> $null_value
-        AND %(value)s %(operator)s %(search)s
+        AND %(match_predicate)s
         %(kind_filter)s
         WITH DISTINCT n, attr, av
         // --------------------------
@@ -2639,14 +2657,24 @@ class NodeGetListByAttributeValueQuery(Query):
         WITH n, max([tier, -match_length]) AS best
         WITH n, best[0] AS tier, -best[1] AS match_length
         """ % {
+            "value_label": value_label,
+            "match_predicate": match_predicate,
             "value": value,
-            "operator": operator,
             "search": search,
             "kind_filter": kind_filter,
             "branch_filter": branch_filter,
         }
 
         self.add_to_query(query)
+
+    def _exact_values(self) -> list[str | int | bool]:
+        """Return the search text and the number or boolean it spells, as stored values keep their type."""
+        values: list[str | int | bool] = [self.search_value]
+        with contextlib.suppress(ValueError):
+            values.append(int(self.search_value))
+        if self.search_value in {"true", "false"}:
+            values.append(self.search_value == "true")
+        return values
 
     def get_data(self) -> Generator[NodeGetListByAttributeValueQueryResult, None, None]:
         """Yield results as typed dataclass instances."""
