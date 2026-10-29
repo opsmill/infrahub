@@ -791,10 +791,10 @@ EDGE_BRANCHES = """WITH *, edge.branch AS edge_branch, edge.from AS edge_from, e
 
 # Reads `node`, `element`, `node_branches`, `deleting_branches` and `branch_windows`: every value or peer the Node has
 # for the element, once each, with the branches that see it, null meaning every branch. An element with a `value`
-# keeps only that value or peer. Neo4j 2025.10 rejects an aggregating COLLECT subquery used as an operand, so each
-# stage projects only the subquery matching its element on its own.
+# keeps only that value or peer.
 ATTRIBUTE_ELEMENT_VALUES = """COLLECT {
             MATCH (node)-[:HAS_ATTRIBUTE]->(element_attr:Attribute { name: element.name })
+            WITH DISTINCT element_attr
             WITH element_attr, COLLECT {
                 MATCH (element_attr)-[hiding:HAS_VALUE]->()
                 WHERE hiding.from <= $at AND (hiding.to IS NULL OR hiding.to > $at)
