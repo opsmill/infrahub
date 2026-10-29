@@ -480,6 +480,7 @@ class TestDiffCoordinator:
             include_unchanged=True,
             previous_node_specifiers=expected_previous_node_specifiers,
             node_kinds=None,
+            node_uuids=None,
         )
         wrapped_diff_coordinator.diff_repo.get_one.assert_not_awaited()
         wrapped_diff_coordinator.diff_repo.save.assert_awaited_once()
@@ -595,6 +596,13 @@ class TestDiffCoordinator:
             to_time=to_time,
             node_kinds=["TestCar"],
         )
+        people_diff = await diff_coordinator.calculate_arbitrary_timeframe_diff(
+            base_branch=default_branch,
+            diff_branch=default_branch,
+            from_time=from_time,
+            to_time=to_time,
+            node_uuids={updated_person.id, deleted_person.id},
+        )
 
         nodes_by_id = {n.uuid: n for n in main_diff.nodes}
         assert {uuid: n.action for uuid, n in nodes_by_id.items()} == {
@@ -610,6 +618,15 @@ class TestDiffCoordinator:
         assert {(n.uuid, n.action) for n in car_diff.nodes} == {
             (updated_car.id, DiffAction.UPDATED),
             (new_person.id, DiffAction.UNCHANGED),
+        }
+        people_by_id = {n.uuid: n for n in people_diff.nodes}
+        assert {uuid: n.action for uuid, n in people_by_id.items()} == {
+            updated_person.id: DiffAction.UPDATED,
+            deleted_person.id: DiffAction.REMOVED,
+        }
+        # the car left out of the diff still shows as a change to the relationship of the person it left
+        assert {(r.name, r.action) for r in people_by_id[updated_person.id].relationships} == {
+            ("cars", DiffAction.UPDATED)
         }
         stored_roots_after = await diff_repository.get_roots_metadata(diff_branch_names=[default_branch.name])
         assert {root.uuid for root in stored_roots_after} == {root.uuid for root in stored_roots_before}
