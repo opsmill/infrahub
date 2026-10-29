@@ -1,6 +1,5 @@
 import { Tooltip } from "@infrahub/ui";
-import type React from "react";
-import { useRef, useState } from "react";
+import React from "react";
 import { Button, DialogTrigger } from "react-aria-components";
 
 import { Row } from "@/shared/components/container";
@@ -25,38 +24,24 @@ export function ObjectDataRow({ value, className, objectKind, fieldSchema }: Obj
   const { schema } = useSchema(objectKind);
   const isRelationship = isRelationshipSchema(fieldSchema);
   const { schema: peerSchema } = useSchema(isRelationship ? fieldSchema.peer : undefined);
-  const labelRef = useRef<HTMLSpanElement>(null);
-  const [isLabelTooltipOpen, setIsLabelTooltipOpen] = useState(false);
+  const { labelRef, tooltipProps } = useTruncationTooltip();
 
   const fieldName = isRelationship
     ? getRelationshipLabel(fieldSchema, peerSchema)
     : (fieldSchema.label ?? fieldSchema.name);
   const defaultTab = isRelationship ? "relationships" : "attributes";
 
-  const onLabelTooltipOpenChange = (isOpen: boolean) => {
-    const label = labelRef.current;
-    setIsLabelTooltipOpen(isOpen && !!label && label.scrollWidth > label.clientWidth);
-  };
-
-  const label = (
-    <span ref={labelRef} className="truncate">
-      {fieldName}
-    </span>
-  );
-
   return (
     <div className={classNames("grid grid-cols-detail-row gap-4 px-3 py-2 text-sm", className)}>
       <dt className="flex h-8 min-w-0 items-center font-medium text-foreground-muted">
         {schema ? (
           <DialogTrigger>
-            <Tooltip
-              message={fieldName}
-              isOpen={isLabelTooltipOpen}
-              onOpenChange={onLabelTooltipOpenChange}
-            >
+            <Tooltip message={fieldName} {...tooltipProps}>
               <Button className="group flex min-w-0 cursor-pointer items-center gap-1.5 data-hovered:text-custom-blue-700">
                 <FieldSchemaIcon fieldSchema={fieldSchema} />
-                {label}
+                <span ref={labelRef} className="truncate">
+                  {fieldName}
+                </span>
                 {/* Kept in the layout while hidden so hovering does not shorten the label. */}
                 <Icon icon="mdi:code-json" className="invisible shrink-0 group-hover:visible" />
               </Button>
@@ -69,13 +54,25 @@ export function ObjectDataRow({ value, className, objectKind, fieldSchema }: Obj
             />
           </DialogTrigger>
         ) : (
-          <Row className="min-w-0 gap-1.5" title={fieldName}>
+          <Row className="min-w-0 gap-1.5">
             <FieldSchemaIcon fieldSchema={fieldSchema} />
-            {label}
+            <span className="truncate">{fieldName}</span>
           </Row>
         )}
       </dt>
       <dd className="flex items-center gap-2 text-foreground">{value}</dd>
     </div>
   );
+}
+
+function useTruncationTooltip() {
+  const labelRef = React.useRef<HTMLSpanElement>(null);
+  const [isOpen, setIsOpen] = React.useState(false);
+
+  const onOpenChange = (open: boolean) => {
+    const label = labelRef.current;
+    setIsOpen(open && !!label && label.scrollWidth > label.clientWidth);
+  };
+
+  return { labelRef, tooltipProps: { isOpen, onOpenChange } };
 }

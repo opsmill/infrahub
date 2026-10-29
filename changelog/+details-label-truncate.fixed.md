@@ -1,1 +1,1 @@
-Fixed long attribute and relationship labels on the object details page wrapping onto several centered lines or overlapping the value. A label that does not fit now ends with an ellipsis, and hovering or focusing it shows the full label in a tooltip.
+Fixed long attribute and relationship labels on the object details and convert views wrapping onto several center-aligned lines or overlapping the value: a long label now ends with an ellipsis, and hovering it or moving to it with the keyboard shows the full label in a tooltip.
