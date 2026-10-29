@@ -39,6 +39,7 @@ from infrahub.core.query.subquery import (
     build_subquery_filter,
     build_subquery_order,
     build_subquery_order_metadata,
+    render_outranks,
     render_window_filter,
 )
 from infrahub.core.query.utils import find_node_schema
@@ -1643,6 +1644,9 @@ class NodeGetByHFIDQuery(Query):
         """
         windows_query, windows_params = build_branch_windows_query(at=self.at, branch_agnostic=True)
         self.params.update(windows_params)
+        edges = ("part_of_edge", "attribute_edge", "value_edge")
+        edges_visible = " AND ".join(render_window_filter(edge=edge) for edge in edges)
+        competing_filter = render_window_filter(edge="r")
 
         return """
         // --------------------------
@@ -1658,64 +1662,28 @@ class NodeGetByHFIDQuery(Query):
         WHERE av.value IN $hfid_values
         MATCH (av)<-[:HAS_VALUE]-(attr:Attribute {name: "human_friendly_id"})<-[:HAS_ATTRIBUTE]-(n:%(node_kind)s)
         WITH DISTINCT n, attr, av, branch_windows
+        MATCH (n)-[part_of_edge:IS_PART_OF]->(:Root), (attr)<-[attribute_edge:HAS_ATTRIBUTE]-(n), (attr)-[value_edge:HAS_VALUE]->(av)
+        WHERE all(edge IN [part_of_edge, attribute_edge, value_edge] WHERE edge.status = "active" AND edge.from <= $windows_at)
         // --------------------------
-        // Keep the branches on which the node is active
+        // The barrier keeps the planner from running the edge checks before the HFID value is matched
         // --------------------------
-        CALL (n, branch_windows) {
-            UNWIND branch_windows AS window
-            CALL (n, window) {
-                MATCH (n)-[r:IS_PART_OF]->(:Root)
-                WHERE %(window_filter)s
-                RETURN r
-                ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-                LIMIT 1
-            }
-            WITH window, r
-            WHERE r.status = "active"
-            RETURN collect(window) AS node_windows
-        }
-        WITH n, attr, av, node_windows
-        WHERE size(node_windows) > 0
+        WITH DISTINCT n, attr, av, part_of_edge, attribute_edge, value_edge, branch_windows
         // --------------------------
-        // Of those, keep the branches on which the attribute is linked to the node
+        // Keep the node if, on one branch, the three edges are visible and no visible edge outranks them
         // --------------------------
-        CALL (n, attr, node_windows) {
-            UNWIND node_windows AS window
-            CALL (n, attr, window) {
-                MATCH (attr)<-[r:HAS_ATTRIBUTE]-(n)
-                WHERE %(window_filter)s
-                RETURN r
-                ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-                LIMIT 1
-            }
-            WITH window, r
-            WHERE r.status = "active"
-            RETURN collect(window) AS attribute_windows
-        }
-        WITH n, attr, av, attribute_windows
-        WHERE size(attribute_windows) > 0
-        // --------------------------
-        // Keep the node if the HFID is the latest value on one of those branches
-        // --------------------------
-        CALL (attr, av, attribute_windows) {
-            UNWIND attribute_windows AS window
-            CALL (attr, window) {
-                MATCH (attr)-[r:HAS_VALUE]->(latest_av:AttributeValue)
-                WHERE %(window_filter)s
-                RETURN r, latest_av
-                ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-                LIMIT 1
-            }
-            WITH av, r, latest_av
-            WHERE r.status = "active" AND latest_av.value = av.value
-            RETURN r AS matching_value_edge
-            LIMIT 1
-        }
+        WHERE any(window IN branch_windows WHERE %(edges_visible)s
+            AND NOT EXISTS { MATCH (n)-[r:IS_PART_OF]->(:Root) WHERE %(competing_filter)s AND %(outranks_part_of)s }
+            AND NOT EXISTS { MATCH (attr)<-[r:HAS_ATTRIBUTE]-(n) WHERE %(competing_filter)s AND %(outranks_attribute)s }
+            AND NOT EXISTS { MATCH (attr)-[r:HAS_VALUE]->() WHERE %(competing_filter)s AND %(outranks_value)s })
         WITH n, av
         """ % {
             "node_kind": self.node_kind,
-            "window_filter": render_window_filter(edge="r"),
             "windows_query": windows_query,
+            "edges_visible": edges_visible,
+            "competing_filter": competing_filter,
+            "outranks_part_of": render_outranks(edge="part_of_edge"),
+            "outranks_attribute": render_outranks(edge="attribute_edge"),
+            "outranks_value": render_outranks(edge="value_edge"),
         }
 
     def _build_branch_query(self) -> str:

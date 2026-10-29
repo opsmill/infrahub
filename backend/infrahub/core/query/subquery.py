@@ -125,7 +125,14 @@ async def build_subquery_filter(
         candidate_predicates.append(f"all(r IN relationships(path) WHERE ({branch_filter}))")
         checks = _render_latest_edge_checks(db=db, path=path, node_alias=node_alias, competing_filter=branch_filter)
 
-    candidate_variables = ", ".join([node_alias, "path", *[str(item.name) for item in path if item.name]])
+    candidate_variables = ", ".join(
+        [
+            node_alias,
+            "path",
+            *[str(item.name) for item in path if item.name],
+            *([branch_windows_variable] if branch_agnostic else []),
+        ]
+    )
     match_str = f"""MATCH path = ({node_alias}:Node {{uuid: {node_alias}.uuid}}){"".join(str(item) for item in path)}
         WHERE {" AND ".join(candidate_predicates)}
         // The barrier keeps the planner from running the edge checks before the selective value predicates
@@ -219,7 +226,7 @@ def _render_latest_edge_checks(
             group = None
 
         competing_where = " AND ".join(
-            item for item in (group, f"({competing_filter})", _render_outranks(edge=str(rel.name))) if item
+            item for item in (group, f"({competing_filter})", render_outranks(edge=str(rel.name))) if item
         )
         checks.append(f'{rel.name}.status = "active"')
         checks.append(f"NOT EXISTS {{ MATCH {competing} WHERE {competing_where} }}")
@@ -235,11 +242,12 @@ def _render_hierarchy_checks(db: InfrahubDatabase, segment: str, competing_filte
         f"MATCH (hierarchy_relationship:Relationship)-[r:IS_RELATED]-(competitor:Node) "
         f"WHERE {id_function}(hierarchy_relationship) = {id_function}({relationship_end}) "
         f"AND competitor.uuid = ({node_end}).uuid "
-        f"AND ({competing_filter}) AND {_render_outranks(edge='h')} }})"
+        f"AND ({competing_filter}) AND {render_outranks(edge='h')} }})"
     )
 
 
-def _render_outranks(edge: str) -> str:
+def render_outranks(edge: str) -> str:
+    """Render whether the edge `r` would be ranked before `edge`: a higher branch level, or the same level and a later start."""
     return f"(r.branch_level > {edge}.branch_level OR (r.branch_level = {edge}.branch_level AND r.from > {edge}.from))"
 
 
