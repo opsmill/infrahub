@@ -300,6 +300,23 @@ async def test_json_schema_kind_default_branch(
     assert "prefix" in schema["properties"]["member_type"]["enum"]
 
 
+async def test_json_schema_kind_with_list_attribute(
+    db: InfrahubDatabase,
+    client: TestClient,
+    client_headers: dict[str, str],
+    default_branch: Branch,
+    car_person_schema_generics: SchemaRoot,
+    car_person_data_generic: dict[str, Node],
+) -> None:
+    with client:
+        response = client.get(f"/api/schema/json_schema/{InfrahubKind.GRAPHQLQUERY}", headers=client_headers)
+
+    assert response.status_code == 200
+    operations = response.json()["properties"]["operations"]
+    assert operations["type"] == "array"
+    assert operations["items"] == {}
+
+
 async def test_schema_kind_not_valid(
     db: InfrahubDatabase,
     client: TestClient,
