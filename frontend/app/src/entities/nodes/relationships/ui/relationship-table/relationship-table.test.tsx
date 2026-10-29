@@ -1,3 +1,4 @@
+import type React from "react";
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { store } from "@/shared/stores";
@@ -92,13 +93,14 @@ const seedColumnsInUrl = ({ hidden, shown }: { hidden?: string; shown?: string }
   window.history.replaceState(null, "", `${window.location.pathname}?${search}`);
 };
 
-const renderRelationshipTable = () =>
+const renderRelationshipTable = (actions?: React.ReactNode) =>
   render(
     <RelationshipTable
       relationshipSchema={peerSchema}
       parentId="device-1"
       parentKind={PARENT_KIND}
       relationshipName={RELATIONSHIP_NAME}
+      actions={actions}
     />
   );
 
@@ -186,5 +188,33 @@ describe("RelationshipTable columns", () => {
     await expect
       .element(component.getByRole("menuitem", { name: "Internal note" }))
       .not.toBeInTheDocument();
+  });
+
+  test("shows the host's actions alongside the Columns control", async () => {
+    // GIVEN a host that passes its own action
+    const component = await renderRelationshipTable(<button type="button">Add Interfaces</button>);
+
+    // THEN both the action and the Columns control render
+    await expect.element(component.getByRole("button", { name: "Add Interfaces" })).toBeVisible();
+    await expect.element(component.getByRole("button", { name: "Columns" })).toBeVisible();
+  });
+
+  test("keeps the host's actions when the relationship fetch fails", async () => {
+    // GIVEN a relationship fetch that fails
+    vi.mocked(useObjectRelationships).mockReturnValue({
+      data: undefined,
+      fetchNextPage: vi.fn(),
+      error: new Error("Cannot load interfaces"),
+      hasNextPage: false,
+      isPending: false,
+      isFetchingNextPage: false,
+    } as unknown as ReturnType<typeof useObjectRelationships>);
+
+    // WHEN the relationship tab renders with a host action
+    const component = await renderRelationshipTable(<button type="button">Add Interfaces</button>);
+
+    // THEN the error shows and the action stays available above it
+    await expect.element(component.getByText("Cannot load interfaces")).toBeVisible();
+    await expect.element(component.getByRole("button", { name: "Add Interfaces" })).toBeVisible();
   });
 });
