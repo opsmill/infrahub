@@ -18,21 +18,23 @@ export interface NumberPoolData extends NodeCore {
   node: NodeAttribute<string>;
   node_attribute: NodeAttribute<string>;
   allocation_scope: NodeAttribute<string[]>;
-  ranges: Array<{ start: number; end: number; allocation_weight: number | null }>;
+  ranges: Array<{ start: number | null; end: number | null; allocation_weight: number | null }>;
 }
 
 export interface NumberPoolUsage {
-  size: number;
+  // null when the numbers run up to the largest one the server supports
+  size: number | null;
   used: number;
   usedDefaultBranch: number;
   usedBranches: number;
-  utilization: number;
+  utilization: number | null;
 }
 
 export interface NumberPoolRange extends NodeCore {
   __typename: typeof NUMBER_POOL_RANGE_KIND;
+  display_label: string;
   start: NodeAttribute<number>;
-  end: NodeAttribute<number>;
+  end: NodeAttribute<number | null>;
   allocation_weight: NodeAttribute<number>;
   usage: NumberPoolUsage;
 }

@@ -68,10 +68,12 @@ def division_peer_ids(scope: PoolScopeFields, results: Sequence[NumberPoolDivisi
 def build_division_usages(
     scope: PoolScopeFields,
     results: Sequence[NumberPoolDivisionResult],
-    size: int,
+    size: int | None,
     peers: dict[str, PeerSummary],
 ) -> tuple[DivisionUsage, ...]:
     """Return each division with one entry per scope element, ordered by utilization descending, then display label.
+
+    Divisions without a utilization come last, ordered by numbers in use descending, then display label.
 
     A relationship entry is labeled with its peer's display label, or with the peer id when `peers` lacks the peer.
     """
@@ -90,7 +92,14 @@ def build_division_usages(
                 ),
             )
         )
-    divisions.sort(key=lambda item: (-item.figures.utilization, item.display_label))
+    divisions.sort(
+        key=lambda item: (
+            item.figures.utilization is None,
+            -(item.figures.utilization or 0.0),
+            -item.figures.used,
+            item.display_label,
+        )
+    )
     return tuple(divisions)
 
 

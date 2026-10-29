@@ -36,6 +36,7 @@ export const generateNumberPoolUsage = (overrides?: Partial<NumberPoolUsage>): N
 export const generateNumberPoolRange = (overrides?: Partial<NumberPoolRange>): NumberPoolRange => ({
   id: "c03b91de-0000-4000-8000-0000000000a1",
   __typename: "CoreNumberPoolRange",
+  display_label: "1 - 50",
   start: { value: 1 },
   end: { value: 50 },
   allocation_weight: { value: 10 },
@@ -51,6 +52,7 @@ export const generateNumberPoolUtilization = (
     generateNumberPoolRange(),
     generateNumberPoolRange({
       id: "c03b91de-0000-4000-8000-0000000000a2",
+      display_label: "51 - 100",
       start: { value: 51 },
       end: { value: 100 },
       allocation_weight: { value: 0 },

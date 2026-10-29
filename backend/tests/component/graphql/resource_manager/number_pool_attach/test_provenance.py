@@ -108,7 +108,8 @@ class TestProvenanceAcrossBranches:
         assert await open_is_reserved_edges(db=db, pool=first_pool) == set()
         assert await open_is_reserved_edges(db=db, pool=second_pool) == {(ticket["id"], ())}
         assert await allocated_rows(db=db, branch=main_branch, pool=second_pool) == [
-            (ticket["id"], "main", 2200, "provided")
+            (ticket["id"], "main", 2200, "provided"),
+            (ticket["id"], branch.name, 2200, "provided"),
         ], "the number the first pool allocated is one the second pool only tracks"
         records = await is_reserved_edges(db=db, node_id=ticket["id"])
         assert sorted((record.status, record.is_open) for record in records) == [("active", False), ("active", True)]
@@ -129,7 +130,11 @@ class TestProvenanceAcrossBranches:
             ("active", True),
         ], "extending the list closes the record and creates another"
         assert await allocated_rows(db=db, branch=main_branch, pool=second_pool) == sorted(
-            [(ticket["id"], "main", 2200, "provided"), (ticket["id"], other.name, 2201, "allocated")]
+            [
+                (ticket["id"], "main", 2200, "provided"),
+                (ticket["id"], branch.name, 2200, "provided"),
+                (ticket["id"], other.name, 2201, "allocated"),
+            ]
         )
 
     async def test_restating_an_inherited_allocation_on_a_branch_keeps_it_allocated(
@@ -148,7 +153,10 @@ class TestProvenanceAcrossBranches:
         )
 
         assert await attribute_edges(db=db, node_id=ticket["id"], attribute_name="ticket_id") == before
-        assert await allocated_rows(db=db, branch=main_branch, pool=pool) == [(ticket["id"], "main", 2300, "allocated")]
+        assert await allocated_rows(db=db, branch=main_branch, pool=pool) == [
+            (ticket["id"], "main", 2300, "allocated"),
+            (ticket["id"], branch.name, 2300, "allocated"),
+        ]
 
     async def test_a_number_set_back_by_hand_to_the_one_the_pool_allocated_reads_as_allocated(
         self, db: InfrahubDatabase, main_branch: Branch

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import re
+from contextlib import nullcontext as does_not_raise
 from dataclasses import dataclass
 
 import pytest
@@ -290,3 +291,117 @@ def test_a_name_that_holds_the_same_field_on_both_branches_is_accepted() -> None
     )
 
     schema_branch.validate_attribute_parameters(default_branch_schema=default_branch_schema)
+
+
+def _default_branch_schema_with_pool_scoped_by_site() -> SchemaBranch:
+    device = _device_with_site_id(site_id="main-site", scope=["site"])
+    pooled = device.get_attribute(name="vlan_id")
+    assert isinstance(pooled.parameters, NumberPoolParameters)
+    pooled.parameters.number_pool_id = EXISTING_POOL_ID
+    return _default_branch_schema(schema=_schema(device=device))
+
+
+@dataclass(frozen=True)
+class BranchKindCase:
+    name: str
+    site_id: str
+    scope: list[str] | None
+
+
+KIND_WITH_OTHER_FIELDS_CASES = [
+    BranchKindCase(name="scope-left-out", site_id="branch-site", scope=None),
+    BranchKindCase(name="empty-scope", site_id="branch-site", scope=[]),
+    BranchKindCase(name="other-scope", site_id="branch-site", scope=["role"]),
+    BranchKindCase(name="same-scope", site_id="branch-site", scope=["site"]),
+]
+
+
+@pytest.mark.parametrize("case", KIND_WITH_OTHER_FIELDS_CASES, ids=lambda case: case.name)
+def test_branch_kind_holding_another_field_than_the_default_branch_pool_is_scoped_by_is_refused(
+    case: BranchKindCase,
+) -> None:
+    schema_branch = _unvalidated_schema_branch(
+        name="branch1", schema=_schema(device=_device_with_site_id(site_id=case.site_id, scope=case.scope))
+    )
+
+    with pytest.raises(
+        ValidationError,
+        match=exact_message(
+            'ScopeDevice.vlan_id: allocation_scope: "site" is a different field on branch branch1 than on the default'
+            " branch main, where the pool of the attribute is scoped by it; declare the attribute once the field is"
+            " the same on both branches"
+        ),
+    ):
+        schema_branch.validate_attribute_parameters(
+            default_branch_schema=_default_branch_schema_with_pool_scoped_by_site()
+        )
+
+
+def test_branch_kind_missing_the_field_the_default_branch_pool_is_scoped_by_is_refused() -> None:
+    device = _with_pooled_vlan_id(SCOPED_DEVICE, scope=None)
+    device.relationships = [relationship for relationship in device.relationships if relationship.name != "site"]
+    schema_branch = _unvalidated_schema_branch(name="branch1", schema=_schema(device=device))
+
+    with pytest.raises(
+        ValidationError,
+        match=exact_message(
+            'ScopeDevice.vlan_id: allocation_scope: "site" is not a field of ScopeDevice on branch branch1, while the'
+            " pool of the attribute is scoped by it on the default branch main; declare the attribute once the field"
+            " is the same on both branches"
+        ),
+    ):
+        schema_branch.validate_attribute_parameters(
+            default_branch_schema=_default_branch_schema_with_pool_scoped_by_site()
+        )
+
+
+KIND_WITH_THE_SAME_FIELDS_CASES = [
+    BranchKindCase(name="scope-left-out", site_id="main-site", scope=None),
+    BranchKindCase(name="same-scope", site_id="main-site", scope=["site"]),
+]
+
+
+@pytest.mark.parametrize("case", KIND_WITH_THE_SAME_FIELDS_CASES, ids=lambda case: case.name)
+def test_branch_kind_holding_the_field_the_default_branch_pool_is_scoped_by_is_accepted(case: BranchKindCase) -> None:
+    schema_branch = _unvalidated_schema_branch(
+        name="branch1", schema=_schema(device=_device_with_site_id(site_id=case.site_id, scope=case.scope))
+    )
+
+    with does_not_raise():
+        schema_branch.validate_attribute_parameters(
+            default_branch_schema=_default_branch_schema_with_pool_scoped_by_site()
+        )
+
+
+def test_branch_generic_holding_another_field_than_the_default_branch_pool_is_scoped_by_is_refused() -> None:
+    default_holder = _with_pooled_vlan_id(SCOPED_HOLDER, scope=["site"], number_pool_id=EXISTING_POOL_ID)
+    default_holder.get_relationship(name="site").id = "main-site"
+    default_branch_schema = _default_branch_schema(schema=_schema(holder=default_holder))
+    branch_holder = _with_pooled_vlan_id(SCOPED_HOLDER, scope=None)
+    branch_holder.get_relationship(name="site").id = "branch-site"
+    schema_branch = _unvalidated_schema_branch(name="branch1", schema=_schema(holder=branch_holder))
+
+    with pytest.raises(
+        ValidationError,
+        match=exact_message(
+            'ScopeHolder.vlan_id: allocation_scope: "site" is a different field on branch branch1 than on the default'
+            " branch main, where the pool of the attribute is scoped by it; declare the attribute once the field is"
+            " the same on both branches"
+        ),
+    ):
+        schema_branch.validate_attribute_parameters(default_branch_schema=default_branch_schema)
+
+
+def test_branch_kind_holding_a_scope_field_the_default_branch_renamed_is_accepted() -> None:
+    default_device = _device_with_site_id(site_id="main-site", scope=["location"])
+    default_device.get_relationship(name="site").name = "location"
+    pooled = default_device.get_attribute(name="vlan_id")
+    assert isinstance(pooled.parameters, NumberPoolParameters)
+    pooled.parameters.number_pool_id = EXISTING_POOL_ID
+    default_branch_schema = _default_branch_schema(schema=_schema(device=default_device))
+    schema_branch = _unvalidated_schema_branch(
+        name="branch1", schema=_schema(device=_device_with_site_id(site_id="main-site", scope=None))
+    )
+
+    with does_not_raise():
+        schema_branch.validate_attribute_parameters(default_branch_schema=default_branch_schema)

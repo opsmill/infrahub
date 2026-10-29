@@ -22,7 +22,9 @@ class UsedNumber:
     branch: str
 
 
-def _percentage(count: int, size: int) -> float:
+def _percentage(count: int, size: int | None) -> float | None:
+    if size is None:
+        return None
     if size <= 0:
         return 0.0
     return (count / size) * 100
@@ -30,9 +32,12 @@ def _percentage(count: int, size: int) -> float:
 
 @dataclass(frozen=True)
 class UtilizationFigures:
-    """Counts of numbers in use within a space of `size` numbers, on the default branch and on other branches only."""
+    """Counts of numbers in use within a space of `size` numbers, on the default branch and on other branches only.
 
-    size: int
+    `size` and the percentages are None when the space runs up to the largest supported number.
+    """
+
+    size: int | None
     used_default_branch: int
     used_branches: int
 
@@ -41,15 +46,15 @@ class UtilizationFigures:
         return self.used_default_branch + self.used_branches
 
     @property
-    def utilization(self) -> float:
+    def utilization(self) -> float | None:
         return _percentage(self.used_default_branch + self.used_branches, self.size)
 
     @property
-    def utilization_default_branch(self) -> float:
+    def utilization_default_branch(self) -> float | None:
         return _percentage(self.used_default_branch, self.size)
 
     @property
-    def utilization_branches(self) -> float:
+    def utilization_branches(self) -> float | None:
         return _percentage(self.used_branches, self.size)
 
 
@@ -106,6 +111,7 @@ class NumberUtilizationGetter:
                 ranges=space.as_query_ranges(),
                 branch=self.branch,
                 division=division,
+                include_inherited_branches=False,
             )
             await query.execute(db=self.db)
             used = [UsedNumber(number=item.value, branch=item.branch) for item in query.get_data()]

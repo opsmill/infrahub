@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.pools.number_pool_usage import PoolUsage, RangeUsage
+from infrahub.pools.number_ranges import OPEN_END
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -55,7 +56,7 @@ class NumberPoolUtilizationReader:
                     id=item.get_id(),
                     display_label=state.range_labels[item.get_id()],
                     start=bounds[item.get_id()][0],
-                    end=bounds[item.get_id()][1],
+                    end=None if bounds[item.get_id()][1] == OPEN_END else bounds[item.get_id()][1],
                     weight=item.allocation_weight.value or 0,
                     figures=utilization.range_figures(range_id=item.get_id()),
                 )

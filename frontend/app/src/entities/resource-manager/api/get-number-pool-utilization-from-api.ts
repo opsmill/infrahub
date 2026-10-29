@@ -15,6 +15,7 @@ const GET_NUMBER_POOL_UTILIZATION = graphql(`
       }
       ranges {
         id
+        display_label
         start
         end
         weight

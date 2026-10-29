@@ -1,0 +1,1 @@
+Fixed repository sync ignoring added, changed or removed `targets` on an existing check definition in `.infrahub.yml`, and made the sync fail with an import error when the target group does not exist.

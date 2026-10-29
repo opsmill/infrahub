@@ -107,7 +107,7 @@ describe("NumberPoolAllocationsTable", () => {
     // THEN
     await expect
       .element(component.getByRole("row", { name: /^7/ }))
-      .toHaveTextContent("7ethernet1InfraInterfacemain1 – 50Allocated");
+      .toHaveTextContent("7ethernet1InfraInterfacemain1 - 50Allocated");
   });
 
   it("hides the Range column when one range is selected", async () => {
@@ -259,7 +259,7 @@ describe("NumberPoolAllocationsTable", () => {
     const component = await renderTable({ selectedRange: firstRange });
 
     // THEN
-    await expect.element(component.getByText("No allocations in 1 – 50")).toBeVisible();
+    await expect.element(component.getByText("No allocations in 1 - 50")).toBeVisible();
   });
 
   it("says when no allocated number matches the filters", async () => {

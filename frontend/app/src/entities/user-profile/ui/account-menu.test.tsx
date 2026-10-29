@@ -26,7 +26,6 @@ const config = { installation_type: "community" } as any;
 
 describe("AccountMenu", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     // The theme persists to storage and to the document element, both of which outlive a render.
     localStorage.clear();
     document.documentElement.classList.remove("dark");
@@ -106,14 +105,14 @@ describe("AccountMenu", () => {
     await themeItem.click();
 
     // THEN
-    await expect.element(themeItem).toHaveTextContent("Dark");
+    await expect.element(themeItem).toMatchTextContent("Dark");
     const dark = component.getByRole("menuitemradio", { name: "Dark", exact: true });
     await expect.element(dark).toHaveAttribute("aria-checked", "true");
-    await expect.element(dark).toHaveTextContent("alpha");
+    await expect.element(dark).toMatchTextContent("alpha");
     for (const name of ["Light", "System"]) {
       const option = component.getByRole("menuitemradio", { name, exact: true });
       await expect.element(option).toHaveAttribute("aria-checked", "false");
-      await expect.element(option).not.toHaveTextContent("alpha");
+      await expect.element(option).not.toMatchTextContent("alpha");
     }
   });
 

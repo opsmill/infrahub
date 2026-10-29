@@ -147,7 +147,7 @@ describe("NumberPoolAllocationScopeSelect", () => {
     await expect.element(addButton(component)).toBeVisible();
     await expect
       .element(component.getByRole("grid", { name: "Scoped by" }))
-      .toHaveTextContent("Name");
+      .toMatchTextContent("Name");
   });
 
   test("keeps the list open so several fields can be picked in a row", async () => {
@@ -162,8 +162,8 @@ describe("NumberPoolAllocationScopeSelect", () => {
 
     // THEN
     const allocationScope = component.getByRole("grid", { name: "Scoped by" });
-    await expect.element(allocationScope).toHaveTextContent("Name");
-    await expect.element(allocationScope).toHaveTextContent("Device");
+    await expect.element(allocationScope).toMatchTextContent("Name");
+    await expect.element(allocationScope).toMatchTextContent("Device");
   });
 
   test("goes from a picked field straight to the add button, skipping its remove button", async () => {

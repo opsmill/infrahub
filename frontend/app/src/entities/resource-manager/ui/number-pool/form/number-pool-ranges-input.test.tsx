@@ -8,10 +8,9 @@ import {
   validateRangeBound,
   validateRangeOrder,
   validateRangeOverlap,
-  validateRangeWeight,
 } from "./number-pool-ranges-input";
 
-const row = (start: number, end: number): NumberPoolRangeRow => ({
+const row = (start: number | null, end: number | null): NumberPoolRangeRow => ({
   start,
   end,
   allocation_weight: null,
@@ -41,6 +40,33 @@ describe("NumberPoolRangesInput", () => {
     await expect
       .element(component.getByRole("spinbutton", { name: "Weight of range 1" }))
       .toHaveAttribute("placeholder", "0");
+  });
+
+  test("shows MIN and MAX in a start and an end left empty", async () => {
+    // WHEN
+    const component = await render(<RangesHarness initialRows={[row(null, null)]} />);
+
+    // THEN
+    await expect
+      .element(component.getByRole("spinbutton", { name: "Start of range 1" }))
+      .toHaveAttribute("placeholder", "MIN");
+    await expect
+      .element(component.getByRole("spinbutton", { name: "End of range 1" }))
+      .toHaveAttribute("placeholder", "MAX");
+  });
+
+  test("accepts a range whose end is cleared", async () => {
+    // GIVEN
+    const component = await render(<RangesHarness initialRows={[row(100, 199)]} />);
+
+    // WHEN
+    await component.getByRole("spinbutton", { name: "End of range 1" }).clear();
+    await component.getByRole("button", { name: "Submit" }).click();
+
+    // THEN
+    await expect
+      .element(component.getByRole("spinbutton", { name: "End of range 1" }))
+      .toHaveAttribute("aria-invalid", "false");
   });
 
   test("adds an empty row", async () => {
@@ -152,8 +178,15 @@ describe("validateRangeBound", () => {
     expect(result).toBe(true);
   });
 
+  test("allows a range with no start or no end", () => {
+    // WHEN
+    const result = validateRangeBound(null);
+
+    // THEN
+    expect(result).toBe(true);
+  });
+
   test.each([
-    [Number.NaN, "Required"],
     [1.5, "Whole number"],
     [-4, "Whole number"],
     [9_007_199_254_740_992, "Too large"],
@@ -163,24 +196,6 @@ describe("validateRangeBound", () => {
 
     // THEN
     expect(result).toBe(message);
-  });
-});
-
-describe("validateRangeWeight", () => {
-  test("accepts an empty weight, which means the range has none", () => {
-    // WHEN
-    const result = validateRangeWeight(null);
-
-    // THEN
-    expect(result).toBe(true);
-  });
-
-  test("refuses a weight that is not a whole number", () => {
-    // WHEN
-    const result = validateRangeWeight(1.5);
-
-    // THEN
-    expect(result).toBe("Whole number");
   });
 });
 
@@ -204,9 +219,25 @@ describe("validateRangeOverlap", () => {
     expect(result).toBe("Overlaps 5 – 10, 90 – 120");
   });
 
-  test("ignores rows that are not complete yet", () => {
+  test("treats an empty end as reaching the largest number", () => {
     // WHEN
-    const result = validateRangeOverlap([row(100, 199), row(150, Number.NaN)], 0);
+    const result = validateRangeOverlap([row(100, 199), row(150, null)], 0);
+
+    // THEN
+    expect(result).toBe("Overlaps 150 – MAX");
+  });
+
+  test("treats an empty start as starting at 1", () => {
+    // WHEN
+    const result = validateRangeOverlap([row(null, 10), row(1, 5)], 1);
+
+    // THEN
+    expect(result).toBe("Overlaps 1 – 10");
+  });
+
+  test("allows a range without an end above the other ranges", () => {
+    // WHEN
+    const result = validateRangeOverlap([row(null, 99), row(100, null)], 0);
 
     // THEN
     expect(result).toBe(true);
@@ -233,6 +264,26 @@ describe("validateRangeOrder", () => {
   test("refuses a range whose end is below its start", () => {
     // WHEN
     const result = validateRangeOrder([row(200, 100)], 0);
+
+    // THEN
+    expect(result).toBe("End is below start");
+  });
+
+  test.each([
+    [null, 100],
+    [100, null],
+    [null, null],
+  ])("accepts a range from %s to %s", (start, end) => {
+    // WHEN
+    const result = validateRangeOrder([row(start, end)], 0);
+
+    // THEN
+    expect(result).toBe(true);
+  });
+
+  test("refuses a range with an empty start whose end is 0", () => {
+    // WHEN
+    const result = validateRangeOrder([row(null, 0)], 0);
 
     // THEN
     expect(result).toBe("End is below start");

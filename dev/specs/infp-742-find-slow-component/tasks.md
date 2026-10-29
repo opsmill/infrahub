@@ -272,12 +272,12 @@ traced; the default applies after 2 minutes (quickstart, manual check 8).
 
 ### SDK change (IFC-3420), in `python_sdk/` on branch `dp-20261015-trace-sample-ratio-command-ifc-3420`
 
-- [ ] T079 [US6] In `python_sdk/`, create the branch `dp-20261015-trace-sample-ratio-command-ifc-3420` from `dp-20261015-trace-context-ifc-3419` (stacked; plan, delivery order step 7)
-- [ ] T080 [P] [US6] Write unit tests in `python_sdk/tests/unit/ctl/test_troubleshooting_app.py`: the get, set and clear commands call `GET`, `PUT` (with `ratio` and `duration_seconds`) and `DELETE` on `/api/troubleshooting/trace-sample-ratio`; the error "Tracing is not enabled on this instance; set `INFRAHUB_TRACE_ENABLE`" is printed unchanged (FR-031); a ratio outside 0 to 1 or a duration outside 1 to 86400 is rejected
-- [ ] T081 [US6] Create `python_sdk/infrahub_sdk/ctl/troubleshooting.py` with an `AsyncTyper` app and the commands of T080, following `python_sdk/infrahub_sdk/ctl/AGENTS.md` (`catch_exception`, `CONFIG_PARAM`, `initialize_client`, Rich output), and register it in `python_sdk/infrahub_sdk/ctl/cli_commands.py` as `troubleshooting`; propose the final command names to Daniel before T083
-- [ ] T082 [US6] In `python_sdk/`, run `uv run invoke docs-generate` and add a changelog fragment in `python_sdk/changelog/`
-- [ ] T083 [US6] In `python_sdk/`, run `uv run invoke format lint-code` and `uv run pytest tests/unit/`, then commit on `dp-20261015-trace-sample-ratio-command-ifc-3420` with a conventional message ending in `[IFC-3420]`
-- [ ] T084 [US6] Ask Daniel whether to push `dp-20261015-trace-sample-ratio-command-ifc-3420` and open its pull request with base `dp-20261015-trace-context-ifc-3419`; if IFC-3419 changed during its review, rebase this branch on it first
+- [x] T079 [US6] In `python_sdk/`, create the branch `dp-20261015-trace-sample-ratio-command-ifc-3420` from `infrahub-develop` (changed on 2026-10-22: IFC-3419 had already merged there)
+- [x] T080 [P] [US6] Write unit tests in `python_sdk/tests/unit/ctl/test_troubleshooting_app.py`: the get, set and clear commands call `GET`, `PUT` (with `ratio` and `duration_seconds`) and `DELETE` on `/api/troubleshooting/trace-sample-ratio`; the error "Tracing is not enabled on this instance; set INFRAHUB_TRACE_ENABLE" is printed unchanged (FR-031); a ratio outside 0 to 1 or a duration outside 1 to 86400 is rejected
+- [x] T081 [US6] Create `python_sdk/infrahub_sdk/ctl/troubleshooting.py` with an `AsyncTyper` app and the commands of T080, following `python_sdk/infrahub_sdk/ctl/AGENTS.md` (`catch_exception`, `CONFIG_PARAM`, `initialize_client`, Rich output), and register it in `python_sdk/infrahub_sdk/ctl/cli_commands.py` as `troubleshooting`; propose the final command names to Daniel before T083
+- [x] T082 [US6] In `python_sdk/`, run `uv run invoke docs-generate` and add a changelog fragment in `python_sdk/changelog/`
+- [x] T083 [US6] In `python_sdk/`, run `uv run invoke format lint-code` and `uv run pytest tests/unit/`, then commit on `dp-20261015-trace-sample-ratio-command-ifc-3420` with a conventional message ending in `[IFC-3420]`
+- [x] T084 [US6] Ask Daniel whether to push `dp-20261015-trace-sample-ratio-command-ifc-3420` and open its pull request with base `infrahub-develop` (changed on 2026-10-22: IFC-3419 had already merged there); merged as [opsmill/infrahub-sdk-python#1447](https://github.com/opsmill/infrahub-sdk-python/pull/1447)
 
 **Checkpoint**: Story 6 works with the local SDK branch, which has both SDK changes.
 

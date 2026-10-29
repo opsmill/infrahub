@@ -107,6 +107,45 @@ describe("NumberPoolEditForm", () => {
     });
   });
 
+  test("lets the user remove a limit from a range while editing the pool", async () => {
+    // GIVEN
+    vi.mocked(useGetNumberPool).mockReturnValue({
+      isPending: false,
+      data: generateNumberPoolData({
+        id: "pool-id",
+        name: { value: "subinterface-units" },
+        node: { value: "InfraSubinterface" },
+        node_attribute: { value: "unit_id" },
+        ranges: [{ start: null, end: 199, allocation_weight: null }],
+      }),
+    } as never);
+    const mutateAsync = vi.fn(
+      async (
+        _params: unknown,
+        callbacks?: { onSuccess?: (pool: typeof createdPool) => unknown }
+      ) => {
+        await callbacks?.onSuccess?.(createdPool);
+        return createdPool;
+      }
+    );
+    vi.mocked(useUpdateObjectMutation).mockReturnValue({ mutateAsync } as never);
+    const onSuccess = vi.fn();
+    const component = await render(<NumberPoolEditForm poolId="pool-id" onSuccess={onSuccess} />);
+    await expect
+      .element(component.getByRole("spinbutton", { name: "Start of range 1" }))
+      .toHaveValue(null);
+
+    // WHEN
+    await component.getByRole("spinbutton", { name: "End of range 1" }).clear();
+    await component.getByRole("button", { name: "Save" }).click();
+
+    // THEN
+    await expect.poll(() => onSuccess).toHaveBeenCalledWith(createdPool);
+    expect(mutateAsync.mock.calls[0]![0]).toMatchObject({
+      data: { ranges: [{ start: null, end: null, allocation_weight: null }] },
+    });
+  });
+
   test("tells the user why the pool could not be loaded instead of showing an empty form", async () => {
     // GIVEN
     vi.mocked(useGetNumberPool).mockReturnValue({
