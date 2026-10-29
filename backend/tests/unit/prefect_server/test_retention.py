@@ -74,6 +74,17 @@ def test_variables_follow_the_retention() -> None:
     }
 
 
+def test_default_overrides_keep_internal_events_for_two_days() -> None:
+    environ: dict[str, str] = {}
+
+    apply_prefect_retention_env(environ=environ, settings=TaskManagerRetentionSettings(), already_set=frozenset())
+
+    assert environ[EVENTS_RETENTION_PERIOD] == "P7D"
+    overrides = json.loads(environ[EVENT_RETENTION_OVERRIDES])
+    assert overrides == dict.fromkeys(PREFECT_EVENT_TYPES, "P2D")
+    assert overrides["prefect.flow-run.heartbeat"] == "P2D"
+
+
 def test_durations_keep_their_part_below_a_day() -> None:
     settings = TaskManagerRetentionSettings(task_history="P1DT12H", activity_log="P365D", prefect_own_events="P1DT0.5S")
 

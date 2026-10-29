@@ -31,10 +31,10 @@ Speed with a year of activity log is validated by the private performance tests 
 
 ## Part 3: activity log retention
 
-1. Set `INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG=365d` and restart. Expect `PREFECT_SERVER_EVENTS_RETENTION_PERIOD` of 365 days and the per-type overrides at 7 days in the startup log.
+1. Set `INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG=365d` and restart. Expect `PREFECT_SERVER_EVENTS_RETENTION_PERIOD` of 365 days and the per-type overrides at 2 days in the startup log.
 2. Set `INFRAHUB_TASK_MANAGER_RETENTION_PREFECT_OWN_EVENTS=30d` with the activity log at 7 days. Expect the task manager to refuse to start with an error that names `prefect_own_events` and `activity_log`.
 3. Run the event-type list tests: the unit tests (every event name, status, lifecycle record kind and state name in Prefect's source listed, and no unknown name pattern) and the integration-docker guard (a workload on the full stack stores no Prefect event type missing from the list).
-4. Set `INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG=365d` as in step 1, store an event whose type starts with `prefect.` and is missing from the list, then restart the task manager. Expect a warning in its log naming that type and `P365D`, the activity log retention that keeps it. With the default retentions expect no such warning, because Prefect then keeps every event type for the same time.
+4. Set `INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG=365d` as in step 1, store an event whose type starts with `prefect.` and is missing from the list, then restart the task manager. Expect a warning in its log naming that type and `P365D`, the activity log retention that keeps it. With the default retentions expect the same warning with `P7D`: listed internal events are kept for 2 days, while the unlisted type follows the 7-day activity log retention. Set both event retentions to the same value to verify that the check makes no read and emits no warning.
 
 ## Part 4: documentation
 

@@ -15,6 +15,56 @@ Bound the task manager's storage and make the activity log retention configurabl
 
 Research and code locations: [research.md](research.md).
 
+## Implementation model
+
+### Configuration and deployment
+
+`TaskManagerRetentionSettings` validates the policy. The translation functions map it to Prefect
+settings while preserving values supplied by native Prefect sources. Both the task-manager startup
+and `run_background_services` call `apply_infrahub_settings_to_prefect` before starting Prefect.
+Separate services must receive the same settings and start through the Infrahub command, including
+Helm deployments without a sizing preset. Review the [settings and precedence](data-model.md#retention-settings-new-configuration-section).
+
+### Task-history deletion
+
+Prefect owns the hourly cleanup. The operator path uses `TaskHistoryCleanup` to coordinate
+`TaskHistoryTables`, which selects expired, finished top-level runs and deletes their history in
+bounded transactions. Both paths use the task manager's effective retention and Prefect's eligibility
+rules; committed batches survive interruption. Optional disk recovery belongs to `TableRewriter`.
+Review the [record lifecycle](data-model.md#existing-prefect-records-touched).
+
+### Cleanup API and job lifecycle
+
+The routes expose start, status and size operations. `CleanupJob` holds progress and results;
+`CleanupJobs` owns the background task and its in-memory status; `CleanupLock` has a PostgreSQL
+advisory-lock implementation that prevents concurrent operator jobs across replicas. Restart loses
+status but preserves committed deletions. Review the [job lifecycle](data-model.md#cleanup-job-new-in-memory-in-the-task-manager)
+and [HTTP contract](contracts/task-manager-api.md).
+
+### Operator commands and upgrade
+
+`run_task_history_cleanup` is the CLI's HTTP client: it starts or follows a job, retries transient
+responses and reports progress and failures. `task_history_size_hint` only reads the bounded size
+and old-run count during upgrade. The backup wrapper detects which CLI contract the worker supports;
+the task manager owns the retention cutoff. Review the [CLI contract](contracts/cli.md).
+
+### Event retention
+
+`PREFECT_EVENT_TYPES` identifies Prefect internal events, including heartbeats. Translation assigns
+their per-type retention, 2 days by default, while Infrahub activity keeps its 7-day default.
+Prefect's background services delete expired events and their related resources. Event cleanup
+requires both the `events` vacuum type and an enabled event persister. Review the [event-type registry](data-model.md#prefect-event-types-list-new-constant)
+and its coverage when upgrading Prefect.
+
+### Activities results and paging
+
+The GraphQL resolver resolves branch names and constructs resource filters; the task manager's
+`query_events` reads expanding time windows and computes a count only when requested. The default
+window follows retention when event cleanup is enabled, otherwise it spans at least 180 days.
+The frontend continues by timestamp and deduplicates IDs. A full page sharing a timestamp still
+cannot advance; review that limit against FR-023. Review [filter equivalence](data-model.md#activities-filters-changed-expression-same-results)
+and the [page request](data-model.md#activities-page-request-changed).
+
 ## Technical Context
 
 **Language/Version**: Python 3.14 (backend), TypeScript 5.9 / React 19 (frontend)
@@ -29,7 +79,7 @@ Research and code locations: [research.md](research.md).
 
 **Project Type**: Web service (backend + frontend) with an operator CLI
 
-**Performance Goals**: Indicative, from the design doc: Activities default view and single filters about 1 s repeat / 3 s first load with a year of activity log; combined filters 3 to 6 s, at most 10 s; Compose upgrade about 8.5 min longer per 25 GB of task history
+**Performance Goals**: Indicative, from the design doc: Activities default view and single filters about 1 s repeat / 3 s first load with a year of activity log; combined filters 3 to 6 s, at most 10 s. Upgrade only reads a size hint, bounded to 10 s; operator cleanup runs separately after upgrade.
 
 **Constraints**: No new tables, indexes or extensions in Prefect's database; queries must work on Postgres 14 and later; Infrahub sets Prefect settings, it does not patch Prefect
 
@@ -47,9 +97,9 @@ Research and code locations: [research.md](research.md).
 | IV. Test Discipline | Pass (with private-test evidence) | Unit tests for settings and filter construction; component tests for the cleanup and filter equivalence on the Prefect harness; an integration-docker guard and unit tests that check the event-type list against Prefect's source; Vitest for paging; an E2E test for Activities "load more" while new events arrive; the private performance tests provide the evidence at production scale that CI cannot (backups with 25 to 100 GB of task history and a year of activity log). |
 | V. Query Performance | Pass | SQL built with SQLAlchemy Core, parameterized. Plans validated with EXPLAIN in the design-doc benchmark; regression covered by private performance tests. |
 | VI. Security & Input Boundaries | **Deviation (needs maintainer approval)** | The new cleanup route mutates without authentication. Decided by the tech owner on 2026-10-04; the constitution allows a deviation only with maintainer approval, so the PR description asks for it explicitly. The route takes only `rewrite`. See Complexity Tracking. Settings input is validated at start. |
-| VII. Simplicity | Pass, with one justified addition | The background job with status polling exists so that a dropped session or HTTP timeout during a long upgrade does not stop the cleanup. See Complexity Tracking. |
+| VII. Simplicity | Pass, with one justified addition | The background job with status polling exists so that a dropped session or HTTP timeout during operator cleanup does not stop the job. See Complexity Tracking. |
 
-**Post-design re-check**: unchanged. No new dependency, no new abstraction with fewer than two callers (the settings translation serves the task manager and the background-services command; the cleanup job serves the CLI and the upgrade).
+**Post-design re-check**: No new dependency. The settings translation serves the task manager and the background-services command. The cleanup job serves the operator CLI; the upgrade only reads the size endpoint. The job and polling are justified by the cleanup's lifetime, not by multiple callers.
 
 ## Project Structure
 
@@ -172,4 +222,4 @@ Each of parts 1 to 3 merges only with its private-test evidence. The final run o
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |---|---|---|
 | Unauthenticated mutating route on the task manager (Principle VI) — needs maintainer approval at PR review | The cleanup must run inside the task manager, the only process connected to Prefect's database; Infrahub's existing task-manager route has no authentication either. | Adding authentication to the task manager is out of scope (decided by the tech owner, 2026-10-04): the route is reachable only on the internal network, like Prefect's own API, which already allows deleting runs. |
-| Background job with status polling instead of a single request (Principle VII) | The cleanup can run for over an hour; a request-bound cleanup stops when the session or a proxy drops the connection. | A single blocking request fails on any HTTP timeout during the upgrade. |
+| Background job with status polling instead of a single request (Principle VII) | The cleanup can run for over an hour; a request-bound cleanup stops when the session or a proxy drops the connection. | A single blocking request fails on an HTTP timeout during operator cleanup. |

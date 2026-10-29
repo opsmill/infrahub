@@ -81,11 +81,11 @@ class TaskManagerRetentionSettings(BaseSettings):
         ),
     )
     prefect_own_events: timedelta = Field(
-        default="7d",
+        default="2d",
         validate_default=True,
         description=(
-            "How long the task manager's own Prefect events are kept, as a number of days (`7d`) or an ISO 8601 "
-            "duration (`P7D`), from 1 to 365 days, and at most `activity_log`. "
+            "How long the task manager's own Prefect events are kept, as a number of days (`2d`) or an ISO 8601 "
+            "duration (`P2D`), from 1 to 365 days, and at most `activity_log`. "
             "`PREFECT_SERVER_SERVICES_DB_VACUUM_EVENT_RETENTION_OVERRIDES` takes precedence when set. When "
             "`PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` is set to a value that does not turn on `events`, old "
             "events are not deleted."

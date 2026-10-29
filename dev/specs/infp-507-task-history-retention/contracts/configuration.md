@@ -6,17 +6,17 @@ Section `task_manager.retention` of `infrahub.toml`, or the matching environment
 [task_manager.retention]
 task_history = "30d"
 activity_log = "7d"
-prefect_own_events = "7d"
+prefect_own_events = "2d"
 ```
 
 | Key | Environment variable | Default |
 |---|---|---|
 | `task_history` | `INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY` | `30d` |
 | `activity_log` | `INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG` | `7d` |
-| `prefect_own_events` | `INFRAHUB_TASK_MANAGER_RETENTION_PREFECT_OWN_EVENTS` | `7d` |
+| `prefect_own_events` | `INFRAHUB_TASK_MANAGER_RETENTION_PREFECT_OWN_EVENTS` | `2d` |
 
 - Values accept a number of days (`30d`) or an ISO 8601 duration (`P30D`); the configuration reference shows the day form.
-- Every value must be at least 1 day and at most 365 days, or the process refuses to start. A `prefect_own_events` longer than `activity_log` also stops the process, because when the task manager sets the event retention, Prefect deletes every event older than `activity_log`, so a longer `prefect_own_events` would have no effect, and lowering `activity_log` below 7 days needs a `prefect_own_events` no longer than it.
+- Every value must be at least 1 day and at most 365 days, or the process refuses to start. A `prefect_own_events` longer than `activity_log` also stops the process, because when the task manager sets the event retention, Prefect deletes every event older than `activity_log`, so a longer `prefect_own_events` would have no effect, and lowering `activity_log` below 2 days needs a `prefect_own_events` no longer than it.
 - Enterprise availability and any edition-specific restrictions remain undecided. The current implementation has no edition gate; this contract does not promise availability in every edition.
 - Invalid values stop the task manager and the background-services command with: `Invalid task manager retention: <key> <reason>`.
 - Of Infrahub's configuration, the standalone task manager reads only the `task_manager` section of `infrahub.toml`, the `INFRAHUB_TASK_MANAGER_*` variables and the two logging variables named below, so an invalid value in another section does not stop it. A configuration file it cannot read or parse still stops it. An invalid `INFRAHUB_LOG_LEVEL` (such as `verbose`) or `INFRAHUB_PRODUCTION` (such as `maybe`) also stops it, because the task manager reads these two variables to set up its logging. In distributed mode the task manager also loads the whole configuration, as it did before.
@@ -29,6 +29,6 @@ prefect_own_events = "7d"
   - With a vacuum type Prefect does not accept: `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED is not valid: <Prefect's error>`. The task manager does not stop on it; Prefect raises the same error when it schedules its background services.
 - An empty or blank `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` environment variable, such as a compose file passes for an unset host variable, does not count as set, because Prefect reads it as `false`, which deletes no task runs. The task manager removes it, in any letter case, before it checks which settings are set. When Prefect's `.env` file, `prefect.toml`, the `[tool.prefect]` table of `pyproject.toml` or the active profile sets the switch, that value applies, with the warnings above for each cleanup it turns off. Otherwise the task manager writes `events,flow_runs` and logs no warning. An empty switch in Prefect's `.env` file is not removed: it counts as set, and Prefect reads it as `false`.
 - An empty or blank value of one of the three retention variables, under the name Prefect reads (the main name, or a legacy name when the main name is not set), stops the task manager before it reads `task_manager.retention`, as it did before this feature. Prefect refuses the value when the task manager imports Prefect: the two retention periods fail with a `time_delta_parsing` validation error and the per-type overrides with a `SettingsError`. Every `infrahub` command stops on it in the same way, because the command line also imports Prefect when it starts. So neither the task manager nor a command can remove such a variable before Prefect reads it.
-- At startup the task manager logs `Task manager retention: <PREFECT_VARIABLE>=<value>` for each of the four Prefect settings, with the value Prefect parsed after the refresh, whatever its source. The per-type overrides are logged as a count of event types per retention, such as `P3D for <count> event types`, or as `{}` when there is none. With the default retention there is none, because the task manager writes the overrides only when `prefect_own_events` is shorter than `activity_log` or the event retention is already set.
+- At startup the task manager logs `Task manager retention: <PREFECT_VARIABLE>=<value>` for each of the four Prefect settings, with the value Prefect parsed after the refresh, whatever its source. The per-type overrides are logged as a count of event types per retention, such as `P3D for <count> event types`, or as `{}` when there is none. With the defaults, the overrides keep listed Prefect events, including heartbeats, for 2 days while Infrahub activity remains at 7 days. The task manager writes the overrides only when `prefect_own_events` is shorter than `activity_log` or the event retention is already set.
 - The values are read by the task manager, the background-services command, `infrahub tasks flush flow-runs` and `infrahub upgrade`. The server and workers do not need them, but setting them everywhere is harmless and is what the Helm chart and compose files do.
 - Names are final once the configuration reference is regenerated; the design doc marks them "not final".

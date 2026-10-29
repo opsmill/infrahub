@@ -237,3 +237,14 @@ cubic findings on PR 1 and PR 2 (16 in total) were all fixed or recorded as know
 8. **When opsmill/infrahub#10379 merges**: rebase the stack to drop its two carried commits, and send it the review findings on its code.
 9. **Deferred review items** (§5): if wanted, give the job model one model per state.
 10. **Enterprise Docker Compose file, in the same release** (added on 28 Oct): in opsmill/infrahub-private (default branch at `b43b63b67`, images 1.11.9), `docker-compose.yml` starts `task-manager-background-svc` with `prefect server services start`, and its `task-manager` service sets `PREFECT__SERVER_WEBSERVER_ONLY`. An Enterprise Docker Compose deployment with that file deletes no task runs and keeps events for 7 days. The Compose file of this release should start that service with `infrahub tasks background-services` and pass it the three `INFRAHUB_TASK_MANAGER_RETENTION_*` variables; whether the service receives them now is not known, and no PR for this change is known. Until it ships, the Enterprise upgrade guide tells Docker Compose users to set both in `docker-compose.override.yml`.
+
+## Erratum: retention defaults and cleanup callers (29 October 2026)
+
+The default for `prefect_own_events` is now 2 days; earlier verification records in this report
+used the then-current 7-day default or an explicit override. The first cleanup after upgrade can
+delete the existing internal-event backlog between those ages. Infrahub activity remains at 7 days
+and task history at 30 days. All three Infrahub settings remain limited to 365 days; Enterprise
+availability and edition-specific restrictions remain undecided.
+
+Upgrade only reads task-history size and prints cleanup guidance. The operator command starts the
+cleanup job; earlier text describing upgrade as a cleanup or rewrite caller is superseded.

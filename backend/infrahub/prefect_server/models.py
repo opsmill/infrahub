@@ -56,7 +56,8 @@ class InfrahubEventfilterInput(BaseModel):
             return timedelta(seconds=self.retention_seconds)
         settings = get_current_settings()
         retention = settings.server.events.retention_period
-        if deletes_old_events(vacuum=settings.server.services.db_vacuum):
+        services = settings.server.services
+        if deletes_old_events(vacuum=services.db_vacuum) and services.event_persister.enabled:
             return retention
         # Events past the retention stay stored, so at least Prefect's default 180-day range is read.
         return max(retention, KEPT_EVENTS_READ_WINDOW)

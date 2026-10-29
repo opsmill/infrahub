@@ -284,8 +284,11 @@ def test_startup_logs_the_retention_prefect_applies(
 
 
 @pytest.mark.usefixtures("task_manager_environment")
-def test_default_retention_writes_no_per_type_override(caplog: pytest.LogCaptureFixture) -> None:
+def test_equal_event_retentions_write_no_per_type_override(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
     """With equal own-event and activity log retentions, Prefect's general event cleanup alone applies both."""
+    monkeypatch.setenv("INFRAHUB_TASK_MANAGER_RETENTION_PREFECT_OWN_EVENTS", "7d")
     with caplog.at_level(logging.INFO, logger=APP_LOGGER):
         apply_infrahub_settings_to_prefect()
 

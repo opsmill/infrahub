@@ -229,15 +229,16 @@ deleted with their event.
   type appears from the first start after Prefect stored an event of it.
 - The check reads nothing when Prefect deletes no events (the vacuum switch leaves out `events`, or
   the event persister is off), or when no per-type retention is shorter than the event retention,
-  as with the default retentions, because every type is then kept for the same time
+  because every type is then kept for the same time
   (`retention.py::event_types_with_retention_override`). On PostgreSQL the read has a 5-second
   `statement_timeout`, local to its transaction, so a locked `events` table, as during a rewrite,
   delays the start by at most 5 seconds. Any error of the read is logged as a warning with its
   traceback, and the task manager starts without the check. The check runs in each web server
   process, so a task manager with several processes logs the warning once in each.
 - Prefect's per-type vacuum deletes roughly 20 times fewer rows per second than its time-based
-  vacuum. That is acceptable because the first run after an upgrade has little to delete and later
-  runs delete one hour of events.
+  vacuum. The default own-event retention is 2 days, so the first cleanup after an upgrade can
+  delete a backlog previously kept for 7 days, including heartbeats. Later runs process the hourly
+  increment.
 - Lowering `activity_log` deletes the older events, and PostgreSQL reuses their space without
   shrinking the files; `infrahub tasks flush flow-runs --rewrite` rewrites `events` and
   `event_resources` when their live rows take less than half of their size, like the task history

@@ -139,7 +139,7 @@ def test_a_missing_configuration_file_leaves_the_retention_to_the_environment(
             vacuum_types={"events", "flow_runs", "orphans"},
             task_history=timedelta(days=45),
             activity_log=timedelta(days=7),
-            own_events=set(),
+            own_events={timedelta(days=2)},
         )
     ]
 

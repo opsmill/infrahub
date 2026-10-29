@@ -73,8 +73,8 @@ An operator who needs more than 7 days of activity log raises the activity log r
 **Acceptance Scenarios**:
 
 1. **Given** an activity log retention of a year, **When** Infrahub events are older than 7 days, **Then** they are kept and shown on the Activities page until they are older than a year.
-2. **Given** the default retentions, **When** the instance is upgraded, **Then** the activity log behaves as today (7 days) and the instance's activity log storage stays the size it is today.
-3. **Given** the task manager's own events, **When** they are older than the own-event retention (7 days by default), **Then** they are deleted, whatever the activity log retention.
+2. **Given** the default retentions, **When** the instance is upgraded, **Then** Infrahub activity remains available for 7 days and listed Prefect internal events become eligible for deletion after 2 days, including the existing backlog. PostgreSQL can reuse the deleted rows' space; deletion alone does not shrink its files.
+3. **Given** the task manager's own events, **When** they are older than the own-event retention (2 days by default), **Then** they are deleted, whatever the activity log retention.
 4. **Given** a task-manager event type missing from Infrahub's list, **When** it is older than the own-event retention, **Then** it is kept for the activity log retention instead, and no Infrahub event is ever deleted because of the list.
 5. **Given** a retention above 365 days, **When** an operator configures the instance, **Then** startup fails with an error naming the setting. Enterprise availability and any edition-specific restrictions require a separate product decision.
 
@@ -130,7 +130,7 @@ An operator sets how long task history, the activity log and the task manager's 
 
 **Settings**
 
-- **FR-001**: System MUST provide three retention settings: task history (default 30 days), activity log (default 7 days) and the task manager's own events (default 7 days), settable in the Infrahub configuration, Helm values and compose environment.
+- **FR-001**: System MUST provide three retention settings: task history (default 30 days), activity log (default 7 days) and the task manager's own events (default 2 days), settable in the Infrahub configuration, Helm values and compose environment.
 - **FR-002**: System MUST apply the three settings to the task manager's cleanups at start, without the operator setting task-manager-specific variables.
 - **FR-003**: System MUST apply the same settings when the task manager's background services run in their own deployment, by starting that deployment through an Infrahub command.
 - **FR-004**: System MUST refuse to start the task manager, naming the setting, when a retention is shorter than 1 day or longer than 365 days; it MUST also refuse to start, naming both settings, when the own-event retention is longer than the activity log retention.
@@ -199,7 +199,7 @@ Timings are indicative: they come from local benchmarks, not a production contra
 - **SC-005**: With a year of activity log, sub-activities, branch-name filters and deleted-branch filters load in under 1 s (against 40 s to 5 minutes today).
 - **SC-006**: 100 % of Activities filters return the same events as today's filters on the same data.
 - **SC-007**: Zero Infrahub events are deleted before the activity log retention, and zero related items are left behind by any cleanup.
-- **SC-008**: With the default retentions, the activity log storage after the upgrade stays the size it is today.
+- **SC-008**: With the default retentions, Infrahub activity remains available for 7 days and listed Prefect internal events are removed after 2 days. Existing PostgreSQL files need not shrink after deletion.
 
 ## Clarifications
 
