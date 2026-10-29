@@ -65,6 +65,7 @@ from infrahub.git.writeback.models import AbandonmentRecord, DeliveryStage, Held
 from infrahub.git.writeback.store import WritebackIntentStore
 from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
+from infrahub.proposed_change.constants import ProposedChangeState
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workflows.catalogue import (
     GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT,
@@ -126,6 +127,14 @@ mutation RetryDelivery($id: String!) {
 ABANDON_DELIVERY = """
 mutation AbandonDelivery($id: String!, $queue_version: Int!) {
     InfrahubRepositoryDeliveryAbandon(data: {id: $id, queue_version: $queue_version}) {
+        ok
+    }
+}
+"""
+
+MERGE_PROPOSED_CHANGE = """
+mutation MergeProposedChange($id: String!) {
+    CoreProposedChangeMerge(data: {id: $id}) {
         ok
     }
 }
@@ -435,6 +444,19 @@ class SyncedBranchRepository:
     """The head of the default branch of the remote, which Infrahub records."""
     source_commit: str
     """The head of the branch, which Infrahub records on the branch."""
+
+
+@dataclass(frozen=True)
+class UnimportedBranchRepository:
+    """A repository whose branch holds a commit on the remote that Infrahub has not imported yet."""
+
+    name: str
+    node_id: str
+    branch_name: str
+    trunk_commit: str
+    """The head of the default branch of the remote, which Infrahub records on both branches."""
+    remote_commit: str
+    """The head of the branch on the remote."""
 
 
 class TestRepositoryRemoteOperations(TestInfrahubApp):
@@ -1124,6 +1146,108 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
             for message in bus_simulator.messages[sent_before:]
             if isinstance(message, RefreshGitFetch) and message.repository_id == repository.node_id
         ] == [(main.name, main.id, repository.source_commit)]
+
+    async def _branch_with_an_unimported_commit(
+        self, db: InfrahubDatabase, client: InfrahubClient, gogs_server: GogsServer, branch_name: str
+    ) -> UnimportedBranchRepository:
+        """Create a branch that syncs with Git, then commit a file on its remote branch with no sync after it."""
+        repo_name = f"{branch_name}-repo"
+        location = create_gogs_repo(gogs_server.base_url, gogs_server.token, repo_name, gogs_server.container)
+        node = await client.create(kind=InfrahubKind.REPOSITORY, data={"name": repo_name, "location": location})
+        await node.save()
+        trunk_commit = gogs_repo_branch_commit(gogs_server.container, repo_name, "main")
+        await client.branch.create(branch_name=branch_name, sync_with_git=True)
+        remote_commit = commit_to_remote_branch(
+            gogs_server.container, repo_name, branch=branch_name, files={"transform.j2": "{{ data }}\n"}
+        )
+
+        on_branch: CoreRepository = await NodeManager.get_one(
+            db=db, id=node.id, kind=InfrahubKind.REPOSITORY, branch=branch_name, raise_on_error=True
+        )
+        assert (on_branch.commit.value, remote_commit != trunk_commit) == (trunk_commit, True), (
+            "the branch must record the commit of main while its remote branch holds a newer one"
+        )
+        return UnimportedBranchRepository(
+            name=repo_name,
+            node_id=node.id,
+            branch_name=branch_name,
+            trunk_commit=trunk_commit,
+            remote_commit=remote_commit,
+        )
+
+    async def test_a_merge_waits_for_the_sync_to_import_the_new_commit_of_its_branch(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+        fast_forward_merges: None,
+    ) -> None:
+        """The branch records the commit of main, so only its remote head shows the commit that the merge would lose."""
+        repository = await self._branch_with_an_unimported_commit(
+            db=db, client=client, gogs_server=gogs_server, branch_name="unimported-commit"
+        )
+        refusal = (
+            f"Unable to merge branch {repository.branch_name}, because Infrahub has not recorded the latest commit "
+            f"of branch {repository.branch_name} of repository {repository.name} ({repository.remote_commit} on the "
+            f"remote, {repository.trunk_commit} in Infrahub). Merge again after Infrahub records the latest commit "
+            "of that branch."
+        )
+
+        with pytest.raises(GraphQLError, match=re.escape(refusal)):
+            await client.branch.merge(branch_name=repository.branch_name)
+
+        assert (await client.branch.get(branch_name=repository.branch_name)).status == BranchStatus.OPEN
+        assert await _recorded_commit(db=db, repository_id=repository.node_id) == repository.trunk_commit
+        assert gogs_repo_branch_commit(gogs_server.container, repository.name, "main") == repository.trunk_commit
+
+        await sync_remote_repositories()
+        await client.branch.merge(branch_name=repository.branch_name)
+
+        assert (await client.branch.get(branch_name=repository.branch_name)).status == BranchStatus.MERGED
+        assert await _recorded_commit(db=db, repository_id=repository.node_id) == repository.remote_commit
+        assert gogs_repo_branch_commit(gogs_server.container, repository.name, "main") == repository.remote_commit
+
+    async def test_a_proposed_change_merge_waits_for_the_sync_to_import_the_new_commit_of_its_branch(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+        fast_forward_merges: None,
+    ) -> None:
+        """The refusal reopens the proposed change, which merges once the sync records the commit of its branch."""
+        repository = await self._branch_with_an_unimported_commit(
+            db=db, client=client, gogs_server=gogs_server, branch_name="unimported-commit-pc"
+        )
+        proposed_change = await client.create(
+            kind=InfrahubKind.PROPOSEDCHANGE,
+            data={
+                "name": repository.branch_name,
+                "source_branch": repository.branch_name,
+                "destination_branch": registry.default_branch,
+            },
+        )
+        await proposed_change.save()
+        refusal = (
+            f"Unable to merge branch {repository.branch_name}, because Infrahub has not recorded the latest commit "
+            f"of branch {repository.branch_name} of repository {repository.name} ({repository.remote_commit} on the "
+            f"remote, {repository.trunk_commit} in Infrahub). Merge again after Infrahub records the latest commit "
+            "of that branch."
+        )
+
+        with pytest.raises(GraphQLError, match=re.escape(refusal)):
+            await client.execute_graphql(query=MERGE_PROPOSED_CHANGE, variables={"id": proposed_change.id})
+
+        reloaded = await client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=proposed_change.id)
+        assert reloaded.state.value == ProposedChangeState.OPEN.value
+        assert (await client.branch.get(branch_name=repository.branch_name)).status == BranchStatus.OPEN
+        assert gogs_repo_branch_commit(gogs_server.container, repository.name, "main") == repository.trunk_commit
+
+        await sync_remote_repositories()
+        await client.execute_graphql(query=MERGE_PROPOSED_CHANGE, variables={"id": proposed_change.id})
+
+        reloaded = await client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=proposed_change.id)
+        assert reloaded.state.value == ProposedChangeState.MERGED.value
+        assert gogs_repo_branch_commit(gogs_server.container, repository.name, "main") == repository.remote_commit
 
     async def test_a_merge_whose_source_commit_the_remote_discarded_is_refused(
         self,
