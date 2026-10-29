@@ -75,12 +75,12 @@ def test_variables_follow_the_retention() -> None:
 
 
 def test_durations_keep_their_part_below_a_day() -> None:
-    settings = TaskManagerRetentionSettings(task_history="P1DT12H", activity_log="P400D", prefect_own_events="P1DT0.5S")
+    settings = TaskManagerRetentionSettings(task_history="P1DT12H", activity_log="P365D", prefect_own_events="P1DT0.5S")
 
     variables = build_prefect_retention_env(settings=settings, event_types=EVENT_TYPES[:1])
 
     assert variables[VACUUM_RETENTION_PERIOD] == "P1DT43200S"
-    assert variables[EVENTS_RETENTION_PERIOD] == "P400D"
+    assert variables[EVENTS_RETENTION_PERIOD] == "P365D"
     assert json.loads(variables[EVENT_RETENTION_OVERRIDES]) == {"prefect.flow-run.Completed": "P1DT0.5S"}
 
 
@@ -113,11 +113,11 @@ PREFECT_READ_TEST_CASES: list[PrefectReadTestCase] = [
     PrefectReadTestCase(
         name="part_below_a_day",
         task_history="P1DT12H",
-        activity_log="P400D",
+        activity_log="P365D",
         prefect_own_events="P1DT0.5S",
         event_types=EVENT_TYPES,
         expected_vacuum_retention=timedelta(days=1, hours=12),
-        expected_events_retention=timedelta(days=400),
+        expected_events_retention=timedelta(days=365),
         expected_overrides={
             "prefect.flow-run.Completed": timedelta(days=1, milliseconds=500),
             "prefect.task-run.Running": timedelta(days=1, milliseconds=500),

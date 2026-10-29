@@ -27,7 +27,7 @@ from infrahub.task_manager.event.query import PrefectEvent
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
-RETENTION = timedelta(days=400)
+RETENTION = timedelta(days=365)
 SUFFIX = uuid4().hex[:8]
 
 ACCOUNT_A = str(uuid4())

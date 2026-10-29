@@ -60,7 +60,7 @@ prefect-server:
           value: "90d"
 ```
 
-Each value is a number of days, such as `30d`, or an ISO 8601 duration, such as `P30D`, from 1 to 36,500 days. A value outside that range, or in another form, stops the task manager at startup. It also stops every other Infrahub process that receives the value and loads the whole configuration, such as the API server and the task workers, which receive the same three environment variables in the Docker Compose file. The error names the setting:
+Each value is a number of days, such as `30d`, or an ISO 8601 duration, such as `P30D`, from 1 to 365 days. A value outside that range, or in another form, stops the task manager at startup. It also stops every other Infrahub process that receives the value and loads the whole configuration, such as the API server and the task workers, which receive the same three environment variables in the Docker Compose file. The error names the setting:
 
 ```text
 task_history | Value error, Invalid task manager retention: task_history must be at least 1 day (value_error)

@@ -7,8 +7,9 @@ from prefect.settings import get_current_settings
 from pydantic import BaseModel, Field
 
 from .retention import deletes_old_events
+from .retention_settings import MAXIMUM_RETENTION
 
-MAXIMUM_RETENTION_SECONDS = 36_500 * 24 * 60 * 60
+MAXIMUM_RETENTION_SECONDS = int(MAXIMUM_RETENTION.total_seconds())
 KEPT_EVENTS_READ_WINDOW = timedelta(days=180)
 
 
