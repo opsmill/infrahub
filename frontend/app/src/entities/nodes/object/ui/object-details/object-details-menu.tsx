@@ -20,6 +20,7 @@ import { Icon } from "@/shared/components/display/icon";
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { CopyToClipboardMenuItem } from "@/shared/components/menu/copy-to-clipboard-menu-item";
 
+import { NodeGeneratorsMenuSection } from "@/entities/generators/ui/node-generators-menu-section";
 import { GroupsManager } from "@/entities/groups/ui/groups-manager";
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
@@ -130,6 +131,12 @@ export function ObjectDetailsMenu({
                 permission={permission}
               />
             )}
+
+            <NodeGeneratorsMenuSection
+              nodeId={objectData.id}
+              nodeKind={objectData.__typename}
+              nodeLabel={nodeLabel}
+            />
 
             <MenuSection title="Manage">
               <MenuItem
