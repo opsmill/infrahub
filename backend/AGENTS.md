@@ -126,6 +126,12 @@ Each entry says *when* to load it — open the doc before working in that area.
 - `dev/knowledge/backend/api-backpressure.md` - Priority-aware load shedding (admission middleware, CoDel, slot pool) and the database-stress signal; read before touching the admission layer or request prioritization
 - `dev/knowledge/backend/authentication.md` - Authentication flow, SSO group resolution, auto-create groups; read when touching login, SSO, or LDAP
 - `dev/knowledge/backend/branch-status.md` - Branch status enforcement (`BranchStatusChecker`, middleware allowlists, permission integration); read when touching branch lifecycle or write-protection
+- `dev/knowledge/backend/merge-recompute.md` - One coalesced recompute of Jinja2 computed attributes, display labels and HFIDs for a whole merge or rebase; read before changing what a merge or rebase recomputes
+- `dev/knowledge/backend/selective-merge-regeneration.md` - Post-merge generator and artifact regeneration narrowed to what the merge affected (`selective_execution_after_merge`); read before changing post-merge regeneration
+- `dev/knowledge/backend/graphql-execution.md` - Sync vs async field completion in graphql-core; read before adding a resolver hook or GraphQL middleware on the hot path
+- `dev/knowledge/backend/preferences.md` - User and global preferences (internal `StandardNode` storage, dedicated GraphQL API); read before adding a preference or changing how preferences are stored or read
+- `dev/knowledge/backend/tls.md` - How outbound TLS chooses its certificate authorities; read before adding a component that opens outbound connections or touching a `tls_*` setting
+- `dev/knowledge/backend/package-init-files.md` - Keep `__init__.py` free of logic; read before adding to an `__init__.py` or creating a package
 - `dev/knowledge/backend/merge-failure-recovery.md` - Failed-merge detection and range rollback, and the invariants that make a blind range revert correct; read before changing merge locking, write scoping, timestamping, or vertex metadata handling
 - `dev/knowledge/backend/diff-conflicts.md` - What `resolvable` means on a diff conflict and which resolutions a rebase honors; read before gating a merge or rebase on conflict state
 - `dev/knowledge/backend/events.md` - Events system; read when adding or changing an event
@@ -140,6 +146,7 @@ Each entry says *when* to load it — open the doc before working in that area.
 - `dev/knowledge/backend/display-labels-and-hfid.md` - Display-label and human-friendly-id derivation; read when touching either
 - `dev/knowledge/backend/templates.md` - Object template generation and application; read when touching templates
 - `dev/knowledge/backend/code-generation.md` - Generated-file pipeline (protocols, schema, SDK); read before/after changing event, schema, CLI, or config code
+- `dev/knowledge/backend/git-integration.md` - How a repository object is resolved, which branch each git operation targets, per-worker storage and how workers converge, git error classification; read before changing anything in `backend/infrahub/git/`
 - `dev/knowledge/backend/git-sync.md` - Remote branch import/mapping and git error surfacing; read when touching repository sync or debugging branch-import behavior
 - `dev/knowledge/backend/git-push-queue.md` - The push queue of a read-write repository: delivery, retry, abandon, the imports that wait, the regeneration barrier; read when touching the push of a merge or a path that imports the default branch
 

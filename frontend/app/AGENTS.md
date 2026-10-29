@@ -48,7 +48,7 @@ cd frontend/app && pnpm test              # vitest (browser mode)
 - `dev/knowledge/frontend/react.md` - React 19, React Compiler, and effect/retry patterns — load before writing a `useEffect` that drives a fetch or redirect
 - `dev/knowledge/frontend/architecture.md` - Project organization
 - `dev/knowledge/frontend/entities-structure.md` - Entity layer pattern (api/domain/ui), GraphQL fetching, backend authority
-- `dev/knowledge/frontend/shared-components.md` - **Reuse-first inventory** — look here before building anything generic
+- `dev/knowledge/frontend/shared-components.md` - **Reuse-first inventory** — look here before building anything generic, and load before building a card with a table
 - `dev/knowledge/frontend/design-system.md` - `@infrahub/ui` package (Button, Card, Modal, Spinner)
 - `dev/knowledge/frontend/theming.md` - **Read before touching colours** — theme tokens, the dark class, how to change a colour in one theme only
 - `dev/knowledge/frontend/file-components.md` - DataViewer and file handling components
@@ -57,6 +57,7 @@ cd frontend/app && pnpm test              # vitest (browser mode)
 - `dev/knowledge/frontend/column-visibility.md` - Show/hide columns on schema-driven tables: the `hide_columns`/`show_columns` URL contract, `ColumnSurface`, and which surfaces can reveal a hidden field
 - `dev/knowledge/frontend/date-rendering.md` - Preference-aware dates (`DateDisplay`, `useFormatDate`) — load before rendering a user-facing date or time
 - `dev/knowledge/frontend/object-file-entity.md` - The `object-file` entity as a worked example of the api/domain/ui layers — load before fetching or displaying a stored file, or when copying an entity's layer boundaries
+- `dev/knowledge/frontend/request-priority.md` - The `X-Priority` header the frontend sends so the backend serves interactive requests first — load before adding a request, polling or background fetch
 
 ### Guides (How to do X)
 
