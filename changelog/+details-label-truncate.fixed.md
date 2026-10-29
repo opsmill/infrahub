@@ -1,0 +1,1 @@
+Fixed long attribute and relationship labels on the object details page wrapping onto several centered lines or overlapping the value. A label that does not fit now ends with an ellipsis, and hovering or focusing it shows the full label in a tooltip.
