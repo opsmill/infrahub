@@ -1,1 +1,1 @@
-Changed how Mermaid diagrams in Markdown are drawn, so a page with a diagram downloads less code, but diagrams are laid out differently than before, and a diagram's own Mermaid theme settings, HTML labels, and math formulas no longer apply.
+Changed how Mermaid diagrams in Markdown are drawn, so a page with a diagram downloads less code, but diagrams are laid out differently than before, and a diagram's own Mermaid theme settings, math formulas, and HTML in labels other than line breaks, bold, italic, and underline no longer apply.

@@ -207,3 +207,8 @@
   --pele-border: var(--border-strong);
   --pele-accent: var(--accent);
 }
+
+/* Chrome paints a link's text black once the link becomes visited unless the visited fill is set. */
+.pele a:visited {
+  fill: var(--pele-fg);
+}

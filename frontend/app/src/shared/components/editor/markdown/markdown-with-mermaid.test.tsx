@@ -27,7 +27,7 @@ const shapeLuminance = () => {
 
 const setDarkTheme = (dark: boolean) => document.documentElement.classList.toggle("dark", dark);
 
-describe("MarkdownWithMermaid", () => {
+describe("Mermaid diagram theming", () => {
   afterEach(() => {
     setDarkTheme(false);
   });

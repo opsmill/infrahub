@@ -73,4 +73,40 @@ describe("MermaidDiagram", () => {
     expect(ids.length).toBeGreaterThan(0);
     expect(new Set(ids).size).toBe(ids.length);
   });
+
+  test("centres a diagram that is narrower than its container", async () => {
+    // WHEN
+    const component = await render(
+      <div style={{ width: 800 }}>
+        <MermaidDiagram source={"flowchart LR\n  A --> B"} />
+      </div>
+    );
+
+    // THEN
+    await expect.poll(() => component.container.querySelector("svg.pele")).toBeTruthy();
+    const svg = component.container.querySelector("svg.pele");
+    const diagram = svg?.getBoundingClientRect();
+    const container = svg?.parentElement?.getBoundingClientRect();
+    expect(diagram?.width).toBeLessThan(container?.width ?? 0);
+    const centre = (rect?: DOMRect) => (rect ? rect.left + rect.width / 2 : 0);
+    expect(Math.abs(centre(diagram) - centre(container))).toBeLessThan(1);
+  });
+
+  test("keeps web links in a diagram and drops javascript: links", async () => {
+    // WHEN
+    const component = await render(
+      <MermaidDiagram
+        source={
+          'flowchart LR\n  A --> B\n  click A "https://example.com" _blank\n  click B "javascript:alert(1)"'
+        }
+      />
+    );
+
+    // THEN
+    await expect.poll(() => component.container.querySelector("svg.pele")).toBeTruthy();
+    const hrefs = [...component.container.querySelectorAll("svg.pele a")].map((link) =>
+      link.getAttribute("href")
+    );
+    expect(hrefs).toEqual(["https://example.com/"]);
+  });
 });

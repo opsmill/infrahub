@@ -9,7 +9,7 @@ import {
   registered,
   render,
 } from "pele/lazy";
-import { Suspense, use, useId } from "react";
+import React from "react";
 import { ErrorBoundary } from "react-error-boundary";
 
 import { PanZoom } from "@/shared/components/display/pan-zoom";
@@ -17,13 +17,12 @@ import { PanZoom } from "@/shared/components/display/pan-zoom";
 const LOAD_FAILED = "Could not load the diagram. Reload the page to try again.";
 
 const RENDER_OPTIONS: RenderOptions = {
-  // Diagrams come from user-written Markdown, so they may not link out or load remote images.
-  links: false,
+  // Remote images would make every reader's browser fetch a URL chosen by the diagram's author.
   images: false,
   fontFamily: "InterVariable, sans-serif",
 };
 
-// One promise per diagram type, so `use` sees the same promise on every render.
+// Keeps a failed load, which Pele forgets, so `use` hands it to the error boundary instead of importing again on every render.
 const typeLoads = new Map<DiagramType, Promise<boolean>>();
 
 function loadDiagramType(type: DiagramType): Promise<boolean> {
@@ -65,14 +64,14 @@ function DiagramError({ message, source }: DiagramErrorProps) {
   );
 }
 
-type MermaidDiagramProps = {
+type DiagramSourceProps = {
   source: string;
 };
 
-function DiagramSvg({ source }: MermaidDiagramProps) {
-  const idPrefix = useId().replace(/[^\w-]/g, "");
+function RenderedDiagram({ source }: DiagramSourceProps) {
+  const idPrefix = React.useId().replace(/[^\w-]/g, "");
   const type = detectDiagramType(source);
-  if (type && !registered(type)) use(loadDiagramType(type));
+  if (type && !registered(type)) React.use(loadDiagramType(type));
 
   const diagram = renderDiagram(source, idPrefix);
   if (diagram instanceof PeleError)
@@ -80,25 +79,25 @@ function DiagramSvg({ source }: MermaidDiagramProps) {
 
   return (
     <PanZoom className="bg-background">
-      {/* The zoom buttons overlay the top edge, and a diagram fills the full width. */}
+      {/* Full width so a wide diagram shrinks to fit, with room above it for the zoom buttons. */}
       <div
-        className="w-full pt-9"
-        // biome-ignore lint/security/noDangerouslySetInnerHtml: Pele escapes diagram text and emits no scripts or event handlers, and links and images are turned off.
+        className="w-full pt-9 [&>svg]:mx-auto"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: Pele escapes diagram text, emits no scripts or event handlers, and drops javascript: links.
         dangerouslySetInnerHTML={{ __html: diagram.svg }}
       />
     </PanZoom>
   );
 }
 
-export function MermaidDiagram({ source }: MermaidDiagramProps) {
+export function MermaidDiagram({ source }: DiagramSourceProps) {
   return (
     <ErrorBoundary
       fallback={<DiagramError message={LOAD_FAILED} source={source} />}
       resetKeys={[source]}
     >
-      <Suspense fallback={<Spinner className="mx-auto h-40" />}>
-        <DiagramSvg source={source} />
-      </Suspense>
+      <React.Suspense fallback={<Spinner className="mx-auto h-40" />}>
+        <RenderedDiagram source={source} />
+      </React.Suspense>
     </ErrorBoundary>
   );
 }
