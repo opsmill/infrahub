@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from invoke import Context, task
-from pydantic_settings import EnvSettingsSource
+from pydantic_settings import BaseSettings, EnvSettingsSource
 
 from .utils import ESCAPED_REPO_PATH, check_if_command_available
 
@@ -189,6 +189,7 @@ def _generate_infrahub_cli_documentation(context: Context) -> None:
         ("infrahub.cli.dev", "infrahub dev", "infrahub-dev"),
         ("infrahub.cli.upgrade", "infrahub upgrade", "infrahub-upgrade"),
         ("infrahub.cli.recover", "infrahub recover", "infrahub-recover"),
+        ("infrahub.cli.tasks", "infrahub tasks", "infrahub-tasks"),
     )
 
     print(" - Generate Infrahub CLI documentation")
@@ -310,6 +311,19 @@ def _model_fields_for(definition_name: str | None) -> dict:
     if not definition_name:
         return {}
     return getattr(getattr(config, definition_name, None), "model_fields", {})
+
+
+def _own_prefix_env_source(definition_name: str | None) -> EnvSettingsSource | None:
+    """The environment source of a nested settings model that declares its own variable prefix, or None."""
+    from infrahub import config
+
+    model = getattr(config, definition_name, None) if definition_name else None
+    if not (isinstance(model, type) and issubclass(model, BaseSettings)):
+        return None
+    env_prefix = model.model_config.get("env_prefix")
+    if not env_prefix:
+        return None
+    return EnvSettingsSource(model, env_prefix=env_prefix)
 
 
 def _scalar_type_from_any_of(schema: dict) -> str | None:
@@ -510,13 +524,15 @@ def _process_section_parameters(
             if definition and definition.get("type") == "object":
                 param_type = "object"
                 default = "Check nested parameters"
+                definition_name = ref.split("/")[-1] if ref else None
+                own_env_source = _own_prefix_env_source(definition_name)
                 nested_parameters = _extract_nested_parameters(
                     definition,
-                    model_fields,
-                    env_source,
+                    _model_fields_for(definition_name) if own_env_source else model_fields,
+                    own_env_source or env_source,
                     defs,
                     parent_default=definition.get("default"),
-                    object_model_fields=_model_fields_for(ref.split("/")[-1] if ref else None),
+                    object_model_fields=_model_fields_for(definition_name),
                 )
             elif definition:
                 param_type = definition.get("type")

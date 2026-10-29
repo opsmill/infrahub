@@ -147,10 +147,11 @@ Not every number means the same thing over time. There are three kinds:
    schema, features, workers, database info) are the *current* value at gather time. Re-running
    the flow reflects the graph as it is now.
 
-2. **Cumulative over Prefect retention (~7 days)** — the `prefect.events` tally is a raw count
-   of each event type that Prefect *still retains*. Prefect expires events after ~7 days, so
-   this is a rolling window bounded by retention — **not** a per-day figure and not comparable
-   day to day. This is the older, coarse signal.
+2. **Cumulative over the activity log retention (7 days by default)**: the `prefect.events`
+   tally is a raw count of each event type that the task manager still stores. The hourly
+   cleanup deletes events older than `task_manager.retention.activity_log`, so this is a rolling
+   window bounded by that retention: not a per-day figure, and not comparable day to day or
+   between installs with different retentions. This is the older, coarse signal.
 
 3. **Windowed — previous full UTC day** — every `activity_24h.*` metric counts only events (or
    webhook flow-runs) that occurred within `[yesterday 00:00 UTC, today 00:00 UTC)`. This is the
@@ -171,10 +172,16 @@ midnight lands in one window only, never two.
 
 ### Retention interaction
 
-Prefect keeps events and flow-runs for ~7 days. The windowed metrics only ever look one day back,
-so they are safe as long as the daily flow runs within retention (it runs every day, well inside
-7 days). If the flow were down for several days, days beyond retention could not be recovered —
-the metrics are a live daily sample, not a backfillable ledger.
+The task manager keeps events for the activity log retention (7 days by default) and flow runs
+for the task history retention (30 days by default); see
+[Task Manager Retention](task-manager-retention.md). The daily flow runs between 02:00 and
+03:00 UTC and reads a window that started 26 to 27 hours earlier, so the window is complete only
+while both retentions are longer than that. Both settings accept 1 day, and the Prefect settings
+that take precedence accept shorter values. With a 1-day retention the events and webhook runs of
+the first 1 to 3 hours of the window are already deleted when the flow reads it, and the
+`activity_24h` counts are lower than the activity, with no `null` or warning. The flow reads only
+the previous day and never reads a day it missed, so the metrics are a live daily sample, not a
+backfillable ledger; after the retention, the records of a missed day are deleted too.
 
 ## Graceful degradation
 

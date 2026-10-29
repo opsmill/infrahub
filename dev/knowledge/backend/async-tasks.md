@@ -1,6 +1,6 @@
 # Asynchronous Tasks System
 
-> Part of: `dev/knowledge/backend/` | Related: [ADR-0003](../../adr/0003-asynchronous-tasks.md), [Creating Workflows Guide](../../guides/backend/creating-async-tasks.md)
+> Part of: `dev/knowledge/backend/` | Related: [ADR-0003](../../adr/0003-asynchronous-tasks.md), [Creating Workflows Guide](../../guides/backend/creating-async-tasks.md), [Task Manager Retention](task-manager-retention.md)
 
 Infrahub uses Prefect as its asynchronous task orchestration framework for workflow execution, scheduling, and observability.
 
