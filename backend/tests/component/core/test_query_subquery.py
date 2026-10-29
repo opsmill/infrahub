@@ -23,20 +23,18 @@ async def test_build_subquery_filter_attribute_text(
     )
 
     expected_query = """
-    MATCH path = (n:Node {uuid: n.uuid})-[:HAS_ATTRIBUTE]-(i:Attribute { name: $filter1_name })-[:HAS_VALUE]-(av:AttributeValueIndexed { value: $filter1_value })
-    WHERE all(r IN relationships(path) WHERE (PLACEHOLDER))
-    WITH
-        n,
-        path,
-        reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS branch_level,
-        %(froms_var)s AS froms,
-        all(r IN relationships(path) WHERE r.status = "active") AS is_active
-    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
-    WITH head(collect([is_active, n])) AS latest_node_details
-    WHERE latest_node_details[0] = TRUE
-    WITH latest_node_details[1] AS filter1
-    RETURN filter1
-    """ % {"froms_var": db.render_list_comprehension(items="relationships(path)", item_name="from")}
+    MATCH path = (n:Node {uuid: n.uuid})-[e1:HAS_ATTRIBUTE]-(i:Attribute { name: $filter1_name })-[e3:HAS_VALUE]-(av:AttributeValueIndexed { value: $filter1_value })
+        WHERE all(r IN relationships(path) WHERE (PLACEHOLDER))
+        // The barrier keeps the planner from running the edge checks before the selective value predicates
+        WITH DISTINCT n, path, e1, i, e3, av
+        WHERE e1.status = "active"
+        AND NOT EXISTS { MATCH (n)-[r:HAS_ATTRIBUTE]-(competitor:Attribute) WHERE competitor.name = i.name AND (PLACEHOLDER) AND (r.branch_level > e1.branch_level OR (r.branch_level = e1.branch_level AND r.from > e1.from)) }
+        AND e3.status = "active"
+        AND NOT EXISTS { MATCH (i)-[r:HAS_VALUE]-() WHERE (PLACEHOLDER) AND (r.branch_level > e3.branch_level OR (r.branch_level = e3.branch_level AND r.from > e3.from)) }
+    WITH n, av
+    LIMIT 1
+    RETURN n AS filter1
+    """
 
     assert query == expected_query
     assert params == {"filter1_name": "name", "filter1_value": "myname"}
@@ -60,20 +58,18 @@ async def test_build_subquery_filter_attribute_text_area(
     )
 
     expected_query = """
-    MATCH path = (n:Node {uuid: n.uuid})-[:HAS_ATTRIBUTE]-(i:Attribute { name: $filter1_name })-[:HAS_VALUE]-(av:AttributeValue { value: $filter1_value })
-    WHERE all(r IN relationships(path) WHERE (PLACEHOLDER))
-    WITH
-        n,
-        path,
-        reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS branch_level,
-        %(froms_var)s AS froms,
-        all(r IN relationships(path) WHERE r.status = "active") AS is_active
-    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
-    WITH head(collect([is_active, n])) AS latest_node_details
-    WHERE latest_node_details[0] = TRUE
-    WITH latest_node_details[1] AS filter1
-    RETURN filter1
-    """ % {"froms_var": db.render_list_comprehension(items="relationships(path)", item_name="from")}
+    MATCH path = (n:Node {uuid: n.uuid})-[e1:HAS_ATTRIBUTE]-(i:Attribute { name: $filter1_name })-[e3:HAS_VALUE]-(av:AttributeValue { value: $filter1_value })
+        WHERE all(r IN relationships(path) WHERE (PLACEHOLDER))
+        // The barrier keeps the planner from running the edge checks before the selective value predicates
+        WITH DISTINCT n, path, e1, i, e3, av
+        WHERE e1.status = "active"
+        AND NOT EXISTS { MATCH (n)-[r:HAS_ATTRIBUTE]-(competitor:Attribute) WHERE competitor.name = i.name AND (PLACEHOLDER) AND (r.branch_level > e1.branch_level OR (r.branch_level = e1.branch_level AND r.from > e1.from)) }
+        AND e3.status = "active"
+        AND NOT EXISTS { MATCH (i)-[r:HAS_VALUE]-() WHERE (PLACEHOLDER) AND (r.branch_level > e3.branch_level OR (r.branch_level = e3.branch_level AND r.from > e3.from)) }
+    WITH n, av
+    LIMIT 1
+    RETURN n AS filter1
+    """
 
     assert query == expected_query
     assert params == {"filter1_name": "mytextarea", "filter1_value": "myname"}
@@ -97,20 +93,18 @@ async def test_build_subquery_filter_attribute_list(
     )
 
     expected_query = """
-    MATCH path = (n:Node {uuid: n.uuid})-[:HAS_ATTRIBUTE]-(i:Attribute { name: $filter1_name })-[:HAS_VALUE]-(av:AttributeValue)
-    WHERE toString(av.value) =~ $filter1_value AND all(r IN relationships(path) WHERE (PLACEHOLDER))
-    WITH
-        n,
-        path,
-        reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS branch_level,
-        %(froms_var)s AS froms,
-        all(r IN relationships(path) WHERE r.status = "active") AS is_active
-    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
-    WITH head(collect([is_active, n])) AS latest_node_details
-    WHERE latest_node_details[0] = TRUE
-    WITH latest_node_details[1] AS filter1
-    RETURN filter1
-    """ % {"froms_var": db.render_list_comprehension(items="relationships(path)", item_name="from")}
+    MATCH path = (n:Node {uuid: n.uuid})-[e1:HAS_ATTRIBUTE]-(i:Attribute { name: $filter1_name })-[e3:HAS_VALUE]-(av:AttributeValue)
+        WHERE toString(av.value) =~ $filter1_value AND all(r IN relationships(path) WHERE (PLACEHOLDER))
+        // The barrier keeps the planner from running the edge checks before the selective value predicates
+        WITH DISTINCT n, path, e1, i, e3, av
+        WHERE e1.status = "active"
+        AND NOT EXISTS { MATCH (n)-[r:HAS_ATTRIBUTE]-(competitor:Attribute) WHERE competitor.name = i.name AND (PLACEHOLDER) AND (r.branch_level > e1.branch_level OR (r.branch_level = e1.branch_level AND r.from > e1.from)) }
+        AND e3.status = "active"
+        AND NOT EXISTS { MATCH (i)-[r:HAS_VALUE]-() WHERE (PLACEHOLDER) AND (r.branch_level > e3.branch_level OR (r.branch_level = e3.branch_level AND r.from > e3.from)) }
+    WITH n, av
+    LIMIT 1
+    RETURN n AS filter1
+    """
 
     assert query == expected_query
     assert params == {"filter1_name": "mylist", "filter1_value": '.*("myname").*'}
@@ -134,20 +128,18 @@ async def test_build_subquery_filter_attribute_int(
     )
 
     expected_query = """
-    MATCH path = (n:Node {uuid: n.uuid})-[:HAS_ATTRIBUTE]-(i:Attribute { name: $filter2_name })-[:HAS_VALUE]-(av:AttributeValueIndexed { value: $filter2_value })
-    WHERE all(r IN relationships(path) WHERE (PLACEHOLDER))
-    WITH
-        n,
-        path,
-        reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS branch_level,
-        %(froms_var)s AS froms,
-        all(r IN relationships(path) WHERE r.status = "active") AS is_active
-    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
-    WITH head(collect([is_active, n])) AS latest_node_details
-    WHERE latest_node_details[0] = TRUE
-    WITH latest_node_details[1] AS filter2
-    RETURN filter2
-    """ % {"froms_var": db.render_list_comprehension(items="relationships(path)", item_name="from")}
+    MATCH path = (n:Node {uuid: n.uuid})-[e1:HAS_ATTRIBUTE]-(i:Attribute { name: $filter2_name })-[e3:HAS_VALUE]-(av:AttributeValueIndexed { value: $filter2_value })
+        WHERE all(r IN relationships(path) WHERE (PLACEHOLDER))
+        // The barrier keeps the planner from running the edge checks before the selective value predicates
+        WITH DISTINCT n, path, e1, i, e3, av
+        WHERE e1.status = "active"
+        AND NOT EXISTS { MATCH (n)-[r:HAS_ATTRIBUTE]-(competitor:Attribute) WHERE competitor.name = i.name AND (PLACEHOLDER) AND (r.branch_level > e1.branch_level OR (r.branch_level = e1.branch_level AND r.from > e1.from)) }
+        AND e3.status = "active"
+        AND NOT EXISTS { MATCH (i)-[r:HAS_VALUE]-() WHERE (PLACEHOLDER) AND (r.branch_level > e3.branch_level OR (r.branch_level = e3.branch_level AND r.from > e3.from)) }
+    WITH n, av
+    LIMIT 1
+    RETURN n AS filter2
+    """
 
     assert query == expected_query
     assert params == {"filter2_name": "name", "filter2_value": 5}
@@ -173,20 +165,22 @@ async def test_build_subquery_filter_relationship(
 
     # ruff: noqa: E501
     expected_query = """
-    MATCH path = (n:Node {uuid: n.uuid})-[r1:IS_RELATED]->(rl:Relationship { name: $filter1_rel_name })-[r2:IS_RELATED]->(peer:Node)-[:HAS_ATTRIBUTE]-(i:Attribute { name: $filter1_name })-[:HAS_VALUE]-(av:AttributeValueIndexed { value: $filter1_value })
-    WHERE all(r IN relationships(path) WHERE (PLACEHOLDER))
-    WITH
-        n,
-        path,
-        reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS branch_level,
-        %(froms_var)s AS froms,
-        all(r IN relationships(path) WHERE r.status = "active") AS is_active
-    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
-    WITH head(collect([is_active, n])) AS latest_node_details
-    WHERE latest_node_details[0] = TRUE
-    WITH latest_node_details[1] AS filter1
-    RETURN filter1
-    """ % {"froms_var": db.render_list_comprehension(items="relationships(path)", item_name="from")}
+    MATCH path = (n:Node {uuid: n.uuid})-[r1:IS_RELATED]->(rl:Relationship { name: $filter1_rel_name })-[r2:IS_RELATED]->(peer:Node)-[e5:HAS_ATTRIBUTE]-(i:Attribute { name: $filter1_name })-[e7:HAS_VALUE]-(av:AttributeValueIndexed { value: $filter1_value })
+        WHERE all(r IN relationships(path) WHERE (PLACEHOLDER))
+        // The barrier keeps the planner from running the edge checks before the selective value predicates
+        WITH DISTINCT n, path, r1, rl, r2, peer, e5, i, e7, av
+        WHERE r1.status = "active"
+        AND NOT EXISTS { MATCH (competitor:Node)-[r:IS_RELATED]->(rl) WHERE competitor.uuid = n.uuid AND (PLACEHOLDER) AND (r.branch_level > r1.branch_level OR (r.branch_level = r1.branch_level AND r.from > r1.from)) }
+        AND r2.status = "active"
+        AND NOT EXISTS { MATCH (rl)-[r:IS_RELATED]->(competitor:Node) WHERE competitor.uuid = peer.uuid AND (PLACEHOLDER) AND (r.branch_level > r2.branch_level OR (r.branch_level = r2.branch_level AND r.from > r2.from)) }
+        AND e5.status = "active"
+        AND NOT EXISTS { MATCH (peer)-[r:HAS_ATTRIBUTE]-(competitor:Attribute) WHERE competitor.name = i.name AND (PLACEHOLDER) AND (r.branch_level > e5.branch_level OR (r.branch_level = e5.branch_level AND r.from > e5.from)) }
+        AND e7.status = "active"
+        AND NOT EXISTS { MATCH (i)-[r:HAS_VALUE]-() WHERE (PLACEHOLDER) AND (r.branch_level > e7.branch_level OR (r.branch_level = e7.branch_level AND r.from > e7.from)) }
+    WITH n, av
+    LIMIT 1
+    RETURN n AS filter1
+    """
 
     assert query == expected_query
     assert params == {
@@ -217,19 +211,17 @@ async def test_build_subquery_filter_relationship_ids(
     # ruff: noqa: E501
     expected_query = """
     MATCH path = (n:Node {uuid: n.uuid})-[r1:IS_RELATED]->(rl:Relationship { name: $filter1_rel_name })-[r2:IS_RELATED]->(peer:Node)
-    WHERE peer.uuid IN $filter1_peer_ids AND all(r IN relationships(path) WHERE (PLACEHOLDER))
-    WITH
-        n,
-        path,
-        reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS branch_level,
-        %(froms_var)s AS froms,
-        all(r IN relationships(path) WHERE r.status = "active") AS is_active
-    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
-    WITH head(collect([is_active, n])) AS latest_node_details
-    WHERE latest_node_details[0] = TRUE
-    WITH latest_node_details[1] AS filter1
-    RETURN filter1
-    """ % {"froms_var": db.render_list_comprehension(items="relationships(path)", item_name="from")}
+        WHERE peer.uuid IN $filter1_peer_ids AND all(r IN relationships(path) WHERE (PLACEHOLDER))
+        // The barrier keeps the planner from running the edge checks before the selective value predicates
+        WITH DISTINCT n, path, r1, rl, r2, peer
+        WHERE r1.status = "active"
+        AND NOT EXISTS { MATCH (competitor:Node)-[r:IS_RELATED]->(rl) WHERE competitor.uuid = n.uuid AND (PLACEHOLDER) AND (r.branch_level > r1.branch_level OR (r.branch_level = r1.branch_level AND r.from > r1.from)) }
+        AND r2.status = "active"
+        AND NOT EXISTS { MATCH (rl)-[r:IS_RELATED]->(competitor:Node) WHERE competitor.uuid = peer.uuid AND (PLACEHOLDER) AND (r.branch_level > r2.branch_level OR (r.branch_level = r2.branch_level AND r.from > r2.from)) }
+    WITH n, peer
+    LIMIT 1
+    RETURN n AS filter1
+    """
 
     assert query == expected_query
     assert params == {"filter1_peer_ids": ["XXXXXX"], "filter1_rel_name": "testcar__testperson"}
@@ -284,20 +276,18 @@ async def test_build_subquery_filter_attribute_multiple_values(
     )
 
     expected_query = """
-    MATCH path = (n:Node {uuid: n.uuid})-[:HAS_ATTRIBUTE]-(i:Attribute { name: $filter1_name })-[:HAS_VALUE]-(av:AttributeValueIndexed)
-    WHERE av.value IN $filter1_value AND all(r IN relationships(path) WHERE (PLACEHOLDER))
-    WITH
-        n,
-        path,
-        reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS branch_level,
-        %(froms_var)s AS froms,
-        all(r IN relationships(path) WHERE r.status = "active") AS is_active
-    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
-    WITH head(collect([is_active, n])) AS latest_node_details
-    WHERE latest_node_details[0] = TRUE
-    WITH latest_node_details[1] AS filter1
-    RETURN filter1
-    """ % {"froms_var": db.render_list_comprehension(items="relationships(path)", item_name="from")}
+    MATCH path = (n:Node {uuid: n.uuid})-[e1:HAS_ATTRIBUTE]-(i:Attribute { name: $filter1_name })-[e3:HAS_VALUE]-(av:AttributeValueIndexed)
+        WHERE av.value IN $filter1_value AND all(r IN relationships(path) WHERE (PLACEHOLDER))
+        // The barrier keeps the planner from running the edge checks before the selective value predicates
+        WITH DISTINCT n, path, e1, i, e3, av
+        WHERE e1.status = "active"
+        AND NOT EXISTS { MATCH (n)-[r:HAS_ATTRIBUTE]-(competitor:Attribute) WHERE competitor.name = i.name AND (PLACEHOLDER) AND (r.branch_level > e1.branch_level OR (r.branch_level = e1.branch_level AND r.from > e1.from)) }
+        AND e3.status = "active"
+        AND NOT EXISTS { MATCH (i)-[r:HAS_VALUE]-() WHERE (PLACEHOLDER) AND (r.branch_level > e3.branch_level OR (r.branch_level = e3.branch_level AND r.from > e3.from)) }
+    WITH n, av
+    LIMIT 1
+    RETURN n AS filter1
+    """
 
     assert query == expected_query
     assert params == {"filter1_name": "name", "filter1_value": ["myvalue", "myothervalue"]}
@@ -323,20 +313,22 @@ async def test_build_subquery_filter_relationship_multiple_values(
 
     # ruff: noqa: E501
     expected_query = """
-    MATCH path = (n:Node {uuid: n.uuid})-[r1:IS_RELATED]->(rl:Relationship { name: $filter1_rel_name })-[r2:IS_RELATED]->(peer:Node)-[:HAS_ATTRIBUTE]-(i:Attribute { name: $filter1_name })-[:HAS_VALUE]-(av:AttributeValueIndexed)
-    WHERE av.value IN $filter1_value AND all(r IN relationships(path) WHERE (PLACEHOLDER))
-    WITH
-        n,
-        path,
-        reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS branch_level,
-        %(froms_var)s AS froms,
-        all(r IN relationships(path) WHERE r.status = "active") AS is_active
-    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
-    WITH head(collect([is_active, n])) AS latest_node_details
-    WHERE latest_node_details[0] = TRUE
-    WITH latest_node_details[1] AS filter1
-    RETURN filter1
-    """ % {"froms_var": db.render_list_comprehension(items="relationships(path)", item_name="from")}
+    MATCH path = (n:Node {uuid: n.uuid})-[r1:IS_RELATED]->(rl:Relationship { name: $filter1_rel_name })-[r2:IS_RELATED]->(peer:Node)-[e5:HAS_ATTRIBUTE]-(i:Attribute { name: $filter1_name })-[e7:HAS_VALUE]-(av:AttributeValueIndexed)
+        WHERE av.value IN $filter1_value AND all(r IN relationships(path) WHERE (PLACEHOLDER))
+        // The barrier keeps the planner from running the edge checks before the selective value predicates
+        WITH DISTINCT n, path, r1, rl, r2, peer, e5, i, e7, av
+        WHERE r1.status = "active"
+        AND NOT EXISTS { MATCH (competitor:Node)-[r:IS_RELATED]->(rl) WHERE competitor.uuid = n.uuid AND (PLACEHOLDER) AND (r.branch_level > r1.branch_level OR (r.branch_level = r1.branch_level AND r.from > r1.from)) }
+        AND r2.status = "active"
+        AND NOT EXISTS { MATCH (rl)-[r:IS_RELATED]->(competitor:Node) WHERE competitor.uuid = peer.uuid AND (PLACEHOLDER) AND (r.branch_level > r2.branch_level OR (r.branch_level = r2.branch_level AND r.from > r2.from)) }
+        AND e5.status = "active"
+        AND NOT EXISTS { MATCH (peer)-[r:HAS_ATTRIBUTE]-(competitor:Attribute) WHERE competitor.name = i.name AND (PLACEHOLDER) AND (r.branch_level > e5.branch_level OR (r.branch_level = e5.branch_level AND r.from > e5.from)) }
+        AND e7.status = "active"
+        AND NOT EXISTS { MATCH (i)-[r:HAS_VALUE]-() WHERE (PLACEHOLDER) AND (r.branch_level > e7.branch_level OR (r.branch_level = e7.branch_level AND r.from > e7.from)) }
+    WITH n, av
+    LIMIT 1
+    RETURN n AS filter1
+    """
 
     assert query == expected_query
     assert params == {

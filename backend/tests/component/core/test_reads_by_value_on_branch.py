@@ -11,12 +11,13 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.order import OrderByEntry, OrderModel
-from infrahub.core.query.node import NodeGetByHFIDQuery
+from infrahub.core.query.node import NodeGetByHFIDQuery, NodeGetListQuery
 from infrahub.core.schema import SchemaRoot
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.constants import TestKind
 from tests.helpers.graphql import graphql
 from tests.helpers.schema import CAR_SCHEMA, TICKET, load_schema
+from tests.helpers.schema.agnostic_retirement import AGNOSTIC_RETIREMENT_SCHEMA, GADGET_KIND, WIDGET_KIND
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -486,6 +487,30 @@ class TestHierarchyReadByValueOnBranch:
             (dataset.branch.name, "europe"): {"paris-r1", "paris-r2", "london-r1", "london-r2"},
         }
 
+    async def test_branch_agnostic_filter_through_the_parent_relationship(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, dataset: HierarchyDataset
+    ) -> None:
+        names_by_id = {node.id: name for name, node in dataset.nodes.items()}
+        rack_schema = db.schema.get(name="LocationRack", branch=default_branch_scope_class)
+        found: dict[str, set[str]] = {}
+        for parent_name in ("paris", "london", "chicago", "chi-town"):
+            query = await NodeGetListQuery.init(
+                db=db,
+                branch=default_branch_scope_class,
+                schema=rack_schema,
+                filters={"parent__name__value": parent_name},
+                branch_agnostic=True,
+            )
+            await query.execute(db=db)
+            found[parent_name] = {names_by_id[node_id] for node_id in query.get_node_ids()}
+
+        assert found == {
+            "paris": {"paris-r1", "paris-r2"},
+            "london": {"london-r1", "london-r2", "paris-r2"},
+            "chicago": {"chicago-r1", "chicago-r2"},
+            "chi-town": {"chicago-r1", "chicago-r2"},
+        }
+
 
 class TestBranchAgnosticLookupByHFID:
     """A branch-agnostic HFID lookup returns a node whose HFID is the active value on any branch."""
@@ -552,3 +577,91 @@ class TestBranchAgnosticLookupByHFID:
             "c-new": {"renamed-on-branch"},
         }
 
+    async def test_filter_finds_a_value_latest_on_any_branch(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, dataset: BranchDataset
+    ) -> None:
+        ticket_schema = db.schema.get(name=TestKind.TICKET, branch=default_branch_scope_class)
+        found: dict[str, set[str]] = {}
+        for title in ("b-old", "b-new", "a-old", "a-new", "c-old", "c-new"):
+            query = await NodeGetListQuery.init(
+                db=db,
+                branch=default_branch_scope_class,
+                schema=ticket_schema,
+                filters={"title__value": title},
+                branch_agnostic=True,
+            )
+            await query.execute(db=db)
+            found[title] = dataset.keys(query.get_node_ids())
+
+        assert found == {
+            "b-old": set(),
+            "b-new": {"renamed-before-branching"},
+            "a-old": {"renamed-on-default"},
+            "a-new": {"renamed-on-default"},
+            "c-old": {"renamed-on-branch"},
+            "c-new": {"renamed-on-branch"},
+        }
+
+
+class TestBranchAgnosticPeerFilter:
+    """A branch-agnostic read of a relationship keeps a peer whose filtered value is the latest value on any branch."""
+
+    @pytest.fixture(scope="class")
+    async def dataset(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        register_core_models_schema_scope_class: SchemaBranch,
+    ) -> BranchDataset:
+        await load_schema(db=db, schema=AGNOSTIC_RETIREMENT_SCHEMA)
+
+        ids: dict[str, str] = {}
+        for serial, (key, name) in enumerate(
+            (
+                ("renamed-before-branching", "b-old"),
+                ("renamed-on-default", "a-old"),
+                ("renamed-on-branch", "c-old"),
+            )
+        ):
+            gadget = await Node.init(db=db, schema=GADGET_KIND)
+            await gadget.new(db=db, name=name)
+            await gadget.save(db=db)
+            ids[key] = gadget.id
+            widget = await Node.init(db=db, schema=WIDGET_KIND)
+            await widget.new(db=db, name=f"widget-{name}", serial=serial, gadget=gadget)
+            await widget.save(db=db)
+            ids[f"widget-{key}"] = widget.id
+
+        await _update(db, default_branch_scope_class, ids["renamed-before-branching"], name={"value": "b-new"})
+        branch = await create_branch(db=db, branch_name="agnostic-peer-filter")
+        await _update(db, default_branch_scope_class, ids["renamed-on-default"], name={"value": "a-new"})
+        await _update(db, branch, ids["renamed-on-branch"], name={"value": "c-new"})
+
+        return BranchDataset(branch=branch, ids=ids)
+
+    async def test_peer_filter_finds_a_value_latest_on_any_branch(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, dataset: BranchDataset
+    ) -> None:
+        widget_schema = db.schema.get(name=WIDGET_KIND, branch=default_branch_scope_class)
+        widget_ids = [node_id for key, node_id in dataset.ids.items() if key.startswith("widget-")]
+        found: dict[str, set[str]] = {}
+        for name in ("b-old", "b-new", "a-old", "a-new", "c-old", "c-new"):
+            peers = await NodeManager.query_peers(
+                db=db,
+                ids=widget_ids,
+                source_kind=WIDGET_KIND,
+                schema=widget_schema.get_relationship(name="gadget"),
+                filters={"gadget__name__value": name},
+                branch=default_branch_scope_class,
+                branch_agnostic=True,
+            )
+            found[name] = dataset.keys([peer.get_peer_id() for peer in peers])
+
+        assert found == {
+            "b-old": set(),
+            "b-new": {"renamed-before-branching"},
+            "a-old": {"renamed-on-default"},
+            "a-new": {"renamed-on-default"},
+            "c-old": {"renamed-on-branch"},
+            "c-new": {"renamed-on-branch"},
+        }

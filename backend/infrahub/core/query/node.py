@@ -35,9 +35,11 @@ from infrahub.core.order import (
 )
 from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.query.subquery import (
+    build_branch_windows_query,
     build_subquery_filter,
     build_subquery_order,
     build_subquery_order_metadata,
+    render_window_filter,
 )
 from infrahub.core.query.utils import find_node_schema
 from infrahub.core.schema.attribute_schema import AttributeSchema
@@ -1639,32 +1641,14 @@ class NodeGetByHFIDQuery(Query):
         Each branch reads its own edges at the requested time and its origin branch's edges at the time it
         branched, so an edge the default branch closed after a branch was created stays active on that branch.
         """
-        self.params["at"] = self.at.to_string()
-        self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
-        window_filter = """(
-            r.branch IN [$global_branch_name, window.name]
-            AND r.from <= $at AND (r.to IS NULL OR r.to > $at)
-        ) OR (
-            r.branch = window.origin_name
-            AND r.from <= window.origin_at AND (r.to IS NULL OR r.to > window.origin_at)
-        )"""
+        windows_query, windows_params = build_branch_windows_query(at=self.at, branch_agnostic=True)
+        self.params.update(windows_params)
 
         return """
         // --------------------------
         // Read the window of every branch once
         // --------------------------
-        MATCH (branch:Branch)
-        WHERE branch.name <> $global_branch_name
-        AND branch.status <> "DELETING"
-        WITH collect({
-            name: branch.name,
-            origin_name: CASE WHEN branch.is_default THEN NULL ELSE branch.origin_branch END,
-            origin_at: CASE
-                WHEN branch.is_default THEN NULL
-                WHEN branch.branched_from < $at THEN branch.branched_from
-                ELSE $at
-            END
-        }) AS branch_windows
+        %(windows_query)s
         // --------------------------
         // Start from the indexed HFID value to ensure the query planner
         // uses the AttributeValueIndexed index. HFIDs larger than
@@ -1728,7 +1712,11 @@ class NodeGetByHFIDQuery(Query):
             LIMIT 1
         }
         WITH n, av
-        """ % {"node_kind": self.node_kind, "window_filter": window_filter}
+        """ % {
+            "node_kind": self.node_kind,
+            "window_filter": render_window_filter(edge="r"),
+            "windows_query": windows_query,
+        }
 
     def _build_branch_query(self) -> str:
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)
@@ -2065,6 +2053,13 @@ WITH %(tracked_vars)s,
         )
         self.params.update(branch_params)
 
+        windows_query, windows_params = build_branch_windows_query(
+            at=self.at, branch_agnostic=self.branch_agnostic and self.has_filters
+        )
+        self.add_to_query(windows_query)
+        self.params.update(windows_params)
+        self._track_variable("branch_windows")
+
         # The initial subquery is used to filter out deleted nodes because we can have multiple valid results per branch
         #   and we need to filter out the one that have been deleted in the branch.
         # If we are on the default branch, the subquery is not required because only one valid result is expected at a given time
@@ -2078,7 +2073,7 @@ WITH %(tracked_vars)s,
                 ORDER BY r.branch_level DESC, r.from DESC
                 LIMIT 1
             }
-            WITH n, r as rb
+            WITH n, r as rb, branch_windows
             WHERE rb.status = "active"
             """ % {"branch_filter": branch_filter, "node_kind": self.schema.kind}
             self.add_to_query(topquery)
@@ -2086,7 +2081,7 @@ WITH %(tracked_vars)s,
             topquery = """
             MATCH (root:Root)<-[r:IS_PART_OF]-(n:%(node_kind)s)
             WHERE %(branch_filter)s
-            WITH n, r as rb
+            WITH n, r as rb, branch_windows
             WHERE rb.status = "active"
             """ % {"branch_filter": branch_filter, "node_kind": self.schema.kind}
             self.add_to_query(topquery)
@@ -2190,7 +2185,7 @@ WITH %(tracked_vars)s,
             )
 
             filter_params.update(subquery_params)
-            filter_query.append("CALL (n) {")
+            filter_query.append("CALL (n, branch_windows) {")
             filter_query.append(subquery)
             filter_query.append("}")
             filter_query.append(f"WITH {with_str}")

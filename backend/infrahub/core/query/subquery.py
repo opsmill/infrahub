@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
-from infrahub.core.constants.database import DatabaseEdgeType
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, NULL_VALUE
 from infrahub.core.order import METADATA_CREATED_AT, METADATA_UPDATED_AT
 from infrahub.core.query import QueryElement, QueryNode, QueryRel
 
@@ -11,15 +12,46 @@ from .attribute import default_attribute_query_filter
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.schema import AttributeSchema, RelationshipSchema
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
-# A branch that changes one of these adds its own edge and leaves the default branch's edge open.
-VERSIONED_VALUE_EDGE_TYPES = {
-    DatabaseEdgeType.HAS_VALUE.value,
-    DatabaseEdgeType.IS_PROTECTED.value,
-    DatabaseEdgeType.HAS_SOURCE.value,
-    DatabaseEdgeType.HAS_OWNER.value,
-}
+
+def build_branch_windows_query(
+    at: Timestamp, branch_agnostic: bool, variable_name: str = "branch_windows"
+) -> tuple[str, dict[str, Any]]:
+    """Collect the read window of every branch into `variable_name`, or set it to NULL when the read is not branch-agnostic.
+
+    A branch reads its own edges at `at` and its origin branch's edges at the time it branched. The query aggregates
+    every row before it, so it opens the query that uses it.
+    """
+    if not branch_agnostic:
+        return f"WITH NULL AS {variable_name}", {}
+
+    query = """
+    MATCH (branch:Branch)
+    WHERE branch.name <> $global_branch_name
+    AND branch.status <> "DELETING"
+    WITH collect({
+        name: branch.name,
+        origin_name: CASE WHEN branch.is_default THEN NULL ELSE branch.origin_branch END,
+        origin_at: CASE
+            WHEN branch.is_default THEN NULL
+            WHEN branch.branched_from < $windows_at THEN branch.branched_from
+            ELSE $windows_at
+        END
+    }) AS %(windows)s
+    """ % {"windows": variable_name}
+    return query, {"windows_at": at.to_string(), "global_branch_name": GLOBAL_BRANCH_NAME}
+
+
+def render_window_filter(edge: str, window: str = "window") -> str:
+    """Render whether `edge` is visible in the branch window `window`."""
+    return (
+        f"(({edge}.branch IN [$global_branch_name, {window}.name]"
+        f" AND {edge}.from <= $windows_at AND ({edge}.to IS NULL OR {edge}.to > $windows_at))"
+        f" OR ({edge}.branch = {window}.origin_name"
+        f" AND {edge}.from <= {window}.origin_at AND ({edge}.to IS NULL OR {edge}.to > {window}.origin_at)))"
+    )
 
 
 async def build_subquery_filter(
@@ -33,11 +65,20 @@ async def build_subquery_filter(
     branch: Branch = None,
     subquery_idx: int = 1,
     partial_match: bool = False,
-    optional_match: bool = False,
     result_prefix: str = "filter",
     extra_tail_properties: dict[str, str] | None = None,
     branch_agnostic: bool = False,
+    branch_windows_variable: str = "branch_windows",
 ) -> tuple[str, dict[str, Any], str]:
+    """Build the subquery that keeps the node when the latest edges along the filter's path lead to the filter value.
+
+    A branch-agnostic filter keeps the node when this holds on at least one branch, and expects the branch windows in
+    scope as `branch_windows_variable`.
+
+    Raises:
+        ValueError: When neither a field nor the `any` or `attribute` name is given.
+
+    """
     params = {}
     prefix = f"{result_prefix}{subquery_idx}"
 
@@ -62,149 +103,153 @@ async def build_subquery_filter(
     )
     params.update(field_params)
 
-    if _compares_latest_value(
-        field_filter=field_filter,
-        field_where=field_where,
-        filter_name=filter_name,
-        branch=branch,
-        branch_agnostic=branch_agnostic,
-        optional_match=optional_match,
-    ):
-        query = _build_latest_value_filter(
-            db=db,
-            field_filter=field_filter,
-            field_where=field_where,
-            branch_filter=branch_filter,
-            node_alias=node_alias,
-            prefix=prefix,
-            extra_tail_properties=extra_tail_properties,
+    path = _name_path_elements(field_filter)
+    tail = path[-1]
+    is_relationship_isnull = filter_name == "isnull" and field is not None and field.is_relationship
+    candidate_predicates = list(field_where)
+    if filter_name == "isnull" and not is_relationship_isnull:
+        candidate_predicates.append(f'{tail.name}.value {"=" if filter_value is True else "<>"} "{NULL_VALUE}"')
+
+    if branch_agnostic:
+        candidate_predicates.append("all(r IN relationships(path) WHERE r.from <= $windows_at)")
+        edge_checks = " AND ".join(
+            [
+                *_render_edges_visible(path=path),
+                *_render_latest_edge_checks(
+                    db=db, path=path, node_alias=node_alias, competing_filter=render_window_filter(edge="r")
+                ),
+            ]
         )
+        checks = [f"any(window IN {branch_windows_variable} WHERE {edge_checks})"]
+    else:
+        candidate_predicates.append(f"all(r IN relationships(path) WHERE ({branch_filter}))")
+        checks = _render_latest_edge_checks(db=db, path=path, node_alias=node_alias, competing_filter=branch_filter)
+
+    candidate_variables = ", ".join([node_alias, "path", *[str(item.name) for item in path if item.name]])
+    match_str = f"""MATCH path = ({node_alias}:Node {{uuid: {node_alias}.uuid}}){"".join(str(item) for item in path)}
+        WHERE {" AND ".join(candidate_predicates)}
+        // The barrier keeps the planner from running the edge checks before the selective value predicates
+        WITH DISTINCT {candidate_variables}
+        WHERE {"\n        AND ".join(checks)}"""
+
+    if is_relationship_isnull:
+        to_return = ", ".join([f"{node_alias} AS {prefix}", *[f"NULL AS {var}" for var in extra_tail_properties or {}]])
+        query = f"""
+    WITH {node_alias}
+    WHERE {"NOT " if filter_value is True else ""}EXISTS {{
+        {match_str}
+    }}
+    RETURN {to_return}
+    """
         return query, params, prefix
 
-    field_where.append("all(r IN relationships(path) WHERE (%s))" % branch_filter)
-    filter_str = f"({node_alias}:Node {{uuid: {node_alias}.uuid}})" + "".join([str(item) for item in field_filter])
-    where_str = " AND ".join(field_where)
-    branch_level_str = "reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level)"
-    froms_str = db.render_list_comprehension(items="relationships(path)", item_name="from")
-    to_return = f"{prefix}"
-    with_extra = ""
-    final_with_extra = ""
-    is_isnull = filter_name == "isnull"
-    if extra_tail_properties or is_isnull:
-        tail_node = field_filter[-1]
-        with_extra += f", {tail_node.name}"
-        final_with_extra += f", latest_node_details[2] AS {tail_node.name}"
-    if extra_tail_properties:
-        for variable_name, tail_property in extra_tail_properties.items():
-            to_return += f", {tail_node.name}.{tail_property} AS {variable_name}"
-    match = "MATCH"
-    if optional_match or is_isnull:
-        match = "OPTIONAL MATCH"
-    is_active_filter = "latest_node_details[0] = TRUE"
-    if is_isnull and filter_value is True:
-        if field is not None and field.is_relationship:
-            is_active_filter = "latest_node_details[0] = FALSE OR latest_node_details[0] IS NULL"
-        elif field is not None and field.is_attribute:
-            is_active_filter = "(latest_node_details[2]).value = 'NULL'"
+    to_return = ", ".join(
+        [
+            f"{node_alias} AS {prefix}",
+            *[f"{tail.name}.{tail_property} AS {var}" for var, tail_property in (extra_tail_properties or {}).items()],
+        ]
+    )
     query = f"""
-    {match} path = {filter_str}
-    WHERE {where_str}
-    WITH
-        {node_alias},
-        path,
-        {branch_level_str} AS branch_level,
-        {froms_str} AS froms,
-        all(r IN relationships(path) WHERE r.status = "active") AS is_active{with_extra}
-    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
-    WITH head(collect([is_active, {node_alias}{with_extra}])) AS latest_node_details
-    WHERE {is_active_filter}
-    WITH latest_node_details[1] AS {prefix}{final_with_extra}
+    {match_str}
+    WITH {node_alias}, {tail.name}
+    LIMIT 1
     RETURN {to_return}
     """
     return query, params, prefix
 
 
-def ranks_latest_value(branch: Branch | None, branch_agnostic: bool) -> bool:
-    """Whether a read by value must rank all value edges of an attribute before comparing the value.
+def _name_path_elements(field_filter: list[QueryElement]) -> list[QueryElement]:
+    """Copy the path elements and name every vertex and fixed-length edge, so each edge can be checked."""
+    named: list[QueryElement] = []
+    for idx, item in enumerate(field_filter, start=1):
+        if item.name or (isinstance(item, QueryRel) and item.length_max):
+            named.append(replace(item))
+        elif isinstance(item, QueryRel):
+            named.append(replace(item, name=f"e{idx}"))
+        else:
+            named.append(replace(item, name=f"v{idx}"))
+    return named
 
-    A branch leaves the default branch's edge to a value it replaced open. A branch-agnostic read keeps matching the
-    value first, since ranking edges from every branch would elect another branch's value.
+
+def _render_edges_visible(path: list[QueryElement]) -> list[str]:
+    rels = [item for item in path if isinstance(item, QueryRel)]
+    predicates = []
+    for idx, rel in enumerate(rels):
+        if rel.length_max:
+            predicates.append(f"all(h IN {_segment(rels=rels, idx=idx)} WHERE {render_window_filter(edge='h')})")
+        else:
+            predicates.append(render_window_filter(edge=str(rel.name)))
+    return predicates
+
+
+def _render_latest_edge_checks(
+    db: InfrahubDatabase, path: list[QueryElement], node_alias: str, competing_filter: str
+) -> list[str]:
+    """Render, for each edge of the path, that it is active and that no edge `r` of its group outranks it.
+
+    `competing_filter` selects the edges `r` that can be read.
+
+    An edge to or from a Relationship vertex competes with the edges between that vertex and the node with the same
+    uuid, so that each peer is checked on its own. Any other edge competes with every edge of its type from the same
+    vertex, to an attribute with the same name when it leads to an attribute.
     """
-    return branch is not None and not branch.is_default and not branch.is_global and not branch_agnostic
+    rels = [item for item in path if isinstance(item, QueryRel)]
+    vertices = [QueryNode(name=node_alias, labels=["Node"]), *[item for item in path if isinstance(item, QueryNode)]]
+    checks = []
+    for idx, rel in enumerate(rels):
+        if rel.length_max:
+            checks.append(
+                _render_hierarchy_checks(db=db, segment=_segment(rels=rels, idx=idx), competing_filter=competing_filter)
+            )
+            continue
 
+        source, target = vertices[idx], vertices[idx + 1]
+        competing_rel = QueryRel(name="r", labels=rel.labels, direction=rel.direction)
+        if _is_relationship_vertex(source):
+            competing = f"({source.name}){competing_rel}(competitor:Node)"
+            group = f"competitor.uuid = {target.name}.uuid"
+        elif _is_relationship_vertex(target):
+            competing = f"(competitor:Node){competing_rel}({target.name})"
+            group = f"competitor.uuid = {source.name}.uuid"
+        elif target.labels and "Attribute" in target.labels:
+            competing = f"({source.name}){competing_rel}(competitor:Attribute)"
+            group = f"competitor.name = {target.name}.name"
+        else:
+            competing = f"({source.name}){competing_rel}()"
+            group = None
 
-def _compares_latest_value(
-    field_filter: list[QueryElement],
-    field_where: list[str],
-    filter_name: str,
-    branch: Branch | None,
-    branch_agnostic: bool,
-    optional_match: bool,
-) -> bool:
-    if not ranks_latest_value(branch=branch, branch_agnostic=branch_agnostic):
-        return False
-    if optional_match or filter_name == "isnull" or len(field_filter) < 2:
-        return False
-
-    tail_edge, tail = field_filter[-2], field_filter[-1]
-    if not isinstance(tail_edge, QueryRel) or not isinstance(tail, QueryNode) or not tail_edge.labels:
-        return False
-    return tail_edge.labels[0] in VERSIONED_VALUE_EDGE_TYPES and bool(tail.params or field_where)
-
-
-def _build_latest_value_filter(
-    db: InfrahubDatabase,
-    field_filter: list[QueryElement],
-    field_where: list[str],
-    branch_filter: str,
-    node_alias: str,
-    prefix: str,
-    extra_tail_properties: dict[str, str] | None,
-) -> str:
-    """Rank all value paths of each attribute that has a path to the filter value, then compare the latest one.
-
-    An attribute is ranked per peer when the filter goes through a relationship.
-    """
-    tail = field_filter[-1]
-    value_predicates = [
-        f"{tail.name}.{key} = {QueryElement.render_param_value(value)}" for key, value in (tail.params or {}).items()
-    ]
-    value_predicates.extend(field_where)
-    field_vertices = ", ".join(
-        dict.fromkeys(
-            [node_alias, *[item.name for item in field_filter[:-1] if isinstance(item, QueryNode) and item.name]]
+        competing_where = " AND ".join(
+            item for item in (group, f"({competing_filter})", _render_outranks(edge=str(rel.name))) if item
         )
-    )
-    start = f"({node_alias}:Node {{uuid: {node_alias}.uuid}})"
-    candidate_str = start + "".join([str(item) for item in field_filter])
-    candidate_where = " AND ".join([*field_where, f"all(r IN relationships(candidate) WHERE ({branch_filter}))"])
-    unfiltered_tail = QueryNode(name=tail.name, labels=tail.labels)
-    filter_str = start + "".join([str(item) for item in [*field_filter[:-1], unfiltered_tail]])
-    froms_str = db.render_list_comprehension(items="relationships(path)", item_name="from")
-    to_return = prefix
-    for variable_name, tail_property in (extra_tail_properties or {}).items():
-        to_return += f", {tail.name}.{tail_property} AS {variable_name}"
+        checks.append(f'{rel.name}.status = "active"')
+        checks.append(f"NOT EXISTS {{ MATCH {competing} WHERE {competing_where} }}")
+    return checks
 
-    return f"""
-    MATCH candidate = {candidate_str}
-    WHERE {candidate_where}
-    WITH DISTINCT {field_vertices}
-    MATCH path = {filter_str}
-    WHERE all(r IN relationships(path) WHERE ({branch_filter}))
-    WITH
-        {field_vertices},
-        {tail.name},
-        reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS branch_level,
-        {froms_str} AS froms,
-        all(r IN relationships(path) WHERE r.status = "active") AS is_active
-    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
-    WITH {field_vertices}, head(collect([is_active, {tail.name}])) AS latest_value_details
-    WITH {node_alias}, latest_value_details[0] AS is_active, latest_value_details[1] AS {tail.name}
-    WHERE is_active = TRUE AND {" AND ".join(value_predicates)}
-    WITH {node_alias} AS {prefix}, {tail.name}
-    LIMIT 1
-    RETURN {to_return}
-    """
+
+def _render_hierarchy_checks(db: InfrahubDatabase, segment: str, competing_filter: str) -> str:
+    id_function = db.get_id_function_name()
+    relationship_end = 'CASE WHEN "Relationship" IN labels(startNode(h)) THEN startNode(h) ELSE endNode(h) END'
+    node_end = 'CASE WHEN "Relationship" IN labels(startNode(h)) THEN endNode(h) ELSE startNode(h) END'
+    return (
+        f'all(h IN {segment} WHERE h.status = "active" AND NOT EXISTS {{ '
+        f"MATCH (hierarchy_relationship:Relationship)-[r:IS_RELATED]-(competitor:Node) "
+        f"WHERE {id_function}(hierarchy_relationship) = {id_function}({relationship_end}) "
+        f"AND competitor.uuid = ({node_end}).uuid "
+        f"AND ({competing_filter}) AND {_render_outranks(edge='h')} }})"
+    )
+
+
+def _render_outranks(edge: str) -> str:
+    return f"(r.branch_level > {edge}.branch_level OR (r.branch_level = {edge}.branch_level AND r.from > {edge}.from))"
+
+
+def _segment(rels: list[QueryRel], idx: int) -> str:
+    after = len(rels) - idx - 1
+    return f"relationships(path)[{idx}..{-after if after else ''}]"
+
+
+def _is_relationship_vertex(vertex: QueryElement) -> bool:
+    return bool(vertex.labels and "Relationship" in vertex.labels)
 
 
 async def build_subquery_order(
