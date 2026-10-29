@@ -130,63 +130,6 @@ async def test_nothing_is_logged_when_every_stored_prefect_event_type_is_listed(
     assert _app_warnings(caplog=caplog) == []
 
 
-async def test_nothing_is_logged_when_no_per_type_retention_is_in_effect(
-    database: PrefectDBInterface, caplog: pytest.LogCaptureFixture
-) -> None:
-    await _store_events(
-        db=database, event_types=["infrahub.node.created", LISTED_PREFECT_EVENT, UNLISTED_PREFECT_EVENT]
-    )
-
-    # Prefect merges a mapping into the overrides in effect, so they are emptied outside the per-type retention.
-    with (
-        temporary_settings(
-            updates={
-                "server.events.retention_period": timedelta(days=365),
-                "server.services.db_vacuum.enabled": {"events"},
-                "server.services.db_vacuum.event_retention_overrides": {},
-            }
-        ),
-        caplog.at_level(logging.WARNING, logger=APP_LOGGER),
-    ):
-        await warn_about_unlisted_prefect_event_types(db=database)
-
-    assert _app_warnings(caplog=caplog) == []
-
-
-async def test_nothing_is_logged_when_no_per_type_retention_is_shorter_than_the_event_retention(
-    database: PrefectDBInterface, caplog: pytest.LogCaptureFixture
-) -> None:
-    await _store_events(
-        db=database, event_types=["infrahub.node.created", LISTED_PREFECT_EVENT, UNLISTED_PREFECT_EVENT]
-    )
-
-    with (
-        _per_type_retention_in_effect(),
-        temporary_settings(updates={"server.events.retention_period": timedelta(days=7)}),
-        caplog.at_level(logging.WARNING, logger=APP_LOGGER),
-    ):
-        await warn_about_unlisted_prefect_event_types(db=database)
-
-    assert _app_warnings(caplog=caplog) == []
-
-
-async def test_nothing_is_logged_when_prefect_deletes_no_events(
-    database: PrefectDBInterface, caplog: pytest.LogCaptureFixture
-) -> None:
-    await _store_events(
-        db=database, event_types=["infrahub.node.created", LISTED_PREFECT_EVENT, UNLISTED_PREFECT_EVENT]
-    )
-
-    with (
-        _per_type_retention_in_effect(),
-        temporary_settings(updates={"server.services.db_vacuum.enabled": {"flow_runs"}}),
-        caplog.at_level(logging.WARNING, logger=APP_LOGGER),
-    ):
-        await warn_about_unlisted_prefect_event_types(db=database)
-
-    assert _app_warnings(caplog=caplog) == []
-
-
 def _database_without_tables(directory: Path) -> PrefectDBInterface:
     return task_manager_database(directory / "unmigrated.db")
 

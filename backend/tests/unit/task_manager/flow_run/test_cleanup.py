@@ -350,7 +350,7 @@ async def test_waiting_for_a_cleanup_gives_up_when_the_task_manager_never_shows_
     ):
         await _run(task_manager=task_manager, clock=clock, reports=reports, give_up_after=timedelta(seconds=10))
 
-    assert len(task_manager.requests) == 6
+    assert task_manager.requests == [RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "never"})] * 6
     assert clock.sleeps == [2.0] * 5
     assert reports.waits == [CleanupWait.RUNNING_ELSEWHERE]
 
@@ -380,7 +380,16 @@ async def test_a_wait_is_reported_when_it_starts_when_its_reason_changes_and_aga
 
     assert result is not None
     assert (result.job.id, result.job.state) == ("job-4", CleanupJobState.COMPLETED)
-    assert len(task_manager.requests) == 12
+    assert task_manager.requests == [
+        *[RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "never"})] * 3,
+        RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-1"),
+        RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "never"}),
+        RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-2"),
+        *[RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "never"})] * 2,
+        RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-3"),
+        *[RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "never"})] * 2,
+        RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-4"),
+    ]
     assert reports.waits == [
         CleanupWait.RUNNING_ELSEWHERE,
         CleanupWait.UNKNOWN,
@@ -397,6 +406,7 @@ class LastWaitCase:
     give_up_after: timedelta
     expected_error: str
     expected_waits: list[CleanupWait]
+    expected_requests: list[RecordedRequest]
 
 
 LAST_WAIT_CASES: list[LastWaitCase] = [
@@ -409,6 +419,10 @@ LAST_WAIT_CASES: list[LastWaitCase] = [
             "when the task manager answered that it does not know the cleanup"
         ),
         expected_waits=[CleanupWait.UNKNOWN],
+        expected_requests=[
+            RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "never"}),
+            RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-1"),
+        ],
     ),
     LastWaitCase(
         name="running_elsewhere_after_being_unreachable",
@@ -419,6 +433,11 @@ LAST_WAIT_CASES: list[LastWaitCase] = [
             "when the task manager answered that a cleanup runs elsewhere"
         ),
         expected_waits=[CleanupWait.UNREACHABLE, CleanupWait.RUNNING_ELSEWHERE],
+        expected_requests=[
+            RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "never"}),
+            RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-1"),
+            *[RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "never"})] * 4,
+        ],
     ),
 ]
 
@@ -433,7 +452,7 @@ async def test_giving_up_names_the_reason_to_wait_seen_last(case: LastWaitCase) 
     with pytest.raises(TaskHistoryCleanupError, match=f"^{re.escape(case.expected_error)}$"):
         await _run(task_manager=task_manager, clock=FakeClock(), reports=reports, give_up_after=case.give_up_after)
 
-    assert len(task_manager.requests) == len(case.responses)
+    assert task_manager.requests == case.expected_requests
     assert reports.waits == case.expected_waits
 
 
@@ -457,44 +476,12 @@ async def test_an_answer_showing_the_cleanup_restarts_the_wait_limit() -> None:
 
     assert result is not None
     assert (result.job.id, result.job.state) == ("job-2", CleanupJobState.COMPLETED)
-    assert len(task_manager.requests) == 8
-
-
-@pytest.mark.usefixtures("prefect_client_without_retries")
-async def test_a_cleanup_the_task_manager_cannot_be_reached_about_is_started_again_after_a_wait() -> None:
-    """A task manager unreachable while a cleanup is followed, its restart, is posted to again until it answers."""
-    task_manager = ScriptedTaskManager(
-        responses=[
-            started(),
-            polled(current_day="2026-01-15", deleted_runs=4),
-            unreachable(),
-            unreachable(),
-            started(id="job-2"),
-            polled(id="job-2", state="completed", current_day="2026-01-16", deleted_runs=2),
-        ]
-    )
-    clock = FakeClock()
-    reports = RecordedReports()
-
-    result = await _run(task_manager=task_manager, clock=clock, reports=reports)
-
-    assert result is not None
-    assert (result.job.id, result.job.state, result.deleted_runs, result.counts_lost_cleanups) == (
-        "job-2",
-        CleanupJobState.COMPLETED,
-        6,
-        True,
-    )
     assert task_manager.requests == [
-        RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "never"}),
+        *[RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "never"})] * 4,
         RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-1"),
-        RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-1"),
-        RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "never"}),
-        RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "never"}),
+        *[RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "never"})] * 2,
         RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-2"),
     ]
-    assert reports.progress == [("job-1", date(2026, 1, 15), 4)]
-    assert clock.sleeps == [2.0] * 5
 
 
 @pytest.mark.usefixtures("prefect_client_without_retries")
@@ -586,28 +573,29 @@ async def test_waiting_for_a_cleanup_gives_up_when_the_task_manager_stays_unreac
 
 
 @dataclass
-class ProxyErrorCase:
+class InterruptedCleanupCase:
     name: str
-    status_code: int
+    interruption: httpx.Response | httpx.TransportError
 
 
-PROXY_ERROR_CASES: list[ProxyErrorCase] = [
-    ProxyErrorCase(name="bad_gateway", status_code=502),
-    ProxyErrorCase(name="service_unavailable", status_code=503),
-    ProxyErrorCase(name="gateway_timeout", status_code=504),
+INTERRUPTED_CLEANUP_CASES: list[InterruptedCleanupCase] = [
+    InterruptedCleanupCase(name="connection_lost", interruption=unreachable()),
+    InterruptedCleanupCase(name="bad_gateway", interruption=proxy_error(status_code=502)),
+    InterruptedCleanupCase(name="service_unavailable", interruption=proxy_error(status_code=503)),
+    InterruptedCleanupCase(name="gateway_timeout", interruption=proxy_error(status_code=504)),
 ]
 
 
-@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in PROXY_ERROR_CASES])
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in INTERRUPTED_CLEANUP_CASES])
 @pytest.mark.usefixtures("prefect_client_without_retries")
-async def test_a_proxy_error_while_a_cleanup_is_followed_starts_it_again_after_a_wait(case: ProxyErrorCase) -> None:
-    """A proxy that answers for a restarting task manager while a cleanup is followed leads to the wait for an unreachable one."""
+async def test_an_interrupted_cleanup_is_started_again_after_a_wait(case: InterruptedCleanupCase) -> None:
+    """A lost connection or proxy error preserves progress and retries until the task manager answers."""
     task_manager = ScriptedTaskManager(
         responses=[
             started(),
             polled(current_day="2026-01-15", deleted_runs=4),
-            proxy_error(status_code=case.status_code),
-            proxy_error(status_code=case.status_code),
+            case.interruption,
+            case.interruption,
             started(id="job-2"),
             polled(id="job-2", state="completed", current_day="2026-01-16", deleted_runs=2),
         ]
@@ -632,6 +620,7 @@ async def test_a_proxy_error_while_a_cleanup_is_followed_starts_it_again_after_a
         RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "never"}),
         RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-2"),
     ]
+    assert reports.progress == [("job-1", date(2026, 1, 15), 4)]
     assert reports.waits == [CleanupWait.UNREACHABLE]
     assert clock.sleeps == [2.0] * 5
 
