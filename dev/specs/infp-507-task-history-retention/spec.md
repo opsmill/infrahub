@@ -17,7 +17,7 @@ Each Infrahub instance keeps two kinds of records in its task manager:
 - **Task history**: finished runs of background tasks, with their logs and artifacts. Today it is never deleted and grows until the task manager's database fills its disk, which stopped three customer instances.
 - **Activity log**: the Infrahub events shown on the Activities page. Today every event disappears after 7 days, because the task manager's default event retention applies to all events, and the task manager's own internal events (run state changes, heartbeats), about 70 % of stored events, share that retention.
 
-Product decided that each instance keeps both kinds of records for a configured period, deletes older records automatically without affecting the instance, keeps the activity log for its own retention whatever the task manager keeps of its own records, and gets the disk space back. A year or more of activity log is supported in every edition, built so that long retention can become an Enterprise feature later.
+Product decided that each instance keeps both kinds of records for a configured period, deletes older records automatically without affecting the instance, keeps the activity log for its own retention whatever the task manager keeps of its own records, and gets the disk space back. Retention is configurable up to 365 days. The feature may be restricted to Enterprise; availability and any edition-specific restrictions remain undecided.
 
 The Activities page gets slower as the activity log grows: with a year of activity log, one page takes minutes today. The Activities page work therefore ships with this feature, ahead of the activity log retention.
 
@@ -76,7 +76,7 @@ An operator who needs more than 7 days of activity log raises the activity log r
 2. **Given** the default retentions, **When** the instance is upgraded, **Then** the activity log behaves as today (7 days) and the instance's activity log storage stays the size it is today.
 3. **Given** the task manager's own events, **When** they are older than the own-event retention (7 days by default), **Then** they are deleted, whatever the activity log retention.
 4. **Given** a task-manager event type missing from Infrahub's list, **When** it is older than the own-event retention, **Then** it is kept for the activity log retention instead, and no Infrahub event is ever deleted because of the list.
-5. **Given** Community and Enterprise editions, **When** an operator sets any retention, **Then** both editions accept the same settings with no edition limit (36,500 days at most, a technical bound).
+5. **Given** a retention above 365 days, **When** an operator configures the instance, **Then** startup fails with an error naming the setting. Enterprise availability and any edition-specific restrictions require a separate product decision.
 
 ---
 
@@ -133,8 +133,8 @@ An operator sets how long task history, the activity log and the task manager's 
 - **FR-001**: System MUST provide three retention settings: task history (default 30 days), activity log (default 7 days) and the task manager's own events (default 7 days), settable in the Infrahub configuration, Helm values and compose environment.
 - **FR-002**: System MUST apply the three settings to the task manager's cleanups at start, without the operator setting task-manager-specific variables.
 - **FR-003**: System MUST apply the same settings when the task manager's background services run in their own deployment, by starting that deployment through an Infrahub command.
-- **FR-004**: System MUST refuse to start the task manager, naming the setting, when a retention is shorter than 1 day or longer than 36,500 days; it MUST also refuse to start, naming both settings, when the own-event retention is longer than the activity log retention.
-- **FR-005**: System MUST accept the same retention settings in every edition, with no edition-specific limit; values above 36,500 days (100 years) are refused, a safety bound far below the point where the task manager's cutoff date overflows.
+- **FR-004**: System MUST refuse to start the task manager, naming the setting, when a retention is shorter than 1 day or longer than 365 days; it MUST also refuse to start, naming both settings, when the own-event retention is longer than the activity log retention.
+- **FR-005 (pending product decision)**: Enterprise availability and any edition-specific retention restrictions MUST be decided before release. The current implementation has no edition gate; it does not establish availability in every edition. The maximum supported Infrahub retention setting is 365 days.
 
 **Task history**
 
@@ -215,7 +215,7 @@ Timings are indicative: they come from local benchmarks, not a production contra
 - Q: Are the SQL cleanup and the new filters checked on task-manager upgrades? → A: Yes, by CI equivalence checks.
 - Q: Fallback if product refuses to remove the total count? → A: None; argue for removal. (Later found moot: the page never asked for the count; the design doc dropped D7 and Q2.)
 - Q: Values accepted by the settings? → A: Durations of at least 1 day, refuse to start otherwise; an own-event retention longer than the activity log is refused at startup, instead of being capped to it with a warning as design doc D5 decided.
-- Q: Activity log default? → A: Stays 7 days; a year or more is a capability, not the default.
+- Q: Activity log default? → A: Stays 7 days; retention can be configured up to 365 days, subject to the pending edition decision.
 - Q: Helm upgrade? → A: The pre-upgrade hook does not run the cleanup; a maintenance step after the rollout does. (Changed on 11 Oct, see below: the upgrade runs no cleanup on Compose either.)
 - Q: Load more by time and time windows? → A: Windows count back from the oldest event shown.
 - Q: Auth on the cleanup endpoint? → A: Not added; out of scope.
@@ -243,7 +243,8 @@ From the design doc's "Design changes for implementation" list, entries of 8 and
 
 - **Q1 (blocks the release notes)**: how long the cleanup step takes on a large instance. Measured about 8.5 minutes on 25 GB and about 2 h 20 min on 100 GB, almost all of it the deletes; why 100 GB is about 4 times slower per run is not confirmed. Both were measured before 28 Oct, when the deletes were limited to 1,000 runs per transaction; how long they take since then is not measured yet. Both were also measured without the pauses between rewritten tables, which add at most 60 s per table after the first. Known instances hold about 20 to 35 GB. The upgrade no longer includes it.
 - **Deep scrolling by time**: scrolling far down a combined filter, on both supported database versions, is being measured.
-- Non-blocking: whether runs accumulate in SCHEDULED, LATE, PAUSED or CANCELLING, and whether runs legitimately stay RUNNING more than 2 days; what happens to Community instances configured above a future Enterprise-only limit.
+- **Edition availability (before release)**: decide whether this is an Enterprise feature, which retention controls require an entitlement, and how any edition restriction affects existing configurations. No edition restriction is implemented yet.
+- Non-blocking: whether runs accumulate in SCHEDULED, LATE, PAUSED or CANCELLING, and whether runs legitimately stay RUNNING more than 2 days.
 - **Release evidence**: the private performance tests (Activities queries, task history retention, the cleanup step, activity log retention, cleanups under load, database size and dead space) must pass and be attached to each part's PR and to INFP-507; PR #33 in opsmill/infrahub-private-tests lands first.
 - Delivery order: part 1 task history (User Story 1, with the background-services command of User Story 4), part 2 Activities page (User Story 2), part 3 activity log retention (User Story 3), part 4 documentation with parts 1 and 3. Part 2 lands before part 3.
 
@@ -251,7 +252,7 @@ From the design doc's "Design changes for implementation" list, entries of 8 and
 
 - Tasks page performance at 1M+ runs, latency targets and an Infrahub-owned activity-log store (INFP-727).
 - Memory growth from task-manager cache keys that never expire.
-- The value of an Enterprise-only retention limit.
+- Implementing edition restrictions before the product decision above.
 - New indexes or tables in the task manager's database, a capped total count, and the newest-events shortcut query (rejected in the design doc).
 - Upstream task-manager changes (prefix keys in per-type retention, faster per-type cleanup).
 - Keeping activity beyond the retention for audit (log forwarding, unchanged).

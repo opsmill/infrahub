@@ -113,7 +113,7 @@ class WindowCase:
     limit: int
     expected: list[int]
     offset: int | None = None
-    retention: timedelta = timedelta(days=400)
+    retention: timedelta = timedelta(days=365)
     until_age: timedelta | None = None
     since_age: timedelta | None = None
     order: EventSortOrder = EventSortOrder.DESC
@@ -244,7 +244,7 @@ async def test_one_event_per_resource_is_the_newest_of_the_whole_range(
     event_filter.resource = EventResourceFilter(
         id=[f"infrahub.node.{node_id}" for node_id in REPEATED_NODE_IDS], distinct=True
     )
-    retention = timedelta(days=400)
+    retention = timedelta(days=365)
 
     page = await filter_event_ids(client=prefect_client, event_filter=event_filter, limit=2, retention=retention)
 
@@ -270,10 +270,10 @@ async def test_total_is_counted_over_the_whole_range_only_when_requested(
     event_filter = InfrahubEventFilter.from_filters(order=EventSortOrder.DESC, account__ids=[SPARSE_ACCOUNT])
 
     counted = await filter_events(
-        client=prefect_client, event_filter=event_filter, limit=1, retention=timedelta(days=400), include_total=True
+        client=prefect_client, event_filter=event_filter, limit=1, retention=timedelta(days=365), include_total=True
     )
     not_counted = await filter_events(
-        client=prefect_client, event_filter=event_filter, limit=1, retention=timedelta(days=400), include_total=False
+        client=prefect_client, event_filter=event_filter, limit=1, retention=timedelta(days=365), include_total=False
     )
 
     assert [event["id"] for event in counted["events"]] == seeded.sparse[:1]

@@ -26,7 +26,7 @@ The review fixes rebased the stack after the chunks ran, and the quickstart fix 
 | # | Chunk | Tasks | Outcome | Commits now on the branch | Flagged upward |
 |---|---|---|---|---|---|
 | 1 | Foundational (PR 1) | T003-T007, T047 (pulled forward from US4 as the test for T007) | 6 ✅ | `ce37f1ec8`, `a80413b74`, `74f50b2dd` | Prefect reads its settings once at import, so the task manager refreshes Prefect's settings context after applying the values. The stock Prefect test container now uses a factory without the configuration step. |
-| 1b | Event types and review fixes (PR 1) | T002, T041, T042, T043 (pulled forward from US2 and US3); legacy aliases, startup log, 36,500-day maximum, changelog | 4 ✅ | `1b3d02bf9`, `59b3e049f`, `a0bf3a5a2`, `f6dabb8dc` | 103 Prefect event types, read from the Prefect 3.8.6 source. 5 state names set by Prefect's engine are not covered by the state unit test. |
+| 1b | Event types and review fixes (PR 1) | T002, T041, T042, T043 (pulled forward from US2 and US3); legacy aliases, startup log, retention maximum (now 365 days), changelog | 4 ✅ | `1b3d02bf9`, `59b3e049f`, `a0bf3a5a2`, `f6dabb8dc` | 103 Prefect event types, read from the Prefect 3.8.6 source. 5 state names set by Prefect's engine are not covered by the state unit test. |
 | 2 | Cleanup job and routes (PR 2) | T001, T008, T009, T010, T014, T015, T016 | 7 ✅ | `ceb753f80`, `bb1658bdb` | Postgres 14 and 18 probe (not committed): lock `409`, concurrency with Prefect's vacuum, and a skipped table on lock timeout. |
 | 3 | Client, CLI, upgrade (PR 2) | T011, T012, T013, T017, T018, T019, T020; rewrite modes | 7 ✅ | `d30a15539`, `024366bf2` | Rewrite modes `never` / `if_freed` / `always` (see §6). |
 | 3b-3d | Review rounds on PR 2 | review fixes | ✅ | `18ec67104` … `f966842a5` | A running job's rewrite mode is raised in the task manager; the job lifecycle lives in one place. |
@@ -172,7 +172,7 @@ Stack-wide review (no critical findings):
 | Suggestion | `task_history.py`, `cleanup.py` | Two simplifications | 2 | Fixed |
 | Suggestion | `prefect_server/models.py`, e2e test | Misleading `retention_seconds` description; a comment that restates the code | 3 | Fixed |
 | Suggestion | `dev/knowledge/backend/task-manager-retention.md` | Three statements did not match the code | 6 | Fixed |
-| Suggestion | several | Rewriter `None` on SQLite; `since` read from `model_fields_set`; 36,500-day maximum defined twice; a repeated `VACUUM FULL` when a load balancer spreads requests across replicas; retry warning on the last attempt (#10379) | 2, 3 | Deferred; the last one goes to #10379. The last one was fixed on 28 Oct in PR 3: a `4xx` answer is not retried, and a query that fails for good logs one warning |
+| Suggestion | several | Rewriter `None` on SQLite; `since` read from `model_fields_set`; retention maximum defined twice (now shared); a repeated `VACUUM FULL` when a load balancer spreads requests across replicas; retry warning on the last attempt (#10379) | 2, 3 | Deferred; the last one goes to #10379. The last one was fixed on 28 Oct in PR 3: a `4xx` answer is not retried, and a query that fails for good logs one warning |
 
 cubic findings on PR 1 and PR 2 (16 in total) were all fixed or recorded as known limitations in the PR bodies.
 
@@ -183,7 +183,7 @@ cubic findings on PR 1 and PR 2 (16 in total) were all fixed or recorded as know
    - T047 moved to PR 1, as the test of T007.
    - T002, T041, T042 and T043 moved to PR 1, so `prefect_own_events` works from the first PR (a cubic finding).
    - T001 moved to PR 2.
-3. **Retention maximum**: 36,500 days, a technical safety bound. The design doc said "no upper limit"; the spec set is updated.
+3. **Retention maximum (superseded by product review)**: 365 days. The earlier technical safety bound is replaced by this product limit, shared by configuration validation and the explicit Activities query window. Enterprise availability and any edition-specific restrictions remain undecided.
 4. **Rewrite modes (deviation from the design doc, D9; superseded on 11 Oct, item 13)**:
    - `flush flow-runs --rewrite` always rewrites.
    - Only the upgrade step keeps the "deletes freed most of the tables" condition, measured as free space in `flow_run` (item 11).
@@ -230,7 +230,7 @@ cubic findings on PR 1 and PR 2 (16 in total) were all fixed or recorded as know
 4. **`infrahub-taskmanager` (T063)**: [opsmill/infrahub-backup#179](https://github.com/opsmill/infrahub-backup/pull/179), a draft, makes the maintenance tool run `flush flow-runs` without a number of days on 1.13; without it, the tool fails on 1.13. It can ship before 1.13.
 5. **Private-tests evidence** (T021-T024, T037, T038, T046, then T057 on the release candidate): run it in a separate session in opsmill/infrahub-private-tests, and attach the results to the PRs and to INFP-507.
 6. **Update the Notion design doc for the decisions made here**:
-   - the 36,500-day maximum;
+   - the 365-day maximum;
    - the "Primary Node" filter;
    - the GraphQL `since` description, which PR 3 changed on 28 Oct to the activity log retention, or at least 180 days when the task manager does not delete old events.
 7. **Telemetry spec**: it assumes task history reaches back well beyond 24 hours, but the retention can now be 1 day.

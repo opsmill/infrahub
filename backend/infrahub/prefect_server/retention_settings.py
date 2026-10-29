@@ -25,8 +25,7 @@ _ISO_8601_DURATION = re.compile(
     r"P(?=\d|T\d)(?:\d+Y)?(?:\d+M)?(?:\d+W)?(?:\d+D)?(?:T(?=\d)(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?"
 )
 _MINIMUM_RETENTION = timedelta(days=1)
-# Prefect's cutoff of now minus the retention must stay a valid date, which a century keeps far from overflowing.
-_MAXIMUM_RETENTION = timedelta(days=36500)
+MAXIMUM_RETENTION = timedelta(days=365)
 _TIMEDELTA_ADAPTER: TypeAdapter[timedelta] = TypeAdapter(timedelta)
 
 
@@ -64,7 +63,7 @@ class TaskManagerRetentionSettings(BaseSettings):
         validate_default=True,
         description=(
             "How long finished task runs are kept, with their logs and artifacts, as a number of days (`30d`) "
-            "or an ISO 8601 duration (`P30D`), from 1 to 36500 days. "
+            "or an ISO 8601 duration (`P30D`), from 1 to 365 days. "
             "`PREFECT_SERVER_SERVICES_DB_VACUUM_RETENTION_PERIOD` takes precedence when set. When "
             "`PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` is set to a value that does not turn on `flow_runs`, old "
             "task runs are not deleted."
@@ -75,7 +74,7 @@ class TaskManagerRetentionSettings(BaseSettings):
         validate_default=True,
         description=(
             "How long the events of the activity log are kept, as a number of days (`7d`) or an ISO 8601 "
-            "duration (`P7D`), from 1 to 36500 days, and at least `prefect_own_events`. "
+            "duration (`P7D`), from 1 to 365 days, and at least `prefect_own_events`. "
             "`PREFECT_SERVER_EVENTS_RETENTION_PERIOD`, or its legacy name `PREFECT_EVENTS_RETENTION_PERIOD`, takes "
             "precedence when set. When `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` is set to a value that does not "
             "turn on `events`, old events are not deleted."
@@ -86,7 +85,7 @@ class TaskManagerRetentionSettings(BaseSettings):
         validate_default=True,
         description=(
             "How long the task manager's own Prefect events are kept, as a number of days (`7d`) or an ISO 8601 "
-            "duration (`P7D`), from 1 to 36500 days, and at most `activity_log`. "
+            "duration (`P7D`), from 1 to 365 days, and at most `activity_log`. "
             "`PREFECT_SERVER_SERVICES_DB_VACUUM_EVENT_RETENTION_OVERRIDES` takes precedence when set. When "
             "`PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` is set to a value that does not turn on `events`, old "
             "events are not deleted."
@@ -95,11 +94,11 @@ class TaskManagerRetentionSettings(BaseSettings):
 
     @field_validator("task_history", "activity_log", "prefect_own_events", mode="before")
     @classmethod
-    def validate_retention_from_one_to_36500_days(cls, value: Any, info: ValidationInfo) -> timedelta:
+    def validate_retention_from_one_to_365_days(cls, value: Any, info: ValidationInfo) -> timedelta:
         """Read a number of days such as `30d` or an ISO 8601 duration such as `P30D`.
 
         Raises:
-            ValueError: When the value is in neither form, is shorter than 1 day or is longer than 36500 days.
+            ValueError: When the value is in neither form, is shorter than 1 day or is longer than 365 days.
 
         """
         retention = _parse_retention(value)
@@ -110,8 +109,10 @@ class TaskManagerRetentionSettings(BaseSettings):
             )
         if retention < _MINIMUM_RETENTION:
             raise ValueError(f"Invalid task manager retention: {info.field_name} must be at least 1 day")
-        if retention > _MAXIMUM_RETENTION:
-            raise ValueError(f"Invalid task manager retention: {info.field_name} must be at most 36500 days")
+        if retention > MAXIMUM_RETENTION:
+            raise ValueError(
+                f"Invalid task manager retention: {info.field_name} must be at most {MAXIMUM_RETENTION.days} days"
+            )
         return retention
 
     @model_validator(mode="after")

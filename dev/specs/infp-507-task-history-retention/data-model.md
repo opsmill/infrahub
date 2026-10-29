@@ -6,12 +6,12 @@ No graph schema or database schema changes, and no new or changed GraphQL argume
 
 | Field | Type | Default | Validation |
 |---|---|---|---|
-| `task_history` | duration | 30 days | ≥ 1 day, ≤ 36,500 days |
-| `activity_log` | duration | 7 days | ≥ 1 day, ≤ 36,500 days |
-| `prefect_own_events` | duration | 7 days | ≥ 1 day, ≤ 36,500 days, ≤ `activity_log` |
+| `task_history` | duration | 30 days | ≥ 1 day, ≤ 365 days |
+| `activity_log` | duration | 7 days | ≥ 1 day, ≤ 365 days |
+| `prefect_own_events` | duration | 7 days | ≥ 1 day, ≤ 365 days, ≤ `activity_log` |
 
 - Owned by the Infrahub configuration, as a section of the main settings with its own environment prefix (names final in the configuration contract).
-- Same values in every edition, with no edition limit. The 36,500-day (100-year) maximum is a technical safety bound, far below the roughly 739,000 days at which Prefect's cutoff date overflows.
+- Retention is limited to 365 days. Enterprise availability and any edition-specific restrictions remain undecided; the current implementation has no edition gate.
 - Validated when the task manager or the background-services command starts; an invalid value stops the process with an error naming the setting.
 
 ### Derived Prefect settings
