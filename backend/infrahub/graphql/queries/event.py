@@ -84,9 +84,11 @@ class Events(ObjectType):
 
         branch_ids: list[str] | None = None
         if branches:
+            async with graphql_context.db.start_session(read_only=True) as db:
+                current_branch_ids = await _current_branch_ids(db=db, names=branches)
             branch_ids = await PrefectEvent.resolve_branch_ids(
                 names=branches,
-                current_branch_ids=await _current_branch_ids(db=graphql_context.db, names=branches),
+                current_branch_ids=current_branch_ids,
             )
             if not branch_ids:
                 return {"count": 0, "edges": []}
